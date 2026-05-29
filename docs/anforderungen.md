@@ -1,0 +1,15 @@
+- EAN ändert sich beim Hersteller    → Artikel-Historie / EAN-Log
+- VPE hat anderen EAN als Einzelstück → Artikel bekommt mehrere EANs
+- Artikel ohne EAN                   → Pflichtfeld ODER "kein EAN" Flag
+- Eigene EAN generieren              → möglich! (EAN-8 oder intern)
+- Mehrere Lieferanten, verschiedene EKs  → Lieferantenmodul
+- Durchschnittlicher EK                  → wird automatisch berechnet
+- Spanne anzeigen                        → VK minus Ø-EK = Marge
+- Brutto/Netto                           → überall relevant, Grundlage
+- MOSS (Mini One Stop Shop)              → Onlineshop, EU-Verkäufe
+- konfigurierbare Artikel
+- Downloadartikel (Anleitungen)
+- Personalisierbare Artikel
+- Verkauf auf fremden Namen (Mietfächer für Produkte anderer Unternehmen die bei uns verkauft werden)
+- Abrechnung Mietfächer
+- Strickaufträge (Abrechnung, Dokumentation, Materialberechnung)
