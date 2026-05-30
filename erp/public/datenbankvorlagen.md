@@ -1,3 +1,5 @@
+# CREATE TABLE Tabellen anlegen
+
 CREATE TABLE lager (
     id INT UNSIGNED AUTO_INCREMENT,
     name VARCHAR(50) NOT NULL,
@@ -14,7 +16,7 @@ CREATE TABLE lagerbestand (
     bestand INT UNSIGNED,
     mindestbestand INT UNSIGNED,
     erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    geaendert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON CHANGE CURRENT_TIMESTAMP,
+    geaendert_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id))
 
     CREATE TABLE merkmal_gruppen (
@@ -47,6 +49,9 @@ CREATE TABLE artikel_merkmale (
     erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 );
+
+
+# ALTER TABLE - FOREIGN KEYS bestimmen
 
 ALTER TABLE lagerbestand
     ADD CONSTRAINT fk_artikel_varianten
@@ -82,3 +87,53 @@ ALTER TABLE merkmale
     REFERENCES merkmal_gruppen(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
+
+ALTER TABLE artikel_lieferanten
+    ADD CONSTRAINT fk_artikel_id
+    FOREIGN KEY (artikel_id)
+    REFERENCES artikel(id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE;
+    
+ALTER TABLE artikel_lieferanten
+    ADD CONSTRAINT fk_artlief_lieferant_id
+    FOREIGN KEY (lieferant_id)
+    REFERENCES lieferanten(id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE;
+    
+ALTER TABLE lieferanten_vertreter
+    ADD CONSTRAINT fk_vertreter_lieferant_id
+    FOREIGN KEY (lieferant_id)
+    REFERENCES lieferanten(id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE;
+
+# SQL ABFRAGEN JOINS
+
+SELECT 
+    v.farbe_name,
+    l.name AS lager,
+    lb.charge,
+    lb.charge_status,
+    lb.bestand
+FROM lagerbestand lb
+LEFT JOIN artikel_varianten v ON lb.artikel_varianten_id = v.id
+LEFT JOIN lager l ON lb.lager_id = l.id
+ORDER BY v.farbe_name, l.name
+
+  # "Zeig alle Merkmale von Artikel 1 mit Gruppenname, Merkmalname, Einheit und Wert"
+
+SELECT 
+    artikel.name AS Artikelname,
+    merkmale.name AS MerkmalName,
+    merkmale.einheit,
+    merkmal_gruppen.name AS GruppenName,
+    artikel_merkmale.wert_bool,
+    artikel_merkmale.wert_text,
+    artikel_merkmale.wert_zahl
+FROM artikel
+LEFT JOIN artikel_merkmale ON artikel.id = artikel_merkmale.artikel_id
+LEFT JOIN merkmale ON artikel_merkmale.merkmal_id = merkmale.id
+LEFT JOIN merkmal_gruppen ON merkmale.merkmal_gruppen_id = merkmal_gruppen.id
+WHERE artikel.id = 1
