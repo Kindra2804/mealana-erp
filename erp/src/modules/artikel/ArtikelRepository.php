@@ -96,4 +96,32 @@ class ArtikelRepository
 
         return $artikel;
     }
+
+    public function findByIdMitPreisen(int $id): array|false
+    {
+        $artikel = $this->findByIdMitVarianten($id);
+
+        if ($artikel === false) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("
+        SELECT
+            k.name AS kundengruppe,
+            k.rabatt_prozent,
+            p.brutto_vk,
+            p.netto_vk,
+            p.gueltig_ab,
+            p.gueltig_bis
+        FROM artikel_preise p
+        LEFT JOIN kundengruppen k ON p.kundengruppen_id = k.id
+        WHERE p.artikel_id = :artikel_id
+        ORDER BY k.name ASC
+    ");
+
+        $stmt->execute(['artikel_id' => $id]);
+        $artikel['preise'] = $stmt->fetchAll();
+
+        return $artikel;
+    }
 }
