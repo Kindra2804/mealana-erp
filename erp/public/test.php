@@ -7,9 +7,8 @@ $repo = new ArtikelRepository();
 // $artikel = $repo->findAll();
 // $artikel = $repo->findById(1);
 
-$varianten = $repo->findVariantenByArtikelId(1);
-print_r($varianten);
+// $varianten = $repo->findVariantenByArtikelId(1);
+// print_r($varianten);
 
-echo '<pre>';
+$artikel = $repo->findByIdMitVarianten(1);
 print_r($artikel);
-echo '</pre>';

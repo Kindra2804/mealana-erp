@@ -61,4 +61,39 @@ class ArtikelRepository
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
     }
+
+    public function findVariantenByArtikelId(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+        SELECT
+            id,
+            artikelnummer,
+            gtin,
+            farbe_name,
+            farbe_hex,
+            bild_url,
+            brutto_vk,
+            aktiv
+        FROM artikel_varianten
+        WHERE artikel_id = :artikel_id
+        AND aktiv = 1
+        ORDER BY farbe_name ASC
+    ");
+
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetchAll();
+    }
+
+    public function findByIdMitVarianten(int $id): array|false
+    {
+        $artikel = $this->findById($id);
+
+        if ($artikel === false) {
+            return false;
+        }
+
+        $artikel['varianten'] = $this->findVariantenByArtikelId($id);
+
+        return $artikel;
+    }
 }
