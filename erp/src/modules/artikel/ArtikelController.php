@@ -1,0 +1,27 @@
+<?php
+
+require_once __DIR__ . '/ArtikelRepository.php';
+
+class ArtikelController
+{
+    private ArtikelRepository $repo;
+
+    public function __construct()
+    {
+        $this->repo = new ArtikelRepository();
+    }
+
+    public function index(): array
+    {
+        return $this->repo->findAll();
+    }
+
+    public function detail(int $id): array|false
+    {
+        if ($id <= 0) {
+            return false;
+        }
+
+        return $this->repo->findByIdMitVarianten($id);
+    }
+}
