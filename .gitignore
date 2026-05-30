@@ -1,0 +1,12 @@
+# Datenbank-Konfiguration (enthält Passwörter!)
+erp/config/database.php
+
+# PHP Dependencies (kommt später)
+vendor/
+
+# System-Dateien
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
