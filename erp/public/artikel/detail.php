@@ -19,6 +19,7 @@ if ($artikel === false) {
 </head>
 
 <body>
+    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1><?= htmlspecialchars($artikel['name']) ?></h1>
     <p>Artikelnummer: <?= htmlspecialchars($artikel['artikelnummer']) ?></p>
     <p>Typ: <?= htmlspecialchars($artikel['artikeltyp']) ?></p>

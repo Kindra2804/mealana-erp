@@ -32,9 +32,8 @@ $artikelData = array_intersect_key($data, array_flip([
     'aktiv'
 ]));
 
-// Und Preise separat merken:
-$brutto_vk = $data['brutto_vk'] ?? null;
-$netto_vk = $data['netto_vk'] ?? null;
+$artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;
+$artikelData['netto_vk']  = $data['netto_vk']  ?? null;
 
 // Leere Strings zu NULL konvertieren
 foreach ($artikelData as $key => $value) {

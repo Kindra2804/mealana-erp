@@ -232,4 +232,65 @@ class ArtikelRepository
         $stmt->execute(['id' => $id]);
         return $stmt->rowCount() > 0;
     }
+
+    public function insertPreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 1): bool
+    {
+        $stmt = $this->db->prepare("
+        INSERT INTO artikel_preise (
+            artikel_id,
+            kundengruppen_id,
+            brutto_vk,
+            netto_vk
+        ) VALUES (
+            :artikel_id,
+            :kundengruppen_id,
+            :brutto_vk,
+            :netto_vk
+        )
+    ");
+
+        return $stmt->execute([
+            'artikel_id'       => $artikelId,
+            'kundengruppen_id' => $kundengruppenId,
+            'brutto_vk'        => $bruttoVk,
+            'netto_vk'         => $nettoVk
+        ]);
+    }
+
+    public function updatePreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 1): bool
+    {
+        // Erst prüfen ob Preis bereits existiert
+        $stmt = $this->db->prepare("
+        SELECT id FROM artikel_preise 
+        WHERE artikel_id = :artikel_id 
+        AND kundengruppen_id = :kundengruppen_id
+    ");
+        $stmt->execute(['artikel_id' => $artikelId, 'kundengruppen_id' => $kundengruppenId]);
+
+        if ($stmt->fetch()) {
+            // Update
+            $stmt = $this->db->prepare("
+            UPDATE artikel_preise SET
+                brutto_vk = :brutto_vk,
+                netto_vk = :netto_vk
+            WHERE artikel_id = :artikel_id
+            AND kundengruppen_id = :kundengruppen_id
+        ");
+        } else {
+            // Insert
+            $stmt = $this->db->prepare("
+            INSERT INTO artikel_preise 
+                (artikel_id, kundengruppen_id, brutto_vk, netto_vk)
+            VALUES 
+                (:artikel_id, :kundengruppen_id, :brutto_vk, :netto_vk)
+        ");
+        }
+
+        return $stmt->execute([
+            'artikel_id'       => $artikelId,
+            'kundengruppen_id' => $kundengruppenId,
+            'brutto_vk'        => $bruttoVk,
+            'netto_vk'         => $nettoVk
+        ]);
+    }
 }

@@ -16,6 +16,7 @@ $artikel = $controller->index($zeigeInaktive);
 </head>
 
 <body>
+    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1>Artikel</h1>
     <?php if ($zeigeInaktive): ?>
         <a href="liste.php">Nur aktive anzeigen</a>

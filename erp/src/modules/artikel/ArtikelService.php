@@ -19,8 +19,17 @@ class ArtikelService
             return ['erfolg' => false, 'fehler' => $fehler];
         }
 
-        // 2. Speichern
+        // Preise vor insert() rausziehen
+        $bruttoVk = $data['brutto_vk'] ?? null;
+        $nettoVk  = $data['netto_vk']  ?? null;
+        unset($data['brutto_vk'], $data['netto_vk']);
+
         $id = $this->repo->insert($data);
+
+        // Preis speichern
+        if ($bruttoVk && $nettoVk) {
+            $this->repo->insertPreis($id, (float)$bruttoVk, (float)$nettoVk);
+        }
 
         return ['erfolg' => true, 'id' => $id];
     }
@@ -53,14 +62,26 @@ class ArtikelService
 
     public function update(array $data): array
     {
-        // 1. Validieren
         $fehler = $this->validiere($data);
         if (!empty($fehler)) {
             return ['erfolg' => false, 'fehler' => $fehler];
         }
 
-        // 2. Speichern
+        // Preise rausziehen
+        $bruttoVk = $data['brutto_vk'] ?? null;
+        $nettoVk  = $data['netto_vk']  ?? null;
+        unset($data['brutto_vk'], $data['netto_vk']);
+
         $erfolg = $this->repo->update($data);
+
+        // Preis aktualisieren
+        if ($bruttoVk && $nettoVk) {
+            $this->repo->updatePreis(
+                (int) $data['id'],
+                (float) $bruttoVk,
+                (float) $nettoVk
+            );
+        }
 
         return ['erfolg' => true];
     }

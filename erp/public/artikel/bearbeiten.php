@@ -124,7 +124,7 @@ function selected(string $field, string $value, array $formdata): string
 </head>
 
 <body>
-
+    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1>Artikel bearbeiten</h1>
 
     <?php if ($erfolg): ?>
