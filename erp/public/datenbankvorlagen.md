@@ -89,7 +89,7 @@ ALTER TABLE merkmale
     ON UPDATE CASCADE;
 
 ALTER TABLE artikel_lieferanten
-    ADD CONSTRAINT fk_artikel_id
+    ADD CONSTRAINT fk_artlief_artikel_id
     FOREIGN KEY (artikel_id)
     REFERENCES artikel(id)
     ON DELETE RESTRICT
@@ -108,6 +108,12 @@ ALTER TABLE lieferanten_vertreter
     REFERENCES lieferanten(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
+    
+fk_{tabellenname_kurz}_{spaltenname}
+
+fk_artlief_artikel_id    ✅
+fk_artlief_lieferant_id  ✅
+fk_vertreter_lieferant_id ✅
 
 # SQL ABFRAGEN JOINS
 
@@ -137,3 +143,8 @@ LEFT JOIN artikel_merkmale ON artikel.id = artikel_merkmale.artikel_id
 LEFT JOIN merkmale ON artikel_merkmale.merkmal_id = merkmale.id
 LEFT JOIN merkmal_gruppen ON merkmale.merkmal_gruppen_id = merkmal_gruppen.id
 WHERE artikel.id = 1
+
+
+# desribe
+
+DESCRIBE artikel;
