@@ -44,4 +44,10 @@ class ArtikelController
         if ($id <= 0) return false;
         return $this->repo->findVarianteById($id);
     }
+
+    public function search(string $q): array
+    {
+        if (strlen($q) < 2) return [];
+        return $this->repo->search($q);
+    }
 }

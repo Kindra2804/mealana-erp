@@ -354,4 +354,27 @@ class ArtikelRepository
 
         return $stmt->rowCount() > 0;
     }
+
+    public function search(string $q): array
+    {
+        $stmt = $this->db->prepare("
+        SELECT 
+            a.id, a.artikelnummer, a.name, 
+            a.artikeltyp, a.aktiv,
+            h.name AS hersteller
+        FROM artikel a
+        LEFT JOIN hersteller h ON a.hersteller_id = h.id
+        WHERE a.aktiv = 1
+        AND (
+            a.artikelnummer LIKE :q
+            OR a.name LIKE :q
+            OR h.name LIKE :q
+        )
+        ORDER BY a.artikelnummer ASC
+        LIMIT 50
+    ");
+
+        $stmt->execute(['q' => '%' . $q . '%']);
+        return $stmt->fetchAll();
+    }
 }

@@ -6,6 +6,13 @@ $controller = new ArtikelController();
 $zeigeInaktive = isset($_GET['inaktive']) && $_GET['inaktive'] == '1';
 $artikel = $controller->index($zeigeInaktive);
 
+$q = trim($_GET['q'] ?? '');
+if ($q !== '') {
+    $artikel = $controller->search($q);
+} else {
+    $artikel = $controller->index($zeigeInaktive);
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -24,6 +31,12 @@ $artikel = $controller->index($zeigeInaktive);
         <a href="liste.php?inaktive=1">Auch deaktivierte anzeigen</a>
     <?php endif; ?>
     <a href="neu.php">+ Neuer Artikel</a>
+    <form method="GET" action="liste.php">
+        <input type="text" name="q"
+            value="<?= htmlspecialchars($_GET['q'] ?? '') ?>"
+            placeholder="Artikel suchen...">
+        <button type="submit">🔍</button>
+    </form>
     <table>
         <tr>
             <th>Artikelnummer</th>

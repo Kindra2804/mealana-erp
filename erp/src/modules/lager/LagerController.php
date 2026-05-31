@@ -43,7 +43,7 @@ class LagerController
         return $this->repo->findChargenByVarianteId($id);
     }
 
-    public function nachzutragendeChargen(): array|false
+    public function nachzutragendeChargen(): array
     {
         return $this->repo->findNachzutragendeChargen();
     }
