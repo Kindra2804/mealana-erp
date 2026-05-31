@@ -31,6 +31,12 @@ class ArtikelService
 
         if (empty($data['artikelnummer'])) {
             $fehler[] = 'Artikelnummer ist Pflichtfeld';
+        } else {
+            // Prüfen ob Artikelnummer bereits existiert
+            $vorhanden = $this->repo->findByArtikelnummer($data['artikelnummer']);
+            if ($vorhanden !== false) {
+                $fehler[] = 'Artikelnummer "' . $data['artikelnummer'] . '" existiert bereits!';
+            }
         }
         if (empty($data['name'])) {
             $fehler[] = 'Name ist Pflichtfeld';
@@ -40,53 +46,5 @@ class ArtikelService
         }
 
         return $fehler;
-    }
-
-    public function insert(array $data): int
-    {
-        $stmt = $this->db->prepare("
-        INSERT INTO artikel (
-            artikelnummer,
-            hersteller_id,
-            steuerklasse_id,
-            artikeltyp,
-            name,
-            beschreibung_kurz,
-            beschreibung_lang,
-            einheit,
-            inhalt_menge,
-            inhalt_einheit,
-            gewicht_artikel,
-            gewicht_versand,
-            herkunftsland,
-            taric_code,
-            varianten_darstellung,
-            grundpreis_bezugsmenge,
-            grundpreis_anzeigen,
-            aktiv
-        ) VALUES (
-            :artikelnummer,
-            :hersteller_id,
-            :steuerklasse_id,
-            :artikeltyp,
-            :name,
-            :beschreibung_kurz,
-            :beschreibung_lang,
-            :einheit,
-            :inhalt_menge,
-            :inhalt_einheit,
-            :gewicht_artikel,
-            :gewicht_versand,
-            :herkunftsland,
-            :taric_code,
-            :varianten_darstellung,
-            :grundpreis_bezugsmenge,
-            :grundpreis_anzeigen,
-            :aktiv
-        )
-    ");
-
-        $stmt->execute($data);
-        return (int) $this->db->lastInsertId();
     }
 }

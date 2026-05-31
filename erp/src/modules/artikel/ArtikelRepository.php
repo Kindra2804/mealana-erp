@@ -19,13 +19,12 @@ class ArtikelRepository
                 a.artikelnummer,
                 a.name,
                 a.artikeltyp,
-                a.lauflaenge,
                 a.aktiv,
                 h.name AS hersteller,
                 s.satz AS steuersatz
             FROM artikel a
-            INNER JOIN hersteller h ON a.hersteller_id = h.id
-            INNER JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN hersteller h ON a.hersteller_id = h.id
+            LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
         ");
 
         return $stmt->fetchAll();
@@ -39,22 +38,17 @@ class ArtikelRepository
                 a.artikelnummer,
                 a.name,
                 a.artikeltyp,
-                a.lauflaenge,
                 a.aktiv,
                 a.beschreibung_lang,
                 a.einheit,
                 a.gewicht_artikel,
-                a.grundpreis_bezug,
                 a.inhalt_einheit,
                 a.inhalt_menge,
-                a.maschenprobe,
-                a.nadelstaerke_von,
-                a.nadelstaerke_bis,
                 h.name AS hersteller,
                 s.satz AS steuersatz
             FROM artikel a
-            INNER JOIN hersteller h ON a.hersteller_id = h.id
-            INNER JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN hersteller h ON a.hersteller_id = h.id
+            LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             WHERE a.id = :id
         ");
 
@@ -123,5 +117,64 @@ class ArtikelRepository
         $artikel['preise'] = $stmt->fetchAll();
 
         return $artikel;
+    }
+
+    public function findByArtikelnummer(string $artikelnummer): array|false
+    {
+        $stmt = $this->db->prepare("
+        SELECT id FROM artikel 
+        WHERE artikelnummer = :artikelnummer
+    ");
+        $stmt->execute(['artikelnummer' => $artikelnummer]);
+        return $stmt->fetch();
+    }
+
+    public function insert(array $data): int
+    {
+
+        $stmt = $this->db->prepare("
+        INSERT INTO artikel (
+            artikelnummer,
+            hersteller_id,
+            steuerklasse_id,
+            artikeltyp,
+            name,
+            beschreibung_kurz,
+            beschreibung_lang,
+            einheit,
+            inhalt_menge,
+            inhalt_einheit,
+            gewicht_artikel,
+            gewicht_versand,
+            herkunftsland,
+            taric_code,
+            varianten_darstellung,
+            grundpreis_bezugsmenge,
+            grundpreis_anzeigen,
+            aktiv
+        ) VALUES (
+            :artikelnummer,
+            :hersteller_id,
+            :steuerklasse_id,
+            :artikeltyp,
+            :name,
+            :beschreibung_kurz,
+            :beschreibung_lang,
+            :einheit,
+            :inhalt_menge,
+            :inhalt_einheit,
+            :gewicht_artikel,
+            :gewicht_versand,
+            :herkunftsland,
+            :taric_code,
+            :varianten_darstellung,
+            :grundpreis_bezugsmenge,
+            :grundpreis_anzeigen,
+            :aktiv
+        )
+    ");
+
+        $stmt->execute($data);
+        return (int) $this->db->lastInsertId();
     }
 }
