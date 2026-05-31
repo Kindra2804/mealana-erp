@@ -11,8 +11,9 @@ class ArtikelRepository
         $this->db = Database::getInstance();
     }
 
-    public function findAll(): array
+    public function findAll(bool $mitInaktiven = false): array
     {
+        $where = $mitInaktiven ? '' : 'WHERE a.aktiv = 1';
         $stmt = $this->db->query("
             SELECT 
                 a.id,
@@ -25,6 +26,7 @@ class ArtikelRepository
             FROM artikel a
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            $where
         ");
 
         return $stmt->fetchAll();

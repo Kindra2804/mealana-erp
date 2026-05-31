@@ -11,9 +11,9 @@ class ArtikelController
         $this->repo = new ArtikelRepository();
     }
 
-    public function index(): array
+    public function index(bool $mitInaktiven = false): array
     {
-        return $this->repo->findAll();
+        return $this->repo->findAll($mitInaktiven);
     }
 
     public function detail(int $id): array|false

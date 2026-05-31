@@ -2,7 +2,10 @@
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
 
 $controller = new ArtikelController();
-$artikel = $controller->index();
+
+$zeigeInaktive = isset($_GET['inaktive']) && $_GET['inaktive'] == '1';
+$artikel = $controller->index($zeigeInaktive);
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -14,6 +17,11 @@ $artikel = $controller->index();
 
 <body>
     <h1>Artikel</h1>
+    <?php if ($zeigeInaktive): ?>
+        <a href="liste.php">Nur aktive anzeigen</a>
+    <?php else: ?>
+        <a href="liste.php?inaktive=1">Auch deaktivierte anzeigen</a>
+    <?php endif; ?>
     <a href="neu.php">+ Neuer Artikel</a>
     <table>
         <tr>
@@ -26,14 +34,13 @@ $artikel = $controller->index();
             <th>Aktion</th>
         </tr>
         <?php foreach ($artikel as $a): ?>
-            <tr>
+            <tr style="<?= $a['aktiv'] ? '' : 'background:#fff3cd; color:#999;' ?>">
                 <td><a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a></td>
                 <td><?= htmlspecialchars($a['name']) ?></td>
                 <td><?= htmlspecialchars($a['artikeltyp']) ?></td>
                 <td><?= htmlspecialchars($a['hersteller']) ?></td>
                 <td>-</td>
                 <td><?= $a['aktiv'] ? 'Ja' : 'Nein' ?></td>
-                <td><a href="bearbeiten.php?id=<?= $a['id'] ?>">✏️</a></td>
                 <td>
                     <a href="bearbeiten.php?id=<?= $a['id'] ?>">✏️</a>
                     <a href="delete.php?id=<?= $a['id'] ?>"
