@@ -158,4 +158,76 @@ class LagerRepository
         $stmt->execute(['variante_id' => $varianteId]);
         return $stmt->fetchAll();
     }
+
+    public function getBestand(int $varianteId, int $lagerId): float
+    {
+        $stmt = $this->db->prepare("
+        SELECT bestand FROM lagerbestand
+        WHERE artikel_varianten_id = :variante_id 
+        AND lager_id = :lager_id
+        ");
+
+        $stmt->execute(['variante_id' => $varianteId, 'lager_id' => $lagerId]);
+
+        $result = $stmt->fetch();
+        return $result ? (float) $result['bestand'] : 0.0;
+    }
+
+    public function upsertBestand(array $data): bool
+    {
+        $stmt = $this->db->prepare("
+        INSERT INTO lagerbestand (
+            artikel_varianten_id, 
+            lager_id, 
+            charge, 
+            charge_status, 
+            bestand, 
+            mindestbestand
+        ) VALUES (
+            :artikel_varianten_id, 
+            :lager_id, 
+            :charge, 
+            :charge_status, 
+            :bestand, 
+            :mindestbestand
+        )
+        ON DUPLICATE KEY UPDATE
+            charge = VALUES(charge),
+            charge_status = VALUES(charge_status),
+            bestand = VALUES(bestand),
+            mindestbestand = VALUES(mindestbestand)
+        ");
+        $stmt->execute($data);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function insertBewegung(array $data): int
+    {
+        $stmt = $this->db->prepare("
+        INSERT INTO lager_bewegungen (
+            artikel_varianten_id,
+            lager_id,
+            charge,
+            bewegungstyp,
+            menge,
+            bestand_vorher,
+            bestand_nachher,
+            referenz,
+            notiz
+        ) VALUES (
+            :artikel_varianten_id,
+            :lager_id,
+            :charge,
+            :bewegungstyp,
+            :menge,
+            :bestand_vorher,
+            :bestand_nachher,
+            :referenz,
+            :notiz
+        )
+    ");
+
+        $stmt->execute($data);
+        return (int) $this->db->lastInsertId();
+    }
 }
