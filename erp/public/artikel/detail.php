@@ -30,14 +30,47 @@ if ($artikel === false) {
     <?php if (empty($artikel['varianten'])): ?>
         <p>Noch keine Varianten angelegt.</p>
     <?php else: ?>
-        <?php foreach ($artikel['varianten'] as $v): ?>
-            <p><?= htmlspecialchars($v['farbe_name']) ?></p>
-        <?php endforeach; ?>
-    <?php endif; ?>
+        <table>
+            <tr>
+                <th>Artikelnummer</th>
+                <th>Farbe</th>
+                <th>GTIN</th>
+                <th>Preis</th>
+                <th>Bestand</th>
+                <th>Aktiv</th>
+                <th>Aktionen</th>
+            </tr>
+            <?php foreach ($artikel['varianten'] as $v): ?>
+                <tr>
+                    <td><?= htmlspecialchars($v['artikelnummer']) ?></td>
+                    <td>
+                        <?php if ($v['farbe_hex']): ?>
+                            <span style="display:inline-block; width:16px; height:16px; 
+                                     background:<?= htmlspecialchars($v['farbe_hex']) ?>; 
+                                     border:1px solid #ccc; vertical-align:middle;">
+                            </span>
+                        <?php endif; ?>
+                        <?= htmlspecialchars($v['farbe_name']) ?>
+                    </td>
+                    <td><?= htmlspecialchars($v['gtin'] ?? '–') ?></td>
+                    <td><?= $v['brutto_vk'] ? number_format($v['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
+                    <td>–</td>
+                    <td><?= $v['aktiv'] ? '✅' : '❌' ?></td>
+                    <td><a href="variante_bearbeiten.php?id=<?= $v['id'] ?>">✏️</a></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
 
-    <a href="liste.php">Liste</a>
-    <a href="bearbeiten.php?id=<?= $artikel['id'] ?>">✏️ Bearbeiten</a>
-    <a href="neu.php">Neuer Artikel</a>
+    <?php endif; ?>
+    <p>
+        <a href="variante_neu.php?artikel_id=<?= $artikel['id'] ?>">+ Variante hinzufügen</a>
+    </p>
+    <p>
+        <a href="liste.php">Liste</a>
+        <a href="bearbeiten.php?id=<?= $artikel['id'] ?>">✏️ Bearbeiten</a>
+        <a href="neu.php">Neuer Artikel</a>
+    </p>
+
 </body>
 
 </html>

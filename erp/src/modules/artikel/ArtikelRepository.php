@@ -293,4 +293,65 @@ class ArtikelRepository
             'netto_vk'         => $nettoVk
         ]);
     }
+
+    public function insertVariante(array $data): int
+    {
+
+        $stmt = $this->db->prepare("
+        INSERT INTO artikel_varianten (
+            artikel_id,
+            artikelnummer,
+            gtin,
+            farbe_name,
+            farbe_hex,
+            bild_url,
+            brutto_vk,
+            aktiv
+        ) VALUES (
+            :artikel_id,
+            :artikelnummer,
+            :gtin,
+            :farbe_name,
+            :farbe_hex,
+            :bild_url,
+            :brutto_vk,
+            :aktiv
+        )
+    ");
+
+        $stmt->execute($data);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function findVarianteById(int $id): array|false
+    {
+        $stmt = $this->db->prepare("
+        SELECT id, artikel_id, artikelnummer, gtin, 
+               farbe_name, farbe_hex, bild_url, brutto_vk, aktiv
+        FROM artikel_varianten
+        WHERE id = :id
+    ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch();
+    }
+
+    public function updateVariante(array $data): bool
+    {
+        unset($data['artikel_id']); // ← nicht im UPDATE SQL!
+
+        $stmt = $this->db->prepare("
+        UPDATE artikel_varianten SET
+            artikelnummer = :artikelnummer,
+            gtin          = :gtin,
+            farbe_name    = :farbe_name,
+            farbe_hex     = :farbe_hex,
+            bild_url      = :bild_url,
+            brutto_vk     = :brutto_vk,
+            aktiv         = :aktiv
+        WHERE id = :id
+    ");
+        $stmt->execute($data);
+
+        return $stmt->rowCount() > 0;
+    }
 }

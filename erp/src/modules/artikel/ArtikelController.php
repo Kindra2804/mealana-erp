@@ -38,4 +38,10 @@ class ArtikelController
         if ($id <= 0) return false;
         return $this->repo->deactivate($id);
     }
+
+    public function findVarianteFuerBearbeitung(int $id): array|false
+    {
+        if ($id <= 0) return false;
+        return $this->repo->findVarianteById($id);
+    }
 }

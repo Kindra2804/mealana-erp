@@ -85,4 +85,44 @@ class ArtikelService
 
         return ['erfolg' => true];
     }
+
+    public function saveVariante(array $data): array
+    {
+        $fehler = $this->validiereVariante($data);
+        if (!empty($fehler)) {
+            return ['erfolg' => false, 'fehler' => $fehler];
+        }
+
+        $id = $this->repo->insertVariante($data);
+        return ['erfolg' => true, 'id' => $id];
+    }
+
+    private function validiereVariante(array $data): array
+    {
+        $fehler = [];
+
+        if (empty($data['artikelnummer'])) {
+            $fehler[] = 'Artikelnummer ist Pflichtfeld';
+        }
+        if (empty($data['farbe_name'])) {
+            $fehler[] = 'Farbname ist Pflichtfeld';
+        }
+        if (empty($data['artikel_id'])) {
+            $fehler[] = 'Artikel-Zuordnung fehlt';
+        }
+
+        return $fehler;
+    }
+
+    public function varianteUpdate(array $data): array
+    {
+        $fehler = $this->validiereVariante($data);
+        if (!empty($fehler)) {
+            return ['erfolg' => false, 'fehler' => $fehler];
+        }
+
+        $erfolg = $this->repo->updateVariante($data);
+
+        return ['erfolg' => true];
+    }
 }
