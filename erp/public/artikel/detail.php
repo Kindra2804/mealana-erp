@@ -34,6 +34,8 @@ if ($artikel === false) {
         <?php endforeach; ?>
     <?php endif; ?>
 
+    <a href="liste.php">Liste</a>
+    <a href="bearbeiten.php?id=<?= $artikel['id'] ?>">✏️ Bearbeiten</a>
     <a href="neu.php">Neuer Artikel</a>
 </body>
 

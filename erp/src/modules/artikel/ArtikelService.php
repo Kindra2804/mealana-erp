@@ -33,7 +33,10 @@ class ArtikelService
             $fehler[] = 'Artikelnummer ist Pflichtfeld';
         } else {
             // Prüfen ob Artikelnummer bereits existiert
-            $vorhanden = $this->repo->findByArtikelnummer($data['artikelnummer']);
+            $vorhanden = $this->repo->findByArtikelnummer(
+                $data['artikelnummer'],
+                $data['id'] ?? null  // beim Update eigene ID ausschließen
+            );
             if ($vorhanden !== false) {
                 $fehler[] = 'Artikelnummer "' . $data['artikelnummer'] . '" existiert bereits!';
             }
@@ -46,5 +49,19 @@ class ArtikelService
         }
 
         return $fehler;
+    }
+
+    public function update(array $data): array
+    {
+        // 1. Validieren
+        $fehler = $this->validiere($data);
+        if (!empty($fehler)) {
+            return ['erfolg' => false, 'fehler' => $fehler];
+        }
+
+        // 2. Speichern
+        $erfolg = $this->repo->update($data);
+
+        return ['erfolg' => true];
     }
 }

@@ -34,6 +34,15 @@ class ArtikelRepository
     {
         $stmt = $this->db->prepare("
             SELECT 
+                a.hersteller_id,
+                a.steuerklasse_id,
+                a.grundpreis_bezugsmenge,
+                a.grundpreis_anzeigen,
+                a.gewicht_versand,
+                a.herkunftsland,
+                a.taric_code,
+                a.varianten_darstellung,
+                a.beschreibung_kurz,
                 a.id,
                 a.artikelnummer,
                 a.name,
@@ -119,13 +128,18 @@ class ArtikelRepository
         return $artikel;
     }
 
-    public function findByArtikelnummer(string $artikelnummer): array|false
+    public function findByArtikelnummer(string $artikelnummer, ?int $excludeId = null): array|false
     {
-        $stmt = $this->db->prepare("
-        SELECT id FROM artikel 
-        WHERE artikelnummer = :artikelnummer
-    ");
-        $stmt->execute(['artikelnummer' => $artikelnummer]);
+        $sql = "SELECT id FROM artikel WHERE artikelnummer = :artikelnummer";
+        if ($excludeId) {
+            $sql .= " AND id != :exclude_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $params = ['artikelnummer' => $artikelnummer];
+        if ($excludeId) {
+            $params['exclude_id'] = $excludeId;
+        }
+        $stmt->execute($params);
         return $stmt->fetch();
     }
 
@@ -176,5 +190,44 @@ class ArtikelRepository
 
         $stmt->execute($data);
         return (int) $this->db->lastInsertId();
+    }
+
+    public function update(array $data): bool
+    {
+
+        $stmt = $this->db->prepare("
+        UPDATE artikel SET
+            artikelnummer = :artikelnummer,
+            hersteller_id = :hersteller_id,
+            steuerklasse_id = :steuerklasse_id,
+            artikeltyp = :artikeltyp,
+            name = :name,
+            beschreibung_kurz = :beschreibung_kurz,
+            beschreibung_lang = :beschreibung_lang,
+            einheit = :einheit,
+            inhalt_menge = :inhalt_menge,
+            inhalt_einheit = :inhalt_einheit,
+            gewicht_artikel = :gewicht_artikel,
+            gewicht_versand = :gewicht_versand,
+            herkunftsland = :herkunftsland,
+            taric_code = :taric_code,
+            varianten_darstellung = :varianten_darstellung,
+            grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
+            grundpreis_anzeigen = :grundpreis_anzeigen,
+            aktiv = :aktiv
+        WHERE id = :id
+    ");
+
+        $stmt->execute($data);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function deactivate(int $id): bool
+    {
+        $stmt = $this->db->prepare("
+        UPDATE artikel SET aktiv = 0 WHERE id = :id
+    ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
     }
 }

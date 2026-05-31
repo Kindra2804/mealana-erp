@@ -24,4 +24,18 @@ class ArtikelController
 
         return $this->repo->findByIdMitVarianten($id);
     }
+
+    public function findFuerBearbeitung(int $id): array|false
+    {
+        if ($id <= 0) {
+            return false;
+        }
+        return $this->repo->findById($id);
+    }
+
+    public function deactivate(int $id): bool
+    {
+        if ($id <= 0) return false;
+        return $this->repo->deactivate($id);
+    }
 }

@@ -23,6 +23,7 @@ $artikel = $controller->index();
             <th>Hersteller</th>
             <th>bestand</th>
             <th>aktiv</th>
+            <th>Aktion</th>
         </tr>
         <?php foreach ($artikel as $a): ?>
             <tr>
@@ -32,6 +33,12 @@ $artikel = $controller->index();
                 <td><?= htmlspecialchars($a['hersteller']) ?></td>
                 <td>-</td>
                 <td><?= $a['aktiv'] ? 'Ja' : 'Nein' ?></td>
+                <td><a href="bearbeiten.php?id=<?= $a['id'] ?>">✏️</a></td>
+                <td>
+                    <a href="bearbeiten.php?id=<?= $a['id'] ?>">✏️</a>
+                    <a href="delete.php?id=<?= $a['id'] ?>"
+                        onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
+                </td>
             </tr>
         <?php endforeach; ?>
     </table>
