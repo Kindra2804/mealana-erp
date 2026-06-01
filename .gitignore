@@ -13,3 +13,6 @@ Thumbs.db
 
 # Test-php
 erp/public/test.php
+
+# Import-Daten
+erp/import/*
