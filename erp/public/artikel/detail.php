@@ -1,10 +1,13 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
+require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 $controller = new ArtikelController();
 $artikel = $controller->detail($id);
+$artikelService = new ArtikelService();
+$kategorien = $artikelService->getKategorienFuerArtikel($id);
 
 if ($artikel === false) {
     echo 'Artikel nicht gefunden!';
@@ -61,7 +64,17 @@ if ($artikel === false) {
                 </tr>
             <?php endforeach; ?>
         </table>
+    <?php endif; ?>
 
+    <h2>Kategorien</h2>
+    <?php if (empty($kategorien)): ?>
+        <p>Keine Kategorien zugewiesen.</p>
+    <?php else: ?>
+        <ul>
+            <?php foreach ($kategorien as $k): ?>
+                <li><?= htmlspecialchars($k['name']) ?></li>
+            <?php endforeach; ?>
+        </ul>
     <?php endif; ?>
     <p>
         <a href="variante_neu.php?artikel_id=<?= $artikel['id'] ?>">+ Variante hinzufügen</a>

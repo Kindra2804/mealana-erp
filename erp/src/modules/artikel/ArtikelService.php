@@ -1,14 +1,18 @@
 <?php
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/ArtikelRepository.php';
+require_once __DIR__ . '/KategorieRepository.php';
 
 class ArtikelService
 {
     private ArtikelRepository $repo;
+    private KategorieRepository $kategorieRepo;
+
 
     public function __construct()
     {
         $this->repo = new ArtikelRepository();
+        $this->kategorieRepo = new KategorieRepository();
     }
 
     public function save(array $data): array
@@ -139,5 +143,21 @@ class ArtikelService
         $this->repo->deactivate($id);
         Logger::log('artikel.loeschen', 'artikel', $id);
         return ['erfolg' => true];
+    }
+
+    public function getAlleKategorien(): array
+    {
+        return $this->kategorieRepo->findAll();
+    }
+
+    public function saveKategorien(int $artikelId, array $kategorieIds): void
+    {
+        $this->kategorieRepo->updateArtikelKategoriezuweisungen($artikelId, $kategorieIds);
+        Logger::log('artikel.kategorien_aktualisieren', 'artikel', $artikelId, ['kategorie_ids' => $kategorieIds]);
+    }
+
+    public function getKategorienFuerArtikel(int $artikelId): array
+    {
+        return $this->kategorieRepo->findByArtikelId($artikelId);
     }
 }

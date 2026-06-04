@@ -45,6 +45,11 @@ foreach ($artikelData as $key => $value) {
 $service = new ArtikelService();
 $result = $service->update($artikelData);
 
+// Kategorien aktualisieren
+$kategorieIds = array_map('intval', $data['kategorien'] ?? []);
+$service->saveKategorien((int)$artikelData['id'], $kategorieIds);
+
+
 if ($result['erfolg']) {
     $_SESSION['erfolg'] = 'Artikel wurde aktualisiert!';
     header('Location: detail.php?id=' . $data['id']);

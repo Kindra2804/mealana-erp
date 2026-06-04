@@ -17,6 +17,10 @@ $erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
+// Service und Daten für Kategorien laden
+$service = new ArtikelService();
+$alleKategorien   = $service->getAlleKategorien();
+$zugewieseneIds   = array_column($service->getKategorienFuerArtikel($id), 'id');
 
 // Artikel aus DB laden – aber Session hat Vorrang bei Fehler!
 if (empty($formdata)) {
@@ -285,6 +289,19 @@ function selected(string $field, string $value, array $formdata): string
             <select name="aktiv">
                 <option value="1" <?= selected('aktiv', '1', $formdata) ?>>Ja</option>
                 <option value="0" <?= selected('aktiv', '0', $formdata) ?>>Nein</option>
+            </select>
+        </div>
+
+        <div class="gruppe">
+            <h2>Kategorien</h2>
+            <label>Zugewiesene Kategorien (Strg/Cmd gedrückt halten für Mehrfachauswahl)</label>
+            <select name="kategorien[]" multiple size="8">
+                <?php foreach ($alleKategorien as $k): ?>
+                    <option value="<?= $k['id'] ?>"
+                        <?= in_array($k['id'], $zugewieseneIds) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($k['name']) ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
         </div>
 
