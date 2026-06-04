@@ -230,4 +230,27 @@ class LagerRepository
         $stmt->execute($data);
         return (int) $this->db->lastInsertId();
     }
+
+    public function findUebersicht(): array
+    {
+        $stmt = $this->db->query("
+            SELECT 
+                a.artikelnummer AS artikelnummer,
+                av.artikelnummer AS artikelnummer_variante,
+                a.name AS artikel_name,
+                av.farbe_name AS farbe,
+                l.name AS lager_name,
+                lb.bestand,
+                lb.charge,
+                lb.charge_status
+            FROM lagerbestand lb
+            LEFT JOIN lager l ON l.id = lb.lager_id
+            LEFT JOIN artikel_varianten av ON av.id = lb.artikel_varianten_id
+            LEFT JOIN artikel a ON a.id = av.artikel_id
+            where lb.bestand > 0
+            order by a.name, av.farbe_name
+        ");
+
+        return $stmt->fetchAll();
+    }
 }

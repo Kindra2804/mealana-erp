@@ -72,4 +72,9 @@ class LagerService
         }
         return $fehler;
     }
+
+    public function getUebersicht(): array
+    {
+        return $this->repo->findUebersicht();
+    }
 }

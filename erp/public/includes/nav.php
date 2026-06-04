@@ -7,9 +7,13 @@
         style="color:white; margin-right:20px; text-decoration:none;">
         📦 Artikel
     </a>
-    <a href="/mealana/lager/liste.php"
+    <a href="/mealana/lager/uebersicht.php"
         style="color:white; margin-right:20px; text-decoration:none;">
         🏪 Lager
+    </a>
+    <a href="/mealana/lager/wareneingang.php"
+        style="color:white; margin-right:20px; text-decoration:none;">
+        📥 Wareneingang
     </a>
     <a href="/mealana/lieferanten/liste.php"
         style="color:white; margin-right:20px; text-decoration:none;">
