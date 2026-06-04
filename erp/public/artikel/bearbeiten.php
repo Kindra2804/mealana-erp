@@ -17,7 +17,6 @@ $erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
-// Service und Daten für Kategorien laden
 $service = new ArtikelService();
 $alleKategorien   = $service->getAlleKategorien();
 $zugewieseneIds   = array_column($service->getKategorienFuerArtikel($id), 'id');

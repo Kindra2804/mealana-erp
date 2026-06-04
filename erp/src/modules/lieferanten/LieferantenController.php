@@ -11,9 +11,20 @@ class LieferantenController
         $this->repo = new LieferantenRepository();
     }
 
-    public function index(): array
+    // public function index(): array
+    // {
+    //     return $this->repo->findAll();
+    // }
+
+    public function index(bool $mitInaktiven = false): array
     {
-        return $this->repo->findAll();
+        return $this->repo->findAll($mitInaktiven);
+    }
+
+    public function search(string $q): array
+    {
+        if (strlen($q) < 2) return [];
+        return $this->repo->search($q);
     }
 
     public function detail(int $id): array|false
