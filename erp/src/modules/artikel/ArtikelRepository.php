@@ -22,11 +22,15 @@ class ArtikelRepository
                 a.artikeltyp,
                 a.aktiv,
                 h.name AS hersteller,
-                s.satz AS steuersatz
+                s.satz AS steuersatz,
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
             FROM artikel a
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN artikel_varianten av ON av.artikel_id = a.id
+            LEFT JOIN lagerbestand lb ON lb.artikel_varianten_id = av.id
             $where
+            GROUP BY a.id
         ");
 
         return $stmt->fetchAll();

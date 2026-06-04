@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/auth_check.php';
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../src/core/Database.php';
 

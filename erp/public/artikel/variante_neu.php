@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 $artikel_id = (int) ($_GET['artikel_id'] ?? 0);

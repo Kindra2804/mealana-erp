@@ -1,5 +1,5 @@
 <?php
-
+require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/ArtikelRepository.php';
 
 class ArtikelService
@@ -31,6 +31,7 @@ class ArtikelService
             $this->repo->insertPreis($id, (float)$bruttoVk, (float)$nettoVk);
         }
 
+        Logger::log('artikel.anlegen', 'artikel', $id, ['name' => $data['name']]);
         return ['erfolg' => true, 'id' => $id];
     }
 
@@ -83,6 +84,7 @@ class ArtikelService
             );
         }
 
+        Logger::log('artikel.bearbeiten', 'artikel', $data['id'], ['name' => $data['name']]);
         return ['erfolg' => true];
     }
 
@@ -94,6 +96,8 @@ class ArtikelService
         }
 
         $id = $this->repo->insertVariante($data);
+
+        Logger::log('artikel.variante_anlegen', 'artikel_varianten', $id, ['farbe' => $data['farbe_name']]);
         return ['erfolg' => true, 'id' => $id];
     }
 
@@ -123,6 +127,17 @@ class ArtikelService
 
         $erfolg = $this->repo->updateVariante($data);
 
+        Logger::log('artikel.variante_bearbeiten', 'artikel_varianten', $data['id'], ['farbe' => $data['farbe_name']]);
+        return ['erfolg' => true];
+    }
+
+    public function delete(int $id): array
+    {
+        if ($this->repo->findById($id) === false) {
+            return ['erfolg' => false, 'fehler' => 'Artikel nicht gefunden'];
+        }
+        $this->repo->deactivate($id);
+        Logger::log('artikel.loeschen', 'artikel', $id);
         return ['erfolg' => true];
     }
 }

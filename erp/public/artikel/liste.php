@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
 
 $controller = new ArtikelController();
@@ -43,7 +44,7 @@ if ($q !== '') {
             <th>Name</th>
             <th>Typ</th>
             <th>Hersteller</th>
-            <th>bestand</th>
+            <th>Bestand</th>
             <th>aktiv</th>
             <th>Aktion</th>
         </tr>
@@ -53,7 +54,7 @@ if ($q !== '') {
                 <td><?= htmlspecialchars($a['name']) ?></td>
                 <td><?= htmlspecialchars($a['artikeltyp']) ?></td>
                 <td><?= htmlspecialchars($a['hersteller']) ?></td>
-                <td>-</td>
+                <td><?= $a['gesamtbestand'] ?></td>
                 <td><?= $a['aktiv'] ? 'Ja' : 'Nein' ?></td>
                 <td>
                     <a href="bearbeiten.php?id=<?= $a['id'] ?>">✏️</a>

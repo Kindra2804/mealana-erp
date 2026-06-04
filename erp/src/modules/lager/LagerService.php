@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/LagerRepository.php';
 
 class LagerService
@@ -36,7 +37,7 @@ class LagerService
         ]);
 
         // Bewegung protokollieren
-        $this->repo->insertBewegung([
+        $bewegungId = $this->repo->insertBewegung([
             'artikel_varianten_id' => $data['artikel_varianten_id'],
             'lager_id'             => $data['lager_id'],
             'charge'               => $data['charge'] ?? null,
@@ -48,6 +49,12 @@ class LagerService
             'notiz'                => $data['notiz'] ?? null
         ]);
 
+        Logger::log('wareneingang.buchen', 'lagerbestand', $bewegungId, [
+            'artikel_varianten_id' => $data['artikel_varianten_id'],
+            'lager_id'             => $data['lager_id'],
+            'menge'                => $data['menge'],
+            'bestand_nachher'      => $bestandNachher,
+        ]);
         return ['erfolg' => true];
     }
 
