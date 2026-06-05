@@ -12,9 +12,16 @@ foreach ($lagerinhalt as $row) {
     if ($row['zeilentyp'] === 'vater' || $row['zeilentyp'] === 'standalone') {
         $grouped[$id]['kopf'] = $row;
     } else {
+        // 'kind' UND 'standalone_kind' → beides sind Kindzeilen
         $grouped[$id]['kinder'][] = $row;
     }
 }
+
+
+// echo '<pre>';
+// var_dump($lagerinhalt);
+// echo '</pre>';
+// exit;
 
 
 ?>
@@ -30,7 +37,7 @@ foreach ($lagerinhalt as $row) {
     <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1>Lagerinhalt</h1>
     <table>
-        <tr colspan="6">
+        <tr>
             <th>Artikelnummer</th>
             <th>Name / Variante</th>
             <th>Lager</th>

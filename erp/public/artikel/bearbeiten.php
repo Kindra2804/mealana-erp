@@ -284,6 +284,14 @@ function selected(string $field, string $value, array $formdata): string
                 <option value="dropdown" <?= selected('varianten_darstellung', 'dropdown',  $formdata) ?>>Dropdown</option>
             </select>
 
+            <label>Chargenartikel</label>
+            <?php if (isset($formdata['charge_pflicht']) && $formdata['charge_pflicht'] == '1') {
+                $chargePflichtChecked = 'checked';
+            } else {
+                $chargePflichtChecked = '';
+            } ?>
+            <input type="checkbox" name="charge_pflicht" value="1" <?= $chargePflichtChecked ?>>
+
             <label>Aktiv</label>
             <select name="aktiv">
                 <option value="1" <?= selected('aktiv', '1', $formdata) ?>>Ja</option>

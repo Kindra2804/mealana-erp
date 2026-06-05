@@ -9,6 +9,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $data = $_POST;
 
+if (!isset($data['charge_pflicht']) || $data['charge_pflicht'] != '1') {
+    $data['charge_pflicht'] = '0';
+}
+
 // aktualisieren.php muss diese Felder herausfiltern:
 $artikelData = array_intersect_key($data, array_flip([
     'id',
@@ -29,6 +33,7 @@ $artikelData = array_intersect_key($data, array_flip([
     'varianten_darstellung',
     'grundpreis_bezugsmenge',
     'grundpreis_anzeigen',
+    'charge_pflicht',
     'aktiv'
 ]));
 

@@ -176,4 +176,75 @@ class LieferantenRepository
         $stmt->execute(['q' => '%' . $q . '%']);
         return $stmt->fetchAll();
     }
+
+    public function insertVertreter(array $data): int
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO lieferanten_vertreter (lieferant_id, vorname, nachname, telefon, email, mobil, notizen, aktiv)
+            VALUES (:lieferant_id, :vorname, :nachname, :telefon, :email, :mobil, :notizen, :aktiv)
+        ");
+
+        $stmt->execute([
+            'lieferant_id' => $data['lieferant_id'],
+            'vorname' => $data['vorname'],
+            'nachname' => $data['nachname'],
+            'telefon' => $data['telefon'] ?? null,
+            'email' => $data['email'] ?? null,
+            'mobil' => $data['mobil'] ?? null,
+            'notizen' => $data['notizen'] ?? null,
+            'aktiv' => isset($data['aktiv']) ? (int) $data['aktiv'] : 1
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function updateVertreter(array $data): bool
+    {
+        $stmt = $this->db->prepare("
+            UPDATE lieferanten_vertreter SET
+                vorname = :vorname,
+                nachname = :nachname,
+                telefon = :telefon,
+                email = :email,
+                mobil = :mobil,
+                notizen = :notizen,
+                aktiv = :aktiv,
+                geaendert_am = NOW()
+            WHERE id = :id
+        ");
+
+        $stmt->execute([
+            'id' => $data['id'],
+            'vorname' => $data['vorname'],
+            'nachname' => $data['nachname'] ?? null,
+            'telefon' => $data['telefon'] ?? null,
+            'email' => $data['email'] ?? null,
+            'mobil' => $data['mobil'] ?? null,
+            'notizen' => $data['notizen'] ?? null,
+            'aktiv' => isset($data['aktiv']) ? (int) $data['aktiv'] : 1
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function deactivateVertreter(int $id): bool
+    {
+        $stmt = $this->db->prepare("
+        UPDATE lieferanten_vertreter SET aktiv = 0 WHERE id = :id
+        ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function findVertreterById(int $id): array|false
+    {
+        $stmt = $this->db->prepare("
+        SELECT id, lieferant_id, vorname, nachname,
+               telefon, email, mobil, notizen, aktiv
+        FROM lieferanten_vertreter
+        WHERE id = :id
+    ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch();
+    }
 }

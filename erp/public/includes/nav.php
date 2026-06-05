@@ -15,6 +15,10 @@
         style="color:white; margin-right:20px; text-decoration:none;">
         📥 Wareneingang
     </a>
+    <a href="/mealana/lager/nachtrag_liste.php"
+        style="color:white; margin-right:20px; text-decoration:none;">
+        🏷️ Chargen-Nachtrag
+    </a>
     <a href="/mealana/lieferanten/liste.php"
         style="color:white; margin-right:20px; text-decoration:none;">
         🚚 Lieferanten

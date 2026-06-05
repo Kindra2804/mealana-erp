@@ -93,4 +93,48 @@ class LieferantenService
         if (strlen($q) < 2) return [];
         return $this->repo->search($q);
     }
+
+    public function saveVertreter(array $data): array
+    {
+        // 1. Validieren
+        if (empty($data['nachname'])) {
+            return ['erfolg' => false, 'fehler' => 'Nachname ist ein Pflichtfeld'];
+        };
+
+        // 2. Speichern
+        $id = $this->repo->insertVertreter($data);
+
+        Logger::log('vertreter.anlegen', 'lieferanten_vertreter', $id, ['nachname' => $data['nachname']]);
+        return ['erfolg' => true, 'id' => $id];
+    }
+
+    public function updateVertreter(array $data): array
+    {
+        // 1. Validieren
+        if (empty($data['nachname'])) {
+            return ['erfolg' => false, 'fehler' => 'Nachname ist ein Pflichtfeld'];
+        };
+
+        // 2. Speichern
+        $this->repo->updateVertreter($data);
+
+        Logger::log('vertreter.bearbeiten', 'lieferanten_vertreter', $data['id'], ['nachname' => $data['nachname']]);
+        return ['erfolg' => true];
+    }
+
+    public function deleteVertreter(int $id): array
+    {
+        // 1. validieren
+        if ($this->repo->findVertreterById($id) === false) {
+            return ['erfolg' => false, 'fehler' => 'Vertreter nicht gefunden'];
+        }
+        $this->repo->deactivateVertreter($id);
+        Logger::log('vertreter.loeschen', 'lieferanten_vertreter', $id);
+        return ['erfolg' => true];
+    }
+
+    public function findVertreterById(int $id): array
+    {
+        return $this->repo->findVertreterById($id);
+    }
 }

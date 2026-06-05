@@ -23,6 +23,7 @@ class ArtikelRepository
                 a.aktiv,
                 h.name AS hersteller,
                 s.satz AS steuersatz,
+                a.charge_pflicht,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
             FROM artikel a
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
@@ -60,10 +61,14 @@ class ArtikelRepository
                 a.inhalt_einheit,
                 a.inhalt_menge,
                 h.name AS hersteller,
-                s.satz AS steuersatz
+                s.satz AS steuersatz,
+                a.charge_pflicht,
+                ap.brutto_vk,
+                ap.netto_vk
             FROM artikel a
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             WHERE a.id = :id
         ");
 
@@ -171,6 +176,7 @@ class ArtikelRepository
             varianten_darstellung,
             grundpreis_bezugsmenge,
             grundpreis_anzeigen,
+            charge_pflicht,
             aktiv
         ) VALUES (
             :artikelnummer,
@@ -190,6 +196,7 @@ class ArtikelRepository
             :varianten_darstellung,
             :grundpreis_bezugsmenge,
             :grundpreis_anzeigen,
+            :charge_pflicht,
             :aktiv
         )
     ");
@@ -220,6 +227,7 @@ class ArtikelRepository
             varianten_darstellung = :varianten_darstellung,
             grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
             grundpreis_anzeigen = :grundpreis_anzeigen,
+            charge_pflicht = :charge_pflicht,
             aktiv = :aktiv
         WHERE id = :id
     ");

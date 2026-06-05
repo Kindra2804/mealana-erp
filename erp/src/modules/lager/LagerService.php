@@ -22,8 +22,10 @@ class LagerService
         $bestandVorher = $this->repo->getBestand(
             $data['artikel_varianten_id'] ?? null,
             $data['artikel_id'] ?? null,
-            (int) $data['lager_id']
+            (int) $data['lager_id'],
+            $data['charge'] ?? null   // ← neu
         );
+
 
         $bestandNachher = $bestandVorher + (float) $data['menge'];
 
@@ -86,5 +88,72 @@ class LagerService
     public function getUebersicht(): array
     {
         return $this->repo->findUebersicht();
+    }
+
+    public function chargeNachtragen(int $lagerbestand_id, string $charge, float $menge): array
+    {
+        if (empty($charge)) {
+            return ['erfolg' => false, 'fehler' => 'Charge darf nicht leer sein'];
+        }
+
+        if (empty($menge)) {
+            return ['erfolg' => false, 'fehler' => 'Charge darf nicht leer sein'];
+        }
+
+        if ($menge <= 0) {
+            return ['erfolg' => false, 'fehler' => 'gültige Menge eingeben'];
+        }
+
+        $lb = $this->repo->findLagerbestandById($lagerbestand_id);
+        if (!$lb) {
+            return ['erfolg' => false, 'fehler' => 'Lagerbestands-ID nicht gefunden'];
+        }
+        if ($menge > $lb['bestand']) {
+            return ['erfolg' => false, 'fehler' => 'Menge überschreitet Bestand des Artikels '];
+        }
+
+        $vorhanden = $this->repo->getBestand($lb['artikel_varianten_id'], $lb['artikel_id'], $lb['lager_id'], $charge);
+
+        $this->repo->upsertBestand([
+            'artikel_varianten_id' => $lb['artikel_varianten_id'],
+            'artikel_id'           => $lb['artikel_id'],
+            'lager_id'             => $lb['lager_id'],
+            'charge'               => $charge,
+            'charge_status'        => 'erfasst',
+            'bestand'              => $vorhanden + $menge,
+            'mindestbestand'       => 0
+        ]);
+
+        $neuerNullBestand = $lb['bestand'] - $menge;
+
+        if ($neuerNullBestand <= 0) {
+            $this->repo->deleteBestand($lb['id']);
+        } else {
+            $this->repo->updateBestandMenge($lb['id'], $neuerNullBestand);
+        }
+
+        $this->repo->insertBewegung([
+            'artikel_varianten_id' => $lb['artikel_varianten_id'],
+            'artikel_id'           => $lb['artikel_id'],
+            'lager_id'             => $lb['lager_id'],
+            'charge'               => $charge,
+            'bewegungstyp'         => 'korrektur',
+            'menge'                => $menge,
+            'bestand_vorher'       => $lb['bestand'],
+            'bestand_nachher'      => $lb['bestand'] - $menge,
+            'referenz'             => null,
+            'notiz'                => 'Charge nachgetragen',
+        ]);
+
+        Logger::log('lager.charge_nachtragen', 'lagerbestand', $lagerbestand_id, [
+            'charge' => $charge,
+        ]);
+
+        return ['erfolg' => true];
+    }
+
+    public function getNachzutragendeChargen(): array
+    {
+        return $this->repo->findNachzutragendeChargen();
     }
 }
