@@ -20,27 +20,37 @@ class LagerService
 
         // Aktuellen Bestand holen
         $bestandVorher = $this->repo->getBestand(
-            (int) $data['artikel_varianten_id'],
+            $data['artikel_varianten_id'] ?? null,
+            $data['artikel_id'] ?? null,
             (int) $data['lager_id']
         );
 
         $bestandNachher = $bestandVorher + (float) $data['menge'];
 
         // Bestand Upsert
+        $chargePflicht = $this->repo->getChargePflicht(
+            $data['artikel_varianten_id'] ?? null,
+            $data['artikel_id'] ?? null
+        );
+
         $this->repo->upsertBestand([
-            'artikel_varianten_id' => $data['artikel_varianten_id'],
+            'artikel_varianten_id' => $data['artikel_varianten_id'] ?? null,
+            'artikel_id'           => $data['artikel_id'] ?? null,
             'lager_id'             => $data['lager_id'],
             'charge'               => $data['charge'] ?? null,
-            'charge_status'        => empty($data['charge']) ? 'unbekannt' : 'erfasst',
+            'charge_status'        => !empty($data['charge'])
+                ? 'erfasst'
+                : ($chargePflicht ? 'nachzutragen' : null),
             'bestand'              => $bestandNachher,
             'mindestbestand'       => $data['mindestbestand'] ?? 0
         ]);
 
         // Bewegung protokollieren
         $bewegungId = $this->repo->insertBewegung([
-            'artikel_varianten_id' => $data['artikel_varianten_id'],
+            'artikel_varianten_id' => $data['artikel_varianten_id'] ?? null,
+            'artikel_id'           => $data['artikel_id'] ?? null,
             'lager_id'             => $data['lager_id'],
-            'charge'               => $data['charge'] ?? null,
+            'charge'               => $chargePflicht ? $data['charge'] : null,
             'bewegungstyp'         => 'eingang',
             'menge'                => $data['menge'],
             'bestand_vorher'       => $bestandVorher,
@@ -61,8 +71,8 @@ class LagerService
     private function validiere(array $data): array
     {
         $fehler = [];
-        if (empty($data['artikel_varianten_id'])) {
-            $fehler[] = 'Variante ist Pflichtfeld';
+        if (empty($data['artikel_varianten_id']) && empty($data['artikel_id'])) {
+            $fehler[] = 'Artikel oder Variante müssen ausgefüllt sein';
         }
         if (empty($data['lager_id'])) {
             $fehler[] = 'Lager ist Pflichtfeld';

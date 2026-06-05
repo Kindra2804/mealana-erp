@@ -159,15 +159,18 @@ class LagerRepository
         return $stmt->fetchAll();
     }
 
-    public function getBestand(int $varianteId, int $lagerId): float
+    public function getBestand(?int $varianteId, ?int $artikelId, int $lagerId): float
     {
         $stmt = $this->db->prepare("
         SELECT bestand FROM lagerbestand
-        WHERE artikel_varianten_id = :variante_id 
+        WHERE (
+            artikel_varianten_id = :variante_id
+            OR artikel_id = :artikel_id
+        )
         AND lager_id = :lager_id
         ");
 
-        $stmt->execute(['variante_id' => $varianteId, 'lager_id' => $lagerId]);
+        $stmt->execute(['variante_id' => $varianteId, 'artikel_id' => $artikelId, 'lager_id' => $lagerId]);
 
         $result = $stmt->fetch();
         return $result ? (float) $result['bestand'] : 0.0;
@@ -178,6 +181,7 @@ class LagerRepository
         $stmt = $this->db->prepare("
         INSERT INTO lagerbestand (
             artikel_varianten_id, 
+            artikel_id,
             lager_id, 
             charge, 
             charge_status, 
@@ -185,6 +189,7 @@ class LagerRepository
             mindestbestand
         ) VALUES (
             :artikel_varianten_id, 
+            :artikel_id,
             :lager_id, 
             :charge, 
             :charge_status, 
@@ -206,6 +211,7 @@ class LagerRepository
         $stmt = $this->db->prepare("
         INSERT INTO lager_bewegungen (
             artikel_varianten_id,
+            artikel_id,
             lager_id,
             charge,
             bewegungstyp,
@@ -216,6 +222,7 @@ class LagerRepository
             notiz
         ) VALUES (
             :artikel_varianten_id,
+            :artikel_id,
             :lager_id,
             :charge,
             :bewegungstyp,
@@ -234,23 +241,97 @@ class LagerRepository
     public function findUebersicht(): array
     {
         $stmt = $this->db->query("
+        -- Teil 1: Vater
             SELECT 
-                a.artikelnummer AS artikelnummer,
-                av.artikelnummer AS artikelnummer_variante,
+                'vater' AS zeilentyp, 
+                a.id AS artikel_id, 
+                a.artikelnummer AS vater_artikelnummer, 
                 a.name AS artikel_name,
-                av.farbe_name AS farbe,
-                l.name AS lager_name,
-                lb.bestand,
-                lb.charge,
-                lb.charge_status
-            FROM lagerbestand lb
-            LEFT JOIN lager l ON l.id = lb.lager_id
-            LEFT JOIN artikel_varianten av ON av.id = lb.artikel_varianten_id
-            LEFT JOIN artikel a ON a.id = av.artikel_id
+                NULL AS varianten_artikelnummer, 
+                NULL AS farbe, 
+                NULL AS lager_name,
+                SUM(lb.bestand) AS bestand, 
+                NULL AS charge, 
+                NULL AS charge_status
+            FROM artikel a
+            LEFT JOIN artikel_varianten av ON av.artikel_id = a.id
+            INNER JOIN lagerbestand lb ON lb.artikel_varianten_id = av.id
             where lb.bestand > 0
-            order by a.name, av.farbe_name
+            GROUP BY a.id, a.artikelnummer, a.name
+
+            UNION ALL
+
+            -- Teil 2: Kind
+            SELECT 
+                'kind' AS zeilentyp, 
+                av.artikel_id AS artikel_id, 
+                NULL AS vater_artikelnummer, 
+                a.name AS artikel_name,
+                av.artikelnummer AS varianten_artikelnummer, 
+                av.farbe_name AS farbe, 
+                l.name AS lager_name,
+                lb.bestand AS bestand, 
+                lb.charge AS charge, 
+                lb.charge_status AS charge_status
+            FROM artikel_varianten av
+            INNER JOIN lagerbestand lb ON lb.artikel_varianten_id = av.id
+            inner JOIN artikel a ON a.id = av.artikel_id
+            inner JOIN lager l ON l.id = lb.lager_id
+            where lb.bestand > 0
+
+            UNION ALL
+
+            -- Teil 3: standalone Artikel
+            SELECT 
+                'standalone' AS zeilentyp,
+                a.id AS artikel_id,
+                a.artikelnummer AS vater_artikelnummer, 
+                a.name AS artikel_name,
+                NULL AS varianten_artikelnummer, 
+                NULL AS farbe, 
+                l.name AS lager_name,
+                lb.bestand AS bestand, 
+                lb.charge AS charge, 
+                lb.charge_status AS charge_status
+            FROM artikel a
+            INNER JOIN lagerbestand lb ON lb.artikel_id = a.id
+            inner JOIN lager l ON l.id = lb.lager_id
+            where (
+                a.ist_vater = 0 AND
+                lb.bestand > 0
+            )
+            ORDER BY artikel_name, zeilentyp DESC, farbe
         ");
 
         return $stmt->fetchAll();
+    }
+
+    public function getChargePflicht(?int $varianteId, ?int $artikelId): bool
+    {
+        // Wenn Variante: JOIN über artikel_varianten → artikel
+        if ($varianteId) {
+            $stmt = $this->db->prepare("
+            SELECT 
+                a.charge_pflicht
+            FROM artikel_varianten av
+            INNER JOIN artikel a ON a.id = av.artikel_id
+            WHERE av.id = :variante_id
+        ");
+            $stmt->execute(['variante_id' => $varianteId]);
+            $result = $stmt->fetch();
+        }
+        // Wenn Standalone: direkt auf artikel schauen
+        else {
+            $stmt = $this->db->prepare("
+            SELECT 
+                a.charge_pflicht
+            FROM artikel a
+            WHERE a.id = :artikel_id
+        ");
+            $stmt->execute(['artikel_id' => $artikelId]);
+            $result = $stmt->fetch();
+        }
+
+        return (bool) ($result['charge_pflicht'] ?? false);
     }
 }

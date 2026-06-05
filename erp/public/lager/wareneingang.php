@@ -39,7 +39,7 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
     <form action="wareneingang_speichern.php" method="POST">
 
         <div class="gruppe">
-            <h2>Variante</h2>
+            <h2>Artikel / Variante</h2>
 
             <label>EAN scannen oder suchen</label>
             <div style="display:flex; gap:10px;">
@@ -51,6 +51,7 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
 
             <!-- Wird per JS gefüllt wenn Variante gefunden -->
             <input type="hidden" name="artikel_varianten_id" id="artikel_varianten_id">
+            <input type="hidden" name="artikel_id" id="artikel_id">
         </div>
 
         <div class="gruppe">
@@ -131,11 +132,20 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
         }
 
         function waehleVariante(v) {
-            document.getElementById('artikel_varianten_id').value = v.id;
+            if (v.typ === 'variante') {
+                document.getElementById('artikel_varianten_id').value = v.id;
+                document.getElementById('artikel_id').value = '';
+            } else {
+                document.getElementById('artikel_varianten_id').value = '';
+                document.getElementById('artikel_id').value = v.id;
+            }
+
             document.getElementById('variante_ergebnis').innerHTML = `
         <div style="background:#d4edda; padding:10px; border-radius:4px;">
-            ✅ <strong>${v.artikelnummer}</strong> – 
-            ${v.farbe_name} – ${v.artikel_name}
+            ✅ <strong>${v.artikelnummer}</strong> – ${v.artikel_name}
+            ${v.farbe_name ? '<br><small>' + v.farbe_name + '</small>' : ''}
+
+
             <button type="button" onclick="varianteZuruecksetzen()" 
                     style="float:right">✖</button>
         </div>
@@ -144,6 +154,7 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
 
         function varianteZuruecksetzen() {
             document.getElementById('artikel_varianten_id').value = '';
+            document.getElementById('artikel_id').value = '';
             document.getElementById('variante_ergebnis').innerHTML = '';
             document.getElementById('scan_suche').value = '';
             document.getElementById('scan_suche').focus();
