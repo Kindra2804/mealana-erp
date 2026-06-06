@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
-require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
-require_once __DIR__ . '/../../src/core/Database.php';
 
 // ID aus URL holen
 $id = (int) ($_GET['id'] ?? 0);
@@ -24,20 +22,28 @@ $artikelTypen     = $service->getAllArtikelTypen();
 
 // Artikel aus DB laden – aber Session hat Vorrang bei Fehler!
 if (empty($formdata)) {
-    $controller = new ArtikelController();
-    $artikel = $controller->findFuerBearbeitung($id);
+    $artikel = $service->findById($id);
+
     if ($artikel === false) {
         header('Location: liste.php');
         exit;
     }
     $formdata = $artikel;
+
+    $codes = $service->getCodesByArtikelId($id);
+    $formdata['ean_gtin13'] = '';
+    foreach ($codes as $c) {
+        if ($c['typ'] === 'GTIN13') {
+            $formdata['ean_gtin13'] = $c['code'];
+            break;
+        }
+    }
 }
 
 
 // Hersteller und Steuerklassen für Dropdowns laden
-$db = Database::getInstance();
-$hersteller   = $db->query("SELECT id, name FROM hersteller ORDER BY name")->fetchAll();
-$steuerklassen = $db->query("SELECT id, name, satz FROM steuerklassen WHERE aktiv = 1")->fetchAll();
+$hersteller   = $service->getAllHersteller();
+$steuerklassen = $service->getAllSteuerklassen();
 
 // Hilfsfunktion: war dieser Wert im letzten Submit?
 function old(string $field, array $formdata, string $default = ''): string
@@ -232,6 +238,13 @@ function selected(string $field, string $value, array $formdata): string
                     <option value="0" <?= selected('grundpreis_anzeigen', '0', $formdata) ?>>Nein</option>
                 </select>
             </div>
+        </div>
+
+        <div class="gruppe">
+            <h2>Barcodes / EAN</h2>
+            <label>GTIN13</label>
+            <input type="text" name="ean_gtin13"
+                value="<?= old('ean_gtin13', $formdata) ?>" maxlength="13">
         </div>
 
         <div class="gruppe versteckt" id="felder-physisch">

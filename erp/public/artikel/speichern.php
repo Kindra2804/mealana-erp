@@ -37,6 +37,7 @@ $artikelData = array_intersect_key($data, array_flip([
 
 $artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;
 $artikelData['netto_vk']  = $data['netto_vk']  ?? null;
+$artikelData['ean_gtin13'] = $data['ean_gtin13'] ?? null;
 
 // Leere Strings zu NULL konvertieren
 foreach ($artikelData as $key => $value) {

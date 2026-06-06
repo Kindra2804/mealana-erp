@@ -161,7 +161,17 @@ artikel_typen       → Artikeltypen (code: GARN/NADEL/METERWARE/DOWNLOAD/SET/ST
 artikel             → Master article record
                       - artikeltyp_id FK → artikel_typen (kein ENUM mehr)
                       - varianten_darstellung VARCHAR(50) DEFAULT 'swatches' (kein ENUM)
-                      - Grundpreis (base price per unit) calculation support
+                      - ist_vater TINYINT(1): Vater-Artikel (hat Achsen/Kinder)
+                      - vaterartikel_id INT NULL FK → artikel.id: Kind-Artikel zeigen auf Vater [GEPLANT]
+                      - hat_eigenen_lagerstand TINYINT(1) DEFAULT 1: 0 = bucht auf Vater-Lagerstand [GEPLANT]
+                      - charge_pflicht TINYINT(1): Chargennummer beim Wareneingang Pflicht
+                      - seriennummer_pflicht TINYINT(1): Seriennummer pro Stück Pflicht [GEPLANT]
+
+-- Artikel-Konstellationen:
+-- Typ 1: Standard         — kein vaterartikel_id, keine Achsen
+-- Typ 3: Variationsartikel — Achsen/Werte definiert, lagerbestand per Variante
+-- Typ 4a: VarKombi-Kind  — vaterartikel_id gesetzt, hat_eigenen_lagerstand=1
+-- Typ 4b: VarKombi-Kind  — vaterartikel_id gesetzt, hat_eigenen_lagerstand=0 (Vater-Pool)
 
 artikel_varianten   → Color variants (each yarn/meterware has multiple colors)
                       - farbe_hex, farbe_name (e.g. "Rot", "#FF0000") — NOCH DRIN
@@ -169,7 +179,18 @@ artikel_varianten   → Color variants (each yarn/meterware has multiple colors)
                       - bild_url (swatch image)
                       - brutto_vk (variant-specific price, may differ from master)
 
+-- [GEPLANT] Varianten-System Umbau:
+-- artikel_varianten_achsen  → Achsen pro Artikel (Farbe, Stärke, Länge)
+-- varianten_achse_werte     → Werte je Achse (Rot/#FF0000, 3mm, 40cm) + optionaler aufpreis
+-- artikel_variante_wert_zuordnung → Welcher Wert für welche Variante/welches Kind
+
 artikel_codes       → GTIN/ISBN/internal codes per article
+                      - Kein UNIQUE-Constraint: Duplikat-Erkennung App-seitig
+                      - Qualitätslisten: fehlende EAN bei Kind-Artikeln, doppelte EAN systemweit
+
+-- [GEPLANT] seriennummern → Einzelstück-Tracking (analog Chargen)
+--   status: lager|reserviert|verkauft|defekt|verloren
+--   Anbindung an Kasse/Bestellmodul beim Verkauf
 ```
 
 ### Pricing
@@ -212,6 +233,7 @@ lieferanten_vertreter → Contact persons per supplier
 benutzer            → User accounts
                       - username (UNIQUE), passwort (bcrypt hash), formularname (display name)
                       - aktiv = 0 for soft-disable (never hard delete)
+                      - max_sessions INT NULL [GEPLANT]: NULL = system default, sonst eigenes Limit
 
 rollen              → Roles: superadmin, admin, mitarbeiter (+ future: kassier, etc.)
 berechtigungen      → Permissions in modul.aktion format (e.g. artikel.anlegen, api.zugriff)
@@ -225,8 +247,20 @@ benutzer_rollen     → Pivot: which user has which role (composite PK, user can
 sessions            → Active login sessions per user
                       - id = PHP session ID (VARCHAR 128, PK)
                       - ip_adresse, user_agent for device tracking
+                      - arbeitsplatz_id FK → arbeitsplaetze [GEPLANT]
+                      - geraete_token CHAR(36) [GEPLANT]: Kopie für schnellen Lookup
                       - letzte_aktivitaet: auto-updated on activity
-                      - Foundation for concurrent session limits (future: system setting)
+
+-- [GEPLANT] arbeitsplaetze → Geräte-/Platz-Erkennung via UUID-Token (localStorage)
+--   name: 'Kasse 1', 'Lager-Scanner', 'Büro' — beim ersten Login vergeben
+--   geraete_token: UUID, persistent im Browser-localStorage, NICHT IP-basiert
+--   typ: 'kasse','lager','buero','mobil'
+--   Grund: IP ändert sich (DHCP/Mobile) → UUID-Token ist gerätegebunden und zuverlässig
+
+-- [GEPLANT] system_einstellungen → Key-Value für globale Limits
+--   'max_gleichzeitige_benutzer': systemweites Limit
+--   'max_sessions_pro_benutzer': default, überschreibbar per benutzer.max_sessions
+--   'auto_logout_andere_session': Bool — älteste Session killen wenn Limit überschritten
 
 aktivitaeten        → Immutable activity log (Logbuch)
                       - benutzer_id FK RESTRICT (log survives user deactivation)
@@ -557,12 +591,29 @@ $result = $service->wareneingang([
 
 ### Geplante Strukturumbauten (vor neuen Features)
 1. **Varianten-System** — Achsen + Werte + Kombinationen (eigenes Modul, farbe_name/farbe_hex raus)
+2. **VarKombi-System** — `vaterartikel_id` + `hat_eigenen_lagerstand` auf `artikel` (Migration), VarKombi-Generator UI
+3. **Seriennummern** — `seriennummer_pflicht` auf `artikel` + `seriennummern`-Tabelle
+
+### VarKombi-Generator Regeln
+- Artikelnummer modular: Vater-Nr + Trennzeichen + Wert-Name/-Nr + fortlaufende Zahl (Live-Vorschau)
+- EAN pro Kind optional (leer lassen erlaubt) — Qualitätsliste zeigt fehlende EANs
+- charge_pflicht und seriennummer_pflicht werden vom Vater automatisch auf alle Kinder übertragen
+- Business Rule: VarKombi-Vater KANN NICHT gleichzeitig Stückliste sein (gegenseitiger Ausschluss)
+- Kasse bei Duplikat-EAN: Auswahl-Dialog statt Blockade
 
 ### Neue Module (Reihenfolge)
-2. **Kundendatenbank** — Stammdaten, Adresse, UID, Newsletter
-3. **Kasse** — RKSV/Fiskaly
-4. **Packplatz**
-5. **Shop-Anbindung** — REST API, Multi-Shop Hub-and-Spoke
+4. **Kundendatenbank** — Stammdaten, Adresse, UID, Newsletter
+5. **Bestellwesen** — Lieferantenbestellungen: wann/von wem/was/EK-Preis/Status. Wareneingang referenziert Bestellung.
+6. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
+7. **Packplatz/Picklisten** — Kommissionierung, Packliste
+8. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.
+9. **Inventur/Umbuchung (MOBILE-FIRST)** — PWA, EAN-Scan via Kamera, Bestand + Reservierung prüfen, Zählliste, Abschluss mit LOG
+10. **Shop-Anbindung** — REST API, Multi-Shop Hub-and-Spoke
+
+### UI-Entscheidungen (festgelegt)
+- **Kategorie-Auswahl im Artikel-Formular:** Modal (JS-Overlay), kein Tab/Redirect. Kategoriebaum + "Neue anlegen" + "Übernehmen". Kein Datenverlust.
+- **Artikel-Detail:** Tab-Navigation (Stammdaten / Varianten+Kinder / Lager / Lieferanten / Bestellhistorie / Verkaufshistorie / Statistik / Dateien)
+- **Statistik-Tab:** Topseller-Ranking aus Verkaufsanzahl + Umsatz — auch für Shop-Integration verwendbar
 
 ### Workflow
 - Jedes neue Modul startet mit Referenz-Check: was machen große WAWIs, was brauchen wir extra

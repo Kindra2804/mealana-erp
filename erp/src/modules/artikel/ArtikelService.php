@@ -28,12 +28,20 @@ class ArtikelService
         $nettoVk  = $data['netto_vk']  ?? null;
         unset($data['brutto_vk'], $data['netto_vk']);
 
+        $eanGtin13 = $data['ean_gtin13'] ?? null;
+        unset($data['ean_gtin13']);
+
         $id = $this->repo->insert($data);
 
         // Preis speichern
         if ($bruttoVk && $nettoVk) {
             $this->repo->insertPreis($id, (float)$bruttoVk, (float)$nettoVk);
         }
+
+        if ($eanGtin13) {
+            $this->repo->insertCode($id, 'GTIN13', $eanGtin13);
+        }
+
 
         Logger::log('artikel.anlegen', 'artikel', $id, ['name' => $data['name']]);
         return ['erfolg' => true, 'id' => $id];
@@ -77,7 +85,18 @@ class ArtikelService
         $nettoVk  = $data['netto_vk']  ?? null;
         unset($data['brutto_vk'], $data['netto_vk']);
 
+        $eanGtin13 = $data['ean_gtin13'] ?? null;
+        unset($data['ean_gtin13']);
+
         $erfolg = $this->repo->update($data);
+        if (!$erfolg) {
+            return ['erfolg' => false, 'fehler' => ['Datenbankfehler beim Speichern']];
+        }
+
+        $this->repo->deleteCodesByArtikelIdAndType($data['id'], 'GTIN13');
+        if ($eanGtin13) {
+            $this->repo->insertCode((int)$data['id'], 'GTIN13', $eanGtin13);
+        }
 
         // Preis aktualisieren
         if ($bruttoVk && $nettoVk) {
@@ -90,6 +109,11 @@ class ArtikelService
 
         Logger::log('artikel.bearbeiten', 'artikel', $data['id'], ['name' => $data['name']]);
         return ['erfolg' => true];
+    }
+
+    public function findById(int $id): array|false
+    {
+        return $this->repo->findById($id);
     }
 
     public function saveVariante(array $data): array
@@ -164,5 +188,21 @@ class ArtikelService
     public function getAllArtikelTypen(): array
     {
         return $this->repo->findAllArtikelTypen();
+    }
+
+    public function getCodesByArtikelId(int $artikelId): array
+    {
+        return $this->repo->findCodesByArtikelId($artikelId);
+    }
+
+    // Hilfsmethoden für Dropdown-Daten — bis eigene Services existieren
+    public function getAllHersteller(): array
+    {
+        return $this->repo->findAllHersteller();
+    }
+
+    public function getAllSteuerklassen(): array
+    {
+        return $this->repo->findAllSteuerklassen();
     }
 }

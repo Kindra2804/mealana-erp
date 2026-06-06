@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
-require_once __DIR__ . '/../../src/core/Database.php';
 
 // Session Daten holen
 $fehler   = $_SESSION['fehler']   ?? [];
@@ -9,11 +8,12 @@ $erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
+$service = new ArtikelService();
+
 // Hersteller, Steuerklassen und Artikeltypen für Dropdowns laden
-$db = Database::getInstance();
-$hersteller    = $db->query("SELECT id, name FROM hersteller ORDER BY name")->fetchAll();
-$steuerklassen = $db->query("SELECT id, name, satz FROM steuerklassen WHERE aktiv = 1")->fetchAll();
-$artikelTypen  = (new ArtikelService())->getAllArtikelTypen();
+$hersteller    = $service->getAllHersteller();
+$steuerklassen = $service->getAllSteuerklassen();
+$artikelTypen  = $service->getAllArtikelTypen();
 
 // Hilfsfunktion: war dieser Wert im letzten Submit?
 function old(string $field, array $formdata, string $default = ''): string
@@ -205,6 +205,13 @@ function selected(string $field, string $value, array $formdata): string
                     <option value="0" <?= selected('grundpreis_anzeigen', '0', $formdata) ?>>Nein</option>
                 </select>
             </div>
+        </div>
+
+        <div class="gruppe">
+            <h2>Barcodes / EAN</h2>
+            <label>GTIN13</label>
+            <input type="text" name="ean_gtin13"
+                value="<?= old('ean_gtin13', $formdata) ?>" maxlength="13">
         </div>
 
         <div class="gruppe versteckt" id="felder-physisch">

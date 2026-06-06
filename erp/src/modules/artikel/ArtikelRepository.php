@@ -242,7 +242,7 @@ class ArtikelRepository
     ");
 
         $stmt->execute($data);
-        return $stmt->rowCount() > 0;
+        return true;
     }
 
     public function deactivate(int $id): bool
@@ -268,13 +268,33 @@ class ArtikelRepository
             :brutto_vk,
             :netto_vk
         )
-    ");
+        ");
 
         return $stmt->execute([
             'artikel_id'       => $artikelId,
             'kundengruppen_id' => $kundengruppenId,
             'brutto_vk'        => $bruttoVk,
             'netto_vk'         => $nettoVk
+        ]);
+    }
+
+    public function insertCode(int $artikelId, string $typ, string $code): void
+    {
+        $stmt = $this->db->prepare("
+        INSERT INTO artikel_codes (
+            artikel_id, 
+            typ, 
+            code
+        ) VALUES (
+            :artikel_id, 
+            :typ, 
+            :code)
+        ");
+
+        $stmt->execute([
+            'artikel_id' => $artikelId,
+            'typ' => $typ,
+            'code' => $code
         ]);
     }
 
@@ -391,6 +411,9 @@ class ArtikelRepository
         $stmt = $this->db->prepare("SELECT id FROM artikel_typen WHERE code = :code");
         $stmt->execute(['code' => $code]);
         $row = $stmt->fetch();
+        if ($row === false) {
+            throw new InvalidArgumentException("Unbekannter Artikeltyp-Code: '$code'");
+        }
         return (int) $row['id'];
     }
 
@@ -417,5 +440,48 @@ class ArtikelRepository
 
         $stmt->execute(['q' => '%' . $q . '%']);
         return $stmt->fetchAll();
+    }
+
+    public function findCodesByArtikelId(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+        SELECT
+            *
+        FROM artikel_codes
+        WHERE artikel_id = :artikel_id
+        ");
+
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetchAll();
+    }
+
+    public function deleteCodesByArtikelIdAndType(int $artikelId, string $typ): void
+    {
+        $stmt = $this->db->prepare("
+        DELETE FROM artikel_codes
+        WHERE artikel_id = :artikel_id AND typ = :typ
+        ");
+
+        $stmt->execute([
+            'artikel_id' => $artikelId,
+            'typ' => $typ
+        ]);
+    }
+
+    // Externe Klassen die derzeit keine eigenen Repos haben
+    // HerstellerRepository-Klasse
+    public function findAllHersteller(): array
+    {
+        return $this->db->query(
+            "SELECT id, name FROM hersteller ORDER BY name"
+        )->fetchAll();
+    }
+
+    // SteuerklassenRepository-Klasse
+    public function findAllSteuerklassen(): array
+    {
+        return $this->db->query(
+            "SELECT id, name, satz FROM steuerklassen WHERE aktiv = 1"
+        )->fetchAll();
     }
 }

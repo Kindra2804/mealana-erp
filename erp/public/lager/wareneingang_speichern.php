@@ -16,6 +16,8 @@ foreach ($data as $key => $value) {
     }
 }
 
+$data['benutzer_id'] = $_SESSION['benutzer']['id'] ?? null;
+
 $service = new LagerService();
 $result = $service->wareneingang($data);
 

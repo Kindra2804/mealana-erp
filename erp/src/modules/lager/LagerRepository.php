@@ -315,7 +315,8 @@ class LagerRepository
             bestand_vorher,
             bestand_nachher,
             referenz,
-            notiz
+            notiz,
+            benutzer_id
         ) VALUES (
             :artikel_varianten_id,
             :artikel_id,
@@ -326,7 +327,8 @@ class LagerRepository
             :bestand_vorher,
             :bestand_nachher,
             :referenz,
-            :notiz
+            :notiz,
+            :benutzer_id
         )
     ");
 

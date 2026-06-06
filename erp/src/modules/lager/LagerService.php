@@ -58,7 +58,8 @@ class LagerService
             'bestand_vorher'       => $bestandVorher,
             'bestand_nachher'      => $bestandNachher,
             'referenz'             => $data['referenz'] ?? null,
-            'notiz'                => $data['notiz'] ?? null
+            'notiz'                => $data['notiz'] ?? null,
+            'benutzer_id'          => $data['benutzer_id'] ?? null,
         ]);
 
         Logger::log('wareneingang.buchen', 'lagerbestand', $bewegungId, [
@@ -90,7 +91,7 @@ class LagerService
         return $this->repo->findUebersicht();
     }
 
-    public function chargeNachtragen(int $lagerbestand_id, string $charge, float $menge): array
+    public function chargeNachtragen(int $lagerbestand_id, string $charge, float $menge, ?int $benutzerId = null): array
     {
         if (empty($charge)) {
             return ['erfolg' => false, 'fehler' => 'Charge darf nicht leer sein'];
@@ -143,6 +144,7 @@ class LagerService
             'bestand_nachher'      => $lb['bestand'] - $menge,
             'referenz'             => null,
             'notiz'                => 'Charge nachgetragen',
+            'benutzer_id'          => $benutzerId,
         ]);
 
         Logger::log('lager.charge_nachtragen', 'lagerbestand', $lagerbestand_id, [
