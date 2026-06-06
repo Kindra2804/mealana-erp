@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
-    <?php include __DIR__ . '/../../src/templates/header.php'; ?>
+    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <div class="container">
         <h1>Lieferant bearbeiten</h1>
 
@@ -162,3 +162,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <option value="0" <?= ($formdata['aktiv'] ?? '1') === '0' ? 'selected' : '' ?>>Nein</option>
                 </select>
             </div>
+            <button type="submit">Lieferant updaten</button>
+
+        </form>
+    </div>
+
+</body>
+
+</html>

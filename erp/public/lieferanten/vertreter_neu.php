@@ -9,8 +9,8 @@ $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
 // ID aus URL holen
-$lieferant_id = (int) ($_GET['lieferant_id'] ?? 0);
-if ($lieferant_id <= 0) {
+$vertreter_id = (int) ($_GET['vertreter_id'] ?? 0);
+if ($vertreter_id <= 0) {
     header('Location: liste.php');
     exit;
 }
@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ergebnis = $service->saveVertreter($_POST);
     if ($ergebnis['erfolg']) {
         $_SESSION['erfolg'] = 'Vertreter erfolgreich angelegt!';
-        header('Location: detail.php?id=' . $lieferant_id);
+        header('Location: detail.php?id=' . $vertreter_id);
         exit;
     } else {
         $fehler   = $ergebnis['fehler'];
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     <?php endif; ?>
     <form method="POST" action="vertreter_neu.php">
-        <input type="hidden" name="lieferant_id" value="<?= $lieferant_id ?>">
+        <input type="hidden" name="vertreter_id" value="<?= $vertreter_id ?>">
         <div class="gruppe">
             <label for="vorname">Vorname</label>
             <input type="text" id="vorname" name="vorname"
