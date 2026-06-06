@@ -1,32 +1,18 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
-require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 
 // Session Daten holen
 $fehler   = $_SESSION['fehler']   ?? [];
-$erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
 // ID aus URL holen
-$vertreter_id = (int) ($_GET['vertreter_id'] ?? 0);
-if ($vertreter_id <= 0) {
+$lieferant_id = (int) ($_GET['lieferant_id'] ?? 0);
+if ($lieferant_id <= 0) {
     header('Location: liste.php');
     exit;
 }
 
-$service = new LieferantenService();
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $ergebnis = $service->saveVertreter($_POST);
-    if ($ergebnis['erfolg']) {
-        $_SESSION['erfolg'] = 'Vertreter erfolgreich angelegt!';
-        header('Location: detail.php?id=' . $vertreter_id);
-        exit;
-    } else {
-        $fehler   = $ergebnis['fehler'];
-        $formdata = $_POST;
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -113,13 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </ul>
         </div>
     <?php endif; ?>
-    <?php if ($erfolg): ?>
-        <div class="erfolg-box">
-            <?= htmlspecialchars($erfolg) ?>
-        </div>
-    <?php endif; ?>
-    <form method="POST" action="vertreter_neu.php">
-        <input type="hidden" name="vertreter_id" value="<?= $vertreter_id ?>">
+
+    <form method="POST" action="vertreter_speichern.php">
+        <input type="hidden" name="lieferant_id" value="<?= $lieferant_id ?>">
         <div class="gruppe">
             <label for="vorname">Vorname</label>
             <input type="text" id="vorname" name="vorname"
@@ -138,8 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="tel" id="mobil" name="mobil"
                 value="<?= htmlspecialchars($formdata['mobil'] ?? '') ?>">
             <label for="notizen">Notizen</label>
-            <textarea name="notizen" rows="4">
-                <?= htmlspecialchars($formdata['notizen'] ?? '') ?></textarea>
+            <textarea name="notizen" rows="4"><?= htmlspecialchars($formdata['notizen'] ?? '') ?></textarea>
             <label>Aktiv</label>
             <select name="aktiv">
                 <option value="1" <?= ($formdata['aktiv'] ?? '1') === '1' ? 'selected' : '' ?>>Ja</option>

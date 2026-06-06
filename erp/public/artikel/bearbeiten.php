@@ -20,6 +20,7 @@ unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 $service = new ArtikelService();
 $alleKategorien   = $service->getAlleKategorien();
 $zugewieseneIds   = array_column($service->getKategorienFuerArtikel($id), 'id');
+$artikelTypen     = $service->getAllArtikelTypen();
 
 // Artikel aus DB laden – aber Session hat Vorrang bei Fehler!
 if (empty($formdata)) {
@@ -29,9 +30,7 @@ if (empty($formdata)) {
         header('Location: liste.php');
         exit;
     }
-    $formdata = $artikel;  // ← Artikeldaten als Formularwerte!
-    // var_dump($formdata);
-    // die();
+    $formdata = $artikel;
 }
 
 
@@ -159,12 +158,12 @@ function selected(string $field, string $value, array $formdata): string
             <label>Artikeltyp <span class="pflicht">*</span></label>
             <select name="artikeltyp" id="artikeltyp">
                 <option value="">– bitte wählen –</option>
-                <option value="GARN" <?= selected('artikeltyp', 'GARN',      $formdata) ?>>Garn</option>
-                <option value="NADEL" <?= selected('artikeltyp', 'NADEL',     $formdata) ?>>Nadel</option>
-                <option value="METERWARE" <?= selected('artikeltyp', 'METERWARE', $formdata) ?>>Meterware</option>
-                <option value="DOWNLOAD" <?= selected('artikeltyp', 'DOWNLOAD',  $formdata) ?>>Download</option>
-                <option value="SET" <?= selected('artikeltyp', 'SET',       $formdata) ?>>Set</option>
-                <option value="STANDARD" <?= selected('artikeltyp', 'STANDARD',  $formdata) ?>>Standard</option>
+                <?php foreach ($artikelTypen as $typ): ?>
+                    <option value="<?= htmlspecialchars($typ['code']) ?>"
+                        <?= selected('artikeltyp', $typ['code'], $formdata) ?>>
+                        <?= htmlspecialchars($typ['name']) ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
 
             <label>Name <span class="pflicht">*</span></label>

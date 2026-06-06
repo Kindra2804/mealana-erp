@@ -26,26 +26,8 @@ if (empty($formdata)) {
         exit;
     }
     $formdata = $lieferant;  // ← Lieferantendaten als Formularwerte!
-    // var_dump($formdata);
-    // die();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $formdata = array_merge($formdata, $_POST);
-    $formdata['id'] = $id;
-
-    $result = $service->update($formdata);
-    if ($result['erfolg']) {
-        $_SESSION['erfolg'] = 'Lieferant erfolgreich aktualisiert!';
-        header('Location: detail.php?id=' . $id);
-        exit;
-    } else {
-        $_SESSION['fehler'] = $result['fehler'];
-        $_SESSION['formdata'] = $formdata;
-        header('Location: bearbeiten.php?id=' . $id);
-        exit;
-    }
-}
 ?>
 
 <!DOCTYPE html>

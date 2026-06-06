@@ -15,17 +15,19 @@ class ArtikelRepository
     {
         $where = $mitInaktiven ? '' : 'WHERE a.aktiv = 1';
         $stmt = $this->db->query("
-            SELECT 
+            SELECT
                 a.id,
                 a.artikelnummer,
                 a.name,
-                a.artikeltyp,
+                at.code AS artikeltyp,
+                at.name AS artikeltyp_name,
                 a.aktiv,
                 h.name AS hersteller,
                 s.satz AS steuersatz,
                 a.charge_pflicht,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
             FROM artikel a
+            JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN artikel_varianten av ON av.artikel_id = a.id
@@ -40,9 +42,10 @@ class ArtikelRepository
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 a.hersteller_id,
                 a.steuerklasse_id,
+                a.artikeltyp_id,
                 a.grundpreis_bezugsmenge,
                 a.grundpreis_anzeigen,
                 a.gewicht_versand,
@@ -53,7 +56,8 @@ class ArtikelRepository
                 a.id,
                 a.artikelnummer,
                 a.name,
-                a.artikeltyp,
+                at.code AS artikeltyp,
+                at.name AS artikeltyp_name,
                 a.aktiv,
                 a.beschreibung_lang,
                 a.einheit,
@@ -66,6 +70,7 @@ class ArtikelRepository
                 ap.brutto_vk,
                 ap.netto_vk
             FROM artikel a
+            JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
@@ -156,13 +161,15 @@ class ArtikelRepository
 
     public function insert(array $data): int
     {
+        $data['artikeltyp_id'] = $this->resolveArtikeltypId($data['artikeltyp']);
+        unset($data['artikeltyp']);
 
         $stmt = $this->db->prepare("
         INSERT INTO artikel (
             artikelnummer,
             hersteller_id,
             steuerklasse_id,
-            artikeltyp,
+            artikeltyp_id,
             name,
             beschreibung_kurz,
             beschreibung_lang,
@@ -182,7 +189,7 @@ class ArtikelRepository
             :artikelnummer,
             :hersteller_id,
             :steuerklasse_id,
-            :artikeltyp,
+            :artikeltyp_id,
             :name,
             :beschreibung_kurz,
             :beschreibung_lang,
@@ -207,13 +214,15 @@ class ArtikelRepository
 
     public function update(array $data): bool
     {
+        $data['artikeltyp_id'] = $this->resolveArtikeltypId($data['artikeltyp']);
+        unset($data['artikeltyp']);
 
         $stmt = $this->db->prepare("
         UPDATE artikel SET
             artikelnummer = :artikelnummer,
             hersteller_id = :hersteller_id,
             steuerklasse_id = :steuerklasse_id,
-            artikeltyp = :artikeltyp,
+            artikeltyp_id = :artikeltyp_id,
             name = :name,
             beschreibung_kurz = :beschreibung_kurz,
             beschreibung_lang = :beschreibung_lang,
@@ -367,14 +376,34 @@ class ArtikelRepository
         return $stmt->rowCount() > 0;
     }
 
+    public function findAllArtikelTypen(): array
+    {
+        $stmt = $this->db->query("
+            SELECT id, code, name FROM artikel_typen
+            WHERE aktiv = 1
+            ORDER BY sortierung ASC
+        ");
+        return $stmt->fetchAll();
+    }
+
+    private function resolveArtikeltypId(string $code): int
+    {
+        $stmt = $this->db->prepare("SELECT id FROM artikel_typen WHERE code = :code");
+        $stmt->execute(['code' => $code]);
+        $row = $stmt->fetch();
+        return (int) $row['id'];
+    }
+
     public function search(string $q): array
     {
         $stmt = $this->db->prepare("
-        SELECT 
-            a.id, a.artikelnummer, a.name, 
-            a.artikeltyp, a.aktiv,
+        SELECT
+            a.id, a.artikelnummer, a.name,
+            at.code AS artikeltyp,
+            a.aktiv,
             h.name AS hersteller
         FROM artikel a
+        JOIN artikel_typen at ON a.artikeltyp_id = at.id
         LEFT JOIN hersteller h ON a.hersteller_id = h.id
         WHERE a.aktiv = 1
         AND (

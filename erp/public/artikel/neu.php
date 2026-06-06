@@ -9,10 +9,11 @@ $erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
-// Hersteller und Steuerklassen für Dropdowns laden
+// Hersteller, Steuerklassen und Artikeltypen für Dropdowns laden
 $db = Database::getInstance();
-$hersteller   = $db->query("SELECT id, name FROM hersteller ORDER BY name")->fetchAll();
+$hersteller    = $db->query("SELECT id, name FROM hersteller ORDER BY name")->fetchAll();
 $steuerklassen = $db->query("SELECT id, name, satz FROM steuerklassen WHERE aktiv = 1")->fetchAll();
+$artikelTypen  = (new ArtikelService())->getAllArtikelTypen();
 
 // Hilfsfunktion: war dieser Wert im letzten Submit?
 function old(string $field, array $formdata, string $default = ''): string
@@ -130,12 +131,12 @@ function selected(string $field, string $value, array $formdata): string
             <label>Artikeltyp <span class="pflicht">*</span></label>
             <select name="artikeltyp" id="artikeltyp">
                 <option value="">– bitte wählen –</option>
-                <option value="GARN" <?= selected('artikeltyp', 'GARN',      $formdata) ?>>Garn</option>
-                <option value="NADEL" <?= selected('artikeltyp', 'NADEL',     $formdata) ?>>Nadel</option>
-                <option value="METERWARE" <?= selected('artikeltyp', 'METERWARE', $formdata) ?>>Meterware</option>
-                <option value="DOWNLOAD" <?= selected('artikeltyp', 'DOWNLOAD',  $formdata) ?>>Download</option>
-                <option value="SET" <?= selected('artikeltyp', 'SET',       $formdata) ?>>Set</option>
-                <option value="STANDARD" <?= selected('artikeltyp', 'STANDARD',  $formdata) ?>>Standard</option>
+                <?php foreach ($artikelTypen as $typ): ?>
+                    <option value="<?= htmlspecialchars($typ['code']) ?>"
+                        <?= selected('artikeltyp', $typ['code'], $formdata) ?>>
+                        <?= htmlspecialchars($typ['name']) ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
 
             <label>Name <span class="pflicht">*</span></label>

@@ -145,22 +145,27 @@ D:\ERP\mealana\
 └── CLAUDE.md               ← This file
 ```
 
-## Data Model: 22 Tables
+## Data Model: 28 Tabellen (Stand 2026-06-06)
 
 ### Core Domain
 ```sql
 hersteller          → Manufacturers (supplier records)
 steuerklassen       → Tax classes (20% normal, 10% reduced for AT)
+artikel_typen       → Artikeltypen (code: GARN/NADEL/METERWARE/DOWNLOAD/SET/STANDARD)
+                      - hat_varianten, hat_lagerstand, ist_download, ist_set flags
+                      - Erweiterbar ohne Schema-Änderung (kein ENUM mehr)
 ```
 
 ### Articles & Variants (Vater/Kind Pattern)
 ```sql
 artikel             → Master article record
-                      - ENUM: GARN, NADEL, METERWARE, DOWNLOAD, SET, STANDARD
+                      - artikeltyp_id FK → artikel_typen (kein ENUM mehr)
+                      - varianten_darstellung VARCHAR(50) DEFAULT 'swatches' (kein ENUM)
                       - Grundpreis (base price per unit) calculation support
 
 artikel_varianten   → Color variants (each yarn/meterware has multiple colors)
-                      - farbe_hex, farbe_name (e.g. "Rot", "#FF0000")
+                      - farbe_hex, farbe_name (e.g. "Rot", "#FF0000") — NOCH DRIN
+                      - Varianten-System Umbau (Achsen/Werte) ist geplant als eigenes Modul
                       - bild_url (swatch image)
                       - brutto_vk (variant-specific price, may differ from master)
 
@@ -397,8 +402,13 @@ function selected(string $field, string $value, array $formdata): string {
 // HTML:
 <input type="text" name="name" value="<?= old('name', $formdata) ?>">
 <select name="artikeltyp">
-    <option value="GARN" <?= selected('artikeltyp', 'GARN', $formdata) ?>>Garn</option>
+    <?php foreach ($artikelTypen as $typ): ?>
+        <option value="<?= htmlspecialchars($typ['code']) ?>" <?= selected('artikeltyp', $typ['code'], $formdata) ?>>
+            <?= htmlspecialchars($typ['name']) ?>
+        </option>
+    <?php endforeach; ?>
 </select>
+// $artikelTypen kommt von $service->getAllArtikelTypen()
 
 // Handler: speichern.php
 $_SESSION['fehler'] = $result['fehler'];
@@ -500,7 +510,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented
+## What's Implemented (Stand 2026-06-06)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -509,11 +519,13 @@ $result = $service->wareneingang([
 - Soft delete (aktiv = 0)
 - Price storage (artikel_preise table, standard customer group)
 - Detail view with variants
+- artikeltyp kommt aus DB (artikel_typen Tabelle, kein ENUM)
 
 ### Varianten Module (CRUD Complete)
 - Create variant with color picker (farbe_hex)
 - Edit variant
 - Display in article detail (colored circles/swatches)
+- HINWEIS: farbe_name/farbe_hex noch in artikel_varianten — Umbau auf Achsen/Werte-System ist geplant als eigenes Modul
 
 ### Lager Module (Functional)
 - Goods receipt with EAN barcode scan support
@@ -521,42 +533,47 @@ $result = $service->wareneingang([
 - Stock UPSERT (create or increase)
 - Movement audit log (lager_bewegungen)
 - Charge tracking with status
+- Charge Nachtrag-Workflow (nachtrag_liste.php + nachtrag_speichern.php)
+
+### Lieferanten Module (CRUD Complete)
+- Lieferanten CRUD (neu/bearbeiten/löschen/detail)
+- Vertreter CRUD pro Lieferant (neu/bearbeiten/löschen)
+- Alle Handler als separate speichern.php / aktualisieren.php (kein Inline-POST)
 
 ### Navigation
 - nav.php included on all pages
-- Links to all modules
 
-### Auth & RBAC (Datenbank fertig, PHP folgt)
-- 7 Tabellen migriert: benutzer, rollen, berechtigungen, rollen_berechtigungen, benutzer_rollen, aktivitaeten, sessions
-- 3 Rollen angelegt: superadmin, admin, mitarbeiter
-- 47 Berechtigungen in 12 Modulen definiert
-- Erster Admin-Benutzer in DB (username: admin)
-- Migrations: `004_benutzer_rollen_log.sql`, `005_seed_rollen_berechtigungen.sql`
+### Auth & RBAC (vollständig)
+- Auth.php, Logger.php, login.php, auth_check.php — fertig
+- 3 Rollen: superadmin, admin, mitarbeiter
+- Logger in ArtikelService + LagerService
 
-## What's Missing (Priority)
+### Schema-Bereinigungen (2026-06-06)
+- Migration 010: varianten_darstellung ENUM → VARCHAR(50)
+- Migration 011: artikeltyp ENUM → Tabelle artikel_typen (FK, erweiterbar)
+- Service-Fehler-Rückgaben: immer Array, nie String
 
-### Nächste Session (Auth PHP-Klassen)
-1. **`src/core/Auth.php`** – login(), logout(), check(), kann('modul.aktion')
-2. **`src/core/Logger.php`** – log($aktion, $referenzTabelle, $referenzId, $details)
-3. **`public/login.php`** + **`public/logout.php`**
-4. **`public/includes/auth_check.php`** – 1 Zeile auf jeder geschützten Seite
-5. **ArtikelService + LagerService nachrüsten** – Logger-Aufrufe einbauen
+## Nächste Schritte (Priorität)
 
-### Danach: Artikelliste
-6. **Bestand in Artikelliste** – LEFT JOIN SUM(lagerbestand) als extra Spalte
+### Geplante Strukturumbauten (vor neuen Features)
+1. **Varianten-System** — Achsen + Werte + Kombinationen (eigenes Modul, farbe_name/farbe_hex raus)
 
-### Medium-term
-7. **Warehouse overview** – View which articles stored where with quantities
-8. **Charge post-entry** – Workflow for charge_status = 'nachzutragen'
-9. **Supplier frontend** – CRUD for Lieferanten (backend exists)
-10. **Attribute frontend** – CRUD for Merkmale (backend exists)
-11. **Price table modal** – "+" button in artikel form to manage kundengruppen prices
+### Neue Module (Reihenfolge)
+2. **Kundendatenbank** — Stammdaten, Adresse, UID, Newsletter
+3. **Kasse** — RKSV/Fiskaly
+4. **Packplatz**
+5. **Shop-Anbindung** — REST API, Multi-Shop Hub-and-Spoke
+
+### Workflow
+- Jedes neue Modul startet mit Referenz-Check: was machen große WAWIs, was brauchen wir extra
 
 ### Planned Modules (Future)
-- Customer database
-- Point of sale with RKSV/Fiskaly
-- Voucher system
-- Packing station
+- Gutscheinmodul
+- Import-Modul (JTL-WAWI CSV)
+- Aktions-/Sonderpreismodul
+- Bestellwesen (Lieferantenbestellungen)
+- Inventur-Workflow
+- Retouren
 - Online shop integration via REST API
 - Import module (JTL-WAWI, CSV)
 - Promo/discount engine

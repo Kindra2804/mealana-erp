@@ -1,6 +1,6 @@
 -- MeaLana ERP Schema Dump
--- Stand: 2026-06-05
--- Generiert aus: mealana_erp (inkl. Migrations 001-007)
+-- Stand: 2026-06-06
+-- Generiert aus: mealana_erp (inkl. Migrations 001-011)
 
 -- Table: aktivitaeten
 CREATE TABLE `aktivitaeten` (
@@ -16,13 +16,28 @@ CREATE TABLE `aktivitaeten` (
   CONSTRAINT `fk_aktivitaeten_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Table: artikel_typen
+CREATE TABLE `artikel_typen` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `hat_varianten` tinyint(1) NOT NULL DEFAULT 1,
+  `hat_lagerstand` tinyint(1) NOT NULL DEFAULT 1,
+  `ist_download` tinyint(1) NOT NULL DEFAULT 0,
+  `ist_set` tinyint(1) NOT NULL DEFAULT 0,
+  `sortierung` int(10) unsigned NOT NULL DEFAULT 0,
+  `aktiv` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- Table: artikel
 CREATE TABLE `artikel` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `artikelnummer` varchar(30) NOT NULL,
   `hersteller_id` int(10) unsigned DEFAULT NULL,
   `steuerklasse_id` int(10) unsigned NOT NULL,
-  `artikeltyp` enum('GARN','NADEL','METERWARE','DOWNLOAD','SET','STANDARD') NOT NULL,
+  `artikeltyp_id` int(10) unsigned NOT NULL,
   `name` varchar(255) NOT NULL,
   `beschreibung_kurz` varchar(255) DEFAULT NULL,
   `beschreibung_lang` text DEFAULT NULL,
@@ -36,7 +51,7 @@ CREATE TABLE `artikel` (
   `aktiv` tinyint(1) DEFAULT 1,
   `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
   `geaendert_am` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `varianten_darstellung` enum('swatches','bilder','dropdown') NOT NULL DEFAULT 'swatches',
+  `varianten_darstellung` varchar(50) NOT NULL DEFAULT 'swatches',
   `grundpreis_bezugsmenge` decimal(8,3) DEFAULT NULL,
   `grundpreis_anzeigen` tinyint(1) DEFAULT 0,
   `ist_vater` tinyint(1) NOT NULL DEFAULT 0,
@@ -45,8 +60,10 @@ CREATE TABLE `artikel` (
   UNIQUE KEY `artikelnummer` (`artikelnummer`),
   KEY `fk_artikel_hersteller` (`hersteller_id`),
   KEY `fk_artikel_steuerklasse` (`steuerklasse_id`),
+  KEY `fk_artikel_artikeltyp` (`artikeltyp_id`),
   CONSTRAINT `fk_artikel_hersteller` FOREIGN KEY (`hersteller_id`) REFERENCES `hersteller` (`id`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_artikel_steuerklasse` FOREIGN KEY (`steuerklasse_id`) REFERENCES `steuerklassen` (`id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_artikel_steuerklasse` FOREIGN KEY (`steuerklasse_id`) REFERENCES `steuerklassen` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_artikel_artikeltyp` FOREIGN KEY (`artikeltyp_id`) REFERENCES `artikel_typen` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Table: artikel_codes

@@ -141,8 +141,7 @@ if (empty($formdata)) {
                 <label for="mobil">mobil</label>
                 <input type="tel" id="mobil" name="mobil"
                     value="<?= htmlspecialchars($formdata['mobil'] ?? '') ?>">
-                <textarea name="notizen" rows="4">
-                <?= htmlspecialchars($formdata['notizen'] ?? '') ?></textarea>
+                <textarea name="notizen" rows="4"><?= htmlspecialchars($formdata['notizen'] ?? '') ?></textarea>
                 <label>Aktiv</label>
                 <select name="aktiv">
                     <option value="1" <?= ($formdata['aktiv'] ?? '1') === '1' ? 'selected' : '' ?>>Ja</option>

@@ -1,25 +1,11 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
-require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 
 // Session Daten holen
 $fehler   = $_SESSION['fehler']   ?? [];
-$erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
-$service = new LieferantenService();
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $ergebnis = $service->save($_POST);
-    if ($ergebnis['erfolg']) {
-        $_SESSION['erfolg'] = 'Lieferant erfolgreich angelegt!';
-        header('Location: detail.php?id=' . $ergebnis['id']);
-        exit;
-    } else {
-        $fehler   = $ergebnis['fehler'];
-        $formdata = $_POST;
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -106,12 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </ul>
         </div>
     <?php endif; ?>
-    <?php if ($erfolg): ?>
-        <div class="erfolg-box">
-            <?= htmlspecialchars($erfolg) ?>
-        </div>
-    <?php endif; ?>
-    <form method="POST" action="neu.php">
+    <form method="POST" action="speichern.php">
         <div class="gruppe">
             <label for="name">Name <span class="pflicht">*</span></label>
             <input type="text" id="name" name="name"

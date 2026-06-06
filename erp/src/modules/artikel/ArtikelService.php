@@ -160,4 +160,9 @@ class ArtikelService
     {
         return $this->kategorieRepo->findByArtikelId($artikelId);
     }
+
+    public function getAllArtikelTypen(): array
+    {
+        return $this->repo->findAllArtikelTypen();
+    }
 }

@@ -58,7 +58,7 @@ class LieferantenService
     public function delete(int $id): array
     {
         if ($this->repo->findById($id) === false) {
-            return ['erfolg' => false, 'fehler' => 'Lieferant nicht gefunden'];
+            return ['erfolg' => false, 'fehler' => ['Lieferant nicht gefunden']];
         }
         $this->repo->deactivate($id);
         Logger::log('lieferant.loeschen', 'lieferanten', $id);
@@ -98,7 +98,7 @@ class LieferantenService
     {
         // 1. Validieren
         if (empty($data['nachname'])) {
-            return ['erfolg' => false, 'fehler' => 'Nachname ist ein Pflichtfeld'];
+            return ['erfolg' => false, 'fehler' => ['Nachname ist ein Pflichtfeld']];
         };
 
         // 2. Speichern
@@ -112,7 +112,7 @@ class LieferantenService
     {
         // 1. Validieren
         if (empty($data['nachname'])) {
-            return ['erfolg' => false, 'fehler' => 'Nachname ist ein Pflichtfeld'];
+            return ['erfolg' => false, 'fehler' => ['Nachname ist ein Pflichtfeld']];
         };
 
         // 2. Speichern
@@ -126,7 +126,7 @@ class LieferantenService
     {
         // 1. validieren
         if ($this->repo->findVertreterById($id) === false) {
-            return ['erfolg' => false, 'fehler' => 'Vertreter nicht gefunden'];
+            return ['erfolg' => false, 'fehler' => ['Vertreter nicht gefunden']];
         }
         $this->repo->deactivateVertreter($id);
         Logger::log('vertreter.loeschen', 'lieferanten_vertreter', $id);
