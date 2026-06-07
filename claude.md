@@ -614,6 +614,18 @@ $result = $service->wareneingang([
 - Business Rule: VarKombi-Vater KANN NICHT gleichzeitig Stückliste sein (gegenseitiger Ausschluss)
 - Kasse bei Duplikat-EAN: Auswahl-Dialog statt Blockade
 
+### Artikel-Modul: Noch offen (vor nächsten Modulen)
+- **Filterung** in liste.php — nach Typ, Hersteller, Kategorie, "nur mit Bestand"
+- **Artikel kopieren** — UNBEDINGT, selektierbar was übernommen wird (Kategorien, Merkmale, Lieferanten, Preise, Varianten)
+- **Merkmale-UI** — Formular zum Befüllen (Nadelstärke, Garngruppe, Maschenprobe) — spätestens mit Shop
+- **Preistabellen-UI** — alle Kundengruppen + Staffelpreise (derzeit UI nur für Endkunde)
+- **Lieferanten-Tab in detail.php** — Tab vorhanden, zeigt noch nichts
+- **Qualitätslisten** — fehlende EAN, doppelte EAN, fehlende Bilder
+- **SEO-Felder** — meta_titel, meta_description (Schema-Erweiterung, für Shop)
+- **Mehrsprachigkeit** — Tabelle vorbereiten, nicht vertieft einbauen
+- **Bestellvorschläge** — Artikel unter Mindestbestand, Saisonlogik — beim Einkaufsmodul vollenden
+- Varianten-System (Achsen/Werte), VarKombi, Seriennummern, Bilder-Upload — geplant
+
 ### Neue Module (Reihenfolge)
 4. **Kundendatenbank** — Stammdaten, Adresse, UID, Newsletter
 5. **Bestellwesen** — Lieferantenbestellungen: wann/von wem/was/EK-Preis/Status. Wareneingang referenziert Bestellung.
