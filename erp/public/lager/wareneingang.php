@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
+$allelieferanten = (new LieferantenService())->findAll();
 
 $fehler  = $_SESSION['fehler']  ?? [];
 $erfolg  = $_SESSION['erfolg']  ?? null;
@@ -66,6 +68,18 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
                     </option>
                 <?php endforeach; ?>
             </select>
+
+            <label>Lieferant (optional)</label>
+            <select name="lieferant_id">
+                <option value="">– kein Lieferant –</option>
+                <?php foreach ($allelieferanten as $l): ?>
+                    <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+
+            <label>EK-Preis (optional)</label>
+            <input type="number" step="0.0001" name="ek_preis" placeholder="0.0000">
+
 
             <label>Menge *</label>
             <input type="number" step="0.001" name="menge" min="0.001">

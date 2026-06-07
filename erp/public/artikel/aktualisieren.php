@@ -23,7 +23,7 @@ $artikelData = array_intersect_key($data, array_flip([
     'name',
     'beschreibung_kurz',
     'beschreibung_lang',
-    'einheit',
+    'einheit_id',
     'inhalt_menge',
     'inhalt_einheit',
     'gewicht_artikel',

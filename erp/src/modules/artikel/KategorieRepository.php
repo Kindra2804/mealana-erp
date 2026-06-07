@@ -62,4 +62,12 @@ class KategorieRepository
             throw $e; // Fehler weiterwerfen oder entsprechend behandeln
         }
     }
+
+    public function insert(string $name): int
+    {
+        $stmt = $this->db->prepare("INSERT INTO kategorien (name) VALUES (:name)");
+        $stmt->execute(['name' => $name]);
+
+        return $this->db->lastInsertId();
+    }
 }

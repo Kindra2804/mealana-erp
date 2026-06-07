@@ -2,17 +2,25 @@
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/ArtikelRepository.php';
 require_once __DIR__ . '/KategorieRepository.php';
+require_once __DIR__ . '/EinheitenRepository.php';
 
 class ArtikelService
 {
     private ArtikelRepository $repo;
     private KategorieRepository $kategorieRepo;
+    private EinheitenRepository $einheitenRepo;
 
 
     public function __construct()
     {
         $this->repo = new ArtikelRepository();
         $this->kategorieRepo = new KategorieRepository();
+        $this->einheitenRepo = new EinheitenRepository();
+    }
+
+    public function getAllEinheiten(): array
+    {
+        return $this->einheitenRepo->findAll();
     }
 
     public function save(array $data): array
@@ -195,6 +203,21 @@ class ArtikelService
         return $this->repo->findCodesByArtikelId($artikelId);
     }
 
+    public function createKategorie(string $name): array
+    {
+        $trimmed = trim($name);
+        if (empty($trimmed)) {
+            return ['erfolg' => false, 'fehler' => 'Name darf nicht leer sein'];
+        }
+
+        $id = $this->kategorieRepo->insert($trimmed);
+        if ($id) {
+            return ['erfolg' => true, 'id' => $id, 'name' => $trimmed];
+        } else {
+            return ['erfolg' => false, 'fehler' => 'Fehler beim speichern'];
+        }
+    }
+
     // Hilfsmethoden für Dropdown-Daten — bis eigene Services existieren
     public function getAllHersteller(): array
     {
@@ -204,5 +227,10 @@ class ArtikelService
     public function getAllSteuerklassen(): array
     {
         return $this->repo->findAllSteuerklassen();
+    }
+
+    public function getDetailArtikel(int $id): array|false
+    {
+        return $this->repo->findByIdMitPreisen($id);
     }
 }

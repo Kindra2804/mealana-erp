@@ -19,6 +19,8 @@ $service = new ArtikelService();
 $alleKategorien   = $service->getAlleKategorien();
 $zugewieseneIds   = array_column($service->getKategorienFuerArtikel($id), 'id');
 $artikelTypen     = $service->getAllArtikelTypen();
+$alleEinheiten = $service->getAllEinheiten();
+
 
 // Artikel aus DB laden – aber Session hat Vorrang bei Fehler!
 if (empty($formdata)) {
@@ -127,6 +129,46 @@ function selected(string $field, string $value, array $formdata): string
             padding: 10px;
             margin-bottom: 20px;
             border-radius: 4px;
+        }
+
+        /* Kategorie-Modal */
+        #kat-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #kat-modal {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            min-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #kat-checkboxen label {
+            display: block;
+            margin-bottom: 0.4rem;
+        }
+
+        #kat-aktionen {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chip {
+            display: inline-block;
+            background: #e0e0e0;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            margin: 0.2rem;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -247,17 +289,22 @@ function selected(string $field, string $value, array $formdata): string
                 value="<?= old('ean_gtin13', $formdata) ?>" maxlength="13">
         </div>
 
-        <div class="gruppe versteckt" id="felder-physisch">
-            <h2>Inhalt & Einheit</h2>
-
+        <div class="gruppe">
+            <h2>Einheit</h2>
             <label>Einheit</label>
-            <select name="einheit">
-                <option value="Knäuel" <?= selected('einheit', 'Knäuel', $formdata) ?>>Knäuel</option>
-                <option value="Meter" <?= selected('einheit', 'Meter',  $formdata) ?>>Meter</option>
-                <option value="Gramm" <?= selected('einheit', 'Gramm',  $formdata) ?>>Gramm</option>
-                <option value="Stk" <?= selected('einheit', 'Stk',    $formdata) ?>>Stück</option>
+            <select name="einheit_id">
+                <?php foreach ($alleEinheiten as $e): ?>
+                    <option value="<?= $e['id'] ?>"
+                        <?= selected('einheit_id', (string)$e['id'], $formdata) ?>>
+                        <?= htmlspecialchars($e['name']) ?>
+                        <?= $e['kuerzel'] ? ' (' . htmlspecialchars($e['kuerzel']) . ')' : '' ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
+        </div>
 
+        <div class="gruppe versteckt" id="felder-physisch">
+            <h2>Inhalt</h2>
             <label>Inhalt/Menge</label>
             <input type="number" step="0.001" name="inhalt_menge"
                 value="<?= old('inhalt_menge', $formdata) ?>">
@@ -313,20 +360,49 @@ function selected(string $field, string $value, array $formdata): string
 
         <div class="gruppe">
             <h2>Kategorien</h2>
-            <label>Zugewiesene Kategorien (Strg/Cmd gedrückt halten für Mehrfachauswahl)</label>
-            <select name="kategorien[]" multiple size="8">
+            <div id="kat-chips">
                 <?php foreach ($alleKategorien as $k): ?>
-                    <option value="<?= $k['id'] ?>"
-                        <?= in_array($k['id'], $zugewieseneIds) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($k['name']) ?>
-                    </option>
+                    <?php if (in_array($k['id'], $zugewieseneIds)): ?>
+                        <span class="chip"><?= htmlspecialchars($k['name']) ?></span>
+                        <input type="hidden" name="kategorien[]" value="<?= $k['id'] ?>">
+                    <?php endif; ?>
                 <?php endforeach; ?>
-            </select>
+            </div>
+            <button type="button" onclick="katModalOeffnen()">Kategorien bearbeiten</button>
         </div>
 
         <button type="submit">Artikel updaten</button>
 
     </form>
+
+    <div id="kat-backdrop" style="display:none" onclick="katModalSchliessen()">
+        <div id="kat-modal" onclick="event.stopPropagation()">
+            <h3>Kategorien zuweisen</h3>
+
+            <div id="kat-checkboxen">
+                <?php foreach ($alleKategorien as $k): ?>
+                    <label>
+                        <input type="checkbox"
+                            value="<?= $k['id'] ?>"
+                            data-name="<?= htmlspecialchars($k['name']) ?>">
+                        <?= htmlspecialchars($k['name']) ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+
+            <hr>
+
+            <div id="kat-neu">
+                <input type="text" id="neue-kat-name" placeholder="Neue Kategorie...">
+                <button type="button" onclick="katAnlegen()">Anlegen</button>
+            </div>
+
+            <div id="kat-aktionen">
+                <button type="button" onclick="katUebernehmen()">Übernehmen</button>
+                <button type="button" onclick="katModalSchliessen()">Abbrechen</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Beim Laden: gespeicherten Typ wiederherstellen
@@ -425,6 +501,76 @@ function selected(string $field, string $value, array $formdata): string
         // Berechnungen beim Laden anstoßen falls Werte vorhanden
         berechneNetto();
         berechneGrundpreis();
+
+        function katModalSchliessen() {
+            document.getElementById('kat-backdrop').style.display = 'none';
+        }
+
+        function katModalOeffnen() {
+            const kategorienArray = [...document.querySelectorAll('input[name="kategorien[]"]')].map(input => input.value);
+
+            document.querySelectorAll('#kat-checkboxen input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = kategorienArray.includes(checkbox.value);
+            });
+
+            document.getElementById('kat-backdrop').style.display = 'flex';
+        }
+
+        function katUebernehmen() {
+            const angehakt = [...document.querySelectorAll('#kat-checkboxen input[type="checkbox"]:checked')];
+            document.querySelectorAll('input[name="kategorien[]"]').forEach(el => el.remove());
+            const chips = document.getElementById('kat-chips');
+
+            chips.innerHTML = '';
+            angehakt.forEach(cb => {
+                // 1. Hidden Input
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'kategorien[]';
+                input.value = cb.value;
+                chips.appendChild(input);
+
+                // 2. Chip-Anzeige
+                const span = document.createElement('span');
+                span.className = 'chip';
+                span.textContent = cb.dataset.name;
+                chips.appendChild(span);
+            });
+            katModalSchliessen();
+        }
+
+        async function katAnlegen() {
+            const katName = document.getElementById('neue-kat-name').value?.trim();
+            if (!katName) {
+                return;
+            }
+
+            const response = await fetch('kategorie_neu.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'name=' + encodeURIComponent(katName)
+            });
+            const data = await response.json();
+
+            if (!data.erfolg) {
+                alert(data.fehler);
+                return;
+            }
+
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = data.id;
+            cb.dataset.name = data.name;
+            cb.checked = true;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + data.name));
+            document.getElementById('kat-checkboxen').appendChild(label);
+
+            document.getElementById('neue-kat-name').value = '';
+        }
     </script>
 
 </body>

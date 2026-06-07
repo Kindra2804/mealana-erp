@@ -52,6 +52,8 @@ class LagerService
             'artikel_varianten_id' => $data['artikel_varianten_id'] ?? null,
             'artikel_id'           => $data['artikel_id'] ?? null,
             'lager_id'             => $data['lager_id'],
+            'lieferant_id'         => $data['lieferant_id'] ?? null,
+            'ek_preis'             => $data['ek_preis'] ?? null,
             'charge'               => $chargePflicht ? $data['charge'] : null,
             'bewegungstyp'         => 'eingang',
             'menge'                => $data['menge'],

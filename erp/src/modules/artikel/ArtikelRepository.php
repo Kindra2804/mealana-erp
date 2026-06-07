@@ -32,6 +32,7 @@ class ArtikelRepository
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN artikel_varianten av ON av.artikel_id = a.id
             LEFT JOIN lagerbestand lb ON lb.artikel_varianten_id = av.id
+                OR (av.id IS NULL AND lb.artikel_id = a.id)
             $where
             GROUP BY a.id
         ");
@@ -60,7 +61,8 @@ class ArtikelRepository
                 at.name AS artikeltyp_name,
                 a.aktiv,
                 a.beschreibung_lang,
-                a.einheit,
+                a.einheit_id,
+                e.name AS einheit_name,
                 a.gewicht_artikel,
                 a.inhalt_einheit,
                 a.inhalt_menge,
@@ -73,6 +75,7 @@ class ArtikelRepository
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN einheiten e ON a.einheit_id = e.id
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             WHERE a.id = :id
         ");
@@ -85,18 +88,21 @@ class ArtikelRepository
     {
         $stmt = $this->db->prepare("
         SELECT
-            id,
-            artikelnummer,
-            gtin,
-            farbe_name,
-            farbe_hex,
-            bild_url,
-            brutto_vk,
-            aktiv
-        FROM artikel_varianten
-        WHERE artikel_id = :artikel_id
-        AND aktiv = 1
-        ORDER BY farbe_name ASC
+            av.id,
+            av.artikelnummer,
+            av.gtin,
+            av.farbe_name,
+            av.farbe_hex,
+            av.bild_url,
+            av.brutto_vk,
+            av.aktiv,
+            COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+        FROM artikel_varianten av
+        LEFT JOIN lagerbestand lb ON lb.artikel_varianten_id = av.id
+        WHERE av.artikel_id = :artikel_id
+        AND av.aktiv = 1
+        GROUP BY av.id
+        ORDER BY av.farbe_name ASC
     ");
 
         $stmt->execute(['artikel_id' => $artikelId]);
@@ -173,7 +179,7 @@ class ArtikelRepository
             name,
             beschreibung_kurz,
             beschreibung_lang,
-            einheit,
+            einheit_id,
             inhalt_menge,
             inhalt_einheit,
             gewicht_artikel,
@@ -193,7 +199,7 @@ class ArtikelRepository
             :name,
             :beschreibung_kurz,
             :beschreibung_lang,
-            :einheit,
+            :einheit_id,
             :inhalt_menge,
             :inhalt_einheit,
             :gewicht_artikel,
@@ -226,7 +232,7 @@ class ArtikelRepository
             name = :name,
             beschreibung_kurz = :beschreibung_kurz,
             beschreibung_lang = :beschreibung_lang,
-            einheit = :einheit,
+            einheit_id = :einheit_id,
             inhalt_menge = :inhalt_menge,
             inhalt_einheit = :inhalt_einheit,
             gewicht_artikel = :gewicht_artikel,

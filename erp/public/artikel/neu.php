@@ -14,6 +14,7 @@ $service = new ArtikelService();
 $hersteller    = $service->getAllHersteller();
 $steuerklassen = $service->getAllSteuerklassen();
 $artikelTypen  = $service->getAllArtikelTypen();
+$alleEinheiten = $service->getAllEinheiten();
 
 // Hilfsfunktion: war dieser Wert im letzten Submit?
 function old(string $field, array $formdata, string $default = ''): string
@@ -214,16 +215,22 @@ function selected(string $field, string $value, array $formdata): string
                 value="<?= old('ean_gtin13', $formdata) ?>" maxlength="13">
         </div>
 
-        <div class="gruppe versteckt" id="felder-physisch">
-            <h2>Inhalt & Einheit</h2>
-
+        <div class="gruppe">
+            <h2>Einheit</h2>
             <label>Einheit</label>
-            <select name="einheit">
-                <option value="Knäuel" <?= selected('einheit', 'Knäuel', $formdata) ?>>Knäuel</option>
-                <option value="Meter" <?= selected('einheit', 'Meter',  $formdata) ?>>Meter</option>
-                <option value="Gramm" <?= selected('einheit', 'Gramm',  $formdata) ?>>Gramm</option>
-                <option value="Stk" <?= selected('einheit', 'Stk',    $formdata) ?>>Stück</option>
+            <select name="einheit_id">
+                <?php foreach ($alleEinheiten as $e): ?>
+                    <option value="<?= $e['id'] ?>"
+                        <?= selected('einheit_id', (string)$e['id'], $formdata) ?>>
+                        <?= htmlspecialchars($e['name']) ?>
+                        <?= $e['kuerzel'] ? ' (' . htmlspecialchars($e['kuerzel']) . ')' : '' ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
+        </div>
+
+        <div class="gruppe versteckt" id="felder-physisch">
+            <h2>Inhalt</h2>
 
             <label>Inhalt/Menge</label>
             <input type="number" step="0.001" name="inhalt_menge"
