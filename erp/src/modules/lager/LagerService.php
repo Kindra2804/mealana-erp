@@ -1,15 +1,86 @@
 <?php
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/LagerRepository.php';
+require_once __DIR__ . '/../artikel/ArtikelRepository.php';
 
 class LagerService
 {
     private LagerRepository $repo;
+    private ArtikelRepository $artikelRepo;
 
     public function __construct()
     {
         $this->repo = new LagerRepository();
+        $this->artikelRepo = new ArtikelRepository();
     }
+
+    private function getJarvisId(): int
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepare("SELECT id FROM benutzer WHERE username = 'system'");
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
+    }
+
+    private function pruefAuslaufartikelStatus(?int $varianteId, ?int $artikelId, float $neuerBestand): void
+    {
+        $jarvisId = $this->getJarvisId();
+
+        if ($varianteId !== null) {
+            $variante = $this->artikelRepo->findVarianteById($varianteId);
+            if (!$variante || !$variante['ist_auslaufartikel']) return;
+
+            $sollAktiv = $neuerBestand > 0 ? 1 : 0;
+
+            // 1. Variante aktivieren/deaktivieren
+            if ($variante['aktiv'] != $sollAktiv) {
+                $this->artikelRepo->setVarianteAktiv($variante['id'], $sollAktiv);
+
+                // 2. Logger-Eintrag mit Jarvis
+                Logger::log('variante_artikel_aktiv.geaendert', 'artikel_varianten', $varianteId, [
+                    'aktiv' => $variante['aktiv'],
+                    'id' => $variante['id'],
+                    'artikel_id' => $variante['artikel_id'],
+                    'artikelnummer' => $variante['artikelnummer']
+                ], $jarvisId);
+                // 3. Vater prüfen: countAktiveVarianten → setArtikelAktiv + Logger
+
+                $vater = $this->artikelRepo->findById($variante['artikel_id']);
+                $nochKinderAktiv = $this->artikelRepo->countAktiveVarianten($variante['artikel_id']);
+
+                $vaterSollAktiv = $nochKinderAktiv > 0 ? 1 : 0;
+
+                if ($vater['aktiv'] != $vaterSollAktiv) {
+                    $this->artikelRepo->setArtikelAktiv($variante['artikel_id'], $vaterSollAktiv);
+                    Logger::log('artikel_aktiv.geaendert', 'artikel', $variante['artikel_id'], [
+                        'aktiv' => $variante['aktiv'],
+                        'id' => $variante['id'],
+                        'artikel_id' => $variante['artikel_id'],
+                        'artikelnummer' => $variante['artikelnummer'],
+                        'farbe_name' => $variante['farbe_name']
+                    ], $jarvisId);
+                }
+            }
+        } elseif ($artikelId !== null) {
+            $artikel = $this->artikelRepo->findById($artikelId);
+            if (!$artikel || !$artikel['ist_auslaufartikel']) return;
+
+            $sollAktiv = $neuerBestand > 0 ? 1 : 0;
+
+            if ($artikel['aktiv'] != $sollAktiv) {
+                // 1. Artikel aktivieren/deaktivieren
+                $this->artikelRepo->setArtikelAktiv($artikel['id'], $sollAktiv);
+
+                // 2. Logger-Eintrag mit Jarvis
+                Logger::log('artikel_aktiv.geaendert', 'artikel', $artikel['id'], [
+                    'aktiv' => $artikel['aktiv'],
+                    'id' => $artikel['id'],
+                    'name' => $artikel['name']
+                ], $jarvisId);
+            }
+        }
+    }
+
 
     public function wareneingang(array $data): array
     {
@@ -46,6 +117,13 @@ class LagerService
             'bestand'              => $bestandNachher,
             'mindestbestand'       => $data['mindestbestand'] ?? 0
         ]);
+
+        // prüfen auf Auslaufartikel und ggf. inaktiv/aktiv stellen
+        $this->pruefAuslaufartikelStatus(
+            $data['artikel_varianten_id'] ?? null,
+            $data['artikel_id'] ?? null,
+            $bestandNachher
+        );
 
         // Bewegung protokollieren
         $bewegungId = $this->repo->insertBewegung([

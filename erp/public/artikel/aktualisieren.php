@@ -13,6 +13,10 @@ if (!isset($data['charge_pflicht']) || $data['charge_pflicht'] != '1') {
     $data['charge_pflicht'] = '0';
 }
 
+if (!isset($data['ist_auslaufartikel']) || $data['ist_auslaufartikel'] != '1') {
+    $data['ist_auslaufartikel'] = '0';
+}
+
 // aktualisieren.php muss diese Felder herausfiltern:
 $artikelData = array_intersect_key($data, array_flip([
     'id',
@@ -34,6 +38,7 @@ $artikelData = array_intersect_key($data, array_flip([
     'grundpreis_bezugsmenge',
     'grundpreis_anzeigen',
     'charge_pflicht',
+    'ist_auslaufartikel',
     'aktiv'
 ]));
 

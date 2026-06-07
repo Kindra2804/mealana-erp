@@ -6,6 +6,9 @@ $id = (int) ($_GET['id'] ?? 0);
 
 $service = new ArtikelService();
 
+$zeigeInaktive = isset($_GET['inaktive']) && $_GET['inaktive'] == '1';
+$varianten = $service->getVariantenFuerArtikel($id, $zeigeInaktive);
+
 $artikel = $service->getDetailArtikel($id);
 $kategorien = $service->getKategorienFuerArtikel($id);
 $codes = $service->getCodesByArtikelId($id); // (für EAN);
@@ -71,7 +74,12 @@ if ($artikel === false) {
     </div>
     <div id="tab-varianten" class="tab-inhalt versteckt">
         <h2>Varianten</h2>
-        <?php if (empty($artikel['varianten'])): ?>
+        <?php if ($zeigeInaktive): ?>
+            <a href="detail.php?id=<?= $id  ?>">Nur aktive anzeigen</a>
+        <?php else: ?>
+            <a href="detail.php?id=<?= $id  ?>&inaktive=1">Auch deaktivierte anzeigen</a>
+        <?php endif; ?>
+        <?php if (empty($varianten)): ?>
             <p>Noch keine Varianten angelegt.</p>
         <?php else: ?>
             <table>
@@ -81,11 +89,21 @@ if ($artikel === false) {
                     <th>GTIN</th>
                     <th>Preis</th>
                     <th>Bestand</th>
+                    <th>Auslaufartikel</th>
                     <th>Aktiv</th>
                     <th>Aktionen</th>
                 </tr>
-                <?php foreach ($artikel['varianten'] as $v): ?>
-                    <tr>
+                <?php foreach ($varianten as $v): ?>
+                    <?php
+                    if (!$v['aktiv']) {
+                        $zeilenstil = 'background:#fff3cd; color:#999;';
+                    } elseif ($v['ist_auslaufartikel']) {
+                        $zeilenstil = 'background:#ffe0b2; color:#e65100;'; // #ff8201
+                    } else {
+                        $zeilenstil = '';
+                    }
+                    ?>
+                    <tr style="<?= $zeilenstil ?>">
                         <td><?= htmlspecialchars($v['artikelnummer']) ?></td>
                         <td>
                             <?php if ($v['farbe_hex']): ?>
@@ -99,6 +117,7 @@ if ($artikel === false) {
                         <td><?= htmlspecialchars($v['gtin'] ?? '–') ?></td>
                         <td><?= $v['brutto_vk'] ? number_format($v['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
                         <td><?= $v['gesamtbestand'] ?></td>
+                        <td><?= $v['ist_auslaufartikel'] ? '✅' : ''  ?></td>
                         <td><?= $v['aktiv'] ? '✅' : '❌' ?></td>
                         <td><a href="variante_bearbeiten.php?id=<?= $v['id'] ?>">✏️</a></td>
                     </tr>

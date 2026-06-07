@@ -25,7 +25,7 @@ $stmt = $db->prepare("
     FROM artikel_varianten v
     INNER JOIN artikel a ON v.artikel_id = a.id
     WHERE a.ist_vater = 1
-    AND v.aktiv = 1
+    AND (v.aktiv = 1 OR v.ist_auslaufartikel = 1)
     AND (
         v.artikelnummer LIKE :q
         OR v.gtin = :exact
@@ -47,7 +47,7 @@ $stmt = $db->prepare("
     FROM artikel a
     LEFT JOIN artikel_codes ac ON a.id = ac.artikel_id
     WHERE a.ist_vater = 0
-    AND a.aktiv = 1
+    AND (a.aktiv = 1 OR a.ist_auslaufartikel = 1)
     AND (
         a.artikelnummer LIKE :q
         OR ac.code = :exact

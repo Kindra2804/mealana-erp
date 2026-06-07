@@ -218,6 +218,11 @@ class ArtikelService
         }
     }
 
+    public function getVariantenFuerArtikel(int $id, bool $mitInaktiven = false)
+    {
+        return $this->repo->findVariantenByArtikelId($id, $mitInaktiven);
+    }
+
     // Hilfsmethoden für Dropdown-Daten — bis eigene Services existieren
     public function getAllHersteller(): array
     {

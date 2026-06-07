@@ -9,6 +9,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $variantenData = $_POST;
 
+if (!isset($variantenData['ist_auslaufartikel']) || $variantenData['ist_auslaufartikel'] != '1') {
+    $variantenData['ist_auslaufartikel'] = '0';
+}
+
 // Leere Strings zu NULL konvertieren
 foreach ($variantenData as $key => $value) {
     if ($value === '') {

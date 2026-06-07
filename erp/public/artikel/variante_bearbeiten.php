@@ -167,6 +167,14 @@ function selected(string $field, string $value, array $formdata): string
             <input type="number" step="0.01" name="brutto_vk"
                 value="<?= old('brutto_vk', $formdata) ?>">
 
+            <label>Auslaufartikel</label>
+            <?php if (isset($formdata['ist_auslaufartikel']) && $formdata['ist_auslaufartikel'] == '1') {
+                $auslaufartikelChecked = 'checked';
+            } else {
+                $auslaufartikelChecked = '';
+            } ?>
+            <input type="checkbox" name="ist_auslaufartikel" value="1" <?= $auslaufartikelChecked ?>>
+
             <label>Aktiv</label>
             <select name="aktiv">
                 <option value="1" <?= selected('aktiv', '1', $formdata) ?>>Ja</option>

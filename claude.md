@@ -145,7 +145,7 @@ D:\ERP\mealana\
 └── CLAUDE.md               ← This file
 ```
 
-## Data Model: 28 Tabellen (Stand 2026-06-06)
+## Data Model: 28 Tabellen (Stand 2026-06-07)
 
 ### Core Domain
 ```sql
@@ -165,6 +165,7 @@ artikel             → Master article record
                       - vaterartikel_id INT NULL FK → artikel.id: Kind-Artikel zeigen auf Vater [GEPLANT]
                       - hat_eigenen_lagerstand TINYINT(1) DEFAULT 1: 0 = bucht auf Vater-Lagerstand [GEPLANT]
                       - charge_pflicht TINYINT(1): Chargennummer beim Wareneingang Pflicht
+                      - ist_auslaufartikel TINYINT(1): Auslaufend — auto-deaktiviert bei Bestand=0, auto-reaktiviert bei Wareneingang
                       - seriennummer_pflicht TINYINT(1): Seriennummer pro Stück Pflicht [GEPLANT]
 
 -- Artikel-Konstellationen:
@@ -178,6 +179,7 @@ artikel_varianten   → Color variants (each yarn/meterware has multiple colors)
                       - Varianten-System Umbau (Achsen/Werte) ist geplant als eigenes Modul
                       - bild_url (swatch image)
                       - brutto_vk (variant-specific price, may differ from master)
+                      - ist_auslaufartikel TINYINT(1): analog artikel.ist_auslaufartikel
 
 -- [GEPLANT] Varianten-System Umbau:
 -- artikel_varianten_achsen  → Achsen pro Artikel (Farbe, Stärke, Länge)
@@ -233,6 +235,7 @@ lieferanten_vertreter → Contact persons per supplier
 benutzer            → User accounts
                       - username (UNIQUE), passwort (bcrypt hash), formularname (display name)
                       - aktiv = 0 for soft-disable (never hard delete)
+                      - System-User "Jarvis" (id=2, username='system', passwort='!', aktiv=0) für automatische Log-Einträge
                       - max_sessions INT NULL [GEPLANT]: NULL = system default, sonst eigenes Limit
 
 rollen              → Roles: superadmin, admin, mitarbeiter (+ future: kassier, etc.)
@@ -544,7 +547,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-06)
+## What's Implemented (Stand 2026-06-07)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -581,6 +584,16 @@ $result = $service->wareneingang([
 - Auth.php, Logger.php, login.php, auth_check.php — fertig
 - 3 Rollen: superadmin, admin, mitarbeiter
 - Logger in ArtikelService + LagerService
+- Logger::log() mit optionalem ?int $benutzerId — Fallback auf Session, Jarvis-Einträge mit System-User-ID
+
+### Auslaufartikel-Feature (2026-06-07)
+- Migration 016: ist_auslaufartikel auf artikel + artikel_varianten, Jarvis System-User (username='system')
+- Checkbox in bearbeiten.php + variante_bearbeiten.php
+- Orange Highlighting in liste.php + detail.php (Varianten-Tab)
+- Varianten-Filter in detail.php (?inaktive=1 Toggle)
+- Auto-Reaktivierung in LagerService.pruefAuslaufartikelStatus() bei Wareneingang
+- Vater-Artikel folgt: aktiv wenn mind. 1 Kind aktiv, inaktiv wenn alle Kinder inaktiv
+- variante_suche.php findet Auslaufartikel auch wenn aktiv=0 (für Wareneingang)
 
 ### Schema-Bereinigungen (2026-06-06)
 - Migration 010: varianten_darstellung ENUM → VARCHAR(50)

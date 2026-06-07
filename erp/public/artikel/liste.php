@@ -49,7 +49,16 @@ if ($q !== '') {
             <th>Aktion</th>
         </tr>
         <?php foreach ($artikel as $a): ?>
-            <tr style="<?= $a['aktiv'] ? '' : 'background:#fff3cd; color:#999;' ?>">
+            <?php
+            if (!$a['aktiv']) {
+                $zeilenstil = 'background:#fff3cd; color:#999;';
+            } elseif ($a['ist_auslaufartikel']) {
+                $zeilenstil = 'background:#ffe0b2; color:#e65100;'; // #ff8201
+            } else {
+                $zeilenstil = '';
+            }
+            ?>
+            <tr style="<?= $zeilenstil ?>">
                 <td><a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a></td>
                 <td><?= htmlspecialchars($a['name']) ?></td>
                 <td><?= htmlspecialchars($a['artikeltyp']) ?></td>

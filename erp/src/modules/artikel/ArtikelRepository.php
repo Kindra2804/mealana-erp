@@ -25,6 +25,7 @@ class ArtikelRepository
                 h.name AS hersteller,
                 s.satz AS steuersatz,
                 a.charge_pflicht,
+                a.ist_auslaufartikel,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
@@ -69,6 +70,7 @@ class ArtikelRepository
                 h.name AS hersteller,
                 s.satz AS steuersatz,
                 a.charge_pflicht,
+                a.ist_auslaufartikel,
                 ap.brutto_vk,
                 ap.netto_vk
             FROM artikel a
@@ -84,8 +86,14 @@ class ArtikelRepository
         return $stmt->fetch();
     }
 
-    public function findVariantenByArtikelId(int $artikelId): array
+    public function findVariantenByArtikelId(int $artikelId, bool $mitInaktiven = false): array
     {
+        if ($mitInaktiven === true) {
+            $WHERE = "WHERE av.artikel_id = :artikel_id";
+        } else {
+            $WHERE = "WHERE av.artikel_id = :artikel_id AND av.aktiv = 1";
+        }
+
         $stmt = $this->db->prepare("
         SELECT
             av.id,
@@ -95,12 +103,12 @@ class ArtikelRepository
             av.farbe_hex,
             av.bild_url,
             av.brutto_vk,
+            av.ist_auslaufartikel,
             av.aktiv,
             COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
         FROM artikel_varianten av
         LEFT JOIN lagerbestand lb ON lb.artikel_varianten_id = av.id
-        WHERE av.artikel_id = :artikel_id
-        AND av.aktiv = 1
+        $WHERE
         GROUP BY av.id
         ORDER BY av.farbe_name ASC
     ");
@@ -190,6 +198,7 @@ class ArtikelRepository
             grundpreis_bezugsmenge,
             grundpreis_anzeigen,
             charge_pflicht,
+            ist_auslaufartikel,
             aktiv
         ) VALUES (
             :artikelnummer,
@@ -210,10 +219,11 @@ class ArtikelRepository
             :grundpreis_bezugsmenge,
             :grundpreis_anzeigen,
             :charge_pflicht,
+            :ist_auslaufartikel,
             :aktiv
         )
     ");
-
+        $data['ist_auslaufartikel'] = $data['ist_auslaufartikel'] ?? 0;
         $stmt->execute($data);
         return (int) $this->db->lastInsertId();
     }
@@ -243,6 +253,7 @@ class ArtikelRepository
             grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
             grundpreis_anzeigen = :grundpreis_anzeigen,
             charge_pflicht = :charge_pflicht,
+            ist_auslaufartikel = :ist_auslaufartikel,
             aktiv = :aktiv
         WHERE id = :id
     ");
@@ -353,6 +364,7 @@ class ArtikelRepository
             farbe_hex,
             bild_url,
             brutto_vk,
+            ist_auslaufartikel,
             aktiv
         ) VALUES (
             :artikel_id,
@@ -362,10 +374,11 @@ class ArtikelRepository
             :farbe_hex,
             :bild_url,
             :brutto_vk,
+            :ist_auslaufartikel,
             :aktiv
         )
     ");
-
+        $data['ist_auslaufartikel'] = $data['ist_auslaufartikel'] ?? 0;
         $stmt->execute($data);
         return (int) $this->db->lastInsertId();
     }
@@ -374,7 +387,7 @@ class ArtikelRepository
     {
         $stmt = $this->db->prepare("
         SELECT id, artikel_id, artikelnummer, gtin, 
-               farbe_name, farbe_hex, bild_url, brutto_vk, aktiv
+               farbe_name, farbe_hex, bild_url, brutto_vk, ist_auslaufartikel, aktiv
         FROM artikel_varianten
         WHERE id = :id
     ");
@@ -394,6 +407,7 @@ class ArtikelRepository
             farbe_hex     = :farbe_hex,
             bild_url      = :bild_url,
             brutto_vk     = :brutto_vk,
+            ist_auslaufartikel = :ist_auslaufartikel,
             aktiv         = :aktiv
         WHERE id = :id
     ");
@@ -429,6 +443,7 @@ class ArtikelRepository
         SELECT
             a.id, a.artikelnummer, a.name,
             at.code AS artikeltyp,
+            ist_auslaufartikel,
             a.aktiv,
             h.name AS hersteller
         FROM artikel a
@@ -472,6 +487,45 @@ class ArtikelRepository
             'artikel_id' => $artikelId,
             'typ' => $typ
         ]);
+    }
+
+    public function setVarianteAktiv(int $id, int $aktiv): void
+    {
+        $stmt = $this->db->prepare("
+        UPDATE artikel_varianten SET
+            aktiv = :aktiv
+        WHERE id = :id
+    ");
+        $stmt->execute([
+            'id' => $id,
+            'aktiv' => $aktiv
+        ]);
+    }
+
+    public function setArtikelAktiv(int $id, int $aktiv): void
+    {
+        $stmt = $this->db->prepare("
+        UPDATE artikel SET
+            aktiv = :aktiv
+        WHERE id = :id
+        ");
+        $stmt->execute([
+            'id' => $id,
+            'aktiv' => $aktiv
+        ]);
+    }
+
+    public function countAktiveVarianten(int $artikelId): int
+    {
+        $stmt = $this->db->prepare("
+        SELECT COUNT(aktiv)
+        FROM artikel_varianten
+        WHERE artikel_id = :id AND aktiv = 1
+        ");
+        $stmt->execute([
+            'id' => $artikelId
+        ]);
+        return (int) $stmt->fetchColumn();
     }
 
     // Externe Klassen die derzeit keine eigenen Repos haben
