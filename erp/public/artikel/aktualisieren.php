@@ -25,8 +25,13 @@ $artikelData = array_intersect_key($data, array_flip([
     'steuerklasse_id',
     'artikeltyp',
     'name',
-    'beschreibung_kurz',
-    'beschreibung_lang',
+    'kurzbeschreibung',
+    'beschreibung',
+    'technische_details',
+    'beschreibung_intern',
+    'meta_titel',
+    'meta_description',
+    'url_slug',
     'einheit_id',
     'inhalt_menge',
     'inhalt_einheit',
@@ -45,6 +50,12 @@ $artikelData = array_intersect_key($data, array_flip([
 $artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;
 $artikelData['netto_vk']  = $data['netto_vk']  ?? null;
 $artikelData['ean_gtin13'] = $data['ean_gtin13'] ?? null;
+
+foreach (['technische_details', 'beschreibung_intern', 'meta_titel', 'meta_description', 'url_slug'] as $feld) {
+    if (!array_key_exists($feld, $artikelData)) {
+        $artikelData[$feld] = null;
+    }
+}
 
 // Leere Strings zu NULL konvertieren
 foreach ($artikelData as $key => $value) {

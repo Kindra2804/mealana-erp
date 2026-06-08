@@ -181,12 +181,35 @@ function selected(string $field, string $value, array $formdata): string
             <h2>Beschreibung</h2>
 
             <label>Kurzbeschreibung</label>
-            <input type="text" name="beschreibung_kurz"
-                value="<?= old('beschreibung_kurz', $formdata) ?>">
+            <input type="text" name="kurzbeschreibung"
+                value="<?= old('kurzbeschreibung', $formdata) ?>">
 
             <label>Langbeschreibung</label>
-            <textarea name="beschreibung_lang" rows="6"><?= old('beschreibung_lang', $formdata) ?></textarea>
+            <textarea name="beschreibung" rows="6"><?= old('beschreibung', $formdata) ?></textarea>
+
+            <label>Technische Details</label>
+            <textarea name="technische_details" rows="4"><?= old('technische_details', $formdata) ?></textarea>
+
+            <label>Interne Notiz (nie öffentlich)</label>
+            <textarea name="beschreibung_intern" rows="3"><?= old('beschreibung_intern', $formdata) ?></textarea>
+
         </div>
+
+        <div class="gruppe">
+            <h2>SEO</h2>
+
+            <label>URL-Slug</label>
+            <input type="text" name="url_slug"
+                value="<?= old('url_slug', $formdata) ?>">
+
+            <label>Meta-Titel (max. 70 Zeichen)</label>
+            <input type="text" name="meta_titel" maxlength="70"
+                value="<?= old('meta_titel', $formdata) ?>">
+
+            <label>Meta-Beschreibung (max. 160 Zeichen)</label>
+            <textarea name="meta_description" rows="3" maxlength="160"><?= old('meta_description', $formdata) ?></textarea>
+        </div>
+
 
         <div class="gruppe">
             <h2>Sonstiges</h2>
