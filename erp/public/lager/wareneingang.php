@@ -11,6 +11,8 @@ unset($_SESSION['fehler'], $_SESSION['erfolg']);
 
 $db = Database::getInstance();
 $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
+
+
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -38,6 +40,16 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
         </div>
     <?php endif; ?>
 
+    <div id="deaktivierterArtikelDialog" style="display:none">
+        <p>ACHTUNG !</p>
+        <p> der Artikel <span id="artikelname"></span> wurde am <span id="aenderungsdatum"> </span> deaktiviert !</p>
+        <p>Soll dieser Artikel wieder reaktiviert werden ?</p>
+        <div>
+            <button id="ja" onclick="reaktiviereUndBuche()">JA</button> <button id="Abbruch" onclick="abbruch()">Abbruch</button>
+        </div>
+    </div>
+
+
     <form action="wareneingang_speichern.php" method="POST">
 
         <div class="gruppe">
@@ -54,6 +66,7 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
             <!-- Wird per JS gefüllt wenn Variante gefunden -->
             <input type="hidden" name="artikel_varianten_id" id="artikel_varianten_id">
             <input type="hidden" name="artikel_id" id="artikel_id">
+            <input type="hidden" name="reaktivieren" id="reaktivieren" value="0">
         </div>
 
         <div class="gruppe">
@@ -106,6 +119,8 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
     </form>
 
     <script>
+        let inaktiverArtikel = null;
+
         document.getElementById('scan_suche')
             .addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
@@ -129,8 +144,11 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
                     }
 
                     if (data.length === 1) {
-                        // Direkt auswählen
-                        waehleVariante(data[0]);
+                        if (data[0].aktiv == 0) {
+                            zeigeInaktivDialog(data[0]);
+                        } else {
+                            waehleVariante(data[0]);
+                        };
                         return;
                     }
 
@@ -172,6 +190,28 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
             document.getElementById('variante_ergebnis').innerHTML = '';
             document.getElementById('scan_suche').value = '';
             document.getElementById('scan_suche').focus();
+            document.getElementById("reaktivieren").value = 0;
+        }
+
+        function zeigeInaktivDialog(v) {
+            inaktiverArtikel = v;
+
+            document.getElementById("deaktivierterArtikelDialog").style.display = "block";
+            document.getElementById('artikelname').innerHTML = v.artikel_name;
+            document.getElementById('aenderungsdatum').innerHTML =
+                new Date(v.geaendert_am).toLocaleDateString('de-AT');
+
+        }
+
+        function reaktiviereUndBuche() {
+            document.getElementById("reaktivieren").value = 1;
+            waehleVariante(inaktiverArtikel);
+            document.getElementById("deaktivierterArtikelDialog").style.display = "none";
+        }
+
+        function abbruch() {
+            document.getElementById("deaktivierterArtikelDialog").style.display = "none";
+            varianteZuruecksetzen();
         }
     </script>
 

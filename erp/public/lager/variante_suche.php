@@ -21,11 +21,12 @@ $stmt = $db->prepare("
         v.artikelnummer   AS varianten_artikelnummer,
         v.gtin,
         v.farbe_name,
+        v.aktiv AS aktiv,
+        v.geaendert_am AS geaendert_am,
         a.name            AS artikel_name
     FROM artikel_varianten v
     INNER JOIN artikel a ON v.artikel_id = a.id
     WHERE a.ist_vater = 1
-    AND (v.aktiv = 1 OR v.ist_auslaufartikel = 1)
     AND (
         v.artikelnummer LIKE :q
         OR v.gtin = :exact
@@ -43,11 +44,12 @@ $stmt = $db->prepare("
         NULL        AS varianten_artikelnummer,
         ac.code     AS code,
         NULL        AS farbe_name,
+        a.aktiv AS aktiv,
+        a.geaendert_am AS geaendert_am,
         a.name      AS name
     FROM artikel a
     LEFT JOIN artikel_codes ac ON a.id = ac.artikel_id
     WHERE a.ist_vater = 0
-    AND (a.aktiv = 1 OR a.ist_auslaufartikel = 1)
     AND (
         a.artikelnummer LIKE :q
         OR ac.code = :exact

@@ -89,6 +89,37 @@ class LagerService
             return ['erfolg' => false, 'fehler' => $fehler];
         }
 
+        if (!empty($data['reaktivieren']) && $data['reaktivieren'] == '1') {
+
+            if ($data['artikel_varianten_id'] != null) {
+                $this->artikelRepo->setVariantenAuslaufartikelAktiv($data["artikel_varianten_id"], 1);
+                $this->artikelRepo->setVarianteAktiv($data["artikel_varianten_id"], 1);
+                Logger::log(
+                    'variante.reaktiviert',
+                    'artikel_varianten',
+                    $data['artikel_varianten_id'],
+                    [
+                        'lager_id'             => $data['lager_id'],
+                        'menge'                => $data['menge']
+                    ],
+                    $data["benutzer_id"]
+                );
+            } else {
+                $this->artikelRepo->setAuslaufartikelAktiv($data["artikel_id"], 1);
+                $this->artikelRepo->setArtikelAktiv($data["artikel_id"], 1);
+                Logger::log(
+                    'artikel.reaktiviert',
+                    'artikel',
+                    $data['artikel_id'],
+                    [
+                        'lager_id'             => $data['lager_id'],
+                        'menge'                => $data['menge']
+                    ],
+                    $data["benutzer_id"]
+                );
+            }
+        }
+
         // Aktuellen Bestand holen
         $bestandVorher = $this->repo->getBestand(
             $data['artikel_varianten_id'] ?? null,

@@ -515,6 +515,34 @@ class ArtikelRepository
         ]);
     }
 
+    public function setVariantenAuslaufartikelAktiv(int $id, int $ist_auslaufartikel): void
+    {
+        $stmt = $this->db->prepare("
+        UPDATE artikel_varianten SET
+            ist_auslaufartikel = :ist_auslaufartikel
+            WHERE id = :id
+        ");
+
+        $stmt->execute([
+            'id' => $id,
+            'ist_auslaufartikel' => $ist_auslaufartikel
+        ]);
+    }
+
+    public function setAuslaufartikelAktiv(int $id, int $ist_auslaufartikel): void
+    {
+        $stmt = $this->db->prepare("
+        UPDATE artikel SET
+            ist_auslaufartikel = :ist_auslaufartikel
+            WHERE id = :id
+        ");
+
+        $stmt->execute([
+            'id' => $id,
+            'ist_auslaufartikel' => $ist_auslaufartikel
+        ]);
+    }
+
     public function countAktiveVarianten(int $artikelId): int
     {
         $stmt = $this->db->prepare("
