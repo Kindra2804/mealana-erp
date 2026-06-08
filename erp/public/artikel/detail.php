@@ -25,16 +25,7 @@ if ($artikel === false) {
     <meta charset="UTF-8">
     <title><?= htmlspecialchars($artikel['name']) ?> – MeaLana ERP</title>
 
-    <style>
-        .versteckt {
-            display: none;
-        }
-
-        .tab-btn.aktiv {
-            font-weight: bold;
-            border-bottom: 2px solid #333;
-        }
-    </style>
+    <link rel="stylesheet" href="/mealana/css/app.css">
 
 </head>
 

@@ -34,71 +34,7 @@ function selected(string $field, string $value, array $formdata): string
 <head>
     <meta charset="UTF-8">
     <title>Neuer Artikel – MeaLana ERP</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        .gruppe {
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 4px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        input,
-        select,
-        textarea {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 12px;
-            box-sizing: border-box;
-        }
-
-        .pflicht {
-            color: red;
-        }
-
-        .versteckt {
-            display: none;
-        }
-
-        h2 {
-            color: #333;
-        }
-
-        button {
-            background: #4a7cb5;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            cursor: pointer;
-        }
-
-        .fehler-box {
-            background: #f8d7da;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-
-        .erfolg-box {
-            background: #d4edda;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-    </style>
+    <link rel="stylesheet" href="/mealana/css/app.css">
 </head>
 
 <body>
@@ -289,6 +225,8 @@ function selected(string $field, string $value, array $formdata): string
 
     </form>
 
+    <script src="/mealana/js/artikel.js"></script>
+
     <script>
         // Beim Laden: gespeicherten Typ wiederherstellen
         const gespeicherterTyp = '<?= old('artikeltyp', $formdata) ?>';
@@ -299,34 +237,6 @@ function selected(string $field, string $value, array $formdata): string
         document.getElementById('artikeltyp').addEventListener('change', function() {
             zeigeFelder(this.value);
         });
-
-        function zeigeFelder(typ) {
-            const physisch = document.getElementById('felder-physisch');
-            const grundpreis = document.getElementById('grundpreis_container');
-
-            physisch.classList.add('versteckt');
-            grundpreis.classList.add('versteckt');
-
-            if (['GARN', 'NADEL', 'METERWARE'].includes(typ)) {
-                physisch.classList.remove('versteckt');
-            }
-            if (typ === 'GARN' || typ === 'METERWARE') {
-                grundpreis.classList.remove('versteckt');
-            }
-
-            // Bezugsmenge Label anpassen
-            const label = document.getElementById('bezugsmenge_label');
-            const bezugInput = document.querySelector('[name="grundpreis_bezugsmenge"]');
-            if (typ === 'METERWARE') {
-                label.textContent = 'Grundpreis Bezugsmenge (m)';
-                if (!bezugInput.value) bezugInput.value = 1;
-            } else if (typ === 'GARN') {
-                label.textContent = 'Grundpreis Bezugsmenge (g)';
-                if (!bezugInput.value) bezugInput.value = 100;
-            }
-
-            berechneGrundpreis();
-        }
 
         document.getElementById('brutto_vk').addEventListener('input', function() {
             berechneNetto();
@@ -344,44 +254,6 @@ function selected(string $field, string $value, array $formdata): string
 
         document.querySelector('[name="inhalt_einheit"]')
             ?.addEventListener('input', berechneGrundpreis);
-
-        function berechneNetto() {
-            const brutto = parseFloat(document.getElementById('brutto_vk').value) || 0;
-            const steuerSelect = document.querySelector('[name="steuerklasse_id"]');
-            const satz = parseFloat(
-                steuerSelect.options[steuerSelect.selectedIndex].dataset.satz
-            ) || 20;
-
-            if (brutto > 0) {
-                document.getElementById('netto_vk').value =
-                    (brutto / (1 + satz / 100)).toFixed(4);
-            }
-        }
-
-        function berechneGrundpreis() {
-            const brutto = parseFloat(document.getElementById('brutto_vk').value) || 0;
-            let menge = parseFloat(document.querySelector('[name="inhalt_menge"]')?.value) || 0;
-            const einheit = document.querySelector('[name="inhalt_einheit"]')?.value.toLowerCase().trim();
-            const bezug = parseFloat(document.querySelector('[name="grundpreis_bezugsmenge"]')?.value) || 100;
-
-            if (einheit === 'kg') menge = menge * 1000;
-            if (einheit === 'l') menge = menge * 1000;
-            if (einheit === 'm') menge = menge * 100;
-
-            if (brutto > 0 && menge > 0) {
-                const grundpreis = (brutto / menge) * bezug;
-                const einheitLabel = ['m', 'cm'].includes(einheit) ? 'm' : 'g';
-                document.getElementById('grundpreis_anzeige').textContent =
-                    grundpreis.toFixed(2) + '€ / ' + bezug + einheitLabel;
-            } else {
-                document.getElementById('grundpreis_anzeige').textContent =
-                    '– wird berechnet –';
-            }
-        }
-
-        function oeffnePreistabelle() {
-            alert('Preistabelle kommt bald!');
-        }
 
         // Berechnungen beim Laden anstoßen falls Werte vorhanden
         berechneNetto();

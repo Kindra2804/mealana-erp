@@ -37,71 +37,7 @@ if (empty($formdata)) {
 <head>
     <meta charset="UTF-8">
     <title>Vertreter bearbeiten – MeaLana ERP</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        .gruppe {
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 4px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        input,
-        select,
-        textarea {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 12px;
-            box-sizing: border-box;
-        }
-
-        .pflicht {
-            color: red;
-        }
-
-        .versteckt {
-            display: none;
-        }
-
-        h2 {
-            color: #333;
-        }
-
-        button {
-            background: #4a7cb5;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            cursor: pointer;
-        }
-
-        .fehler-box {
-            background: #f8d7da;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-
-        .erfolg-box {
-            background: #d4edda;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-    </style>
+    <link rel="stylesheet" href="/mealana/css/app.css">
 </head>
 
 <body>
