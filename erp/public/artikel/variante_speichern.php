@@ -3,29 +3,25 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: variante_neu.php');
+    header('Location: liste.php');
     exit;
 }
 
-$variantenData = $_POST;
-
-// Leere Strings zu NULL konvertieren
-foreach ($variantenData as $key => $value) {
-    if ($value === '') {
-        $variantenData[$key] = null;
-    }
+$data = $_POST;
+foreach ($data as $key => $value) {
+    if ($value === '') $data[$key] = null;
 }
 
 $service = new ArtikelService();
-$result = $service->saveVariante($variantenData);
+$result  = $service->saveKind($data);
 
 if ($result['erfolg']) {
     $_SESSION['erfolg'] = 'Variante wurde gespeichert!';
-    header('Location: detail.php?id=' . $variantenData['artikel_id']);
+    header('Location: detail.php?id=' . (int) $data['vaterartikel_id']);
     exit;
 } else {
-    $_SESSION['fehler'] = $result['fehler'];
-    $_SESSION['formdata'] = $variantenData;
-    header('Location: variante_neu.php?artikel_id=' . $variantenData['artikel_id']);
+    $_SESSION['fehler']   = $result['fehler'];
+    $_SESSION['formdata'] = $data;
+    header('Location: variante_neu.php?artikel_id=' . (int) $data['vaterartikel_id']);
     exit;
 }

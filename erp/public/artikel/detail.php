@@ -7,11 +7,11 @@ $id = (int) ($_GET['id'] ?? 0);
 $service = new ArtikelService();
 
 $zeigeInaktive = isset($_GET['inaktive']) && $_GET['inaktive'] == '1';
-$varianten = $service->getVariantenFuerArtikel($id, $zeigeInaktive);
-
-$artikel = $service->getDetailArtikel($id);
-$kategorien = $service->getKategorienFuerArtikel($id);
-$codes = $service->getCodesByArtikelId($id); // (für EAN);
+$kinder        = $service->getKinderFuerArtikel($id, $zeigeInaktive);
+$artikel       = $service->getDetailArtikel($id);
+$kategorien    = $service->getKategorienFuerArtikel($id);
+$codes         = $service->getCodesByArtikelId($id);
+$lieferanten   = $service->getLieferantenFuerArtikel($id);
 
 if ($artikel === false) {
     echo 'Artikel nicht gefunden!';
@@ -24,9 +24,7 @@ if ($artikel === false) {
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars($artikel['name']) ?> – MeaLana ERP</title>
-
     <link rel="stylesheet" href="/mealana/css/app.css">
-
 </head>
 
 <body>
@@ -45,7 +43,7 @@ if ($artikel === false) {
         <h2>Stammdaten</h2>
         <p>Artikelnummer: <?= htmlspecialchars($artikel['artikelnummer']) ?></p>
         <p>Typ: <?= htmlspecialchars($artikel['artikeltyp']) ?></p>
-        <p>Hersteller: <?= htmlspecialchars($artikel['hersteller']) ?></p>
+        <p>Hersteller: <?= htmlspecialchars($artikel['hersteller'] ?? '–') ?></p>
         <p>Steuersatz: <?= $artikel['steuersatz'] ?>%</p>
         <p>Einheit: <?= htmlspecialchars($artikel['einheit_name'] ?? '–') ?></p>
         <p>EAN: <?= htmlspecialchars($codes[0]['code'] ?? '–') ?></p>
@@ -60,17 +58,17 @@ if ($artikel === false) {
                 <?php endforeach; ?>
             </ul>
         <?php endif; ?>
-
-
     </div>
+
     <div id="tab-varianten" class="tab-inhalt versteckt">
         <h2>Varianten</h2>
         <?php if ($zeigeInaktive): ?>
-            <a href="detail.php?id=<?= $id  ?>">Nur aktive anzeigen</a>
+            <a href="detail.php?id=<?= $id ?>">Nur aktive anzeigen</a>
         <?php else: ?>
-            <a href="detail.php?id=<?= $id  ?>&inaktive=1">Auch deaktivierte anzeigen</a>
+            <a href="detail.php?id=<?= $id ?>&inaktive=1">Auch deaktivierte anzeigen</a>
         <?php endif; ?>
-        <?php if (empty($varianten)): ?>
+
+        <?php if (empty($kinder)): ?>
             <p>Noch keine Varianten angelegt.</p>
         <?php else: ?>
             <table>
@@ -84,33 +82,32 @@ if ($artikel === false) {
                     <th>Aktiv</th>
                     <th>Aktionen</th>
                 </tr>
-                <?php foreach ($varianten as $v): ?>
+                <?php foreach ($kinder as $k): ?>
                     <?php
-                    if (!$v['aktiv']) {
+                    if (!$k['aktiv']) {
                         $zeilenstil = 'background:#fff3cd; color:#999;';
-                    } elseif ($v['ist_auslaufartikel']) {
-                        $zeilenstil = 'background:#ffe0b2; color:#e65100;'; // #ff8201
+                    } elseif ($k['ist_auslaufartikel']) {
+                        $zeilenstil = 'background:#ffe0b2; color:#e65100;';
                     } else {
                         $zeilenstil = '';
                     }
                     ?>
                     <tr style="<?= $zeilenstil ?>">
-                        <td><?= htmlspecialchars($v['artikelnummer']) ?></td>
+                        <td><?= htmlspecialchars($k['artikelnummer']) ?></td>
                         <td>
-                            <?php if ($v['farbe_hex']): ?>
-                                <span style="display:inline-block; width:16px; height:16px; 
-                                     background:<?= htmlspecialchars($v['farbe_hex']) ?>; 
-                                     border:1px solid #ccc; vertical-align:middle;">
-                                </span>
+                            <?php if ($k['farbe_hex']): ?>
+                                <span style="display:inline-block; width:16px; height:16px;
+                                     background:<?= htmlspecialchars($k['farbe_hex']) ?>;
+                                     border:1px solid #ccc; vertical-align:middle;"></span>
                             <?php endif; ?>
-                            <?= htmlspecialchars($v['farbe_name']) ?>
+                            <?= htmlspecialchars($k['farbe_name'] ?? '–') ?>
                         </td>
-                        <td><?= htmlspecialchars($v['gtin'] ?? '–') ?></td>
-                        <td><?= $v['brutto_vk'] ? number_format($v['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
-                        <td><?= $v['gesamtbestand'] ?></td>
-                        <td><?= $v['ist_auslaufartikel'] ? '✅' : ''  ?></td>
-                        <td><?= $v['aktiv'] ? '✅' : '❌' ?></td>
-                        <td><a href="variante_bearbeiten.php?id=<?= $v['id'] ?>">✏️</a></td>
+                        <td><?= htmlspecialchars($k['gtin'] ?? '–') ?></td>
+                        <td><?= $k['brutto_vk'] ? number_format($k['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
+                        <td><?= $k['gesamtbestand'] ?></td>
+                        <td><?= $k['ist_auslaufartikel'] ? '✅' : '' ?></td>
+                        <td><?= $k['aktiv'] ? '✅' : '❌' ?></td>
+                        <td><a href="variante_bearbeiten.php?id=<?= $k['id'] ?>">✏️</a></td>
                     </tr>
                 <?php endforeach; ?>
             </table>
@@ -119,11 +116,40 @@ if ($artikel === false) {
             <a href="variante_neu.php?artikel_id=<?= $artikel['id'] ?>">+ Variante hinzufügen</a>
         </p>
     </div>
+
     <div id="tab-lager" class="tab-inhalt versteckt">
         <p>Lagerbestände werden hier angezeigt.</p>
     </div>
     <div id="tab-lieferanten" class="tab-inhalt versteckt">
-        <p>Lieferanten werden hier angezeigt.</p>
+        <?php if (empty($lieferanten)): ?>
+            <p>Keine Lieferanten zugewiesen.</p>
+        <?php else: ?>
+            <table>
+                <tr>
+                    <th>Lieferant</th>
+                    <th>Lief.-Artnr.</th>
+                    <th>Netto-EK</th>
+                    <th>Währung</th>
+                    <th>VPE</th>
+                    <th>Lieferzeit</th>
+                    <th>Mindestabnahme</th>
+                    <th>Standard</th>
+                </tr>
+                <?php foreach ($lieferanten as $l): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($l['lieferant_name']) ?></td>
+                        <td><?= htmlspecialchars($l['artikelnummer_lieferant'] ?? '–') ?></td>
+                        <td><?= $l['netto_ek'] ? number_format($l['netto_ek'], 2, ',', '.') : '–' ?></td>
+                        <td><?= htmlspecialchars($l['waehrung'] ?? '–') ?></td>
+                        <td><?= $l['vpe_menge'] ?? '–' ?></td>
+                        <td><?= $l['lieferzeit_tage'] ? $l['lieferzeit_tage'] . ' Tage' : '–' ?></td>
+                        <td><?= $l['mindestabnahme'] ?? '–' ?></td>
+                        <td><?= $l['standard_lieferant'] ? '⭐' : '' ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php endif; ?>
+
     </div>
 
     <p>

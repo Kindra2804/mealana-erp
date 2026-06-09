@@ -3,33 +3,30 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: variante_bearbeiten.php');
+    header('Location: liste.php');
     exit;
 }
 
-$variantenData = $_POST;
+$data = $_POST;
 
-if (!isset($variantenData['ist_auslaufartikel']) || $variantenData['ist_auslaufartikel'] != '1') {
-    $variantenData['ist_auslaufartikel'] = '0';
+if (!isset($data['ist_auslaufartikel']) || $data['ist_auslaufartikel'] != '1') {
+    $data['ist_auslaufartikel'] = '0';
 }
 
-// Leere Strings zu NULL konvertieren
-foreach ($variantenData as $key => $value) {
-    if ($value === '') {
-        $variantenData[$key] = null;
-    }
+foreach ($data as $key => $value) {
+    if ($value === '') $data[$key] = null;
 }
 
 $service = new ArtikelService();
-$result = $service->varianteUpdate($variantenData);
+$result  = $service->kindUpdate($data);
 
 if ($result['erfolg']) {
     $_SESSION['erfolg'] = 'Variante wurde aktualisiert!';
-    header('Location: detail.php?id=' . (int)$variantenData['artikel_id']);
+    header('Location: detail.php?id=' . (int) $data['vaterartikel_id']);
     exit;
 } else {
-    $_SESSION['fehler'] = $result['fehler'];
-    $_SESSION['formdata'] = $variantenData;
-    header('Location: variante_bearbeiten.php?id=' . (int)$variantenData['id']);
+    $_SESSION['fehler']   = $result['fehler'];
+    $_SESSION['formdata'] = $data;
+    header('Location: variante_bearbeiten.php?id=' . (int) $data['id']);
     exit;
 }

@@ -10,46 +10,45 @@ if (strlen($q) < 2) {
     exit;
 }
 
-$db = Database::getInstance();
+$db   = Database::getInstance();
 $stmt = $db->prepare("
-
-    -- Teil 1: Varianten
-    SELECT 
-        'variante'        AS typ,
-        v.id,
-        a.artikelnummer   AS artikelnummer,
-        v.artikelnummer   AS varianten_artikelnummer,
-        v.gtin,
-        v.farbe_name,
-        v.aktiv AS aktiv,
-        v.geaendert_am AS geaendert_am,
-        a.name            AS artikel_name
-    FROM artikel_varianten v
-    INNER JOIN artikel a ON v.artikel_id = a.id
-    WHERE a.ist_vater = 1
-    AND (
-        v.artikelnummer LIKE :q
-        OR v.gtin = :exact
-        OR v.farbe_name LIKE :q
-        OR a.name LIKE :q
+    -- Kind-Artikel (haben Vater)
+    SELECT
+        'kind'              AS typ,
+        a.id,
+        vater.artikelnummer AS artikelnummer,
+        a.artikelnummer     AS varianten_artikelnummer,
+        ac.code             AS gtin,
+        a.farbe_name,
+        a.aktiv,
+        a.geaendert_am,
+        vater.name          AS artikel_name
+    FROM artikel a
+    INNER JOIN artikel vater ON vater.id = a.vaterartikel_id
+    LEFT JOIN artikel_codes ac ON ac.artikel_id = a.id AND ac.typ = 'GTIN13'
+    WHERE (
+        a.artikelnummer LIKE :q
+        OR ac.code = :exact
+        OR a.farbe_name LIKE :q
+        OR vater.name LIKE :q
     )
 
     UNION ALL
 
-    -- Teil 2: Standalone-Artikel (ist_vater = 0)
-    SELECT 
-        'artikel'   AS typ,
-        a.id        AS id,
-        a.artikelnummer   AS artikelnummer,
-        NULL        AS varianten_artikelnummer,
-        ac.code     AS code,
-        NULL        AS farbe_name,
-        a.aktiv AS aktiv,
-        a.geaendert_am AS geaendert_am,
-        a.name      AS name
+    -- Standalone-Artikel (kein Vater, kein Kind)
+    SELECT
+        'artikel'           AS typ,
+        a.id,
+        a.artikelnummer     AS artikelnummer,
+        NULL                AS varianten_artikelnummer,
+        ac.code             AS gtin,
+        NULL                AS farbe_name,
+        a.aktiv,
+        a.geaendert_am,
+        a.name              AS artikel_name
     FROM artikel a
-    LEFT JOIN artikel_codes ac ON a.id = ac.artikel_id
-    WHERE a.ist_vater = 0
+    LEFT JOIN artikel_codes ac ON ac.artikel_id = a.id AND ac.typ = 'GTIN13'
+    WHERE a.vaterartikel_id IS NULL AND a.ist_vater = 0
     AND (
         a.artikelnummer LIKE :q
         OR ac.code = :exact
@@ -58,13 +57,11 @@ $stmt = $db->prepare("
 
     ORDER BY artikel_name, typ, varianten_artikelnummer
     LIMIT 10
-
-
 ");
 
 $stmt->execute([
     'q'     => '%' . $q . '%',
-    'exact' => $q
+    'exact' => $q,
 ]);
 
 echo json_encode($stmt->fetchAll());

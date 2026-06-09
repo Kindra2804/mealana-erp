@@ -1,57 +1,46 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
-require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
-require_once __DIR__ . '/../../src/core/Database.php';
 
-// ID aus URL holen
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
     header('Location: liste.php');
     exit;
 }
 
-// Session Daten holen
 $fehler   = $_SESSION['fehler']   ?? [];
 $erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
+$service = new ArtikelService();
 
-// Variante aus DB laden – aber Session hat Vorrang bei Fehler!
 if (empty($formdata)) {
-    $controller = new ArtikelController();
-    $variante = $controller->findVarianteFuerBearbeitung($id);
-    if ($variante === false) {
+    $kind = $service->findById($id);
+    if (!$kind) {
         header('Location: liste.php');
         exit;
     }
-    $formdata = $variante;  // ← variantedaten als Formularwerte!
-
+    // GTIN aus artikel_codes laden
+    $codes = $service->getCodesByArtikelId($id);
+    $kind['gtin'] = $codes[0]['code'] ?? '';
+    $formdata = $kind;
 }
 
-// Hilfsfunktion: war dieser Wert im letzten Submit?
-function old(string $field, array $formdata, string $default = ''): string
-{
-    $value = $formdata[$field] ?? $default;
-    return htmlspecialchars((string)($value ?? $default));
+function old(string $field, array $formdata, string $default = ''): string {
+    return htmlspecialchars((string) ($formdata[$field] ?? $default));
 }
-
-// Hilfsfunktion: war diese Option selected?
-function selected(string $field, string $value, array $formdata): string
-{
-    return ((string)($formdata[$field] ?? '')) === $value ? 'selected' : '';
+function selected(string $field, string $value, array $formdata): string {
+    return ((string) ($formdata[$field] ?? '')) === $value ? 'selected' : '';
 }
 ?>
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
     <meta charset="UTF-8">
-    <title>Neue Variante – MeaLana ERP</title>
+    <title>Variante bearbeiten – MeaLana ERP</title>
     <link rel="stylesheet" href="/mealana/css/app.css">
 </head>
-
 <body>
     <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1>Variante bearbeiten</h1>
@@ -62,54 +51,37 @@ function selected(string $field, string $value, array $formdata): string
 
     <?php if (!empty($fehler)): ?>
         <div class="fehler-box">
-            <strong>Bitte korrigiere folgende Fehler:</strong>
-            <ul>
-                <?php foreach ($fehler as $f): ?>
-                    <li><?= htmlspecialchars($f) ?></li>
-                <?php endforeach; ?>
-            </ul>
+            <ul><?php foreach ($fehler as $f): ?>
+                <li><?= htmlspecialchars($f) ?></li>
+            <?php endforeach; ?></ul>
         </div>
     <?php endif; ?>
 
     <form action="variante_aktualisieren.php" method="POST">
-
-        <input type="hidden" name="artikel_id" value="<?= $formdata['artikel_id'] ?>">
         <input type="hidden" name="id" value="<?= $id ?>">
+        <input type="hidden" name="vaterartikel_id" value="<?= (int) ($formdata['vaterartikel_id'] ?? 0) ?>">
 
         <div class="gruppe">
             <h2>Stammdaten</h2>
 
             <label>Artikelnummer <span class="pflicht">*</span></label>
-            <input type="text" name="artikelnummer"
-                value="<?= old('artikelnummer', $formdata) ?>" required>
+            <input type="text" name="artikelnummer" value="<?= old('artikelnummer', $formdata) ?>" required>
 
-            <label>GTIN <span class="pflicht">*</span></label>
-            <input type="text" name="gtin"
-                value="<?= old('gtin', $formdata) ?>">
+            <label>Name / Farbname <span class="pflicht">*</span></label>
+            <input type="text" name="farbe_name" value="<?= old('farbe_name', $formdata) ?>">
 
-            <label>Name <span class="pflicht">*</span></label>
-            <input type="text" name="farbe_name"
-                value="<?= old('farbe_name', $formdata) ?>">
+            <label>Farbe</label>
+            <input type="color" name="farbe_hex" value="<?= old('farbe_hex', $formdata, '#cccccc') ?>">
 
-            <label>Farbauswahl <span class="pflicht">*</span></label>
-            <input type="color" name="farbe_hex"
-                value="<?= old('farbe_hex', $formdata) ?>">
+            <label>GTIN / EAN</label>
+            <input type="text" name="gtin" value="<?= old('gtin', $formdata) ?>">
 
-            <label>Bild <span class="pflicht">*</span></label>
-            <input type="text" name="bild_url"
-                value="<?= old('bild_url', $formdata) ?>">
-
-            <label>Brutto-VK <span class="pflicht">*</span></label>
-            <input type="number" step="0.01" name="brutto_vk"
-                value="<?= old('brutto_vk', $formdata) ?>">
+            <label>Brutto-VK</label>
+            <input type="number" step="0.01" name="brutto_vk" value="<?= old('brutto_vk', $formdata) ?>">
 
             <label>Auslaufartikel</label>
-            <?php if (isset($formdata['ist_auslaufartikel']) && $formdata['ist_auslaufartikel'] == '1') {
-                $auslaufartikelChecked = 'checked';
-            } else {
-                $auslaufartikelChecked = '';
-            } ?>
-            <input type="checkbox" name="ist_auslaufartikel" value="1" <?= $auslaufartikelChecked ?>>
+            <input type="checkbox" name="ist_auslaufartikel" value="1"
+                <?= ($formdata['ist_auslaufartikel'] ?? 0) == 1 ? 'checked' : '' ?>>
 
             <label>Aktiv</label>
             <select name="aktiv">
@@ -118,10 +90,8 @@ function selected(string $field, string $value, array $formdata): string
             </select>
         </div>
 
-        <button type="submit">Variante updaten</button>
-
+        <button type="submit">Variante speichern</button>
+        <a href="detail.php?id=<?= (int) ($formdata['vaterartikel_id'] ?? 0) ?>">Abbrechen</a>
     </form>
-
 </body>
-
 </html>

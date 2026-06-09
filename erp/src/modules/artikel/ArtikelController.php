@@ -11,25 +11,20 @@ class ArtikelController
         $this->repo = new ArtikelRepository();
     }
 
-    public function index(bool $mitInaktiven = false): array
+    public function index(array $filter = []): array
     {
-        return $this->repo->findAll($mitInaktiven);
+        return $this->repo->findAll($filter);
     }
 
     public function detail(int $id): array|false
     {
-        if ($id <= 0) {
-            return false;
-        }
-
-        return $this->repo->findByIdMitVarianten($id);
+        if ($id <= 0) return false;
+        return $this->repo->findByIdMitKindern($id);
     }
 
     public function findFuerBearbeitung(int $id): array|false
     {
-        if ($id <= 0) {
-            return false;
-        }
+        if ($id <= 0) return false;
         return $this->repo->findById($id);
     }
 
@@ -39,15 +34,9 @@ class ArtikelController
         return $this->repo->deactivate($id);
     }
 
-    public function findVarianteFuerBearbeitung(int $id): array|false
-    {
-        if ($id <= 0) return false;
-        return $this->repo->findVarianteById($id);
-    }
-
-    public function search(string $q): array
-    {
-        if (strlen($q) < 2) return [];
-        return $this->repo->search($q);
-    }
+    // public function search(string $q): array
+    // {
+    //     if (strlen($q) < 2) return [];
+    //     return $this->repo->search($q);
+    // }
 }

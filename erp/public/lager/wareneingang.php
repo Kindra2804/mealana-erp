@@ -63,8 +63,7 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
 
             <div id="variante_ergebnis" style="margin-top:10px;"></div>
 
-            <!-- Wird per JS gefüllt wenn Variante gefunden -->
-            <input type="hidden" name="artikel_varianten_id" id="artikel_varianten_id">
+            <!-- Wird per JS gefüllt wenn Artikel gefunden -->
             <input type="hidden" name="artikel_id" id="artikel_id">
             <input type="hidden" name="reaktivieren" id="reaktivieren" value="0">
         </div>
@@ -164,13 +163,7 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
         }
 
         function waehleVariante(v) {
-            if (v.typ === 'variante') {
-                document.getElementById('artikel_varianten_id').value = v.id;
-                document.getElementById('artikel_id').value = '';
-            } else {
-                document.getElementById('artikel_varianten_id').value = '';
-                document.getElementById('artikel_id').value = v.id;
-            }
+            document.getElementById('artikel_id').value = v.id;
 
             document.getElementById('variante_ergebnis').innerHTML = `
         <div style="background:#d4edda; padding:10px; border-radius:4px;">
@@ -185,7 +178,6 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
         }
 
         function varianteZuruecksetzen() {
-            document.getElementById('artikel_varianten_id').value = '';
             document.getElementById('artikel_id').value = '';
             document.getElementById('variante_ergebnis').innerHTML = '';
             document.getElementById('scan_suche').value = '';

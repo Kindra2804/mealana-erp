@@ -1,18 +1,24 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
+require_once __DIR__ . '/../../src/core/Database.php';
 
 $controller = new ArtikelController();
 
-$zeigeInaktive = isset($_GET['inaktive']) && $_GET['inaktive'] == '1';
-$artikel = $controller->index($zeigeInaktive);
+$db = Database::getInstance();
+$alleHersteller  = $db->query("SELECT id, name FROM hersteller WHERE aktiv = 1 ORDER BY name")->fetchAll();
+$alleArtikeltypen = $db->query("SELECT id, name FROM artikel_typen ORDER BY name")->fetchAll();
 
-$q = trim($_GET['q'] ?? '');
-if ($q !== '') {
-    $artikel = $controller->search($q);
-} else {
-    $artikel = $controller->index($zeigeInaktive);
-}
+
+$filter = [
+    'q'             => trim($_GET['q'] ?? ''),
+    'hersteller_id' => (int)($_GET['hersteller_id'] ?? 0) ?: null,
+    'artikeltyp_id' => (int)($_GET['artikeltyp_id'] ?? 0) ?: null,
+    'nurMitBestand' => isset($_GET['nurMitBestand']),
+    'mitInaktiven'  => isset($_GET['inaktive']),
+];
+$artikel = $controller->index($filter);
+
 
 ?>
 <!DOCTYPE html>
@@ -26,16 +32,33 @@ if ($q !== '') {
 <body>
     <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1>Artikel</h1>
-    <?php if ($zeigeInaktive): ?>
-        <a href="liste.php">Nur aktive anzeigen</a>
-    <?php else: ?>
-        <a href="liste.php?inaktive=1">Auch deaktivierte anzeigen</a>
-    <?php endif; ?>
+
+
     <a href="neu.php">+ Neuer Artikel</a>
     <form method="GET" action="liste.php">
         <input type="text" name="q"
             value="<?= htmlspecialchars($_GET['q'] ?? '') ?>"
             placeholder="Artikel suchen...">
+        <select name="hersteller_id">
+            <option value="">– Hersteller –</option>
+            <?php foreach ($alleHersteller as $h): ?>
+                <option value="<?= $h['id'] ?>" <?= ($_GET['hersteller_id'] ?? '') == $h['id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($h['name']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <select name="artikeltyp_id">
+            <option value="">– Artikel-Typ –</option>
+            <?php foreach ($alleArtikeltypen as $t): ?>
+                <option value="<?= $t['id'] ?>" <?= ($_GET['artikeltyp_id'] ?? '') == $t['id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($t['name']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <label><input type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand</label>
+        <label><input type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
         <button type="submit">🔍</button>
     </form>
     <table>

@@ -16,7 +16,7 @@ Claude ist Trainer – Konzepte erklären, selbst schreiben lassen, Fehler mit E
 ## Stack
 
 - **PHP** 8+, OOP, kein Framework (bewusst!)
-- **MySQL 8** (utf8mb4, kein MariaDB)
+- **MariaDB** (XAMPP verwendet MariaDB, nicht MySQL 8 — relevant für CHECK CONSTRAINT Syntax: `DROP CONSTRAINT name` statt `DROP CHECK name`)
 - **Vanilla JavaScript** (kein Framework)
 - **XAMPP** on Windows (D:\ERP\mealana\ root)
 - **VSC** + Git + PowerShell
@@ -615,15 +615,14 @@ $result = $service->wareneingang([
 - Kasse bei Duplikat-EAN: Auswahl-Dialog statt Blockade
 
 ### Artikel-Modul: Noch offen (vor nächsten Modulen)
-- **Filterung** in liste.php — nach Typ, Hersteller, Kategorie, "nur mit Bestand"
-- **Artikel kopieren** — UNBEDINGT, selektierbar was übernommen wird (Kategorien, Merkmale, Lieferanten, Preise, Varianten)
+- ~~**Filterung** in liste.php~~ ✓ erledigt 2026-06-09
+- ~~**Lieferanten-Tab in detail.php**~~ ✓ erledigt 2026-06-09
+- **Artikel kopieren** 🔄 — kopieren.php fertig; kopieren_speichern.php + ArtikelService::kopiere() + Repository (copyPreise/copyKategorien/copyMerkmale/copyLieferanten via INSERT...SELECT) noch offen
+- **ueberverkauf_erlaubt** in bearbeiten.php + neu.php einbauen (Checkbox) — Migration 020 erledigt, UI fehlt noch
 - **Merkmale-UI** — Formular zum Befüllen (Nadelstärke, Garngruppe, Maschenprobe) — spätestens mit Shop
 - **Preistabellen-UI** — alle Kundengruppen + Staffelpreise (derzeit UI nur für Endkunde)
-- **Lieferanten-Tab in detail.php** — Tab vorhanden, zeigt noch nichts
 - **Qualitätslisten** — fehlende EAN, doppelte EAN, fehlende Bilder
-- **SEO-Felder** — meta_titel, meta_description (Schema-Erweiterung, für Shop)
-- **Mehrsprachigkeit** — Tabelle vorbereiten, nicht vertieft einbauen
-- **Bestellvorschläge** — Artikel unter Mindestbestand, Saisonlogik — beim Einkaufsmodul vollenden
+- **Bestellvorschläge** — beim Einkaufsmodul vollenden
 - Varianten-System (Achsen/Werte), VarKombi, Seriennummern, Bilder-Upload — geplant
 
 ### Neue Module (Reihenfolge)
