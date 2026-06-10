@@ -39,11 +39,30 @@ if ($artikel === false) {
 
     <h1>Artikel: <?= htmlspecialchars($artikel['name']) ?> (Art.Nr.: <?= htmlspecialchars($artikel['artikelnummer']) ?>) kopieren</h1>
 
+    <?php if ($erfolg): ?>
+        <div class="erfolg-box"><?= htmlspecialchars($erfolg) ?></div>
+    <?php endif; ?>
+
+    <?php if (!empty($fehler)): ?>
+        <div class="fehler-box">
+            <strong>Bitte korrigiere folgende Fehler:</strong>
+            <ul>
+                <?php foreach ($fehler as $f): ?>
+                    <li><?= htmlspecialchars($f) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
     <form action="kopieren_speichern.php" method="POST">
         <input type="hidden" name="quell_id" value="<?= $id ?>">
 
         <div class="gruppe">
             <h2>Kopiereinstellungen</h2>
+
+            <label>neuer Artikelname <span class="pflicht">*</span></label>
+            <input type="text" name="name"
+                value="<?= htmlspecialchars($artikel['name']) ?>-KOPIE" required>
 
             <label>neue Artikelnummer <span class="pflicht">*</span></label>
             <input type="text" name="artikelnummer"

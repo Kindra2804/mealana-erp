@@ -205,8 +205,11 @@ class ArtikelRepository
 
     public function insert(array $data): int
     {
-        $data['artikeltyp_id'] = $this->resolveArtikeltypId($data['artikeltyp']);
-        unset($data['artikeltyp']);
+        if (!$data['artikeltyp_id']) {
+            $data['artikeltyp_id'] = $this->resolveArtikeltypId($data['artikeltyp']);
+            unset($data['artikeltyp']);
+        }
+
 
         $stmt = $this->db->prepare("
             INSERT INTO artikel (
@@ -509,5 +512,125 @@ class ArtikelRepository
     public function findAllSteuerklassen(): array
     {
         return $this->db->query("SELECT id, name, satz FROM steuerklassen WHERE aktiv = 1")->fetchAll();
+    }
+
+    public function copyPreise(int $quellId, int $neueId)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO artikel_preise (
+                artikel_id,
+                kundengruppen_id,
+                brutto_vk,
+                netto_vk,
+                gueltig_ab,
+                gueltig_bis
+                )
+            SELECT 
+                :neue_id,
+                kundengruppen_id,
+                brutto_vk,
+                netto_vk,
+                gueltig_ab,
+                gueltig_bis
+            FROM artikel_preise
+            WHERE artikel_id = :quell_id
+        ");
+
+        $stmt->execute([
+            'neue_id' => $neueId,
+            'quell_id' => $quellId
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function copyKategorien(int $quellId, int $neueId)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO artikel_kategorien (
+                artikel_id,
+                kategorie_id
+                )
+            SELECT 
+                :neue_id,
+                kategorie_id
+            FROM artikel_kategorien
+            WHERE artikel_id = :quell_id
+        ");
+
+        $stmt->execute([
+            'neue_id' => $neueId,
+            'quell_id' => $quellId
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function copyMerkmale(int $quellId, int $neueId)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO artikel_merkmale (
+                artikel_id,
+                merkmal_id,
+                wert_text,
+                wert_zahl,
+                wert_bool
+                )
+            SELECT 
+                :neue_id,
+                merkmal_id,
+                wert_text,
+                wert_zahl,
+                wert_bool
+            FROM artikel_merkmale
+            WHERE artikel_id = :quell_id
+        ");
+
+        $stmt->execute([
+            'neue_id' => $neueId,
+            'quell_id' => $quellId
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function copyLieferanten(int $quellId, int $neueId)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO artikel_lieferanten (
+                artikel_id,
+                lieferant_id,
+                artikelnummer_lieferant,
+                netto_ek,
+                waehrung,
+                vpe_menge,
+                vpe_ean,
+                lieferzeit_tage,
+                mindestabnahme,
+                standard_lieferant,
+                aktiv
+                )
+            SELECT 
+                :neue_id,
+                lieferant_id,
+                NULL,
+                NULL,
+                waehrung,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                0,
+                aktiv
+            FROM artikel_lieferanten
+            WHERE artikel_id = :quell_id
+        ");
+
+        $stmt->execute([
+            'neue_id' => $neueId,
+            'quell_id' => $quellId
+        ]);
+
+        return $stmt->rowCount() > 0;
     }
 }

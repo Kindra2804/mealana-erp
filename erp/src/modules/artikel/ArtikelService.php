@@ -296,4 +296,87 @@ class ArtikelService
 
         return $fehler;
     }
+
+    public function kopiere(int $quell_id, array $kopierData): array
+    {
+        $quellArtikel = $this->repo->findById($quell_id);
+
+        if (empty($quellArtikel)) {
+            return ['erfolg' => false, 'fehler' => ['Artikel nicht gefunden']];
+        }
+
+        $vorhanden = $this->repo->findByArtikelnummer($kopierData['artikelnummer']);
+        if ($vorhanden !== false) {
+            return ['erfolg' => false, 'fehler' => ['Artikelnummer ' . $kopierData['artikelnummer'] . ' existiert bereits!']];
+        }
+
+        $neuerArtikel = $quellArtikel;  // alle Felder vom Original
+        $neuerArtikel['artikelnummer'] = $kopierData['artikelnummer'];  // neue Nummer
+        $neuerArtikel['name'] = $kopierData['name'];  // neuer Name
+        $neuerArtikel['aktiv']         = 0;
+        $neuerArtikel['url_slug']      = null;
+        unset($neuerArtikel['id']);
+
+        if ($kopierData['ueberverkauf'] === '0') {
+            $neuerArtikel['ueberverkauf_erlaubt'] = 0;
+        }
+
+        $neuerArtikelGefiltert = array_intersect_key($neuerArtikel, array_flip([
+            'vaterartikel_id',
+            'hat_eigenen_lagerstand',
+            'artikelnummer',
+            'hersteller_id',
+            'steuerklasse_id',
+            'artikeltyp_id',
+            'name',
+            'farbe_name',
+            'farbe_hex',
+            'kurzbeschreibung',
+            'beschreibung',
+            'technische_details',
+            'beschreibung_intern',
+            'meta_titel',
+            'meta_description',
+            'url_slug',
+            'einheit_id',
+            'inhalt_menge',
+            'inhalt_einheit',
+            'gewicht_artikel',
+            'gewicht_versand',
+            'herkunftsland',
+            'taric_code',
+            'varianten_darstellung',
+            'grundpreis_bezugsmenge',
+            'grundpreis_anzeigen',
+            'charge_pflicht',
+            'ist_auslaufartikel',
+            'ueberverkauf_erlaubt',
+            'aktiv'
+        ]));
+
+        $neueId = $this->repo->insert($neuerArtikelGefiltert);
+
+        if ($kopierData['preise']) {
+            $this->repo->copyPreise($quell_id, $neueId);
+        }
+
+        if ($kopierData['kategorien']) {
+            $this->repo->copyKategorien($quell_id, $neueId);
+        }
+
+        if ($kopierData['merkmale']) {
+            $this->repo->copyMerkmale($quell_id, $neueId);
+        }
+
+        if ($kopierData['lieferanten']) {
+            $this->repo->copyLieferanten($quell_id, $neueId);
+        }
+
+
+        if (!$neueId) {
+            return ['erfolg' => false, 'fehler' => ['Fehler beim speichern ']];
+        }
+
+        return ['erfolg' => true, 'id' => $neueId];
+    }
 }

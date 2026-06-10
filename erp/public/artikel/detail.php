@@ -30,7 +30,14 @@ if ($artikel === false) {
 <body>
     <?php require_once __DIR__ . '/../includes/nav.php'; ?>
 
-    <h1><?= htmlspecialchars($artikel['name']) ?></h1>
+    <h1><?= htmlspecialchars($artikel['name']) ?> <?= ($artikel['aktiv'] != 1) ? '(deaktiviert !)' : ''; ?></h1>
+
+    <?php if ($artikel['aktiv'] != 1): ?>
+        <div style="background: #fff3cd; color: #856404; border: 1px solid #ffc107; padding: 10px; margin-bottom: 10px">
+            (dieser Artikel ist deaktiviert !)
+        </div>
+    <?php endif; ?>
+
 
     <div class="tabs">
         <button class="tab-btn aktiv" onclick="zeigeTab('stammdaten')">Stammdaten</button>
@@ -155,6 +162,7 @@ if ($artikel === false) {
     <p>
         <a href="liste.php">Liste</a>
         <a href="bearbeiten.php?id=<?= $artikel['id'] ?>">✏️ Bearbeiten</a>
+        <a href="kopieren.php?id=<?= $artikel['id'] ?>">copy</a>
         <a href="neu.php">Neuer Artikel</a>
     </p>
 

@@ -92,6 +92,7 @@ $artikel = $controller->index($filter);
                     <a href="bearbeiten.php?id=<?= $a['id'] ?>">✏️</a>
                     <a href="delete.php?id=<?= $a['id'] ?>"
                         onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
+                    <a href="kopieren.php?id=<?= $a['id'] ?>">copy</a>
                 </td>
             </tr>
         <?php endforeach; ?>
