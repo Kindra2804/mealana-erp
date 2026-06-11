@@ -114,6 +114,9 @@ function selected(string $field, string $value, array $formdata): string
     <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1>Artikel bearbeiten</h1>
 
+    <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>">⚙️ Achsen & Werte konfigurieren</a>
+
+
     <?php if ($erfolg): ?>
         <div class="erfolg-box"><?= htmlspecialchars($erfolg) ?></div>
     <?php endif; ?>

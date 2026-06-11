@@ -27,20 +27,24 @@ if (empty($formdata)) {
     $formdata = $kind;
 }
 
-function old(string $field, array $formdata, string $default = ''): string {
+function old(string $field, array $formdata, string $default = ''): string
+{
     return htmlspecialchars((string) ($formdata[$field] ?? $default));
 }
-function selected(string $field, string $value, array $formdata): string {
+function selected(string $field, string $value, array $formdata): string
+{
     return ((string) ($formdata[$field] ?? '')) === $value ? 'selected' : '';
 }
 ?>
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <title>Variante bearbeiten – MeaLana ERP</title>
     <link rel="stylesheet" href="/mealana/css/app.css">
 </head>
+
 <body>
     <?php require_once __DIR__ . '/../includes/nav.php'; ?>
     <h1>Variante bearbeiten</h1>
@@ -52,8 +56,9 @@ function selected(string $field, string $value, array $formdata): string {
     <?php if (!empty($fehler)): ?>
         <div class="fehler-box">
             <ul><?php foreach ($fehler as $f): ?>
-                <li><?= htmlspecialchars($f) ?></li>
-            <?php endforeach; ?></ul>
+                    <li><?= htmlspecialchars($f) ?></li>
+                <?php endforeach; ?>
+            </ul>
         </div>
     <?php endif; ?>
 
@@ -88,4 +93,5 @@ function selected(string $field, string $value, array $formdata): string {
         <a href="detail.php?id=<?= (int) ($formdata['vaterartikel_id'] ?? 0) ?>">Abbrechen</a>
     </form>
 </body>
+
 </html>

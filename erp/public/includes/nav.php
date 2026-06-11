@@ -40,6 +40,10 @@
             style="color:white; margin-right:20px; text-decoration:none;">
             🎨 Varianten
         </a>
+        <a href="/mealana/achsen/liste.php"
+            style="color:white; margin-right:20px; text-decoration:none;">
+            📐 Achsen
+        </a>
     </div>
     <div>
         <span style="color:white; margin-right:15px;">
