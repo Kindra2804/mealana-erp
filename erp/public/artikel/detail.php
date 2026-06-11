@@ -38,6 +38,12 @@ if ($artikel === false) {
         </div>
     <?php endif; ?>
 
+    <?php if ($artikel['ueberverkauf_erlaubt'] == 1): ?>
+        <div style="background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; padding: 10px; margin-bottom: 10px">
+            Achtung: dieser Artikel hat Überverkauf aktiviert !
+        </div>
+    <?php endif; ?>
+
 
     <div class="tabs">
         <button class="tab-btn aktiv" onclick="zeigeTab('stammdaten')">Stammdaten</button>
@@ -101,14 +107,7 @@ if ($artikel === false) {
                     ?>
                     <tr style="<?= $zeilenstil ?>">
                         <td><?= htmlspecialchars($k['artikelnummer']) ?></td>
-                        <td>
-                            <?php if ($k['farbe_hex']): ?>
-                                <span style="display:inline-block; width:16px; height:16px;
-                                     background:<?= htmlspecialchars($k['farbe_hex']) ?>;
-                                     border:1px solid #ccc; vertical-align:middle;"></span>
-                            <?php endif; ?>
-                            <?= htmlspecialchars($k['farbe_name'] ?? '–') ?>
-                        </td>
+                        <td><?= htmlspecialchars($k['name'] ?? '–') ?></td>
                         <td><?= htmlspecialchars($k['gtin'] ?? '–') ?></td>
                         <td><?= $k['brutto_vk'] ? number_format($k['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
                         <td><?= $k['gesamtbestand'] ?></td>

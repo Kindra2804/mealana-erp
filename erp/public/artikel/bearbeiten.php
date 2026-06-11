@@ -296,13 +296,6 @@ function selected(string $field, string $value, array $formdata): string
             <input type="text" name="taric_code"
                 value="<?= old('taric_code', $formdata) ?>">
 
-            <label>Varianten-Darstellung</label>
-            <select name="varianten_darstellung">
-                <option value="swatches" <?= selected('varianten_darstellung', 'swatches',  $formdata) ?>>Farb-Swatches</option>
-                <option value="bilder" <?= selected('varianten_darstellung', 'bilder',    $formdata) ?>>Bilder</option>
-                <option value="dropdown" <?= selected('varianten_darstellung', 'dropdown',  $formdata) ?>>Dropdown</option>
-            </select>
-
             <label>Chargenartikel</label>
             <?php if (isset($formdata['charge_pflicht']) && $formdata['charge_pflicht'] == '1') {
                 $chargePflichtChecked = 'checked';
@@ -318,6 +311,14 @@ function selected(string $field, string $value, array $formdata): string
                 $auslaufartikelChecked = '';
             } ?>
             <input type="checkbox" name="ist_auslaufartikel" value="1" <?= $auslaufartikelChecked ?>>
+
+            <label>Überverkauf erlaubt</label>
+            <?php if (isset($formdata['ueberverkauf_erlaubt']) && $formdata['ueberverkauf_erlaubt'] == '1') {
+                $ueberverkaufChecked = 'checked';
+            } else {
+                $ueberverkaufChecked = '';
+            } ?>
+            <input type="checkbox" name="ueberverkauf_erlaubt" value="1" <?= $ueberverkaufChecked ?>>
 
             <label>Aktiv</label>
             <select name="aktiv">

@@ -48,7 +48,6 @@ $zeilen = $service->getNachzutragendeChargen();
             <tr>
                 <th>Artikel</th>
                 <th>Name / Variante</th>
-                <th>Farbe</th>
                 <th>Lager</th>
                 <th>Bestand</th>
                 <th>Menge neue Charge</th>
@@ -60,7 +59,6 @@ $zeilen = $service->getNachzutragendeChargen();
                         <input type="hidden" name="lagerbestand_id" value="<?= $zeile['id'] ?>">
                         <td><?= htmlspecialchars($zeile['vater_nr']) ?></td>
                         <td><?= htmlspecialchars($zeile['artikel_name']) ?></td>
-                        <td><?= htmlspecialchars($zeile['farbe_name'] ?? '–') ?></td>
                         <td><?= htmlspecialchars($zeile['lager_name']) ?></td>
                         <td><?= $zeile['bestand'] ?></td>
                         <td>

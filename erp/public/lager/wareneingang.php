@@ -155,8 +155,7 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
                     div.innerHTML = data.map(v => `
                 <div style="border:1px solid #ddd; padding:8px; margin:4px; cursor:pointer;"
                      onclick="waehleVariante(${JSON.stringify(v).replace(/"/g, '&quot;')})">
-                    <strong>${v.artikelnummer}</strong> – 
-                    ${v.farbe_name} – ${v.artikel_name}
+                    <strong>${v.artikelnummer}</strong> – ${v.artikel_name}
                 </div>
             `).join('');
                 });
@@ -168,7 +167,6 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
             document.getElementById('variante_ergebnis').innerHTML = `
         <div style="background:#d4edda; padding:10px; border-radius:4px;">
             ✅ <strong>${v.artikelnummer}</strong> – ${v.artikel_name}
-            ${v.farbe_name ? '<br><small>' + v.farbe_name + '</small>' : ''}
 
 
             <button type="button" onclick="varianteZuruecksetzen()" 

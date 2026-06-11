@@ -19,7 +19,6 @@ $stmt = $db->prepare("
         vater.artikelnummer AS artikelnummer,
         a.artikelnummer     AS varianten_artikelnummer,
         ac.code             AS gtin,
-        a.farbe_name,
         a.aktiv,
         a.geaendert_am,
         vater.name          AS artikel_name
@@ -29,7 +28,6 @@ $stmt = $db->prepare("
     WHERE (
         a.artikelnummer LIKE :q
         OR ac.code = :exact
-        OR a.farbe_name LIKE :q
         OR vater.name LIKE :q
     )
 
@@ -42,7 +40,6 @@ $stmt = $db->prepare("
         a.artikelnummer     AS artikelnummer,
         NULL                AS varianten_artikelnummer,
         ac.code             AS gtin,
-        NULL                AS farbe_name,
         a.aktiv,
         a.geaendert_am,
         a.name              AS artikel_name

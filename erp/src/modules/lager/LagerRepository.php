@@ -29,7 +29,7 @@ class LagerRepository
             SELECT
                 l.id, l.name, l.aktiv, l.typ,
                 lb.charge, lb.charge_status, lb.bestand, lb.mindestbestand,
-                a.id AS ArtikelID, a.farbe_name AS Farbe
+                a.id AS ArtikelID
             FROM lager l
             INNER JOIN lagerbestand lb ON l.id = lb.lager_id
             INNER JOIN artikel a ON a.id = lb.artikel_id
@@ -46,7 +46,7 @@ class LagerRepository
             SELECT
                 l.id, l.name, l.aktiv, l.typ,
                 lb.charge, lb.charge_status, lb.bestand, lb.mindestbestand,
-                a.id AS ArtikelID, a.farbe_name AS Farbe
+                a.id AS ArtikelID
             FROM lager l
             INNER JOIN lagerbestand lb ON l.id = lb.lager_id
             INNER JOIN artikel a ON a.id = lb.artikel_id
@@ -63,7 +63,7 @@ class LagerRepository
             SELECT
                 l.id, l.name, l.aktiv, l.typ,
                 lb.charge, lb.charge_status, lb.bestand, lb.mindestbestand,
-                a.id AS ArtikelID, a.farbe_name AS Farbe
+                a.id AS ArtikelID
             FROM lager l
             INNER JOIN lagerbestand lb ON l.id = lb.lager_id
             INNER JOIN artikel a ON a.id = lb.artikel_id
@@ -82,7 +82,6 @@ class LagerRepository
                 COALESCE(vater.name, a.name) AS artikel_name,
                 COALESCE(vater.artikelnummer, a.artikelnummer) AS vater_nr,
                 CASE WHEN a.vaterartikel_id IS NOT NULL THEN a.artikelnummer END AS variante_nr,
-                a.farbe_name,
                 l.name AS lager_name,
                 lb.bestand,
                 lb.artikel_id
@@ -92,7 +91,7 @@ class LagerRepository
             INNER JOIN lager l ON l.id = lb.lager_id
             WHERE lb.charge_status = 'nachzutragen'
             AND a.charge_pflicht = 1
-            ORDER BY artikel_name, a.farbe_name
+            ORDER BY artikel_name, a.name
         ");
         return $stmt->fetchAll();
     }
@@ -241,7 +240,7 @@ class LagerRepository
                 NULL AS vater_artikelnummer,
                 vater.name AS artikel_name,
                 a.artikelnummer AS varianten_artikelnummer,
-                a.farbe_name AS farbe,
+                a.name AS farbe,
                 l.name AS lager_name,
                 lb.bestand AS bestand,
                 lb.charge AS charge,

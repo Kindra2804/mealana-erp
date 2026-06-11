@@ -125,7 +125,7 @@ D:\ERP\mealana\
 │   │           └── MerkmalController.php
 │   │
 │   ├── database/
-│   │   ├── mealana_erp.sql   ← Schema (all 15 tables)
+│   │   ├── schema_current.sql   ← Aktueller Dump (33 Tabellen, Stand 2026-06-11)
 │   │   └── migrations/
 │   │       ├── 001_hersteller.sql
 │   │       ├── 002_steuerklassen.sql
@@ -145,7 +145,7 @@ D:\ERP\mealana\
 └── CLAUDE.md               ← This file
 ```
 
-## Data Model: 28 Tabellen (Stand 2026-06-07)
+## Data Model: 33 Tabellen (Stand 2026-06-11)
 
 ### Core Domain
 ```sql
@@ -160,35 +160,29 @@ artikel_typen       → Artikeltypen (code: GARN/NADEL/METERWARE/DOWNLOAD/SET/ST
 ```sql
 artikel             → Master article record
                       - artikeltyp_id FK → artikel_typen (kein ENUM mehr)
-                      - varianten_darstellung VARCHAR(50) DEFAULT 'swatches' (kein ENUM)
                       - ist_vater TINYINT(1): Vater-Artikel (hat Achsen/Kinder)
-                      - vaterartikel_id INT NULL FK → artikel.id: Kind-Artikel zeigen auf Vater [GEPLANT]
-                      - hat_eigenen_lagerstand TINYINT(1) DEFAULT 1: 0 = bucht auf Vater-Lagerstand [GEPLANT]
+                      - vaterartikel_id INT NULL FK → artikel.id: Kind-Artikel zeigen auf Vater
+                      - hat_eigenen_lagerstand TINYINT(1) DEFAULT 1: 0 = bucht auf Vater-Lagerstand
+                      - ueberverkauf_erlaubt TINYINT(1): Verkauf auch bei Bestand ≤ 0 (Shop + Kasse)
                       - charge_pflicht TINYINT(1): Chargennummer beim Wareneingang Pflicht
                       - ist_auslaufartikel TINYINT(1): Auslaufend — auto-deaktiviert bei Bestand=0, auto-reaktiviert bei Wareneingang
                       - seriennummer_pflicht TINYINT(1): Seriennummer pro Stück Pflicht [GEPLANT]
 
 -- Artikel-Konstellationen:
 -- Typ 1: Standard         — kein vaterartikel_id, keine Achsen
--- Typ 3: Variationsartikel — Achsen/Werte definiert, lagerbestand per Variante
+-- Typ 3: Variationsartikel — Achsen/Werte definiert, lagerbestand per Variante (Kind-Artikel)
 -- Typ 4a: VarKombi-Kind  — vaterartikel_id gesetzt, hat_eigenen_lagerstand=1
 -- Typ 4b: VarKombi-Kind  — vaterartikel_id gesetzt, hat_eigenen_lagerstand=0 (Vater-Pool)
-
-artikel_varianten   → Color variants (each yarn/meterware has multiple colors)
-                      - farbe_hex, farbe_name (e.g. "Rot", "#FF0000") — NOCH DRIN
-                      - Varianten-System Umbau (Achsen/Werte) ist geplant als eigenes Modul
-                      - bild_url (swatch image)
-                      - brutto_vk (variant-specific price, may differ from master)
-                      - ist_auslaufartikel TINYINT(1): analog artikel.ist_auslaufartikel
-
--- [GEPLANT] Varianten-System Umbau:
--- artikel_varianten_achsen  → Achsen pro Artikel (Farbe, Stärke, Länge)
--- varianten_achse_werte     → Werte je Achse (Rot/#FF0000, 3mm, 40cm) + optionaler aufpreis
--- artikel_variante_wert_zuordnung → Welcher Wert für welche Variante/welches Kind
 
 artikel_codes       → GTIN/ISBN/internal codes per article
                       - Kein UNIQUE-Constraint: Duplikat-Erkennung App-seitig
                       - Qualitätslisten: fehlende EAN bei Kind-Artikeln, doppelte EAN systemweit
+
+-- Varianten-System (Achsen/Werte — Migrations 022–027, fertig):
+varianten_achsen    → Globale Achsen (Farbe, Stärke, Länge) — darstellungsform VARCHAR(30)
+varianten_achse_werte → Werte je Artikel+Achse (Rot, 3mm) — aufpreis, wert_zusatz (z.B. Hex)
+artikel_achsen      → Zuweisungen Achse→Artikel, inkl. bedingte Anzeige (bedingungs_achse_id/wert_id)
+varianten_kombination_werte → Verknüpft Kind-Artikel mit ihren Achswerten (composite PK)
 
 -- [GEPLANT] seriennummern → Einzelstück-Tracking (analog Chargen)
 --   status: lager|reserviert|verkauft|defekt|verloren
@@ -205,10 +199,15 @@ artikel_preise      → Price matrix per (article, customer_group, date_range)
 ```sql
 lager               → Warehouses: Ladengeschäft, Messe, Extern, Lager
 
-lagerbestand        → Stock levels per (variant, warehouse)
-                      - UNIQUE(artikel_varianten_id, lager_id)
+lagerbestand        → Stock levels per (artikel, warehouse)
+                      - UNIQUE(artikel_id, lager_id, charge) — charge kann NULL sein
                       - charge tracking for yarn (Farbkonsistenz critical!)
                       - charge_status: erfasst|unbekannt|nachzutragen
+
+reservierungen      → Überverkauf-Reservierungen (wenn ueberverkauf_erlaubt=1 und Bestand ≤ 0)
+                      - kanal VARCHAR(30): 'shop'|'kasse'|'manuell'
+                      - referenz_tabelle + referenz_id: polymorphic link (z.B. bestellungen)
+                      - status VARCHAR(20): 'offen'|'erledigt'|'storniert'
 
 lager_bewegungen    → Immutable audit log of all movements
                       - Movement type: eingang|ausgang|korrektur|inventur
@@ -547,22 +546,24 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-07)
+## What's Implemented (Stand 2026-06-11)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
 - Create with form repopulation on error
-- Edit
-- Soft delete (aktiv = 0)
+- Edit, Soft delete (aktiv = 0)
+- Artikel kopieren (kopieren.php + kopieren_speichern.php + ArtikelService::kopiere())
 - Price storage (artikel_preise table, standard customer group)
-- Detail view with variants
+- Detail view mit Tab-Navigation (Stammdaten / Varianten+Kinder / Lager / Lieferanten)
 - artikeltyp kommt aus DB (artikel_typen Tabelle, kein ENUM)
+- Lieferanten-Tab in detail.php
+- Filterung in liste.php (aktiv/inaktiv, Suche)
 
-### Varianten Module (CRUD Complete)
-- Create variant with color picker (farbe_hex)
-- Edit variant
-- Display in article detail (colored circles/swatches)
-- HINWEIS: farbe_name/farbe_hex noch in artikel_varianten — Umbau auf Achsen/Werte-System ist geplant als eigenes Modul
+### Varianten-System (DB fertig, UI folgt)
+- Migrations 022–027 ausgeführt: Achsen, Werte, Kombinationen, Datenmigration, Aufräumen
+- farbe_name/farbe_hex/varianten_darstellung vollständig aus DB + PHP entfernt
+- Kind-Artikel (Varianten) werden als artikel-Einträge mit vaterartikel_id gespeichert
+- UI noch offen: Achsen-Verwaltung, Achsen zuweisen, VarKombi-Generator
 
 ### Lager Module (Functional)
 - Goods receipt with EAN barcode scan support
@@ -577,35 +578,22 @@ $result = $service->wareneingang([
 - Vertreter CRUD pro Lieferant (neu/bearbeiten/löschen)
 - Alle Handler als separate speichern.php / aktualisieren.php (kein Inline-POST)
 
-### Navigation
-- nav.php included on all pages
-
 ### Auth & RBAC (vollständig)
 - Auth.php, Logger.php, login.php, auth_check.php — fertig
 - 3 Rollen: superadmin, admin, mitarbeiter
-- Logger in ArtikelService + LagerService
 - Logger::log() mit optionalem ?int $benutzerId — Fallback auf Session, Jarvis-Einträge mit System-User-ID
 
-### Auslaufartikel-Feature (2026-06-07)
-- Migration 016: ist_auslaufartikel auf artikel + artikel_varianten, Jarvis System-User (username='system')
-- Checkbox in bearbeiten.php + variante_bearbeiten.php
-- Orange Highlighting in liste.php + detail.php (Varianten-Tab)
-- Varianten-Filter in detail.php (?inaktive=1 Toggle)
-- Auto-Reaktivierung in LagerService.pruefAuslaufartikelStatus() bei Wareneingang
-- Vater-Artikel folgt: aktiv wenn mind. 1 Kind aktiv, inaktiv wenn alle Kinder inaktiv
-- variante_suche.php findet Auslaufartikel auch wenn aktiv=0 (für Wareneingang)
-
-### Schema-Bereinigungen (2026-06-06)
-- Migration 010: varianten_darstellung ENUM → VARCHAR(50)
-- Migration 011: artikeltyp ENUM → Tabelle artikel_typen (FK, erweiterbar)
-- Service-Fehler-Rückgaben: immer Array, nie String
+### Auslaufartikel + Überverkauf (2026-06-11)
+- ist_auslaufartikel: Orange Highlighting, Auto-Reaktivierung bei Wareneingang, Vater folgt Kindern
+- ueberverkauf_erlaubt: Checkbox in bearbeiten.php + neu.php, blauer Banner in detail.php
+- reservierungen-Tabelle (Migration 021): Wird von Shop/Kasse befüllt wenn Bestand ≤ 0
 
 ## Nächste Schritte (Priorität)
 
-### Geplante Strukturumbauten (vor neuen Features)
-1. **Varianten-System** — Achsen + Werte + Kombinationen (eigenes Modul, farbe_name/farbe_hex raus)
-2. **VarKombi-System** — `vaterartikel_id` + `hat_eigenen_lagerstand` auf `artikel` (Migration), VarKombi-Generator UI
-3. **Seriennummern** — `seriennummer_pflicht` auf `artikel` + `seriennummern`-Tabelle
+### Varianten-System UI (DB ist fertig — Migrations 022–027)
+1. **Achsen-Verwaltung** — Modul achsen/: globale Achsen anlegen/bearbeiten (darstellungsform, sort_order)
+2. **Artikel: Achsen zuweisen** — Modal in artikel/bearbeiten.php: Achse + Werte pro Artikel definieren
+3. **VarKombi-Generator** — aus Achswerten automatisch Kind-Artikel anlegen
 
 ### VarKombi-Generator Regeln
 - Artikelnummer modular: Vater-Nr + Trennzeichen + Wert-Name/-Nr + fortlaufende Zahl (Live-Vorschau)
@@ -614,16 +602,12 @@ $result = $service->wareneingang([
 - Business Rule: VarKombi-Vater KANN NICHT gleichzeitig Stückliste sein (gegenseitiger Ausschluss)
 - Kasse bei Duplikat-EAN: Auswahl-Dialog statt Blockade
 
-### Artikel-Modul: Noch offen (vor nächsten Modulen)
-- ~~**Filterung** in liste.php~~ ✓ erledigt 2026-06-09
-- ~~**Lieferanten-Tab in detail.php**~~ ✓ erledigt 2026-06-09
-- **Artikel kopieren** 🔄 — kopieren.php fertig; kopieren_speichern.php + ArtikelService::kopiere() + Repository (copyPreise/copyKategorien/copyMerkmale/copyLieferanten via INSERT...SELECT) noch offen
-- **ueberverkauf_erlaubt** in bearbeiten.php + neu.php einbauen (Checkbox) — Migration 020 erledigt, UI fehlt noch
+### Artikel-Modul: Noch offen
 - **Merkmale-UI** — Formular zum Befüllen (Nadelstärke, Garngruppe, Maschenprobe) — spätestens mit Shop
 - **Preistabellen-UI** — alle Kundengruppen + Staffelpreise (derzeit UI nur für Endkunde)
 - **Qualitätslisten** — fehlende EAN, doppelte EAN, fehlende Bilder
 - **Bestellvorschläge** — beim Einkaufsmodul vollenden
-- Varianten-System (Achsen/Werte), VarKombi, Seriennummern, Bilder-Upload — geplant
+- Seriennummern, Bilder-Upload — geplant
 
 ### Neue Module (Reihenfolge)
 4. **Kundendatenbank** — Stammdaten, Adresse, UID, Newsletter

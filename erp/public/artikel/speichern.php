@@ -12,6 +12,10 @@ if (!isset($data['charge_pflicht']) || $data['charge_pflicht'] != '1') {
     $data['charge_pflicht'] = '0';
 }
 
+if (!isset($data['ueberverkauf_erlaubt']) || $data['ueberverkauf_erlaubt'] != '1') {
+    $data['ueberverkauf_erlaubt'] = '0';
+}
+
 // speichern.php muss diese Felder herausfiltern:
 $artikelData = array_intersect_key($data, array_flip([
     'artikelnummer',
@@ -33,11 +37,11 @@ $artikelData = array_intersect_key($data, array_flip([
     'gewicht_versand',
     'herkunftsland',
     'taric_code',
-    'varianten_darstellung',
     'grundpreis_bezugsmenge',
     'grundpreis_anzeigen',
     'charge_pflicht',
     'aktiv',
+    'ueberverkauf_erlaubt',
     'ist_auslaufartikel'
 ]));
 

@@ -81,8 +81,6 @@ class ArtikelRepository
                 a.name,
                 a.vaterartikel_id,
                 a.hat_eigenen_lagerstand,
-                a.farbe_name,
-                a.farbe_hex,
                 a.hersteller_id,
                 a.steuerklasse_id,
                 a.artikeltyp_id,
@@ -92,7 +90,6 @@ class ArtikelRepository
                 a.gewicht_artikel,
                 a.herkunftsland,
                 a.taric_code,
-                a.varianten_darstellung,
                 a.kurzbeschreibung,
                 a.beschreibung,
                 a.technische_details,
@@ -105,6 +102,7 @@ class ArtikelRepository
                 a.inhalt_menge,
                 a.charge_pflicht,
                 a.ist_auslaufartikel,
+                a.ueberverkauf_erlaubt,
                 a.aktiv,
                 at.code AS artikeltyp,
                 at.name AS artikeltyp_name,
@@ -136,10 +134,10 @@ class ArtikelRepository
             SELECT
                 a.id,
                 a.artikelnummer,
-                a.farbe_name,
-                a.farbe_hex,
+                a.name,
                 a.aktiv,
                 a.ist_auslaufartikel,
+                a.ueberverkauf_erlaubt,
                 ap.brutto_vk,
                 ac.code AS gtin,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
@@ -149,7 +147,7 @@ class ArtikelRepository
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             $where
             GROUP BY a.id
-            ORDER BY a.farbe_name ASC
+            ORDER BY a.name ASC
         ");
 
         $stmt->execute(['vaterartikel_id' => $artikelId]);
@@ -205,11 +203,11 @@ class ArtikelRepository
 
     public function insert(array $data): int
     {
-        if (!$data['artikeltyp_id']) {
+        if (!isset($data['artikeltyp_id'])) {
             $data['artikeltyp_id'] = $this->resolveArtikeltypId($data['artikeltyp']);
-            unset($data['artikeltyp']);
         }
 
+        unset($data['artikeltyp']);
 
         $stmt = $this->db->prepare("
             INSERT INTO artikel (
@@ -220,8 +218,6 @@ class ArtikelRepository
                 steuerklasse_id,
                 artikeltyp_id,
                 name,
-                farbe_name,
-                farbe_hex,
                 kurzbeschreibung,
                 beschreibung,
                 technische_details,
@@ -236,11 +232,11 @@ class ArtikelRepository
                 gewicht_versand,
                 herkunftsland,
                 taric_code,
-                varianten_darstellung,
                 grundpreis_bezugsmenge,
                 grundpreis_anzeigen,
                 charge_pflicht,
                 ist_auslaufartikel,
+                ueberverkauf_erlaubt,
                 aktiv
             ) VALUES (
                 :vaterartikel_id,
@@ -250,8 +246,6 @@ class ArtikelRepository
                 :steuerklasse_id,
                 :artikeltyp_id,
                 :name,
-                :farbe_name,
-                :farbe_hex,
                 :kurzbeschreibung,
                 :beschreibung,
                 :technische_details,
@@ -266,19 +260,17 @@ class ArtikelRepository
                 :gewicht_versand,
                 :herkunftsland,
                 :taric_code,
-                :varianten_darstellung,
                 :grundpreis_bezugsmenge,
                 :grundpreis_anzeigen,
                 :charge_pflicht,
                 :ist_auslaufartikel,
+                :ueberverkauf_erlaubt,
                 :aktiv
             )
         ");
 
         $data['vaterartikel_id']       = $data['vaterartikel_id'] ?? null;
         $data['hat_eigenen_lagerstand'] = $data['hat_eigenen_lagerstand'] ?? 1;
-        $data['farbe_name']             = $data['farbe_name'] ?? null;
-        $data['farbe_hex']              = $data['farbe_hex'] ?? null;
         $data['ist_auslaufartikel']     = $data['ist_auslaufartikel'] ?? 0;
 
         $stmt->execute($data);
@@ -297,8 +289,6 @@ class ArtikelRepository
                 steuerklasse_id     = :steuerklasse_id,
                 artikeltyp_id       = :artikeltyp_id,
                 name                = :name,
-                farbe_name          = :farbe_name,
-                farbe_hex           = :farbe_hex,
                 kurzbeschreibung    = :kurzbeschreibung,
                 beschreibung        = :beschreibung,
                 technische_details  = :technische_details,
@@ -313,11 +303,11 @@ class ArtikelRepository
                 gewicht_versand     = :gewicht_versand,
                 herkunftsland       = :herkunftsland,
                 taric_code          = :taric_code,
-                varianten_darstellung  = :varianten_darstellung,
                 grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
                 grundpreis_anzeigen    = :grundpreis_anzeigen,
                 charge_pflicht         = :charge_pflicht,
                 ist_auslaufartikel     = :ist_auslaufartikel,
+                ueberverkauf_erlaubt    = :ueberverkauf_erlaubt,
                 aktiv                  = :aktiv
             WHERE id = :id
         ");
@@ -331,9 +321,8 @@ class ArtikelRepository
         $stmt = $this->db->prepare("
             UPDATE artikel SET
                 artikelnummer      = :artikelnummer,
-                farbe_name         = :farbe_name,
-                farbe_hex          = :farbe_hex,
                 aktiv              = :aktiv,
+                ueberverkauf_erlaubt    = :ueberverkauf_erlaubt,
                 ist_auslaufartikel = :ist_auslaufartikel
             WHERE id = :id
         ");

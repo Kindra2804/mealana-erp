@@ -17,6 +17,10 @@ if (!isset($data['ist_auslaufartikel']) || $data['ist_auslaufartikel'] != '1') {
     $data['ist_auslaufartikel'] = '0';
 }
 
+if (!isset($data['ueberverkauf_erlaubt']) || $data['ueberverkauf_erlaubt'] != '1') {
+    $data['ueberverkauf_erlaubt'] = '0';
+}
+
 // aktualisieren.php muss diese Felder herausfiltern:
 $artikelData = array_intersect_key($data, array_flip([
     'id',
@@ -39,11 +43,11 @@ $artikelData = array_intersect_key($data, array_flip([
     'gewicht_versand',
     'herkunftsland',
     'taric_code',
-    'varianten_darstellung',
     'grundpreis_bezugsmenge',
     'grundpreis_anzeigen',
     'charge_pflicht',
     'ist_auslaufartikel',
+    'ueberverkauf_erlaubt',
     'aktiv'
 ]));
 

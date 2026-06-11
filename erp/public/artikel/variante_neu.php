@@ -49,12 +49,6 @@ function old(string $field, array $formdata, string $default = ''): string {
             <label>Artikelnummer <span class="pflicht">*</span></label>
             <input type="text" name="artikelnummer" value="<?= old('artikelnummer', $formdata) ?>" required>
 
-            <label>Name / Farbname <span class="pflicht">*</span></label>
-            <input type="text" name="farbe_name" value="<?= old('farbe_name', $formdata) ?>">
-
-            <label>Farbe</label>
-            <input type="color" name="farbe_hex" value="<?= old('farbe_hex', $formdata, '#cccccc') ?>">
-
             <label>GTIN / EAN</label>
             <input type="text" name="gtin" value="<?= old('gtin', $formdata) ?>">
 

@@ -99,16 +99,13 @@ class ArtikelService
             'hersteller_id'        => $vater['hersteller_id'],
             'steuerklasse_id'      => $vater['steuerklasse_id'],
             'einheit_id'           => $vater['einheit_id'],
-            'name'                 => $vater['name'] . ' – ' . ($data['farbe_name'] ?? ''),
-            'farbe_name'           => $data['farbe_name'] ?? null,
-            'farbe_hex'            => $data['farbe_hex'] ?? null,
+            'name'                 => $data['name'] ?? $vater['name'],
             'inhalt_menge'         => $vater['inhalt_menge'],
             'inhalt_einheit'       => $vater['inhalt_einheit'],
             'gewicht_artikel'      => $vater['gewicht_artikel'],
             'gewicht_versand'      => $vater['gewicht_versand'],
             'herkunftsland'        => $vater['herkunftsland'],
             'taric_code'           => $vater['taric_code'],
-            'varianten_darstellung'  => $vater['varianten_darstellung'],
             'grundpreis_bezugsmenge' => $vater['grundpreis_bezugsmenge'],
             'grundpreis_anzeigen'    => $vater['grundpreis_anzeigen'],
             'charge_pflicht'       => $vater['charge_pflicht'],
@@ -133,7 +130,7 @@ class ArtikelService
             $this->repo->insertCode($id, 'GTIN13', $gtin);
         }
 
-        Logger::log('artikel.kind_anlegen', 'artikel', $id, ['farbe' => $data['farbe_name'] ?? '']);
+        Logger::log('artikel.kind_anlegen', 'artikel', $id, ['artikelnummer' => $data['artikelnummer']]);
         return ['erfolg' => true, 'id' => $id];
     }
 
@@ -151,10 +148,9 @@ class ArtikelService
         $this->repo->updateKind([
             'id'               => (int) $data['id'],
             'artikelnummer'    => $data['artikelnummer'],
-            'farbe_name'       => $data['farbe_name'] ?? null,
-            'farbe_hex'        => $data['farbe_hex'] ?? null,
             'aktiv'            => $data['aktiv'] ?? 1,
             'ist_auslaufartikel' => $data['ist_auslaufartikel'] ?? 0,
+            'ueberverkauf_erlaubt' => $data['ueberverkauf_erlaubt'] ?? 0,
         ]);
 
         $this->repo->deleteCodesByArtikelIdAndType((int) $data['id'], 'GTIN13');
@@ -171,7 +167,7 @@ class ArtikelService
             }
         }
 
-        Logger::log('artikel.kind_bearbeiten', 'artikel', $data['id'], ['farbe' => $data['farbe_name'] ?? '']);
+        Logger::log('artikel.kind_bearbeiten', 'artikel', $data['id'], ['artikelnummer' => $data['artikelnummer']]);
         return ['erfolg' => true];
     }
 
@@ -287,8 +283,8 @@ class ArtikelService
                 $fehler[] = 'Artikelnummer "' . $data['artikelnummer'] . '" existiert bereits!';
             }
         }
-        if (empty($data['farbe_name'])) {
-            $fehler[] = 'Name/Farbname ist Pflichtfeld';
+        if (empty($data['name']) && empty($data['artikelnummer'])) {
+            $fehler[] = 'Name ist Pflichtfeld';
         }
         if (empty($data['vaterartikel_id'])) {
             $fehler[] = 'Vater-Artikel-Zuordnung fehlt';
@@ -329,8 +325,6 @@ class ArtikelService
             'steuerklasse_id',
             'artikeltyp_id',
             'name',
-            'farbe_name',
-            'farbe_hex',
             'kurzbeschreibung',
             'beschreibung',
             'technische_details',
@@ -345,7 +339,6 @@ class ArtikelService
             'gewicht_versand',
             'herkunftsland',
             'taric_code',
-            'varianten_darstellung',
             'grundpreis_bezugsmenge',
             'grundpreis_anzeigen',
             'charge_pflicht',
