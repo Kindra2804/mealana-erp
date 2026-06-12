@@ -56,4 +56,43 @@ class VariantenService
 
         return ['erfolg' => false, 'fehler' => ['ArtikelId kann nicht 0 sein']];
     }
+
+    public function findExistingKombinationen(int $vaterId): array
+    {
+        return $this->repo->findExistingKombinationen($vaterId);
+    }
+
+    public function erstelleKombinationen(array $vater, bool $hatEigenenLagerstand, array $kombis): array
+    {
+        foreach ($kombis as $kombi) {
+
+            $kind = [
+                'artikelnummer' => $kombi['artikelnummer'],
+                'name' => $kombi['name'],
+                'steuerklasse_id' => $vater['steuerklasse_id'],
+                'artikeltyp_id' => $vater['artikeltyp_id'],
+                'vaterartikel_id' => $vater['id'],
+                'hat_eigenen_lagerstand' => (int) $hatEigenenLagerstand,
+                'einheit_id' => $vater['einheit_id'],
+                'charge_pflicht' => $vater['charge_pflicht']
+            ];
+
+            $kindId = $this->repo->insertKindArtikel($kind);
+
+            $wertIds = explode(',', $kombi['key']);
+
+            foreach ($wertIds as $w) {
+                $wert = [
+                    'kombination_id' => $kindId,
+                    'wert_id' => (int) $w
+                ];
+
+                $this->repo->insertKombinationWert($wert);
+            }
+        }
+
+        Logger::log('varkombi.erstellen', 'artikel', $vater['id'], ['varKombi_anzahl' => count($kombis)]);
+
+        return ['erfolg' => true, 'anzahl' => count($kombis)];
+    }
 }

@@ -559,11 +559,24 @@ $result = $service->wareneingang([
 - Lieferanten-Tab in detail.php
 - Filterung in liste.php (aktiv/inaktiv, Suche)
 
-### Varianten-System (DB fertig, UI folgt)
+### Varianten-System (vollständig — DB + UI fertig, Stand 2026-06-12)
 - Migrations 022–027 ausgeführt: Achsen, Werte, Kombinationen, Datenmigration, Aufräumen
 - farbe_name/farbe_hex/varianten_darstellung vollständig aus DB + PHP entfernt
 - Kind-Artikel (Varianten) werden als artikel-Einträge mit vaterartikel_id gespeichert
-- UI noch offen: Achsen-Verwaltung, Achsen zuweisen, VarKombi-Generator
+- **Achsen-Verwaltung** (public/achsen/) — volles CRUD ✅
+- **Achsen zuweisen** (public/artikel/achsen_zuweisen.php + achsen_speichern.php) ✅
+  - Globale Achsen als Checkboxen, vorhandene Zuweisungen vorausgewählt
+  - 3 Wert-Felder pro Achse, vorhandene Werte vorausgefüllt
+  - Delete-and-Reinsert Strategie beim Speichern
+- **VarKombi-Generator** (public/artikel/varkombi_generator.php + varkombi_erstellen.php) ✅
+  - Kartesisches Produkt aller Achswerte als editierbare Tabelle
+  - Pro Kombination: Artikelnummer, Name, EAN, Aufpreis vorausgefüllt (überschreibbar)
+  - Globale Frage: "Eigener Lagerstand pro Kind?" (hat_eigenen_lagerstand)
+  - Bereits bestehende Kombis in separater Tabelle darunter (read-only)
+  - Kind-Artikel erben: steuerklasse_id, artikeltyp_id, einheit_id, charge_pflicht vom Vater
+- AchsenRepository/Service + VariantenRepository/Service ✅
+  - VariantenRepository: findWerteByIds, insertKindArtikel, insertKombinationWert
+  - VariantenService: erstelleKombinationen
 
 ### Lager Module (Functional)
 - Goods receipt with EAN barcode scan support
@@ -590,17 +603,16 @@ $result = $service->wareneingang([
 
 ## Nächste Schritte (Priorität)
 
-### Varianten-System UI (DB ist fertig — Migrations 022–027)
-1. **Achsen-Verwaltung** — Modul achsen/: globale Achsen anlegen/bearbeiten (darstellungsform, sort_order)
-2. **Artikel: Achsen zuweisen** — Modal in artikel/bearbeiten.php: Achse + Werte pro Artikel definieren
-3. **VarKombi-Generator** — aus Achswerten automatisch Kind-Artikel anlegen
+### Varianten-System UI ✅ komplett
+1. ~~Achsen-Verwaltung~~ ✅
+2. ~~Artikel: Achsen zuweisen~~ ✅
+3. ~~VarKombi-Generator~~ ✅
 
-### VarKombi-Generator Regeln
-- Artikelnummer modular: Vater-Nr + Trennzeichen + Wert-Name/-Nr + fortlaufende Zahl (Live-Vorschau)
-- EAN pro Kind optional (leer lassen erlaubt) — Qualitätsliste zeigt fehlende EANs
-- charge_pflicht und seriennummer_pflicht werden vom Vater automatisch auf alle Kinder übertragen
-- Business Rule: VarKombi-Vater KANN NICHT gleichzeitig Stückliste sein (gegenseitiger Ausschluss)
-- Kasse bei Duplikat-EAN: Auswahl-Dialog statt Blockade
+### Als nächstes: UI-Redesign (JTL-inspiriert)
+- Top-Nav für Hauptmodule, Sidebar für Untergruppen
+- 1280×1024 Basis
+- Karls Frau hat Mitspracherecht beim Design
+- Dann alle neuen Module auf diesem Layout aufbauen
 
 ### Artikel-Modul: Noch offen
 - **Merkmale-UI** — Formular zum Befüllen (Nadelstärke, Garngruppe, Maschenprobe) — spätestens mit Shop
