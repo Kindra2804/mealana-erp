@@ -1,0 +1,32 @@
+/* === FARBEN === */
+:root {
+  --color-nav:        #1B3A6B;   /* dunkles Blau für Nav/Header */
+  --color-accent:     #7EC8E3;    /* helles Blau für Akzente */
+  --color-bg:         #F8FAFC;   /* hellgrauer Seitenhintergrund */
+  
+  --color-white:      #ffffff;
+  --color-text:       #1a1a1a;
+  --color-text-muted: #6c757d;
+  --color-border:     #dee2e6;
+  
+  --color-success:    #28a745;
+  --color-warning:    #fd7e14;
+  --color-danger:     #dc3545;
+
+/* === ABSTÄNDE === */
+
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+
+/* === LAYOUT-MASE === */
+
+  --nav-height:        48px;
+  --sidebar-width:     220px;
+  --sidebar-collapsed: 48px;
+  --logbar-height:     28px;   /* eingeklappt */
+  --statusbar-height:  24px;
+}
+

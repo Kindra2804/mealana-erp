@@ -1,0 +1,165 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.erp-shell {
+  display: grid;
+  height: 100vh;
+  grid-template-rows:
+    var(--nav-height)
+    auto
+    1fr
+    var(--logbar-height)
+    var(--statusbar-height);
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-areas:
+    "topnav    topnav"
+    "actionbar actionbar"
+    "sidebar   main"
+    "logbar    logbar"
+    "statusbar statusbar";
+}
+
+.erp-topnav {
+  grid-area: topnav;
+  background: var(--color-nav);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-md);
+}
+
+.erp-actionbar {
+  grid-area: actionbar;
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.erp-sidebar {
+  grid-area: sidebar;
+  background: var(--color-white);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+
+.erp-main {
+  grid-area: main;
+  overflow-y: auto;
+  padding: var(--space-md);
+}
+
+.erp-logbar {
+  grid-area: logbar;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 0 var(--space-md);
+  display: flex;
+  align-items: center;
+}
+
+.erp-statusbar {
+  grid-area: statusbar;
+  background: var(--color-nav);
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  padding: 0 var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+/* === TOP NAV INHALT === */
+
+.erp-topnav {
+  justify-content: space-between;   /* Logo links, User rechts */
+}
+
+.erp-nav-logo {
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  text-decoration: none;
+  margin-right: var(--space-lg);
+}
+
+.erp-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;                          /* nimmt den ganzen mittleren Platz */
+}
+
+.erp-nav-link {
+  color: rgba(255,255,255,0.75);
+  text-decoration: none;
+  padding: 6px var(--space-sm);
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.erp-nav-link:hover {
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+.erp-nav-link.active {
+  background: rgba(255,255,255,0.15);
+  color: white;
+}
+
+.erp-nav-user {
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px var(--space-sm);
+  border-radius: 4px;
+}
+
+.erp-nav-user:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* === SIDEBAR INHALT === */
+
+.erp-sidebar-nav {
+  padding: var(--space-sm) 0;
+}
+
+.erp-sidebar-item {
+  display: block;
+  padding: 8px var(--space-md);
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 13px;
+  border-left: 3px solid transparent;
+}
+
+.erp-sidebar-item:hover {
+  background: var(--color-bg);
+  color: var(--color-nav);
+}
+
+.erp-sidebar-item.active {
+  background: #EEF4FF;
+  color: var(--color-nav);
+  border-left-color: var(--color-nav);
+  font-weight: 600;
+}
+
