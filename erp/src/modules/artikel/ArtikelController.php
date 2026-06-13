@@ -11,9 +11,14 @@ class ArtikelController
         $this->repo = new ArtikelRepository();
     }
 
-    public function index(array $filter = []): array
+    public function index(array $filter = [], int $limit = 25, int $offset = 0): array
     {
-        return $this->repo->findAll($filter);
+        return $this->repo->findAll($filter, $limit, $offset);
+    }
+
+    public function count(array $filter = []): int
+    {
+        return $this->repo->countAll($filter);
     }
 
     public function detail(int $id): array|false

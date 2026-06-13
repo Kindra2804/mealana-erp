@@ -11,7 +11,71 @@ class ArtikelRepository
         $this->db = Database::getInstance();
     }
 
-    public function findAll(array $filter): array
+    public function findAll(array $filter, int $limit = 25, int $offset = 0): array
+    {
+        $conditions = ["a.vaterartikel_id IS NULL"];
+        $having = '';
+
+        $params = [];
+
+        // $params['limit'] = $limit;
+        // $params['offset'] = $offset;
+
+        if (!empty($filter['hersteller_id'])) {
+            $conditions[] = "a.hersteller_id = :hersteller_id";
+            $params['hersteller_id'] = $filter['hersteller_id'];
+        }
+
+        if (!empty($filter['artikeltyp_id'])) {
+            $conditions[] = "a.artikeltyp_id = :artikeltyp_id";
+            $params['artikeltyp_id'] = $filter['artikeltyp_id'];
+        }
+
+        if (!empty($filter['nurMitBestand'])) {
+            $having = 'HAVING gesamtbestand > 0';
+        }
+
+        if (empty($filter['mitInaktiven'])) {
+            $conditions[] = "a.aktiv = 1";
+        }
+
+        if (!empty($filter['q'])) {
+            $conditions[] = "(a.name LIKE :q OR a.artikelnummer LIKE :q)";
+            $params['q'] = '%' . $filter['q'] . '%';
+        }
+
+        $where = "WHERE " . implode(" AND ", $conditions);
+        $stmt = $this->db->prepare("
+            SELECT 
+                a.id,
+                a.artikelnummer,
+                a.name,
+                at.code AS artikeltyp,
+                at.name AS artikeltyp_name,
+                a.aktiv,
+                h.name AS hersteller,
+                s.satz AS steuersatz,
+                a.charge_pflicht,
+                a.ist_auslaufartikel,
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+            FROM artikel a
+            JOIN artikel_typen at ON a.artikeltyp_id = at.id
+            LEFT JOIN hersteller h ON a.hersteller_id = h.id
+            LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
+            LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
+            $where
+            GROUP BY a.id
+            $having
+            LIMIT $limit OFFSET $offset;
+        ");
+
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
+    public function countAll(array $filter): int
     {
         $conditions = ["a.vaterartikel_id IS NULL"];
         $having = '';
@@ -41,35 +105,26 @@ class ArtikelRepository
             $params['q'] = '%' . $filter['q'] . '%';
         }
 
-        // ... weitere Filter
-
         $where = "WHERE " . implode(" AND ", $conditions);
         $stmt = $this->db->prepare("
-            SELECT 
-                a.id,
-                a.artikelnummer,
-                a.name,
-                at.code AS artikeltyp,
-                at.name AS artikeltyp_name,
-                a.aktiv,
-                h.name AS hersteller,
-                s.satz AS steuersatz,
-                a.charge_pflicht,
-                a.ist_auslaufartikel,
-                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
-            FROM artikel a
-            JOIN artikel_typen at ON a.artikeltyp_id = at.id
-            LEFT JOIN hersteller h ON a.hersteller_id = h.id
-            LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
-            LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
-            LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
-            $where
-            GROUP BY a.id
-            $having
+            SELECT COUNT(*) FROM (
+                SELECT 
+                    a.id
+                FROM artikel a
+                JOIN artikel_typen at ON a.artikeltyp_id = at.id
+                LEFT JOIN hersteller h ON a.hersteller_id = h.id
+                LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+                LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
+                LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
+                $where
+                GROUP BY a.id
+                $having
+            ) AS sub
         ");
+
         $stmt->execute($params);
 
-        return $stmt->fetchAll();
+        return (int) $stmt->fetchColumn();
     }
 
     public function findById(int $id): array|false

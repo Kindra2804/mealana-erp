@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
+
 $controller = new ArtikelController();
 
 $db = Database::getInstance();
@@ -17,7 +18,15 @@ $filter = [
     'nurMitBestand' => isset($_GET['nurMitBestand']),
     'mitInaktiven'  => isset($_GET['inaktive']),
 ];
-$artikel = $controller->index($filter);
+
+$seite = (int)($_GET['seite'] ?? 1);
+$proSeite = (int)($_GET['pro_seite'] ?? 15);
+
+$offset = ($seite - 1) * $proSeite;
+
+$artikel = $controller->index($filter, $proSeite, $offset);
+$gesamt = $controller->count($filter);
+$seitenAnzahl = (int) ceil($gesamt / $proSeite);
 
 $pageTitle    = "Artikelliste";
 $activeModule = "artikel";
@@ -104,6 +113,39 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </tr>
         <?php endforeach; ?>
     </table>
+</div>
+<div class="card">
+    <div class="pagination-bar">
+        <div class="">
+            Zeige <?= $offset + 1 ?>–<?= min($offset + $proSeite, $gesamt) ?> von <?= $gesamt ?> Artikeln
+        </div>
+        <div class="pagination">
+            <?php for ($i = 1; $i <= $seitenAnzahl; $i++) {
+                $params = $_GET;           // alle aktuellen GET-Parameter (Filter, pro_seite...)
+                $params['seite'] = $i;     // seite überschreiben/setzen
+                $qs = http_build_query($params);
+                $aktiv = ($i == $seite) ? 'active' : '';
+            ?>
+                <a class="<?= $aktiv ?>" href="liste.php?<?= $qs ?>">[<?= $i ?>]</a>
+            <?php } ?>
+        </div>
+        <div class="">
+            Zeilen/Seite:
+            <select name="pro_seite" onchange="
+            var p = new URLSearchParams(window.location.search);
+            p.set('pro_seite', this.value);
+            p.set('seite', 1);
+            window.location.href = 'liste.php?' + p.toString();
+        ">
+                <option value="10" <?= $proSeite == 10 ? 'selected' : '' ?>>10</option>
+                <option value="25" <?= $proSeite == 25 ? 'selected' : '' ?>>25</option>
+                <option value="50" <?= $proSeite == 50 ? 'selected' : '' ?>>50</option>
+                <option value="100" <?= $proSeite == 100 ? 'selected' : '' ?>>100</option>
+            </select>
+        </div>
+    </div>
+
+
 </div>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

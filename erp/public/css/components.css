@@ -158,3 +158,43 @@
 .erp-input {
     width: 220px;
 }
+
+/* ===== PAGINATION ===== */
+
+.pagination {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+.pagination-bar {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    gap: var(--space-md);
+}
+
+.pagination a {
+    background: var(--color-white);
+    color: var(--color-text);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 6px var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.pagination a.active {
+    background: var(--color-nav);
+    color: var(--color-white);
+    border-color: var(--color-nav);
+}
+
+.pagination a:hover {
+    background: #152d55;
+    border-color: #152d55;
+}
