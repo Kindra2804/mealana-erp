@@ -41,6 +41,9 @@ $artikelData = array_intersect_key($data, array_flip([
     'inhalt_einheit',
     'gewicht_artikel',
     'gewicht_versand',
+    'laenge',
+    'breite',
+    'hoehe',
     'herkunftsland',
     'taric_code',
     'grundpreis_bezugsmenge',
@@ -48,7 +51,8 @@ $artikelData = array_intersect_key($data, array_flip([
     'charge_pflicht',
     'ist_auslaufartikel',
     'ueberverkauf_erlaubt',
-    'aktiv'
+    'aktiv',
+    'zustand'
 ]));
 
 $artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;
@@ -83,6 +87,6 @@ if ($result['erfolg']) {
 } else {
     $_SESSION['fehler'] = $result['fehler'];
     $_SESSION['formdata'] = $artikelData;
-    header('Location: bearbeiten.php?id=' . $data['id']);
+    header('Location: detail.php?id=' . $data['id']);
     exit;
 }

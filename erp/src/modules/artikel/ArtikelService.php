@@ -207,6 +207,11 @@ class ArtikelService
         return $this->kategorieRepo->findByArtikelId($artikelId);
     }
 
+    public function getKinderFuerListe($vaterIds): array
+    {
+        return $this->repo->findKinderFuerListe($vaterIds);
+    }
+
     public function getAllArtikelTypen(): array
     {
         return $this->repo->findAllArtikelTypen();

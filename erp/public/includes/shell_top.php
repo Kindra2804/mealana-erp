@@ -77,11 +77,37 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
             <?php endif; ?>
             <nav class="erp-sidebar-nav">
                 <?php foreach ($sidebarItems as $item): ?>
-                    <?php $isActive = ($item['href'] !== '#' && str_ends_with($currentPath, basename($item['href']))) ? 'active' : ''; ?>
-                    <a href="<?= $item['href'] ?>" class="erp-sidebar-item <?= $isActive ?>">
-                        <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>
-                    </a>
+                    <?php $typ = $item['type'] ?? 'nav'; ?>
+                    <?php if ($typ === 'separator'): ?>
+                        <div class="sidebar-sep"></div>
+                    <?php elseif ($typ === 'back'): ?>
+                        <a href="<?= $item['href'] ?>" class="erp-sidebar-item" style="font-size:13px; color:var(--color-text-muted)">
+                            ← <?= htmlspecialchars($item['label']) ?>
+                        </a>
+                    <?php elseif ($typ === 'context'): ?>
+                        <div class="sidebar-context-box">
+                            <div class="artnr"><?= htmlspecialchars($item['artNr']) ?></div>
+                            <div class="name"><?= htmlspecialchars($item['name']) ?></div>
+                        </div>
+                    <?php elseif ($typ === 'grayed'): ?>
+                        <a href="#" class="erp-sidebar-item sidebar-grayed">
+                            <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>
+                        </a>
+                    <?php else: ?>
+                        <?php
+                        $isActive = isset($item['active']) && $item['active']
+                            ? 'active'
+                            : (($item['href'] !== '#' && str_ends_with($currentPath, basename($item['href']))) ? 'active' : '');
+                        ?>
+                        <a href="<?= $item['href'] ?>" class="erp-sidebar-item <?= $isActive ?>">
+                            <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>
+                            <?php if (!empty($item['badge'])): ?>
+                                <span class="badge" style="margin-left:auto"><?= (int)$item['badge'] ?></span>
+                            <?php endif; ?>
+                        </a>
+                    <?php endif; ?>
                 <?php endforeach; ?>
+
             </nav>
         </aside>
         <main class="erp-main">

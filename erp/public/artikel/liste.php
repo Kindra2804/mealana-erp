@@ -1,10 +1,12 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
+require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 
 $controller = new ArtikelController();
+$service = new ArtikelService();
 
 $db = Database::getInstance();
 $alleHersteller  = $db->query("SELECT id, name FROM hersteller WHERE aktiv = 1 ORDER BY name")->fetchAll();
@@ -25,6 +27,15 @@ $proSeite = (int)($_GET['pro_seite'] ?? 15);
 $offset = ($seite - 1) * $proSeite;
 
 $artikel = $controller->index($filter, $proSeite, $offset);
+
+$vaterIds = array_column($artikel, 'id');
+
+$alleKinder = $service->getKinderFuerListe($vaterIds);
+$kinderNachVater = [];
+foreach ($alleKinder as $k) {
+    $kinderNachVater[$k['vaterartikel_id']][] = $k;
+}
+
 $gesamt = $controller->count($filter);
 $seitenAnzahl = (int) ceil($gesamt / $proSeite);
 
@@ -79,39 +90,64 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="card">
     <table class="erp-table">
         <tr>
+            <th style="width:28px"></th>
             <th>Artikelnummer</th>
             <th>Name</th>
             <th>Typ</th>
             <th>Hersteller</th>
             <th>Bestand</th>
-            <th>aktiv</th>
+            <th>Status</th>
             <th>Aktion</th>
         </tr>
-        <?php foreach ($artikel as $a): ?>
-            <?php
-            if (!$a['aktiv']) {
-                $zeilenstil = 'class="row-inaktiv"';
-            } elseif ($a['ist_auslaufartikel']) {
-                $zeilenstil = 'class="row-auslauf"';
-            } else {
-                $zeilenstil = '';
-            }
-            ?>
+
+        <?php foreach ($artikel as $a):
+            $kinder = $kinderNachVater[$a['id']] ?? [];
+            $hatKinder = count($kinder) > 0;
+            if (!$a['aktiv']) $zeilenstil = 'class="row-inaktiv"';
+            elseif ($a['ist_auslaufartikel']) $zeilenstil = 'class="row-auslauf"';
+            else $zeilenstil = '';
+        ?>
+            <!-- Vater-Zeile -->
             <tr <?= $zeilenstil ?>>
+                <td style="text-align:center">
+                    <?php if ($hatKinder): ?>
+                        <span id="pfeil-<?= $a['id'] ?>" onclick="toggleKinder(<?= $a['id'] ?>)"
+                            style="cursor:pointer; color:var(--color-nav); font-size:11px; user-select:none">▶</span>
+                    <?php endif; ?>
+                </td>
                 <td><a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a></td>
-                <td><?= htmlspecialchars($a['name']) ?></td>
+                <td>
+                    <?= htmlspecialchars($a['name']) ?>
+                    <?php if ($hatKinder): ?>
+                        <span style="color:var(--color-text-muted); font-size:11px; margin-left:var(--space-xs)"><?= count($kinder) ?> Varianten</span>
+                    <?php endif; ?>
+                </td>
                 <td><?= htmlspecialchars($a['artikeltyp']) ?></td>
                 <td><?= htmlspecialchars($a['hersteller']) ?></td>
                 <td><?= $a['gesamtbestand'] ?></td>
                 <td><?= $a['aktiv'] ? '<span class="chip chip-aktiv">Aktiv</span>' : '<span class="chip chip-inaktiv">Deaktiviert</span>' ?></td>
                 <td>
-                    <a href="bearbeiten.php?id=<?= $a['id'] ?>">✏️</a>
-                    <a href="delete.php?id=<?= $a['id'] ?>"
-                        onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
-                    <a href="kopieren.php?id=<?= $a['id'] ?>">copy</a>
+                    <a href="detail.php?id=<?= $a['id'] ?>">✏️</a>
+                    <a href="delete.php?id=<?= $a['id'] ?>" onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
                 </td>
             </tr>
+
+            <!-- Kind-Zeilen -->
+            <?php foreach ($kinder as $k): ?>
+                <tr class="kind-zeile-<?= $a['id'] ?> versteckt" style="background:#FAFCFF">
+                    <td></td>
+                    <td style="padding-left:var(--space-lg); color:var(--color-text-muted); font-size:12px">
+                        ↳ <a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a>
+                    </td>
+                    <td style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($k['name']) ?></td>
+                    <td colspan="2"></td>
+                    <td style="font-size:12px"><?= $k['gesamtbestand'] ?></td>
+                    <td><?= $k['aktiv'] ? '<span class="chip chip-aktiv">Aktiv</span>' : '<span class="chip chip-inaktiv">Inaktiv</span>' ?></td>
+                    <td><a href="detail.php?id=<?= $k['id'] ?>">✏️</a></td>
+                </tr>
+            <?php endforeach; ?>
         <?php endforeach; ?>
+
     </table>
 </div>
 <div class="card">
@@ -147,5 +183,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 
 </div>
+
+<script>
+    function toggleKinder(vaterId) {
+        document.querySelectorAll('.kind-zeile-' + vaterId).forEach(r => r.classList.toggle('versteckt'));
+        const p = document.getElementById('pfeil-' + vaterId);
+        p.textContent = p.textContent === '▶' ? '▼' : '▶';
+    }
+</script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
