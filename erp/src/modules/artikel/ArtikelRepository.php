@@ -13,7 +13,7 @@ class ArtikelRepository
 
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
-        $conditions = ["a.vaterartikel_id IS NULL"];
+        $conditions = ['a.vaterartikel_id IS NULL'];
         $having = '';
 
         $params = [];
@@ -57,7 +57,8 @@ class ArtikelRepository
                 s.satz AS steuersatz,
                 a.charge_pflicht,
                 a.ist_auslaufartikel,
-                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
+                (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
@@ -77,7 +78,7 @@ class ArtikelRepository
 
     public function countAll(array $filter): int
     {
-        $conditions = ["a.vaterartikel_id IS NULL"];
+        $conditions = ['a.vaterartikel_id IS NULL'];
         $having = '';
 
         $params = [];
@@ -143,6 +144,9 @@ class ArtikelRepository
                 a.grundpreis_anzeigen,
                 a.gewicht_versand,
                 a.gewicht_artikel,
+                a.laenge,
+                a.breite,
+                a.hoehe,
                 a.herkunftsland,
                 a.taric_code,
                 a.kurzbeschreibung,
@@ -159,6 +163,7 @@ class ArtikelRepository
                 a.ist_auslaufartikel,
                 a.ueberverkauf_erlaubt,
                 a.aktiv,
+                a.zustand,
                 at.code AS artikeltyp,
                 at.name AS artikeltyp_name,
                 h.name AS hersteller,
@@ -215,6 +220,29 @@ class ArtikelRepository
         if ($artikel === false) return false;
         $artikel['kinder'] = $this->findKinderByArtikelId($id);
         return $artikel;
+    }
+
+    public function findKinderFuerListe(array $vaterIds): array
+    {
+        $placeholders = implode(',', array_fill(0, count($vaterIds), '?'));
+        $stmt = $this->db->prepare("
+            SELECT
+                a.id,
+                a.vaterartikel_id,
+                a.artikelnummer,
+                a.name,
+                a.aktiv,
+                ap.brutto_vk,
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+            FROM artikel a
+            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
+            LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
+            WHERE a.vaterartikel_id IN ($placeholders)
+            GROUP BY a.id
+            ORDER BY a.artikelnummer ASC
+        ");
+        $stmt->execute($vaterIds);
+        return $stmt->fetchAll();
     }
 
     public function findByIdMitPreisen(int $id): array|false
@@ -285,6 +313,9 @@ class ArtikelRepository
                 inhalt_einheit,
                 gewicht_artikel,
                 gewicht_versand,
+                laenge,
+                breite,
+                hoehe,
                 herkunftsland,
                 taric_code,
                 grundpreis_bezugsmenge,
@@ -292,7 +323,8 @@ class ArtikelRepository
                 charge_pflicht,
                 ist_auslaufartikel,
                 ueberverkauf_erlaubt,
-                aktiv
+                aktiv,
+                zustand
             ) VALUES (
                 :vaterartikel_id,
                 :hat_eigenen_lagerstand,
@@ -313,6 +345,9 @@ class ArtikelRepository
                 :inhalt_einheit,
                 :gewicht_artikel,
                 :gewicht_versand,
+                :laenge,
+                :breite,
+                :hoehe,
                 :herkunftsland,
                 :taric_code,
                 :grundpreis_bezugsmenge,
@@ -320,7 +355,8 @@ class ArtikelRepository
                 :charge_pflicht,
                 :ist_auslaufartikel,
                 :ueberverkauf_erlaubt,
-                :aktiv
+                :aktiv,
+                :zustand
             )
         ");
 
@@ -356,6 +392,9 @@ class ArtikelRepository
                 inhalt_einheit      = :inhalt_einheit,
                 gewicht_artikel     = :gewicht_artikel,
                 gewicht_versand     = :gewicht_versand,
+                laenge              = :laenge,
+                breite              = :breite,
+                hoehe               = :hoehe,
                 herkunftsland       = :herkunftsland,
                 taric_code          = :taric_code,
                 grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
@@ -363,7 +402,8 @@ class ArtikelRepository
                 charge_pflicht         = :charge_pflicht,
                 ist_auslaufartikel     = :ist_auslaufartikel,
                 ueberverkauf_erlaubt    = :ueberverkauf_erlaubt,
-                aktiv                  = :aktiv
+                aktiv                  = :aktiv,
+                zustand            = :zustand
             WHERE id = :id
         ");
 
@@ -528,6 +568,7 @@ class ArtikelRepository
         $stmt = $this->db->prepare("
         SELECT 
             al.id,
+            al.lieferant_id,
             al.artikelnummer_lieferant,
             al.netto_ek,
             al.waehrung,

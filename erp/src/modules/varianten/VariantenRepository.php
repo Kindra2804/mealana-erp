@@ -22,8 +22,12 @@ class VariantenRepository
             aa.achse_id,
             aa.bedingungs_achse_id,
             aa.bedingungs_wert_id,
-            aa.sort_order
+            aa.sort_order,
+            va.name,
+            va.code,
+            va.darstellungsform
         FROM artikel_achsen aa
+        JOIN varianten_achsen va ON aa.achse_id= va.id
         WHERE aa.artikel_id = :artikel_id
         ");
 
@@ -157,6 +161,7 @@ class VariantenRepository
                 a.id,
                 a.artikelnummer,
                 a.name,
+                a.aktiv,
                 GROUP_CONCAT(vkw.wert_id ORDER BY vkw.wert_id) AS wert_ids
             FROM artikel a
             JOIN varianten_kombination_werte vkw ON vkw.kombination_id = a.id

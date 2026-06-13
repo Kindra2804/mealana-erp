@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Ein modulares Warenwirtschaftssystem für MeaLana, eine Wollboutique in Österreich.
 
-**Entwickler**: Indranet (Karl)  
+**Entwickler**: Indranet (Jacky)  
 **GitHub**: https://github.com/Kindra2804/mealana-erp
 
 ### Lernziel
-Karl ist Anfänger (frisch aus zertifiziertem Kurs).  
+Jacky ist Anfänger (frisch aus zertifiziertem Kurs).  
 Claude ist Trainer – Konzepte erklären, selbst schreiben lassen, Fehler mit Erklärungen korrigieren. **Nicht einfach Code liefern!**
 
 ## Stack
@@ -665,6 +665,7 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
 - **Kategorie-Auswahl im Artikel-Formular:** Modal (JS-Overlay), kein Tab/Redirect. Kategoriebaum + "Neue anlegen" + "Übernehmen". Kein Datenverlust.
 - **Artikel-Detail:** Tab-Navigation (Stammdaten / Varianten+Kinder / Lager / Lieferanten / Bestellhistorie / Verkaufshistorie / Statistik / Dateien)
 - **Statistik-Tab:** Topseller-Ranking aus Verkaufsanzahl + Umsatz — auch für Shop-Integration verwendbar
+- **Barbara (Jackys Frau)** schaut bei UI-Entscheidungen mit — SVG-Mockup-Stufe nicht überspringen, bevor HTML gebaut wird
 
 ### Workflow
 - Jedes neue Modul startet mit Referenz-Check: was machen große WAWIs, was brauchen wir extra

@@ -1,3 +1,7 @@
+/* ================== */
+/* == ARTIKELLISTE == */
+/* ================== */
+
 /* ===== CARD ===== */
 
 .card {
@@ -198,3 +202,179 @@
     background: #152d55;
     border-color: #152d55;
 }
+
+/* ==================== */
+/* == ARTIKELDETAILS == */
+/* ==================== */
+
+/* ===== ARTICLE-HEADER ===== */
+
+.article-header {
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-md) var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+.article-header-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+.article-header-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+.article-header-meta {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+.article-header-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* ===== TAB BAR ===== */
+
+.tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--color-border);
+    background: var(--color-white);
+    padding: 0 var(--space-lg);
+}
+.tab {
+    padding: 10px var(--space-md);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    white-space: nowrap;
+}
+.tab.active {
+    color: var(--color-nav);
+    border-bottom-color: var(--color-nav);
+    background: var(--color-white);
+}
+.tab:hover:not(.active) {
+    color: var(--color-text);
+    background: var(--color-bg);
+}
+
+/* ===== BADGE ===== */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--color-nav);
+    color: var(--color-white);
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* ===== FORM-SECTION ===== */
+
+.form-section {
+    margin-bottom: var(--space-lg);
+}
+.form-section-header {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-md);
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    align-items: center;
+    gap: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-sm);
+}
+.form-label {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    text-align: right;
+}
+
+/* ===== SIDEBAR-CONTEXT-BOX ===== */
+
+.sidebar-context-box {
+    background: #e8eef7;
+    border: 1px solid #c5d3e8;
+    border-radius: 4px;
+    padding: var(--space-sm) var(--space-md);
+    margin: var(--space-sm) var(--space-md);
+    font-size: 12px;
+}
+.sidebar-context-box .artnr {
+    font-weight: 700;
+    color: var(--color-nav);
+}
+.sidebar-context-box .name {
+    color: var(--color-text);
+    margin-top: 2px;
+}
+.sidebar-sep {
+    height: 1px;
+    background: var(--color-border);
+    margin: var(--space-sm) var(--space-md);
+}
+.sidebar-grayed {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+/* ===== MODALS ===== */
+
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal {
+    width: 400px;
+    border: 1px solid #e9edf3;
+    border-radius: 6px;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    max-height: 80%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px;
+}
+
+/* =====  ===== */
