@@ -49,6 +49,19 @@ html, body {
   gap: var(--space-sm);
 }
 
+.actionbar-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--color-border);
+}
+
+.actionbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
 .erp-sidebar {
   grid-area: sidebar;
   background: var(--color-white);
@@ -75,8 +88,8 @@ html, body {
 
 .erp-statusbar {
   grid-area: statusbar;
-  background: var(--color-nav);
-  color: rgba(255,255,255,0.7);
+  background: #0D2045;
+  color: var(--color-accent);
   font-size: 12px;
   padding: 0 var(--space-md);
   display: flex;
@@ -96,6 +109,15 @@ html, body {
   font-size: 16px;
   text-decoration: none;
   margin-right: var(--space-lg);
+  background: var(--color-white);
+  border-radius: 5px;
+  padding: 3px var(--space-sm);
+}
+
+.erp-nav-logo img {
+    height: 36px;
+    width: auto;
+    display: block;
 }
 
 .erp-nav-links {
@@ -106,7 +128,7 @@ html, body {
 }
 
 .erp-nav-link {
-  color: rgba(255,255,255,0.75);
+  color: #8BAECF;
   text-decoration: none;
   padding: 6px var(--space-sm);
   border-radius: 4px;
@@ -120,8 +142,9 @@ html, body {
 }
 
 .erp-nav-link.active {
-  background: rgba(255,255,255,0.15);
-  color: white;
+    background: #2D5FA6;
+    color: white;
+    font-weight: 700;
 }
 
 .erp-nav-user {
@@ -130,6 +153,9 @@ html, body {
   cursor: pointer;
   padding: 6px var(--space-sm);
   border-radius: 4px;
+  background: #0D2045;
+  border-radius: 5px;
+  color: var(--color-accent);
 }
 
 .erp-nav-user:hover {
@@ -162,4 +188,16 @@ html, body {
   border-left-color: var(--color-nav);
   font-weight: 600;
 }
+
+.sidebar-module-header {
+    padding: 6px var(--space-md);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-nav);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+}
+
 

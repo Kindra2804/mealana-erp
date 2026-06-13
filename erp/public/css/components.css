@@ -1,0 +1,160 @@
+/* ===== CARD ===== */
+
+.card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    padding: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+/* ===== BUTTONS ===== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 6px var(--space-md);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--color-nav);
+    color: var(--color-white);
+    border-color: var(--color-nav);
+}
+
+.btn-primary:hover {
+    background: #152d55;
+    border-color: #152d55;
+}
+
+.btn-secondary {
+    background: var(--color-white);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.btn-secondary:hover {
+    background: var(--color-bg);
+}
+
+.btn-danger {
+    background: var(--color-danger);
+    color: var(--color-white);
+    border-color: var(--color-danger);
+}
+
+.btn-danger:hover {
+    background: #b02a37;
+    border-color: #b02a37;
+}
+
+.btn-sm {
+    padding: 3px var(--space-sm);
+    font-size: 12px;
+}
+
+/* ===== CHIPS / STATUS-BADGES ===== */
+
+.chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.chip-aktiv {
+    background: #d4edda;
+    color: #155724;
+}
+
+.chip-inaktiv {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.chip-auslauf {
+    background: #ffe0b2;
+    color: #e65100;
+}
+
+/* ===== TABLE ===== */
+
+.erp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.erp-table th {
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-sm) var(--space-md);
+    text-align: left;
+    border-bottom: 2px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.erp-table td {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+.erp-table tbody tr:hover {
+    background: #f0f4ff;
+}
+
+.erp-table .row-inaktiv {
+    opacity: 0.5;
+}
+
+.erp-table .row-auslauf td {
+    color: var(--color-warning);
+}
+
+/* ===== FILTER-BAR ===== */
+
+.filter-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.erp-input,
+.erp-select {
+    padding: 6px var(--space-sm);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--color-text);
+    background: var(--color-white);
+    height: 32px;
+}
+
+.erp-input:focus,
+.erp-select:focus {
+    outline: none;
+    border-color: var(--color-nav);
+    box-shadow: 0 0 0 2px rgba(27, 58, 107, 0.15);
+}
+
+.erp-input {
+    width: 220px;
+}

@@ -608,11 +608,42 @@ $result = $service->wareneingang([
 2. ~~Artikel: Achsen zuweisen~~ ✅
 3. ~~VarKombi-Generator~~ ✅
 
-### Als nächstes: UI-Redesign (JTL-inspiriert)
-- Top-Nav für Hauptmodule, Sidebar für Untergruppen
-- 1280×1024 Basis
-- Karls Frau hat Mitspracherecht beim Design
-- Dann alle neuen Module auf diesem Layout aufbauen
+### UI-Redesign: Shell + Components ✅ (2026-06-12/13)
+
+**CSS-Dateien:**
+- `public/css/variables.css` — CSS Custom Properties: Farben, Abstände, Layout-Maße
+- `public/css/layout.css` — App-Shell CSS Grid + `.actionbar-sep`, `.actionbar-right`, `.sidebar-module-header`
+- `public/css/components.css` — `.card`, `.btn`/`.btn-primary`/`.btn-secondary`/`.btn-danger`/`.btn-sm`, `.chip`/`.chip-aktiv`/`.chip-inaktiv`/`.chip-auslauf`, `.erp-table`, `.filter-bar`, `.erp-input`, `.erp-select`
+
+**PHP Includes:**
+- `public/includes/shell_top.php` — dynamisch: `$pageTitle`, `$activeModule`, `$actionBarContent`; Sidebar auto-generiert per `match($activeModule)`
+- `public/includes/shell_bottom.php` — schließt Shell
+- `public/img/logo.png` — Logo (aus D:\ERP\LOGO.png kopiert)
+
+**Migriert:** `artikel/liste.php` ✅ — Shell + alle Component-Klassen, Action Bar, Chips
+
+**Verwendung auf jeder Seite:**
+```php
+$pageTitle        = "Seitenname";
+$activeModule     = "modulname";   // dashboard|artikel|lager|kunden|verkauf|versand|retouren|einkauf|buchhaltung|lieferanten
+$actionBarContent = <<<HTML
+<a href="..." class="btn btn-primary btn-sm">+ Neu</a>
+<button class="btn btn-secondary btn-sm">Kopieren</button>
+<div class="actionbar-sep"></div>
+<div class="actionbar-right">
+    <button class="btn btn-secondary btn-sm">Aktion ▼</button>
+</div>
+HTML;
+require_once __DIR__ . '/../includes/shell_top.php';
+// → Seiteninhalt (Cards, Tabellen etc.)
+require_once __DIR__ . '/../includes/shell_bottom.php';
+```
+
+**Finetuning (später):**
+- URL-Rewriting via `.htaccess` (mod_rewrite) — hübsche URLs statt vollständiger `.php`-Pfade
+- Größen-Feinabstimmung Nav/Sidebar exakt auf Mockup-Maße
+
+**Nächste Schritte UI:** Restliche Seiten auf Shell migrieren (detail.php, neu.php, bearbeiten.php, lager/, lieferanten/)
 
 ### Artikel-Modul: Noch offen
 - **Merkmale-UI** — Formular zum Befüllen (Nadelstärke, Garngruppe, Maschenprobe) — spätestens mit Shop
