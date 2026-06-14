@@ -102,7 +102,7 @@ class LagerService
             'lager_id'      => $data['lager_id'],
             'lieferant_id'  => $data['lieferant_id'] ?? null,
             'ek_preis'      => $data['ek_preis'] ?? null,
-            'charge'        => $chargePflicht ? ($data['charge'] ?? null) : null,
+            'charge'        => $data['charge'] ?? null,
             'bewegungstyp'  => 'eingang',
             'menge'         => $data['menge'],
             'bestand_vorher'  => $bestandVorher,
@@ -201,5 +201,20 @@ class LagerService
     public function getNachzutragendeChargen(): array
     {
         return $this->repo->findNachzutragendeChargen();
+    }
+
+    public function getAlleLager(): array
+    {
+        return $this->repo->findAlleLager();
+    }
+
+    public function getLagerBestandChargen(int $artikelId): array
+    {
+        return $this->repo->findBestandChargeProLager($artikelId);
+    }
+
+    public function getBewegungslog(int $artikelId): array
+    {
+        return $this->repo->findBewegungslogFuerArtikel($artikelId);
     }
 }

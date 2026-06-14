@@ -310,4 +310,90 @@ class LagerRepository
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
     }
+
+    public function findBestandChargeProLager(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+        SELECT
+            lb.id,
+            lb.lager_id,
+            l.name AS lager_name,
+            lb.charge,
+            lb.charge_status,
+            lb.bestand,
+            lb.mindestbestand
+        FROM lagerbestand lb
+        JOIN lager l ON l.id = lb.lager_id
+        WHERE lb.artikel_id = :artikel_id
+        ORDER BY l.name, lb.charge
+        ");
+
+        $stmt->execute(['artikel_id' => $artikelId]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $lagerGruppen = [];  // startet leer
+
+        foreach ($rows as $row) {
+            $lid = $row['lager_id'];
+
+            // Beim ersten Mal für dieses Lager: Grundstruktur anlegen
+            if (!isset($lagerGruppen[$lid])) {
+                $lagerGruppen[$lid] = [
+                    'name'          => $row['lager_name'],
+                    'gesamt'        => 0,
+                    'mindestbestand' => $row['mindestbestand'],
+                    'chargen'       => [],
+                ];
+            }
+
+            // Jede Zeile: Bestand aufsummieren
+            $lagerGruppen[$lid]['gesamt'] += $row['bestand'];
+
+            // Nur wenn Charge vorhanden: anhängen
+            if ($row['charge'] !== null) {
+                $lagerGruppen[$lid]['chargen'][] = $row;
+            }
+        }
+
+        return $lagerGruppen;
+    }
+
+    public function findAlleLager(): array
+    {
+        $stmt = $this->db->query("SELECT id, name FROM lager WHERE aktiv = 1 ORDER BY name");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function findBewegungslogFuerArtikel(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+        SELECT
+            lb.artikel_id,
+            lb.lager_id,
+            l.name,
+            lb.bewegungstyp,
+            lb.menge,
+            lb.bestand_vorher,
+            lb.bestand_nachher,
+            lb.charge,
+            lb.referenz,
+            lb.notiz,
+            lb.erstellt_am,
+            b.formularname,
+            l.name AS lager_name
+            FROM lager_bewegungen lb
+            LEFT JOIN benutzer b ON b.id = lb.benutzer_id
+            JOIN lager l ON l.id = lb.lager_id
+            WHERE lb.artikel_id = :artikel_id
+            ORDER BY lb.erstellt_am DESC
+            LIMIT 10
+        ");
+
+        $stmt->execute(['artikel_id' => $artikelId]);
+
+        $bewegungen = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $bewegungen;
+    }
 }

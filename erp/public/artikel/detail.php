@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
+require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 
@@ -30,6 +31,15 @@ $werte             = $variantenService->findWerteByArtikelId($id);
 $existingKombis    = $variantenService->findExistingKombinationen($id);
 $alleLieferanten   = $lieferantenService->findAll();
 
+$lagerService  = new LagerService();
+$lagerGruppen  = $lagerService->getLagerBestandChargen($id);
+$bewegungslog  = $lagerService->getBewegungslog($id);
+$alleLager     = $lagerService->getAlleLager();
+
+$lagerGesamtBestand = array_sum(array_column($lagerGruppen, 'gesamt'));
+$lagerAnzahlLager   = count($lagerGruppen);
+$lagerAnzahlChargen = array_sum(array_map(fn($lg) => count($lg['chargen']), $lagerGruppen));
+
 $ean_gtin13 = '';
 foreach ($codes as $c) {
     if ($c['typ'] === 'GTIN13') {
@@ -41,6 +51,15 @@ foreach ($codes as $c) {
 if ($artikel === false) {
     echo 'Artikel nicht gefunden!';
     exit;
+}
+
+if (!function_exists('formatBestand')) {
+    function formatBestand(int|float|string $wert): string {
+        $v = (float) $wert;
+        return $v == (int) $v
+            ? number_format($v, 0, ',', '.')
+            : number_format($v, 3, ',', '.');
+    }
 }
 
 function kartesischesProdukt(array $arrays): array
@@ -141,6 +160,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?= htmlspecialchars($artikel['artikelnummer']) ?>
             &nbsp;|&nbsp; <?= htmlspecialchars($artikel['artikeltyp']) ?>
             &nbsp;|&nbsp; <?= htmlspecialchars($artikel['hersteller'] ?? '–') ?>
+        </div>
+        <div style="display:flex;gap:var(--space-lg);margin-top:4px;font-size:12px">
+            <span>
+                VK: <strong><?= $artikel['brutto_vk'] ? number_format((float)$artikel['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></strong>
+            </span>
+            <span>
+                Bestand: <strong style="<?= $lagerGesamtBestand <= 0 ? 'color:var(--color-danger)' : '' ?>"><?= formatBestand($lagerGesamtBestand) ?></strong>
+            </span>
         </div>
     </div>
     <div class="article-header-toggle">
@@ -483,7 +510,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
                         <?php if (!empty($neueKombis)): ?>
                             <div style="display:flex; justify-content:flex-end; margin-top:var(--space-md)">
-                                <button type="submit" class="btn btn-primary">▶ Ausgewählte generieren (<?= count($neueKombis) ?>)</button>
+                                <button type="submit" id="gen-submit-btn" class="btn btn-primary">▶ Ausgewählte generieren (<?= count($neueKombis) ?>)</button>
                             </div>
                         <?php else: ?>
                             <p style="color:var(--color-text-muted); font-size:13px; margin-top:var(--space-md)">✓ Alle möglichen Kombinationen sind bereits angelegt.</p>
@@ -536,7 +563,149 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div class="card">Preise Platzhalter</div>
     </div>
     <div id="tab-lager" class="versteckt">
-        <div class="card">Lager Platzhalter</div>
+
+        <?php if (!empty($_GET['we_fehler'])): ?>
+            <div style="background:#fee2e2;color:#991b1b;padding:var(--space-sm) var(--space-md);border-radius:6px;margin-bottom:var(--space-md);font-size:13px">
+                ⚠ <?= htmlspecialchars($_GET['we_fehler']) ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Bestandsübersicht -->
+        <div class="card">
+            <div class="pagination-bar">
+                <div style="font-weight:600">Lagerbestand</div>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-secondary btn-sm" disabled title="In Entwicklung">Umlagerung →</button>
+                    <button class="btn btn-secondary btn-sm" onclick="weModalOeffnen()">+ Wareneingang buchen</button>
+                </div>
+            </div>
+
+            <?php if (!empty($lagerGruppen)): ?>
+                <div style="font-size:13px;color:var(--color-text-muted);padding:var(--space-xs) 0 var(--space-sm)">
+                    Gesamtbestand: <strong style="color:var(--color-text)"><?= formatBestand($lagerGesamtBestand) ?></strong>
+                    in <strong style="color:var(--color-text)"><?= $lagerAnzahlLager ?></strong> <?= $lagerAnzahlLager === 1 ? 'Lager' : 'Lagern' ?>
+                    <?php if ($lagerAnzahlChargen > 0): ?>
+                        &nbsp;·&nbsp; <strong style="color:var(--color-text)"><?= $lagerAnzahlChargen ?></strong> verschiedene <?= $lagerAnzahlChargen === 1 ? 'Charge' : 'Chargen' ?>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (empty($lagerGruppen)): ?>
+                <p style="color:var(--color-text-muted);font-size:13px;padding:var(--space-sm) 0">Kein Lagerbestand vorhanden.</p>
+            <?php else: ?>
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>Lager</th>
+                            <th style="text-align:right">Gesamt</th>
+                            <th style="text-align:right">Mindestbestand</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($lagerGruppen as $lid => $lg): ?>
+                            <?php $hatChargen = !empty($lg['chargen']); ?>
+                            <tr>
+                                <td><strong><?= htmlspecialchars($lg['name']) ?></strong></td>
+                                <td style="text-align:right;<?= (float)$lg['gesamt'] <= 0 ? 'color:var(--color-danger)' : ((float)$lg['gesamt'] <= (float)$lg['mindestbestand'] ? 'color:var(--color-warning)' : '') ?>">
+                                    <?= formatBestand($lg['gesamt']) ?>
+                                </td>
+                                <td style="text-align:right"><?= formatBestand($lg['mindestbestand']) ?></td>
+                                <td>
+                                    <?php if ($hatChargen): ?>
+                                        <button class="btn btn-secondary btn-sm" onclick="toggleChargen(this, <?= $lid ?>)" data-count="<?= count($lg['chargen']) ?>">
+                                            ▲ Chargen (<?= count($lg['chargen']) ?>)
+                                        </button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php if ($hatChargen): ?>
+                                <tr id="chargen-<?= $lid ?>">
+                                    <td colspan="4" style="padding:0">
+                                        <table class="erp-table" style="margin:0;background:#f8fafc">
+                                            <thead>
+                                                <tr>
+                                                    <th style="padding-left:32px">Charge</th>
+                                                    <th>Status</th>
+                                                    <th style="text-align:right">Menge</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($lg['chargen'] as $ch): ?>
+                                                    <tr>
+                                                        <td style="padding-left:32px"><?= htmlspecialchars($ch['charge']) ?></td>
+                                                        <td><?= htmlspecialchars($ch['charge_status'] ?? '–') ?></td>
+                                                        <td style="text-align:right"><?= formatBestand($ch['bestand']) ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+
+        <!-- Bewegungslog -->
+        <div class="card" style="margin-top:var(--space-md)">
+            <div style="font-weight:600;padding-bottom:var(--space-xs);margin-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
+                Letzte Lagerbewegungen
+            </div>
+            <?php if (empty($bewegungslog)): ?>
+                <p style="color:var(--color-text-muted);font-size:13px">Noch keine Lagerbewegungen vorhanden.</p>
+            <?php else: ?>
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Typ</th>
+                            <th style="text-align:right">Menge</th>
+                            <th>Vorher → Nachher</th>
+                            <th>Charge</th>
+                            <th>Lager</th>
+                            <th>Referenz / Notiz</th>
+                            <th>Benutzer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $typFarben = [
+                            'eingang'   => ['#dcfce7', '#166534'],
+                            'ausgang'   => ['#fee2e2', '#991b1b'],
+                            'korrektur' => ['#fff7ed', '#9a3412'],
+                            'inventur'  => ['#eff6ff', '#1e40af'],
+                        ];
+                        ?>
+                        <?php foreach ($bewegungslog as $b): ?>
+                            <?php [$bg, $fg] = $typFarben[$b['bewegungstyp']] ?? ['#f1f5f9', '#334155']; ?>
+                            <tr>
+                                <td style="white-space:nowrap"><?= date('d.m.Y H:i', strtotime($b['erstellt_am'])) ?></td>
+                                <td>
+                                    <span style="background:<?= $bg ?>;color:<?= $fg ?>;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">
+                                        <?= htmlspecialchars(ucfirst($b['bewegungstyp'])) ?>
+                                    </span>
+                                </td>
+                                <td style="text-align:right"><?= formatBestand($b['menge']) ?></td>
+                                <td style="white-space:nowrap"><?= formatBestand($b['bestand_vorher']) ?> → <?= formatBestand($b['bestand_nachher']) ?></td>
+                                <td><?= htmlspecialchars($b['charge'] ?? '–') ?></td>
+                                <td><?= htmlspecialchars($b['lager_name']) ?></td>
+                                <td>
+                                    <?php if (!empty($b['referenz'])): ?>
+                                        <span style="font-weight:600"><?= htmlspecialchars($b['referenz']) ?></span><?= !empty($b['notiz']) ? ' · ' : '' ?>
+                                    <?php endif; ?>
+                                    <?= htmlspecialchars($b['notiz'] ?? (!empty($b['referenz']) ? '' : '–')) ?>
+                                </td>
+                                <td><?= htmlspecialchars($b['formularname'] ?? '–') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+
     </div>
     <div id="tab-bilder" class="versteckt">
         <div class="card">Bilder Platzhalter</div>
@@ -635,6 +804,49 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
+<div id="we-backdrop" class="modal-backdrop" onclick="weModalSchliessen()">
+    <div id="we-modal" class="modal" onclick="event.stopPropagation()">
+        <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-xs)">
+            Wareneingang buchen
+        </div>
+        <form method="POST" action="lager_schnell_we.php" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+            <input type="hidden" name="artikel_id" value="<?= $id ?>">
+            <div class="form-row">
+                <label class="form-label">Lager *</label>
+                <select name="lager_id" class="erp-select" style="width:100%" required>
+                    <option value="">– Lager auswählen –</option>
+                    <?php foreach ($alleLager as $l): ?>
+                        <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-row">
+                <label class="form-label">Menge *</label>
+                <input type="number" name="menge" class="erp-input" style="width:100%" step="0.001" min="0.001" required>
+            </div>
+            <?php if ($artikel['charge_pflicht']): ?>
+            <div class="form-row">
+                <label class="form-label">Charge *</label>
+                <input type="text" name="charge" class="erp-input" style="width:100%" required>
+            </div>
+            <?php else: ?>
+            <div class="form-row">
+                <label class="form-label">Charge</label>
+                <input type="text" name="charge" class="erp-input" style="width:100%" placeholder="optional">
+            </div>
+            <?php endif; ?>
+            <div class="form-row">
+                <label class="form-label">Notiz</label>
+                <input type="text" name="notiz" class="erp-input" style="width:100%" placeholder="optional">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-sm);padding-top:var(--space-sm)">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="weModalSchliessen()">Abbrechen</button>
+                <button type="submit" class="btn btn-primary btn-sm">Buchen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="lief-backdrop" class="modal-backdrop" onclick="liefModalSchliessen()">
     <div id="lief-modal" class="modal" onclick="event.stopPropagation()">
         <div id="lief-titel" style="font-size:15px; font-weight:600; padding-bottom:var(--space-sm); border-bottom:1px solid var(--color-border); margin-bottom:var(--space-xs)">
@@ -718,6 +930,30 @@ require_once __DIR__ . '/../includes/shell_top.php';
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.getElementById('tab-' + name).classList.remove('versteckt');
         el.classList.add('active');
+    }
+
+    // Tab aus URL-Parameter öffnen (z.B. nach WE-Redirect)
+    (function() {
+        const tab = new URLSearchParams(location.search).get('tab');
+        if (tab) {
+            const el = document.querySelector(`.tab[onclick*="'${tab}'"]`);
+            if (el) zeigeTab(tab, el);
+        }
+    })();
+
+    function weModalOeffnen() {
+        document.getElementById('we-backdrop').style.display = 'flex';
+    }
+
+    function weModalSchliessen() {
+        document.getElementById('we-backdrop').style.display = 'none';
+    }
+
+    function toggleChargen(btn, lagerId) {
+        const row = document.getElementById('chargen-' + lagerId);
+        const offen = btn.textContent.includes('▲');
+        row.style.display = offen ? 'none' : '';
+        btn.textContent = (offen ? '▼' : '▲') + ' Chargen (' + btn.dataset.count + ')';
     }
 
     function katModalSchliessen() {
@@ -854,6 +1090,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
         liefModalSchliessen();
         location.reload();
     }
+
+    // Generator: Button-Count live aktualisieren
+    document.querySelectorAll('#generator-form input[type=checkbox][name*="selected"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const checked = document.querySelectorAll('#generator-form input[type=checkbox][name*="selected"]:checked').length;
+            const btn = document.getElementById('gen-submit-btn');
+            if (btn) btn.textContent = '▶ Ausgewählte generieren (' + checked + ')';
+        });
+    });
 
     function varPanel(name) {
         document.getElementById('var-panel-gen').classList.toggle('versteckt', name !== 'gen');

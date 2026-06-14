@@ -27,11 +27,9 @@ $variantenService = new VariantenService();
 $result = $variantenService->erstelleKombinationen($vater, $hatEigenenLagerstand, $kombis);
 
 if ($result['erfolg']) {
-    $_SESSION['erfolg'] = 'varkombi eingefügt';
-    header('Location: varkombi_generator.php?artikel_id=' . $artikelId);
+    header('Location: detail.php?id=' . $artikelId . '&tab=varianten');
     exit;
 } else {
-    $_SESSION['fehler'] = ['fehler beim speichern'];
-    header('Location: varkombi_generator.php?artikel_id=' . $artikelId);
+    header('Location: detail.php?id=' . $artikelId . '&tab=varianten&var_fehler=1');
     exit;
 }
