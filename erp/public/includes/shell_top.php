@@ -210,6 +210,12 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                             parent = parent.parentElement;
                         }
                     })('kat-<?= $aktivKatId ?>');
+
+                    // Aktive Kategorie in den sichtbaren Bereich scrollen
+                    var aktiveZeile = document.querySelector('.kat-zeile.aktiv');
+                    if (aktiveZeile) {
+                        aktiveZeile.scrollIntoView({ block: 'center', behavior: 'instant' });
+                    }
                     <?php endif; ?>
 
                     window.katToggle = function(nodeId, toggleId) {
