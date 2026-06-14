@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../src/core/Database.php';
 
 $artikelId = (int) ($_POST['artikel_id'] ?? 0);
 $lagerId   = (int) ($_POST['lager_id']   ?? 0);
@@ -12,6 +13,16 @@ $redirect = 'detail.php?id=' . $artikelId . '&tab=lager';
 
 if ($artikelId <= 0 || $lagerId <= 0 || $menge <= 0) {
     header('Location: ' . $redirect . '&we_fehler=' . urlencode('Ungültige Eingabe'));
+    exit;
+}
+
+// Dezimalmengen nur bei teilbaren Artikeltypen (z.B. Meterware) erlaubt
+$db   = Database::getInstance();
+$stmt = $db->prepare("SELECT at.teilbar FROM artikel a JOIN artikel_typen at ON a.artikeltyp_id = at.id WHERE a.id = :id");
+$stmt->execute(['id' => $artikelId]);
+$typ = $stmt->fetch();
+if (!($typ['teilbar'] ?? false) && $menge != floor($menge)) {
+    header('Location: ' . $redirect . '&we_fehler=' . urlencode('Dezimalmengen nur bei teilbaren Artikeln (Meterware etc.) erlaubt'));
     exit;
 }
 

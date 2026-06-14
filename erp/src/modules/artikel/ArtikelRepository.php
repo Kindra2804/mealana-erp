@@ -190,11 +190,14 @@ class ArtikelRepository
                 a.ueberverkauf_erlaubt,
                 a.aktiv,
                 a.zustand,
+                a.uvp,
+                a.preise_vererben,
                 at.code AS artikeltyp,
                 at.name AS artikeltyp_name,
                 h.name AS hersteller,
                 s.satz AS steuersatz,
                 e.name AS einheit_name,
+                at.teilbar AS artikeltyp_teilbar,
                 ap.brutto_vk,
                 ap.netto_vk
             FROM artikel a

@@ -37,8 +37,39 @@ $lagerGruppen  = $lagerService->getLagerBestandChargen($id);
 $bewegungslog  = $lagerService->getBewegungslog($id);
 $alleLager     = $lagerService->getAlleLager();
 
-$preisService       = new PreisService();
+$preisService        = new PreisService();
 $kundengruppenPreise = $preisService->getKundengruppenPreise($id);
+$staffelpreise       = $preisService->getStaffelpreise($id);
+$preisAktionen       = $preisService->getAktionenFuerArtikel($id);
+
+// Standard-Lieferant für Marge
+$stdLieferant = null;
+foreach ($lieferanten as $l) {
+    if ($l['standard_lieferant']) { $stdLieferant = $l; break; }
+}
+
+// Endkunden-Preis (KG 1) für Marge + Grundpreis
+$kgEndkunde = null;
+foreach ($kundengruppenPreise as $kp) {
+    if ($kp['id'] == 1 && $kp['netto_vk'] !== null) { $kgEndkunde = $kp; break; }
+}
+
+// Marge berechnen
+$margeInfo = null;
+if ($stdLieferant && (float)$stdLieferant['netto_ek'] > 0 && $kgEndkunde && (float)$kgEndkunde['netto_vk'] > 0) {
+    $nEk = (float)$stdLieferant['netto_ek'];
+    $nVk = (float)$kgEndkunde['netto_vk'];
+    $margeInfo = ['prozent' => ($nVk - $nEk) / $nVk * 100, 'absolut' => $nVk - $nEk];
+}
+
+// Grundpreis berechnen
+$grundpreisAnzeige = null;
+if ($artikel['grundpreis_anzeigen'] && (float)($artikel['inhalt_menge'] ?? 0) > 0
+    && (float)($artikel['grundpreis_bezugsmenge'] ?? 0) > 0 && (float)($artikel['brutto_vk'] ?? 0) > 0) {
+    $gpWert = (float)$artikel['brutto_vk'] / (float)$artikel['inhalt_menge'] * (float)$artikel['grundpreis_bezugsmenge'];
+    $gpBez  = rtrim(rtrim(number_format((float)$artikel['grundpreis_bezugsmenge'], 3, ',', '.'), '0'), ',');
+    $grundpreisAnzeige = number_format($gpWert, 2, ',', '.') . ' € / ' . $gpBez . ' ' . ($artikel['inhalt_einheit'] ?? '');
+}
 
 $lagerGesamtBestand = array_sum(array_column($lagerGruppen, 'gesamt'));
 $lagerAnzahlLager   = count($lagerGruppen);
@@ -567,6 +598,130 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         <?php $hatKgPreise = !empty(array_filter($kundengruppenPreise, fn($kp) => $kp['brutto_vk'] !== null)); ?>
 
+        <!-- Preisinfo: UVP · Grundpreis · Marge -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-evenly;align-items:flex-start;padding:var(--space-xs) 0">
+
+                <!-- UVP -->
+                <div style="flex:1;padding:0 var(--space-lg);border-right:1px solid var(--color-border);text-align:center">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:4px">UVP / Streichpreis</div>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-sm)">
+                        <span id="uvp-anzeige" style="font-size:18px;font-weight:600">
+                            <?= $artikel['uvp'] ? number_format((float)$artikel['uvp'], 2, ',', '.') . ' €' : '–' ?>
+                        </span>
+                        <button class="btn btn-sm" onclick="uvpBearbeiten()" title="UVP bearbeiten">✏️</button>
+                    </div>
+                    <div id="uvp-edit" style="display:none;margin-top:var(--space-xs)">
+                        <input class="erp-input" type="number" step="0.01" min="0" id="uvp-input"
+                            value="<?= htmlspecialchars($artikel['uvp'] ?? '') ?>" style="width:120px">
+                        <button class="btn btn-primary btn-sm" onclick="uvpSpeichern()" style="margin-left:4px">✓</button>
+                        <button class="btn btn-sm" onclick="uvpAbbrechen()" style="margin-left:2px">✕</button>
+                    </div>
+                </div>
+
+                <!-- Grundpreis -->
+                <div style="flex:1;padding:0 var(--space-lg);border-right:1px solid var(--color-border);text-align:center">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:4px">Grundpreis (Endkunde)</div>
+                    <?php if ($grundpreisAnzeige): ?>
+                        <div style="font-size:18px;font-weight:600"><?= htmlspecialchars($grundpreisAnzeige) ?></div>
+                        <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">
+                            aus <?= number_format((float)$artikel['inhalt_menge'], 0, ',', '.') ?> <?= htmlspecialchars($artikel['inhalt_einheit'] ?? '') ?> Inhalt
+                        </div>
+                    <?php elseif (!$artikel['grundpreis_anzeigen']): ?>
+                        <div style="color:var(--color-text-muted);font-size:13px">Deaktiviert (Stammdaten)</div>
+                    <?php else: ?>
+                        <div style="color:var(--color-text-muted);font-size:13px">– (Endkunden-Preis fehlt)</div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Marge -->
+                <div style="flex:1;padding:0 var(--space-lg);text-align:center">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:4px">Marge (Endkunde / Std.-Lief.)</div>
+                    <?php if ($margeInfo): ?>
+                        <div style="font-size:18px;font-weight:600;color:<?= $margeInfo['prozent'] < 20 ? 'var(--color-danger)' : ($margeInfo['prozent'] < 35 ? 'var(--color-warning)' : 'var(--color-success)') ?>">
+                            <?= number_format($margeInfo['prozent'], 1, ',', '.') ?> %
+                        </div>
+                        <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">
+                            <?= number_format($margeInfo['absolut'], 4, ',', '.') ?> € netto pro Stk.
+                        </div>
+                    <?php elseif (!$stdLieferant): ?>
+                        <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;color:var(--color-text-muted)">
+                            <span style="display:inline-flex;align-items:center;justify-content:center;background:#2563EB;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;font-weight:700;flex-shrink:0" title="Kein Standard-Lieferant gesetzt">!</span>
+                            Kein Standard-Lieferant
+                        </div>
+                    <?php else: ?>
+                        <div style="color:var(--color-text-muted);font-size:13px">– (Preise fehlen)</div>
+                    <?php endif; ?>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Preis-Aktionen -->
+        <?php
+            $hatAktionen       = !empty($preisAktionen);
+            $hatAktiveAktionen = !empty(array_filter($preisAktionen, fn($a) => $a['aktiv']));
+        ?>
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
+                 onclick="togglePreisSektion('aktionen-body', this)">
+                <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                    <h3 style="margin:0">Preis-Aktionen</h3>
+                    <?php if ($hatAktiveAktionen): ?>
+                        <span style="background:#16a34a;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">
+                            <?= count(array_filter($preisAktionen, fn($a) => $a['aktiv'])) ?> aktiv
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <span id="aktionen-toggle"><?= $hatAktionen ? '▲' : '▼' ?></span>
+            </div>
+            <div id="aktionen-body" style="margin-top:var(--space-md);<?= $hatAktionen ? '' : 'display:none' ?>">
+                <?php if ($hatAktionen): ?>
+                    <table class="erp-table">
+                        <thead>
+                            <tr>
+                                <th>Aktion</th>
+                                <th>Typ</th>
+                                <th>Kundengruppe</th>
+                                <th style="text-align:right">Aktionspreis</th>
+                                <th style="white-space:nowrap">Gültig ab</th>
+                                <th style="white-space:nowrap">Gültig bis</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($preisAktionen as $a): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($a['name']) ?></td>
+                                <td>
+                                    <span style="font-size:12px;padding:2px 8px;border-radius:10px;background:<?= $a['typ'] === 'sale' ? '#fef9c3' : '#dbeafe' ?>;color:<?= $a['typ'] === 'sale' ? '#854d0e' : '#1e40af' ?>">
+                                        <?= $a['typ'] === 'sale' ? 'Sale' : 'Lief.-Aktion' ?>
+                                    </span>
+                                </td>
+                                <td><?= $a['kg_name'] ? htmlspecialchars($a['kg_name']) : '<span style="color:var(--color-text-muted)">Alle</span>' ?></td>
+                                <td style="text-align:right"><?= number_format((float)$a['brutto_vk'], 2, ',', '.') ?> €</td>
+                                <td style="white-space:nowrap"><?= date('d.m.Y', strtotime($a['gueltig_ab'])) ?></td>
+                                <td style="white-space:nowrap"><?= $a['gueltig_bis'] ? date('d.m.Y', strtotime($a['gueltig_bis'])) : '–' ?></td>
+                                <td>
+                                    <?php if ($a['aktiv']): ?>
+                                        <span style="background:#dcfce7;color:#166534;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600">aktiv</span>
+                                    <?php else: ?>
+                                        <span style="background:#f1f5f9;color:#64748b;font-size:12px;padding:2px 8px;border-radius:10px">inaktiv</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p style="color:var(--color-text-muted);font-size:13px">Keine Aktionen für diesen Artikel.</p>
+                <?php endif; ?>
+                <div style="margin-top:var(--space-sm)">
+                    <a href="../preisaktionen/" class="btn btn-secondary btn-sm" style="opacity:0.5;pointer-events:none" title="Modul in Entwicklung">Aktionen verwalten →</a>
+                </div>
+            </div>
+        </div>
+
         <!-- Kundengruppen-Preise -->
         <div class="card" style="margin-bottom:var(--space-lg)">
             <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
@@ -583,7 +738,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <th style="text-align:right">Netto VK</th>
                             <th style="white-space:nowrap;min-width:90px">Gültig ab</th>
                             <th style="white-space:nowrap;min-width:90px">Gültig bis</th>
-                            <th></th>
+                            <th style="width:80px;white-space:nowrap"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -606,9 +761,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             </td>
                             <td style="white-space:nowrap"><?= $kp['gueltig_ab'] ? date('d.m.Y', strtotime($kp['gueltig_ab'])) : '–' ?></td>
                             <td style="white-space:nowrap"><?= $kp['gueltig_bis'] ? date('d.m.Y', strtotime($kp['gueltig_bis'])) : '–' ?></td>
-                            <td class="row-aktionen">
+                            <td class="row-aktionen" style="white-space:nowrap">
                                 <?php if ($kp['brutto_vk'] !== null): ?>
                                 <button class="btn btn-sm" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Bearbeiten">✏️</button>
+                                <?php if ($kp['id'] != 1): ?>
+                                <button class="btn btn-sm" style="color:var(--color-danger)" onclick="preisLoeschen(<?= $kp['id'] ?>);event.stopPropagation()" title="Löschen">🗑️</button>
+                                <?php endif; ?>
                                 <?php else: ?>
                                 <button class="btn btn-sm btn-primary" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Preis anlegen">+</button>
                                 <?php endif; ?>
@@ -617,6 +775,54 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Staffelpreise -->
+        <?php $hatStaffelpreise = !empty($staffelpreise); ?>
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
+                 onclick="togglePreisSektion('staffel-body', this)">
+                <h3 style="margin:0">Staffelpreise</h3>
+                <span id="staffel-toggle"><?= $hatStaffelpreise ? '▲' : '▼' ?></span>
+            </div>
+            <div id="staffel-body" style="margin-top:var(--space-md);<?= $hatStaffelpreise ? '' : 'display:none' ?>">
+                <?php if ($hatStaffelpreise): ?>
+                    <table class="erp-table">
+                        <thead>
+                            <tr>
+                                <th>Kundengruppe</th>
+                                <th style="text-align:right">Menge ab</th>
+                                <th style="text-align:right">Brutto VK</th>
+                                <th style="text-align:right">Netto VK</th>
+                                <th style="width:80px;white-space:nowrap"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($staffelpreise as $sp): ?>
+                            <tr data-sp-id="<?= $sp['id'] ?>"
+                                data-kg-id="<?= $sp['kundengruppen_id'] ?>"
+                                data-menge="<?= htmlspecialchars($sp['menge_ab']) ?>"
+                                data-brutto="<?= htmlspecialchars($sp['brutto_vk']) ?>"
+                                data-netto="<?= htmlspecialchars($sp['netto_vk']) ?>">
+                                <td><?= htmlspecialchars($sp['kundengruppen_name']) ?></td>
+                                <td style="text-align:right"><?= formatBestand($sp['menge_ab']) ?></td>
+                                <td style="text-align:right"><?= number_format((float)$sp['brutto_vk'], 2, ',', '.') ?> €</td>
+                                <td style="text-align:right"><?= number_format((float)$sp['netto_vk'], 4, ',', '.') ?> €</td>
+                                <td class="row-aktionen" style="white-space:nowrap">
+                                    <button class="btn btn-sm" onclick="staffelModalOeffnen(<?= $sp['id'] ?>);event.stopPropagation()" title="Bearbeiten">✏️</button>
+                                    <button class="btn btn-sm" style="color:var(--color-danger)" onclick="staffelLoeschen(<?= $sp['id'] ?>);event.stopPropagation()" title="Löschen">🗑️</button>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <p style="color:var(--color-text-muted);font-size:13px">Noch keine Staffelpreise vorhanden.</p>
+                <?php endif; ?>
+                <div style="margin-top:var(--space-sm)">
+                    <button class="btn btn-secondary btn-sm" onclick="staffelModalOeffnen()">+ Staffelpreis hinzufügen</button>
+                </div>
             </div>
         </div>
 
@@ -881,7 +1087,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
             <div class="form-row">
                 <label class="form-label">Menge *</label>
-                <input type="number" name="menge" class="erp-input" style="width:100%" step="0.001" min="0.001" required>
+                <input type="number" name="menge" class="erp-input" style="width:100%"
+                    step="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>"
+                    min="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>" required>
             </div>
             <?php if ($artikel['charge_pflicht']): ?>
             <div class="form-row">
@@ -971,6 +1179,46 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
+<div id="staffel-backdrop" class="modal-backdrop" onclick="staffelModalSchliessen()">
+    <div id="staffel-modal" class="modal" onclick="event.stopPropagation()">
+        <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+            <span id="staffel-titel">Staffelpreis hinzufügen</span>
+        </div>
+        <form id="staffel-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+            <input type="hidden" name="artikel_id" value="<?= $id ?>">
+            <input type="hidden" name="id" id="staffel-id" value="">
+            <div class="form-row">
+                <label class="form-label">Kundengruppe</label>
+                <select class="erp-select" style="width:100%" name="kundengruppen_id" id="staffel-kg">
+                    <option value="">– bitte wählen –</option>
+                    <?php foreach ($kundengruppenPreise as $kp): ?>
+                        <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-row">
+                <label class="form-label">Menge ab</label>
+                <input class="erp-input" style="width:100%" type="number" step="1" min="1"
+                    name="menge_ab" id="staffel-menge" placeholder="z.B. 10">
+            </div>
+            <div class="form-row">
+                <label class="form-label">Brutto VK (€)</label>
+                <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                    name="brutto_vk" id="staffel-brutto" placeholder="0,00" oninput="staffelNettoBerechnen()">
+            </div>
+            <div class="form-row">
+                <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                    name="netto_vk" id="staffel-netto" placeholder="0,0000">
+            </div>
+            <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                <button type="button" class="btn btn-primary btn-sm" onclick="staffelSpeichern()">Speichern</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="staffelModalSchliessen()">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="preis-backdrop" class="modal-backdrop" onclick="preisModalSchliessen()">
     <div id="preis-modal" class="modal" onclick="event.stopPropagation()">
         <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
@@ -1042,6 +1290,33 @@ require_once __DIR__ . '/../includes/shell_top.php';
         document.getElementById('we-backdrop').style.display = 'none';
     }
 
+    function uvpBearbeiten() {
+        document.getElementById('uvp-anzeige').style.display = 'none';
+        document.querySelector('[onclick="uvpBearbeiten()"]').style.display = 'none';
+        document.getElementById('uvp-edit').style.display = 'flex';
+        document.getElementById('uvp-input').focus();
+    }
+    function uvpAbbrechen() {
+        document.getElementById('uvp-edit').style.display = 'none';
+        document.getElementById('uvp-anzeige').style.display = '';
+        document.querySelector('[onclick="uvpBearbeiten()"]').style.display = '';
+    }
+    function uvpSpeichern() {
+        const wert = document.getElementById('uvp-input').value;
+        const data = new FormData();
+        data.append('artikel_id', <?= $id ?>);
+        data.append('uvp', wert);
+        fetch('uvp_speichern.php', { method: 'POST', body: data })
+            .then(r => r.json())
+            .then(json => {
+                if (json.erfolg) {
+                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                } else {
+                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                }
+            });
+    }
+
     function togglePreisSektion(bodyId, header) {
         const body   = document.getElementById(bodyId);
         const toggle = header.querySelector('span');
@@ -1073,6 +1348,22 @@ require_once __DIR__ . '/../includes/shell_top.php';
             const netto = brutto / (1 + MWST_SATZ / 100);
             document.getElementById('preis-netto').value = netto.toFixed(4);
         }
+    }
+
+    function preisLoeschen(kgId) {
+        if (!confirm('Preis für diese Kundengruppe wirklich löschen?')) return;
+        const data = new FormData();
+        data.append('artikel_id', <?= $id ?>);
+        data.append('kundengruppen_id', kgId);
+        fetch('preis_loeschen.php', { method: 'POST', body: data })
+            .then(r => r.json())
+            .then(json => {
+                if (json.erfolg) {
+                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                } else {
+                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                }
+            });
     }
 
     function preisSpeichern() {
@@ -1240,6 +1531,66 @@ require_once __DIR__ . '/../includes/shell_top.php';
             if (btn) btn.textContent = '▶ Ausgewählte generieren (' + checked + ')';
         });
     });
+
+    function staffelModalOeffnen(spId = null) {
+        document.getElementById('staffel-id').value = spId ?? '';
+        if (spId) {
+            const row = document.querySelector(`tr[data-sp-id="${spId}"]`);
+            document.getElementById('staffel-titel').textContent = 'Staffelpreis bearbeiten';
+            document.getElementById('staffel-kg').value     = row.dataset.kgId;
+            document.getElementById('staffel-menge').value  = row.dataset.menge;
+            document.getElementById('staffel-brutto').value = row.dataset.brutto;
+            document.getElementById('staffel-netto').value  = row.dataset.netto;
+        } else {
+            document.getElementById('staffel-titel').textContent = 'Staffelpreis hinzufügen';
+            document.getElementById('staffel-kg').value     = '';
+            document.getElementById('staffel-menge').value  = '';
+            document.getElementById('staffel-brutto').value = '';
+            document.getElementById('staffel-netto').value  = '';
+        }
+        document.getElementById('staffel-backdrop').style.display = 'flex';
+    }
+
+    function staffelModalSchliessen() {
+        document.getElementById('staffel-backdrop').style.display = 'none';
+    }
+
+    function staffelNettoBerechnen() {
+        const brutto = parseFloat(document.getElementById('staffel-brutto').value);
+        if (!isNaN(brutto) && brutto > 0) {
+            document.getElementById('staffel-netto').value = (brutto / (1 + MWST_SATZ / 100)).toFixed(4);
+        }
+    }
+
+    function staffelSpeichern() {
+        const data = new FormData(document.getElementById('staffel-form'));
+        fetch('staffelpreis_speichern.php', { method: 'POST', body: data })
+            .then(r => r.json())
+            .then(json => {
+                if (json.erfolg) {
+                    staffelModalSchliessen();
+                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                } else {
+                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                }
+            });
+    }
+
+    function staffelLoeschen(spId) {
+        if (!confirm('Staffelpreis wirklich löschen?')) return;
+        const data = new FormData();
+        data.append('id', spId);
+        data.append('artikel_id', <?= $id ?>);
+        fetch('staffelpreis_loeschen.php', { method: 'POST', body: data })
+            .then(r => r.json())
+            .then(json => {
+                if (json.erfolg) {
+                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                } else {
+                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                }
+            });
+    }
 
     function varPanel(name) {
         document.getElementById('var-panel-gen').classList.toggle('versteckt', name !== 'gen');
