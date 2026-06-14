@@ -39,6 +39,17 @@ class ArtikelRepository
             $conditions[] = "a.aktiv = 1";
         }
 
+        $sf = $filter['status_filter'] ?? '';
+        if ($sf === 'auslauf') {
+            $conditions[] = "a.ist_auslaufartikel = 1";
+        } elseif ($sf === 'uv') {
+            $conditions[] = "a.ueberverkauf_erlaubt = 1";
+        } elseif ($sf === 'fehlbest') {
+            $having = 'HAVING gesamtbestand <= 0';
+        } elseif ($sf === 'inaktiv') {
+            $conditions[] = "a.aktiv = 0";
+        }
+
         if (!empty($filter['q'])) {
             $conditions[] = "(a.name LIKE :q OR a.artikelnummer LIKE :q)";
             $params['q'] = '%' . $filter['q'] . '%';
@@ -46,7 +57,7 @@ class ArtikelRepository
 
         $where = "WHERE " . implode(" AND ", $conditions);
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 a.id,
                 a.artikelnummer,
                 a.name,
@@ -57,12 +68,16 @@ class ArtikelRepository
                 s.satz AS steuersatz,
                 a.charge_pflicht,
                 a.ist_auslaufartikel,
+                a.ueberverkauf_erlaubt,
+                ap.brutto_vk,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
-                (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl
+                (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl,
+                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
             LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
             $where
@@ -99,6 +114,17 @@ class ArtikelRepository
 
         if (empty($filter['mitInaktiven'])) {
             $conditions[] = "a.aktiv = 1";
+        }
+
+        $sf = $filter['status_filter'] ?? '';
+        if ($sf === 'auslauf') {
+            $conditions[] = "a.ist_auslaufartikel = 1";
+        } elseif ($sf === 'uv') {
+            $conditions[] = "a.ueberverkauf_erlaubt = 1";
+        } elseif ($sf === 'fehlbest') {
+            $having = 'HAVING gesamtbestand <= 0';
+        } elseif ($sf === 'inaktiv') {
+            $conditions[] = "a.aktiv = 0";
         }
 
         if (!empty($filter['q'])) {
@@ -232,8 +258,12 @@ class ArtikelRepository
                 a.artikelnummer,
                 a.name,
                 a.aktiv,
+                a.ist_auslaufartikel,
+                a.ueberverkauf_erlaubt,
+                a.charge_pflicht,
                 ap.brutto_vk,
-                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
+                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
             FROM artikel a
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
@@ -554,6 +584,15 @@ class ArtikelRepository
         $stmt->execute(['id' => $id, 'ist_auslaufartikel' => $ist_auslaufartikel]);
     }
 
+    public function propagateAuslaufZuKindern(int $vaterId, int $istAuslauf): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE artikel SET ist_auslaufartikel = :ist_auslaufartikel
+            WHERE vaterartikel_id = :vaterartikel_id
+        ");
+        $stmt->execute(['vaterartikel_id' => $vaterId, 'ist_auslaufartikel' => $istAuslauf]);
+    }
+
     public function countAktiveKinder(int $vaterId): int
     {
         $stmt = $this->db->prepare("
@@ -566,13 +605,14 @@ class ArtikelRepository
     public function getLieferantenFuerArtikel(int $artikelId): array
     {
         $stmt = $this->db->prepare("
-        SELECT 
+        SELECT
             al.id,
             al.lieferant_id,
             al.artikelnummer_lieferant,
             al.netto_ek,
             al.waehrung,
             al.vpe_menge,
+            al.vpe_ean,
             al.lieferzeit_tage,
             al.mindestabnahme,
             al.standard_lieferant,

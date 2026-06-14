@@ -13,6 +13,8 @@ $artikelnummer_lieferant = (string) ($_POST['artikelnummer_lieferant'] ?? 0);
 $netto_ek = (float) ($_POST['netto_ek'] ?? 0);
 $waehrung = (string) ($_POST['waehrung'] ?? 0);
 $vpe_menge = (int) ($_POST['vpe_menge'] ?? 0);
+$vpe_ean = preg_replace('/\D/', '', (string) ($_POST['vpe_ean'] ?? ''));
+$vpe_ean = strlen($vpe_ean) > 0 ? $vpe_ean : null;
 $lieferzeit_tage = (int) ($_POST['lieferzeit_tage'] ?? 0);
 $mindestabnahme = (float) ($_POST['mindestabnahme'] ?? 0);
 $standard_lieferant = (int) ($_POST['standard_lieferant'] ?? 0);
@@ -33,6 +35,7 @@ if ($al_id) {
             netto_ek = :netto_ek,
             waehrung = :waehrung,
             vpe_menge = :vpe_menge,
+            vpe_ean = :vpe_ean,
             lieferzeit_tage = :lieferzeit_tage,
             mindestabnahme = :mindestabnahme,
             standard_lieferant = :standard_lieferant
@@ -46,6 +49,7 @@ if ($al_id) {
         'netto_ek' => $netto_ek,
         'waehrung' => $waehrung,
         'vpe_menge' => $vpe_menge,
+        'vpe_ean' => $vpe_ean,
         'lieferzeit_tage' => $lieferzeit_tage,
         'mindestabnahme' => $mindestabnahme,
         'standard_lieferant' => $standard_lieferant,
@@ -61,6 +65,7 @@ if ($al_id) {
         netto_ek,
         waehrung,
         vpe_menge,
+        vpe_ean,
         lieferzeit_tage,
         mindestabnahme,
         standard_lieferant
@@ -71,6 +76,7 @@ if ($al_id) {
         :netto_ek,
         :waehrung,
         :vpe_menge,
+        :vpe_ean,
         :lieferzeit_tage,
         :mindestabnahme,
         :standard_lieferant)
@@ -83,6 +89,7 @@ if ($al_id) {
         'netto_ek' => $netto_ek,
         'waehrung' => $waehrung,
         'vpe_menge' => $vpe_menge,
+        'vpe_ean' => $vpe_ean,
         'lieferzeit_tage' => $lieferzeit_tage,
         'mindestabnahme' => $mindestabnahme,
         'standard_lieferant' => $standard_lieferant,

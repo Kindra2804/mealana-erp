@@ -563,6 +563,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <th>EK (netto)</th>
                             <th>Whg</th>
                             <th>VPE</th>
+                            <th>VPE-EAN</th>
                             <th>LZ</th>
                             <th>MindBestMg.</th>
                             <th>Std.</th>
@@ -577,6 +578,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 data-ek="<?= $l['netto_ek'] ?? '' ?>"
                                 data-waehrung="<?= htmlspecialchars($l['waehrung']) ?>"
                                 data-vpe="<?= $l['vpe_menge'] ?? '' ?>"
+                                data-vpe-ean="<?= htmlspecialchars($l['vpe_ean'] ?? '') ?>"
                                 data-lz="<?= $l['lieferzeit_tage'] ?? '' ?>"
                                 data-mba="<?= $l['mindestabnahme'] ?? '' ?>"
                                 data-standard="<?= $l['standard_lieferant'] ? '1' : '' ?>"
@@ -586,6 +588,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <td><?= $l['netto_ek'] ? number_format($l['netto_ek'], 2, ',', '.') . ' €' : '–' ?></td>
                                 <td><?= htmlspecialchars($l['waehrung']) ?></td>
                                 <td><?= $l['vpe_menge'] ?? '-' ?></td>
+                                <td><?= htmlspecialchars($l['vpe_ean'] ?? '-') ?></td>
                                 <td><?= $l['lieferzeit_tage'] ?? '-' ?></td>
                                 <td><?= $l['mindestabnahme'] ?? '-' ?></td>
                                 <td><?= $l['standard_lieferant'] ? '⭐' : '' ?></td>
@@ -669,6 +672,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <label class="form-label">VPE</label>
                 <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="vpe_menge" id="lief-vpe"
                     value="">
+            </div>
+            <div class="form-row">
+                <label class="form-label">VPE-EAN</label>
+                <input class="erp-input" style="width:100%" type="text" name="vpe_ean" id="lief-vpe-ean"
+                    maxlength="13" placeholder="z.B. 7071723011379" value="">
             </div>
             <div class="form-row">
                 <label class="form-label">Lieferzeit</label>
@@ -798,6 +806,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             document.getElementById('lief-ek').value = tr.dataset.ek;
             document.getElementById('lief-waehrung').value = tr.dataset.waehrung;
             document.getElementById('lief-vpe').value = tr.dataset.vpe;
+            document.getElementById('lief-vpe-ean').value = tr.dataset.vpeEan;
             document.getElementById('lief-lz').value = tr.dataset.lz;
             document.getElementById('lief-mba').value = tr.dataset.mba;
             document.getElementById('lief-standard').checked = tr.dataset.standard;
@@ -810,6 +819,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             document.getElementById('lief-ek').value = '';
             document.getElementById('lief-waehrung').value = '';
             document.getElementById('lief-vpe').value = '';
+            document.getElementById('lief-vpe-ean').value = '';
             document.getElementById('lief-lz').value = '';
             document.getElementById('lief-mba').value = '';
             document.getElementById('lief-standard').checked = '';

@@ -66,6 +66,8 @@ class LagerService
         if (!empty($data['reaktivieren']) && $data['reaktivieren'] == '1') {
             $this->artikelRepo->setAuslaufartikelAktiv($artikelId, 1);
             $this->artikelRepo->setArtikelAktiv($artikelId, 1);
+            // Wenn ein Vater-Artikel reaktiviert wird, auch alle Kinder reaktivieren
+            $this->artikelRepo->propagateAuslaufZuKindern($artikelId, 1);
             Logger::log('artikel.reaktiviert', 'artikel', $artikelId, [
                 'lager_id' => $data['lager_id'],
                 'menge'    => $data['menge'],

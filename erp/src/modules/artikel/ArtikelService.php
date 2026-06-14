@@ -61,6 +61,9 @@ class ArtikelService
 
         $this->repo->update($data);
 
+        // Auslauf-Flag auf alle Kinder propagieren (betrifft Vater-Artikel, bei Kindern trifft UPDATE 0 Zeilen)
+        $this->repo->propagateAuslaufZuKindern((int) $data['id'], (int) ($data['ist_auslaufartikel'] ?? 0));
+
         $this->repo->deleteCodesByArtikelIdAndType($data['id'], 'GTIN13');
         if ($eanGtin13) {
             $this->repo->insertCode((int) $data['id'], 'GTIN13', $eanGtin13);
