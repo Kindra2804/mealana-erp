@@ -42,6 +42,10 @@ $kundengruppenPreise = $preisService->getKundengruppenPreise($id);
 $staffelpreise       = $preisService->getStaffelpreise($id);
 $preisAktionen       = $preisService->getAktionenFuerArtikel($id);
 
+$zustandsArtikelListe = ($artikel && empty($artikel['zustand_vater_id']))
+    ? $service->getZustandsArtikelFuerDetail($id)
+    : [];
+
 // Standard-Lieferant für Marge
 $stdLieferant = null;
 foreach ($lieferanten as $l) {
@@ -913,6 +917,69 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </table>
             <?php endif; ?>
         </div>
+
+        <?php if (!empty($zustandsArtikelListe)): ?>
+        <!-- Zustandsartikel -->
+        <div class="card" style="margin-top:var(--space-md)">
+            <div class="pagination-bar">
+                <div style="font-weight:600">
+                    B-Ware / Zustandsartikel
+                    <span style="margin-left:8px;font-size:12px;font-weight:400;color:var(--color-text-muted)"><?= count($zustandsArtikelListe) ?> Artikel</span>
+                </div>
+                <a href="neu.php" class="btn btn-secondary btn-sm">+ Zustandsartikel anlegen</a>
+            </div>
+            <table class="erp-table" style="margin-top:var(--space-sm)">
+                <thead>
+                    <tr>
+                        <th>Artikelnummer</th>
+                        <th>Zustand</th>
+                        <th style="text-align:right">Bestand</th>
+                        <th>Status</th>
+                        <th style="width:60px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $zustandLabels = [
+                        'gebraucht'          => ['GEB', '#dbeafe', '#1e40af'],
+                        'generalueberholt'   => ['GUE', '#d1fae5', '#065f46'],
+                        'beschaedigt'        => ['BSC', '#fee2e2', '#991b1b'],
+                        'retour'             => ['RET', '#fff7ed', '#9a3412'],
+                        'demo'               => ['DMO', '#f5f3ff', '#5b21b6'],
+                        'muster'             => ['MST', '#fef9c3', '#713f12'],
+                        'ausstellungsstueck' => ['AST', '#f0fdf4', '#14532d'],
+                    ];
+                    foreach ($zustandsArtikelListe as $za):
+                        [$zl, $zbg, $zfg] = $zustandLabels[$za['zustand']] ?? [strtoupper($za['zustand']), '#f3f4f6', '#374151'];
+                    ?>
+                    <tr>
+                        <td>
+                            <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
+                        </td>
+                        <td>
+                            <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:<?= $zbg ?>;color:<?= $zfg ?>">
+                                <?= $zl ?>
+                            </span>
+                        </td>
+                        <td style="text-align:right;<?= (float)$za['gesamtbestand'] <= 0 ? 'color:var(--color-danger)' : '' ?>">
+                            <?= formatBestand($za['gesamtbestand']) ?>
+                        </td>
+                        <td>
+                            <?php if (!$za['aktiv']): ?>
+                                <span class="sc sc-deaktiviert">Inaktiv</span>
+                            <?php else: ?>
+                                <span style="font-size:12px;color:var(--color-success)">Aktiv</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs">✏️</a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
 
         <!-- Bewegungslog -->
         <div class="card" style="margin-top:var(--space-md)">

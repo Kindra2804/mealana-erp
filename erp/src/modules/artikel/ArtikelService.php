@@ -276,6 +276,11 @@ class ArtikelService
             $fehler[] = 'Artikeltyp ist Pflichtfeld';
         }
 
+        $zustand = $data['zustand'] ?? 'neu';
+        if ($zustand !== 'neu' && empty($data['zustand_vater_id'])) {
+            $fehler[] = 'Bei Zustandsartikeln muss ein Vater-Artikel angegeben werden';
+        }
+
         return $fehler;
     }
 
@@ -299,6 +304,31 @@ class ArtikelService
         }
 
         return $fehler;
+    }
+
+    public function getZustandsArtikelFuerDetail(int $vaterId): array
+    {
+        return $this->repo->findZustandsArtikelByVaterId($vaterId);
+    }
+
+    public function getZustandsArtikelFuerListe(array $vaterIds): array
+    {
+        $ergebnis = $this->repo->findZustandsArtikelFuerListe($vaterIds);
+        $nachVater = [];
+        foreach ($ergebnis as $z) {
+            $nachVater[$z['zustand_vater_id']][] = $z;
+        }
+        return $nachVater;
+    }
+
+    public function searchVaterArtikel(string $q): array
+    {
+        return $this->repo->searchVaterArtikel($q);
+    }
+
+    public function findByIdSimple(int $id): array|false
+    {
+        return $this->repo->findByIdSimple($id);
     }
 
     public function kopiere(int $quell_id, array $kopierData): array

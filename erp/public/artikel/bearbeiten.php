@@ -15,6 +15,17 @@ $erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
+$zustandSuffixMap = [
+    'neu'               => '',
+    'gebraucht'         => 'GEB',
+    'generalueberholt'  => 'GUE',
+    'beschaedigt'       => 'BSC',
+    'retour'            => 'RET',
+    'demo'              => 'DMO',
+    'muster'            => 'MST',
+    'ausstellungsstueck'=> 'AST',
+];
+
 $service = new ArtikelService();
 $alleKategorien   = $service->getAlleKategorien();
 $zugewieseneIds   = array_column($service->getKategorienFuerArtikel($id), 'id');
@@ -40,6 +51,12 @@ if (empty($formdata)) {
             break;
         }
     }
+}
+
+$vaterArtikel      = null;
+$istZustandsArtikel = !empty($formdata['zustand_vater_id']);
+if ($istZustandsArtikel) {
+    $vaterArtikel = $service->findByIdSimple((int)$formdata['zustand_vater_id']);
 }
 
 
@@ -140,8 +157,10 @@ function selected(string $field, string $value, array $formdata): string
             <h2>Stammdaten</h2>
 
             <label>Artikelnummer <span class="pflicht">*</span></label>
-            <input type="text" name="artikelnummer"
-                value="<?= old('artikelnummer', $formdata) ?>" required>
+            <input type="text" name="artikelnummer" id="artikelnummer"
+                value="<?= old('artikelnummer', $formdata) ?>"
+                <?= $istZustandsArtikel ? 'readonly style="background:#f5f5f5"' : '' ?>
+                required>
 
             <label>Artikeltyp <span class="pflicht">*</span></label>
             <select name="artikeltyp" id="artikeltyp">
@@ -187,6 +206,43 @@ function selected(string $field, string $value, array $formdata): string
             <label>Gewicht Versand (kg)</label>
             <input type="number" step="0.001" name="gewicht_versand"
                 value="<?= old('gewicht_versand', $formdata) ?>">
+        </div>
+
+        <div class="gruppe">
+            <h2>Zustand</h2>
+
+            <?php if ($istZustandsArtikel && $vaterArtikel): ?>
+                <div style="font-size:13px;color:var(--color-text-muted);margin-bottom:0.75rem;padding:8px;background:#f8fafc;border-radius:4px;border:1px solid var(--color-border)">
+                    Zustandsartikel von:
+                    <a href="detail.php?id=<?= $vaterArtikel['id'] ?>">
+                        <strong><?= htmlspecialchars($vaterArtikel['artikelnummer']) ?></strong>
+                    </a>
+                    – <?= htmlspecialchars($vaterArtikel['name']) ?>
+                    <input type="hidden" name="zustand_vater_id" value="<?= (int)$formdata['zustand_vater_id'] ?>">
+                </div>
+            <?php else: ?>
+                <input type="hidden" name="zustand_vater_id" value="">
+            <?php endif; ?>
+
+            <label>Zustand</label>
+            <?php if ($istZustandsArtikel): ?>
+                <select name="zustand" id="zustand_select" onchange="zustandBearbeitenGeaendert(this.value)">
+                    <?php foreach ($zustandSuffixMap as $wert => $suffix): ?>
+                        <?php if ($wert === 'neu') continue; ?>
+                        <option value="<?= $wert ?>"
+                            <?= selected('zustand', $wert, $formdata) ?>>
+                            <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $wert))) ?>
+                            (<?= $suffix ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p style="font-size:12px;color:var(--color-text-muted);margin-top:4px">
+                    Änderung passt die Artikelnummer automatisch an. Lagerbewegung bitte manuell über den Lager-Tab durchführen.
+                </p>
+            <?php else: ?>
+                <input type="text" value="Neu (Standard)" readonly style="background:#f5f5f5">
+                <input type="hidden" name="zustand" value="neu">
+            <?php endif; ?>
         </div>
 
         <div class="gruppe">
@@ -479,6 +535,19 @@ function selected(string $field, string $value, array $formdata): string
 
             document.getElementById('neue-kat-name').value = '';
         }
+
+        <?php if ($istZustandsArtikel && $vaterArtikel): ?>
+        const zustandSuffixMap = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
+        const vaterArtikelNummer = '<?= htmlspecialchars($vaterArtikel['artikelnummer']) ?>';
+
+        function zustandBearbeitenGeaendert(wert) {
+            const suffix = zustandSuffixMap[wert] || '';
+            const artnrInput = document.getElementById('artikelnummer');
+            if (suffix) {
+                artnrInput.value = vaterArtikelNummer + '-' + suffix;
+            }
+        }
+        <?php endif; ?>
     </script>
 
 </body>

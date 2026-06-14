@@ -13,7 +13,7 @@ class ArtikelRepository
 
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
-        $conditions = ['a.vaterartikel_id IS NULL'];
+        $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
         $having = '';
 
         $params = [];
@@ -93,7 +93,7 @@ class ArtikelRepository
 
     public function countAll(array $filter): int
     {
-        $conditions = ['a.vaterartikel_id IS NULL'];
+        $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
         $having = '';
 
         $params = [];
@@ -357,7 +357,8 @@ class ArtikelRepository
                 ist_auslaufartikel,
                 ueberverkauf_erlaubt,
                 aktiv,
-                zustand
+                zustand,
+                zustand_vater_id
             ) VALUES (
                 :vaterartikel_id,
                 :hat_eigenen_lagerstand,
@@ -389,13 +390,19 @@ class ArtikelRepository
                 :ist_auslaufartikel,
                 :ueberverkauf_erlaubt,
                 :aktiv,
-                :zustand
+                :zustand,
+                :zustand_vater_id
             )
         ");
 
         $data['vaterartikel_id']       = $data['vaterartikel_id'] ?? null;
         $data['hat_eigenen_lagerstand'] = $data['hat_eigenen_lagerstand'] ?? 1;
         $data['ist_auslaufartikel']     = $data['ist_auslaufartikel'] ?? 0;
+        $data['laenge']                = $data['laenge']  ?? null;
+        $data['breite']                = $data['breite']  ?? null;
+        $data['hoehe']                 = $data['hoehe']   ?? null;
+        $data['zustand']               = $data['zustand'] ?? 'neu';
+        $data['zustand_vater_id']      = $data['zustand_vater_id'] ?? null;
 
         $stmt->execute($data);
         return (int) $this->db->lastInsertId();
@@ -436,9 +443,16 @@ class ArtikelRepository
                 ist_auslaufartikel     = :ist_auslaufartikel,
                 ueberverkauf_erlaubt    = :ueberverkauf_erlaubt,
                 aktiv                  = :aktiv,
-                zustand            = :zustand
+                zustand                = :zustand,
+                zustand_vater_id       = :zustand_vater_id
             WHERE id = :id
         ");
+
+        $data['laenge']           = $data['laenge']           ?? null;
+        $data['breite']           = $data['breite']           ?? null;
+        $data['hoehe']            = $data['hoehe']            ?? null;
+        $data['zustand']          = $data['zustand']          ?? 'neu';
+        $data['zustand_vater_id'] = $data['zustand_vater_id'] ?? null;
 
         $stmt->execute($data);
         return true;
@@ -760,5 +774,63 @@ class ArtikelRepository
         ]);
 
         return $stmt->rowCount() > 0;
+    }
+
+    public function findZustandsArtikelByVaterId(int $vaterId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                a.id, a.artikelnummer, a.name, a.zustand, a.aktiv,
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+            FROM artikel a
+            LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
+            WHERE a.zustand_vater_id = :vater_id
+            GROUP BY a.id
+            ORDER BY a.zustand ASC
+        ");
+        $stmt->execute(['vater_id' => $vaterId]);
+        return $stmt->fetchAll();
+    }
+
+    public function findZustandsArtikelFuerListe(array $vaterIds): array
+    {
+        if (empty($vaterIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($vaterIds), '?'));
+        $stmt = $this->db->prepare("
+            SELECT
+                a.id, a.artikelnummer, a.name, a.zustand, a.aktiv, a.zustand_vater_id,
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+            FROM artikel a
+            LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
+            WHERE a.zustand_vater_id IN ($placeholders)
+            GROUP BY a.id
+            ORDER BY a.zustand_vater_id, a.zustand
+        ");
+        $stmt->execute($vaterIds);
+        return $stmt->fetchAll();
+    }
+
+    public function searchVaterArtikel(string $q): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT a.id, a.artikelnummer, a.name
+            FROM artikel a
+            WHERE a.aktiv = 1
+              AND a.vaterartikel_id IS NULL
+              AND a.zustand_vater_id IS NULL
+              AND a.zustand = 'neu'
+              AND (a.artikelnummer LIKE :q OR a.name LIKE :q)
+            ORDER BY a.artikelnummer ASC
+            LIMIT 20
+        ");
+        $stmt->execute(['q' => '%' . $q . '%']);
+        return $stmt->fetchAll();
+    }
+
+    public function findByIdSimple(int $id): array|false
+    {
+        $stmt = $this->db->prepare("SELECT id, artikelnummer, name FROM artikel WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch();
     }
 }

@@ -42,7 +42,9 @@ $artikelData = array_intersect_key($data, array_flip([
     'charge_pflicht',
     'aktiv',
     'ueberverkauf_erlaubt',
-    'ist_auslaufartikel'
+    'ist_auslaufartikel',
+    'zustand',
+    'zustand_vater_id'
 ]));
 
 $artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;

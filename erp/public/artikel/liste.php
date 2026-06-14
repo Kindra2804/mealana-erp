@@ -38,6 +38,8 @@ foreach ($alleKinder as $k) {
     $kinderNachVater[$k['vaterartikel_id']][] = $k;
 }
 
+$zustandsNachVater = $service->getZustandsArtikelFuerListe($vaterIds);
+
 $gesamt = $controller->count($filter);
 $seitenAnzahl = (int) ceil($gesamt / $proSeite);
 
@@ -210,6 +212,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 }
             }
             $vaterHatAbweichung = !empty($vaterAbwTypen);
+            $hatZustandsArtikel = !empty($zustandsNachVater[$a['id']]);
 
             $bstKlasse = ((float)$a['gesamtbestand'] <= 0 && $a['aktiv']) ? 'bst-null' : '';
             $bstTitle  = '';
@@ -223,7 +226,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <tr class="artikel-zeile<?= !$a['aktiv'] ? ' row-inaktiv' : '' ?>">
                 <td style="text-align:center; width:28px">
                     <input type="checkbox" class="zeile-cb" value="<?= $a['id'] ?>">
-                    <?php if ($hatKinder): ?>
+                    <?php if ($hatKinder || $hatZustandsArtikel): ?>
                         <br><span id="pfeil-<?= $a['id'] ?>" onclick="toggleKinder(<?= $a['id'] ?>)"
                             class="expand-arrow">▶</span>
                     <?php endif; ?>
@@ -242,6 +245,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php endif; ?>
                     <?php if ($vaterHatAbweichung): ?>
                         <span class="warn-badge" title="Kind-Abweichungen: <?= htmlspecialchars(implode(', ', array_keys($vaterAbwTypen))) ?>">!</span>
+                    <?php endif; ?>
+                    <?php if ($hatZustandsArtikel): ?>
+                        <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
                     <?php endif; ?>
                 </td>
                 <td class="kanal-cell"><?= renderKanalChips($a, $kassenKanaele) ?></td>
@@ -305,6 +311,49 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td class="aktion-cell">
                         <span class="row-aktionen">
                             <a href="detail.php?id=<?= $k['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                        </span>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+
+            <?php
+            $zustandsArtikel = $zustandsNachVater[$a['id']] ?? [];
+            foreach ($zustandsArtikel as $za):
+                $zaBstKlasse = ((float)$za['gesamtbestand'] <= 0 && $za['aktiv']) ? 'bst-null' : '';
+                $zustandLabels = [
+                    'gebraucht'          => 'GEB',
+                    'generalueberholt'   => 'GUE',
+                    'beschaedigt'        => 'BSC',
+                    'retour'             => 'RET',
+                    'demo'               => 'DMO',
+                    'muster'             => 'MST',
+                    'ausstellungsstueck' => 'AST',
+                ];
+                $zaSuffix = $zustandLabels[$za['zustand']] ?? strtoupper($za['zustand']);
+            ?>
+                <tr class="kind-zeile-<?= $a['id'] ?> versteckt kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
+                    <td style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $za['id'] ?>"></td>
+                    <td class="thumb-cell">
+                        <div class="artikel-thumb artikel-thumb-kind"></div>
+                    </td>
+                    <td class="artnr-cell" style="padding-left:20px; font-size:12px">
+                        ↳ <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
+                    </td>
+                    <td class="status-cell">
+                        <span class="sc" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd"><?= $zaSuffix ?></span>
+                        <?php if (!$za['aktiv']): ?>
+                            <span class="sc sc-deaktiviert">Deaktiviert</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($za['name']) ?></span>
+                    </td>
+                    <td class="kanal-cell"></td>
+                    <td style="text-align:right; font-size:12px" class="<?= $zaBstKlasse ?>"><?= formatBestand($za['gesamtbestand']) ?></td>
+                    <td style="text-align:right; font-size:12px" class="preis-cell">–</td>
+                    <td class="aktion-cell">
+                        <span class="row-aktionen">
+                            <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
                         </span>
                     </td>
                 </tr>

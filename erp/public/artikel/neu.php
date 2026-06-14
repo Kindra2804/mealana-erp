@@ -16,6 +16,17 @@ $steuerklassen = $service->getAllSteuerklassen();
 $artikelTypen  = $service->getAllArtikelTypen();
 $alleEinheiten = $service->getAllEinheiten();
 
+$zustandSuffixMap = [
+    'neu'               => '',
+    'gebraucht'         => 'GEB',
+    'generalueberholt'  => 'GUE',
+    'beschaedigt'       => 'BSC',
+    'retour'            => 'RET',
+    'demo'              => 'DMO',
+    'muster'            => 'MST',
+    'ausstellungsstueck'=> 'AST',
+];
+
 // Hilfsfunktion: war dieser Wert im letzten Submit?
 function old(string $field, array $formdata, string $default = ''): string
 {
@@ -62,7 +73,7 @@ function selected(string $field, string $value, array $formdata): string
             <h2>Stammdaten</h2>
 
             <label>Artikelnummer <span class="pflicht">*</span></label>
-            <input type="text" name="artikelnummer"
+            <input type="text" name="artikelnummer" id="artikelnummer"
                 value="<?= old('artikelnummer', $formdata) ?>" required>
 
             <label>Artikeltyp <span class="pflicht">*</span></label>
@@ -109,6 +120,44 @@ function selected(string $field, string $value, array $formdata): string
             <label>Gewicht Versand (kg)</label>
             <input type="number" step="0.001" name="gewicht_versand"
                 value="<?= old('gewicht_versand', $formdata) ?>">
+        </div>
+
+        <div class="gruppe">
+            <h2>Zustand</h2>
+
+            <label>Zustand <span class="pflicht">*</span></label>
+            <select name="zustand" id="zustand_select" onchange="zustandGeaendert(this.value)">
+                <?php foreach ($zustandSuffixMap as $wert => $suffix): ?>
+                    <option value="<?= $wert ?>"
+                        <?= selected('zustand', $wert, $formdata) ?>>
+                        <?= $wert === 'neu' ? 'Neu (Standard)' : htmlspecialchars(ucfirst(str_replace('_', ' ', $wert))) . ' (' . $suffix . ')' ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <div id="vater_suche_bereich" style="display:none; margin-top:0.75rem; position:relative">
+                <label>Vater-Artikel <span class="pflicht">*</span></label>
+                <input type="text" id="vater_suche_input" class="erp-input"
+                    placeholder="Mind. 2 Zeichen – Artikelnummer oder Name…"
+                    autocomplete="off" style="width:100%"
+                    oninput="vaterSuchen(this.value)">
+                <div id="vater_suche_ergebnis"
+                    style="border:1px solid #ddd;border-radius:4px;background:#fff;display:none;max-height:200px;overflow-y:auto;position:absolute;z-index:100;width:100%;box-shadow:0 4px 12px rgba(0,0,0,0.15)"></div>
+                <input type="hidden" name="zustand_vater_id" id="zustand_vater_id"
+                    value="<?= (int)($formdata['zustand_vater_id'] ?? 0) ?: '' ?>">
+                <div id="vater_info" style="font-size:13px;color:var(--color-text-muted);margin-top:4px">
+                    <?php if (!empty($formdata['zustand_vater_id'])): ?>
+                        <?php
+                            $vaterService = new ArtikelService();
+                            $vaterInfo = $vaterService->findByIdSimple((int)$formdata['zustand_vater_id']);
+                        ?>
+                        <?php if ($vaterInfo): ?>
+                            Vater: <strong><?= htmlspecialchars($vaterInfo['artikelnummer']) ?></strong>
+                            – <?= htmlspecialchars($vaterInfo['name']) ?>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
 
         <div class="gruppe">
@@ -252,6 +301,72 @@ function selected(string $field, string $value, array $formdata): string
     <script src="/mealana/js/artikel.js"></script>
 
     <script>
+        const zustandSuffixMap = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
+        let vaterArtikelNummer = '';
+
+        function zustandGeaendert(wert) {
+            const bereich = document.getElementById('vater_suche_bereich');
+            const artnrInput = document.getElementById('artikelnummer');
+            if (wert === 'neu') {
+                bereich.style.display = 'none';
+                artnrInput.readOnly = false;
+                artnrInput.style.background = '';
+                artnrInput.value = '';
+                vaterArtikelNummer = '';
+            } else {
+                bereich.style.display = 'block';
+                artnrInput.readOnly = true;
+                artnrInput.style.background = '#f5f5f5';
+                aktualisiereArtnr(wert);
+            }
+        }
+
+        function aktualisiereArtnr(zustand) {
+            const suffix = zustandSuffixMap[zustand] || '';
+            const artnrInput = document.getElementById('artikelnummer');
+            if (vaterArtikelNummer && suffix) {
+                artnrInput.value = vaterArtikelNummer + '-' + suffix;
+            } else {
+                artnrInput.value = '';
+            }
+        }
+
+        let vaterSuchTimer = null;
+        function vaterSuchen(q) {
+            clearTimeout(vaterSuchTimer);
+            const ergebnisDiv = document.getElementById('vater_suche_ergebnis');
+            if (q.length < 2) { ergebnisDiv.style.display = 'none'; return; }
+            vaterSuchTimer = setTimeout(() => {
+                fetch('artikel_vater_suche.php?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.length) { ergebnisDiv.style.display = 'none'; return; }
+                        ergebnisDiv.innerHTML = data.map(a =>
+                            `<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px"
+                                onmousedown="vaterAuswaehlen(${a.id}, '${a.artikelnummer.replace(/'/g,"\\'")}', '${a.name.replace(/'/g,"\\'")}')">
+                                <strong>${a.artikelnummer}</strong> – ${a.name}
+                            </div>`
+                        ).join('');
+                        ergebnisDiv.style.display = 'block';
+                    });
+            }, 250);
+        }
+
+        function vaterAuswaehlen(id, artnr, name) {
+            document.getElementById('zustand_vater_id').value = id;
+            document.getElementById('vater_suche_input').value = artnr + ' – ' + name;
+            document.getElementById('vater_info').textContent = 'Vater: ' + artnr + ' – ' + name;
+            document.getElementById('vater_suche_ergebnis').style.display = 'none';
+            vaterArtikelNummer = artnr;
+            aktualisiereArtnr(document.getElementById('zustand_select').value);
+        }
+
+        // Init: Falls Session-Daten vorhanden (nach Fehler)
+        const initZustand = '<?= old('zustand', $formdata, 'neu') ?>';
+        if (initZustand !== 'neu') {
+            zustandGeaendert(initZustand);
+        }
+
         // Beim Laden: gespeicherten Typ wiederherstellen
         const gespeicherterTyp = '<?= old('artikeltyp', $formdata) ?>';
         if (gespeicherterTyp) {
