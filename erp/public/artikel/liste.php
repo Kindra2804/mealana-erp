@@ -241,7 +241,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <span class="varianten-count"><?= count($kinder) ?> Var.</span>
                     <?php endif; ?>
                     <?php if ($vaterHatAbweichung): ?>
-                        <span class="warn-badge" title="Kind-Abweichungen: <?= htmlspecialchars(implode(', ', array_keys($vaterAbwTypen))) ?>">⚠</span>
+                        <span class="warn-badge" title="Kind-Abweichungen: <?= htmlspecialchars(implode(', ', array_keys($vaterAbwTypen))) ?>">!</span>
                     <?php endif; ?>
                 </td>
                 <td class="kanal-cell"><?= renderKanalChips($a, $kassenKanaele) ?></td>
@@ -294,7 +294,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td>
                         <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($k['name']) ?></span>
                         <?php if (!empty($kindAbw)): ?>
-                            <span class="warn-badge" title="Abweicht vom Vater: <?= htmlspecialchars(implode(', ', $kindAbw)) ?>">⚠</span>
+                            <span class="warn-badge" title="Abweicht vom Vater: <?= htmlspecialchars(implode(', ', $kindAbw)) ?>">!</span>
                         <?php endif; ?>
                     </td>
                     <td class="kanal-cell"></td>
@@ -459,22 +459,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
     /* Preis */
     .preis-cell { white-space: nowrap; font-size: 13px; }
 
-    /* Warn-Badge */
+    /* Info-Badge (blaues "!" — Hinweis, kein Fehler) */
     .warn-badge {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #FFC107;
-        color: #333;
-        border-radius: 3px;
-        padding: 0 4px;
+        background: #2563EB;
+        color: #fff;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: 800;
         cursor: help;
         margin-left: 4px;
         vertical-align: middle;
-        line-height: 16px;
-        min-width: 16px;
+        flex-shrink: 0;
+        line-height: 1;
     }
 
     /* Pagination Dots */
