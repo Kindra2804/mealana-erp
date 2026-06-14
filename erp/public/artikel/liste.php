@@ -13,17 +13,24 @@ $alleHersteller  = $db->query("SELECT id, name FROM hersteller WHERE aktiv = 1 O
 $alleArtikeltypen = $db->query("SELECT id, name FROM artikel_typen ORDER BY name")->fetchAll();
 
 
-$statusFilter = $_GET['status_filter'] ?? '';
+$statusFilter     = $_GET['status_filter'] ?? '';
 $aktivKategorieId = (int)($_GET['kategorie_id'] ?? 0) ?: null;
 
+// Kategorie-Filter auf alle Nachkommen ausweiten (damit "Wolle" auch Unterkategorien zeigt)
+$alleKatIds = null;
+if ($aktivKategorieId) {
+    $alleKatIds = array_merge([$aktivKategorieId], $service->getAlleNachkommenIds($aktivKategorieId));
+}
+
 $filter = [
-    'q'             => trim($_GET['q'] ?? ''),
-    'hersteller_id' => (int)($_GET['hersteller_id'] ?? 0) ?: null,
-    'artikeltyp_id' => (int)($_GET['artikeltyp_id'] ?? 0) ?: null,
-    'nurMitBestand' => isset($_GET['nurMitBestand']),
-    'mitInaktiven'  => isset($_GET['inaktive']) || $statusFilter === 'inaktiv',
-    'status_filter' => $statusFilter,
-    'kategorie_id'  => $aktivKategorieId,
+    'q'               => trim($_GET['q'] ?? ''),
+    'hersteller_id'   => (int)($_GET['hersteller_id'] ?? 0) ?: null,
+    'artikeltyp_id'   => (int)($_GET['artikeltyp_id'] ?? 0) ?: null,
+    'nurMitBestand'   => isset($_GET['nurMitBestand']),
+    'mitInaktiven'    => isset($_GET['inaktive']) || $statusFilter === 'inaktiv',
+    'status_filter'   => $statusFilter,
+    'kategorie_ids'   => $alleKatIds,
+    'nurKategorielos' => $statusFilter === 'ohnekat',
 ];
 
 $kategorienBaum = $service->getKategorienBaum();
@@ -159,6 +166,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <option value="uv"         <?= ($_GET['status_filter'] ?? '') === 'uv'         ? 'selected' : '' ?>>Überverkauf aktiv</option>
             <option value="fehlbest"   <?= ($_GET['status_filter'] ?? '') === 'fehlbest'   ? 'selected' : '' ?>>Fehlbestand (Bst=0)</option>
             <option value="inaktiv"    <?= ($_GET['status_filter'] ?? '') === 'inaktiv'    ? 'selected' : '' ?>>Inaktiv</option>
+            <option value="ohnekat"    <?= ($_GET['status_filter'] ?? '') === 'ohnekat'    ? 'selected' : '' ?>>Ohne Kategorie</option>
         </select>
         <select name="kanal_filter" class="erp-select" disabled title="Kanäle-Modul noch nicht aktiv">
             <option value="">– Kanal –</option>
@@ -210,6 +218,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
             // Fehlbest. zusätzlich zu Üv: wenn bereits auf Kundenauftrag/Reservierung
             if ($a['aktiv'] && $a['ueberverkauf_erlaubt'] && (float)$a['gesamtbestand'] <= 0 && (float)($a['reserviert'] ?? 0) > 0)
                 $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$a['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
+            if ((int)($a['kat_anzahl'] ?? 1) === 0)
+                $statusChips .= '<span class="sc sc-ohnekat" title="Kein Kategorie-Eintrag – Artikel erscheint in keinem Shop">Kein Kat.</span>';
             // Sale-Chip: TODO — benötigt preis_aktionen-Tabelle (noch nicht gebaut)
 
             // ⚠ Vater-Badge
@@ -513,6 +523,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     .sc-auslauf     { background: #FEFCBF; color: #744210; }
     .sc-uv          { background: #FEEBC8; color: #C05621; }
     .sc-fehlbest    { background: #FED7D7; color: #C53030; }
+    .sc-ohnekat     { background: #EDF2F7; color: #4A5568; border: 1px solid #CBD5E0; }
     /* (Sale: .sc-sale = #FAF5FF / #7E22CE — für später) */
 
     /* Kanal-Chips (.kc) */

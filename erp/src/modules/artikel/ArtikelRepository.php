@@ -55,11 +55,14 @@ class ArtikelRepository
             $params['q'] = '%' . $filter['q'] . '%';
         }
 
-        $katJoin = '';
-        if (!empty($filter['kategorie_id'])) {
-            $katJoin = "INNER JOIN artikel_kategorien ak_filter ON ak_filter.artikel_id = a.id";
-            $conditions[] = "ak_filter.kategorie_id = :kategorie_id";
-            $params['kategorie_id'] = (int) $filter['kategorie_id'];
+        if (!empty($filter['kategorie_ids'])) {
+            $katIds = array_map('intval', $filter['kategorie_ids']);
+            $katPl  = implode(',', $katIds);
+            $conditions[] = "a.id IN (SELECT artikel_id FROM artikel_kategorien WHERE kategorie_id IN ($katPl))";
+        }
+
+        if (!empty($filter['nurKategorielos'])) {
+            $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_kategorien ak_kat WHERE ak_kat.artikel_id = a.id)";
         }
 
         $where = "WHERE " . implode(" AND ", $conditions);
@@ -79,7 +82,8 @@ class ArtikelRepository
                 ap.brutto_vk,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl,
-                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
+                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
+                (SELECT COUNT(*) FROM artikel_kategorien WHERE artikel_id = a.id) AS kat_anzahl
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
@@ -87,7 +91,6 @@ class ArtikelRepository
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
             LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
-            $katJoin
             $where
             GROUP BY a.id
             $having
@@ -140,11 +143,14 @@ class ArtikelRepository
             $params['q'] = '%' . $filter['q'] . '%';
         }
 
-        $katJoin = '';
-        if (!empty($filter['kategorie_id'])) {
-            $katJoin = "INNER JOIN artikel_kategorien ak_filter ON ak_filter.artikel_id = a.id";
-            $conditions[] = "ak_filter.kategorie_id = :kategorie_id";
-            $params['kategorie_id'] = (int) $filter['kategorie_id'];
+        if (!empty($filter['kategorie_ids'])) {
+            $katIds = array_map('intval', $filter['kategorie_ids']);
+            $katPl  = implode(',', $katIds);
+            $conditions[] = "a.id IN (SELECT artikel_id FROM artikel_kategorien WHERE kategorie_id IN ($katPl))";
+        }
+
+        if (!empty($filter['nurKategorielos'])) {
+            $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_kategorien ak_kat WHERE ak_kat.artikel_id = a.id)";
         }
 
         $where = "WHERE " . implode(" AND ", $conditions);
@@ -158,7 +164,6 @@ class ArtikelRepository
                 LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
                 LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
                 LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
-                $katJoin
                 $where
                 GROUP BY a.id
                 $having

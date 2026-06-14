@@ -261,6 +261,71 @@ class ArtikelService
             : ['erfolg' => false, 'fehler' => 'Fehler beim Speichern'];
     }
 
+    public function updateKategorie(int $id, string $name, ?int $parentId): array
+    {
+        $trimmed = trim($name);
+        if (empty($trimmed)) {
+            return ['erfolg' => false, 'fehler' => 'Name darf nicht leer sein'];
+        }
+        // Endlosschleife verhindern: sich selbst als Elternteil setzen ist verboten
+        if ($parentId === $id) {
+            return ['erfolg' => false, 'fehler' => 'Eine Kategorie kann nicht ihr eigener Elternteil sein'];
+        }
+        // Auch Nachkommen als Elternteil verbieten (würde Baum in Loop verwandeln)
+        $kinderIds = $this->kategorieRepo->findAlleKinderIds($id);
+        if ($parentId !== null && in_array($parentId, $kinderIds, true)) {
+            return ['erfolg' => false, 'fehler' => 'Ziel ist ein Nachkomme dieser Kategorie'];
+        }
+        $this->kategorieRepo->update($id, $trimmed, $parentId);
+        return ['erfolg' => true];
+    }
+
+    public function getAlleNachkommenIds(int $id): array
+    {
+        return $this->kategorieRepo->findAlleKinderIds($id);
+    }
+
+    public function loescheKategorie(int $id, ?int $verschiebeZuParentId = null): array
+    {
+        $kat = $this->kategorieRepo->findById($id);
+        if (!$kat) {
+            return ['erfolg' => false, 'fehler' => 'Kategorie nicht gefunden'];
+        }
+        $kinderIds = $this->kategorieRepo->findAlleKinderIds($id);
+        $this->kategorieRepo->deleteKategorie($id, $verschiebeZuParentId);
+        return [
+            'erfolg'         => true,
+            'geloeschte_ids' => array_merge([$id], $kinderIds),
+        ];
+    }
+
+    public function getLoeschVorschau(int $id): array
+    {
+        $kat       = $this->kategorieRepo->findById($id);
+        $kinderIds = $this->kategorieRepo->findAlleKinderIds($id);
+        $alleIds   = array_merge([$id], $kinderIds);
+        $ohneAndere = $this->kategorieRepo->findArtikelNurInDiesenKategorien($alleIds);
+
+        $parent = null;
+        if ($kat && $kat['parent_id']) {
+            $parentKat = $this->kategorieRepo->findById((int) $kat['parent_id']);
+            if ($parentKat) {
+                $parent = ['id' => (int) $parentKat['id'], 'name' => $parentKat['name']];
+            }
+        }
+
+        return [
+            'kinder_anzahl'    => count($kinderIds),
+            'artikel_ohne_kat' => $ohneAndere,
+            'parent'           => $parent,
+        ];
+    }
+
+    public function findKategorieById(int $id): array|false
+    {
+        return $this->kategorieRepo->findById($id);
+    }
+
     public function getAllHersteller(): array
     {
         return $this->repo->findAllHersteller();
