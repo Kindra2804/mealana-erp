@@ -55,6 +55,13 @@ class ArtikelRepository
             $params['q'] = '%' . $filter['q'] . '%';
         }
 
+        $katJoin = '';
+        if (!empty($filter['kategorie_id'])) {
+            $katJoin = "INNER JOIN artikel_kategorien ak_filter ON ak_filter.artikel_id = a.id";
+            $conditions[] = "ak_filter.kategorie_id = :kategorie_id";
+            $params['kategorie_id'] = (int) $filter['kategorie_id'];
+        }
+
         $where = "WHERE " . implode(" AND ", $conditions);
         $stmt = $this->db->prepare("
             SELECT
@@ -80,6 +87,7 @@ class ArtikelRepository
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
             LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
+            $katJoin
             $where
             GROUP BY a.id
             $having
@@ -132,10 +140,17 @@ class ArtikelRepository
             $params['q'] = '%' . $filter['q'] . '%';
         }
 
+        $katJoin = '';
+        if (!empty($filter['kategorie_id'])) {
+            $katJoin = "INNER JOIN artikel_kategorien ak_filter ON ak_filter.artikel_id = a.id";
+            $conditions[] = "ak_filter.kategorie_id = :kategorie_id";
+            $params['kategorie_id'] = (int) $filter['kategorie_id'];
+        }
+
         $where = "WHERE " . implode(" AND ", $conditions);
         $stmt = $this->db->prepare("
             SELECT COUNT(*) FROM (
-                SELECT 
+                SELECT
                     a.id
                 FROM artikel a
                 JOIN artikel_typen at ON a.artikeltyp_id = at.id
@@ -143,6 +158,7 @@ class ArtikelRepository
                 LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
                 LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
                 LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
+                $katJoin
                 $where
                 GROUP BY a.id
                 $having
@@ -253,6 +269,7 @@ class ArtikelRepository
 
     public function findKinderFuerListe(array $vaterIds): array
     {
+        if (empty($vaterIds)) return [];
         $placeholders = implode(',', array_fill(0, count($vaterIds), '?'));
         $stmt = $this->db->prepare("
             SELECT

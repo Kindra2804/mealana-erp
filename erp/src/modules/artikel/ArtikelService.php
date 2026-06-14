@@ -199,6 +199,30 @@ class ArtikelService
         return $this->kategorieRepo->findAll();
     }
 
+    public function getKategorienBaum(): array
+    {
+        $flat = $this->kategorieRepo->findAllMitEltern();
+
+        // Index aufbauen
+        $byId = [];
+        foreach ($flat as $k) {
+            $byId[$k['id']] = $k + ['kinder' => []];
+        }
+
+        // Baum zusammenbauen
+        $wurzeln = [];
+        foreach ($byId as $id => &$knoten) {
+            if ($knoten['parent_id'] === null) {
+                $wurzeln[] = &$knoten;
+            } else {
+                $byId[$knoten['parent_id']]['kinder'][] = &$knoten;
+            }
+        }
+        unset($knoten);
+
+        return $wurzeln;
+    }
+
     public function saveKategorien(int $artikelId, array $kategorieIds): void
     {
         $this->kategorieRepo->updateArtikelKategoriezuweisungen($artikelId, $kategorieIds);
@@ -225,13 +249,13 @@ class ArtikelService
         return $this->repo->findCodesByArtikelId($artikelId);
     }
 
-    public function createKategorie(string $name): array
+    public function createKategorie(string $name, ?int $parentId = null): array
     {
         $trimmed = trim($name);
         if (empty($trimmed)) {
             return ['erfolg' => false, 'fehler' => 'Name darf nicht leer sein'];
         }
-        $id = $this->kategorieRepo->insert($trimmed);
+        $id = $this->kategorieRepo->insert($trimmed, $parentId);
         return $id
             ? ['erfolg' => true, 'id' => $id, 'name' => $trimmed]
             : ['erfolg' => false, 'fehler' => 'Fehler beim Speichern'];

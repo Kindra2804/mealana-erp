@@ -15,13 +15,46 @@ class KategorieRepository
     {
         $stmt = $this->db->query("
             SELECT
-                id, 
-                name 
+                id,
+                name
             FROM kategorien
-            WHERE aktiv = 1 
+            WHERE aktiv = 1
             ORDER BY name ASC
         ");
         return $stmt->fetchAll();
+    }
+
+    public function findAllMitEltern(): array
+    {
+        $stmt = $this->db->query("
+            SELECT k.id, k.parent_id, k.name, k.sortierung,
+                COUNT(DISTINCT ak.artikel_id) AS artikel_anzahl
+            FROM kategorien k
+            LEFT JOIN artikel_kategorien ak ON ak.kategorie_id = k.id
+            LEFT JOIN artikel a ON a.id = ak.artikel_id
+                AND a.aktiv = 1
+                AND a.vaterartikel_id IS NULL
+                AND a.zustand_vater_id IS NULL
+            WHERE k.aktiv = 1
+            GROUP BY k.id
+            ORDER BY k.sortierung ASC, k.name ASC
+        ");
+        return $stmt->fetchAll();
+    }
+
+    public function countByKategorie(int $kategorieId): int
+    {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(DISTINCT a.id)
+            FROM artikel a
+            INNER JOIN artikel_kategorien ak ON ak.artikel_id = a.id
+            WHERE ak.kategorie_id = :kid
+              AND a.aktiv = 1
+              AND a.vaterartikel_id IS NULL
+              AND a.zustand_vater_id IS NULL
+        ");
+        $stmt->execute(['kid' => $kategorieId]);
+        return (int) $stmt->fetchColumn();
     }
 
     public function findByArtikelId(int $artikelId): array
@@ -63,11 +96,10 @@ class KategorieRepository
         }
     }
 
-    public function insert(string $name): int
+    public function insert(string $name, ?int $parentId = null): int
     {
-        $stmt = $this->db->prepare("INSERT INTO kategorien (name) VALUES (:name)");
-        $stmt->execute(['name' => $name]);
-
-        return $this->db->lastInsertId();
+        $stmt = $this->db->prepare("INSERT INTO kategorien (name, parent_id) VALUES (:name, :parent_id)");
+        $stmt->execute(['name' => $name, 'parent_id' => $parentId]);
+        return (int) $this->db->lastInsertId();
     }
 }

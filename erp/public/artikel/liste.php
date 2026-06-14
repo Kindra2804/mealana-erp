@@ -14,6 +14,8 @@ $alleArtikeltypen = $db->query("SELECT id, name FROM artikel_typen ORDER BY name
 
 
 $statusFilter = $_GET['status_filter'] ?? '';
+$aktivKategorieId = (int)($_GET['kategorie_id'] ?? 0) ?: null;
+
 $filter = [
     'q'             => trim($_GET['q'] ?? ''),
     'hersteller_id' => (int)($_GET['hersteller_id'] ?? 0) ?: null,
@@ -21,7 +23,10 @@ $filter = [
     'nurMitBestand' => isset($_GET['nurMitBestand']),
     'mitInaktiven'  => isset($_GET['inaktive']) || $statusFilter === 'inaktiv',
     'status_filter' => $statusFilter,
+    'kategorie_id'  => $aktivKategorieId,
 ];
+
+$kategorienBaum = $service->getKategorienBaum();
 
 $seite = (int)($_GET['seite'] ?? 1);
 $proSeite = (int)($_GET['pro_seite'] ?? 15);
@@ -165,6 +170,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </select>
         <label><input type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand</label>
         <label><input type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
+        <?php if ($aktivKategorieId): ?>
+            <input type="hidden" name="kategorie_id" value="<?= $aktivKategorieId ?>">
+        <?php endif; ?>
         <button type="submit" class="btn btn-secondary btn-sm">Suchen</button>
     </form>
 </div>
@@ -401,19 +409,41 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <!-- KANAL-LEGENDE -->
-<div class="kanal-legende">
+<div class="kanal-legende" id="kanal-legende-bar">
     <span class="kanal-legende-label">Kanäle:</span>
-    <span class="kc kc-k1">K1</span> <span class="kanal-legende-text">Kassa Boutique</span>
-    <span class="kanal-legende-sep">·</span>
-    <span class="kc kc-k2">K2</span> <span class="kanal-legende-text">Kassa Messe</span>
-    <span class="kanal-legende-sep">·</span>
-    <span class="kc kc-s1">S1</span> <span class="kanal-legende-text">Shop MeaLana</span>
-    <span class="kanal-legende-sep">·</span>
-    <span class="kc kc-s2">S2</span> <span class="kanal-legende-text">Sockenwolle</span>
-    <span class="kanal-legende-sep">·</span>
-    <span class="kc kc-s3">S3</span> <span class="kanal-legende-text">Bio-Wolle</span>
-    <span class="kanal-legende-note">(K1/K2 = immer alle Artikel · S1–S3 = je nach Shop-Zuweisung)</span>
+    <span id="kanal-legende-inhalt">
+        <span class="kc kc-k1">K1</span> <span class="kanal-legende-text">Kassa Boutique</span>
+        <span class="kanal-legende-sep">·</span>
+        <span class="kc kc-k2">K2</span> <span class="kanal-legende-text">Kassa Messe</span>
+        <span class="kanal-legende-sep">·</span>
+        <span class="kc kc-s1">S1</span> <span class="kanal-legende-text">Shop MeaLana</span>
+        <span class="kanal-legende-sep">·</span>
+        <span class="kc kc-s2">S2</span> <span class="kanal-legende-text">Sockenwolle</span>
+        <span class="kanal-legende-sep">·</span>
+        <span class="kc kc-s3">S3</span> <span class="kanal-legende-text">Bio-Wolle</span>
+        <span class="kanal-legende-note">(K1/K2 = immer alle Artikel · S1–S3 = je nach Shop-Zuweisung)</span>
+    </span>
+    <button onclick="legendeToggle()" id="legende-toggle-btn"
+            style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:11px;color:var(--color-text-muted);padding:0 4px"
+            title="Legende ein-/ausblenden">▲</button>
 </div>
+<script>
+(function() {
+    var offen = localStorage.getItem('mealana_legende') !== 'zu';
+    var inhalt = document.getElementById('kanal-legende-inhalt');
+    var btn    = document.getElementById('legende-toggle-btn');
+    function anwenden() {
+        inhalt.style.display = offen ? '' : 'none';
+        btn.textContent = offen ? '▲' : '▼';
+    }
+    anwenden();
+    window.legendeToggle = function() {
+        offen = !offen;
+        localStorage.setItem('mealana_legende', offen ? 'auf' : 'zu');
+        anwenden();
+    };
+})();
+</script>
 
 <style>
     /* ── Tabelle ── */
