@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../src/modules/preise/PreisService.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 
@@ -35,6 +36,9 @@ $lagerService  = new LagerService();
 $lagerGruppen  = $lagerService->getLagerBestandChargen($id);
 $bewegungslog  = $lagerService->getBewegungslog($id);
 $alleLager     = $lagerService->getAlleLager();
+
+$preisService       = new PreisService();
+$kundengruppenPreise = $preisService->getKundengruppenPreise($id);
 
 $lagerGesamtBestand = array_sum(array_column($lagerGruppen, 'gesamt'));
 $lagerAnzahlLager   = count($lagerGruppen);
@@ -560,7 +564,62 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 
     <div id="tab-preise" class="versteckt">
-        <div class="card">Preise Platzhalter</div>
+
+        <?php $hatKgPreise = !empty(array_filter($kundengruppenPreise, fn($kp) => $kp['brutto_vk'] !== null)); ?>
+
+        <!-- Kundengruppen-Preise -->
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
+                 onclick="togglePreisSektion('kg-preise-body', this)">
+                <h3 style="margin:0">Kundengruppen-Preise</h3>
+                <span id="kg-preise-toggle"><?= $hatKgPreise ? '▲' : '▼' ?></span>
+            </div>
+            <div id="kg-preise-body" style="margin-top:var(--space-md);<?= $hatKgPreise ? '' : 'display:none' ?>">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>Kundengruppe</th>
+                            <th style="text-align:right">Brutto VK</th>
+                            <th style="text-align:right">Netto VK</th>
+                            <th style="white-space:nowrap;min-width:90px">Gültig ab</th>
+                            <th style="white-space:nowrap;min-width:90px">Gültig bis</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($kundengruppenPreise as $kp): ?>
+                        <tr data-kg-id="<?= $kp['id'] ?>"
+                            data-brutto="<?= htmlspecialchars($kp['brutto_vk'] ?? '') ?>"
+                            data-netto="<?= htmlspecialchars($kp['netto_vk'] ?? '') ?>"
+                            data-ab="<?= htmlspecialchars($kp['gueltig_ab'] ?? '') ?>"
+                            data-bis="<?= htmlspecialchars($kp['gueltig_bis'] ?? '') ?>">
+                            <td><?= htmlspecialchars($kp['name']) ?></td>
+                            <td style="text-align:right">
+                                <?= $kp['brutto_vk'] !== null
+                                    ? number_format((float)$kp['brutto_vk'], 2, ',', '.') . ' €'
+                                    : '<span style="color:var(--color-text-muted)">–</span>' ?>
+                            </td>
+                            <td style="text-align:right">
+                                <?= $kp['netto_vk'] !== null
+                                    ? number_format((float)$kp['netto_vk'], 2, ',', '.') . ' €'
+                                    : '<span style="color:var(--color-text-muted)">–</span>' ?>
+                            </td>
+                            <td style="white-space:nowrap"><?= $kp['gueltig_ab'] ? date('d.m.Y', strtotime($kp['gueltig_ab'])) : '–' ?></td>
+                            <td style="white-space:nowrap"><?= $kp['gueltig_bis'] ? date('d.m.Y', strtotime($kp['gueltig_bis'])) : '–' ?></td>
+                            <td class="row-aktionen">
+                                <?php if ($kp['brutto_vk'] !== null): ?>
+                                <button class="btn btn-sm" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Bearbeiten">✏️</button>
+                                <?php else: ?>
+                                <button class="btn btn-sm btn-primary" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Preis anlegen">+</button>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
     <div id="tab-lager" class="versteckt">
 
@@ -912,6 +971,40 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
+<div id="preis-backdrop" class="modal-backdrop" onclick="preisModalSchliessen()">
+    <div id="preis-modal" class="modal" onclick="event.stopPropagation()">
+        <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+            Preis — <span id="preis-kg-name"></span>
+        </div>
+        <form id="preis-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+            <input type="hidden" name="artikel_id" value="<?= $id ?>">
+            <input type="hidden" name="kundengruppen_id" id="preis-kg-id" value="">
+            <div class="form-row">
+                <label class="form-label">Brutto VK (€)</label>
+                <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                    name="brutto_vk" id="preis-brutto" placeholder="0,00" oninput="preisNettoBerechnen()">
+            </div>
+            <div class="form-row">
+                <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                    name="netto_vk" id="preis-netto" placeholder="0,0000">
+            </div>
+            <div class="form-row">
+                <label class="form-label">Gültig ab</label>
+                <input class="erp-input" style="width:100%" type="date" name="gueltig_ab" id="preis-ab">
+            </div>
+            <div class="form-row">
+                <label class="form-label">Gültig bis</label>
+                <input class="erp-input" style="width:100%" type="date" name="gueltig_bis" id="preis-bis">
+            </div>
+            <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                <button type="button" class="btn btn-primary btn-sm" onclick="preisSpeichern()">Speichern</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="preisModalSchliessen()">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
     .aktionen {
         visibility: hidden;
@@ -947,6 +1040,54 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     function weModalSchliessen() {
         document.getElementById('we-backdrop').style.display = 'none';
+    }
+
+    function togglePreisSektion(bodyId, header) {
+        const body   = document.getElementById(bodyId);
+        const toggle = header.querySelector('span');
+        const offen  = body.style.display !== 'none';
+        body.style.display  = offen ? 'none' : '';
+        toggle.textContent  = offen ? '▼' : '▲';
+    }
+
+    const MWST_SATZ = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
+
+    function preisModalOeffnen(kgId) {
+        const row = document.querySelector(`tr[data-kg-id="${kgId}"]`);
+        document.getElementById('preis-kg-id').value   = kgId;
+        document.getElementById('preis-kg-name').textContent = row.querySelector('td').textContent.trim();
+        document.getElementById('preis-brutto').value  = row.dataset.brutto || '';
+        document.getElementById('preis-netto').value   = row.dataset.netto  || '';
+        document.getElementById('preis-ab').value      = row.dataset.ab  ? row.dataset.ab.substring(0,10)  : '';
+        document.getElementById('preis-bis').value     = row.dataset.bis ? row.dataset.bis.substring(0,10) : '';
+        document.getElementById('preis-backdrop').style.display = 'flex';
+    }
+
+    function preisModalSchliessen() {
+        document.getElementById('preis-backdrop').style.display = 'none';
+    }
+
+    function preisNettoBerechnen() {
+        const brutto = parseFloat(document.getElementById('preis-brutto').value);
+        if (!isNaN(brutto) && brutto > 0) {
+            const netto = brutto / (1 + MWST_SATZ / 100);
+            document.getElementById('preis-netto').value = netto.toFixed(4);
+        }
+    }
+
+    function preisSpeichern() {
+        const form = document.getElementById('preis-form');
+        const data = new FormData(form);
+        fetch('preis_speichern.php', { method: 'POST', body: data })
+            .then(r => r.json())
+            .then(json => {
+                if (json.erfolg) {
+                    preisModalSchliessen();
+                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                } else {
+                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                }
+            });
     }
 
     function toggleChargen(btn, lagerId) {
