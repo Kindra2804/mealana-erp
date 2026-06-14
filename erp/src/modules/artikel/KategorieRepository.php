@@ -28,13 +28,15 @@ class KategorieRepository
     {
         $stmt = $this->db->query("
             SELECT k.id, k.parent_id, k.name, k.sortierung,
-                COUNT(DISTINCT ak.artikel_id) AS artikel_anzahl
+                COUNT(DISTINCT a.id) AS artikel_anzahl
             FROM kategorien k
             LEFT JOIN artikel_kategorien ak ON ak.kategorie_id = k.id
-            LEFT JOIN artikel a ON a.id = ak.artikel_id
-                AND a.aktiv = 1
-                AND a.vaterartikel_id IS NULL
-                AND a.zustand_vater_id IS NULL
+            LEFT JOIN artikel vater ON vater.id = ak.artikel_id AND vater.aktiv = 1
+            LEFT JOIN artikel a ON a.aktiv = 1 AND (
+                (a.id = vater.id AND vater.ist_vater = 0)   -- NORMAL direkt
+                OR
+                (a.vaterartikel_id = vater.id)               -- KIND-Kinder
+            )
             WHERE k.aktiv = 1
             GROUP BY k.id
             ORDER BY k.sortierung ASC, k.name ASC

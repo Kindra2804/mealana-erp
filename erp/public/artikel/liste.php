@@ -56,13 +56,15 @@ $gesamt = $controller->count($filter);
 $seitenAnzahl = (int) ceil($gesamt / $proSeite);
 
 // Bestand-Anzeige: ohne Nachkomma wenn ganzzahlig
-function formatBestand(int|float|string $wert): string {
+function formatBestand(int|float|string $wert): string
+{
     $f = (float)$wert;
     return ($f == floor($f)) ? number_format((int)$f, 0, ',', '.') : number_format($f, 3, ',', '.');
 }
 
 // Smart Pagination mit "…" bei vielen Seiten
-function buildPaginierung(int $aktuelleSeite, int $gesamtSeiten, int $fenster = 2): array {
+function buildPaginierung(int $aktuelleSeite, int $gesamtSeiten, int $fenster = 2): array
+{
     if ($gesamtSeiten <= 1) return [];
     $seiten = [1];
     $von = max(2, $aktuelleSeite - $fenster);
@@ -81,7 +83,8 @@ $kassenKanaele = [
     ['code' => 'k2', 'label' => 'K2', 'title' => 'Kassa Messe',    'css' => 'kc-k2'],
 ];
 
-function renderKanalChips(array $artikel, array $kassenKanaele): string {
+function renderKanalChips(array $artikel, array $kassenKanaele): string
+{
     $html = '';
     // Kassen-Kanäle: immer für alle Artikel
     foreach ($kassenKanaele as $cfg) {
@@ -162,11 +165,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </select>
         <select name="status_filter" class="erp-select">
             <option value="">– Status –</option>
-            <option value="auslauf"    <?= ($_GET['status_filter'] ?? '') === 'auslauf'    ? 'selected' : '' ?>>Auslaufartikel</option>
-            <option value="uv"         <?= ($_GET['status_filter'] ?? '') === 'uv'         ? 'selected' : '' ?>>Überverkauf aktiv</option>
-            <option value="fehlbest"   <?= ($_GET['status_filter'] ?? '') === 'fehlbest'   ? 'selected' : '' ?>>Fehlbestand (Bst=0)</option>
-            <option value="inaktiv"    <?= ($_GET['status_filter'] ?? '') === 'inaktiv'    ? 'selected' : '' ?>>Inaktiv</option>
-            <option value="ohnekat"    <?= ($_GET['status_filter'] ?? '') === 'ohnekat'    ? 'selected' : '' ?>>Ohne Kategorie</option>
+            <option value="auslauf" <?= ($_GET['status_filter'] ?? '') === 'auslauf'    ? 'selected' : '' ?>>Auslaufartikel</option>
+            <option value="uv" <?= ($_GET['status_filter'] ?? '') === 'uv'         ? 'selected' : '' ?>>Überverkauf aktiv</option>
+            <option value="fehlbest" <?= ($_GET['status_filter'] ?? '') === 'fehlbest'   ? 'selected' : '' ?>>Fehlbestand (Bst=0)</option>
+            <option value="inaktiv" <?= ($_GET['status_filter'] ?? '') === 'inaktiv'    ? 'selected' : '' ?>>Inaktiv</option>
+            <option value="ohnekat" <?= ($_GET['status_filter'] ?? '') === 'ohnekat'    ? 'selected' : '' ?>>Ohne Kategorie</option>
         </select>
         <select name="kanal_filter" class="erp-select" disabled title="Kanäle-Modul noch nicht aktiv">
             <option value="">– Kanal –</option>
@@ -197,186 +200,186 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <th style="width:110px">KANÄLE</th>
                 <th style="width:60px; text-align:right; cursor:help" title="Physischer Gesamtbestand · Hover für Reservierungsdetails">BST.</th>
                 <th style="width:90px; text-align:right">PREIS</th>
-                <th style="width:80px"></th>
+                <th style="width:80px"><button id="alle-toggle-btn" onclick="alleToggle()">alle öffnen</button></th>
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($artikel as $a):
-            $kinder = $kinderNachVater[$a['id']] ?? [];
-            $hatKinder = count($kinder) > 0;
-            // Status-Chips für Vater
-            $statusChips = '';
-            if (!$a['aktiv'])
-                $statusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
-            if ($a['aktiv'] && $a['ist_auslaufartikel'])
-                $statusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
-            if ($a['ueberverkauf_erlaubt'])
-                $statusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
-            // Fehlbest. bei normalen Artikeln: aktiv, kein Üv, kein Auslauf, Bestand = 0
-            if ($a['aktiv'] && !$a['ueberverkauf_erlaubt'] && !$a['ist_auslaufartikel'] && (float)$a['gesamtbestand'] <= 0)
-                $statusChips .= '<span class="sc sc-fehlbest" title="Kein Bestand vorhanden">Fehlbest.</span>';
-            // Fehlbest. zusätzlich zu Üv: wenn bereits auf Kundenauftrag/Reservierung
-            if ($a['aktiv'] && $a['ueberverkauf_erlaubt'] && (float)$a['gesamtbestand'] <= 0 && (float)($a['reserviert'] ?? 0) > 0)
-                $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$a['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
-            if ((int)($a['kat_anzahl'] ?? 1) === 0)
-                $statusChips .= '<span class="sc sc-ohnekat" title="Kein Kategorie-Eintrag – Artikel erscheint in keinem Shop">Kein Kat.</span>';
-            // Sale-Chip: TODO — benötigt preis_aktionen-Tabelle (noch nicht gebaut)
+            <?php foreach ($artikel as $a):
+                $kinder = $kinderNachVater[$a['id']] ?? [];
+                $hatKinder = count($kinder) > 0;
+                // Status-Chips für Vater
+                $statusChips = '';
+                if (!$a['aktiv'])
+                    $statusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
+                if ($a['aktiv'] && $a['ist_auslaufartikel'])
+                    $statusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
+                if ($a['ueberverkauf_erlaubt'])
+                    $statusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
+                // Fehlbest. bei normalen Artikeln: aktiv, kein Üv, kein Auslauf, Bestand = 0
+                if ($a['aktiv'] && !$a['ueberverkauf_erlaubt'] && !$a['ist_auslaufartikel'] && (float)$a['gesamtbestand'] <= 0)
+                    $statusChips .= '<span class="sc sc-fehlbest" title="Kein Bestand vorhanden">Fehlbest.</span>';
+                // Fehlbest. zusätzlich zu Üv: wenn bereits auf Kundenauftrag/Reservierung
+                if ($a['aktiv'] && $a['ueberverkauf_erlaubt'] && (float)$a['gesamtbestand'] <= 0 && (float)($a['reserviert'] ?? 0) > 0)
+                    $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$a['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
+                if ((int)($a['kat_anzahl'] ?? 1) === 0)
+                    $statusChips .= '<span class="sc sc-ohnekat" title="Kein Kategorie-Eintrag – Artikel erscheint in keinem Shop">Kein Kat.</span>';
+                // Sale-Chip: TODO — benötigt preis_aktionen-Tabelle (noch nicht gebaut)
 
-            // ⚠ Vater-Badge
-            $vaterAbwTypen = [];
-            foreach ($kinder as $k) {
-                foreach (kindAbweichungen($k, $a) as $abw) {
-                    $vaterAbwTypen[$abw] = true;
+                // ⚠ Vater-Badge
+                $vaterAbwTypen = [];
+                foreach ($kinder as $k) {
+                    foreach (kindAbweichungen($k, $a) as $abw) {
+                        $vaterAbwTypen[$abw] = true;
+                    }
                 }
-            }
-            $vaterHatAbweichung = !empty($vaterAbwTypen);
-            $hatZustandsArtikel = !empty($zustandsNachVater[$a['id']]);
+                $vaterHatAbweichung = !empty($vaterAbwTypen);
+                $hatZustandsArtikel = !empty($zustandsNachVater[$a['id']]);
 
-            $bstKlasse = ((float)$a['gesamtbestand'] <= 0 && $a['aktiv']) ? 'bst-null' : '';
-            $bstTitle  = '';
-            if ((float)($a['reserviert'] ?? 0) > 0) {
-                $vk = (float)$a['gesamtbestand'] - (float)$a['reserviert'];
-                $bstTitle = 'title="' . formatBestand($a['gesamtbestand']) . ' physisch · '
-                          . formatBestand($a['reserviert']) . ' reserviert · '
-                          . formatBestand($vk) . ' verkaufbar"';
-            }
-        ?>
-            <tr class="artikel-zeile<?= !$a['aktiv'] ? ' row-inaktiv' : '' ?>">
-                <td style="text-align:center; width:28px">
-                    <input type="checkbox" class="zeile-cb" value="<?= $a['id'] ?>">
-                    <?php if ($hatKinder || $hatZustandsArtikel): ?>
-                        <br><span id="pfeil-<?= $a['id'] ?>" onclick="toggleKinder(<?= $a['id'] ?>)"
-                            class="expand-arrow">▶</span>
-                    <?php endif; ?>
-                </td>
-                <td class="thumb-cell">
-                    <div class="artikel-thumb"></div>
-                </td>
-                <td class="artnr-cell">
-                    <a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a>
-                </td>
-                <td class="status-cell"><?= $statusChips ?></td>
-                <td>
-                    <span class="artikel-name"><?= htmlspecialchars($a['name']) ?></span>
-                    <?php if ($hatKinder): ?>
-                        <span class="varianten-count"><?= count($kinder) ?> Var.</span>
-                    <?php endif; ?>
-                    <?php if ($vaterHatAbweichung): ?>
-                        <span class="warn-badge" title="Kind-Abweichungen: <?= htmlspecialchars(implode(', ', array_keys($vaterAbwTypen))) ?>">!</span>
-                    <?php endif; ?>
-                    <?php if ($hatZustandsArtikel): ?>
-                        <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
-                    <?php endif; ?>
-                </td>
-                <td class="kanal-cell"><?= renderKanalChips($a, $kassenKanaele) ?></td>
-                <td style="text-align:right" class="<?= $bstKlasse ?>" <?= $bstTitle ?>><?= formatBestand($a['gesamtbestand']) ?></td>
-                <td style="text-align:right" class="preis-cell">
-                    <?= $a['brutto_vk'] ? number_format((float)$a['brutto_vk'], 2, ',', '.') . ' €' : '–' ?>
-                </td>
-                <td class="aktion-cell">
-                    <span class="row-aktionen">
-                        <a href="detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
-                        <a href="kopieren.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Kopieren">📋</a>
-                        <a href="delete.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Deaktivieren"
-                            style="color:var(--color-danger)"
-                            onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
-                    </span>
-                </td>
-            </tr>
-
-            <?php foreach ($kinder as $k):
-                $kindAbw = kindAbweichungen($k, $a);
-                $kindStatusChips = '';
-                if (!$k['aktiv'])
-                    $kindStatusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
-                if ($k['aktiv'] && $k['ist_auslaufartikel'])
-                    $kindStatusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
-                if ($k['ueberverkauf_erlaubt'])
-                    $kindStatusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
-                if ($k['aktiv'] && !$k['ueberverkauf_erlaubt'] && !$k['ist_auslaufartikel'] && (float)$k['gesamtbestand'] <= 0)
-                    $kindStatusChips .= '<span class="sc sc-fehlbest" title="Kein Bestand vorhanden">Fehlbest.</span>';
-                if ($k['aktiv'] && $k['ueberverkauf_erlaubt'] && (float)$k['gesamtbestand'] <= 0 && (float)($k['reserviert'] ?? 0) > 0)
-                    $kindStatusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$k['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
-                $kindBstKlasse = ((float)$k['gesamtbestand'] <= 0 && $k['aktiv']) ? 'bst-null' : '';
-                $kindBstTitle  = '';
-                if ((float)($k['reserviert'] ?? 0) > 0) {
-                    $kvk = (float)$k['gesamtbestand'] - (float)$k['reserviert'];
-                    $kindBstTitle = 'title="' . formatBestand($k['gesamtbestand']) . ' physisch · '
-                                  . formatBestand($k['reserviert']) . ' reserviert · '
-                                  . formatBestand($kvk) . ' verkaufbar"';
+                $bstKlasse = ((float)$a['gesamtbestand'] <= 0 && $a['aktiv']) ? 'bst-null' : '';
+                $bstTitle  = '';
+                if ((float)($a['reserviert'] ?? 0) > 0) {
+                    $vk = (float)$a['gesamtbestand'] - (float)$a['reserviert'];
+                    $bstTitle = 'title="' . formatBestand($a['gesamtbestand']) . ' physisch · '
+                        . formatBestand($a['reserviert']) . ' reserviert · '
+                        . formatBestand($vk) . ' verkaufbar"';
                 }
             ?>
-                <tr class="kind-zeile-<?= $a['id'] ?> versteckt kind-zeile<?= !$k['aktiv'] ? ' row-inaktiv' : '' ?>">
-                    <td style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $k['id'] ?>"></td>
-                    <td class="thumb-cell">
-                        <div class="artikel-thumb artikel-thumb-kind"></div>
-                    </td>
-                    <td class="artnr-cell" style="padding-left:20px; color:var(--color-text-muted); font-size:12px">
-                        ↳ <a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a>
-                    </td>
-                    <td class="status-cell"><?= $kindStatusChips ?></td>
-                    <td>
-                        <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($k['name']) ?></span>
-                        <?php if (!empty($kindAbw)): ?>
-                            <span class="warn-badge" title="Abweicht vom Vater: <?= htmlspecialchars(implode(', ', $kindAbw)) ?>">!</span>
+                <tr class="artikel-zeile<?= !$a['aktiv'] ? ' row-inaktiv' : '' ?>">
+                    <td style="text-align:center; width:28px">
+                        <input type="checkbox" class="zeile-cb" value="<?= $a['id'] ?>">
+                        <?php if ($hatKinder || $hatZustandsArtikel): ?>
+                            <br><span id="pfeil-<?= $a['id'] ?>" onclick="toggleKinder(<?= $a['id'] ?>)"
+                                class="expand-arrow">▶</span>
                         <?php endif; ?>
                     </td>
-                    <td class="kanal-cell"></td>
-                    <td style="text-align:right; font-size:12px" class="<?= $kindBstKlasse ?>" <?= $kindBstTitle ?>><?= formatBestand($k['gesamtbestand']) ?></td>
-                    <td style="text-align:right; font-size:12px" class="preis-cell">
-                        <?= $k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–' ?>
+                    <td class="thumb-cell">
+                        <div class="artikel-thumb"></div>
+                    </td>
+                    <td class="artnr-cell">
+                        <a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a>
+                    </td>
+                    <td class="status-cell"><?= $statusChips ?></td>
+                    <td>
+                        <span class="artikel-name"><?= htmlspecialchars($a['name']) ?></span>
+                        <?php if ($hatKinder): ?>
+                            <span class="varianten-count"><?= count($kinder) ?> Var.</span>
+                        <?php endif; ?>
+                        <?php if ($vaterHatAbweichung): ?>
+                            <span class="warn-badge" title="Kind-Abweichungen: <?= htmlspecialchars(implode(', ', array_keys($vaterAbwTypen))) ?>">!</span>
+                        <?php endif; ?>
+                        <?php if ($hatZustandsArtikel): ?>
+                            <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="kanal-cell"><?= renderKanalChips($a, $kassenKanaele) ?></td>
+                    <td style="text-align:right" class="<?= $bstKlasse ?>" <?= $bstTitle ?>><?= formatBestand($a['gesamtbestand']) ?></td>
+                    <td style="text-align:right" class="preis-cell">
+                        <?= $a['brutto_vk'] ? number_format((float)$a['brutto_vk'], 2, ',', '.') . ' €' : '–' ?>
                     </td>
                     <td class="aktion-cell">
                         <span class="row-aktionen">
-                            <a href="detail.php?id=<?= $k['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                            <a href="detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                            <a href="kopieren.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Kopieren">📋</a>
+                            <a href="delete.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Deaktivieren"
+                                style="color:var(--color-danger)"
+                                onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
                         </span>
                     </td>
                 </tr>
-            <?php endforeach; ?>
 
-            <?php
-            $zustandsArtikel = $zustandsNachVater[$a['id']] ?? [];
-            foreach ($zustandsArtikel as $za):
-                $zaBstKlasse = ((float)$za['gesamtbestand'] <= 0 && $za['aktiv']) ? 'bst-null' : '';
-                $zustandLabels = [
-                    'gebraucht'          => 'GEB',
-                    'generalueberholt'   => 'GUE',
-                    'beschaedigt'        => 'BSC',
-                    'retour'             => 'RET',
-                    'demo'               => 'DMO',
-                    'muster'             => 'MST',
-                    'ausstellungsstueck' => 'AST',
-                ];
-                $zaSuffix = $zustandLabels[$za['zustand']] ?? strtoupper($za['zustand']);
-            ?>
-                <tr class="kind-zeile-<?= $a['id'] ?> versteckt kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
-                    <td style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $za['id'] ?>"></td>
-                    <td class="thumb-cell">
-                        <div class="artikel-thumb artikel-thumb-kind"></div>
-                    </td>
-                    <td class="artnr-cell" style="padding-left:20px; font-size:12px">
-                        ↳ <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
-                    </td>
-                    <td class="status-cell">
-                        <span class="sc" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd"><?= $zaSuffix ?></span>
-                        <?php if (!$za['aktiv']): ?>
-                            <span class="sc sc-deaktiviert">Deaktiviert</span>
-                        <?php endif; ?>
-                    </td>
-                    <td>
-                        <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($za['name']) ?></span>
-                    </td>
-                    <td class="kanal-cell"></td>
-                    <td style="text-align:right; font-size:12px" class="<?= $zaBstKlasse ?>"><?= formatBestand($za['gesamtbestand']) ?></td>
-                    <td style="text-align:right; font-size:12px" class="preis-cell">–</td>
-                    <td class="aktion-cell">
-                        <span class="row-aktionen">
-                            <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
-                        </span>
-                    </td>
-                </tr>
+                <?php foreach ($kinder as $k):
+                    $kindAbw = kindAbweichungen($k, $a);
+                    $kindStatusChips = '';
+                    if (!$k['aktiv'])
+                        $kindStatusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
+                    if ($k['aktiv'] && $k['ist_auslaufartikel'])
+                        $kindStatusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
+                    if ($k['ueberverkauf_erlaubt'])
+                        $kindStatusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
+                    if ($k['aktiv'] && !$k['ueberverkauf_erlaubt'] && !$k['ist_auslaufartikel'] && (float)$k['gesamtbestand'] <= 0)
+                        $kindStatusChips .= '<span class="sc sc-fehlbest" title="Kein Bestand vorhanden">Fehlbest.</span>';
+                    if ($k['aktiv'] && $k['ueberverkauf_erlaubt'] && (float)$k['gesamtbestand'] <= 0 && (float)($k['reserviert'] ?? 0) > 0)
+                        $kindStatusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$k['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
+                    $kindBstKlasse = ((float)$k['gesamtbestand'] <= 0 && $k['aktiv']) ? 'bst-null' : '';
+                    $kindBstTitle  = '';
+                    if ((float)($k['reserviert'] ?? 0) > 0) {
+                        $kvk = (float)$k['gesamtbestand'] - (float)$k['reserviert'];
+                        $kindBstTitle = 'title="' . formatBestand($k['gesamtbestand']) . ' physisch · '
+                            . formatBestand($k['reserviert']) . ' reserviert · '
+                            . formatBestand($kvk) . ' verkaufbar"';
+                    }
+                ?>
+                    <tr class="kind-zeile-<?= $a['id'] ?> versteckt kind-zeile<?= !$k['aktiv'] ? ' row-inaktiv' : '' ?>">
+                        <td style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $k['id'] ?>"></td>
+                        <td class="thumb-cell">
+                            <div class="artikel-thumb artikel-thumb-kind"></div>
+                        </td>
+                        <td class="artnr-cell" style="padding-left:20px; color:var(--color-text-muted); font-size:12px">
+                            ↳ <a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a>
+                        </td>
+                        <td class="status-cell"><?= $kindStatusChips ?></td>
+                        <td>
+                            <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($k['name']) ?></span>
+                            <?php if (!empty($kindAbw)): ?>
+                                <span class="warn-badge" title="Abweicht vom Vater: <?= htmlspecialchars(implode(', ', $kindAbw)) ?>">!</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="kanal-cell"></td>
+                        <td style="text-align:right; font-size:12px" class="<?= $kindBstKlasse ?>" <?= $kindBstTitle ?>><?= formatBestand($k['gesamtbestand']) ?></td>
+                        <td style="text-align:right; font-size:12px" class="preis-cell">
+                            <?= $k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–' ?>
+                        </td>
+                        <td class="aktion-cell">
+                            <span class="row-aktionen">
+                                <a href="detail.php?id=<?= $k['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                            </span>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+
+                <?php
+                $zustandsArtikel = $zustandsNachVater[$a['id']] ?? [];
+                foreach ($zustandsArtikel as $za):
+                    $zaBstKlasse = ((float)$za['gesamtbestand'] <= 0 && $za['aktiv']) ? 'bst-null' : '';
+                    $zustandLabels = [
+                        'gebraucht'          => 'GEB',
+                        'generalueberholt'   => 'GUE',
+                        'beschaedigt'        => 'BSC',
+                        'retour'             => 'RET',
+                        'demo'               => 'DMO',
+                        'muster'             => 'MST',
+                        'ausstellungsstueck' => 'AST',
+                    ];
+                    $zaSuffix = $zustandLabels[$za['zustand']] ?? strtoupper($za['zustand']);
+                ?>
+                    <tr class="kind-zeile-<?= $a['id'] ?> versteckt kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
+                        <td style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $za['id'] ?>"></td>
+                        <td class="thumb-cell">
+                            <div class="artikel-thumb artikel-thumb-kind"></div>
+                        </td>
+                        <td class="artnr-cell" style="padding-left:20px; font-size:12px">
+                            ↳ <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
+                        </td>
+                        <td class="status-cell">
+                            <span class="sc" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd"><?= $zaSuffix ?></span>
+                            <?php if (!$za['aktiv']): ?>
+                                <span class="sc sc-deaktiviert">Deaktiviert</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($za['name']) ?></span>
+                        </td>
+                        <td class="kanal-cell"></td>
+                        <td style="text-align:right; font-size:12px" class="<?= $zaBstKlasse ?>"><?= formatBestand($za['gesamtbestand']) ?></td>
+                        <td style="text-align:right; font-size:12px" class="preis-cell">–</td>
+                        <td class="aktion-cell">
+                            <span class="row-aktionen">
+                                <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                            </span>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
             <?php endforeach; ?>
-        <?php endforeach; ?>
         </tbody>
     </table>
 </div>
@@ -396,7 +399,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $aktiv = ($eintrag == $seite) ? 'active' : '';
                 ?>
                     <a class="<?= $aktiv ?>" href="liste.php?<?= $qs ?>"><?= $eintrag ?></a>
-                <?php endif;
+            <?php endif;
             endforeach; ?>
         </div>
         <div class="">
@@ -434,30 +437,33 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <span class="kanal-legende-note">(K1/K2 = immer alle Artikel · S1–S3 = je nach Shop-Zuweisung)</span>
     </span>
     <button onclick="legendeToggle()" id="legende-toggle-btn"
-            style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:11px;color:var(--color-text-muted);padding:0 4px"
-            title="Legende ein-/ausblenden">▲</button>
+        style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:11px;color:var(--color-text-muted);padding:0 4px"
+        title="Legende ein-/ausblenden">▲</button>
 </div>
 <script>
-(function() {
-    var offen = localStorage.getItem('mealana_legende') !== 'zu';
-    var inhalt = document.getElementById('kanal-legende-inhalt');
-    var btn    = document.getElementById('legende-toggle-btn');
-    function anwenden() {
-        inhalt.style.display = offen ? '' : 'none';
-        btn.textContent = offen ? '▲' : '▼';
-    }
-    anwenden();
-    window.legendeToggle = function() {
-        offen = !offen;
-        localStorage.setItem('mealana_legende', offen ? 'auf' : 'zu');
+    (function() {
+        var offen = localStorage.getItem('mealana_legende') !== 'zu';
+        var inhalt = document.getElementById('kanal-legende-inhalt');
+        var btn = document.getElementById('legende-toggle-btn');
+
+        function anwenden() {
+            inhalt.style.display = offen ? '' : 'none';
+            btn.textContent = offen ? '▲' : '▼';
+        }
         anwenden();
-    };
-})();
+        window.legendeToggle = function() {
+            offen = !offen;
+            localStorage.setItem('mealana_legende', offen ? 'auf' : 'zu');
+            anwenden();
+        };
+    })();
 </script>
 
 <style>
     /* ── Tabelle ── */
-    .artikel-liste-table td { vertical-align: middle; }
+    .artikel-liste-table td {
+        vertical-align: middle;
+    }
 
     /* Expand-Pfeil */
     .expand-arrow {
@@ -470,20 +476,35 @@ require_once __DIR__ . '/../includes/shell_top.php';
     }
 
     /* Thumbnail-Placeholder */
-    .thumb-cell { padding: 4px 6px !important; }
+    .thumb-cell {
+        padding: 4px 6px !important;
+    }
+
     .artikel-thumb {
-        width: 38px; height: 24px;
+        width: 38px;
+        height: 24px;
         background: #E2E8F0;
         border-radius: 3px;
         border: 1px solid #CBD5E0;
     }
-    .artikel-thumb-kind { width: 28px; height: 18px; opacity: .6; }
+
+    .artikel-thumb-kind {
+        width: 28px;
+        height: 18px;
+        opacity: .6;
+    }
 
     /* Artikelnummer */
-    .artnr-cell { font-size: 12px; white-space: nowrap; }
+    .artnr-cell {
+        font-size: 12px;
+        white-space: nowrap;
+    }
 
     /* Artikelname */
-    .artikel-name { font-weight: 500; }
+    .artikel-name {
+        font-weight: 500;
+    }
+
     .varianten-count {
         color: var(--color-text-muted);
         font-size: 11px;
@@ -491,15 +512,24 @@ require_once __DIR__ . '/../includes/shell_top.php';
     }
 
     /* Hover-Aktionen (eigene Spalte am Ende) */
-    .aktion-cell { text-align: right; white-space: nowrap; width: 80px; }
+    .aktion-cell {
+        text-align: right;
+        white-space: nowrap;
+        width: 80px;
+    }
+
     .row-aktionen {
         display: inline-flex;
         gap: 4px;
         opacity: 0;
         transition: opacity .15s;
     }
+
     .artikel-zeile:hover .row-aktionen,
-    .kind-zeile:hover .row-aktionen { opacity: 1; }
+    .kind-zeile:hover .row-aktionen {
+        opacity: 1;
+    }
+
     .btn-xs {
         padding: 1px 6px !important;
         font-size: 11px !important;
@@ -519,11 +549,33 @@ require_once __DIR__ . '/../includes/shell_top.php';
         margin-right: 2px;
         line-height: 17px;
     }
-    .sc-deaktiviert { background: #E2E8F0; color: #718096; }
-    .sc-auslauf     { background: #FEFCBF; color: #744210; }
-    .sc-uv          { background: #FEEBC8; color: #C05621; }
-    .sc-fehlbest    { background: #FED7D7; color: #C53030; }
-    .sc-ohnekat     { background: #EDF2F7; color: #4A5568; border: 1px solid #CBD5E0; }
+
+    .sc-deaktiviert {
+        background: #E2E8F0;
+        color: #718096;
+    }
+
+    .sc-auslauf {
+        background: #FEFCBF;
+        color: #744210;
+    }
+
+    .sc-uv {
+        background: #FEEBC8;
+        color: #C05621;
+    }
+
+    .sc-fehlbest {
+        background: #FED7D7;
+        color: #C53030;
+    }
+
+    .sc-ohnekat {
+        background: #EDF2F7;
+        color: #4A5568;
+        border: 1px solid #CBD5E0;
+    }
+
     /* (Sale: .sc-sale = #FAF5FF / #7E22CE — für später) */
 
     /* Kanal-Chips (.kc) */
@@ -537,17 +589,43 @@ require_once __DIR__ . '/../includes/shell_top.php';
         margin-right: 2px;
         line-height: 16px;
     }
-    .kc-k1 { background: #1B3A6B; color: #fff; }
-    .kc-k2 { background: #2D5FA6; color: #fff; }
-    .kc-s1 { background: #5590C0; color: #fff; }
-    .kc-s2 { background: #7EC8E3; color: #1B3A6B; }
-    .kc-s3 { background: #A8D4F0; color: #1B3A6B; }
+
+    .kc-k1 {
+        background: #1B3A6B;
+        color: #fff;
+    }
+
+    .kc-k2 {
+        background: #2D5FA6;
+        color: #fff;
+    }
+
+    .kc-s1 {
+        background: #5590C0;
+        color: #fff;
+    }
+
+    .kc-s2 {
+        background: #7EC8E3;
+        color: #1B3A6B;
+    }
+
+    .kc-s3 {
+        background: #A8D4F0;
+        color: #1B3A6B;
+    }
 
     /* Bestand null */
-    .bst-null { color: #C53030; font-weight: 600; }
+    .bst-null {
+        color: #C53030;
+        font-weight: 600;
+    }
 
     /* Preis */
-    .preis-cell { white-space: nowrap; font-size: 13px; }
+    .preis-cell {
+        white-space: nowrap;
+        font-size: 13px;
+    }
 
     /* Info-Badge (blaues "!" — Hinweis, kein Fehler) */
     .warn-badge {
@@ -569,10 +647,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
     }
 
     /* Pagination Dots */
-    .pagination-dots { padding: 0 4px; color: var(--color-text-muted); }
+    .pagination-dots {
+        padding: 0 4px;
+        color: var(--color-text-muted);
+    }
 
     /* Checkbox-Spalte */
-    .zeile-cb { cursor: pointer; }
+    .zeile-cb {
+        cursor: pointer;
+    }
 
     /* KANAL-LEGENDE */
     .kanal-legende {
@@ -586,9 +669,22 @@ require_once __DIR__ . '/../includes/shell_top.php';
         border-top: 1px solid var(--color-border);
         margin-top: 8px;
     }
-    .kanal-legende-label { font-weight: 600; color: var(--color-text); margin-right: 2px; }
-    .kanal-legende-text { color: var(--color-text-muted); }
-    .kanal-legende-sep { color: var(--color-border); margin: 0 2px; }
+
+    .kanal-legende-label {
+        font-weight: 600;
+        color: var(--color-text);
+        margin-right: 2px;
+    }
+
+    .kanal-legende-text {
+        color: var(--color-text-muted);
+    }
+
+    .kanal-legende-sep {
+        color: var(--color-border);
+        margin: 0 2px;
+    }
+
     .kanal-legende-note {
         margin-left: 8px;
         font-style: italic;
@@ -599,6 +695,38 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </style>
 
 <script>
+    function alleToggle() {
+        // 1. Alle Pfeile finden (id beginnt mit "pfeil-")
+        const pfeile = document.querySelectorAll('[id^="pfeil-"]');
+
+        // 2. Aktuellen Zustand bestimmen: sind ALLE zugeklappt?
+        const sindAlleZu = Array.from(pfeile).every((pfeil, index, array) => {
+            return pfeil.textContent === '▶';
+        });
+
+        //    → dann aufklappen; sonst zuklappen
+        if (sindAlleZu) {
+            pfeile.forEach(pfeil => {
+                toggleKinder(pfeil.id.replace('pfeil-', ''));
+            });
+        } else {
+            // 3. Jeden Pfeil prüfen und toggleKinder(id) aufrufen wenn nötig
+            pfeile.forEach(pfeil => {
+
+                if (pfeil.textContent === '▼') {
+                    toggleKinder(pfeil.id.replace('pfeil-', ''));
+                }
+            });
+        }
+        // 4. Button-Text aktualisieren
+        if (sindAlleZu) {
+            document.getElementById('alle-toggle-btn').textContent = 'alle schliessen';
+        } else {
+            document.getElementById('alle-toggle-btn').textContent = 'alle öffnen';
+
+        }
+    }
+
     function toggleKinder(vaterId) {
         document.querySelectorAll('.kind-zeile-' + vaterId).forEach(r => r.classList.toggle('versteckt'));
         const p = document.getElementById('pfeil-' + vaterId);
