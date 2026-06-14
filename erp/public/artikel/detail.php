@@ -49,13 +49,19 @@ $zustandsArtikelListe = ($artikel && empty($artikel['zustand_vater_id']))
 // Standard-Lieferant für Marge
 $stdLieferant = null;
 foreach ($lieferanten as $l) {
-    if ($l['standard_lieferant']) { $stdLieferant = $l; break; }
+    if ($l['standard_lieferant']) {
+        $stdLieferant = $l;
+        break;
+    }
 }
 
 // Endkunden-Preis (KG 1) für Marge + Grundpreis
 $kgEndkunde = null;
 foreach ($kundengruppenPreise as $kp) {
-    if ($kp['id'] == 1 && $kp['netto_vk'] !== null) { $kgEndkunde = $kp; break; }
+    if ($kp['id'] == 1 && $kp['netto_vk'] !== null) {
+        $kgEndkunde = $kp;
+        break;
+    }
 }
 
 // Marge berechnen
@@ -68,8 +74,10 @@ if ($stdLieferant && (float)$stdLieferant['netto_ek'] > 0 && $kgEndkunde && (flo
 
 // Grundpreis berechnen
 $grundpreisAnzeige = null;
-if ($artikel['grundpreis_anzeigen'] && (float)($artikel['inhalt_menge'] ?? 0) > 0
-    && (float)($artikel['grundpreis_bezugsmenge'] ?? 0) > 0 && (float)($artikel['brutto_vk'] ?? 0) > 0) {
+if (
+    $artikel['grundpreis_anzeigen'] && (float)($artikel['inhalt_menge'] ?? 0) > 0
+    && (float)($artikel['grundpreis_bezugsmenge'] ?? 0) > 0 && (float)($artikel['brutto_vk'] ?? 0) > 0
+) {
     $gpWert = (float)$artikel['brutto_vk'] / (float)$artikel['inhalt_menge'] * (float)$artikel['grundpreis_bezugsmenge'];
     $gpBez  = rtrim(rtrim(number_format((float)$artikel['grundpreis_bezugsmenge'], 3, ',', '.'), '0'), ',');
     $grundpreisAnzeige = number_format($gpWert, 2, ',', '.') . ' € / ' . $gpBez . ' ' . ($artikel['inhalt_einheit'] ?? '');
@@ -93,7 +101,8 @@ if ($artikel === false) {
 }
 
 if (!function_exists('formatBestand')) {
-    function formatBestand(int|float|string $wert): string {
+    function formatBestand(int|float|string $wert): string
+    {
         $v = (float) $wert;
         return $v == (int) $v
             ? number_format($v, 0, ',', '.')
@@ -167,7 +176,9 @@ $actionBarContent = <<<HTML
 <button class="btn btn-secondary btn-sm" style="color:var(--color-warning)">Deaktivieren</button>
 <button class="btn btn-secondary btn-sm" style="color:#0a6ebd">Im Shop ▼</button>
 <div class="actionbar-sep"></div>
+<div class="actionbar-right">
 <button class="btn btn-danger btn-sm">Löschen</button>
+</div>
 HTML;
 
 $sidebarItems = [
@@ -663,12 +674,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         <!-- Preis-Aktionen -->
         <?php
-            $hatAktionen       = !empty($preisAktionen);
-            $hatAktiveAktionen = !empty(array_filter($preisAktionen, fn($a) => $a['aktiv']));
+        $hatAktionen       = !empty($preisAktionen);
+        $hatAktiveAktionen = !empty(array_filter($preisAktionen, fn($a) => $a['aktiv']));
         ?>
         <div class="card" style="margin-bottom:var(--space-lg)">
             <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
-                 onclick="togglePreisSektion('aktionen-body', this)">
+                onclick="togglePreisSektion('aktionen-body', this)">
                 <div style="display:flex;align-items:center;gap:var(--space-sm)">
                     <h3 style="margin:0">Preis-Aktionen</h3>
                     <?php if ($hatAktiveAktionen): ?>
@@ -695,25 +706,25 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         </thead>
                         <tbody>
                             <?php foreach ($preisAktionen as $a): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($a['name']) ?></td>
-                                <td>
-                                    <span style="font-size:12px;padding:2px 8px;border-radius:10px;background:<?= $a['typ'] === 'sale' ? '#fef9c3' : '#dbeafe' ?>;color:<?= $a['typ'] === 'sale' ? '#854d0e' : '#1e40af' ?>">
-                                        <?= $a['typ'] === 'sale' ? 'Sale' : 'Lief.-Aktion' ?>
-                                    </span>
-                                </td>
-                                <td><?= $a['kg_name'] ? htmlspecialchars($a['kg_name']) : '<span style="color:var(--color-text-muted)">Alle</span>' ?></td>
-                                <td style="text-align:right"><?= number_format((float)$a['brutto_vk'], 2, ',', '.') ?> €</td>
-                                <td style="white-space:nowrap"><?= date('d.m.Y', strtotime($a['gueltig_ab'])) ?></td>
-                                <td style="white-space:nowrap"><?= $a['gueltig_bis'] ? date('d.m.Y', strtotime($a['gueltig_bis'])) : '–' ?></td>
-                                <td>
-                                    <?php if ($a['aktiv']): ?>
-                                        <span style="background:#dcfce7;color:#166534;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600">aktiv</span>
-                                    <?php else: ?>
-                                        <span style="background:#f1f5f9;color:#64748b;font-size:12px;padding:2px 8px;border-radius:10px">inaktiv</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td><?= htmlspecialchars($a['name']) ?></td>
+                                    <td>
+                                        <span style="font-size:12px;padding:2px 8px;border-radius:10px;background:<?= $a['typ'] === 'sale' ? '#fef9c3' : '#dbeafe' ?>;color:<?= $a['typ'] === 'sale' ? '#854d0e' : '#1e40af' ?>">
+                                            <?= $a['typ'] === 'sale' ? 'Sale' : 'Lief.-Aktion' ?>
+                                        </span>
+                                    </td>
+                                    <td><?= $a['kg_name'] ? htmlspecialchars($a['kg_name']) : '<span style="color:var(--color-text-muted)">Alle</span>' ?></td>
+                                    <td style="text-align:right"><?= number_format((float)$a['brutto_vk'], 2, ',', '.') ?> €</td>
+                                    <td style="white-space:nowrap"><?= date('d.m.Y', strtotime($a['gueltig_ab'])) ?></td>
+                                    <td style="white-space:nowrap"><?= $a['gueltig_bis'] ? date('d.m.Y', strtotime($a['gueltig_bis'])) : '–' ?></td>
+                                    <td>
+                                        <?php if ($a['aktiv']): ?>
+                                            <span style="background:#dcfce7;color:#166534;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600">aktiv</span>
+                                        <?php else: ?>
+                                            <span style="background:#f1f5f9;color:#64748b;font-size:12px;padding:2px 8px;border-radius:10px">inaktiv</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -729,7 +740,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <!-- Kundengruppen-Preise -->
         <div class="card" style="margin-bottom:var(--space-lg)">
             <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
-                 onclick="togglePreisSektion('kg-preise-body', this)">
+                onclick="togglePreisSektion('kg-preise-body', this)">
                 <h3 style="margin:0">Kundengruppen-Preise</h3>
                 <span id="kg-preise-toggle"><?= $hatKgPreise ? '▲' : '▼' ?></span>
             </div>
@@ -747,35 +758,35 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </thead>
                     <tbody>
                         <?php foreach ($kundengruppenPreise as $kp): ?>
-                        <tr data-kg-id="<?= $kp['id'] ?>"
-                            data-brutto="<?= htmlspecialchars($kp['brutto_vk'] ?? '') ?>"
-                            data-netto="<?= htmlspecialchars($kp['netto_vk'] ?? '') ?>"
-                            data-ab="<?= htmlspecialchars($kp['gueltig_ab'] ?? '') ?>"
-                            data-bis="<?= htmlspecialchars($kp['gueltig_bis'] ?? '') ?>">
-                            <td><?= htmlspecialchars($kp['name']) ?></td>
-                            <td style="text-align:right">
-                                <?= $kp['brutto_vk'] !== null
-                                    ? number_format((float)$kp['brutto_vk'], 2, ',', '.') . ' €'
-                                    : '<span style="color:var(--color-text-muted)">–</span>' ?>
-                            </td>
-                            <td style="text-align:right">
-                                <?= $kp['netto_vk'] !== null
-                                    ? number_format((float)$kp['netto_vk'], 2, ',', '.') . ' €'
-                                    : '<span style="color:var(--color-text-muted)">–</span>' ?>
-                            </td>
-                            <td style="white-space:nowrap"><?= $kp['gueltig_ab'] ? date('d.m.Y', strtotime($kp['gueltig_ab'])) : '–' ?></td>
-                            <td style="white-space:nowrap"><?= $kp['gueltig_bis'] ? date('d.m.Y', strtotime($kp['gueltig_bis'])) : '–' ?></td>
-                            <td class="row-aktionen" style="white-space:nowrap">
-                                <?php if ($kp['brutto_vk'] !== null): ?>
-                                <button class="btn btn-sm" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Bearbeiten">✏️</button>
-                                <?php if ($kp['id'] != 1): ?>
-                                <button class="btn btn-sm" style="color:var(--color-danger)" onclick="preisLoeschen(<?= $kp['id'] ?>);event.stopPropagation()" title="Löschen">🗑️</button>
-                                <?php endif; ?>
-                                <?php else: ?>
-                                <button class="btn btn-sm btn-primary" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Preis anlegen">+</button>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
+                            <tr data-kg-id="<?= $kp['id'] ?>"
+                                data-brutto="<?= htmlspecialchars($kp['brutto_vk'] ?? '') ?>"
+                                data-netto="<?= htmlspecialchars($kp['netto_vk'] ?? '') ?>"
+                                data-ab="<?= htmlspecialchars($kp['gueltig_ab'] ?? '') ?>"
+                                data-bis="<?= htmlspecialchars($kp['gueltig_bis'] ?? '') ?>">
+                                <td><?= htmlspecialchars($kp['name']) ?></td>
+                                <td style="text-align:right">
+                                    <?= $kp['brutto_vk'] !== null
+                                        ? number_format((float)$kp['brutto_vk'], 2, ',', '.') . ' €'
+                                        : '<span style="color:var(--color-text-muted)">–</span>' ?>
+                                </td>
+                                <td style="text-align:right">
+                                    <?= $kp['netto_vk'] !== null
+                                        ? number_format((float)$kp['netto_vk'], 2, ',', '.') . ' €'
+                                        : '<span style="color:var(--color-text-muted)">–</span>' ?>
+                                </td>
+                                <td style="white-space:nowrap"><?= $kp['gueltig_ab'] ? date('d.m.Y', strtotime($kp['gueltig_ab'])) : '–' ?></td>
+                                <td style="white-space:nowrap"><?= $kp['gueltig_bis'] ? date('d.m.Y', strtotime($kp['gueltig_bis'])) : '–' ?></td>
+                                <td class="row-aktionen" style="white-space:nowrap">
+                                    <?php if ($kp['brutto_vk'] !== null): ?>
+                                        <button class="btn btn-sm" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Bearbeiten">✏️</button>
+                                        <?php if ($kp['id'] != 1): ?>
+                                            <button class="btn btn-sm" style="color:var(--color-danger)" onclick="preisLoeschen(<?= $kp['id'] ?>);event.stopPropagation()" title="Löschen">🗑️</button>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <button class="btn btn-sm btn-primary" onclick="preisModalOeffnen(<?= $kp['id'] ?>);event.stopPropagation()" title="Preis anlegen">+</button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -786,7 +797,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php $hatStaffelpreise = !empty($staffelpreise); ?>
         <div class="card" style="margin-bottom:var(--space-lg)">
             <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
-                 onclick="togglePreisSektion('staffel-body', this)">
+                onclick="togglePreisSektion('staffel-body', this)">
                 <h3 style="margin:0">Staffelpreise</h3>
                 <span id="staffel-toggle"><?= $hatStaffelpreise ? '▲' : '▼' ?></span>
             </div>
@@ -804,20 +815,20 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         </thead>
                         <tbody>
                             <?php foreach ($staffelpreise as $sp): ?>
-                            <tr data-sp-id="<?= $sp['id'] ?>"
-                                data-kg-id="<?= $sp['kundengruppen_id'] ?>"
-                                data-menge="<?= htmlspecialchars($sp['menge_ab']) ?>"
-                                data-brutto="<?= htmlspecialchars($sp['brutto_vk']) ?>"
-                                data-netto="<?= htmlspecialchars($sp['netto_vk']) ?>">
-                                <td><?= htmlspecialchars($sp['kundengruppen_name']) ?></td>
-                                <td style="text-align:right"><?= formatBestand($sp['menge_ab']) ?></td>
-                                <td style="text-align:right"><?= number_format((float)$sp['brutto_vk'], 2, ',', '.') ?> €</td>
-                                <td style="text-align:right"><?= number_format((float)$sp['netto_vk'], 4, ',', '.') ?> €</td>
-                                <td class="row-aktionen" style="white-space:nowrap">
-                                    <button class="btn btn-sm" onclick="staffelModalOeffnen(<?= $sp['id'] ?>);event.stopPropagation()" title="Bearbeiten">✏️</button>
-                                    <button class="btn btn-sm" style="color:var(--color-danger)" onclick="staffelLoeschen(<?= $sp['id'] ?>);event.stopPropagation()" title="Löschen">🗑️</button>
-                                </td>
-                            </tr>
+                                <tr data-sp-id="<?= $sp['id'] ?>"
+                                    data-kg-id="<?= $sp['kundengruppen_id'] ?>"
+                                    data-menge="<?= htmlspecialchars($sp['menge_ab']) ?>"
+                                    data-brutto="<?= htmlspecialchars($sp['brutto_vk']) ?>"
+                                    data-netto="<?= htmlspecialchars($sp['netto_vk']) ?>">
+                                    <td><?= htmlspecialchars($sp['kundengruppen_name']) ?></td>
+                                    <td style="text-align:right"><?= formatBestand($sp['menge_ab']) ?></td>
+                                    <td style="text-align:right"><?= number_format((float)$sp['brutto_vk'], 2, ',', '.') ?> €</td>
+                                    <td style="text-align:right"><?= number_format((float)$sp['netto_vk'], 4, ',', '.') ?> €</td>
+                                    <td class="row-aktionen" style="white-space:nowrap">
+                                        <button class="btn btn-sm" onclick="staffelModalOeffnen(<?= $sp['id'] ?>);event.stopPropagation()" title="Bearbeiten">✏️</button>
+                                        <button class="btn btn-sm" style="color:var(--color-danger)" onclick="staffelLoeschen(<?= $sp['id'] ?>);event.stopPropagation()" title="Löschen">🗑️</button>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -919,66 +930,66 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
 
         <?php if (!empty($zustandsArtikelListe)): ?>
-        <!-- Zustandsartikel -->
-        <div class="card" style="margin-top:var(--space-md)">
-            <div class="pagination-bar">
-                <div style="font-weight:600">
-                    B-Ware / Zustandsartikel
-                    <span style="margin-left:8px;font-size:12px;font-weight:400;color:var(--color-text-muted)"><?= count($zustandsArtikelListe) ?> Artikel</span>
+            <!-- Zustandsartikel -->
+            <div class="card" style="margin-top:var(--space-md)">
+                <div class="pagination-bar">
+                    <div style="font-weight:600">
+                        B-Ware / Zustandsartikel
+                        <span style="margin-left:8px;font-size:12px;font-weight:400;color:var(--color-text-muted)"><?= count($zustandsArtikelListe) ?> Artikel</span>
+                    </div>
+                    <a href="neu.php" class="btn btn-secondary btn-sm">+ Zustandsartikel anlegen</a>
                 </div>
-                <a href="neu.php" class="btn btn-secondary btn-sm">+ Zustandsartikel anlegen</a>
+                <table class="erp-table" style="margin-top:var(--space-sm)">
+                    <thead>
+                        <tr>
+                            <th>Artikelnummer</th>
+                            <th>Zustand</th>
+                            <th style="text-align:right">Bestand</th>
+                            <th>Status</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $zustandLabels = [
+                            'gebraucht'          => ['GEB', '#dbeafe', '#1e40af'],
+                            'generalueberholt'   => ['GUE', '#d1fae5', '#065f46'],
+                            'beschaedigt'        => ['BSC', '#fee2e2', '#991b1b'],
+                            'retour'             => ['RET', '#fff7ed', '#9a3412'],
+                            'demo'               => ['DMO', '#f5f3ff', '#5b21b6'],
+                            'muster'             => ['MST', '#fef9c3', '#713f12'],
+                            'ausstellungsstueck' => ['AST', '#f0fdf4', '#14532d'],
+                        ];
+                        foreach ($zustandsArtikelListe as $za):
+                            [$zl, $zbg, $zfg] = $zustandLabels[$za['zustand']] ?? [strtoupper($za['zustand']), '#f3f4f6', '#374151'];
+                        ?>
+                            <tr>
+                                <td>
+                                    <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
+                                </td>
+                                <td>
+                                    <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:<?= $zbg ?>;color:<?= $zfg ?>">
+                                        <?= $zl ?>
+                                    </span>
+                                </td>
+                                <td style="text-align:right;<?= (float)$za['gesamtbestand'] <= 0 ? 'color:var(--color-danger)' : '' ?>">
+                                    <?= formatBestand($za['gesamtbestand']) ?>
+                                </td>
+                                <td>
+                                    <?php if (!$za['aktiv']): ?>
+                                        <span class="sc sc-deaktiviert">Inaktiv</span>
+                                    <?php else: ?>
+                                        <span style="font-size:12px;color:var(--color-success)">Aktiv</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs">✏️</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-            <table class="erp-table" style="margin-top:var(--space-sm)">
-                <thead>
-                    <tr>
-                        <th>Artikelnummer</th>
-                        <th>Zustand</th>
-                        <th style="text-align:right">Bestand</th>
-                        <th>Status</th>
-                        <th style="width:60px"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $zustandLabels = [
-                        'gebraucht'          => ['GEB', '#dbeafe', '#1e40af'],
-                        'generalueberholt'   => ['GUE', '#d1fae5', '#065f46'],
-                        'beschaedigt'        => ['BSC', '#fee2e2', '#991b1b'],
-                        'retour'             => ['RET', '#fff7ed', '#9a3412'],
-                        'demo'               => ['DMO', '#f5f3ff', '#5b21b6'],
-                        'muster'             => ['MST', '#fef9c3', '#713f12'],
-                        'ausstellungsstueck' => ['AST', '#f0fdf4', '#14532d'],
-                    ];
-                    foreach ($zustandsArtikelListe as $za):
-                        [$zl, $zbg, $zfg] = $zustandLabels[$za['zustand']] ?? [strtoupper($za['zustand']), '#f3f4f6', '#374151'];
-                    ?>
-                    <tr>
-                        <td>
-                            <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
-                        </td>
-                        <td>
-                            <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:<?= $zbg ?>;color:<?= $zfg ?>">
-                                <?= $zl ?>
-                            </span>
-                        </td>
-                        <td style="text-align:right;<?= (float)$za['gesamtbestand'] <= 0 ? 'color:var(--color-danger)' : '' ?>">
-                            <?= formatBestand($za['gesamtbestand']) ?>
-                        </td>
-                        <td>
-                            <?php if (!$za['aktiv']): ?>
-                                <span class="sc sc-deaktiviert">Inaktiv</span>
-                            <?php else: ?>
-                                <span style="font-size:12px;color:var(--color-success)">Aktiv</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs">✏️</a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
         <?php endif; ?>
 
         <!-- Bewegungslog -->
@@ -1159,15 +1170,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     min="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>" required>
             </div>
             <?php if ($artikel['charge_pflicht']): ?>
-            <div class="form-row">
-                <label class="form-label">Charge *</label>
-                <input type="text" name="charge" class="erp-input" style="width:100%" required>
-            </div>
+                <div class="form-row">
+                    <label class="form-label">Charge *</label>
+                    <input type="text" name="charge" class="erp-input" style="width:100%" required>
+                </div>
             <?php else: ?>
-            <div class="form-row">
-                <label class="form-label">Charge</label>
-                <input type="text" name="charge" class="erp-input" style="width:100%" placeholder="optional">
-            </div>
+                <div class="form-row">
+                    <label class="form-label">Charge</label>
+                    <input type="text" name="charge" class="erp-input" style="width:100%" placeholder="optional">
+                </div>
             <?php endif; ?>
             <div class="form-row">
                 <label class="form-label">Notiz</label>
@@ -1363,17 +1374,22 @@ require_once __DIR__ . '/../includes/shell_top.php';
         document.getElementById('uvp-edit').style.display = 'flex';
         document.getElementById('uvp-input').focus();
     }
+
     function uvpAbbrechen() {
         document.getElementById('uvp-edit').style.display = 'none';
         document.getElementById('uvp-anzeige').style.display = '';
         document.querySelector('[onclick="uvpBearbeiten()"]').style.display = '';
     }
+
     function uvpSpeichern() {
         const wert = document.getElementById('uvp-input').value;
         const data = new FormData();
         data.append('artikel_id', <?= $id ?>);
         data.append('uvp', wert);
-        fetch('uvp_speichern.php', { method: 'POST', body: data })
+        fetch('uvp_speichern.php', {
+                method: 'POST',
+                body: data
+            })
             .then(r => r.json())
             .then(json => {
                 if (json.erfolg) {
@@ -1385,23 +1401,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
     }
 
     function togglePreisSektion(bodyId, header) {
-        const body   = document.getElementById(bodyId);
+        const body = document.getElementById(bodyId);
         const toggle = header.querySelector('span');
-        const offen  = body.style.display !== 'none';
-        body.style.display  = offen ? 'none' : '';
-        toggle.textContent  = offen ? '▼' : '▲';
+        const offen = body.style.display !== 'none';
+        body.style.display = offen ? 'none' : '';
+        toggle.textContent = offen ? '▼' : '▲';
     }
 
     const MWST_SATZ = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
 
     function preisModalOeffnen(kgId) {
         const row = document.querySelector(`tr[data-kg-id="${kgId}"]`);
-        document.getElementById('preis-kg-id').value   = kgId;
+        document.getElementById('preis-kg-id').value = kgId;
         document.getElementById('preis-kg-name').textContent = row.querySelector('td').textContent.trim();
-        document.getElementById('preis-brutto').value  = row.dataset.brutto || '';
-        document.getElementById('preis-netto').value   = row.dataset.netto  || '';
-        document.getElementById('preis-ab').value      = row.dataset.ab  ? row.dataset.ab.substring(0,10)  : '';
-        document.getElementById('preis-bis').value     = row.dataset.bis ? row.dataset.bis.substring(0,10) : '';
+        document.getElementById('preis-brutto').value = row.dataset.brutto || '';
+        document.getElementById('preis-netto').value = row.dataset.netto || '';
+        document.getElementById('preis-ab').value = row.dataset.ab ? row.dataset.ab.substring(0, 10) : '';
+        document.getElementById('preis-bis').value = row.dataset.bis ? row.dataset.bis.substring(0, 10) : '';
         document.getElementById('preis-backdrop').style.display = 'flex';
     }
 
@@ -1422,7 +1438,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
         const data = new FormData();
         data.append('artikel_id', <?= $id ?>);
         data.append('kundengruppen_id', kgId);
-        fetch('preis_loeschen.php', { method: 'POST', body: data })
+        fetch('preis_loeschen.php', {
+                method: 'POST',
+                body: data
+            })
             .then(r => r.json())
             .then(json => {
                 if (json.erfolg) {
@@ -1436,7 +1455,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
     function preisSpeichern() {
         const form = document.getElementById('preis-form');
         const data = new FormData(form);
-        fetch('preis_speichern.php', { method: 'POST', body: data })
+        fetch('preis_speichern.php', {
+                method: 'POST',
+                body: data
+            })
             .then(r => r.json())
             .then(json => {
                 if (json.erfolg) {
@@ -1604,16 +1626,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
         if (spId) {
             const row = document.querySelector(`tr[data-sp-id="${spId}"]`);
             document.getElementById('staffel-titel').textContent = 'Staffelpreis bearbeiten';
-            document.getElementById('staffel-kg').value     = row.dataset.kgId;
-            document.getElementById('staffel-menge').value  = row.dataset.menge;
+            document.getElementById('staffel-kg').value = row.dataset.kgId;
+            document.getElementById('staffel-menge').value = row.dataset.menge;
             document.getElementById('staffel-brutto').value = row.dataset.brutto;
-            document.getElementById('staffel-netto').value  = row.dataset.netto;
+            document.getElementById('staffel-netto').value = row.dataset.netto;
         } else {
             document.getElementById('staffel-titel').textContent = 'Staffelpreis hinzufügen';
-            document.getElementById('staffel-kg').value     = '';
-            document.getElementById('staffel-menge').value  = '';
+            document.getElementById('staffel-kg').value = '';
+            document.getElementById('staffel-menge').value = '';
             document.getElementById('staffel-brutto').value = '';
-            document.getElementById('staffel-netto').value  = '';
+            document.getElementById('staffel-netto').value = '';
         }
         document.getElementById('staffel-backdrop').style.display = 'flex';
     }
@@ -1631,7 +1653,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     function staffelSpeichern() {
         const data = new FormData(document.getElementById('staffel-form'));
-        fetch('staffelpreis_speichern.php', { method: 'POST', body: data })
+        fetch('staffelpreis_speichern.php', {
+                method: 'POST',
+                body: data
+            })
             .then(r => r.json())
             .then(json => {
                 if (json.erfolg) {
@@ -1648,7 +1673,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
         const data = new FormData();
         data.append('id', spId);
         data.append('artikel_id', <?= $id ?>);
-        fetch('staffelpreis_loeschen.php', { method: 'POST', body: data })
+        fetch('staffelpreis_loeschen.php', {
+                method: 'POST',
+                body: data
+            })
             .then(r => r.json())
             .then(json => {
                 if (json.erfolg) {
