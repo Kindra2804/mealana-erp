@@ -508,17 +508,112 @@
 }
 
 .modal {
-    width: 400px;
+    width: 480px;
     border: 1px solid #e9edf3;
     border-radius: 6px;
     background-color: #ffffff;
     display: flex;
     flex-direction: column;
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    max-height: 80%;
-    overflow-y: auto;
+    max-height: 80vh;
     overflow-x: hidden;
     padding: 20px;
+}
+
+.modal-header {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-nav);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-sm);
+    flex-shrink: 0;
+}
+
+/* ===== KATEGORIE-BAUM (Modal) ===== */
+
+#kat-checkboxen {
+    overflow-y: auto;
+    max-height: 340px;
+    flex: 1;
+}
+
+.kat-zeile {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--color-text);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.kat-zeile:hover { background: var(--color-bg); border-radius: 3px; }
+
+.kat-zeile input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--color-nav);
+}
+
+.kat-linie {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.kat-label { flex: 1; }
+
+.kat-wurzel {
+    font-weight: 600;
+    color: var(--color-nav);
+}
+
+.kat-count {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 1px 6px;
+    flex-shrink: 0;
+}
+
+/* ===== FORM-GROUP (label oben, input unten) ===== */
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: var(--space-sm);
+}
+
+.form-group:last-child { margin-bottom: 0; }
+
+/* ===== FORM-CHECK (Checkbox-Zeile) ===== */
+
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 5px 0;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--color-text);
+    user-select: none;
+}
+
+.form-check input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--color-nav);
 }
 
 /* ===== PFLICHTFELDER ===== */

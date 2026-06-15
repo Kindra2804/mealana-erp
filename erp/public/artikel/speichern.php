@@ -65,6 +65,18 @@ foreach ($artikelData as $key => $value) {
     }
 }
 
+// Artikelnummer-Fallback: ART-001, ART-002, ... wenn leer gelassen
+if (empty($artikelData['artikelnummer'])) {
+    $pdo = Database::getInstance();
+    $row = $pdo->query("
+        SELECT COALESCE(MAX(CAST(SUBSTRING(artikelnummer, 5) AS UNSIGNED)), 0) AS max_num
+        FROM artikel
+        WHERE artikelnummer REGEXP '^ART-[0-9]+$'
+    ")->fetch();
+    $naechste = (int)$row['max_num'] + 1;
+    $artikelData['artikelnummer'] = 'ART-' . str_pad($naechste, 3, '0', STR_PAD_LEFT);
+}
+
 $service = new ArtikelService();
 $result = $service->save($artikelData);
 
@@ -72,11 +84,13 @@ if ($result['erfolg']) {
     $neueArtikelId = $result['id'];
     $pdo = Database::getInstance();
 
-    // Kategorie zuweisen (optional, aus neu.php)
-    $kategorieId = (int)($data['kategorie_id'] ?? 0);
-    if ($kategorieId > 0) {
-        $pdo->prepare('INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)')
-            ->execute([$neueArtikelId, $kategorieId]);
+    // Kategorien zuweisen (optional, aus neu.php — mehrfach möglich)
+    $kategorieIds = array_map('intval', array_filter((array)($data['kategorien'] ?? [])));
+    foreach ($kategorieIds as $katId) {
+        if ($katId > 0) {
+            $pdo->prepare('INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)')
+                ->execute([$neueArtikelId, $katId]);
+        }
     }
 
     // Lieferant + EK (optional, aus neu.php)

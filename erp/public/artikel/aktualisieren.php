@@ -21,6 +21,14 @@ if (!isset($data['ueberverkauf_erlaubt']) || $data['ueberverkauf_erlaubt'] != '1
     $data['ueberverkauf_erlaubt'] = '0';
 }
 
+if (!isset($data['aktiv']) || $data['aktiv'] != '1') {
+    $data['aktiv'] = '0';
+}
+
+if (!isset($data['grundpreis_anzeigen']) || $data['grundpreis_anzeigen'] != '1') {
+    $data['grundpreis_anzeigen'] = '0';
+}
+
 // aktualisieren.php muss diese Felder herausfiltern:
 $artikelData = array_intersect_key($data, array_flip([
     'id',

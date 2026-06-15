@@ -13,7 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $service = new ArtikelService();
 
-$name = $_POST['name'] ?? '';
-$result = $service->createKategorie($name);
+$name     = $_POST['name']      ?? '';
+$parentId = isset($_POST['parent_id']) && $_POST['parent_id'] !== ''
+    ? (int)$_POST['parent_id']
+    : null;
+$result = $service->createKategorie($name, $parentId);
 
 echo json_encode($result);

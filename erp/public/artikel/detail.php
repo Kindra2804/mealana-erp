@@ -21,6 +21,7 @@ $kategorien    = $service->getKategorienFuerArtikel($id);
 $codes         = $service->getCodesByArtikelId($id);
 $lieferanten   = $service->getLieferantenFuerArtikel($id);
 $alleKategorien  = $service->getAlleKategorien();
+$kategorienBaum  = $service->getKategorienBaum();
 $zugewieseneIds  = array_column($kategorien, 'id');
 $artikelTypen    = $service->getAllArtikelTypen();
 $alleEinheiten   = $service->getAllEinheiten();
@@ -243,206 +244,252 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div id="tab-stammdaten">
         <form id="stammdaten-form" action="aktualisieren.php" method="POST">
             <input type="hidden" name="id" value="<?= $id ?>">
+            <?php /* SEO-Felder: nicht im Wireframe, aber Daten-Erhalt bis SEO-Tab gebaut wird */ ?>
+            <input type="hidden" name="meta_titel"       value="<?= htmlspecialchars($artikel['meta_titel']       ?? '') ?>">
+            <input type="hidden" name="meta_description" value="<?= htmlspecialchars($artikel['meta_description'] ?? '') ?>">
+            <input type="hidden" name="url_slug"         value="<?= htmlspecialchars($artikel['url_slug']         ?? '') ?>">
+            <input type="hidden" name="zustand_vater_id" value="<?= (int)($artikel['zustand_vater_id'] ?? 0) ?: '' ?>">
 
-            <div class="card">
-                <div class="form-section">
-                    <div class="form-section-header">Grunddaten</div>
+            <!-- Kern-Daten + Einstellungen -->
+            <div style="display:grid;grid-template-columns:1fr 280px;gap:var(--space-md);align-items:start;min-width:0">
 
-                    <div class="form-row">
-                        <label class="form-label">Bezeichnung *</label>
-                        <input type="text" name="name" class="erp-input" style="width:100%"
-                            value="<?= htmlspecialchars($artikel['name']) ?>" required>
+                <div class="card" style="min-width:0">
+                    <div class="form-section">
+                        <div class="form-section-header">Kern-Daten</div>
+
+                        <div class="form-group">
+                            <label class="form-label">Bezeichnung *</label>
+                            <input type="text" name="name" class="erp-input" style="width:100%"
+                                value="<?= htmlspecialchars($artikel['name']) ?>" required>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                            <div class="form-group">
+                                <label class="form-label">Art.-Nr. *</label>
+                                <input type="text" name="artikelnummer" class="erp-input" style="width:100%"
+                                    value="<?= htmlspecialchars($artikel['artikelnummer']) ?>" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">EAN / GTIN</label>
+                                <input type="text" name="ean_gtin13" class="erp-input" style="width:100%"
+                                    maxlength="13" value="<?= htmlspecialchars($ean_gtin13) ?>">
+                            </div>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                            <div class="form-group">
+                                <label class="form-label">Hersteller</label>
+                                <select name="hersteller_id" class="erp-select" style="width:100%">
+                                    <option value="">– kein Hersteller –</option>
+                                    <?php foreach ($alleHersteller as $h): ?>
+                                        <option value="<?= $h['id'] ?>"
+                                            <?= (string)($artikel['hersteller_id'] ?? '') === (string)$h['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($h['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Steuerklasse *</label>
+                                <select name="steuerklasse_id" class="erp-select" style="width:100%">
+                                    <?php foreach ($steuerklassen as $s): ?>
+                                        <option value="<?= $s['id'] ?>"
+                                            <?= (string)($artikel['steuerklasse_id'] ?? '') === (string)$s['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($s['name']) ?> (<?= $s['satz'] ?>%)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                            <div class="form-group">
+                                <label class="form-label">Artikeltyp *</label>
+                                <select name="artikeltyp" class="erp-select" style="width:100%">
+                                    <option value="">– bitte wählen –</option>
+                                    <?php foreach ($artikelTypen as $typ): ?>
+                                        <option value="<?= htmlspecialchars($typ['code']) ?>"
+                                            <?= ($artikel['artikeltyp'] ?? '') === $typ['code'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($typ['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Einheit</label>
+                                <select name="einheit_id" class="erp-select" style="width:100%">
+                                    <?php foreach ($alleEinheiten as $e): ?>
+                                        <option value="<?= $e['id'] ?>"
+                                            <?= (string)($artikel['einheit_id'] ?? '') === (string)$e['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($e['name']) ?>
+                                            <?= $e['kuerzel'] ? '(' . htmlspecialchars($e['kuerzel']) . ')' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Kategorie</label>
+                            <div style="display:flex;align-items:center;gap:var(--space-sm);flex-wrap:wrap">
+                                <div id="kat-chips">
+                                    <?php foreach ($alleKategorien as $k): ?>
+                                        <?php if (in_array($k['id'], $zugewieseneIds)): ?>
+                                            <span class="chip chip-aktiv"><?= htmlspecialchars($k['name']) ?></span>
+                                            <input type="hidden" name="kategorien[]" value="<?= $k['id'] ?>">
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="katModalOeffnen()">📁 Ändern</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-row">
+                </div>
+
+                <!-- Einstellungen + Zustand (eine Card mit Divider, wie im Wireframe) -->
+                <div class="card">
+                    <div class="form-section">
+                        <div class="form-section-header">Einstellungen</div>
+                        <label class="form-check">
+                            <input type="checkbox" name="aktiv" value="1"
+                                <?= ($artikel['aktiv'] ?? 0) ? 'checked' : '' ?>>
+                            Aktiv
+                        </label>
+                        <label class="form-check">
+                            <input type="checkbox" name="ueberverkauf_erlaubt" value="1"
+                                <?= ($artikel['ueberverkauf_erlaubt'] ?? 0) ? 'checked' : '' ?>>
+                            Überverkauf erlaubt
+                        </label>
+                        <label class="form-check">
+                            <input type="checkbox" name="ist_auslaufartikel" value="1"
+                                <?= ($artikel['ist_auslaufartikel'] ?? 0) ? 'checked' : '' ?>>
+                            Auslaufartikel
+                        </label>
+                        <label class="form-check">
+                            <input type="checkbox" name="charge_pflicht" value="1"
+                                <?= ($artikel['charge_pflicht'] ?? 0) ? 'checked' : '' ?>>
+                            Chargenpflicht
+                        </label>
+
+                        <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
+
+                        <div class="form-section-header" style="margin-top:var(--space-sm)">Zustand</div>
+                        <select name="zustand" class="erp-select" style="width:100%">
+                            <option value="neu" <?= ($artikel['zustand'] ?? '') === 'neu' ? 'selected' : '' ?>>Neu (Standard)</option>
+                            <option value="gebraucht" <?= ($artikel['zustand'] ?? '') === 'gebraucht' ? 'selected' : '' ?>>Gebraucht (GEB)</option>
+                            <option value="generalueberholt" <?= ($artikel['zustand'] ?? '') === 'generalueberholt' ? 'selected' : '' ?>>Generalüberholt (GUE)</option>
+                            <option value="beschaedigt" <?= ($artikel['zustand'] ?? '') === 'beschaedigt' ? 'selected' : '' ?>>Beschädigt (BSC)</option>
+                            <option value="retour" <?= ($artikel['zustand'] ?? '') === 'retour' ? 'selected' : '' ?>>Retour (RET)</option>
+                            <option value="demo" <?= ($artikel['zustand'] ?? '') === 'demo' ? 'selected' : '' ?>>Demo (DMO)</option>
+                            <option value="muster" <?= ($artikel['zustand'] ?? '') === 'muster' ? 'selected' : '' ?>>Muster (MST)</option>
+                            <option value="ausstellungsstueck" <?= ($artikel['zustand'] ?? '') === 'ausstellungsstueck' ? 'selected' : '' ?>>Ausstellungsstück (AST)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Beschreibung -->
+            <div class="card" style="margin-top:var(--space-md)">
+                <div class="form-section">
+                    <div class="form-section-header">Beschreibung</div>
+
+                    <div class="form-group">
                         <label class="form-label">Kurzbeschreibung</label>
                         <input type="text" name="kurzbeschreibung" class="erp-input" style="width:100%"
                             value="<?= htmlspecialchars($artikel['kurzbeschreibung'] ?? '') ?>">
                     </div>
-                    <div class="form-row">
-                        <label class="form-label">Art.-Nr. *</label>
-                        <input type="text" name="artikelnummer" class="erp-input"
-                            value="<?= htmlspecialchars($artikel['artikelnummer']) ?>" required>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">EAN / GTIN</label>
-                        <input type="text" name="ean_gtin13" class="erp-input" maxlength="13"
-                            value="<?= htmlspecialchars($ean_gtin13) ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Artikeltyp *</label>
-                        <select name="artikeltyp" class="erp-select">
-                            <option value="">– bitte wählen –</option>
-                            <?php foreach ($artikelTypen as $typ): ?>
-                                <option value="<?= htmlspecialchars($typ['code']) ?>"
-                                    <?= ($artikel['artikeltyp'] ?? '') === $typ['code'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($typ['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Einheit</label>
-                        <select name="einheit_id" class="erp-select">
-                            <?php foreach ($alleEinheiten as $e): ?>
-                                <option value="<?= $e['id'] ?>"
-                                    <?= (string)($artikel['einheit_id'] ?? '') === (string)$e['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($e['name']) ?>
-                                    <?= $e['kuerzel'] ? '(' . htmlspecialchars($e['kuerzel']) . ')' : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Kategorie</label>
-                        <div style="display:flex; align-items:center; gap:var(--space-sm); flex-wrap:wrap">
-                            <div id="kat-chips">
-                                <?php foreach ($alleKategorien as $k): ?>
-                                    <?php if (in_array($k['id'], $zugewieseneIds)): ?>
-                                        <span class="chip chip-aktiv"><?= htmlspecialchars($k['name']) ?></span>
-                                        <input type="hidden" name="kategorien[]" value="<?= $k['id'] ?>">
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="katModalOeffnen()">📁 Ändern</button>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Hersteller</label>
-                        <select name="hersteller_id" class="erp-select">
-                            <option value="">– kein Hersteller –</option>
-                            <?php foreach ($alleHersteller as $h): ?>
-                                <option value="<?= $h['id'] ?>"
-                                    <?= (string)($artikel['hersteller_id'] ?? '') === (string)$h['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($h['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Steuerklasse *</label>
-                        <select name="steuerklasse_id" class="erp-select">
-                            <?php foreach ($steuerklassen as $s): ?>
-                                <option value="<?= $s['id'] ?>"
-                                    <?= (string)($artikel['steuerklasse_id'] ?? '') === (string)$s['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($s['name']) ?> (<?= $s['satz'] ?>%)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Zustand</label>
-                        <select name="zustand" class="erp-select">
-                            <option value="neu" <?= ($artikel['zustand'] ?? '') === 'neu' ? 'selected' : '' ?>>Neu</option>
-                            <option value="neuwertig" <?= ($artikel['zustand'] ?? '') === 'neuwertig'  ? 'selected' : '' ?>>Neuwertig</option>
-                            <option value="gebraucht" <?= ($artikel['zustand'] ?? '') === 'gebraucht'  ? 'selected' : '' ?>>Gebraucht</option>
-                            <option value="bware" <?= ($artikel['zustand'] ?? '') === 'bware'  ? 'selected' : '' ?>>B-Ware</option>
-                            <option value="ausstellungsstueck" <?= ($artikel['zustand'] ?? '') === 'ausstellungsstueck'  ? 'selected' : '' ?>>Ausstellungsstück</option>
-                            <option value="generalueberholt" <?= ($artikel['zustand'] ?? '') === 'generalueberholt'  ? 'selected' : '' ?>>Generalüberholt</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-section">
-                    <div class="form-section-header">Beschreibung</div>
-
-                    <div class="form-row">
+                    <div class="form-group">
                         <label class="form-label">Langbeschreibung</label>
-                        <textarea name="beschreibung" class="erp-input" style="width:100%; height:120px"><?= htmlspecialchars($artikel['beschreibung'] ?? '') ?></textarea>
+                        <textarea name="beschreibung" class="erp-input" style="width:100%;height:120px"><?= htmlspecialchars($artikel['beschreibung'] ?? '') ?></textarea>
                     </div>
-                    <div class="form-row">
-                        <label class="form-label">Technische Details</label>
-                        <textarea name="technische_details" class="erp-input" style="width:100%; height:80px"><?= htmlspecialchars($artikel['technische_details'] ?? '') ?></textarea>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Interne Notiz</label>
-                        <textarea name="beschreibung_intern" class="erp-input" style="width:100%; height:60px"><?= htmlspecialchars($artikel['beschreibung_intern'] ?? '') ?></textarea>
-                    </div>
-                </div>
-                <div class="form-section">
-                    <div class="form-section-header">Physisch / Versand</div>
-
-                    <div class="form-row">
-                        <label class="form-label">Gewicht Artikel (kg)</label>
-                        <input type="number" step="0.001" name="gewicht_artikel" class="erp-input"
-                            value="<?= $artikel['gewicht_artikel'] ?? '' ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Gewicht Versand (kg)</label>
-                        <input type="number" step="0.001" name="gewicht_versand" class="erp-input"
-                            value="<?= $artikel['gewicht_versand'] ?? '' ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">L × B × H (mm)</label>
-                        <div style="display:flex; gap:var(--space-sm)">
-                            <input type="number" name="laenge" class="erp-input" style="width:80px"
-                                placeholder="L" value="<?= $artikel['laenge'] ?? '' ?>">
-                            <input type="number" name="breite" class="erp-input" style="width:80px"
-                                placeholder="B" value="<?= $artikel['breite'] ?? '' ?>">
-                            <input type="number" name="hoehe" class="erp-input" style="width:80px"
-                                placeholder="H" value="<?= $artikel['hoehe'] ?? '' ?>">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                        <div class="form-group">
+                            <label class="form-label">Technische Details</label>
+                            <textarea name="technische_details" class="erp-input" style="width:100%;height:80px"><?= htmlspecialchars($artikel['technische_details'] ?? '') ?></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Interne Notiz (nie öffentlich)</label>
+                            <textarea name="beschreibung_intern" class="erp-input" style="width:100%;height:80px"><?= htmlspecialchars($artikel['beschreibung_intern'] ?? '') ?></textarea>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <label class="form-label">Inhalt Menge</label>
-                        <input type="number" step="0.001" name="inhalt_menge" class="erp-input"
-                            value="<?= $artikel['inhalt_menge'] ?? '' ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Inhalt Einheit (g, ml…)</label>
-                        <input type="text" name="inhalt_einheit" class="erp-input"
-                            value="<?= htmlspecialchars($artikel['inhalt_einheit'] ?? '') ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Herkunftsland</label>
-                        <input type="text" name="herkunftsland" class="erp-input" maxlength="2"
-                            value="<?= htmlspecialchars($artikel['herkunftsland'] ?? '') ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">TARIC-Code</label>
-                        <input type="text" name="taric_code" class="erp-input"
-                            value="<?= htmlspecialchars($artikel['taric_code'] ?? '') ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Grundpreis Bezugsmenge (g)</label>
-                        <input type="number" name="grundpreis_bezugsmenge" class="erp-input"
-                            value="<?= $artikel['grundpreis_bezugsmenge'] ?? '' ?>">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Grundpreis anzeigen</label>
-                        <select name="grundpreis_anzeigen" class="erp-select">
-                            <option value="1" <?= ($artikel['grundpreis_anzeigen'] ?? 0) ? 'selected' : '' ?>>Ja</option>
-                            <option value="0" <?= !($artikel['grundpreis_anzeigen'] ?? 0) ? 'selected' : '' ?>>Nein</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Überverkauf erlaubt</label>
-                        <input type="checkbox" name="ueberverkauf_erlaubt" value="1"
-                            <?= ($artikel['ueberverkauf_erlaubt'] ?? 0) ? 'checked' : '' ?>>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Auslaufartikel</label>
-                        <input type="checkbox" name="ist_auslaufartikel" value="1"
-                            <?= ($artikel['ist_auslaufartikel'] ?? 0) ? 'checked' : '' ?>>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Chargenpflicht</label>
-                        <input type="checkbox" name="charge_pflicht" value="1"
-                            <?= ($artikel['charge_pflicht'] ?? 0) ? 'checked' : '' ?>>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Aktiv</label>
-                        <select name="aktiv" class="erp-select">
-                            <option value="1" <?= ($artikel['aktiv'] ?? 0) ? 'selected' : '' ?>>Ja</option>
-                            <option value="0" <?= !($artikel['aktiv'] ?? 0) ? 'selected' : '' ?>>Nein</option>
-                        </select>
+                </div>
+            </div>
+
+            <!-- Physisch + Logistik -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-top:var(--space-md)">
+
+                <div class="card">
+                    <div class="form-section">
+                        <div class="form-section-header">Physisch</div>
+
+                        <div class="form-row">
+                            <label class="form-label">Gewicht Artikel (kg)</label>
+                            <input type="number" step="0.001" name="gewicht_artikel" class="erp-input"
+                                value="<?= $artikel['gewicht_artikel'] ?? '' ?>">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Gewicht Versand (kg)</label>
+                            <input type="number" step="0.001" name="gewicht_versand" class="erp-input"
+                                value="<?= $artikel['gewicht_versand'] ?? '' ?>">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">L × B × H (mm)</label>
+                            <div style="display:flex;gap:var(--space-sm)">
+                                <input type="number" name="laenge" class="erp-input" style="width:72px"
+                                    placeholder="L" value="<?= $artikel['laenge'] ?? '' ?>">
+                                <input type="number" name="breite" class="erp-input" style="width:72px"
+                                    placeholder="B" value="<?= $artikel['breite'] ?? '' ?>">
+                                <input type="number" name="hoehe" class="erp-input" style="width:72px"
+                                    placeholder="H" value="<?= $artikel['hoehe'] ?? '' ?>">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Inhalt Menge</label>
+                            <input type="number" step="0.001" name="inhalt_menge" class="erp-input"
+                                value="<?= $artikel['inhalt_menge'] ?? '' ?>">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Inhalt Einheit (g, ml…)</label>
+                            <input type="text" name="inhalt_einheit" class="erp-input"
+                                value="<?= htmlspecialchars($artikel['inhalt_einheit'] ?? '') ?>">
+                        </div>
                     </div>
                 </div>
 
-                <div style="padding-top: var(--space-sm)">
-                    <button type="submit" class="btn btn-primary">💾 Speichern</button>
-                    <a href="liste.php" class="btn btn-secondary">Abbrechen</a>
-                </div>
+                <div class="card">
+                    <div class="form-section">
+                        <div class="form-section-header">Logistik / Grundpreis</div>
 
-            </div><!-- .card -->
+                        <div class="form-row">
+                            <label class="form-label">Herkunftsland</label>
+                            <input type="text" name="herkunftsland" class="erp-input" maxlength="2"
+                                value="<?= htmlspecialchars($artikel['herkunftsland'] ?? '') ?>">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">TARIC-Code</label>
+                            <input type="text" name="taric_code" class="erp-input"
+                                value="<?= htmlspecialchars($artikel['taric_code'] ?? '') ?>">
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Grundpreis Bezugsmenge</label>
+                            <div style="display:flex;align-items:center;gap:var(--space-xs)">
+                                <input type="number" name="grundpreis_bezugsmenge" class="erp-input"
+                                    value="<?= $artikel['grundpreis_bezugsmenge'] ?? 100 ?>">
+                                <span style="font-size:13px;color:var(--color-text-muted)">g</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Grundpreis im Shop</label>
+                            <label class="form-check" style="margin:0">
+                                <input type="checkbox" name="grundpreis_anzeigen" value="1"
+                                    <?= ($artikel['grundpreis_anzeigen'] ?? 0) ? 'checked' : '' ?>>
+                                anzeigen
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </form>
     </div>
 
@@ -1118,31 +1165,62 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
+<?php
+function renderKatBaumModal(array $nodes, int $tiefe = 0): string {
+    $html = '';
+    $last = count($nodes) - 1;
+    foreach ($nodes as $idx => $node) {
+        $isLast   = ($idx === $last);
+        $pl       = $tiefe * 20;
+        $linie    = $tiefe > 0
+            ? '<span class="kat-linie">' . ($isLast ? '└─' : '├─') . '</span>'
+            : '';
+        $labelCls = $tiefe === 0 ? 'kat-label kat-wurzel' : 'kat-label';
+        $count    = $node['artikel_anzahl'] > 0
+            ? ' <span class="kat-count">' . (int)$node['artikel_anzahl'] . '</span>'
+            : '';
+        $html .= '<label class="kat-zeile" data-tiefe="' . $tiefe . '" style="padding-left:' . $pl . 'px">'
+               . $linie
+               . '<input type="checkbox" value="' . (int)$node['id'] . '"'
+               . ' data-name="' . htmlspecialchars($node['name']) . '"'
+               . ' data-parent-id="' . (int)($node['parent_id'] ?? 0) . '">'
+               . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . '</span>'
+               . $count
+               . '</label>';
+        if (!empty($node['kinder'])) {
+            $html .= renderKatBaumModal($node['kinder'], $tiefe + 1);
+        }
+    }
+    return $html;
+}
+?>
 <div id="kat-backdrop" class="modal-backdrop" onclick="katModalSchliessen()">
     <div id="kat-modal" class="modal" onclick="event.stopPropagation()">
-        <h3>Kategorien zuweisen</h3>
+        <div class="modal-header">Kategorien zuweisen</div>
 
         <div id="kat-checkboxen">
-            <?php foreach ($alleKategorien as $k): ?>
-                <label>
-                    <input type="checkbox"
-                        value="<?= $k['id'] ?>"
-                        data-name="<?= htmlspecialchars($k['name']) ?>">
-                    <?= htmlspecialchars($k['name']) ?>
-                </label>
-            <?php endforeach; ?>
+            <?= renderKatBaumModal($kategorienBaum) ?>
         </div>
 
-        <hr>
+        <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
 
         <div id="kat-neu">
-            <input type="text" id="neue-kat-name" placeholder="Neue Kategorie...">
-            <button type="button" onclick="katAnlegen()">Anlegen</button>
+            <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Neue Kategorie anlegen</div>
+            <div style="display:flex;gap:var(--space-sm);align-items:center">
+                <select id="neue-kat-parent" class="erp-select" style="width:160px">
+                    <option value="">– Obergruppe (Root) –</option>
+                    <?php foreach ($alleKategorien as $k): ?>
+                        <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="text" id="neue-kat-name" class="erp-input" placeholder="Name..." style="flex:1">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="katAnlegen()">Anlegen</button>
+            </div>
         </div>
 
-        <div id="kat-aktionen">
-            <button type="button" onclick="katUebernehmen()">Übernehmen</button>
-            <button type="button" onclick="katModalSchliessen()">Abbrechen</button>
+        <div id="kat-aktionen" style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);justify-content:flex-end">
+            <button type="button" class="btn btn-secondary" onclick="katModalSchliessen()">Abbrechen</button>
+            <button type="button" class="btn btn-primary" onclick="katUebernehmen()">Übernehmen</button>
         </div>
     </div>
 </div>
@@ -1496,7 +1574,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
             // 2. Chip-Anzeige
             const span = document.createElement('span');
-            span.className = 'chip';
+            span.className = 'chip chip-aktiv';
             span.textContent = cb.dataset.name;
             chips.appendChild(span);
         });
@@ -1504,34 +1582,41 @@ require_once __DIR__ . '/../includes/shell_top.php';
     }
 
     async function katAnlegen() {
-        const katName = document.getElementById('neue-kat-name').value?.trim();
-        if (!katName) {
-            return;
-        }
+        const katName   = document.getElementById('neue-kat-name').value?.trim();
+        const parentId  = document.getElementById('neue-kat-parent').value || '';
+        if (!katName) return;
+
+        const body = 'name=' + encodeURIComponent(katName)
+                   + (parentId ? '&parent_id=' + encodeURIComponent(parentId) : '');
 
         const response = await fetch('kategorie_neu.php', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'name=' + encodeURIComponent(katName)
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
         });
         const data = await response.json();
+        if (!data.erfolg) { alert(data.fehler); return; }
 
-        if (!data.erfolg) {
-            alert(data.fehler);
-            return;
-        }
-
+        // Neuen Eintrag im Baum hinzufügen
+        const tiefe = parentId ? 1 : 0;
+        const pl    = tiefe * 20;
+        const linie = tiefe > 0 ? '<span class="kat-linie">└─</span>' : '';
         const label = document.createElement('label');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = data.id;
-        cb.dataset.name = data.name;
-        cb.checked = true;
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(' ' + data.name));
+        label.className = 'kat-zeile';
+        label.dataset.tiefe = tiefe;
+        label.style.paddingLeft = pl + 'px';
+        label.innerHTML = linie
+            + '<input type="checkbox" value="' + data.id + '"'
+            + ' data-name="' + data.name.replace(/"/g, '&quot;') + '"'
+            + ' data-parent-id="' + (parentId || 0) + '" checked>'
+            + '<span class="kat-label' + (tiefe === 0 ? ' kat-wurzel' : '') + '">' + data.name + '</span>';
         document.getElementById('kat-checkboxen').appendChild(label);
+
+        // Parent-Dropdown ergänzen
+        const opt = document.createElement('option');
+        opt.value = data.id;
+        opt.textContent = data.name;
+        document.getElementById('neue-kat-parent').appendChild(opt);
 
         document.getElementById('neue-kat-name').value = '';
     }
@@ -1684,3 +1769,4 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
+

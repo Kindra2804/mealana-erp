@@ -15,6 +15,7 @@ $steuerklassen   = $service->getAllSteuerklassen();
 $artikelTypen    = $service->getAllArtikelTypen();
 $alleEinheiten   = $service->getAllEinheiten();
 $alleKategorien  = $service->getAlleKategorien();
+$kategorienBaum  = $service->getKategorienBaum();
 $alleLieferanten = $lieferantService->findAll();
 
 $zustandSuffixMap = [
@@ -75,14 +76,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 required value="<?= old('name', $formdata) ?>">
         </div>
         <div class="form-row">
-            <label class="form-label">Artikelnummer <span class="pflicht-stern">*</span></label>
+            <label class="form-label">Artikelnummer</label>
             <input type="text" name="artikelnummer" id="artikelnummer" class="erp-input"
-                required value="<?= old('artikelnummer', $formdata) ?>">
+                placeholder="leer → wird auto vergeben (ART-001, ...)"
+                value="<?= old('artikelnummer', $formdata) ?>">
         </div>
         <div class="form-row">
             <label class="form-label">EAN / GTIN13</label>
-            <input type="text" name="ean_gtin13" class="erp-input" maxlength="13"
-                value="<?= old('ean_gtin13', $formdata) ?>">
+            <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                <input type="text" name="ean_gtin13" id="ean_gtin13" class="erp-input" maxlength="13"
+                    value="<?= old('ean_gtin13', $formdata) ?>">
+                <span id="ean-warn" class="warn-badge" style="display:none" title="">!</span>
+            </div>
         </div>
         <div class="form-row">
             <label class="form-label">Hersteller</label>
@@ -154,15 +159,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
         <div class="form-row">
             <label class="form-label">Kategorie</label>
-            <select name="kategorie_id" class="erp-select">
-                <option value="">– keine –</option>
-                <?php foreach ($alleKategorien as $k): ?>
-                    <option value="<?= $k['id'] ?>"
-                        <?= selected('kategorie_id', (string)$k['id'], $formdata) ?>>
-                        <?= htmlspecialchars($k['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <div style="display:flex;align-items:center;gap:var(--space-sm);flex-wrap:wrap">
+                <div id="kat-chips" style="display:flex;gap:4px;flex-wrap:wrap">
+                    <?php
+                    $vorKatIds = array_map('intval', (array)($formdata['kategorien'] ?? []));
+                    foreach ($alleKategorien as $k):
+                        if (in_array((int)$k['id'], $vorKatIds)):
+                    ?>
+                        <span class="chip chip-aktiv"><?= htmlspecialchars($k['name']) ?></span>
+                        <input type="hidden" name="kategorien[]" value="<?= $k['id'] ?>">
+                    <?php endif; endforeach; ?>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="katModalOeffnen()">📁 Wählen</button>
+            </div>
         </div>
 
         <!-- Vaterartikel — nur sichtbar wenn Zustand ≠ Neu -->
@@ -302,6 +311,66 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 </form>
 
+<?php
+function renderKatBaumNeu(array $nodes, int $tiefe = 0): string {
+    $html = '';
+    $last = count($nodes) - 1;
+    foreach ($nodes as $idx => $node) {
+        $isLast   = ($idx === $last);
+        $pl       = $tiefe * 20;
+        $linie    = $tiefe > 0
+            ? '<span class="kat-linie">' . ($isLast ? '└─' : '├─') . '</span>'
+            : '';
+        $labelCls = $tiefe === 0 ? 'kat-label kat-wurzel' : 'kat-label';
+        $count    = $node['artikel_anzahl'] > 0
+            ? ' <span class="kat-count">' . (int)$node['artikel_anzahl'] . '</span>'
+            : '';
+        $html .= '<label class="kat-zeile" style="padding-left:' . $pl . 'px">'
+               . $linie
+               . '<input type="checkbox" value="' . (int)$node['id'] . '"'
+               . ' data-name="' . htmlspecialchars($node['name']) . '"'
+               . ' data-parent-id="' . (int)($node['parent_id'] ?? 0) . '">'
+               . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . '</span>'
+               . $count . '</label>';
+        if (!empty($node['kinder'])) {
+            $html .= renderKatBaumNeu($node['kinder'], $tiefe + 1);
+        }
+    }
+    return $html;
+}
+?>
+
+<div id="kat-backdrop" class="modal-backdrop" onclick="katModalSchliessen()">
+    <div id="kat-modal" class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">Kategorien wählen</div>
+
+        <div id="kat-checkboxen">
+            <?= renderKatBaumNeu($kategorienBaum) ?>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
+
+        <div id="kat-neu">
+            <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Neue Kategorie anlegen</div>
+            <div style="display:flex;gap:var(--space-sm);align-items:center">
+                <select id="neue-kat-parent" class="erp-select" style="width:160px">
+                    <option value="">– Obergruppe (Root) –</option>
+                    <?php foreach ($alleKategorien as $k): ?>
+                        <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="text" id="neue-kat-name" class="erp-input" placeholder="Name..." style="flex:1">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="katAnlegen()">Anlegen</button>
+            </div>
+        </div>
+
+        <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);justify-content:flex-end">
+            <button type="button" class="btn btn-secondary" onclick="katModalSchliessen()">Abbrechen</button>
+            <button type="button" class="btn btn-primary" onclick="katUebernehmen()">Übernehmen</button>
+        </div>
+    </div>
+</div>
+
 <script src="/mealana/js/artikel.js"></script>
 <script>
 const zustandSuffixMap = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
@@ -393,6 +462,70 @@ document.querySelector('[name="inhalt_einheit"]')?.addEventListener('input', ber
 
 berechneNetto();
 berechneGrundpreis();
+
+function katModalSchliessen() {
+    document.getElementById('kat-backdrop').style.display = 'none';
+}
+
+function katModalOeffnen() {
+    const gewaehlt = [...document.querySelectorAll('input[name="kategorien[]"]')].map(i => i.value);
+    document.querySelectorAll('#kat-checkboxen input[type="checkbox"]').forEach(cb => {
+        cb.checked = gewaehlt.includes(cb.value);
+    });
+    document.getElementById('kat-backdrop').style.display = 'flex';
+}
+
+function katUebernehmen() {
+    const angehakt = [...document.querySelectorAll('#kat-checkboxen input[type="checkbox"]:checked')];
+    document.querySelectorAll('input[name="kategorien[]"]').forEach(el => el.remove());
+    const chips = document.getElementById('kat-chips');
+    chips.innerHTML = '';
+    angehakt.forEach(cb => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'kategorien[]'; input.value = cb.value;
+        chips.appendChild(input);
+        const span = document.createElement('span');
+        span.className = 'chip chip-aktiv';
+        span.textContent = cb.dataset.name;
+        chips.appendChild(span);
+    });
+    katModalSchliessen();
+}
+
+async function katAnlegen() {
+    const katName  = document.getElementById('neue-kat-name').value?.trim();
+    const parentId = document.getElementById('neue-kat-parent').value || '';
+    if (!katName) return;
+    const body = 'name=' + encodeURIComponent(katName) + (parentId ? '&parent_id=' + encodeURIComponent(parentId) : '');
+    const data = await fetch('kategorie_neu.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body
+    }).then(r => r.json());
+    if (!data.erfolg) { alert(data.fehler); return; }
+    const tiefe = parentId ? 1 : 0;
+    const label = document.createElement('label');
+    label.className = 'kat-zeile'; label.dataset.tiefe = tiefe; label.style.paddingLeft = (tiefe * 20) + 'px';
+    label.innerHTML = (tiefe > 0 ? '<span class="kat-linie">└─</span>' : '')
+        + '<input type="checkbox" value="' + data.id + '" data-name="' + data.name.replace(/"/g, '&quot;') + '" checked>'
+        + '<span class="kat-label' + (tiefe === 0 ? ' kat-wurzel' : '') + '">' + data.name + '</span>';
+    document.getElementById('kat-checkboxen').appendChild(label);
+    const opt = document.createElement('option'); opt.value = data.id; opt.textContent = data.name;
+    document.getElementById('neue-kat-parent').appendChild(opt);
+    document.getElementById('neue-kat-name').value = '';
+}
+
+document.getElementById('ean_gtin13').addEventListener('blur', async function () {
+    const ean = this.value.trim();
+    const badge = document.getElementById('ean-warn');
+    badge.style.display = 'none';
+    if (ean.length < 8) return;
+
+    const res  = await fetch('ean_check.php?ean=' + encodeURIComponent(ean));
+    const data = await res.json();
+    if (data.gefunden) {
+        badge.title = 'EAN bereits in Verwendung: ' + data.artikelnummer + ' – ' + data.name;
+        badge.style.display = 'inline-flex';
+    }
+});
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
