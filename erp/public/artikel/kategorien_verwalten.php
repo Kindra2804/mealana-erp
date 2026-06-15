@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
@@ -154,56 +154,6 @@ $flacheListe = flattenBaum($kategorienBaum);
     </div>
 </div>
 
-<style>
-.katv-baum { padding: var(--space-sm) 0; }
-
-.katv-gruppe { border-bottom: 1px solid var(--color-border); }
-.katv-gruppe:last-child { border-bottom: none; }
-
-.katv-zeile {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    padding-top: 7px;
-    padding-bottom: 7px;
-    padding-right: var(--space-md);
-}
-.katv-zeile:hover { background: var(--color-bg); }
-
-.katv-toggle {
-    font-size: 9px;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    width: 14px;
-    flex-shrink: 0;
-    user-select: none;
-}
-.katv-leer { cursor: default; }
-
-.katv-name {
-    font-size: 13.5px;
-    font-weight: 500;
-    flex: 1;
-}
-
-.katv-anzahl {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    background: #f0f2f5;
-    border-radius: 10px;
-    padding: 1px 7px;
-    flex-shrink: 0;
-}
-
-.katv-aktionen {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-    margin-left: auto;
-}
-
-.katv-kinder { border-left: 2px solid var(--color-border); margin-left: 28px; }
-</style>
 
 <script>
 var katvLoeschId       = null;
@@ -343,3 +293,4 @@ function katvLoeschenBestaetigt() {
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
+

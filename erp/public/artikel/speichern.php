@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/core/Database.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: neu.php');
@@ -68,8 +69,37 @@ $service = new ArtikelService();
 $result = $service->save($artikelData);
 
 if ($result['erfolg']) {
+    $neueArtikelId = $result['id'];
+    $pdo = Database::getInstance();
+
+    // Kategorie zuweisen (optional, aus neu.php)
+    $kategorieId = (int)($data['kategorie_id'] ?? 0);
+    if ($kategorieId > 0) {
+        $pdo->prepare('INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)')
+            ->execute([$neueArtikelId, $kategorieId]);
+    }
+
+    // Lieferant + EK (optional, aus neu.php)
+    $lieferantId = (int)($data['lf_lieferant_id'] ?? 0);
+    if ($lieferantId > 0) {
+        $pdo->prepare("
+            INSERT INTO artikel_lieferanten
+                (artikel_id, lieferant_id, artikelnummer_lieferant, netto_ek, waehrung,
+                 vpe_menge, lieferzeit_tage, mindestabnahme, standard_lieferant)
+            VALUES (?, ?, ?, ?, ?, 1, 0, 0, 1)
+        ")->execute([
+            $neueArtikelId,
+            $lieferantId,
+            (string)($data['lf_artikelnummer'] ?? ''),
+            (float)($data['lf_ek_netto'] ?? 0),
+            in_array($data['lf_waehrung'] ?? '', ['EUR', 'USD', 'CHF'])
+                ? $data['lf_waehrung']
+                : 'EUR',
+        ]);
+    }
+
     $_SESSION['erfolg'] = 'Artikel wurde gespeichert!';
-    header('Location: detail.php?id=' . $result['id']);
+    header('Location: detail.php?id=' . $neueArtikelId);
     exit;
 } else {
     $_SESSION['fehler'] = $result['fehler'];

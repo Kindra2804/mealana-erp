@@ -521,4 +521,224 @@
     padding: 20px;
 }
 
-/* =====  ===== */
+/* ===== PFLICHTFELDER ===== */
+
+.pflicht-stern {
+    color: var(--color-nav);
+    font-weight: 600;
+}
+
+.pflicht-banner {
+    background: #eef3fb;
+    border-left: 3px solid var(--color-nav);
+    border-radius: 4px;
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-md);
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+/* ===== ARTIKELLISTE ===== */
+
+.artikel-liste-table td { vertical-align: middle; }
+
+.expand-arrow {
+    cursor: pointer;
+    color: var(--color-nav);
+    font-size: 11px;
+    user-select: none;
+    display: inline-block;
+    transition: transform .15s;
+}
+
+.thumb-cell { padding: 4px 6px !important; }
+
+.artikel-thumb {
+    width: 38px;
+    height: 24px;
+    background: #E2E8F0;
+    border-radius: 3px;
+    border: 1px solid #CBD5E0;
+}
+
+.artikel-thumb-kind {
+    width: 28px;
+    height: 18px;
+    opacity: .6;
+}
+
+.artnr-cell {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.artikel-name { font-weight: 500; }
+
+.varianten-count {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    margin-left: 6px;
+}
+
+.aktion-cell {
+    text-align: right;
+    white-space: nowrap;
+    width: 80px;
+}
+
+.row-aktionen {
+    display: inline-flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity .15s;
+}
+
+.artikel-zeile:hover .row-aktionen,
+.kind-zeile:hover .row-aktionen { opacity: 1; }
+
+.btn-xs {
+    padding: 1px 6px !important;
+    font-size: 11px !important;
+    line-height: 18px !important;
+    border-radius: 3px !important;
+    text-decoration: none;
+}
+
+/* Status-Chips */
+.sc {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-right: 2px;
+    line-height: 17px;
+}
+
+.sc-deaktiviert { background: #E2E8F0; color: #718096; }
+.sc-auslauf     { background: #FEFCBF; color: #744210; }
+.sc-uv          { background: #FEEBC8; color: #C05621; }
+.sc-fehlbest    { background: #FED7D7; color: #C53030; }
+.sc-ohnekat     { background: #EDF2F7; color: #4A5568; border: 1px solid #CBD5E0; }
+/* .sc-sale     { background: #FAF5FF; color: #7E22CE; } — für später */
+
+/* Kanal-Chips */
+.kc {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    margin-right: 2px;
+    line-height: 16px;
+}
+
+.kc-k1 { background: #1B3A6B; color: #fff; }
+.kc-k2 { background: #2D5FA6; color: #fff; }
+.kc-s1 { background: #5590C0; color: #fff; }
+.kc-s2 { background: #7EC8E3; color: #1B3A6B; }
+.kc-s3 { background: #A8D4F0; color: #1B3A6B; }
+
+.bst-null { color: #C53030; font-weight: 600; }
+
+.preis-cell { white-space: nowrap; font-size: 13px; }
+
+/* Info-Badge (blaues "!") */
+.warn-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #2563EB;
+    color: #fff;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: help;
+    margin-left: 4px;
+    vertical-align: middle;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.pagination-dots {
+    padding: 0 4px;
+    color: var(--color-text-muted);
+}
+
+.zeile-cb { cursor: pointer; }
+
+/* Kanal-Legende */
+.kanal-legende {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border);
+    margin-top: 8px;
+}
+
+.kanal-legende-label  { font-weight: 600; color: var(--color-text); margin-right: 2px; }
+.kanal-legende-text   { color: var(--color-text-muted); }
+.kanal-legende-sep    { color: var(--color-border); margin: 0 2px; }
+.kanal-legende-note   { margin-left: 8px; font-style: italic; font-size: 11px; color: var(--color-text-muted); opacity: .8; }
+
+/* ===== DETAIL — HOVER-AKTIONEN ===== */
+
+.aktionen { visibility: hidden; }
+.erp-table tr:hover .aktionen { visibility: visible; }
+
+/* ===== KATEGORIENVERWALTUNG ===== */
+
+.katv-baum { padding: var(--space-sm) 0; }
+
+.katv-gruppe { border-bottom: 1px solid var(--color-border); }
+.katv-gruppe:last-child { border-bottom: none; }
+
+.katv-zeile {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 7px var(--space-md) 7px 0;
+}
+.katv-zeile:hover { background: var(--color-bg); }
+
+.katv-toggle {
+    font-size: 9px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    width: 14px;
+    flex-shrink: 0;
+    user-select: none;
+}
+.katv-leer { cursor: default; }
+
+.katv-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.katv-anzahl {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    background: #f0f2f5;
+    border-radius: 10px;
+    padding: 1px 7px;
+    flex-shrink: 0;
+}
+
+.katv-aktionen {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.katv-kinder { border-left: 2px solid var(--color-border); margin-left: 28px; }

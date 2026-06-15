@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
@@ -76,69 +76,26 @@ function selected(string $field, string $value, array $formdata): string
 {
     return ((string)($formdata[$field] ?? '')) === $value ? 'selected' : '';
 }
+
+$pageTitle      = 'Artikel bearbeiten';
+$activeModule   = 'artikel';
+$actionBarContent = <<<HTML
+<button form="artikel-bearbeiten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
+<a href="detail.php?id={$id}" class="btn btn-secondary btn-sm">Abbrechen</a>
+HTML;
+require_once __DIR__ . '/../includes/shell_top.php';
 ?>
-<!DOCTYPE html>
-<html lang="de">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Neuer Artikel – MeaLana ERP</title>
-    <link rel="stylesheet" href="/mealana/css/app.css">
-    <style>
-        /* Kategorie-Modal */
-        #kat-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #kat-modal {
-            background: #fff;
-            padding: 1.5rem;
-            border-radius: 8px;
-            min-width: 320px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        #kat-checkboxen label {
-            display: block;
-            margin-bottom: 0.4rem;
-        }
-
-        #kat-aktionen {
-            margin-top: 1rem;
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .chip {
-            display: inline-block;
-            background: #e0e0e0;
-            padding: 0.2rem 0.6rem;
-            border-radius: 12px;
-            margin: 0.2rem;
-            font-size: 0.9rem;
-        }
-    </style>
-</head>
-
-<body>
-    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
-    <h1>Artikel bearbeiten</h1>
-
-    <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>">⚙️ Achsen & Werte konfigurieren</a>
 
 
-    <?php if ($erfolg): ?>
-        <div class="erfolg-box"><?= htmlspecialchars($erfolg) ?></div>
-    <?php endif; ?>
+<p style="margin-bottom:1rem">
+    <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>">⚙️ Achsen &amp; Werte konfigurieren</a>
+</p>
 
-    <?php if (!empty($fehler)): ?>
+<?php if ($erfolg): ?>
+    <div class="erfolg-box"><?= htmlspecialchars($erfolg) ?></div>
+<?php endif; ?>
+
+<?php if (!empty($fehler)): ?>
         <div class="fehler-box">
             <strong>Bitte korrigiere folgende Fehler:</strong>
             <ul>
@@ -149,7 +106,7 @@ function selected(string $field, string $value, array $formdata): string
         </div>
     <?php endif; ?>
 
-    <form action="aktualisieren.php" method="POST">
+    <form id="artikel-bearbeiten-form" action="aktualisieren.php" method="POST">
 
         <input type="hidden" name="id" value="<?= $id ?>">
 
@@ -403,8 +360,8 @@ function selected(string $field, string $value, array $formdata): string
 
     </form>
 
-    <div id="kat-backdrop" style="display:none" onclick="katModalSchliessen()">
-        <div id="kat-modal" onclick="event.stopPropagation()">
+    <div id="kat-backdrop" class="modal-backdrop" onclick="katModalSchliessen()">
+        <div class="modal" onclick="event.stopPropagation()">
             <h3>Kategorien zuweisen</h3>
 
             <div id="kat-checkboxen">
@@ -479,6 +436,7 @@ function selected(string $field, string $value, array $formdata): string
 
             document.getElementById('kat-backdrop').style.display = 'flex';
         }
+        /* Das Modal nutzt jetzt .modal-backdrop / .modal aus components.css */
 
         function katUebernehmen() {
             const angehakt = [...document.querySelectorAll('#kat-checkboxen input[type="checkbox"]:checked')];
@@ -550,6 +508,4 @@ function selected(string $field, string $value, array $formdata): string
         <?php endif; ?>
     </script>
 
-</body>
-
-</html>
+<?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

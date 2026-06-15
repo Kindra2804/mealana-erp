@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
@@ -1331,18 +1331,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
-<style>
-    .aktionen {
-        visibility: hidden;
-    }
-
-    /* Standard: versteckt */
-    .erp-table tr:hover .aktionen {
-        visibility: visible;
-    }
-
-    /* Hover: sichtbar */
-</style>
 <script>
     function zeigeTab(name, el) {
         document.querySelectorAll('[id^="tab-"]').forEach(d => d.classList.add('versteckt'));
