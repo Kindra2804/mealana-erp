@@ -157,7 +157,8 @@ class ArtikelRepository
         $stmt = $this->db->prepare("
             SELECT COUNT(*) FROM (
                 SELECT
-                    a.id
+                a.id,
+                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
                 FROM artikel a
                 JOIN artikel_typen at ON a.artikeltyp_id = at.id
                 LEFT JOIN hersteller h ON a.hersteller_id = h.id

@@ -115,9 +115,9 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                 <div class="sidebar-kat-wrapper">
                     <div class="sidebar-kat-header">
                         <span>Kategorien</span>
-                        <button onclick="katNeuOeffnen()"
-                                style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--color-nav);padding:0 2px;line-height:1"
-                                title="Neue Kategorie anlegen">+</button>
+                        <a href="/mealana/artikel/kategorien_verwalten.php"
+                            style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--color-nav);padding:0 2px;line-height:1"
+                            title="Kategorieverwaltung">🗂</a>
                     </div>
                     <nav class="sidebar-kat-tree" id="kat-tree">
                         <?php
@@ -131,14 +131,14 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                             $nodeId    = 'kat-' . $knoten['id'];
                             $toggleId  = 'kattog-' . $knoten['id'];
                             $anzahl    = (int)($knoten['artikel_anzahl'] ?? 0);
-                            ?>
+                        ?>
                             <div class="kat-knoten">
                                 <a href="liste.php?kategorie_id=<?= $knoten['id'] ?>"
-                                   class="kat-zeile <?= $istAktiv ? 'aktiv' : '' ?>"
-                                   style="padding-left:<?= $einzug ?>px">
+                                    class="kat-zeile <?= $istAktiv ? 'aktiv' : '' ?>"
+                                    style="padding-left:<?= $einzug ?>px">
                                     <?php if ($hatKinder): ?>
                                         <span class="kat-toggle" id="<?= $toggleId ?>"
-                                              onclick="event.preventDefault();katToggle('<?= $nodeId ?>','<?= $toggleId ?>')">▶</span>
+                                            onclick="event.preventDefault();katToggle('<?= $nodeId ?>','<?= $toggleId ?>')">▶</span>
                                     <?php else: ?>
                                         <span class="kat-toggle-leer"></span>
                                     <?php endif; ?>
@@ -155,7 +155,7 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                                     </div>
                                 <?php endif; ?>
                             </div>
-                            <?php
+                        <?php
                         }
 
                         foreach ($kategorienBaum as $wurzel) {
@@ -168,101 +168,115 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                     </nav>
                 </div>
                 <script>
-                (function() {
-                    var LS_KEY = 'mealana_kat_offen';
+                    (function() {
+                        var LS_KEY = 'mealana_kat_offen';
 
-                    function getState() {
-                        try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
-                        catch(e) { return {}; }
-                    }
-                    function setState(s) {
-                        localStorage.setItem(LS_KEY, JSON.stringify(s));
-                    }
-
-                    // Beim Laden: gespeicherten Zustand anwenden (Standard = offen)
-                    var state = getState();
-                    document.querySelectorAll('.kat-kinder').forEach(function(el) {
-                        var id = el.id; // z.B. "kat-5"
-                        var toggleEl = document.getElementById('kattog-' + id.replace('kat-',''));
-                        // Standard = offen; nur schließen wenn explizit false gespeichert
-                        var istOffen = state[id] !== false;
-                        el.classList.toggle('versteckt', !istOffen);
-                        if (toggleEl) toggleEl.textContent = istOffen ? '▼' : '▶';
-                    });
-
-                    // Aktive Kategorie aufklappen (überschreibt localStorage)
-                    <?php if ($aktivKatId): ?>
-                    (function aufklappen(nodeId) {
-                        var el = document.getElementById(nodeId);
-                        if (!el) return;
-                        el.classList.remove('versteckt');
-                        var toggleEl = document.getElementById('kattog-' + nodeId.replace('kat-',''));
-                        if (toggleEl) toggleEl.textContent = '▼';
-                        // Eltern ebenfalls aufklappen
-                        var parent = el.parentElement;
-                        while (parent) {
-                            if (parent.classList.contains('kat-kinder')) {
-                                parent.classList.remove('versteckt');
-                                var pid = parent.id;
-                                var pt = document.getElementById('kattog-' + pid.replace('kat-',''));
-                                if (pt) pt.textContent = '▼';
+                        function getState() {
+                            try {
+                                return JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+                            } catch (e) {
+                                return {};
                             }
-                            parent = parent.parentElement;
                         }
-                    })('kat-<?= $aktivKatId ?>');
 
-                    // Aktive Kategorie in den sichtbaren Bereich scrollen
-                    var aktiveZeile = document.querySelector('.kat-zeile.aktiv');
-                    if (aktiveZeile) {
-                        aktiveZeile.scrollIntoView({ block: 'center', behavior: 'instant' });
-                    }
-                    <?php endif; ?>
+                        function setState(s) {
+                            localStorage.setItem(LS_KEY, JSON.stringify(s));
+                        }
 
-                    window.katToggle = function(nodeId, toggleId) {
-                        var el = document.getElementById(nodeId);
-                        var t  = document.getElementById(toggleId);
-                        if (!el) return;
-                        var wirdGeoeffnet = el.classList.contains('versteckt');
-                        el.classList.toggle('versteckt', !wirdGeoeffnet);
-                        if (t) t.textContent = wirdGeoeffnet ? '▼' : '▶';
-                        var s = getState();
-                        s[nodeId] = wirdGeoeffnet; // true = offen
-                        setState(s);
+                        // Beim Laden: gespeicherten Zustand anwenden (Standard = offen)
+                        var state = getState();
+                        document.querySelectorAll('.kat-kinder').forEach(function(el) {
+                            var id = el.id; // z.B. "kat-5"
+                            var toggleEl = document.getElementById('kattog-' + id.replace('kat-', ''));
+                            // Standard = offen; nur schließen wenn explizit false gespeichert
+                            var istOffen = state[id] !== false;
+                            el.classList.toggle('versteckt', !istOffen);
+                            if (toggleEl) toggleEl.textContent = istOffen ? '▼' : '▶';
+                        });
+
+                        // Aktive Kategorie aufklappen (überschreibt localStorage)
+                        <?php if ($aktivKatId): ?>
+                                (function aufklappen(nodeId) {
+                                    var el = document.getElementById(nodeId);
+                                    if (!el) return;
+                                    el.classList.remove('versteckt');
+                                    var toggleEl = document.getElementById('kattog-' + nodeId.replace('kat-', ''));
+                                    if (toggleEl) toggleEl.textContent = '▼';
+                                    // Eltern ebenfalls aufklappen
+                                    var parent = el.parentElement;
+                                    while (parent) {
+                                        if (parent.classList.contains('kat-kinder')) {
+                                            parent.classList.remove('versteckt');
+                                            var pid = parent.id;
+                                            var pt = document.getElementById('kattog-' + pid.replace('kat-', ''));
+                                            if (pt) pt.textContent = '▼';
+                                        }
+                                        parent = parent.parentElement;
+                                    }
+                                })('kat-<?= $aktivKatId ?>');
+
+                            // Aktive Kategorie in den sichtbaren Bereich scrollen
+                            var aktiveZeile = document.querySelector('.kat-zeile.aktiv');
+                            if (aktiveZeile) {
+                                aktiveZeile.scrollIntoView({
+                                    block: 'center',
+                                    behavior: 'instant'
+                                });
+                            }
+                        <?php endif; ?>
+
+                        window.katToggle = function(nodeId, toggleId) {
+                            var el = document.getElementById(nodeId);
+                            var t = document.getElementById(toggleId);
+                            if (!el) return;
+                            var wirdGeoeffnet = el.classList.contains('versteckt');
+                            el.classList.toggle('versteckt', !wirdGeoeffnet);
+                            if (t) t.textContent = wirdGeoeffnet ? '▼' : '▶';
+                            var s = getState();
+                            s[nodeId] = wirdGeoeffnet; // true = offen
+                            setState(s);
+                        };
+                    })();
+
+                    // ── Neue Kategorie Modal ──────────────────────────────
+                    window.katNeuOeffnen = function() {
+                        document.getElementById('kat-neu-modal').style.display = 'flex';
+                        document.getElementById('kat-neu-name').focus();
                     };
-                })();
-
-                // ── Neue Kategorie Modal ──────────────────────────────
-                window.katNeuOeffnen = function() {
-                    document.getElementById('kat-neu-modal').style.display = 'flex';
-                    document.getElementById('kat-neu-name').focus();
-                };
-                window.katNeuSchliessen = function() {
-                    document.getElementById('kat-neu-modal').style.display = 'none';
-                    document.getElementById('kat-neu-name').value = '';
-                    document.getElementById('kat-neu-parent').value = '';
-                    document.getElementById('kat-neu-fehler').textContent = '';
-                };
-                window.katNeuSpeichern = function() {
-                    var name   = document.getElementById('kat-neu-name').value.trim();
-                    var parent = document.getElementById('kat-neu-parent').value;
-                    var fehler = document.getElementById('kat-neu-fehler');
-                    if (!name) { fehler.textContent = 'Name ist Pflichtfeld'; return; }
-                    fehler.textContent = '';
-                    fetch('/mealana/artikel/kategorie_erstellen.php', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parent)
-                    })
-                    .then(function(r) { return r.json(); })
-                    .then(function(d) {
-                        if (d.erfolg) {
-                            katNeuSchliessen();
-                            window.location.reload();
-                        } else {
-                            fehler.textContent = d.fehler || 'Fehler beim Speichern';
+                    window.katNeuSchliessen = function() {
+                        document.getElementById('kat-neu-modal').style.display = 'none';
+                        document.getElementById('kat-neu-name').value = '';
+                        document.getElementById('kat-neu-parent').value = '';
+                        document.getElementById('kat-neu-fehler').textContent = '';
+                    };
+                    window.katNeuSpeichern = function() {
+                        var name = document.getElementById('kat-neu-name').value.trim();
+                        var parent = document.getElementById('kat-neu-parent').value;
+                        var fehler = document.getElementById('kat-neu-fehler');
+                        if (!name) {
+                            fehler.textContent = 'Name ist Pflichtfeld';
+                            return;
                         }
-                    });
-                };
+                        fehler.textContent = '';
+                        fetch('/mealana/artikel/kategorie_erstellen.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parent)
+                            })
+                            .then(function(r) {
+                                return r.json();
+                            })
+                            .then(function(d) {
+                                if (d.erfolg) {
+                                    katNeuSchliessen();
+                                    window.location.reload();
+                                } else {
+                                    fehler.textContent = d.fehler || 'Fehler beim Speichern';
+                                }
+                            });
+                    };
                 </script>
 
                 <!-- Neue Kategorie Modal -->
@@ -271,13 +285,14 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                         <div style="font-weight:700;font-size:14px;margin-bottom:12px;color:var(--color-nav)">Neue Kategorie</div>
                         <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Name *</label>
                         <input id="kat-neu-name" type="text" class="erp-input" style="width:100%;margin-bottom:10px"
-                               placeholder="z.B. Merinowolle"
-                               onkeydown="if(event.key==='Enter')katNeuSpeichern();if(event.key==='Escape')katNeuSchliessen()">
+                            placeholder="z.B. Merinowolle"
+                            onkeydown="if(event.key==='Enter')katNeuSpeichern();if(event.key==='Escape')katNeuSchliessen()">
                         <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Oberkategorie (optional)</label>
                         <select id="kat-neu-parent" class="erp-select" style="width:100%;margin-bottom:12px">
                             <option value="">– Keine (Hauptkategorie) –</option>
                             <?php
-                            function renderKatOption(array $knoten, int $tiefe): void {
+                            function renderKatOption(array $knoten, int $tiefe): void
+                            {
                                 $einzug = str_repeat('  ', $tiefe);
                                 echo '<option value="' . $knoten['id'] . '">'
                                     . htmlspecialchars($einzug . ($tiefe > 0 ? '↳ ' : '') . $knoten['name'])
@@ -286,7 +301,9 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                                     renderKatOption($kind, $tiefe + 1);
                                 }
                             }
-                            foreach ($kategorienBaum as $w) { renderKatOption($w, 0); }
+                            foreach ($kategorienBaum as $w) {
+                                renderKatOption($w, 0);
+                            }
                             ?>
                         </select>
                         <div id="kat-neu-fehler" style="font-size:12px;color:var(--color-danger);min-height:16px;margin-bottom:8px"></div>

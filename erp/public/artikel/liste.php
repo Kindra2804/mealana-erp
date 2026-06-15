@@ -36,7 +36,7 @@ $filter = [
 $kategorienBaum = $service->getKategorienBaum();
 
 $seite = (int)($_GET['seite'] ?? 1);
-$proSeite = (int)($_GET['pro_seite'] ?? 15);
+$proSeite = (int)($_GET['pro_seite'] ?? 12);
 
 $offset = ($seite - 1) * $proSeite;
 
@@ -147,7 +147,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <input type="text" name="q" class="erp-input"
             value="<?= htmlspecialchars($_GET['q'] ?? '') ?>"
             placeholder="🔍 Suche Artikel, EAN, Name…" style="min-width:240px">
-        <select name="hersteller_id" class="erp-select">
+        <select name="hersteller_id" class="erp-select" onchange="this.form.submit()">
             <option value="">– Hersteller –</option>
             <?php foreach ($alleHersteller as $h): ?>
                 <option value="<?= $h['id'] ?>" <?= ($_GET['hersteller_id'] ?? '') == $h['id'] ? 'selected' : '' ?>>
@@ -155,7 +155,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </option>
             <?php endforeach; ?>
         </select>
-        <select name="artikeltyp_id" class="erp-select">
+        <select name="artikeltyp_id" class="erp-select" onchange="this.form.submit()">
             <option value="">– Artikel-Typ –</option>
             <?php foreach ($alleArtikeltypen as $t): ?>
                 <option value="<?= $t['id'] ?>" <?= ($_GET['artikeltyp_id'] ?? '') == $t['id'] ? 'selected' : '' ?>>
@@ -163,7 +163,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </option>
             <?php endforeach; ?>
         </select>
-        <select name="status_filter" class="erp-select">
+        <select name="status_filter" class="erp-select" onchange="this.form.submit()">
             <option value="">– Status –</option>
             <option value="auslauf" <?= ($_GET['status_filter'] ?? '') === 'auslauf'    ? 'selected' : '' ?>>Auslaufartikel</option>
             <option value="uv" <?= ($_GET['status_filter'] ?? '') === 'uv'         ? 'selected' : '' ?>>Überverkauf aktiv</option>
@@ -179,8 +179,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <option>S2 Sockenwolle</option>
             <option>S3 Bio-Wolle</option>
         </select>
-        <label><input type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand</label>
-        <label><input type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
+        <label>
+            <input onchange="this.form.submit()" type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand
+        </label>
+        <label><input onchange="this.form.submit()" type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
         <?php if ($aktivKategorieId): ?>
             <input type="hidden" name="kategorie_id" value="<?= $aktivKategorieId ?>">
         <?php endif; ?>
@@ -200,7 +202,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <th style="width:110px">KANÄLE</th>
                 <th style="width:60px; text-align:right; cursor:help" title="Physischer Gesamtbestand · Hover für Reservierungsdetails">BST.</th>
                 <th style="width:90px; text-align:right">PREIS</th>
-                <th style="width:80px"><button id="alle-toggle-btn" onclick="alleToggle()">alle öffnen</button></th>
+                <th style="width:80px"><button type="button" id="alle-toggle-btn" onclick="alleToggle()">alle zuklappen</button></th>
             </tr>
         </thead>
         <tbody>
@@ -386,7 +388,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="card">
     <div class="pagination-bar">
         <div class="">
-            Zeige <?= $offset + 1 ?>–<?= min($offset + $proSeite, $gesamt) ?> von <?= $gesamt ?> Artikeln
+            Zeige <?= $offset + 1 ?>–<?= min($offset + $proSeite, $gesamt) ?> von <?= $gesamt ?> Hauptartikeln
         </div>
         <div class="pagination">
             <?php foreach (buildPaginierung($seite, $seitenAnzahl) as $eintrag):
@@ -403,14 +405,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
             endforeach; ?>
         </div>
         <div class="">
-            Zeilen/Seite:
+            Hauptartikel/Seite:
             <select name="pro_seite" onchange="
             var p = new URLSearchParams(window.location.search);
             p.set('pro_seite', this.value);
             p.set('seite', 1);
             window.location.href = 'liste.php?' + p.toString();
         ">
-                <option value="10" <?= $proSeite == 10 ? 'selected' : '' ?>>10</option>
+                <option value="10" <?= $proSeite == 12 ? 'selected' : '' ?>>12</option>
                 <option value="25" <?= $proSeite == 25 ? 'selected' : '' ?>>25</option>
                 <option value="50" <?= $proSeite == 50 ? 'selected' : '' ?>>50</option>
                 <option value="100" <?= $proSeite == 100 ? 'selected' : '' ?>>100</option>
@@ -705,25 +707,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
         });
 
         //    → dann aufklappen; sonst zuklappen
-        if (sindAlleZu) {
-            pfeile.forEach(pfeil => {
-                toggleKinder(pfeil.id.replace('pfeil-', ''));
-            });
-        } else {
+        if (!sindAlleZu) {
             // 3. Jeden Pfeil prüfen und toggleKinder(id) aufrufen wenn nötig
             pfeile.forEach(pfeil => {
-
                 if (pfeil.textContent === '▼') {
                     toggleKinder(pfeil.id.replace('pfeil-', ''));
                 }
             });
-        }
-        // 4. Button-Text aktualisieren
-        if (sindAlleZu) {
-            document.getElementById('alle-toggle-btn').textContent = 'alle schliessen';
-        } else {
-            document.getElementById('alle-toggle-btn').textContent = 'alle öffnen';
-
         }
     }
 
