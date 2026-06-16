@@ -16,6 +16,15 @@ class ArtikelRepository
         $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
         $having = '';
 
+        $sortMap = [
+            'artikelnummer' => 'a.artikelnummer',
+            'name'          => 'a.name',
+            'bestand'       => 'gesamtbestand',
+            'preis'         => 'brutto_vk',
+        ];
+        $sortSpalte = $sortMap[$filter['sort'] ?? ''] ?? 'a.artikelnummer';
+        $sortDir    = ($filter['dir'] ?? '') === 'desc' ? 'DESC' : 'ASC';
+
         $params = [];
 
         // $params['limit'] = $limit;
@@ -94,6 +103,7 @@ class ArtikelRepository
             $where
             GROUP BY a.id
             $having
+            ORDER BY $sortSpalte $sortDir
             LIMIT $limit OFFSET $offset;
         ");
 
@@ -273,7 +283,7 @@ class ArtikelRepository
         return $artikel;
     }
 
-    public function findKinderFuerListe(array $vaterIds): array
+    public function findKinderFuerListe(array $vaterIds, string $sortSpalte = 'a.artikelnummer', string $sortDir = 'ASC'): array
     {
         if (empty($vaterIds)) return [];
         $placeholders = implode(',', array_fill(0, count($vaterIds), '?'));
@@ -295,7 +305,7 @@ class ArtikelRepository
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             WHERE a.vaterartikel_id IN ($placeholders)
             GROUP BY a.id
-            ORDER BY a.artikelnummer ASC
+            ORDER BY $sortSpalte $sortDir
         ");
         $stmt->execute($vaterIds);
         return $stmt->fetchAll();

@@ -17,6 +17,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/artikel/liste.php'],
         ['icon' => '➕', 'label' => 'Neu erstellen', 'href' => '/mealana/artikel/neu.php'],
         ['icon' => '🗂', 'label' => 'Kategorien',   'href' => '/mealana/artikel/kategorien_verwalten.php'],
+        ['icon' => '🔀', 'label' => 'Achsen',       'href' => '/mealana/achsen/liste.php'],
         ['icon' => '🖼', 'label' => 'Bilder',       'href' => '#'],
         ['icon' => '🏷', 'label' => 'Merkmale',     'href' => '#'],
         ['icon' => '💲', 'label' => 'Preise',       'href' => '#'],

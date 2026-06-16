@@ -234,9 +234,9 @@ class ArtikelService
         return $this->kategorieRepo->findByArtikelId($artikelId);
     }
 
-    public function getKinderFuerListe($vaterIds): array
+    public function getKinderFuerListe(array $vaterIds, string $sortSpalte = 'a.artikelnummer', string $sortDir = 'ASC'): array
     {
-        return $this->repo->findKinderFuerListe($vaterIds);
+        return $this->repo->findKinderFuerListe($vaterIds, $sortSpalte, $sortDir);
     }
 
     public function getAllArtikelTypen(): array

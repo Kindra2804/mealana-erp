@@ -112,6 +112,31 @@ class KategorieRepository
         return $stmt->fetch();
     }
 
+    public function getSiblingsWithSort(?int $parentId): array
+    {
+        if ($parentId === null) {
+            $stmt = $this->db->query("
+                SELECT id, sortierung FROM kategorien
+                WHERE parent_id IS NULL AND aktiv = 1
+                ORDER BY COALESCE(sortierung, 0), name
+            ");
+        } else {
+            $stmt = $this->db->prepare("
+                SELECT id, sortierung FROM kategorien
+                WHERE parent_id = :pid AND aktiv = 1
+                ORDER BY COALESCE(sortierung, 0), name
+            ");
+            $stmt->execute(['pid' => $parentId]);
+        }
+        return $stmt->fetchAll();
+    }
+
+    public function updateSortierung(int $id, int $sort): void
+    {
+        $stmt = $this->db->prepare("UPDATE kategorien SET sortierung = :sort WHERE id = :id");
+        $stmt->execute(['sort' => $sort, 'id' => $id]);
+    }
+
     public function update(int $id, string $name, ?int $parentId): bool
     {
         $stmt = $this->db->prepare("UPDATE kategorien SET name = :name, parent_id = :parent_id WHERE id = :id");

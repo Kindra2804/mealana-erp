@@ -144,7 +144,7 @@ class VariantenRepository
         $stmt = $this->db->prepare("
             DELETE
             FROM varianten_achse_werte
-            WHERE artikel_id  = :artikel_id 
+            WHERE artikel_id  = :artikel_id
         ");
 
         $stmt->execute([
@@ -152,6 +152,30 @@ class VariantenRepository
         ]);
 
         return (int) $stmt->rowCount() > 0;
+    }
+
+    public function deleteWert(int $id): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM varianten_achse_werte WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+    }
+
+    public function updateWertSortOrder(int $id, int $sortOrder): void
+    {
+        $stmt = $this->db->prepare("UPDATE varianten_achse_werte SET sort_order = :sort WHERE id = :id");
+        $stmt->execute(['sort' => $sortOrder, 'id' => $id]);
+    }
+
+    public function findWertIdsInUse(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT vaw.id
+            FROM varianten_achse_werte vaw
+            INNER JOIN varianten_kombination_werte vkw ON vkw.wert_id = vaw.id
+            WHERE vaw.artikel_id = :artikel_id
+        ");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     public function findExistingKombinationen(int $vaterId): array

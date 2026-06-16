@@ -90,4 +90,9 @@ class AchsenService
         Logger::log('achse.geloescht', 'varianten_achsen', $id);
         return ['erfolg' => true, 'id' => $id];
     }
+
+    public function updateSortOrder(int $id, int $order): void
+    {
+        $this->repo->updateSortOrder($id, $order);
+    }
 }

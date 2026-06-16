@@ -14,7 +14,7 @@ HTML;
 
 require_once __DIR__ . '/../includes/shell_top.php';
 
-function renderVerwaltungsKnoten(array $knoten, int $tiefe): void
+function renderVerwaltungsKnoten(array $knoten, int $tiefe, int $pos, int $total): void
 {
     $einzug  = $tiefe * 24;
     $istBlatt = empty($knoten['kinder']);
@@ -35,6 +35,16 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe): void
         <?php endif; ?>
 
         <div class="katv-aktionen">
+            <?php if ($pos > 0): ?>
+                <button class="btn btn-secondary btn-xs"
+                        onclick="katSortieren(<?= $knoten['id'] ?>, 'hoch')"
+                        title="Nach oben">▲</button>
+            <?php endif; ?>
+            <?php if ($pos < $total - 1): ?>
+                <button class="btn btn-secondary btn-xs"
+                        onclick="katSortieren(<?= $knoten['id'] ?>, 'runter')"
+                        title="Nach unten">▼</button>
+            <?php endif; ?>
             <button class="btn btn-secondary btn-xs"
                     onclick="katNeuOeffnen(<?= $knoten['id'] ?>, <?= htmlspecialchars(json_encode($knoten['name'])) ?>)"
                     title="Neue Unterkategorie anlegen">+ Unter-Kat.</button>
@@ -49,9 +59,11 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe): void
 
     <?php if (!$istBlatt): ?>
         <div class="katv-kinder">
-            <?php foreach ($knoten['kinder'] as $kind): ?>
+            <?php
+            $kinderAnzahl = count($knoten['kinder']);
+            foreach ($knoten['kinder'] as $ki => $kind): ?>
                 <div class="katv-gruppe">
-                    <?php renderVerwaltungsKnoten($kind, $tiefe + 1); ?>
+                    <?php renderVerwaltungsKnoten($kind, $tiefe + 1, $ki, $kinderAnzahl); ?>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -82,9 +94,11 @@ $flacheListe = flattenBaum($kategorienBaum);
         </p>
     <?php else: ?>
         <div class="katv-baum">
-            <?php foreach ($kategorienBaum as $wurzel): ?>
+            <?php
+            $wurzelAnzahl = count($kategorienBaum);
+            foreach ($kategorienBaum as $wi => $wurzel): ?>
                 <div class="katv-gruppe">
-                    <?php renderVerwaltungsKnoten($wurzel, 0); ?>
+                    <?php renderVerwaltungsKnoten($wurzel, 0, $wi, $wurzelAnzahl); ?>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -288,6 +302,20 @@ function katvLoeschenBestaetigt() {
     .then(function(d) {
         if (d.erfolg) { window.location.reload(); }
         else { alert(d.fehler || 'Fehler beim Löschen'); katvDelSchliessen(); }
+    });
+}
+
+// ── Sortierung ────────────────────────────────────────────────────────
+function katSortieren(id, richtung) {
+    fetch('/mealana/artikel/kategorie_sort_ajax.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id, richtung: richtung})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.erfolg) { window.location.reload(); }
+        else { alert(d.fehler || 'Fehler beim Sortieren'); }
     });
 }
 </script>

@@ -138,4 +138,10 @@ class AchsenRepository
 
         return $stmt->rowCount() > 0;
     }
+
+    public function updateSortOrder(int $id, int $order): void
+    {
+        $stmt = $this->db->prepare("UPDATE varianten_achsen SET sort_order = :order WHERE id = :id");
+        $stmt->execute(['order' => $order, 'id' => $id]);
+    }
 }

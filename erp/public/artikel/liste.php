@@ -16,6 +16,19 @@ $alleArtikeltypen = $db->query("SELECT id, name FROM artikel_typen ORDER BY name
 $statusFilter     = $_GET['status_filter'] ?? '';
 $aktivKategorieId = (int)($_GET['kategorie_id'] ?? 0) ?: null;
 
+// Sortierung
+$erlaubtSort = ['artikelnummer', 'name', 'bestand', 'preis'];
+$aktSort = in_array($_GET['sort'] ?? '', $erlaubtSort) ? $_GET['sort'] : 'artikelnummer';
+$aktDir  = ($_GET['dir'] ?? '') === 'desc' ? 'desc' : 'asc';
+$sortMap = [
+    'artikelnummer' => 'a.artikelnummer',
+    'name'          => 'a.name',
+    'bestand'       => 'gesamtbestand',
+    'preis'         => 'COALESCE(ap.brutto_vk, 0)',
+];
+$sortSpalteSQL = $sortMap[$aktSort];
+$sortDirSQL    = strtoupper($aktDir);
+
 // Kategorie-Filter auf alle Nachkommen ausweiten (damit "Wolle" auch Unterkategorien zeigt)
 $alleKatIds = null;
 if ($aktivKategorieId) {
@@ -31,6 +44,8 @@ $filter = [
     'status_filter'   => $statusFilter,
     'kategorie_ids'   => $alleKatIds,
     'nurKategorielos' => $statusFilter === 'ohnekat',
+    'sort'            => $aktSort,
+    'dir'             => $aktDir,
 ];
 
 $kategorienBaum = $service->getKategorienBaum();
@@ -44,7 +59,7 @@ $artikel = $controller->index($filter, $proSeite, $offset);
 
 $vaterIds = array_column($artikel, 'id');
 
-$alleKinder = $service->getKinderFuerListe($vaterIds);
+$alleKinder = $service->getKinderFuerListe($vaterIds, $sortSpalteSQL, $sortDirSQL);
 $kinderNachVater = [];
 foreach ($alleKinder as $k) {
     $kinderNachVater[$k['vaterartikel_id']][] = $k;
@@ -74,6 +89,18 @@ function buildPaginierung(int $aktuelleSeite, int $gesamtSeiten, int $fenster = 
     if ($bis < $gesamtSeiten - 1) $seiten[] = '…';
     $seiten[] = $gesamtSeiten;
     return $seiten;
+}
+
+// Hilfsfunktion: klickbarer Spaltenheader mit Sort-Indikator
+function sortKopf(string $spalte, string $label, string $aktSort, string $aktDir, array $getParams): string {
+    $istAktiv = $aktSort === $spalte;
+    $neueDir  = ($istAktiv && $aktDir === 'asc') ? 'desc' : 'asc';
+    $p  = array_merge($getParams, ['sort' => $spalte, 'dir' => $neueDir, 'seite' => 1]);
+    $qs = http_build_query($p);
+    $pfeil = $istAktiv ? ($aktDir === 'asc' ? ' ▲' : ' ▼') : ' ↕';
+    $farbe = $istAktiv ? 'color:var(--color-nav)' : 'color:inherit;opacity:.7';
+    return '<a href="liste.php?' . $qs . '" style="' . $farbe . ';text-decoration:none;white-space:nowrap;cursor:pointer">'
+         . htmlspecialchars($label) . $pfeil . '</a>';
 }
 
 // Kanal-Konfiguration — K1/K2 = Kasse (immer alle Artikel, Businessregel)
@@ -192,16 +219,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <div class="card">
     <table class="erp-table artikel-liste-table">
+        <?php $getOhnePagSort = array_diff_key($_GET, array_flip(['seite', 'sort', 'dir'])); ?>
         <thead>
             <tr>
                 <th style="width:28px; text-align:center"><input type="checkbox" id="alle-auswaehlen" title="Alle auswählen"></th>
                 <th style="width:42px"></th>
-                <th style="width:100px">ART.-NR.</th>
+                <th style="width:100px"><?= sortKopf('artikelnummer', 'ART.-NR.', $aktSort, $aktDir, $getOhnePagSort) ?></th>
                 <th style="width:130px">STATUS</th>
-                <th>ARTIKELNAME</th>
+                <th><?= sortKopf('name', 'ARTIKELNAME', $aktSort, $aktDir, $getOhnePagSort) ?></th>
                 <th style="width:110px">KANÄLE</th>
-                <th style="width:60px; text-align:right; cursor:help" title="Physischer Gesamtbestand · Hover für Reservierungsdetails">BST.</th>
-                <th style="width:90px; text-align:right">PREIS</th>
+                <th style="width:60px; text-align:right" title="Physischer Gesamtbestand · Hover für Reservierungsdetails"><?= sortKopf('bestand', 'BST.', $aktSort, $aktDir, $getOhnePagSort) ?></th>
+                <th style="width:90px; text-align:right"><?= sortKopf('preis', 'PREIS', $aktSort, $aktDir, $getOhnePagSort) ?></th>
                 <th style="width:80px"><button type="button" id="alle-toggle-btn" onclick="alleToggle()">alle zuklappen</button></th>
             </tr>
         </thead>
@@ -245,6 +273,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         . formatBestand($a['reserviert']) . ' reserviert · '
                         . formatBestand($vk) . ' verkaufbar"';
                 }
+
+                // "ab"-Preis: mind. ein Kind ist teurer als der Vater
+                $hatTeureresKind = false;
+                if ($a['brutto_vk'] !== null) {
+                    foreach ($kinder as $k) {
+                        if ($k['brutto_vk'] !== null && (float)$k['brutto_vk'] > (float)$a['brutto_vk']) {
+                            $hatTeureresKind = true;
+                            break;
+                        }
+                    }
+                }
             ?>
                 <tr class="artikel-zeile<?= !$a['aktiv'] ? ' row-inaktiv' : '' ?>">
                     <td style="text-align:center; width:28px">
@@ -276,7 +315,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td class="kanal-cell"><?= renderKanalChips($a, $kassenKanaele) ?></td>
                     <td style="text-align:right" class="<?= $bstKlasse ?>" <?= $bstTitle ?>><?= formatBestand($a['gesamtbestand']) ?></td>
                     <td style="text-align:right" class="preis-cell">
-                        <?= $a['brutto_vk'] ? number_format((float)$a['brutto_vk'], 2, ',', '.') . ' €' : '–' ?>
+                        <?php if ($a['brutto_vk']): ?>
+                            <?php if ($hatTeureresKind): ?><span style="font-size:10px;color:var(--color-text-muted)">ab </span><?php endif; ?>
+                            <?= number_format((float)$a['brutto_vk'], 2, ',', '.') ?> €
+                        <?php else: ?>–<?php endif; ?>
                     </td>
                     <td class="aktion-cell">
                         <span class="row-aktionen">
@@ -463,31 +505,45 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 
 <script>
-    function alleToggle() {
-        // 1. Alle Pfeile finden (id beginnt mit "pfeil-")
-        const pfeile = document.querySelectorAll('[id^="pfeil-"]');
+    const EXPANDED_KEY = 'mealana_expanded_artikel';
 
-        // 2. Aktuellen Zustand bestimmen: sind ALLE zugeklappt?
-        const sindAlleZu = Array.from(pfeile).every((pfeil, index, array) => {
-            return pfeil.textContent === '▶';
-        });
+    function getExpanded() {
+        try { return new Set(JSON.parse(localStorage.getItem(EXPANDED_KEY) || '[]').map(String)); }
+        catch(e) { return new Set(); }
+    }
 
-        //    → dann aufklappen; sonst zuklappen
-        if (!sindAlleZu) {
-            // 3. Jeden Pfeil prüfen und toggleKinder(id) aufrufen wenn nötig
-            pfeile.forEach(pfeil => {
-                if (pfeil.textContent === '▼') {
-                    toggleKinder(pfeil.id.replace('pfeil-', ''));
-                }
-            });
-        }
+    function saveExpanded(set) {
+        localStorage.setItem(EXPANDED_KEY, JSON.stringify([...set]));
     }
 
     function toggleKinder(vaterId) {
+        vaterId = String(vaterId);
         document.querySelectorAll('.kind-zeile-' + vaterId).forEach(r => r.classList.toggle('versteckt'));
         const p = document.getElementById('pfeil-' + vaterId);
-        p.textContent = p.textContent === '▶' ? '▼' : '▶';
+        const istJetztOffen = p.textContent === '▶';
+        p.textContent = istJetztOffen ? '▼' : '▶';
+
+        const expanded = getExpanded();
+        istJetztOffen ? expanded.add(vaterId) : expanded.delete(vaterId);
+        saveExpanded(expanded);
     }
+
+    function alleToggle() {
+        const pfeile = document.querySelectorAll('[id^="pfeil-"]');
+        const sindAlleZu = Array.from(pfeile).every(p => p.textContent === '▶');
+        if (!sindAlleZu) {
+            pfeile.forEach(p => { if (p.textContent === '▼') toggleKinder(p.id.replace('pfeil-', '')); });
+        }
+    }
+
+    // Aufgeklappte Zeilen nach Seitenlade wiederherstellen
+    (function() {
+        const expanded = getExpanded();
+        expanded.forEach(id => {
+            const pfeil = document.getElementById('pfeil-' + id);
+            if (pfeil && pfeil.textContent === '▶') toggleKinder(id);
+        });
+    })();
 
     document.getElementById('alle-auswaehlen').addEventListener('change', function() {
         document.querySelectorAll('.zeile-cb').forEach(cb => cb.checked = this.checked);

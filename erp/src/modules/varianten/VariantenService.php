@@ -62,6 +62,11 @@ class VariantenService
         return $this->repo->findExistingKombinationen($vaterId);
     }
 
+    public function findWertIdsInUse(int $artikelId): array
+    {
+        return $this->repo->findWertIdsInUse($artikelId);
+    }
+
     public function erstelleKombinationen(array $vater, bool $hatEigenenLagerstand, array $kombis): array
     {
         foreach ($kombis as $kombi) {

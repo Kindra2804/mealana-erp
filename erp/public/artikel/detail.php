@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../src/modules/preise/PreisService.php';
+require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 
@@ -32,6 +33,9 @@ $achsen            = $variantenService->findAchsenByArtikelId($id);
 $werte             = $variantenService->findWerteByArtikelId($id);
 $existingKombis    = $variantenService->findExistingKombinationen($id);
 $alleLieferanten   = $lieferantenService->findAll();
+
+$achsService        = new AchsenService();
+$alleGlobalenAchsen = $achsService->findAll();
 
 $lagerService  = new LagerService();
 $lagerGruppen  = $lagerService->getLagerBestandChargen($id);
@@ -135,6 +139,10 @@ $werteProAchse = [];
 foreach ($werte as $w) {
     $werteProAchse[$w['achse_id']][] = $w;
 }
+
+$zugewieseneAchsenIds = array_column($achsen, 'achse_id');
+$wertIdsInUse         = $variantenService->findWertIdsInUse($id);
+$wertIdsInUseSet      = array_flip($wertIdsInUse);
 
 // Kartesisches Produkt — nur wenn mind. eine Achse mit Werten da ist
 $gruppen = array_values($werteProAchse);  // numerisch indiziert
@@ -514,11 +522,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <div class="card" style="margin-bottom:var(--space-md)">
                 <div class="form-section-header" style="display:flex; justify-content:space-between; align-items:center">
                     <span>Achsen</span>
-                    <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>" class="btn btn-secondary btn-sm">✏️ Achsen bearbeiten</a>
+                    <button type="button" onclick="achsenModalOeffnen()" class="btn btn-secondary btn-sm">✏️ Achsen bearbeiten</button>
                 </div>
 
                 <?php if (empty($achsen)): ?>
-                    <p style="color:var(--color-text-muted); font-size:13px">Keine Achsen zugewiesen — <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>">jetzt zuweisen</a></p>
+                    <p style="color:var(--color-text-muted); font-size:13px">Keine Achsen zugewiesen — <a href="#" onclick="achsenModalOeffnen();return false">jetzt zuweisen</a></p>
                 <?php else: ?>
                     <?php foreach ($achsen as $a): ?>
                         <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:var(--space-sm)">
@@ -805,7 +813,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </thead>
                     <tbody>
                         <?php foreach ($kundengruppenPreise as $kp): ?>
-                            <tr data-kg-id="<?= $kp['id'] ?>"
+                            <tr class="artikel-zeile" data-kg-id="<?= $kp['id'] ?>"
                                 data-brutto="<?= htmlspecialchars($kp['brutto_vk'] ?? '') ?>"
                                 data-netto="<?= htmlspecialchars($kp['netto_vk'] ?? '') ?>"
                                 data-ab="<?= htmlspecialchars($kp['gueltig_ab'] ?? '') ?>"
@@ -862,7 +870,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         </thead>
                         <tbody>
                             <?php foreach ($staffelpreise as $sp): ?>
-                                <tr data-sp-id="<?= $sp['id'] ?>"
+                                <tr class="artikel-zeile" data-sp-id="<?= $sp['id'] ?>"
                                     data-kg-id="<?= $sp['kundengruppen_id'] ?>"
                                     data-menge="<?= htmlspecialchars($sp['menge_ab']) ?>"
                                     data-brutto="<?= htmlspecialchars($sp['brutto_vk']) ?>"
@@ -1766,6 +1774,161 @@ function renderKatBaumModal(array $nodes, int $tiefe = 0): string {
         document.getElementById('var-btn-gen').className = 'btn btn-sm ' + (name === 'gen' ? 'btn-primary' : 'btn-secondary');
         document.getElementById('var-btn-kinder').className = 'btn btn-sm ' + (name === 'kinder' ? 'btn-primary' : 'btn-secondary');
     }
+</script>
+
+<!-- ── Achsen-Modal ────────────────────────────────────────────────── -->
+<div id="achsen-backdrop" class="modal-backdrop" onclick="achsenModalSchliessen()">
+    <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+        <div class="modal-header" style="flex-shrink:0">
+            Achsen &amp; Variantenwerte
+            <button onclick="achsenModalSchliessen()" class="modal-close">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:var(--space-md)">
+            <?php if (empty($alleGlobalenAchsen)): ?>
+                <p style="color:var(--color-text-muted);font-size:13px">
+                    Keine Achsen im System — erst
+                    <a href="/mealana/achsen/liste.php" target="_blank">Achsen anlegen ↗</a>
+                </p>
+            <?php else: ?>
+                <?php foreach ($alleGlobalenAchsen as $ga):
+                    $istChecked      = in_array($ga['id'], $zugewieseneAchsenIds);
+                    $werteVorhanden  = $werteProAchse[$ga['id']] ?? [];
+                    $achseGesperrt   = !empty(array_filter(
+                        $werteVorhanden,
+                        fn($w) => isset($wertIdsInUseSet[$w['id']])
+                    ));
+                ?>
+                <div style="margin-bottom:var(--space-md);padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;font-size:13px">
+                        <input type="checkbox" class="achse-checkbox"
+                               data-achse-id="<?= $ga['id'] ?>"
+                               <?= $istChecked ? 'checked' : '' ?>
+                               <?= $achseGesperrt ? 'data-has-locked="1"' : '' ?>
+                               onchange="achseToggle(this)">
+                        <?= htmlspecialchars($ga['name']) ?>
+                        <span style="font-size:11px;color:var(--color-text-muted);font-weight:400"><?= htmlspecialchars($ga['darstellungsform']) ?></span>
+                        <?php if ($achseGesperrt): ?>
+                            <span style="font-size:11px;color:var(--color-text-muted)">— hat Kind-Artikel</span>
+                        <?php endif; ?>
+                    </label>
+                    <div id="achse-werte-<?= $ga['id'] ?>" style="margin-top:8px;margin-left:22px;<?= !$istChecked ? 'display:none' : '' ?>">
+                        <div id="achse-chips-<?= $ga['id'] ?>" style="margin-bottom:6px">
+                            <?php foreach ($werteVorhanden as $w):
+                                $wertGesperrt = isset($wertIdsInUseSet[$w['id']]);
+                            ?>
+                            <div class="achse-wert-zeile" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px">
+                                <span class="achse-chip-text" style="font-size:13px"><?= htmlspecialchars($w['wert']) ?></span>
+                                <div style="display:flex;gap:2px;flex-shrink:0;align-items:center">
+                                    <button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>
+                                    <button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>
+                                    <?php if ($wertGesperrt): ?>
+                                        <span title="Wird von einem Kind-Artikel verwendet — kann nicht entfernt werden"
+                                              style="font-size:12px;color:var(--color-text-muted);padding:0 4px;cursor:default">🔒</span>
+                                    <?php else: ?>
+                                        <button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div style="display:flex;gap:4px">
+                            <input type="text" class="erp-input achse-wert-input"
+                                   data-achse-id="<?= $ga['id'] ?>"
+                                   placeholder="Wert eingeben + Enter"
+                                   style="font-size:12px;padding:4px 8px;flex:1"
+                                   onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();achseWertHinzufuegen(<?= $ga['id'] ?>)}">
+                            <button type="button" class="btn btn-secondary btn-xs"
+                                    onclick="achseWertHinzufuegen(<?= $ga['id'] ?>)">+</button>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <div style="flex-shrink:0;padding:var(--space-sm) var(--space-md);border-top:1px solid var(--color-border);display:flex;gap:var(--space-sm);justify-content:flex-end">
+            <button onclick="achsenModalSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
+            <button id="achsen-speichern-btn" onclick="achsenSpeichern()" class="btn btn-primary btn-sm">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function achsenModalOeffnen() {
+    document.getElementById('achsen-backdrop').style.display = 'flex';
+}
+function achsenModalSchliessen() {
+    document.getElementById('achsen-backdrop').style.display = 'none';
+}
+function achseToggle(cb) {
+    if (!cb.checked && cb.dataset.hasLocked) {
+        cb.checked = true;
+        alert('Diese Achse hat Kind-Artikel — sie kann nicht entfernt werden solange Kind-Artikel existieren.');
+        return;
+    }
+    var id = cb.dataset.achseId;
+    document.getElementById('achse-werte-' + id).style.display = cb.checked ? '' : 'none';
+}
+function achseZeileEntfernen(btn) {
+    btn.closest('.achse-wert-zeile').remove();
+}
+function achseWertHoch(btn) {
+    var zeile = btn.closest('.achse-wert-zeile');
+    var prev  = zeile.previousElementSibling;
+    if (prev && prev.classList.contains('achse-wert-zeile')) {
+        zeile.parentNode.insertBefore(zeile, prev);
+    }
+}
+function achseWertRunter(btn) {
+    var zeile = btn.closest('.achse-wert-zeile');
+    var next  = zeile.nextElementSibling;
+    if (next && next.classList.contains('achse-wert-zeile')) {
+        zeile.parentNode.insertBefore(next, zeile);
+    }
+}
+function achseWertHinzufuegen(achseId) {
+    var input = document.querySelector('.achse-wert-input[data-achse-id="' + achseId + '"]');
+    var wert = input.value.trim();
+    if (!wert) return;
+    var container = document.getElementById('achse-chips-' + achseId);
+    var zeile = document.createElement('div');
+    zeile.className = 'achse-wert-zeile';
+    zeile.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px';
+    zeile.innerHTML = '<span class="achse-chip-text" style="font-size:13px">' + wert.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>'
+        + '<div style="display:flex;gap:2px;flex-shrink:0">'
+        + '<button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>'
+        + '<button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>'
+        + '<button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>'
+        + '</div>';
+    container.appendChild(zeile);
+    input.value = '';
+    input.focus();
+}
+function achsenSpeichern() {
+    var btn = document.getElementById('achsen-speichern-btn');
+    btn.disabled = true;
+    var achsenDaten = [];
+    document.querySelectorAll('.achse-checkbox').forEach(function(cb) {
+        if (!cb.checked) return;
+        var achseId = parseInt(cb.dataset.achseId);
+        var werte   = [];
+        document.querySelectorAll('#achse-chips-' + achseId + ' .achse-chip-text').forEach(function(t) {
+            var txt = t.textContent.trim();
+            if (txt) werte.push(txt);
+        });
+        achsenDaten.push({id: achseId, werte: werte});
+    });
+    fetch('/mealana/artikel/achsen_zuweisen_ajax.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({artikel_id: <?= $id ?>, achsen: achsenDaten})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.erfolg) { window.location.reload(); }
+        else { alert(d.fehler || 'Fehler beim Speichern'); btn.disabled = false; }
+    })
+    .catch(function() { alert('Verbindungsfehler'); btn.disabled = false; });
+}
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
