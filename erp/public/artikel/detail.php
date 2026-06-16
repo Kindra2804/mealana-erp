@@ -51,6 +51,8 @@ $zustandsArtikelListe = ($artikel && empty($artikel['zustand_vater_id']))
     ? $service->getZustandsArtikelFuerDetail($id)
     : [];
 
+$istKind = !empty($artikel['vaterartikel_id']);
+
 // Standard-Lieferant für Marge
 $stdLieferant = null;
 foreach ($lieferanten as $l) {
@@ -196,7 +198,6 @@ $sidebarItems = [
     ['type' => 'context', 'artNr' => $artikel['artikelnummer'], 'name' => $artikel['name']],
     ['type' => 'separator'],
     ['type' => 'nav', 'icon' => '📋', 'label' => 'Stammdaten',  'href' => '#stammdaten',  'active' => true],
-    ['type' => 'nav', 'icon' => '🎨', 'label' => 'Varianten',   'href' => '#varianten',   'badge' => count($kinder)],
     ['type' => 'nav', 'icon' => '💲', 'label' => 'Preise',      'href' => '#preise'],
     ['type' => 'nav', 'icon' => '📦', 'label' => 'Lager',       'href' => '#lager'],
     ['type' => 'nav', 'icon' => '🖼',  'label' => 'Bilder',      'href' => '#bilder'],
@@ -206,6 +207,9 @@ $sidebarItems = [
     ['type' => 'grayed', 'icon' => '🌐', 'label' => 'SEO'],
     ['type' => 'grayed', 'icon' => '📊', 'label' => 'Statistik'],
 ];
+if (!$istKind) {
+    array_splice($sidebarItems, 5, 0, [['type' => 'nav', 'icon' => '🎨', 'label' => 'Varianten', 'href' => '#varianten', 'badge' => count($kinder)]]);
+}
 
 require_once __DIR__ . '/../includes/shell_top.php';
 
@@ -237,9 +241,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <div class="tab-bar">
     <a class="tab active" href="#" onclick="zeigeTab('stammdaten',this);return false;">Stammdaten</a>
+    <?php if (!$istKind): ?>
     <a class="tab" href="#" onclick="zeigeTab('varianten',this);return false;">
         Varianten <?php if (count($kinder) > 0): ?><span class="badge"><?= count($kinder) ?></span><?php endif; ?>
     </a>
+    <?php endif; ?>
     <a class="tab" href="#" onclick="zeigeTab('preise',this);return false;">Preise</a>
     <a class="tab" href="#" onclick="zeigeTab('lager',this);return false;">Lager</a>
     <a class="tab" href="#" onclick="zeigeTab('bilder',this);return false;">Bilder</a>
@@ -501,6 +507,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </form>
     </div>
 
+    <?php if (!$istKind): ?>
     <div id="tab-varianten" class="versteckt">
 
         <!-- Panel Switcher -->
@@ -663,6 +670,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
 
     </div>
+    <?php endif; ?>
 
     <div id="tab-preise" class="versteckt">
 
@@ -1776,6 +1784,7 @@ function renderKatBaumModal(array $nodes, int $tiefe = 0): string {
     }
 </script>
 
+<?php if (!$istKind): ?>
 <!-- ── Achsen-Modal ────────────────────────────────────────────────── -->
 <div id="achsen-backdrop" class="modal-backdrop" onclick="achsenModalSchliessen()">
     <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
@@ -1930,6 +1939,7 @@ function achsenSpeichern() {
     .catch(function() { alert('Verbindungsfehler'); btn.disabled = false; });
 }
 </script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
 
