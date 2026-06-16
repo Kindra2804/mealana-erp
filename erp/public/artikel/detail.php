@@ -204,7 +204,7 @@ $sidebarItems = [
     ['type' => 'nav', 'icon' => '🏷',  'label' => 'Merkmale',    'href' => '#merkmale'],
     ['type' => 'nav', 'icon' => '🚚', 'label' => 'Lieferanten', 'href' => '#lieferanten'],
     ['type' => 'separator'],
-    ['type' => 'grayed', 'icon' => '🌐', 'label' => 'SEO'],
+    ['type' => 'nav', 'icon' => '🌐', 'label' => 'SEO', 'href' => '#seo'],
     ['type' => 'grayed', 'icon' => '📊', 'label' => 'Statistik'],
 ];
 if (!$istKind) {
@@ -242,15 +242,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="tab-bar">
     <a class="tab active" href="#" onclick="zeigeTab('stammdaten',this);return false;">Stammdaten</a>
     <?php if (!$istKind): ?>
-    <a class="tab" href="#" onclick="zeigeTab('varianten',this);return false;">
-        Varianten <?php if (count($kinder) > 0): ?><span class="badge"><?= count($kinder) ?></span><?php endif; ?>
-    </a>
+        <a class="tab" href="#" onclick="zeigeTab('varianten',this);return false;">
+            Varianten <?php if (count($kinder) > 0): ?><span class="badge"><?= count($kinder) ?></span><?php endif; ?>
+        </a>
     <?php endif; ?>
     <a class="tab" href="#" onclick="zeigeTab('preise',this);return false;">Preise</a>
     <a class="tab" href="#" onclick="zeigeTab('lager',this);return false;">Lager</a>
     <a class="tab" href="#" onclick="zeigeTab('bilder',this);return false;">Bilder</a>
     <a class="tab" href="#" onclick="zeigeTab('merkmale',this);return false;">Merkmale</a>
     <a class="tab" href="#" onclick="zeigeTab('lieferanten',this);return false;">Lieferanten</a>
+    <a class="tab" href="#" onclick="zeigeTab('seo',this);return false;">SEO</a>
 </div>
 
 <div style="padding: var(--space-md)">
@@ -258,10 +259,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div id="tab-stammdaten">
         <form id="stammdaten-form" action="aktualisieren.php" method="POST">
             <input type="hidden" name="id" value="<?= $id ?>">
-            <?php /* SEO-Felder: nicht im Wireframe, aber Daten-Erhalt bis SEO-Tab gebaut wird */ ?>
-            <input type="hidden" name="meta_titel"       value="<?= htmlspecialchars($artikel['meta_titel']       ?? '') ?>">
+            <?php /* SEO-Felder: nicht im Wireframe, aber Daten-Erhalt bis SEO-Tab gebaut wird 
+            <input type="hidden" name="meta_titel" value="<?= htmlspecialchars($artikel['meta_titel']       ?? '') ?>">
             <input type="hidden" name="meta_description" value="<?= htmlspecialchars($artikel['meta_description'] ?? '') ?>">
-            <input type="hidden" name="url_slug"         value="<?= htmlspecialchars($artikel['url_slug']         ?? '') ?>">
+            <input type="hidden" name="url_slug" value="<?= htmlspecialchars($artikel['url_slug']         ?? '') ?>">
+            */ ?>
             <input type="hidden" name="zustand_vater_id" value="<?= (int)($artikel['zustand_vater_id'] ?? 0) ?: '' ?>">
 
             <!-- Kern-Daten + Einstellungen -->
@@ -508,168 +510,168 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 
     <?php if (!$istKind): ?>
-    <div id="tab-varianten" class="versteckt">
+        <div id="tab-varianten" class="versteckt">
 
-        <!-- Panel Switcher -->
-        <div style="display:flex; gap:var(--space-sm); margin-bottom:var(--space-md)">
-            <button type="button" class="btn btn-primary btn-sm" id="var-btn-gen"
-                onclick="varPanel('gen')">◀ Achsen &amp; Generator</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="var-btn-kinder"
-                onclick="varPanel('kinder')">Kinder-Liste ▶</button>
-            <?php if (!empty($neueKombis)): ?>
-                <span style="margin-left:var(--space-sm); font-size:12px; color:var(--color-text-muted); align-self:center">
-                    💡 <?= count($neueKombis) ?> neue Kombinationen möglich
-                </span>
-            <?php endif; ?>
-        </div>
-
-        <!-- Panel: Achsen & Generator -->
-        <div id="var-panel-gen">
-            <!-- Achsen Card -->
-            <div class="card" style="margin-bottom:var(--space-md)">
-                <div class="form-section-header" style="display:flex; justify-content:space-between; align-items:center">
-                    <span>Achsen</span>
-                    <button type="button" onclick="achsenModalOeffnen()" class="btn btn-secondary btn-sm">✏️ Achsen bearbeiten</button>
-                </div>
-
-                <?php if (empty($achsen)): ?>
-                    <p style="color:var(--color-text-muted); font-size:13px">Keine Achsen zugewiesen — <a href="#" onclick="achsenModalOeffnen();return false">jetzt zuweisen</a></p>
-                <?php else: ?>
-                    <?php foreach ($achsen as $a): ?>
-                        <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:var(--space-sm)">
-                            <span class="chip chip-aktiv" style="min-width:120px; text-align:center">
-                                <?= htmlspecialchars($a['name']) ?>
-                            </span>
-                            <span style="font-size:11px; color:var(--color-text-muted)"><?= htmlspecialchars($a['darstellungsform']) ?></span>
-                            <div style="display:flex; gap:var(--space-xs); flex-wrap:wrap">
-                                <?php foreach ($werteProAchse[$a['id']] ?? [] as $w): ?>
-                                    <span class="chip" style="background:#EDF2F7; color:#4A5568; border:1px solid #CBD5E0">
-                                        <?= htmlspecialchars($w['wert']) ?>
-                                    </span>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+            <!-- Panel Switcher -->
+            <div style="display:flex; gap:var(--space-sm); margin-bottom:var(--space-md)">
+                <button type="button" class="btn btn-primary btn-sm" id="var-btn-gen"
+                    onclick="varPanel('gen')">◀ Achsen &amp; Generator</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="var-btn-kinder"
+                    onclick="varPanel('kinder')">Kinder-Liste ▶</button>
+                <?php if (!empty($neueKombis)): ?>
+                    <span style="margin-left:var(--space-sm); font-size:12px; color:var(--color-text-muted); align-self:center">
+                        💡 <?= count($neueKombis) ?> neue Kombinationen möglich
+                    </span>
                 <?php endif; ?>
             </div>
 
-            <!-- Generator Card -->
-            <div class="card">
-                <div class="form-section-header">VarKombi-Generator</div>
-
-                <?php if (empty($achsen)): ?>
-                    <p style="color:var(--color-text-muted); font-size:13px">Erst Achsen zuweisen um Kombinationen generieren zu können.</p>
-                <?php elseif (empty($neueKombis) && empty($vorhandeneKombis)): ?>
-                    <p style="color:var(--color-text-muted); font-size:13px">Keine Kombinationen berechenbar.</p>
-                <?php else: ?>
-
-                    <!-- Info Strip -->
-                    <div style="display:flex; gap:var(--space-lg); padding:var(--space-sm) 0; margin-bottom:var(--space-md); border-bottom:1px solid var(--color-border); font-size:12px">
-                        <span><span style="color:#27AE60">●</span> <?= count($vorhandeneKombis) ?> existieren bereits</span>
-                        <span><span style="color:#3182CE">●</span> <?= count($neueKombis) ?> werden neu erstellt</span>
+            <!-- Panel: Achsen & Generator -->
+            <div id="var-panel-gen">
+                <!-- Achsen Card -->
+                <div class="card" style="margin-bottom:var(--space-md)">
+                    <div class="form-section-header" style="display:flex; justify-content:space-between; align-items:center">
+                        <span>Achsen</span>
+                        <button type="button" onclick="achsenModalOeffnen()" class="btn btn-secondary btn-sm">✏️ Achsen bearbeiten</button>
                     </div>
 
-                    <form action="varkombi_erstellen.php" method="POST" id="generator-form">
-                        <input type="hidden" name="artikel_id" value="<?= $id ?>">
-                        <label style="font-size:13px; display:flex; align-items:center; gap:var(--space-xs); margin-bottom:var(--space-md)">
-                            <input type="checkbox" name="hat_eigenen_lagerstand" value="1" checked>
-                            Eigener Lagerstand pro Variante
-                        </label>
+                    <?php if (empty($achsen)): ?>
+                        <p style="color:var(--color-text-muted); font-size:13px">Keine Achsen zugewiesen — <a href="#" onclick="achsenModalOeffnen();return false">jetzt zuweisen</a></p>
+                    <?php else: ?>
+                        <?php foreach ($achsen as $a): ?>
+                            <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:var(--space-sm)">
+                                <span class="chip chip-aktiv" style="min-width:120px; text-align:center">
+                                    <?= htmlspecialchars($a['name']) ?>
+                                </span>
+                                <span style="font-size:11px; color:var(--color-text-muted)"><?= htmlspecialchars($a['darstellungsform']) ?></span>
+                                <div style="display:flex; gap:var(--space-xs); flex-wrap:wrap">
+                                    <?php foreach ($werteProAchse[$a['id']] ?? [] as $w): ?>
+                                        <span class="chip" style="background:#EDF2F7; color:#4A5568; border:1px solid #CBD5E0">
+                                            <?= htmlspecialchars($w['wert']) ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
 
+                <!-- Generator Card -->
+                <div class="card">
+                    <div class="form-section-header">VarKombi-Generator</div>
+
+                    <?php if (empty($achsen)): ?>
+                        <p style="color:var(--color-text-muted); font-size:13px">Erst Achsen zuweisen um Kombinationen generieren zu können.</p>
+                    <?php elseif (empty($neueKombis) && empty($vorhandeneKombis)): ?>
+                        <p style="color:var(--color-text-muted); font-size:13px">Keine Kombinationen berechenbar.</p>
+                    <?php else: ?>
+
+                        <!-- Info Strip -->
+                        <div style="display:flex; gap:var(--space-lg); padding:var(--space-sm) 0; margin-bottom:var(--space-md); border-bottom:1px solid var(--color-border); font-size:12px">
+                            <span><span style="color:#27AE60">●</span> <?= count($vorhandeneKombis) ?> existieren bereits</span>
+                            <span><span style="color:#3182CE">●</span> <?= count($neueKombis) ?> werden neu erstellt</span>
+                        </div>
+
+                        <form action="varkombi_erstellen.php" method="POST" id="generator-form">
+                            <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                            <label style="font-size:13px; display:flex; align-items:center; gap:var(--space-xs); margin-bottom:var(--space-md)">
+                                <input type="checkbox" name="hat_eigenen_lagerstand" value="1" checked>
+                                Eigener Lagerstand pro Variante
+                            </label>
+
+                            <table class="erp-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32px"></th>
+                                        <th>Artikelnummer</th>
+                                        <th>Bezeichnung</th>
+                                        <th>Aufpreis</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Bestehende (read-only) -->
+                                    <?php foreach ($vorhandeneKombis as $v): ?>
+                                        <tr>
+                                            <td><input type="checkbox" disabled checked></td>
+                                            <td><a href="detail.php?id=<?= $v['artikel']['id'] ?>"><?= htmlspecialchars($v['artikel']['artikelnummer']) ?></a></td>
+                                            <td><?= htmlspecialchars($v['artikel']['name']) ?></td>
+                                            <td>–</td>
+                                            <td><span class="chip <?= $v['artikel']['aktiv'] === 1 ? 'chip-aktiv' : 'chip-inaktiv' ?>"><?= $v['artikel']['aktiv'] === 1 ? '✓ existiert' : '✗ inaktiv' ?></span></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+
+                                    <!-- Neue (editierbar) -->
+                                    <?php foreach ($neueKombis as $n => $k): ?>
+                                        <?php
+                                        $wertNamen     = array_map(fn($w) => $w['wert'], $k['kombi']);
+                                        $vorschlagNr   = $artikel['artikelnummer'] . '-' . implode('-', $wertNamen);
+                                        $vorschlagName = $artikel['name'] . ' ' . implode(' ', $wertNamen);
+                                        $aufpreis      = array_sum(array_column($k['kombi'], 'aufpreis'));
+                                        ?>
+                                        <tr style="background:#EBF8FF">
+                                            <td>
+                                                <input type="hidden" name="kombis[<?= $n ?>][key]" value="<?= htmlspecialchars($k['key']) ?>">
+                                                <input type="checkbox" name="kombis[<?= $n ?>][selected]" value="1" checked>
+                                            </td>
+                                            <td><input type="text" name="kombis[<?= $n ?>][artikelnummer]" class="erp-input" style="width:160px" value="<?= htmlspecialchars($vorschlagNr) ?>"></td>
+                                            <td><input type="text" name="kombis[<?= $n ?>][name]" class="erp-input" style="width:100%" value="<?= htmlspecialchars($vorschlagName) ?>"></td>
+                                            <td><input type="number" name="kombis[<?= $n ?>][aufpreis]" class="erp-input" style="width:80px" value="<?= number_format($aufpreis, 2, '.', '') ?>" step="0.01"></td>
+                                            <td><span class="chip" style="background:#BEE3F8; color:#2B6CB0">● neu</span></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+
+                            <?php if (!empty($neueKombis)): ?>
+                                <div style="display:flex; justify-content:flex-end; margin-top:var(--space-md)">
+                                    <button type="submit" id="gen-submit-btn" class="btn btn-primary">▶ Ausgewählte generieren (<?= count($neueKombis) ?>)</button>
+                                </div>
+                            <?php else: ?>
+                                <p style="color:var(--color-text-muted); font-size:13px; margin-top:var(--space-md)">✓ Alle möglichen Kombinationen sind bereits angelegt.</p>
+                            <?php endif; ?>
+                        </form>
+                    <?php endif; ?>
+                </div>
+
+            </div>
+
+            <!-- Panel: Kinder-Liste -->
+            <div id="var-panel-kinder" class="versteckt">
+                <!-- Kinder-Tabelle -->
+                <?php if (empty($kinder)): ?>
+                    <p style="color:var(--color-text-muted); font-size:13px">Noch keine Varianten vorhanden.</p>
+                <?php else: ?>
+                    <div class="card">
                         <table class="erp-table">
                             <thead>
                                 <tr>
-                                    <th style="width:32px"></th>
                                     <th>Artikelnummer</th>
                                     <th>Bezeichnung</th>
-                                    <th>Aufpreis</th>
+                                    <th>EAN</th>
+                                    <th>Preis</th>
+                                    <th>Bestand</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Bestehende (read-only) -->
-                                <?php foreach ($vorhandeneKombis as $v): ?>
-                                    <tr>
-                                        <td><input type="checkbox" disabled checked></td>
-                                        <td><a href="detail.php?id=<?= $v['artikel']['id'] ?>"><?= htmlspecialchars($v['artikel']['artikelnummer']) ?></a></td>
-                                        <td><?= htmlspecialchars($v['artikel']['name']) ?></td>
-                                        <td>–</td>
-                                        <td><span class="chip <?= $v['artikel']['aktiv'] === 1 ? 'chip-aktiv' : 'chip-inaktiv' ?>"><?= $v['artikel']['aktiv'] === 1 ? '✓ existiert' : '✗ inaktiv' ?></span></td>
-                                    </tr>
-                                <?php endforeach; ?>
-
-                                <!-- Neue (editierbar) -->
-                                <?php foreach ($neueKombis as $n => $k): ?>
-                                    <?php
-                                    $wertNamen     = array_map(fn($w) => $w['wert'], $k['kombi']);
-                                    $vorschlagNr   = $artikel['artikelnummer'] . '-' . implode('-', $wertNamen);
-                                    $vorschlagName = $artikel['name'] . ' ' . implode(' ', $wertNamen);
-                                    $aufpreis      = array_sum(array_column($k['kombi'], 'aufpreis'));
-                                    ?>
-                                    <tr style="background:#EBF8FF">
-                                        <td>
-                                            <input type="hidden" name="kombis[<?= $n ?>][key]" value="<?= htmlspecialchars($k['key']) ?>">
-                                            <input type="checkbox" name="kombis[<?= $n ?>][selected]" value="1" checked>
-                                        </td>
-                                        <td><input type="text" name="kombis[<?= $n ?>][artikelnummer]" class="erp-input" style="width:160px" value="<?= htmlspecialchars($vorschlagNr) ?>"></td>
-                                        <td><input type="text" name="kombis[<?= $n ?>][name]" class="erp-input" style="width:100%" value="<?= htmlspecialchars($vorschlagName) ?>"></td>
-                                        <td><input type="number" name="kombis[<?= $n ?>][aufpreis]" class="erp-input" style="width:80px" value="<?= number_format($aufpreis, 2, '.', '') ?>" step="0.01"></td>
-                                        <td><span class="chip" style="background:#BEE3F8; color:#2B6CB0">● neu</span></td>
+                                <?php foreach ($kinder as $k): ?>
+                                    <tr <?= !$k['aktiv'] ? 'class="row-inaktiv"' : '' ?>>
+                                        <td><a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a></td>
+                                        <td><?= htmlspecialchars($k['name']) ?></td>
+                                        <td><?= htmlspecialchars($k['gtin'] ?? '–') ?></td>
+                                        <td><?= $k['brutto_vk'] ? number_format($k['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
+                                        <td><?= $k['gesamtbestand'] ?></td>
+                                        <td><?= $k['aktiv'] ? '<span class="chip chip-aktiv">Aktiv</span>' : '<span class="chip chip-inaktiv">Inaktiv</span>' ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-
-                        <?php if (!empty($neueKombis)): ?>
-                            <div style="display:flex; justify-content:flex-end; margin-top:var(--space-md)">
-                                <button type="submit" id="gen-submit-btn" class="btn btn-primary">▶ Ausgewählte generieren (<?= count($neueKombis) ?>)</button>
-                            </div>
-                        <?php else: ?>
-                            <p style="color:var(--color-text-muted); font-size:13px; margin-top:var(--space-md)">✓ Alle möglichen Kombinationen sind bereits angelegt.</p>
-                        <?php endif; ?>
-                    </form>
+                    </div>
                 <?php endif; ?>
+
             </div>
 
         </div>
-
-        <!-- Panel: Kinder-Liste -->
-        <div id="var-panel-kinder" class="versteckt">
-            <!-- Kinder-Tabelle -->
-            <?php if (empty($kinder)): ?>
-                <p style="color:var(--color-text-muted); font-size:13px">Noch keine Varianten vorhanden.</p>
-            <?php else: ?>
-                <div class="card">
-                    <table class="erp-table">
-                        <thead>
-                            <tr>
-                                <th>Artikelnummer</th>
-                                <th>Bezeichnung</th>
-                                <th>EAN</th>
-                                <th>Preis</th>
-                                <th>Bestand</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($kinder as $k): ?>
-                                <tr <?= !$k['aktiv'] ? 'class="row-inaktiv"' : '' ?>>
-                                    <td><a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a></td>
-                                    <td><?= htmlspecialchars($k['name']) ?></td>
-                                    <td><?= htmlspecialchars($k['gtin'] ?? '–') ?></td>
-                                    <td><?= $k['brutto_vk'] ? number_format($k['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
-                                    <td><?= $k['gesamtbestand'] ?></td>
-                                    <td><?= $k['aktiv'] ? '<span class="chip chip-aktiv">Aktiv</span>' : '<span class="chip chip-inaktiv">Inaktiv</span>' ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-
-        </div>
-
-    </div>
     <?php endif; ?>
 
     <div id="tab-preise" class="versteckt">
@@ -1179,767 +1181,819 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
         <?php endif; ?>
     </div>
-</div>
+    <div id="tab-seo" class="versteckt">
+        <div class="card">
+            <div class="form-section-header">SEO & URLs</div>
+            <div>
+                <form id="seo-form" action="seo_speichern.php" method="POST">
+                    <input type="hidden" name="id" value="<?= $id ?>">
+                    <div class="form-group">
+                        <label class="form-label" for="url_slug">URL Slug</label>
+                        <input class="erp-input" style="width:100%" type="text" name="url_slug" placeholder="z.B. rote-wolle-100g" value="<?= htmlspecialchars($artikel['url_slug'] ?? '') ?>">
+                        <span style="font-size:12px;color:var(--color-text-muted)">Leer lassen → wird beim Shop-Export automatisch aus dem Artikelname generiert</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="meta_titel">Meta-Titel</label>
+                        <input class="erp-input" style="width:100%" type="text" name="meta_titel" maxlength="60" placeholder="max. 60 Zeichen" value="<?= htmlspecialchars($artikel['meta_titel']       ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="meta_description">Meta-Beschreibung</label>
+                        <textarea class="erp-textarea" rows="4" cols="50" name="meta_description" maxlength="160" placeholder="max. 160 Zeichen"><?= htmlspecialchars($artikel['meta_description'] ?? '') ?></textarea>
+                    </div>
 
-<?php
-function renderKatBaumModal(array $nodes, int $tiefe = 0): string {
-    $html = '';
-    $last = count($nodes) - 1;
-    foreach ($nodes as $idx => $node) {
-        $isLast   = ($idx === $last);
-        $pl       = $tiefe * 20;
-        $linie    = $tiefe > 0
-            ? '<span class="kat-linie">' . ($isLast ? '└─' : '├─') . '</span>'
-            : '';
-        $labelCls = $tiefe === 0 ? 'kat-label kat-wurzel' : 'kat-label';
-        $count    = $node['artikel_anzahl'] > 0
-            ? ' <span class="kat-count">' . (int)$node['artikel_anzahl'] . '</span>'
-            : '';
-        $html .= '<label class="kat-zeile" data-tiefe="' . $tiefe . '" style="padding-left:' . $pl . 'px">'
-               . $linie
-               . '<input type="checkbox" value="' . (int)$node['id'] . '"'
-               . ' data-name="' . htmlspecialchars($node['name']) . '"'
-               . ' data-parent-id="' . (int)($node['parent_id'] ?? 0) . '">'
-               . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . '</span>'
-               . $count
-               . '</label>';
-        if (!empty($node['kinder'])) {
-            $html .= renderKatBaumModal($node['kinder'], $tiefe + 1);
+                    <button class="btn btn-secondary btn-sm" type="submit">Speichern</button>
+                </form>
+            </div>
+        </div>
+
+        <?php
+        function renderKatBaumModal(array $nodes, int $tiefe = 0): string
+        {
+            $html = '';
+            $last = count($nodes) - 1;
+            foreach ($nodes as $idx => $node) {
+                $isLast   = ($idx === $last);
+                $pl       = $tiefe * 20;
+                $linie    = $tiefe > 0
+                    ? '<span class="kat-linie">' . ($isLast ? '└─' : '├─') . '</span>'
+                    : '';
+                $labelCls = $tiefe === 0 ? 'kat-label kat-wurzel' : 'kat-label';
+                $count    = $node['artikel_anzahl'] > 0
+                    ? ' <span class="kat-count">' . (int)$node['artikel_anzahl'] . '</span>'
+                    : '';
+                $html .= '<label class="kat-zeile" data-tiefe="' . $tiefe . '" style="padding-left:' . $pl . 'px">'
+                    . $linie
+                    . '<input type="checkbox" value="' . (int)$node['id'] . '"'
+                    . ' data-name="' . htmlspecialchars($node['name']) . '"'
+                    . ' data-parent-id="' . (int)($node['parent_id'] ?? 0) . '">'
+                    . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . '</span>'
+                    . $count
+                    . '</label>';
+                if (!empty($node['kinder'])) {
+                    $html .= renderKatBaumModal($node['kinder'], $tiefe + 1);
+                }
+            }
+            return $html;
         }
-    }
-    return $html;
-}
-?>
-<div id="kat-backdrop" class="modal-backdrop" onclick="katModalSchliessen()">
-    <div id="kat-modal" class="modal" onclick="event.stopPropagation()">
-        <div class="modal-header">Kategorien zuweisen</div>
+        ?>
+        <div id="kat-backdrop" class="modal-backdrop" onclick="katModalSchliessen()">
+            <div id="kat-modal" class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">Kategorien zuweisen</div>
 
-        <div id="kat-checkboxen">
-            <?= renderKatBaumModal($kategorienBaum) ?>
-        </div>
-
-        <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
-
-        <div id="kat-neu">
-            <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Neue Kategorie anlegen</div>
-            <div style="display:flex;gap:var(--space-sm);align-items:center">
-                <select id="neue-kat-parent" class="erp-select" style="width:160px">
-                    <option value="">– Obergruppe (Root) –</option>
-                    <?php foreach ($alleKategorien as $k): ?>
-                        <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <input type="text" id="neue-kat-name" class="erp-input" placeholder="Name..." style="flex:1">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="katAnlegen()">Anlegen</button>
-            </div>
-        </div>
-
-        <div id="kat-aktionen" style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);justify-content:flex-end">
-            <button type="button" class="btn btn-secondary" onclick="katModalSchliessen()">Abbrechen</button>
-            <button type="button" class="btn btn-primary" onclick="katUebernehmen()">Übernehmen</button>
-        </div>
-    </div>
-</div>
-
-<div id="we-backdrop" class="modal-backdrop" onclick="weModalSchliessen()">
-    <div id="we-modal" class="modal" onclick="event.stopPropagation()">
-        <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-xs)">
-            Wareneingang buchen
-        </div>
-        <form method="POST" action="lager_schnell_we.php" style="display:flex;flex-direction:column;gap:var(--space-sm)">
-            <input type="hidden" name="artikel_id" value="<?= $id ?>">
-            <div class="form-row">
-                <label class="form-label">Lager *</label>
-                <select name="lager_id" class="erp-select" style="width:100%" required>
-                    <option value="">– Lager auswählen –</option>
-                    <?php foreach ($alleLager as $l): ?>
-                        <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-row">
-                <label class="form-label">Menge *</label>
-                <input type="number" name="menge" class="erp-input" style="width:100%"
-                    step="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>"
-                    min="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>" required>
-            </div>
-            <?php if ($artikel['charge_pflicht']): ?>
-                <div class="form-row">
-                    <label class="form-label">Charge *</label>
-                    <input type="text" name="charge" class="erp-input" style="width:100%" required>
+                <div id="kat-checkboxen">
+                    <?= renderKatBaumModal($kategorienBaum) ?>
                 </div>
-            <?php else: ?>
-                <div class="form-row">
-                    <label class="form-label">Charge</label>
-                    <input type="text" name="charge" class="erp-input" style="width:100%" placeholder="optional">
-                </div>
-            <?php endif; ?>
-            <div class="form-row">
-                <label class="form-label">Notiz</label>
-                <input type="text" name="notiz" class="erp-input" style="width:100%" placeholder="optional">
-            </div>
-            <div style="display:flex;justify-content:flex-end;gap:var(--space-sm);padding-top:var(--space-sm)">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="weModalSchliessen()">Abbrechen</button>
-                <button type="submit" class="btn btn-primary btn-sm">Buchen</button>
-            </div>
-        </form>
-    </div>
-</div>
 
-<div id="lief-backdrop" class="modal-backdrop" onclick="liefModalSchliessen()">
-    <div id="lief-modal" class="modal" onclick="event.stopPropagation()">
-        <div id="lief-titel" style="font-size:15px; font-weight:600; padding-bottom:var(--space-sm); border-bottom:1px solid var(--color-border); margin-bottom:var(--space-xs)">
-            Lieferant bearbeiten:
-        </div>
-        <form style="display:flex; flex-direction:column; gap:var(--space-sm)" action="">
-            <input type="hidden" name="artikel_id" value="<?= $id ?>">
-            <input type="hidden" name="al_id" id="lief-al-id" value="">
-            <div class="form-row">
-                <label class="form-label">Lieferant</label>
-                <select class="erp-select" style="width:100%" name="lieferant_id" id="lief-lieferant-id">
-                    <option value="">– Lieferant auswählen –</option>
-                    <?php foreach ($alleLieferanten as $l): ?>
-                        <option value="<?= $l['id'] ?>">
-                            <?= htmlspecialchars($l['name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-row">
-                <label class="form-label">Artikelnummer beim Lieferant</label>
-                <input class="erp-input" style="width:100%" type="text" name="artikelnummer_lieferant" id="lief-artnr"
-                    value="">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Netto-EK</label>
-                <input class="erp-input" style="width:100%" type="number" step="0.0001" name="netto_ek" id="lief-ek" value="">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Währung</label>
-                <input class="erp-input" style="width:100%" type="text" name="waehrung" id="lief-waehrung"
-                    value="">
-            </div>
-            <div class="form-row">
-                <label class="form-label">VPE</label>
-                <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="vpe_menge" id="lief-vpe"
-                    value="">
-            </div>
-            <div class="form-row">
-                <label class="form-label">VPE-EAN</label>
-                <input class="erp-input" style="width:100%" type="text" name="vpe_ean" id="lief-vpe-ean"
-                    maxlength="13" placeholder="z.B. 7071723011379" value="">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Lieferzeit</label>
-                <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="lieferzeit_tage" id="lief-lz"
-                    value="">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Mindestbestellmenge</label>
-                <input class="erp-input" style="width:100%" type="number" step="0.1" name="mindestabnahme" id="lief-mba"
-                    value="">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Ist Standardlieferant</label>
-                <input type="checkbox" name="standard_lieferant" id="lief-standard" value="1">
-            </div>
-            <div style="display:flex; gap:var(--space-sm); justify-content:flex-end; margin-top:var(--space-sm)">
-                <button type="button" class="btn btn-primary btn-sm" onclick="liefSpeichern()">Übernehmen</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="liefModalSchliessen()">Abbrechen</button>
-            </div>
-        </form>
-    </div>
-</div>
+                <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
 
-<div id="staffel-backdrop" class="modal-backdrop" onclick="staffelModalSchliessen()">
-    <div id="staffel-modal" class="modal" onclick="event.stopPropagation()">
-        <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
-            <span id="staffel-titel">Staffelpreis hinzufügen</span>
-        </div>
-        <form id="staffel-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
-            <input type="hidden" name="artikel_id" value="<?= $id ?>">
-            <input type="hidden" name="id" id="staffel-id" value="">
-            <div class="form-row">
-                <label class="form-label">Kundengruppe</label>
-                <select class="erp-select" style="width:100%" name="kundengruppen_id" id="staffel-kg">
-                    <option value="">– bitte wählen –</option>
-                    <?php foreach ($kundengruppenPreise as $kp): ?>
-                        <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-row">
-                <label class="form-label">Menge ab</label>
-                <input class="erp-input" style="width:100%" type="number" step="1" min="1"
-                    name="menge_ab" id="staffel-menge" placeholder="z.B. 10">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Brutto VK (€)</label>
-                <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
-                    name="brutto_vk" id="staffel-brutto" placeholder="0,00" oninput="staffelNettoBerechnen()">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
-                <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
-                    name="netto_vk" id="staffel-netto" placeholder="0,0000">
-            </div>
-            <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
-                <button type="button" class="btn btn-primary btn-sm" onclick="staffelSpeichern()">Speichern</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="staffelModalSchliessen()">Abbrechen</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div id="preis-backdrop" class="modal-backdrop" onclick="preisModalSchliessen()">
-    <div id="preis-modal" class="modal" onclick="event.stopPropagation()">
-        <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
-            Preis — <span id="preis-kg-name"></span>
-        </div>
-        <form id="preis-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
-            <input type="hidden" name="artikel_id" value="<?= $id ?>">
-            <input type="hidden" name="kundengruppen_id" id="preis-kg-id" value="">
-            <div class="form-row">
-                <label class="form-label">Brutto VK (€)</label>
-                <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
-                    name="brutto_vk" id="preis-brutto" placeholder="0,00" oninput="preisNettoBerechnen()">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
-                <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
-                    name="netto_vk" id="preis-netto" placeholder="0,0000">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Gültig ab</label>
-                <input class="erp-input" style="width:100%" type="date" name="gueltig_ab" id="preis-ab">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Gültig bis</label>
-                <input class="erp-input" style="width:100%" type="date" name="gueltig_bis" id="preis-bis">
-            </div>
-            <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
-                <button type="button" class="btn btn-primary btn-sm" onclick="preisSpeichern()">Speichern</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="preisModalSchliessen()">Abbrechen</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    function zeigeTab(name, el) {
-        document.querySelectorAll('[id^="tab-"]').forEach(d => d.classList.add('versteckt'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + name).classList.remove('versteckt');
-        el.classList.add('active');
-    }
-
-    // Tab aus URL-Parameter öffnen (z.B. nach WE-Redirect)
-    (function() {
-        const tab = new URLSearchParams(location.search).get('tab');
-        if (tab) {
-            const el = document.querySelector(`.tab[onclick*="'${tab}'"]`);
-            if (el) zeigeTab(tab, el);
-        }
-    })();
-
-    function weModalOeffnen() {
-        document.getElementById('we-backdrop').style.display = 'flex';
-    }
-
-    function weModalSchliessen() {
-        document.getElementById('we-backdrop').style.display = 'none';
-    }
-
-    function uvpBearbeiten() {
-        document.getElementById('uvp-anzeige').style.display = 'none';
-        document.querySelector('[onclick="uvpBearbeiten()"]').style.display = 'none';
-        document.getElementById('uvp-edit').style.display = 'flex';
-        document.getElementById('uvp-input').focus();
-    }
-
-    function uvpAbbrechen() {
-        document.getElementById('uvp-edit').style.display = 'none';
-        document.getElementById('uvp-anzeige').style.display = '';
-        document.querySelector('[onclick="uvpBearbeiten()"]').style.display = '';
-    }
-
-    function uvpSpeichern() {
-        const wert = document.getElementById('uvp-input').value;
-        const data = new FormData();
-        data.append('artikel_id', <?= $id ?>);
-        data.append('uvp', wert);
-        fetch('uvp_speichern.php', {
-                method: 'POST',
-                body: data
-            })
-            .then(r => r.json())
-            .then(json => {
-                if (json.erfolg) {
-                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
-                } else {
-                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
-                }
-            });
-    }
-
-    function togglePreisSektion(bodyId, header) {
-        const body = document.getElementById(bodyId);
-        const toggle = header.querySelector('span');
-        const offen = body.style.display !== 'none';
-        body.style.display = offen ? 'none' : '';
-        toggle.textContent = offen ? '▼' : '▲';
-    }
-
-    const MWST_SATZ = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
-
-    function preisModalOeffnen(kgId) {
-        const row = document.querySelector(`tr[data-kg-id="${kgId}"]`);
-        document.getElementById('preis-kg-id').value = kgId;
-        document.getElementById('preis-kg-name').textContent = row.querySelector('td').textContent.trim();
-        document.getElementById('preis-brutto').value = row.dataset.brutto || '';
-        document.getElementById('preis-netto').value = row.dataset.netto || '';
-        document.getElementById('preis-ab').value = row.dataset.ab ? row.dataset.ab.substring(0, 10) : '';
-        document.getElementById('preis-bis').value = row.dataset.bis ? row.dataset.bis.substring(0, 10) : '';
-        document.getElementById('preis-backdrop').style.display = 'flex';
-    }
-
-    function preisModalSchliessen() {
-        document.getElementById('preis-backdrop').style.display = 'none';
-    }
-
-    function preisNettoBerechnen() {
-        const brutto = parseFloat(document.getElementById('preis-brutto').value);
-        if (!isNaN(brutto) && brutto > 0) {
-            const netto = brutto / (1 + MWST_SATZ / 100);
-            document.getElementById('preis-netto').value = netto.toFixed(4);
-        }
-    }
-
-    function preisLoeschen(kgId) {
-        if (!confirm('Preis für diese Kundengruppe wirklich löschen?')) return;
-        const data = new FormData();
-        data.append('artikel_id', <?= $id ?>);
-        data.append('kundengruppen_id', kgId);
-        fetch('preis_loeschen.php', {
-                method: 'POST',
-                body: data
-            })
-            .then(r => r.json())
-            .then(json => {
-                if (json.erfolg) {
-                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
-                } else {
-                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
-                }
-            });
-    }
-
-    function preisSpeichern() {
-        const form = document.getElementById('preis-form');
-        const data = new FormData(form);
-        fetch('preis_speichern.php', {
-                method: 'POST',
-                body: data
-            })
-            .then(r => r.json())
-            .then(json => {
-                if (json.erfolg) {
-                    preisModalSchliessen();
-                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
-                } else {
-                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
-                }
-            });
-    }
-
-    function toggleChargen(btn, lagerId) {
-        const row = document.getElementById('chargen-' + lagerId);
-        const offen = btn.textContent.includes('▲');
-        row.style.display = offen ? 'none' : '';
-        btn.textContent = (offen ? '▼' : '▲') + ' Chargen (' + btn.dataset.count + ')';
-    }
-
-    function katModalSchliessen() {
-        document.getElementById('kat-backdrop').style.display = 'none';
-    }
-
-
-    function katModalOeffnen() {
-        const kategorienArray = [...document.querySelectorAll('input[name="kategorien[]"]')].map(input => input.value);
-
-        document.querySelectorAll('#kat-checkboxen input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = kategorienArray.includes(checkbox.value);
-        });
-
-        document.getElementById('kat-backdrop').style.display = 'flex';
-    }
-
-    function katUebernehmen() {
-        const angehakt = [...document.querySelectorAll('#kat-checkboxen input[type="checkbox"]:checked')];
-        document.querySelectorAll('input[name="kategorien[]"]').forEach(el => el.remove());
-        const chips = document.getElementById('kat-chips');
-
-        chips.innerHTML = '';
-        angehakt.forEach(cb => {
-            // 1. Hidden Input
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'kategorien[]';
-            input.value = cb.value;
-            chips.appendChild(input);
-
-            // 2. Chip-Anzeige
-            const span = document.createElement('span');
-            span.className = 'chip chip-aktiv';
-            span.textContent = cb.dataset.name;
-            chips.appendChild(span);
-        });
-        katModalSchliessen();
-    }
-
-    async function katAnlegen() {
-        const katName   = document.getElementById('neue-kat-name').value?.trim();
-        const parentId  = document.getElementById('neue-kat-parent').value || '';
-        if (!katName) return;
-
-        const body = 'name=' + encodeURIComponent(katName)
-                   + (parentId ? '&parent_id=' + encodeURIComponent(parentId) : '');
-
-        const response = await fetch('kategorie_neu.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body
-        });
-        const data = await response.json();
-        if (!data.erfolg) { alert(data.fehler); return; }
-
-        // Neuen Eintrag im Baum hinzufügen
-        const tiefe = parentId ? 1 : 0;
-        const pl    = tiefe * 20;
-        const linie = tiefe > 0 ? '<span class="kat-linie">└─</span>' : '';
-        const label = document.createElement('label');
-        label.className = 'kat-zeile';
-        label.dataset.tiefe = tiefe;
-        label.style.paddingLeft = pl + 'px';
-        label.innerHTML = linie
-            + '<input type="checkbox" value="' + data.id + '"'
-            + ' data-name="' + data.name.replace(/"/g, '&quot;') + '"'
-            + ' data-parent-id="' + (parentId || 0) + '" checked>'
-            + '<span class="kat-label' + (tiefe === 0 ? ' kat-wurzel' : '') + '">' + data.name + '</span>';
-        document.getElementById('kat-checkboxen').appendChild(label);
-
-        // Parent-Dropdown ergänzen
-        const opt = document.createElement('option');
-        opt.value = data.id;
-        opt.textContent = data.name;
-        document.getElementById('neue-kat-parent').appendChild(opt);
-
-        document.getElementById('neue-kat-name').value = '';
-    }
-
-    function liefModalOeffnen(alId = null) {
-        document.querySelector('#lief-modal div').textContent =
-            alId ? 'Lieferant bearbeiten:' : 'Lieferant hinzufügen:';
-
-        // Hidden field setzen
-        document.getElementById('lief-al-id').value = alId ?? '';
-
-        if (alId) {
-            // Bearbeiten: Zeile finden, Daten lesen
-            const tr = document.querySelector(`tr[data-al-id="${alId}"]`);
-            document.getElementById('lief-lieferant-id').value = tr.dataset.lieferantId;
-            document.getElementById('lief-artnr').value = tr.dataset.artnr;
-            document.getElementById('lief-ek').value = tr.dataset.ek;
-            document.getElementById('lief-waehrung').value = tr.dataset.waehrung;
-            document.getElementById('lief-vpe').value = tr.dataset.vpe;
-            document.getElementById('lief-vpe-ean').value = tr.dataset.vpeEan;
-            document.getElementById('lief-lz').value = tr.dataset.lz;
-            document.getElementById('lief-mba').value = tr.dataset.mba;
-            document.getElementById('lief-standard').checked = tr.dataset.standard;
-            // ... usw für alle Felder
-
-        } else {
-            // Neu: alle Felder leeren
-            document.getElementById('lief-lieferant-id').value = '';
-            document.getElementById('lief-artnr').value = '';
-            document.getElementById('lief-ek').value = '';
-            document.getElementById('lief-waehrung').value = '';
-            document.getElementById('lief-vpe').value = '';
-            document.getElementById('lief-vpe-ean').value = '';
-            document.getElementById('lief-lz').value = '';
-            document.getElementById('lief-mba').value = '';
-            document.getElementById('lief-standard').checked = '';
-            // ... usw
-        }
-
-        document.getElementById('lief-backdrop').style.display = 'flex';
-    }
-
-    function liefModalSchliessen() {
-        document.getElementById('lief-backdrop').style.display = 'none';
-    }
-
-    async function liefSpeichern() {
-        const form = document.querySelector('#lief-modal form');
-        const body = new URLSearchParams(new FormData(form)).toString();
-
-        const response = await fetch('artikel_lieferant_speichern.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: body
-        });
-        const data = await response.json();
-
-        if (!data.erfolg) {
-            alert(data.fehler);
-            return;
-        }
-
-        liefModalSchliessen();
-        location.reload();
-    }
-
-    // Generator: Button-Count live aktualisieren
-    document.querySelectorAll('#generator-form input[type=checkbox][name*="selected"]').forEach(cb => {
-        cb.addEventListener('change', () => {
-            const checked = document.querySelectorAll('#generator-form input[type=checkbox][name*="selected"]:checked').length;
-            const btn = document.getElementById('gen-submit-btn');
-            if (btn) btn.textContent = '▶ Ausgewählte generieren (' + checked + ')';
-        });
-    });
-
-    function staffelModalOeffnen(spId = null) {
-        document.getElementById('staffel-id').value = spId ?? '';
-        if (spId) {
-            const row = document.querySelector(`tr[data-sp-id="${spId}"]`);
-            document.getElementById('staffel-titel').textContent = 'Staffelpreis bearbeiten';
-            document.getElementById('staffel-kg').value = row.dataset.kgId;
-            document.getElementById('staffel-menge').value = row.dataset.menge;
-            document.getElementById('staffel-brutto').value = row.dataset.brutto;
-            document.getElementById('staffel-netto').value = row.dataset.netto;
-        } else {
-            document.getElementById('staffel-titel').textContent = 'Staffelpreis hinzufügen';
-            document.getElementById('staffel-kg').value = '';
-            document.getElementById('staffel-menge').value = '';
-            document.getElementById('staffel-brutto').value = '';
-            document.getElementById('staffel-netto').value = '';
-        }
-        document.getElementById('staffel-backdrop').style.display = 'flex';
-    }
-
-    function staffelModalSchliessen() {
-        document.getElementById('staffel-backdrop').style.display = 'none';
-    }
-
-    function staffelNettoBerechnen() {
-        const brutto = parseFloat(document.getElementById('staffel-brutto').value);
-        if (!isNaN(brutto) && brutto > 0) {
-            document.getElementById('staffel-netto').value = (brutto / (1 + MWST_SATZ / 100)).toFixed(4);
-        }
-    }
-
-    function staffelSpeichern() {
-        const data = new FormData(document.getElementById('staffel-form'));
-        fetch('staffelpreis_speichern.php', {
-                method: 'POST',
-                body: data
-            })
-            .then(r => r.json())
-            .then(json => {
-                if (json.erfolg) {
-                    staffelModalSchliessen();
-                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
-                } else {
-                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
-                }
-            });
-    }
-
-    function staffelLoeschen(spId) {
-        if (!confirm('Staffelpreis wirklich löschen?')) return;
-        const data = new FormData();
-        data.append('id', spId);
-        data.append('artikel_id', <?= $id ?>);
-        fetch('staffelpreis_loeschen.php', {
-                method: 'POST',
-                body: data
-            })
-            .then(r => r.json())
-            .then(json => {
-                if (json.erfolg) {
-                    location.href = 'detail.php?id=<?= $id ?>&tab=preise';
-                } else {
-                    alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
-                }
-            });
-    }
-
-    function varPanel(name) {
-        document.getElementById('var-panel-gen').classList.toggle('versteckt', name !== 'gen');
-        document.getElementById('var-panel-kinder').classList.toggle('versteckt', name !== 'kinder');
-        document.getElementById('var-btn-gen').className = 'btn btn-sm ' + (name === 'gen' ? 'btn-primary' : 'btn-secondary');
-        document.getElementById('var-btn-kinder').className = 'btn btn-sm ' + (name === 'kinder' ? 'btn-primary' : 'btn-secondary');
-    }
-</script>
-
-<?php if (!$istKind): ?>
-<!-- ── Achsen-Modal ────────────────────────────────────────────────── -->
-<div id="achsen-backdrop" class="modal-backdrop" onclick="achsenModalSchliessen()">
-    <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
-        <div class="modal-header" style="flex-shrink:0">
-            Achsen &amp; Variantenwerte
-            <button onclick="achsenModalSchliessen()" class="modal-close">✕</button>
-        </div>
-        <div style="overflow-y:auto;flex:1;padding:var(--space-md)">
-            <?php if (empty($alleGlobalenAchsen)): ?>
-                <p style="color:var(--color-text-muted);font-size:13px">
-                    Keine Achsen im System — erst
-                    <a href="/mealana/achsen/liste.php" target="_blank">Achsen anlegen ↗</a>
-                </p>
-            <?php else: ?>
-                <?php foreach ($alleGlobalenAchsen as $ga):
-                    $istChecked      = in_array($ga['id'], $zugewieseneAchsenIds);
-                    $werteVorhanden  = $werteProAchse[$ga['id']] ?? [];
-                    $achseGesperrt   = !empty(array_filter(
-                        $werteVorhanden,
-                        fn($w) => isset($wertIdsInUseSet[$w['id']])
-                    ));
-                ?>
-                <div style="margin-bottom:var(--space-md);padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;font-size:13px">
-                        <input type="checkbox" class="achse-checkbox"
-                               data-achse-id="<?= $ga['id'] ?>"
-                               <?= $istChecked ? 'checked' : '' ?>
-                               <?= $achseGesperrt ? 'data-has-locked="1"' : '' ?>
-                               onchange="achseToggle(this)">
-                        <?= htmlspecialchars($ga['name']) ?>
-                        <span style="font-size:11px;color:var(--color-text-muted);font-weight:400"><?= htmlspecialchars($ga['darstellungsform']) ?></span>
-                        <?php if ($achseGesperrt): ?>
-                            <span style="font-size:11px;color:var(--color-text-muted)">— hat Kind-Artikel</span>
-                        <?php endif; ?>
-                    </label>
-                    <div id="achse-werte-<?= $ga['id'] ?>" style="margin-top:8px;margin-left:22px;<?= !$istChecked ? 'display:none' : '' ?>">
-                        <div id="achse-chips-<?= $ga['id'] ?>" style="margin-bottom:6px">
-                            <?php foreach ($werteVorhanden as $w):
-                                $wertGesperrt = isset($wertIdsInUseSet[$w['id']]);
-                            ?>
-                            <div class="achse-wert-zeile" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px">
-                                <span class="achse-chip-text" style="font-size:13px"><?= htmlspecialchars($w['wert']) ?></span>
-                                <div style="display:flex;gap:2px;flex-shrink:0;align-items:center">
-                                    <button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>
-                                    <button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>
-                                    <?php if ($wertGesperrt): ?>
-                                        <span title="Wird von einem Kind-Artikel verwendet — kann nicht entfernt werden"
-                                              style="font-size:12px;color:var(--color-text-muted);padding:0 4px;cursor:default">🔒</span>
-                                    <?php else: ?>
-                                        <button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
+                <div id="kat-neu">
+                    <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Neue Kategorie anlegen</div>
+                    <div style="display:flex;gap:var(--space-sm);align-items:center">
+                        <select id="neue-kat-parent" class="erp-select" style="width:160px">
+                            <option value="">– Obergruppe (Root) –</option>
+                            <?php foreach ($alleKategorien as $k): ?>
+                                <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option>
                             <?php endforeach; ?>
-                        </div>
-                        <div style="display:flex;gap:4px">
-                            <input type="text" class="erp-input achse-wert-input"
-                                   data-achse-id="<?= $ga['id'] ?>"
-                                   placeholder="Wert eingeben + Enter"
-                                   style="font-size:12px;padding:4px 8px;flex:1"
-                                   onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();achseWertHinzufuegen(<?= $ga['id'] ?>)}">
-                            <button type="button" class="btn btn-secondary btn-xs"
-                                    onclick="achseWertHinzufuegen(<?= $ga['id'] ?>)">+</button>
-                        </div>
+                        </select>
+                        <input type="text" id="neue-kat-name" class="erp-input" placeholder="Name..." style="flex:1">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="katAnlegen()">Anlegen</button>
                     </div>
                 </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
+
+                <div id="kat-aktionen" style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);justify-content:flex-end">
+                    <button type="button" class="btn btn-secondary" onclick="katModalSchliessen()">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="katUebernehmen()">Übernehmen</button>
+                </div>
+            </div>
         </div>
-        <div style="flex-shrink:0;padding:var(--space-sm) var(--space-md);border-top:1px solid var(--color-border);display:flex;gap:var(--space-sm);justify-content:flex-end">
-            <button onclick="achsenModalSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
-            <button id="achsen-speichern-btn" onclick="achsenSpeichern()" class="btn btn-primary btn-sm">Speichern</button>
+
+        <div id="we-backdrop" class="modal-backdrop" onclick="weModalSchliessen()">
+            <div id="we-modal" class="modal" onclick="event.stopPropagation()">
+                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-xs)">
+                    Wareneingang buchen
+                </div>
+                <form method="POST" action="lager_schnell_we.php" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                    <div class="form-row">
+                        <label class="form-label">Lager *</label>
+                        <select name="lager_id" class="erp-select" style="width:100%" required>
+                            <option value="">– Lager auswählen –</option>
+                            <?php foreach ($alleLager as $l): ?>
+                                <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Menge *</label>
+                        <input type="number" name="menge" class="erp-input" style="width:100%"
+                            step="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>"
+                            min="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>" required>
+                    </div>
+                    <?php if ($artikel['charge_pflicht']): ?>
+                        <div class="form-row">
+                            <label class="form-label">Charge *</label>
+                            <input type="text" name="charge" class="erp-input" style="width:100%" required>
+                        </div>
+                    <?php else: ?>
+                        <div class="form-row">
+                            <label class="form-label">Charge</label>
+                            <input type="text" name="charge" class="erp-input" style="width:100%" placeholder="optional">
+                        </div>
+                    <?php endif; ?>
+                    <div class="form-row">
+                        <label class="form-label">Notiz</label>
+                        <input type="text" name="notiz" class="erp-input" style="width:100%" placeholder="optional">
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:var(--space-sm);padding-top:var(--space-sm)">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="weModalSchliessen()">Abbrechen</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Buchen</button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
-</div>
 
-<script>
-function achsenModalOeffnen() {
-    document.getElementById('achsen-backdrop').style.display = 'flex';
-}
-function achsenModalSchliessen() {
-    document.getElementById('achsen-backdrop').style.display = 'none';
-}
-function achseToggle(cb) {
-    if (!cb.checked && cb.dataset.hasLocked) {
-        cb.checked = true;
-        alert('Diese Achse hat Kind-Artikel — sie kann nicht entfernt werden solange Kind-Artikel existieren.');
-        return;
-    }
-    var id = cb.dataset.achseId;
-    document.getElementById('achse-werte-' + id).style.display = cb.checked ? '' : 'none';
-}
-function achseZeileEntfernen(btn) {
-    btn.closest('.achse-wert-zeile').remove();
-}
-function achseWertHoch(btn) {
-    var zeile = btn.closest('.achse-wert-zeile');
-    var prev  = zeile.previousElementSibling;
-    if (prev && prev.classList.contains('achse-wert-zeile')) {
-        zeile.parentNode.insertBefore(zeile, prev);
-    }
-}
-function achseWertRunter(btn) {
-    var zeile = btn.closest('.achse-wert-zeile');
-    var next  = zeile.nextElementSibling;
-    if (next && next.classList.contains('achse-wert-zeile')) {
-        zeile.parentNode.insertBefore(next, zeile);
-    }
-}
-function achseWertHinzufuegen(achseId) {
-    var input = document.querySelector('.achse-wert-input[data-achse-id="' + achseId + '"]');
-    var wert = input.value.trim();
-    if (!wert) return;
-    var container = document.getElementById('achse-chips-' + achseId);
-    var zeile = document.createElement('div');
-    zeile.className = 'achse-wert-zeile';
-    zeile.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px';
-    zeile.innerHTML = '<span class="achse-chip-text" style="font-size:13px">' + wert.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>'
-        + '<div style="display:flex;gap:2px;flex-shrink:0">'
-        + '<button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>'
-        + '<button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>'
-        + '<button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>'
-        + '</div>';
-    container.appendChild(zeile);
-    input.value = '';
-    input.focus();
-}
-function achsenSpeichern() {
-    var btn = document.getElementById('achsen-speichern-btn');
-    btn.disabled = true;
-    var achsenDaten = [];
-    document.querySelectorAll('.achse-checkbox').forEach(function(cb) {
-        if (!cb.checked) return;
-        var achseId = parseInt(cb.dataset.achseId);
-        var werte   = [];
-        document.querySelectorAll('#achse-chips-' + achseId + ' .achse-chip-text').forEach(function(t) {
-            var txt = t.textContent.trim();
-            if (txt) werte.push(txt);
-        });
-        achsenDaten.push({id: achseId, werte: werte});
-    });
-    fetch('/mealana/artikel/achsen_zuweisen_ajax.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({artikel_id: <?= $id ?>, achsen: achsenDaten})
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.erfolg) { window.location.reload(); }
-        else { alert(d.fehler || 'Fehler beim Speichern'); btn.disabled = false; }
-    })
-    .catch(function() { alert('Verbindungsfehler'); btn.disabled = false; });
-}
-</script>
-<?php endif; ?>
+        <div id="lief-backdrop" class="modal-backdrop" onclick="liefModalSchliessen()">
+            <div id="lief-modal" class="modal" onclick="event.stopPropagation()">
+                <div id="lief-titel" style="font-size:15px; font-weight:600; padding-bottom:var(--space-sm); border-bottom:1px solid var(--color-border); margin-bottom:var(--space-xs)">
+                    Lieferant bearbeiten:
+                </div>
+                <form style="display:flex; flex-direction:column; gap:var(--space-sm)" action="">
+                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                    <input type="hidden" name="al_id" id="lief-al-id" value="">
+                    <div class="form-row">
+                        <label class="form-label">Lieferant</label>
+                        <select class="erp-select" style="width:100%" name="lieferant_id" id="lief-lieferant-id">
+                            <option value="">– Lieferant auswählen –</option>
+                            <?php foreach ($alleLieferanten as $l): ?>
+                                <option value="<?= $l['id'] ?>">
+                                    <?= htmlspecialchars($l['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Artikelnummer beim Lieferant</label>
+                        <input class="erp-input" style="width:100%" type="text" name="artikelnummer_lieferant" id="lief-artnr"
+                            value="">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Netto-EK</label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.0001" name="netto_ek" id="lief-ek" value="">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Währung</label>
+                        <input class="erp-input" style="width:100%" type="text" name="waehrung" id="lief-waehrung"
+                            value="">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">VPE</label>
+                        <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="vpe_menge" id="lief-vpe"
+                            value="">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">VPE-EAN</label>
+                        <input class="erp-input" style="width:100%" type="text" name="vpe_ean" id="lief-vpe-ean"
+                            maxlength="13" placeholder="z.B. 7071723011379" value="">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Lieferzeit</label>
+                        <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="lieferzeit_tage" id="lief-lz"
+                            value="">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Mindestbestellmenge</label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.1" name="mindestabnahme" id="lief-mba"
+                            value="">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Ist Standardlieferant</label>
+                        <input type="checkbox" name="standard_lieferant" id="lief-standard" value="1">
+                    </div>
+                    <div style="display:flex; gap:var(--space-sm); justify-content:flex-end; margin-top:var(--space-sm)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="liefSpeichern()">Übernehmen</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="liefModalSchliessen()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-<?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
+        <div id="staffel-backdrop" class="modal-backdrop" onclick="staffelModalSchliessen()">
+            <div id="staffel-modal" class="modal" onclick="event.stopPropagation()">
+                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+                    <span id="staffel-titel">Staffelpreis hinzufügen</span>
+                </div>
+                <form id="staffel-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                    <input type="hidden" name="id" id="staffel-id" value="">
+                    <div class="form-row">
+                        <label class="form-label">Kundengruppe</label>
+                        <select class="erp-select" style="width:100%" name="kundengruppen_id" id="staffel-kg">
+                            <option value="">– bitte wählen –</option>
+                            <?php foreach ($kundengruppenPreise as $kp): ?>
+                                <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Menge ab</label>
+                        <input class="erp-input" style="width:100%" type="number" step="1" min="1"
+                            name="menge_ab" id="staffel-menge" placeholder="z.B. 10">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Brutto VK (€)</label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                            name="brutto_vk" id="staffel-brutto" placeholder="0,00" oninput="staffelNettoBerechnen()">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                            name="netto_vk" id="staffel-netto" placeholder="0,0000">
+                    </div>
+                    <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="staffelSpeichern()">Speichern</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="staffelModalSchliessen()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
+        <div id="preis-backdrop" class="modal-backdrop" onclick="preisModalSchliessen()">
+            <div id="preis-modal" class="modal" onclick="event.stopPropagation()">
+                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+                    Preis — <span id="preis-kg-name"></span>
+                </div>
+                <form id="preis-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                    <input type="hidden" name="kundengruppen_id" id="preis-kg-id" value="">
+                    <div class="form-row">
+                        <label class="form-label">Brutto VK (€)</label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                            name="brutto_vk" id="preis-brutto" placeholder="0,00" oninput="preisNettoBerechnen()">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                            name="netto_vk" id="preis-netto" placeholder="0,0000">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Gültig ab</label>
+                        <input class="erp-input" style="width:100%" type="date" name="gueltig_ab" id="preis-ab">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Gültig bis</label>
+                        <input class="erp-input" style="width:100%" type="date" name="gueltig_bis" id="preis-bis">
+                    </div>
+                    <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="preisSpeichern()">Speichern</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="preisModalSchliessen()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function zeigeTab(name, el) {
+                document.querySelectorAll('[id^="tab-"]').forEach(d => d.classList.add('versteckt'));
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.getElementById('tab-' + name).classList.remove('versteckt');
+                el.classList.add('active');
+            }
+
+            // Tab aus URL-Parameter öffnen (z.B. nach WE-Redirect)
+            (function() {
+                const tab = new URLSearchParams(location.search).get('tab');
+                if (tab) {
+                    const el = document.querySelector(`.tab[onclick*="'${tab}'"]`);
+                    if (el) zeigeTab(tab, el);
+                }
+            })();
+
+            function weModalOeffnen() {
+                document.getElementById('we-backdrop').style.display = 'flex';
+            }
+
+            function weModalSchliessen() {
+                document.getElementById('we-backdrop').style.display = 'none';
+            }
+
+            function uvpBearbeiten() {
+                document.getElementById('uvp-anzeige').style.display = 'none';
+                document.querySelector('[onclick="uvpBearbeiten()"]').style.display = 'none';
+                document.getElementById('uvp-edit').style.display = 'flex';
+                document.getElementById('uvp-input').focus();
+            }
+
+            function uvpAbbrechen() {
+                document.getElementById('uvp-edit').style.display = 'none';
+                document.getElementById('uvp-anzeige').style.display = '';
+                document.querySelector('[onclick="uvpBearbeiten()"]').style.display = '';
+            }
+
+            function uvpSpeichern() {
+                const wert = document.getElementById('uvp-input').value;
+                const data = new FormData();
+                data.append('artikel_id', <?= $id ?>);
+                data.append('uvp', wert);
+                fetch('uvp_speichern.php', {
+                        method: 'POST',
+                        body: data
+                    })
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json.erfolg) {
+                            location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                        } else {
+                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                        }
+                    });
+            }
+
+            function togglePreisSektion(bodyId, header) {
+                const body = document.getElementById(bodyId);
+                const toggle = header.querySelector('span');
+                const offen = body.style.display !== 'none';
+                body.style.display = offen ? 'none' : '';
+                toggle.textContent = offen ? '▼' : '▲';
+            }
+
+            const MWST_SATZ = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
+
+            function preisModalOeffnen(kgId) {
+                const row = document.querySelector(`tr[data-kg-id="${kgId}"]`);
+                document.getElementById('preis-kg-id').value = kgId;
+                document.getElementById('preis-kg-name').textContent = row.querySelector('td').textContent.trim();
+                document.getElementById('preis-brutto').value = row.dataset.brutto || '';
+                document.getElementById('preis-netto').value = row.dataset.netto || '';
+                document.getElementById('preis-ab').value = row.dataset.ab ? row.dataset.ab.substring(0, 10) : '';
+                document.getElementById('preis-bis').value = row.dataset.bis ? row.dataset.bis.substring(0, 10) : '';
+                document.getElementById('preis-backdrop').style.display = 'flex';
+            }
+
+            function preisModalSchliessen() {
+                document.getElementById('preis-backdrop').style.display = 'none';
+            }
+
+            function preisNettoBerechnen() {
+                const brutto = parseFloat(document.getElementById('preis-brutto').value);
+                if (!isNaN(brutto) && brutto > 0) {
+                    const netto = brutto / (1 + MWST_SATZ / 100);
+                    document.getElementById('preis-netto').value = netto.toFixed(4);
+                }
+            }
+
+            function preisLoeschen(kgId) {
+                if (!confirm('Preis für diese Kundengruppe wirklich löschen?')) return;
+                const data = new FormData();
+                data.append('artikel_id', <?= $id ?>);
+                data.append('kundengruppen_id', kgId);
+                fetch('preis_loeschen.php', {
+                        method: 'POST',
+                        body: data
+                    })
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json.erfolg) {
+                            location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                        } else {
+                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                        }
+                    });
+            }
+
+            function preisSpeichern() {
+                const form = document.getElementById('preis-form');
+                const data = new FormData(form);
+                fetch('preis_speichern.php', {
+                        method: 'POST',
+                        body: data
+                    })
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json.erfolg) {
+                            preisModalSchliessen();
+                            location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                        } else {
+                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                        }
+                    });
+            }
+
+            function toggleChargen(btn, lagerId) {
+                const row = document.getElementById('chargen-' + lagerId);
+                const offen = btn.textContent.includes('▲');
+                row.style.display = offen ? 'none' : '';
+                btn.textContent = (offen ? '▼' : '▲') + ' Chargen (' + btn.dataset.count + ')';
+            }
+
+            function katModalSchliessen() {
+                document.getElementById('kat-backdrop').style.display = 'none';
+            }
+
+
+            function katModalOeffnen() {
+                const kategorienArray = [...document.querySelectorAll('input[name="kategorien[]"]')].map(input => input.value);
+
+                document.querySelectorAll('#kat-checkboxen input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = kategorienArray.includes(checkbox.value);
+                });
+
+                document.getElementById('kat-backdrop').style.display = 'flex';
+            }
+
+            function katUebernehmen() {
+                const angehakt = [...document.querySelectorAll('#kat-checkboxen input[type="checkbox"]:checked')];
+                document.querySelectorAll('input[name="kategorien[]"]').forEach(el => el.remove());
+                const chips = document.getElementById('kat-chips');
+
+                chips.innerHTML = '';
+                angehakt.forEach(cb => {
+                    // 1. Hidden Input
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'kategorien[]';
+                    input.value = cb.value;
+                    chips.appendChild(input);
+
+                    // 2. Chip-Anzeige
+                    const span = document.createElement('span');
+                    span.className = 'chip chip-aktiv';
+                    span.textContent = cb.dataset.name;
+                    chips.appendChild(span);
+                });
+                katModalSchliessen();
+            }
+
+            async function katAnlegen() {
+                const katName = document.getElementById('neue-kat-name').value?.trim();
+                const parentId = document.getElementById('neue-kat-parent').value || '';
+                if (!katName) return;
+
+                const body = 'name=' + encodeURIComponent(katName) +
+                    (parentId ? '&parent_id=' + encodeURIComponent(parentId) : '');
+
+                const response = await fetch('kategorie_neu.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body
+                });
+                const data = await response.json();
+                if (!data.erfolg) {
+                    alert(data.fehler);
+                    return;
+                }
+
+                // Neuen Eintrag im Baum hinzufügen
+                const tiefe = parentId ? 1 : 0;
+                const pl = tiefe * 20;
+                const linie = tiefe > 0 ? '<span class="kat-linie">└─</span>' : '';
+                const label = document.createElement('label');
+                label.className = 'kat-zeile';
+                label.dataset.tiefe = tiefe;
+                label.style.paddingLeft = pl + 'px';
+                label.innerHTML = linie +
+                    '<input type="checkbox" value="' + data.id + '"' +
+                    ' data-name="' + data.name.replace(/"/g, '&quot;') + '"' +
+                    ' data-parent-id="' + (parentId || 0) + '" checked>' +
+                    '<span class="kat-label' + (tiefe === 0 ? ' kat-wurzel' : '') + '">' + data.name + '</span>';
+                document.getElementById('kat-checkboxen').appendChild(label);
+
+                // Parent-Dropdown ergänzen
+                const opt = document.createElement('option');
+                opt.value = data.id;
+                opt.textContent = data.name;
+                document.getElementById('neue-kat-parent').appendChild(opt);
+
+                document.getElementById('neue-kat-name').value = '';
+            }
+
+            function liefModalOeffnen(alId = null) {
+                document.querySelector('#lief-modal div').textContent =
+                    alId ? 'Lieferant bearbeiten:' : 'Lieferant hinzufügen:';
+
+                // Hidden field setzen
+                document.getElementById('lief-al-id').value = alId ?? '';
+
+                if (alId) {
+                    // Bearbeiten: Zeile finden, Daten lesen
+                    const tr = document.querySelector(`tr[data-al-id="${alId}"]`);
+                    document.getElementById('lief-lieferant-id').value = tr.dataset.lieferantId;
+                    document.getElementById('lief-artnr').value = tr.dataset.artnr;
+                    document.getElementById('lief-ek').value = tr.dataset.ek;
+                    document.getElementById('lief-waehrung').value = tr.dataset.waehrung;
+                    document.getElementById('lief-vpe').value = tr.dataset.vpe;
+                    document.getElementById('lief-vpe-ean').value = tr.dataset.vpeEan;
+                    document.getElementById('lief-lz').value = tr.dataset.lz;
+                    document.getElementById('lief-mba').value = tr.dataset.mba;
+                    document.getElementById('lief-standard').checked = tr.dataset.standard;
+                    // ... usw für alle Felder
+
+                } else {
+                    // Neu: alle Felder leeren
+                    document.getElementById('lief-lieferant-id').value = '';
+                    document.getElementById('lief-artnr').value = '';
+                    document.getElementById('lief-ek').value = '';
+                    document.getElementById('lief-waehrung').value = '';
+                    document.getElementById('lief-vpe').value = '';
+                    document.getElementById('lief-vpe-ean').value = '';
+                    document.getElementById('lief-lz').value = '';
+                    document.getElementById('lief-mba').value = '';
+                    document.getElementById('lief-standard').checked = '';
+                    // ... usw
+                }
+
+                document.getElementById('lief-backdrop').style.display = 'flex';
+            }
+
+            function liefModalSchliessen() {
+                document.getElementById('lief-backdrop').style.display = 'none';
+            }
+
+            async function liefSpeichern() {
+                const form = document.querySelector('#lief-modal form');
+                const body = new URLSearchParams(new FormData(form)).toString();
+
+                const response = await fetch('artikel_lieferant_speichern.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: body
+                });
+                const data = await response.json();
+
+                if (!data.erfolg) {
+                    alert(data.fehler);
+                    return;
+                }
+
+                liefModalSchliessen();
+                location.reload();
+            }
+
+            // Generator: Button-Count live aktualisieren
+            document.querySelectorAll('#generator-form input[type=checkbox][name*="selected"]').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const checked = document.querySelectorAll('#generator-form input[type=checkbox][name*="selected"]:checked').length;
+                    const btn = document.getElementById('gen-submit-btn');
+                    if (btn) btn.textContent = '▶ Ausgewählte generieren (' + checked + ')';
+                });
+            });
+
+            function staffelModalOeffnen(spId = null) {
+                document.getElementById('staffel-id').value = spId ?? '';
+                if (spId) {
+                    const row = document.querySelector(`tr[data-sp-id="${spId}"]`);
+                    document.getElementById('staffel-titel').textContent = 'Staffelpreis bearbeiten';
+                    document.getElementById('staffel-kg').value = row.dataset.kgId;
+                    document.getElementById('staffel-menge').value = row.dataset.menge;
+                    document.getElementById('staffel-brutto').value = row.dataset.brutto;
+                    document.getElementById('staffel-netto').value = row.dataset.netto;
+                } else {
+                    document.getElementById('staffel-titel').textContent = 'Staffelpreis hinzufügen';
+                    document.getElementById('staffel-kg').value = '';
+                    document.getElementById('staffel-menge').value = '';
+                    document.getElementById('staffel-brutto').value = '';
+                    document.getElementById('staffel-netto').value = '';
+                }
+                document.getElementById('staffel-backdrop').style.display = 'flex';
+            }
+
+            function staffelModalSchliessen() {
+                document.getElementById('staffel-backdrop').style.display = 'none';
+            }
+
+            function staffelNettoBerechnen() {
+                const brutto = parseFloat(document.getElementById('staffel-brutto').value);
+                if (!isNaN(brutto) && brutto > 0) {
+                    document.getElementById('staffel-netto').value = (brutto / (1 + MWST_SATZ / 100)).toFixed(4);
+                }
+            }
+
+            function staffelSpeichern() {
+                const data = new FormData(document.getElementById('staffel-form'));
+                fetch('staffelpreis_speichern.php', {
+                        method: 'POST',
+                        body: data
+                    })
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json.erfolg) {
+                            staffelModalSchliessen();
+                            location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                        } else {
+                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                        }
+                    });
+            }
+
+            function staffelLoeschen(spId) {
+                if (!confirm('Staffelpreis wirklich löschen?')) return;
+                const data = new FormData();
+                data.append('id', spId);
+                data.append('artikel_id', <?= $id ?>);
+                fetch('staffelpreis_loeschen.php', {
+                        method: 'POST',
+                        body: data
+                    })
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json.erfolg) {
+                            location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                        } else {
+                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                        }
+                    });
+            }
+
+            function varPanel(name) {
+                document.getElementById('var-panel-gen').classList.toggle('versteckt', name !== 'gen');
+                document.getElementById('var-panel-kinder').classList.toggle('versteckt', name !== 'kinder');
+                document.getElementById('var-btn-gen').className = 'btn btn-sm ' + (name === 'gen' ? 'btn-primary' : 'btn-secondary');
+                document.getElementById('var-btn-kinder').className = 'btn btn-sm ' + (name === 'kinder' ? 'btn-primary' : 'btn-secondary');
+            }
+        </script>
+
+        <?php if (!$istKind): ?>
+            <!-- ── Achsen-Modal ────────────────────────────────────────────────── -->
+            <div id="achsen-backdrop" class="modal-backdrop" onclick="achsenModalSchliessen()">
+                <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+                    <div class="modal-header" style="flex-shrink:0">
+                        Achsen &amp; Variantenwerte
+                        <button onclick="achsenModalSchliessen()" class="modal-close">✕</button>
+                    </div>
+                    <div style="overflow-y:auto;flex:1;padding:var(--space-md)">
+                        <?php if (empty($alleGlobalenAchsen)): ?>
+                            <p style="color:var(--color-text-muted);font-size:13px">
+                                Keine Achsen im System — erst
+                                <a href="/mealana/achsen/liste.php" target="_blank">Achsen anlegen ↗</a>
+                            </p>
+                        <?php else: ?>
+                            <?php foreach ($alleGlobalenAchsen as $ga):
+                                $istChecked      = in_array($ga['id'], $zugewieseneAchsenIds);
+                                $werteVorhanden  = $werteProAchse[$ga['id']] ?? [];
+                                $achseGesperrt   = !empty(array_filter(
+                                    $werteVorhanden,
+                                    fn($w) => isset($wertIdsInUseSet[$w['id']])
+                                ));
+                            ?>
+                                <div style="margin-bottom:var(--space-md);padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
+                                    <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;font-size:13px">
+                                        <input type="checkbox" class="achse-checkbox"
+                                            data-achse-id="<?= $ga['id'] ?>"
+                                            <?= $istChecked ? 'checked' : '' ?>
+                                            <?= $achseGesperrt ? 'data-has-locked="1"' : '' ?>
+                                            onchange="achseToggle(this)">
+                                        <?= htmlspecialchars($ga['name']) ?>
+                                        <span style="font-size:11px;color:var(--color-text-muted);font-weight:400"><?= htmlspecialchars($ga['darstellungsform']) ?></span>
+                                        <?php if ($achseGesperrt): ?>
+                                            <span style="font-size:11px;color:var(--color-text-muted)">— hat Kind-Artikel</span>
+                                        <?php endif; ?>
+                                    </label>
+                                    <div id="achse-werte-<?= $ga['id'] ?>" style="margin-top:8px;margin-left:22px;<?= !$istChecked ? 'display:none' : '' ?>">
+                                        <div id="achse-chips-<?= $ga['id'] ?>" style="margin-bottom:6px">
+                                            <?php foreach ($werteVorhanden as $w):
+                                                $wertGesperrt = isset($wertIdsInUseSet[$w['id']]);
+                                            ?>
+                                                <div class="achse-wert-zeile" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px">
+                                                    <span class="achse-chip-text" style="font-size:13px"><?= htmlspecialchars($w['wert']) ?></span>
+                                                    <div style="display:flex;gap:2px;flex-shrink:0;align-items:center">
+                                                        <button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>
+                                                        <button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>
+                                                        <?php if ($wertGesperrt): ?>
+                                                            <span title="Wird von einem Kind-Artikel verwendet — kann nicht entfernt werden"
+                                                                style="font-size:12px;color:var(--color-text-muted);padding:0 4px;cursor:default">🔒</span>
+                                                        <?php else: ?>
+                                                            <button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <div style="display:flex;gap:4px">
+                                            <input type="text" class="erp-input achse-wert-input"
+                                                data-achse-id="<?= $ga['id'] ?>"
+                                                placeholder="Wert eingeben + Enter"
+                                                style="font-size:12px;padding:4px 8px;flex:1"
+                                                onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();achseWertHinzufuegen(<?= $ga['id'] ?>)}">
+                                            <button type="button" class="btn btn-secondary btn-xs"
+                                                onclick="achseWertHinzufuegen(<?= $ga['id'] ?>)">+</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div style="flex-shrink:0;padding:var(--space-sm) var(--space-md);border-top:1px solid var(--color-border);display:flex;gap:var(--space-sm);justify-content:flex-end">
+                        <button onclick="achsenModalSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
+                        <button id="achsen-speichern-btn" onclick="achsenSpeichern()" class="btn btn-primary btn-sm">Speichern</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function achsenModalOeffnen() {
+                    document.getElementById('achsen-backdrop').style.display = 'flex';
+                }
+
+                function achsenModalSchliessen() {
+                    document.getElementById('achsen-backdrop').style.display = 'none';
+                }
+
+                function achseToggle(cb) {
+                    if (!cb.checked && cb.dataset.hasLocked) {
+                        cb.checked = true;
+                        alert('Diese Achse hat Kind-Artikel — sie kann nicht entfernt werden solange Kind-Artikel existieren.');
+                        return;
+                    }
+                    var id = cb.dataset.achseId;
+                    document.getElementById('achse-werte-' + id).style.display = cb.checked ? '' : 'none';
+                }
+
+                function achseZeileEntfernen(btn) {
+                    btn.closest('.achse-wert-zeile').remove();
+                }
+
+                function achseWertHoch(btn) {
+                    var zeile = btn.closest('.achse-wert-zeile');
+                    var prev = zeile.previousElementSibling;
+                    if (prev && prev.classList.contains('achse-wert-zeile')) {
+                        zeile.parentNode.insertBefore(zeile, prev);
+                    }
+                }
+
+                function achseWertRunter(btn) {
+                    var zeile = btn.closest('.achse-wert-zeile');
+                    var next = zeile.nextElementSibling;
+                    if (next && next.classList.contains('achse-wert-zeile')) {
+                        zeile.parentNode.insertBefore(next, zeile);
+                    }
+                }
+
+                function achseWertHinzufuegen(achseId) {
+                    var input = document.querySelector('.achse-wert-input[data-achse-id="' + achseId + '"]');
+                    var wert = input.value.trim();
+                    if (!wert) return;
+                    var container = document.getElementById('achse-chips-' + achseId);
+                    var zeile = document.createElement('div');
+                    zeile.className = 'achse-wert-zeile';
+                    zeile.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px';
+                    zeile.innerHTML = '<span class="achse-chip-text" style="font-size:13px">' + wert.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
+                        '<div style="display:flex;gap:2px;flex-shrink:0">' +
+                        '<button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>' +
+                        '<button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>' +
+                        '<button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>' +
+                        '</div>';
+                    container.appendChild(zeile);
+                    input.value = '';
+                    input.focus();
+                }
+
+                function achsenSpeichern() {
+                    var btn = document.getElementById('achsen-speichern-btn');
+                    btn.disabled = true;
+                    var achsenDaten = [];
+                    document.querySelectorAll('.achse-checkbox').forEach(function(cb) {
+                        if (!cb.checked) return;
+                        var achseId = parseInt(cb.dataset.achseId);
+                        var werte = [];
+                        document.querySelectorAll('#achse-chips-' + achseId + ' .achse-chip-text').forEach(function(t) {
+                            var txt = t.textContent.trim();
+                            if (txt) werte.push(txt);
+                        });
+                        achsenDaten.push({
+                            id: achseId,
+                            werte: werte
+                        });
+                    });
+                    fetch('/mealana/artikel/achsen_zuweisen_ajax.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                artikel_id: <?= $id ?>,
+                                achsen: achsenDaten
+                            })
+                        })
+                        .then(function(r) {
+                            return r.json();
+                        })
+                        .then(function(d) {
+                            if (d.erfolg) {
+                                window.location.reload();
+                            } else {
+                                alert(d.fehler || 'Fehler beim Speichern');
+                                btn.disabled = false;
+                            }
+                        })
+                        .catch(function() {
+                            alert('Verbindungsfehler');
+                            btn.disabled = false;
+                        });
+                }
+            </script>
+        <?php endif; ?>
+
+        <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
