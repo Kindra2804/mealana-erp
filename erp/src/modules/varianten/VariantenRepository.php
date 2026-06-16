@@ -178,6 +178,14 @@ class VariantenRepository
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    public function isKindArtikel(int $id): bool
+    {
+        $stmt = $this->db->prepare("SELECT vaterartikel_id FROM artikel WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        return $row !== false && $row['vaterartikel_id'] !== null;
+    }
+
     public function findExistingKombinationen(int $vaterId): array
     {
         $stmt = $this->db->prepare("

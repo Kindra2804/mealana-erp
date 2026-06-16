@@ -20,6 +20,11 @@ if (!is_array($achsenRaw)) {
 
 $repo = new VariantenRepository();
 
+if ($repo->isKindArtikel($artikelId)) {
+    echo json_encode(['erfolg' => false, 'fehler' => 'Kind-Artikel können keine eigenen Achsen haben']);
+    exit;
+}
+
 // Gewünschten Zustand aus Request aufbauen
 $requestedAchsenIds = [];
 $requestedWerte     = []; // [{achse_id, wert, sort_order}]
