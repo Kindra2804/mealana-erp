@@ -47,9 +47,10 @@ besteuerungsart VARCHAR(20) DEFAULT 'normal'
 
 ## Was jetzt schon tun (ohne vollständigen Umbau)
 
-1. `artikel_lieferanten.brutto_ek` Feld ergänzen (oder Flag `ek_ist_brutto BOOL` + Umrechnung)
-2. `system_einstellungen.besteuerungsart` anlegen (Migration)
-3. In jedem neuen Modul: Besteuerungsart aus Settings lesen, entsprechend rendern
+1. ~~`artikel_lieferanten.brutto_ek` Feld ergänzen~~ ✅ Migration 038, Commit 5922ccc (2026-06-17)
+2. ~~`system_einstellungen.besteuerungsart` anlegen (Migration)~~ ✅ Migration 038
+3. ~~detail.php Lieferanten-Tab: brutto_ek Eingabefeld mit Auto-Kalkulation~~ ✅
+4. In jedem neuen Modul: Besteuerungsart aus Settings lesen, entsprechend rendern
 
 ## How to apply
 
