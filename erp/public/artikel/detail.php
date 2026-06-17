@@ -1555,19 +1555,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 el._t = setTimeout(function() { el.style.display = 'none'; }, 4000);
             }
 
+            const TAB_KEY = 'artikel_tab_<?= $id ?>';
+
             function zeigeTab(name, el) {
                 document.querySelectorAll('[id^="tab-"]').forEach(d => d.classList.add('versteckt'));
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.getElementById('tab-' + name).classList.remove('versteckt');
                 el.classList.add('active');
+                localStorage.setItem(TAB_KEY, name);
             }
 
-            // Tab aus URL-Parameter öffnen (z.B. nach WE-Redirect)
+            // Tab wiederherstellen: URL-Parameter hat Vorrang, dann localStorage
             (function() {
-                const tab = new URLSearchParams(location.search).get('tab');
-                if (tab) {
-                    const el = document.querySelector(`.tab[onclick*="'${tab}'"]`);
-                    if (el) zeigeTab(tab, el);
+                const urlTab = new URLSearchParams(location.search).get('tab');
+                const saved  = urlTab || localStorage.getItem(TAB_KEY);
+                if (saved) {
+                    const el = document.querySelector(`.tab[onclick*="'${saved}'"]`);
+                    if (el) zeigeTab(saved, el);
                 }
             })();
 
