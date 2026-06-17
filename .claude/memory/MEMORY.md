@@ -8,7 +8,7 @@
 - [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Jedes neue Modul startet mit Referenz-Check (große WAWIs) + MeaLana-Extras
 - [Feedback: CSS-Strategie](feedback_css_strategie.md) — Derzeit inline style-Tags, beim Frontend-Refactor dann externe Stylesheets
 - [Projekt: Bestellmodul Design](project_bestellmodul.md) — Vollständige Anforderungen: PO-Workflow, EAN-Scan, Rückstandsliste, DB-Tabellen
-- [Artikel-Features Roadmap](project_artikel_features.md) — Offene + geplante Features im Artikel-Modul: Kopieren, Filter, Merkmale-UI, Preistabellen, SEO, Bestellvorschläge, Mehrsprachigkeit
+- [Artikel-Features Roadmap](project_artikel_features.md) — Was fertig ist (SEO, Preise, Varianten, Zustand, Texte, Maße – ALLES) + was noch offen (Filter, Merkmale-UI, Bilder)
 - [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Systemweiter Lücken-Vergleich (JTL/Shopware/Sage/LS-POS): Artikel-Texte, Lagerplätze, Reservierungen, Kasse, Inventur, Auftragsfertigung (Stand 2026-06-08)
 - [Buchhaltungsmodul](project_buchhaltung.md) — DATEV-Schnittstelle (Export, nicht nachbauen), Kontenplan (AT), Mappings Steuerklassen→Konten, Odoo als Referenz
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
@@ -22,3 +22,5 @@
 - [JTL-Import Wissen](project_jtl_import.md) — CSV-Struktur, ProduktTyp VATER/NORMAL/KIND, Kategorie-Mapping, Gen-Skript für Demo-Artikel
 - [Feedback: JS auslagern](feedback_js_auslagern.md) — Am Ende jedes Moduls JS in externe Datei auslagern (wie artikel.js)
 - [Logger UI Konzept](project_logger_ui.md) — Logger-Zeile in Shell-Bottom (Mockup), Admin-Aktivitäten-Seite mit Filter/Suche
+- [Aktions-Modul](project_aktionen_modul.md) — Lieferanten-Kampagnen, kategorie-basierte Auto-Preissetzung, DROPS Fabel Spezialfall (preis_gruppe + spätere 2-Achsen-Migration)
+- [Spalten-Picker](project_spalten_picker.md) — Alle Spalten-Definitionen (baubar/Platzhalter), benutzer_einstellungen, Kanäle-Cleanup; Platzhalter aktivieren wenn Merkmale/Lagerplatz/Inventur fertig
