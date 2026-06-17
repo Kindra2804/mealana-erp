@@ -83,21 +83,31 @@ class ArtikelRepository
                 at.code AS artikeltyp,
                 at.name AS artikeltyp_name,
                 a.aktiv,
-                h.name AS hersteller,
-                s.satz AS steuersatz,
                 a.charge_pflicht,
                 a.ist_auslaufartikel,
                 a.ueberverkauf_erlaubt,
+                a.geaendert_am,
+                h.name AS hersteller,
+                s.satz AS steuersatz,
+                e.kuerzel AS einheit_kuerzel,
                 ap.brutto_vk,
+                al_std.netto_ek AS standard_ek,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
-                (SELECT COUNT(*) FROM artikel_kategorien WHERE artikel_id = a.id) AS kat_anzahl
+                (SELECT COUNT(*) FROM artikel_kategorien WHERE artikel_id = a.id) AS kat_anzahl,
+                (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'ean' LIMIT 1) AS ean,
+                (SELECT GROUP_CONCAT(k2.name ORDER BY k2.name SEPARATOR ', ')
+                 FROM artikel_kategorien ak2
+                 JOIN kategorien k2 ON k2.id = ak2.kategorie_id
+                 WHERE ak2.artikel_id = a.id) AS kategorien
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN einheiten e ON a.einheit_id = e.id
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
+            LEFT JOIN artikel_lieferanten al_std ON al_std.artikel_id = a.id AND al_std.standard_lieferant = 1
             LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
             LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
             $where
@@ -297,12 +307,15 @@ class ArtikelRepository
                 a.ist_auslaufartikel,
                 a.ueberverkauf_erlaubt,
                 a.charge_pflicht,
+                a.geaendert_am,
                 ap.brutto_vk,
+                h.name AS hersteller,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
             FROM artikel a
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
+            LEFT JOIN hersteller h ON a.hersteller_id = h.id
             WHERE a.vaterartikel_id IN ($placeholders)
             GROUP BY a.id
             ORDER BY $sortSpalte $sortDir
