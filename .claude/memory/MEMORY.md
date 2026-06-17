@@ -1,0 +1,24 @@
+# Memory Index
+
+- [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Frau Barbara schaut bei UI mit
+- [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
+- [Feedback: End-of-Day Updates](feedback_eod.md) — CLAUDE.md am Ende jedes Tages aktualisieren
+- [Projekt: MeaLana ERP Status](project_status.md) — Aktueller Implementierungsstand
+- [DB Design Entscheidungen](db_design_entscheidungen.md) — Tabellen, Multi-Shop, Varianten, Lizenzmodell, Features Barbara (aktualisiert 2026-06-12)
+- [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Jedes neue Modul startet mit Referenz-Check (große WAWIs) + MeaLana-Extras
+- [Feedback: CSS-Strategie](feedback_css_strategie.md) — Derzeit inline style-Tags, beim Frontend-Refactor dann externe Stylesheets
+- [Projekt: Bestellmodul Design](project_bestellmodul.md) — Vollständige Anforderungen: PO-Workflow, EAN-Scan, Rückstandsliste, DB-Tabellen
+- [Artikel-Features Roadmap](project_artikel_features.md) — Offene + geplante Features im Artikel-Modul: Kopieren, Filter, Merkmale-UI, Preistabellen, SEO, Bestellvorschläge, Mehrsprachigkeit
+- [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Systemweiter Lücken-Vergleich (JTL/Shopware/Sage/LS-POS): Artikel-Texte, Lagerplätze, Reservierungen, Kasse, Inventur, Auftragsfertigung (Stand 2026-06-08)
+- [Buchhaltungsmodul](project_buchhaltung.md) — DATEV-Schnittstelle (Export, nicht nachbauen), Kontenplan (AT), Mappings Steuerklassen→Konten, Odoo als Referenz
+- [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
+- [UI Redesign Plan](project_ui_redesign.md) — JTL-inspiriertes Layout nach Artikel-Modul: Top-Nav Module, Sidebar Untergruppen, 1280×1024 Basis, Barbara hat Mitspracherecht
+- [Verkauf Workflows](project_verkauf_workflows.md) — Vorkasse/PayPal, 14-Tage Mahnung, 30-Tage Stornierung, Fehlbestand-Konzept (Überverkauf + Bestellstatus)
+- [Lager Konzept](project_lager_konzept.md) — Standardlager/Lager Messe, K1 immer normal, K2 umschaltbar (Normal↔Messe), Umlagerungsfunktion geplant
+- [Feedback: Design-Workflow](feedback_design_workflow.md) — 3-Stufen: ASCII-Wireframe → SVG → HTML, nie direkt in HTML, SVG für Barbara
+- [Feedback: Banner Auto-Hide](feedback_banner_autohide.md) — Erfolgs/Fehler-Banner in detail.php sollen nach ~3s automatisch verschwinden
+- [Feedback: Barbara UI](feedback_barbara_ui.md) — Blaues "!" statt ⚠, konfigurierbarer Indikator, ⚠=kaputt für Barbara
+- [Kleinunternehmer-Modus](project_kleinunternehmer.md) — Major-Feature: globaler Schalter, EK brutto, kein Steuerausweis, Lagerbewertung brutto
+- [JTL-Import Wissen](project_jtl_import.md) — CSV-Struktur, ProduktTyp VATER/NORMAL/KIND, Kategorie-Mapping, Gen-Skript für Demo-Artikel
+- [Feedback: JS auslagern](feedback_js_auslagern.md) — Am Ende jedes Moduls JS in externe Datei auslagern (wie artikel.js)
+- [Logger UI Konzept](project_logger_ui.md) — Logger-Zeile in Shell-Bottom (Mockup), Admin-Aktivitäten-Seite mit Filter/Suche
