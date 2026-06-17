@@ -1236,7 +1236,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <td><?= htmlspecialchars($l['lieferant_name']) ?></td>
                                 <td><?= htmlspecialchars($l['artikelnummer_lieferant'] ?? '–') ?></td>
                                 <td><?= $l['netto_ek'] ? number_format($l['netto_ek'], 2, ',', '.') . ' €' : '–' ?></td>
-                                <td><?= $l['brutto_ek'] ? number_format($l['brutto_ek'], 2, ',', '.') . ' €' : '–' ?></td>
+                                <td><?= ($l['brutto_ek'] ?? null) ? number_format($l['brutto_ek'], 2, ',', '.') . ' €' : '–' ?></td>
                                 <td><?= htmlspecialchars($l['waehrung']) ?></td>
                                 <td><?= $l['vpe_menge'] ?? '-' ?></td>
                                 <td><?= htmlspecialchars($l['vpe_ean'] ?? '-') ?></td>
