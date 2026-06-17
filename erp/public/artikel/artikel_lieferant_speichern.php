@@ -12,6 +12,7 @@ $al_id       = (int) ($_POST['al_id'] ?? 0);
 $lieferant_id = (int) ($_POST['lieferant_id'] ?? 0);
 $artikelnummer_lieferant = (string) ($_POST['artikelnummer_lieferant'] ?? 0);
 $netto_ek = (float) ($_POST['netto_ek'] ?? 0);
+$brutto_ek = strlen($_POST['brutto_ek'] ?? '') > 0 ? (float)$_POST['brutto_ek'] : null;
 $waehrung = (string) ($_POST['waehrung'] ?? 0);
 $vpe_menge = (int) ($_POST['vpe_menge'] ?? 0);
 $vpe_ean = preg_replace('/\D/', '', (string) ($_POST['vpe_ean'] ?? ''));
@@ -34,6 +35,7 @@ if ($al_id) {
             lieferant_id = :lieferant_id,
             artikelnummer_lieferant = :artikelnummer_lieferant,
             netto_ek = :netto_ek,
+            brutto_ek = :brutto_ek,
             waehrung = :waehrung,
             vpe_menge = :vpe_menge,
             vpe_ean = :vpe_ean,
@@ -48,6 +50,7 @@ if ($al_id) {
         'lieferant_id' => $lieferant_id,
         'artikelnummer_lieferant' => $artikelnummer_lieferant,
         'netto_ek' => $netto_ek,
+        'brutto_ek' => $brutto_ek,
         'waehrung' => $waehrung,
         'vpe_menge' => $vpe_menge,
         'vpe_ean' => $vpe_ean,
@@ -65,6 +68,7 @@ if ($al_id) {
         lieferant_id,
         artikelnummer_lieferant,
         netto_ek,
+        brutto_ek,
         waehrung,
         vpe_menge,
         vpe_ean,
@@ -76,6 +80,7 @@ if ($al_id) {
         :lieferant_id,
         :artikelnummer_lieferant,
         :netto_ek,
+        :brutto_ek,
         :waehrung,
         :vpe_menge,
         :vpe_ean,
@@ -89,6 +94,7 @@ if ($al_id) {
         'lieferant_id' => $lieferant_id,
         'artikelnummer_lieferant' => $artikelnummer_lieferant,
         'netto_ek' => $netto_ek,
+        'brutto_ek' => $brutto_ek,
         'waehrung' => $waehrung,
         'vpe_menge' => $vpe_menge,
         'vpe_ean' => $vpe_ean,

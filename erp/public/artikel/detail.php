@@ -1209,6 +1209,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <th>Lieferant</th>
                             <th>Lief.-Art.-Nr.</th>
                             <th>EK (netto)</th>
+                            <th>EK (brutto)</th>
                             <th>Whg</th>
                             <th>VPE</th>
                             <th>VPE-EAN</th>
@@ -1224,6 +1225,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 data-lieferant-id="<?= $l['lieferant_id'] ?>"
                                 data-artnr="<?= htmlspecialchars($l['artikelnummer_lieferant'] ?? '') ?>"
                                 data-ek="<?= $l['netto_ek'] ?? '' ?>"
+                                data-brutto-ek="<?= $l['brutto_ek'] ?? '' ?>"
                                 data-waehrung="<?= htmlspecialchars($l['waehrung']) ?>"
                                 data-vpe="<?= $l['vpe_menge'] ?? '' ?>"
                                 data-vpe-ean="<?= htmlspecialchars($l['vpe_ean'] ?? '') ?>"
@@ -1234,6 +1236,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <td><?= htmlspecialchars($l['lieferant_name']) ?></td>
                                 <td><?= htmlspecialchars($l['artikelnummer_lieferant'] ?? '–') ?></td>
                                 <td><?= $l['netto_ek'] ? number_format($l['netto_ek'], 2, ',', '.') . ' €' : '–' ?></td>
+                                <td><?= $l['brutto_ek'] ? number_format($l['brutto_ek'], 2, ',', '.') . ' €' : '–' ?></td>
                                 <td><?= htmlspecialchars($l['waehrung']) ?></td>
                                 <td><?= $l['vpe_menge'] ?? '-' ?></td>
                                 <td><?= htmlspecialchars($l['vpe_ean'] ?? '-') ?></td>
@@ -1410,7 +1413,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </div>
                     <div class="form-row">
                         <label class="form-label">Netto-EK</label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.0001" name="netto_ek" id="lief-ek" value="">
+                        <input class="erp-input" style="width:100%" type="number" step="0.0001" name="netto_ek" id="lief-ek" value=""
+                               oninput="liefCalcBrutto()">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Brutto-EK</label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.0001" name="brutto_ek" id="lief-brutto-ek" value=""
+                               oninput="liefCalcNetto()">
+                        <span style="font-size:11px;color:var(--color-text-muted);margin-top:2px">bei <?= (float)($artikel['steuersatz'] ?? 20) ?>% MwSt.</span>
                     </div>
                     <div class="form-row">
                         <label class="form-label">Währung</label>
@@ -1774,6 +1784,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     document.getElementById('lief-lieferant-id').value = tr.dataset.lieferantId;
                     document.getElementById('lief-artnr').value = tr.dataset.artnr;
                     document.getElementById('lief-ek').value = tr.dataset.ek;
+                    document.getElementById('lief-brutto-ek').value = tr.dataset.bruttoEk;
                     document.getElementById('lief-waehrung').value = tr.dataset.waehrung;
                     document.getElementById('lief-vpe').value = tr.dataset.vpe;
                     document.getElementById('lief-vpe-ean').value = tr.dataset.vpeEan;
@@ -1787,6 +1798,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     document.getElementById('lief-lieferant-id').value = '';
                     document.getElementById('lief-artnr').value = '';
                     document.getElementById('lief-ek').value = '';
+                    document.getElementById('lief-brutto-ek').value = '';
                     document.getElementById('lief-waehrung').value = '';
                     document.getElementById('lief-vpe').value = '';
                     document.getElementById('lief-vpe-ean').value = '';
@@ -1797,6 +1809,26 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 }
 
                 document.getElementById('lief-backdrop').style.display = 'flex';
+            }
+
+            var LIEF_MWST = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
+
+            function liefCalcBrutto() {
+                var netto = parseFloat(document.getElementById('lief-ek').value);
+                if (!isNaN(netto) && netto > 0) {
+                    document.getElementById('lief-brutto-ek').value = (netto * (1 + LIEF_MWST / 100)).toFixed(4);
+                } else {
+                    document.getElementById('lief-brutto-ek').value = '';
+                }
+            }
+
+            function liefCalcNetto() {
+                var brutto = parseFloat(document.getElementById('lief-brutto-ek').value);
+                if (!isNaN(brutto) && brutto > 0) {
+                    document.getElementById('lief-ek').value = (brutto / (1 + LIEF_MWST / 100)).toFixed(4);
+                } else {
+                    document.getElementById('lief-ek').value = '';
+                }
             }
 
             function liefModalSchliessen() {
