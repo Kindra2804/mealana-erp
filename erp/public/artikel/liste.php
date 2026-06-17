@@ -19,6 +19,7 @@ $alleSpaltenDef = [
     'bestand'         => ['label' => 'Bestand',         'default' => true,  'baubar' => true],
     'preis'           => ['label' => 'Preis',           'default' => true,  'baubar' => true],
     'hersteller'      => ['label' => 'Hersteller',      'default' => false, 'baubar' => true],
+    'artikeltyp'      => ['label' => 'Typ',             'default' => false, 'baubar' => true],
     'ean'             => ['label' => 'EAN',             'default' => false, 'baubar' => true],
     'einheit'         => ['label' => 'Einheit',         'default' => false, 'baubar' => true],
     'kategorie'       => ['label' => 'Kategorie',       'default' => false, 'baubar' => true],
@@ -48,6 +49,7 @@ function spalteHeader(string $key, string $aktSort, string $aktDir, array $getPa
         case 'bestand':       return '<th style="width:60px;text-align:right" title="Physischer Gesamtbestand">' . sortKopf('bestand', 'BST.', $aktSort, $aktDir, $getParams) . '</th>';
         case 'preis':         return '<th style="width:90px;text-align:right">' . sortKopf('preis', 'PREIS', $aktSort, $aktDir, $getParams) . '</th>';
         case 'hersteller':    return '<th style="width:110px">' . sortKopf('hersteller', 'HERSTELLER', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'artikeltyp':    return '<th style="width:80px">' . sortKopf('artikeltyp', 'TYP', $aktSort, $aktDir, $getParams) . '</th>';
         case 'ean':           return '<th style="width:130px">EAN</th>';
         case 'einheit':       return '<th style="width:70px">EINHEIT</th>';
         case 'kategorie':     return '<th style="min-width:120px;max-width:200px">KATEGORIE</th>';
@@ -77,6 +79,8 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             return '<td style="text-align:right" class="preis-cell">' . $ab . number_format((float)$a['brutto_vk'], 2, ',', '.') . ' €</td>';
         case 'hersteller':
             return '<td>' . htmlspecialchars($a['hersteller'] ?? '–') . '</td>';
+        case 'artikeltyp':
+            return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($a['artikeltyp_name'] ?? '–') . '</td>';
         case 'ean':
             return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($a['ean'] ?? '–') . '</td>';
         case 'einheit':
@@ -134,7 +138,7 @@ $statusFilter     = $_GET['status_filter'] ?? '';
 $aktivKategorieId = (int)($_GET['kategorie_id'] ?? 0) ?: null;
 
 // Sortierung
-$erlaubtSort = ['artikelnummer', 'name', 'bestand', 'preis', 'hersteller', 'geaendert_am', 'charge'];
+$erlaubtSort = ['artikelnummer', 'name', 'bestand', 'preis', 'hersteller', 'artikeltyp', 'geaendert_am', 'charge'];
 $aktSort = in_array($_GET['sort'] ?? '', $erlaubtSort) ? $_GET['sort'] : 'artikelnummer';
 $aktDir  = ($_GET['dir'] ?? '') === 'desc' ? 'desc' : 'asc';
 $sortMap = [
@@ -143,6 +147,7 @@ $sortMap = [
     'bestand'       => 'gesamtbestand',
     'preis'         => 'COALESCE(ap.brutto_vk, 0)',
     'hersteller'    => 'h.name',
+    'artikeltyp'    => 'at.name',
     'geaendert_am'  => 'a.geaendert_am',
     'charge'        => 'a.charge_pflicht',
 ];

@@ -316,6 +316,7 @@ class ArtikelRepository
             LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
+            LEFT JOIN artikel_typen at ON a.artikeltyp_id = at.id
             WHERE a.vaterartikel_id IN ($placeholders)
             GROUP BY a.id
             ORDER BY $sortSpalte $sortDir

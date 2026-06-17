@@ -10,7 +10,7 @@ if (!is_array($spalten)) {
     exit;
 }
 
-$erlaubt = ['status','shops','bestand','preis','hersteller','ean','einheit',
+$erlaubt = ['status','shops','bestand','preis','hersteller','artikeltyp','ean','einheit',
             'kategorie','geaendert_am','ek','marge','charge',
             'merkmale','lagerplatz','letzte_inventur'];
 
