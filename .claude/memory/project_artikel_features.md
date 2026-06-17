@@ -33,14 +33,21 @@ Stand: 2026-06-17 (Vollständig neu abgeglichen mit tatsächlichem Code-Stand)
 
 ## ⚠ PLATZHALTER — Tabellen da, UI fehlt noch
 
-- **Merkmale-UI** — merkmal_gruppen + merkmale Tabellen vorhanden, Tab "Merkmale" in detail.php zeigt nur Platzhalter. Spätestens vor Shop.
-- **Bilder-Upload** — Tab "Bilder" in detail.php ist Platzhalter. Backend fehlt komplett.
+- **Merkmale-UI** — Design abgestimmt 2026-06-17, Implementierung läuft. Siehe [[project-merkmale]].
+- **Bilder-Upload** — Tab "Bilder" in detail.php ist Platzhalter. Backend fehlt komplett. Morgen.
 
-## 🔴 NOCH OFFEN im Artikel-Modul (vor nächstem Modul abschließen)
+## ✅ Fertig (heute 2026-06-17 ergänzt)
 
-- **Filterung in der Liste** — derzeit nur Freitext-Suche. Fehlend: Filter nach Artikeltyp, Hersteller, Kategorie, "nur mit Bestand". Artikeltyp soll auch als sortierbare Spalte im Spalten-Picker (wie Hersteller).
-- **Qualitätslisten** — "Welche Varianten haben keine EAN?", "Welche Artikel haben keinen Bestand?", "Doppelte EAN systemweit?" — geplant, noch nicht gebaut.
-- **"Ungespeicherte Änderungen"-Banner** — JS change-Event auf Formular-Inputs → kleines Banner einblenden. Gilt für alle Tabs mit Formularen.
+- **Filterung in der Liste** — Hersteller, Artikeltyp, Status, Kategorie-Filter — fertig
+- **Artikeltyp als Spalte** im Spalten-Picker (sortierbar) — fertig
+- **"Ungespeicherte Änderungen"-Banner** — fertig (commit 751f5ee)
+- **Kategorie-Modal Bug** — War in tab-seo (versteckt) eingeschlossen — gefixt (commit af5b17d)
+
+## 🔴 NOCH OFFEN im Artikel-Modul
+
+- **Merkmale-UI** — In Arbeit (Migration + Admin + detail.php Tab)
+- **Bilder-Upload** — morgen
+- **Qualitätslisten** — "Welche Varianten haben keine EAN?", "Doppelte EAN?" — geplant, niedrige Prio
 
 ## 🔜 MIT ANDEREN MODULEN (nicht jetzt)
 

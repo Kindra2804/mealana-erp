@@ -8,7 +8,8 @@
 - [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Jedes neue Modul startet mit Referenz-Check (große WAWIs) + MeaLana-Extras
 - [Feedback: CSS-Strategie](feedback_css_strategie.md) — Derzeit inline style-Tags, beim Frontend-Refactor dann externe Stylesheets
 - [Projekt: Bestellmodul Design](project_bestellmodul.md) — Vollständige Anforderungen: PO-Workflow, EAN-Scan, Rückstandsliste, DB-Tabellen
-- [Artikel-Features Roadmap](project_artikel_features.md) — Was fertig ist (SEO, Preise, Varianten, Zustand, Texte, Maße – ALLES) + was noch offen (Filter, Merkmale-UI, Bilder)
+- [Artikel-Features Roadmap](project_artikel_features.md) — Was fertig ist (alles inkl. Filter+Typ-Spalte) + was offen (Merkmale in Arbeit, Bilder morgen)
+- [Merkmale-Modul Design](project_merkmale.md) — 2-Ebenen (Merkmal/Wert), Single/Multi, Artikeltyp-Filter, WooCommerce slug, Modal wie Kategorie
 - [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Systemweiter Lücken-Vergleich (JTL/Shopware/Sage/LS-POS): Artikel-Texte, Lagerplätze, Reservierungen, Kasse, Inventur, Auftragsfertigung (Stand 2026-06-08)
 - [Buchhaltungsmodul](project_buchhaltung.md) — DATEV-Schnittstelle (Export, nicht nachbauen), Kontenplan (AT), Mappings Steuerklassen→Konten, Odoo als Referenz
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
