@@ -67,8 +67,7 @@ html, body {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    flex: 1;
-    justify-content: flex-end;
+    margin-left: auto;
 }
 
 .erp-sidebar {

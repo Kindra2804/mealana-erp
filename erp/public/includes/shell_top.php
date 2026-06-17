@@ -19,7 +19,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '🗂', 'label' => 'Kategorien',   'href' => '/mealana/artikel/kategorien_verwalten.php'],
         ['icon' => '🔀', 'label' => 'Achsen',       'href' => '/mealana/achsen/liste.php'],
         ['icon' => '🖼', 'label' => 'Bilder',       'href' => '#'],
-        ['icon' => '🏷', 'label' => 'Merkmale',     'href' => '#'],
+        ['icon' => '🏷', 'label' => 'Merkmale',     'href' => '/mealana/artikel/merkmale_verwalten.php'],
         ['icon' => '💲', 'label' => 'Preise',       'href' => '#'],
         ['icon' => '🌐', 'label' => 'SEO',          'href' => '#'],
         ['icon' => '📊', 'label' => 'Statistik',    'href' => '#'],

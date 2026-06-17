@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../src/modules/preise/PreisService.php';
 require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
+require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 
@@ -52,6 +53,12 @@ $zustandsArtikelListe = ($artikel && empty($artikel['zustand_vater_id']))
     : [];
 
 $istKind = !empty($artikel['vaterartikel_id']);
+
+$merkmaleRepo        = new MerkmaleRepository();
+$artikeltypId        = $artikel ? (int)$artikel['artikeltyp_id'] : null;
+$merkmaleFuerTyp     = $merkmaleRepo->findFuerArtikeltyp($artikeltypId);
+$artikelMerkmale     = $merkmaleRepo->findByArtikelId($id);
+$gesetzteWertIds     = array_column($artikelMerkmale, 'merkmal_wert_id');
 
 // Standard-Lieferant für Marge
 $stdLieferant = null;
@@ -246,11 +253,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 <?php if ($flashErfolg): ?>
-    <div class="success-banner">✓ <?= htmlspecialchars($flashErfolg) ?></div>
+    <div class="success-banner" id="flash-php">✓ <?= htmlspecialchars($flashErfolg) ?></div>
 <?php endif; ?>
 <?php if ($flashFehler): ?>
-    <div class="error-banner">✗ <?= htmlspecialchars($flashFehler) ?></div>
+    <div class="error-banner" id="flash-php-err">✗ <?= htmlspecialchars($flashFehler) ?></div>
 <?php endif; ?>
+<div id="ajax-flash" style="display:none;margin:var(--space-sm) var(--space-md) 0"></div>
 <div class="tab-bar">
     <a class="tab active" href="#" onclick="zeigeTab('stammdaten',this);return false;">Stammdaten</a>
     <?php if (!$istKind): ?>
@@ -1131,7 +1139,58 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div class="card">Bilder Platzhalter</div>
     </div>
     <div id="tab-merkmale" class="versteckt">
-        <div class="card">Merkmale Platzhalter</div>
+        <?php if (empty($merkmaleFuerTyp)): ?>
+            <div class="card" style="color:var(--color-text-muted);font-size:13px">
+                Für diesen Artikeltyp sind keine Merkmale konfiguriert.
+                <a href="/mealana/artikel/merkmale_verwalten.php">Merkmale verwalten →</a>
+            </div>
+        <?php else: ?>
+        <div class="card">
+            <div class="form-section-header" style="margin-bottom:var(--space-sm)">Merkmale</div>
+
+            <?php foreach ($merkmaleFuerTyp as $m): ?>
+            <?php
+                $gesetzteWerte = array_filter($artikelMerkmale, fn($am) => $am['merkmal_id'] == $m['id']);
+                $gesetzteWerteIds = array_column(array_values($gesetzteWerte), 'merkmal_wert_id');
+            ?>
+            <div class="form-row" style="align-items:flex-start;margin-bottom:var(--space-sm)">
+                <label class="form-label" style="min-width:160px;padding-top:4px">
+                    <?= htmlspecialchars($m['name']) ?>
+                    <?php if ($m['mehrfach_auswahl']): ?>
+                        <span style="font-size:10px;color:var(--color-text-muted)">(mehrere)</span>
+                    <?php endif; ?>
+                </label>
+                <div style="flex:1">
+                    <!-- Chip-Anzeige der gewählten Werte -->
+                    <div id="merk-chips-<?= $m['id'] ?>" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+                        <?php foreach ($gesetzteWerteIds as $wid): ?>
+                            <?php $w = array_filter($m['werte'], fn($v) => $v['id'] == $wid); $w = reset($w); ?>
+                            <?php if ($w): ?>
+                                <span class="chip chip-aktiv" style="font-size:12px"><?= htmlspecialchars($w['wert']) ?></span>
+                                <input type="hidden" name="merk[<?= $m['id'] ?>][]" value="<?= $wid ?>">
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                        <?php if (empty($gesetzteWerteIds)): ?>
+                            <span style="font-size:12px;color:var(--color-text-muted)">–</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($m['werte'])): ?>
+                    <button type="button" class="btn btn-secondary btn-sm"
+                            onclick="merkmalWaehlen(<?= $m['id'] ?>, <?= (int)$m['mehrfach_auswahl'] ?>, <?= htmlspecialchars(json_encode($m['werte'])) ?>, <?= htmlspecialchars(json_encode($gesetzteWerteIds)) ?>)">
+                        Wählen
+                    </button>
+                    <?php else: ?>
+                    <a href="/mealana/artikel/merkmale_verwalten.php" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px">Werte konfigurieren →</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+
+            <div style="margin-top:var(--space-md)">
+                <button type="button" class="btn btn-primary btn-sm" onclick="merkmaleSpeichern(<?= $id ?>)">💾 Merkmale speichern</button>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     <div id="tab-lieferanten" class="versteckt">
         <div class="card">
@@ -1464,7 +1523,28 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
         </div>
 
+        <!-- Merkmal-Auswahl-Modal -->
+        <div id="merk-backdrop" class="modal-backdrop" style="display:none" onclick="merkmalModalSchliessen()">
+            <div class="modal" style="max-width:420px;max-height:70vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+                <div class="modal-header" id="merk-modal-titel">Merkmal wählen</div>
+                <div id="merk-modal-liste" style="overflow-y:auto;flex:1;padding:var(--space-sm)"></div>
+                <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;padding:var(--space-sm);border-top:1px solid var(--color-border)">
+                    <button class="btn btn-secondary" onclick="merkmalModalSchliessen()">Abbrechen</button>
+                    <button class="btn btn-primary" onclick="merkmalUebernehmen()">Übernehmen</button>
+                </div>
+            </div>
+        </div>
+
         <script>
+            function showFlash(text, typ) {
+                const el = document.getElementById('ajax-flash');
+                el.className = typ === 'fehler' ? 'error-banner' : 'success-banner';
+                el.textContent = (typ === 'fehler' ? '✗ ' : '✓ ') + text;
+                el.style.display = 'block';
+                clearTimeout(el._t);
+                el._t = setTimeout(function() { el.style.display = 'none'; }, 4000);
+            }
+
             function zeigeTab(name, el) {
                 document.querySelectorAll('[id^="tab-"]').forEach(d => d.classList.add('versteckt'));
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1516,7 +1596,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         if (json.erfolg) {
                             location.href = 'detail.php?id=<?= $id ?>&tab=preise';
                         } else {
-                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                            showFlash(json.fehler ?? 'Unbekannter Fehler', 'fehler');
                         }
                     });
             }
@@ -1568,7 +1648,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         if (json.erfolg) {
                             location.href = 'detail.php?id=<?= $id ?>&tab=preise';
                         } else {
-                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                            showFlash(json.fehler ?? 'Unbekannter Fehler', 'fehler');
                         }
                     });
             }
@@ -1586,7 +1666,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             preisModalSchliessen();
                             location.href = 'detail.php?id=<?= $id ?>&tab=preise';
                         } else {
-                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                            showFlash(json.fehler ?? 'Unbekannter Fehler', 'fehler');
                         }
                     });
             }
@@ -1653,7 +1733,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 });
                 const data = await response.json();
                 if (!data.erfolg) {
-                    alert(data.fehler);
+                    showFlash(data.fehler || 'Fehler', 'fehler');
                     return;
                 }
 
@@ -1737,7 +1817,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 const data = await response.json();
 
                 if (!data.erfolg) {
-                    alert(data.fehler);
+                    showFlash(data.fehler || 'Fehler', 'fehler');
                     return;
                 }
 
@@ -1796,7 +1876,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             staffelModalSchliessen();
                             location.href = 'detail.php?id=<?= $id ?>&tab=preise';
                         } else {
-                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                            showFlash(json.fehler ?? 'Unbekannter Fehler', 'fehler');
                         }
                     });
             }
@@ -1815,7 +1895,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         if (json.erfolg) {
                             location.href = 'detail.php?id=<?= $id ?>&tab=preise';
                         } else {
-                            alert('Fehler: ' + (json.fehler ?? 'Unbekannt'));
+                            showFlash(json.fehler ?? 'Unbekannter Fehler', 'fehler');
                         }
                     });
             }
@@ -1918,7 +1998,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 function achseToggle(cb) {
                     if (!cb.checked && cb.dataset.hasLocked) {
                         cb.checked = true;
-                        alert('Diese Achse hat Kind-Artikel — sie kann nicht entfernt werden solange Kind-Artikel existieren.');
+                        showFlash('Diese Achse hat Kind-Artikel — sie kann nicht entfernt werden solange Kind-Artikel existieren.', 'fehler');
                         return;
                     }
                     var id = cb.dataset.achseId;
@@ -1998,12 +2078,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             if (d.erfolg) {
                                 window.location.reload();
                             } else {
-                                alert(d.fehler || 'Fehler beim Speichern');
+                                showFlash(d.fehler || 'Fehler beim Speichern', 'fehler');
                                 btn.disabled = false;
                             }
                         })
                         .catch(function() {
-                            alert('Verbindungsfehler');
+                            showFlash('Verbindungsfehler', 'fehler');
                             btn.disabled = false;
                         });
                 }
@@ -2018,6 +2098,83 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         bannerSuccess.style.display = 'none'
                     }, 3000);
                 }
+
+            // ── Merkmale ──────────────────────────────────────────────────
+            var _merkmalAktuell = null;
+
+            function merkmalWaehlen(merkmalId, mehrfach, werte, gesetzteIds) {
+                _merkmalAktuell = {merkmalId, mehrfach, werte};
+                document.getElementById('merk-modal-titel').textContent = 'Merkmal wählen';
+                const liste = document.getElementById('merk-modal-liste');
+                liste.innerHTML = '';
+                werte.forEach(function(w) {
+                    const label = document.createElement('label');
+                    label.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;font-size:13px';
+                    const input = document.createElement('input');
+                    input.type = mehrfach ? 'checkbox' : 'radio';
+                    input.name = 'merk-auswahl';
+                    input.value = w.id;
+                    input.checked = gesetzteIds.includes(w.id);
+                    label.appendChild(input);
+                    label.appendChild(document.createTextNode(w.wert));
+                    liste.appendChild(label);
+                });
+                document.getElementById('merk-backdrop').style.display = 'flex';
+            }
+
+            function merkmalModalSchliessen() {
+                document.getElementById('merk-backdrop').style.display = 'none';
+            }
+
+            function merkmalUebernehmen() {
+                if (!_merkmalAktuell) return;
+                const mid = _merkmalAktuell.merkmalId;
+                const gewaehlte = [...document.querySelectorAll('input[name="merk-auswahl"]:checked')].map(i => parseInt(i.value));
+                const wertMap = {};
+                _merkmalAktuell.werte.forEach(function(w) { wertMap[w.id] = w.wert; });
+
+                // Hidden inputs + Chips neu aufbauen
+                const chipsDiv = document.getElementById('merk-chips-' + mid);
+                chipsDiv.innerHTML = '';
+                gewaehlte.forEach(function(wid) {
+                    const span = document.createElement('span');
+                    span.className = 'chip chip-aktiv';
+                    span.style.fontSize = '12px';
+                    span.textContent = wertMap[wid] || wid;
+                    chipsDiv.appendChild(span);
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'merk[' + mid + '][]';
+                    inp.value = wid;
+                    chipsDiv.appendChild(inp);
+                });
+                if (!gewaehlte.length) {
+                    chipsDiv.innerHTML = '<span style="font-size:12px;color:var(--color-text-muted)">–</span>';
+                }
+                merkmalModalSchliessen();
+            }
+
+            function merkmaleSpeichern(artikelId) {
+                const daten = {};
+                document.querySelectorAll('[name^="merk["]').forEach(function(inp) {
+                    const m = inp.name.match(/merk\[(\d+)\]/);
+                    if (!m) return;
+                    const mid = m[1];
+                    if (!daten[mid]) daten[mid] = [];
+                    daten[mid].push(parseInt(inp.value));
+                });
+                fetch('merkmale_speichern.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({artikel_id: artikelId, merkmale: daten})
+                }).then(r => r.json()).then(function(d) {
+                    if (d.erfolg) {
+                        showFlash('Merkmale gespeichert', 'erfolg');
+                    } else {
+                        showFlash(d.fehler || 'Fehler beim Speichern', 'fehler');
+                    }
+                });
+            }
             </script>
         <?php endif; ?>
 
