@@ -1217,9 +1217,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </form>
             </div>
         </div>
+    </div><!-- /tab-seo -->
 
-        <?php
-        function renderKatBaumModal(array $nodes, int $tiefe = 0): string
+    <?php
+    function renderKatBaumModal(array $nodes, int $tiefe = 0): string
         {
             $html = '';
             $last = count($nodes) - 1;
