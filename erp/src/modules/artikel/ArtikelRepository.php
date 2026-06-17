@@ -512,6 +512,61 @@ class ArtikelRepository
         return $stmt->rowCount() > 0;
     }
 
+    public function deactivateKinder(int $vaterId): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE artikel SET aktiv = 0, deaktiviert_mit_vater = 1
+            WHERE vaterartikel_id = :vater AND aktiv = 1
+        ");
+        $stmt->execute(['vater' => $vaterId]);
+    }
+
+    public function activate(int $id): bool
+    {
+        $stmt = $this->db->prepare("UPDATE artikel SET aktiv = 1 WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function reactivateKinder(int $vaterId): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE artikel SET aktiv = 1, deaktiviert_mit_vater = 0
+            WHERE vaterartikel_id = :vater AND deaktiviert_mit_vater = 1
+        ");
+        $stmt->execute(['vater' => $vaterId]);
+    }
+
+    public function setAuslauf(int $id): void
+    {
+        $stmt = $this->db->prepare("UPDATE artikel SET ist_auslaufartikel = 1 WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+    }
+
+    public function removeAuslauf(int $id): void
+    {
+        $stmt = $this->db->prepare("UPDATE artikel SET ist_auslaufartikel = 0 WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+    }
+
+    public function setAuslaufKinder(int $vaterId): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE artikel SET ist_auslaufartikel = 1, auslauf_mit_vater = 1
+            WHERE vaterartikel_id = :vater AND ist_auslaufartikel = 0
+        ");
+        $stmt->execute(['vater' => $vaterId]);
+    }
+
+    public function removeAuslaufKinder(int $vaterId): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE artikel SET ist_auslaufartikel = 0, auslauf_mit_vater = 0
+            WHERE vaterartikel_id = :vater AND auslauf_mit_vater = 1
+        ");
+        $stmt->execute(['vater' => $vaterId]);
+    }
+
     public function insertPreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 1): bool
     {
         $stmt = $this->db->prepare("

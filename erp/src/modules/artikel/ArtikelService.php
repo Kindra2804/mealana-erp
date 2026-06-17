@@ -185,7 +185,41 @@ class ArtikelService
             return ['erfolg' => false, 'fehler' => 'Artikel nicht gefunden'];
         }
         $this->repo->deactivate($id);
+        $this->repo->deactivateKinder($id);
         Logger::log('artikel.loeschen', 'artikel', $id);
+        return ['erfolg' => true];
+    }
+
+    public function aktivieren(int $id): array
+    {
+        if ($this->repo->findById($id) === false) {
+            return ['erfolg' => false, 'fehler' => 'Artikel nicht gefunden'];
+        }
+        $this->repo->activate($id);
+        $this->repo->reactivateKinder($id);
+        Logger::log('artikel.aktivieren', 'artikel', $id);
+        return ['erfolg' => true];
+    }
+
+    public function auslaufSetzen(int $id): array
+    {
+        if ($this->repo->findById($id) === false) {
+            return ['erfolg' => false, 'fehler' => 'Artikel nicht gefunden'];
+        }
+        $this->repo->setAuslauf($id);
+        $this->repo->setAuslaufKinder($id);
+        Logger::log('artikel.auslauf.setzen', 'artikel', $id);
+        return ['erfolg' => true];
+    }
+
+    public function auslaufEntfernen(int $id): array
+    {
+        if ($this->repo->findById($id) === false) {
+            return ['erfolg' => false, 'fehler' => 'Artikel nicht gefunden'];
+        }
+        $this->repo->removeAuslauf($id);
+        $this->repo->removeAuslaufKinder($id);
+        Logger::log('artikel.auslauf.entfernen', 'artikel', $id);
         return ['erfolg' => true];
     }
 

@@ -92,7 +92,8 @@ function buildPaginierung(int $aktuelleSeite, int $gesamtSeiten, int $fenster = 
 }
 
 // Hilfsfunktion: klickbarer Spaltenheader mit Sort-Indikator
-function sortKopf(string $spalte, string $label, string $aktSort, string $aktDir, array $getParams): string {
+function sortKopf(string $spalte, string $label, string $aktSort, string $aktDir, array $getParams): string
+{
     $istAktiv = $aktSort === $spalte;
     $neueDir  = ($istAktiv && $aktDir === 'asc') ? 'desc' : 'asc';
     $p  = array_merge($getParams, ['sort' => $spalte, 'dir' => $neueDir, 'seite' => 1]);
@@ -100,7 +101,7 @@ function sortKopf(string $spalte, string $label, string $aktSort, string $aktDir
     $pfeil = $istAktiv ? ($aktDir === 'asc' ? ' ▲' : ' ▼') : ' ↕';
     $farbe = $istAktiv ? 'color:var(--color-nav)' : 'color:inherit;opacity:.7';
     return '<a href="liste.php?' . $qs . '" style="' . $farbe . ';text-decoration:none;white-space:nowrap;cursor:pointer">'
-         . htmlspecialchars($label) . $pfeil . '</a>';
+        . htmlspecialchars($label) . $pfeil . '</a>';
 }
 
 // Kanal-Konfiguration — K1/K2 = Kasse (immer alle Artikel, Businessregel)
@@ -160,8 +161,16 @@ $actionBarContent = <<<HTML
 <button class="btn btn-secondary btn-sm">⬇ Import</button>
 <button class="btn btn-secondary btn-sm">⬆ Export</button>
 <div class="actionbar-right">
-    <span style="color:var(--color-text-muted);font-size:13px">Ausgewählt: 0</span>
-    <button class="btn btn-secondary btn-sm">Aktion ▼</button>
+    <span style="color:var(--color-text-muted);font-size:13px">Ausgewählt:</span>
+    <span id="ausgewaehlt-count" style="color:var(--color-text-muted);font-size:13px">0</span>
+    <select id="massen-aktion" class="btn btn-secondary btn-sm">
+        <option value="">Aktion ▼</option>
+        <option value="aktivieren">Aktivieren</option>
+        <option value="deaktivieren">Deaktivieren</option>
+        <option value="ist_auslaufartikel">ist Auslaufartikel</option>
+        <option value="kein_auslaufartikel">kein Auslaufartikel</option>
+    </select>
+    <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
 </div>
 HTML;
 
@@ -318,7 +327,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php if ($a['brutto_vk']): ?>
                             <?php if ($hatTeureresKind): ?><span style="font-size:10px;color:var(--color-text-muted)">ab </span><?php endif; ?>
                             <?= number_format((float)$a['brutto_vk'], 2, ',', '.') ?> €
-                        <?php else: ?>–<?php endif; ?>
+                            <?php else: ?>–<?php endif; ?>
                     </td>
                     <td class="aktion-cell">
                         <span class="row-aktionen">
@@ -508,8 +517,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
     const EXPANDED_KEY = 'mealana_expanded_artikel';
 
     function getExpanded() {
-        try { return new Set(JSON.parse(localStorage.getItem(EXPANDED_KEY) || '[]').map(String)); }
-        catch(e) { return new Set(); }
+        try {
+            return new Set(JSON.parse(localStorage.getItem(EXPANDED_KEY) || '[]').map(String));
+        } catch (e) {
+            return new Set();
+        }
     }
 
     function saveExpanded(set) {
@@ -532,7 +544,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
         const pfeile = document.querySelectorAll('[id^="pfeil-"]');
         const sindAlleZu = Array.from(pfeile).every(p => p.textContent === '▶');
         if (!sindAlleZu) {
-            pfeile.forEach(p => { if (p.textContent === '▼') toggleKinder(p.id.replace('pfeil-', '')); });
+            pfeile.forEach(p => {
+                if (p.textContent === '▼') toggleKinder(p.id.replace('pfeil-', ''));
+            });
         }
     }
 
@@ -545,8 +559,58 @@ require_once __DIR__ . '/../includes/shell_top.php';
         });
     })();
 
+
+
+    function zaehlerAktualisieren() {
+        var checkedSum = 0;
+        document.querySelectorAll('.zeile-cb').forEach(cb => {
+            if (cb.checked) checkedSum++;
+        })
+        document.getElementById('ausgewaehlt-count').innerText = checkedSum;
+    }
+
+    document.querySelectorAll('.zeile-cb').forEach(cb => {
+        cb.addEventListener('change', function() {
+            zaehlerAktualisieren();
+        });
+    });
+
     document.getElementById('alle-auswaehlen').addEventListener('change', function() {
         document.querySelectorAll('.zeile-cb').forEach(cb => cb.checked = this.checked);
+        zaehlerAktualisieren();
+    });
+
+    document.getElementById('massen-ausfuehren').addEventListener('click', function() {
+        const ids = [...document.querySelectorAll('.zeile-cb:checked')].map(cb => cb.value);
+        const aktion = document.getElementById('massen-aktion').value;
+        if (ids.length === 0) {
+            alert('Bitte Artikel auswählen');
+            return;
+        }
+        if (aktion === '') {
+            alert('Bitte Aktion wählen');
+            return;
+        }
+
+        fetch('massenupdate.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ids: ids,
+                    aktion: aktion
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.fehler) {
+                    alert(data.fehler);
+                    return;
+                }
+                location.reload();
+            });
+
     });
 </script>
 
