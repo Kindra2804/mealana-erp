@@ -7,7 +7,7 @@ metadata:
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
 ---
 
-Stand: 2026-06-17 (Vollständig neu abgeglichen mit tatsächlichem Code-Stand)
+Stand: 2026-06-17 (Abschluss Artikel-Modul)
 
 ## ✅ FERTIG — bereits vollständig implementiert
 
@@ -31,23 +31,21 @@ Stand: 2026-06-17 (Vollständig neu abgeglichen mit tatsächlichem Code-Stand)
 - **Lieferanten-Modul** — lieferanten/, CRUD + Vertreter
 - **Achsen-Modul** — achsen/, globale Achsenverwaltung
 
-## ⚠ PLATZHALTER — Tabellen da, UI fehlt noch
+## ✅ Fertig (2026-06-17)
 
-- **Merkmale-UI** — Design abgestimmt 2026-06-17, Implementierung läuft. Siehe [[project-merkmale]].
-- **Bilder-Upload** — Tab "Bilder" in detail.php ist Platzhalter. Backend fehlt komplett. Morgen.
+- **Filterung in der Liste** — Hersteller, Artikeltyp, Status, Kategorie-Filter
+- **Artikeltyp als Spalte** im Spalten-Picker (sortierbar)
+- **"Ungespeicherte Änderungen"-Banner** zentriert zwischen "Im Shop" / "Löschen"
+- **Kategorie-Modal Bug** — War in tab-seo (versteckt) eingeschlossen — gefixt
+- **Einheitliche Flash-Banner** — showFlash() + #ajax-flash in allen Tabs
+- **Merkmale komplett** — Migration 037, Admin (merkmale_verwalten.php), detail.php Tab, AJAX-Save (merkmale_speichern.php). Siehe [[project-merkmale]]
+- **brutto_ek Lieferanten** — Migration 038, Auto-Kalkulation Netto↔Brutto im Modal
+- **Tab-Persistenz** — aktiver Tab bleibt nach Refresh (localStorage pro Artikel-ID)
 
-## ✅ Fertig (heute 2026-06-17 ergänzt)
+## ⏳ NOCH OFFEN im Artikel-Modul
 
-- **Filterung in der Liste** — Hersteller, Artikeltyp, Status, Kategorie-Filter — fertig
-- **Artikeltyp als Spalte** im Spalten-Picker (sortierbar) — fertig
-- **"Ungespeicherte Änderungen"-Banner** — fertig (commit 751f5ee)
-- **Kategorie-Modal Bug** — War in tab-seo (versteckt) eingeschlossen — gefixt (commit af5b17d)
-
-## 🔴 NOCH OFFEN im Artikel-Modul
-
-- **Merkmale-UI** — In Arbeit (Migration + Admin + detail.php Tab)
-- **Bilder-Upload** — morgen
-- **Qualitätslisten** — "Welche Varianten haben keine EAN?", "Doppelte EAN?" — geplant, niedrige Prio
+- **Bilder-Upload** — Tab "Bilder" ist Platzhalter. Nächste Session.
+- **Qualitätslisten** — "Welche Varianten haben keine EAN?", "Doppelte EAN?" — niedrige Prio
 
 ## 🔜 MIT ANDEREN MODULEN (nicht jetzt)
 
@@ -66,4 +64,4 @@ Stand: 2026-06-17 (Vollständig neu abgeglichen mit tatsächlichem Code-Stand)
 | merkmale | ⏳ Platzhalter bis Merkmale-UI fertig |
 | lagerplatz | ⏳ Platzhalter bis lagerplaetze-Tabelle + Modul |
 | letzte_inventur | ⏳ Platzhalter bis Inventur-Modul |
-| artikeltyp | 🔴 Noch nicht eingebaut — kommt mit Filterung |
+| artikeltyp | ✅ Fertig |
