@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/core/Logger.php';
 
 $pdo = Database::getInstance();
 
@@ -31,6 +32,7 @@ if ($artikel_id > 0) {
         'url_slug' => $url_slug
     ]);
 
+    Logger::log('artikel.seo_aktualisiert', 'artikel', $artikel_id);
     $_SESSION['erfolg'] = 'SEO-Daten gespeichert!';
     header('Location: detail.php?id=' . $artikel_id);
     exit;

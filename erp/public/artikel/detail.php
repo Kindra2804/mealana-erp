@@ -107,6 +107,11 @@ if ($artikel === false) {
     exit;
 }
 
+$flashErfolg = $_SESSION['erfolg'] ?? null;
+$flashFehler = $_SESSION['fehler'] ?? null;
+unset($_SESSION['erfolg'], $_SESSION['fehler']);
+
+
 if (!function_exists('formatBestand')) {
     function formatBestand(int|float|string $wert): string
     {
@@ -181,14 +186,16 @@ $pageTitle    = htmlspecialchars($artikel['name']);
 $activeModule = 'artikel';
 
 $actionBarContent = <<<HTML
-<button form="stammdaten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
-<a href="liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
-<div class="actionbar-sep"></div>
-<button class="btn btn-secondary btn-sm" style="color:var(--color-warning)">Deaktivieren</button>
-<button class="btn btn-secondary btn-sm" style="color:#0a6ebd">Im Shop ▼</button>
-<div class="actionbar-sep"></div>
+<div class="actionbar-left">
+    <button form="stammdaten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
+    <a href="liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
+    <div class="actionbar-sep"></div>
+    <button class="btn btn-secondary btn-sm" style="color:var(--color-warning)">Deaktivieren</button>
+    <button class="btn btn-secondary btn-sm" style="color:#0a6ebd">Im Shop ▼</button>
+</div>
+<span id="unsaved-banner" class="unsaved-indicator">ungespeicherte Änderungen</span>
 <div class="actionbar-right">
-<button class="btn btn-danger btn-sm">Löschen</button>
+    <button class="btn btn-danger btn-sm">Löschen</button>
 </div>
 HTML;
 
@@ -238,7 +245,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?= $artikel['aktiv'] ? 'Aktiv' : 'Inaktiv' ?>
     </div>
 </div>
-
+<?php if ($flashErfolg): ?>
+    <div class="success-banner">✓ <?= htmlspecialchars($flashErfolg) ?></div>
+<?php endif; ?>
+<?php if ($flashFehler): ?>
+    <div class="error-banner">✗ <?= htmlspecialchars($flashFehler) ?></div>
+<?php endif; ?>
 <div class="tab-bar">
     <a class="tab active" href="#" onclick="zeigeTab('stammdaten',this);return false;">Stammdaten</a>
     <?php if (!$istKind): ?>
@@ -1890,6 +1902,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <button id="achsen-speichern-btn" onclick="achsenSpeichern()" class="btn btn-primary btn-sm">Speichern</button>
                     </div>
                 </div>
+
             </div>
 
             <script>
@@ -1992,6 +2005,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             alert('Verbindungsfehler');
                             btn.disabled = false;
                         });
+                }
+
+                document.getElementById('stammdaten-form').addEventListener('change', function() {
+                    document.getElementById('unsaved-banner').style.display = 'inline-flex';
+                });
+
+                var bannerSuccess = document.querySelector('.success-banner');
+                if (bannerSuccess) {
+                    setTimeout(function() {
+                        bannerSuccess.style.display = 'none'
+                    }, 3000);
                 }
             </script>
         <?php endif; ?>

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/core/Logger.php';
 
 header('Content-Type: application/json');
 
@@ -55,6 +56,7 @@ if ($al_id) {
         'standard_lieferant' => $standard_lieferant,
         'al_id' => $al_id
     ]);
+    Logger::log('artikel.lieferant.bearbeiten', 'artikel_lieferanten', $al_id, ['artikel_id' => $artikel_id, 'lieferant_id' => $lieferant_id]);
 } else {
     // INSERT — neue Zeile
     $stmt = $pdo->prepare("
@@ -94,6 +96,7 @@ if ($al_id) {
         'mindestabnahme' => $mindestabnahme,
         'standard_lieferant' => $standard_lieferant,
     ]);
+    Logger::log('artikel.lieferant.anlegen', 'artikel_lieferanten', $artikel_id, ['lieferant_id' => $lieferant_id]);
 }
 
 echo json_encode(['erfolg' => true]);

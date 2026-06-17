@@ -93,6 +93,7 @@
     color: #e65100;
 }
 
+
 /* ===== TABLE ===== */
 
 .erp-table {
@@ -634,7 +635,7 @@
     accent-color: var(--color-nav);
 }
 
-/* ===== PFLICHTFELDER ===== */
+/* ===== BANNERS / HINWEISE ===== */
 
 .pflicht-stern {
     color: var(--color-nav);
@@ -649,6 +650,45 @@
     margin-bottom: var(--space-md);
     font-size: 13px;
     color: var(--color-text-muted);
+}
+
+.unsaved-indicator {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-style: italic;
+    color: #C05621;
+}
+
+.unsaved-indicator::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #F6AD55;
+    flex-shrink: 0;
+}
+
+.success-banner {
+    background: var(--color-bg);
+    border: 3px solid var(--color-success);
+    border-radius: 4px;
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-md);
+    font-size: 13px;
+    color: var(--color-success);
+}
+
+.error-banner {
+    background: var(--color-bg);
+    border: 3px solid var(--color-danger);
+    border-radius: 4px;
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-md);
+    font-size: 13px;
+    color: var(--color-danger);
 }
 
 /* ===== ARTIKELLISTE ===== */

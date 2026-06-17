@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/PreisRepository.php';
+require_once __DIR__ . '/../../core/Logger.php';
 
 class PreisService
 {
@@ -23,6 +24,7 @@ class PreisService
     public function loescheKundengruppenPreis(int $artikelId, int $kgId): array
     {
         $this->repo->deleteKundengruppenPreis($artikelId, $kgId);
+        Logger::log('preis.kundengruppe.loeschen', 'artikel_preise', $artikelId, ['kg_id' => $kgId]);
         return ['erfolg' => true];
     }
 
@@ -44,8 +46,10 @@ class PreisService
 
         if (!empty($data['id'])) {
             $this->repo->updateStaffelpreis($data);
+            Logger::log('preis.staffel.bearbeiten', 'artikel_staffelpreise', $data['artikel_id'], ['kg_id' => $data['kundengruppen_id'], 'menge_ab' => $data['menge_ab']]);
         } else {
             $this->repo->insertStaffelpreis($data);
+            Logger::log('preis.staffel.anlegen', 'artikel_staffelpreise', $data['artikel_id'], ['kg_id' => $data['kundengruppen_id'], 'menge_ab' => $data['menge_ab']]);
         }
         return ['erfolg' => true];
     }
@@ -53,6 +57,7 @@ class PreisService
     public function loescheStaffelpreis(int $id, int $artikelId): array
     {
         $this->repo->deleteStaffelpreis($id, $artikelId);
+        Logger::log('preis.staffel.loeschen', 'artikel_staffelpreise', $artikelId, ['staffelpreis_id' => $id]);
         return ['erfolg' => true];
     }
 
@@ -67,6 +72,7 @@ class PreisService
         if (!empty($fehler)) return ['erfolg' => false, 'fehler' => implode(', ', $fehler)];
 
         $this->repo->upsertKundengruppenPreis($data);
+        Logger::log('preis.kundengruppe.speichern', 'artikel_preise', $data['artikel_id'], ['kg_id' => $data['kundengruppen_id']]);
         return ['erfolg' => true];
     }
 }

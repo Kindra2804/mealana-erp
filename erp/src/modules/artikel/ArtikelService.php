@@ -256,9 +256,11 @@ class ArtikelService
             return ['erfolg' => false, 'fehler' => 'Name darf nicht leer sein'];
         }
         $id = $this->kategorieRepo->insert($trimmed, $parentId);
-        return $id
-            ? ['erfolg' => true, 'id' => $id, 'name' => $trimmed]
-            : ['erfolg' => false, 'fehler' => 'Fehler beim Speichern'];
+        if ($id) {
+            Logger::log('kategorie.anlegen', 'kategorien', $id, ['name' => $trimmed, 'parent_id' => $parentId]);
+            return ['erfolg' => true, 'id' => $id, 'name' => $trimmed];
+        }
+        return ['erfolg' => false, 'fehler' => 'Fehler beim Speichern'];
     }
 
     public function updateKategorie(int $id, string $name, ?int $parentId): array
@@ -277,6 +279,7 @@ class ArtikelService
             return ['erfolg' => false, 'fehler' => 'Ziel ist ein Nachkomme dieser Kategorie'];
         }
         $this->kategorieRepo->update($id, $trimmed, $parentId);
+        Logger::log('kategorie.bearbeiten', 'kategorien', $id, ['name' => $trimmed, 'parent_id' => $parentId]);
         return ['erfolg' => true];
     }
 
@@ -293,6 +296,7 @@ class ArtikelService
         }
         $kinderIds = $this->kategorieRepo->findAlleKinderIds($id);
         $this->kategorieRepo->deleteKategorie($id, $verschiebeZuParentId);
+        Logger::log('kategorie.loeschen', 'kategorien', $id, ['geloeschte_ids' => array_merge([$id], $kinderIds), 'verschoben_zu' => $verschiebeZuParentId]);
         return [
             'erfolg'         => true,
             'geloeschte_ids' => array_merge([$id], $kinderIds),

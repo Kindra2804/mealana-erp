@@ -57,11 +57,18 @@ html, body {
     background: var(--color-border);
 }
 
-.actionbar-right {
-    margin-left: auto;
+.actionbar-left {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
+}
+
+.actionbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex: 1;
+    justify-content: flex-end;
 }
 
 .erp-sidebar {
