@@ -1567,11 +1567,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
             // Tab wiederherstellen: URL-Parameter hat Vorrang, dann localStorage
             (function() {
-                const urlTab = new URLSearchParams(location.search).get('tab');
-                const saved  = urlTab || localStorage.getItem(TAB_KEY);
+                const urlParams = new URLSearchParams(location.search);
+                const urlTab    = urlParams.get('tab');
+                const saved     = urlTab || localStorage.getItem(TAB_KEY);
                 if (saved) {
                     const el = document.querySelector(`.tab[onclick*="'${saved}'"]`);
                     if (el) zeigeTab(saved, el);
+                }
+                // URL-Parameter entfernen damit er nicht im Browser kleben bleibt
+                if (urlTab) {
+                    urlParams.delete('tab');
+                    const clean = location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                    history.replaceState(null, '', clean);
                 }
             })();
 
