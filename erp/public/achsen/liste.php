@@ -66,6 +66,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php else: ?>
                             —
                         <?php endif; ?>
+                        <?php if ($a['ist_gruppe']): ?>
+                            <span style="background:#fef3c7;color:#92400e;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:4px">Gruppe</span>
+                        <?php endif; ?>
                     </td>
                     <td style="text-align:center;white-space:nowrap">
                         <?php if ($i > 0): ?>
@@ -79,7 +82,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </td>
                     <td>
                         <div class="row-aktionen">
-                            <button onclick="achseBearbeitenOeffnen(<?= $a['id'] ?>, <?= htmlspecialchars(json_encode($a['name'])) ?>, <?= htmlspecialchars(json_encode($a['code'])) ?>, <?= htmlspecialchars(json_encode($a['darstellungsform'])) ?>, <?= (int)$a['sort_order'] ?>, <?= $a['abhaengig_von_achse_id'] ?? 'null' ?>)"
+                            <button onclick="achseBearbeitenOeffnen(<?= $a['id'] ?>, <?= htmlspecialchars(json_encode($a['name'])) ?>, <?= htmlspecialchars(json_encode($a['code'])) ?>, <?= htmlspecialchars(json_encode($a['darstellungsform'])) ?>, <?= (int)$a['ist_gruppe'] ?>, <?= (int)$a['sort_order'] ?>, <?= $a['abhaengig_von_achse_id'] ?? 'null' ?>)"
                                     class="btn btn-secondary btn-xs">Bearb.</button>
                             <?php if ($a['in_use']): ?>
                                 <span title="Achse ist Artikeln zugewiesen – kann nicht gelöscht werden"
@@ -134,7 +137,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
 
             <div style="margin-bottom:var(--space-md)">
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Abhängig von Achse</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" id="edit-ist-gruppe" style="width:16px;height:16px">
+                    <span style="font-size:13px;font-weight:600">Gruppenachse</span>
+                </label>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px;margin-left:24px">
+                    Kann Unterachsen enthalten (und trotzdem eigene Werte haben)
+                </div>
+            </div>
+
+            <div style="margin-bottom:var(--space-md)">
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Abhängig von Achse (= Sub-Achse von)</label>
                 <select id="edit-abhaengig" class="erp-select" style="width:100%">
                     <option value="">— keine Abhängigkeit —</option>
                     <?php foreach ($achsen as $a): ?>
@@ -203,32 +216,30 @@ function achseNeuOeffnen() {
     document.getElementById('edit-name').value = '';
     document.getElementById('edit-code').value = '';
     document.getElementById('edit-darstellung').value = 'swatches';
+    document.getElementById('edit-ist-gruppe').checked = false;
     document.getElementById('edit-abhaengig').value = '';
     document.getElementById('edit-sort').value = '0';
     document.getElementById('edit-fehler').textContent = '';
     document.getElementById('edit-btn').disabled = false;
 
-    // Selbst-Option ausblenden hat bei Neu keine Bedeutung — alle Optionen sichtbar
-    Array.from(document.getElementById('edit-abhaengig').options).forEach(function(o) {
-        o.hidden = false;
-    });
+    Array.from(document.getElementById('edit-abhaengig').options).forEach(function(o) { o.hidden = false; });
 
     document.getElementById('edit-modal').style.display = 'flex';
     document.getElementById('edit-name').focus();
 }
 
-function achseBearbeitenOeffnen(id, name, code, darstellung, sort, abhaengigId) {
+function achseBearbeitenOeffnen(id, name, code, darstellung, istGruppe, sort, abhaengigId) {
     document.getElementById('edit-modal-titel').textContent = 'Achse bearbeiten';
     document.getElementById('edit-id').value = id;
     document.getElementById('edit-name').value = name;
     document.getElementById('edit-code').value = code;
     document.getElementById('edit-darstellung').value = darstellung;
+    document.getElementById('edit-ist-gruppe').checked = istGruppe == 1;
     document.getElementById('edit-abhaengig').value = abhaengigId || '';
     document.getElementById('edit-sort').value = sort;
     document.getElementById('edit-fehler').textContent = '';
     document.getElementById('edit-btn').disabled = false;
 
-    // Achse kann nicht von sich selbst abhängen — eigene Option verstecken
     Array.from(document.getElementById('edit-abhaengig').options).forEach(function(o) {
         o.hidden = (o.value !== '' && parseInt(o.value) === id);
     });
@@ -263,12 +274,14 @@ function editAbsenden() {
     }
 
     var url = id > 0 ? '/mealana/achsen/achse_aktualisieren_ajax.php' : '/mealana/achsen/achse_speichern_ajax.php';
+    var istGruppe = document.getElementById('edit-ist-gruppe').checked ? '1' : '0';
 
     var body = new FormData();
     if (id > 0) body.append('id', id);
     body.append('name', name);
     body.append('code', code);
     body.append('darstellungsform', darstl);
+    body.append('ist_gruppe', istGruppe);
     body.append('abhaengig_von_achse_id', abhaengig);
     body.append('sort_order', sort);
 

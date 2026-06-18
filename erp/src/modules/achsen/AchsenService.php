@@ -71,6 +71,11 @@ class AchsenService
             return ['erfolg' => false, 'fehler' => $fehler];
         }
 
+        // Gruppenachse-Flag darf nicht entfernt werden solange Unterachsen existieren
+        if (empty($data['ist_gruppe']) && $this->repo->hasChildren((int)$data['id'])) {
+            return ['erfolg' => false, 'fehler' => ['Gruppenachse-Flag kann nicht entfernt werden solange Unterachsen vorhanden sind. Bitte zuerst alle Unterachsen löschen oder verschieben.']];
+        }
+
         $this->repo->update($data);
 
         Logger::log('achse.updaten', 'varianten_achsen', $data['id'], ['name' => $data['name'], 'code' => $data['code'], 'darstellungsform' => $data['darstellungsform']]);

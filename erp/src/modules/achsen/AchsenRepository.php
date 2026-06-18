@@ -19,6 +19,7 @@ class AchsenRepository
                 va.name,
                 va.code,
                 va.darstellungsform,
+                va.ist_gruppe,
                 va.abhaengig_von_achse_id,
                 va2.name        AS abhaengig_von_name,
                 va.sort_order,
@@ -69,14 +70,15 @@ class AchsenRepository
     public function insert(array $data): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO varianten_achsen (name, code, darstellungsform, abhaengig_von_achse_id, sort_order)
-            VALUES (:name, :code, :darstellungsform, :abhaengig_von_achse_id, :sort_order)
+            INSERT INTO varianten_achsen (name, code, darstellungsform, ist_gruppe, abhaengig_von_achse_id, sort_order)
+            VALUES (:name, :code, :darstellungsform, :ist_gruppe, :abhaengig_von_achse_id, :sort_order)
         ");
 
         $stmt->execute([
             'name'                  => $data['name'],
             'code'                  => $data['code'],
             'darstellungsform'      => $data['darstellungsform'],
+            'ist_gruppe'            => $data['ist_gruppe'] ?? 0,
             'abhaengig_von_achse_id'=> $data['abhaengig_von_achse_id'] ?? null,
             'sort_order'            => $data['sort_order'],
         ]);
@@ -91,6 +93,7 @@ class AchsenRepository
                 name                   = :name,
                 code                   = :code,
                 darstellungsform       = :darstellungsform,
+                ist_gruppe             = :ist_gruppe,
                 abhaengig_von_achse_id = :abhaengig_von_achse_id,
                 sort_order             = :sort_order
             WHERE id = :id
@@ -101,6 +104,7 @@ class AchsenRepository
             'name'                  => $data['name'],
             'code'                  => $data['code'],
             'darstellungsform'      => $data['darstellungsform'],
+            'ist_gruppe'            => $data['ist_gruppe'] ?? 0,
             'abhaengig_von_achse_id'=> $data['abhaengig_von_achse_id'] ?? null,
             'sort_order'            => $data['sort_order'],
         ]);
@@ -144,5 +148,30 @@ class AchsenRepository
     {
         $stmt = $this->db->prepare("UPDATE varianten_achsen SET sort_order = :order WHERE id = :id");
         $stmt->execute(['order' => $order, 'id' => $id]);
+    }
+
+    public function hasChildren(int $id): bool
+    {
+        $stmt = $this->db->prepare("SELECT id FROM varianten_achsen WHERE abhaengig_von_achse_id = :id LIMIT 1");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch() !== false;
+    }
+
+    public function findByParentId(?int $parentId): array
+    {
+        if (!$parentId) {
+            return $this->db->query("
+                SELECT id, name, sort_order FROM varianten_achsen
+                WHERE abhaengig_von_achse_id IS NULL
+                ORDER BY sort_order, name
+            ")->fetchAll();
+        }
+        $stmt = $this->db->prepare("
+            SELECT id, name, sort_order FROM varianten_achsen
+            WHERE abhaengig_von_achse_id = :pid
+            ORDER BY sort_order, name
+        ");
+        $stmt->execute(['pid' => $parentId]);
+        return $stmt->fetchAll();
     }
 }

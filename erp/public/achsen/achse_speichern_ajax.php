@@ -15,6 +15,7 @@ $data = [
     'name'                   => trim($_POST['name'] ?? ''),
     'code'                   => strtolower(str_replace(' ', '_', trim($_POST['code'] ?? ''))),
     'darstellungsform'       => $_POST['darstellungsform'] ?? 'dropdown',
+    'ist_gruppe'             => !empty($_POST['ist_gruppe']) ? 1 : 0,
     'abhaengig_von_achse_id' => $abhaengigVon,
     'sort_order'             => (int)($_POST['sort_order'] ?? 0),
 ];

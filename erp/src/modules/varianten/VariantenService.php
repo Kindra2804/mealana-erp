@@ -13,7 +13,6 @@ class VariantenService
 
     public function speichereAchsenUndWerte(int $artikelId, array $achsenIds, array $werte): array
     {
-        // Schutz: Werte-IDs die von Kind-Artikeln referenziert werden dürfen nicht gelöscht werden
         $inUseIds = $this->repo->findWertIdsInUse($artikelId);
         if (!empty($inUseIds)) {
             return [
@@ -29,31 +28,8 @@ class VariantenService
             $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId]);
         }
 
-        // Eltern-Achsen-Werte zuerst einfügen (werden als Unterachsen-Header referenziert)
-        $elternAchseIds   = array_unique(array_filter(array_column($werte, 'ist_eltern_achse')));
-        $nameToIdMap      = [];  // 'achse_id:wert_text' → neu-eingefügte DB-ID
-
         foreach ($werte as $wert) {
-            if (!empty($wert['ist_eltern_achse'])) {
-                $wert['artikel_id'] = $artikelId;
-                $newId = $this->repo->insertWert($wert);
-                $mapKey = $wert['achse_id'] . ':' . strtolower(trim($wert['wert']));
-                $nameToIdMap[$mapKey] = $newId;
-            }
-        }
-
-        // Kind-Achsen-Werte einfügen (mit aufgelöster bedingungs_wert_id falls nötig)
-        foreach ($werte as $wert) {
-            if (!empty($wert['ist_eltern_achse'])) continue;
-
             $wert['artikel_id'] = $artikelId;
-
-            // Wenn bedingungs_wert_name gesetzt → ID aus nameToIdMap auflösen
-            if (!empty($wert['bedingungs_wert_name']) && !empty($wert['bedingungs_achse_id'])) {
-                $mapKey = $wert['bedingungs_achse_id'] . ':' . strtolower(trim($wert['bedingungs_wert_name']));
-                $wert['bedingungs_wert_id'] = $nameToIdMap[$mapKey] ?? null;
-            }
-
             $this->repo->insertWert($wert);
         }
 

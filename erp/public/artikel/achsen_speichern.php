@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
-require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: liste.php');
@@ -14,28 +13,16 @@ if ($artikelId <= 0) {
     exit;
 }
 
-// Welche Achsen-IDs sind "Eltern" (andere Achsen hängen von ihnen ab)
-$achsService         = new AchsenService();
-$alleGlobaleAchsen   = $achsService->findAll();
-$elternAchsenIds     = [];
-foreach ($alleGlobaleAchsen as $a) {
-    if ($a['abhaengig_von_achse_id']) {
-        $elternAchsenIds[(int)$a['abhaengig_von_achse_id']] = true;
-    }
-}
-
 $werte = [];
 foreach ($_POST['werte'] ?? [] as $achseId => $reihen) {
     $achseId = (int)$achseId;
-    foreach ($reihen as $index => $felder) {
-        if (!empty(trim($felder['wert'] ?? ''))) {
+    foreach ($reihen as $idx => $felder) {
+        $text = trim($felder['wert'] ?? '');
+        if ($text !== '') {
             $werte[] = [
-                'achse_id'             => $achseId,
-                'wert'                 => trim($felder['wert']),
-                'bedingungs_wert_name' => trim($felder['bedingungs_wert_name'] ?? '') ?: null,
-                'bedingungs_achse_id'  => (int)($felder['bedingungs_achse_id'] ?? 0) ?: null,
-                'ist_eltern_achse'     => isset($elternAchsenIds[$achseId]),
-                'sort_order'           => (int)$index,
+                'achse_id'   => $achseId,
+                'wert'       => $text,
+                'sort_order' => (int)$idx,
             ];
         }
     }
