@@ -26,3 +26,4 @@
 - [Aktions-Modul](project_aktionen_modul.md) — Entscheidung: abhängige Achsen (nicht preis_gruppe); DROPS-Cronjob um 0:00; Blocker: Wert-Ebenen-Abhängigkeit + VarKombi-Update
 - [Feedback: Achsen Modal](feedback_achsen_modal.md) — achsen/bearbeiten.php → Modal werden (wie Kategorie), Design stimmig halten
 - [Spalten-Picker](project_spalten_picker.md) — Alle Spalten-Definitionen (baubar/Platzhalter), benutzer_einstellungen, Kanäle-Cleanup; Platzhalter aktivieren wenn Merkmale/Lagerplatz/Inventur fertig
+- [🔴 BUG: Kategorie-Verschieben](bug_kategorie_verschieben.md) — KRITISCH: Vater in neue Kat. verschoben → verliert Achsen + Kinder + andere Kategorien; morgen als ERSTES fixen
