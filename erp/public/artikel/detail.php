@@ -551,11 +551,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div class="card" style="margin-bottom:var(--space-md)">
                     <div class="form-section-header" style="display:flex; justify-content:space-between; align-items:center">
                         <span>Achsen</span>
-                        <button type="button" onclick="achsenModalOeffnen()" class="btn btn-secondary btn-sm">✏️ Achsen bearbeiten</button>
+                        <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>" class="btn btn-secondary btn-sm">✏️ Achsen bearbeiten</a>
                     </div>
 
                     <?php if (empty($achsen)): ?>
-                        <p style="color:var(--color-text-muted); font-size:13px">Keine Achsen zugewiesen — <a href="#" onclick="achsenModalOeffnen();return false">jetzt zuweisen</a></p>
+                        <p style="color:var(--color-text-muted); font-size:13px">Keine Achsen zugewiesen — <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>">jetzt zuweisen</a></p>
                     <?php else: ?>
                         <?php foreach ($achsen as $a): ?>
                             <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:var(--space-sm)">

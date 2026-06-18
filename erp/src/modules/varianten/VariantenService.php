@@ -13,28 +13,54 @@ class VariantenService
 
     public function speichereAchsenUndWerte(int $artikelId, array $achsenIds, array $werte): array
     {
-
-        // 1: repo->deleteArtikelAchsenByArtikelId($artikelId) — alle alten Achsen-Zuweisungen löschen
-        $this->repo->deleteArtikelAchsenByArtikelId($artikelId);
-
-        // 2: repo->deleteWerteByArtikelId($artikelId) — alle alten Werte löschen
-        $this->repo->deleteWerteByArtikelId($artikelId);
-
-        // 3: Für jede $achseId in $achsenIds → repo->insertArtikelAchse([...])
-        foreach ($achsenIds as $achseId) {
-            $this->repo->insertArtikelAchse([
-                'artikel_id' => $artikelId,
-                'achse_id'   => $achseId
-            ]);
+        // Schutz: Werte-IDs die von Kind-Artikeln referenziert werden dürfen nicht gelöscht werden
+        $inUseIds = $this->repo->findWertIdsInUse($artikelId);
+        if (!empty($inUseIds)) {
+            return [
+                'erfolg' => false,
+                'fehler' => ['Achsen und Werte können nicht geändert werden solange Varianten-Kombinationen (Kind-Artikel) vorhanden sind. Bitte zuerst alle Kind-Artikel löschen.']
+            ];
         }
 
-        // 4: Für jeden Wert in $werte → repo->insertWert([...])
+        $this->repo->deleteArtikelAchsenByArtikelId($artikelId);
+        $this->repo->deleteWerteByArtikelId($artikelId);
+
+        foreach ($achsenIds as $achseId) {
+            $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId]);
+        }
+
+        // Eltern-Achsen-Werte zuerst einfügen (werden als Unterachsen-Header referenziert)
+        $elternAchseIds   = array_unique(array_filter(array_column($werte, 'ist_eltern_achse')));
+        $nameToIdMap      = [];  // 'achse_id:wert_text' → neu-eingefügte DB-ID
+
         foreach ($werte as $wert) {
+            if (!empty($wert['ist_eltern_achse'])) {
+                $wert['artikel_id'] = $artikelId;
+                $newId = $this->repo->insertWert($wert);
+                $mapKey = $wert['achse_id'] . ':' . strtolower(trim($wert['wert']));
+                $nameToIdMap[$mapKey] = $newId;
+            }
+        }
+
+        // Kind-Achsen-Werte einfügen (mit aufgelöster bedingungs_wert_id falls nötig)
+        foreach ($werte as $wert) {
+            if (!empty($wert['ist_eltern_achse'])) continue;
+
             $wert['artikel_id'] = $artikelId;
+
+            // Wenn bedingungs_wert_name gesetzt → ID aus nameToIdMap auflösen
+            if (!empty($wert['bedingungs_wert_name']) && !empty($wert['bedingungs_achse_id'])) {
+                $mapKey = $wert['bedingungs_achse_id'] . ':' . strtolower(trim($wert['bedingungs_wert_name']));
+                $wert['bedingungs_wert_id'] = $nameToIdMap[$mapKey] ?? null;
+            }
+
             $this->repo->insertWert($wert);
         }
 
-        Logger::log('achsenUndWerte.speichern', 'artikel_achsen', $artikelId, ['achsen_anzahl' => count($achsenIds), 'werte_anzahl' => count($werte)]);
+        Logger::log('achsenUndWerte.speichern', 'artikel_achsen', $artikelId, [
+            'achsen_anzahl' => count($achsenIds),
+            'werte_anzahl'  => count($werte),
+        ]);
 
         return ['erfolg' => true];
     }

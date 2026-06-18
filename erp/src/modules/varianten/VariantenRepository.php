@@ -87,16 +87,17 @@ class VariantenRepository
     {
         $stmt = $this->db->prepare("
             SELECT
-                vaw.id,     
+                vaw.id,
                 vaw.artikel_id,
                 vaw.achse_id,
                 vaw.wert,
                 vaw.wert_zusatz,
+                vaw.bedingungs_wert_id,
                 vaw.aufpreis,
                 vaw.sort_order
             FROM varianten_achse_werte vaw
             WHERE vaw.artikel_id = :artikel_id
-            ORDER BY vaw.sort_order, vaw.wert
+            ORDER BY vaw.achse_id, vaw.sort_order, vaw.wert
         ");
 
         $stmt->execute([
@@ -109,31 +110,20 @@ class VariantenRepository
     public function insertWert(array $data): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO varianten_achse_werte (
-                artikel_id,
-                achse_id,
-                wert,
-                wert_zusatz,
-                aufpreis,
-                sort_order
-            )
-            VALUES (
-                :artikel_id,
-                :achse_id,
-                :wert,
-                :wert_zusatz,
-                :aufpreis,
-                :sort_order
-            )
+            INSERT INTO varianten_achse_werte
+                (artikel_id, achse_id, wert, wert_zusatz, bedingungs_wert_id, aufpreis, sort_order)
+            VALUES
+                (:artikel_id, :achse_id, :wert, :wert_zusatz, :bedingungs_wert_id, :aufpreis, :sort_order)
         ");
 
         $stmt->execute([
-            'artikel_id' => $data['artikel_id'],
-            'achse_id' => $data['achse_id'],
-            'wert' => $data['wert'],
-            'wert_zusatz' => $data['wert_zusatz'] ?? null,
-            'aufpreis' => $data['aufpreis'] ?? 0,
-            'sort_order' => $data['sort_order'] ?? 0
+            'artikel_id'          => $data['artikel_id'],
+            'achse_id'            => $data['achse_id'],
+            'wert'                => $data['wert'],
+            'wert_zusatz'         => $data['wert_zusatz'] ?? null,
+            'bedingungs_wert_id'  => $data['bedingungs_wert_id'] ?? null,
+            'aufpreis'            => $data['aufpreis'] ?? 0,
+            'sort_order'          => $data['sort_order'] ?? 0,
         ]);
 
         return (int) $this->db->lastInsertId();
