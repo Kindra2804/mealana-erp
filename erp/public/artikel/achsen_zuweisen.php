@@ -18,7 +18,9 @@ $alleAchsen      = $achsService->findAll();
 $vorhandeneWerte = $varService->findWerteByArtikelId($artikelId);
 $zugewieseneRaw  = $varService->findAchsenByArtikelId($artikelId);
 $zugewieseneIds  = array_map(fn($a) => (int)$a['achse_id'], $zugewieseneRaw);
-$hatKindArtikel  = !empty($varService->findWertIdsInUse($artikelId));
+$wertIdsInUse    = array_map('intval', $varService->findWertIdsInUse($artikelId));
+$wertIdsInUseSet = array_flip($wertIdsInUse);
+$hatKindArtikel  = !empty($wertIdsInUse);
 
 // Achsenbaum aufbauen
 $roots  = [];
@@ -48,10 +50,24 @@ $actionBarContent = '<a href="detail.php?id=' . $artikelId . '" class="btn btn-s
 
 // ── Hilfsfunktionen ───────────────────────────────────────────────────────────
 
-function chipHtml(int $achseId, int|string $idx, string $wert): string
+function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = false): string
 {
     $esc  = htmlspecialchars($wert, ENT_QUOTES);
     $name = "werte[{$achseId}][{$idx}][wert]";
+
+    if ($isLocked) {
+        return <<<HTML
+<span class="wert-chip" data-achse-id="{$achseId}"
+      title="In Varianten verwendet – kann nicht entfernt werden"
+      style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;color:#64748b;
+             border:1px solid #cbd5e1;border-radius:16px;padding:3px 10px 3px 8px;font-size:12px;line-height:1.5">
+  <span style="font-size:9px;opacity:.7">🔒</span>
+  <span class="chip-text">{$esc}</span>
+  <input type="hidden" name="{$name}" value="{$esc}">
+</span>
+HTML;
+    }
+
     return <<<HTML
 <span class="wert-chip" data-achse-id="{$achseId}"
       style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;
@@ -73,16 +89,17 @@ function chipHtml(int $achseId, int|string $idx, string $wert): string
 HTML;
 }
 
-function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $werteProAchse, int $pos = 0, int $total = 1): void
+function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $werteProAchse, int $pos = 0, int $total = 1, array $wertIdsInUseSet = []): void
 {
-    $id        = (int)$achse['id'];
-    $checked   = in_array($id, $zugewieseneIds);
-    $isGruppe  = (bool)$achse['ist_gruppe'];
-    $hatKinder = !empty($kinder[$id]);
-    $isKind    = (int)($achse['abhaengig_von_achse_id'] ?? 0) > 0;
-    $parentId  = (int)($achse['abhaengig_von_achse_id'] ?? 0);
-    $wertListe = $werteProAchse[$id] ?? [];
-    $showUa    = $isGruppe || $hatKinder;
+    $id             = (int)$achse['id'];
+    $checked        = in_array($id, $zugewieseneIds);
+    $isGruppe       = (bool)$achse['ist_gruppe'];
+    $hatKinder      = !empty($kinder[$id]);
+    $isKind         = (int)($achse['abhaengig_von_achse_id'] ?? 0) > 0;
+    $parentId       = (int)($achse['abhaengig_von_achse_id'] ?? 0);
+    $wertListe      = $werteProAchse[$id] ?? [];
+    $showUa         = $isGruppe || $hatKinder;
+    $achseGesperrt  = !empty(array_filter($wertListe, fn($v) => isset($wertIdsInUseSet[(int)$v['id']])));
 
     $indentStyle = $isKind ? 'margin-left:28px;border-left:3px solid #c7d2fe;padding-left:16px;' : '';
     $headerBg    = $isKind ? '#f5f3ff' : '#f8fafc';
@@ -94,14 +111,18 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
         <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;
                     background:<?= $headerBg ?>;border:1px solid #e2e8f0;border-radius:<?= $borderR ?>;
                     cursor:pointer" onclick="document.getElementById('cb-<?= $id ?>').click()">
+            <?php if ($achseGesperrt): ?>
+            <input type="hidden" name="achsen[]" value="<?= $id ?>">
+            <?php endif; ?>
             <input type="checkbox"
                    name="achsen[]"
                    value="<?= $id ?>"
                    id="cb-<?= $id ?>"
                    <?= $checked ? 'checked' : '' ?>
+                   <?= $achseGesperrt ? 'disabled title="Werte in Verwendung – Achse kann nicht abgewählt werden"' : '' ?>
                    onchange="achseGeaendert(<?= $id ?>)"
                    onclick="event.stopPropagation()"
-                   style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+                   style="width:16px;height:16px;cursor:<?= $achseGesperrt ? 'not-allowed' : 'pointer' ?>;flex-shrink:0">
             <span style="font-weight:600;font-size:14px;flex:1">
                 <?= htmlspecialchars($achse['name']) ?>
             </span>
@@ -162,7 +183,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
             <div class="chip-cont" id="chips-<?= $id ?>"
                  style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:28px">
                 <?php foreach ($wertListe as $idx => $v): ?>
-                    <?= chipHtml($id, $idx, $v['wert']) ?>
+                    <?= chipHtml($id, $idx, $v['wert'], isset($wertIdsInUseSet[(int)$v['id']])) ?>
                 <?php endforeach; ?>
             </div>
             <div style="display:flex;gap:6px;align-items:center">
@@ -182,7 +203,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
         <div id="kinder-<?= $id ?>" style="margin-top:8px">
             <?php $kindListe = $kinder[$id]; $kindTotal = count($kindListe); ?>
             <?php foreach ($kindListe as $ki => $kind): ?>
-                <?php renderAchse($kind, $kinder, $zugewieseneIds, $werteProAchse, $ki, $kindTotal); ?>
+                <?php renderAchse($kind, $kinder, $zugewieseneIds, $werteProAchse, $ki, $kindTotal, $wertIdsInUseSet); ?>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
@@ -240,8 +261,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <?php if ($hatKindArtikel): ?>
 <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;margin-bottom:var(--space-md);color:#856404;font-size:13px">
-    <strong>Hinweis:</strong> Dieser Artikel hat bereits Kind-Artikel (Varianten). Achsen und Werte können nicht mehr geändert werden.
-    Bitte zuerst alle Kind-Artikel löschen.
+    <strong>Hinweis:</strong> Einige Werte sind bereits in Varianten-Kombinationen vergeben (🔒).
+    Diese können nicht entfernt werden. Neue Werte hinzufügen und freie Werte löschen ist weiterhin möglich.
 </div>
 <?php endif; ?>
 
@@ -276,15 +297,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php else: ?>
             <?php $rootTotal = count($roots); ?>
             <?php foreach ($roots as $ri => $root): ?>
-                <?php renderAchse($root, $kinder, $zugewieseneIds, $werteProAchse, $ri, $rootTotal); ?>
+                <?php renderAchse($root, $kinder, $zugewieseneIds, $werteProAchse, $ri, $rootTotal, $wertIdsInUseSet); ?>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
 
     <div style="display:flex;gap:10px;align-items:center">
-        <?php if (!$hatKindArtikel): ?>
-            <button type="submit" class="btn btn-primary">Speichern</button>
-        <?php endif; ?>
+        <button type="submit" class="btn btn-primary">Speichern</button>
         <a href="detail.php?id=<?= $artikelId ?>" class="btn btn-secondary">Abbrechen</a>
     </div>
 </form>

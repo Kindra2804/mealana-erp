@@ -25,10 +25,13 @@ class VariantenRepository
             aa.sort_order,
             va.name,
             va.code,
-            va.darstellungsform
+            va.darstellungsform,
+            va.ist_gruppe,
+            va.abhaengig_von_achse_id
         FROM artikel_achsen aa
-        JOIN varianten_achsen va ON aa.achse_id= va.id
+        JOIN varianten_achsen va ON aa.achse_id = va.id
         WHERE aa.artikel_id = :artikel_id
+        ORDER BY aa.sort_order, va.name
         ");
 
         $stmt->execute(['artikel_id' => $artikelId]);
@@ -142,6 +145,29 @@ class VariantenRepository
         ]);
 
         return (int) $stmt->rowCount() > 0;
+    }
+
+    public function deleteWerteExcluding(int $artikelId, array $excludeIds): void
+    {
+        if (empty($excludeIds)) {
+            $this->deleteWerteByArtikelId($artikelId);
+            return;
+        }
+        $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
+        $stmt = $this->db->prepare("
+            DELETE FROM varianten_achse_werte
+            WHERE artikel_id = ? AND id NOT IN ($placeholders)
+        ");
+        $stmt->execute(array_merge([$artikelId], $excludeIds));
+    }
+
+    public function deleteArtikelAchse(int $artikelId, int $achseId): void
+    {
+        $stmt = $this->db->prepare("
+            DELETE FROM artikel_achsen
+            WHERE artikel_id = :artikel_id AND achse_id = :achse_id
+        ");
+        $stmt->execute(['artikel_id' => $artikelId, 'achse_id' => $achseId]);
     }
 
     public function deleteWert(int $id): void

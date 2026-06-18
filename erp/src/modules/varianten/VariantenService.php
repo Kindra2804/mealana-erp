@@ -13,24 +13,47 @@ class VariantenService
 
     public function speichereAchsenUndWerte(int $artikelId, array $achsenIds, array $werte): array
     {
-        $inUseIds = $this->repo->findWertIdsInUse($artikelId);
-        if (!empty($inUseIds)) {
-            return [
-                'erfolg' => false,
-                'fehler' => ['Achsen und Werte können nicht geändert werden solange Varianten-Kombinationen (Kind-Artikel) vorhanden sind. Bitte zuerst alle Kind-Artikel löschen.']
-            ];
+        $inUseIds = array_map('intval', $this->repo->findWertIdsInUse($artikelId));
+
+        // In-use Werte aus DB holen – Lookup (achse_id|wert) → id für Duplikat-Check
+        $currentWerte  = $this->repo->findWerteByArtikelId($artikelId);
+        $inUseWerte    = array_filter($currentWerte, fn($w) => in_array((int)$w['id'], $inUseIds));
+        $inUseLookup   = [];
+        foreach ($inUseWerte as $w) {
+            $inUseLookup[(int)$w['achse_id'] . '|' . $w['wert']] = (int)$w['id'];
         }
 
-        $this->repo->deleteArtikelAchsenByArtikelId($artikelId);
-        $this->repo->deleteWerteByArtikelId($artikelId);
+        // Achse-IDs mit in-use Werten (können nicht entfernt werden)
+        $protectedAchseIds = array_unique(array_map(fn($w) => (int)$w['achse_id'], $inUseWerte));
 
+        // Nicht-in-use Werte löschen (werden aus Submission neu eingefügt)
+        $this->repo->deleteWerteExcluding($artikelId, $inUseIds ?: [0]);
+
+        // Achsen: nur entfernen wenn nicht geschützt UND nicht in $achsenIds
+        $currentAchsen   = $this->repo->findAchsenByArtikelId($artikelId);
+        $currentAchseIds = array_map(fn($a) => (int)$a['achse_id'], $currentAchsen);
+        foreach ($currentAchseIds as $cId) {
+            if (!in_array($cId, $achsenIds) && !in_array($cId, $protectedAchseIds)) {
+                $this->repo->deleteArtikelAchse($artikelId, $cId);
+            }
+        }
+
+        // Neue Achsen einfügen (nur fehlende)
+        $currentAchsen   = $this->repo->findAchsenByArtikelId($artikelId);
+        $existingAchseSet = array_flip(array_map(fn($a) => (int)$a['achse_id'], $currentAchsen));
         foreach ($achsenIds as $achseId) {
-            $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId]);
+            if (!isset($existingAchseSet[$achseId])) {
+                $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId]);
+            }
         }
 
+        // Werte einfügen: nur wenn nicht bereits als in-use vorhanden (Duplikat vermeiden)
         foreach ($werte as $wert) {
-            $wert['artikel_id'] = $artikelId;
-            $this->repo->insertWert($wert);
+            $key = (int)$wert['achse_id'] . '|' . $wert['wert'];
+            if (!isset($inUseLookup[$key])) {
+                $wert['artikel_id'] = $artikelId;
+                $this->repo->insertWert($wert);
+            }
         }
 
         Logger::log('achsenUndWerte.speichern', 'artikel_achsen', $artikelId, [
