@@ -158,9 +158,82 @@ $zugewieseneAchsenIds = array_column($achsen, 'achse_id');
 $wertIdsInUse         = $variantenService->findWertIdsInUse($id);
 $wertIdsInUseSet      = array_flip($wertIdsInUse);
 
-// Kartesisches Produkt — nur wenn mind. eine Achse mit Werten da ist
-$gruppen = array_values($werteProAchse);  // numerisch indiziert
-$alleKombis = !empty($gruppen) ? kartesischesProdukt($gruppen) : [];
+// Achsenhierarchie für Generator aufbauen
+$achseInfoMap = array_column($alleGlobalenAchsen, null, 'id');
+
+// Lookup: welche achse_ids sind diesem Artikel zugewiesen?
+$assignedAchseIdSet = array_flip(array_map('intval', array_column($achsen, 'achse_id')));
+
+// Sub-Achsen nach Parent-Id gruppieren (nur die dem Artikel zugewiesenen)
+$subAchsenByParent = [];
+foreach ($achsen as $a) {
+    $aId = (int)$a['achse_id'];
+    $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
+    if ($pid > 0) {
+        $subAchsenByParent[$pid][] = $aId;
+    }
+}
+
+// Dimensionen aufbauen:
+// Sub-Achsen-Werte kommen IMMER in die Parent-Dimension (UNION), nie als eigene Dimension.
+// Grund: Sub-Achsen sind Unterkategorien der Parent-Achse, nicht separate Produkt-Dimensionen.
+// Suffix = Sub-Achsen-Name (z.B. "gelb MIX" statt nur "gelb")
+$dimensionen = [];
+$verarbeitet = [];
+
+foreach ($achsen as $a) {
+    $aId = (int)$a['achse_id'];
+    if (isset($verarbeitet[$aId])) continue;
+
+    $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
+
+    if ($pid > 0 && isset($assignedAchseIdSet[$pid])) {
+        // Sub-Achse, Parent zugewiesen → wird beim Parent-Durchlauf eingebaut
+        $verarbeitet[$aId] = true;
+        continue;
+    }
+
+    if ($pid > 0 && !isset($assignedAchseIdSet[$pid])) {
+        // Sub-Achse, Parent NICHT zugewiesen → UNION aller Geschwister = eine Dimension
+        $gruppe = [];
+        foreach ($subAchsenByParent[$pid] ?? [] as $sibId) {
+            if (isset($verarbeitet[$sibId])) continue;
+            $sibSuffix = $achseInfoMap[$sibId]['name'] ?? '';
+            foreach ($werteProAchse[$sibId] ?? [] as $w) {
+                $w['achse_suffix'] = $sibSuffix;
+                $gruppe[] = $w;
+            }
+            $verarbeitet[$sibId] = true;
+        }
+        if (!empty($gruppe)) {
+            $dimensionen[] = $gruppe;
+        }
+        continue;
+    }
+
+    // Root-Achse (pid=0): eigene Werte + ALLE Sub-Achsen-Werte (UNION, mit Suffix)
+    $gruppe = [];
+    $verarbeitet[$aId] = true;
+
+    foreach ($werteProAchse[$aId] ?? [] as $w) {
+        $gruppe[] = $w;
+    }
+
+    foreach ($subAchsenByParent[$aId] ?? [] as $subId) {
+        if (isset($verarbeitet[$subId])) continue;
+        $subSuffix = $achseInfoMap[$subId]['name'] ?? '';
+        foreach ($werteProAchse[$subId] ?? [] as $w) {
+            $w['achse_suffix'] = $subSuffix;
+            $gruppe[] = $w;
+        }
+        $verarbeitet[$subId] = true;
+    }
+
+    if (!empty($gruppe)) {
+        $dimensionen[] = $gruppe;
+    }
+}
+$alleKombis = !empty($dimensionen) ? kartesischesProdukt($dimensionen) : [];
 
 // var_dump($alleKombis);
 
@@ -557,19 +630,59 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php if (empty($achsen)): ?>
                         <p style="color:var(--color-text-muted); font-size:13px">Keine Achsen zugewiesen — <a href="achsen_zuweisen.php?artikel_id=<?= $id ?>">jetzt zuweisen</a></p>
                     <?php else: ?>
-                        <?php foreach ($achsen as $a): ?>
-                            <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:var(--space-sm)">
-                                <span class="chip chip-aktiv" style="min-width:120px; text-align:center">
-                                    <?= htmlspecialchars($a['name']) ?>
-                                </span>
-                                <span style="font-size:11px; color:var(--color-text-muted)"><?= htmlspecialchars($a['darstellungsform']) ?></span>
-                                <div style="display:flex; gap:var(--space-xs); flex-wrap:wrap">
-                                    <?php foreach ($werteProAchse[$a['id']] ?? [] as $w): ?>
-                                        <span class="chip" style="background:#EDF2F7; color:#4A5568; border:1px solid #CBD5E0">
-                                            <?= htmlspecialchars($w['wert']) ?>
-                                        </span>
-                                    <?php endforeach; ?>
+                        <?php
+                        // Baum aufbauen: Root-Achsen + ihre Sub-Achsen gruppiert
+                        // $a['abhaengig_von_achse_id'] kommt direkt aus findAchsenByArtikelId SQL
+                        $dispRoots = [];
+                        $dispSubs  = []; // parent achse_id → [achsen]
+                        foreach ($achsen as $a) {
+                            $aId = (int)$a['achse_id'];
+                            $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
+                            if ($pid > 0 && isset($assignedAchseIdSet[$pid])) {
+                                $dispSubs[$pid][] = $a;
+                            } else {
+                                $dispRoots[] = $a;
+                            }
+                        }
+                        ?>
+                        <?php foreach ($dispRoots as $a):
+                            $aId = (int)$a['achse_id'];
+                        ?>
+                            <div style="margin-bottom:var(--space-xs)">
+                                <!-- Root-Achse -->
+                                <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:2px">
+                                    <span class="chip chip-aktiv" style="min-width:120px; text-align:center">
+                                        <?= htmlspecialchars($a['name']) ?>
+                                    </span>
+                                    <span style="font-size:11px; color:var(--color-text-muted)"><?= htmlspecialchars($a['darstellungsform']) ?></span>
+                                    <div style="display:flex; gap:var(--space-xs); flex-wrap:wrap">
+                                        <?php foreach ($werteProAchse[$aId] ?? [] as $w): ?>
+                                            <span class="chip" style="background:#EDF2F7; color:#4A5568; border:1px solid #CBD5E0">
+                                                <?= htmlspecialchars($w['wert']) ?>
+                                            </span>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
+                                <!-- Sub-Achsen direkt darunter eingerückt -->
+                                <?php foreach ($dispSubs[$aId] ?? [] as $sub):
+                                    $subId = (int)$sub['achse_id'];
+                                ?>
+                                    <div style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:2px;
+                                                margin-left:20px; padding-left:12px; border-left:3px solid #C7D2FE">
+                                        <span class="chip" style="min-width:120px; text-align:center;
+                                                                   background:#EDE9FE; color:#5B21B6; border:1px solid #C4B5FD">
+                                            ↳ <?= htmlspecialchars($sub['name']) ?>
+                                        </span>
+                                        <span style="font-size:11px; color:var(--color-text-muted)"><?= htmlspecialchars($sub['darstellungsform']) ?></span>
+                                        <div style="display:flex; gap:var(--space-xs); flex-wrap:wrap">
+                                            <?php foreach ($werteProAchse[$subId] ?? [] as $w): ?>
+                                                <span class="chip" style="background:#F5F3FF; color:#5B21B6; border:1px solid #DDD6FE">
+                                                    <?= htmlspecialchars($w['wert']) ?>
+                                                </span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -623,7 +736,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <!-- Neue (editierbar) -->
                                     <?php foreach ($neueKombis as $n => $k): ?>
                                         <?php
-                                        $wertNamen     = array_map(fn($w) => $w['wert'], $k['kombi']);
+                                        $wertNamen     = array_map(fn($w) => trim($w['wert'] . (!empty($w['achse_suffix']) ? ' ' . $w['achse_suffix'] : '')), $k['kombi']);
                                         $vorschlagNr   = $artikel['artikelnummer'] . '-' . implode('-', $wertNamen);
                                         $vorschlagName = $artikel['name'] . ' ' . implode(' ', $wertNamen);
                                         $aufpreis      = array_sum(array_column($k['kombi'], 'aufpreis'));
