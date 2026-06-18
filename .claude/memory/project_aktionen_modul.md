@@ -25,7 +25,7 @@ Lieferanten (v.a. DROPS) machen regelmäßig Kampagnen mit zeitlich limitierten 
 
 3. **`preis_aktionen`** (Migration 031, Placeholder) — richtig ausbauen
 
-4. **Aktionspreis-Screen**: zeigt alle Väter in der Kategorie, gruppiert nach `preis_gruppe` (Achsen-Wert-Feld), Barbara trägt Preise ein → Kinder erben
+4. **Aktionspreis-Screen**: zeigt alle Väter in der Kategorie, gruppiert nach Achsen-Werten (Typ), Barbara trägt Preise ein → Kinder erben
 
 5. **Aktivierung**: manuell per "Aktion starten"-Button (Barbara hat Kontrolle, kein Mitternachts-Autostart)
 
@@ -33,21 +33,31 @@ Lieferanten (v.a. DROPS) machen regelmäßig Kampagnen mit zeitlich limitierten 
 
 Derzeit 1 Achse (Farbe), Typ (Uni/Print/LongPrint) in Farbnamen kodiert — JTL-Workaround.
 
-**Kurzfristig (beim Aktions-Modul):** `preis_gruppe VARCHAR(50)` auf `varianten_achse_werte` — gruppiert Farbwerte nach Typ für Preissetzung ohne Achsen-Umbau.
+**Entscheidung (2026-06-18):** Abhängige Achsen, NICHT preis_gruppe.
+- Achse 1 (Eltern): Farbe — hat Werte wie "Royalblau", "Lachs", etc. ODER ist Gruppenachse für Unterachsen
+- Achse 2 (Kind, abhaengig_von=Farbe): z.B. UNI — hat eigene Werte
 
-**Langfristig (beim Bau von bedingten Achsen):** DROPS Fabel auf 2 Achsen migrieren:
-- Achse 1: Typ (Uni / Print / Long Print)
-- Achse 2: Farbe (bedingt — welche Farben verfügbar hängt vom Typ ab)
-- Daten kommen großteils aus JTL-Import → Zuordnung wenn möglich daraus extrahieren
-- Andernfalls: Neuanlage beim Daten-Import ohnehin nötig, dann sauber aufbauen
+**Finales Design (abgestimmt 2026-06-18, implementiert 2026-06-18):**
+- `varianten_achsen.ist_gruppe` (Migration 041): Gruppenachse kann Unterachsen haben UND eigene Werte
+- Gruppenachse z.B. Farbe: direkte Werte (für einfache Garne) ODER Sub-Achsen Uni/Print
+- `achsen_zuweisen.php` komplett neu: Baumstruktur, Chip-Input, ↔ Wert verschieben, ✎ Achse global bearbeiten
+- `achsen_speichern.php` und `VariantenService` vereinfacht — kein two-pass mehr, kein bedingungs_wert_id
 
-**How to apply:** Beim Bau der bedingten Achsen-UI daran denken, dass DROPS Fabel der primäre Testfall ist. [[feedback-js-auslagern]]
+**Voraussetzungen für Aktions-Modul:**
+- ✅ Abhängige Achsen UI fertig + korrekt funktionierend (2026-06-18)
+- VarKombi-Generator muss Abhängigkeiten kennen (aktuell: flaches kartesisches Produkt) — noch offen
 
-## Auslauf-Override
+## Aktivierung
 
-Artikel die zusätzlich Auslaufartikel sind können UNTER den Aktionspreis gesetzt werden (Lagerbereinigung). Seltener Fall, bleibt manueller Override pro Artikel.
+- **Jetzt:** Manueller "Aktion starten"-Button (Barbara hat Kontrolle)
+- **Wenn erster Shop angebunden:** Cronjob — DROPS-Vorgabe: Aktion muss exakt um 0:00 Uhr starten UND enden
 
-## Status
-- Wartet auf Feedback von Barbara (2026-06-17)
-- Voraussetzungen: bedingte Achsen UI, preis_aktionen ausgebaut, aktionen-Tabelle
-- Kommt nach Massenauswahl + Spalten-Picker als eigenes Modul
+## Kategorie-Konfig ASCII
+
+War mal da, ist beim Blackout verloren gegangen. Muss neu erstellt werden.
+Inhalt: Wie eine Kategorie eine Aktion bekommt (`aktion_id` FK + `anzeigen_ab/bis` Felder).
+
+## Status (2026-06-18)
+- ✅ Achsen-UI fertig: achsen_zuweisen.php, liste.php, AJAX-Endpoints alle updated
+- Nächster Blocker: VarKombi-Generator (aktuell flaches kartesisches Produkt, kennt keine Achsen-Hierarchie)
+- Danach: Aktions-Modul als eigenes Modul

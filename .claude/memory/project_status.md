@@ -7,7 +7,7 @@ metadata:
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
 ---
 
-Stand: 2026-06-17 (Vollständig abgeglichen mit tatsächlichem Code-Stand)
+Stand: 2026-06-18 (Achsen-Modul vollständig abgeschlossen)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -22,17 +22,16 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ```
 
 ## Schema-Referenz
-- 36 Migrations angewendet (001–036)
-- 36 DB-Tabellen insgesamt
-- Artikel-Tabelle: 39 Spalten
+- 41 Migrations angewendet (001–041)
+- varianten_achsen.ist_gruppe (Migration 041): Gruppenachse-Flag
+- varianten_achsen.abhaengig_von_achse_id (Migration 040): Sub-Achsen-Baum
 - Dump aktualisieren: `& "C:\xampp\mysql\bin\mysqldump.exe" --host=localhost --user=root --no-tablespaces --routines --skip-comments mealana_erp | Out-File -FilePath "D:\ERP\mealana\erp\database\schema_current.sql" -Encoding utf8`
 
-## ✅ Fertige Module (Stand 2026-06-17)
+## ✅ Fertige Module (Stand 2026-06-18)
 
-### Artikel-Modul (erp/public/artikel/ — 36 PHP-Dateien)
+### Artikel-Modul (erp/public/artikel/ — 36+ PHP-Dateien)
 - CRUD: neu, bearbeiten, detail, kopieren, delete
 - detail.php: 7 Tabs (Stammdaten, Varianten, Preise, Lager, Bilder*, Merkmale*, Lieferanten, SEO)
-- Varianten-System: Achsen + VarKombi-Generator (kartesisches Produkt)
 - Preise: Kundengruppen, Staffel, UVP, Aktionen
 - Texte: kurzbeschreibung, beschreibung, technische_details, beschreibung_intern
 - Physikalisch: Gewicht, Maße, Versandklasse
@@ -45,15 +44,23 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - deaktiviert_mit_vater + auslauf_mit_vater Kaskaden-Logik
 - *Bilder + Merkmale: Platzhalter-Tabs, Backend fehlt noch
 
+### Achsen-Modul ✅ VOLLSTÄNDIG (2026-06-18)
+- Globale Achsenverwaltung: CRUD, Edit-Modal, Sortierung
+- **Abhängige Achsen** (Migration 040+041): Gruppenachse + Sub-Achsen-Baum
+- achsen_zuweisen.php: Baumstruktur, Chip-Input, ◀▶ Werte sortierbar, ↔ Wert verschieben
+- Gruppenachse-Schutz: Client + Server (hasChildren-Guard)
+- Achsen-Sortierung: tree-aware (nur Geschwister)
+- Sidebar-Link zu liste.php entfernt (Management jetzt inline)
+
+### Varianten-System
+- VarKombi-Generator (kartesisches Produkt) — kennt noch keine Achsen-Hierarchie (offen)
+
 ### Lager-Modul (erp/public/lager/)
 - Wareneingang mit EAN-Scan, Chargen-Tracking, Bewegungslog
 - Schnell-Wareneingang aus Artikel-Detail
 
 ### Lieferanten-Modul (erp/public/lieferanten/)
 - CRUD + Vertreter
-
-### Achsen-Modul (erp/public/achsen/)
-- Globale Achsenverwaltung (CRUD + Drag-Drop Sort)
 
 ### Berechtigungssystem
 - 3 Rollen: superadmin, admin, mitarbeiter
@@ -64,8 +71,8 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 
 | Modul | Priorität |
 |---|---|
-| Filterung Artikelliste (Typ/Hersteller/Kategorie/Bestand) | JETZT |
-| Merkmale-UI | HOCH (vor Shop) |
+| VarKombi-Generator: Achsen-Hierarchie kennen | HOCH (Blocker für Aktionen) |
+| Aktions-Modul | HOCH |
 | Bilder-Upload | HOCH (vor Shop) |
 | Bestellwesen/Einkauf | HOCH |
 | Auftragsmodul/Verkauf | HOCH |
@@ -75,12 +82,12 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Buchhaltung/DATEV | MITTEL |
 | Seriennummern | NIEDRIG |
 
-## Aktuelle Baustelle (2026-06-17)
+## Aktuelle Baustelle (2026-06-18)
 
-Artikel-Modul fast abgeschlossen. Noch offen:
-1. **Bug: Kategorie ändern in detail.php** — Regression, muss sofort gefixt werden
-2. **Filterung in Artikelliste** — nach Typ, Hersteller, Kategorie, nur mit Bestand
-3. **Artikeltyp als Spalte** im Spalten-Picker (sortierbar, wie Hersteller)
+Achsen-Modul vollständig. Nächste Optionen:
+1. **VarKombi-Generator** — Achsen-Hierarchie verstehen (aktuell flaches kartesisches Produkt)
+2. **Aktions-Modul** — Lieferanten-Kampagnen mit kategorie-basierter Auto-Preissetzung
+3. **Bilder-Upload** — Tab "Bilder" ist noch Platzhalter
 
 ## Offene technische Punkte
 

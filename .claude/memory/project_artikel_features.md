@@ -7,17 +7,18 @@ metadata:
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
 ---
 
-Stand: 2026-06-17 (Abschluss Artikel-Modul)
+Stand: 2026-06-18
 
 ## ✅ FERTIG — bereits vollständig implementiert
 
 - **Artikel-CRUD** — neu.php, bearbeiten.php, detail.php (7 Tabs), kopieren.php, delete.php
 - **Varianten-System mit Achsen** — varianten_achsen, varianten_achse_werte, artikel_achsen, varianten_kombination_werte (Migrations 022-027); VarKombi-Generator mit kartesischem Produkt, Achsen-Modal in detail.php
+- **Abhängige Achsen (2026-06-18)** — Gruppenachse (ist_gruppe, Mig. 041) + Sub-Achsen (abhaengig_von_achse_id, Mig. 040); achsen_zuweisen.php komplett neu: Baumstruktur, Chip-Input, ◀▶ Werte-Sortierung, ↔ Wert zwischen Achsen verschieben, ✎ globale Achsenbearbeitung inline
 - **Preise komplett** — Kundengruppen-Preise, Staffelpreise, UVP, Preis-Aktionen (Migrations 028-031), Tab "Preise" in detail.php
 - **SEO-Felder** — meta_titel, meta_description, url_slug auf artikel (Migration 017), Tab "SEO" + seo_speichern.php
 - **Artikel-Texte** — kurzbeschreibung, beschreibung, technische_details, beschreibung_intern (Migration 017), in Stammdaten-Tab
 - **Gewicht + Maße** — laenge, breite, hoehe, gewicht_artikel, gewicht_versand, versandklasse_id (Migration 018)
-- **Zustandsartikel** — zustand VARCHAR(30) DEFAULT 'neu' (Migration 028), zustand_vater_id (Migration 033), alle 8 Zustände (neu/gebraucht/generalueberholt/beschaedigt/retour/demo/muster/ausstellungsstueck), Zustandsartikel in liste.php eingerückt unter Vater
+- **Zustandsartikel** — zustand VARCHAR(30) DEFAULT 'neu' (Migration 028), zustand_vater_id (Migration 033), alle 8 Zustände, Zustandsartikel in liste.php eingerückt unter Vater
 - **Auslaufartikel** — ist_auslaufartikel, auslauf_mit_vater (Migrations 016, 035), Kaskaden-Logik
 - **Überverkauf-System** — ueberverkauf_erlaubt, reservierungen-Tabelle (Migrations 020-021)
 - **Einheiten** — einheiten-Tabelle inkl. teilbar-Flag (Migrations 013, 032)
@@ -29,22 +30,16 @@ Stand: 2026-06-17 (Abschluss Artikel-Modul)
 - **Hersteller** — hersteller-Tabelle, FK auf artikel
 - **Kategorien** — Baum-Manager (AJAX CRUD, Drag-Drop Sort), Viele-zu-Viele auf artikel
 - **Lieferanten-Modul** — lieferanten/, CRUD + Vertreter
-- **Achsen-Modul** — achsen/, globale Achsenverwaltung
-
-## ✅ Fertig (2026-06-17)
-
 - **Filterung in der Liste** — Hersteller, Artikeltyp, Status, Kategorie-Filter
 - **Artikeltyp als Spalte** im Spalten-Picker (sortierbar)
-- **"Ungespeicherte Änderungen"-Banner** zentriert zwischen "Im Shop" / "Löschen"
-- **Kategorie-Modal Bug** — War in tab-seo (versteckt) eingeschlossen — gefixt
-- **Einheitliche Flash-Banner** — showFlash() + #ajax-flash in allen Tabs
-- **Merkmale komplett** — Migration 037, Admin (merkmale_verwalten.php), detail.php Tab, AJAX-Save (merkmale_speichern.php). Siehe [[project-merkmale]]
+- **Merkmale komplett** — Migration 037, Admin (merkmale_verwalten.php), detail.php Tab, AJAX-Save (merkmale_speichern.php)
 - **brutto_ek Lieferanten** — Migration 038, Auto-Kalkulation Netto↔Brutto im Modal
 - **Tab-Persistenz** — aktiver Tab bleibt nach Refresh (localStorage pro Artikel-ID)
 
 ## ⏳ NOCH OFFEN im Artikel-Modul
 
-- **Bilder-Upload** — Tab "Bilder" ist Platzhalter. Nächste Session.
+- **Bilder-Upload** — Tab "Bilder" ist Platzhalter
+- **VarKombi-Generator** — kennt noch keine Achsen-Hierarchie (aktuell: flaches kartesisches Produkt)
 - **Qualitätslisten** — "Welche Varianten haben keine EAN?", "Doppelte EAN?" — niedrige Prio
 
 ## 🔜 MIT ANDEREN MODULEN (nicht jetzt)
@@ -61,7 +56,7 @@ Stand: 2026-06-17 (Abschluss Artikel-Modul)
 
 | Schlüssel | Status |
 |---|---|
-| merkmale | ⏳ Platzhalter bis Merkmale-UI fertig |
+| merkmale | ✅ Fertig |
 | lagerplatz | ⏳ Platzhalter bis lagerplaetze-Tabelle + Modul |
 | letzte_inventur | ⏳ Platzhalter bis Inventur-Modul |
 | artikeltyp | ✅ Fertig |

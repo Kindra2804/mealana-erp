@@ -21,7 +21,8 @@
 - [Feedback: Barbara UI](feedback_barbara_ui.md) — Blaues "!" statt ⚠, konfigurierbarer Indikator, ⚠=kaputt für Barbara
 - [Kleinunternehmer-Modus](project_kleinunternehmer.md) — Major-Feature: globaler Schalter, EK brutto, kein Steuerausweis, Lagerbewertung brutto
 - [JTL-Import Wissen](project_jtl_import.md) — CSV-Struktur, ProduktTyp VATER/NORMAL/KIND, Kategorie-Mapping, Gen-Skript für Demo-Artikel
-- [Feedback: JS auslagern](feedback_js_auslagern.md) — Am Ende jedes Moduls JS in externe Datei auslagern (wie artikel.js)
+- [Feedback: Modul-Abschluss-Checkliste](feedback_js_auslagern.md) — JS auslagern + SQL-Kommentare bereinigen + Bedienungsanleitung besprechen (beim ersten Mal)
 - [Logger UI Konzept](project_logger_ui.md) — Logger-Zeile in Shell-Bottom (Mockup), Admin-Aktivitäten-Seite mit Filter/Suche
-- [Aktions-Modul](project_aktionen_modul.md) — Lieferanten-Kampagnen, kategorie-basierte Auto-Preissetzung, DROPS Fabel Spezialfall (preis_gruppe + spätere 2-Achsen-Migration)
+- [Aktions-Modul](project_aktionen_modul.md) — Entscheidung: abhängige Achsen (nicht preis_gruppe); DROPS-Cronjob um 0:00; Blocker: Wert-Ebenen-Abhängigkeit + VarKombi-Update
+- [Feedback: Achsen Modal](feedback_achsen_modal.md) — achsen/bearbeiten.php → Modal werden (wie Kategorie), Design stimmig halten
 - [Spalten-Picker](project_spalten_picker.md) — Alle Spalten-Definitionen (baubar/Platzhalter), benutzer_einstellungen, Kanäle-Cleanup; Platzhalter aktivieren wenn Merkmale/Lagerplatz/Inventur fertig
