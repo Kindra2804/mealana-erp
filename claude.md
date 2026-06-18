@@ -559,24 +559,23 @@ $result = $service->wareneingang([
 - Lieferanten-Tab in detail.php
 - Filterung in liste.php (aktiv/inaktiv, Suche)
 
-### Varianten-System (vollständig — DB + UI fertig, Stand 2026-06-12)
-- Migrations 022–027 ausgeführt: Achsen, Werte, Kombinationen, Datenmigration, Aufräumen
-- farbe_name/farbe_hex/varianten_darstellung vollständig aus DB + PHP entfernt
+### Varianten-System (vollständig — DB + UI + Generator fertig, Stand 2026-06-18)
+- Migrations 022–041 ausgeführt: Achsen, Werte, Kombinationen, abhängige Achsen, Gruppenachse-Flag
 - Kind-Artikel (Varianten) werden als artikel-Einträge mit vaterartikel_id gespeichert
 - **Achsen-Verwaltung** (public/achsen/) — volles CRUD ✅
 - **Achsen zuweisen** (public/artikel/achsen_zuweisen.php + achsen_speichern.php) ✅
-  - Globale Achsen als Checkboxen, vorhandene Zuweisungen vorausgewählt
-  - 3 Wert-Felder pro Achse, vorhandene Werte vorausgefüllt
-  - Delete-and-Reinsert Strategie beim Speichern
-- **VarKombi-Generator** (public/artikel/varkombi_generator.php + varkombi_erstellen.php) ✅
-  - Kartesisches Produkt aller Achswerte als editierbare Tabelle
-  - Pro Kombination: Artikelnummer, Name, EAN, Aufpreis vorausgefüllt (überschreibbar)
-  - Globale Frage: "Eigener Lagerstand pro Kind?" (hat_eigenen_lagerstand)
-  - Bereits bestehende Kombis in separater Tabelle darunter (read-only)
+  - Baumstruktur: Gruppenachse + eingerückte Sub-Achsen
+  - Chip-Input: Werte hinzufügen, ◀▶ sortieren, ↔ zwischen Achsen verschieben
+  - Granulare Sperrung: 🔒-Chip für in-use Werte (in Kombinationen verwendet), freie editierbar
+  - Neue Werte hinzufügen + freie Werte löschen bleibt möglich auch wenn Varianten existieren
+- **VarKombi-Generator** (in detail.php, Tab "Varianten") ✅
+  - Achsen-Hierarchie-bewusst: Sub-Achsen-Werte immer UNION (nie Kreuzprodukt) in eine Dimension
+  - Sub-Achsen-Name als Suffix: "gelb (02)" von UNI → "gelb (02) UNI"
+  - Bereits bestehende Kombis erkannt (nicht doppelt erstellt)
   - Kind-Artikel erben: steuerklasse_id, artikeltyp_id, einheit_id, charge_pflicht vom Vater
 - AchsenRepository/Service + VariantenRepository/Service ✅
-  - VariantenRepository: findWerteByIds, insertKindArtikel, insertKombinationWert
-  - VariantenService: erstelleKombinationen
+  - VariantenRepository: findWertIdsInUse, deleteWerteExcluding, deleteArtikelAchse
+  - VariantenService: granulare speichereAchsenUndWerte, erstelleKombinationen
 
 ### Lager Module (Functional)
 - Goods receipt with EAN barcode scan support
