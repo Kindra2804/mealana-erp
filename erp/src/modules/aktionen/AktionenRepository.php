@@ -271,6 +271,19 @@ class AktionenRepository
         return $this->db->query("SELECT id, name, ist_standard FROM kundengruppen ORDER BY id")->fetchAll();
     }
 
+    public function getNormalePreise(array $artikelIds, int $kgId): array
+    {
+        if (empty($artikelIds)) return [];
+        $pl   = implode(',', array_fill(0, count($artikelIds), '?'));
+        $stmt = $this->db->prepare("
+            SELECT artikel_id, brutto_vk
+            FROM artikel_preise
+            WHERE artikel_id IN ($pl) AND kundengruppen_id = ?
+        ");
+        $stmt->execute(array_merge($artikelIds, [$kgId]));
+        return $stmt->fetchAll(\PDO::FETCH_KEY_PAIR);
+    }
+
     // ── Hilfsmethoden ─────────────────────────────────────────────────
 
     private function berechneStatus(array $aktion, array $kategorien, string $heute): string

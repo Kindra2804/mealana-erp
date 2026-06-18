@@ -9,7 +9,6 @@ $moduleLabel = match ($activeModule ?? '') {
     'einkauf'     => 'Einkauf',
     'buchhaltung' => 'Buchhaltung',
     'lieferanten' => 'Lieferanten',
-    'aktionen'    => 'Aktionen',
     default       => '',
 };
 
@@ -20,7 +19,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '🗂', 'label' => 'Kategorien',   'href' => '/mealana/artikel/kategorien_verwalten.php'],
         ['icon' => '🖼', 'label' => 'Bilder',       'href' => '#'],
         ['icon' => '🏷', 'label' => 'Merkmale',     'href' => '/mealana/artikel/merkmale_verwalten.php'],
-        ['icon' => '💲', 'label' => 'Preise',       'href' => '#'],
+        ['icon' => '💲', 'label' => 'Preise/Aktionen',       'href' => '/mealana/aktionen/liste.php'],
         ['icon' => '🌐', 'label' => 'SEO',          'href' => '#'],
         ['icon' => '📊', 'label' => 'Statistik',    'href' => '#'],
     ],
@@ -32,14 +31,12 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/lieferanten/liste.php'],
         ['icon' => '➕', 'label' => 'Neu',          'href' => '/mealana/lieferanten/neu.php'],
     ],
-    'aktionen' => [
-        ['icon' => '📋', 'label' => 'Alle Aktionen', 'href' => '/mealana/aktionen/liste.php'],
-        ['icon' => '➕', 'label' => 'Neue Aktion',   'href' => '/mealana/aktionen/bearbeiten.php'],
-    ],
     default => [],
 };
 
-$currentPath = $_SERVER['PHP_SELF'] ?? '';
+// $currentPath = $_SERVER['PHP_SELF'] ?? '';
+$currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
+
 ?>
 
 
@@ -103,7 +100,7 @@ $currentPath = $_SERVER['PHP_SELF'] ?? '';
                         <?php
                         $isActive = isset($item['active']) && $item['active']
                             ? 'active'
-                            : (($item['href'] !== '#' && str_ends_with($currentPath, basename($item['href']))) ? 'active' : '');
+                            : (($item['href'] !== '#' && $currentPath === $item['href']) ? 'active' : '');
                         ?>
                         <a href="<?= $item['href'] ?>" class="erp-sidebar-item <?= $isActive ?>">
                             <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>

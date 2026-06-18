@@ -879,7 +879,9 @@
 .sc-uv          { background: #FEEBC8; color: #C05621; }
 .sc-fehlbest    { background: #FED7D7; color: #C53030; }
 .sc-ohnekat     { background: #EDF2F7; color: #4A5568; border: 1px solid #CBD5E0; }
-/* .sc-sale     { background: #FAF5FF; color: #7E22CE; } — für später */
+.sc-sale        { background: #DC2626; color: #FFFFFF; font-weight: 700; }
+.sc-aktion      { background: #FEF3C7; color: #B45309; }
+.sc-aktion-grau { background: #F5F5F5; color: #9E9E9E; border: 1px solid #E0E0E0; }
 
 /* Kanal-Chips */
 .kc {

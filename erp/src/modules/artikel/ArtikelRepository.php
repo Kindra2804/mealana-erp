@@ -11,6 +11,15 @@ class ArtikelRepository
         $this->db = Database::getInstance();
     }
 
+    private function getStandardKgId(): int
+    {
+        static $id = null;
+        if ($id === null) {
+            $id = (int) $this->db->query("SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1")->fetchColumn();
+        }
+        return $id ?: 1;
+    }
+
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
         $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
@@ -106,7 +115,7 @@ class ArtikelRepository
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN einheiten e ON a.einheit_id = e.id
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
+            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
             LEFT JOIN artikel_lieferanten al_std ON al_std.artikel_id = a.id AND al_std.standard_lieferant = 1
             LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
             LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
@@ -247,7 +256,7 @@ class ArtikelRepository
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN einheiten e ON a.einheit_id = e.id
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
+            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
             WHERE a.id = :id
         ");
 
@@ -273,7 +282,7 @@ class ArtikelRepository
                 ac.code AS gtin,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
             FROM artikel a
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
+            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
             LEFT JOIN artikel_codes ac ON a.id = ac.artikel_id AND ac.typ = 'GTIN13'
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             $where
@@ -313,7 +322,7 @@ class ArtikelRepository
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
             FROM artikel a
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = 1
+            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN artikel_typen at ON a.artikeltyp_id = at.id
@@ -581,8 +590,9 @@ class ArtikelRepository
         $stmt->execute(['vater' => $vaterId]);
     }
 
-    public function insertPreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 1): bool
+    public function insertPreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 0): bool
     {
+        if ($kundengruppenId === 0) $kundengruppenId = $this->getStandardKgId();
         $stmt = $this->db->prepare("
             INSERT INTO artikel_preise (artikel_id, kundengruppen_id, brutto_vk, netto_vk)
             VALUES (:artikel_id, :kundengruppen_id, :brutto_vk, :netto_vk)
@@ -604,8 +614,9 @@ class ArtikelRepository
         $stmt->execute(['artikel_id' => $artikelId, 'typ' => $typ, 'code' => $code]);
     }
 
-    public function updatePreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 1): bool
+    public function updatePreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 0): bool
     {
+        if ($kundengruppenId === 0) $kundengruppenId = $this->getStandardKgId();
         $stmt = $this->db->prepare("
             SELECT id FROM artikel_preise
             WHERE artikel_id = :artikel_id AND kundengruppen_id = :kundengruppen_id
@@ -934,5 +945,44 @@ class ArtikelRepository
         $stmt = $this->db->prepare("SELECT id, artikelnummer, name FROM artikel WHERE id = :id");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
+    }
+
+    public function getPreisStatusBatch(array $artikelIds, int $standardKgId): array
+    {
+        if (empty($artikelIds)) return [];
+        $pl = implode(',', array_fill(0, count($artikelIds), '?'));
+
+        $saleStmt = $this->db->prepare("
+            SELECT DISTINCT artikel_id FROM preis_aktionen_positionen
+            WHERE artikel_id IN ($pl)
+            AND kundengruppen_id = ?
+            AND (gueltig_ab IS NULL OR gueltig_ab <= NOW())
+            AND (gueltig_bis IS NULL OR gueltig_bis >= NOW())
+        ");
+        $saleStmt->execute(array_merge($artikelIds, [$standardKgId]));
+        $saleIds = array_flip($saleStmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $aktionStmt = $this->db->prepare("
+            SELECT DISTINCT aap.artikel_id FROM aktionen_artikel_preise aap
+            JOIN aktionen a ON a.id = aap.aktion_id
+            JOIN aktionen_kategorien ak ON ak.aktion_id = aap.aktion_id
+            WHERE aap.artikel_id IN ($pl)
+            AND aap.kundengruppen_id = ?
+            AND a.gestartet = 1
+            AND ak.gueltig_ab <= CURDATE()
+            AND ak.gueltig_bis >= CURDATE()
+        ");
+        $aktionStmt->execute(array_merge($artikelIds, [$standardKgId]));
+        $aktionIds = array_flip($aktionStmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $result = [];
+        foreach ($artikelIds as $id) {
+            $hatSale   = isset($saleIds[$id]);
+            $hatAktion = isset($aktionIds[$id]);
+            if ($hatSale || $hatAktion) {
+                $result[$id] = ['hat_sale' => $hatSale, 'hat_aktion' => $hatAktion];
+            }
+        }
+        return $result;
     }
 }

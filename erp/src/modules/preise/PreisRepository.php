@@ -58,6 +58,7 @@ class PreisRepository
             SELECT
                 k.id,
                 k.name,
+                k.ist_standard,
                 ap.brutto_vk,
                 ap.netto_vk,
                 ap.gueltig_ab,
@@ -77,21 +78,27 @@ class PreisRepository
     {
         $stmt = $this->db->prepare("
             SELECT
-                pa.id,
-                pa.name,
-                pa.typ,
-                pa.gueltig_ab,
-                pa.gueltig_bis,
-                pa.aktiv,
-                pap.brutto_vk,
-                pap.netto_vk,
-                pap.kundengruppen_id,
-                k.name AS kg_name
-            FROM preis_aktionen_positionen pap
-            JOIN preis_aktionen pa ON pa.id = pap.aktion_id
-            LEFT JOIN kundengruppen k ON k.id = pap.kundengruppen_id
-            WHERE pap.artikel_id = :artikel_id
-            ORDER BY pa.aktiv DESC, pa.gueltig_ab DESC
+                a.id AS aktion_id,
+                aap.kundengruppen_id,
+                aap.brutto_vk,
+                aap.netto_vk,
+                a.name AS aktion_name,
+                a.beschreibung,
+                a.gestartet,
+                ak.gueltig_ab,
+                ak.gueltig_bis,
+                k.name AS kundengruppen_name,
+                k.typ,
+                va.name AS achsen_name,
+                kat.name AS kategorie_name
+            FROM aktionen_artikel_preise aap
+            JOIN aktionen a ON a.id = aap.aktion_id
+            JOIN aktionen_kategorien ak ON ak.aktion_id = aap.aktion_id
+            JOIN kundengruppen k ON k.id = aap.kundengruppen_id
+            LEFT JOIN varianten_achsen va ON va.id = aap.sub_achse_id
+            LEFT JOIN kategorien kat ON kat.id = ak.kategorie_id
+            WHERE aap.artikel_id = :artikel_id
+            ORDER BY a.gestartet DESC, ak.gueltig_ab DESC
         ");
         $stmt->execute(['artikel_id' => $artikelId]);
         return $stmt->fetchAll();
@@ -160,6 +167,168 @@ class PreisRepository
     public function deleteStaffelpreis(int $id, int $artikelId): bool
     {
         $stmt = $this->db->prepare("DELETE FROM artikel_staffelpreise WHERE id = :id AND artikel_id = :artikel_id");
+        return $stmt->execute(['id' => $id, 'artikel_id' => $artikelId]);
+    }
+
+    public function findSaleOverride(int $artikelId, int $kgId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT brutto_vk, netto_vk, gueltig_bis
+            FROM preis_aktionen_positionen
+            WHERE artikel_id = :artikel_id
+            AND kundengruppen_id = :kundengruppen_id
+            AND (gueltig_ab IS NULL OR gueltig_ab <= NOW())
+            AND (gueltig_bis IS NULL OR gueltig_bis >= NOW())
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'artikel_id'       => $artikelId,
+            'kundengruppen_id' => $kgId,
+        ]);
+
+        return $stmt->fetch();
+    }
+
+
+    public function findAktionsPreis(int $artikelId, int $kgId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT aap.brutto_vk, aap.netto_vk, a.name AS aktion_name, ak.gueltig_bis
+            FROM aktionen_artikel_preise aap
+            JOIN aktionen a ON a.id = aap.aktion_id
+            JOIN aktionen_kategorien ak ON ak.aktion_id = aap.aktion_id
+            WHERE aap.artikel_id = :artikel_id
+            AND aap.kundengruppen_id = :kundengruppen_id
+            AND a.gestartet = 1
+            AND (ak.gueltig_ab <= CURDATE())
+            AND (ak.gueltig_bis >= CURDATE())
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'artikel_id'       => $artikelId,
+            'kundengruppen_id' => $kgId,
+        ]);
+
+        return $stmt->fetch();
+    }
+
+    public function findKundengruppenPreisFuerKg(int $artikelId, int $kgId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT ap.brutto_vk, ap.netto_vk, k.name
+            FROM artikel_preise ap
+            JOIN kundengruppen k ON ap.kundengruppen_id = k.id
+            WHERE ap.artikel_id = :artikel_id
+            AND ap.kundengruppen_id = :kundengruppen_id
+            AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
+            AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= NOW())
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'artikel_id'       => $artikelId,
+            'kundengruppen_id' => $kgId,
+        ]);
+
+        return $stmt->fetch();
+    }
+
+    public function findStandardPreis(int $artikelId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT ap.brutto_vk, ap.netto_vk, k.name
+            FROM artikel_preise ap
+            JOIN kundengruppen k ON ap.kundengruppen_id = k.id
+            WHERE ap.artikel_id = :artikel_id
+            AND k.ist_standard = 1
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'artikel_id'       => $artikelId,
+        ]);
+
+        return $stmt->fetch();
+    }
+
+    // ── SALE-Overrides ────────────────────────────────────────────────
+
+    public function findSaleOverridesFuerArtikel(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                pap.id,
+                pap.kundengruppen_id,
+                k.name AS kg_name,
+                pap.brutto_vk,
+                pap.netto_vk,
+                pap.preis_vorher_brutto,
+                pap.gueltig_ab,
+                pap.gueltig_bis,
+                pap.bis_lagerstand_null,
+                (
+                    (pap.gueltig_ab IS NULL OR pap.gueltig_ab <= NOW())
+                    AND (pap.gueltig_bis IS NULL OR pap.gueltig_bis >= NOW())
+                ) AS ist_aktiv
+            FROM preis_aktionen_positionen pap
+            LEFT JOIN kundengruppen k ON k.id = pap.kundengruppen_id
+            WHERE pap.artikel_id = :artikel_id
+            ORDER BY pap.gueltig_ab DESC
+        ");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetchAll();
+    }
+
+    public function upsertSaleOverride(array $data): int
+    {
+        if (!empty($data['id'])) {
+            $stmt = $this->db->prepare("
+                UPDATE preis_aktionen_positionen SET
+                    kundengruppen_id    = :kg_id,
+                    brutto_vk           = :brutto_vk,
+                    netto_vk            = :netto_vk,
+                    preis_vorher_brutto = :preis_vorher_brutto,
+                    gueltig_ab          = :gueltig_ab,
+                    gueltig_bis         = :gueltig_bis,
+                    bis_lagerstand_null = :bis_lagerstand_null
+                WHERE id = :id AND artikel_id = :artikel_id
+            ");
+            $stmt->execute([
+                'kg_id'               => $data['kundengruppen_id'] ?: null,
+                'brutto_vk'           => $data['brutto_vk'],
+                'netto_vk'            => $data['netto_vk'],
+                'preis_vorher_brutto' => $data['preis_vorher_brutto'] ?: null,
+                'gueltig_ab'          => $data['gueltig_ab'] ?: null,
+                'gueltig_bis'         => $data['gueltig_bis'] ?: null,
+                'bis_lagerstand_null' => $data['bis_lagerstand_null'] ? 1 : 0,
+                'id'                  => $data['id'],
+                'artikel_id'          => $data['artikel_id'],
+            ]);
+            return (int)$data['id'];
+        }
+        $stmt = $this->db->prepare("
+            INSERT INTO preis_aktionen_positionen
+                (artikel_id, kundengruppen_id, brutto_vk, netto_vk, preis_vorher_brutto, gueltig_ab, gueltig_bis, bis_lagerstand_null)
+            VALUES (:artikel_id, :kg_id, :brutto_vk, :netto_vk, :preis_vorher_brutto, :gueltig_ab, :gueltig_bis, :bis_lagerstand_null)
+        ");
+        $stmt->execute([
+            'artikel_id'          => $data['artikel_id'],
+            'kg_id'               => $data['kundengruppen_id'] ?: null,
+            'brutto_vk'           => $data['brutto_vk'],
+            'netto_vk'            => $data['netto_vk'],
+            'preis_vorher_brutto' => $data['preis_vorher_brutto'] ?: null,
+            'gueltig_ab'          => $data['gueltig_ab'] ?: null,
+            'gueltig_bis'         => $data['gueltig_bis'] ?: null,
+            'bis_lagerstand_null' => $data['bis_lagerstand_null'] ? 1 : 0,
+        ]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function deleteSaleOverride(int $id, int $artikelId): bool
+    {
+        $stmt = $this->db->prepare("DELETE FROM preis_aktionen_positionen WHERE id = :id AND artikel_id = :artikel_id");
         return $stmt->execute(['id' => $id, 'artikel_id' => $artikelId]);
     }
 }

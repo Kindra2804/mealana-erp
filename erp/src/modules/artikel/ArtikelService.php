@@ -537,4 +537,13 @@ class ArtikelService
 
         return ['erfolg' => true, 'id' => $neueId];
     }
+
+    public function getPreisStatusFuerListe(array $artikelIds): array
+    {
+        if (empty($artikelIds)) return [];
+        $db    = Database::getInstance();
+        $kgRow = $db->query("SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1")->fetch();
+        if (!$kgRow) return [];
+        return $this->repo->getPreisStatusBatch($artikelIds, (int)$kgRow['id']);
+    }
 }

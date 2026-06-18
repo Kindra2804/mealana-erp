@@ -47,6 +47,7 @@ $preisService        = new PreisService();
 $kundengruppenPreise = $preisService->getKundengruppenPreise($id);
 $staffelpreise       = $preisService->getStaffelpreise($id);
 $preisAktionen       = $preisService->getAktionenFuerArtikel($id);
+$saleOverrides       = $preisService->getSaleOverridesFuerArtikel($id);
 
 $zustandsArtikelListe = ($artikel && empty($artikel['zustand_vater_id']))
     ? $service->getZustandsArtikelFuerDetail($id)
@@ -69,14 +70,17 @@ foreach ($lieferanten as $l) {
     }
 }
 
-// Endkunden-Preis (KG 1) für Marge + Grundpreis
-$kgEndkunde = null;
+// Standard-KG-Preis für Marge + Grundpreis
+$kgEndkunde   = null;
+$standardKgId = null;
 foreach ($kundengruppenPreise as $kp) {
-    if ($kp['id'] == 1 && $kp['netto_vk'] !== null) {
-        $kgEndkunde = $kp;
+    if ($kp['ist_standard']) {
+        $standardKgId = (int)$kp['id'];
+        if ($kp['netto_vk'] !== null) $kgEndkunde = $kp;
         break;
     }
 }
+$effektiverPreis = $standardKgId ? $preisService->getEffektiverPreis($id, $standardKgId) : null;
 
 // Marge berechnen
 $margeInfo = null;
@@ -311,10 +315,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
             &nbsp;|&nbsp; <?= htmlspecialchars($artikel['artikeltyp']) ?>
             &nbsp;|&nbsp; <?= htmlspecialchars($artikel['hersteller'] ?? '–') ?>
         </div>
-        <div style="display:flex;gap:var(--space-lg);margin-top:4px;font-size:12px">
+        <div style="display:flex;gap:var(--space-lg);margin-top:4px;font-size:12px;align-items:center;flex-wrap:wrap">
+            <?php $hatAktivAktion = $effektiverPreis && in_array($effektiverPreis['quelle'], ['sale', 'aktion']); ?>
             <span>
-                VK: <strong><?= $artikel['brutto_vk'] ? number_format((float)$artikel['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></strong>
+                VK: <strong<?= $hatAktivAktion ? ' style="text-decoration:line-through;color:var(--color-text-muted);font-weight:normal"' : '' ?>><?= $artikel['brutto_vk'] ? number_format((float)$artikel['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></strong>
             </span>
+            <?php if ($hatAktivAktion): ?>
+                <span style="display:inline-flex;align-items:center;gap:5px;background:#FFF8E1;border:1px solid #FFB300;border-radius:6px;padding:2px 10px;color:#E65100">
+                    🔥 <strong>Aktion aktiv</strong>
+                    <?php if ($effektiverPreis['info']): ?>
+                        <span style="color:var(--color-text-muted)">·</span> <?= htmlspecialchars($effektiverPreis['info']) ?>
+                    <?php endif; ?>
+                    <?php if ($effektiverPreis['bis']): ?>
+                        <span style="color:var(--color-text-muted)">·</span> bis <?= date('d.m.Y', strtotime($effektiverPreis['bis'])) ?>
+                    <?php endif; ?>
+                    <span style="color:var(--color-text-muted)">·</span> <strong><?= number_format((float)$effektiverPreis['brutto_vk'], 2, ',', '.') ?> €</strong>
+                </span>
+            <?php endif; ?>
             <span>
                 Bestand: <strong style="<?= $lagerGesamtBestand <= 0 ? 'color:var(--color-danger)' : '' ?>"><?= formatBestand($lagerGesamtBestand) ?></strong>
             </span>
@@ -870,10 +887,77 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
         </div>
 
-        <!-- Preis-Aktionen -->
+        <!-- SALE-Override -->
         <?php
+        $hatSaleOverrides       = !empty($saleOverrides);
+        $hatAktiveSaleOverrides = !empty(array_filter($saleOverrides, fn($s) => $s['ist_aktiv']));
+        ?>
+        <div class="card" style="margin-bottom:var(--space-lg)">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
+                onclick="togglePreisSektion('sale-body', this)">
+                <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                    <h3 style="margin:0">SALE-Override</h3>
+                    <?php if ($hatAktiveSaleOverrides): ?>
+                        <span style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">
+                            <?= count(array_filter($saleOverrides, fn($s) => $s['ist_aktiv'])) ?> aktiv
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <span id="sale-toggle"><?= $hatSaleOverrides ? '▲' : '▼' ?></span>
+            </div>
+            <div id="sale-body" style="margin-top:var(--space-md);<?= $hatSaleOverrides ? '' : 'display:none' ?>">
+                <?php if ($hatSaleOverrides): ?>
+                    <table class="erp-table" style="margin-bottom:var(--space-sm)">
+                        <thead>
+                            <tr>
+                                <th>Kundengruppe</th>
+                                <th style="text-align:right">Sale-Preis</th>
+                                <th style="text-align:right">Vorher</th>
+                                <th style="white-space:nowrap">Gültig ab</th>
+                                <th style="white-space:nowrap">Gültig bis</th>
+                                <th>Bis Lagerstand 0</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($saleOverrides as $s): ?>
+                                <tr>
+                                    <td><?= $s['kg_name'] ? htmlspecialchars($s['kg_name']) : '<span style="color:var(--color-text-muted)">Alle</span>' ?></td>
+                                    <td style="text-align:right;font-weight:600"><?= number_format((float)$s['brutto_vk'], 2, ',', '.') ?> €</td>
+                                    <td style="text-align:right;color:var(--color-text-muted)">
+                                        <?= $s['preis_vorher_brutto'] ? number_format((float)$s['preis_vorher_brutto'], 2, ',', '.') . ' €' : '–' ?>
+                                    </td>
+                                    <td style="white-space:nowrap"><?= $s['gueltig_ab'] ? date('d.m.Y H:i', strtotime($s['gueltig_ab'])) : '–' ?></td>
+                                    <td style="white-space:nowrap"><?= $s['gueltig_bis'] ? date('d.m.Y H:i', strtotime($s['gueltig_bis'])) : '–' ?></td>
+                                    <td style="text-align:center"><?= $s['bis_lagerstand_null'] ? '✓' : '–' ?></td>
+                                    <td>
+                                        <?php if ($s['ist_aktiv']): ?>
+                                            <span style="background:#dcfce7;color:#166534;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600">aktiv</span>
+                                        <?php else: ?>
+                                            <span style="background:#f1f5f9;color:#64748b;font-size:12px;padding:2px 8px;border-radius:10px">inaktiv</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="white-space:nowrap">
+                                        <button class="btn btn-sm" onclick="saleModalOeffnen(<?= htmlspecialchars(json_encode($s)) ?>)">✏️</button>
+                                        <button class="btn btn-sm btn-danger" onclick="saleLoeschen(<?= $s['id'] ?>)">🗑</button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+                <button class="btn btn-secondary btn-sm" onclick="saleModalOeffnen(null)">+ SALE-Override anlegen</button>
+            </div>
+        </div>
+
+        <!-- Preis-Aktionen (Kategorie-Aktionen) -->
+        <?php
+        $heute             = date('Y-m-d');
         $hatAktionen       = !empty($preisAktionen);
-        $hatAktiveAktionen = !empty(array_filter($preisAktionen, fn($a) => $a['aktiv']));
+        $hatAktiveAktionen = !empty(array_filter($preisAktionen, fn($a) =>
+            $a['gestartet'] && $a['gueltig_ab'] <= $heute && $a['gueltig_bis'] >= $heute
+        ));
         ?>
         <div class="card" style="margin-bottom:var(--space-lg)">
             <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
@@ -882,7 +966,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <h3 style="margin:0">Preis-Aktionen</h3>
                     <?php if ($hatAktiveAktionen): ?>
                         <span style="background:#16a34a;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">
-                            <?= count(array_filter($preisAktionen, fn($a) => $a['aktiv'])) ?> aktiv
+                            aktiv
                         </span>
                     <?php endif; ?>
                 </div>
@@ -894,7 +978,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <thead>
                             <tr>
                                 <th>Aktion</th>
-                                <th>Typ</th>
+                                <th>Kategorie</th>
                                 <th>Kundengruppe</th>
                                 <th style="text-align:right">Aktionspreis</th>
                                 <th style="white-space:nowrap">Gültig ab</th>
@@ -903,23 +987,25 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($preisAktionen as $a): ?>
+                            <?php foreach ($preisAktionen as $a):
+                                $istAktiv = $a['gestartet'] && $a['gueltig_ab'] <= $heute && $a['gueltig_bis'] >= $heute;
+                            ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($a['name']) ?></td>
-                                    <td>
-                                        <span style="font-size:12px;padding:2px 8px;border-radius:10px;background:<?= $a['typ'] === 'sale' ? '#fef9c3' : '#dbeafe' ?>;color:<?= $a['typ'] === 'sale' ? '#854d0e' : '#1e40af' ?>">
-                                            <?= $a['typ'] === 'sale' ? 'Sale' : 'Lief.-Aktion' ?>
-                                        </span>
-                                    </td>
-                                    <td><?= $a['kg_name'] ? htmlspecialchars($a['kg_name']) : '<span style="color:var(--color-text-muted)">Alle</span>' ?></td>
+                                    <td><?= htmlspecialchars($a['aktion_name']) ?></td>
+                                    <td><?= $a['kategorie_name'] ? htmlspecialchars($a['kategorie_name']) : '–' ?></td>
+                                    <td><?= $a['kundengruppen_name'] ? htmlspecialchars($a['kundengruppen_name']) : '<span style="color:var(--color-text-muted)">Alle</span>' ?></td>
                                     <td style="text-align:right"><?= number_format((float)$a['brutto_vk'], 2, ',', '.') ?> €</td>
                                     <td style="white-space:nowrap"><?= date('d.m.Y', strtotime($a['gueltig_ab'])) ?></td>
-                                    <td style="white-space:nowrap"><?= $a['gueltig_bis'] ? date('d.m.Y', strtotime($a['gueltig_bis'])) : '–' ?></td>
+                                    <td style="white-space:nowrap"><?= date('d.m.Y', strtotime($a['gueltig_bis'])) ?></td>
                                     <td>
-                                        <?php if ($a['aktiv']): ?>
+                                        <?php if ($istAktiv): ?>
                                             <span style="background:#dcfce7;color:#166534;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600">aktiv</span>
+                                        <?php elseif (!$a['gestartet']): ?>
+                                            <span style="background:#f1f5f9;color:#64748b;font-size:12px;padding:2px 8px;border-radius:10px">Entwurf</span>
                                         <?php else: ?>
-                                            <span style="background:#f1f5f9;color:#64748b;font-size:12px;padding:2px 8px;border-radius:10px">inaktiv</span>
+                                            <span style="background:#fef9c3;color:#854d0e;font-size:12px;padding:2px 8px;border-radius:10px">
+                                                <?= $a['gueltig_ab'] > $heute ? 'geplant' : 'abgelaufen' ?>
+                                            </span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -930,7 +1016,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <p style="color:var(--color-text-muted);font-size:13px">Keine Aktionen für diesen Artikel.</p>
                 <?php endif; ?>
                 <div style="margin-top:var(--space-sm)">
-                    <a href="../preisaktionen/" class="btn btn-secondary btn-sm" style="opacity:0.5;pointer-events:none" title="Modul in Entwicklung">Aktionen verwalten →</a>
+                    <a href="../aktionen/" class="btn btn-secondary btn-sm">Aktionen verwalten →</a>
                 </div>
             </div>
         </div>
@@ -961,7 +1047,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 data-netto="<?= htmlspecialchars($kp['netto_vk'] ?? '') ?>"
                                 data-ab="<?= htmlspecialchars($kp['gueltig_ab'] ?? '') ?>"
                                 data-bis="<?= htmlspecialchars($kp['gueltig_bis'] ?? '') ?>">
-                                <td><?= htmlspecialchars($kp['name']) ?></td>
+                                <td>
+                                    <?php if ($kp['ist_standard']): ?><span style="color:#FFB300" title="Standard-Kundengruppe">★</span> <?php endif; ?>
+                                    <?= htmlspecialchars($kp['name']) ?>
+                                </td>
                                 <td style="text-align:right">
                                     <?= $kp['brutto_vk'] !== null
                                         ? number_format((float)$kp['brutto_vk'], 2, ',', '.') . ' €'
@@ -1646,6 +1735,59 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
         </div>
 
+        <!-- SALE-Override-Modal -->
+        <div id="sale-backdrop" class="modal-backdrop" style="display:none" onclick="saleModalSchliessen()">
+            <div id="sale-modal" class="modal" onclick="event.stopPropagation()">
+                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+                    SALE-Override
+                </div>
+                <form id="sale-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                    <input type="hidden" name="id" id="sale-id" value="">
+                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                    <div class="form-row">
+                        <label class="form-label">Kundengruppe <span style="font-size:11px;color:var(--color-text-muted)">(leer = alle)</span></label>
+                        <select class="erp-select" style="width:100%" name="kundengruppen_id" id="sale-kg">
+                            <option value="">– Alle Kundengruppen –</option>
+                            <?php foreach ($kundengruppenPreise as $kp): ?>
+                                <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Sale-Preis Brutto (€)</label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                            name="brutto_vk" id="sale-brutto" placeholder="0,00" oninput="saleNettoBerechnen()">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Sale-Preis Netto (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                            name="netto_vk" id="sale-netto" placeholder="0,0000">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Preis vorher Brutto (€) <span style="font-size:11px;color:var(--color-text-muted)">(optional, für Streichpreis)</span></label>
+                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                            name="preis_vorher_brutto" id="sale-vorher" placeholder="0,00">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Gültig ab</label>
+                        <input class="erp-input" style="width:100%" type="datetime-local" name="gueltig_ab" id="sale-ab">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Gültig bis</label>
+                        <input class="erp-input" style="width:100%" type="datetime-local" name="gueltig_bis" id="sale-bis">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                        <input type="checkbox" name="bis_lagerstand_null" id="sale-lagerstand" value="1">
+                        <label for="sale-lagerstand" style="cursor:pointer">Endet wenn Lagerstand = 0</label>
+                    </div>
+                    <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saleSpeichern()">Speichern</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="saleModalSchliessen()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Merkmal-Auswahl-Modal -->
         <div id="merk-backdrop" class="modal-backdrop" style="display:none" onclick="merkmalModalSchliessen()">
             <div class="modal" style="max-width:420px;max-height:70vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
@@ -2046,6 +2188,64 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         method: 'POST',
                         body: data
                     })
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json.erfolg) {
+                            location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                        } else {
+                            showFlash(json.fehler ?? 'Unbekannter Fehler', 'fehler');
+                        }
+                    });
+            }
+
+            function saleModalOeffnen(sale) {
+                document.getElementById('sale-id').value         = sale ? sale.id : '';
+                document.getElementById('sale-kg').value         = sale ? (sale.kundengruppen_id ?? '') : '';
+                document.getElementById('sale-brutto').value     = sale ? sale.brutto_vk : '';
+                document.getElementById('sale-netto').value      = sale ? sale.netto_vk : '';
+                document.getElementById('sale-vorher').value     = sale ? (sale.preis_vorher_brutto ?? '') : '';
+                document.getElementById('sale-ab').value         = sale && sale.gueltig_ab
+                    ? sale.gueltig_ab.substring(0, 16) : '';
+                document.getElementById('sale-bis').value        = sale && sale.gueltig_bis
+                    ? sale.gueltig_bis.substring(0, 16) : '';
+                document.getElementById('sale-lagerstand').checked = sale ? !!parseInt(sale.bis_lagerstand_null) : false;
+                document.getElementById('sale-backdrop').style.display = 'flex';
+            }
+
+            function saleModalSchliessen() {
+                document.getElementById('sale-backdrop').style.display = 'none';
+            }
+
+            function saleNettoBerechnen() {
+                const brutto = parseFloat(document.getElementById('sale-brutto').value);
+                if (!isNaN(brutto) && brutto > 0) {
+                    document.getElementById('sale-netto').value = (brutto / (1 + MWST_SATZ / 100)).toFixed(4);
+                }
+            }
+
+            function saleSpeichern() {
+                const data = new FormData(document.getElementById('sale-form'));
+                if (!document.getElementById('sale-lagerstand').checked) {
+                    data.delete('bis_lagerstand_null');
+                }
+                fetch('sale_override_speichern.php', { method: 'POST', body: data })
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json.erfolg) {
+                            saleModalSchliessen();
+                            location.href = 'detail.php?id=<?= $id ?>&tab=preise';
+                        } else {
+                            showFlash(json.fehler ?? 'Unbekannter Fehler', 'fehler');
+                        }
+                    });
+            }
+
+            function saleLoeschen(saleId) {
+                if (!confirm('SALE-Override wirklich löschen?')) return;
+                const data = new FormData();
+                data.append('id', saleId);
+                data.append('artikel_id', <?= $id ?>);
+                fetch('sale_override_loeschen.php', { method: 'POST', body: data })
                     .then(r => r.json())
                     .then(json => {
                         if (json.erfolg) {

@@ -99,9 +99,10 @@ class AktionenService
         $artikel = $this->repo->getVaeterFuerKategorie($kategorieId);
         if (empty($artikel)) return [];
 
-        $ids        = array_column($artikel, 'id');
-        $subAchsen  = $this->repo->getSubAchsenFuerArtikel($ids);
-        $preisIndex = $this->repo->getExistingPreise($aktionId, $kgId);
+        $ids          = array_column($artikel, 'id');
+        $subAchsen    = $this->repo->getSubAchsenFuerArtikel($ids);
+        $preisIndex   = $this->repo->getExistingPreise($aktionId, $kgId);
+        $normalPreise = $this->repo->getNormalePreise($ids, $kgId);
 
         // Sub-Achsen je Artikel gruppieren
         $achsenByArtikel = [];
@@ -111,6 +112,7 @@ class AktionenService
 
         foreach ($artikel as &$a) {
             $a['sub_achsen'] = $achsenByArtikel[$a['id']] ?? [];
+            $a['normal_vk']  = isset($normalPreise[$a['id']]) ? (float)$normalPreise[$a['id']] : null;
             // Bestehende Preise eintragen
             if (empty($a['sub_achsen'])) {
                 $key         = $a['id'] . ':0';
@@ -147,7 +149,10 @@ class AktionenService
 
             $bruttoVk = (float)$bruttoVk;
             $mwstSatz = (float)($p['mwst_satz'] ?? 20.0);
-            $nettoVk  = $bruttoVk / (1 + $mwstSatz / 100);
+            $nettoRaw = str_replace(',', '.', (string)($p['netto_vk'] ?? ''));
+            $nettoVk  = ($nettoRaw !== '' && (float)$nettoRaw > 0)
+                ? (float)$nettoRaw
+                : $bruttoVk / (1 + $mwstSatz / 100);
 
             $this->repo->upsertPreis($aktionId, $artikelId, $subAchseId, $kgId, round($bruttoVk, 2), round($nettoVk, 4));
             $gespeichert++;

@@ -68,24 +68,28 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - 47 Permissions im Format modul.aktion
 - Audit-Log (aktivitaeten-Tabelle)
 
-### Aktions-Modul ✅ GRUNDGERÜST (2026-06-18)
+### Aktions-Modul ✅ VOLLSTÄNDIG (2026-06-18)
 - DB: aktionen, aktionen_kategorien, aktionen_artikel_preise (042+043)
 - Kategorien: ist_aktions_kategorie Checkbox, ⏰-Symbol (grau=geplant, orange=aktiv)
+- liste.php + bearbeiten.php: in Artikel-Sidebar als "Preise/Aktionen" ($activeModule='artikel')
+- shell_top.php: Active-Detection via REQUEST_URI (statt basename — URL-Rewrite-sicher)
 - liste.php: Übersicht mit Status-Chips (Entwurf/Geplant/Aktiv/Abgelaufen)
-- bearbeiten.php: Stammdaten + Kategorie-Zuweisung + Preiseingabe-Screen
-- AJAX: speichern, kategorie add/remove, starten/stoppen, löschen
-- AJAX: artikel_laden (Sub-Achsen dynamisch), preise_speichern (batch upsert)
-- Aktion-Sync: Artikel aus Kategorie entfernt → Aktionspreise werden gelöscht
-- Aktion-Sync: Kategorie aus Aktion entfernt → Aktionspreise aller Artikel gelöscht
+- bearbeiten.php: Stammdaten + Kategorie-Zuweisung + Preiseingabe-Screen (Normal-VK Referenz, Brutto/Netto bidirektional)
+- AJAX: speichern, kategorie add/remove, starten/stoppen, löschen, preise_speichern (batch upsert)
 - kundengruppen.ist_standard (044): ⭐-Markierung, dynamischer Default
+
+### PreisService ✅ VOLLSTÄNDIG (2026-06-18)
+- getEffektiverPreis(artikelId, kgId): 4-stufige Prioritätskette (SALE → Aktion → KG → Standard), gibt quelle+bis zurück
+- SALE-Override UI in detail.php Preise-Tab: Modal mit Brutto/Netto, gültig ab/bis, bis-Lagerstand-0
+- detail.php Header: Streichpreis bei aktiver Aktion + oranges "🔥 Aktion aktiv · [Name] · bis [Datum] · [Preis]" Banner
+- detail.php Preise-Tab: ★ vor Standard-Kundengruppen-Name
+- Artikel-Liste: roter SALE-Chip + amber ⏰ (Aktion aktiv) + grauer ⏰ (Aktion vorhanden aber durch SALE überschrieben)
+- ArtikelRepository.getPreisStatusBatch: 2-Query Batch-Check (keine N+1 Queries)
 
 ## 🔴 Noch nicht gebaut
 
 | Modul | Priorität |
 |---|---|
-| **PreisService** (Prioritätskette + SALE-Override) | HOCH — nächste Session |
-| SALE-Override UI in detail.php Preise-Tab | HOCH — nächste Session |
-| ⏰/SALE-Chips in Artikel-Liste | HOCH — nächste Session |
 | Bilder-Upload | HOCH (vor Shop) |
 | Bestellwesen/Einkauf | HOCH |
 | Auftragsmodul/Verkauf | HOCH |
@@ -94,20 +98,6 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Shop-Export | MITTEL |
 | Buchhaltung/DATEV | MITTEL |
 | Seriennummern | NIEDRIG |
-
-## Nächste Session: PreisService
-
-Prioritätskette:
-1. SALE-Override (preis_aktionen_positionen, zeitlich aktiv / bis Lagerstand=0)
-2. Kategorie-Aktionspreis (aktionen_artikel_preise, Aktion.gestartet=1 + Datum in Range)
-3. KG-Festpreis (artikel_preise für Kundengruppe)
-4. artikel.brutto_vk (Fallback)
-
-Baustellen:
-- PreisService::getEffektiverPreis(artikelId, kgId, ?datetime): float
-- PreisService::pruefPendingAktionen(): void (Jarvis-Check)
-- SALE-Override UI in detail.php (Preise-Tab: Sektion "SALE-OVERRIDE" mit von/bis/bis-Lagerstand)
-- Artikel-Liste: ⏰-Chip wenn Kategorie-Aktionspreis aktiv, SALE-Chip wenn Override
 
 ## Offene technische Punkte
 

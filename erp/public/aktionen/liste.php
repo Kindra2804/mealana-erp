@@ -1,12 +1,15 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/aktionen/AktionenService.php';
+require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
 $service  = new AktionenService();
+$artikelService = new ArtikelService();
 $aktionen = $service->findAll();
 
-$pageTitle       = 'Aktionen';
-$activeModule    = 'aktionen';
+$pageTitle       = 'Preise / Aktionen';
+$activeModule    = 'artikel';
+$kategorienBaum = $artikelService->getKategorienBaum();
 $actionBarContent = '<a href="/mealana/aktionen/bearbeiten.php" class="btn btn-primary btn-sm">+ Neue Aktion</a>';
 
 require_once __DIR__ . '/../includes/shell_top.php';
@@ -20,77 +23,77 @@ $statusLabel = [
 ?>
 
 <div class="card">
-<?php if (empty($aktionen)): ?>
-    <p style="color:var(--color-text-muted);padding:var(--space-md)">
-        Noch keine Aktionen angelegt.
-        <a href="/mealana/aktionen/bearbeiten.php" class="btn btn-primary btn-sm" style="margin-left:8px">Erste Aktion anlegen</a>
-    </p>
-<?php else: ?>
-    <table class="erp-table">
-        <thead>
-            <tr>
-                <th>NAME</th>
-                <th>KATEGORIEN</th>
-                <th>ZEITRAUM</th>
-                <th>STATUS</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-        <?php foreach ($aktionen as $a):
-            $sl  = $statusLabel[$a['status']] ?? $statusLabel['entwurf'];
-            $von = '';
-            $bis = '';
-            if (!empty($a['kategorien'])) {
-                $alleVon = array_column($a['kategorien'], 'gueltig_ab');
-                $alleBis = array_column($a['kategorien'], 'gueltig_bis');
-                $von = min($alleVon);
-                $bis = max($alleBis);
-            }
-        ?>
-            <tr>
-                <td>
-                    <a href="/mealana/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
-                       style="font-weight:600;color:var(--color-nav);text-decoration:none">
-                        <?= htmlspecialchars($a['name']) ?>
-                    </a>
-                    <?php if ($a['beschreibung']): ?>
-                        <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">
-                            <?= htmlspecialchars(mb_substr($a['beschreibung'], 0, 60)) ?><?= mb_strlen($a['beschreibung']) > 60 ? '…' : '' ?>
-                        </div>
-                    <?php endif; ?>
-                </td>
-                <td style="font-size:12px;color:var(--color-text-muted)">
-                    <?php if (empty($a['kategorien'])): ?>
-                        <span style="color:#ccc">—</span>
-                    <?php else: ?>
-                        <?= htmlspecialchars(implode(', ', array_column($a['kategorien'], 'kat_name'))) ?>
-                    <?php endif; ?>
-                </td>
-                <td style="font-size:12px;white-space:nowrap">
-                    <?php if ($von): ?>
-                        <?= date('d.m.Y', strtotime($von)) ?> – <?= date('d.m.Y', strtotime($bis)) ?>
-                    <?php else: ?>
-                        <span style="color:#ccc">—</span>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;
+    <?php if (empty($aktionen)): ?>
+        <p style="color:var(--color-text-muted);padding:var(--space-md)">
+            Noch keine Aktionen angelegt.
+            <a href="/mealana/aktionen/bearbeiten.php" class="btn btn-primary btn-sm" style="margin-left:8px">Erste Aktion anlegen</a>
+        </p>
+    <?php else: ?>
+        <table class="erp-table">
+            <thead>
+                <tr>
+                    <th>NAME</th>
+                    <th>KATEGORIEN</th>
+                    <th>ZEITRAUM</th>
+                    <th>STATUS</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($aktionen as $a):
+                    $sl  = $statusLabel[$a['status']] ?? $statusLabel['entwurf'];
+                    $von = '';
+                    $bis = '';
+                    if (!empty($a['kategorien'])) {
+                        $alleVon = array_column($a['kategorien'], 'gueltig_ab');
+                        $alleBis = array_column($a['kategorien'], 'gueltig_bis');
+                        $von = min($alleVon);
+                        $bis = max($alleBis);
+                    }
+                ?>
+                    <tr>
+                        <td>
+                            <a href="/mealana/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
+                                style="font-weight:600;color:var(--color-nav);text-decoration:none">
+                                <?= htmlspecialchars($a['name']) ?>
+                            </a>
+                            <?php if ($a['beschreibung']): ?>
+                                <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">
+                                    <?= htmlspecialchars(mb_substr($a['beschreibung'], 0, 60)) ?><?= mb_strlen($a['beschreibung']) > 60 ? '…' : '' ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                        <td style="font-size:12px;color:var(--color-text-muted)">
+                            <?php if (empty($a['kategorien'])): ?>
+                                <span style="color:#ccc">—</span>
+                            <?php else: ?>
+                                <?= htmlspecialchars(implode(', ', array_column($a['kategorien'], 'kat_name'))) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td style="font-size:12px;white-space:nowrap">
+                            <?php if ($von): ?>
+                                <?= date('d.m.Y', strtotime($von)) ?> – <?= date('d.m.Y', strtotime($bis)) ?>
+                            <?php else: ?>
+                                <span style="color:#ccc">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;
                                  color:<?= $sl['farbe'] ?>;background:<?= $sl['bg'] ?>">
-                        <?= $sl['text'] ?>
-                    </span>
-                </td>
-                <td style="text-align:right;white-space:nowrap">
-                    <a href="/mealana/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
-                       class="btn btn-secondary btn-xs">Bearbeiten</a>
-                    <button onclick="aktionLoeschen(<?= $a['id'] ?>, <?= htmlspecialchars(json_encode($a['name'])) ?>)"
-                            class="btn btn-danger btn-xs" style="margin-left:4px">Löschen</button>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-<?php endif; ?>
+                                <?= $sl['text'] ?>
+                            </span>
+                        </td>
+                        <td style="text-align:right;white-space:nowrap">
+                            <a href="/mealana/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
+                                class="btn btn-secondary btn-xs">Bearbeiten</a>
+                            <button onclick="aktionLoeschen(<?= $a['id'] ?>, <?= htmlspecialchars(json_encode($a['name'])) ?>)"
+                                class="btn btn-danger btn-xs" style="margin-left:4px">Löschen</button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
 </div>
 
 <!-- Löschen-Bestätigung -->
@@ -114,26 +117,35 @@ $statusLabel = [
 </div>
 
 <script>
-var delAktionId = null;
-function aktionLoeschen(id, name) {
-    delAktionId = id;
-    document.getElementById('del-info').textContent = 'Aktion "' + name + '" wirklich löschen?';
-    document.getElementById('del-modal').style.display = 'flex';
-}
-document.getElementById('del-btn').addEventListener('click', function() {
-    if (!delAktionId) return;
-    this.disabled = true;
-    fetch('/mealana/aktionen/aktion_loeschen.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'id=' + delAktionId
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.erfolg) { window.location.reload(); }
-        else { alert(d.fehler || 'Fehler'); document.getElementById('del-btn').disabled = false; }
+    var delAktionId = null;
+
+    function aktionLoeschen(id, name) {
+        delAktionId = id;
+        document.getElementById('del-info').textContent = 'Aktion "' + name + '" wirklich löschen?';
+        document.getElementById('del-modal').style.display = 'flex';
+    }
+    document.getElementById('del-btn').addEventListener('click', function() {
+        if (!delAktionId) return;
+        this.disabled = true;
+        fetch('/mealana/aktionen/aktion_loeschen.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'id=' + delAktionId
+            })
+            .then(function(r) {
+                return r.json();
+            })
+            .then(function(d) {
+                if (d.erfolg) {
+                    window.location.reload();
+                } else {
+                    alert(d.fehler || 'Fehler');
+                    document.getElementById('del-btn').disabled = false;
+                }
+            });
     });
-});
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

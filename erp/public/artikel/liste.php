@@ -181,6 +181,7 @@ $proSeite = (int)($_GET['pro_seite'] ?? 12);
 $offset = ($seite - 1) * $proSeite;
 
 $artikel = $controller->index($filter, $proSeite, $offset);
+$preisStatus = $service->getPreisStatusFuerListe(array_column($artikel, 'id'));
 
 $vaterIds = array_column($artikel, 'id');
 
@@ -404,7 +405,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$a['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
                 if ((int)($a['kat_anzahl'] ?? 1) === 0)
                     $statusChips .= '<span class="sc sc-ohnekat" title="Kein Kategorie-Eintrag – Artikel erscheint in keinem Shop">Kein Kat.</span>';
-                // Sale-Chip: TODO — benötigt preis_aktionen-Tabelle (noch nicht gebaut)
+                // Preis-Aktions-Chips
+                $ps = $preisStatus[$a['id']] ?? null;
+                if ($ps) {
+                    if ($ps['hat_sale'] && $ps['hat_aktion']) {
+                        $statusChips .= '<span class="sc sc-sale" title="Manueller SALE-Preis aktiv (überschreibt Kategorie-Aktion)">SALE</span>';
+                        $statusChips .= '<span class="sc sc-aktion-grau" title="Kategorie-Aktion vorhanden, aber durch SALE überschrieben">⏰</span>';
+                    } elseif ($ps['hat_sale']) {
+                        $statusChips .= '<span class="sc sc-sale" title="Manueller SALE-Preis aktiv">SALE</span>';
+                    } elseif ($ps['hat_aktion']) {
+                        $statusChips .= '<span class="sc sc-aktion" title="Kategorie-Aktion aktiv">⏰</span>';
+                    }
+                }
 
                 // ⚠ Vater-Badge
                 $vaterAbwTypen = [];
