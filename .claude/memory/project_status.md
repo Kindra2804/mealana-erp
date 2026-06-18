@@ -7,7 +7,7 @@ metadata:
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
 ---
 
-Stand: 2026-06-18 (Achsen-Modul vollständig abgeschlossen)
+Stand: 2026-06-18 (VarKombi-Generator + granulare Achsen-Sperrung abgeschlossen)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -52,8 +52,10 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - Achsen-Sortierung: tree-aware (nur Geschwister)
 - Sidebar-Link zu liste.php entfernt (Management jetzt inline)
 
-### Varianten-System
-- VarKombi-Generator (kartesisches Produkt) — kennt noch keine Achsen-Hierarchie (offen)
+### Varianten-System ✅ VOLLSTÄNDIG (2026-06-18)
+- VarKombi-Generator: Achsen-Hierarchie bekannt, Sub-Achsen = UNION + Suffix, nie Kreuzprodukt
+- achsen_zuweisen.php: Granulare Sperrung — verwendete Werte 🔒, neue hinzufügen/freie löschen OK
+- VariantenService: kein Vollblock mehr; nur in-use Werte+Achsen bleiben geschützt
 
 ### Lager-Modul (erp/public/lager/)
 - Wareneingang mit EAN-Scan, Chargen-Tracking, Bewegungslog
@@ -71,7 +73,6 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 
 | Modul | Priorität |
 |---|---|
-| VarKombi-Generator: Achsen-Hierarchie kennen | HOCH (Blocker für Aktionen) |
 | Aktions-Modul | HOCH |
 | Bilder-Upload | HOCH (vor Shop) |
 | Bestellwesen/Einkauf | HOCH |
@@ -84,10 +85,10 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 
 ## Aktuelle Baustelle (2026-06-18)
 
-Achsen-Modul vollständig. Nächste Optionen:
-1. **VarKombi-Generator** — Achsen-Hierarchie verstehen (aktuell flaches kartesisches Produkt)
-2. **Aktions-Modul** — Lieferanten-Kampagnen mit kategorie-basierter Auto-Preissetzung
-3. **Bilder-Upload** — Tab "Bilder" ist noch Platzhalter
+Varianten-System vollständig. Nächste Optionen:
+1. **Aktions-Modul** — Lieferanten-Kampagnen mit kategorie-basierter Auto-Preissetzung
+2. **Bilder-Upload** — Tab "Bilder" ist noch Platzhalter
+3. **Bestellwesen/Einkauf** — Lieferantenbestellungen
 
 ## Offene technische Punkte
 

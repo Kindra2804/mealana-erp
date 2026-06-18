@@ -43,9 +43,16 @@ Derzeit 1 Achse (Farbe), Typ (Uni/Print/LongPrint) in Farbnamen kodiert — JTL-
 - `achsen_zuweisen.php` komplett neu: Baumstruktur, Chip-Input, ↔ Wert verschieben, ✎ Achse global bearbeiten
 - `achsen_speichern.php` und `VariantenService` vereinfacht — kein two-pass mehr, kein bedingungs_wert_id
 
+**Generator-Logik (implementiert 2026-06-18):**
+- Sub-Achsen-Werte eines gemeinsamen Parents → IMMER UNION zu einer Dimension (nie Kreuzprodukt)
+- Sub-Achsen-Name wird als Suffix angehängt: Wert "gelb (02)" von MIX → "gelb (02) MIX"
+- Eigene Werte auf Gruppenachse + Sub-Achsen-Werte = alle in einer Dimension (UNION, kein Kreuz)
+- Beispiel: FARBE(F1) + MIX(M1,M2) + UNI(U1,U2) + STÄRKE(3mm,4mm) = 5×2 = 10 Kind-Artikel
+
 **Voraussetzungen für Aktions-Modul:**
 - ✅ Abhängige Achsen UI fertig + korrekt funktionierend (2026-06-18)
-- VarKombi-Generator muss Abhängigkeiten kennen (aktuell: flaches kartesisches Produkt) — noch offen
+- ✅ VarKombi-Generator kennt Achsen-Hierarchie + Suffix-Logik (2026-06-18)
+- Nächster Schritt: Aktions-Modul als eigenes Modul
 
 ## Aktivierung
 
@@ -59,5 +66,8 @@ Inhalt: Wie eine Kategorie eine Aktion bekommt (`aktion_id` FK + `anzeigen_ab/bi
 
 ## Status (2026-06-18)
 - ✅ Achsen-UI fertig: achsen_zuweisen.php, liste.php, AJAX-Endpoints alle updated
-- Nächster Blocker: VarKombi-Generator (aktuell flaches kartesisches Produkt, kennt keine Achsen-Hierarchie)
-- Danach: Aktions-Modul als eigenes Modul
+- ✅ VarKombi-Generator: hierarchie-bewusst + Suffix-Logik (detail.php) — immer UNION
+- ✅ Achsen-Display Bug fix: $werteProAchse[$a['achse_id']] statt $a['id']
+- ✅ Sub-Achsen in Achsen-Card eingerückt mit ↳ und lila Chip
+- ✅ Granulare Achsen-Sperrung: 🔒-Chips für in-use Werte, freie Werte/Achsen editierbar
+- Nächster Schritt: Aktions-Modul als eigenes Modul
