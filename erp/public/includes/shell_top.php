@@ -9,6 +9,7 @@ $moduleLabel = match ($activeModule ?? '') {
     'einkauf'     => 'Einkauf',
     'buchhaltung' => 'Buchhaltung',
     'lieferanten' => 'Lieferanten',
+    'aktionen'    => 'Aktionen',
     default       => '',
 };
 
@@ -30,6 +31,10 @@ $sidebarItems = match ($activeModule ?? '') {
     'lieferanten' => [
         ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/lieferanten/liste.php'],
         ['icon' => '➕', 'label' => 'Neu',          'href' => '/mealana/lieferanten/neu.php'],
+    ],
+    'aktionen' => [
+        ['icon' => '📋', 'label' => 'Alle Aktionen', 'href' => '/mealana/aktionen/liste.php'],
+        ['icon' => '➕', 'label' => 'Neue Aktion',   'href' => '/mealana/aktionen/bearbeiten.php'],
     ],
     default => [],
 };

@@ -9,9 +9,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$id       = (int)($_POST['id'] ?? 0);
-$name     = trim($_POST['name'] ?? '');
-$parentId = (int)($_POST['parent_id'] ?? 0) ?: null;
+$id                  = (int)($_POST['id'] ?? 0);
+$name                = trim($_POST['name'] ?? '');
+$parentId            = (int)($_POST['parent_id'] ?? 0) ?: null;
+$istAktionsKategorie = !empty($_POST['ist_aktions_kategorie']);
 
 if (!$id) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Ungültige ID']);
@@ -19,4 +20,4 @@ if (!$id) {
 }
 
 $service = new ArtikelService();
-echo json_encode($service->updateKategorie($id, $name, $parentId));
+echo json_encode($service->updateKategorie($id, $name, $parentId, $istAktionsKategorie));

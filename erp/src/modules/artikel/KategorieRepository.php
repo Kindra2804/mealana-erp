@@ -28,15 +28,18 @@ class KategorieRepository
     {
         $stmt = $this->db->query("
             SELECT k.id, k.parent_id, k.name, k.sortierung,
-                COUNT(DISTINCT a.id) AS artikel_anzahl
+                k.ist_aktions_kategorie,
+                COUNT(DISTINCT a.id) AS artikel_anzahl,
+                MAX(CASE WHEN CURDATE() BETWEEN ak2.gueltig_ab AND ak2.gueltig_bis THEN 1 ELSE 0 END) AS aktion_aktiv
             FROM kategorien k
             LEFT JOIN artikel_kategorien ak ON ak.kategorie_id = k.id
             LEFT JOIN artikel vater ON vater.id = ak.artikel_id AND vater.aktiv = 1
             LEFT JOIN artikel a ON a.aktiv = 1 AND (
-                (a.id = vater.id AND vater.ist_vater = 0)   -- NORMAL direkt
+                (a.id = vater.id AND vater.ist_vater = 0)
                 OR
-                (a.vaterartikel_id = vater.id)               -- KIND-Kinder
+                (a.vaterartikel_id = vater.id)
             )
+            LEFT JOIN aktionen_kategorien ak2 ON ak2.kategorie_id = k.id
             WHERE k.aktiv = 1
             GROUP BY k.id
             ORDER BY k.sortierung ASC, k.name ASC
@@ -77,37 +80,56 @@ class KategorieRepository
 
     public function updateArtikelKategoriezuweisungen(int $artikelId, array $kategorieIds): void
     {
-        // Alle bestehenden Zuweisungen löschen
         try {
             $this->db->beginTransaction();
+
+            // Bestehende Zuweisungen ermitteln um entfernte Kategorien zu kennen
+            $stmt = $this->db->prepare("SELECT kategorie_id FROM artikel_kategorien WHERE artikel_id = :artikel_id");
+            $stmt->execute(['artikel_id' => $artikelId]);
+            $alteKatIds      = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            $entfernteKatIds = array_values(array_diff($alteKatIds, $kategorieIds));
+
             $stmt = $this->db->prepare("DELETE FROM artikel_kategorien WHERE artikel_id = :artikel_id");
             $stmt->execute(['artikel_id' => $artikelId]);
 
-            // Neue Zuweisungen einfügen
             $stmt = $this->db->prepare("INSERT INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (:artikel_id, :kategorie_id)");
             foreach ($kategorieIds as $kategorieId) {
-                $stmt->execute([
-                    'artikel_id' => $artikelId,
-                    'kategorie_id' => $kategorieId
-                ]);
+                $stmt->execute(['artikel_id' => $artikelId, 'kategorie_id' => $kategorieId]);
             }
+
+            // Aktionspreise für entfernte Kategorien bereinigen
+            if (!empty($entfernteKatIds)) {
+                $pl       = implode(',', array_fill(0, count($entfernteKatIds), '?'));
+                $aktStmt  = $this->db->prepare("SELECT DISTINCT aktion_id FROM aktionen_kategorien WHERE kategorie_id IN ($pl)");
+                $aktStmt->execute($entfernteKatIds);
+                $aktionIds = $aktStmt->fetchAll(\PDO::FETCH_COLUMN);
+
+                if (!empty($aktionIds)) {
+                    $pl2 = implode(',', array_fill(0, count($aktionIds), '?'));
+                    $this->db->prepare("
+                        DELETE FROM aktionen_artikel_preise
+                        WHERE artikel_id = ? AND aktion_id IN ($pl2)
+                    ")->execute(array_merge([$artikelId], $aktionIds));
+                }
+            }
+
             $this->db->commit();
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->db->rollBack();
-            throw $e; // Fehler weiterwerfen oder entsprechend behandeln
+            throw $e;
         }
     }
 
-    public function insert(string $name, ?int $parentId = null): int
+    public function insert(string $name, ?int $parentId = null, bool $istAktionsKategorie = false): int
     {
-        $stmt = $this->db->prepare("INSERT INTO kategorien (name, parent_id) VALUES (:name, :parent_id)");
-        $stmt->execute(['name' => $name, 'parent_id' => $parentId]);
+        $stmt = $this->db->prepare("INSERT INTO kategorien (name, parent_id, ist_aktions_kategorie) VALUES (:name, :parent_id, :iak)");
+        $stmt->execute(['name' => $name, 'parent_id' => $parentId, 'iak' => $istAktionsKategorie ? 1 : 0]);
         return (int) $this->db->lastInsertId();
     }
 
     public function findById(int $id): array|false
     {
-        $stmt = $this->db->prepare("SELECT id, parent_id, name, sortierung FROM kategorien WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT id, parent_id, name, sortierung, ist_aktions_kategorie FROM kategorien WHERE id = :id");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
     }
@@ -137,10 +159,10 @@ class KategorieRepository
         $stmt->execute(['sort' => $sort, 'id' => $id]);
     }
 
-    public function update(int $id, string $name, ?int $parentId): bool
+    public function update(int $id, string $name, ?int $parentId, bool $istAktionsKategorie = false): bool
     {
-        $stmt = $this->db->prepare("UPDATE kategorien SET name = :name, parent_id = :parent_id WHERE id = :id");
-        return $stmt->execute(['name' => $name, 'parent_id' => $parentId, 'id' => $id]);
+        $stmt = $this->db->prepare("UPDATE kategorien SET name = :name, parent_id = :parent_id, ist_aktions_kategorie = :iak WHERE id = :id");
+        return $stmt->execute(['name' => $name, 'parent_id' => $parentId, 'iak' => $istAktionsKategorie ? 1 : 0, 'id' => $id]);
     }
 
     public function findAlleKinderIds(int $id): array

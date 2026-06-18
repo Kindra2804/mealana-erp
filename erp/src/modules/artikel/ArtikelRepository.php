@@ -333,7 +333,7 @@ class ArtikelRepository
         $stmt = $this->db->prepare("
             SELECT
                 k.name AS kundengruppe,
-                k.rabatt_prozent,
+                k.ist_standard,
                 p.brutto_vk,
                 p.netto_vk,
                 p.gueltig_ab,

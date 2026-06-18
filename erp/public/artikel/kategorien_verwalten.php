@@ -20,15 +20,30 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe, int $pos, int $total
     $istBlatt = empty($knoten['kinder']);
     $anzahl  = (int)($knoten['artikel_anzahl'] ?? 0);
     ?>
-    <div class="katv-zeile" data-id="<?= $knoten['id'] ?>" data-name="<?= htmlspecialchars($knoten['name']) ?>"
-         data-parent="<?= $knoten['parent_id'] ?? '' ?>" style="padding-left:<?= 16 + $einzug ?>px">
+    <?php
+        $istAktionKat  = (int)($knoten['ist_aktions_kategorie'] ?? 0);
+        $aktionAktiv   = (int)($knoten['aktion_aktiv'] ?? 0);
+        $uhrsymbol     = '';
+        if ($istAktionKat) {
+            if ($aktionAktiv) {
+                $uhrsymbol = ' <span title="Aktions-Kategorie (aktiv)" style="color:#e67e22">⏰</span>';
+            } else {
+                $uhrsymbol = ' <span title="Aktions-Kategorie (geplant/inaktiv)" style="color:#aaa">⏰</span>';
+            }
+        }
+    ?>
+    <div class="katv-zeile" data-id="<?= $knoten['id'] ?>"
+         data-name="<?= htmlspecialchars($knoten['name']) ?>"
+         data-parent="<?= $knoten['parent_id'] ?? '' ?>"
+         data-iak="<?= $istAktionKat ?>"
+         style="padding-left:<?= 16 + $einzug ?>px">
 
         <span class="katv-toggle <?= $istBlatt ? 'katv-leer' : '' ?>"
               onclick="this.closest('.katv-gruppe').querySelector('.katv-kinder')?.classList.toggle('versteckt');this.textContent=this.textContent==='▶'?'▼':'▶'">
             <?= $istBlatt ? '' : '▼' ?>
         </span>
 
-        <span class="katv-name"><?= htmlspecialchars($knoten['name']) ?></span>
+        <span class="katv-name"><?= htmlspecialchars($knoten['name']) ?><?= $uhrsymbol ?></span>
 
         <?php if ($anzahl > 0): ?>
             <span class="katv-anzahl"><?= $anzahl ?> Artikel</span>
@@ -130,6 +145,15 @@ $flacheListe = flattenBaum($kategorienBaum);
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="form-row" style="margin-top:4px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                    <input type="checkbox" id="katv-ist-aktions-kat" style="width:15px;height:15px">
+                    <span>⏰ Ist Aktions-Kategorie</span>
+                </label>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px;margin-left:23px">
+                    Zeitlich begrenzte Sonderpreise können für diese Kategorie geplant werden
+                </div>
+            </div>
             <div id="katv-fehler" style="color:var(--color-danger);font-size:12px;min-height:16px"></div>
         </div>
         <div class="modal-footer">
@@ -180,16 +204,20 @@ function katNeuOeffnen(parentId, parentName) {
     document.getElementById('katv-edit-id').value = '';
     document.getElementById('katv-name').value = '';
     document.getElementById('katv-parent').value = parentId ?? '';
+    document.getElementById('katv-ist-aktions-kat').checked = false;
     document.getElementById('katv-fehler').textContent = '';
     document.getElementById('katv-modal').style.display = 'flex';
     setTimeout(function() { document.getElementById('katv-name').focus(); }, 50);
 }
 
 function katBearbeiten(id, name, parentId) {
+    var zeile = document.querySelector('.katv-zeile[data-id="' + id + '"]');
+    var iak   = zeile ? parseInt(zeile.dataset.iak || '0') : 0;
     document.getElementById('katv-modal-titel').textContent = 'Kategorie bearbeiten';
     document.getElementById('katv-edit-id').value = id;
     document.getElementById('katv-name').value = name;
     document.getElementById('katv-parent').value = parentId ?? '';
+    document.getElementById('katv-ist-aktions-kat').checked = !!iak;
     document.getElementById('katv-fehler').textContent = '';
     // Eigene Option deaktivieren (kann nicht Elternteil von sich selbst sein)
     document.querySelectorAll('#katv-parent option').forEach(function(o) {
@@ -214,8 +242,9 @@ function katvSpeichern() {
     if (!name) { fehler.textContent = 'Name ist Pflichtfeld'; return; }
     fehler.textContent = '';
 
+    var iak    = document.getElementById('katv-ist-aktions-kat').checked ? '1' : '0';
     var url    = editId ? '/mealana/artikel/kategorie_bearbeiten_ajax.php' : '/mealana/artikel/kategorie_erstellen.php';
-    var body   = 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parentId);
+    var body   = 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parentId) + '&ist_aktions_kategorie=' + iak;
     if (editId) body += '&id=' + encodeURIComponent(editId);
 
     fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: body })
