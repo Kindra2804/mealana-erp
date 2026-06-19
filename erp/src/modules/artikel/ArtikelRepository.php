@@ -83,6 +83,28 @@ class ArtikelRepository
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_kategorien ak_kat WHERE ak_kat.artikel_id = a.id)";
         }
 
+        $qf = $filter['qualitaet'] ?? '';
+        if ($qf === 'keine_ean') {
+            // Kein EAN-Code weder beim Artikel selbst noch bei einem seiner Kinder
+            $conditions[] = "NOT EXISTS (
+                SELECT 1 FROM artikel_codes ac_q
+                WHERE ac_q.typ = 'ean'
+                  AND (ac_q.artikel_id = a.id
+                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
+            )";
+        } elseif ($qf === 'doppelte_ean') {
+            // Mindestens ein EAN-Code (Artikel oder Kind) ist in der DB mehrfach vorhanden
+            $conditions[] = "EXISTS (
+                SELECT 1 FROM artikel_codes ac_q
+                WHERE ac_q.typ = 'ean'
+                  AND (ac_q.artikel_id = a.id
+                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
+                  AND (SELECT COUNT(*) FROM artikel_codes ac_dup WHERE ac_dup.code = ac_q.code AND ac_dup.typ = 'ean') > 1
+            )";
+        } elseif ($qf === 'keine_bilder') {
+            $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
+        }
+
         $where = "WHERE " . implode(" AND ", $conditions);
         $stmt = $this->db->prepare("
             SELECT
@@ -180,6 +202,26 @@ class ArtikelRepository
 
         if (!empty($filter['nurKategorielos'])) {
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_kategorien ak_kat WHERE ak_kat.artikel_id = a.id)";
+        }
+
+        $qf = $filter['qualitaet'] ?? '';
+        if ($qf === 'keine_ean') {
+            $conditions[] = "NOT EXISTS (
+                SELECT 1 FROM artikel_codes ac_q
+                WHERE ac_q.typ = 'ean'
+                  AND (ac_q.artikel_id = a.id
+                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
+            )";
+        } elseif ($qf === 'doppelte_ean') {
+            $conditions[] = "EXISTS (
+                SELECT 1 FROM artikel_codes ac_q
+                WHERE ac_q.typ = 'ean'
+                  AND (ac_q.artikel_id = a.id
+                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
+                  AND (SELECT COUNT(*) FROM artikel_codes ac_dup WHERE ac_dup.code = ac_q.code AND ac_dup.typ = 'ean') > 1
+            )";
+        } elseif ($qf === 'keine_bilder') {
+            $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
         }
 
         $where = "WHERE " . implode(" AND ", $conditions);

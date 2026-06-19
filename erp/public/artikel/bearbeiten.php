@@ -77,6 +77,8 @@ function selected(string $field, string $value, array $formdata): string
     return ((string)($formdata[$field] ?? '')) === $value ? 'selected' : '';
 }
 
+$kategorienBaum = $service->getKategorienBaum();
+
 $pageTitle      = 'Artikel bearbeiten';
 $activeModule   = 'artikel';
 $actionBarContent = <<<HTML

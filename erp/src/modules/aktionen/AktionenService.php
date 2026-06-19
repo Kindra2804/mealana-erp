@@ -12,6 +12,11 @@ class AktionenService
         $this->repo = new AktionenRepository();
     }
 
+    public function getRepo(): AktionenRepository
+    {
+        return $this->repo;
+    }
+
     public function findAll(): array
     {
         return $this->repo->findAll();

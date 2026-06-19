@@ -1,9 +1,12 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
+require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
 $service = new AchsenService();
 $achsen  = $service->findAll();
+
+$kategorienBaum = (new ArtikelService())->getKategorienBaum();
 
 $flash        = $_SESSION['erfolg'] ?? null;
 $flashFehler  = $_SESSION['fehler'] ?? null;

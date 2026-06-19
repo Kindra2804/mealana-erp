@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/modules/artikel/BilderRepository.php';
+require_once __DIR__ . '/../../src/modules/aktionen/AktionenService.php';
 require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
@@ -122,9 +123,36 @@ if ($artikel === false) {
     exit;
 }
 
-$flashErfolg = $_SESSION['erfolg'] ?? null;
-$flashFehler = $_SESSION['fehler'] ?? null;
-unset($_SESSION['erfolg'], $_SESSION['fehler']);
+$flashErfolg   = $_SESSION['erfolg']  ?? null;
+$flashFehler   = $_SESSION['fehler']   ?? null;
+$flashHinweis  = $_SESSION['hinweis'] ?? null;
+unset($_SESSION['erfolg'], $_SESSION['fehler'], $_SESSION['hinweis']);
+
+// Aktionspreis-Modal: wenn offene Preise für diesen Artikel vorliegen
+$aktionspreisOffen = null;
+if (!empty($_SESSION['aktionspreis_offen']) && $_SESSION['aktionspreis_offen']['artikel_id'] === $id) {
+    $aktSvc = new AktionenService();
+    $aktRepo = $aktSvc->getRepo();
+    $alleKg  = $aktRepo->getAlleKundengruppen();
+    $subAchsenRaw = $aktRepo->getSubAchsenFuerArtikel([$id]);
+    $subAchsen = [];
+    foreach ($subAchsenRaw as $sa) {
+        $subAchsen[] = ['id' => $sa['achse_id'], 'name' => $sa['achse_name']];
+    }
+    // Vorhandene Preise pro Aktion laden (für Vorbefüllung)
+    $aktionenMitPreisen = [];
+    foreach ($_SESSION['aktionspreis_offen']['aktionen'] as $akt) {
+        $akt['vorhandene_preise'] = $aktRepo->getExistingPreiseFuerArtikel((int)$akt['aktion_id'], $id);
+        $aktionenMitPreisen[] = $akt;
+    }
+    $aktionspreisOffen = [
+        'aktionen'      => $aktionenMitPreisen,
+        'kundengruppen' => $alleKg,
+        'sub_achsen'    => $subAchsen,
+        'mwst_satz'     => (float)($artikel['steuersatz'] ?? 20),
+    ];
+    unset($_SESSION['aktionspreis_offen']);
+}
 
 
 if (!function_exists('formatBestand')) {
@@ -351,6 +379,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <?php endif; ?>
 <?php if ($flashFehler): ?>
     <div class="error-banner" id="flash-php-err">✗ <?= htmlspecialchars($flashFehler) ?></div>
+<?php endif; ?>
+<?php if ($flashHinweis): ?>
+    <div id="flash-php-hinweis" style="background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;padding:10px 16px;margin:var(--space-sm) var(--space-md) 0;border-radius:6px;font-size:13px">
+        ℹ <?= htmlspecialchars($flashHinweis) ?>
+    </div>
 <?php endif; ?>
 <div id="ajax-flash" style="display:none;margin:var(--space-sm) var(--space-md) 0"></div>
 <div class="tab-bar">
@@ -1604,12 +1637,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 $count    = $node['artikel_anzahl'] > 0
                     ? ' <span class="kat-count">' . (int)$node['artikel_anzahl'] . '</span>'
                     : '';
+                $aktionsSymbol = '';
+                if (!empty($node['ist_aktions_kategorie'])) {
+                    $farbe = !empty($node['aktion_aktiv']) ? '#e67e22' : '#aaa';
+                    $titel = !empty($node['aktion_aktiv']) ? 'Aktions-Kategorie (aktiv)' : 'Aktions-Kategorie (geplant/inaktiv)';
+                    $aktionsSymbol = ' <span title="' . $titel . '" style="color:' . $farbe . '">⏰</span>';
+                }
                 $html .= '<label class="kat-zeile" data-tiefe="' . $tiefe . '" style="padding-left:' . $pl . 'px">'
                     . $linie
                     . '<input type="checkbox" value="' . (int)$node['id'] . '"'
                     . ' data-name="' . htmlspecialchars($node['name']) . '"'
                     . ' data-parent-id="' . (int)($node['parent_id'] ?? 0) . '">'
-                    . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . '</span>'
+                    . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . $aktionsSymbol . '</span>'
                     . $count
                     . '</label>';
                 if (!empty($node['kinder'])) {
@@ -1894,6 +1933,157 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
         </div>
 
+        <?php if ($aktionspreisOffen): ?>
+        <!-- Aktionspreis-Schnelleingabe-Modal (nach Kategorie-Zuweisung) -->
+        <div id="aktpreis-backdrop" class="modal-backdrop" style="display:flex">
+            <div class="modal" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    Aktionspreise eintragen
+                    <span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px">
+                        (<?= count($aktionspreisOffen['aktionen']) ?> Aktion<?= count($aktionspreisOffen['aktionen']) > 1 ? 'en' : '' ?>)
+                    </span>
+                </div>
+                <div style="padding:var(--space-md);overflow-y:auto;flex:1">
+                    <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 var(--space-md)">
+                        Dieser Artikel wurde einer oder mehreren Aktions-Kategorien zugewiesen.
+                        Preise hier direkt eintragen — leere Felder werden übersprungen.
+                    </p>
+
+                    <?php foreach ($aktionspreisOffen['aktionen'] as $akt):
+                        $istAktiv       = (int)($akt['ist_aktiv'] ?? 0);
+                        $statusLabel    = $istAktiv ? 'aktiv' : 'geplant';
+                        $statusBg       = $istAktiv ? '#fef3c7' : '#eff6ff';
+                        $statusColor    = $istAktiv ? '#92400e' : '#1e40af';
+                        $statusBorder   = $istAktiv ? '#f59e0b' : '#93c5fd';
+                        $vorhandene     = $akt['vorhandene_preise'] ?? [];
+                    ?>
+                    <div style="margin-bottom:var(--space-lg);border:1px solid var(--color-border);border-radius:6px;overflow:hidden">
+                        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border-bottom:1px solid var(--color-border)">
+                            <span style="font-size:13px;font-weight:600"><?= htmlspecialchars($akt['aktion_name']) ?></span>
+                            <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;
+                                background:<?= $statusBg ?>;color:<?= $statusColor ?>;border:1px solid <?= $statusBorder ?>">
+                                <?= $statusLabel ?>
+                            </span>
+                            <?php if (!$istAktiv && !empty($akt['naechster_start'])): ?>
+                                <span style="font-size:11px;color:#64748b">ab <?= date('d.m.Y', strtotime($akt['naechster_start'])) ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <table class="erp-table" style="font-size:13px;margin:0">
+                            <thead>
+                                <tr>
+                                    <th>Kundengruppe</th>
+                                    <?php if (!empty($aktionspreisOffen['sub_achsen'])): ?>
+                                        <?php foreach ($aktionspreisOffen['sub_achsen'] as $sa): ?>
+                                            <th style="text-align:right"><?= htmlspecialchars($sa['name']) ?></th>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <th style="text-align:right">Brutto VK</th>
+                                    <?php endif; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($aktionspreisOffen['kundengruppen'] as $kg): ?>
+                                <tr>
+                                    <td>
+                                        <?php if ($kg['ist_standard']): ?><span style="color:#FFB300">★</span> <?php endif; ?>
+                                        <?= htmlspecialchars($kg['name']) ?>
+                                    </td>
+                                    <?php if (!empty($aktionspreisOffen['sub_achsen'])): ?>
+                                        <?php foreach ($aktionspreisOffen['sub_achsen'] as $sa):
+                                            $vKey = $kg['id'] . ':' . $sa['id'];
+                                            $vVal = isset($vorhandene[$vKey]) ? number_format($vorhandene[$vKey], 2, '.', '') : '';
+                                        ?>
+                                        <td style="text-align:right">
+                                            <input type="number" step="0.01" min="0"
+                                                class="erp-input aktpreis-input"
+                                                style="width:90px;text-align:right"
+                                                value="<?= $vVal ?>"
+                                                data-aktion-id="<?= $akt['aktion_id'] ?>"
+                                                data-kg-id="<?= $kg['id'] ?>"
+                                                data-artikel-id="<?= $id ?>"
+                                                data-sub-achse-id="<?= $sa['id'] ?>"
+                                                data-mwst="<?= $aktionspreisOffen['mwst_satz'] ?>"
+                                                placeholder="0.00">
+                                        </td>
+                                        <?php endforeach; ?>
+                                    <?php else:
+                                        $vKey = $kg['id'] . ':0';
+                                        $vVal = isset($vorhandene[$vKey]) ? number_format($vorhandene[$vKey], 2, '.', '') : '';
+                                    ?>
+                                        <td style="text-align:right">
+                                            <input type="number" step="0.01" min="0"
+                                                class="erp-input aktpreis-input"
+                                                style="width:90px;text-align:right"
+                                                value="<?= $vVal ?>"
+                                                data-aktion-id="<?= $akt['aktion_id'] ?>"
+                                                data-kg-id="<?= $kg['id'] ?>"
+                                                data-artikel-id="<?= $id ?>"
+                                                data-sub-achse-id=""
+                                                data-mwst="<?= $aktionspreisOffen['mwst_satz'] ?>"
+                                                placeholder="0.00">
+                                        </td>
+                                    <?php endif; ?>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;align-items:center;padding:var(--space-sm) var(--space-md);border-top:1px solid var(--color-border)">
+                    <span id="aktpreis-info" style="font-size:12px;color:var(--color-text-muted);flex:1"></span>
+                    <button class="btn btn-secondary" onclick="aktpreisModalSchliessen()">Später eintragen</button>
+                    <button class="btn btn-primary" onclick="aktpreisSpeichern()">Preise speichern</button>
+                </div>
+            </div>
+        </div>
+        <script>
+        function aktpreisModalSchliessen() {
+            document.getElementById('aktpreis-backdrop').style.display = 'none';
+        }
+
+        async function aktpreisSpeichern() {
+            const inputs = document.querySelectorAll('.aktpreis-input');
+            const byAktionKg = {};
+
+            inputs.forEach(inp => {
+                const key = inp.dataset.aktionId + ':' + inp.dataset.kgId;
+                if (!byAktionKg[key]) {
+                    byAktionKg[key] = { aktion_id: +inp.dataset.aktionId, kg_id: +inp.dataset.kgId, preise: [] };
+                }
+                const brutto = parseFloat(inp.value.replace(',', '.')) || 0;
+                if (brutto > 0) {
+                    byAktionKg[key].preise.push({
+                        artikel_id:    +inp.dataset.artikelId,
+                        sub_achse_id:  inp.dataset.subAchseId || '',
+                        brutto_vk:     brutto,
+                        netto_vk:      +(brutto / (1 + +inp.dataset.mwst / 100)).toFixed(4),
+                        mwst_satz:     +inp.dataset.mwst
+                    });
+                }
+            });
+
+            const info = document.getElementById('aktpreis-info');
+            info.textContent = 'Speichern…';
+
+            let gesamt = 0;
+            for (const entry of Object.values(byAktionKg)) {
+                if (entry.preise.length === 0) continue;
+                const r = await fetch('/mealana/aktionen/aktion_preise_speichern.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(entry)
+                });
+                const d = await r.json();
+                if (d.erfolg) gesamt += d.gespeichert;
+            }
+
+            info.textContent = gesamt + ' Preis(e) gespeichert';
+            setTimeout(() => aktpreisModalSchliessen(), 1200);
+        }
+        </script>
+        <?php endif; ?>
+
         <!-- Merkmal-Auswahl-Modal -->
         <div id="merk-backdrop" class="modal-backdrop" style="display:none" onclick="merkmalModalSchliessen()">
             <div class="modal" style="max-width:420px;max-height:70vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
@@ -2095,6 +2285,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     span.textContent = cb.dataset.name;
                     chips.appendChild(span);
                 });
+                document.getElementById('unsaved-banner').style.display = 'inline-flex';
                 katModalSchliessen();
             }
 

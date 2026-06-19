@@ -258,11 +258,12 @@ class ArtikelService
         return $wurzeln;
     }
 
-    public function saveKategorien(int $artikelId, array $kategorieIds): void
+    public function saveKategorien(int $artikelId, array $kategorieIds): array
     {
-        $this->kategorieRepo->updateArtikelKategoriezuweisungen($artikelId, $kategorieIds);
+        $aktionsHinweise = $this->kategorieRepo->updateArtikelKategoriezuweisungen($artikelId, $kategorieIds);
         $this->kategorieRepo->syncKategorienZuKindern($artikelId, $kategorieIds);
         Logger::log('artikel.kategorien_aktualisieren', 'artikel', $artikelId, ['kategorie_ids' => $kategorieIds]);
+        return $aktionsHinweise;
     }
 
     public function getKategorienFuerArtikel(int $artikelId): array

@@ -78,16 +78,20 @@ class KategorieRepository
         return $stmt->fetchAll();
     }
 
-    public function updateArtikelKategoriezuweisungen(int $artikelId, array $kategorieIds): void
+    /**
+     * Gibt Namen von neu zugewiesenen Kategorien zurück, die eine aktive Aktion haben.
+     */
+    public function updateArtikelKategoriezuweisungen(int $artikelId, array $kategorieIds): array
     {
         try {
             $this->db->beginTransaction();
 
-            // Bestehende Zuweisungen ermitteln um entfernte Kategorien zu kennen
+            // Bestehende Zuweisungen ermitteln um entfernte/neue Kategorien zu kennen
             $stmt = $this->db->prepare("SELECT kategorie_id FROM artikel_kategorien WHERE artikel_id = :artikel_id");
             $stmt->execute(['artikel_id' => $artikelId]);
             $alteKatIds      = $stmt->fetchAll(\PDO::FETCH_COLUMN);
             $entfernteKatIds = array_values(array_diff($alteKatIds, $kategorieIds));
+            $neueKatIds      = array_values(array_diff($kategorieIds, $alteKatIds));
 
             $stmt = $this->db->prepare("DELETE FROM artikel_kategorien WHERE artikel_id = :artikel_id");
             $stmt->execute(['artikel_id' => $artikelId]);
@@ -113,7 +117,29 @@ class KategorieRepository
                 }
             }
 
+            // Aktive + geplante (nicht abgelaufene) Aktionen für neu zugewiesene Kategorien
+            $aktionsHinweise = [];
+            if (!empty($neueKatIds)) {
+                $pl = implode(',', array_fill(0, count($neueKatIds), '?'));
+                $hinweisStmt = $this->db->prepare("
+                    SELECT
+                        a.id   AS aktion_id,
+                        a.name AS aktion_name,
+                        MAX(CASE WHEN CURDATE() BETWEEN ak.gueltig_ab AND ak.gueltig_bis THEN 1 ELSE 0 END) AS ist_aktiv,
+                        MIN(ak.gueltig_ab) AS naechster_start
+                    FROM aktionen a
+                    JOIN aktionen_kategorien ak ON ak.aktion_id = a.id
+                    WHERE ak.kategorie_id IN ($pl)
+                      AND a.gestartet = 1
+                      AND ak.gueltig_bis >= CURDATE()
+                    GROUP BY a.id, a.name
+                ");
+                $hinweisStmt->execute($neueKatIds);
+                $aktionsHinweise = $hinweisStmt->fetchAll();
+            }
+
             $this->db->commit();
+            return $aktionsHinweise;
         } catch (\Exception $e) {
             $this->db->rollBack();
             throw $e;

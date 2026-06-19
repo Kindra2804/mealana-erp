@@ -85,11 +85,16 @@ $service = new ArtikelService();
 $result = $service->update($artikelData);
 
 // Kategorien aktualisieren
-$kategorieIds = array_map('intval', $data['kategorien'] ?? []);
-$service->saveKategorien((int)$artikelData['id'], $kategorieIds);
-
+$kategorieIds    = array_map('intval', $data['kategorien'] ?? []);
+$aktionsHinweise = $service->saveKategorien((int)$artikelData['id'], $kategorieIds);
 
 if ($result['erfolg']) {
+    if (!empty($aktionsHinweise)) {
+        $_SESSION['aktionspreis_offen'] = [
+            'artikel_id' => (int)$artikelData['id'],
+            'aktionen'   => $aktionsHinweise,
+        ];
+    }
     $_SESSION['erfolg'] = 'Artikel wurde aktualisiert!';
     header('Location: detail.php?id=' . $data['id']);
     exit;

@@ -44,6 +44,8 @@ $flash       = $_SESSION['erfolg'] ?? null;
 $flashFehler = $_SESSION['fehler'] ?? null;
 unset($_SESSION['erfolg'], $_SESSION['fehler']);
 
+$kategorienBaum = $artService->getKategorienBaum();
+
 $pageTitle    = 'Achsen & Werte';
 $activeModule = 'artikel';
 $actionBarContent = '<a href="detail.php?id=' . $artikelId . '" class="btn btn-secondary btn-sm">← Zum Artikel</a>';

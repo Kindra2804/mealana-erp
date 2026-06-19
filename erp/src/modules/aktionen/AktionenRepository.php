@@ -271,6 +271,26 @@ class AktionenRepository
         return $this->db->query("SELECT id, name, ist_standard FROM kundengruppen ORDER BY id")->fetchAll();
     }
 
+    /**
+     * Vorhandene Aktionspreise für einen Artikel in einer Aktion.
+     * Index: "kg_id:sub_achse_id" → brutto_vk (sub_achse_id = '0' wenn NULL)
+     */
+    public function getExistingPreiseFuerArtikel(int $aktionId, int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT kundengruppen_id, sub_achse_id, brutto_vk
+            FROM aktionen_artikel_preise
+            WHERE aktion_id = :aktion_id AND artikel_id = :artikel_id
+        ");
+        $stmt->execute(['aktion_id' => $aktionId, 'artikel_id' => $artikelId]);
+        $index = [];
+        foreach ($stmt->fetchAll() as $r) {
+            $key = $r['kundengruppen_id'] . ':' . ($r['sub_achse_id'] ?? '0');
+            $index[$key] = (float)$r['brutto_vk'];
+        }
+        return $index;
+    }
+
     public function getNormalePreise(array $artikelIds, int $kgId): array
     {
         if (empty($artikelIds)) return [];

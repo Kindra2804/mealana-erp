@@ -488,3 +488,72 @@ flowchart TD
 ```
 
 > **Hinweis:** `url_slug` muss systemweit eindeutig sein — wird für Shop-URLs verwendet. Kinder-Artikel haben eigene Slugs (oder NULL wenn noch nicht gesetzt).
+
+## 13. Bilder-Workflow
+
+**Dateien:** `bild_upload.php`, `bild_ajax.php`, `bild_loeschen.php`, `bilder.js`, `BilderRepository.php`  
+**Seite:** `artikel/detail.php` Tab Bilder  
+**Speicherort:** `public/uploads/artikel/{artikel_id}/` (Filesystem, PHP GD Resize)  
+**DB:** `artikel_bilder` + `artikel_bilder_shops`
+
+```mermaid
+flowchart TD
+    User(["👤 User\ndetail.php · Tab Bilder"])
+
+    subgraph FE ["Frontend"]
+        DZ["Drop-Zone\nDrag & Drop / Klick"]
+        Grid["#bild-grid\n.bild-karte × n"]
+    end
+
+    subgraph JS ["bilder.js"]
+        Delegation["Event Delegation\nauf #bild-grid"]
+        Upload["ladeHoch()\nfetch POST"]
+        UI["aktualisiereAlleKarten()\nOverlay + Steuer neu rendern"]
+    end
+
+    subgraph Handler ["PHP Handler"]
+        BU["bild_upload.php\nGD Resize → JPEG 85%\nmax 1920px · MIME-Check"]
+        BA["bild_ajax.php\naktion: hauptbild | position | alt_text"]
+        BL["bild_loeschen.php\nunlink + DELETE"]
+    end
+
+    subgraph Repo ["BilderRepository.php"]
+        R1["insert / delete\nupdateAltText"]
+        R2["setzeHauptbild\n→ Position 0"]
+        R3["verschiebePosition\n↑ nur pos > 1"]
+    end
+
+    AB[("artikel_bilder\nid · artikel_id · dateiname\nalt_text · position")]
+    ABS[("artikel_bilder_shops\nbild_id + shop_id\nexternal_id · sync_status")]
+    FS[("Filesystem\nuploads/artikel/{id}/")]
+
+    User -->|"Drag & Drop"| DZ --> Upload -->|POST| BU
+    BU -->|GD resize| FS
+    BU --> R1 --> AB
+    BU -->|JSON ok| UI
+
+    User -->|"☆ Hauptbild / ↑↓ / Alt-Text / ✕"| Delegation
+    Delegation -->|hauptbild · position · alt_text| BA
+    Delegation -->|löschen| BL
+    BA --> R2 & R3 --> AB
+    BL --> R1
+    BL -->|unlink| FS
+    BA & BL -->|JSON ok| UI
+    UI --> Grid
+
+    AB -.->|"Shop-Sync\n(noch offen)"| ABS
+
+    style AB fill:#dbeafe
+    style ABS fill:#dbeafe,stroke-dasharray:5 5
+    style FS fill:#fef9c3
+```
+
+**Hauptbild-Logik:**
+- Position 0 = Hauptbild — nur `setzeHauptbild()` / ☆-Button darf das ändern
+- `verschiebePosition()`: ↑ erlaubt nur wenn `$pos > 1` (schützt Position 0)
+- Im JS: nach jeder Aktion baut `aktualisiereAlleKarten()` alle Karten komplett neu → kein DOM-Stapeln
+
+**Wasserzeichen (geplant):**
+- ERP speichert immer das saubere Original
+- Wasserzeichen wird beim Shop-Sync per GD on-the-fly aufgedrückt
+- Konfigurierbar pro Shop im Admin-Menü (Bild + Position)

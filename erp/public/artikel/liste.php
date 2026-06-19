@@ -160,6 +160,8 @@ if ($aktivKategorieId) {
     $alleKatIds = array_merge([$aktivKategorieId], $service->getAlleNachkommenIds($aktivKategorieId));
 }
 
+$qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder']) ? $statusFilter : '';
+
 $filter = [
     'q'               => trim($_GET['q'] ?? ''),
     'hersteller_id'   => (int)($_GET['hersteller_id'] ?? 0) ?: null,
@@ -169,6 +171,7 @@ $filter = [
     'status_filter'   => $statusFilter,
     'kategorie_ids'   => $alleKatIds,
     'nurKategorielos' => $statusFilter === 'ohnekat',
+    'qualitaet'       => $qualitaetFilter,
     'sort'            => $aktSort,
     'dir'             => $aktDir,
 ];
@@ -345,12 +348,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php endforeach; ?>
         </select>
         <select name="status_filter" class="erp-select" onchange="this.form.submit()">
-            <option value="">– Status –</option>
-            <option value="auslauf" <?= ($_GET['status_filter'] ?? '') === 'auslauf'    ? 'selected' : '' ?>>Auslaufartikel</option>
-            <option value="uv" <?= ($_GET['status_filter'] ?? '') === 'uv'         ? 'selected' : '' ?>>Überverkauf aktiv</option>
-            <option value="fehlbest" <?= ($_GET['status_filter'] ?? '') === 'fehlbest'   ? 'selected' : '' ?>>Fehlbestand (Bst=0)</option>
-            <option value="inaktiv" <?= ($_GET['status_filter'] ?? '') === 'inaktiv'    ? 'selected' : '' ?>>Inaktiv</option>
-            <option value="ohnekat" <?= ($_GET['status_filter'] ?? '') === 'ohnekat'    ? 'selected' : '' ?>>Ohne Kategorie</option>
+            <option value="">– Status / Qualität –</option>
+            <optgroup label="Status">
+                <option value="auslauf"  <?= $statusFilter === 'auslauf'  ? 'selected' : '' ?>>Auslaufartikel</option>
+                <option value="uv"       <?= $statusFilter === 'uv'       ? 'selected' : '' ?>>Überverkauf aktiv</option>
+                <option value="fehlbest" <?= $statusFilter === 'fehlbest' ? 'selected' : '' ?>>Fehlbestand (Bst=0)</option>
+                <option value="inaktiv"  <?= $statusFilter === 'inaktiv'  ? 'selected' : '' ?>>Inaktiv</option>
+                <option value="ohnekat"  <?= $statusFilter === 'ohnekat'  ? 'selected' : '' ?>>Ohne Kategorie</option>
+            </optgroup>
+            <optgroup label="Qualitätsprüfung">
+                <option value="keine_ean"    <?= $statusFilter === 'keine_ean'    ? 'selected' : '' ?>>Keine EAN</option>
+                <option value="doppelte_ean" <?= $statusFilter === 'doppelte_ean' ? 'selected' : '' ?>>Doppelte EAN</option>
+                <option value="keine_bilder" <?= $statusFilter === 'keine_bilder' ? 'selected' : '' ?>>Keine Bilder</option>
+            </optgroup>
         </select>
         <select name="kanal_filter" class="erp-select" disabled title="Kanäle-Modul noch nicht aktiv">
             <option value="">– Kanal –</option>
@@ -416,6 +426,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     } elseif ($ps['hat_aktion']) {
                         $statusChips .= '<span class="sc sc-aktion" title="Kategorie-Aktion aktiv">⏰</span>';
                     }
+                }
+
+                // Qualitäts-Chips (nur sichtbar wenn der Qualitäts-Filter aktiv ist)
+                if ($qualitaetFilter === 'keine_ean') {
+                    $statusChips .= '<span class="sc" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b" title="Kein EAN-Code vorhanden">Kein EAN</span>';
+                } elseif ($qualitaetFilter === 'doppelte_ean') {
+                    $statusChips .= '<span class="sc" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="EAN-Code ist mehrfach vergeben">EAN-Duplikat</span>';
+                } elseif ($qualitaetFilter === 'keine_bilder') {
+                    $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Keine Bilder hinterlegt">Kein Bild</span>';
                 }
 
                 // ⚠ Vater-Badge

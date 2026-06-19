@@ -14,14 +14,11 @@ $moduleLabel = match ($activeModule ?? '') {
 
 $sidebarItems = match ($activeModule ?? '') {
     'artikel' => [
-        ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/artikel/liste.php'],
-        ['icon' => '➕', 'label' => 'Neu erstellen', 'href' => '/mealana/artikel/neu.php'],
-        ['icon' => '🗂', 'label' => 'Kategorien',   'href' => '/mealana/artikel/kategorien_verwalten.php'],
-        ['icon' => '🖼', 'label' => 'Bilder',       'href' => '#'],
-        ['icon' => '🏷', 'label' => 'Merkmale',     'href' => '/mealana/artikel/merkmale_verwalten.php'],
-        ['icon' => '💲', 'label' => 'Preise/Aktionen',       'href' => '/mealana/aktionen/liste.php'],
-        ['icon' => '🌐', 'label' => 'SEO',          'href' => '#'],
-        ['icon' => '📊', 'label' => 'Statistik',    'href' => '#'],
+        ['icon' => '📋', 'label' => 'Liste',            'href' => '/mealana/artikel/liste.php'],
+        ['icon' => '➕', 'label' => 'Neu erstellen',     'href' => '/mealana/artikel/neu.php'],
+        ['icon' => '🗂', 'label' => 'Kategorien',       'href' => '/mealana/artikel/kategorien_verwalten.php'],
+        ['icon' => '🏷', 'label' => 'Merkmale',         'href' => '/mealana/artikel/merkmale_verwalten.php'],
+        ['icon' => '💲', 'label' => 'Preise / Aktionen', 'href' => '/mealana/aktionen/liste.php'],
     ],
     'lager' => [
         ['icon' => '📦', 'label' => 'Übersicht',    'href' => '/mealana/lager/uebersicht.php'],
@@ -127,12 +124,20 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
 
                         function renderKatKnoten(array $knoten, int $tiefe, ?int $aktivKatId): void
                         {
-                            $hatKinder = !empty($knoten['kinder']);
-                            $istAktiv  = ($aktivKatId !== null && $knoten['id'] === $aktivKatId);
-                            $einzug    = 12 + $tiefe * 14;
-                            $nodeId    = 'kat-' . $knoten['id'];
-                            $toggleId  = 'kattog-' . $knoten['id'];
-                            $anzahl    = (int)($knoten['artikel_anzahl'] ?? 0);
+                            $hatKinder    = !empty($knoten['kinder']);
+                            $istAktiv     = ($aktivKatId !== null && $knoten['id'] === $aktivKatId);
+                            $einzug       = 12 + $tiefe * 14;
+                            $nodeId       = 'kat-' . $knoten['id'];
+                            $toggleId     = 'kattog-' . $knoten['id'];
+                            $anzahl       = (int)($knoten['artikel_anzahl'] ?? 0);
+                            $istAktionKat = (int)($knoten['ist_aktions_kategorie'] ?? 0);
+                            $aktionAktiv  = (int)($knoten['aktion_aktiv'] ?? 0);
+                            $aktionSymbol = '';
+                            if ($istAktionKat) {
+                                $farbe       = $aktionAktiv ? '#e67e22' : '#aaa';
+                                $titel       = $aktionAktiv ? 'Aktions-Kategorie (aktiv)' : 'Aktions-Kategorie (geplant/inaktiv)';
+                                $aktionSymbol = '<span title="' . $titel . '" style="color:' . $farbe . ';margin-right:2px;font-size:11px">⏰</span>';
+                            }
                         ?>
                             <div class="kat-knoten">
                                 <a href="liste.php?kategorie_id=<?= $knoten['id'] ?>"
@@ -144,7 +149,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                                     <?php else: ?>
                                         <span class="kat-toggle-leer"></span>
                                     <?php endif; ?>
-                                    <span class="kat-zeile-name"><?= htmlspecialchars($knoten['name']) ?></span>
+                                    <span class="kat-zeile-name"><?= $aktionSymbol ?><?= htmlspecialchars($knoten['name']) ?></span>
                                     <?php if ($anzahl > 0): ?>
                                         <span class="kat-anzahl"><?= $anzahl ?></span>
                                     <?php endif; ?>
