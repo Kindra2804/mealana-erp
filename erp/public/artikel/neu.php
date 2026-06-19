@@ -91,15 +91,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
         <div class="form-row">
             <label class="form-label">Hersteller</label>
-            <select name="hersteller_id" class="erp-select">
-                <option value="">– kein Hersteller –</option>
-                <?php foreach ($hersteller as $h): ?>
-                    <option value="<?= $h['id'] ?>"
-                        <?= selected('hersteller_id', (string)$h['id'], $formdata) ?>>
-                        <?= htmlspecialchars($h['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <div style="display:flex;gap:6px;align-items:center">
+                <select name="hersteller_id" id="hersteller_id" class="erp-select" style="flex:1">
+                    <option value="">– kein Hersteller –</option>
+                    <?php foreach ($hersteller as $h): ?>
+                        <option value="<?= $h['id'] ?>"
+                            <?= selected('hersteller_id', (string)$h['id'], $formdata) ?>>
+                            <?= htmlspecialchars($h['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="herstellerSchnellOeffnen()" title="Neuen Hersteller anlegen">+</button>
+            </div>
         </div>
     </div>
 </div>
@@ -526,6 +529,57 @@ document.getElementById('ean_gtin13').addEventListener('blur', async function ()
         badge.style.display = 'inline-flex';
     }
 });
+</script>
+
+<!-- Hersteller Schnell-Anlegen Modal -->
+<div id="hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:8px;padding:20px;width:340px;box-shadow:0 4px 24px rgba(0,0,0,.2)">
+        <div style="font-weight:700;font-size:14px;margin-bottom:14px;color:var(--color-nav)">Neuer Hersteller</div>
+        <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Name *</label>
+        <input id="hs-name" type="text" class="erp-input" style="width:100%;margin-bottom:8px" placeholder="z.B. Drops Design"
+               onkeydown="if(event.key==='Enter')herstellerSchnellSpeichern();if(event.key==='Escape')herstellerSchnellSchliessen()">
+        <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Land (ISO-Code)</label>
+        <input id="hs-land" type="text" class="erp-input" style="width:100%;margin-bottom:12px" placeholder="z.B. NO, DE, CH" maxlength="2">
+        <div id="hs-fehler" style="font-size:12px;color:var(--color-danger);min-height:16px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" onclick="herstellerSchnellSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
+            <button type="button" onclick="herstellerSchnellSpeichern()" class="btn btn-primary btn-sm">Anlegen</button>
+        </div>
+    </div>
+</div>
+<script>
+function herstellerSchnellOeffnen() {
+    document.getElementById('hs-modal').style.display = 'flex';
+    document.getElementById('hs-name').focus();
+}
+function herstellerSchnellSchliessen() {
+    document.getElementById('hs-modal').style.display = 'none';
+    document.getElementById('hs-name').value  = '';
+    document.getElementById('hs-land').value  = '';
+    document.getElementById('hs-fehler').textContent = '';
+}
+function herstellerSchnellSpeichern() {
+    var name = document.getElementById('hs-name').value.trim();
+    var land = document.getElementById('hs-land').value.trim().toUpperCase();
+    if (!name) { document.getElementById('hs-fehler').textContent = 'Name ist Pflichtfeld'; return; }
+    document.getElementById('hs-fehler').textContent = '';
+    var fd = new FormData();
+    fd.append('name', name);
+    fd.append('land', land);
+    fetch('/mealana/hersteller/schnell_speichern.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.erfolg) {
+                var sel = document.getElementById('hersteller_id');
+                var opt = new Option(d.name, d.id, true, true);
+                sel.add(opt);
+                herstellerSchnellSchliessen();
+            } else {
+                document.getElementById('hs-fehler').textContent =
+                    Array.isArray(d.fehler) ? d.fehler.join(', ') : (d.fehler || 'Fehler');
+            }
+        });
+}
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
