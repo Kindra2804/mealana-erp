@@ -27,33 +27,24 @@
 
 ```mermaid
 flowchart TD
-    START([User öffnet\nneu.php])
-    FORM[Formular ausfüllen\n─────────────────\nArtikelnummer · Name\nArtikeltyp · Hersteller\nSteuerklasse · Einheit\nBrutto-VK · EAN\nKategorien wählen via Modal]
-
-    POST[POST → speichern.php\nartikelData = array_intersect_key POST\nLeere Strings → NULL]
-
-    VALID{"ArtikelService\n::validiere()"}
-
-    ERR[🔴 Session: fehler + formdata\nRedirect → neu.php]
-    REPOP[Formular neu befüllen\nvia old() + selected()]
-
-    INS_ART[INSERT artikel\nDB: artikel\nalle Stammdaten-Felder]
-
-    CHK_PREIS{"Brutto-VK\nangegeben?"}
-    INS_PREIS[INSERT artikel_preise\nDB: artikel_preise\nkundengruppen_id = Standard-KG\nbrutto_vk · netto_vk]
-
-    CHK_EAN{"EAN\nangegeben?"}
-    INS_EAN[INSERT artikel_codes\nDB: artikel_codes\ntyp = GTIN13]
-
-    CHK_KAT{"Kategorien\ngewählt?"}
-    INS_KAT[INSERT artikel_kategorien\nDB: artikel_kategorien\nartikel_id + kategorie_id je Eintrag]
-
-    LOG[Logger::log\naktion: artikel.anlegen\nDB: aktivitaeten]
-
-    END([🟢 Redirect → detail.php?id=X\nSession: erfolg])
+    START(["User öffnet neu.php"])
+    FORM["Formular ausfüllen<br/>Artikelnummer · Name<br/>Artikeltyp · Hersteller<br/>Steuerklasse · Einheit<br/>Brutto-VK · EAN<br/>Kategorien via Modal"]
+    POST["POST → speichern.php<br/>artikelData = array_intersect_key POST<br/>Leere Strings → NULL"]
+    VALID{"ArtikelService<br/>::validiere()"}
+    ERR["🔴 Session: fehler + formdata<br/>Redirect → neu.php"]
+    REPOP["Formular neu befüllen<br/>via old() und selected()"]
+    INS_ART["INSERT artikel<br/>DB: artikel"]
+    CHK_PREIS{"Brutto-VK<br/>angegeben?"}
+    INS_PREIS["INSERT artikel_preise<br/>DB: artikel_preise<br/>kundengruppen_id = Standard-KG"]
+    CHK_EAN{"EAN<br/>angegeben?"}
+    INS_EAN["INSERT artikel_codes<br/>DB: artikel_codes<br/>typ = GTIN13"]
+    CHK_KAT{"Kategorien<br/>gewählt?"}
+    INS_KAT["INSERT artikel_kategorien<br/>DB: artikel_kategorien<br/>je Kategorie eine Zeile"]
+    LOG["Logger::log<br/>aktion: artikel.anlegen<br/>DB: aktivitaeten"]
+    END(["🟢 Redirect → detail.php?id=X<br/>Session: erfolg"])
 
     START --> FORM --> POST --> VALID
-    VALID -->|Fehler: Artikelnummer leer\noder bereits vergeben\noder Name leer| ERR
+    VALID -->|"Fehler: Artikelnummer leer<br/>oder vergeben · Name leer"| ERR
     ERR --> REPOP --> FORM
     VALID -->|OK| INS_ART
     INS_ART --> CHK_PREIS
@@ -96,7 +87,7 @@ Der Varianten-Workflow besteht aus zwei getrennten Aktionen:
 
 ### Voraussetzungen
 
-- Vater-Artikel existiert (`artikel.ist_vater = 0` → wird beim Achsen-Zuweisen automatisch nicht geprüft, aber konzeptuell ein Vater-Artikel)
+- Vater-Artikel existiert
 - Mindestens eine globale Achse in `varianten_achsen` vorhanden
 
 ---
@@ -104,82 +95,61 @@ Der Varianten-Workflow besteht aus zwei getrennten Aktionen:
 ### Stufe 1: Achsen + Werte zuweisen
 
 **Seiten:** `artikel/achsen_zuweisen.php` → `artikel/achsen_speichern.php`  
-**Service:** `VariantenService::speichereAchsenUndWerte()`  
-**Repository:** `VariantenRepository`
+**Service:** `VariantenService::speichereAchsenUndWerte()`
 
 ```mermaid
 flowchart TD
-    START([User: detail.php\nButton: Achsen zuweisen])
-    PAGE[achsen_zuweisen.php\n─────────────────\nAchsen aus globaler Liste wählen\nWerte als Chips eingeben\n◀▶ Sortierung · ↔ Verschieben zwischen Achsen]
-
-    POST[POST → achsen_speichern.php\nachsen_ids[] · werte[] je Achse]
-
-    INUSE{"Werte bereits in\nKombinationen verwendet?\nDB: varianten_kombination_werte"}
-
-    LOCK[In-use Werte bleiben erhalten\n🔒 Chip — nicht löschbar]
-    FREE[Nicht-in-use Werte:\nlöschen + neu schreiben]
-
-    DEL_WERTE[DELETE varianten_achse_werte\nWO nicht in-use\nDB: varianten_achse_werte]
-
-    CHK_ACHSE{"Achse nicht mehr\nin achsen_ids UND\nnicht geschützt?"}
-    DEL_ACHSE[DELETE artikel_achsen\nDB: artikel_achsen]
-
-    INS_ACHSE[INSERT artikel_achsen\nnur fehlende\nDB: artikel_achsen\nartikel_id + achse_id]
-
-    INS_WERTE[INSERT varianten_achse_werte\nje Achse: wert, aufpreis,\nwert_zusatz, sortierung\nDB: varianten_achse_werte]
-
-    LOG[Logger::log\naktion: achsenUndWerte.speichern\nDB: aktivitaeten]
-
-    END([🟢 Redirect → achsen_zuweisen.php\nSession: erfolg])
+    START(["User: detail.php<br/>Button: Achsen zuweisen"])
+    PAGE["achsen_zuweisen.php<br/>Achsen aus globaler Liste wählen<br/>Werte als Chips eingeben<br/>Sortierung und Verschieben möglich"]
+    POST["POST → achsen_speichern.php<br/>achsen_ids[] · werte[] je Achse"]
+    INUSE{"Werte bereits in<br/>Kombinationen verwendet?<br/>DB: varianten_kombination_werte"}
+    LOCK["In-use Werte bleiben erhalten<br/>Anzeige als gesperrter Chip"]
+    FREE["Nicht-in-use Werte:<br/>löschen + neu schreiben"]
+    DEL_WERTE["DELETE varianten_achse_werte<br/>nur nicht-in-use<br/>DB: varianten_achse_werte"]
+    CHK_ACHSE{"Achse entfernt UND<br/>nicht geschützt?"}
+    DEL_ACHSE["DELETE artikel_achsen<br/>DB: artikel_achsen"]
+    INS_ACHSE["INSERT artikel_achsen<br/>nur fehlende Achsen<br/>DB: artikel_achsen"]
+    INS_WERTE["INSERT varianten_achse_werte<br/>wert · aufpreis · sortierung<br/>DB: varianten_achse_werte"]
+    LOG["Logger::log<br/>aktion: achsenUndWerte.speichern<br/>DB: aktivitaeten"]
+    END(["🟢 Redirect → achsen_zuweisen.php<br/>Session: erfolg"])
 
     START --> PAGE --> POST --> INUSE
-    INUSE -->|Ja: In-use vorhanden| LOCK
-    INUSE -->|Nein| FREE
-    LOCK --> DEL_WERTE
-    FREE --> DEL_WERTE
+    INUSE -->|"In-use vorhanden"| LOCK --> DEL_WERTE
+    INUSE -->|"Keine in-use"| FREE --> DEL_WERTE
     DEL_WERTE --> CHK_ACHSE
     CHK_ACHSE -->|Ja| DEL_ACHSE --> INS_ACHSE
     CHK_ACHSE -->|Nein| INS_ACHSE
     INS_ACHSE --> INS_WERTE --> LOG --> END
 ```
 
+---
+
 ### Stufe 2: VarKombi-Generator (Kind-Artikel erstellen)
 
-**Seiten:** `artikel/detail.php` (Tab Varianten) → `artikel/varkombi_erstellen.php`  
+**Seiten:** `artikel/detail.php` Tab Varianten → `artikel/varkombi_erstellen.php`  
 **Service:** `VariantenService::erstelleKombinationen()` + `ArtikelService::kopiereVaterRelationenZuKindern()`
 
 ```mermaid
 flowchart TD
-    START([User: detail.php\nTab: Varianten])
-
-    JS[JS berechnet Kreuzprodukt\naller Achswert-Kombinationen\n─────────────────\nGruppenachse: Sub-Achsen UNION\nnicht Kreuzprodukt\nBereits bestehende Kombis: grau]
-
-    SELECT[User wählt Kombinationen\nund setzt Artikelnummern + Namen]
-
-    POST[POST → varkombi_erstellen.php\nkombis[] mit key, artikelnummer, name\nhat_eigenen_lagerstand]
-
-    VATER[ArtikelService::findById\nVater komplett laden\nDB: artikel + artikel_typen + preise]
-
+    START(["User: detail.php<br/>Tab: Varianten"])
+    JS["JS berechnet Kreuzprodukt aller Achswerte<br/>Gruppenachse: Sub-Achsen als UNION<br/>Bestehende Kombis werden grau markiert"]
+    SELECT["User wählt Kombinationen<br/>und vergibt Artikelnummern + Namen"]
+    POST["POST → varkombi_erstellen.php<br/>kombis[] mit key · artikelnummer · name<br/>hat_eigenen_lagerstand"]
+    VATER["ArtikelService::findById<br/>Vater komplett laden<br/>DB: artikel + preise"]
     LOOP[["Für jede gewählte Kombination:"]]
-
-    INS_KIND["INSERT artikel\nDB: artikel\n─────────────────\nVon Vater geerbt:\nhersteller_id · steuerklasse_id · artikeltyp_id\nbeschreibung(en) · meta_titel · meta_description\neinheit_id · inhalt · gewicht · maße\nherkunftsland · taric_code\ngrundpreis · charge_pflicht · ueberverkauf_erlaubt\n─────────────────\nKind-spezifisch:\nartikelnummer · name · vaterartikel_id\nurl_slug = NULL (eigener Slug später)"]
-
-    INS_KOMBI["INSERT varianten_kombination_werte\nDB: varianten_kombination_werte\nkombination_id = KindId\nje Achswert eine Zeile"]
-
-    COPY[ArtikelService\n::kopiereVaterRelationenZuKindern]
-
-    CPY_KAT[copyKategorien\nDB: artikel_kategorien\nINSERT SELECT vom Vater]
-    CPY_MERK[copyMerkmale\nDB: artikel_merkmale\nINSERT SELECT vom Vater]
-    CPY_LIEF[copyLieferanten\nDB: artikel_lieferanten\nINSERT SELECT vom Vater]
-    CPY_PREIS[copyPreise\nDB: artikel_preise\nINSERT SELECT alle KG vom Vater]
-
-    LOG[Logger::log\naktion: varkombi.erstellen\nDB: aktivitaeten]
-
-    END([🟢 Redirect → detail.php?tab=varianten])
+    INS_KIND["INSERT artikel<br/>DB: artikel<br/>vaterartikel_id = VaterId<br/>Alle Stammdaten vom Vater geerbt<br/>artikelnummer + name = Kind-spezifisch<br/>url_slug = NULL"]
+    INS_KOMBI["INSERT varianten_kombination_werte<br/>DB: varianten_kombination_werte<br/>kombination_id = KindId<br/>je Achswert eine Zeile"]
+    COPY["ArtikelService<br/>::kopiereVaterRelationenZuKindern()"]
+    CPY_KAT["copyKategorien<br/>DB: artikel_kategorien"]
+    CPY_MERK["copyMerkmale<br/>DB: artikel_merkmale"]
+    CPY_LIEF["copyLieferanten<br/>DB: artikel_lieferanten"]
+    CPY_PREIS["copyPreise<br/>DB: artikel_preise<br/>alle Kundengruppen"]
+    LOG["Logger::log<br/>aktion: varkombi.erstellen<br/>DB: aktivitaeten"]
+    END(["🟢 Redirect → detail.php?tab=varianten"])
 
     START --> JS --> SELECT --> POST --> VATER --> LOOP
     LOOP --> INS_KIND --> INS_KOMBI --> LOOP
-    LOOP -->|Alle Kombis erstellt| COPY
+    LOOP -->|"Alle Kombis erstellt"| COPY
     COPY --> CPY_KAT --> CPY_MERK --> CPY_LIEF --> CPY_PREIS --> LOG --> END
 ```
 
@@ -189,12 +159,12 @@ flowchart TD
 |---------|--------|
 | Stamm | `hersteller_id`, `steuerklasse_id`, `artikeltyp_id`, `einheit_id` |
 | Beschreibungen | `kurzbeschreibung`, `beschreibung`, `technische_details`, `beschreibung_intern` |
-| SEO | `meta_titel`, `meta_description` (`url_slug` = NULL) |
+| SEO | `meta_titel`, `meta_description` — `url_slug` = NULL |
 | Logistik | `inhalt_menge`, `inhalt_einheit`, `gewicht_artikel`, `gewicht_versand`, `laenge`, `breite`, `hoehe` |
 | Zoll | `herkunftsland`, `taric_code` |
 | Grundpreis | `grundpreis_bezugsmenge`, `grundpreis_anzeigen` |
 | Verhalten | `charge_pflicht`, `ueberverkauf_erlaubt`, `ist_auslaufartikel` |
-| Relationen | Kategorien, Merkmale, Lieferanten, Preise (alle KG) |
+| Relationen | Kategorien · Merkmale · Lieferanten · Preise alle KG |
 
 ### Was Kinder NICHT erben
 
