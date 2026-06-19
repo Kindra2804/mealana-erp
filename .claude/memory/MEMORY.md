@@ -28,3 +28,4 @@
 - [Spalten-Picker](project_spalten_picker.md) — Alle Spalten-Definitionen (baubar/Platzhalter), benutzer_einstellungen, Kanäle-Cleanup; Platzhalter aktivieren wenn Merkmale/Lagerplatz/Inventur fertig
 - [🔴 BUG: Kategorie-Verschieben](bug_kategorie_verschieben.md) — BEHOBEN 2026-06-19: saveKategorien + erstelleKombinationen + propagiereZuKindern implementiert
 - [🟡 BUG: Aktions-Kategorie Zuweisung](bug_aktionskategorie_zuweisung.md) — Kein Auto-Aktionspreis bei Zuweisung + Symbol im Baum verschwunden; nach QA angehen
+- [Bilder-Modul](project_bilder_modul.md) — NÄCHSTE SESSION: Tab ist Platzhalter, Backend fehlt komplett
