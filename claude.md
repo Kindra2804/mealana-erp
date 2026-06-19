@@ -546,7 +546,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-11)
+## What's Implemented (Stand 2026-06-19)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -559,7 +559,14 @@ $result = $service->wareneingang([
 - Lieferanten-Tab in detail.php
 - Filterung in liste.php (aktiv/inaktiv, Suche)
 
-### Varianten-System (vollständig — DB + UI + Generator fertig, Stand 2026-06-18)
+### Vater-Kind Vererbung (vollständig — 2026-06-19)
+- **erstelleKombinationen()** erbt alle ~25 Felder vom Vater (vorher nur 4)
+- **kopiereVaterRelationenZuKindern()** kopiert Kategorien, Merkmale, Lieferanten, Preise zu neu erstellten Kindern
+- **propagiereZuKindern()** — ein UPDATE propagiert alle gemeinsamen Felder beim Vater-Update
+- **syncKategorienZuKindern()** — Kategorien werden bei saveKategorien() auf alle Kinder synchronisiert
+- Nicht propagiert: artikelnummer, name, url_slug, aktiv, ist_auslaufartikel (eigene Logik), zustand
+
+### Varianten-System (vollständig — DB + UI + Generator fertig, Stand 2026-06-19)
 - Migrations 022–041 ausgeführt: Achsen, Werte, Kombinationen, abhängige Achsen, Gruppenachse-Flag
 - Kind-Artikel (Varianten) werden als artikel-Einträge mit vaterartikel_id gespeichert
 - **Achsen-Verwaltung** (public/achsen/) — volles CRUD ✅
@@ -572,10 +579,10 @@ $result = $service->wareneingang([
   - Achsen-Hierarchie-bewusst: Sub-Achsen-Werte immer UNION (nie Kreuzprodukt) in eine Dimension
   - Sub-Achsen-Name als Suffix: "gelb (02)" von UNI → "gelb (02) UNI"
   - Bereits bestehende Kombis erkannt (nicht doppelt erstellt)
-  - Kind-Artikel erben: steuerklasse_id, artikeltyp_id, einheit_id, charge_pflicht vom Vater
+  - Kind-Artikel erben: alle Vater-Felder + Kategorien + Merkmale + Lieferanten + Preise
 - AchsenRepository/Service + VariantenRepository/Service ✅
   - VariantenRepository: findWertIdsInUse, deleteWerteExcluding, deleteArtikelAchse
-  - VariantenService: granulare speichereAchsenUndWerte, erstelleKombinationen
+  - VariantenService: granulare speichereAchsenUndWerte, erstelleKombinationen (gibt IDs zurück)
 
 ### Lager Module (Functional)
 - Goods receipt with EAN barcode scan support
@@ -599,6 +606,18 @@ $result = $service->wareneingang([
 - ist_auslaufartikel: Orange Highlighting, Auto-Reaktivierung bei Wareneingang, Vater folgt Kindern
 - ueberverkauf_erlaubt: Checkbox in bearbeiten.php + neu.php, blauer Banner in detail.php
 - reservierungen-Tabelle (Migration 021): Wird von Shop/Kasse befüllt wenn Bestand ≤ 0
+
+### Bilder-Modul ✅ (2026-06-19)
+- Migration 045: `artikel_bilder` (id/artikel_id UNSIGNED, dateiname, alt_text, position) + `artikel_bilder_shops` (bild_id+shop_id → external_id, sync_status)
+- `BilderRepository.php` — CRUD, setzeHauptbild (Position 0), verschiebePosition (schützt Position 0)
+- `bild_upload.php` — PHP GD Resize max 1920px JPEG 85%, MIME-Check, Ordner auto-erstellt
+- `bild_ajax.php` — Sammel-Handler aktion=hauptbild|position|alt_text
+- `bild_loeschen.php` — unlink + DB
+- `bilder.js` — Event Delegation auf #bild-grid, aktualisiereAlleKarten() nach jeder Aktion
+- Drag & Drop Upload, ☆ Hauptbild-Swap, ↑↓ Reihenfolge, Alt-Text on-blur, Löschen mit Confirm
+- PHP GD aktivieren in XAMPP: php.ini `extension=gd` auskommentieren
+- Wasserzeichen: ERP speichert clean Original → Wasserzeichen beim Shop-Sync (GD on-the-fly), Admin-Einstellung pro Shop geplant
+- WooCommerce-Sync noch offen (braucht echten WC-Server)
 
 ## Nächste Schritte (Priorität)
 
@@ -649,7 +668,8 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
 - **Preistabellen-UI** — alle Kundengruppen + Staffelpreise (derzeit UI nur für Endkunde)
 - **Qualitätslisten** — fehlende EAN, doppelte EAN, fehlende Bilder
 - **Bestellvorschläge** — beim Einkaufsmodul vollenden
-- Seriennummern, Bilder-Upload — geplant
+- Seriennummern — geplant
+- ~~Bilder-Upload~~ ✅ fertig
 
 ### Neue Module (Reihenfolge)
 4. **Kundendatenbank** — Stammdaten, Adresse, UID, Newsletter

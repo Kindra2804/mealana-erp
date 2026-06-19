@@ -1,6 +1,7 @@
 ﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/modules/artikel/BilderRepository.php';
 require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
@@ -57,6 +58,9 @@ $istKind = !empty($artikel['vaterartikel_id']);
 
 $merkmaleRepo        = new MerkmaleRepository();
 $artikeltypId        = $artikel ? (int)$artikel['artikeltyp_id'] : null;
+
+$bilderRepo = new BilderRepository();
+$bilder     = $bilderRepo->findByArtikelId($id);
 $merkmaleFuerTyp     = $merkmaleRepo->findFuerArtikeltyp($artikeltypId);
 $artikelMerkmale     = $merkmaleRepo->findByArtikelId($id);
 $gesetzteWertIds     = array_column($artikelMerkmale, 'merkmal_wert_id');
@@ -1338,7 +1342,109 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     </div>
     <div id="tab-bilder" class="versteckt">
-        <div class="card">Bilder Platzhalter</div>
+        <div class="card">
+
+            <!-- Drop-Zone -->
+            <div id="bild-dropzone"
+                 style="border:2px dashed #93c5fd;border-radius:8px;background:#eff6ff;
+                        padding:32px 20px;text-align:center;cursor:pointer;margin-bottom:20px;
+                        transition:background .15s,border-color .15s">
+                <div style="font-size:28px;color:#93c5fd;margin-bottom:8px">⬆</div>
+                <div style="color:#1d4ed8;font-weight:500;font-size:13px">
+                    Bilder hier reinziehen oder klicken
+                </div>
+                <div style="color:#94a3b8;font-size:11px;margin-top:4px">
+                    JPG, PNG, WEBP &middot; Mehrere Dateien gleichzeitig möglich &middot; max. 10 MB pro Datei
+                </div>
+                <input type="file" id="bild-datei-input" multiple
+                       accept="image/jpeg,image/png,image/webp"
+                       style="display:none">
+            </div>
+
+            <!-- Infozeile + Upload-Fortschritt -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;min-height:28px">
+                <span id="bild-anzahl" style="color:#64748b;font-size:12px">
+                    <?= count($bilder) ?> <?= count($bilder) === 1 ? 'Bild' : 'Bilder' ?>
+                </span>
+                <div id="bild-upload-status" style="font-size:12px;color:#64748b"></div>
+            </div>
+
+            <!-- Bild-Grid -->
+            <div id="bild-grid" data-artikel-id="<?= $id ?>" style="display:flex;flex-wrap:wrap;gap:16px">
+                <?php foreach ($bilder as $i => $bild): ?>
+                    <?php
+                        $bildUrl  = '/mealana/uploads/artikel/' . $id . '/' . htmlspecialchars($bild['dateiname']);
+                        $istHaupt = $i === 0;
+                    ?>
+                    <div class="bild-karte" data-bild-id="<?= $bild['id'] ?>" data-artikel-id="<?= $id ?>"
+                         style="width:200px;border:1px solid #e2e8f0;border-radius:6px;
+                                background:white;box-shadow:0 1px 4px #0000000f;overflow:hidden;flex-shrink:0">
+
+                        <!-- Bild -->
+                        <div class="bild-img-overlay" style="position:relative">
+                            <img src="<?= $bildUrl ?>" alt="<?= htmlspecialchars($bild['alt_text']) ?>"
+                                 style="width:100%;height:140px;object-fit:cover;display:block">
+                            <?php if ($istHaupt): ?>
+                                <span style="position:absolute;top:8px;left:8px;
+                                             background:#f59e0b;color:white;font-size:10px;
+                                             font-weight:600;padding:3px 8px;border-radius:3px">
+                                    ★ Hauptbild
+                                </span>
+                            <?php else: ?>
+                                <button class="btn-hauptbild"
+                                        style="position:absolute;top:8px;left:8px;
+                                               background:rgba(255,255,255,.9);border:1px solid #e2e8f0;
+                                               color:#64748b;font-size:10px;padding:3px 7px;
+                                               border-radius:3px;cursor:pointer;white-space:nowrap"
+                                        title="Als Hauptbild setzen">
+                                    ☆ Hauptbild
+                                </button>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Steuerung -->
+                        <div style="padding:8px 8px 0">
+                            <!-- Pfeile + Löschen -->
+<div class="bild-steuer" style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+                                <?php if ($istHaupt): ?>
+                                    <span style="font-size:10px;color:#94a3b8;font-style:italic;flex:1">
+                                        nicht verschiebbar
+                                    </span>
+                                <?php else: ?>
+                                    <button class="btn-pos-hoch"
+                                            style="padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;
+                                                   background:#f8fafc;cursor:pointer;font-size:13px"
+                                            title="Weiter vorne">↑</button>
+                                    <button class="btn-pos-runter"
+                                            style="padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;
+                                                   background:#f8fafc;cursor:pointer;font-size:13px"
+                                            title="Weiter hinten">↓</button>
+                                    <span style="flex:1"></span>
+                                <?php endif; ?>
+                                <button class="btn-bild-loeschen"
+                                        style="padding:3px 8px;border:1px solid #fca5a5;border-radius:4px;
+                                               background:#fef2f2;color:#ef4444;cursor:pointer;font-size:13px"
+                                        title="Bild löschen">✕</button>
+                            </div>
+
+                            <!-- Alt-Text -->
+                            <input type="text"
+                                   class="erp-input bild-alt-text"
+                                   placeholder="Alt-Text (SEO)..."
+                                   value="<?= htmlspecialchars($bild['alt_text']) ?>"
+                                   style="width:100%;font-size:11px;margin-bottom:8px;box-sizing:border-box">
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <?php if (empty($bilder)): ?>
+                <div id="bild-leer-hinweis" style="color:#94a3b8;font-size:13px;padding:8px 0">
+                    Noch keine Bilder hochgeladen.
+                </div>
+            <?php endif; ?>
+
+        </div>
     </div>
     <div id="tab-merkmale" class="versteckt">
         <?php if (empty($merkmaleFuerTyp)): ?>
@@ -2534,4 +2640,5 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </script>
         <?php endif; ?>
 
+        <script src="/mealana/js/bilder.js"></script>
         <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
