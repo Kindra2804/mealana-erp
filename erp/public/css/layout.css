@@ -167,6 +167,26 @@ html, body {
     pointer-events: none;
 }
 
+.erp-nav-icons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.erp-nav-icon {
+    color: #8BAECF;
+    text-decoration: none;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.erp-nav-icon:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
 .erp-nav-user {
   color: rgba(255,255,255,0.85);
   font-size: 13px;

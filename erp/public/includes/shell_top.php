@@ -69,6 +69,10 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <a href="#" title="Retouren — kommt bald"     class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
                 <a href="#" title="Buchhaltung — kommt bald"  class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
+            <div class="erp-nav-icons">
+                <a href="#" title="Einstellungen — kommt bald" class="erp-nav-icon erp-nav-link-disabled">⚙️</a>
+                <a href="#" title="Super-Admin — kommt bald"   class="erp-nav-icon erp-nav-link-disabled">···</a>
+            </div>
             <div class="erp-nav-user">👤 Karl</div>
         </nav>
         <div class="erp-actionbar"><?= $actionBarContent ?? '' ?></div>
