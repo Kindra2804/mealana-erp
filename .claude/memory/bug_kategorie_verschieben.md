@@ -1,20 +1,23 @@
 ---
 name: bug-kategorie-verschieben
-description: "KRITISCHER BUG: Vater-Artikel in neue Kategorie verschieben löscht Achsen, Kategorien und Kinder"
+description: "BEHOBEN 2026-06-19: Vater-Kind Vererbung vollständig implementiert"
 metadata: 
   node_type: memory
   type: project
-  originSessionId: 67975378-b895-458a-91e6-f323166dde3b
+  originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-## Bug (entdeckt 2026-06-18, morgen als ERSTES angehen)
+## ✅ BEHOBEN (2026-06-19)
 
-Wenn ein Vater-Artikel mit Achsen und erstellten Kind-Varianten in eine neue Kategorie verschoben wird:
-- Nur der Vater-Artikel selbst wird in die neue Kategorie eingetragen
-- Alle Achsen-Zuweisungen des Vaters gehen verloren
-- Alle anderen Kategorie-Zuweisungen des Vaters gehen verloren
-- Alle Kind-Artikel verschwinden / verlieren ihre Verknüpfung zum Vater
+**Was gefixed wurde:**
+- `KategorieRepository::syncKategorienZuKindern()` — neue Methode, propagiert Kategorien an alle Kinder wenn Vater gespeichert wird
+- `ArtikelRepository::propagiereZuKindern()` — neue Methode, ein UPDATE propagiert alle 22 gemeinsamen Felder (Beschreibungen, Logistik, Zoll, Grundpreis) an alle Kinder
+- `ArtikelService::saveKategorien()` — ruft jetzt syncKategorienZuKindern() auf
+- `ArtikelService::update()` — ruft jetzt propagiereZuKindern() auf
+- `ArtikelService::kopiereVaterRelationenZuKindern()` — neue Methode für frisch erstellte Kinder
+- `VariantenService::erstelleKombinationen()` — erbt jetzt alle ~25 Felder statt nur 4, gibt IDs zurück
+- `varkombi_erstellen.php` — ruft kopiereVaterRelationenZuKindern() nach Erstellung auf
 
-**Why:** Der Kategorie-Verschieben-Code aktualisiert wahrscheinlich nur `artikel_kategorien` für `artikel_id = $vaterId`, ohne die Kinder mitzunehmen und ohne `artikel_achsen` anzufassen.
+**Commit:** 94632d2
 
-**How to apply:** Als allererstes in der nächsten Session fixen — vor allen anderen Features. Betrifft `artikel_kategorien`-Update-Logik (wahrscheinlich in ArtikelRepository oder kategorien_verwalten AJAX-Endpoint). Kinder müssen dieselbe Kategorie-Verschiebung bekommen, Achsen dürfen nicht angefasst werden.
+**Noch offen:** Aktions-Kategorie Bug → siehe [[bug-aktionskategorie-zuweisung]]
