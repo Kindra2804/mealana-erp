@@ -60,17 +60,14 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <img src="/mealana/img/logo.png" alt="MeaLana ERP">
             </a>
             <div class="erp-nav-links">
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'artikel' ? 'active' : '' ?>">Artikel</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'lager' ? 'active' : '' ?>">Lager</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'kunden' ? 'active' : '' ?>">Kunden</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf' ? 'active' : '' ?>">Verkauf</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'versand' ? 'active' : '' ?>">Versand</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'retouren' ? 'active' : '' ?>">Retouren</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'einkauf' ? 'active' : '' ?>">Einkauf</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'zahnrad' ? 'active' : '' ?>">Zahnrad</a>
-                <a href="#" class="erp-nav-link <?= ($activeModule ?? '') === 'dreiPunkte' ? 'active' : '' ?>">DreiPunkte</a>
+                <a href="/mealana/artikel/liste.php"      class="erp-nav-link <?= ($activeModule ?? '') === 'artikel'     ? 'active' : '' ?>">Artikel</a>
+                <a href="/mealana/lager/wareneingang.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
+                <a href="/mealana/kunden/liste.php"       class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
+                <a href="/mealana/lieferanten/liste.php"  class="erp-nav-link <?= ($activeModule ?? '') === 'lieferanten' ? 'active' : '' ?>">Einkauf</a>
+                <a href="#" title="Verkauf — kommt bald"      class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
+                <a href="#" title="Versand — kommt bald"      class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
+                <a href="#" title="Retouren — kommt bald"     class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
+                <a href="#" title="Buchhaltung — kommt bald"  class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-user">👤 Karl</div>
         </nav>
