@@ -32,3 +32,4 @@
 - [Druck: Qualitätslisten](project_druck_listen.md) — EAN/Bilder-Qualitätslisten für Druckausgabe vormerken (kommt mit Druck-Modul)
 - [Statistik Konzept](project_statistik.md) — Kein eigener Sidebar-Link bis Verkauf steht; kommt aus Dashboard + Verkauf-Modul
 - [Kundendatenbank Design](project_kundendatenbank.md) — B2B gleich einbauen, Laufkunde, Shop-Sync/Merge, AES-256-GCM Verschlüsselung, DSGVO Crypto-Shredding (Stand 2026-06-19)
+- [Feedback: Emoji CSS](feedback_emoji_css.md) — color: hat keine Wirkung auf Emojis → filter:grayscale(1) verwenden
