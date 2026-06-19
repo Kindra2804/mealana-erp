@@ -27,6 +27,7 @@ $variantenService = new VariantenService();
 $result = $variantenService->erstelleKombinationen($vater, $hatEigenenLagerstand, $kombis);
 
 if ($result['erfolg']) {
+    $artikelService->kopiereVaterRelationenZuKindern($artikelId, $result['ids']);
     header('Location: detail.php?id=' . $artikelId . '&tab=varianten');
     exit;
 } else {

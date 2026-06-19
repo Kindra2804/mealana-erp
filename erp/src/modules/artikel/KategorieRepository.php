@@ -120,6 +120,27 @@ class KategorieRepository
         }
     }
 
+    public function syncKategorienZuKindern(int $vaterId, array $kategorieIds): void
+    {
+        $stmt = $this->db->prepare("SELECT id FROM artikel WHERE vaterartikel_id = :vater_id");
+        $stmt->execute(['vater_id' => $vaterId]);
+        $kindIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        if (empty($kindIds)) return;
+
+        $pl = implode(',', array_fill(0, count($kindIds), '?'));
+        $this->db->prepare("DELETE FROM artikel_kategorien WHERE artikel_id IN ($pl)")->execute($kindIds);
+
+        if (empty($kategorieIds)) return;
+
+        $stmt = $this->db->prepare("INSERT INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)");
+        foreach ($kindIds as $kindId) {
+            foreach ($kategorieIds as $katId) {
+                $stmt->execute([(int)$kindId, (int)$katId]);
+            }
+        }
+    }
+
     public function insert(string $name, ?int $parentId = null, bool $istAktionsKategorie = false): int
     {
         $stmt = $this->db->prepare("INSERT INTO kategorien (name, parent_id, ist_aktions_kategorie) VALUES (:name, :parent_id, :iak)");

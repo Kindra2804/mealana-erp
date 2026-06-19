@@ -94,35 +94,58 @@ class VariantenService
 
     public function erstelleKombinationen(array $vater, bool $hatEigenenLagerstand, array $kombis): array
     {
+        $neuErstellteIds = [];
+
         foreach ($kombis as $kombi) {
 
             $kind = [
-                'artikelnummer' => $kombi['artikelnummer'],
-                'name' => $kombi['name'],
-                'steuerklasse_id' => $vater['steuerklasse_id'],
-                'artikeltyp_id' => $vater['artikeltyp_id'],
-                'vaterartikel_id' => $vater['id'],
+                'artikelnummer'          => $kombi['artikelnummer'],
+                'name'                   => $kombi['name'],
+                'vaterartikel_id'        => $vater['id'],
                 'hat_eigenen_lagerstand' => (int) $hatEigenenLagerstand,
-                'einheit_id' => $vater['einheit_id'],
-                'charge_pflicht' => $vater['charge_pflicht']
+                'hersteller_id'          => $vater['hersteller_id'],
+                'steuerklasse_id'        => $vater['steuerklasse_id'],
+                'artikeltyp_id'          => $vater['artikeltyp_id'],
+                'einheit_id'             => $vater['einheit_id'],
+                'kurzbeschreibung'       => $vater['kurzbeschreibung'],
+                'beschreibung'           => $vater['beschreibung'],
+                'technische_details'     => $vater['technische_details'],
+                'beschreibung_intern'    => $vater['beschreibung_intern'],
+                'meta_titel'             => $vater['meta_titel'],
+                'meta_description'       => $vater['meta_description'],
+                'url_slug'               => null,
+                'inhalt_menge'           => $vater['inhalt_menge'],
+                'inhalt_einheit'         => $vater['inhalt_einheit'],
+                'gewicht_artikel'        => $vater['gewicht_artikel'],
+                'gewicht_versand'        => $vater['gewicht_versand'],
+                'laenge'                 => $vater['laenge'],
+                'breite'                 => $vater['breite'],
+                'hoehe'                  => $vater['hoehe'],
+                'herkunftsland'          => $vater['herkunftsland'],
+                'taric_code'             => $vater['taric_code'],
+                'grundpreis_bezugsmenge' => $vater['grundpreis_bezugsmenge'],
+                'grundpreis_anzeigen'    => $vater['grundpreis_anzeigen'],
+                'charge_pflicht'         => $vater['charge_pflicht'],
+                'ist_auslaufartikel'     => $vater['ist_auslaufartikel'],
+                'ueberverkauf_erlaubt'   => $vater['ueberverkauf_erlaubt'],
+                'aktiv'                  => 1,
+                'zustand'                => 'neu',
+                'zustand_vater_id'       => null,
             ];
 
             $kindId = $this->repo->insertKindArtikel($kind);
+            $neuErstellteIds[] = $kindId;
 
-            $wertIds = explode(',', $kombi['key']);
-
-            foreach ($wertIds as $w) {
-                $wert = [
+            foreach (explode(',', $kombi['key']) as $w) {
+                $this->repo->insertKombinationWert([
                     'kombination_id' => $kindId,
-                    'wert_id' => (int) $w
-                ];
-
-                $this->repo->insertKombinationWert($wert);
+                    'wert_id'        => (int) $w,
+                ]);
             }
         }
 
         Logger::log('varkombi.erstellen', 'artikel', $vater['id'], ['varKombi_anzahl' => count($kombis)]);
 
-        return ['erfolg' => true, 'anzahl' => count($kombis)];
+        return ['erfolg' => true, 'anzahl' => count($kombis), 'ids' => $neuErstellteIds];
     }
 }

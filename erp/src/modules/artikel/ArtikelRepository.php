@@ -889,6 +889,65 @@ class ArtikelRepository
         return $stmt->rowCount() > 0;
     }
 
+    public function propagiereZuKindern(int $vaterId): void
+    {
+        $vater = $this->findById($vaterId);
+        if (!$vater) return;
+
+        $this->db->prepare("
+            UPDATE artikel SET
+                hersteller_id          = :hersteller_id,
+                steuerklasse_id        = :steuerklasse_id,
+                artikeltyp_id          = :artikeltyp_id,
+                kurzbeschreibung       = :kurzbeschreibung,
+                beschreibung           = :beschreibung,
+                technische_details     = :technische_details,
+                beschreibung_intern    = :beschreibung_intern,
+                meta_titel             = :meta_titel,
+                meta_description       = :meta_description,
+                einheit_id             = :einheit_id,
+                inhalt_menge           = :inhalt_menge,
+                inhalt_einheit         = :inhalt_einheit,
+                gewicht_artikel        = :gewicht_artikel,
+                gewicht_versand        = :gewicht_versand,
+                laenge                 = :laenge,
+                breite                 = :breite,
+                hoehe                  = :hoehe,
+                herkunftsland          = :herkunftsland,
+                taric_code             = :taric_code,
+                grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
+                grundpreis_anzeigen    = :grundpreis_anzeigen,
+                charge_pflicht         = :charge_pflicht,
+                ueberverkauf_erlaubt   = :ueberverkauf_erlaubt
+            WHERE vaterartikel_id = :vater_id
+        ")->execute([
+            'vater_id'               => $vaterId,
+            'hersteller_id'          => $vater['hersteller_id'],
+            'steuerklasse_id'        => $vater['steuerklasse_id'],
+            'artikeltyp_id'          => $vater['artikeltyp_id'],
+            'kurzbeschreibung'       => $vater['kurzbeschreibung'],
+            'beschreibung'           => $vater['beschreibung'],
+            'technische_details'     => $vater['technische_details'],
+            'beschreibung_intern'    => $vater['beschreibung_intern'],
+            'meta_titel'             => $vater['meta_titel'],
+            'meta_description'       => $vater['meta_description'],
+            'einheit_id'             => $vater['einheit_id'],
+            'inhalt_menge'           => $vater['inhalt_menge'],
+            'inhalt_einheit'         => $vater['inhalt_einheit'],
+            'gewicht_artikel'        => $vater['gewicht_artikel'],
+            'gewicht_versand'        => $vater['gewicht_versand'],
+            'laenge'                 => $vater['laenge'],
+            'breite'                 => $vater['breite'],
+            'hoehe'                  => $vater['hoehe'],
+            'herkunftsland'          => $vater['herkunftsland'],
+            'taric_code'             => $vater['taric_code'],
+            'grundpreis_bezugsmenge' => $vater['grundpreis_bezugsmenge'],
+            'grundpreis_anzeigen'    => $vater['grundpreis_anzeigen'],
+            'charge_pflicht'         => $vater['charge_pflicht'],
+            'ueberverkauf_erlaubt'   => $vater['ueberverkauf_erlaubt'],
+        ]);
+    }
+
     public function findZustandsArtikelByVaterId(int $vaterId): array
     {
         $stmt = $this->db->prepare("

@@ -62,6 +62,7 @@ class ArtikelService
         $this->repo->update($data);
 
         // Auslauf-Flag auf alle Kinder propagieren (betrifft Vater-Artikel, bei Kindern trifft UPDATE 0 Zeilen)
+        $this->repo->propagiereZuKindern((int) $data['id']);
         $this->repo->propagateAuslaufZuKindern((int) $data['id'], (int) ($data['ist_auslaufartikel'] ?? 0));
 
         $this->repo->deleteCodesByArtikelIdAndType($data['id'], 'GTIN13');
@@ -260,12 +261,23 @@ class ArtikelService
     public function saveKategorien(int $artikelId, array $kategorieIds): void
     {
         $this->kategorieRepo->updateArtikelKategoriezuweisungen($artikelId, $kategorieIds);
+        $this->kategorieRepo->syncKategorienZuKindern($artikelId, $kategorieIds);
         Logger::log('artikel.kategorien_aktualisieren', 'artikel', $artikelId, ['kategorie_ids' => $kategorieIds]);
     }
 
     public function getKategorienFuerArtikel(int $artikelId): array
     {
         return $this->kategorieRepo->findByArtikelId($artikelId);
+    }
+
+    public function kopiereVaterRelationenZuKindern(int $vaterId, array $kindIds): void
+    {
+        foreach ($kindIds as $kindId) {
+            $this->repo->copyKategorien($vaterId, $kindId);
+            $this->repo->copyMerkmale($vaterId, $kindId);
+            $this->repo->copyLieferanten($vaterId, $kindId);
+            $this->repo->copyPreise($vaterId, $kindId);
+        }
     }
 
     public function getKinderFuerListe(array $vaterIds, string $sortSpalte = 'a.artikelnummer', string $sortDir = 'ASC'): array
