@@ -27,5 +27,8 @@
 - [Feedback: Achsen Modal](feedback_achsen_modal.md) — achsen/bearbeiten.php → Modal werden (wie Kategorie), Design stimmig halten
 - [Spalten-Picker](project_spalten_picker.md) — Alle Spalten-Definitionen (baubar/Platzhalter), benutzer_einstellungen, Kanäle-Cleanup; Platzhalter aktivieren wenn Merkmale/Lagerplatz/Inventur fertig
 - [🔴 BUG: Kategorie-Verschieben](bug_kategorie_verschieben.md) — BEHOBEN 2026-06-19: saveKategorien + erstelleKombinationen + propagiereZuKindern implementiert
-- [🟡 BUG: Aktions-Kategorie Zuweisung](bug_aktionskategorie_zuweisung.md) — Kein Auto-Aktionspreis bei Zuweisung + Symbol im Baum verschwunden; nach QA angehen
-- [Bilder-Modul](project_bilder_modul.md) — NÄCHSTE SESSION: Tab ist Platzhalter, Backend fehlt komplett
+- [🟡 BUG: Aktions-Kategorie Zuweisung](bug_aktionskategorie_zuweisung.md) — BEHOBEN 2026-06-19: Modal für Preiseingabe direkt nach Zuweisung, ⏰ in Shell-Baum + Modal
+- [Bilder-Modul](project_bilder_modul.md) — FERTIG 2026-06-19 — Upload, GD-Resize, Hauptbild, Reihenfolge, Alt-Text
+- [Druck: Qualitätslisten](project_druck_listen.md) — EAN/Bilder-Qualitätslisten für Druckausgabe vormerken (kommt mit Druck-Modul)
+- [Statistik Konzept](project_statistik.md) — Kein eigener Sidebar-Link bis Verkauf steht; kommt aus Dashboard + Verkauf-Modul
+- [Kundendatenbank Design](project_kundendatenbank.md) — B2B gleich einbauen, Laufkunde, Shop-Sync/Merge, AES-256-GCM Verschlüsselung, DSGVO Crypto-Shredding (Stand 2026-06-19)

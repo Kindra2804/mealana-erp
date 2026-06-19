@@ -28,6 +28,10 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/lieferanten/liste.php'],
         ['icon' => '➕', 'label' => 'Neu',          'href' => '/mealana/lieferanten/neu.php'],
     ],
+    'kunden' => [
+        ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/kunden/liste.php'],
+        ['icon' => '➕', 'label' => 'Neuer Kunde',  'href' => '/mealana/kunden/neu.php'],
+    ],
     default => [],
 };
 

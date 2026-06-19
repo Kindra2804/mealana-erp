@@ -1,5 +1,6 @@
-# Datenbank-Konfiguration (enthält Passwörter!)
+# Konfigurationen (enthalten Passwörter / Keys!)
 erp/config/database.php
+erp/config/encryption.php
 
 # PHP Dependencies (kommt später)
 vendor/

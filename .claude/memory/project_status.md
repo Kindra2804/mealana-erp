@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-19
+Stand: 2026-06-19 (Session 3)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -22,12 +22,15 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ```
 
 ## Schema-Referenz
-- 44 Migrations angewendet (001–044)
+- 47 Migrations angewendet (001–047)
 - aktionen (042): umgebaut aus preis_aktionen, kein typ/zeitraum mehr auf Aktion selbst
 - aktionen_kategorien (042): Kategorie ↔ Aktion + Zeitraum pro Zuweisung
 - aktionen_artikel_preise (042): Preiseingaben pro Aktion + Vater + Sub-Achse + KG
 - aktionen.gestartet (043): manueller Start-Flag
 - kundengruppen.ist_standard (044): ersetzt rabatt_prozent, Endkunden = 1
+- artikel_bilder + artikel_bilder_shops (045)
+- zahlungsbedingungen (046): geteilt Kunden + Lieferanten, 5 Standard-Einträge
+- kunden + kunden_adressen + kunden_ansprechpartner + kunden_dsgvo_consent + kunden_shops + kunden_merge_queue (047): AES-256-GCM Verschlüsselung, Laufkunde id=1
 - Dump aktualisieren: `& "C:\xampp\mysql\bin\mysqldump.exe" --host=localhost --user=root --no-tablespaces --routines --skip-comments mealana_erp | Out-File -FilePath "D:\ERP\mealana\erp\database\schema_current.sql" -Encoding utf8`
 
 ## ✅ Fertige Module (Stand 2026-06-19)
@@ -88,6 +91,19 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - getEffektiverPreis(artikelId, kgId): 4-stufige Prioritätskette
 - SALE-Override UI, Aktions-Banner, Preis-Status-Chips in Liste
 
+### Kunden-Modul ✅ VOLLSTÄNDIG (2026-06-19)
+- Migrations 046+047: zahlungsbedingungen + 6 Kunden-Tabellen
+- Encryption.php (src/core/): AES-256-GCM, HMAC-SHA256 Suche, Crypto-Shredding-fähig
+- Keys in erp/config/encryption.php (gitignored!)
+- KundenRepository: transparente Ver-/Entschlüsselung, alle _enc Felder
+- KundenService: Validierung, Kundennummer KD-XXXXX, E-Mail-Duplikat via Hash
+- public/kunden/: liste, neu, speichern, detail (4 Tabs), bearbeiten, aktualisieren
+- Adressen: Modal-Neu + Modal-Edit (data-Attribute), speichern/aktualisieren/loeschen
+- DSGVO: consent_speichern.php, Consent-Log-Tabelle unveränderlich
+- status_setzen.php: aktiv/gesperrt/geloescht
+- Laufkunde: id=1, fest in DB, kein Login/Shop-Account
+- shell_top.php: Kunden-Sidebar ergänzt (Liste + Neuer Kunde)
+
 ## 🟡 Offene Bugs (vor Barbara-Test angehen)
 
 | Bug | Datei | Priorität |
@@ -100,13 +116,13 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Modul | Priorität |
 |---|---|
 | Workflow-Doku restliche Module | HOCH (laufend) |
-| Bilder-Upload | HOCH (vor Shop) |
 | Bestellwesen/Einkauf | HOCH |
 | Auftragsmodul/Verkauf | HOCH |
 | Kasse/POS | HOCH (RKSV-Pflicht AT) |
 | Inventur | MITTEL |
-| Shop-Export | MITTEL |
+| Shop-Export (inkl. WooCommerce Kunden-Sync) | MITTEL |
 | Buchhaltung/DATEV | MITTEL |
+| Kunden-Merge-UI (kunden_merge_queue) | NIEDRIG |
 | Seriennummern | NIEDRIG |
 
 ## Offene technische Punkte
