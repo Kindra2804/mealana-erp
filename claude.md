@@ -546,7 +546,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-19)
+## What's Implemented (Stand 2026-06-19, Session 3)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -584,18 +584,20 @@ $result = $service->wareneingang([
   - VariantenRepository: findWertIdsInUse, deleteWerteExcluding, deleteArtikelAchse
   - VariantenService: granulare speichereAchsenUndWerte, erstelleKombinationen (gibt IDs zurück)
 
-### Lager Module (Functional)
+### Lager Module (Functional + Shell-migriert ✅ 2026-06-19)
 - Goods receipt with EAN barcode scan support
 - Variant search API (variante_suche.php returns JSON)
 - Stock UPSERT (create or increase)
 - Movement audit log (lager_bewegungen)
 - Charge tracking with status
 - Charge Nachtrag-Workflow (nachtrag_liste.php + nachtrag_speichern.php)
+- Shell-Design: uebersicht.php, wareneingang.php, nachtrag_liste.php alle migriert
 
-### Lieferanten Module (CRUD Complete)
+### Lieferanten Module (CRUD Complete + Shell-migriert ✅ 2026-06-19)
 - Lieferanten CRUD (neu/bearbeiten/löschen/detail)
 - Vertreter CRUD pro Lieferant (neu/bearbeiten/löschen)
 - Alle Handler als separate speichern.php / aktualisieren.php (kein Inline-POST)
+- Shell-Design: liste, detail, neu, bearbeiten, vertreter_neu, vertreter_bearbeiten alle migriert
 
 ### Auth & RBAC (vollständig)
 - Auth.php, Logger.php, login.php, auth_check.php — fertig
@@ -606,6 +608,37 @@ $result = $service->wareneingang([
 - ist_auslaufartikel: Orange Highlighting, Auto-Reaktivierung bei Wareneingang, Vater folgt Kindern
 - ueberverkauf_erlaubt: Checkbox in bearbeiten.php + neu.php, blauer Banner in detail.php
 - reservierungen-Tabelle (Migration 021): Wird von Shop/Kasse befüllt wenn Bestand ≤ 0
+
+### Aktions-Kategorie Zuweisung ✅ (2026-06-19)
+- ⏰ Symbol in Shell-Kategoriebaum (links) UND im Artikel-Kategorie-Modal (orange=aktiv, grau=geplant)
+- Modal für Aktionspreiseingabe direkt nach Kategorie-Speichern: zeigt alle betroffenen Aktionen (aktive + geplante), gruppiert pro Aktion, Preise direkt eintragbar via `aktion_preise_speichern.php`
+- `KategorieRepository::updateArtikelKategoriezuweisungen` → gibt neue Aktionen zurück
+- `AktionenRepository::getExistingPreiseFuerArtikel` → Pre-Fill vorhandener Preise
+
+### Aktions-Kategorie ⏰ 3-Zustände ✅ (2026-06-19)
+- `KategorieRepository::findAllMitEltern()`: 3 neue SQL-Spalten via LEFT JOIN auf aktionen_kategorien + aktionen
+  - `aktion_aktiv`: gestartet=1 AND CURDATE() BETWEEN gueltig_ab AND gueltig_bis
+  - `aktion_zukunft`: gueltig_ab > CURDATE() (kein gestartet-Filter — Entwurf+Zukunft = geplant)
+  - `aktion_info`: GROUP_CONCAT(name + Datumsbereich) für Hover-Tooltip
+- Rendering in `shell_top.php` + `kategorien_verwalten.php`: aktiv=orange ⏰, geplant=orange ⏰+dimmed, abgelaufen=grau ⏰+dimmed
+- **Wichtig:** CSS `color:#aaa` hat keine Wirkung auf Farb-Emojis — `filter:grayscale(1)` verwenden!
+- Hover-Tooltip (HTML `title`-Attribut): zeigt Aktionsname + Datumsbereich
+
+### Testdaten-Cleanup-Script ✅ (2026-06-19)
+- `erp/database/truncate_testdaten.sql` — löscht alle Artikel/Kunden/Aktionsdaten
+- Behält: kategorien, steuerklassen, artikel_typen, einheiten, lager, hersteller, merkmale, benutzer, rollen, system_einstellungen
+- Technik: `DELETE FROM` statt `TRUNCATE` (InnoDB FK-Constraint); selbstreferentielle FK (vaterartikel_id) → erst Kinder, dann Väter löschen
+
+### Qualitätslisten ✅ (2026-06-19)
+- Filter in `artikel/liste.php`: Keine EAN / Doppelte EAN / Keine Bilder (via `<optgroup>` im Status-Dropdown)
+- SQL-Subqueries in `ArtikelRepository::findAll()` + `countAll()` für alle drei Qualitätsprüfungen
+- Qualitäts-Chips werden nur bei aktivem Filter angezeigt (nicht jede Zeile)
+- Für Druck-Aufbereitung vorgemerkt: wenn Druck-Modul kommt, diese Listen als erstes
+
+### Shell-Check ✅ (2026-06-19)
+- Kategoriebaum rechts jetzt auf ALLEN Artikel-Shell-Seiten: `bearbeiten.php`, `achsen_zuweisen.php`, `achsen/liste.php` hatten `$kategorienBaum` gefehlt → nachgetragen
+- Sidebar-Links bereinigt: tote `#`-Links `Bilder`, `SEO`, `Statistik` entfernt (kein Zielseite vorhanden)
+- Sidebar Artikel: Liste / Neu erstellen / Kategorien / Merkmale / Preise & Aktionen
 
 ### Bilder-Modul ✅ (2026-06-19)
 - Migration 045: `artikel_bilder` (id/artikel_id UNSIGNED, dateiname, alt_text, position) + `artikel_bilder_shops` (bild_id+shop_id → external_id, sync_status)
@@ -618,6 +651,24 @@ $result = $service->wareneingang([
 - PHP GD aktivieren in XAMPP: php.ini `extension=gd` auskommentieren
 - Wasserzeichen: ERP speichert clean Original → Wasserzeichen beim Shop-Sync (GD on-the-fly), Admin-Einstellung pro Shop geplant
 - WooCommerce-Sync noch offen (braucht echten WC-Server)
+
+### Kunden-Modul ✅ VOLLSTÄNDIG (2026-06-19)
+- Migrations 046 (zahlungsbedingungen), 047 (6 Kunden-Tabellen: kunden, kunden_adressen, kunden_ansprechpartner, kunden_dsgvo_consent, kunden_shops, kunden_merge_queue)
+- Laufkunde: id=1, ist_laufkunde=1, fest in DB — Kasse-Standardkunde, kein Login
+- **`src/core/Encryption.php`** — AES-256-GCM, per-Record IV, HMAC-SHA256 für E-Mail-Suche
+  - Keys in `erp/config/encryption.php` (gitignored!) als 256-bit Hex
+  - `encrypt(?string): ?string` / `decrypt(?string): ?string` / `hash(?string): ?string`
+  - Crypto-Shredding für DSGVO Art. 17 Löschungen vorbereitet
+- **`KundenRepository`**: transparente Ver-/Entschlüsselung — Views sehen nur Klartext
+  - `verschluesseln()` / `entschluesseln()` als private Helfer
+  - `nextKundennummer()`: KD-00001, KD-00002, …
+  - Adress-CRUD mit Standard-Flag-Verwaltung
+- **`KundenService`**: Validierung, E-Mail-Duplikat via Hash, Kundengruppen-Default (ist_standard=1)
+- **`public/kunden/`**: liste, neu/speichern, detail (4 Tabs), bearbeiten/aktualisieren, status_setzen
+  - detail.php Tabs: Stammdaten | Adressen | DSGVO/Consent | Bestellungen (Platzhalter)
+  - Adressen: Neu-Modal + Edit-Modal (data-Attribute → JS pre-fill, kein AJAX nötig)
+  - DSGVO: Consent-Log unveränderlich, Eintragen-Formular direkt im Tab
+- shell_top.php: Kunden-Sidebar (Liste + Neuer Kunde) ergänzt
 
 ## Nächste Schritte (Priorität)
 
@@ -661,19 +712,19 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
 - URL-Rewriting via `.htaccess` (mod_rewrite) — hübsche URLs statt vollständiger `.php`-Pfade
 - Größen-Feinabstimmung Nav/Sidebar exakt auf Mockup-Maße
 
-**Nächste Schritte UI:** Restliche Seiten auf Shell migrieren (detail.php, neu.php, bearbeiten.php, lager/, lieferanten/)
+~~**Nächste Schritte UI:** Restliche Seiten auf Shell migrieren (detail.php, neu.php, bearbeiten.php, lager/, lieferanten/)~~ ✅ FERTIG (2026-06-19)
 
 ### Artikel-Modul: Noch offen
 - **Merkmale-UI** — Formular zum Befüllen (Nadelstärke, Garngruppe, Maschenprobe) — spätestens mit Shop
 - **Preistabellen-UI** — alle Kundengruppen + Staffelpreise (derzeit UI nur für Endkunde)
-- **Qualitätslisten** — fehlende EAN, doppelte EAN, fehlende Bilder
 - **Bestellvorschläge** — beim Einkaufsmodul vollenden
 - Seriennummern — geplant
 - ~~Bilder-Upload~~ ✅ fertig
+- ~~Qualitätslisten~~ ✅ fertig
 
 ### Neue Module (Reihenfolge)
-4. **Kundendatenbank** — Stammdaten, Adresse, UID, Newsletter
-5. **Bestellwesen** — Lieferantenbestellungen: wann/von wem/was/EK-Preis/Status. Wareneingang referenziert Bestellung.
+4. ~~**Kundendatenbank**~~ ✅ FERTIG (2026-06-19)
+5. **Bestellwesen** ← NÄCHSTE SESSION — Lieferantenbestellungen: wann/von wem/was/EK-Preis/Status. Wareneingang referenziert Bestellung.
 6. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
 7. **Packplatz/Picklisten** — Kommissionierung, Packliste
 8. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.

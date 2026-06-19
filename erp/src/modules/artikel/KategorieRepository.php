@@ -30,7 +30,13 @@ class KategorieRepository
             SELECT k.id, k.parent_id, k.name, k.sortierung,
                 k.ist_aktions_kategorie,
                 COUNT(DISTINCT a.id) AS artikel_anzahl,
-                MAX(CASE WHEN CURDATE() BETWEEN ak2.gueltig_ab AND ak2.gueltig_bis THEN 1 ELSE 0 END) AS aktion_aktiv
+                MAX(CASE WHEN akt2.gestartet = 1 AND CURDATE() BETWEEN ak2.gueltig_ab AND ak2.gueltig_bis THEN 1 ELSE 0 END) AS aktion_aktiv,
+                MAX(CASE WHEN ak2.gueltig_ab > CURDATE() THEN 1 ELSE 0 END) AS aktion_zukunft,
+                GROUP_CONCAT(
+                    DISTINCT CONCAT(akt2.name, ': ', DATE_FORMAT(ak2.gueltig_ab, '%d.%m.%Y'), ' – ', DATE_FORMAT(ak2.gueltig_bis, '%d.%m.%Y'))
+                    ORDER BY ak2.gueltig_ab ASC
+                    SEPARATOR ' | '
+                ) AS aktion_info
             FROM kategorien k
             LEFT JOIN artikel_kategorien ak ON ak.kategorie_id = k.id
             LEFT JOIN artikel vater ON vater.id = ak.artikel_id AND vater.aktiv = 1
@@ -40,6 +46,7 @@ class KategorieRepository
                 (a.vaterartikel_id = vater.id)
             )
             LEFT JOIN aktionen_kategorien ak2 ON ak2.kategorie_id = k.id
+            LEFT JOIN aktionen akt2 ON akt2.id = ak2.aktion_id
             WHERE k.aktiv = 1
             GROUP BY k.id
             ORDER BY k.sortierung ASC, k.name ASC

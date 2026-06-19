@@ -2,8 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 
-$service = new LagerService();
-
+$service     = new LagerService();
 $lagerinhalt = $service->getUebersicht();
 
 $grouped = [];
@@ -12,68 +11,63 @@ foreach ($lagerinhalt as $row) {
     if ($row['zeilentyp'] === 'vater' || $row['zeilentyp'] === 'standalone') {
         $grouped[$id]['kopf'] = $row;
     } else {
-        // 'kind' UND 'standalone_kind' → beides sind Kindzeilen
         $grouped[$id]['kinder'][] = $row;
     }
 }
 
+$pageTitle        = 'Lagerübersicht';
+$activeModule     = 'lager';
+$actionBarContent = <<<HTML
+    <a href="/mealana/lager/wareneingang.php" class="btn btn-primary btn-sm">+ Wareneingang</a>
+HTML;
 
-// echo '<pre>';
-// var_dump($lagerinhalt);
-// echo '</pre>';
-// exit;
-
-
+require_once __DIR__ . '/../includes/shell_top.php';
 ?>
-<!DOCTYPE html>
-<html lang="de">
 
-<head>
-    <meta charset="UTF-8">
-    <title>Lagerliste – MeaLana ERP</title>
-</head>
-
-<body>
-    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
-    <h1>Lagerinhalt</h1>
-    <table>
-        <tr>
-            <th>Artikelnummer</th>
-            <th>Name / Variante</th>
-            <th>Lager</th>
-            <th>Bestand</th>
-            <th>Charge</th>
-            <th>Status</th>
-        </tr>
+<div class="card">
+    <?php if (empty($grouped)): ?>
+        <p style="color:var(--color-text-muted);padding:24px 0">Noch kein Lagerbestand erfasst.</p>
+    <?php else: ?>
+    <table class="erp-table">
+        <thead>
+            <tr>
+                <th>ARTIKELNUMMER</th>
+                <th>NAME / VARIANTE</th>
+                <th>LAGER</th>
+                <th style="text-align:right">BESTAND</th>
+                <th>CHARGE</th>
+                <th>CHARGE-STATUS</th>
+            </tr>
+        </thead>
+        <tbody>
         <?php foreach ($grouped as $gruppe):
-            $kopf = $gruppe['kopf'];
+            $kopf   = $gruppe['kopf'];
             $kinder = $gruppe['kinder'] ?? []; ?>
 
-            <!-- 1. Kopfzeile (fett, kein Lager/Charge bei Vater) -->
-            <tr style="background:#f0f0f0">
+            <tr style="background:var(--color-bg-subtle)">
                 <td><strong><?= htmlspecialchars($kopf['vater_artikelnummer']) ?></strong></td>
                 <td><strong><?= htmlspecialchars($kopf['artikel_name']) ?></strong></td>
                 <td><?= $kopf['zeilentyp'] === 'standalone' ? htmlspecialchars($kopf['lager_name']) : '' ?></td>
-                <td><strong><?= $kopf['bestand'] ?></strong></td>
-                <td><?= $kopf['zeilentyp'] === 'standalone' ? htmlspecialchars($kopf['charge'] ?? '-') : '' ?></td>
-                <td><?= $kopf['charge'] ? htmlspecialchars($kopf['charge_status'] ?? '') : '-' ?></td>
+                <td style="text-align:right"><strong><?= $kopf['bestand'] ?></strong></td>
+                <td><?= $kopf['zeilentyp'] === 'standalone' ? htmlspecialchars($kopf['charge'] ?? '–') : '' ?></td>
+                <td><?= $kopf['zeilentyp'] === 'standalone' && $kopf['charge'] ? htmlspecialchars($kopf['charge_status'] ?? '') : '' ?></td>
             </tr>
 
-            <!-- 2. Kindzeilen (eingerückt) -->
             <?php foreach ($kinder as $kind): ?>
                 <tr>
-                    <td style="padding-left:20px"><?= htmlspecialchars($kind['varianten_artikelnummer']) ?></td>
-                    <td style="padding-left:20px"><?= htmlspecialchars($kind['farbe'] ?? '-') ?></td>
+                    <td style="padding-left:28px;color:var(--color-text-muted)"><?= htmlspecialchars($kind['varianten_artikelnummer']) ?></td>
+                    <td style="padding-left:28px"><?= htmlspecialchars($kind['farbe'] ?? '–') ?></td>
                     <td><?= htmlspecialchars($kind['lager_name']) ?></td>
-                    <td><?= $kind['bestand'] ?></td>
-                    <td><?= htmlspecialchars($kind['charge'] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($kind['charge_status'] ?? '-') ?></td>
+                    <td style="text-align:right"><?= $kind['bestand'] ?></td>
+                    <td><?= htmlspecialchars($kind['charge'] ?? '–') ?></td>
+                    <td><?= htmlspecialchars($kind['charge_status'] ?? '–') ?></td>
                 </tr>
             <?php endforeach; ?>
 
         <?php endforeach; ?>
-
+        </tbody>
     </table>
-</body>
+    <?php endif; ?>
+</div>
 
-</html>
+<?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

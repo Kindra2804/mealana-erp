@@ -2,93 +2,97 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
 
-// ID aus URL holen
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
     header('Location: liste.php');
     exit;
 }
 
-// Session Daten holen
 $fehler   = $_SESSION['fehler']   ?? [];
-$erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
-// Service und Daten für Vertreter laden
 $service = new LieferantenService();
 
-// Artikel aus DB laden – aber Session hat Vorrang bei Fehler!
 if (empty($formdata)) {
     $vertreter = $service->findVertreterById($id);
     if ($vertreter === false) {
         header('Location: liste.php');
         exit;
     }
-    $formdata = $vertreter;  // ← Vertreterdaten als Formularwerte!
+    $formdata     = $vertreter;
     $lieferant_id = $vertreter['lieferant_id'];
+} else {
+    $lieferant_id = (int) ($formdata['lieferant_id'] ?? 0);
 }
 
+$pageTitle        = 'Vertreter bearbeiten';
+$activeModule     = 'lieferanten';
+$actionBarContent = <<<HTML
+    <a href="/mealana/lieferanten/detail.php?id={$lieferant_id}" class="btn btn-secondary btn-sm">← Zurück zum Lieferanten</a>
+HTML;
+
+require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="de">
+<?php if (!empty($fehler)): ?>
+    <div class="card" style="border-left:4px solid var(--color-danger);margin-bottom:12px">
+        <ul style="margin:0;padding-left:18px;color:var(--color-danger)">
+            <?php foreach ($fehler as $f): ?>
+                <li><?= htmlspecialchars($f) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
 
-<head>
-    <meta charset="UTF-8">
-    <title>Vertreter bearbeiten – MeaLana ERP</title>
-    <link rel="stylesheet" href="/mealana/css/app.css">
-</head>
+<div class="card" style="max-width:600px">
+    <form action="vertreter_aktualisieren.php" method="POST">
+        <input type="hidden" name="id" value="<?= $id ?>">
+        <input type="hidden" name="lieferant_id" value="<?= $lieferant_id ?>">
 
-<body>
-    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
-    <div class="container">
-        <h1>Vertreter bearbeiten</h1>
-
-        <?php if (!empty($fehler)): ?>
-            <div class="fehler-box">
-                <strong>Bitte korrigiere folgende Fehler:</strong>
-                <ul>
-                    <?php foreach ($fehler as $f): ?>
-                        <li><?= htmlspecialchars($f) ?></li>
-                    <?php endforeach; ?>
-                </ul>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px">
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Vorname</label>
+                <input type="text" name="vorname" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['vorname'] ?? '') ?>">
             </div>
-        <?php endif; ?>
-
-        <form action="vertreter_aktualisieren.php" method="POST">
-
-            <input type="hidden" name="id" value="<?= $id ?>">
-            <input type="hidden" name="lieferant_id" value="<?= $formdata['lieferant_id'] ?? '' ?>">
-
-            <div class="gruppe">
-                <label for="vorname">Vorname</label>
-                <input type="text" id="vorname" name="vorname"
-                    value="<?= htmlspecialchars($formdata['vorname'] ?? '') ?>">
-                <label for="nachname">Nachname <span class="pflicht">*</span></label>
-                <input type="text" id="nachname" name="nachname"
-                    value="<?= htmlspecialchars($formdata['nachname'] ?? '') ?>">
-                <label for="telefon">Telefon</label>
-                <input type="text" id="telefon" name="telefon"
-                    value="<?= htmlspecialchars($formdata['telefon'] ?? '') ?>">
-                <label for="email">E-Mail</label>
-                <input type="email" id="email" name="email"
-                    value="<?= htmlspecialchars($formdata['email'] ?? '') ?>">
-                <label for="mobil">mobil</label>
-                <input type="tel" id="mobil" name="mobil"
-                    value="<?= htmlspecialchars($formdata['mobil'] ?? '') ?>">
-                <textarea name="notizen" rows="4"><?= htmlspecialchars($formdata['notizen'] ?? '') ?></textarea>
-                <label>Aktiv</label>
-                <select name="aktiv">
-                    <option value="1" <?= ($formdata['aktiv'] ?? '1') === '1' ? 'selected' : '' ?>>Ja</option>
-                    <option value="0" <?= ($formdata['aktiv'] ?? '1') === '0' ? 'selected' : '' ?>>Nein</option>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Nachname *</label>
+                <input type="text" name="nachname" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['nachname'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">E-Mail</label>
+                <input type="email" name="email" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['email'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Telefon</label>
+                <input type="text" name="telefon" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['telefon'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Mobil</label>
+                <input type="tel" name="mobil" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['mobil'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Status</label>
+                <select name="aktiv" class="erp-select" style="width:100%">
+                    <option value="1" <?= (string)($formdata['aktiv'] ?? '1') === '1' ? 'selected' : '' ?>>Aktiv</option>
+                    <option value="0" <?= (string)($formdata['aktiv'] ?? '1') === '0' ? 'selected' : '' ?>>Inaktiv</option>
                 </select>
             </div>
-            <button type="submit">Vertreter updaten</button>
+            <div style="grid-column:1/-1">
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Notizen</label>
+                <textarea name="notizen" rows="3" class="erp-input" style="width:100%;resize:vertical"><?= htmlspecialchars($formdata['notizen'] ?? '') ?></textarea>
+            </div>
+        </div>
 
-        </form>
-    </div>
+        <div style="margin-top:20px">
+            <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+        </div>
+    </form>
+</div>
 
-</body>
-
-</html>
+<?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

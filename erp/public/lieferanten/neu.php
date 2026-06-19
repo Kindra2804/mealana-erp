@@ -1,57 +1,70 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 
-// Session Daten holen
 $fehler   = $_SESSION['fehler']   ?? [];
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
+$pageTitle        = 'Neuer Lieferant';
+$activeModule     = 'lieferanten';
+$actionBarContent = <<<HTML
+    <a href="/mealana/lieferanten/liste.php" class="btn btn-secondary btn-sm">← Zurück</a>
+HTML;
+
+require_once __DIR__ . '/../includes/shell_top.php';
 ?>
-<!DOCTYPE html>
-<html lang="de">
 
-<head>
-    <meta charset="UTF-8">
-    <title>Neuer Lieferant – MeaLana ERP</title>
-    <link rel="stylesheet" href="/mealana/css/app.css">
-</head>
+<?php if (!empty($fehler)): ?>
+    <div class="card" style="border-left:4px solid var(--color-danger);margin-bottom:12px">
+        <ul style="margin:0;padding-left:18px;color:var(--color-danger)">
+            <?php foreach ($fehler as $f): ?>
+                <li><?= htmlspecialchars($f) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
 
-<body>
-    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
-    <h1>Neuer Lieferant</h1>
-    <?php if (!empty($fehler)): ?>
-        <div class="fehler-box">
-            <ul>
-                <?php foreach ($fehler as $f): ?>
-                    <li><?= htmlspecialchars($f) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
+<div class="card" style="max-width:600px">
     <form method="POST" action="speichern.php">
-        <div class="gruppe">
-            <label for="name">Name <span class="pflicht">*</span></label>
-            <input type="text" id="name" name="name"
-                value="<?= htmlspecialchars($formdata['name'] ?? '') ?>"
-                required>
-            <label for="land">Land</label>
-            <input type="text" id="land" name="land"
-                value="<?= htmlspecialchars($formdata['land'] ?? '') ?>">
-            <label for="website">Website</label>
-            <input type="text" id="website" name="website"
-                value="<?= htmlspecialchars($formdata['website'] ?? '') ?>">
-            <label for="email">E-Mail</label>
-            <input type="email" id="email" name="email"
-                value="<?= htmlspecialchars($formdata['email'] ?? '') ?>">
-            <label for="telefon">Telefon</label>
-            <input type="text" id="telefon" name="telefon"
-                value="<?= htmlspecialchars($formdata['telefon'] ?? '') ?>">
-            <label>Aktiv</label>
-            <select name="aktiv">
-                <option value="1" <?= ($formdata['aktiv'] ?? '1') === '1' ? 'selected' : '' ?>>Ja</option>
-                <option value="0" <?= ($formdata['aktiv'] ?? '1') === '0' ? 'selected' : '' ?>>Nein</option>
-
-            </select>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px">
+            <div style="grid-column:1/-1">
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Name *</label>
+                <input type="text" name="name" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['name'] ?? '') ?>" required>
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Land</label>
+                <input type="text" name="land" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['land'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Website</label>
+                <input type="text" name="website" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['website'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">E-Mail</label>
+                <input type="email" name="email" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['email'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Telefon</label>
+                <input type="text" name="telefon" class="erp-input" style="width:100%"
+                       value="<?= htmlspecialchars($formdata['telefon'] ?? '') ?>">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Status</label>
+                <select name="aktiv" class="erp-select" style="width:100%">
+                    <option value="1" <?= ($formdata['aktiv'] ?? '1') === '1' ? 'selected' : '' ?>>Aktiv</option>
+                    <option value="0" <?= ($formdata['aktiv'] ?? '1') === '0' ? 'selected' : '' ?>>Inaktiv</option>
+                </select>
+            </div>
         </div>
 
-        <button type="submit">Lieferant anlegen</button>
+        <div style="margin-top:20px">
+            <button type="submit" class="btn btn-primary">Lieferant anlegen</button>
+        </div>
+    </form>
+</div>
+
+<?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

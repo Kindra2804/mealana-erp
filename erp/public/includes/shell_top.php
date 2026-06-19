@@ -21,8 +21,9 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '💲', 'label' => 'Preise / Aktionen', 'href' => '/mealana/aktionen/liste.php'],
     ],
     'lager' => [
-        ['icon' => '📦', 'label' => 'Übersicht',    'href' => '/mealana/lager/uebersicht.php'],
-        ['icon' => '📥', 'label' => 'Wareneingang', 'href' => '/mealana/lager/wareneingang.php'],
+        ['icon' => '📦', 'label' => 'Übersicht',        'href' => '/mealana/lager/uebersicht.php'],
+        ['icon' => '📥', 'label' => 'Wareneingang',     'href' => '/mealana/lager/wareneingang.php'],
+        ['icon' => '🔖', 'label' => 'Chargen-Nachtrag', 'href' => '/mealana/lager/nachtrag_liste.php'],
     ],
     'lieferanten' => [
         ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/lieferanten/liste.php'],
@@ -135,19 +136,31 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                             $nodeId       = 'kat-' . $knoten['id'];
                             $toggleId     = 'kattog-' . $knoten['id'];
                             $anzahl       = (int)($knoten['artikel_anzahl'] ?? 0);
-                            $istAktionKat = (int)($knoten['ist_aktions_kategorie'] ?? 0);
-                            $aktionAktiv  = (int)($knoten['aktion_aktiv'] ?? 0);
-                            $aktionSymbol = '';
+                            $istAktionKat  = (int)($knoten['ist_aktions_kategorie'] ?? 0);
+                            $aktionAktiv   = (int)($knoten['aktion_aktiv']   ?? 0);
+                            $aktionZukunft = (int)($knoten['aktion_zukunft'] ?? 0);
+                            $aktionInfo    = $knoten['aktion_info'] ?? '';
+                            $aktionSymbol  = '';
+                            $katOpacity    = '';
                             if ($istAktionKat) {
-                                $farbe       = $aktionAktiv ? '#e67e22' : '#aaa';
-                                $titel       = $aktionAktiv ? 'Aktions-Kategorie (aktiv)' : 'Aktions-Kategorie (geplant/inaktiv)';
-                                $aktionSymbol = '<span title="' . $titel . '" style="color:' . $farbe . ';margin-right:2px;font-size:11px">⏰</span>';
+                                if ($aktionAktiv) {
+                                    $titel = 'Aktions-Kategorie (aktiv)' . ($aktionInfo ? "\n" . $aktionInfo : '');
+                                    $aktionSymbol = '<span title="' . htmlspecialchars($titel) . '" style="color:#e67e22;margin-right:2px;font-size:11px">⏰</span>';
+                                } elseif ($aktionZukunft) {
+                                    $titel = 'Aktions-Kategorie (geplant)' . ($aktionInfo ? "\n" . $aktionInfo : '');
+                                    $aktionSymbol = '<span title="' . htmlspecialchars($titel) . '" style="color:#e67e22;margin-right:2px;font-size:11px">⏰</span>';
+                                    $katOpacity   = 'opacity:.45;';
+                                } else {
+                                    $titel = 'Aktions-Kategorie (abgelaufen)' . ($aktionInfo ? "\n" . $aktionInfo : '');
+                                    $aktionSymbol = '<span title="' . htmlspecialchars($titel) . '" style="filter:grayscale(1);opacity:.5;margin-right:2px;font-size:11px">⏰</span>';
+                                    $katOpacity   = 'opacity:.45;';
+                                }
                             }
                         ?>
                             <div class="kat-knoten">
                                 <a href="liste.php?kategorie_id=<?= $knoten['id'] ?>"
                                     class="kat-zeile <?= $istAktiv ? 'aktiv' : '' ?>"
-                                    style="padding-left:<?= $einzug ?>px">
+                                    style="padding-left:<?= $einzug ?>px;<?= $katOpacity ?>">
                                     <?php if ($hatKinder): ?>
                                         <span class="kat-toggle" id="<?= $toggleId ?>"
                                             onclick="event.preventDefault();katToggle('<?= $nodeId ?>','<?= $toggleId ?>')">▶</span>

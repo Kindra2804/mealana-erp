@@ -21,14 +21,24 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe, int $pos, int $total
     $anzahl  = (int)($knoten['artikel_anzahl'] ?? 0);
     ?>
     <?php
-        $istAktionKat  = (int)($knoten['ist_aktions_kategorie'] ?? 0);
-        $aktionAktiv   = (int)($knoten['aktion_aktiv'] ?? 0);
-        $uhrsymbol     = '';
+        $istAktionKat   = (int)($knoten['ist_aktions_kategorie'] ?? 0);
+        $aktionAktiv    = (int)($knoten['aktion_aktiv']   ?? 0);
+        $aktionZukunft  = (int)($knoten['aktion_zukunft'] ?? 0);
+        $aktionInfo     = $knoten['aktion_info'] ?? '';
+        $uhrsymbol      = '';
+        $zeileDimmed    = false;
         if ($istAktionKat) {
             if ($aktionAktiv) {
-                $uhrsymbol = ' <span title="Aktions-Kategorie (aktiv)" style="color:#e67e22">⏰</span>';
+                $titel      = 'Aktions-Kategorie (aktiv)' . ($aktionInfo ? "\n" . $aktionInfo : '');
+                $uhrsymbol  = ' <span title="' . htmlspecialchars($titel) . '" style="color:#e67e22">⏰</span>';
+            } elseif ($aktionZukunft) {
+                $titel      = 'Aktions-Kategorie (geplant)' . ($aktionInfo ? "\n" . $aktionInfo : '');
+                $uhrsymbol  = ' <span title="' . htmlspecialchars($titel) . '" style="color:#e67e22">⏰</span>';
+                $zeileDimmed = true;
             } else {
-                $uhrsymbol = ' <span title="Aktions-Kategorie (geplant/inaktiv)" style="color:#aaa">⏰</span>';
+                $titel      = 'Aktions-Kategorie (abgelaufen)' . ($aktionInfo ? "\n" . $aktionInfo : '');
+                $uhrsymbol  = ' <span title="' . htmlspecialchars($titel) . '" style="filter:grayscale(1);opacity:.5">⏰</span>';
+                $zeileDimmed = true;
             }
         }
     ?>
@@ -36,7 +46,7 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe, int $pos, int $total
          data-name="<?= htmlspecialchars($knoten['name']) ?>"
          data-parent="<?= $knoten['parent_id'] ?? '' ?>"
          data-iak="<?= $istAktionKat ?>"
-         style="padding-left:<?= 16 + $einzug ?>px">
+         style="padding-left:<?= 16 + $einzug ?>px<?= $zeileDimmed ? ';opacity:.45' : '' ?>">
 
         <span class="katv-toggle <?= $istBlatt ? 'katv-leer' : '' ?>"
               onclick="this.closest('.katv-gruppe').querySelector('.katv-kinder')?.classList.toggle('versteckt');this.textContent=this.textContent==='▶'?'▼':'▶'">
