@@ -33,3 +33,6 @@
 - [Statistik Konzept](project_statistik.md) — Kein eigener Sidebar-Link bis Verkauf steht; kommt aus Dashboard + Verkauf-Modul
 - [Kundendatenbank Design](project_kundendatenbank.md) — B2B gleich einbauen, Laufkunde, Shop-Sync/Merge, AES-256-GCM Verschlüsselung, DSGVO Crypto-Shredding (Stand 2026-06-19)
 - [Feedback: Emoji CSS](feedback_emoji_css.md) — color: hat keine Wirkung auf Emojis → filter:grayscale(1) verwenden
+- [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
+- [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
+- [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)

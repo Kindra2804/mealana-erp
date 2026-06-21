@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-19 (Session 4)
+Stand: 2026-06-21 (Session 6)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -32,6 +32,9 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - zahlungsbedingungen (046): geteilt Kunden + Lieferanten, 5 Standard-Einträge
 - kunden + kunden_adressen + kunden_ansprechpartner + kunden_dsgvo_consent + kunden_shops + kunden_merge_queue (047): AES-256-GCM Verschlüsselung, Laufkunde id=1
 - hersteller: ALTER TABLE (048) — handelsname, email, strasse, plz, ort, logo_pfad, reo_name/strasse/plz/ort/land/email
+- partner + mietfaecher (049-052): Stamm, Belege, Spenden-Log, artikel_partner
+- mietfaecher redesign (053): physische Stammdaten, mietfach_mietvertraege (History)
+- partner.typ ENUM + 'mietfach' (054)
 - Dump aktualisieren: `& "C:\xampp\mysql\bin\mysqldump.exe" --host=localhost --user=root --no-tablespaces --routines --skip-comments mealana_erp | Out-File -FilePath "D:\ERP\mealana\erp\database\schema_current.sql" -Encoding utf8`
 
 ## ✅ Fertige Module (Stand 2026-06-19)
@@ -77,6 +80,14 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - Migrations 046+047, AES-256-GCM, Laufkunde id=1
 - DSGVO-Consent-Log, Adressen-Modals
 
+### Partner-Modul ✅ VOLLSTÄNDIG (2026-06-21)
+- Migrations 049–054 eingespielt
+- Partner-Typen: mietfach / kommission / spende / beides (+ Auto-Beleg-Typ)
+- Mietfächer als physische Einheiten (Maße, Ort, Standardpreis)
+- Mietverträge mit History (vertrag_starten / vertrag_beenden)
+- public/partner/: liste.php, mietfaecher.php + alle AJAX-Endpoints
+- MietfachRepository + MietfachService
+
 ### Hersteller-Modul ✅ VOLLSTÄNDIG (2026-06-19)
 - Migration 048: GPSR-Felder (Adresse, E-Mail, Handelsname, Logo, REO)
 - HerstellerRepository + HerstellerService (EU-Check, GPSR-Status, Logo GD-Upload 200×200)
@@ -101,7 +112,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Auftragsmodul/Verkauf | HOCH |
 | Kasse/POS | HOCH (RKSV-Pflicht AT) |
 | Inventur | MITTEL |
-| Shop-Export (inkl. WooCommerce Kunden-Sync) | MITTEL |
+| Shop-Export (inkl. WooCommerce Kunden-Sync) | MITTEL — Design-Entscheidungen 2026-06-21 fertig (siehe db_design_entscheidungen.md) |
 | Buchhaltung/DATEV | MITTEL |
 | Kunden-Merge-UI (kunden_merge_queue) | NIEDRIG |
 | Seriennummern | NIEDRIG |

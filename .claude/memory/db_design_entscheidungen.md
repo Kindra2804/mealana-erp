@@ -452,6 +452,23 @@ Eigene Shops werden direkt vom ERP versorgt (ERP = Headless-Backend, eigenes Fro
 
 **How to apply:** Beim Bauen des Shop-Moduls und der REST-API diese Entscheidungen als Basis verwenden. WooCommerce-Adapter als erstes externes Ziel implementieren.
 
+**WooCommerce Kategorie-Sync (Entscheidung 2026-06-21):**
+- Beim Sync den **vollen Pfad** in WooCommerce anlegen (WolleundGarne → Hersteller → DROPS via `parent` field)
+- Dem Artikel wird nur die **Blatt-Kategorie** zugewiesen (nicht alle Vorfahren)
+- WooCommerce-Einstellung "Show products from subcategories" steuert Sichtbarkeit in Elternkategorien
+- `kategorie_shops.externe_kategorie_id` speichert die WC-seitige Kategorie-ID pro Shop
+
+**Kanal-Chips an Kategorien (Entscheidung 2026-06-21):**
+- Chips werden **berechnet**, nicht manuell gepflegt
+- Eine Kategorie gilt als "in Shop X aktiv" wenn mindestens ein Artikel in ihr (oder rekursiv in Kindkategorien) in Shop X aktiv ist
+- Leere Elternkategorien erben Chips von Kindkategorien (rekursiv hochgeerbt)
+- Kein manuelles Pflegen nötig → kein Pflegeaufwand
+
+**Multi-Shop Kategorienbaum (Entscheidung 2026-06-21):**
+- **Ein gemeinsamer Kategoriebaum** für alle Shops (nicht getrennte Wurzeln wie JTL)
+- Sichtbarkeit pro Shop via bestehende `kategorie_shops`-Tabelle
+- Begründung: Bio-wolle.at + MeaLana teilen Großteil des Sortiments → getrennte Bäume wären Doppelpflege
+
 ---
 
 ## Lizenzierung & Deployment-Modell (beschlossen 2026-06-12)

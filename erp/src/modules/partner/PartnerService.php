@@ -26,11 +26,6 @@ class PartnerService
         return $this->repo->findById($id);
     }
 
-    public function getMietfaecher(int $partnerId): array
-    {
-        return $this->repo->findMietfaecherByPartner($partnerId);
-    }
-
     // -------------------------------------------------------------------------
     // Partner speichern / aktualisieren
     // -------------------------------------------------------------------------
@@ -70,36 +65,6 @@ class PartnerService
     }
 
     // -------------------------------------------------------------------------
-    // Mietfächer speichern / aktualisieren
-    // -------------------------------------------------------------------------
-
-    public function saveMietfach(array $data): array
-    {
-        $fehler = $this->validieresMietfach($data);
-        if (!empty($fehler)) {
-            return ['erfolg' => false, 'fehler' => $fehler];
-        }
-
-        $id = $this->repo->insertMietfach($data);
-        return ['erfolg' => true, 'id' => $id];
-    }
-
-    public function aktualisiereMietfach(array $data): array
-    {
-        if (empty($data['id'])) {
-            return ['erfolg' => false, 'fehler' => ['ID fehlt.']];
-        }
-
-        $fehler = $this->validieresMietfach($data);
-        if (!empty($fehler)) {
-            return ['erfolg' => false, 'fehler' => $fehler];
-        }
-
-        $this->repo->updateMietfach($data);
-        return ['erfolg' => true];
-    }
-
-    // -------------------------------------------------------------------------
     // Validierung
     // -------------------------------------------------------------------------
 
@@ -111,9 +76,9 @@ class PartnerService
             $fehler[] = 'Name ist Pflichtfeld.';
         }
 
-        $gueltigeTypen = ['kommission', 'spende', 'beides'];
+        $gueltigeTypen = ['mietfach', 'kommission', 'spende', 'beides'];
         if (empty($data['typ']) || !in_array($data['typ'], $gueltigeTypen, true)) {
-            $fehler[] = 'Typ muss "kommission", "spende" oder "beides" sein.';
+            $fehler[] = 'Typ muss "mietfach", "kommission", "spende" oder "beides" sein.';
         }
 
         if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
@@ -124,32 +89,6 @@ class PartnerService
             if (!is_numeric($data['provisions_satz']) || (float)$data['provisions_satz'] < 0) {
                 $fehler[] = 'Provision muss eine Zahl größer oder gleich 0 sein.';
             }
-        }
-
-        return $fehler;
-    }
-
-    private function validieresMietfach(array $data): array
-    {
-        $fehler = [];
-
-        if (empty($data['fach_bezeichnung'])) {
-            $fehler[] = 'Fach-Bezeichnung ist Pflichtfeld.';
-        }
-
-        if (empty($data['mietbetrag_monatlich'])
-            || !is_numeric($data['mietbetrag_monatlich'])
-            || (float)$data['mietbetrag_monatlich'] <= 0) {
-            $fehler[] = 'Mietbetrag muss eine Zahl größer als 0 sein.';
-        }
-
-        if (empty($data['mietbeginn'])) {
-            $fehler[] = 'Mietbeginn ist Pflichtfeld.';
-        }
-
-        if (!empty($data['mietende']) && !empty($data['mietbeginn'])
-            && $data['mietende'] <= $data['mietbeginn']) {
-            $fehler[] = 'Mietende muss nach dem Mietbeginn liegen.';
         }
 
         return $fehler;

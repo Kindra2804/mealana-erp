@@ -34,10 +34,11 @@ class PartnerRepository
 
         $stmt = $this->db->prepare("
             SELECT p.*,
-                   COUNT(m.id)                              AS anzahl_faecher,
-                   SUM(CASE WHEN m.aktiv = 1 THEN 1 END)   AS aktive_faecher
+                   COUNT(v.id) AS aktuelle_faecher
             FROM   partner p
-            LEFT JOIN mietfaecher m ON m.partner_id = p.id
+            LEFT JOIN mietfach_mietvertraege v
+                   ON  v.partner_id  = p.id
+                   AND (v.mietende IS NULL OR v.mietende >= CURDATE())
             $where
             GROUP BY p.id
             ORDER BY p.name
@@ -116,57 +117,4 @@ class PartnerRepository
         return $stmt->rowCount() > 0;
     }
 
-    // -------------------------------------------------------------------------
-    // Mietfächer
-    // -------------------------------------------------------------------------
-
-    public function findMietfaecherByPartner(int $partnerId): array
-    {
-        $stmt = $this->db->prepare('
-            SELECT * FROM mietfaecher
-            WHERE  partner_id = :partner_id
-            ORDER BY fach_bezeichnung
-        ');
-        $stmt->execute(['partner_id' => $partnerId]);
-        return $stmt->fetchAll();
-    }
-
-    public function insertMietfach(array $data): int
-    {
-        $data['mwst_satz'] = $data['mwst_satz'] ?? 20.00;
-        $data['mietende']  = $data['mietende']  ?: null;
-        $data['aktiv']     = $data['aktiv']      ?? 1;
-
-        $stmt = $this->db->prepare('
-            INSERT INTO mietfaecher (
-                partner_id, fach_bezeichnung, mietbetrag_monatlich,
-                mwst_satz, mietbeginn, mietende, aktiv
-            ) VALUES (
-                :partner_id, :fach_bezeichnung, :mietbetrag_monatlich,
-                :mwst_satz, :mietbeginn, :mietende, :aktiv
-            )
-        ');
-
-        $stmt->execute($data);
-        return (int) $this->db->lastInsertId();
-    }
-
-    public function updateMietfach(array $data): bool
-    {
-        $data['mietende'] = $data['mietende'] ?: null;
-
-        $stmt = $this->db->prepare('
-            UPDATE mietfaecher SET
-                fach_bezeichnung      = :fach_bezeichnung,
-                mietbetrag_monatlich  = :mietbetrag_monatlich,
-                mwst_satz             = :mwst_satz,
-                mietbeginn            = :mietbeginn,
-                mietende              = :mietende,
-                aktiv                 = :aktiv
-            WHERE id = :id
-        ');
-
-        $stmt->execute($data);
-        return $stmt->rowCount() > 0;
-    }
 }
