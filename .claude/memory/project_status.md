@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-21 (Session 6)
+Stand: 2026-06-22 (Session 7)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -22,7 +22,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ```
 
 ## Schema-Referenz
-- 48 Migrations angewendet (001–048)
+- 58 Migrations angewendet (001–058)
 - aktionen (042): umgebaut aus preis_aktionen, kein typ/zeitraum mehr auf Aktion selbst
 - aktionen_kategorien (042): Kategorie ↔ Aktion + Zeitraum pro Zuweisung
 - aktionen_artikel_preise (042): Preiseingaben pro Aktion + Vater + Sub-Achse + KG
@@ -104,11 +104,22 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 |-----|-----------|
 | Aktions-Kategorie-Zuweisung: kein Auto-Aktionspreis | MITTEL |
 
+### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG (2026-06-22)
+- Migrations 055–058: meldebestand/sicherheitsbestand/standardbestellmenge auf artikel, bestellungen, bestellung_positionen, bestellung_eingaenge
+- BestellungRepository + BestellungService + WareneingangRepository + WareneingangService
+- public/bestellungen/: liste, neu, detail, speichern, rechnung_speichern, stornieren + AJAX (artikel_ajax, reserviert_ajax)
+- public/wareneingang/: index (EAN-Scan + Kacheln), detail (Scan-Modus + Abschluss-Dialog), speichern, abschliessen + AJAX
+- Packplatz-ready: wareneingang als eigenständiges Modul (keine Shell-Abhängigkeit nötig)
+- Reserviert-Infobox: VPE-Berechnung + 1-Klick Übernahme in Bestellung
+- Teillieferung-Dialog: "warten" oder "Rest streichen" (DROPS-Modell mit Gutschrift-Notiz)
+- Artikelbild beim Scan-Modus (Fehlerreduktion für Praktikanten)
+- Logger in KundenService nachgezogen (war fehlend)
+- Shell: Einkauf-Nav → bestellungen/liste.php, Sidebar: Bestellungen + Wareneingang + Lieferanten
+
 ## 🔴 Noch nicht gebaut
 
 | Modul | Priorität |
 |---|---|
-| Bestellwesen/Einkauf | HOCH |
 | Auftragsmodul/Verkauf | HOCH |
 | Kasse/POS | HOCH (RKSV-Pflicht AT) |
 | Inventur | MITTEL |

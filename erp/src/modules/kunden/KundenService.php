@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/KundenRepository.php';
 
 class KundenService
@@ -56,6 +57,11 @@ class KundenService
             ]));
         }
 
+        Logger::log('kunden.anlegen', 'kunden', $id, [
+            'kundennummer' => $data['kundennummer'],
+            'name'         => trim(($data['vorname'] ?? '') . ' ' . ($data['nachname'] ?? $data['firmenname'] ?? '')),
+        ]);
+
         return ['erfolg' => true, 'id' => $id, 'kundennummer' => $data['kundennummer']];
     }
 
@@ -90,6 +96,11 @@ class KundenService
         $data['kundennummer'] = $kunde['kundennummer'];
 
         $this->repo->update($data);
+
+        Logger::log('kunden.bearbeiten', 'kunden', (int)$data['id'], [
+            'kundennummer' => $kunde['kundennummer'],
+        ]);
+
         return ['erfolg' => true];
     }
 
@@ -100,6 +111,9 @@ class KundenService
             return ['erfolg' => false, 'fehler' => ['Ungültiger Status']];
         }
         $this->repo->updateStatus($id, $status);
+
+        Logger::log('kunden.status', 'kunden', $id, ['status' => $status]);
+
         return ['erfolg' => true];
     }
 
@@ -119,6 +133,12 @@ class KundenService
             return ['erfolg' => false, 'fehler' => $fehler];
         }
         $id = $this->repo->insertAdresse($data);
+
+        Logger::log('kunden.adresse_anlegen', 'kunden_adressen', $id, [
+            'kunde_id' => $data['kunde_id'],
+            'typ'      => $data['adresstyp'] ?? '',
+        ]);
+
         return ['erfolg' => true, 'id' => $id];
     }
 
@@ -129,12 +149,20 @@ class KundenService
             return ['erfolg' => false, 'fehler' => $fehler];
         }
         $this->repo->updateAdresse($data);
+
+        Logger::log('kunden.adresse_bearbeiten', 'kunden_adressen', (int)($data['id'] ?? 0), [
+            'kunde_id' => $data['kunde_id'],
+        ]);
+
         return ['erfolg' => true];
     }
 
     public function adresseLoeschen(int $id): array
     {
         $this->repo->deleteAdresse($id);
+
+        Logger::log('kunden.adresse_loeschen', 'kunden_adressen', $id);
+
         return ['erfolg' => true];
     }
 
@@ -153,6 +181,12 @@ class KundenService
             return ['erfolg' => false, 'fehler' => ['Pflichtfelder fehlen']];
         }
         $id = $this->repo->insertConsent($data);
+
+        Logger::log('kunden.consent', 'kunden_dsgvo_consent', $id, [
+            'kunde_id'    => $data['kunde_id'],
+            'consent_typ' => $data['consent_typ'],
+        ]);
+
         return ['erfolg' => true, 'id' => $id];
     }
 

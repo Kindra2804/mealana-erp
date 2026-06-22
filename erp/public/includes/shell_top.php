@@ -28,9 +28,16 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📥', 'label' => 'Wareneingang',     'href' => '/mealana/lager/wareneingang.php'],
         ['icon' => '🔖', 'label' => 'Chargen-Nachtrag', 'href' => '/mealana/lager/nachtrag_liste.php'],
     ],
+    'einkauf' => [
+        ['icon' => '📋', 'label' => 'Bestellungen',    'href' => '/mealana/bestellungen/liste.php'],
+        ['icon' => '➕', 'label' => 'Neue Bestellung', 'href' => '/mealana/bestellungen/neu.php'],
+        ['icon' => '📥', 'label' => 'Wareneingang',    'href' => '/mealana/wareneingang/index.php'],
+        ['icon' => '🏢', 'label' => 'Lieferanten',     'href' => '/mealana/lieferanten/liste.php'],
+    ],
     'lieferanten' => [
         ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/lieferanten/liste.php'],
         ['icon' => '➕', 'label' => 'Neu',          'href' => '/mealana/lieferanten/neu.php'],
+        ['icon' => '◀',  'label' => 'Zurück: Einkauf', 'href' => '/mealana/bestellungen/liste.php', 'type' => 'back'],
     ],
     'kunden' => [
         ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/kunden/liste.php'],
@@ -75,7 +82,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <a href="/mealana/artikel/liste.php"      class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
                 <a href="/mealana/lager/wareneingang.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
                 <a href="/mealana/kunden/liste.php"       class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
-                <a href="/mealana/lieferanten/liste.php"  class="erp-nav-link <?= ($activeModule ?? '') === 'lieferanten' ? 'active' : '' ?>">Einkauf</a>
+                <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf','lieferanten']) ? 'active' : '' ?>">Einkauf</a>
                 <a href="/mealana/partner/liste.php"      class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
                 <a href="#" title="Verkauf — kommt bald"      class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
                 <a href="#" title="Versand — kommt bald"      class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
