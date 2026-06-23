@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
@@ -240,14 +240,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 </form>
 
-<script>
-function toggleFirma(isFirma) {
-    document.getElementById('feld-firmenname').style.display  = isFirma ? '' : 'none';
-    document.getElementById('feld-uid').style.display         = isFirma ? '' : 'none';
-    document.getElementById('feld-kreditlimit').style.display = isFirma ? '' : 'none';
-    document.getElementById('feld-geburtsdatum').style.visibility = isFirma ? 'hidden' : '';
-    document.getElementById('nachname-stern').style.display   = isFirma ? 'none' : '';
-}
-</script>
+<script src="/mealana/js/kunden.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

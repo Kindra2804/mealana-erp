@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/partner/PartnerService.php';
 
@@ -251,94 +251,6 @@ function partnerFormFelder(string $prefix = ''): string {
 }
 ?>
 
-<script>
-function zeigeBanner(msg, ok = true) {
-    const b = document.getElementById('banner');
-    b.textContent = msg;
-    b.style.background = ok ? '#2ecc71' : '#e74c3c';
-    b.style.color      = '#fff';
-    b.style.display    = 'block';
-    setTimeout(() => { b.style.display = 'none'; }, 3000);
-}
-
-function typToggle(prefix) {
-    const typ       = document.getElementById(prefix + 'typ').value;
-    const provZeile = document.getElementById(prefix + 'provision-zeile');
-    const belegSel  = document.getElementById(prefix + 'abrechnungs_beleg_typ');
-
-    // Provision nur bei Kommission und Sonderfall sinnvoll
-    if (provZeile) provZeile.style.display = ['kommission','beides'].includes(typ) ? '' : 'none';
-
-    // Beleg-Typ automatisch vorbelegen (nur wenn Nutzer noch nichts geändert hat)
-    if (belegSel) {
-        const autoMap = { mietfach: 'fremdrechnung', kommission: 'gutschrift', spende: 'info', beides: 'gutschrift' };
-        if (autoMap[typ]) belegSel.value = autoMap[typ];
-    }
-}
-
-// Partner Neu
-function modalNeuOeffnen() {
-    document.getElementById('form-neu').reset();
-    typToggle('');
-    document.getElementById('modal-neu').style.display = 'block';
-}
-function modalNeuSchliessen() {
-    document.getElementById('modal-neu').style.display = 'none';
-}
-async function partnerSpeichern(e) {
-    e.preventDefault();
-    const res  = await fetch('/mealana/partner/speichern.php', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
-    if (data.erfolg) { zeigeBanner('Partner gespeichert.'); modalNeuSchliessen(); setTimeout(() => location.reload(), 600); }
-    else             { zeigeBanner(data.fehler.join(' | '), false); }
-}
-
-// Partner Bearbeiten
-function modalBearbeitenOeffnen(p) {
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
-    const chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!parseInt(val); };
-    document.getElementById('edit-id').value = p.id;
-    set('edit-name',                  p.name);
-    set('edit-typ',                   p.typ);
-    set('edit-email',                 p.email);
-    set('edit-telefon',               p.telefon);
-    set('edit-iban',                  p.iban);
-    set('edit-uid_nummer',            p.uid_nummer);
-    set('edit-zvr_nummer',            p.zvr_nummer);
-    set('edit-provisions_satz',       p.provisions_satz);
-    set('edit-abrechnungs_modus',     p.abrechnungs_modus);
-    set('edit-abrechnungs_beleg_typ', p.abrechnungs_beleg_typ);
-    set('edit-notiz',                 p.notiz);
-    chk('edit-kleinunternehmer',      p.kleinunternehmer);
-    typToggle('edit-');
-    document.getElementById('modal-bearbeiten').style.display = 'block';
-}
-function modalBearbeitenSchliessen() {
-    document.getElementById('modal-bearbeiten').style.display = 'none';
-}
-async function partnerAktualisieren(e) {
-    e.preventDefault();
-    const res  = await fetch('/mealana/partner/aktualisieren.php', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
-    if (data.erfolg) { zeigeBanner('Partner gespeichert.'); modalBearbeitenSchliessen(); setTimeout(() => location.reload(), 600); }
-    else             { zeigeBanner(data.fehler.join(' | '), false); }
-}
-
-// Status Toggle
-async function statusToggle(id, aktiv) {
-    const fd = new FormData();
-    fd.append('id', id); fd.append('aktiv', aktiv);
-    const res  = await fetch('/mealana/partner/status_setzen.php', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.erfolg) { zeigeBanner(aktiv ? 'Aktiviert.' : 'Deaktiviert.'); setTimeout(() => location.reload(), 600); }
-    else             { zeigeBanner('Fehler beim Speichern.', false); }
-}
-
-document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    modalNeuSchliessen();
-    modalBearbeitenSchliessen();
-});
-</script>
+<script src="/mealana/js/partner_liste.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

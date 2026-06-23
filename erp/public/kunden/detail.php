@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kunden/KundenService.php';
 
@@ -50,7 +50,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="banner-erfolg" id="flash-banner" style="background:#d1fae5;border-left:3px solid #10b981;padding:10px 16px;border-radius:4px;margin-bottom:16px;font-size:13px">
     <?= htmlspecialchars($flashErfolg) ?>
 </div>
-<script>setTimeout(() => { const b = document.getElementById('flash-banner'); if (b) b.style.display='none'; }, 3000);</script>
 <?php endif; ?>
 
 <!-- Kunden-Header -->
@@ -271,27 +270,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </form>
     </div>
 </div>
-<script>
-function adresseEditOeffnen(card) {
-    var d = card.dataset;
-    document.getElementById('edit-adr-id').value         = d.adrId;
-    document.getElementById('edit-adr-typ').value        = d.adrTyp;
-    document.getElementById('edit-adr-firma').value      = d.adrFirma;
-    document.getElementById('edit-adr-vorname').value    = d.adrVorname;
-    document.getElementById('edit-adr-nachname').value   = d.adrNachname;
-    document.getElementById('edit-adr-strasse').value    = d.adrStrasse;
-    document.getElementById('edit-adr-hausnummer').value = d.adrHausnummer;
-    document.getElementById('edit-adr-plz').value        = d.adrPlz;
-    document.getElementById('edit-adr-ort').value        = d.adrOrt;
-    document.getElementById('edit-adr-land').value       = d.adrLand;
-    document.getElementById('edit-adr-zusatz').value     = d.adrZusatz;
-    document.getElementById('edit-adr-standard').checked = d.adrStandard === '1';
-    document.getElementById('adresse-edit-modal').style.display = 'flex';
-}
-function adresseEditSchliessen() {
-    document.getElementById('adresse-edit-modal').style.display = 'none';
-}
-</script>
 
 <!-- Adresse-Neu-Modal -->
 <div id="adresse-neu-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
@@ -351,10 +329,6 @@ function adresseEditSchliessen() {
         </form>
     </div>
 </div>
-<script>
-function adresseNeuOeffnen()    { document.getElementById('adresse-neu-modal').style.display = 'flex'; }
-function adresseNeuSchliessen() { document.getElementById('adresse-neu-modal').style.display = 'none'; }
-</script>
 
 <!-- ── Tab: DSGVO / Consent ───────────────────────────────────────────── -->
 <?php elseif ($activeTab === 'dsgvo'): ?>
@@ -442,4 +416,5 @@ function adresseNeuSchliessen() { document.getElementById('adresse-neu-modal').s
 </div>
 <?php endif; ?>
 
+<script src="/mealana/js/kunden_detail.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

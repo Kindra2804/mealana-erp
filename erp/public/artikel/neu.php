@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
@@ -391,188 +391,13 @@ function renderKatBaumNeu(array $nodes, int $tiefe = 0): string
     </div>
 </div>
 
-<script src="/mealana/js/artikel.js"></script>
 <script>
-    const zustandSuffixMap = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
-    let vaterArtikelNummer = '';
-
-    function zustandGeaendert(wert) {
-        const bereich = document.getElementById('vater_suche_bereich');
-        const artnrInput = document.getElementById('artikelnummer');
-        if (wert === 'neu') {
-            bereich.classList.add('versteckt');
-            artnrInput.readOnly = false;
-            artnrInput.style.background = '';
-            artnrInput.value = '';
-            vaterArtikelNummer = '';
-        } else {
-            bereich.classList.remove('versteckt');
-            artnrInput.readOnly = true;
-            artnrInput.style.background = 'var(--color-bg)';
-            aktualisiereArtnr(wert);
-        }
-    }
-
-    function aktualisiereArtnr(zustand) {
-        const suffix = zustandSuffixMap[zustand] || '';
-        const artnrInput = document.getElementById('artikelnummer');
-        artnrInput.value = (vaterArtikelNummer && suffix) ? vaterArtikelNummer + '-' + suffix : '';
-    }
-
-    let vaterSuchTimer = null;
-
-    function vaterSuchen(q) {
-        clearTimeout(vaterSuchTimer);
-        const ergebnisDiv = document.getElementById('vater_suche_ergebnis');
-        if (q.length < 2) {
-            ergebnisDiv.style.display = 'none';
-            return;
-        }
-        vaterSuchTimer = setTimeout(() => {
-            fetch('artikel_vater_suche.php?q=' + encodeURIComponent(q))
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.length) {
-                        ergebnisDiv.style.display = 'none';
-                        return;
-                    }
-                    ergebnisDiv.innerHTML = data.map(a =>
-                        `<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px"
-                        onmousedown="vaterAuswaehlen(${a.id},'${a.artikelnummer.replace(/'/g,"\\'")}','${a.name.replace(/'/g,"\\'")}')">
-                        <strong>${a.artikelnummer}</strong> – ${a.name}
-                    </div>`
-                    ).join('');
-                    ergebnisDiv.style.display = 'block';
-                });
-        }, 250);
-    }
-
-    function vaterAuswaehlen(id, artnr, name) {
-        document.getElementById('zustand_vater_id').value = id;
-        document.getElementById('vater_suche_input').value = artnr + ' – ' + name;
-        document.getElementById('vater_info').innerHTML =
-            'Vater: <strong>' + artnr + '</strong> – ' + name;
-        document.getElementById('vater_suche_ergebnis').style.display = 'none';
-        vaterArtikelNummer = artnr;
-        aktualisiereArtnr(document.getElementById('zustand_select').value);
-    }
-
-    function toggleLieferantSektion(headerEl) {
-        const body = document.getElementById('lieferant-bereich');
-        const icon = document.getElementById('lf-toggle-icon');
-        const oeffnen = body.classList.contains('versteckt');
-        body.classList.toggle('versteckt', !oeffnen);
-        icon.textContent = oeffnen ? '▼' : '▶';
-    }
-
-    function berechneEkBrutto() {
-        const netto = parseFloat(document.getElementById('lf_ek_netto').value) || 0;
-        const steuerSel = document.getElementById('steuerklasse_id');
-        const satz = parseFloat(steuerSel?.selectedOptions[0]?.dataset.satz || 0);
-        const brutto = netto * (1 + satz / 100);
-        document.getElementById('lf_ek_brutto').value = brutto > 0 ? brutto.toFixed(2) : '';
-    }
-
-    // Init
-    const initZustand = '<?= old('zustand', $formdata, 'neu') ?>';
-    if (initZustand !== 'neu') zustandGeaendert(initZustand);
-
-    const gespeicherterTyp = '<?= old('artikeltyp', $formdata) ?>';
-    if (gespeicherterTyp) zeigeFelder(gespeicherterTyp);
-
-    document.getElementById('artikeltyp').addEventListener('change', e => zeigeFelder(e.target.value));
-    document.getElementById('brutto_vk').addEventListener('input', () => {
-        berechneNetto();
-        berechneGrundpreis();
-    });
-    document.getElementById('steuerklasse_id').addEventListener('change', () => {
-        berechneNetto();
-        berechneEkBrutto();
-    });
-    document.querySelector('[name="grundpreis_bezugsmenge"]')?.addEventListener('input', berechneGrundpreis);
-    document.querySelector('[name="inhalt_menge"]')?.addEventListener('input', berechneGrundpreis);
-    document.querySelector('[name="inhalt_einheit"]')?.addEventListener('input', berechneGrundpreis);
-
-    berechneNetto();
-    berechneGrundpreis();
-
-    function katModalSchliessen() {
-        document.getElementById('kat-backdrop').style.display = 'none';
-    }
-
-    function katModalOeffnen() {
-        const gewaehlt = [...document.querySelectorAll('input[name="kategorien[]"]')].map(i => i.value);
-        document.querySelectorAll('#kat-checkboxen input[type="checkbox"]').forEach(cb => {
-            cb.checked = gewaehlt.includes(cb.value);
-        });
-        document.getElementById('kat-backdrop').style.display = 'flex';
-    }
-
-    function katUebernehmen() {
-        const angehakt = [...document.querySelectorAll('#kat-checkboxen input[type="checkbox"]:checked')];
-        document.querySelectorAll('input[name="kategorien[]"]').forEach(el => el.remove());
-        const chips = document.getElementById('kat-chips');
-        chips.innerHTML = '';
-        angehakt.forEach(cb => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'kategorien[]';
-            input.value = cb.value;
-            chips.appendChild(input);
-            const span = document.createElement('span');
-            span.className = 'chip chip-aktiv';
-            span.textContent = cb.dataset.name;
-            chips.appendChild(span);
-        });
-        katModalSchliessen();
-    }
-
-    async function katAnlegen() {
-        const katName = document.getElementById('neue-kat-name').value?.trim();
-        const parentId = document.getElementById('neue-kat-parent').value || '';
-        if (!katName) return;
-        const body = 'name=' + encodeURIComponent(katName) + (parentId ? '&parent_id=' + encodeURIComponent(parentId) : '');
-        const data = await fetch('kategorie_neu.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body
-        }).then(r => r.json());
-        if (!data.erfolg) {
-            alert(data.fehler);
-            return;
-        }
-        const tiefe = parentId ? 1 : 0;
-        const label = document.createElement('label');
-        label.className = 'kat-zeile';
-        label.dataset.tiefe = tiefe;
-        label.style.paddingLeft = (tiefe * 20) + 'px';
-        label.innerHTML = (tiefe > 0 ? '<span class="kat-linie">└─</span>' : '') +
-            '<input type="checkbox" value="' + data.id + '" data-name="' + data.name.replace(/"/g, '&quot;') + '" checked>' +
-            '<span class="kat-label' + (tiefe === 0 ? ' kat-wurzel' : '') + '">' + data.name + '</span>';
-        document.getElementById('kat-checkboxen').appendChild(label);
-        const opt = document.createElement('option');
-        opt.value = data.id;
-        opt.textContent = data.name;
-        document.getElementById('neue-kat-parent').appendChild(opt);
-        document.getElementById('neue-kat-name').value = '';
-    }
-
-    document.getElementById('ean_gtin13').addEventListener('blur', async function() {
-        const ean = this.value.trim();
-        const badge = document.getElementById('ean-warn');
-        badge.style.display = 'none';
-        if (ean.length < 8) return;
-
-        const res = await fetch('ean_check.php?ean=' + encodeURIComponent(ean));
-        const data = await res.json();
-        if (data.gefunden) {
-            badge.title = 'EAN bereits in Verwendung: ' + data.artikelnummer + ' – ' + data.name;
-            badge.style.display = 'inline-flex';
-        }
-    });
+window.NEU_ZUSTAND_SUFFIX = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
+window.NEU_INIT_ZUSTAND   = '<?= old('zustand', $formdata, 'neu') ?>';
+window.NEU_INIT_TYP       = '<?= old('artikeltyp', $formdata) ?>';
 </script>
+<script src="/mealana/js/artikel.js"></script>
+<script src="/mealana/js/artikel_neu.js"></script>
 
 <!-- Hersteller Schnell-Anlegen Modal -->
 <div id="hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center">
@@ -590,49 +415,5 @@ function renderKatBaumNeu(array $nodes, int $tiefe = 0): string
         </div>
     </div>
 </div>
-<script>
-    function herstellerSchnellOeffnen() {
-        document.getElementById('hs-modal').style.display = 'flex';
-        document.getElementById('hs-name').focus();
-    }
-
-    function herstellerSchnellSchliessen() {
-        document.getElementById('hs-modal').style.display = 'none';
-        document.getElementById('hs-name').value = '';
-        document.getElementById('hs-land').value = '';
-        document.getElementById('hs-fehler').textContent = '';
-    }
-
-    function herstellerSchnellSpeichern() {
-        var name = document.getElementById('hs-name').value.trim();
-        var land = document.getElementById('hs-land').value.trim().toUpperCase();
-        if (!name) {
-            document.getElementById('hs-fehler').textContent = 'Name ist Pflichtfeld';
-            return;
-        }
-        document.getElementById('hs-fehler').textContent = '';
-        var fd = new FormData();
-        fd.append('name', name);
-        fd.append('land', land);
-        fetch('/mealana/hersteller/schnell_speichern.php', {
-                method: 'POST',
-                body: fd
-            })
-            .then(function(r) {
-                return r.json();
-            })
-            .then(function(d) {
-                if (d.erfolg) {
-                    var sel = document.getElementById('hersteller_id');
-                    var opt = new Option(d.name, d.id, true, true);
-                    sel.add(opt);
-                    herstellerSchnellSchliessen();
-                } else {
-                    document.getElementById('hs-fehler').textContent =
-                        Array.isArray(d.fehler) ? d.fehler.join(', ') : (d.fehler || 'Fehler');
-                }
-            });
-    }
-</script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

@@ -410,121 +410,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <script src="/mealana/js/artikel.js"></script>
 
     <script>
-        // Beim Laden: gespeicherten Typ wiederherstellen
-        const gespeicherterTyp = '<?= old('artikeltyp', $formdata) ?>';
-        if (gespeicherterTyp) {
-            zeigeFelder(gespeicherterTyp);
-        }
-
-        document.getElementById('artikeltyp').addEventListener('change', function() {
-            zeigeFelder(this.value);
-        });
-
-        document.getElementById('brutto_vk').addEventListener('input', function() {
-            berechneNetto();
-            berechneGrundpreis();
-        });
-
-        document.querySelector('[name="steuerklasse_id"]')
-            .addEventListener('change', berechneNetto);
-
-        document.querySelector('[name="grundpreis_bezugsmenge"]')
-            ?.addEventListener('input', berechneGrundpreis);
-
-        document.querySelector('[name="inhalt_menge"]')
-            ?.addEventListener('input', berechneGrundpreis);
-
-        document.querySelector('[name="inhalt_einheit"]')
-            ?.addEventListener('input', berechneGrundpreis);
-
-        // Berechnungen beim Laden anstoßen falls Werte vorhanden
-        berechneNetto();
-        berechneGrundpreis();
-
-        function katModalSchliessen() {
-            document.getElementById('kat-backdrop').style.display = 'none';
-        }
-
-        function katModalOeffnen() {
-            const kategorienArray = [...document.querySelectorAll('input[name="kategorien[]"]')].map(input => input.value);
-
-            document.querySelectorAll('#kat-checkboxen input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = kategorienArray.includes(checkbox.value);
-            });
-
-            document.getElementById('kat-backdrop').style.display = 'flex';
-        }
-        /* Das Modal nutzt jetzt .modal-backdrop / .modal aus components.css */
-
-        function katUebernehmen() {
-            const angehakt = [...document.querySelectorAll('#kat-checkboxen input[type="checkbox"]:checked')];
-            document.querySelectorAll('input[name="kategorien[]"]').forEach(el => el.remove());
-            const chips = document.getElementById('kat-chips');
-
-            chips.innerHTML = '';
-            angehakt.forEach(cb => {
-                // 1. Hidden Input
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'kategorien[]';
-                input.value = cb.value;
-                chips.appendChild(input);
-
-                // 2. Chip-Anzeige
-                const span = document.createElement('span');
-                span.className = 'chip';
-                span.textContent = cb.dataset.name;
-                chips.appendChild(span);
-            });
-            katModalSchliessen();
-        }
-
-        async function katAnlegen() {
-            const katName = document.getElementById('neue-kat-name').value?.trim();
-            if (!katName) {
-                return;
-            }
-
-            const response = await fetch('kategorie_neu.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'name=' + encodeURIComponent(katName)
-            });
-            const data = await response.json();
-
-            if (!data.erfolg) {
-                alert(data.fehler);
-                return;
-            }
-
-            const label = document.createElement('label');
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.value = data.id;
-            cb.dataset.name = data.name;
-            cb.checked = true;
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(' ' + data.name));
-            document.getElementById('kat-checkboxen').appendChild(label);
-
-            document.getElementById('neue-kat-name').value = '';
-        }
-
-        <?php if ($istZustandsArtikel && $vaterArtikel): ?>
-        const zustandSuffixMap = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
-        const vaterArtikelNummer = '<?= htmlspecialchars($vaterArtikel['artikelnummer']) ?>';
-
-        function zustandBearbeitenGeaendert(wert) {
-            const suffix = zustandSuffixMap[wert] || '';
-            const artnrInput = document.getElementById('artikelnummer');
-            if (suffix) {
-                artnrInput.value = vaterArtikelNummer + '-' + suffix;
-            }
-        }
-        <?php endif; ?>
+    window.BEARB_INIT_TYP = '<?= old('artikeltyp', $formdata) ?>';
+    <?php if ($istZustandsArtikel && $vaterArtikel): ?>
+    window.BEARB_ZUSTAND_SUFFIX = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
+    window.BEARB_VATER_ARTNR    = '<?= htmlspecialchars($vaterArtikel['artikelnummer']) ?>';
+    <?php endif; ?>
     </script>
+    <script src="/mealana/js/artikel_bearbeiten.js"></script>
 
 <!-- Hersteller Schnell-Anlegen Modal -->
 <div id="hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center">
@@ -542,39 +434,5 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
     </div>
 </div>
-<script>
-function herstellerSchnellOeffnen() {
-    document.getElementById('hs-modal').style.display = 'flex';
-    document.getElementById('hs-name').focus();
-}
-function herstellerSchnellSchliessen() {
-    document.getElementById('hs-modal').style.display = 'none';
-    document.getElementById('hs-name').value  = '';
-    document.getElementById('hs-land').value  = '';
-    document.getElementById('hs-fehler').textContent = '';
-}
-function herstellerSchnellSpeichern() {
-    var name = document.getElementById('hs-name').value.trim();
-    var land = document.getElementById('hs-land').value.trim().toUpperCase();
-    if (!name) { document.getElementById('hs-fehler').textContent = 'Name ist Pflichtfeld'; return; }
-    document.getElementById('hs-fehler').textContent = '';
-    var fd = new FormData();
-    fd.append('name', name);
-    fd.append('land', land);
-    fetch('/mealana/hersteller/schnell_speichern.php', { method: 'POST', body: fd })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.erfolg) {
-                var sel = document.getElementById('hersteller_id');
-                var opt = new Option(d.name, d.id, true, true);
-                sel.add(opt);
-                herstellerSchnellSchliessen();
-            } else {
-                document.getElementById('hs-fehler').textContent =
-                    Array.isArray(d.fehler) ? d.fehler.join(', ') : (d.fehler || 'Fehler');
-            }
-        });
-}
-</script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

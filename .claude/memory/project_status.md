@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-22 (Session 7)
+Stand: 2026-06-23 (Session 8)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -128,6 +128,12 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - **bestellungen/bearbeiten.php** — Header-Edit + bestehende Positionen anzeigen + neue Positionen hinzufügen (Typeahead alle Artikel via ?alle=1)
 - **JS-Validierung** in bestellungen/neu.php: Artikel muss aus Typeahead geklickt werden (nicht nur getippt)
 - **ArtikelRepository Bugfix**: Qualitätslisten suchten `typ='ean'` statt `typ='GTIN13'` — behoben
+
+## ✅ Modulpflege abgeschlossen (2026-06-23)
+- **JS auslagern**: 21 JS-Dateien aus 21 PHP-Dateien extrahiert (kein inline JS-Block mehr außer PHP-Var-Initialisierern mit `window.*`)
+  - PHP→JS Brücke: `<script>window.VAR = <?= ... ?>;</script>` inline, dann `<script src="/mealana/js/xxx.js">` extern
+  - Erstellt: shell.js, artikel.js, artikel_detail.js, artikel_neu.js, artikel_bearbeiten.js, aktionen.js, aktionen_liste.js, bestellungen_neu.js, bestellungen_bearbeiten.js, wareneingang_index.js, wareneingang_detail.js, lager_wareneingang.js, partner_liste.js, partner_mietfaecher.js, achsen_liste.js, achsen_zuweisen.js, kategorien_verwalten.js, merkmale_verwalten.js, kunden.js, kunden_detail.js, hersteller_liste.js
+- **Bedienungsanleitung**: `public/bedienungsanleitung.php` mit TOC + Kapitel-Platzhaltern (Fertig/Geplant-Badges). 📖-Link in Top-Nav.
 
 ## 🔴 Noch nicht gebaut
 

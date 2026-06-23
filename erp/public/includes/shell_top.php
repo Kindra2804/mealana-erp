@@ -90,6 +90,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <a href="#" title="Buchhaltung — kommt bald"  class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-icons">
+                <a href="/mealana/bedienungsanleitung.php" title="Bedienungsanleitung" class="erp-nav-icon">📖</a>
                 <a href="#" title="Einstellungen — kommt bald" class="erp-nav-icon erp-nav-link-disabled">⚙️</a>
                 <a href="#" title="Super-Admin — kommt bald"   class="erp-nav-icon erp-nav-link-disabled">···</a>
             </div>
@@ -211,117 +212,8 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                         <?php endif; ?>
                     </nav>
                 </div>
-                <script>
-                    (function() {
-                        var LS_KEY = 'mealana_kat_offen';
-
-                        function getState() {
-                            try {
-                                return JSON.parse(localStorage.getItem(LS_KEY) || '{}');
-                            } catch (e) {
-                                return {};
-                            }
-                        }
-
-                        function setState(s) {
-                            localStorage.setItem(LS_KEY, JSON.stringify(s));
-                        }
-
-                        // Beim Laden: gespeicherten Zustand anwenden (Standard = offen)
-                        var state = getState();
-                        document.querySelectorAll('.kat-kinder').forEach(function(el) {
-                            var id = el.id; // z.B. "kat-5"
-                            var toggleEl = document.getElementById('kattog-' + id.replace('kat-', ''));
-                            // Standard = offen; nur schließen wenn explizit false gespeichert
-                            var istOffen = state[id] !== false;
-                            el.classList.toggle('versteckt', !istOffen);
-                            if (toggleEl) toggleEl.textContent = istOffen ? '▼' : '▶';
-                        });
-
-                        // Aktive Kategorie aufklappen (überschreibt localStorage)
-                        <?php if ($aktivKatId): ?>
-                                (function aufklappen(nodeId) {
-                                    var el = document.getElementById(nodeId);
-                                    if (!el) return;
-                                    el.classList.remove('versteckt');
-                                    var toggleEl = document.getElementById('kattog-' + nodeId.replace('kat-', ''));
-                                    if (toggleEl) toggleEl.textContent = '▼';
-                                    // Eltern ebenfalls aufklappen
-                                    var parent = el.parentElement;
-                                    while (parent) {
-                                        if (parent.classList.contains('kat-kinder')) {
-                                            parent.classList.remove('versteckt');
-                                            var pid = parent.id;
-                                            var pt = document.getElementById('kattog-' + pid.replace('kat-', ''));
-                                            if (pt) pt.textContent = '▼';
-                                        }
-                                        parent = parent.parentElement;
-                                    }
-                                })('kat-<?= $aktivKatId ?>');
-
-                            // Aktive Kategorie in den sichtbaren Bereich scrollen
-                            var aktiveZeile = document.querySelector('.kat-zeile.aktiv');
-                            if (aktiveZeile) {
-                                aktiveZeile.scrollIntoView({
-                                    block: 'center',
-                                    behavior: 'instant'
-                                });
-                            }
-                        <?php endif; ?>
-
-                        window.katToggle = function(nodeId, toggleId) {
-                            var el = document.getElementById(nodeId);
-                            var t = document.getElementById(toggleId);
-                            if (!el) return;
-                            var wirdGeoeffnet = el.classList.contains('versteckt');
-                            el.classList.toggle('versteckt', !wirdGeoeffnet);
-                            if (t) t.textContent = wirdGeoeffnet ? '▼' : '▶';
-                            var s = getState();
-                            s[nodeId] = wirdGeoeffnet; // true = offen
-                            setState(s);
-                        };
-                    })();
-
-                    // ── Neue Kategorie Modal ──────────────────────────────
-                    window.katNeuOeffnen = function() {
-                        document.getElementById('kat-neu-modal').style.display = 'flex';
-                        document.getElementById('kat-neu-name').focus();
-                    };
-                    window.katNeuSchliessen = function() {
-                        document.getElementById('kat-neu-modal').style.display = 'none';
-                        document.getElementById('kat-neu-name').value = '';
-                        document.getElementById('kat-neu-parent').value = '';
-                        document.getElementById('kat-neu-fehler').textContent = '';
-                    };
-                    window.katNeuSpeichern = function() {
-                        var name = document.getElementById('kat-neu-name').value.trim();
-                        var parent = document.getElementById('kat-neu-parent').value;
-                        var fehler = document.getElementById('kat-neu-fehler');
-                        if (!name) {
-                            fehler.textContent = 'Name ist Pflichtfeld';
-                            return;
-                        }
-                        fehler.textContent = '';
-                        fetch('/mealana/artikel/kategorie_erstellen.php', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded'
-                                },
-                                body: 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parent)
-                            })
-                            .then(function(r) {
-                                return r.json();
-                            })
-                            .then(function(d) {
-                                if (d.erfolg) {
-                                    katNeuSchliessen();
-                                    window.location.reload();
-                                } else {
-                                    fehler.textContent = d.fehler || 'Fehler beim Speichern';
-                                }
-                            });
-                    };
-                </script>
+                <script>window.MEALANA_AKTIV_KAT = <?= (int)($aktivKatId ?? 0) ?>;</script>
+                <script src="/mealana/js/shell.js"></script>
 
                 <!-- Neue Kategorie Modal -->
                 <div id="kat-neu-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">

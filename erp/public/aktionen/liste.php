@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/aktionen/AktionenService.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
@@ -116,36 +116,6 @@ $statusLabel = [
     </div>
 </div>
 
-<script>
-    var delAktionId = null;
-
-    function aktionLoeschen(id, name) {
-        delAktionId = id;
-        document.getElementById('del-info').textContent = 'Aktion "' + name + '" wirklich löschen?';
-        document.getElementById('del-modal').style.display = 'flex';
-    }
-    document.getElementById('del-btn').addEventListener('click', function() {
-        if (!delAktionId) return;
-        this.disabled = true;
-        fetch('/mealana/aktionen/aktion_loeschen.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'id=' + delAktionId
-            })
-            .then(function(r) {
-                return r.json();
-            })
-            .then(function(d) {
-                if (d.erfolg) {
-                    window.location.reload();
-                } else {
-                    alert(d.fehler || 'Fehler');
-                    document.getElementById('del-btn').disabled = false;
-                }
-            });
-    });
-</script>
+<script src="/mealana/js/aktionen_liste.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

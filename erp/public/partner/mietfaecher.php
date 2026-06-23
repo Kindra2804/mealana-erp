@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/partner/MietfachService.php';
 
@@ -293,106 +293,6 @@ function fachFormFelder(string $prefix = ''): string {
 }
 ?>
 
-<script>
-function zeigeBanner(msg, ok = true) {
-    const b = document.getElementById('banner');
-    b.textContent = msg;
-    b.style.background = ok ? '#2ecc71' : '#e74c3c';
-    b.style.color = '#fff';
-    b.style.display = 'block';
-    setTimeout(() => { b.style.display = 'none'; }, 3000);
-}
-
-// ----------------------------------------------------------------
-// Fach NEU
-// ----------------------------------------------------------------
-function modalFachNeuOeffnen() {
-    document.getElementById('form-fach-neu').reset();
-    document.getElementById('modal-fach-neu').style.display = 'block';
-    // Checkbox muss nach reset() wieder auf checked gesetzt werden
-    document.querySelector('#form-fach-neu [name="aktiv"]').checked = true;
-}
-
-async function fachSpeichern(e) {
-    e.preventDefault();
-    const res  = await fetch('/mealana/partner/fach_speichern.php', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
-    if (data.erfolg) { zeigeBanner('Fach gespeichert.'); setTimeout(() => location.reload(), 600); }
-    else             { zeigeBanner(data.fehler.join(' | '), false); }
-}
-
-// ----------------------------------------------------------------
-// Fach BEARBEITEN
-// ----------------------------------------------------------------
-function modalFachBearbeitenOeffnen(f) {
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
-    document.getElementById('fb-id').value = f.id;
-    set('fb-bezeichnung', f.fach_bezeichnung);
-    set('fb-ort',         f.ort_beschreibung);
-    set('fb-laenge',      f.laenge_cm);
-    set('fb-breite',      f.breite_cm);
-    set('fb-hoehe',       f.hoehe_cm);
-    set('fb-preis',       f.standard_preis);
-    set('fb-notiz',       f.notiz);
-    document.getElementById('fb-aktiv').checked = parseInt(f.aktiv) === 1;
-    document.getElementById('modal-fach-bearbeiten').style.display = 'block';
-}
-
-async function fachAktualisieren(e) {
-    e.preventDefault();
-    const res  = await fetch('/mealana/partner/fach_aktualisieren.php', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
-    if (data.erfolg) { zeigeBanner('Fach gespeichert.'); setTimeout(() => location.reload(), 600); }
-    else             { zeigeBanner(data.fehler.join(' | '), false); }
-}
-
-// ----------------------------------------------------------------
-// Vertrag STARTEN
-// ----------------------------------------------------------------
-function modalVertragOeffnen(fachId, bezeichnung, standardPreis) {
-    document.getElementById('v-fach-id').value = fachId;
-    document.getElementById('v-preis').value   = standardPreis > 0 ? standardPreis : '';
-    document.getElementById('v-mwst').value    = '20';
-    document.getElementById('v-beginn').value  = new Date().toISOString().slice(0, 10);
-    document.getElementById('v-ende').value    = '';
-    document.getElementById('v-notiz').value   = '';
-    document.getElementById('v-partner').value = '';
-    document.getElementById('vertrag-titel').textContent = 'Vermieten: ' + bezeichnung;
-    document.getElementById('modal-vertrag').style.display = 'block';
-}
-
-async function vertragSpeichern(e) {
-    e.preventDefault();
-    const res  = await fetch('/mealana/partner/vertrag_speichern.php', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
-    if (data.erfolg) { zeigeBanner('Vertrag gestartet.'); setTimeout(() => location.reload(), 600); }
-    else             { zeigeBanner(data.fehler.join(' | '), false); }
-}
-
-// ----------------------------------------------------------------
-// Vertrag BEENDEN
-// ----------------------------------------------------------------
-function modalVertragBeendenOeffnen(vertragId, bezeichnung, mieterName) {
-    document.getElementById('k-vertrag-id').value = vertragId;
-    document.getElementById('k-datum').value      = new Date().toISOString().slice(0, 10);
-    document.getElementById('k-hinweis').textContent =
-        'Mietvertrag für "' + bezeichnung + '" (Mieter: ' + mieterName + ') beenden.';
-    document.getElementById('modal-kuendigen').style.display = 'block';
-}
-
-async function vertragBeenden(e) {
-    e.preventDefault();
-    const res  = await fetch('/mealana/partner/vertrag_beenden.php', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
-    if (data.erfolg) { zeigeBanner('Vertrag beendet. Fach ist wieder frei.'); setTimeout(() => location.reload(), 600); }
-    else             { zeigeBanner(data.fehler.join(' | '), false); }
-}
-
-document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    ['modal-fach-neu','modal-fach-bearbeiten','modal-vertrag','modal-kuendigen']
-        .forEach(id => document.getElementById(id).style.display = 'none');
-});
-</script>
+<script src="/mealana/js/partner_mietfaecher.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
