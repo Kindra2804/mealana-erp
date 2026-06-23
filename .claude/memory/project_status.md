@@ -104,26 +104,30 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 |-----|-----------|
 | Aktions-Kategorie-Zuweisung: kein Auto-Aktionspreis | MITTEL |
 
-### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG (2026-06-22), Verbesserungen 2026-06-23
-- Migrations 055–058: meldebestand/sicherheitsbestand/standardbestellmenge auf artikel, bestellungen, bestellung_positionen, bestellung_eingaenge
+### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG (2026-06-23)
+- Migrations 055–059: meldebestand/sicherheitsbestand/standardbestellmenge, bestellungen, bestellung_positionen (inkl. lieferzeit_text 059), bestellung_eingaenge
 - BestellungRepository + BestellungService + WareneingangRepository + WareneingangService
-- public/bestellungen/: liste, neu, detail, speichern, rechnung_speichern, stornieren + AJAX (artikel_ajax, reserviert_ajax)
-- public/wareneingang/: index (EAN-Scan + Kacheln), detail (Scan-Modus + Abschluss-Dialog), speichern, abschliessen + AJAX
-- Packplatz-ready: wareneingang als eigenständiges Modul (keine Shell-Abhängigkeit nötig)
+- public/bestellungen/: liste, neu, detail, bearbeiten (Header+Positionen+neue hinzufügen), aktualisieren, speichern, rechnung_speichern, stornieren + AJAX (artikel_ajax ?q=/?alle=1, reserviert_ajax)
+- public/wareneingang/: index (EAN-Scan + Kacheln), detail (Scan-Modus + Abschluss-Dialog + ✏ Artikel-bearbeiten pro Zeile), speichern, abschliessen + AJAX
+- Packplatz-ready: wareneingang als eigenständiges Modul
 - Reserviert-Infobox: VPE-Berechnung + 1-Klick Übernahme in Bestellung
 - Teillieferung-Dialog: "warten" oder "Rest streichen" (DROPS-Modell mit Gutschrift-Notiz)
-- Artikelbild beim Scan-Modus (Fehlerreduktion für Praktikanten)
-- Logger in KundenService nachgezogen (war fehlend)
+- Artikelbild beim Scan-Modus (Fehlerreduktion)
 - Shell: Einkauf-Nav → bestellungen/liste.php, Sidebar: Bestellungen + Wareneingang + Lieferanten
-- **2026-06-23:** lager/wareneingang.php: "← Wareneingang" Button in ActionBar (Rückweg fehlte)
-- **2026-06-23:** Typeahead in bestellungen/neu.php: Select durch Live-Suche ersetzt (DROPS-Problem mit 3000 Varianten)
-  - BestellungRepository::findArtikelFuerLieferant($lieferantId, $suche='') — LIKE-Suche + LIMIT 20
-  - artikel_ajax.php: nimmt ?q= Parameter entgegen
-  - neu.php: artikelSuchen() + artikelWaehlen() Autocomplete-Pattern
 
-**Noch offen (Babsi-Feedback 2026-06-23):**
-- Punkt 2: Neuer Artikel vom WE aus anlegen (Session-Breadcrumb zu artikel/neu.php + zurück)
-- Punkt 1: Retroaktive Bestellung aus Wareneingang (Session-Durchlauf + BestellungService::anlegen() sofort erledigt)
+**Babsi-Feedback (alle erledigt 2026-06-23):**
+- **Punkt 2** — EAN nicht gefunden → "Neuen Artikel anlegen" → Session-Breadcrumb → artikel/neu.php mit EAN vorbelegt → nach Save zurück zu WE mit EAN auto-gesucht
+  - wareneingang/artikel_vorbereiten.php (setzt $_SESSION['we_ean'] + we_rueckkehr)
+  - artikel/neu.php + speichern.php: Breadcrumb-Banner + Redirect zurück
+- **Punkt 1** — Artikel gefunden, keine offene Bestellung → "Zur Sammelliste" → Session-Durchlauf sammeln → Lieferant wählen → Bestellung anlegen + sofort erledigt buchen
+  - wareneingang/durchlauf_add.php + durchlauf_clear.php + bestellung_aus_durchlauf.php
+  - wareneingang/index.php: Sammelliste-Box oben wenn Durchlauf nicht leer
+- **Szenario B** — ✏-Button in WE-Detailansicht pro Position → Artikel bearbeiten → zurück zu WE
+  - wareneingang/artikel_bearbeiten_vorbereiten.php (Session-Breadcrumb)
+  - artikel/bearbeiten.php + aktualisieren.php: Breadcrumb-Banner + Redirect zurück
+- **bestellungen/bearbeiten.php** — Header-Edit + bestehende Positionen anzeigen + neue Positionen hinzufügen (Typeahead alle Artikel via ?alle=1)
+- **JS-Validierung** in bestellungen/neu.php: Artikel muss aus Typeahead geklickt werden (nicht nur getippt)
+- **ArtikelRepository Bugfix**: Qualitätslisten suchten `typ='ean'` statt `typ='GTIN13'` — behoben
 
 ## 🔴 Noch nicht gebaut
 

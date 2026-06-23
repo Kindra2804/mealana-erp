@@ -265,6 +265,25 @@ require_once __DIR__ . '/../includes/shell_top.php';
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    document.getElementById('bestellung-form').addEventListener('submit', function(e) {
+        var positionen = document.querySelectorAll('[id^="pos-"]');
+        if (!positionen.length) {
+            e.preventDefault();
+            alert('Bitte mindestens eine Position hinzufügen.');
+            return;
+        }
+        for (var i = 0; i < positionen.length; i++) {
+            var idx = positionen[i].id.replace('pos-', '');
+            var aid = document.getElementById('aid-' + idx);
+            if (aid && !aid.value) {
+                e.preventDefault();
+                alert('Bitte bei jeder Position einen Artikel aus der Suche anklicken (nicht nur tippen).');
+                document.getElementById('asuche-' + idx).focus();
+                return;
+            }
+        }
+    });
+
     // Auto-Laden wenn Lieferant vorgewählt (nach Validierungsfehler)
     document.addEventListener('DOMContentLoaded', function() {
         var sel = document.getElementById('lieferant_id');

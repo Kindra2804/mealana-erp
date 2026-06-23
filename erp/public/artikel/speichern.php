@@ -17,6 +17,9 @@ if (!isset($data['ueberverkauf_erlaubt']) || $data['ueberverkauf_erlaubt'] != '1
     $data['ueberverkauf_erlaubt'] = '0';
 }
 
+$weRueckkehr = $data['we_rueckkehr'] ?? '';
+$weEan       = $data['we_ean']       ?? '';
+
 // speichern.php muss diese Felder herausfiltern:
 $artikelData = array_intersect_key($data, array_flip([
     'artikelnummer',
@@ -52,11 +55,26 @@ $artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;
 $artikelData['netto_vk']  = $data['netto_vk']  ?? null;
 $artikelData['ean_gtin13'] = $data['ean_gtin13'] ?? null;
 
-foreach (['technische_details', 'beschreibung_intern', 'meta_titel', 'meta_description', 'url_slug'] as $feld) {
+foreach (
+    [
+        'technische_details',
+        'beschreibung_intern',
+        'meta_titel',
+        'meta_description',
+        'url_slug',
+        'kurzbeschreibung',
+        'beschreibung',
+        'gewicht_artikel',
+        'gewicht_versand',
+        'herkunftsland',
+        'taric_code'
+    ] as $feld
+) {
     if (!array_key_exists($feld, $artikelData)) {
         $artikelData[$feld] = null;
     }
 }
+
 
 // Leere Strings zu NULL konvertieren
 foreach ($artikelData as $key => $value) {
@@ -113,11 +131,20 @@ if ($result['erfolg']) {
     }
 
     $_SESSION['erfolg'] = 'Artikel wurde gespeichert!';
-    header('Location: detail.php?id=' . $neueArtikelId);
+
+    if ($weRueckkehr && str_starts_with($weRueckkehr, '/mealana/')) {
+        header('Location: ' . $weRueckkehr);
+    } else {
+        header('Location: detail.php?id=' . $neueArtikelId);
+    }
     exit;
 } else {
     $_SESSION['fehler'] = $result['fehler'];
     $_SESSION['formdata'] = $artikelData;
+    if ($weRueckkehr) {
+        $_SESSION['we_rueckkehr'] = $weRueckkehr;
+        $_SESSION['we_ean']       = $weEan;
+    }
     header('Location: neu.php');
     exit;
 }

@@ -37,6 +37,23 @@ class BestellungService
         return $this->repo->findArtikelFuerLieferant($lieferantId, $suche);
     }
 
+    public function getAlleArtikelFuerSuche(string $suche): array
+    {
+        return $this->repo->findAlleArtikelFuerSuche($suche);
+    }
+
+    public function positionHinzufuegen(int $bestellungId, array $pos): void
+    {
+        if (empty($pos['artikel_id']) || empty($pos['menge_bestellt'])) return;
+        $this->repo->insertPosition([
+            'bestellung_id'   => $bestellungId,
+            'artikel_id'      => (int)$pos['artikel_id'],
+            'menge_bestellt'  => (float)$pos['menge_bestellt'],
+            'ek_preis'        => !empty($pos['ek_preis'])       ? (float)$pos['ek_preis']       : null,
+            'lieferzeit_text' => !empty($pos['lieferzeit_text']) ? $pos['lieferzeit_text']       : null,
+        ]);
+    }
+
     public function getReserviertNichtLagernd(int $lieferantId): array
     {
         return $this->repo->findReserviertNichtLagerndFuerLieferant($lieferantId);

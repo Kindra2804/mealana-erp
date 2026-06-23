@@ -143,7 +143,7 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
     <strong style="font-size:13px;display:block;margin-bottom:8px">Positionen</strong>
     <table class="erp-table" id="positionen-tabelle">
         <thead>
-            <tr><th>Artikel</th><th>Bestellt</th><th>Eingeg.</th><th>Offen</th><th></th></tr>
+            <tr><th>Artikel</th><th>Bestellt</th><th>Eingeg.</th><th>Offen</th><th></th><th></th></tr>
         </thead>
         <tbody>
             <?php foreach ($positionen as $p):
@@ -163,6 +163,10 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
                     <td><?= (int)$p['menge_eingegangen'] ?></td>
                     <td><?= $p['gestrichen'] ? '—' : (int)$offen ?></td>
                     <td><?= $icon ?></td>
+                    <td onclick="event.stopPropagation()">
+                        <a href="/mealana/wareneingang/artikel_bearbeiten_vorbereiten.php?artikel_id=<?= $p['artikel_id'] ?>&bestellung_id=<?= $bestellungId ?>"
+                           class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px">✏</a>
+                    </td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

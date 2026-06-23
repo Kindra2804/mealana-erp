@@ -15,6 +15,9 @@ $erfolg   = $_SESSION['erfolg']   ?? null;
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
+$weRueckkehr = $_SESSION['we_rueckkehr'] ?? '';
+unset($_SESSION['we_rueckkehr']);
+
 $zustandSuffixMap = [
     'neu'               => '',
     'gebraucht'         => 'GEB',
@@ -79,11 +82,12 @@ function selected(string $field, string $value, array $formdata): string
 
 $kategorienBaum = $service->getKategorienBaum();
 
-$pageTitle      = 'Artikel bearbeiten';
-$activeModule   = 'artikel';
+$pageTitle    = 'Artikel bearbeiten';
+$activeModule = 'artikel';
+$cancelUrl    = $weRueckkehr ?: 'detail.php?id=' . $id;
 $actionBarContent = <<<HTML
 <button form="artikel-bearbeiten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
-<a href="detail.php?id={$id}" class="btn btn-secondary btn-sm">Abbrechen</a>
+<a href="{$cancelUrl}" class="btn btn-secondary btn-sm">Abbrechen</a>
 HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -108,9 +112,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
     <?php endif; ?>
 
+    <?php if ($weRueckkehr): ?>
+    <div style="background:#f0f8ff;border-left:3px solid var(--color-nav);padding:8px 12px;border-radius:4px;margin-bottom:12px;font-size:13px">
+        ← Nach dem Speichern zurück zum Wareneingang
+    </div>
+    <?php endif; ?>
+
     <form id="artikel-bearbeiten-form" action="aktualisieren.php" method="POST">
 
         <input type="hidden" name="id" value="<?= $id ?>">
+        <?php if ($weRueckkehr): ?>
+        <input type="hidden" name="we_rueckkehr" value="<?= htmlspecialchars($weRueckkehr) ?>">
+        <?php endif; ?>
 
         <div class="gruppe">
             <h2>Stammdaten</h2>

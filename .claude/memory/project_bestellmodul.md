@@ -88,9 +88,25 @@ Lieferantenrechnung kann auch **vorab** erfasst werden (kommt oft per Mail vor L
 - `bestellung_positionen`: bestellung_id, artikel_id, varianten_id, menge_bestellt, menge_eingegangen, ek_preis, lieferzeit_text
 - `bestellung_eingaenge`: Verknüpfung mit lager_bewegungen + chargen_id
 
-## Bekannter Bug / Gap
+## Erweiterte Workflows (Babsi-Feedback, fertig 2026-06-23)
 
-- **KundenService.php fehlt Logger** — als nächstes nachziehen vor Bestellwesen-Start
+### Session-Breadcrumb Pattern
+Wenn aus WE in ein anderes Modul gesprungen wird: `$_SESSION['we_rueckkehr']` + `$_SESSION['we_ean']` setzen, in Zielseite lesen+löschen, als Hidden Fields weiterreichen, nach Save: Redirect zu we_rueckkehr.
+
+Angewendet auf:
+- **Punkt 2**: EAN nicht gefunden → `wareneingang/artikel_vorbereiten.php` setzt Session → `artikel/neu.php` zeigt Kontext-Banner + befüllt EAN → nach Save → zurück zu `wareneingang/index.php?ean=...` (EAN wird auto-gesucht)
+- **Szenario B**: ✏-Button in `wareneingang/detail.php` pro Artikel-Zeile → `wareneingang/artikel_bearbeiten_vorbereiten.php` → `artikel/bearbeiten.php` → zurück zu `wareneingang/detail.php?bestellung_id=...`
+
+### Retroaktive Bestellung (Punkt 1 / Sammelliste)
+Wenn Artikel gefunden aber keine offene Bestellung:
+- "Zur Sammelliste" Button → AJAX POST zu `wareneingang/durchlauf_add.php` → `$_SESSION['we_durchlauf'][]` (inkrement wenn gleicher Artikel)
+- Sammelliste-Box oben in index.php wenn `$_SESSION['we_durchlauf']` nicht leer
+- "Bestellung anlegen" → `wareneingang/bestellung_aus_durchlauf.php`: `BestellungService::anlegen()` + dann `WareneingangService::bucheMenge()` pro Position → Bestellung sofort 'erledigt'
+
+### Typeahead Suche (zwei Modi)
+- `artikel_ajax.php?lieferant_id=X&q=Y` — nur Artikel aus `artikel_lieferanten` für diesen Lieferanten (neu.php)
+- `artikel_ajax.php?alle=1&q=Y` — alle aktiven Nicht-Vater-Artikel (bearbeiten.php neue Positionen)
+- `BestellungRepository::findAlleArtikelFuerSuche()` — eigene Methode ohne Lieferant-Filter, `ist_vater=0`
 
 **Why:** Zu groß für L2. Eigene Session. Packplatz-Anforderung von Anfang an berücksichtigen.
 **How to apply:** Diese Anforderungen als Basis nehmen. Wareneingang als eigenständiges Modul bauen, nicht als Unterseite von Bestellungen.

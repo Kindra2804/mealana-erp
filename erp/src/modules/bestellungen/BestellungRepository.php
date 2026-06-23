@@ -236,4 +236,28 @@ class BestellungRepository
         $stmt->execute(['lieferant_id' => $lieferantId, 'suche' => '%' . $suche . '%']);
         return $stmt->fetchAll();
     }
+
+    public function findAlleArtikelFuerSuche(string $suche): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                a.id,
+                COALESCE(vater.name, a.name)                  AS name,
+                COALESCE(vater.artikelnummer, a.artikelnummer) AS artikelnummer,
+                CASE WHEN a.vaterartikel_id IS NOT NULL THEN a.name END AS variante_name,
+                NULL AS netto_ek,
+                1    AS vpe_menge,
+                NULL AS lieferzeit_tage
+            FROM artikel a
+            LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
+            WHERE a.aktiv = 1
+              AND (a.ist_vater = 0 OR a.ist_vater IS NULL)
+              AND (a.name LIKE :suche OR vater.name LIKE :suche
+                OR a.artikelnummer LIKE :suche OR vater.artikelnummer LIKE :suche)
+            ORDER BY COALESCE(vater.name, a.name), a.name
+            LIMIT 20
+        ");
+        $stmt->execute(['suche' => '%' . $suche . '%']);
+        return $stmt->fetchAll();
+    }
 }

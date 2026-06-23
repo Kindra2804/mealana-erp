@@ -7,7 +7,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$data = $_POST;
+$data        = $_POST;
+$weRueckkehr = $data['we_rueckkehr'] ?? '';
 
 if (!isset($data['charge_pflicht']) || $data['charge_pflicht'] != '1') {
     $data['charge_pflicht'] = '0';
@@ -96,7 +97,11 @@ if ($result['erfolg']) {
         ];
     }
     $_SESSION['erfolg'] = 'Artikel wurde aktualisiert!';
-    header('Location: detail.php?id=' . $data['id']);
+    if ($weRueckkehr && str_starts_with($weRueckkehr, '/mealana/')) {
+        header('Location: ' . $weRueckkehr);
+    } else {
+        header('Location: detail.php?id=' . $data['id']);
+    }
     exit;
 } else {
     $_SESSION['fehler'] = $result['fehler'];
