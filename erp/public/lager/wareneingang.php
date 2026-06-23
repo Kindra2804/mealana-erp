@@ -17,7 +17,9 @@ $pageTitle        = 'Wareneingang';
 $activeModule     = 'lager';
 $actionBarContent = <<<HTML
     <a href="/mealana/lager/uebersicht.php" class="btn btn-secondary btn-sm">← Lagerübersicht</a>
+    <a href="/mealana/wareneingang/index.php" class="btn btn-secondary btn-sm">← Wareneingang</a>
 HTML;
+
 
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -57,7 +59,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <h3 style="margin-top:0">Artikel / Variante</h3>
         <div style="display:flex;gap:8px;margin-bottom:8px">
             <input type="text" id="scan_suche" class="erp-input" style="flex:1"
-                   placeholder="EAN, Artikelnummer oder Name …">
+                placeholder="EAN, Artikelnummer oder Name …">
             <button type="button" class="btn btn-secondary btn-sm" onclick="sucheVariante()">Suchen</button>
         </div>
         <div id="variante_ergebnis" style="margin-bottom:16px"></div>
@@ -125,71 +127,78 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <script>
-let inaktiverArtikel = null;
+    let inaktiverArtikel = null;
 
-document.getElementById('scan_suche').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); sucheVariante(); }
-});
+    document.getElementById('scan_suche').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sucheVariante();
+        }
+    });
 
-function sucheVariante() {
-    const q = document.getElementById('scan_suche').value.trim();
-    if (q.length < 2) return;
+    function sucheVariante() {
+        const q = document.getElementById('scan_suche').value.trim();
+        if (q.length < 2) return;
 
-    fetch('variante_suche.php?q=' + encodeURIComponent(q))
-        .then(r => r.json())
-        .then(data => {
-            const div = document.getElementById('variante_ergebnis');
-            if (data.length === 0) {
-                div.innerHTML = '<p style="color:var(--color-danger);margin:0">Keine Variante gefunden.</p>';
-                return;
-            }
-            if (data.length === 1) {
-                if (data[0].aktiv == 0) { zeigeInaktivDialog(data[0]); } else { waehleVariante(data[0]); }
-                return;
-            }
-            div.innerHTML = data.map(v => `
+        fetch('variante_suche.php?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                const div = document.getElementById('variante_ergebnis');
+                if (data.length === 0) {
+                    div.innerHTML = '<p style="color:var(--color-danger);margin:0">Keine Variante gefunden.</p>';
+                    return;
+                }
+                if (data.length === 1) {
+                    if (data[0].aktiv == 0) {
+                        zeigeInaktivDialog(data[0]);
+                    } else {
+                        waehleVariante(data[0]);
+                    }
+                    return;
+                }
+                div.innerHTML = data.map(v => `
                 <div style="border:1px solid var(--color-border);padding:8px 12px;margin-bottom:4px;border-radius:4px;cursor:pointer"
                      onclick="waehleVariante(${JSON.stringify(v).replace(/"/g, '&quot;')})">
                     <strong>${v.artikelnummer}</strong> – ${v.artikel_name}
                 </div>
             `).join('');
-        });
-}
+            });
+    }
 
-function waehleVariante(v) {
-    document.getElementById('artikel_id').value = v.id;
-    document.getElementById('variante_ergebnis').innerHTML = `
+    function waehleVariante(v) {
+        document.getElementById('artikel_id').value = v.id;
+        document.getElementById('variante_ergebnis').innerHTML = `
         <div style="background:var(--color-success-light,#d4edda);padding:10px 12px;border-radius:4px;display:flex;justify-content:space-between;align-items:center">
             <span>✅ <strong>${v.artikelnummer}</strong> – ${v.artikel_name}</span>
             <button type="button" class="btn btn-secondary btn-sm" onclick="varianteZuruecksetzen()">✖</button>
         </div>`;
-}
+    }
 
-function varianteZuruecksetzen() {
-    document.getElementById('artikel_id').value = '';
-    document.getElementById('variante_ergebnis').innerHTML = '';
-    document.getElementById('scan_suche').value = '';
-    document.getElementById('scan_suche').focus();
-    document.getElementById('reaktivieren').value = 0;
-}
+    function varianteZuruecksetzen() {
+        document.getElementById('artikel_id').value = '';
+        document.getElementById('variante_ergebnis').innerHTML = '';
+        document.getElementById('scan_suche').value = '';
+        document.getElementById('scan_suche').focus();
+        document.getElementById('reaktivieren').value = 0;
+    }
 
-function zeigeInaktivDialog(v) {
-    inaktiverArtikel = v;
-    document.getElementById('artikelname').textContent  = v.artikel_name;
-    document.getElementById('aenderungsdatum').textContent = new Date(v.geaendert_am).toLocaleDateString('de-AT');
-    document.getElementById('deaktivierterArtikelDialog').style.display = 'flex';
-}
+    function zeigeInaktivDialog(v) {
+        inaktiverArtikel = v;
+        document.getElementById('artikelname').textContent = v.artikel_name;
+        document.getElementById('aenderungsdatum').textContent = new Date(v.geaendert_am).toLocaleDateString('de-AT');
+        document.getElementById('deaktivierterArtikelDialog').style.display = 'flex';
+    }
 
-function reaktiviereUndBuche() {
-    document.getElementById('reaktivieren').value = 1;
-    waehleVariante(inaktiverArtikel);
-    document.getElementById('deaktivierterArtikelDialog').style.display = 'none';
-}
+    function reaktiviereUndBuche() {
+        document.getElementById('reaktivieren').value = 1;
+        waehleVariante(inaktiverArtikel);
+        document.getElementById('deaktivierterArtikelDialog').style.display = 'none';
+    }
 
-function abbruch() {
-    document.getElementById('deaktivierterArtikelDialog').style.display = 'none';
-    varianteZuruecksetzen();
-}
+    function abbruch() {
+        document.getElementById('deaktivierterArtikelDialog').style.display = 'none';
+        varianteZuruecksetzen();
+    }
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

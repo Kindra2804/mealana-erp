@@ -32,9 +32,9 @@ class BestellungService
         return $this->repo->findAlleLieferanten();
     }
 
-    public function getArtikelFuerLieferant(int $lieferantId): array
+    public function getArtikelFuerLieferant(int $lieferantId, string $suche = ''): array
     {
-        return $this->repo->findArtikelFuerLieferant($lieferantId);
+        return $this->repo->findArtikelFuerLieferant($lieferantId, $suche);
     }
 
     public function getReserviertNichtLagernd(int $lieferantId): array

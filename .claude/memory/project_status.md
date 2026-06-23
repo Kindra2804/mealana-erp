@@ -104,7 +104,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 |-----|-----------|
 | Aktions-Kategorie-Zuweisung: kein Auto-Aktionspreis | MITTEL |
 
-### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG (2026-06-22)
+### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG (2026-06-22), Verbesserungen 2026-06-23
 - Migrations 055–058: meldebestand/sicherheitsbestand/standardbestellmenge auf artikel, bestellungen, bestellung_positionen, bestellung_eingaenge
 - BestellungRepository + BestellungService + WareneingangRepository + WareneingangService
 - public/bestellungen/: liste, neu, detail, speichern, rechnung_speichern, stornieren + AJAX (artikel_ajax, reserviert_ajax)
@@ -115,6 +115,15 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - Artikelbild beim Scan-Modus (Fehlerreduktion für Praktikanten)
 - Logger in KundenService nachgezogen (war fehlend)
 - Shell: Einkauf-Nav → bestellungen/liste.php, Sidebar: Bestellungen + Wareneingang + Lieferanten
+- **2026-06-23:** lager/wareneingang.php: "← Wareneingang" Button in ActionBar (Rückweg fehlte)
+- **2026-06-23:** Typeahead in bestellungen/neu.php: Select durch Live-Suche ersetzt (DROPS-Problem mit 3000 Varianten)
+  - BestellungRepository::findArtikelFuerLieferant($lieferantId, $suche='') — LIKE-Suche + LIMIT 20
+  - artikel_ajax.php: nimmt ?q= Parameter entgegen
+  - neu.php: artikelSuchen() + artikelWaehlen() Autocomplete-Pattern
+
+**Noch offen (Babsi-Feedback 2026-06-23):**
+- Punkt 2: Neuer Artikel vom WE aus anlegen (Session-Breadcrumb zu artikel/neu.php + zurück)
+- Punkt 1: Retroaktive Bestellung aus Wareneingang (Session-Durchlauf + BestellungService::anlegen() sofort erledigt)
 
 ## 🔴 Noch nicht gebaut
 

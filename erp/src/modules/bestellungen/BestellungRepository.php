@@ -206,8 +206,17 @@ class BestellungRepository
         return $stmt->fetchAll();
     }
 
-    public function findArtikelFuerLieferant(int $lieferantId): array
+    public function findArtikelFuerLieferant(int $lieferantId, string $suche = ''): array
     {
+        $where = "WHERE al.lieferant_id = :lieferant_id AND al.aktiv = 1 AND a.aktiv = 1";
+
+        if ($suche != '') {
+            $where = "WHERE al.lieferant_id = :lieferant_id AND al.aktiv = 1 AND a.aktiv = 1
+                        AND (a.name LIKE :suche OR vater.name LIKE :suche
+                        OR a.artikelnummer LIKE :suche OR vater.artikelnummer LIKE :suche)
+        ";
+        };
+
         $stmt = $this->db->prepare("
             SELECT
                 a.id,
@@ -220,10 +229,11 @@ class BestellungRepository
             FROM artikel_lieferanten al
             JOIN artikel a ON a.id = al.artikel_id
             LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
-            WHERE al.lieferant_id = :lieferant_id AND al.aktiv = 1 AND a.aktiv = 1
+            $where
             ORDER BY name, a.name
+            LIMIT 20
         ");
-        $stmt->execute(['lieferant_id' => $lieferantId]);
+        $stmt->execute(['lieferant_id' => $lieferantId, 'suche' => '%' . $suche . '%']);
         return $stmt->fetchAll();
     }
 }

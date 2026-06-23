@@ -724,7 +724,13 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
 
 ### Neue Module (Reihenfolge)
 4. ~~**Kundendatenbank**~~ ✅ FERTIG (2026-06-19)
-5. **Bestellwesen** ← NÄCHSTE SESSION — Lieferantenbestellungen: wann/von wem/was/EK-Preis/Status. Wareneingang referenziert Bestellung.
+5. ~~**Bestellwesen**~~ ✅ FERTIG (2026-06-22) + Verbesserungen 2026-06-23:
+   - lager/wareneingang.php: "← Wareneingang" ActionBar-Button ergänzt
+   - bestellungen/neu.php: Typeahead-Suche statt Dropdown (DROPS-Problem: 3000 Varianten)
+     - BestellungRepository::findArtikelFuerLieferant($lieferantId, $suche='') — LIKE + LIMIT 20
+     - artikel_ajax.php: ?q= Parameter
+     - JS: artikelSuchen() + artikelWaehlen() Autocomplete-Pattern
+   - **Noch offen:** Artikel-Anlage vom WE aus (Session-Breadcrumb), Retroaktive Bestellung
 6. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
 7. **Packplatz/Picklisten** — Kommissionierung, Packliste
 8. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.
