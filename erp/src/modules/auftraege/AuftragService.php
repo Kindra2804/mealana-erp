@@ -257,4 +257,63 @@ class AuftragService
         if (empty($data['zahlungsart'])) $fehler[] = 'Zahlungsart ist Pflichtfeld';
         return $fehler;
     }
+
+    public function bearbeiten(int $id, array $data, array $positionen): array
+    {
+        // 1. Auftrag laden + prüfen (existiert? noch editierbar?)
+        $auftragsdaten = $this->repo->findById($id);
+        if (!$auftragsdaten) {
+            return ['erfolg' => false, 'fehler' => ['Auftrag nicht gefunden']];
+        }
+
+        if (in_array($auftragsdaten['lieferstatus'], ['versendet', 'abgeschlossen', 'storniert'])) {
+            return ['erfolg' => false, 'fehler' => ['Bereits versendete, abgeschlossene oder stornierte Aufträge können nicht bearbeitet werden']];
+        }
+
+        // 2. Positionen berechnen (berechnePositionen() — schon vorhanden!)
+        $positionenBerechnet = $this->berechnePositionen($positionen);
+
+        if (empty($positionenBerechnet)) {
+            return ['erfolg' => false, 'fehler' => ['Mindestens eine gültige Position ist erforderlich']];
+        }
+        // 3. Summen berechnen (berechneSummen() — schon vorhanden!)
+        $positionenSummen = $this->berechneSummen($positionenBerechnet);
+
+        // 4. Header updaten (neues Repo-Method: updateHeader)
+        $headerData = [
+            'zahlungsart'               => $data['zahlungsart'] ?? 'vorkasse',
+            'lieferart'                 => $data['lieferart'] ?? 'versand',
+            'versandklasse_id'          => !empty($data['versandklasse_id']) ? (int)$data['versandklasse_id'] : null,
+            'versandkosten'             => !empty($data['versandkosten'])   ? (float)$data['versandkosten']     : 0.00,
+            'nettobetrag'               => $positionenSummen['netto'],
+            'steuerbetrag'              => $positionenSummen['steuer'],
+            'bruttobetrag'              => $positionenSummen['brutto'],
+            'notiz_intern'           => !empty($data['notiz_intern'])  ? $data['notiz_intern']  : null,
+            'notiz_versand'          => !empty($data['notiz_versand']) ? $data['notiz_versand'] : null,
+        ];
+        if (!empty($data['lieferadresse_snapshot'])) {
+            $headerData['lieferadresse_snapshot'] = json_encode($data['lieferadresse_snapshot'], JSON_UNESCAPED_UNICODE);
+        }
+
+        $this->repo->updateHeader($id, $headerData);
+
+        // 5. Alte Positionen löschen (neues Repo-Method: deletePositionen)
+        $this->repo->deletePositionen($id);
+
+        // 6. Neue Positionen einfügen (insertPosition() — schon vorhanden!)
+        foreach ($positionenBerechnet as $i => $pos) {
+            $this->repo->insertPosition(array_merge($pos, ['auftrag_id' => $id, 'sort_order' => $i]));
+        }
+
+        // 7. Statuslog schreiben (logStatus() — schon vorhanden!)
+        $this->repo->logStatus($id, ['Gesamtbrutto' => [$auftragsdaten['bruttobetrag'], $positionenSummen['brutto']]], 'Auftrag bearbeitet', $_SESSION['benutzer']['id']);
+
+        Logger::log('auftraege.bearbeiten', 'auftraege', $id, [
+            'kanal'       => $auftragsdaten['kanal'],
+            'positionen'  => count($positionenBerechnet),
+            'brutto'      => $positionenSummen['brutto'],
+        ]);
+
+        return ['erfolg' => true, 'id' => $id];
+    }
 }

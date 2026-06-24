@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
-require_once __DIR__ . '/../../src/modules/kunden/KundenService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: /mealana/auftraege/liste.php');
@@ -9,6 +8,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $service = new AuftragService();
+
+$id = (int)($_POST['id'] ?? 0);
+if (!$id) {
+    header('Location: /mealana/auftraege/liste.php');
+    exit;
+}
 
 $data = [
     'kunden_id'     => !empty($_POST['kunden_id'])     ? (int)$_POST['kunden_id']     : null,
@@ -18,28 +23,8 @@ $data = [
     'versandkosten' => !empty($_POST['versandkosten'])  ? (float)$_POST['versandkosten'] : 0.00,
     'notiz_intern'  => !empty($_POST['notiz_intern'])   ? trim($_POST['notiz_intern'])  : null,
     'notiz_versand' => !empty($_POST['notiz_versand'])  ? trim($_POST['notiz_versand']) : null,
-    'kanal'         => 'manuell',
 ];
 
-// Kunden-Snapshot einfrieren wenn Kunde ausgewählt
-if (!empty($data['kunden_id'])) {
-    $kundenService = new KundenService();
-    $kunde = $kundenService->getById($data['kunden_id']);
-    if ($kunde) {
-        $anzeigeName = trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? ''));
-        if ($kunde['ist_firma'] && !empty($kunde['firmenname'])) $anzeigeName = $kunde['firmenname'];
-        $data['kunden_snapshot'] = [
-            'name'  => $anzeigeName ?: ('Kd. ' . $kunde['kundennummer']),
-            'email' => $kunde['email'] ?? '',
-        ];
-    }
-}
-
-// Adressen als Snapshot einfrieren
-$rechnungsAdresseFelder = array_map('trim', $_POST['rechnungsadresse'] ?? []);
-if (array_filter($rechnungsAdresseFelder)) {
-    $data['rechnungsadresse_snapshot'] = $rechnungsAdresseFelder;
-}
 $lieferAdresseFelder = array_map('trim', $_POST['lieferadresse'] ?? []);
 if (array_filter($lieferAdresseFelder)) {
     $data['lieferadresse_snapshot'] = $lieferAdresseFelder;
@@ -47,15 +32,15 @@ if (array_filter($lieferAdresseFelder)) {
 
 $positionen = $_POST['positionen'] ?? [];
 
-$ergebnis = $service->anlegen($data, $positionen);
+$ergebnis = $service->bearbeiten($id, $data, $positionen);
 
 if (!$ergebnis['erfolg']) {
     $_SESSION['fehler']   = $ergebnis['fehler'];
     $_SESSION['formdata'] = $_POST;
-    header('Location: /mealana/auftraege/neu.php');
+    header('Location: /mealana/auftraege/bearbeiten.php?id=' . $id);
     exit;
 }
 
-$_SESSION['erfolg'] = 'Auftrag wurde angelegt.';
+$_SESSION['erfolg'] = 'Auftrag wurde aktualisiert.';
 header('Location: /mealana/auftraege/detail.php?id=' . $ergebnis['id']);
 exit;

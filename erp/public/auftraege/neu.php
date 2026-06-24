@@ -4,6 +4,9 @@ require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/modules/kunden/KundenService.php';
 $db = Database::getInstance();
 $versandklassen = $db->query("SELECT id, name, preis_brutto FROM versandklassen ORDER BY sortierung")->fetchAll();
+$preisanzeige   = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'preisanzeige_auftrag'")->fetchColumn() ?: 'brutto';
+$epLabel        = $preisanzeige === 'netto' ? 'Einzelpreis (Netto)' : 'Einzelpreis (Brutto)';
+$gesamtLabel    = $preisanzeige === 'netto' ? 'Gesamt Netto'        : 'Gesamt Brutto';
 
 $fehler   = $_SESSION['fehler']   ?? [];
 $formdata = $_SESSION['formdata'] ?? [];
@@ -107,10 +110,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <tr>
                         <th style="width:40%">Artikel</th>
                         <th style="width:10%">Menge</th>
-                        <th style="width:15%">Einzelpreis (Netto)</th>
+                        <th style="width:15%"><?= $epLabel ?></th>
                         <th style="width:10%">MwSt. %</th>
                         <th style="width:10%">Rabatt %</th>
-                        <th style="width:12%">Gesamt Netto</th>
+                        <th style="width:12%"><?= $gesamtLabel ?></th>
                         <th style="width:3%"></th>
                     </tr>
                 </thead>
@@ -127,11 +130,47 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
     </div>
 
+    <!-- Adressen -->
+    <div class="card" style="margin-bottom:12px">
+        <div class="card-header">Adressen</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px">
+            <div>
+                <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Rechnungsadresse</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <input type="text" name="rechnungsadresse[vorname]"    id="rechnungsadresse_vorname"    class="erp-input" placeholder="Vorname"    value="<?= htmlspecialchars($formdata['rechnungsadresse']['vorname']    ?? '') ?>">
+                    <input type="text" name="rechnungsadresse[nachname]"   id="rechnungsadresse_nachname"   class="erp-input" placeholder="Nachname"   value="<?= htmlspecialchars($formdata['rechnungsadresse']['nachname']   ?? '') ?>">
+                    <input type="text" name="rechnungsadresse[firma]"      id="rechnungsadresse_firma"      class="erp-input" placeholder="Firma (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['rechnungsadresse']['firma']      ?? '') ?>">
+                    <input type="text" name="rechnungsadresse[strasse]"    id="rechnungsadresse_strasse"    class="erp-input" placeholder="Straße"     value="<?= htmlspecialchars($formdata['rechnungsadresse']['strasse']    ?? '') ?>">
+                    <input type="text" name="rechnungsadresse[hausnummer]" id="rechnungsadresse_hausnummer" class="erp-input" placeholder="Nr."        value="<?= htmlspecialchars($formdata['rechnungsadresse']['hausnummer'] ?? '') ?>">
+                    <input type="text" name="rechnungsadresse[plz]"        id="rechnungsadresse_plz"        class="erp-input" placeholder="PLZ"        value="<?= htmlspecialchars($formdata['rechnungsadresse']['plz']        ?? '') ?>" style="width:80px">
+                    <input type="text" name="rechnungsadresse[ort]"        id="rechnungsadresse_ort"        class="erp-input" placeholder="Ort"        value="<?= htmlspecialchars($formdata['rechnungsadresse']['ort']        ?? '') ?>">
+                    <input type="text" name="rechnungsadresse[land]"       id="rechnungsadresse_land"       class="erp-input" placeholder="Land"       value="<?= htmlspecialchars($formdata['rechnungsadresse']['land']       ?? 'AT') ?>" style="width:60px">
+                    <input type="text" name="rechnungsadresse[zusatz]"     id="rechnungsadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['rechnungsadresse']['zusatz']     ?? '') ?>">
+                </div>
+            </div>
+            <div>
+                <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Lieferadresse <span style="font-weight:400">(leer = wie Rechnungsadresse)</span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <input type="text" name="lieferadresse[vorname]"    id="lieferadresse_vorname"    class="erp-input" placeholder="Vorname"    value="<?= htmlspecialchars($formdata['lieferadresse']['vorname']    ?? '') ?>">
+                    <input type="text" name="lieferadresse[nachname]"   id="lieferadresse_nachname"   class="erp-input" placeholder="Nachname"   value="<?= htmlspecialchars($formdata['lieferadresse']['nachname']   ?? '') ?>">
+                    <input type="text" name="lieferadresse[firma]"      id="lieferadresse_firma"      class="erp-input" placeholder="Firma (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['lieferadresse']['firma']      ?? '') ?>">
+                    <input type="text" name="lieferadresse[strasse]"    id="lieferadresse_strasse"    class="erp-input" placeholder="Straße"     value="<?= htmlspecialchars($formdata['lieferadresse']['strasse']    ?? '') ?>">
+                    <input type="text" name="lieferadresse[hausnummer]" id="lieferadresse_hausnummer" class="erp-input" placeholder="Nr."        value="<?= htmlspecialchars($formdata['lieferadresse']['hausnummer'] ?? '') ?>">
+                    <input type="text" name="lieferadresse[plz]"        id="lieferadresse_plz"        class="erp-input" placeholder="PLZ"        value="<?= htmlspecialchars($formdata['lieferadresse']['plz']        ?? '') ?>" style="width:80px">
+                    <input type="text" name="lieferadresse[ort]"        id="lieferadresse_ort"        class="erp-input" placeholder="Ort"        value="<?= htmlspecialchars($formdata['lieferadresse']['ort']        ?? '') ?>">
+                    <input type="text" name="lieferadresse[land]"       id="lieferadresse_land"       class="erp-input" placeholder="Land"       value="<?= htmlspecialchars($formdata['lieferadresse']['land']       ?? '') ?>" style="width:60px">
+                    <input type="text" name="lieferadresse[zusatz]"     id="lieferadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['lieferadresse']['zusatz']     ?? '') ?>">
+                </div>
+            </div>
+        </div>
+    </div>
+
 </form>
 
 <script>
     window.ARTIKEL_AJAX_URL = '/mealana/auftraege/artikel_ajax.php';
-    window.KUNDEN_AJAX_URL = '/mealana/auftraege/kunden_ajax.php';
+    window.KUNDEN_AJAX_URL  = '/mealana/auftraege/kunden_ajax.php';
+    window.PREISANZEIGE     = '<?= $preisanzeige ?>';
 </script>
 <script src="/mealana/js/auftraege_neu.js"></script>
 

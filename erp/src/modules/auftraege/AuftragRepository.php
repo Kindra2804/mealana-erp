@@ -51,7 +51,7 @@ class AuftragRepository
             $params['kanal'] = $kanal;
         }
         if ($suche !== '') {
-            $where[]        = '(a.auftrag_nr LIKE :suche OR k.name LIKE :suche OR a.notiz_intern LIKE :suche)';
+            $where[]        = '(a.auftrag_nr LIKE :suche OR a.kunden_snapshot LIKE :suche OR a.notiz_intern LIKE :suche)';
             $params['suche'] = '%' . $suche . '%';
         }
 
@@ -382,5 +382,40 @@ class AuftragRepository
 
         $this->db->commit();
         return $id;
+    }
+
+    public function updateHeader(int $id, array $felder): void
+    {
+        $sets   = [];
+        $params = ['id' => $id];
+
+        $erlaubt = [
+            'zahlungsart',
+            'lieferart',
+            'versandklasse_id',
+            'versandkosten',
+            'nettobetrag',
+            'steuerbetrag',
+            'bruttobetrag',
+            'notiz_intern',
+            'notiz_versand',
+            'lieferadresse_snapshot',
+        ];
+        foreach ($erlaubt as $f) {
+            if (array_key_exists($f, $felder)) {
+                $sets[]    = "$f = :$f";
+                $params[$f] = $felder[$f];
+            }
+        }
+        if (empty($sets)) return;
+
+        $this->db->prepare("UPDATE auftraege SET " . implode(', ', $sets) . " WHERE id = :id")
+            ->execute($params);
+    }
+
+    public function deletePositionen($id): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM auftrag_positionen WHERE auftrag_id = :id");
+        $stmt->execute(['id' => $id]);
     }
 }

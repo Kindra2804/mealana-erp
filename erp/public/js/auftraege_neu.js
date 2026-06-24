@@ -7,27 +7,38 @@ function positionHinzufuegen(artikel) {
     const idx = positionenIndex++;
     const a = artikel || {};
 
-    const vkNetto = a.vk_brutto
-        ? (parseFloat(a.vk_brutto) / (1 + (a.steuer_prozent || 20) / 100)).toFixed(4)
-        : '';
+    const isBrutto = window.PREISANZEIGE !== 'netto';
+    const stPrzA   = parseFloat(a.steuer_prozent) || 20;
+    let preisWert;
+    if (a.einzelpreis_netto != null) {
+        preisWert = isBrutto
+            ? (parseFloat(a.einzelpreis_netto) * (1 + stPrzA / 100)).toFixed(2)
+            : a.einzelpreis_netto;
+    } else if (a.vk_brutto) {
+        preisWert = isBrutto
+            ? parseFloat(a.vk_brutto).toFixed(2)
+            : (parseFloat(a.vk_brutto) / (1 + stPrzA / 100)).toFixed(4);
+    } else {
+        preisWert = '';
+    }
 
     const tr = document.createElement('tr');
     tr.dataset.idx = idx;
     tr.innerHTML = `
         <td>
-            <input type="hidden" name="positionen[${idx}][artikel_id]" class="pos-artikel-id" value="${a.id || ''}">
+            <input type="hidden" name="positionen[${idx}][artikel_id]" class="pos-artikel-id" value="${a.artikel_id || a.id || ''}">
             <input type="hidden" name="positionen[${idx}][ean]"        value="${escH(a.ean || '')}">
             <input type="text"   name="positionen[${idx}][bezeichnung]" class="erp-input pos-bezeichnung"
-                   value="${escH(a.name || (a.variante_name ? a.variante_name : ''))}"
+                   value="${escH(a.bezeichnung || a.name || (a.variante_name ? a.variante_name : ''))}"
                    placeholder="Artikel suchen…" autocomplete="off"
                    data-idx="${idx}" style="width:100%">
             <div class="pos-dropdown" data-idx="${idx}" style="position:absolute;z-index:200;display:none;background:#fff;border:1px solid var(--color-border);border-radius:4px;min-width:320px"></div>
             <input type="hidden" name="positionen[${idx}][steuer_prozent]" class="pos-steuer" value="${a.steuer_prozent || 20}">
         </td>
-        <td><input type="number" name="positionen[${idx}][menge]" class="erp-input pos-menge" min="1" value="1" style="width:60px" oninput="aktualisiereZeile(${idx})"></td>
-        <td><input type="number" name="positionen[${idx}][einzelpreis_netto]" class="erp-input pos-preis" step="0.0001" value="${escH(vkNetto)}" style="width:90px" oninput="aktualisiereZeile(${idx})"></td>
+        <td><input type="number" name="positionen[${idx}][menge]" class="erp-input pos-menge" min="1" value="${a.menge || 1}" style="width:60px" oninput="aktualisiereZeile(${idx})"></td>
+        <td><input type="number" name="positionen[${idx}][einzelpreis_netto]" class="erp-input pos-preis" step="0.0001" value="${escH(preisWert)}" style="width:90px" oninput="aktualisiereZeile(${idx})"></td>
         <td><input type="number" name="positionen[${idx}][steuer_prozent_anzeige]" class="erp-input" step="0.01" value="${a.steuer_prozent || 20}" style="width:60px" oninput="aktualisiereZeile(${idx})" readonly></td>
-        <td><input type="number" name="positionen[${idx}][rabatt_prozent]" class="erp-input pos-rabatt" step="0.01" min="0" max="100" value="0" style="width:60px" oninput="aktualisiereZeile(${idx})"></td>
+        <td><input type="number" name="positionen[${idx}][rabatt_prozent]" class="erp-input pos-rabatt" step="0.01" min="0" max="100" value="${a.rabatt_prozent || 0}" style="width:60px" oninput="aktualisiereZeile(${idx})"></td>
         <td class="pos-gesamt" style="text-align:right;font-weight:600">0,00 €</td>
         <td><button type="button" onclick="positionEntfernen(this)" style="background:none;border:none;color:var(--color-danger);cursor:pointer;font-size:16px">✕</button></td>
     `;
@@ -37,7 +48,7 @@ function positionHinzufuegen(artikel) {
     bezeichnungInput.addEventListener('input', () => startArtikelSuche(idx, bezeichnungInput));
     bezeichnungInput.addEventListener('blur', () => setTimeout(() => versteckeDropdown(idx), 200));
 
-    if (!a.id) bezeichnungInput.focus();
+    if (!a.artikel_id && !a.id) bezeichnungInput.focus();
 
     aktualisiereZeile(idx);
     aktualisiereAnzeige();
@@ -51,11 +62,14 @@ function positionEntfernen(btn) {
 function aktualisiereZeile(idx) {
     const tr = document.querySelector(`tr[data-idx="${idx}"]`);
     if (!tr) return;
-    const menge = parseFloat(tr.querySelector('.pos-menge').value) || 0;
-    const preis = parseFloat(tr.querySelector('.pos-preis').value) || 0;
-    const rabatt = parseFloat(tr.querySelector('.pos-rabatt').value) || 0;
-    const gesamt = menge * preis * (1 - rabatt / 100);
-    tr.querySelector('.pos-gesamt').textContent = fmtEur(gesamt);
+    const menge   = parseFloat(tr.querySelector('.pos-menge').value) || 0;
+    const preis   = parseFloat(tr.querySelector('.pos-preis').value) || 0;
+    const rabatt  = parseFloat(tr.querySelector('.pos-rabatt').value) || 0;
+    const stProz  = parseFloat(tr.querySelector('.pos-steuer').value) || 20;
+    const netto   = window.PREISANZEIGE !== 'netto' ? preis / (1 + stProz / 100) : preis;
+    const gesamt  = menge * netto * (1 - rabatt / 100);
+    const anzeige = window.PREISANZEIGE !== 'netto' ? gesamt * (1 + stProz / 100) : gesamt;
+    tr.querySelector('.pos-gesamt').textContent = fmtEur(anzeige);
     aktualisiereAnzeige();
 }
 
@@ -67,12 +81,13 @@ function aktualisiereAnzeige() {
     let netto = 0;
     let steuer = 0;
     rows.forEach(tr => {
-        const menge = parseFloat(tr.querySelector('.pos-menge')?.value) || 0;
-        const preis = parseFloat(tr.querySelector('.pos-preis')?.value) || 0;
-        const rabatt = parseFloat(tr.querySelector('.pos-rabatt')?.value) || 0;
-        const stProz = parseFloat(tr.querySelector('.pos-steuer')?.value) || 20;
-        const n = menge * preis * (1 - rabatt / 100);
-        netto += n;
+        const menge      = parseFloat(tr.querySelector('.pos-menge')?.value) || 0;
+        const preisInput = parseFloat(tr.querySelector('.pos-preis')?.value) || 0;
+        const rabatt     = parseFloat(tr.querySelector('.pos-rabatt')?.value) || 0;
+        const stProz     = parseFloat(tr.querySelector('.pos-steuer')?.value) || 20;
+        const preisNetto = window.PREISANZEIGE !== 'netto' ? preisInput / (1 + stProz / 100) : preisInput;
+        const n = menge * preisNetto * (1 - rabatt / 100);
+        netto  += n;
         steuer += n * stProz / 100;
     });
     document.getElementById('summe-netto').textContent = fmtEur(netto);
@@ -116,9 +131,11 @@ function artikelWaehlen(idx, a) {
     tr.querySelector('.pos-bezeichnung').value = bez;
     tr.querySelector('.pos-steuer').value = a.steuer_prozent || 20;
     if (a.vk_brutto) {
-        const stPrz = a.steuer_prozent || 20;
-        const netto = (parseFloat(a.vk_brutto) / (1 + stPrz / 100)).toFixed(4);
-        tr.querySelector('.pos-preis').value = netto;
+        const stPrz  = a.steuer_prozent || 20;
+        const preis  = window.PREISANZEIGE !== 'netto'
+            ? parseFloat(a.vk_brutto).toFixed(2)
+            : (parseFloat(a.vk_brutto) / (1 + stPrz / 100)).toFixed(4);
+        tr.querySelector('.pos-preis').value = preis;
     }
     versteckeDropdown(idx);
     aktualisiereZeile(idx);
@@ -159,10 +176,20 @@ async function sucheKunden(suche) {
             document.getElementById('kunden-id').value = k.id;
             kundenSuche.value = k.name;
             drop.style.display = 'none';
+            if (k.rechnungsadresse) populiereAdresse('rechnungsadresse', k.rechnungsadresse);
+            if (k.lieferadresse)    populiereAdresse('lieferadresse',    k.lieferadresse);
         });
         drop.appendChild(item);
     });
     drop.style.display = 'block';
+}
+
+// Adressen befüllen
+function populiereAdresse(prefix, a) {
+    ['vorname','nachname','firma','strasse','hausnummer','plz','ort','land','zusatz'].forEach(f => {
+        const el = document.getElementById(prefix + '_' + f);
+        if (el) el.value = a[f] || '';
+    });
 }
 
 // Hilfsfunktionen
@@ -175,7 +202,12 @@ function escH(str) {
 }
 
 // Start: eine leere Position anzeigen
-positionHinzufuegen();
+if (window.POSITIONEN && window.POSITIONEN.length > 0) {
+    window.POSITIONEN.forEach(pos => positionHinzufuegen(pos));
+} else {
+    positionHinzufuegen();
+}
+
 
 document.getElementById('versandklasse').addEventListener('change', function () {
     var preis = this.value === '' ? '0.00' : this.options[this.selectedIndex].dataset.preis;
@@ -198,4 +230,15 @@ document.getElementById('lieferart').addEventListener('change', function () {
 })
 
 document.getElementById('lieferart').dispatchEvent(new Event('change'));
+
+// Brutto→Netto Konvertierung vor dem Absenden
+document.getElementById('auftrag-form').addEventListener('submit', function () {
+    if (window.PREISANZEIGE !== 'netto') {
+        document.querySelectorAll('.pos-preis').forEach(input => {
+            const tr     = input.closest('tr');
+            const stProz = parseFloat(tr.querySelector('.pos-steuer').value) || 20;
+            input.value  = (parseFloat(input.value) / (1 + stProz / 100)).toFixed(4);
+        });
+    }
+});
 

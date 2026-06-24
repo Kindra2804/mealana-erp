@@ -18,6 +18,14 @@ $zahlungsLabels = [
     'erstattet'   => ['label' => 'Erstattet',    'class' => 'chip-inaktiv'],
     'storniert'   => ['label' => 'Storniert',    'class' => 'chip-inaktiv'],
 ];
+$zahlungsArtLabels = [
+    'vorkasse'    => ['label' => 'Vorkasse',  'class' => 'chip-aktiv'],
+    'paypal'      => ['label' => 'PayPal',      'class' => 'sc-aktion'],
+    'rechnung'    => ['label' => 'Rechnung',  'class' => 'sc-fehlbest'],
+    'bar'         => ['label' => 'Bar',    'class' => 'chip-aktiv'],
+    'gutschein'   => ['label' => 'Gutschein',    'class' => 'sc-ohnekat'],
+    'gemischt'    => ['label' => 'Gemischt',    'class' => 'sc-ohnekat'],
+];
 $lieferLabels = [
     'neu'              => ['label' => 'Neu',              'class' => 'chip-aktiv'],
     'in_bearbeitung'   => ['label' => 'In Bearbeitung',   'class' => 'chip-auslauf'],
@@ -36,55 +44,53 @@ $kanalLabels = [
 
 $pageTitle        = 'Aufträge';
 $activeModule     = 'verkauf';
-$actionBarContent = <<<HTML
-<a href="/mealana/auftraege/neu.php" class="btn btn-primary btn-sm">+ Neuer Auftrag</a>
-<div class="actionbar-sep"></div>
-<div class="actionbar-right" style="display:flex;gap:8px;align-items:center">
-    <input type="text" class="erp-input" placeholder="Suche…" style="width:160px;font-size:13px"
-           value="<?= htmlspecialchars($suche) ?>" id="suche-input"
-           onkeydown="if(event.key==='Enter') applyFilter()">
-    <select class="erp-select" style="font-size:13px" id="filter-zahlung">
-        <option value="">Alle Zahlung</option>
-        <option value="ausstehend"  <?= $filterZahlung==='ausstehend'  ? 'selected':'' ?>>Ausstehend</option>
-        <option value="bezahlt"     <?= $filterZahlung==='bezahlt'     ? 'selected':'' ?>>Bezahlt</option>
-        <option value="storniert"   <?= $filterZahlung==='storniert'   ? 'selected':'' ?>>Storniert</option>
-    </select>
-    <select class="erp-select" style="font-size:13px" id="filter-lieferung">
-        <option value="">Alle Lieferung</option>
-        <option value="neu"             <?= $filterLieferung==='neu'             ? 'selected':'' ?>>Neu</option>
-        <option value="in_bearbeitung"  <?= $filterLieferung==='in_bearbeitung'  ? 'selected':'' ?>>In Bearbeitung</option>
-        <option value="versandbereit"   <?= $filterLieferung==='versandbereit'   ? 'selected':'' ?>>Versandbereit</option>
-        <option value="versendet"       <?= $filterLieferung==='versendet'       ? 'selected':'' ?>>Versendet</option>
-        <option value="zurueckgestellt" <?= $filterLieferung==='zurueckgestellt' ? 'selected':'' ?>>Zurückgestellt</option>
-        <option value="abgeschlossen"   <?= $filterLieferung==='abgeschlossen'   ? 'selected':'' ?>>Abgeschlossen</option>
-    </select>
-    <select class="erp-select" style="font-size:13px" id="filter-kanal">
-        <option value="">Alle Kanäle</option>
-        <option value="woocommerce" <?= $filterKanal==='woocommerce' ? 'selected':'' ?>>WooCommerce</option>
-        <option value="manuell"     <?= $filterKanal==='manuell'     ? 'selected':'' ?>>Manuell</option>
-        <option value="kasse"       <?= $filterKanal==='kasse'       ? 'selected':'' ?>>Kasse</option>
-    </select>
-</div>
-HTML;
+$actionBarContent = '<a href="/mealana/auftraege/neu.php" class="btn btn-primary btn-sm">+ Neuer Auftrag</a>';
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
+<div class="filter-bar" style="margin-bottom:12px">
+    <input type="text" class="erp-input" placeholder="Suche…" style="width:160px;font-size:13px"
+        value="<?= htmlspecialchars($suche) ?>" id="suche-input"
+        onkeydown="if(event.key==='Enter') applyFilter()">
+    <select class="erp-select" style="font-size:13px" id="filter-zahlung">
+        <option value="">Alle Zahlung</option>
+        <option value="ausstehend" <?= $filterZahlung === 'ausstehend'  ? 'selected' : '' ?>>Ausstehend</option>
+        <option value="bezahlt" <?= $filterZahlung === 'bezahlt'     ? 'selected' : '' ?>>Bezahlt</option>
+        <option value="storniert" <?= $filterZahlung === 'storniert'   ? 'selected' : '' ?>>Storniert</option>
+    </select>
+    <select class="erp-select" style="font-size:13px" id="filter-lieferung">
+        <option value="">Alle Lieferung</option>
+        <option value="neu" <?= $filterLieferung === 'neu'             ? 'selected' : '' ?>>Neu</option>
+        <option value="in_bearbeitung" <?= $filterLieferung === 'in_bearbeitung'  ? 'selected' : '' ?>>In Bearbeitung</option>
+        <option value="versandbereit" <?= $filterLieferung === 'versandbereit'   ? 'selected' : '' ?>>Versandbereit</option>
+        <option value="versendet" <?= $filterLieferung === 'versendet'       ? 'selected' : '' ?>>Versendet</option>
+        <option value="zurueckgestellt" <?= $filterLieferung === 'zurueckgestellt' ? 'selected' : '' ?>>Zurückgestellt</option>
+        <option value="abgeschlossen" <?= $filterLieferung === 'abgeschlossen'   ? 'selected' : '' ?>>Abgeschlossen</option>
+    </select>
+    <select class="erp-select" style="font-size:13px" id="filter-kanal">
+        <option value="">Alle Kanäle</option>
+        <option value="woocommerce" <?= $filterKanal === 'woocommerce' ? 'selected' : '' ?>>WooCommerce</option>
+        <option value="manuell" <?= $filterKanal === 'manuell'     ? 'selected' : '' ?>>Manuell</option>
+        <option value="kasse" <?= $filterKanal === 'kasse'       ? 'selected' : '' ?>>Kasse</option>
+    </select>
+</div>
+
 <script>
-function applyFilter() {
-    const p = new URLSearchParams();
-    const s = document.getElementById('suche-input').value.trim();
-    const z = document.getElementById('filter-zahlung').value;
-    const l = document.getElementById('filter-lieferung').value;
-    const k = document.getElementById('filter-kanal').value;
-    if (s) p.set('suche', s);
-    if (z) p.set('zahlung', z);
-    if (l) p.set('lieferung', l);
-    if (k) p.set('kanal', k);
-    window.location = '?' + p.toString();
-}
-document.getElementById('filter-zahlung').addEventListener('change', applyFilter);
-document.getElementById('filter-lieferung').addEventListener('change', applyFilter);
-document.getElementById('filter-kanal').addEventListener('change', applyFilter);
+    function applyFilter() {
+        const p = new URLSearchParams();
+        const s = document.getElementById('suche-input').value.trim();
+        const z = document.getElementById('filter-zahlung').value;
+        const l = document.getElementById('filter-lieferung').value;
+        const k = document.getElementById('filter-kanal').value;
+        if (s) p.set('suche', s);
+        if (z) p.set('zahlung', z);
+        if (l) p.set('lieferung', l);
+        if (k) p.set('kanal', k);
+        window.location = '?' + p.toString();
+    }
+    document.getElementById('filter-zahlung').addEventListener('change', applyFilter);
+    document.getElementById('filter-lieferung').addEventListener('change', applyFilter);
+    document.getElementById('filter-kanal').addEventListener('change', applyFilter);
 </script>
 
 <div class="card">
@@ -100,6 +106,7 @@ document.getElementById('filter-kanal').addEventListener('change', applyFilter);
                     <th>Datum</th>
                     <th>Pos.</th>
                     <th>Brutto</th>
+                    <th>Zahlungsart</th>
                     <th>Zahlung</th>
                     <th>Lieferung</th>
                     <th></th>
@@ -107,6 +114,7 @@ document.getElementById('filter-kanal').addEventListener('change', applyFilter);
             </thead>
             <tbody>
                 <?php foreach ($auftraege as $a):
+                    $za = $zahlungsArtLabels[$a['zahlungsart']] ?? ['label' => $a['zahlungsart'], 'class' => ''];
                     $zl = $zahlungsLabels[$a['zahlungsstatus']] ?? ['label' => $a['zahlungsstatus'], 'class' => ''];
                     $ll = $lieferLabels[$a['lieferstatus']]     ?? ['label' => $a['lieferstatus'],   'class' => ''];
                     $kl = $kanalLabels[$a['kanal']]             ?? ['label' => $a['kanal'],          'class' => ''];
@@ -125,6 +133,7 @@ document.getElementById('filter-kanal').addEventListener('change', applyFilter);
                         <td style="white-space:nowrap"><?= date('d.m.Y', strtotime($a['erstellt_am'])) ?></td>
                         <td style="text-align:center"><?= (int)$a['positionen_anzahl'] ?></td>
                         <td style="text-align:right;font-weight:600"><?= number_format((float)$a['bruttobetrag'], 2, ',', '.') ?> €</td>
+                        <td><span class="chip <?= $za['class'] ?>"><?= $za['label'] ?></span></td>
                         <td><span class="chip <?= $zl['class'] ?>"><?= $zl['label'] ?></span></td>
                         <td><span class="chip <?= $ll['class'] ?>"><?= $ll['label'] ?></span></td>
                         <td>

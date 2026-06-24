@@ -53,12 +53,17 @@ $ll  = $lieferLabels[$auftrag['lieferstatus']]     ?? ['label' => $auftrag['lief
 $kl  = $kanalLabels[$auftrag['kanal']]             ?? ['label' => $auftrag['kanal'],          'class' => ''];
 
 $istStorniert = in_array($auftrag['lieferstatus'], ['storniert']);
+$sperrZustände = ['versendet', 'abgeschlossen', 'storniert'];
+$istGesperrt = in_array($auftrag['lieferstatus'], $sperrZustände);
 
 $pageTitle        = 'Auftrag ' . htmlspecialchars($auftrag['auftrag_nr']);
 $activeModule     = 'verkauf';
 $actionBarContent = '<a href="/mealana/auftraege/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
 if (!$istStorniert) {
     $actionBarContent .= ' <button type="button" class="btn btn-danger btn-sm" onclick="storniereAuftrag()">Stornieren</button>';
+}
+if (!$istGesperrt) {
+    $actionBarContent .= '<a href="/mealana/auftraege/bearbeiten.php?id=' . $auftrag['id'] . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
 }
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
