@@ -2,6 +2,20 @@
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/AchsenRepository.php';
 
+/**
+ * AchsenService – Business-Logik für globale Varianten-Achsen
+ *
+ * Validierung: Name + Code Pflichtfelder, Code muss eindeutig sein, Darstellungsform muss
+ * aus der Erlaubnis-Liste stammen (swatches/dropdown/radiobutton/freitext/pflichtfreitext).
+ *
+ * Besonderheit delete():
+ *   isInUse() gibt bool zurück — der Service prüft diesen bool und gibt Fehler zurück.
+ *   Die Variable heißt im Code `$fehler` aber enthält eigentlich den bool — historisch gewachsen.
+ *
+ * Besonderheit update():
+ *   ist_gruppe=0 darf nur gesetzt werden wenn keine Unterachsen mehr vorhanden sind (hasChildren).
+ *   Sonst würden Unterachsen "herrenlos" werden.
+ */
 class AchsenService
 {
     private AchsenRepository $repo;
@@ -16,6 +30,7 @@ class AchsenService
         return $this->repo->findAll();
     }
 
+    /** Validiert Achsen-Daten: Name, Code (eindeutig), erlaubte Darstellungsform. */
     private function validiere(array $data): array
     {
         $fehler = [];

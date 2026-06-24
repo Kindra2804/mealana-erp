@@ -2,6 +2,21 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * WareneingangRepository – Datenzugriff für den Wareneingangs-Workflow
+ *
+ * Wareneingang ist der Prozess: Lieferung einscannen → Mengen buchen →
+ * Bestellposition als "eingegangen" markieren → Bestellung abschließen.
+ *
+ * Jeder Buchungsvorgang erzeugt:
+ * 1. Eine Lager-Bewegung (lager_bewegungen via LagerRepository)
+ * 2. Einen Eingang-Record (bestellung_eingaenge) der Position + Bewegung verknüpft
+ * 3. Die menge_eingegangen der Position wird erhöht
+ * 4. Der Bestellungsstatus wird geprüft und ggf. auf teilgeliefert/erledigt gesetzt
+ *
+ * EAN-Scan: findArtikelByEan() sucht in artikel_codes (typ GTIN13/GTIN8).
+ * Wenn der Artikel keine offene Bestellung hat → Sammelliste (Session-Durchlauf).
+ */
 class WareneingangRepository
 {
     private PDO $db;
@@ -11,6 +26,12 @@ class WareneingangRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Gibt alle offenen und teilgelieferten Bestellungen zurück.
+     * Enthält Fortschrittsinfo: anzahl_positionen vs. positionen_erledigt.
+     * Gestrichene Positionen werden aus dem Fortschritt ausgeschlossen.
+     * Sortiert nach Bestelldatum aufsteigend (älteste zuerst).
+     */
     public function findOffene(): array
     {
         $stmt = $this->db->query("
@@ -32,6 +53,12 @@ class WareneingangRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Sucht einen Artikel über seinen EAN/GTIN-Code.
+     * Gibt Artikel-Stammdaten + Hauptbild für die Scan-Ansicht zurück.
+     * Berücksichtigt: COALESCE Vater/Kind-Name, charge_pflicht-Flag.
+     * Gibt false zurück wenn der Code nicht gefunden wird.
+     */
     public function findArtikelByEan(string $ean): array|false
     {
         $stmt = $this->db->prepare("
@@ -56,6 +83,11 @@ class WareneingangRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Gibt alle offenen Bestellpositionen für einen Artikel zurück.
+     * Nur Positionen bei denen noch Menge erwartet wird (menge_eingegangen < menge_bestellt).
+     * Sortiert nach Bestelldatum (älteste Bestellung zuerst buchen).
+     */
     public function findBestellungenFuerArtikel(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -81,6 +113,10 @@ class WareneingangRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt eine einzelne Bestellposition zurück (mit Bestellkopf-Daten).
+     * Wird beim Buchen benötigt um lieferant_id und ek_preis für die Lagerbewegung zu kennen.
+     */
     public function findPosition(int $positionId): array|false
     {
         $stmt = $this->db->prepare("
@@ -93,6 +129,10 @@ class WareneingangRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Gibt alle Positionen einer Bestellung mit Artikel-Details zurück.
+     * Für die Detailansicht im Wareneingang: Artikel-Name, Variante, charge_pflicht, Hauptbild.
+     */
     public function findPositionenMitArtikel(int $bestellungId): array
     {
         $stmt = $this->db->prepare("
@@ -116,6 +156,10 @@ class WareneingangRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Erhöht menge_eingegangen einer Position um die gebuchte Menge.
+     * Wird nach jeder Wareneingangs-Buchung aufgerufen.
+     */
     public function updatePositionEingegangen(int $positionId, float $zusatzMenge): bool
     {
         $stmt = $this->db->prepare("
@@ -127,6 +171,11 @@ class WareneingangRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Legt einen Eingang-Record an der Position + Lagerbewegung verknüpft.
+     * Verbindet bestellung_eingaenge.bewegung_id mit lager_bewegungen für lückenlose Rückverfolgung.
+     * Gibt die neue ID zurück.
+     */
     public function insertEingang(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -140,6 +189,12 @@ class WareneingangRepository
         return (int)$this->db->lastInsertId();
     }
 
+    /**
+     * Prüft ob alle Positionen einer Bestellung vollständig eingegangen sind.
+     * Gibt true zurück wenn keine offene Position mehr vorhanden ist
+     * (menge_eingegangen >= menge_bestellt für alle nicht-gestrichenen Positionen).
+     * Steuert ob die Bestellung auf "erledigt" oder "teilgeliefert" gesetzt wird.
+     */
     public function pruefeBestellungKomplett(int $bestellungId): bool
     {
         $stmt = $this->db->prepare("
@@ -153,12 +208,19 @@ class WareneingangRepository
         return (int)$stmt->fetch()['offen'] === 0;
     }
 
+    /** Setzt den Status einer Bestellung (teilgeliefert oder erledigt). */
     public function updateBestellungStatus(int $id, string $status): void
     {
         $stmt = $this->db->prepare("UPDATE bestellungen SET status = :status WHERE id = :id");
         $stmt->execute(['status' => $status, 'id' => $id]);
     }
 
+    /**
+     * Streicht alle Positionen mit noch offener Menge als "gestrichen".
+     * DROPS-Modell: Lieferant liefert was er hat, Rest wird nicht nachgeliefert.
+     * Optional: Gutschrift-Notiz und -Betrag werden an der Bestellung gespeichert,
+     * wenn der Lieferant einen Preisnachlass für die fehlende Ware gewährt.
+     */
     public function streicheRestPositionen(int $bestellungId, ?string $gutschriftNotiz, ?float $gutschriftBetrag): void
     {
         $stmt = $this->db->prepare("
@@ -176,6 +238,10 @@ class WareneingangRepository
         }
     }
 
+    /**
+     * Gibt vorhandene Chargen eines Artikels zurück (für Charge-Auswahl beim Einbuchen).
+     * Nur Chargen mit Bestand > 0 — leere Chargen sind nicht mehr relevant für neue Buchungen.
+     */
     public function findChargenFuerArtikel(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -188,6 +254,7 @@ class WareneingangRepository
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    /** Gibt alle aktiven Lager zurück, sortiert nach ID (Standard-Lager zuerst). */
     public function findAlleLager(): array
     {
         $stmt = $this->db->query("SELECT id, name FROM lager WHERE aktiv = 1 ORDER BY id");

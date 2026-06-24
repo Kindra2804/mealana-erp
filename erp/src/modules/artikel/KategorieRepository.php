@@ -2,6 +2,19 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * KategorieRepository – Datenzugriff für den Kategorie-Baum und Artikel-Zuweisungen
+ *
+ * Kategorien bilden einen beliebig tiefen Baum (parent_id selbst-referenziell).
+ * Aktions-Kategorien (ist_aktions_kategorie = 1) steuern welche Artikel einer Aktion unterliegen.
+ *
+ * Wichtige Methoden:
+ *   findAllMitEltern()                → Flat-Liste mit Aktions-Indikatoren (⏰-Symbol in UI)
+ *   updateArtikelKategoriezuweisungen → Transaktionaler Replace + Aktionspreise-Bereinigung
+ *   syncKategorienZuKindern()         → Synchronisiert Kategorien eines Vaters zu allen Kindern
+ *   findAlleKinderIds()               → Rekursive CTE-Query für alle Nachkommen
+ *   deleteKategorie()                 → Löscht Baum-Ast mit optionalem Artikel-Verschieben
+ */
 class KategorieRepository
 {
     private PDO $db;
@@ -24,6 +37,13 @@ class KategorieRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Alle aktiven Kategorien als Flat-Liste für den Baum-Aufbau in ArtikelService::getKategorienBaum().
+     * Berechnet pro Kategorie drei Aktions-Spalten via LEFT JOIN auf aktionen_kategorien + aktionen:
+     *   aktion_aktiv   → 1 wenn heute aktive Aktion (gestartet + Datum zwischen ab/bis)
+     *   aktion_zukunft → 1 wenn zukünftige Aktion existiert
+     *   aktion_info    → GROUP_CONCAT der Aktionsnamen+Zeiträume für Hover-Tooltip
+     */
     public function findAllMitEltern(): array
     {
         $stmt = $this->db->query("
@@ -86,7 +106,17 @@ class KategorieRepository
     }
 
     /**
-     * Gibt Namen von neu zugewiesenen Kategorien zurück, die eine aktive Aktion haben.
+     * Ersetzt alle Kategorie-Zuweisungen eines Artikels in einer Transaktion.
+     *
+     * Ablauf:
+     * 1. Alte Zuweisungen lesen → entfernte vs. neue Kategorien berechnen
+     * 2. Alle alten löschen, alle neuen einfügen
+     * 3. Aktionspreise für entfernte Kategorien bereinigen
+     *    (Artikel nicht mehr in Kategorie → Aktionspreis obsolet)
+     * 4. Aktionshinweise für neu zugewiesene Kategorien ermitteln
+     *    (damit die View ein Modal für Aktionspreise anzeigen kann)
+     *
+     * @return array Aktionshinweise-Zeilen [aktion_id, aktion_name, ist_aktiv, naechster_start]
      */
     public function updateArtikelKategoriezuweisungen(int $artikelId, array $kategorieIds): array
     {
@@ -153,6 +183,11 @@ class KategorieRepository
         }
     }
 
+    /**
+     * Synchronisiert die Kategorien des Vaters zu allen seinen Kind-Artikeln.
+     * Löscht alle Kind-Kategorien und setzt sie neu — Kinder haben immer dieselben Kategorien wie der Vater.
+     * Wird nach saveKategorien() am Vater aufgerufen.
+     */
     public function syncKategorienZuKindern(int $vaterId, array $kategorieIds): void
     {
         $stmt = $this->db->prepare("SELECT id FROM artikel WHERE vaterartikel_id = :vater_id");
@@ -219,9 +254,13 @@ class KategorieRepository
         return $stmt->execute(['name' => $name, 'parent_id' => $parentId, 'iak' => $istAktionsKategorie ? 1 : 0, 'id' => $id]);
     }
 
+    /**
+     * Gibt alle Nachkommen-IDs einer Kategorie rekursiv zurück (WITH RECURSIVE CTE).
+     * Benötigt für: Lösch-Vorschau, Baum-Verschieben-Validierung (kein Zirkel), Massen-Löschen.
+     */
     public function findAlleKinderIds(int $id): array
     {
-        // Rekursiv alle Nachkommen-IDs per CTE holen
+        // Alle Nachkommen per rekursiver CTE (MariaDB 10.2+)
         $stmt = $this->db->prepare("
             WITH RECURSIVE nachkommen AS (
                 SELECT id FROM kategorien WHERE parent_id = :id
@@ -255,6 +294,11 @@ class KategorieRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Löscht eine Kategorie mit allen Nachkommen in einer Transaktion.
+     * Wenn verschiebeZuParentId gesetzt: Artikel der gelöschten Kategorien werden der
+     * Eltern-Kategorie zugewiesen (INSERT IGNORE verhindert Duplikat-Fehler).
+     */
     public function deleteKategorie(int $id, ?int $verschiebeZuParentId = null): void
     {
         $this->db->beginTransaction();

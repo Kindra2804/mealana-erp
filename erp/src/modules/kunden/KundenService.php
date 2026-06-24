@@ -3,6 +3,18 @@
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/KundenRepository.php';
 
+/**
+ * KundenService – Geschäftslogik für Kunden, Adressen und DSGVO-Consents
+ *
+ * Validiert Kundendaten und koordiniert Repository-Aufrufe.
+ * Kundennummer wird beim Anlegen automatisch generiert (KD-00001, KD-00002, ...).
+ *
+ * Duplikat-Erkennung: E-Mail-Adressen werden über ihren HMAC-Hash verglichen,
+ * ohne zu entschlüsseln. Beim Update wird die eigene ID ausgeschlossen.
+ *
+ * Adress-Anlegen beim Kunden-Anlegen: Wenn Straße + Ort vorhanden, wird
+ * automatisch eine Hauptadresse als Standard angelegt.
+ */
 class KundenService
 {
     private KundenRepository $repo;
@@ -16,11 +28,18 @@ class KundenService
     // Lesen
     // -------------------------------------------------------------------------
 
+    /**
+     * Gibt alle Kunden zurück (ohne Laufkunde), optional gefiltert.
+     *
+     * @param string $suche  Freitext-Suche (in PHP, da Felder verschlüsselt)
+     * @param string $status Filtert auf "aktiv" | "gesperrt" | "geloescht"
+     */
     public function getAll(string $suche = '', string $status = ''): array
     {
         return $this->repo->findAll($suche, $status);
     }
 
+    /** Gibt einen vollständigen Kundendatensatz zurück (entschlüsselt). */
     public function getById(int $id): array|false
     {
         return $this->repo->findById($id);
@@ -30,6 +49,16 @@ class KundenService
     // Anlegen
     // -------------------------------------------------------------------------
 
+    /**
+     * Legt einen neuen Kunden an.
+     *
+     * Ablauf:
+     * 1. Formularvalidierung (Nachname oder Firma, E-Mail-Format, etc.)
+     * 2. E-Mail-Duplikat-Check via Hash-Lookup
+     * 3. Kundennummer generieren (KD-00001, ...)
+     * 4. Kunden anlegen
+     * 5. Optional: Adresse direkt mitanlegen wenn Straße + Ort vorhanden
+     */
     public function anlegen(array $data): array
     {
         $fehler = $this->validiere($data);
@@ -37,7 +66,7 @@ class KundenService
             return ['erfolg' => false, 'fehler' => $fehler];
         }
 
-        // Doppelte E-Mail prüfen (via Hash-Lookup)
+        // Doppelte E-Mail prüfen (via Hash-Lookup ohne Entschlüsseln)
         if (!empty($data['email'])) {
             $existing = $this->repo->findByEmailHash($data['email']);
             if ($existing) {
@@ -69,6 +98,11 @@ class KundenService
     // Bearbeiten
     // -------------------------------------------------------------------------
 
+    /**
+     * Aktualisiert einen bestehenden Kunden.
+     * Kundennummer ist unveränderlich — wird aus DB geholt und beibehalten.
+     * E-Mail-Duplikat-Check schließt den eigenen Kunden aus.
+     */
     public function aktualisieren(array $data): array
     {
         if (empty($data['id'])) {
@@ -88,7 +122,7 @@ class KundenService
             }
         }
 
-        // kundennummer darf nicht geändert werden
+        // Kundennummer darf nicht vom Formular überschrieben werden
         $kunde = $this->repo->findById((int)$data['id']);
         if (!$kunde) {
             return ['erfolg' => false, 'fehler' => ['Kunde nicht gefunden']];
@@ -104,6 +138,11 @@ class KundenService
         return ['erfolg' => true];
     }
 
+    /**
+     * Setzt den Status eines Kunden.
+     *
+     * @param string $status "aktiv" | "gesperrt" | "geloescht"
+     */
     public function statusSetzen(int $id, string $status): array
     {
         $erlaubt = ['aktiv', 'gesperrt', 'geloescht'];
@@ -121,11 +160,13 @@ class KundenService
     // Adressen
     // -------------------------------------------------------------------------
 
+    /** Gibt alle Adressen eines Kunden zurück (entschlüsselt). */
     public function getAdressen(int $kundeId): array
     {
         return $this->repo->findAdressen($kundeId);
     }
 
+    /** Legt eine neue Adresse an. Validiert Pflichtfelder (Straße, PLZ, Ort). */
     public function adresseAnlegen(array $data): array
     {
         $fehler = $this->validiereAdresse($data);
@@ -142,6 +183,7 @@ class KundenService
         return ['erfolg' => true, 'id' => $id];
     }
 
+    /** Aktualisiert eine Adresse. Validierung identisch zu adresseAnlegen(). */
     public function adresseAktualisieren(array $data): array
     {
         $fehler = $this->validiereAdresse($data);
@@ -157,6 +199,7 @@ class KundenService
         return ['erfolg' => true];
     }
 
+    /** Löscht eine Adresse dauerhaft. */
     public function adresseLoeschen(int $id): array
     {
         $this->repo->deleteAdresse($id);
@@ -170,11 +213,13 @@ class KundenService
     // DSGVO
     // -------------------------------------------------------------------------
 
+    /** Gibt alle DSGVO-Consent-Einträge eines Kunden zurück. */
     public function getConsent(int $kundeId): array
     {
         return $this->repo->findConsent($kundeId);
     }
 
+    /** Trägt einen neuen Consent-Eintrag ein (append-only, keine Updates). */
     public function consentEintragen(array $data): array
     {
         if (empty($data['kunde_id']) || empty($data['consent_typ'])) {
@@ -194,6 +239,11 @@ class KundenService
     // Validierung
     // -------------------------------------------------------------------------
 
+    /**
+     * Validiert Kundendaten.
+     * Entweder Nachname oder Firmenname muss vorhanden sein.
+     * E-Mail-Format, Kreditlimit-Zahl und Geburtsdatum-Format werden geprüft.
+     */
     private function validiere(array $data): array
     {
         $fehler = [];
@@ -218,6 +268,7 @@ class KundenService
         return $fehler;
     }
 
+    /** Validiert Adress-Pflichtfelder: Kunden-ID, Straße, PLZ, Ort. */
     private function validiereAdresse(array $data): array
     {
         $fehler = [];

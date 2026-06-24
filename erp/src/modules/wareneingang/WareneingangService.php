@@ -5,6 +5,28 @@ require_once __DIR__ . '/WareneingangRepository.php';
 require_once __DIR__ . '/../lager/LagerRepository.php';
 require_once __DIR__ . '/../bestellungen/BestellungService.php';
 
+/**
+ * WareneingangService – Geschäftslogik für den Wareneingangs-Workflow
+ *
+ * Koordiniert drei Repositories: WareneingangRepository (Eingang-Records),
+ * LagerRepository (Bestandsführung) und BestellungService (Bestellnummer).
+ *
+ * Buchungsablauf bei bucheMenge():
+ * 1. Validierung (position_id, artikel_id, lager_id, menge > 0)
+ * 2. Aktuellen Bestand lesen (LagerRepository::getBestand)
+ * 3. Lagerbestand erhöhen (LagerRepository::upsertBestand)
+ * 4. Lagerbewegung anlegen (LagerRepository::insertBewegung, Typ "eingang")
+ * 5. Eingang-Record anlegen (verbindet Bewegung mit Bestellposition)
+ * 6. menge_eingegangen der Position erhöhen
+ * 7. Bestellungsstatus prüfen und ggf. auf "teilgeliefert" oder "erledigt" setzen
+ *
+ * EAN-Scan-Workflow: sucheNachEan() findet Artikel und gibt
+ * gleichzeitig alle offenen Bestellpositionen zurück.
+ *
+ * chargeStatus:
+ *   Wenn keine Charge angegeben: "nachzutragen" (chargenpflichtige Artikel sichtbar)
+ *   Wenn Charge angegeben: "erfasst"
+ */
 class WareneingangService
 {
     private WareneingangRepository $repo;
@@ -16,21 +38,30 @@ class WareneingangService
         $this->lagerRepo = new LagerRepository();
     }
 
+    /** Gibt alle offenen und teilgelieferten Bestellungen zurück. */
     public function getOffene(): array
     {
         return $this->repo->findOffene();
     }
 
+    /** Gibt alle aktiven Lager zurück (für Dropdown beim Einbuchen). */
     public function getAlleLager(): array
     {
         return $this->repo->findAlleLager();
     }
 
+    /** Gibt bestehende Chargen eines Artikels zurück (für Charge-Autocomplete). */
     public function getChargenFuerArtikel(int $artikelId): array
     {
         return $this->repo->findChargenFuerArtikel($artikelId);
     }
 
+    /**
+     * Sucht einen Artikel per EAN-Code und gibt seine offenen Bestellpositionen zurück.
+     *
+     * @return array ['gefunden' => bool, 'artikel' => [...], 'bestellungen' => [...]]
+     *               Wenn nicht gefunden: ['gefunden' => false]
+     */
     public function sucheNachEan(string $ean): array
     {
         $artikel = $this->repo->findArtikelByEan(trim($ean));
@@ -47,11 +78,25 @@ class WareneingangService
         ];
     }
 
+    /** Gibt alle Positionen einer Bestellung mit Artikel-Details zurück. */
     public function getPositionenMitArtikel(int $bestellungId): array
     {
         return $this->repo->findPositionenMitArtikel($bestellungId);
     }
 
+    /**
+     * Bucht eine Menge aus dem Wareneingang in den Lagerbestand.
+     *
+     * Validiert: position_id, artikel_id, lager_id, menge > 0.
+     * Charge ist optional — bei chargenpflichtigen Artikeln ohne Charge
+     * wird charge_status = 'nachzutragen' gesetzt (für die Nachtragsliste).
+     *
+     * Die Bestellnummer (BE-2026-NNNN) wird als referenz in lager_bewegungen gespeichert
+     * damit die Bewegung später der Bestellung zugeordnet werden kann.
+     *
+     * @return array ['erfolg' => true, 'komplett' => bool]
+     *               komplett = true wenn die Bestellung nach dieser Buchung vollständig ist.
+     */
     public function bucheMenge(array $data): array
     {
         $fehler = $this->validiere($data);
@@ -64,6 +109,7 @@ class WareneingangService
         $lagerId      = (int)$data['lager_id'];
         $menge        = (float)$data['menge'];
         $charge       = !empty($data['charge']) ? trim($data['charge']) : null;
+        // charge_status: "nachzutragen" wenn keine Charge — erscheint in der Nachtragsliste
         $chargeStatus = ($charge === null) ? 'nachzutragen' : 'erfasst';
         $benutzerId   = $_SESSION['benutzer']['id'];
 
@@ -74,9 +120,10 @@ class WareneingangService
 
         $bestellungId   = (int)$position['bestellung_id'];
         $lieferantId    = (int)$position['lieferant_id'];
+        // Bestellnummer für lager_bewegungen.referenz generieren
         $bestellnummer  = BestellungService::bestellnummer($bestellungId, $position['bestelldatum']);
 
-        // Lagerbestand aktualisieren
+        // Bestand vor der Buchung lesen (für Bewegungslog)
         $bestandVorher  = $this->lagerRepo->getBestand($artikelId, $lagerId, $charge);
         $bestandNachher = $bestandVorher + $menge;
 
@@ -89,7 +136,7 @@ class WareneingangService
             'mindestbestand' => 0,
         ]);
 
-        // Lager-Bewegung
+        // Lager-Bewegung mit Bestellnummer als Referenz
         $bewegungId = $this->lagerRepo->insertBewegung([
             'artikel_id'      => $artikelId,
             'lager_id'        => $lagerId,
@@ -105,7 +152,7 @@ class WareneingangService
             'benutzer_id'     => $benutzerId,
         ]);
 
-        // Eingang-Record
+        // Eingang-Record: verknüpft Lagerbewegung mit Bestellposition
         $this->repo->insertEingang([
             'position_id' => $positionId,
             'bewegung_id' => $bewegungId,
@@ -115,10 +162,9 @@ class WareneingangService
             'benutzer_id' => $benutzerId,
         ]);
 
-        // Position aktualisieren
+        // Position und Bestellungsstatus aktualisieren
         $this->repo->updatePositionEingegangen($positionId, $menge);
 
-        // Bestellungsstatus aktualisieren
         $komplett = $this->repo->pruefeBestellungKomplett($bestellungId);
         $this->repo->updateBestellungStatus($bestellungId, $komplett ? 'erledigt' : 'teilgeliefert');
 
@@ -132,6 +178,12 @@ class WareneingangService
         return ['erfolg' => true, 'komplett' => $komplett];
     }
 
+    /**
+     * Schließt eine Bestellung mit Restmengen ab.
+     * Aktion "streichen": alle offenen Positionen werden als gestrichen markiert,
+     * optionale Gutschrift-Daten werden gespeichert.
+     * (Weitere Aktionen wie "warten" werden im Frontend abgefangen — hier nur "streichen".)
+     */
     public function abschliessenMitRest(int $bestellungId, string $aktion, ?string $gutschriftNotiz, ?float $gutschriftBetrag): array
     {
         if ($aktion === 'streichen') {
@@ -146,6 +198,7 @@ class WareneingangService
         return ['erfolg' => true];
     }
 
+    /** Validiert Pflichtfelder: position_id, artikel_id, lager_id, menge > 0. */
     private function validiere(array $data): array
     {
         $fehler = [];

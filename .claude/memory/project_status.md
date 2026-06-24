@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-23 (Session 8)
+Stand: 2026-06-24 (Session 9)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -146,6 +146,12 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Buchhaltung/DATEV | MITTEL |
 | Kunden-Merge-UI (kunden_merge_queue) | NIEDRIG |
 | Seriennummern | NIEDRIG |
+
+## ✅ Modulpflege PHP-Kommentare (2026-06-24)
+- Alle 32 PHP-Klassen in `erp/src/` mit PHPDoc-Klassen-Kommentaren und Methoden-Kommentaren versehen
+- Kommentiert: alle Core-Klassen (Auth, Encryption, Database, Logger) + alle Module
+  (Artikel, Varianten, Achsen, Kategorien, Bilder, Merkmale, Preise, Aktionen, Lager,
+   Lieferanten, Hersteller, Kunden, Partner/Mietfach, Bestellungen, Wareneingang)
 
 ## Offene technische Punkte
 - Preis-Query Datums-Filter fehlt (gueltig_ab/gueltig_bis in artikel_preise-JOIN)

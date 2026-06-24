@@ -2,6 +2,22 @@
 
 require_once __DIR__ . '/../../core/database.php';
 
+/**
+ * VariantenRepository – Datenzugriff für Achsen-Zuweisungen, Werte und Kombinationen
+ *
+ * Deckt drei Tabellen ab:
+ *   artikel_achsen             → Welche Achsen hat dieser Vater-Artikel? (mit Bedingungs-FK)
+ *   varianten_achse_werte      → Welche Werte existieren pro Achse+Artikel? (Rot, Blau, 3mm...)
+ *   varianten_kombination_werte → Verknüpft Kind-Artikel (kombination_id) mit ihren Wert-IDs
+ *
+ * Granulare Lösch-Logik in deleteWerteExcluding():
+ *   Werte die in Kombinationen verwendet werden (findWertIdsInUse) DÜRFEN NICHT gelöscht werden.
+ *   Der Service schickt eine Liste von "behalten"-IDs, alles andere wird entfernt.
+ *   Bei leerer excludeIds-Liste werden ALLE Werte gelöscht (deleteWerteByArtikelId).
+ *
+ * insertKindArtikel() ist eine vereinfachte Insert-Methode speziell für Kombinations-Kinder.
+ * Die vollständigen Felder werden im Service aus dem Vater-Artikel befüllt (erstelleKombinationen).
+ */
 class VariantenRepository
 {
     private PDO $db;
@@ -38,7 +54,8 @@ class VariantenRepository
         return $stmt->fetchAll();
     }
 
-    public function insertArtikelAchse(array $data): int //eine Achse zuweisen
+    /** Weist eine Achse einem Artikel zu (artikel_achsen). Bedingungs-FK optional für abhängige Achsen. */
+    public function insertArtikelAchse(array $data): int
     {
         $stmt = $this->db->prepare("
             INSERT INTO artikel_achsen (
@@ -68,7 +85,8 @@ class VariantenRepository
         return (int) $this->db->lastInsertId();
     }
 
-    public function deleteArtikelAchsenByArtikelId(int $artikelId): bool //alle Achsen löschen (für Replace)
+    /** Löscht alle Achsen-Zuweisungen eines Artikels (vollständiger Replace-Ansatz). */
+    public function deleteArtikelAchsenByArtikelId(int $artikelId): bool
     {
         $stmt = $this->db->prepare("
             DELETE
@@ -132,7 +150,8 @@ class VariantenRepository
         return (int) $this->db->lastInsertId();
     }
 
-    public function deleteWerteByArtikelId(int $artikelId): bool //alle Werte löschen (für Replace)
+    /** Löscht ALLE Achsen-Werte eines Artikels. Nur nutzen wenn sicher keine Kombinationen existieren. */
+    public function deleteWerteByArtikelId(int $artikelId): bool
     {
         $stmt = $this->db->prepare("
             DELETE
@@ -147,6 +166,12 @@ class VariantenRepository
         return (int) $stmt->rowCount() > 0;
     }
 
+    /**
+     * Löscht alle Werte AUSSER den angegebenen IDs.
+     * excludeIds = in-use Wert-IDs (aus findWertIdsInUse) — diese dürfen nicht entfernt werden
+     * weil Kombinationen (Kind-Artikel) auf sie verweisen.
+     * Bei leerem $excludeIds werden alle Werte gelöscht (delegiert an deleteWerteByArtikelId).
+     */
     public function deleteWerteExcluding(int $artikelId, array $excludeIds): void
     {
         if (empty($excludeIds)) {
@@ -182,6 +207,11 @@ class VariantenRepository
         $stmt->execute(['sort' => $sortOrder, 'id' => $id]);
     }
 
+    /**
+     * Gibt alle Wert-IDs zurück die in mindestens einer Kombination (varianten_kombination_werte) verwendet werden.
+     * Diese Werte sind "geschützt" und dürfen nicht gelöscht werden.
+     * Wird in VariantenService::speichereAchsenUndWerte() genutzt um die Lösch-Whitelist zu bauen.
+     */
     public function findWertIdsInUse(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -202,6 +232,11 @@ class VariantenRepository
         return $row !== false && $row['vaterartikel_id'] !== null;
     }
 
+    /**
+     * Gibt alle bereits existierenden Kind-Artikel mit ihren Wert-IDs zurück.
+     * wert_ids als GROUP_CONCAT sortierter Strings (z.B. "3,7,12") — wird im Service
+     * für den Duplikat-Check beim Kombinationsgenerator verwendet.
+     */
     public function findExistingKombinationen(int $vaterId): array
     {
         $stmt = $this->db->prepare("
@@ -224,10 +259,13 @@ class VariantenRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Lädt Wert-Datensätze anhand einer Liste von IDs.
+     * Genutzt im VarKombi-Generator um Wert-Details (wert, achse_id) zu einem Wert-Set zu laden.
+     */
     public function findWerteByIds(array $ids): array
     {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        // Bei [1, 3] → "?,?"
 
         $stmt = $this->db->prepare("
             SELECT

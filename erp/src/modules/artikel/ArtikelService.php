@@ -4,6 +4,20 @@ require_once __DIR__ . '/ArtikelRepository.php';
 require_once __DIR__ . '/KategorieRepository.php';
 require_once __DIR__ . '/EinheitenRepository.php';
 
+/**
+ * ArtikelService – Business-Logik für Artikel, Kategorien und Vater-Kind-Vererbung
+ *
+ * Kombiniert ArtikelRepository + KategorieRepository für zusammengesetzte Operationen.
+ *
+ * Wichtige Methoden:
+ *   save() / update()       → Validierung + Preis/EAN als Nebenfelder trennen + propagiereZuKindern
+ *   saveKind()              → Erbt ~20 Felder vom Vater, berechnet Netto aus Brutto
+ *   getKategorienBaum()     → Flat-List → Baum (rekursiv per &-Referenz, nicht rekursiver Funktion)
+ *   saveKategorien()        → delegiert an KategorieRepository + syncKategorienZuKindern
+ *   kopiereVaterRelationenZuKindern() → Kategorien + Merkmale + Lieferanten + Preise für neue Kinder
+ *   kopiere()               → Artikel-Kopie mit Whitelist aller kopierbaren Felder
+ *   getPreisStatusFuerListe() → Batch-Preisstatus für die Artikel-Liste (Sale/Aktion-Chips)
+ */
 class ArtikelService
 {
     private ArtikelRepository $repo;
@@ -22,6 +36,11 @@ class ArtikelService
         return $this->einheitenRepo->findAll();
     }
 
+    /**
+     * Legt einen neuen Artikel an.
+     * brutto_vk / netto_vk / ean_gtin13 werden vor dem DB-Insert herausgelöst,
+     * da sie in separate Tabellen gespeichert werden.
+     */
     public function save(array $data): array
     {
         $fehler = $this->validiere($data);
@@ -47,6 +66,11 @@ class ArtikelService
         return ['erfolg' => true, 'id' => $id];
     }
 
+    /**
+     * Aktualisiert einen bestehenden Artikel.
+     * Nach dem Stammdaten-Update propagiert propagiereZuKindern() die gemeinsamen Felder
+     * und propagateAuslaufZuKindern() synchronisiert das Auslauf-Flag auf alle Kinder.
+     */
     public function update(array $data): array
     {
         $fehler = $this->validiere($data);
@@ -77,7 +101,11 @@ class ArtikelService
         return ['erfolg' => true];
     }
 
-    // Speichert ein neues Kind (Variante) eines Vater-Artikels
+    /**
+     * Speichert ein neues Kind (Variante) eines Vater-Artikels.
+     * Das Kind erbt ~20 Felder direkt vom Vater (nicht aus dem POST-Array).
+     * Der Netto-VK wird aus dem Brutto-VK und dem Steuersatz des Vaters berechnet.
+     */
     public function saveKind(array $data): array
     {
         $fehler = $this->validiereKind($data);
@@ -138,7 +166,7 @@ class ArtikelService
         return ['erfolg' => true, 'id' => $id];
     }
 
-    // Aktualisiert ein Kind (Variante)
+    /** Aktualisiert ein Kind-Artikel (Variante): nur kind-spezifische Felder + EAN + optionaler Preis. */
     public function kindUpdate(array $data): array
     {
         $fehler = $this->validiereKind($data);
@@ -234,6 +262,11 @@ class ArtikelService
         return $this->kategorieRepo->findAll();
     }
 
+    /**
+     * Gibt den Kategorienbaum als verschachtelte Struktur zurück.
+     * Verwendet PHP-Referenzen (&$knoten) um den Baum in einem einzigen Pass aufzubauen
+     * — kein rekursiver Funktionsaufruf nötig.
+     */
     public function getKategorienBaum(): array
     {
         $flat = $this->kategorieRepo->findAllMitEltern();
@@ -258,6 +291,12 @@ class ArtikelService
         return $wurzeln;
     }
 
+    /**
+     * Speichert Kategorie-Zuweisungen für einen Artikel.
+     * Gibt Aktions-Hinweise zurück (wenn neu zugewiesene Kategorie eine aktive Aktion hat)
+     * damit die View ein Modal für Aktionspreise anzeigen kann.
+     * Synchronisiert außerdem die Kategorien zu allen Kind-Artikeln.
+     */
     public function saveKategorien(int $artikelId, array $kategorieIds): array
     {
         $aktionsHinweise = $this->kategorieRepo->updateArtikelKategoriezuweisungen($artikelId, $kategorieIds);
@@ -271,6 +310,11 @@ class ArtikelService
         return $this->kategorieRepo->findByArtikelId($artikelId);
     }
 
+    /**
+     * Kopiert alle Vater-Relationen zu neu erstellten Kind-Artikeln.
+     * Wird nach erstelleKombinationen() aufgerufen: Kategorien, Merkmale, Lieferanten und
+     * Preise werden für jedes neue Kind kopiert damit es sofort vollständig befüllt ist.
+     */
     public function kopiereVaterRelationenZuKindern(int $vaterId, array $kindIds): void
     {
         foreach ($kindIds as $kindId) {
@@ -397,6 +441,11 @@ class ArtikelService
         return $this->repo->getLieferantenFuerArtikel($artikelId);
     }
 
+    /**
+     * Validiert Artikel-Stammdaten (für save() und update()).
+     * Prüft: Pflichtfelder (Artikelnummer, Name, Typ) + Eindeutigkeit der Artikelnummer
+     * + Zustandsartikel brauchen eine Vater-ID.
+     */
     private function validiere(array $data): array
     {
         $fehler = [];
@@ -424,6 +473,7 @@ class ArtikelService
         return $fehler;
     }
 
+    /** Validierung für Kind-Artikel: Artikelnummer (eindeutig) + vaterartikel_id Pflicht. */
     private function validiereKind(array $data): array
     {
         $fehler = [];
@@ -451,6 +501,10 @@ class ArtikelService
         return $this->repo->findZustandsArtikelByVaterId($vaterId);
     }
 
+    /**
+     * Gibt Zustandsartikel gruppiert nach Vater-ID zurück.
+     * Format: [vater_id => [zustandsartikel, ...]] — direkt verwendbar in der Artikel-Liste.
+     */
     public function getZustandsArtikelFuerListe(array $vaterIds): array
     {
         $ergebnis = $this->repo->findZustandsArtikelFuerListe($vaterIds);
@@ -471,6 +525,12 @@ class ArtikelService
         return $this->repo->findByIdSimple($id);
     }
 
+    /**
+     * Kopiert einen Artikel mit neuer Artikelnummer und optionalen Relationen.
+     * Verwendet eine explizite Whitelist der kopierbaren Felder (array_intersect_key)
+     * damit keine internen Felder wie id, aktiv oder url_slug übernommen werden.
+     * Der kopierte Artikel startet immer inaktiv (aktiv = 0).
+     */
     public function kopiere(int $quell_id, array $kopierData): array
     {
         $quellArtikel = $this->repo->findById($quell_id);
@@ -551,6 +611,11 @@ class ArtikelService
         return ['erfolg' => true, 'id' => $neueId];
     }
 
+    /**
+     * Lädt den Preisstatus (Sale/Aktion) für alle Artikel der Liste in einem Batch.
+     * Wird in liste.php nach dem Haupt-Query aufgerufen um Preis-Chips anzuzeigen.
+     * Holt Standard-KG-ID einmalig per Query hier statt im Repository-Layer.
+     */
     public function getPreisStatusFuerListe(array $artikelIds): array
     {
         if (empty($artikelIds)) return [];

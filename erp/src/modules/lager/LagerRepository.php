@@ -2,6 +2,31 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * LagerRepository – Datenzugriff für Lager, Lagerbestand und Lagerbewegungen
+ *
+ * Kernfunktionen:
+ *   getBestand()      → aktuellen Bestand lesen (mit/ohne Charge)
+ *   upsertBestand()   → Bestand anlegen oder aktualisieren
+ *   insertBewegung()  → Audit-Log-Eintrag für jede Bestandsänderung
+ *   findUebersicht()  → komplexe UNION ALL für die Lager-Übersichtsliste
+ *
+ * upsertBestand() hat eine kritische Besonderheit:
+ * Wenn charge = NULL, funktioniert "ON DUPLICATE KEY UPDATE" NICHT (NULL ≠ NULL in SQL-Vergleichen).
+ * Deshalb wird in diesem Fall manuell SELECT + UPDATE oder INSERT gemacht.
+ * Wenn charge = 'LOT-123', kann normale ON DUPLICATE KEY UPDATE genutzt werden.
+ *
+ * findUebersicht() baut eine 4-stufige UNION ALL:
+ *   vater         → Vater-Artikel (Summe der Kinder)
+ *   kind          → Kind-Artikel (je Charge/Lager-Zeile)
+ *   standalone    → Standalone-Artikel (Kopf-Summe)
+ *   standalone_kind → Standalone-Artikel (je Charge/Lager-Zeile)
+ *
+ * Charge-Status:
+ *   erfasst      → Chargenummer bekannt
+ *   nachzutragen → Artikel charge_pflicht=1 aber beim Eingang keine Charge angegeben
+ *   null         → Artikel ohne Chargenpflicht
+ */
 class LagerRepository
 {
     private PDO $db;
@@ -11,6 +36,10 @@ class LagerRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Gibt alle Lager mit ihrem aktuellen Bestand zurück.
+     * Nur Zeilen mit vorhandenem Lagerbestand (INNER JOIN, nicht LEFT JOIN).
+     */
     public function findAll(): array
     {
         $stmt = $this->db->query("
@@ -23,6 +52,10 @@ class LagerRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt den gesamten Bestand eines Artikels über alle Lager zurück.
+     * Sortiert nach Bestand absteigend (lagerstärkste Charge zuerst).
+     */
     public function findBestandByArtikelId(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -40,6 +73,7 @@ class LagerRepository
         return $stmt->fetchAll();
     }
 
+    /** Gibt den gesamten Bestand eines Lagers zurück (alle Artikel). */
     public function findBestandByLager(int $lagerId): array
     {
         $stmt = $this->db->prepare("
@@ -57,6 +91,10 @@ class LagerRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt alle Chargen eines Artikels zurück (identisch zu findBestandByArtikelId).
+     * Existiert als separater Methode für semantische Klarheit in LagerController.
+     */
     public function findChargenByArtikelId(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -74,6 +112,12 @@ class LagerRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt alle Lagerbestand-Einträge zurück bei denen charge_status = 'nachzutragen'
+     * und der Artikel charge_pflicht = 1 hat.
+     * Für die Charge-Nachtragsliste (nachtrag_liste.php).
+     * COALESCE für Vater/Kind-Name-Anzeige.
+     */
     public function findNachzutragendeChargen(): array
     {
         $stmt = $this->db->query("
@@ -96,6 +140,10 @@ class LagerRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Trägt eine Charge für einen Lagerbestand-Eintrag nach.
+     * Setzt charge und charge_status = 'erfasst'.
+     */
     public function updateCharge(int $lagerbestandId, string $charge): bool
     {
         $stmt = $this->db->prepare("
@@ -107,6 +155,12 @@ class LagerRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Gibt den aktuellen Bestand eines Artikels in einem Lager zurück.
+     * Bei charge = null: sucht nach Zeile mit charge IS NULL (kein Charge-Filter).
+     * Bei charge = 'LOT-123': sucht nach exakter Charge.
+     * Gibt 0.0 zurück wenn kein Bestand-Eintrag vorhanden.
+     */
     public function getBestand(int $artikelId, int $lagerId, ?string $charge = null): float
     {
         if ($charge !== null) {
@@ -126,9 +180,23 @@ class LagerRepository
         return $result ? (float) $result['bestand'] : 0.0;
     }
 
+    /**
+     * Speichert oder aktualisiert einen Lagerbestand-Eintrag.
+     *
+     * WICHTIG: Zwei unterschiedliche Code-Pfade je nach Charge:
+     *
+     * Wenn charge IS NOT NULL:
+     *   → "INSERT ... ON DUPLICATE KEY UPDATE" funktioniert normal,
+     *     weil der UNIQUE-Index auf (artikel_id, lager_id, charge) greift.
+     *
+     * Wenn charge IS NULL:
+     *   → ON DUPLICATE KEY würde nie triggern, weil NULL != NULL in SQL-Indizes.
+     *     Deshalb: manuelles "SELECT id WHERE charge IS NULL" + UPDATE oder INSERT.
+     */
     public function upsertBestand(array $data): bool
     {
         if ($data['charge'] !== null) {
+            // Normale Variante: UNIQUE-Index auf (artikel_id, lager_id, charge) greift
             $stmt = $this->db->prepare("
                 INSERT INTO lagerbestand (
                     artikel_id, lager_id, charge, charge_status, bestand, mindestbestand
@@ -144,6 +212,7 @@ class LagerRepository
             $stmt->execute($data);
             return $stmt->rowCount() > 0;
         } else {
+            // NULL-Sonderfall: NULL != NULL in SQL — ON DUPLICATE KEY funktioniert nicht
             $check = $this->db->prepare("
                 SELECT id FROM lagerbestand
                 WHERE artikel_id = :artikel_id AND lager_id = :lager_id AND charge IS NULL
@@ -179,6 +248,7 @@ class LagerRepository
         }
     }
 
+    /** Löscht einen Lagerbestand-Eintrag dauerhaft (z.B. nach Charge-Nachtragung mit vollständiger Umbuchung). */
     public function deleteBestand(int $id): bool
     {
         $stmt = $this->db->prepare("DELETE FROM lagerbestand WHERE id = :id");
@@ -186,6 +256,7 @@ class LagerRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Aktualisiert nur den Bestand-Mengenwert eines Eintrags (für Charge-Nachtrag-Umbuchung). */
     public function updateBestandMenge(int $id, float $bestand): bool
     {
         $stmt = $this->db->prepare("UPDATE lagerbestand SET bestand = :bestand WHERE id = :id");
@@ -193,6 +264,12 @@ class LagerRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Schreibt einen neuen Eintrag in lager_bewegungen (Audit-Log).
+     * Alle Bestandsänderungen werden hier als unveränderliche Zeilen protokolliert.
+     * bestand_vorher + bestand_nachher müssen immer mitgegeben werden.
+     * Gibt die neue ID zurück (wird für bestellung_eingaenge.bewegung_id benötigt).
+     */
     public function insertBewegung(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -210,6 +287,18 @@ class LagerRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /**
+     * Gibt eine strukturierte Lager-Übersicht aller Artikel mit Bestand > 0.
+     *
+     * UNION ALL mit 4 Teilabfragen für die hierarchische Listenansicht:
+     *
+     *   'vater'          → Vater-Artikel (Summe der Kind-Bestände, keine eigene Bestandszeile)
+     *   'kind'           → Kind-Artikel (Variante) mit je einer Zeile pro Charge/Lager-Kombination
+     *   'standalone'     → Normale Artikel ohne Varianten (Kopfzeile mit Summe aller Chargen)
+     *   'standalone_kind' → Normale Artikel: je eine Zeile pro Charge/Lager-Kombination
+     *
+     * Sortierung: Artikel-Name, dann zeilentyp DESC (Kopfzeilen vor Detail-Zeilen), dann Variante.
+     */
     public function findUebersicht(): array
     {
         $stmt = $this->db->query("
@@ -294,6 +383,7 @@ class LagerRepository
         return $stmt->fetchAll();
     }
 
+    /** Gibt zurück ob ein Artikel Chargenpflicht hat (charge_pflicht = 1). */
     public function getChargePflicht(int $artikelId): bool
     {
         $stmt = $this->db->prepare("SELECT charge_pflicht FROM artikel WHERE id = :id");
@@ -302,6 +392,7 @@ class LagerRepository
         return (bool) ($result['charge_pflicht'] ?? false);
     }
 
+    /** Gibt einen Lagerbestand-Eintrag anhand seiner ID zurück (für Charge-Nachtrag). */
     public function findLagerbestandById(int $id): array|false
     {
         $stmt = $this->db->prepare("
@@ -311,6 +402,12 @@ class LagerRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Gibt den Bestand eines Artikels pro Lager + Charge zurück, gruppiert nach Lager.
+     * Ergebnis-Format: Lager-ID → ['name', 'gesamt', 'mindestbestand', 'chargen']
+     * Zeilen ohne Charge werden zur Lager-Summe addiert, aber nicht in 'chargen' aufgenommen.
+     * Wird für die Lager-Tab-Anzeige in der Artikel-Detailseite verwendet.
+     */
     public function findBestandChargeProLager(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -332,12 +429,11 @@ class LagerRepository
 
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $lagerGruppen = [];  // startet leer
+        $lagerGruppen = [];
 
         foreach ($rows as $row) {
             $lid = $row['lager_id'];
 
-            // Beim ersten Mal für dieses Lager: Grundstruktur anlegen
             if (!isset($lagerGruppen[$lid])) {
                 $lagerGruppen[$lid] = [
                     'name'          => $row['lager_name'],
@@ -347,10 +443,9 @@ class LagerRepository
                 ];
             }
 
-            // Jede Zeile: Bestand aufsummieren
             $lagerGruppen[$lid]['gesamt'] += $row['bestand'];
 
-            // Nur wenn Charge vorhanden: anhängen
+            // Nur Chargen-Zeilen in die Liste — Zeilen ohne Charge fließen nur in die Summe
             if ($row['charge'] !== null) {
                 $lagerGruppen[$lid]['chargen'][] = $row;
             }
@@ -359,12 +454,18 @@ class LagerRepository
         return $lagerGruppen;
     }
 
+    /** Gibt alle aktiven Lager zurück (für Dropdowns). */
     public function findAlleLager(): array
     {
         $stmt = $this->db->query("SELECT id, name FROM lager WHERE aktiv = 1 ORDER BY name");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Gibt die letzten 10 Lagerbewegungen für einen Artikel zurück.
+     * Enthält: Bewegungstyp, Menge, Bestand vorher/nachher, Charge, Referenz (Bestellnummer),
+     * Benutzer-Formularname und Lager-Name. Nur letzte 10 für schnelle Anzeige.
+     */
     public function findBewegungslogFuerArtikel(int $artikelId): array
     {
         $stmt = $this->db->prepare("

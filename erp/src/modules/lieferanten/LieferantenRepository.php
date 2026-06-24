@@ -2,6 +2,17 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * LieferantenRepository – CRUD für Lieferanten und ihre Vertreter
+ *
+ * Lieferanten sind Großhändler/Marken von denen MeaLana einkauft
+ * (z.B. DROPS, Lang Yarns, Schachenmayr).
+ * Jeder Lieferant kann mehrere Vertreter (lieferanten_vertreter) haben.
+ *
+ * Löschen = Soft-Delete (aktiv = 0) sowohl für Lieferanten als auch Vertreter.
+ * Artikel-Lieferanten-Verknüpfungen (EK-Preis, VPE, Bestellnummer) sind
+ * in artikel_lieferanten gespeichert — nicht hier.
+ */
 class LieferantenRepository
 {
     private PDO $db;
@@ -11,11 +22,16 @@ class LieferantenRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Gibt alle Lieferanten zurück.
+     *
+     * @param bool $mitInaktiven Wenn false (Standard), nur aktive Lieferanten
+     */
     public function findAll(bool $mitInaktiven = false): array
     {
         $where = $mitInaktiven ? '' : 'WHERE l.aktiv = 1';
         $stmt = $this->db->query("
-            SELECT 
+            SELECT
                 l.id,
                 l.name,
                 l.land,
@@ -31,10 +47,11 @@ class LieferantenRepository
         return $stmt->fetchAll();
     }
 
+    /** Gibt einen Lieferanten anhand ID zurück, oder false wenn nicht gefunden. */
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
-        SELECT 
+        SELECT
             l.id,
             l.name,
             l.land,
@@ -51,6 +68,10 @@ class LieferantenRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Prüft ob ein Lieferant mit diesem Namen bereits existiert.
+     * excludeId wird beim Update übergeben damit der Lieferant sich selbst nicht sperrt.
+     */
     public function findByName(string $name, ?int $excludeId = null): array|false
     {
         $sql = "SELECT id FROM lieferanten WHERE name = :name";
@@ -66,6 +87,10 @@ class LieferantenRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Gibt alle aktiven Vertreter eines Lieferanten zurück, alphabetisch nach Nachname.
+     * Vertreter sind Ansprechpartner beim Lieferanten (Außendienstmitarbeiter, etc.).
+     */
     public function findVertreterByLieferantId(int $lieferantId): array
     {
         $stmt = $this->db->prepare("
@@ -89,6 +114,10 @@ class LieferantenRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt einen Lieferanten mit all seinen aktiven Vertretern zurück.
+     * Kombiniert findById() + findVertreterByLieferantId() in einem Aufruf.
+     */
     public function findByIdMitVertretern(int $id): array|false
     {
         $lieferanten = $this->findById($id);
@@ -102,6 +131,7 @@ class LieferantenRepository
         return $lieferanten;
     }
 
+    /** Legt einen neuen Lieferanten an und gibt die neue ID zurück. */
     public function insert(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -121,6 +151,7 @@ class LieferantenRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /** Aktualisiert alle Felder eines Lieferanten und setzt geaendert_am = NOW(). */
     public function update(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -148,6 +179,7 @@ class LieferantenRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Soft-Delete: setzt aktiv = 0. */
     public function deactivate(int $id): bool
     {
         $stmt = $this->db->prepare("
@@ -157,10 +189,14 @@ class LieferantenRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Volltextsuche nach Name oder Land.
+     * Wird für AJAX-Typeahead in Bestellungen verwendet.
+     */
     public function search(string $q): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 l.id,
                 l.name,
                 l.land,
@@ -177,6 +213,7 @@ class LieferantenRepository
         return $stmt->fetchAll();
     }
 
+    /** Legt einen neuen Vertreter für einen Lieferanten an. */
     public function insertVertreter(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -198,6 +235,7 @@ class LieferantenRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /** Aktualisiert alle Felder eines Vertreters und setzt geaendert_am = NOW(). */
     public function updateVertreter(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -227,6 +265,7 @@ class LieferantenRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Soft-Delete für einen Vertreter (aktiv = 0). */
     public function deactivateVertreter(int $id): bool
     {
         $stmt = $this->db->prepare("
@@ -236,6 +275,7 @@ class LieferantenRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Gibt einen einzelnen Vertreter anhand ID zurück. */
     public function findVertreterById(int $id): array|false
     {
         $stmt = $this->db->prepare("

@@ -3,6 +3,23 @@
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Encryption.php';
 
+/**
+ * KundenRepository – CRUD für Kunden mit AES-256-GCM Verschlüsselung
+ *
+ * Alle persönlichen Daten (Name, E-Mail, Telefon, Adresse, etc.) werden
+ * verschlüsselt in der DB gespeichert (DSGVO-Pflicht). Lesbare Klartexte
+ * stehen nur nach dem Entschlüsseln zur Verfügung.
+ *
+ * Spaltenkonvention:
+ *   vorname_enc  → BLOB, verschlüsselt   | vorname  → Klartext (nach entschluesseln())
+ *   email_hash   → HMAC für exakte Suche | email    → Klartext
+ *
+ * Suche nach Name/E-Mail erfolgt in PHP (nicht SQL-LIKE), weil verschlüsselte
+ * Felder keinen Index-Scan erlauben. Nur Duplikat-Check per email_hash ist O(1).
+ *
+ * Laufkunde (id=1) hat ist_laufkunde=1 und erscheint nicht in der Kundenliste.
+ * Löschen = Status "geloescht" (Soft-Delete).
+ */
 class KundenRepository
 {
     private PDO $db;
@@ -16,6 +33,15 @@ class KundenRepository
     // Liste + Suche
     // -------------------------------------------------------------------------
 
+    /**
+     * Gibt alle Kunden zurück (ohne Laufkunde), nach Suche und Status gefiltert.
+     *
+     * Suche und Statusfilter erfolgen in PHP weil verschlüsselte Felder
+     * kein SQL-LIKE erlauben. Bei großen Kundenstämmen → Performance-Thema.
+     *
+     * @param string $suche  Freitextsuche in Vor-/Nachname, Firma, E-Mail, Kundennummer
+     * @param string $status Filterung auf "aktiv" | "gesperrt" | "geloescht"
+     */
     public function findAll(string $suche = '', string $status = ''): array
     {
         $stmt = $this->db->query("
@@ -32,9 +58,10 @@ class KundenRepository
         ");
 
         $rows = $stmt->fetchAll();
+        // Alle Zeilen entschlüsseln bevor gefiltert wird
         $rows = array_map([$this, 'entschluesseln'], $rows);
 
-        // Suche + Statusfilter in PHP (verschlüsselte Felder lassen kein SQL-LIKE zu)
+        // Suche in PHP (verschlüsselte Felder lassen kein SQL-LIKE zu)
         if ($suche !== '') {
             $s = strtolower($suche);
             $rows = array_filter($rows, function ($r) use ($s) {
@@ -53,6 +80,10 @@ class KundenRepository
         return array_values($rows);
     }
 
+    /**
+     * Gibt einen vollständigen Kundendatensatz zurück (entschlüsselt).
+     * Enthält zusätzlich: Zahlungsbedingung, Telefon, Mobil, Notiz, etc.
+     */
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
@@ -77,6 +108,11 @@ class KundenRepository
         return $row ? $this->entschluesseln($row) : false;
     }
 
+    /**
+     * Sucht einen Kunden über den HMAC-Hash seiner E-Mail-Adresse.
+     * O(1)-Lookup via Index auf email_hash — wird für Duplikat-Erkennung verwendet.
+     * Normalisierung (lowercase + trim) passiert in Encryption::hash().
+     */
     public function findByEmailHash(string $email): array|false
     {
         $hash = Encryption::hash($email);
@@ -93,6 +129,11 @@ class KundenRepository
     // Kundennummer
     // -------------------------------------------------------------------------
 
+    /**
+     * Generiert die nächste Kundennummer im Format "KD-00001".
+     * Findet die höchste bestehende KD-Nummer via Regex + CAST und zählt um 1 hoch.
+     * Wenn keine Kunden existieren, startet bei KD-00001.
+     */
     public function nextKundennummer(): string
     {
         $stmt = $this->db->query("
@@ -110,6 +151,10 @@ class KundenRepository
     // Schreiben
     // -------------------------------------------------------------------------
 
+    /**
+     * Legt einen neuen Kunden an. Verschlüsselt alle personenbezogenen Felder
+     * über verschluesseln() bevor der INSERT ausgeführt wird.
+     */
     public function insert(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -136,6 +181,7 @@ class KundenRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /** Aktualisiert alle Felder eines Kunden. Verschlüsselt personenbezogene Daten. */
     public function update(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -166,6 +212,7 @@ class KundenRepository
         return $stmt->execute($params) && $stmt->rowCount() > 0;
     }
 
+    /** Aktualisiert nur den Status eines Kunden (aktiv/gesperrt/geloescht). */
     public function updateStatus(int $id, string $status): bool
     {
         $stmt = $this->db->prepare("UPDATE kunden SET status = :status WHERE id = :id");
@@ -177,6 +224,10 @@ class KundenRepository
     // Adressen
     // -------------------------------------------------------------------------
 
+    /**
+     * Gibt alle Adressen eines Kunden zurück (entschlüsselt).
+     * Sortiert: Standard-Adresse zuerst, dann alphabetisch nach Adresstyp.
+     */
     public function findAdressen(int $kundeId): array
     {
         $stmt = $this->db->prepare("
@@ -191,9 +242,14 @@ class KundenRepository
         return array_map([$this, 'entschluesselnAdresse'], $stmt->fetchAll());
     }
 
+    /**
+     * Legt eine neue Adresse an.
+     * Wenn ist_standard = 1: alle anderen Adressen desselben Typs werden auf 0 gesetzt.
+     */
     public function insertAdresse(array $data): int
     {
         if (!empty($data['ist_standard'])) {
+            // Vor dem Insert: alle anderen Standards für diesen Typ zurücksetzen
             $this->db->prepare("UPDATE kunden_adressen SET ist_standard = 0 WHERE kunde_id = :kid AND adresstyp = :typ")
                 ->execute(['kid' => $data['kunde_id'], 'typ' => $data['adresstyp']]);
         }
@@ -213,6 +269,10 @@ class KundenRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /**
+     * Aktualisiert eine Adresse.
+     * Wenn ist_standard = 1: alle anderen Adressen desselben Typs (außer dieser) auf 0 setzen.
+     */
     public function updateAdresse(array $data): bool
     {
         if (!empty($data['ist_standard'])) {
@@ -240,6 +300,7 @@ class KundenRepository
         return $stmt->execute($params) && $stmt->rowCount() > 0;
     }
 
+    /** Löscht eine Adresse dauerhaft (keine Soft-Delete bei Adressen). */
     public function deleteAdresse(int $id): bool
     {
         $stmt = $this->db->prepare("DELETE FROM kunden_adressen WHERE id = :id");
@@ -251,6 +312,10 @@ class KundenRepository
     // DSGVO Consent
     // -------------------------------------------------------------------------
 
+    /**
+     * Gibt alle DSGVO-Consent-Einträge eines Kunden zurück (neueste zuerst).
+     * Consent-Typen: "newsletter", "marketing", "datenweitergabe", etc.
+     */
     public function findConsent(int $kundeId): array
     {
         $stmt = $this->db->prepare("
@@ -264,6 +329,7 @@ class KundenRepository
         return $stmt->fetchAll();
     }
 
+    /** Legt einen neuen Consent-Eintrag an (append-only, keine Updates). */
     public function insertConsent(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -287,6 +353,11 @@ class KundenRepository
     // Hilfsfunktionen: Verschlüsseln / Entschlüsseln
     // -------------------------------------------------------------------------
 
+    /**
+     * Baut das DB-Insert/Update-Array für Kundendaten.
+     * Verschlüsselt alle personenbezogenen Felder via Encryption::encrypt().
+     * Erstellt email_hash via Encryption::hash() für die Duplikat-Suche.
+     */
     private function verschluesseln(array $data): array
     {
         return [
@@ -312,6 +383,11 @@ class KundenRepository
         ];
     }
 
+    /**
+     * Entschlüsselt alle _enc-Felder einer Kundenzeile und entfernt sie danach.
+     * Views sehen nur Klartexte (vorname, nachname, etc.) — nie die Rohdaten.
+     * email_hash wird ebenfalls entfernt (nur für interne Suche gedacht).
+     */
     private function entschluesseln(array $row): array
     {
         $row['vorname']    = Encryption::decrypt($row['vorname_enc'] ?? null);
@@ -333,6 +409,10 @@ class KundenRepository
         return $row;
     }
 
+    /**
+     * Baut das DB-Insert/Update-Array für Adressdaten.
+     * Verschlüsselt alle Adressfelder.
+     */
     private function verschluesselnAdresse(array $data): array
     {
         return [
@@ -351,6 +431,9 @@ class KundenRepository
         ];
     }
 
+    /**
+     * Entschlüsselt alle _enc-Felder einer Adresszeile und entfernt sie danach.
+     */
     private function entschluesselnAdresse(array $row): array
     {
         $row['firma']      = Encryption::decrypt($row['firma_enc'] ?? null);

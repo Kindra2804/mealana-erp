@@ -2,6 +2,19 @@
 
 require_once __DIR__ . '/../../core/database.php';
 
+/**
+ * BilderRepository – CRUD und Reihenfolge-Verwaltung für Artikel-Bilder
+ *
+ * Bilder sind in artikel_bilder gespeichert mit einer position-Spalte (0-basiert).
+ * Position 0 ist immer das Hauptbild — es erscheint im Shop-Listing und beim Scan-Modus.
+ *
+ * Reihenfolge-Invariante:
+ *   ↑/↓ (verschiebePosition) darf NICHT Position 0 überschreiben — nur ☆ (setzeHauptbild) darf das.
+ *   Dies ist bewusst, damit das Hauptbild stabil bleibt wenn der Nutzer die Galeriereihenfolge sortiert.
+ *
+ * Dateien liegen in uploads/artikel/{artikel_id}/ und werden von bild_upload.php verwaltet.
+ * Das Repository kennt nur den Dateinamen, nicht den vollständigen Pfad.
+ */
 class BilderRepository
 {
     private PDO $db;
@@ -29,6 +42,10 @@ class BilderRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Fügt ein neues Bild ein. Position = MAX(position)+1 → wird automatisch letztes Bild.
+     * Hauptbild kann danach per setzeHauptbild() auf dieses Bild gesetzt werden.
+     */
     public function insert(int $artikelId, string $dateiname, string $altText = ''): int
     {
         $naechstePosition = $this->naechstePosition($artikelId);

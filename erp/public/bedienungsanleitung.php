@@ -1,6 +1,5 @@
 <?php
-require_once __DIR__ . '/../src/core/Auth.php';
-Auth::requireLogin();
+require_once __DIR__ . '/includes/auth_check.php';
 
 $pageTitle        = 'Bedienungsanleitung';
 $activeModule     = '';
@@ -9,81 +8,125 @@ require_once __DIR__ . '/includes/shell_top.php';
 ?>
 
 <style>
-.ba-layout {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 24px;
-    align-items: start;
-    max-width: 1100px;
-    margin: 0 auto;
-}
-.ba-toc {
-    position: sticky;
-    top: 12px;
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    padding: 16px;
-    font-size: 13px;
-}
-.ba-toc h3 {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--color-text-muted);
-    margin: 0 0 10px;
-}
-.ba-toc a {
-    display: block;
-    padding: 4px 6px;
-    color: var(--color-text);
-    text-decoration: none;
-    border-radius: 4px;
-    line-height: 1.4;
-}
-.ba-toc a:hover { background: var(--color-bg); }
-.ba-toc a.sub { padding-left: 18px; font-size: 12px; color: var(--color-text-muted); }
-.ba-content h2 {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--color-nav);
-    margin: 32px 0 8px;
-    padding-top: 8px;
-    border-top: 2px solid var(--color-border);
-}
-.ba-content h2:first-child { margin-top: 0; border-top: none; }
-.ba-content h3 {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 20px 0 6px;
-    color: var(--color-text);
-}
-.ba-badge {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    padding: 2px 7px;
-    border-radius: 10px;
-    vertical-align: middle;
-    margin-left: 8px;
-}
-.ba-badge-fertig   { background: #dcfce7; color: #166534; }
-.ba-badge-arbeit   { background: #fef9c3; color: #854d0e; }
-.ba-badge-geplant  { background: #f1f5f9; color: #64748b; }
-.ba-placeholder {
-    background: var(--color-bg);
-    border: 1px dashed var(--color-border);
-    border-radius: 6px;
-    padding: 16px 20px;
-    color: var(--color-text-muted);
-    font-size: 13px;
-    margin: 8px 0 16px;
-}
-.ba-content p { font-size: 13px; line-height: 1.7; margin: 6px 0 12px; color: var(--color-text); }
-.ba-content ul { font-size: 13px; line-height: 1.8; padding-left: 20px; margin: 6px 0 12px; color: var(--color-text); }
+    .ba-layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 24px;
+        align-items: start;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .ba-toc {
+        position: sticky;
+        top: 12px;
+        background: var(--color-card);
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 16px;
+        font-size: 13px;
+    }
+
+    .ba-toc h3 {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: var(--color-text-muted);
+        margin: 0 0 10px;
+    }
+
+    .ba-toc a {
+        display: block;
+        padding: 4px 6px;
+        color: var(--color-text);
+        text-decoration: none;
+        border-radius: 4px;
+        line-height: 1.4;
+    }
+
+    .ba-toc a:hover {
+        background: var(--color-bg);
+    }
+
+    .ba-toc a.sub {
+        padding-left: 18px;
+        font-size: 12px;
+        color: var(--color-text-muted);
+    }
+
+    .ba-content h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--color-nav);
+        margin: 32px 0 8px;
+        padding-top: 8px;
+        border-top: 2px solid var(--color-border);
+    }
+
+    .ba-content h2:first-child {
+        margin-top: 0;
+        border-top: none;
+    }
+
+    .ba-content h3 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 20px 0 6px;
+        color: var(--color-text);
+    }
+
+    .ba-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        padding: 2px 7px;
+        border-radius: 10px;
+        vertical-align: middle;
+        margin-left: 8px;
+    }
+
+    .ba-badge-fertig {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .ba-badge-arbeit {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .ba-badge-geplant {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .ba-placeholder {
+        background: var(--color-bg);
+        border: 1px dashed var(--color-border);
+        border-radius: 6px;
+        padding: 16px 20px;
+        color: var(--color-text-muted);
+        font-size: 13px;
+        margin: 8px 0 16px;
+    }
+
+    .ba-content p {
+        font-size: 13px;
+        line-height: 1.7;
+        margin: 6px 0 12px;
+        color: var(--color-text);
+    }
+
+    .ba-content ul {
+        font-size: 13px;
+        line-height: 1.8;
+        padding-left: 20px;
+        margin: 6px 0 12px;
+        color: var(--color-text);
+    }
 </style>
 
 <div class="card" style="padding:24px">
@@ -95,10 +138,10 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#einleitung">Einleitung</a>
             <a href="#navigation">Navigation</a>
             <a href="#artikel">Artikel</a>
-            <a href="#artikel-varianten"  class="sub">↳ Varianten & Achsen</a>
-            <a href="#artikel-bilder"     class="sub">↳ Bilder</a>
-            <a href="#artikel-merkmale"   class="sub">↳ Merkmale</a>
-            <a href="#artikel-preise"     class="sub">↳ Preise & Aktionen</a>
+            <a href="#artikel-varianten" class="sub">↳ Varianten & Achsen</a>
+            <a href="#artikel-bilder" class="sub">↳ Bilder</a>
+            <a href="#artikel-merkmale" class="sub">↳ Merkmale</a>
+            <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
             <a href="#lager">Lager</a>
             <a href="#lager-wareneingang" class="sub">↳ Wareneingang</a>
             <a href="#einkauf">Einkauf & Bestellungen</a>

@@ -2,6 +2,21 @@
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/VariantenRepository.php';
 
+/**
+ * VariantenService – Business-Logik für Achsen-Zuweisungen und Kombinations-Generator
+ *
+ * speichereAchsenUndWerte() ist die komplexeste Methode:
+ *   Schritt 1: In-use Werte ermitteln (dürfen nicht gelöscht werden)
+ *   Schritt 2: Nicht-in-use Werte löschen (aus Submission werden sie neu eingefügt)
+ *   Schritt 3: Achsen mit in-use Werten sind "geschützt" und können nicht entfernt werden
+ *   Schritt 4: Nicht-geschützte, nicht-gewünschte Achsen entfernen
+ *   Schritt 5: Fehlende Achsen einfügen (idempotent — existierende überspringen)
+ *   Schritt 6: Neue Werte einfügen (Duplikat-Check via achse_id|wert-Lookup)
+ *
+ * erstelleKombinationen() erstellt Kind-Artikel für den VarKombi-Generator:
+ *   Jedes Kind erbt ~25 Felder vom Vater-Artikel (vollständige Kopie der Stammdaten).
+ *   Gibt IDs der neu erstellten Kinder zurück damit ArtikelService Relationen kopieren kann.
+ */
 class VariantenService
 {
     private VariantenRepository $repo;
@@ -11,6 +26,15 @@ class VariantenService
         $this->repo = new VariantenRepository();
     }
 
+    /**
+     * Granulares Speichern von Achsen und Werten — schützt Werte die in Kombinationen verwendet werden.
+     *
+     * Problem: Wenn Kombinationen (Kind-Artikel) existieren, dürfen deren Werte nicht gelöscht werden
+     * da sonst die varianten_kombination_werte FK-Referenzen auf nicht-existente Werte zeigen.
+     * Lösung: In-use Werte bleiben erhalten, freie Werte werden durch die neuen Submission-Werte ersetzt.
+     * Duplikat-Schutz: Wenn ein in-use Wert denselben (achse_id|wert) hat wie ein neuer Wert,
+     * wird der neue Wert übersprungen (würde sonst einen Duplicate-Key-Error erzeugen).
+     */
     public function speichereAchsenUndWerte(int $artikelId, array $achsenIds, array $werte): array
     {
         $inUseIds = array_map('intval', $this->repo->findWertIdsInUse($artikelId));
@@ -92,6 +116,13 @@ class VariantenService
         return $this->repo->findWertIdsInUse($artikelId);
     }
 
+    /**
+     * Erstellt Kind-Artikel für eine Liste von Wert-Kombinationen.
+     * Jeder Kind-Artikel erbt ~25 Felder vom Vater (Stammdaten, Texte, Maße, Flags).
+     * Gibt die IDs aller neu erstellten Kinder zurück damit ArtikelService::kopiereVaterRelationenZuKindern()
+     * Kategorien, Merkmale, Lieferanten und Preise darauf kopieren kann.
+     * Das 'key' in $kombi ist ein Komma-separierter String von Wert-IDs (z.B. "3,7,12").
+     */
     public function erstelleKombinationen(array $vater, bool $hatEigenenLagerstand, array $kombis): array
     {
         $neuErstellteIds = [];

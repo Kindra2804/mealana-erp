@@ -1,6 +1,28 @@
 <?php
+
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * PreisRepository – Datenzugriff für alle Preisebenen eines Artikels
+ *
+ * Es gibt vier Preisquellen, die in PreisService::getEffektiverPreis() Priorität haben:
+ *
+ * 1. SALE-Override (preis_aktionen_positionen)
+ *    → Artikel-spezifische Sonderpreise mit eigenem Zeitraum (z.B. "Weihnachtsangebot")
+ *    → Höchste Priorität, überschreibt alles andere
+ *
+ * 2. Kategorie-Aktion (aktionen_artikel_preise)
+ *    → Preise aus dem Aktionsmodul (Aktion muss gestartet + im Zeitraum sein)
+ *
+ * 3. KG-Festpreis (artikel_preise für bestimmte KG)
+ *    → Händlerpreis, Vertriebspartnerpreis, etc. mit optionalem Zeitraum
+ *
+ * 4. Standard-KG-Preis (artikel_preise der Standard-Kundengruppe)
+ *    → Fallback: normale Endkunden-VK
+ *
+ * Staffelpreise (artikel_staffelpreise) sind separat und werden für Mengenrabatte
+ * verwendet — nicht Teil des Effektivpreis-Flows, sondern als eigene Preisstaffel.
+ */
 class PreisRepository
 {
     private PDO $db;
@@ -10,6 +32,11 @@ class PreisRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Speichert oder aktualisiert einen Kundengruppen-Preis (check-then-update/insert).
+     * Kein ON DUPLICATE KEY UPDATE weil das Schema keinen eindeutigen Composite-Index hat.
+     * gueltig_ab/gueltig_bis = null bedeutet: immer gültig.
+     */
     public function upsertKundengruppenPreis(array $data): bool
     {
         $check = $this->db->prepare("
@@ -52,6 +79,11 @@ class PreisRepository
         return true;
     }
 
+    /**
+     * Gibt alle Kundengruppen mit zugehörigen Preisen für einen Artikel zurück.
+     * LEFT JOIN: Kundengruppen ohne Preis erscheinen auch (mit NULL-Preis → "nicht gesetzt").
+     * Für die Preis-Verwaltungstabelle in der Artikel-Detailansicht.
+     */
     public function findKundengruppenPreise(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -74,6 +106,11 @@ class PreisRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt alle Aktionen zurück die einen Aktionspreis für diesen Artikel enthalten.
+     * Für die Anzeige im Preis-Tab der Artikel-Detailansicht ("Aktive Aktionen").
+     * Enthält: Aktionsname, Zeitraum, Kundengruppe, Achsenname (bei Sub-Achsen-Preisen).
+     */
     public function findAktionenFuerArtikel(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -104,12 +141,17 @@ class PreisRepository
         return $stmt->fetchAll();
     }
 
+    /** Löscht den Preis einer bestimmten Kundengruppe für einen Artikel. */
     public function deleteKundengruppenPreis(int $artikelId, int $kgId): bool
     {
         $stmt = $this->db->prepare("DELETE FROM artikel_preise WHERE artikel_id = :artikel_id AND kundengruppen_id = :kundengruppen_id");
         return $stmt->execute(['artikel_id' => $artikelId, 'kundengruppen_id' => $kgId]);
     }
 
+    /**
+     * Gibt alle Staffelpreise eines Artikels zurück (gruppiert nach KG und Menge).
+     * Sortiert: KG-ID aufsteigend, dann Menge aufsteigend (Lesbarkeit der Tabelle).
+     */
     public function findStaffelpreise(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -129,6 +171,7 @@ class PreisRepository
         return $stmt->fetchAll();
     }
 
+    /** Legt einen neuen Staffelpreis an. */
     public function insertStaffelpreis(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -144,6 +187,7 @@ class PreisRepository
         ]);
     }
 
+    /** Aktualisiert einen Staffelpreis. artikel_id in WHERE um unautorisierte Änderungen zu verhindern. */
     public function updateStaffelpreis(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -164,12 +208,20 @@ class PreisRepository
         ]);
     }
 
+    /** Löscht einen Staffelpreis. artikel_id in WHERE als Sicherheitscheck. */
     public function deleteStaffelpreis(int $id, int $artikelId): bool
     {
         $stmt = $this->db->prepare("DELETE FROM artikel_staffelpreise WHERE id = :id AND artikel_id = :artikel_id");
         return $stmt->execute(['id' => $id, 'artikel_id' => $artikelId]);
     }
 
+    // ── Effektivpreis-Lookup (Prioritätsstufen 1-4) ───────────────────
+
+    /**
+     * Priorität 1: SALE-Override (preis_aktionen_positionen).
+     * Zeitraum-Check: gueltig_ab/gueltig_bis NULL bedeutet "immer gültig".
+     * Gibt false zurück wenn kein aktiver Sale vorhanden.
+     */
     public function findSaleOverride(int $artikelId, int $kgId): array|false
     {
         $stmt = $this->db->prepare("
@@ -190,7 +242,11 @@ class PreisRepository
         return $stmt->fetch();
     }
 
-
+    /**
+     * Priorität 2: Aktionspreis aus Aktionsmodul.
+     * Bedingungen: a.gestartet = 1 UND CURDATE() im Aktionskategorie-Zeitraum.
+     * Gibt false zurück wenn keine aktive Aktion für diesen Artikel/KG-Kombination.
+     */
     public function findAktionsPreis(int $artikelId, int $kgId): array|false
     {
         $stmt = $this->db->prepare("
@@ -214,6 +270,11 @@ class PreisRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Priorität 3: Kundengruppen-Festpreis (artikel_preise für diese spezifische KG).
+     * Zeitraum-Check: NULL bedeutet "immer gültig".
+     * Gibt false zurück wenn kein KG-spezifischer Preis vorhanden.
+     */
     public function findKundengruppenPreisFuerKg(int $artikelId, int $kgId): array|false
     {
         $stmt = $this->db->prepare("
@@ -235,6 +296,11 @@ class PreisRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Priorität 4: Standard-KG-Preis (Fallback).
+     * Nimmt den Preis der Kundengruppe mit ist_standard = 1.
+     * Wenn auch dieser fehlt → Artikel hat gar keinen Preis (Rückgabe false).
+     */
     public function findStandardPreis(int $artikelId): array|false
     {
         $stmt = $this->db->prepare("
@@ -253,8 +319,13 @@ class PreisRepository
         return $stmt->fetch();
     }
 
-    // ── SALE-Overrides ────────────────────────────────────────────────
+    // ── SALE-Overrides CRUD ───────────────────────────────────────────
 
+    /**
+     * Gibt alle SALE-Overrides eines Artikels zurück.
+     * ist_aktiv wird als berechnetes SQL-Feld zurückgegeben (1 wenn Zeitraum aktiv).
+     * bis_lagerstand_null: Override endet automatisch wenn Bestand auf 0 fällt.
+     */
     public function findSaleOverridesFuerArtikel(int $artikelId): array
     {
         $stmt = $this->db->prepare("
@@ -281,6 +352,12 @@ class PreisRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Speichert oder aktualisiert einen SALE-Override.
+     * Wenn $data['id'] gesetzt: UPDATE, sonst INSERT.
+     * artikel_id in WHERE schützt vor Cross-Artikel-Manipulation.
+     * Gibt die ID des gespeicherten Records zurück.
+     */
     public function upsertSaleOverride(array $data): int
     {
         if (!empty($data['id'])) {
@@ -326,6 +403,7 @@ class PreisRepository
         return (int)$this->db->lastInsertId();
     }
 
+    /** Löscht einen SALE-Override. artikel_id als Sicherheitscheck. */
     public function deleteSaleOverride(int $id, int $artikelId): bool
     {
         $stmt = $this->db->prepare("DELETE FROM preis_aktionen_positionen WHERE id = :id AND artikel_id = :artikel_id");

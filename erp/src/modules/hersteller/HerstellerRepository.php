@@ -1,6 +1,19 @@
 <?php
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * HerstellerRepository – CRUD für Hersteller-Stammdaten
+ *
+ * Hersteller sind Produktionsfirmen hinter den Artikeln (z.B. Drops, Lang Yarns).
+ * Enthält GPSR-Felder (EU-Produktsicherheitsverordnung 2023/988):
+ * Name + Adresse + E-Mail des Herstellers und — bei Nicht-EU-Herstellern —
+ * des europäischen Responsible Economic Operators (REO).
+ *
+ * Logo wird als Dateiname (z.B. "42.jpg") in logo_pfad gespeichert;
+ * Bild liegt in public/img/hersteller/.
+ *
+ * Löschen = Soft-Delete (aktiv = 0), niemals DELETE FROM hersteller.
+ */
 class HerstellerRepository
 {
     private PDO $db;
@@ -10,6 +23,11 @@ class HerstellerRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Gibt alle Hersteller zurück, alphabetisch sortiert.
+     *
+     * @param bool $mitInaktiven Wenn false (Standard), werden deaktivierte Hersteller übersprungen
+     */
     public function findAll(bool $mitInaktiven = false): array
     {
         $where = $mitInaktiven ? '' : 'WHERE aktiv = 1';
@@ -24,6 +42,7 @@ class HerstellerRepository
         ")->fetchAll();
     }
 
+    /** Gibt einen Hersteller anhand seiner ID zurück, oder false wenn nicht gefunden. */
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
@@ -38,6 +57,10 @@ class HerstellerRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Prüft ob ein Hersteller mit diesem Namen bereits existiert.
+     * excludeId wird beim Update übergeben damit der Hersteller sich selbst nicht sperrt.
+     */
     public function findByName(string $name, ?int $excludeId = null): array|false
     {
         $sql = "SELECT id FROM hersteller WHERE name = :name";
@@ -49,6 +72,7 @@ class HerstellerRepository
         return $stmt->fetch();
     }
 
+    /** Legt einen neuen Hersteller an und gibt die neue ID zurück. */
     public function insert(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -67,6 +91,7 @@ class HerstellerRepository
         return (int)$this->db->lastInsertId();
     }
 
+    /** Aktualisiert alle Felder eines Herstellers. Gibt true zurück (rowCount >= 0). */
     public function update(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -91,15 +116,21 @@ class HerstellerRepository
             WHERE id = :id
         ");
         $stmt->execute($data);
+        // rowCount() >= 0 statt > 0, weil ein Update ohne Änderung auch Erfolg ist
         return $stmt->rowCount() >= 0;
     }
 
+    /**
+     * Aktualisiert nur den Logo-Pfad (nach erfolgreichem GD-Upload).
+     * Getrennte Methode weil Logo-Upload async nach dem eigentlichen Insert passiert.
+     */
     public function updateLogo(int $id, string $pfad): void
     {
         $stmt = $this->db->prepare("UPDATE hersteller SET logo_pfad = :pfad WHERE id = :id");
         $stmt->execute(['pfad' => $pfad, 'id' => $id]);
     }
 
+    /** Soft-Delete: setzt aktiv = 0 statt den Datensatz zu löschen. */
     public function deactivate(int $id): bool
     {
         $stmt = $this->db->prepare("UPDATE hersteller SET aktiv = 0 WHERE id = :id");

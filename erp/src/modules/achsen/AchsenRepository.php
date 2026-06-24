@@ -2,6 +2,20 @@
 
 require_once __DIR__ . '/../../core/database.php';
 
+/**
+ * AchsenRepository – CRUD für globale Varianten-Achsen
+ *
+ * Achsen sind globale Definitionen (z.B. "Farbe", "Stärke") die danach
+ * Artikeln zugewiesen werden (artikel_achsen) und Werte bekommen (varianten_achse_werte).
+ *
+ * Achsen-Hierarchie: eine Achse kann eine "Gruppenachse" (ist_gruppe = 1) sein,
+ * der abhängige Unterachsen zugeordnet sind (abhaengig_von_achse_id).
+ * Beispiel: Gruppenachse "Farbe" → Unterachsen "UNI", "TWEED", "PRINT"
+ *
+ * in_use-Flag in findAll(): 1 wenn die Achse mindestens einem Artikel zugewiesen ist.
+ * In-use-Achsen können nicht gelöscht werden (isInUse() + AchsenService::delete()).
+ * Gruppenachse kann nicht auf is_gruppe=0 gesetzt werden solange Unterachsen existieren (hasChildren).
+ */
 class AchsenRepository
 {
     private PDO $db;
@@ -11,6 +25,11 @@ class AchsenRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Alle Achsen mit Hierarchie-Info und in_use-Flag.
+     * abhaengig_von_name für die Anzeige ("abhängig von: Farbe").
+     * in_use = 1 wenn die Achse mindestens einem Artikel zugewiesen ist → keine Löschung möglich.
+     */
     public function findAll(): array
     {
         $stmt = $this->db->query("
@@ -157,6 +176,11 @@ class AchsenRepository
         return $stmt->fetch() !== false;
     }
 
+    /**
+     * Gibt alle Achsen zurück die einer bestimmten Eltern-Achse zugeordnet sind.
+     * parentId = null → Wurzel-Achsen (keine Überordnung).
+     * Wird für die Baum-Darstellung in achsen_zuweisen.php genutzt.
+     */
     public function findByParentId(?int $parentId): array
     {
         if (!$parentId) {

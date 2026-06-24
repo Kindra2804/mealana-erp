@@ -2,6 +2,26 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * ArtikelRepository – zentrales Datenzugriffs-Repository für Artikel
+ *
+ * Deckt drei Artikel-Konstellationen ab:
+ *   Standalone    → vaterartikel_id IS NULL, keine Achsen
+ *   Vater-Artikel → ist_vater = 1, hat Achsen/Kinder
+ *   Kind-Artikel  → vaterartikel_id gesetzt, erbt Stammdaten vom Vater
+ *
+ * Wichtige Designentscheidungen:
+ *   - findAll() / countAll() verwenden dasselbe $filter-Array für identische Ergebnismengen
+ *   - Qualitätslisten (keine_ean / doppelte_ean / keine_bilder) als Subquery-Filter in findAll()
+ *   - propagiereZuKindern() ist ein einziger Bulk-UPDATE: Vater-Werte → alle Kinder auf einmal
+ *   - getStandardKgId() cached die Standard-Kundengruppe per static (1× pro Request)
+ *   - updatePreis() macht bewusst kein ON DUPLICATE KEY UPDATE weil das Datum-Feld gueltig_ab fehlt
+ *
+ * Vater-Kind-Vererbung (propagiert beim Vater-Update automatisch):
+ *   hersteller, steuerklasse, artikeltyp, alle Texte, Maße, Gewicht, Grundpreis, charge_pflicht,
+ *   ueberverkauf_erlaubt
+ *   NICHT propagiert: artikelnummer, name, url_slug, aktiv, ist_auslaufartikel, zustand
+ */
 class ArtikelRepository
 {
     private PDO $db;
@@ -11,6 +31,7 @@ class ArtikelRepository
         $this->db = Database::getInstance();
     }
 
+    /** Standard-Kundengruppen-ID: cached per Request via static, Fallback auf 1. */
     private function getStandardKgId(): int
     {
         static $id = null;
@@ -20,6 +41,20 @@ class ArtikelRepository
         return $id ?: 1;
     }
 
+    /**
+     * Gibt eine paginierte und gefilterte Artikel-Liste zurück.
+     *
+     * Zeigt nur Top-Level-Artikel (vaterartikel_id IS NULL, zustand_vater_id IS NULL).
+     * Kind-Artikel werden separat über findKinderFuerListe() geladen.
+     *
+     * Besonderheit beim Bestand: SUM(lb.bestand) über alle Kinder via LEFT JOIN artikel kind.
+     * Durch den GROUP BY a.id ist jede Vater-Zeile eindeutig und enthält die Summe aller Kinder.
+     *
+     * $filter-Keys:
+     *   q, hersteller_id, artikeltyp_id, kategorie_ids, nurKategorielos,
+     *   nurMitBestand, mitInaktiven, status_filter (auslauf|uv|fehlbest|inaktiv),
+     *   qualitaet (keine_ean|doppelte_ean|keine_bilder), sort, dir
+     */
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
         $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
@@ -153,6 +188,10 @@ class ArtikelRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Zählt die Gesamt-Treffer für dieselbe Filterung wie findAll().
+     * Kapselt die Filterlogik in ein COUNT(*) über ein Subquery (wegen HAVING).
+     */
     public function countAll(array $filter): int
     {
         $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
@@ -247,6 +286,7 @@ class ArtikelRepository
         return (int) $stmt->fetchColumn();
     }
 
+    /** Gibt einen einzelnen Artikel mit allen Stammdaten inkl. Standard-VK zurück. */
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
@@ -306,6 +346,7 @@ class ArtikelRepository
         return $stmt->fetch();
     }
 
+    /** Alle Kind-Artikel eines Vaters (für den Detail-Tab "Varianten"). */
     public function findKinderByArtikelId(int $artikelId, bool $mitInaktiven = false): array
     {
         $where = $mitInaktiven
@@ -336,6 +377,7 @@ class ArtikelRepository
         return $stmt->fetchAll();
     }
 
+    /** Artikel mit Kinder-Array — für Detail-Seite (Tab Varianten). */
     public function findByIdMitKindern(int $id): array|false
     {
         $artikel = $this->findById($id);
@@ -344,6 +386,11 @@ class ArtikelRepository
         return $artikel;
     }
 
+    /**
+     * Batch-Laden aller Kinder für eine Liste von Vater-IDs.
+     * Effizienter als N×findKinderByArtikelId() — ein einziger Query für alle Väter.
+     * Gibt Kind-Artikel mit vaterartikel_id zurück, damit die View sie den Vätern zuordnen kann.
+     */
     public function findKinderFuerListe(array $vaterIds, string $sortSpalte = 'a.artikelnummer', string $sortDir = 'ASC'): array
     {
         if (empty($vaterIds)) return [];
@@ -376,6 +423,7 @@ class ArtikelRepository
         return $stmt->fetchAll();
     }
 
+    /** Artikel + Kinder + alle Preiszeilen (alle Kundengruppen) — für den Preis-Tab. */
     public function findByIdMitPreisen(int $id): array|false
     {
         $artikel = $this->findByIdMitKindern($id);
@@ -400,6 +448,7 @@ class ArtikelRepository
         return $artikel;
     }
 
+    /** Eindeutigkeits-Check für Artikelnummer — excludeId ausschließen bei Updates. */
     public function findByArtikelnummer(string $artikelnummer, ?int $excludeId = null): array|false
     {
         $sql = "SELECT id FROM artikel WHERE artikelnummer = :artikelnummer";
@@ -415,6 +464,11 @@ class ArtikelRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Legt einen neuen Artikel an.
+     * Akzeptiert entweder artikeltyp_id (direkt) oder artikeltyp (Code-String → resolveArtikeltypId).
+     * Alle optionalen Felder (Maße, Zustand etc.) werden mit Defaults gesetzt bevor execute() läuft.
+     */
     public function insert(array $data): int
     {
         if (!isset($data['artikeltyp_id'])) {
@@ -506,6 +560,7 @@ class ArtikelRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /** Aktualisiert alle editierbaren Stammdatenfelder eines bestehenden Artikels. */
     public function update(array $data): bool
     {
         $data['artikeltyp_id'] = $this->resolveArtikeltypId($data['artikeltyp']);
@@ -556,6 +611,7 @@ class ArtikelRepository
         return true;
     }
 
+    /** Update nur der Kind-spezifischen Felder (Artikelnummer, aktiv, Auslauf, Überverkauf). */
     public function updateKind(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -577,6 +633,11 @@ class ArtikelRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Deaktiviert alle aktiven Kinder und setzt deaktiviert_mit_vater = 1.
+     * Dieses Flag verhindert, dass beim Reaktivieren des Vaters fremde (manuell deaktivierte)
+     * Kinder wieder aktiviert werden — reactivateKinder() prüft auf dieses Flag.
+     */
     public function deactivateKinder(int $vaterId): void
     {
         $stmt = $this->db->prepare("
@@ -656,6 +717,11 @@ class ArtikelRepository
         $stmt->execute(['artikel_id' => $artikelId, 'typ' => $typ, 'code' => $code]);
     }
 
+    /**
+     * Legt einen Preis an oder aktualisiert ihn (kein ON DUPLICATE KEY UPDATE,
+     * weil gueltig_ab/gueltig_bis Felder existieren die wir nicht überschreiben wollen).
+     * Prüft erst per SELECT ob ein Eintrag existiert, dann UPDATE oder INSERT.
+     */
     public function updatePreis(int $artikelId, float $bruttoVk, float $nettoVk, int $kundengruppenId = 0): bool
     {
         if ($kundengruppenId === 0) $kundengruppenId = $this->getStandardKgId();
@@ -694,6 +760,7 @@ class ArtikelRepository
         return $stmt->fetchAll();
     }
 
+    /** Übersetzt einen Artikeltyp-Code (z.B. 'GARN') in die DB-ID. Wirft Exception bei ungültigem Code. */
     private function resolveArtikeltypId(string $code): int
     {
         $stmt = $this->db->prepare("SELECT id FROM artikel_typen WHERE code = :code");
@@ -705,6 +772,7 @@ class ArtikelRepository
         return (int) $row['id'];
     }
 
+    /** Typeahead-Suche für Bestellmodul — nur aktive Top-Level-Artikel, max. 50 Treffer. */
     public function search(string $q): array
     {
         $stmt = $this->db->prepare("
@@ -800,7 +868,7 @@ class ArtikelRepository
         return $stmt->fetchAll();
     }
 
-    // Externe Klassen die derzeit keine eigenen Repos haben
+    // Hilfsmethoden für Dropdown-Daten (werden noch direkt aus ArtikelRepository geladen)
     public function findAllHersteller(): array
     {
         return $this->db->query("SELECT id, name FROM hersteller ORDER BY name")->fetchAll();
@@ -811,6 +879,11 @@ class ArtikelRepository
         return $this->db->query("SELECT id, name, satz FROM steuerklassen WHERE aktiv = 1")->fetchAll();
     }
 
+    /**
+     * Kopiert alle Preiszeilen vom Quell-Artikel zum neuen Artikel.
+     * Wird beim Artikel-Kopieren und beim Vater-Kind-Erstellen genutzt.
+     * EK-Preise (artikel_lieferanten.netto_ek) werden separat über copyLieferanten() kopiert.
+     */
     public function copyPreise(int $quellId, int $neueId)
     {
         $stmt = $this->db->prepare("
@@ -891,6 +964,11 @@ class ArtikelRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Kopiert Lieferanten-Zuweisungen ohne EK-Preise und Bestellnummern.
+     * Der kopierte Artikel bekommt die Lieferanten-Beziehung, aber EK und ANr müssen neu erfasst werden.
+     * standard_lieferant wird auf 0 gesetzt — explizit neu setzen nötig.
+     */
     public function copyLieferanten(int $quellId, int $neueId)
     {
         $stmt = $this->db->prepare("
@@ -931,6 +1009,11 @@ class ArtikelRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Propagiert alle gemeinsamen Stammdaten-Felder vom Vater an alle seine Kinder.
+     * Wird nach jedem Vater-Update aufgerufen — ein einziger Bulk-UPDATE statt N einzelner Updates.
+     * Nicht propagiert: artikelnummer, name, url_slug, aktiv, ist_auslaufartikel, zustand.
+     */
     public function propagiereZuKindern(int $vaterId): void
     {
         $vater = $this->findById($vaterId);
@@ -990,6 +1073,7 @@ class ArtikelRepository
         ]);
     }
 
+    /** Alle Zustandsartikel (B-Ware, Musterware...) für den Detail-Tab eines Vaters. */
     public function findZustandsArtikelByVaterId(int $vaterId): array
     {
         $stmt = $this->db->prepare("
@@ -1006,6 +1090,7 @@ class ArtikelRepository
         return $stmt->fetchAll();
     }
 
+    /** Batch-Laden aller Zustandsartikel für eine Liste von Vater-IDs (für die Artikel-Liste). */
     public function findZustandsArtikelFuerListe(array $vaterIds): array
     {
         if (empty($vaterIds)) return [];
@@ -1048,6 +1133,15 @@ class ArtikelRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Batch-Check für Preisaktionen in der Artikel-Liste.
+     * Gibt ein Array [artikel_id => ['hat_sale' => bool, 'hat_aktion' => bool]] zurück.
+     * Nur Artikel mit mindestens einem aktiven Sale/Aktion sind im Ergebnis (spart Overhead).
+     *
+     * Zwei separate Queries (statt JOIN) wegen unterschiedlicher Tabellenstruktur:
+     *   - preis_aktionen_positionen: zeitbasierte SALE-Overrides
+     *   - aktionen_artikel_preise + aktionen: Kategorie-Aktionen (gestartet + Datumszeitraum)
+     */
     public function getPreisStatusBatch(array $artikelIds, int $standardKgId): array
     {
         if (empty($artikelIds)) return [];

@@ -546,7 +546,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-19, Session 3)
+## What's Implemented (Stand 2026-06-23, Session 8)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -734,6 +734,14 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
      - Szenario B: ✏ in WE-Detail → artikel_bearbeiten_vorbereiten.php → artikel/bearbeiten.php → zurück
    - **Retroaktive Bestellung** (Sammelliste): Artikel ohne offene Bestellung → Sammelliste → bestellung_aus_durchlauf.php (anlegen+sofort buchen)
    - **ArtikelRepository Bugfix**: Qualitätslisten `typ='ean'` → `typ='GTIN13'`
+### Modulpflege ✅ FERTIG (2026-06-23)
+- **JS auslagern**: 21 `.js`-Dateien aus 21 PHP-Seiten extrahiert — alle inline `<script>`-Blöcke raus
+  - Muster: `<script>window.VAR = <?= $phpVar ?>;</script>` + `<script src="/mealana/js/xxx.js"></script>`
+  - Alle JS-Dateien unter `erp/public/js/` — cachebar, übersichtlich
+- **Bedienungsanleitung**: `public/bedienungsanleitung.php` mit TOC + Kapitel-Platzhaltern
+  - Erreichbar via 📖 in der Top-Navigation (immer sichtbar)
+  - Kapitel für alle Module + Fertig/Geplant-Badges — wird pro Modul weiter gefüllt
+
 6. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
 7. **Packplatz/Picklisten** — Kommissionierung, Packliste
 8. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.

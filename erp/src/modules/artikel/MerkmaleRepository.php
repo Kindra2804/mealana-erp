@@ -1,6 +1,21 @@
 <?php
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * MerkmaleRepository – CRUD für Merkmale, Merkmal-Werte und Artikel-Zuweisungen
+ *
+ * Datenmodell:
+ *   merkmale           → Merkmal-Definition (Name, Slug, Datentyp, Filterbar, Mehrfach-Auswahl)
+ *   merkmal_werte      → Vordefinierte Werte pro Merkmal (z.B. "3,5mm" für "Nadelstärke")
+ *   merkmal_artikeltypen → Filter: welches Merkmal gilt für welchen Artikeltyp
+ *   artikel_merkmale   → Zugewiesene Werte pro Artikel (merkmal_id + merkmal_wert_id)
+ *
+ * findFuerArtikeltyp(): Merkmale ohne Artikeltyp-Filter gelten für alle Typen.
+ * Merkmale mit Filter erscheinen nur bei passenden Artikeltypen (z.B. "Nadelstärke" nur bei GARN).
+ *
+ * tauschSort() ist ein generischer Sortiertauscher für merkmale und merkmal_werte.
+ * ACHTUNG: Nutzt dynamisches SQL (Tabellenname interpoliert) — nur intern aufrufen!
+ */
 class MerkmaleRepository
 {
     private PDO $db;
@@ -10,6 +25,11 @@ class MerkmaleRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Alle aktiven Merkmale mit ihren Werten und Artikeltyp-Filtern.
+     * Lädt Werte als Nested-Array pro Merkmal (N+1 Queries — überschaubar da Merkmale-Anzahl gering).
+     * artikeltyp_ids kommt als GROUP_CONCAT-String und wird in ein Integer-Array umgewandelt.
+     */
     public function findAllMitWerten(): array
     {
         $merkmale = $this->db->query("
@@ -33,6 +53,12 @@ class MerkmaleRepository
         return $merkmale;
     }
 
+    /**
+     * Merkmale die für einen bestimmten Artikeltyp relevant sind.
+     * Logik: Merkmal gilt wenn entweder kein Typ-Filter existiert (NOT EXISTS)
+     * ODER der spezifische Artikeltyp in merkmal_artikeltypen eingetragen ist.
+     * Bei artikeltypId = null: nur Merkmale ohne Typ-Filter (globale Merkmale).
+     */
     public function findFuerArtikeltyp(?int $artikeltypId): array
     {
         if ($artikeltypId === null) {
@@ -140,6 +166,12 @@ class MerkmaleRepository
         $this->tauschSort('merkmal_werte', $id, $richtung, 'merkmal_id', $merkmalId);
     }
 
+    /**
+     * Generischer Sort-Tauscher: tauscht sort_order mit dem nächsthöheren/niedrigeren Nachbarn.
+     * $tabelle + $filterSpalte werden direkt interpoliert — NUR intern mit kontrollierten Werten nutzen!
+     * Für merkmale: filterSpalte = null (kein Scope-Filter).
+     * Für merkmal_werte: filterSpalte = 'merkmal_id' (nur innerhalb desselben Merkmals sortieren).
+     */
     private function tauschSort(string $tabelle, int $id, string $richtung, ?string $filterSpalte, ?int $filterWert): void
     {
         $where = $filterSpalte ? "AND $filterSpalte = $filterWert" : '';

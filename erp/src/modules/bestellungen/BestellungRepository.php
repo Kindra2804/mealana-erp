@@ -2,6 +2,20 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * BestellungRepository – CRUD für Einkaufsbestellungen und Positionen
+ *
+ * Bestellungen laufen von "offen" → "teilgeliefert" → "erledigt" (oder "storniert").
+ * Jede Bestellung hat einen Lieferanten und beliebig viele Positionen.
+ *
+ * Bestellnummer-Format: "BE-2026-0001" (generiert via BestellungService::bestellnummer()).
+ * Positionen können als "gestrichen" markiert werden (gestrichen = 1) wenn
+ * Restmengen nicht mehr erwartet werden (DROPS-Modell: liefern was da ist).
+ *
+ * findReserviertNichtLagerndFuerLieferant() zeigt offene Reservierungen bei
+ * denen der Bestand kleiner als die reservierte Menge ist — Rückstandsliste
+ * für die Bestellvorschlag-Ansicht.
+ */
 class BestellungRepository
 {
     private PDO $db;
@@ -11,6 +25,14 @@ class BestellungRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Gibt alle Bestellungen zurück, optional nach Status und Lieferant gefiltert.
+     * Enthält aggregierte Summen: Gesamtbetrag (EK), Gesamtmenge bestellt/eingegangen.
+     * Gestrichene Positionen werden in den Aggregierungen ausgeschlossen.
+     *
+     * @param string $status      "" für alle, sonst "offen" | "teilgeliefert" | "erledigt" | "storniert"
+     * @param int    $lieferantId 0 für alle Lieferanten
+     */
     public function findAll(string $status = '', int $lieferantId = 0): array
     {
         $where  = ['1=1'];
@@ -55,6 +77,10 @@ class BestellungRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt eine einzelne Bestellung mit Lieferanten-Name zurück.
+     * Gibt false zurück wenn nicht gefunden.
+     */
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
@@ -67,11 +93,13 @@ class BestellungRepository
         return $stmt->fetch();
     }
 
+    /** Filtert Bestellungen nach einem bestimmten Lieferanten. */
     public function findNachLieferant(int $lieferantId): array
     {
         return $this->findAll('', $lieferantId);
     }
 
+    /** Legt eine neue Bestellung an und gibt die neue ID zurück. */
     public function insert(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -87,6 +115,7 @@ class BestellungRepository
         return (int)$this->db->lastInsertId();
     }
 
+    /** Fügt eine Position zu einer Bestellung hinzu und gibt die neue ID zurück. */
     public function insertPosition(array $data): int
     {
         $stmt = $this->db->prepare("
@@ -100,6 +129,7 @@ class BestellungRepository
         return (int)$this->db->lastInsertId();
     }
 
+    /** Aktualisiert Kopfdaten einer Bestellung (kein Status, keine Rechnungsfelder). */
     public function update(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -117,6 +147,7 @@ class BestellungRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Setzt den Status einer Bestellung (offen/teilgeliefert/erledigt/storniert). */
     public function updateStatus(int $id, string $status): bool
     {
         $stmt = $this->db->prepare("UPDATE bestellungen SET status = :status WHERE id = :id");
@@ -124,6 +155,7 @@ class BestellungRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Speichert Rechnungs- und Lieferscheindaten zu einer erledigten Bestellung. */
     public function updateRechnung(array $data): bool
     {
         $stmt = $this->db->prepare("
@@ -138,6 +170,13 @@ class BestellungRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Gibt alle Positionen einer Bestellung zurück mit Artikel-Details.
+     * Enthält: COALESCE Vater/Kind-Name, Varianten-Name, Lieferzeit aus artikel_lieferanten,
+     * und das Hauptbild per Subquery (für Packplatz-Ansicht, Fehlerreduktion beim Scan).
+     * Muss die Bestellungs-ID zweimal übergeben werden (:bestellung_id und :best_id2),
+     * weil derselbe Parameter nicht mehrfach in PDO-Subqueries genutzt werden kann.
+     */
     public function findPositionen(int $bestellungId): array
     {
         $stmt = $this->db->prepare("
@@ -166,6 +205,7 @@ class BestellungRepository
         return $stmt->fetchAll();
     }
 
+    /** Löscht eine Bestellposition dauerhaft. */
     public function deletePosition(int $id): bool
     {
         $stmt = $this->db->prepare("DELETE FROM bestellung_positionen WHERE id = :id");
@@ -173,6 +213,14 @@ class BestellungRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Rückstandsliste: Artikel bei diesem Lieferanten, für die es offene Reservierungen
+     * gibt aber der Lagerbestand nicht ausreicht.
+     *
+     * Formel: SUM(reservierungen.menge) > SUM(lagerbestand.bestand) — via HAVING-Klausel.
+     * Gibt VPE-Menge und EK-Preis aus artikel_lieferanten mit zurück für
+     * den direkten Übernahme-Button in eine neue Bestellung.
+     */
     public function findReserviertNichtLagerndFuerLieferant(int $lieferantId): array
     {
         $stmt = $this->db->prepare("
@@ -200,12 +248,18 @@ class BestellungRepository
         return $stmt->fetchAll();
     }
 
+    /** Gibt alle aktiven Lieferanten für das Bestellformular-Dropdown zurück. */
     public function findAlleLieferanten(): array
     {
         $stmt = $this->db->query("SELECT id, name FROM lieferanten WHERE aktiv = 1 ORDER BY name");
         return $stmt->fetchAll();
     }
 
+    /**
+     * Gibt Artikel zurück, die einem Lieferanten zugeordnet sind (für Positionseingabe).
+     * Limit 20 für schnelle Typeahead-Anzeige. Suche in Artikel- und Vater-Name/Nummer.
+     * Wenn $suche leer: alle Artikel des Lieferanten (bis Limit 20).
+     */
     public function findArtikelFuerLieferant(int $lieferantId, string $suche = ''): array
     {
         $where = "WHERE al.lieferant_id = :lieferant_id AND al.aktiv = 1 AND a.aktiv = 1";
@@ -237,6 +291,12 @@ class BestellungRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Sucht über alle aktiven Artikel (nicht nur Lieferanten-zugeordnete).
+     * Für "?alle=1" Mode im AJAX-Endpunkt — wenn Artikel nachträglich zu einer Bestellung
+     * hinzugefügt werden sollen, auch ohne bestehende Lieferantenzuordnung.
+     * ist_vater = 0 ausschließen: Vater-Artikel selbst sind keine Bestelleinheit.
+     */
     public function findAlleArtikelFuerSuche(string $suche): array
     {
         $stmt = $this->db->prepare("

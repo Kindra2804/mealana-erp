@@ -2,6 +2,19 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 
+/**
+ * PartnerRepository – CRUD für Partner-Stammdaten
+ *
+ * Partner sind externe Betriebe oder Personen, die mit MeaLana kooperieren.
+ * Typen: "mietfach" (mieten Ausstellungsfach), "kommission" (verkaufen auf Provision),
+ *        "spende" (spenden Waren), "beides" (Kommission + Spende).
+ *
+ * Die aktuelle Anzahl belegter Mietfächer wird per LEFT JOIN
+ * aus mietfach_mietvertraege berechnet (aktuelle Verträge = mietende IS NULL
+ * oder mietende >= heute).
+ *
+ * Löschen = kein echtes DELETE; stattdessen aktiv = 0 über setAktiv().
+ */
 class PartnerRepository
 {
     private PDO $db;
@@ -15,6 +28,11 @@ class PartnerRepository
     // Partner
     // -------------------------------------------------------------------------
 
+    /**
+     * Gibt alle Partner zurück mit aktueller Anzahl belegter Mietfächer.
+     *
+     * @param array $filter Optionale Filter: ['typ' => '...', 'aktiv' => 0|1]
+     */
     public function findAll(array $filter = []): array
     {
         $conditions = ['1=1'];
@@ -48,6 +66,7 @@ class PartnerRepository
         return $stmt->fetchAll();
     }
 
+    /** Gibt einen Partner anhand ID zurück, oder false wenn nicht gefunden. */
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare('SELECT * FROM partner WHERE id = :id');
@@ -55,6 +74,10 @@ class PartnerRepository
         return $stmt->fetch();
     }
 
+    /**
+     * Legt einen neuen Partner an und gibt die neue ID zurück.
+     * Fehlende optionale Felder werden mit NULL / Standardwerten befüllt.
+     */
     public function insert(array $data): int
     {
         $data['email']                = $data['email']                ?? null;
@@ -87,6 +110,7 @@ class PartnerRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /** Aktualisiert alle editierbaren Felder eines Partners. */
     public function update(array $data): bool
     {
         $stmt = $this->db->prepare('
@@ -110,6 +134,7 @@ class PartnerRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Setzt den Aktiv-Status eines Partners (1 = aktiv, 0 = inaktiv). */
     public function setAktiv(int $id, int $aktiv): bool
     {
         $stmt = $this->db->prepare('UPDATE partner SET aktiv = :aktiv WHERE id = :id');

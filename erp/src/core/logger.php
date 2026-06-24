@@ -3,8 +3,30 @@ require_once __DIR__ . '/Database.php';
 
 
 
+/**
+ * Logger – Aktivitätsprotokoll für alle ERP-Schreiboperationen
+ *
+ * Schreibt jeden relevanten Vorgang in die `aktivitaeten`-Tabelle.
+ * Wird in allen Service-Klassen am Ende jeder Schreib-Operation aufgerufen.
+ *
+ * Format von $aktion: "modul.aktion" (z.B. "artikel.bearbeiten",
+ * "wareneingang.buchen", "aktion.kategorie.hinzufuegen").
+ *
+ * Die Admin-Aktivitätsseite (public/admin/aktivitaeten.php) zeigt
+ * alle Einträge mit Filter und Suche.
+ */
 class Logger
 {
+    /**
+     * Schreibt einen Aktivitätseintrag in die aktivitaeten-Tabelle.
+     *
+     * @param string   $aktion            Format "modul.aktion" (z.B. "artikel.bearbeiten")
+     * @param string|null $referenzTabelle  Betroffene DB-Tabelle (z.B. "artikel")
+     * @param int|null    $referenzId       ID des betroffenen Datensatzes
+     * @param array       $details          Optionale Zusatzinfos (werden als JSON gespeichert)
+     * @param int|null    $benutzerId       Überschreibt $_SESSION wenn angegeben
+     *                                      (z.B. für Jarvis/System-Aktionen ohne echte Session)
+     */
     public static function log(
         string $aktion,
         ?string $referenzTabelle = null,
@@ -13,6 +35,7 @@ class Logger
         ?int $benutzerId = null
     ): void {
 
+        // Jarvis (system-Benutzer) hat keine Session — benutzerId wird direkt übergeben
         if ($benutzerId === null) {
             $benutzerId = $_SESSION['benutzer']['id'];
         };
@@ -27,6 +50,7 @@ class Logger
             'aktion'           => $aktion,
             'referenz_tabelle' => $referenzTabelle,
             'referenz_id'      => $referenzId,
+            // details nur als JSON wenn nicht leer — spart Speicher und NULL ist explizit
             'details' => empty($details) ? null : json_encode($details)
         ]);
     }
