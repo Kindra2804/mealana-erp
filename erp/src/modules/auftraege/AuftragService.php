@@ -99,6 +99,8 @@ class AuftragService
             'zahlungsstatus'            => 'ausstehend',
             'lieferstatus'              => 'neu',
             'zahlungsart'               => $data['zahlungsart'] ?? 'vorkasse',
+            'lieferart'                 => $data['lieferart'] ?? 'versand',
+            'versandklasse_id'          => !empty($data['versandklasse_id']) ? (int)$data['versandklasse_id'] : null,
             'zahlungsbedingung_id'      => !empty($data['zahlungsbedingung_id']) ? (int)$data['zahlungsbedingung_id'] : null,
             'gutschein_id'              => !empty($data['gutschein_id'])    ? (int)$data['gutschein_id']         : null,
             'gutschein_betrag'          => !empty($data['gutschein_betrag']) ? (float)$data['gutschein_betrag'] : 0.00,

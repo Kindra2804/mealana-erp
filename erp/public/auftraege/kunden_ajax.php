@@ -1,20 +1,26 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
-require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/kunden/KundenService.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $suche = trim($_GET['q'] ?? '');
 if (strlen($suche) < 2) { echo json_encode([]); exit; }
 
-$db   = Database::getInstance();
-$stmt = $db->prepare("
-    SELECT id, name, email
-    FROM kunden
-    WHERE aktiv = 1 AND id != 1
-      AND (name LIKE :suche OR email LIKE :suche)
-    ORDER BY name
-    LIMIT 15
-");
-$stmt->execute(['suche' => '%' . $suche . '%']);
-echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+$service = new KundenService();
+$alle    = $service->getAll($suche);   // filtert PHP-seitig nach entschlüsselten Feldern
+
+$result = [];
+foreach ($alle as $k) {
+    if ($k['ist_laufkunde']) continue;
+    $name = trim(($k['vorname'] ?? '') . ' ' . ($k['nachname'] ?? ''));
+    if ($k['ist_firma'] && !empty($k['firmenname'])) $name = $k['firmenname'];
+    $result[] = [
+        'id'    => $k['id'],
+        'name'  => $name ?: ('Kd. ' . $k['kundennummer']),
+        'email' => $k['email'] ?? '',
+    ];
+    if (count($result) >= 15) break;
+}
+
+echo json_encode($result);

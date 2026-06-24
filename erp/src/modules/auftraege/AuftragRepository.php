@@ -70,7 +70,8 @@ class AuftragRepository
                 a.bezahlt_am,
                 a.erstellt_am,
                 a.kunden_id,
-                COALESCE(k.name, 'Laufkunde') AS kunden_name,
+                a.kunden_snapshot,
+                k.kundennummer,
                 COUNT(p.id) AS positionen_anzahl
             FROM auftraege a
             LEFT JOIN kunden k ON k.id = a.kunden_id
@@ -78,11 +79,17 @@ class AuftragRepository
             WHERE " . implode(' AND ', $where) . "
             GROUP BY a.id, a.auftrag_nr, a.kanal, a.zahlungsstatus, a.lieferstatus,
                      a.zahlungsart, a.bruttobetrag, a.versandkosten, a.tracking_nr,
-                     a.mahnung_stufe, a.bezahlt_am, a.erstellt_am, a.kunden_id, k.name
+                     a.mahnung_stufe, a.bezahlt_am, a.erstellt_am, a.kunden_id,
+                     a.kunden_snapshot, k.kundennummer
             ORDER BY a.erstellt_am DESC
         ");
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as &$row) {
+            $row['kunden_name'] = $this->kundenNameAusSnapshot($row);
+        }
+        return $rows;
     }
 
     /**
@@ -93,14 +100,39 @@ class AuftragRepository
         $stmt = $this->db->prepare("
             SELECT
                 a.*,
-                COALESCE(k.name, 'Laufkunde') AS kunden_name,
-                k.email                         AS kunden_email
+                k.kundennummer
             FROM auftraege a
             LEFT JOIN kunden k ON k.id = a.kunden_id
             WHERE a.id = :id
         ");
         $stmt->execute(['id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return false;
+        $row['kunden_name']  = $this->kundenNameAusSnapshot($row);
+        $row['kunden_email'] = $this->kundenEmailAusSnapshot($row);
+        return $row;
+    }
+
+    /**
+     * Liest den Anzeigenamen aus kunden_snapshot (JSON) oder fällt auf kundennummer zurück.
+     */
+    private function kundenNameAusSnapshot(array $row): string
+    {
+        if (!empty($row['kunden_snapshot'])) {
+            $snap = json_decode($row['kunden_snapshot'], true);
+            if (!empty($snap['name'])) return $snap['name'];
+        }
+        if (!empty($row['kundennummer'])) return 'Kd. ' . $row['kundennummer'];
+        return 'Laufkunde';
+    }
+
+    private function kundenEmailAusSnapshot(array $row): string
+    {
+        if (!empty($row['kunden_snapshot'])) {
+            $snap = json_decode($row['kunden_snapshot'], true);
+            return $snap['email'] ?? '';
+        }
+        return '';
     }
 
     /**
@@ -112,11 +144,11 @@ class AuftragRepository
             SELECT
                 p.*,
                 COALESCE(vater.name, art.name) AS artikel_name_aktuell,
-                b.pfad                          AS bild_pfad
+                b.dateiname                     AS bild_pfad
             FROM auftrag_positionen p
             JOIN artikel art ON art.id = p.artikel_id
             LEFT JOIN artikel vater ON vater.id = art.vaterartikel_id
-            LEFT JOIN artikel_bilder b ON b.artikel_id = p.artikel_id AND b.ist_hauptbild = 1
+            LEFT JOIN artikel_bilder b ON b.artikel_id = p.artikel_id AND b.position = 0
             WHERE p.auftrag_id = :auftrag_id
             ORDER BY p.sort_order, p.id
         ");
@@ -132,7 +164,7 @@ class AuftragRepository
         $stmt = $this->db->prepare("
             SELECT
                 l.*,
-                b.benutzername AS erstellt_von_name
+                b.formularname AS erstellt_von_name
             FROM auftrag_statuslog l
             JOIN benutzer b ON b.id = l.erstellt_von
             WHERE l.auftrag_id = :auftrag_id
@@ -153,12 +185,14 @@ class AuftragRepository
                 COALESCE(vater.name, a.name)                  AS name,
                 CASE WHEN a.vaterartikel_id IS NOT NULL THEN a.name END AS variante_name,
                 COALESCE(vater.artikelnummer, a.artikelnummer) AS artikelnummer,
-                a.vk_brutto,
-                a.steuerklasse_id,
+                (SELECT ap.brutto_vk FROM artikel_preise ap
+                    JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
+                    WHERE ap.artikel_id = a.id
+                    LIMIT 1)                                             AS vk_brutto,
+                (SELECT sk.satz FROM steuerklassen sk WHERE sk.id = a.steuerklasse_id) AS steuer_prozent,
                 (SELECT MIN(c.code) FROM artikel_codes c WHERE c.artikel_id = a.id AND c.typ = 'GTIN13')
                                                               AS ean,
-                (SELECT pfad FROM artikel_bilder WHERE artikel_id = a.id AND ist_hauptbild = 1 LIMIT 1)
-                                                              AS bild_pfad
+                (SELECT dateiname FROM artikel_bilder WHERE artikel_id = a.id AND position = 0 LIMIT 1) AS bild_pfad
             FROM artikel a
             LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
             WHERE a.aktiv = 1
@@ -203,9 +237,9 @@ class AuftragRepository
                 lieferadresse_snapshot, rechnungsadresse_snapshot,
                 kanal, kanal_auftrag_id,
                 zahlungsstatus, lieferstatus,
-                zahlungsart, zahlungsbedingung_id,
+                zahlungsart, zahlungsbedingung_id, lieferart,
                 gutschein_id, gutschein_betrag,
-                versandkosten, rabatt_gesamt,
+                versandkosten, rabatt_gesamt, versandklasse_id,
                 nettobetrag, steuerbetrag, bruttobetrag,
                 notiz_intern, notiz_versand, erstellt_von
             ) VALUES (
@@ -213,9 +247,9 @@ class AuftragRepository
                 :lieferadresse_snapshot, :rechnungsadresse_snapshot,
                 :kanal, :kanal_auftrag_id,
                 :zahlungsstatus, :lieferstatus,
-                :zahlungsart, :zahlungsbedingung_id,
+                :zahlungsart, :zahlungsbedingung_id, :lieferart,
                 :gutschein_id, :gutschein_betrag,
-                :versandkosten, :rabatt_gesamt,
+                :versandkosten, :rabatt_gesamt, :versandklasse_id,
                 :nettobetrag, :steuerbetrag, :bruttobetrag,
                 :notiz_intern, :notiz_versand, :erstellt_von
             )
@@ -255,10 +289,15 @@ class AuftragRepository
         $params = ['id' => $id];
 
         $erlaubt = [
-            'zahlungsstatus', 'lieferstatus', 'bezahlt_am',
-            'tracking_nr', 'versanddienstleister',
-            'mahnung_stufe', 'mahnung_gesendet_am',
-            'notiz_intern', 'notiz_versand',
+            'zahlungsstatus',
+            'lieferstatus',
+            'bezahlt_am',
+            'tracking_nr',
+            'versanddienstleister',
+            'mahnung_stufe',
+            'mahnung_gesendet_am',
+            'notiz_intern',
+            'notiz_versand',
         ];
         foreach ($erlaubt as $f) {
             if (array_key_exists($f, $felder)) {
@@ -269,7 +308,7 @@ class AuftragRepository
         if (empty($sets)) return;
 
         $this->db->prepare("UPDATE auftraege SET " . implode(', ', $sets) . " WHERE id = :id")
-                 ->execute($params);
+            ->execute($params);
     }
 
     /**

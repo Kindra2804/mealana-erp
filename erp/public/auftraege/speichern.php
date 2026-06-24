@@ -13,6 +13,8 @@ $service = new AuftragService();
 $data = [
     'kunden_id'     => !empty($_POST['kunden_id'])     ? (int)$_POST['kunden_id']     : null,
     'zahlungsart'   => $_POST['zahlungsart']            ?? 'vorkasse',
+    'lieferart' => !empty($_POST['lieferart'])  ? trim($_POST['lieferart']) : 'versand',
+    'versandklasse_id' => !empty($_POST['versandklasse_id'])  ? (int)$_POST['versandklasse_id'] : NULL,
     'versandkosten' => !empty($_POST['versandkosten'])  ? (float)$_POST['versandkosten'] : 0.00,
     'notiz_intern'  => !empty($_POST['notiz_intern'])   ? trim($_POST['notiz_intern'])  : null,
     'notiz_versand' => !empty($_POST['notiz_versand'])  ? trim($_POST['notiz_versand']) : null,
@@ -24,13 +26,11 @@ if (!empty($data['kunden_id'])) {
     $kundenService = new KundenService();
     $kunde = $kundenService->getById($data['kunden_id']);
     if ($kunde) {
+        $anzeigeName = trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? ''));
+        if ($kunde['ist_firma'] && !empty($kunde['firmenname'])) $anzeigeName = $kunde['firmenname'];
         $data['kunden_snapshot'] = [
-            'name'    => $kunde['name'],
-            'email'   => $kunde['email'] ?? '',
-            'strasse' => $kunde['strasse'] ?? '',
-            'plz'     => $kunde['plz'] ?? '',
-            'ort'     => $kunde['ort'] ?? '',
-            'land'    => $kunde['land'] ?? 'AT',
+            'name'  => $anzeigeName ?: ('Kd. ' . $kunde['kundennummer']),
+            'email' => $kunde['email'] ?? '',
         ];
     }
 }

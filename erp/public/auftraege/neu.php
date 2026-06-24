@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/modules/kunden/KundenService.php';
+$db = Database::getInstance();
+$versandklassen = $db->query("SELECT id, name, preis_brutto FROM versandklassen ORDER BY sortierung")->fetchAll();
 
 $fehler   = $_SESSION['fehler']   ?? [];
 $formdata = $_SESSION['formdata'] ?? [];
@@ -29,13 +31,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <!-- Kopfdaten -->
     <div class="card" style="margin-bottom:12px">
         <div class="card-header">Auftragsdaten</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:16px;padding:16px">
 
             <div class="form-group">
                 <label class="form-label">Kunde</label>
                 <input type="hidden" name="kunden_id" id="kunden-id" value="<?= htmlspecialchars($formdata['kunden_id'] ?? '') ?>">
                 <input type="text" class="erp-input" id="kunden-suche" placeholder="Name oder E-Mail suchen…"
-                       value="<?= htmlspecialchars($formdata['kunden_name'] ?? '') ?>" autocomplete="off">
+                    value="<?= htmlspecialchars($formdata['kunden_name'] ?? '') ?>" autocomplete="off">
                 <div id="kunden-dropdown" style="position:absolute;z-index:100;background:#fff;border:1px solid var(--color-border);border-radius:4px;width:320px;display:none"></div>
                 <small style="color:var(--color-text-muted)">Leer lassen = Laufkunde</small>
             </div>
@@ -43,19 +45,41 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <div class="form-group">
                 <label class="form-label">Zahlungsart *</label>
                 <select name="zahlungsart" class="erp-select" required>
-                    <option value="vorkasse"  <?= ($formdata['zahlungsart'] ?? 'vorkasse') === 'vorkasse'  ? 'selected' : '' ?>>Vorkasse</option>
-                    <option value="paypal"    <?= ($formdata['zahlungsart'] ?? '') === 'paypal'            ? 'selected' : '' ?>>PayPal</option>
-                    <option value="rechnung"  <?= ($formdata['zahlungsart'] ?? '') === 'rechnung'          ? 'selected' : '' ?>>Rechnung</option>
-                    <option value="bar"       <?= ($formdata['zahlungsart'] ?? '') === 'bar'               ? 'selected' : '' ?>>Bar</option>
+                    <option value="vorkasse" <?= ($formdata['zahlungsart'] ?? 'vorkasse') === 'vorkasse'  ? 'selected' : '' ?>>Vorkasse</option>
+                    <option value="paypal" <?= ($formdata['zahlungsart'] ?? '') === 'paypal'            ? 'selected' : '' ?>>PayPal</option>
+                    <option value="rechnung" <?= ($formdata['zahlungsart'] ?? '') === 'rechnung'          ? 'selected' : '' ?>>Rechnung</option>
+                    <option value="bar" <?= ($formdata['zahlungsart'] ?? '') === 'bar'               ? 'selected' : '' ?>>Bar</option>
                     <option value="gutschein" <?= ($formdata['zahlungsart'] ?? '') === 'gutschein'         ? 'selected' : '' ?>>Gutschein</option>
-                    <option value="gemischt"  <?= ($formdata['zahlungsart'] ?? '') === 'gemischt'          ? 'selected' : '' ?>>Gemischt</option>
+                    <option value="gemischt" <?= ($formdata['zahlungsart'] ?? '') === 'gemischt'          ? 'selected' : '' ?>>Gemischt</option>
                 </select>
             </div>
 
             <div class="form-group">
+                <label class="form-label">Lieferart</label>
+                <select id="lieferart" name="lieferart" class="erp-select" required>
+                    <option value="versand" <?= ($formdata['lieferart'] ?? 'versand') === 'versand'  ? 'selected' : '' ?>>Versand</option>
+                    <option value="abholung" <?= ($formdata['lieferart'] ?? '') === 'abholung'            ? 'selected' : '' ?>>Abholung</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="gruppe-versandart">
+                <label class="form-label">Versandart / Kosten</label>
+                <select name="versandklasse_id" id="versandklasse" class="erp-select">
+                    <option value="">— keine —</option>
+                    <?php foreach ($versandklassen as $vk): ?>
+                        <option value="<?= $vk['id'] ?>"
+                            data-preis="<?= $vk['preis_brutto'] ?>"
+                            <?= ($formdata['versandklasse_id'] ?? '') == $vk['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($vk['name']) ?> (<?= number_format($vk['preis_brutto'], 2, ',', '.') ?> €)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group" id="gruppe-versandkosten">
                 <label class="form-label">Versandkosten (€)</label>
-                <input type="number" name="versandkosten" class="erp-input" step="0.01" min="0"
-                       value="<?= htmlspecialchars($formdata['versandkosten'] ?? '0.00') ?>">
+                <input type="number" id="versandkosten-wert" name="versandkosten" class="erp-input" step="0.01" min="0"
+                    value="<?= htmlspecialchars($formdata['versandkosten'] ?? '0.00') ?>">
             </div>
 
             <div class="form-group" style="grid-column:1/-1">
@@ -106,8 +130,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </form>
 
 <script>
-window.ARTIKEL_AJAX_URL = '/mealana/auftraege/artikel_ajax.php';
-window.KUNDEN_AJAX_URL  = '/mealana/auftraege/kunden_ajax.php';
+    window.ARTIKEL_AJAX_URL = '/mealana/auftraege/artikel_ajax.php';
+    window.KUNDEN_AJAX_URL = '/mealana/auftraege/kunden_ajax.php';
 </script>
 <script src="/mealana/js/auftraege_neu.js"></script>
 

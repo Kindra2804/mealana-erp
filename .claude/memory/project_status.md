@@ -145,12 +145,23 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - Design beschlossen: Gutscheine (project_gutscheine.md), Kassen-Bon Blocks (project_kasse_bon_design.md)
 
 **Offen (nächste Session):**
-- versandklassen.preis_brutto + Dropdown in neu.php
-- Brutto-Preise in Positionen (system_einstellungen: preisanzeige_auftrag)
-- lieferart ENUM(versand, abholung) auf auftraege
 - Mahnwesen-Cronjob (14/30 Tage Vorkasse)
 - Dashboard-Widget offene Aufträge / Fehlbestand
 - Rechnung/Lieferschein PDF (Twig + Dompdf — Template-System)
+- bearbeiten.php: Positionen änderbar solange lieferstatus nicht versendet/abgeschlossen (Babsi-Anforderung)
+- Rabatt % vs. Fixbetrag (Migration + UI — design in project_auftragsmodul.md)
+- Steuerflags A/B/C/D auf Rechnung/Bon (RKSV-Pflicht)
+- Versandkostenfrei ab X (system_einstellungen, pro Shop)
+
+**Erledigt heute (2026-06-24):**
+- Migration 063: lieferart ENUM auf auftraege
+- Migration 064: versandklassen.preis_brutto + 5 Standard-Einträge
+- Migration 065: versandklasse_id auf auftraege (FK)
+- Migration 066: preisanzeige_auftrag in system_einstellungen (Standard: brutto)
+- neu.php: Lieferart-Dropdown + Auto-Hide Versandfelder bei Abholung
+- neu.php: Versandklasse-Dropdown mit JS Auto-Fill Versandkosten
+- detail.php: bedingte Brutto/Netto-Spalten je nach system_einstellungen
+- detail.php: Summen-Div unabhängig von Tabelle (kein colspan-Problem mehr)
 
 ## 🔴 Noch nicht gebaut
 

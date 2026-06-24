@@ -3,14 +3,23 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 
 $id = (int)($_GET['id'] ?? 0);
-if (!$id) { header('Location: /mealana/auftraege/liste.php'); exit; }
+if (!$id) {
+    header('Location: /mealana/auftraege/liste.php');
+    exit;
+}
 
 $service   = new AuftragService();
 $auftrag   = $service->getById($id);
-if (!$auftrag) { header('Location: /mealana/auftraege/liste.php'); exit; }
+if (!$auftrag) {
+    header('Location: /mealana/auftraege/liste.php');
+    exit;
+}
 
 $positionen = $service->getPositionen($id);
 $statuslog  = $service->getStatuslog($id);
+
+$db = Database::getInstance();
+$preisanzeige = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'preisanzeige_auftrag'")->fetchColumn() ?: 'brutto';
 
 $erfolg = $_SESSION['erfolg'] ?? null;
 $fehler = $_SESSION['fehler'] ?? [];
@@ -94,7 +103,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
             <?php if (!$istStorniert && $auftrag['zahlungsstatus'] === 'ausstehend'): ?>
                 <button class="btn btn-primary btn-sm" style="margin-top:8px"
-                        onclick="statusSetzen('zahlungsstatus','bezahlt','Zahlung manuell bestätigt')">
+                    onclick="statusSetzen('zahlungsstatus','bezahlt','Zahlung manuell bestätigt')">
                     ✓ Als bezahlt markieren
                 </button>
             <?php endif; ?>
@@ -112,7 +121,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php endforeach; ?>
                     </select>
                     <button class="btn btn-secondary btn-sm" style="margin-top:4px;width:100%"
-                            onclick="lieferstatusAktualisieren()">Status setzen</button>
+                        onclick="lieferstatusAktualisieren()">Status setzen</button>
                 </div>
             <?php endif; ?>
         </div>
@@ -121,29 +130,35 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     <!-- Tracking -->
     <?php if (!$istStorniert): ?>
-    <div style="border-top:1px solid var(--color-border);padding:12px 16px;display:flex;gap:12px;align-items:flex-end">
-        <div class="form-group" style="margin:0;flex:1">
-            <label class="form-label" style="font-size:11px">Tracking-Nr.</label>
-            <input type="text" class="erp-input" id="tracking-nr" value="<?= htmlspecialchars($auftrag['tracking_nr'] ?? '') ?>" placeholder="z.B. 12345678">
+        <div style="border-top:1px solid var(--color-border);padding:12px 16px;display:flex;gap:12px;align-items:flex-end">
+            <div class="form-group" style="margin:0;flex:1">
+                <label class="form-label" style="font-size:11px">Tracking-Nr.</label>
+                <input type="text" class="erp-input" id="tracking-nr" value="<?= htmlspecialchars($auftrag['tracking_nr'] ?? '') ?>" placeholder="z.B. 12345678">
+            </div>
+            <div class="form-group" style="margin:0;flex:1">
+                <label class="form-label" style="font-size:11px">Versanddienstleister</label>
+                <select class="erp-select" id="versand-dl">
+                    <option value="">—</option>
+                    <option value="post_at" <?= $auftrag['versanddienstleister'] === 'post_at'  ? 'selected' : '' ?>>Österreichische Post</option>
+                    <option value="dhl" <?= $auftrag['versanddienstleister'] === 'dhl'      ? 'selected' : '' ?>>DHL</option>
+                    <option value="dpd" <?= $auftrag['versanddienstleister'] === 'dpd'      ? 'selected' : '' ?>>DPD</option>
+                    <option value="gls" <?= $auftrag['versanddienstleister'] === 'gls'      ? 'selected' : '' ?>>GLS</option>
+                </select>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="trackingSpeichern()">Tracking speichern</button>
         </div>
-        <div class="form-group" style="margin:0;flex:1">
-            <label class="form-label" style="font-size:11px">Versanddienstleister</label>
-            <select class="erp-select" id="versand-dl">
-                <option value="">—</option>
-                <option value="post_at"  <?= $auftrag['versanddienstleister'] === 'post_at'  ? 'selected':'' ?>>Österreichische Post</option>
-                <option value="dhl"      <?= $auftrag['versanddienstleister'] === 'dhl'      ? 'selected':'' ?>>DHL</option>
-                <option value="dpd"      <?= $auftrag['versanddienstleister'] === 'dpd'      ? 'selected':'' ?>>DPD</option>
-                <option value="gls"      <?= $auftrag['versanddienstleister'] === 'gls'      ? 'selected':'' ?>>GLS</option>
-            </select>
-        </div>
-        <button class="btn btn-secondary btn-sm" onclick="trackingSpeichern()">Tracking speichern</button>
-    </div>
     <?php endif; ?>
 </div>
 
 <!-- Positionen -->
 <div class="card" style="margin-bottom:12px">
     <div class="card-header">Positionen</div>
+    <?php
+    $tabellenSpalten = 6; // Bild, Artikel, EAN, Menge, Geliefert, Rabatt — immer fix
+    if (in_array($preisanzeige, ['brutto', 'beides'])) $tabellenSpalten += 2; // EP-Brutto + Gesamt-Brutto
+    if (in_array($preisanzeige, ['netto', 'beides'])) $tabellenSpalten += 2; // EP-Netto + Gesamt-Netto
+    $tfootColspan = $tabellenSpalten - 1; // alles außer der letzten Wertspalte
+    ?>
     <table class="erp-table">
         <thead>
             <tr>
@@ -152,8 +167,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <th>EAN</th>
                 <th style="text-align:center">Menge</th>
                 <th style="text-align:center">Geliefert</th>
-                <th style="text-align:right">Einzelpreis (Netto)</th>
-                <th style="text-align:right">Gesamt (Netto)</th>
+                <?php if (in_array($preisanzeige, ['brutto', 'beides'])): ?>
+                    <th style="text-align:right">Einzelpreis (Brutto)</th>
+                <?php endif; ?>
+                <?php if (in_array($preisanzeige, ['netto', 'beides'])): ?>
+                    <th style="text-align:right">Einzelpreis (Netto)</th>
+                <?php endif; ?>
+                <th style="text-align:right">Rabatt</th>
+                <?php if (in_array($preisanzeige, ['brutto', 'beides'])): ?>
+                    <th style="text-align:right">Gesamt (Brutto)</th>
+                <?php endif; ?>
+                <?php if (in_array($preisanzeige, ['netto', 'beides'])): ?>
+                    <th style="text-align:right">Gesamt (Netto)</th>
+                <?php endif; ?>
             </tr>
         </thead>
         <tbody>
@@ -176,85 +202,113 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td style="text-align:center"><?= (int)$p['menge'] ?></td>
                     <td style="text-align:center">
                         <?php
-                            $geliefert = (int)$p['menge_geliefert'];
-                            $gesamt    = (int)$p['menge'];
-                            $farbe     = $geliefert >= $gesamt ? 'var(--color-success)' : ($geliefert > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)');
+                        $geliefert = (int)$p['menge_geliefert'];
+                        $gesamt    = (int)$p['menge'];
+                        $farbe     = $geliefert >= $gesamt ? 'var(--color-success)' : ($geliefert > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)');
                         ?>
                         <span style="color:<?= $farbe ?>;font-weight:600"><?= $geliefert ?> / <?= $gesamt ?></span>
                     </td>
-                    <td style="text-align:right"><?= number_format((float)$p['einzelpreis_netto'], 4, ',', '.') ?> €</td>
-                    <td style="text-align:right;font-weight:600"><?= number_format((float)$p['gesamtpreis_netto'], 2, ',', '.') ?> €</td>
+                    <?php if (in_array($preisanzeige, ['brutto', 'beides'])): ?>
+                        <td style="text-align:right"><?= number_format((float)$p['einzelpreis_netto'] * (1 + $p['steuer_prozent'] / 100), 4, ',', '.') ?> €</td>
+                    <?php endif; ?>
+                    <?php if (in_array($preisanzeige, ['netto', 'beides'])): ?>
+                        <td style="text-align:right"><?= number_format((float)$p['einzelpreis_netto'], 4, ',', '.') ?> €</td>
+                    <?php endif; ?>
+                    <td style="text-align:right">
+                        <?= $p['rabatt_prozent'] > 0 ? number_format($p['rabatt_prozent'], 1, ',', '.') . ' %' : '—' ?>
+                    </td>
+                    <?php if (in_array($preisanzeige, ['brutto', 'beides'])): ?>
+                        <td style="text-align:right;font-weight:600"><?= number_format((float)$p['gesamtpreis_netto'] * (1 + $p['steuer_prozent'] / 100), 2, ',', '.') ?> €</td>
+                    <?php endif; ?>
+                    <?php if (in_array($preisanzeige, ['netto', 'beides'])): ?>
+                        <td style="text-align:right;font-weight:600"><?= number_format((float)$p['gesamtpreis_netto'], 2, ',', '.') ?> €</td>
+                    <?php endif; ?>
                 </tr>
             <?php endforeach; ?>
         </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="6" style="text-align:right;color:var(--color-text-muted)">Netto</td>
-                <td style="text-align:right"><?= number_format((float)$auftrag['nettobetrag'], 2, ',', '.') ?> €</td>
-            </tr>
-            <tr>
-                <td colspan="6" style="text-align:right;color:var(--color-text-muted)">MwSt.</td>
-                <td style="text-align:right"><?= number_format((float)$auftrag['steuerbetrag'], 2, ',', '.') ?> €</td>
-            </tr>
-            <?php if ((float)$auftrag['versandkosten'] > 0): ?>
-            <tr>
-                <td colspan="6" style="text-align:right;color:var(--color-text-muted)">Versandkosten</td>
-                <td style="text-align:right"><?= number_format((float)$auftrag['versandkosten'], 2, ',', '.') ?> €</td>
-            </tr>
-            <?php endif; ?>
-            <tr style="font-size:15px;font-weight:700">
-                <td colspan="6" style="text-align:right">Gesamt (Brutto)</td>
-                <td style="text-align:right"><?= number_format((float)$auftrag['bruttobetrag'], 2, ',', '.') ?> €</td>
-            </tr>
-        </tfoot>
     </table>
+    <!-- NACH der </table> -->
+    <div style="display:flex;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--color-border)">
+        <table style="min-width:220px">
+            <tr>
+                <td style="color:var(--color-text-muted);padding:2px 16px 2px 0">Netto</td>
+                <td style="text-align:right;font-weight:600"><?= number_format($auftrag['nettobetrag'], 2, ',', '.') ?> €</td>
+            </tr>
+            <tr>
+                <td style="color:var(--color-text-muted);padding:2px 16px 2px 0">MwSt.</td>
+                <td style="text-align:right"><?= number_format($auftrag['steuerbetrag'], 2, ',', '.') ?> €</td>
+            </tr>
+            <?php if ($auftrag['versandkosten'] > 0): ?>
+                <tr>
+                    <td style="color:var(--color-text-muted);padding:2px 16px 2px 0">Versandkosten</td>
+                    <td style="text-align:right"><?= number_format($auftrag['versandkosten'], 2, ',', '.') ?> €</td>
+                </tr>
+            <?php endif; ?>
+            <tr style="font-size:15px;border-top:1px solid var(--color-border)">
+                <td style="padding:6px 16px 2px 0;font-weight:700">Gesamt (Brutto)</td>
+                <td style="text-align:right;font-weight:700"><?= number_format($auftrag['bruttobetrag'], 2, ',', '.') ?> €</td>
+            </tr>
+        </table>
+    </div>
+
 </div>
 
 <!-- Notizen -->
 <?php if ($auftrag['notiz_intern'] || $auftrag['notiz_versand']): ?>
-<div class="card" style="margin-bottom:12px">
-    <div class="card-header">Notizen</div>
-    <div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <?php if ($auftrag['notiz_intern']): ?>
-            <div><div style="font-size:11px;color:var(--color-text-muted);margin-bottom:4px">INTERN</div><?= nl2br(htmlspecialchars($auftrag['notiz_intern'])) ?></div>
-        <?php endif; ?>
-        <?php if ($auftrag['notiz_versand']): ?>
-            <div><div style="font-size:11px;color:var(--color-text-muted);margin-bottom:4px">VERSAND / PACKERL</div><?= nl2br(htmlspecialchars($auftrag['notiz_versand'])) ?></div>
-        <?php endif; ?>
+    <div class="card" style="margin-bottom:12px">
+        <div class="card-header">Notizen</div>
+        <div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <?php if ($auftrag['notiz_intern']): ?>
+                <div>
+                    <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:4px">INTERN</div><?= nl2br(htmlspecialchars($auftrag['notiz_intern'])) ?>
+                </div>
+            <?php endif; ?>
+            <?php if ($auftrag['notiz_versand']): ?>
+                <div>
+                    <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:4px">VERSAND / PACKERL</div><?= nl2br(htmlspecialchars($auftrag['notiz_versand'])) ?>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
-</div>
 <?php endif; ?>
 
 <!-- Statuslog -->
 <?php if (!empty($statuslog)): ?>
-<div class="card">
-    <div class="card-header">Verlauf</div>
-    <table class="erp-table">
-        <thead><tr><th>Zeitpunkt</th><th>Benutzer</th><th>Änderung</th><th>Notiz</th></tr></thead>
-        <tbody>
-            <?php foreach ($statuslog as $log):
-                $changes = json_decode($log['felder_geaendert'] ?? '{}', true) ?: [];
-                $changeTexts = [];
-                foreach ($changes as $feld => $werte) {
-                    $changeTexts[] = ucfirst(str_replace('_', ' ', $feld)) . ': ' . ($werte[0] ?? '—') . ' → ' . ($werte[1] ?? '—');
-                }
-            ?>
+    <div class="card">
+        <div class="card-header">Verlauf</div>
+        <table class="erp-table">
+            <thead>
                 <tr>
-                    <td style="white-space:nowrap;font-size:12px"><?= date('d.m.Y H:i', strtotime($log['erstellt_am'])) ?></td>
-                    <td style="font-size:12px"><?= htmlspecialchars($log['erstellt_von_name']) ?></td>
-                    <td style="font-size:12px"><?= htmlspecialchars(implode(', ', $changeTexts)) ?></td>
-                    <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($log['notiz'] ?? '') ?></td>
+                    <th>Zeitpunkt</th>
+                    <th>Benutzer</th>
+                    <th>Änderung</th>
+                    <th>Notiz</th>
                 </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-</div>
+            </thead>
+            <tbody>
+                <?php foreach ($statuslog as $log):
+                    $changes = json_decode($log['felder_geaendert'] ?? '{}', true) ?: [];
+                    $changeTexts = [];
+                    foreach ($changes as $feld => $werte) {
+                        $changeTexts[] = ucfirst(str_replace('_', ' ', $feld)) . ': ' . ($werte[0] ?? '—') . ' → ' . ($werte[1] ?? '—');
+                    }
+                ?>
+                    <tr>
+                        <td style="white-space:nowrap;font-size:12px"><?= date('d.m.Y H:i', strtotime($log['erstellt_am'])) ?></td>
+                        <td style="font-size:12px"><?= htmlspecialchars($log['erstellt_von_name']) ?></td>
+                        <td style="font-size:12px"><?= htmlspecialchars(implode(', ', $changeTexts)) ?></td>
+                        <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($log['notiz'] ?? '') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 <?php endif; ?>
 
 <script>
-window.AUFTRAG_ID       = <?= $id ?>;
-window.STATUS_AJAX_URL  = '/mealana/auftraege/status_ajax.php';
-window.STORNO_URL       = '/mealana/auftraege/stornieren.php';
+    window.AUFTRAG_ID = <?= $id ?>;
+    window.STATUS_AJAX_URL = '/mealana/auftraege/status_ajax.php';
+    window.STORNO_URL = '/mealana/auftraege/stornieren.php';
 </script>
 <script src="/mealana/js/auftraege_detail.js"></script>
 

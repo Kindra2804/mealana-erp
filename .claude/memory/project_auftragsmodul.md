@@ -146,3 +146,16 @@ Auftrag eingeht → Bestand < Menge → lieferstatus='zurueckgestellt'
 - Kanal-Chip (woocommerce / manuell / kasse) sichtbar in der Liste
 - Filterbox: Kanal, Zahlungsstatus, Lieferstatus, Datum, Kunde
 - Spalten-Picker (wie Artikelliste)
+
+## Rabatt-Design (offen — nächste Session)
+
+- `auftrag_positionen.rabatt_prozent` ist vorhanden, aber nur %-Rabatt
+- Erweiterung geplant: `rabatt_typ ENUM('prozent','betrag')` + `rabatt_betrag DECIMAL(10,2)`
+- Typ 'prozent': bestehende Logik; Typ 'betrag': Fixbetrag vom Gesamtpreis abziehen
+- Anzeige in detail.php + neu.php anpassen wenn gebaut
+- **Why:** B2C-Kunden bekommen oft pauschale €-Nachlässe (z.B. "5€ Rabatt"), nicht %-Rabatte
+
+## Versandklassen-Features (offen)
+
+- **Teillieferung als Versandoption**: eigene Versandklasse mit Aufpreis (z.B. „Versand + Teillieferung AT"), wählbar im Shop/Auftrag
+- **Versandkostenfrei ab X**: in system_einstellungen, pro Shop aktivier-/deaktivierbar + Betrag einstellbar

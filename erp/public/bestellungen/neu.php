@@ -1,6 +1,7 @@
 ﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/bestellungen/BestellungService.php';
+require_once __DIR__ . '/../../src/core/Database.php';
 
 $service     = new BestellungService();
 $lieferanten = $service->getAlleLieferanten();
@@ -51,6 +52,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+
             <div>
                 <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Erwartet am</label>
                 <input type="date" name="erwartet_am" class="erp-input" style="width:100%" value="<?= htmlspecialchars($formdata['erwartet_am'] ?? '') ?>">
@@ -91,7 +93,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 </form>
 
-<script>window.BESTELLUNGEN_SAVED_POS = <?= json_encode($formdata['positionen'] ?? []) ?>;</script>
+<script>
+    window.BESTELLUNGEN_SAVED_POS = <?= json_encode($formdata['positionen'] ?? []) ?>;
+</script>
 <script src="/mealana/js/bestellungen_neu.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

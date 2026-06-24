@@ -4,8 +4,8 @@ let positionenIndex = 0;
 
 function positionHinzufuegen(artikel) {
     const body = document.getElementById('positionen-body');
-    const idx  = positionenIndex++;
-    const a    = artikel || {};
+    const idx = positionenIndex++;
+    const a = artikel || {};
 
     const vkNetto = a.vk_brutto
         ? (parseFloat(a.vk_brutto) / (1 + (a.steuer_prozent || 20) / 100)).toFixed(4)
@@ -49,10 +49,10 @@ function positionEntfernen(btn) {
 }
 
 function aktualisiereZeile(idx) {
-    const tr     = document.querySelector(`tr[data-idx="${idx}"]`);
+    const tr = document.querySelector(`tr[data-idx="${idx}"]`);
     if (!tr) return;
-    const menge  = parseFloat(tr.querySelector('.pos-menge').value) || 0;
-    const preis  = parseFloat(tr.querySelector('.pos-preis').value) || 0;
+    const menge = parseFloat(tr.querySelector('.pos-menge').value) || 0;
+    const preis = parseFloat(tr.querySelector('.pos-preis').value) || 0;
     const rabatt = parseFloat(tr.querySelector('.pos-rabatt').value) || 0;
     const gesamt = menge * preis * (1 - rabatt / 100);
     tr.querySelector('.pos-gesamt').textContent = fmtEur(gesamt);
@@ -61,21 +61,21 @@ function aktualisiereZeile(idx) {
 
 function aktualisiereAnzeige() {
     const keineEl = document.getElementById('keine-positionen');
-    const rows    = document.querySelectorAll('#positionen-body tr');
+    const rows = document.querySelectorAll('#positionen-body tr');
     keineEl.style.display = rows.length === 0 ? '' : 'none';
 
-    let netto  = 0;
+    let netto = 0;
     let steuer = 0;
     rows.forEach(tr => {
-        const menge  = parseFloat(tr.querySelector('.pos-menge')?.value) || 0;
-        const preis  = parseFloat(tr.querySelector('.pos-preis')?.value) || 0;
+        const menge = parseFloat(tr.querySelector('.pos-menge')?.value) || 0;
+        const preis = parseFloat(tr.querySelector('.pos-preis')?.value) || 0;
         const rabatt = parseFloat(tr.querySelector('.pos-rabatt')?.value) || 0;
         const stProz = parseFloat(tr.querySelector('.pos-steuer')?.value) || 20;
-        const n      = menge * preis * (1 - rabatt / 100);
-        netto  += n;
+        const n = menge * preis * (1 - rabatt / 100);
+        netto += n;
         steuer += n * stProz / 100;
     });
-    document.getElementById('summe-netto').textContent  = fmtEur(netto);
+    document.getElementById('summe-netto').textContent = fmtEur(netto);
     document.getElementById('summe-steuer').textContent = fmtEur(steuer);
     document.getElementById('summe-brutto').textContent = fmtEur(netto + steuer);
 }
@@ -91,7 +91,7 @@ function startArtikelSuche(idx, input) {
 }
 
 async function sucheArtikel(idx, suche) {
-    const res  = await fetch(`${window.ARTIKEL_AJAX_URL}?q=${encodeURIComponent(suche)}`);
+    const res = await fetch(`${window.ARTIKEL_AJAX_URL}?q=${encodeURIComponent(suche)}`);
     const list = await res.json();
     const drop = document.querySelector(`.pos-dropdown[data-idx="${idx}"]`);
     if (!drop) return;
@@ -110,11 +110,11 @@ async function sucheArtikel(idx, suche) {
 function artikelWaehlen(idx, a) {
     const tr = document.querySelector(`tr[data-idx="${idx}"]`);
     if (!tr) return;
-    tr.querySelector('.pos-artikel-id').value  = a.id;
-    tr.querySelector('[name$="[ean]"]').value   = a.ean || '';
+    tr.querySelector('.pos-artikel-id').value = a.id;
+    tr.querySelector('[name$="[ean]"]').value = a.ean || '';
     const bez = a.variante_name ? (a.name + ' — ' + a.variante_name) : a.name;
-    tr.querySelector('.pos-bezeichnung').value  = bez;
-    tr.querySelector('.pos-steuer').value       = a.steuer_prozent || 20;
+    tr.querySelector('.pos-bezeichnung').value = bez;
+    tr.querySelector('.pos-steuer').value = a.steuer_prozent || 20;
     if (a.vk_brutto) {
         const stPrz = a.steuer_prozent || 20;
         const netto = (parseFloat(a.vk_brutto) / (1 + stPrz / 100)).toFixed(4);
@@ -146,7 +146,7 @@ if (kundenSuche) {
 }
 
 async function sucheKunden(suche) {
-    const res  = await fetch(`${window.KUNDEN_AJAX_URL}?q=${encodeURIComponent(suche)}`);
+    const res = await fetch(`${window.KUNDEN_AJAX_URL}?q=${encodeURIComponent(suche)}`);
     const list = await res.json();
     const drop = document.getElementById('kunden-dropdown');
     drop.innerHTML = '';
@@ -171,8 +171,31 @@ function fmtEur(val) {
     return val.toLocaleString('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 function escH(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // Start: eine leere Position anzeigen
 positionHinzufuegen();
+
+document.getElementById('versandklasse').addEventListener('change', function () {
+    var preis = this.value === '' ? '0.00' : this.options[this.selectedIndex].dataset.preis;
+    document.getElementById('versandkosten-wert').value = preis;
+})
+
+document.getElementById('lieferart').addEventListener('change', function () {
+    if (this.value === 'abholung') {
+        document.getElementById('gruppe-versandart').style.display = 'none';
+        document.getElementById('gruppe-versandkosten').style.display = 'none';
+        document.getElementById('versandklasse').value = '';
+        document.getElementById('versandkosten-wert').value = 0.00;
+    }
+
+    if (this.value === 'versand') {
+        document.getElementById('gruppe-versandart').style.display = '';
+        document.getElementById('gruppe-versandkosten').style.display = '';
+    }
+
+})
+
+document.getElementById('lieferart').dispatchEvent(new Event('change'));
+

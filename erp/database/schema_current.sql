@@ -92,12 +92,12 @@ CREATE TABLE `aktivitaeten` (
   PRIMARY KEY (`id`),
   KEY `fk_aktivitaeten_benutzer` (`benutzer_id`),
   CONSTRAINT `fk_aktivitaeten_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=280 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `aktivitaeten` WRITE;
 /*!40000 ALTER TABLE `aktivitaeten` DISABLE KEYS */;
-INSERT INTO `aktivitaeten` VALUES (260,1,'kategorie.bearbeiten','kategorien',1,'{\"name\":\"Wolle und Garne\",\"parent_id\":null}','2026-06-19 18:14:16'),(261,1,'kategorie.anlegen','kategorien',135,'{\"name\":\"Aktionskategorie aktiv\",\"parent_id\":null}','2026-06-19 18:15:03'),(262,1,'kategorie.anlegen','kategorien',136,'{\"name\":\"Aktionskategorie geplant\",\"parent_id\":null}','2026-06-19 18:15:24'),(263,1,'kategorie.anlegen','kategorien',137,'{\"name\":\"Aktionskategorie abgelaufen\",\"parent_id\":null}','2026-06-19 18:15:38'),(264,1,'kategorie.bearbeiten','kategorien',137,'{\"name\":\"Aktionskategorie abgelaufen\",\"parent_id\":null}','2026-06-19 18:15:44'),(265,1,'aktion.anlegen','aktionen',3,'{\"name\":\"Sommer 2026\"}','2026-06-19 18:16:14'),(266,1,'aktion.kategorie.hinzufuegen','aktionen',3,'{\"kategorie_id\":135}','2026-06-19 18:16:33'),(267,1,'aktion.kategorie.hinzufuegen','aktionen',3,'{\"kategorie_id\":137}','2026-06-19 18:16:54'),(268,1,'aktion.kategorie.hinzufuegen','aktionen',3,'{\"kategorie_id\":136}','2026-06-19 18:17:13'),(269,1,'aktion.starten','aktionen',3,NULL,'2026-06-19 18:17:20'),(270,1,'aktion.bearbeiten','aktionen',3,'{\"name\":\"Sommer 2026\"}','2026-06-19 18:17:29'),(271,1,'aktion.bearbeiten','aktionen',3,'{\"name\":\"Sommer 2026\"}','2026-06-19 18:27:55'),(272,1,'aktion.anlegen','aktionen',4,'{\"name\":\"Mai 2026\"}','2026-06-19 18:28:13'),(273,1,'aktion.kategorie.hinzufuegen','aktionen',4,'{\"kategorie_id\":137}','2026-06-19 18:28:31'),(274,1,'aktion.bearbeiten','aktionen',4,'{\"name\":\"Mai 2026\"}','2026-06-19 18:28:38'),(275,1,'aktion.starten','aktionen',4,NULL,'2026-06-19 18:28:40'),(276,1,'aktion.anlegen','aktionen',5,'{\"name\":\"November 2026\"}','2026-06-19 18:29:06'),(277,1,'aktion.kategorie.hinzufuegen','aktionen',5,'{\"kategorie_id\":136}','2026-06-19 18:29:20'),(278,1,'aktion.bearbeiten','aktionen',5,'{\"name\":\"November 2026\"}','2026-06-19 18:29:30'),(279,1,'hersteller.bearbeiten','hersteller',1,'{\"name\":\"DROPS Design\"}','2026-06-19 19:44:17');
+INSERT INTO `aktivitaeten` VALUES (260,1,'kategorie.bearbeiten','kategorien',1,'{\"name\":\"Wolle und Garne\",\"parent_id\":null}','2026-06-19 18:14:16'),(261,1,'kategorie.anlegen','kategorien',135,'{\"name\":\"Aktionskategorie aktiv\",\"parent_id\":null}','2026-06-19 18:15:03'),(262,1,'kategorie.anlegen','kategorien',136,'{\"name\":\"Aktionskategorie geplant\",\"parent_id\":null}','2026-06-19 18:15:24'),(263,1,'kategorie.anlegen','kategorien',137,'{\"name\":\"Aktionskategorie abgelaufen\",\"parent_id\":null}','2026-06-19 18:15:38'),(264,1,'kategorie.bearbeiten','kategorien',137,'{\"name\":\"Aktionskategorie abgelaufen\",\"parent_id\":null}','2026-06-19 18:15:44'),(265,1,'aktion.anlegen','aktionen',3,'{\"name\":\"Sommer 2026\"}','2026-06-19 18:16:14'),(266,1,'aktion.kategorie.hinzufuegen','aktionen',3,'{\"kategorie_id\":135}','2026-06-19 18:16:33'),(267,1,'aktion.kategorie.hinzufuegen','aktionen',3,'{\"kategorie_id\":137}','2026-06-19 18:16:54'),(268,1,'aktion.kategorie.hinzufuegen','aktionen',3,'{\"kategorie_id\":136}','2026-06-19 18:17:13'),(269,1,'aktion.starten','aktionen',3,NULL,'2026-06-19 18:17:20'),(270,1,'aktion.bearbeiten','aktionen',3,'{\"name\":\"Sommer 2026\"}','2026-06-19 18:17:29'),(271,1,'aktion.bearbeiten','aktionen',3,'{\"name\":\"Sommer 2026\"}','2026-06-19 18:27:55'),(272,1,'aktion.anlegen','aktionen',4,'{\"name\":\"Mai 2026\"}','2026-06-19 18:28:13'),(273,1,'aktion.kategorie.hinzufuegen','aktionen',4,'{\"kategorie_id\":137}','2026-06-19 18:28:31'),(274,1,'aktion.bearbeiten','aktionen',4,'{\"name\":\"Mai 2026\"}','2026-06-19 18:28:38'),(275,1,'aktion.starten','aktionen',4,NULL,'2026-06-19 18:28:40'),(276,1,'aktion.anlegen','aktionen',5,'{\"name\":\"November 2026\"}','2026-06-19 18:29:06'),(277,1,'aktion.kategorie.hinzufuegen','aktionen',5,'{\"kategorie_id\":136}','2026-06-19 18:29:20'),(278,1,'aktion.bearbeiten','aktionen',5,'{\"name\":\"November 2026\"}','2026-06-19 18:29:30'),(279,1,'hersteller.bearbeiten','hersteller',1,'{\"name\":\"DROPS Design\"}','2026-06-19 19:44:17'),(280,1,'lieferant.anlegen','lieferanten',3,'{\"name\":\"Karl Indra\"}','2026-06-22 20:24:28'),(281,1,'artikel.anlegen','artikel',149,'{\"name\":\"Testartikel_autoscan\"}','2026-06-23 17:47:39'),(282,1,'bestellungen.anlegen','bestellungen',2,'{\"bestellnummer\":\"BE-2026-0002\",\"lieferant_id\":3,\"positionen\":1}','2026-06-23 17:58:16'),(283,1,'wareneingang.eingang','bestellungen',2,'{\"artikel_id\":149,\"menge\":1,\"charge\":null,\"lager_id\":1}','2026-06-23 17:58:16'),(284,1,'bestellungen.anlegen','bestellungen',3,'{\"bestellnummer\":\"BE-2026-0003\",\"lieferant_id\":3,\"positionen\":1}','2026-06-23 18:10:23'),(285,1,'bestellungen.anlegen','bestellungen',4,'{\"bestellnummer\":\"BE-2026-0004\",\"lieferant_id\":3,\"positionen\":1}','2026-06-23 18:13:56'),(286,1,'artikel.lieferant.anlegen','artikel_lieferanten',149,'{\"lieferant_id\":3}','2026-06-23 18:15:59'),(287,1,'bestellungen.bearbeiten','bestellungen',4,NULL,'2026-06-23 19:06:17'),(288,1,'wareneingang.eingang','bestellungen',4,'{\"artikel_id\":149,\"menge\":3,\"charge\":null,\"lager_id\":1}','2026-06-23 19:06:50'),(289,1,'wareneingang.eingang','bestellungen',4,'{\"artikel_id\":149,\"menge\":1,\"charge\":null,\"lager_id\":1}','2026-06-23 19:07:26'),(290,1,'kunden.anlegen','kunden',3,'{\"kundennummer\":\"KD-00001\",\"name\":\"Karl Indra\"}','2026-06-24 06:31:31'),(291,1,'auftraege.anlegen','auftraege',1,'{\"kanal\":\"manuell\",\"positionen\":1,\"brutto\":3.76}','2026-06-24 11:03:30'),(292,1,'auftraege.anlegen','auftraege',2,'{\"kanal\":\"manuell\",\"positionen\":1,\"brutto\":3.76}','2026-06-24 11:13:34'),(293,1,'auftraege.anlegen','auftraege',3,'{\"kanal\":\"manuell\",\"positionen\":1,\"brutto\":18.19}','2026-06-24 11:16:06'),(294,1,'auftraege.anlegen','auftraege',4,'{\"kanal\":\"manuell\",\"positionen\":1,\"brutto\":16.87}','2026-06-24 11:20:38');
 /*!40000 ALTER TABLE `aktivitaeten` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `artikel`;
@@ -147,6 +147,9 @@ CREATE TABLE `artikel` (
   `meta_titel` varchar(70) DEFAULT NULL,
   `meta_description` varchar(160) DEFAULT NULL,
   `url_slug` varchar(255) DEFAULT NULL,
+  `meldebestand` int(10) unsigned DEFAULT NULL COMMENT 'Auslöser Bestellvorschlag — bei Unterschreitung Infobox im Bestellwesen',
+  `sicherheitsbestand` int(10) unsigned DEFAULT NULL COMMENT 'Puffer der nie unterschritten werden soll',
+  `standardbestellmenge` int(10) unsigned DEFAULT NULL COMMENT 'Vorschlagsmenge beim manuellen Bestellvorschlag',
   PRIMARY KEY (`id`),
   UNIQUE KEY `artikelnummer` (`artikelnummer`),
   UNIQUE KEY `uk_artikel_url_slug` (`url_slug`),
@@ -167,11 +170,12 @@ CREATE TABLE `artikel` (
   CONSTRAINT `fk_artikel_vater` FOREIGN KEY (`vaterartikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_artikel_versandklasse` FOREIGN KEY (`versandklasse_id`) REFERENCES `versandklassen` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_zustand_vater` FOREIGN KEY (`zustand_vater_id`) REFERENCES `artikel` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=149 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=150 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `artikel` WRITE;
 /*!40000 ALTER TABLE `artikel` DISABLE KEYS */;
+INSERT INTO `artikel` VALUES (149,'ART-001',1,NULL,'eigen',1,1,'Testartikel_autoscan',NULL,NULL,3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,0,'neu',NULL,NULL,0,'2026-06-23 17:47:39','2026-06-23 17:47:39',100.000,1,0,NULL,1,0,0,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `artikel` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `artikel_achsen`;
@@ -253,11 +257,12 @@ CREATE TABLE `artikel_codes` (
   PRIMARY KEY (`id`),
   KEY `fk_artikel_codes` (`artikel_id`),
   CONSTRAINT `fk_artikel_codes` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `artikel_codes` WRITE;
 /*!40000 ALTER TABLE `artikel_codes` DISABLE KEYS */;
+INSERT INTO `artikel_codes` VALUES (25,149,'1231231231231','GTIN13',NULL);
 /*!40000 ALTER TABLE `artikel_codes` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `artikel_externe_referenzen`;
@@ -320,11 +325,12 @@ CREATE TABLE `artikel_lieferanten` (
   KEY `fk_artlief_lieferant_id` (`lieferant_id`),
   CONSTRAINT `fk_artlief_artikel_id` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_artlief_lieferant_id` FOREIGN KEY (`lieferant_id`) REFERENCES `lieferanten` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `artikel_lieferanten` WRITE;
 /*!40000 ALTER TABLE `artikel_lieferanten` DISABLE KEYS */;
+INSERT INTO `artikel_lieferanten` VALUES (8,149,3,'',0.00,NULL,'',0,NULL,0,0.00,1,NULL,'2026-06-23 18:15:59','2026-06-23 18:15:59');
 /*!40000 ALTER TABLE `artikel_lieferanten` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `artikel_merkmale`;
@@ -367,11 +373,12 @@ CREATE TABLE `artikel_preise` (
   KEY `fk_kundengruppen` (`kundengruppen_id`),
   CONSTRAINT `fk_kundengruppen` FOREIGN KEY (`kundengruppen_id`) REFERENCES `kundengruppen` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_preise_artikel` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=148 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=149 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `artikel_preise` WRITE;
 /*!40000 ALTER TABLE `artikel_preise` DISABLE KEYS */;
+INSERT INTO `artikel_preise` VALUES (148,149,1,3.75,3.13,NULL,NULL,'2026-06-23 17:47:39');
 /*!40000 ALTER TABLE `artikel_preise` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `artikel_staffelpreise`;
@@ -420,6 +427,134 @@ LOCK TABLES `artikel_typen` WRITE;
 /*!40000 ALTER TABLE `artikel_typen` DISABLE KEYS */;
 INSERT INTO `artikel_typen` VALUES (1,'GARN','Garn',0,1,1,0,0,1,1),(2,'NADEL','Nadel',0,1,1,0,0,2,1),(3,'METERWARE','Meterware',1,1,1,0,0,3,1),(4,'DOWNLOAD','Download',0,0,0,1,0,4,1),(5,'SET','Set',0,0,1,0,1,5,1),(6,'STANDARD','Standard',0,1,1,0,0,6,1);
 /*!40000 ALTER TABLE `artikel_typen` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `auftraege`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `auftraege` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `auftrag_nr` varchar(20) NOT NULL,
+  `kunden_id` int(10) unsigned DEFAULT NULL,
+  `kunden_snapshot` text DEFAULT NULL,
+  `lieferadresse_snapshot` text DEFAULT NULL,
+  `rechnungsadresse_snapshot` text DEFAULT NULL,
+  `kanal` enum('woocommerce','manuell','kasse') NOT NULL DEFAULT 'manuell',
+  `kanal_auftrag_id` int(10) unsigned DEFAULT NULL,
+  `zahlungsstatus` enum('ausstehend','bezahlt','teilbezahlt','erstattet','storniert') NOT NULL DEFAULT 'ausstehend',
+  `lieferstatus` enum('neu','in_bearbeitung','versandbereit','teilgeliefert','zurueckgestellt','versendet','abgeschlossen','storniert') NOT NULL DEFAULT 'neu',
+  `zahlungsart` enum('vorkasse','paypal','rechnung','bar','gutschein','gemischt') NOT NULL DEFAULT 'vorkasse',
+  `zahlungsbedingung_id` int(10) unsigned DEFAULT NULL,
+  `gutschein_id` int(10) unsigned DEFAULT NULL,
+  `gutschein_betrag` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `versandkosten` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `rabatt_gesamt` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `nettobetrag` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `steuerbetrag` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `bruttobetrag` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `bezahlt_am` datetime DEFAULT NULL,
+  `mahnung_stufe` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `mahnung_gesendet_am` datetime DEFAULT NULL,
+  `tracking_nr` varchar(100) DEFAULT NULL,
+  `versanddienstleister` varchar(50) DEFAULT NULL,
+  `notiz_intern` text DEFAULT NULL,
+  `notiz_versand` text DEFAULT NULL,
+  `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
+  `aktualisiert_am` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `erstellt_von` int(10) unsigned NOT NULL,
+  `lieferart` enum('versand','abholung') NOT NULL DEFAULT 'versand',
+  `versandklasse_id` int(10) unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `auftrag_nr` (`auftrag_nr`),
+  KEY `fk_auftrag_kunde` (`kunden_id`),
+  KEY `fk_auftrag_zahlung` (`zahlungsbedingung_id`),
+  KEY `fk_auftrag_benutzer` (`erstellt_von`),
+  KEY `fk_auftr_versandklassen` (`versandklasse_id`),
+  CONSTRAINT `fk_auftr_versandklassen` FOREIGN KEY (`versandklasse_id`) REFERENCES `versandklassen` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_auftrag_benutzer` FOREIGN KEY (`erstellt_von`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_auftrag_kunde` FOREIGN KEY (`kunden_id`) REFERENCES `kunden` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_auftrag_zahlung` FOREIGN KEY (`zahlungsbedingung_id`) REFERENCES `zahlungsbedingungen` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `auftraege` WRITE;
+/*!40000 ALTER TABLE `auftraege` DISABLE KEYS */;
+INSERT INTO `auftraege` VALUES (1,'A-2026-00001',3,'{\"name\":\"Karl Indra\",\"email\":\"indy1@gmx.at\"}',NULL,NULL,'manuell',NULL,'ausstehend','neu','vorkasse',NULL,NULL,0.00,6.50,0.00,3.13,0.63,3.76,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-06-24 11:03:30','2026-06-24 11:03:30',1,'versand',1),(2,'A-2026-00002',3,'{\"name\":\"Karl Indra\",\"email\":\"indy1@gmx.at\"}',NULL,NULL,'manuell',NULL,'ausstehend','neu','vorkasse',NULL,NULL,0.00,6.50,0.00,3.13,0.63,3.76,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-06-24 11:13:34','2026-06-24 11:13:34',1,'versand',1),(3,'A-2026-00003',3,'{\"name\":\"Karl Indra\",\"email\":\"indy1@gmx.at\"}',NULL,NULL,'manuell',NULL,'ausstehend','neu','vorkasse',NULL,NULL,0.00,0.00,0.00,15.16,3.03,18.19,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-06-24 11:16:06','2026-06-24 11:16:06',1,'abholung',NULL),(4,'A-2026-00004',3,'{\"name\":\"Karl Indra\",\"email\":\"indy1@gmx.at\"}',NULL,NULL,'manuell',NULL,'ausstehend','neu','vorkasse',NULL,NULL,0.00,0.00,0.00,14.06,2.81,16.87,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-06-24 11:20:38','2026-06-24 11:20:38',1,'abholung',NULL);
+/*!40000 ALTER TABLE `auftraege` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `auftrag_dokumente`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `auftrag_dokumente` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `auftrag_id` int(10) unsigned NOT NULL,
+  `typ` enum('auftragsbestaetigung','lieferschein','rechnung','gutschrift','mahnung') NOT NULL,
+  `dateiname` varchar(255) NOT NULL,
+  `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
+  `erstellt_von` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_adok_auftrag` (`auftrag_id`),
+  KEY `fk_adok_benutzer` (`erstellt_von`),
+  CONSTRAINT `fk_adok_auftrag` FOREIGN KEY (`auftrag_id`) REFERENCES `auftraege` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_adok_benutzer` FOREIGN KEY (`erstellt_von`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `auftrag_dokumente` WRITE;
+/*!40000 ALTER TABLE `auftrag_dokumente` DISABLE KEYS */;
+/*!40000 ALTER TABLE `auftrag_dokumente` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `auftrag_positionen`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `auftrag_positionen` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `auftrag_id` int(10) unsigned NOT NULL,
+  `artikel_id` int(10) unsigned NOT NULL,
+  `charge` varchar(20) DEFAULT NULL,
+  `bezeichnung` varchar(255) NOT NULL,
+  `ean` varchar(20) DEFAULT NULL,
+  `menge` int(10) unsigned NOT NULL,
+  `menge_geliefert` int(10) unsigned NOT NULL DEFAULT 0,
+  `einzelpreis_netto` decimal(10,4) NOT NULL,
+  `steuer_prozent` decimal(5,2) NOT NULL DEFAULT 20.00,
+  `rabatt_prozent` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `gesamtpreis_netto` decimal(10,2) NOT NULL,
+  `sort_order` int(10) unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `fk_aufpos_auftrag` (`auftrag_id`),
+  KEY `fk_aufpos_artikel` (`artikel_id`),
+  CONSTRAINT `fk_aufpos_artikel` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_aufpos_auftrag` FOREIGN KEY (`auftrag_id`) REFERENCES `auftraege` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `auftrag_positionen` WRITE;
+/*!40000 ALTER TABLE `auftrag_positionen` DISABLE KEYS */;
+INSERT INTO `auftrag_positionen` VALUES (1,1,149,NULL,'Testartikel_autoscan','1231231231231',1,0,3.1250,20.00,0.00,3.13,0),(2,2,149,NULL,'Testartikel_autoscan','1231231231231',1,0,3.1250,20.00,0.00,3.13,0),(3,3,149,NULL,'Testartikel_autoscan','1231231231231',5,0,3.1250,20.00,3.00,15.16,0),(4,4,149,NULL,'Testartikel_autoscan','1231231231231',5,0,3.1250,20.00,10.00,14.06,0);
+/*!40000 ALTER TABLE `auftrag_positionen` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `auftrag_statuslog`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `auftrag_statuslog` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `auftrag_id` int(10) unsigned NOT NULL,
+  `felder_geaendert` text DEFAULT NULL,
+  `notiz` text DEFAULT NULL,
+  `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
+  `erstellt_von` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_alog_auftrag` (`auftrag_id`),
+  KEY `fk_alog_benutzer` (`erstellt_von`),
+  CONSTRAINT `fk_alog_auftrag` FOREIGN KEY (`auftrag_id`) REFERENCES `auftraege` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_alog_benutzer` FOREIGN KEY (`erstellt_von`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `auftrag_statuslog` WRITE;
+/*!40000 ALTER TABLE `auftrag_statuslog` DISABLE KEYS */;
+INSERT INTO `auftrag_statuslog` VALUES (1,1,'{\"lieferstatus\":[null,\"neu\"],\"zahlungsstatus\":[null,\"ausstehend\"]}','Auftrag angelegt','2026-06-24 11:03:30',1),(2,2,'{\"lieferstatus\":[null,\"neu\"],\"zahlungsstatus\":[null,\"ausstehend\"]}','Auftrag angelegt','2026-06-24 11:13:34',1),(3,3,'{\"lieferstatus\":[null,\"neu\"],\"zahlungsstatus\":[null,\"ausstehend\"]}','Auftrag angelegt','2026-06-24 11:16:06',1),(4,4,'{\"lieferstatus\":[null,\"neu\"],\"zahlungsstatus\":[null,\"ausstehend\"]}','Auftrag angelegt','2026-06-24 11:20:38',1);
+/*!40000 ALTER TABLE `auftrag_statuslog` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `benutzer`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -502,23 +637,113 @@ LOCK TABLES `berechtigungen` WRITE;
 INSERT INTO `berechtigungen` VALUES (1,'artikel.anzeigen','artikel anzeigen',1,'2026-06-01 20:27:22'),(2,'artikel.bearbeiten','artikel bearbeiten',1,'2026-06-01 20:27:22'),(3,'artikel.anlegen','artikel anlegen',1,'2026-06-01 20:27:22'),(4,'artikel.loeschen','artikel löschen',1,'2026-06-01 20:27:22'),(5,'varianten.anzeigen','varianten anzeigen',1,'2026-06-01 20:27:22'),(6,'varianten.bearbeiten','varianten bearbeiten',1,'2026-06-01 20:27:22'),(7,'varianten.anlegen','varianten anlegen',1,'2026-06-01 20:27:22'),(8,'varianten.loeschen','varianten löschen',1,'2026-06-01 20:27:22'),(9,'lager.anzeigen','lager anzeigen',1,'2026-06-01 20:27:22'),(10,'lager.bearbeiten','lager bearbeiten',1,'2026-06-01 20:27:22'),(11,'lager.anlegen','lager anlegen',1,'2026-06-01 20:27:22'),(12,'lager.loeschen','lager löschen',1,'2026-06-01 20:27:22'),(13,'wareneingang.buchen','wareneingang buchen',1,'2026-06-01 20:27:22'),(14,'wareneingang.bearbeiten','wareneingang bearbeiten',1,'2026-06-01 20:27:22'),(15,'bestand.anzeigen','bestand anzeigen',1,'2026-06-01 20:27:22'),(16,'bestand.bearbeiten','bestand bearbeiten',1,'2026-06-01 20:27:22'),(17,'bestand.korrigieren','bestand korrigieren',1,'2026-06-01 20:27:22'),(18,'bestand.loeschen','bestand löschen',1,'2026-06-01 20:27:22'),(19,'lieferanten.anzeigen','lieferanten anzeigen',1,'2026-06-01 20:27:22'),(20,'lieferanten.bearbeiten','lieferanten bearbeiten',1,'2026-06-01 20:27:22'),(21,'lieferanten.anlegen','lieferanten anlegen',1,'2026-06-01 20:27:22'),(22,'lieferanten.loeschen','lieferanten löschen',1,'2026-06-01 20:27:22'),(23,'inventur.anzeigen','inventur anzeigen',1,'2026-06-01 20:27:22'),(24,'inventur.bearbeiten','inventur bearbeiten',1,'2026-06-01 20:27:22'),(25,'inventur.anlegen','inventur anlegen',1,'2026-06-01 20:27:22'),(26,'inventur.loeschen','inventur löschen',1,'2026-06-01 20:27:22'),(27,'inventurpositionen.anzeigen','inventurpositionen anzeigen',1,'2026-06-01 20:27:22'),(28,'inventurpositionen.bearbeiten','inventurpositionen bearbeiten',1,'2026-06-01 20:27:22'),(29,'inventurpositionen.anlegen','inventurpositionen anlegen',1,'2026-06-01 20:27:22'),(30,'inventurpositionen.loeschen','inventurpositionen löschen',1,'2026-06-01 20:27:22'),(31,'benutzer.anlegen','benutzer anlegen',1,'2026-06-01 20:27:22'),(32,'benutzer.bearbeiten','benutzer bearbeiten',1,'2026-06-01 20:27:22'),(33,'benutzer.loeschen','benutzer löschen',1,'2026-06-01 20:27:22'),(34,'api.zugriff','API Zugriff',1,'2026-06-01 20:27:22'),(35,'berichte.anzeigen','berichte anzeigen',1,'2026-06-01 20:27:22'),(36,'berichte.bearbeiten','berichte bearbeiten',1,'2026-06-01 20:27:22'),(37,'berichte.anlegen','berichte anlegen',1,'2026-06-01 20:27:22'),(38,'berichte.loeschen','berichte löschen',1,'2026-06-01 20:27:22'),(39,'berichte.drucken','berichte drucken',1,'2026-06-01 20:27:22'),(40,'shopabgleich.starten','shopabgleich starten',1,'2026-06-01 20:27:22'),(41,'shopabgleich.stoppen','shopabgleich stoppen',1,'2026-06-01 20:27:22'),(42,'packplatz.starten','packplatz starten',1,'2026-06-01 20:27:22'),(43,'packplatz.stoppen','packplatz stoppen',1,'2026-06-01 20:27:22'),(44,'kasse.starten','kasse starten',1,'2026-06-01 20:27:22'),(45,'kasse.stoppen','kasse stoppen',1,'2026-06-01 20:27:22');
 /*!40000 ALTER TABLE `berechtigungen` ENABLE KEYS */;
 UNLOCK TABLES;
+DROP TABLE IF EXISTS `bestellung_eingaenge`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `bestellung_eingaenge` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `position_id` int(10) unsigned NOT NULL,
+  `bewegung_id` int(10) unsigned DEFAULT NULL COMMENT 'FK auf lager_bewegungen — NULL wenn Charge "zu erfassen"',
+  `menge` decimal(10,3) NOT NULL,
+  `charge` varchar(100) DEFAULT NULL,
+  `lager_id` int(10) unsigned NOT NULL,
+  `benutzer_id` int(10) unsigned NOT NULL,
+  `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_bein_position` (`position_id`),
+  KEY `fk_bein_bewegung` (`bewegung_id`),
+  KEY `fk_bein_lager` (`lager_id`),
+  KEY `fk_bein_benutzer` (`benutzer_id`),
+  CONSTRAINT `fk_bein_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_bein_bewegung` FOREIGN KEY (`bewegung_id`) REFERENCES `lager_bewegungen` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_bein_lager` FOREIGN KEY (`lager_id`) REFERENCES `lager` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_bein_position` FOREIGN KEY (`position_id`) REFERENCES `bestellung_positionen` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `bestellung_eingaenge` WRITE;
+/*!40000 ALTER TABLE `bestellung_eingaenge` DISABLE KEYS */;
+INSERT INTO `bestellung_eingaenge` VALUES (1,1,26,1.000,NULL,1,1,'2026-06-23 17:58:16'),(2,2,27,3.000,NULL,1,1,'2026-06-23 19:06:50'),(3,2,28,1.000,NULL,1,1,'2026-06-23 19:07:26');
+/*!40000 ALTER TABLE `bestellung_eingaenge` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `bestellung_positionen`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `bestellung_positionen` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `bestellung_id` int(10) unsigned NOT NULL,
+  `artikel_id` int(10) unsigned NOT NULL,
+  `menge_bestellt` decimal(10,3) NOT NULL,
+  `menge_eingegangen` decimal(10,3) NOT NULL DEFAULT 0.000,
+  `ek_preis` decimal(10,4) DEFAULT NULL COMMENT 'EK-Preis-Snapshot zum Bestellzeitpunkt',
+  `lieferzeit_text` varchar(100) DEFAULT NULL,
+  `gestrichen` tinyint(1) NOT NULL DEFAULT 0,
+  `notiz` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_bpos_bestellung` (`bestellung_id`),
+  KEY `fk_bpos_artikel` (`artikel_id`),
+  CONSTRAINT `fk_bpos_artikel` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_bpos_bestellung` FOREIGN KEY (`bestellung_id`) REFERENCES `bestellungen` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `bestellung_positionen` WRITE;
+/*!40000 ALTER TABLE `bestellung_positionen` DISABLE KEYS */;
+INSERT INTO `bestellung_positionen` VALUES (1,2,149,1.000,1.000,NULL,NULL,0,NULL),(2,4,149,5.000,4.000,4.9000,NULL,0,NULL);
+/*!40000 ALTER TABLE `bestellung_positionen` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `bestellungen`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `bestellungen` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `lieferant_id` int(10) unsigned NOT NULL,
+  `status` enum('entwurf','offen','teilgeliefert','erledigt','storniert') NOT NULL DEFAULT 'entwurf',
+  `bestelldatum` date NOT NULL,
+  `erwartet_am` date DEFAULT NULL,
+  `lieferzeit_text` varchar(100) DEFAULT NULL COMMENT 'Freitext z.B. "ab KW38", überschreibt lieferzeit_tage aus artikel_lieferanten',
+  `ab_nummer` varchar(100) DEFAULT NULL COMMENT 'Auftragsbestätigungs-Nummer vom Lieferanten',
+  `zahlungsart` varchar(50) DEFAULT NULL COMMENT 'vorkasse | rechnung | lastschrift',
+  `ls_nummer` varchar(100) DEFAULT NULL COMMENT 'Lieferschein-Nummer vom Lieferanten',
+  `rechnung_nummer` varchar(100) DEFAULT NULL,
+  `rechnung_betrag` decimal(10,2) DEFAULT NULL,
+  `rechnung_datum` date DEFAULT NULL,
+  `gutschrift_betrag` decimal(10,2) DEFAULT NULL COMMENT 'Offenes Guthaben aus gestrichenen Positionen (DROPS-Modell)',
+  `gutschrift_notiz` text DEFAULT NULL,
+  `notiz` text DEFAULT NULL,
+  `benutzer_id` int(10) unsigned NOT NULL,
+  `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
+  `geaendert_am` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_best_lieferant` (`lieferant_id`),
+  KEY `fk_best_benutzer` (`benutzer_id`),
+  CONSTRAINT `fk_best_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_best_lieferant` FOREIGN KEY (`lieferant_id`) REFERENCES `lieferanten` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `bestellungen` WRITE;
+/*!40000 ALTER TABLE `bestellungen` DISABLE KEYS */;
+INSERT INTO `bestellungen` VALUES (1,3,'offen','2026-06-23',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Retroaktiv aus Wareneingang erstellt',1,'2026-06-23 17:56:35','2026-06-23 17:56:35'),(2,3,'erledigt','2026-06-23',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'Retroaktiv aus Wareneingang erstellt',1,'2026-06-23 17:58:16','2026-06-23 17:58:16'),(3,3,'offen','2026-06-23',NULL,NULL,NULL,'rechnung',NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-06-23 18:10:23','2026-06-23 18:10:23'),(4,3,'teilgeliefert','2026-06-23',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-06-23 18:13:56','2026-06-23 19:06:50');
+/*!40000 ALTER TABLE `bestellungen` ENABLE KEYS */;
+UNLOCK TABLES;
 DROP TABLE IF EXISTS `dokument_nummern`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `dokument_nummern` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `typ` enum('rechnung','gutschrift','lieferschein','mietrechnung','abrechnung') NOT NULL,
+  `typ` enum('rechnung','gutschrift','lieferschein','mietrechnung','abrechnung','auftrag') NOT NULL,
   `praefix` varchar(10) NOT NULL,
   `jahr` smallint(6) NOT NULL,
   `letzt_nr` int(10) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dok_typ_jahr` (`typ`,`jahr`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `dokument_nummern` WRITE;
 /*!40000 ALTER TABLE `dokument_nummern` DISABLE KEYS */;
-INSERT INTO `dokument_nummern` VALUES (1,'rechnung','R',2026,0),(2,'gutschrift','GS',2026,0),(3,'lieferschein','LS',2026,0),(4,'mietrechnung','MR',2026,0),(5,'abrechnung','AB',2026,0);
+INSERT INTO `dokument_nummern` VALUES (1,'rechnung','R',2026,0),(2,'gutschrift','GS',2026,0),(3,'lieferschein','LS',2026,0),(4,'mietrechnung','MR',2026,0),(5,'abrechnung','AB',2026,0),(6,'auftrag','A',2026,4);
 /*!40000 ALTER TABLE `dokument_nummern` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `einheiten`;
@@ -661,11 +886,12 @@ CREATE TABLE `kunden` (
   KEY `idx_status` (`status`),
   CONSTRAINT `fk_kunde_kg` FOREIGN KEY (`kundengruppe_id`) REFERENCES `kundengruppen` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_kunde_zb` FOREIGN KEY (`zahlungsbedingung_id`) REFERENCES `zahlungsbedingungen` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `kunden` WRITE;
 /*!40000 ALTER TABLE `kunden` DISABLE KEYS */;
+INSERT INTO `kunden` VALUES (3,'KD-00001','aktiv',0,0,1,5,'vorkasse',NULL,'de','erp','\n����Vk\0��k�(�9�W��g�z��t���E�','\'L�#�t!X]���9�z?P�s\"���䂦���',NULL,'N$ܣ�M1��A��ÿzS�b���ŗ�X����K�i�\\�6','141ecf162fcdcf7b189da23c8622e580f36eb6b1012ce5efd2db8f80c1db0e5a','���lu����t�p.�1��m�e�U]B�m�}��Ha���u]',NULL,NULL,NULL,NULL,'2026-06-24 06:31:31','2026-06-24 06:31:31');
 /*!40000 ALTER TABLE `kunden` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `kunden_adressen`;
@@ -689,11 +915,12 @@ CREATE TABLE `kunden_adressen` (
   PRIMARY KEY (`id`),
   KEY `idx_kaddr_kunde` (`kunde_id`),
   CONSTRAINT `fk_kaddr_kunde` FOREIGN KEY (`kunde_id`) REFERENCES `kunden` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `kunden_adressen` WRITE;
 /*!40000 ALTER TABLE `kunden_adressen` DISABLE KEYS */;
+INSERT INTO `kunden_adressen` VALUES (3,3,'haupt',1,'AT',NULL,'΋\n�m����.��~DJ\Z�����[u6��','p�9<�g��?=gxn���fj�ZFQ����$��+','���F��A�l�_4�������Q^?���~y�\'cW','��[QW(�J�^�O\'\"������','�B���M���P�m��LI�_(��F�䉑[�','���<6bQ&�E�Im�\r��l���:p �Ns8��H*}��',NULL,'2026-06-24 06:31:31');
 /*!40000 ALTER TABLE `kunden_adressen` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `kunden_ansprechpartner`;
@@ -854,11 +1081,12 @@ CREATE TABLE `lager_bewegungen` (
   CONSTRAINT `fk_lbew_artikel_id` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_lbew_benutzerId` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_lbew_lieferantId` FOREIGN KEY (`lieferant_id`) REFERENCES `lieferanten` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `lager_bewegungen` WRITE;
 /*!40000 ALTER TABLE `lager_bewegungen` DISABLE KEYS */;
+INSERT INTO `lager_bewegungen` VALUES (26,1,3,NULL,NULL,'eingang',1.000,0.000,1.000,'BE-2026-0002',NULL,'2026-06-23 17:58:16',149,1),(27,1,3,4.9000,NULL,'eingang',3.000,1.000,4.000,'BE-2026-0004',NULL,'2026-06-23 19:06:50',149,1),(28,1,3,4.9000,NULL,'eingang',1.000,4.000,5.000,'BE-2026-0004',NULL,'2026-06-23 19:07:26',149,1);
 /*!40000 ALTER TABLE `lager_bewegungen` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `lagerbestand`;
@@ -879,11 +1107,12 @@ CREATE TABLE `lagerbestand` (
   KEY `fk_lager_id` (`lager_id`),
   CONSTRAINT `fk_lager_id` FOREIGN KEY (`lager_id`) REFERENCES `lager` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_lb_artikel_id` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `lagerbestand` WRITE;
 /*!40000 ALTER TABLE `lagerbestand` DISABLE KEYS */;
+INSERT INTO `lagerbestand` VALUES (27,1,NULL,'nachzutragen',5.000,0,'2026-06-23 17:58:16','2026-06-23 19:07:26',149);
 /*!40000 ALTER TABLE `lagerbestand` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `lieferanten`;
@@ -900,11 +1129,12 @@ CREATE TABLE `lieferanten` (
   `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
   `geaendert_am` datetime DEFAULT NULL ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `lieferanten` WRITE;
 /*!40000 ALTER TABLE `lieferanten` DISABLE KEYS */;
+INSERT INTO `lieferanten` VALUES (3,'Karl Indra','Ös',NULL,'indy1@gmx.at','06764538267',1,'2026-06-22 20:24:28',NULL);
 /*!40000 ALTER TABLE `lieferanten` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `lieferanten_vertreter`;
@@ -1149,6 +1379,36 @@ LOCK TABLES `preis_aktionen_positionen` WRITE;
 /*!40000 ALTER TABLE `preis_aktionen_positionen` DISABLE KEYS */;
 /*!40000 ALTER TABLE `preis_aktionen_positionen` ENABLE KEYS */;
 UNLOCK TABLES;
+DROP TABLE IF EXISTS `rechnungen`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `rechnungen` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `rechnung_nr` varchar(20) NOT NULL,
+  `auftrag_id` int(10) unsigned NOT NULL,
+  `nettobetrag` decimal(10,2) NOT NULL,
+  `steuerbetrag` decimal(10,2) NOT NULL,
+  `bruttobetrag` decimal(10,2) NOT NULL,
+  `faellig_am` date DEFAULT NULL,
+  `storniert` tinyint(1) NOT NULL DEFAULT 0,
+  `storno_von` int(10) unsigned DEFAULT NULL,
+  `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
+  `erstellt_von` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `rechnung_nr` (`rechnung_nr`),
+  KEY `fk_re_auftrag` (`auftrag_id`),
+  KEY `fk_re_storno` (`storno_von`),
+  KEY `fk_re_benutzer` (`erstellt_von`),
+  CONSTRAINT `fk_re_auftrag` FOREIGN KEY (`auftrag_id`) REFERENCES `auftraege` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_re_benutzer` FOREIGN KEY (`erstellt_von`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_re_storno` FOREIGN KEY (`storno_von`) REFERENCES `rechnungen` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `rechnungen` WRITE;
+/*!40000 ALTER TABLE `rechnungen` DISABLE KEYS */;
+/*!40000 ALTER TABLE `rechnungen` ENABLE KEYS */;
+UNLOCK TABLES;
 DROP TABLE IF EXISTS `reservierungen`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -1290,7 +1550,7 @@ CREATE TABLE `system_einstellungen` (
 
 LOCK TABLES `system_einstellungen` WRITE;
 /*!40000 ALTER TABLE `system_einstellungen` DISABLE KEYS */;
-INSERT INTO `system_einstellungen` VALUES ('besteuerungsart','normal');
+INSERT INTO `system_einstellungen` VALUES ('besteuerungsart','normal'),('preisanzeige_auftrag','beides');
 /*!40000 ALTER TABLE `system_einstellungen` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `varianten_achse_werte`;
@@ -1368,12 +1628,14 @@ CREATE TABLE `versandklassen` (
   `code` varchar(50) DEFAULT NULL,
   `kuerzel` varchar(10) DEFAULT NULL,
   `sortierung` int(10) unsigned DEFAULT 0,
+  `preis_brutto` decimal(10,2) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `versandklassen` WRITE;
 /*!40000 ALTER TABLE `versandklassen` DISABLE KEYS */;
+INSERT INTO `versandklassen` VALUES (1,'Standardversand mit Post AT','SAT','Std. AT',1,6.50),(2,'Versand + Teillieferung mit Post AT','TLAT','Std. TL AT',2,9.50),(3,'Nachnahme Post AT','NN','NN AT',3,13.00),(4,'Standardversand DE','SDE','Std. DE',4,9.90),(5,'Standardversand IT/HU','SEU','Std. EU',5,15.90);
 /*!40000 ALTER TABLE `versandklassen` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `zahlungsbedingungen`;
