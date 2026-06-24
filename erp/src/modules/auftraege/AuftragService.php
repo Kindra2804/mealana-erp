@@ -294,6 +294,9 @@ class AuftragService
         if (!empty($data['lieferadresse_snapshot'])) {
             $headerData['lieferadresse_snapshot'] = json_encode($data['lieferadresse_snapshot'], JSON_UNESCAPED_UNICODE);
         }
+        if (!empty($data['rechnungsadresse_snapshot'])) {
+            $headerData['rechnungsadresse_snapshot'] = json_encode($data['rechnungsadresse_snapshot'], JSON_UNESCAPED_UNICODE);
+        }
 
         $this->repo->updateHeader($id, $headerData);
 

@@ -29,6 +29,10 @@ $lieferAdresseFelder = array_map('trim', $_POST['lieferadresse'] ?? []);
 if (array_filter($lieferAdresseFelder)) {
     $data['lieferadresse_snapshot'] = $lieferAdresseFelder;
 }
+$rechnungsAdresseFelder = array_map('trim', $_POST['rechnungsadresse'] ?? []);
+if (array_filter($rechnungsAdresseFelder)) {
+    $data['rechnungsadresse_snapshot'] = $rechnungsAdresseFelder;
+}
 
 $positionen = $_POST['positionen'] ?? [];
 

@@ -400,6 +400,7 @@ class AuftragRepository
             'notiz_intern',
             'notiz_versand',
             'lieferadresse_snapshot',
+            'rechnungsadresse_snapshot',
         ];
         foreach ($erlaubt as $f) {
             if (array_key_exists($f, $felder)) {

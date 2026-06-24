@@ -5,8 +5,8 @@ require_once __DIR__ . '/../../src/modules/kunden/KundenService.php';
 $db = Database::getInstance();
 $versandklassen = $db->query("SELECT id, name, preis_brutto FROM versandklassen ORDER BY sortierung")->fetchAll();
 $preisanzeige   = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'preisanzeige_auftrag'")->fetchColumn() ?: 'brutto';
-$epLabel        = $preisanzeige === 'netto' ? 'Einzelpreis (Netto)' : 'Einzelpreis (Brutto)';
-$gesamtLabel    = $preisanzeige === 'netto' ? 'Gesamt Netto'        : 'Gesamt Brutto';
+$epLabel     = match($preisanzeige) { 'netto' => 'Einzelpreis (Netto)', 'beides' => 'Einzelpreis (Brutto / Netto)', default => 'Einzelpreis (Brutto)' };
+$gesamtLabel = match($preisanzeige) { 'netto' => 'Gesamt Netto', default => 'Gesamt Brutto' };
 
 $fehler   = $_SESSION['fehler']   ?? [];
 $formdata = $_SESSION['formdata'] ?? [];

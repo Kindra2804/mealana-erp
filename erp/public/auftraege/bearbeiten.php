@@ -9,8 +9,8 @@ $service = new AuftragService();
 $db = Database::getInstance();
 $versandklassen = $db->query("SELECT id, name, preis_brutto FROM versandklassen ORDER BY sortierung")->fetchAll();
 $preisanzeige   = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'preisanzeige_auftrag'")->fetchColumn() ?: 'brutto';
-$epLabel        = $preisanzeige === 'netto' ? 'Einzelpreis (Netto)' : 'Einzelpreis (Brutto)';
-$gesamtLabel    = $preisanzeige === 'netto' ? 'Gesamt Netto'        : 'Gesamt Brutto';
+$epLabel     = match($preisanzeige) { 'netto' => 'Einzelpreis (Netto)', 'beides' => 'Einzelpreis (Brutto / Netto)', default => 'Einzelpreis (Brutto)' };
+$gesamtLabel = match($preisanzeige) { 'netto' => 'Gesamt Netto', default => 'Gesamt Brutto' };
 
 $fehler   = $_SESSION['fehler']   ?? [];
 $formdata = $_SESSION['formdata'] ?? [];
@@ -156,19 +156,22 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div class="card-header">Adressen</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px">
             <div>
-                <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Rechnungsadresse <span style="font-weight:400">(nicht änderbar)</span></div>
-                <?php if (!empty($rechnungsAdresse)): ?>
-                    <p style="font-size:13px;line-height:1.6;color:var(--color-text)">
-                        <?php if (!empty($rechnungsAdresse['firma'])) echo htmlspecialchars($rechnungsAdresse['firma']) . '<br>'; ?>
-                        <?= htmlspecialchars(trim(($rechnungsAdresse['vorname'] ?? '') . ' ' . ($rechnungsAdresse['nachname'] ?? ''))) ?><br>
-                        <?= htmlspecialchars(($rechnungsAdresse['strasse'] ?? '') . ' ' . ($rechnungsAdresse['hausnummer'] ?? '')) ?><br>
-                        <?= htmlspecialchars(($rechnungsAdresse['plz'] ?? '') . ' ' . ($rechnungsAdresse['ort'] ?? '')) ?><br>
-                        <?= htmlspecialchars($rechnungsAdresse['land'] ?? '') ?>
-                        <?php if (!empty($rechnungsAdresse['zusatz'])): ?><br><em><?= htmlspecialchars($rechnungsAdresse['zusatz']) ?></em><?php endif; ?>
-                    </p>
-                <?php else: ?>
-                    <p style="color:var(--color-text-muted);font-size:13px">Keine Rechnungsadresse hinterlegt.</p>
-                <?php endif; ?>
+                <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Rechnungsadresse</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <?php
+                    $rfa = $formdata['rechnungsadresse'] ?? $rechnungsAdresse;
+                    $r = fn($f) => htmlspecialchars($rfa[$f] ?? '');
+                    ?>
+                    <input type="text" name="rechnungsadresse[vorname]"    id="rechnungsadresse_vorname"    class="erp-input" placeholder="Vorname"       value="<?= $r('vorname') ?>">
+                    <input type="text" name="rechnungsadresse[nachname]"   id="rechnungsadresse_nachname"   class="erp-input" placeholder="Nachname"      value="<?= $r('nachname') ?>">
+                    <input type="text" name="rechnungsadresse[firma]"      id="rechnungsadresse_firma"      class="erp-input" placeholder="Firma (opt.)"  style="grid-column:1/-1" value="<?= $r('firma') ?>">
+                    <input type="text" name="rechnungsadresse[strasse]"    id="rechnungsadresse_strasse"    class="erp-input" placeholder="Straße"        value="<?= $r('strasse') ?>">
+                    <input type="text" name="rechnungsadresse[hausnummer]" id="rechnungsadresse_hausnummer" class="erp-input" placeholder="Nr."           value="<?= $r('hausnummer') ?>">
+                    <input type="text" name="rechnungsadresse[plz]"        id="rechnungsadresse_plz"        class="erp-input" placeholder="PLZ"           value="<?= $r('plz') ?>" style="width:80px">
+                    <input type="text" name="rechnungsadresse[ort]"        id="rechnungsadresse_ort"        class="erp-input" placeholder="Ort"           value="<?= $r('ort') ?>">
+                    <input type="text" name="rechnungsadresse[land]"       id="rechnungsadresse_land"       class="erp-input" placeholder="Land"          value="<?= $r('land') ?: 'AT' ?>" style="width:60px">
+                    <input type="text" name="rechnungsadresse[zusatz]"     id="rechnungsadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= $r('zusatz') ?>">
+                </div>
             </div>
             <div>
                 <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Lieferadresse <span style="font-weight:400">(änderbar)</span></div>

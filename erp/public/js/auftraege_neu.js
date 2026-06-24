@@ -36,7 +36,10 @@ function positionHinzufuegen(artikel) {
             <input type="hidden" name="positionen[${idx}][steuer_prozent]" class="pos-steuer" value="${a.steuer_prozent || 20}">
         </td>
         <td><input type="number" name="positionen[${idx}][menge]" class="erp-input pos-menge" min="1" value="${a.menge || 1}" style="width:60px" oninput="aktualisiereZeile(${idx})"></td>
-        <td><input type="number" name="positionen[${idx}][einzelpreis_netto]" class="erp-input pos-preis" step="0.0001" value="${escH(preisWert)}" style="width:90px" oninput="aktualisiereZeile(${idx})"></td>
+        <td>
+            <input type="number" name="positionen[${idx}][einzelpreis_netto]" class="erp-input pos-preis" step="0.0001" value="${escH(preisWert)}" style="width:90px" oninput="aktualisiereZeile(${idx})">
+            ${window.PREISANZEIGE === 'beides' ? '<div class="pos-netto-hint" style="font-size:11px;color:var(--color-text-muted);margin-top:2px">Netto: —</div>' : ''}
+        </td>
         <td><input type="number" name="positionen[${idx}][steuer_prozent_anzeige]" class="erp-input" step="0.01" value="${a.steuer_prozent || 20}" style="width:60px" oninput="aktualisiereZeile(${idx})" readonly></td>
         <td><input type="number" name="positionen[${idx}][rabatt_prozent]" class="erp-input pos-rabatt" step="0.01" min="0" max="100" value="${a.rabatt_prozent || 0}" style="width:60px" oninput="aktualisiereZeile(${idx})"></td>
         <td class="pos-gesamt" style="text-align:right;font-weight:600">0,00 €</td>
@@ -70,6 +73,8 @@ function aktualisiereZeile(idx) {
     const gesamt  = menge * netto * (1 - rabatt / 100);
     const anzeige = window.PREISANZEIGE !== 'netto' ? gesamt * (1 + stProz / 100) : gesamt;
     tr.querySelector('.pos-gesamt').textContent = fmtEur(anzeige);
+    const hint = tr.querySelector('.pos-netto-hint');
+    if (hint) hint.textContent = 'Netto: ' + fmtEur(netto * (1 - rabatt / 100));
     aktualisiereAnzeige();
 }
 
