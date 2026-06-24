@@ -38,3 +38,5 @@
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — XAMPP+MariaDB lokal, WireGuard VPN statt Port-Forwarding, Messe-Kasse Variante B (Offline+SQLite)
+- [Gutschein-Modul Design](project_gutscheine.md) — ERP=Single Source of Truth, WooCommerce als Slave (kein Design/Text in WC), on+offline, 3 DB-Tabellen
+- [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix, Twig+Dompdf Templates, WC-Sync umschaltbar, Packplatz eigene Seite
