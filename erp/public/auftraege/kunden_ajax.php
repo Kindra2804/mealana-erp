@@ -26,6 +26,9 @@ foreach ($alle as $k) {
     // Fallback: erste Adresse des Typs wenn kein Standard gesetzt
     if (!$lieferAdresse)    foreach ($adressen as $a) { if ($a['adresstyp'] === 'lieferung')  { $lieferAdresse   = $a; break; } }
     if (!$rechnungsAdresse) foreach ($adressen as $a) { if ($a['adresstyp'] === 'rechnung')   { $rechnungsAdresse = $a; break; } }
+    // Fallback: 'haupt' gilt für beide wenn kein spezifischer Typ vorhanden
+    if (!$lieferAdresse)    foreach ($adressen as $a) { if ($a['adresstyp'] === 'haupt')  { $lieferAdresse   = $a; break; } }
+    if (!$rechnungsAdresse) foreach ($adressen as $a) { if ($a['adresstyp'] === 'haupt')  { $rechnungsAdresse = $a; break; } }
 
     $adresseKompakt = fn($a) => $a ? [
         'vorname'    => $a['vorname']    ?? '',
