@@ -135,14 +135,31 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
   - Erstellt: shell.js, artikel.js, artikel_detail.js, artikel_neu.js, artikel_bearbeiten.js, aktionen.js, aktionen_liste.js, bestellungen_neu.js, bestellungen_bearbeiten.js, wareneingang_index.js, wareneingang_detail.js, lager_wareneingang.js, partner_liste.js, partner_mietfaecher.js, achsen_liste.js, achsen_zuweisen.js, kategorien_verwalten.js, merkmale_verwalten.js, kunden.js, kunden_detail.js, hersteller_liste.js
 - **Bedienungsanleitung**: `public/bedienungsanleitung.php` mit TOC + Kapitel-Platzhaltern (Fertig/Geplant-Badges). 📖-Link in Top-Nav.
 
+### Auftragsmodul/Verkauf 🟡 IN ARBEIT (2026-06-24)
+- Migrations 060–062: auftraege, auftrag_positionen, rechnungen, auftrag_dokumente, auftrag_statuslog
+- Nummernkreise A-2026-XXXXX (Auftrag) + R-2026-XXXXX (Rechnung) via dokument_nummern
+- AuftragRepository + AuftragService: anlegen, statusAktualisieren, stornieren, Vorkasse-Überfälligkeit
+- public/auftraege/: liste (Kanal-Chip + 3 Filter), neu (Artikel+Kunden-Typeahead, Live-Summen), detail (Status-Update, Tracking, Statuslog), speichern, stornieren, status_ajax, artikel_ajax, kunden_ajax
+- Shell: Verkauf-Link aktiv, Sidebar Aufträge/Neuer Auftrag
+- Kunden-Snapshot: AES-verschlüsselte kunden-Felder → Name aus snapshot JSON gelesen
+- Design beschlossen: Gutscheine (project_gutscheine.md), Kassen-Bon Blocks (project_kasse_bon_design.md)
+
+**Offen (nächste Session):**
+- versandklassen.preis_brutto + Dropdown in neu.php
+- Brutto-Preise in Positionen (system_einstellungen: preisanzeige_auftrag)
+- lieferart ENUM(versand, abholung) auf auftraege
+- Mahnwesen-Cronjob (14/30 Tage Vorkasse)
+- Dashboard-Widget offene Aufträge / Fehlbestand
+- Rechnung/Lieferschein PDF (Twig + Dompdf — Template-System)
+
 ## 🔴 Noch nicht gebaut
 
 | Modul | Priorität |
 |---|---|
-| Auftragsmodul/Verkauf | HOCH |
-| Kasse/POS | HOCH (RKSV-Pflicht AT) |
+| Kasse/POS | HOCH (RKSV-Pflicht AT) — Design: project_kasse_bon_design.md |
 | Inventur | MITTEL |
 | Shop-Export (inkl. WooCommerce Kunden-Sync) | MITTEL — Design-Entscheidungen 2026-06-21 fertig (siehe db_design_entscheidungen.md) |
+| Gutschein-Modul | MITTEL — Design fertig (project_gutscheine.md) |
 | Buchhaltung/DATEV | MITTEL |
 | Kunden-Merge-UI (kunden_merge_queue) | NIEDRIG |
 | Seriennummern | NIEDRIG |
