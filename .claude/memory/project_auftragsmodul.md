@@ -7,6 +7,22 @@ metadata:
   originSessionId: 9a44da56-fbce-4da5-b4f6-17b472024d63
 ---
 
+## Auftragsbearbeitung ✅ FERTIG (2026-06-24)
+
+- `public/auftraege/bearbeiten.php` — Formular (wie neu.php, DB-vorbelegt, Kunde readonly, Sperr-Check)
+- `public/auftraege/aktualisieren.php` — POST-Handler
+- `AuftragService::bearbeiten()` — Update Header + Delete/Insert Positionen + logStatus mit Brutto-Diff
+- `AuftragRepository::updateHeader()` — Whitelist-Pattern, nur editierbare Felder
+- `AuftragRepository::deletePositionen()` — DELETE FROM auftrag_positionen WHERE auftrag_id
+- `auftraege_neu.js` — `positionHinzufuegen()` erweitert für `window.POSITIONEN` (DB-Vorladen)
+- **Sperr-Check**: versendet/abgeschlossen/storniert → nicht mehr editierbar
+- **Kein Lager-Adjustment** bei Bearbeitung — Lager wird erst beim Packplatz/Versand angepasst
+- **"Reserviert" im Artikel-Bestand** = dynamisch aus offenen auftrag_positionen berechnet (kein extra Buchungsvorgang)
+- **WC-Sync bei Auftrag-Änderung**: geplant für WC-Modul (kanal_auftrag_id ist vorhanden)
+- **Lieferadresse**: in neu.php + bearbeiten.php eingebaut (lieferadresse_snapshot); Rechnungsadresse in bearbeiten.php readonly (eingefroren)
+- **Preisanzeige**: system_einstellungen 'preisanzeige_auftrag' steuert Brutto/Netto in Formularen + JS-Konvertierung vor Submit
+- **Liste**: Zahlungsart-Spalte ergänzt (chip-Klassen inkl. sc-aktion/sc-fehlbest/sc-ohnekat für mehr Farbauswahl)
+
 ## Grundentscheidungen
 
 - **Zahlungsstatus + Lieferstatus getrennt** (wie JTL) — unabhängig voneinander änderbar
