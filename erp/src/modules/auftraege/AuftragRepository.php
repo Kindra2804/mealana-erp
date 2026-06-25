@@ -241,7 +241,7 @@ class AuftragRepository
                 gutschein_id, gutschein_betrag,
                 versandkosten, rabatt_gesamt, versandklasse_id,
                 nettobetrag, steuerbetrag, bruttobetrag,
-                notiz_intern, notiz_versand, erstellt_von
+                notiz_intern, notiz_versand, kontakt_notiz, erstellt_von
             ) VALUES (
                 :auftrag_nr, :kunden_id, :kunden_snapshot,
                 :lieferadresse_snapshot, :rechnungsadresse_snapshot,
@@ -251,7 +251,7 @@ class AuftragRepository
                 :gutschein_id, :gutschein_betrag,
                 :versandkosten, :rabatt_gesamt, :versandklasse_id,
                 :nettobetrag, :steuerbetrag, :bruttobetrag,
-                :notiz_intern, :notiz_versand, :erstellt_von
+                :notiz_intern, :notiz_versand, :kontakt_notiz, :erstellt_von
             )
         ");
         $stmt->execute(array_merge($data, ['auftrag_nr' => $auftragNr]));
@@ -298,6 +298,7 @@ class AuftragRepository
             'mahnung_gesendet_am',
             'notiz_intern',
             'notiz_versand',
+            'kontakt_notiz',
         ];
         foreach ($erlaubt as $f) {
             if (array_key_exists($f, $felder)) {

@@ -1,0 +1,32 @@
+{#
+  _footer.html.twig
+  Seitenfuß mit Firmen-Pflichtangaben (AT UStG §11):
+  Name, Adresse, UID, Steuernummer, Bankverbindung.
+#}
+<div style="position:fixed; bottom:0; left:0; right:0;
+            border-top:1px solid #333; padding-top:4pt;
+            font-size:7.5pt; color:#333; line-height:1.5;">
+  <table style="width:100%; border-collapse:collapse;">
+    <tr>
+      <td style="width:33%;">
+        <strong>{{ firma.firmenname ?? 'MEALANA KG' }}</strong><br>
+        {{ firma.strasse ?? '' }}<br>
+        {{ firma.plz ?? '' }} {{ firma.ort ?? '' }}<br>
+        {{ firma.land ?? 'Österreich' }}
+      </td>
+      <td style="width:33%;">
+        Telefon: {{ firma.telefon ?? '' }}<br>
+        {% if firma.fax is defined and firma.fax %}Telefax: {{ firma.fax }}<br>{% endif %}
+        E-Mail: {{ firma.email ?? '' }}<br>
+        Internet: {{ firma.website ?? '' }}
+      </td>
+      <td style="width:34%;">
+        UID: {{ firma.uid_nummer ?? '' }}<br>
+        StNr: {{ firma.steuernummer ?? '' }}<br>
+        {{ firma.bank_name ?? '' }}<br>
+        IBAN: {{ firma.iban ?? '' }}<br>
+        BIC: {{ firma.bic ?? '' }}
+      </td>
+    </tr>
+  </table>
+</div>

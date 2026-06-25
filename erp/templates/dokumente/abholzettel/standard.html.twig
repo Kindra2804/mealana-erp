@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: DejaVu Sans, sans-serif;
+      font-size: 9pt;
+      color: #1a1a1a;
+      padding: 12mm 15mm 12mm 15mm;
+    }
+    .titel {
+      font-size: 14pt;
+      font-weight: bold;
+      text-align: right;
+      letter-spacing: 2pt;
+    }
+    .auftrag-nr {
+      font-size: 11pt;
+      font-weight: bold;
+      margin: 4pt 0;
+    }
+    .kundendaten {
+      margin: 6pt 0;
+      font-size: 9pt;
+      line-height: 1.5;
+    }
+    .status-bezahlt {
+      border: 1.5px solid #333;
+      padding: 4pt 8pt;
+      font-weight: bold;
+      font-size: 9pt;
+      display: inline-block;
+      margin: 6pt 0;
+    }
+    .hinweis {
+      font-size: 8pt;
+      color: #444;
+      margin-top: 8pt;
+      text-align: center;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  {# ── Kopf: Logo + Titel ── #}
+  <table style="width:100%; border-collapse:collapse; margin-bottom:6pt;">
+    <tr>
+      <td style="width:40%; vertical-align:middle;">
+        {% if logo_base64 is defined and logo_base64 %}
+          <img src="data:image/png;base64,{{ logo_base64 }}"
+               style="max-height:50px; max-width:140px;" alt="Logo">
+        {% endif %}
+      </td>
+      <td style="width:60%; vertical-align:middle; text-align:right;">
+        <div class="titel">ABHOLZETTEL</div>
+        <div class="auftrag-nr">{{ auftrag.auftrag_nr }}</div>
+        <div style="font-size:8pt; color:#555;">{{ datum_heute }}</div>
+      </td>
+    </tr>
+  </table>
+
+  <hr style="border:none; border-top:1.5px solid #333; margin-bottom:6pt;">
+
+  {# ── Kundendaten ── #}
+  <div class="kundendaten">
+    {% set adr = lieferadr|length ? lieferadr : (rechnungadr|length ? rechnungadr : {}) %}
+    {% if adr.anrede is defined %}<strong>{{ adr.anrede }}</strong> {% endif %}
+    <strong>{{ adr.vorname ?? '' }} {{ adr.nachname ?? (kunde.name ?? 'Laufkunde') }}</strong><br>
+    {% if adr.strasse is defined %}
+      {{ adr.strasse }}, {{ adr.plz ?? '' }} {{ adr.ort ?? '' }}<br>
+    {% endif %}
+    {% if kunde.email is defined and kunde.email %}
+      {{ kunde.email }}
+    {% endif %}
+  </div>
+
+  {# ── Positionen (kompakt, ohne MwSt-Spalte) ── #}
+  <table style="width:100%; border-collapse:collapse; font-size:8.5pt; margin:6pt 0;">
+    <thead>
+      <tr style="background:#f0f0f0; border-bottom:1px solid #333;">
+        <th style="width:22pt; text-align:right; padding:2pt 4pt;">Mge</th>
+        <th style="text-align:left; padding:2pt 4pt;">Artikel</th>
+        <th style="width:55pt; text-align:right; padding:2pt 4pt;">Preis (Brutto)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pos in positionen %}
+        <tr style="border-bottom:0.5px solid #ddd;">
+          <td style="padding:2pt 4pt; text-align:right; vertical-align:top;">{{ pos.menge }}</td>
+          <td style="padding:2pt 4pt; vertical-align:top;">
+            {{ pos.bezeichnung }}
+            {% if pos.rabatt_prozent is defined and pos.rabatt_prozent > 0 %}
+              <br><span style="font-size:7.5pt; color:#555;">Rabatt: {{ pos.rabatt_prozent|number_format(2, ',', '.') }} %</span>
+            {% endif %}
+          </td>
+          <td style="padding:2pt 4pt; text-align:right; vertical-align:top;">
+            {{ pos.gesamtpreis_brutto|euroformat }} EUR
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {# ── Gesamtbetrag ── #}
+  <table style="width:100%; border-collapse:collapse; margin-bottom:8pt;">
+    <tr>
+      <td style="width:55%;"></td>
+      <td style="width:45%; border-top:1.5px solid #333; padding:3pt 0;">
+        <table style="width:100%; border-collapse:collapse; font-size:9pt;">
+          <tr>
+            <td style="font-weight:bold;">GESAMT:</td>
+            <td style="text-align:right; font-weight:bold; border-bottom:2px solid #333; padding-bottom:2pt;">
+              {{ summen.brutto_gesamt|euroformat }} EUR
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  {# ── Zahlungsstatus-Box ── #}
+  {% if auftrag.zahlungsstatus == 'bezahlt' %}
+    <div class="status-bezahlt">
+      &#10003; BEREITS BEZAHLT
+      ({{ {'vorkasse':'Vorkasse','paypal':'PayPal','bar':'Bar','gutschein':'Gutschein','gemischt':'Gemischt'}[auftrag.zahlungsart] ?? auftrag.zahlungsart }})
+    </div>
+  {% else %}
+    <div class="status-bezahlt">
+      Bitte an der Kasse bezahlen &rarr;
+    </div>
+  {% endif %}
+
+  <hr style="border:none; border-top:1px solid #ccc; margin:10pt 0;">
+
+  {# ── Barcode (Auftragsnummer für Kassen-Scan) ── #}
+  <div style="text-align:center; margin:4pt 0;">
+    <img src="data:image/png;base64,{{ barcode }}"
+         style="width:220pt; height:50pt;" alt="{{ auftrag.auftrag_nr }}">
+    <div style="font-size:8pt; letter-spacing:2pt; margin-top:2pt;">
+      {{ auftrag.auftrag_nr }}
+    </div>
+  </div>
+
+  {% if auftrag.kontakt_notiz %}
+    <div style="font-size:8.5pt; margin:6pt 0; border:1px solid #ccc; padding:4pt 6pt;">
+      Kontakt: <strong>{{ auftrag.kontakt_notiz }}</strong>
+    </div>
+  {% endif %}
+
+  <div class="hinweis">Bitte diesen Zettel zur Kasse mitbringen.</div>
+
+  <hr style="border:none; border-top:0.5px solid #ccc; margin:8pt 0 4pt;">
+
+  {# ── Mini-Footer ── #}
+  <div style="font-size:7pt; color:#555; text-align:center;">
+    {{ firma.firmenname ?? 'MEALANA KG' }} &middot;
+    {{ firma.strasse ?? '' }} &middot;
+    {{ firma.plz ?? '' }} {{ firma.ort ?? '' }} &middot;
+    Tel: {{ firma.telefon ?? '' }} &middot;
+    {{ firma.email ?? '' }}
+  </div>
+
+</body>
+</html>

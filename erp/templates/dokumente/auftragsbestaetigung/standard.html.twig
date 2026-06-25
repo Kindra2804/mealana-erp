@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: DejaVu Sans, sans-serif;
+      font-size: 9pt;
+      color: #1a1a1a;
+      padding: 18mm 15mm 30mm 15mm;
+    }
+    .adressblock-absender {
+      font-size: 7pt; color: #555;
+      border-bottom: 0.5px solid #aaa;
+      padding-bottom: 2pt; margin-bottom: 3pt;
+    }
+    .info-raster td { padding: 2pt 5pt; font-size: 8.5pt; vertical-align: top; }
+    .info-raster td:first-child { color: #555; white-space: nowrap; }
+    .info-raster td:last-child { font-weight: bold; }
+    .doc-titel { font-size: 16pt; font-weight: bold; margin: 10pt 0 4pt; }
+    .lieferadr { font-size: 8pt; color: #444; margin-bottom: 8pt; }
+    .hinweisblock { margin-top: 10pt; font-size: 8.5pt; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  {% include '_partials/_header.html.twig' %}
+
+  <table style="width:100%; border-collapse:collapse; margin-top:10pt;">
+    <tr>
+      <td style="width:50%; vertical-align:top; padding-right:10pt;">
+        <div class="adressblock-absender">
+          {{ firma.firmenname ?? 'MEALANA KG' }} &middot;
+          {{ firma.strasse ?? '' }} &middot;
+          {{ firma.plz ?? '' }} {{ firma.ort ?? '' }}
+        </div>
+        {% set adr = rechnungadr|length ? rechnungadr : kunde %}
+        {% if adr.anrede is defined %}<strong>{{ adr.anrede }}</strong><br>{% endif %}
+        {% if adr.firmenname is defined and adr.firmenname %}
+          <strong>{{ adr.firmenname }}</strong><br>
+        {% endif %}
+        {{ adr.vorname ?? '' }} {{ adr.nachname ?? (kunde.name ?? '') }}<br>
+        {{ adr.strasse ?? '' }}<br>
+        {{ adr.plz ?? '' }} {{ adr.ort ?? '' }}<br>
+        {% if adr.land is defined and adr.land and adr.land != 'AT' %}{{ adr.land }}<br>{% endif %}
+      </td>
+
+      <td style="width:50%; vertical-align:top;">
+        <table class="info-raster" style="width:100%; border:1px solid #ccc; border-collapse:collapse;">
+          <tr style="background:#f5f5f5;">
+            <td style="border-bottom:1px solid #ccc;">Auftrags-Nr.:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ auftrag.auftrag_nr }}</td>
+          </tr>
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Datum:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ datum_heute }}</td>
+          </tr>
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Zahlungsart:</td>
+            <td style="border-bottom:1px solid #ccc;">
+              {% set zl = {'vorkasse':'Vorkasse','paypal':'PayPal','bar':'Barzahlung','rechnung':'Rechnung','gutschein':'Gutschein','gemischt':'Gemischt'} %}
+              {{ zl[auftrag.zahlungsart] ?? auftrag.zahlungsart }}
+            </td>
+          </tr>
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Versandart:</td>
+            <td style="border-bottom:1px solid #ccc;">
+              {{ auftrag.lieferart == 'abholung' ? 'Selbstabholung' : 'Versand' }}
+            </td>
+          </tr>
+          {% if auftrag.kunden_id %}
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Kunden-Nr.:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ auftrag.kunden_id }}</td>
+          </tr>
+          {% endif %}
+          {% if auftrag.bearbeiter_name %}
+          <tr>
+            <td>Bearbeiter:</td>
+            <td>{{ auftrag.bearbeiter_name }}</td>
+          </tr>
+          {% endif %}
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="doc-titel">Auftragsbestätigung</div>
+
+  {% if lieferadr|length %}
+    <div class="lieferadr">
+      Lieferanschrift:
+      {{ lieferadr.vorname ?? '' }} {{ lieferadr.nachname ?? '' }},
+      {{ lieferadr.strasse ?? '' }},
+      {{ lieferadr.plz ?? '' }} {{ lieferadr.ort ?? '' }}
+      {% if lieferadr.land is defined and lieferadr.land and lieferadr.land != 'AT' %}, {{ lieferadr.land }}{% endif %}
+    </div>
+  {% endif %}
+
+  {% include '_partials/_positionen.html.twig' %}
+
+  {% include '_partials/_steuerblock.html.twig' %}
+
+  <div class="hinweisblock">
+    {% if auftrag.lieferart == 'abholung' %}
+      Ihre Bestellung liegt zur Abholung bereit sobald wir Sie benachrichtigen.
+      {% if auftrag.kontakt_notiz %}
+        <br>Kontakt: {{ auftrag.kontakt_notiz }}
+      {% endif %}
+      <br>Bei Abholung Bezahlung in Bar oder Bankomat möglich.
+      Bitte um vorherige Terminvereinbarung!
+    {% else %}
+      Wir werden Ihre Bestellung schnellstmöglich versenden und Sie per E-Mail benachrichtigen.
+    {% endif %}
+    <br><br>Vielen Dank für Ihre Bestellung!
+  </div>
+
+  {% include '_partials/_footer.html.twig' %}
+
+</body>
+</html>

@@ -546,7 +546,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-23, Session 8)
+## What's Implemented (Stand 2026-06-24, Session 9)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -742,11 +742,20 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
   - Erreichbar via 📖 in der Top-Navigation (immer sichtbar)
   - Kapitel für alle Module + Fertig/Geplant-Badges — wird pro Modul weiter gefüllt
 
-6. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
-7. **Packplatz/Picklisten** — Kommissionierung, Packliste
-8. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.
-9. **Inventur/Umbuchung (MOBILE-FIRST)** — PWA, EAN-Scan via Kamera, Bestand + Reservierung prüfen, Zählliste, Abschluss mit LOG
-10. **Shop-Anbindung** — REST API, Multi-Shop Hub-and-Spoke
+6. **Auftragsmodul/Verkauf** 🟡 TEILFERTIG (2026-06-24):
+   - Migrations 060–066: auftraege, auftrag_positionen, rechnungen, auftrag_dokumente, auftrag_statuslog, versandklassen, preisanzeige_auftrag
+   - AuftragRepository + AuftragService: anlegen, bearbeiten, statusAktualisieren, stornieren
+   - public/auftraege/: liste (Kanal-Chip + Zahlungsart-Spalte), neu, detail, bearbeiten, speichern, aktualisieren, stornieren, status_ajax, artikel_ajax, kunden_ajax
+   - Preisanzeige: system_einstellungen 'preisanzeige_auftrag' (brutto/netto/beides) in neu+bearbeiten+detail
+   - Adressen: Rechnungsadresse eingefroren bei Anlage (editierbar wenn leer), Lieferadresse immer änderbar
+   - Kunden-Auswahl: Typeahead füllt beide Adressen automatisch aus Kundenstamm (adresstyp haupt/lieferung/rechnung)
+   - Sperr-Check: versendet/abgeschlossen/storniert = nicht mehr editierbar
+   - **Noch offen:** PDF-Rechnung/Lieferschein (Twig + Dompdf), Mahnwesen-Cronjob (14/30 Tage Vorkasse), Steuerflags A/B/C/D (RKSV)
+7. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
+8. **Packplatz/Picklisten** — Kommissionierung, Packliste
+9. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.
+10. **Inventur/Umbuchung (MOBILE-FIRST)** — PWA, EAN-Scan via Kamera, Bestand + Reservierung prüfen, Zählliste, Abschluss mit LOG
+11. **Shop-Anbindung** — REST API, Multi-Shop Hub-and-Spoke
 
 ### UI-Entscheidungen (festgelegt)
 - **Kategorie-Auswahl im Artikel-Formular:** Modal (JS-Overlay), kein Tab/Redirect. Kategoriebaum + "Neue anlegen" + "Übernehmen". Kein Datenverlust.

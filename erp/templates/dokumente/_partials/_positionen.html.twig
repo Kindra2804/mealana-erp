@@ -1,0 +1,76 @@
+{#
+  _positionen.html.twig
+  Positionstabelle für Rechnung, AB, Lieferschein.
+
+  Variablen:
+    positionen  – Array der Auftragspositionen
+    ist_b2b     – Boolean: true = Netto-Preise anzeigen, false = Brutto
+    kleinuntern – Boolean: Kleinunternehmer-Modus (kein MwSt-Ausweis)
+    mit_mwst    – Boolean: MwSt-Spalte anzeigen (false bei Lieferschein)
+    mit_preis   – Boolean: Preis-Spalten anzeigen (false bei Pickliste)
+#}
+{% set mit_mwst  = mit_mwst  ?? true %}
+{% set mit_preis = mit_preis ?? true %}
+
+<table style="width:100%; border-collapse:collapse; font-size:8.5pt; margin-top:6pt;">
+  <thead>
+    <tr style="background:#f0f0f0; border-bottom:1.5px solid #333;">
+      <th style="width:22pt;  text-align:left;  padding:3pt 4pt;">Pos</th>
+      <th style="width:22pt;  text-align:right; padding:3pt 4pt;">Mge</th>
+      <th style="width:52pt;  text-align:left;  padding:3pt 4pt;">Art.Nr.</th>
+      <th style="            text-align:left;  padding:3pt 4pt;">Bezeichnung</th>
+      {% if mit_preis %}
+        {% if mit_mwst and not kleinuntern %}
+          <th style="width:28pt; text-align:center; padding:3pt 4pt;">MwSt</th>
+        {% endif %}
+        <th style="width:48pt; text-align:right; padding:3pt 4pt;">
+          E-Preis<br>
+          <span style="font-size:7pt; font-weight:normal;">
+            ({{ ist_b2b ? 'Netto' : 'Brutto' }})
+          </span>
+        </th>
+        <th style="width:52pt; text-align:right; padding:3pt 4pt;">
+          Gesamt<br>
+          <span style="font-size:7pt; font-weight:normal;">
+            ({{ ist_b2b ? 'Netto' : 'Brutto' }})
+          </span>
+        </th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for pos in positionen %}
+      <tr style="border-bottom:0.5px solid #ddd;">
+        <td style="padding:3pt 4pt; vertical-align:top;">{{ loop.index }}</td>
+        <td style="padding:3pt 4pt; vertical-align:top; text-align:right;">{{ pos.menge }}</td>
+        <td style="padding:3pt 4pt; vertical-align:top;">{{ pos.artikelnummer ?? '' }}</td>
+        <td style="padding:3pt 4pt; vertical-align:top;">
+          {{ pos.bezeichnung }}
+          {% if pos.rabatt_prozent is defined and pos.rabatt_prozent > 0 %}
+            <br><span style="font-size:7.5pt; color:#555;">
+              Rabatt: {{ pos.rabatt_prozent|number_format(2, ',', '.') }} %
+            </span>
+          {% endif %}
+          {% if pos.lagerbestand is defined and pos.lagerbestand == 0 and pos.lieferzeit_text %}
+            <br><span style="font-size:7.5pt; color:#888;">
+              Lieferzeit: {{ pos.lieferzeit_text }}
+            </span>
+          {% endif %}
+        </td>
+        {% if mit_preis %}
+          {% if mit_mwst and not kleinuntern %}
+            <td style="padding:3pt 4pt; vertical-align:top; text-align:center;">
+              {{ pos.steuer_prozent|number_format(0) }} %
+            </td>
+          {% endif %}
+          <td style="padding:3pt 4pt; vertical-align:top; text-align:right;">
+            {{ (ist_b2b ? pos.einzelpreis_netto : pos.einzelpreis_brutto)|euroformat }}
+          </td>
+          <td style="padding:3pt 4pt; vertical-align:top; text-align:right;">
+            {{ (ist_b2b ? pos.gesamtpreis_netto : pos.gesamtpreis_brutto)|euroformat }}
+          </td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

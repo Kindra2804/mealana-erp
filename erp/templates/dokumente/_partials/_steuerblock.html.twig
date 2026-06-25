@@ -1,0 +1,80 @@
+{#
+  _steuerblock.html.twig
+  Steuer-Aufschlüsselung + Gesamtbetrag (AT UStG §11 Pflicht).
+  Immer sichtbar, egal ob B2C oder B2B.
+
+  Variablen:
+    summen.bloecke       – Array: [{satz, netto, steuer, brutto}, ...]
+    summen.netto_gesamt
+    summen.steuer_gesamt
+    summen.brutto_gesamt
+    kleinuntern          – Boolean: bei true nur Gesamtbetrag, kein MwSt-Block
+    auftrag.versandkosten (optional)
+#}
+<table style="width:100%; border-collapse:collapse; margin-top:8pt; font-size:8.5pt;">
+  <tr>
+    <td style="width:60%;"></td>
+    <td style="width:40%;">
+      <table style="width:100%; border-collapse:collapse;">
+
+        {% if not kleinuntern %}
+          {# Steuerblock: eine Zeile pro Steuersatz #}
+          {% for block in summen.bloecke %}
+            {% if block.satz > 0 %}
+              <tr>
+                <td style="padding:2pt 0;">Netto ({{ block.satz|number_format(0) }} %):</td>
+                <td style="padding:2pt 0; text-align:right;">{{ block.netto|euroformat }} EUR</td>
+              </tr>
+              <tr>
+                <td style="padding:2pt 0;">MwSt ({{ block.satz|number_format(0) }} %):</td>
+                <td style="padding:2pt 0; text-align:right;">{{ block.steuer|euroformat }} EUR</td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+
+          {% if summen.bloecke|length > 1 %}
+            {# Zwischensumme nur wenn mehrere Steuersätze #}
+            <tr>
+              <td style="padding:2pt 0; border-top:0.5px solid #999;">Netto gesamt:</td>
+              <td style="padding:2pt 0; text-align:right; border-top:0.5px solid #999;">
+                {{ summen.netto_gesamt|euroformat }} EUR
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:2pt 0;">MwSt gesamt:</td>
+              <td style="padding:2pt 0; text-align:right;">{{ summen.steuer_gesamt|euroformat }} EUR</td>
+            </tr>
+          {% endif %}
+        {% endif %}
+
+        {% if auftrag.versandkosten is defined and auftrag.versandkosten > 0 %}
+          <tr>
+            <td style="padding:2pt 0;">Versandkosten:</td>
+            <td style="padding:2pt 0; text-align:right;">
+              {{ auftrag.versandkosten|euroformat }} EUR
+            </td>
+          </tr>
+        {% endif %}
+
+        {# Gesamtbetrag – immer fett und unterstrichen #}
+        <tr>
+          <td style="padding:4pt 0 2pt; border-top:1.5px solid #333;
+                     font-weight:bold; font-size:10pt;">GESAMTBETRAG:</td>
+          <td style="padding:4pt 0 2pt; text-align:right; border-top:1.5px solid #333;
+                     font-weight:bold; font-size:10pt; border-bottom:2px solid #333;">
+            {{ summen.brutto_gesamt|euroformat }} EUR
+          </td>
+        </tr>
+
+        {% if kleinuntern %}
+          <tr>
+            <td colspan="2" style="font-size:7.5pt; color:#555; padding-top:4pt;">
+              Kein Steuerausweis gemäß § 6 Abs. 1 Z 27 UStG (Kleinunternehmerregelung).
+            </td>
+          </tr>
+        {% endif %}
+
+      </table>
+    </td>
+  </tr>
+</table>

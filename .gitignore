@@ -18,3 +18,6 @@ erp/public/test.php
 # Import-Daten
 erp/import/*
 import/*
+
+# Generierte Dokumente (PDFs)
+erp/storage/dokumente/

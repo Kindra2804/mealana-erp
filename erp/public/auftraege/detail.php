@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
+require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
@@ -15,8 +16,11 @@ if (!$auftrag) {
     exit;
 }
 
-$positionen = $service->getPositionen($id);
-$statuslog  = $service->getStatuslog($id);
+$positionen      = $service->getPositionen($id);
+$statuslog       = $service->getStatuslog($id);
+$dokumentService = new DokumentService();
+$dokumente       = $dokumentService->getDokumente($id);
+$vorhandeneRechnung = $dokumentService->getRechnung($id);
 
 $db = Database::getInstance();
 $preisanzeige = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'preisanzeige_auftrag'")->fetchColumn() ?: 'brutto';
@@ -59,11 +63,11 @@ $istGesperrt = in_array($auftrag['lieferstatus'], $sperrZustände);
 $pageTitle        = 'Auftrag ' . htmlspecialchars($auftrag['auftrag_nr']);
 $activeModule     = 'verkauf';
 $actionBarContent = '<a href="/mealana/auftraege/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
-if (!$istStorniert) {
-    $actionBarContent .= ' <button type="button" class="btn btn-danger btn-sm" onclick="storniereAuftrag()">Stornieren</button>';
-}
 if (!$istGesperrt) {
     $actionBarContent .= '<a href="/mealana/auftraege/bearbeiten.php?id=' . $auftrag['id'] . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
+}
+if (!$istStorniert) {
+    $actionBarContent .= '<div class="actionbar-sep"></div><div class="actionbar-right"><button type="button" class="btn btn-danger btn-sm" onclick="storniereAuftrag()">Stornieren</button></div>';
 }
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -309,6 +313,88 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </table>
     </div>
 <?php endif; ?>
+
+<!-- Dokumente -->
+<div style="margin-top:24px;">
+    <h3 style="margin-bottom:10px;">Dokumente</h3>
+
+    <!-- Erzeugen-Buttons -->
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+        <?php if ($vorhandeneRechnung): ?>
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px;
+                         border:1px solid #ccc; border-radius:4px; font-size:0.9em; color:#555;">
+                &#10003; <?= htmlspecialchars($vorhandeneRechnung['rechnung_nr']) ?>
+            </span>
+            <a href="/mealana/auftraege/gutschrift_erstellen.php?auftrag_id=<?= $id ?>"
+               class="erp-btn erp-btn-secondary">Gutschrift erstellen</a>
+        <?php else: ?>
+            <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+                <input type="hidden" name="auftrag_id" value="<?= $id ?>">
+                <input type="hidden" name="typ" value="rechnung">
+                <button type="submit" class="erp-btn">Rechnung erstellen</button>
+            </form>
+        <?php endif; ?>
+        <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+            <input type="hidden" name="auftrag_id" value="<?= $id ?>">
+            <input type="hidden" name="typ" value="auftragsbestaetigung">
+            <button type="submit" class="erp-btn erp-btn-secondary">Auftragsbestätigung</button>
+        </form>
+        <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+            <input type="hidden" name="auftrag_id" value="<?= $id ?>">
+            <input type="hidden" name="typ" value="lieferschein">
+            <button type="submit" class="erp-btn erp-btn-secondary">Lieferschein</button>
+        </form>
+        <?php if (($auftrag['lieferart'] ?? '') === 'abholung'): ?>
+        <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+            <input type="hidden" name="auftrag_id" value="<?= $id ?>">
+            <input type="hidden" name="typ" value="abholzettel">
+            <button type="submit" class="erp-btn erp-btn-secondary">Abholzettel</button>
+        </form>
+        <?php endif; ?>
+    </div>
+
+    <!-- Bereits erzeugte Dokumente -->
+    <?php if (!empty($dokumente)): ?>
+        <table class="erp-table" style="max-width:700px;">
+            <thead>
+                <tr>
+                    <th>Typ</th>
+                    <th>Dateiname</th>
+                    <th>Erstellt am</th>
+                    <th>Von</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $typLabels = [
+                    'rechnung'             => 'Rechnung',
+                    'auftragsbestaetigung' => 'Auftragsbestätigung',
+                    'lieferschein'         => 'Lieferschein',
+                    'abholzettel'          => 'Abholzettel',
+                    'gutschrift'           => 'Gutschrift',
+                    'mahnung'              => 'Mahnung',
+                ];
+                foreach ($dokumente as $dok): ?>
+                <tr>
+                    <td><?= htmlspecialchars($typLabels[$dok['typ']] ?? $dok['typ']) ?></td>
+                    <td><?= htmlspecialchars($dok['dateiname']) ?></td>
+                    <td><?= htmlspecialchars(date('d.m.Y H:i', strtotime($dok['erstellt_am']))) ?></td>
+                    <td><?= htmlspecialchars($dok['erstellt_von_name'] ?? '—') ?></td>
+                    <td>
+                        <a href="/mealana/auftraege/dokument_download.php?auftrag_id=<?= $id ?>&datei=<?= urlencode($dok['dateiname']) ?>"
+                           class="erp-btn erp-btn-secondary erp-btn-sm" target="_blank">
+                            PDF &darr;
+                        </a>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <p style="color:#888; font-size:0.9em;">Noch keine Dokumente erstellt.</p>
+    <?php endif; ?>
+</div>
 
 <script>
     window.AUFTRAG_ID = <?= $id ?>;

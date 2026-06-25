@@ -16,8 +16,9 @@ $data = [
     'lieferart' => !empty($_POST['lieferart'])  ? trim($_POST['lieferart']) : 'versand',
     'versandklasse_id' => !empty($_POST['versandklasse_id'])  ? (int)$_POST['versandklasse_id'] : NULL,
     'versandkosten' => !empty($_POST['versandkosten'])  ? (float)$_POST['versandkosten'] : 0.00,
-    'notiz_intern'  => !empty($_POST['notiz_intern'])   ? trim($_POST['notiz_intern'])  : null,
-    'notiz_versand' => !empty($_POST['notiz_versand'])  ? trim($_POST['notiz_versand']) : null,
+    'notiz_intern'   => !empty($_POST['notiz_intern'])    ? trim($_POST['notiz_intern'])   : null,
+    'notiz_versand'  => !empty($_POST['notiz_versand'])  ? trim($_POST['notiz_versand'])  : null,
+    'kontakt_notiz'  => !empty($_POST['kontakt_notiz'])  ? trim($_POST['kontakt_notiz'])  : null,
     'kanal'         => 'manuell',
 ];
 

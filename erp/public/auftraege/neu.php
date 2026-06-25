@@ -95,6 +95,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <textarea name="notiz_versand" class="erp-input" rows="2"><?= htmlspecialchars($formdata['notiz_versand'] ?? '') ?></textarea>
             </div>
 
+            <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Kontakt bei Abholung
+                    <span style="font-weight:normal; color:#888; font-size:0.88em;">(z.B. "WhatsApp wenn da" oder Rufnummer — erscheint auf Abholzettel + Lieferschein)</span>
+                </label>
+                <input type="text" name="kontakt_notiz" class="erp-input"
+                       placeholder="z.B. WhatsApp +43 664 …"
+                       value="<?= htmlspecialchars($formdata['kontakt_notiz'] ?? '') ?>">
+            </div>
+
         </div>
     </div>
 
