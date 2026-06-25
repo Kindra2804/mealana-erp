@@ -28,7 +28,9 @@ $log = fn(string $msg) => print('[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EO
 
 $log('=== Mahnwesen-Cronjob gestartet ===');
 
-// Alle offenen Rechnungsaufträge, die noch nicht abgeschlossen/storniert sind
+// Alle offenen Aufträge mit Zahlungsrückstand (Vorkasse + Rechnung)
+// Vorkasse:  30 Tage → Auto-Stornierung (Ware noch nicht weg)
+// Rechnung:  30 Tage → nur Hinweis, KEIN Auto-Storno (Ware evtl. schon versendet!)
 $offene = $db->query("
     SELECT
         a.id,
@@ -41,16 +43,17 @@ $offene = $db->query("
         DATEDIFF(NOW(), a.erstellt_am) AS tage_offen,
         k.email AS kunden_email,
         (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'erinnerung')   AS erinnerung_gesendet,
-        (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'stornierung')  AS stornierung_gesendet
+        (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'stornierung')  AS stornierung_gesendet,
+        (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'hinweis')      AS hinweis_gesendet
     FROM auftraege a
     LEFT JOIN kunden k ON k.id = a.kunden_id
-    WHERE a.zahlungsart = 'rechnung'
-      AND a.zahlungsstatus = 'offen'
+    WHERE a.zahlungsart IN ('vorkasse', 'rechnung')
+      AND a.zahlungsstatus IN ('offen', 'ausstehend')
       AND a.lieferstatus NOT IN ('storniert', 'abgeschlossen')
     ORDER BY a.erstellt_am ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-$log('Gefundene offene Rechnungsaufträge: ' . count($offene));
+$log('Gefundene überfällige Aufträge: ' . count($offene));
 
 $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
 
@@ -65,8 +68,12 @@ foreach ($offene as $auftrag) {
     if (!$kundeName) $kundeName = $snapshot['firma'] ?? 'Kunde';
     $email      = $auftrag['kunden_email'] ?: ($snapshot['email'] ?? '');
 
-    // ─── 30+ Tage → STORNIERUNG ─────────────────────────────────────────────
-    if ($tage >= 30 && !$auftrag['stornierung_gesendet']) {
+    $istVorkasse = $auftrag['zahlungsart'] === 'vorkasse';
+    $istRechnung = $auftrag['zahlungsart'] === 'rechnung';
+
+    // ─── 30+ Tage, VORKASSE → AUTOMATISCHE STORNIERUNG ──────────────────────
+    // Bei Rechnung: Ware evtl. schon versendet → kein Auto-Storno, nur Hinweis!
+    if ($tage >= 30 && $istVorkasse && !$auftrag['stornierung_gesendet']) {
         $log("Auftrag #{$id} ({$nummer}): {$tage} Tage — STORNIERUNG");
 
         $db->beginTransaction();
@@ -137,7 +144,25 @@ foreach ($offene as $auftrag) {
         continue;
     }
 
-    // ─── 14+ Tage → ERINNERUNG (nur einmal) ─────────────────────────────────
+    // ─── 30+ Tage, RECHNUNG → nur Hinweis im Log (kein Auto-Storno!) ────────
+    if ($tage >= 30 && $istRechnung && !$auftrag['hinweis_gesendet']) {
+        $log("Auftrag #{$id} ({$nummer}): {$tage} Tage — RECHNUNG ÜBERFÄLLIG (manuell prüfen, kein Auto-Storno)");
+
+        $db->prepare("
+            INSERT INTO mahnungen (auftrag_id, typ, mail_an, erstellt_von)
+            VALUES (?, 'hinweis', ?, 'cronjob')
+        ")->execute([$id, $email]);
+
+        $db->prepare("
+            INSERT INTO auftrag_status_log (auftrag_id, aktion, erstellt_am)
+            VALUES (?, 'Rechnung 30+ Tage unbezahlt — bitte manuell prüfen (kein Auto-Storno bei Rechnungszahlern)', NOW())
+        ")->execute([$id]);
+
+        Logger::log('mahnwesen.rechnung_ueberfaellig', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage]);
+        continue;
+    }
+
+    // ─── 14+ Tage → ERINNERUNG (nur einmal, gilt für Vorkasse + Rechnung) ───
     if ($tage >= 14 && !$auftrag['erinnerung_gesendet']) {
         $log("Auftrag #{$id} ({$nummer}): {$tage} Tage — ERINNERUNGSMAIL");
 
