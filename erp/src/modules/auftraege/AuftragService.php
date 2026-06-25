@@ -319,6 +319,10 @@ class AuftragService
             $this->repo->insertPosition(array_merge($pos, ['auftrag_id' => $id, 'sort_order' => $i]));
         }
 
+        // Reservierungen aktualisieren: alte schließen, neue anlegen
+        $this->repo->schliesseReservierungen($id);
+        $this->repo->legeReservierungenAn($id, $positionenBerechnet, $auftragsdaten['kanal'] ?? 'manuell');
+
         // 7. Statuslog schreiben (logStatus() — schon vorhanden!)
         $this->repo->logStatus($id, ['Gesamtbrutto' => [$auftragsdaten['bruttobetrag'], $positionenSummen['brutto']]], 'Auftrag bearbeitet', $_SESSION['benutzer']['id']);
 
