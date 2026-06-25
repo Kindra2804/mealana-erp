@@ -30,8 +30,9 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '🔖', 'label' => 'Chargen-Nachtrag', 'href' => '/mealana/lager/nachtrag_liste.php'],
     ],
     'verkauf' => [
-        ['icon' => '📋', 'label' => 'Aufträge',        'href' => '/mealana/auftraege/liste.php'],
-        ['icon' => '➕', 'label' => 'Neuer Auftrag',   'href' => '/mealana/auftraege/neu.php'],
+        ['icon' => '📋', 'label' => 'Aufträge',           'href' => '/mealana/auftraege/liste.php'],
+        ['icon' => '➕', 'label' => 'Neuer Auftrag',      'href' => '/mealana/auftraege/neu.php'],
+        ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => '/mealana/dokumente/index.php'],
     ],
     'einkauf' => [
         ['icon' => '📋', 'label' => 'Bestellungen',    'href' => '/mealana/bestellungen/liste.php'],
