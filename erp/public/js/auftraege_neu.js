@@ -159,6 +159,14 @@ if (kundenSuche) {
     kundenSuche.addEventListener('input', () => {
         clearTimeout(kundenTimer);
         const val = kundenSuche.value.trim();
+        if (val.length === 0) {
+            // Suchfeld geleert → Laufkunde, alle Adressfelder leeren
+            document.getElementById('kunden-id').value = '';
+            leereAdresse('rechnungsadresse');
+            leereAdresse('lieferadresse');
+            document.getElementById('kunden-dropdown').style.display = 'none';
+            return;
+        }
         if (val.length < 2) { document.getElementById('kunden-dropdown').style.display = 'none'; return; }
         kundenTimer = setTimeout(() => sucheKunden(val), 300);
     });
@@ -189,11 +197,17 @@ async function sucheKunden(suche) {
     drop.style.display = 'block';
 }
 
-// Adressen befüllen
+// Adressen befüllen / leeren
 function populiereAdresse(prefix, a) {
     ['vorname','nachname','firma','strasse','hausnummer','plz','ort','land','zusatz'].forEach(f => {
         const el = document.getElementById(prefix + '_' + f);
         if (el) el.value = a[f] || '';
+    });
+}
+function leereAdresse(prefix) {
+    ['vorname','nachname','firma','strasse','hausnummer','plz','ort','land','zusatz'].forEach(f => {
+        const el = document.getElementById(prefix + '_' + f);
+        if (el) el.value = '';
     });
 }
 
