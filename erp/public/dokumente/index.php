@@ -61,7 +61,7 @@ $stmt = $db->prepare("
         a.zahlungsstatus,
         r.rechnung_nr,
         r.storniert        AS rechnung_storniert,
-        b.name             AS erstellt_von_name
+        b.formularname     AS erstellt_von_name
     FROM auftrag_dokumente ad
     JOIN auftraege a  ON a.id = ad.auftrag_id
     LEFT JOIN rechnungen r ON r.auftrag_id = ad.auftrag_id
