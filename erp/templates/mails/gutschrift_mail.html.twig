@@ -1,0 +1,53 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  im Anhang finden Sie Ihre Gutschrift <strong>{{ gs_nr }}</strong>
+  zu Auftrag <strong>{{ auftrag_nummer }}</strong>.
+</p>
+
+<table class="table">
+  <tr>
+    <th>Gutschrift-Nr.</th>
+    <th>Bezieht sich auf</th>
+    <th>Gutschriftsbetrag (inkl. MwSt.)</th>
+  </tr>
+  <tr>
+    <td><strong>{{ gs_nr }}</strong></td>
+    <td>{{ rechnung_nr ? rechnung_nr : auftrag_nummer }}</td>
+    <td><strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong></td>
+  </tr>
+</table>
+
+{% if gs_art == 'vollstorno' %}
+<div class="hinweis">
+  <strong>Vollstorno:</strong>
+  Die ursprüngliche Rechnung wurde vollständig storniert.
+  Der Betrag von <strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong>
+  wird Ihnen gutgeschrieben bzw. erstattet.
+</div>
+{% else %}
+<div class="hinweis">
+  <strong>Teilgutschrift:</strong>
+  Für die in der Gutschrift angeführten Positionen erhalten Sie eine Gutschrift
+  über <strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong>.
+</div>
+{% endif %}
+
+{% if grund %}
+<p style="color:#555;font-size:13px"><strong>Grund:</strong> {{ grund }}</p>
+{% endif %}
+
+<p>
+  Bei Fragen stehen wir Ihnen gerne unter
+  <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Mit freundlichen Grüßen<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Gutschrift {{ gs_nr }} &bull; Auftrag {{ auftrag_nummer }} &bull;
+{% endblock %}

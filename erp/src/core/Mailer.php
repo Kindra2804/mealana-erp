@@ -32,12 +32,17 @@ class Mailer
     /**
      * @param bool $erzwinge  true = sendet auch wenn mail_aktiv=0 (für Test-Mail)
      */
+    /**
+     * @param array $anhaenge  [['pfad' => '/abs/path.pdf', 'name' => 'Dateiname.pdf'], ...]
+     * @param bool  $erzwinge  true = sendet auch wenn mail_aktiv=0 (für Test-Mail)
+     */
     public function sende(
         string $empfaenger,
         string $betreff,
         string $htmlBody,
         string $textBody = '',
-        bool   $erzwinge = false
+        bool   $erzwinge = false,
+        array  $anhaenge = []
     ): void {
         if (!$erzwinge && ($this->config['mail_aktiv'] ?? '0') !== '1') {
             error_log("[Mailer] Mail NICHT gesendet (deaktiviert): An={$empfaenger} Betreff={$betreff}");
@@ -71,17 +76,26 @@ class Mailer
         $mail->Body    = $htmlBody;
         $mail->AltBody = $textBody ?: strip_tags($htmlBody);
 
+        foreach ($anhaenge as $anhang) {
+            if (!empty($anhang['pfad']) && file_exists($anhang['pfad'])) {
+                $mail->addAttachment($anhang['pfad'], $anhang['name'] ?? basename($anhang['pfad']));
+            }
+        }
+
         $mail->send();
     }
 
     /**
      * Rendert ein Twig-Template und sendet es als Mail.
+     *
+     * @param array $anhaenge  [['pfad' => '/abs/path.pdf', 'name' => 'Dateiname.pdf'], ...]
      */
     public function sendeTemplate(
         string $empfaenger,
         string $betreff,
         string $templatePfad,
-        array  $variablen = []
+        array  $variablen = [],
+        array  $anhaenge  = []
     ): void {
         require_once __DIR__ . '/../../vendor/autoload.php';
 
@@ -92,6 +106,6 @@ class Mailer
             'firmenname' => $this->config['firmenname'] ?? 'MEALANA KG',
         ]));
 
-        $this->sende($empfaenger, $betreff, $htmlBody);
+        $this->sende($empfaenger, $betreff, $htmlBody, '', false, $anhaenge);
     }
 }

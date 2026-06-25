@@ -1,0 +1,50 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  im Anhang finden Sie Ihre Rechnung <strong>{{ rechnung_nr }}</strong>
+  zu Auftrag <strong>{{ auftrag_nummer }}</strong>.
+</p>
+
+<table class="table">
+  <tr>
+    <th>Rechnungsnummer</th>
+    <th>Auftrag</th>
+    <th>Betrag (inkl. MwSt.)</th>
+    <th>Fällig bis</th>
+  </tr>
+  <tr>
+    <td><strong>{{ rechnung_nr }}</strong></td>
+    <td>{{ auftrag_nummer }}</td>
+    <td><strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong></td>
+    <td><strong>{{ faellig_datum }}</strong></td>
+  </tr>
+</table>
+
+{% if firma_iban %}
+<div class="hinweis">
+  <strong>Überweisung:</strong><br>
+  Bitte überweisen Sie den Betrag bis <strong>{{ faellig_datum }}</strong>
+  unter Angabe der Rechnungsnummer <strong>{{ rechnung_nr }}</strong>.<br>
+  IBAN: <strong>{{ firma_iban }}</strong>
+</div>
+{% else %}
+<div class="hinweis">
+  Bitte begleichen Sie die Rechnung bis <strong>{{ faellig_datum }}</strong>
+  unter Angabe der Rechnungsnummer <strong>{{ rechnung_nr }}</strong>.
+</div>
+{% endif %}
+
+<p>
+  Bei Fragen zu dieser Rechnung stehen wir Ihnen gerne unter
+  <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Mit freundlichen Grüßen<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Rechnung {{ rechnung_nr }} &bull; Auftrag {{ auftrag_nummer }} &bull;
+{% endblock %}

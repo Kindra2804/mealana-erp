@@ -1,0 +1,83 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>vielen Dank für Ihre Bestellung! Wir haben Ihren Auftrag erhalten und bestätigen ihn hiermit.</p>
+
+<table class="table">
+  <tr>
+    <th>Auftragsnummer</th>
+    <th>Datum</th>
+  </tr>
+  <tr>
+    <td><strong>{{ auftrag_nummer }}</strong></td>
+    <td>{{ datum_heute ?? 'heute' }}</td>
+  </tr>
+</table>
+
+<p style="font-weight:600;margin-top:20px;margin-bottom:8px">Bestellte Artikel:</p>
+
+<table class="table">
+  <tr>
+    <th style="width:50%">Artikel</th>
+    <th style="text-align:right;width:15%">Menge</th>
+    <th style="text-align:right;width:17%">Einzelpreis</th>
+    <th style="text-align:right;width:18%">Gesamt</th>
+  </tr>
+  {% for pos in positionen %}
+  <tr>
+    <td>{{ pos.bezeichnung }}</td>
+    <td style="text-align:right">{{ pos.menge }}</td>
+    <td style="text-align:right">€&nbsp;{{ pos.einzelpreis_brutto|number_format(2, ',', '.') }}</td>
+    <td style="text-align:right"><strong>€&nbsp;{{ pos.gesamt_brutto|number_format(2, ',', '.') }}</strong></td>
+  </tr>
+  {% endfor %}
+  <tr style="border-top:2px solid #ddd;background:#f9fafb">
+    <td colspan="3" style="text-align:right;font-weight:700;padding-top:10px">Gesamtbetrag (inkl. MwSt.)</td>
+    <td style="text-align:right;font-weight:700;font-size:15px;padding-top:10px">€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</td>
+  </tr>
+</table>
+
+{% if zahlungsart == 'vorkasse' %}
+<div class="hinweis">
+  <strong>Zahlungsart: Vorkasse</strong><br>
+  Bitte überweisen Sie den Betrag von <strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong>
+  unter Angabe der Auftragsnummer <strong>{{ auftrag_nummer }}</strong> auf unser Konto.
+  {% if firma_iban %}<br>IBAN: <strong>{{ firma_iban }}</strong>{% endif %}
+  Ihre Bestellung wird nach Zahlungseingang bearbeitet.
+</div>
+{% elseif zahlungsart == 'paypal' %}
+<div class="hinweis">
+  <strong>Zahlungsart: PayPal</strong><br>
+  Sie haben PayPal als Zahlungsart gewählt. Die Zahlung wird direkt über PayPal abgewickelt.
+</div>
+{% elseif zahlungsart == 'bar' %}
+<div class="hinweis">
+  <strong>Zahlungsart: Barzahlung</strong><br>
+  Bitte bezahlen Sie bei Abholung / vor Ort in bar. Wir freuen uns auf Ihren Besuch!
+</div>
+{% elseif zahlungsart == 'rechnung' %}
+<div class="hinweis">
+  <strong>Zahlungsart: Kauf auf Rechnung</strong><br>
+  Sie erhalten Ihre Rechnung separat. Bitte begleichen Sie diese bis zum angegebenen Fälligkeitsdatum.
+</div>
+{% elseif zahlungsart == 'nachnahme' %}
+<div class="hinweis">
+  <strong>Zahlungsart: Nachnahme</strong><br>
+  Bitte halten Sie den Betrag von <strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong>
+  für den Paketboten bereit.
+</div>
+{% endif %}
+
+<p>
+  Bei Fragen stehen wir Ihnen gerne unter
+  <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Mit freundlichen Grüßen<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Auftragsbestätigung {{ auftrag_nummer }} &bull;
+{% endblock %}
