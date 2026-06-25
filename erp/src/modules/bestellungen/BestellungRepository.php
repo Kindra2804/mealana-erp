@@ -248,6 +248,42 @@ class BestellungRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Bestellvorschläge: Alle aktiven Nicht-Vater-Artikel die unter Meldebestand
+     * ODER in Unterdeckung (verfügbar < 0) sind, mit Standard-Lieferant-Infos.
+     */
+    public function findBestellvorschlaege(): array
+    {
+        $stmt = $this->db->query("
+            SELECT
+                a.id,
+                a.name             AS artikel_name,
+                a.artikelnummer,
+                a.meldebestand,
+                COALESCE(
+                    (SELECT SUM(lb.bestand) FROM lagerbestand lb WHERE lb.artikel_id = a.id),
+                    0
+                )                  AS gesamtbestand,
+                COALESCE(
+                    (SELECT SUM(r.menge) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen'),
+                    0
+                )                  AS reserviert,
+                al.lieferant_id    AS std_lieferant_id,
+                l.name             AS std_lieferant_name,
+                COALESCE(al.vpe_menge, 1) AS vpe_menge,
+                al.netto_ek
+            FROM artikel a
+            LEFT JOIN artikel_lieferanten al ON al.artikel_id = a.id AND al.standard_lieferant = 1 AND al.aktiv = 1
+            LEFT JOIN lieferanten l ON l.id = al.lieferant_id
+            WHERE a.aktiv = 1 AND a.ist_vater = 0
+            HAVING
+                (a.meldebestand IS NOT NULL AND gesamtbestand <= a.meldebestand)
+                OR (gesamtbestand - reserviert) < 0
+            ORDER BY a.name
+        ");
+        return $stmt->fetchAll();
+    }
+
     /** Gibt alle aktiven Lieferanten für das Bestellformular-Dropdown zurück. */
     public function findAlleLieferanten(): array
     {

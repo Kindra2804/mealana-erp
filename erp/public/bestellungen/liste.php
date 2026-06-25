@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../src/modules/bestellungen/BestellungService.php';
 $service    = new BestellungService();
 $statusFilter = $_GET['status'] ?? '';
 $bestellungen = $service->getAll($statusFilter);
+$bestellService = $service;
 
 $statusLabels = [
     'offen'          => ['label' => 'Offen',           'class' => 'chip-aktiv'],
@@ -31,6 +32,8 @@ $actionBarContent = <<<HTML
 HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
+
+<?php $mode = 'liste'; require __DIR__ . '/../includes/bestellvorschlaege_box.php'; ?>
 
 <div class="card">
     <?php if (empty($bestellungen)): ?>

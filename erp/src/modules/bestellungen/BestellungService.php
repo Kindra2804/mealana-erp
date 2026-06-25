@@ -92,6 +92,12 @@ class BestellungService
         return $this->repo->findReserviertNichtLagerndFuerLieferant($lieferantId);
     }
 
+    /** Bestellvorschläge: unter Meldebestand oder Unterdeckung, mit Std.-Lieferant-Infos. */
+    public function getBestellvorschlaege(): array
+    {
+        return $this->repo->findBestellvorschlaege();
+    }
+
     /**
      * Legt eine neue Bestellung mit Positionen an.
      *

@@ -1,6 +1,34 @@
 var posCount = 0;
 
+function aktualisiereVorschlagButtons(lieferantId) {
+    var lid = parseInt(lieferantId) || 0;
+    document.querySelectorAll('#bestellvorschlaege-box .vorschlag-btn').forEach(function (btn) {
+        var btnLid = parseInt(btn.dataset.lieferantId) || 0;
+        if (lid && btnLid === lid) {
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+            btn.title = '';
+        } else {
+            btn.style.opacity = '0.4';
+            btn.style.pointerEvents = 'none';
+            btn.title = lid ? 'Std.-Lieferant stimmt nicht überein' : 'Erst Lieferant wählen';
+        }
+    });
+}
+
+function vorschlagUebernehmen(btn) {
+    var aid  = parseInt(btn.dataset.artikelId);
+    var name = btn.dataset.artikelName;
+    var menge = parseInt(btn.dataset.menge);
+    var ek    = parseFloat(btn.dataset.ek) || 0;
+    positionHinzufuegen(aid, name, menge, ek);
+    btn.closest('tr').style.opacity = '0.4';
+    btn.disabled = true;
+    btn.textContent = '✓ Übernommen';
+}
+
 function ladeReserviert(lieferantId) {
+    aktualisiereVorschlagButtons(lieferantId);
     var box = document.getElementById('reserviert-box');
     if (!lieferantId) { box.style.display = 'none'; box.innerHTML = ''; return; }
     fetch('/mealana/bestellungen/reserviert_ajax.php?lieferant_id=' + lieferantId)

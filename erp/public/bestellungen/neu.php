@@ -9,6 +9,12 @@ $fehler      = $_SESSION['fehler']   ?? [];
 $formdata    = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['formdata']);
 
+// Lieferant aus URL vorauswählen (Direktsprung von Bestellvorschläge-Box)
+if (empty($formdata['lieferant_id']) && !empty($_GET['lieferant_id'])) {
+    $formdata['lieferant_id'] = (int)$_GET['lieferant_id'];
+}
+$bestellService = $service;
+
 $pageTitle        = 'Neue Bestellung';
 $activeModule     = 'einkauf';
 $actionBarContent = <<<HTML
@@ -17,6 +23,8 @@ $actionBarContent = <<<HTML
 HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
+
+<?php $mode = 'neu'; require __DIR__ . '/../includes/bestellvorschlaege_box.php'; ?>
 
 <?php if (!empty($fehler)): ?>
     <div class="card" style="border-left:3px solid var(--color-danger);margin-bottom:12px">
@@ -95,7 +103,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <script>
     window.BESTELLUNGEN_SAVED_POS = <?= json_encode($formdata['positionen'] ?? []) ?>;
+    window.VORGEWAEHLT_LIEFERANT_ID = <?= (int)($formdata['lieferant_id'] ?? 0) ?>;
 </script>
 <script src="/mealana/js/bestellungen_neu.js"></script>
+<script>
+    // Vorschlag-Buttons sofort aktivieren wenn Lieferant vorgewählt
+    if (window.VORGEWAEHLT_LIEFERANT_ID) {
+        document.addEventListener('DOMContentLoaded', function () {
+            aktualisiereVorschlagButtons(window.VORGEWAEHLT_LIEFERANT_ID);
+            ladeReserviert(window.VORGEWAEHLT_LIEFERANT_ID);
+        });
+    }
+</script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
