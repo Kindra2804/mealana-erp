@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: DejaVu Sans, Arial, sans-serif;
+    font-size: 11px;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 20px;
+  }
+  .header {
+    display: table;
+    width: 100%;
+    border-bottom: 3px solid #1e3a5f;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .header-left  { display: table-cell; width: 60%; vertical-align: middle; }
+  .header-right { display: table-cell; width: 40%; text-align: right; vertical-align: middle; }
+  .pl-nummer    { font-size: 22px; font-weight: bold; color: #1e3a5f; letter-spacing: 1px; }
+  .pl-meta      { font-size: 10px; color: #666; margin-top: 3px; }
+  .barcode      { margin-top: 6px; }
+  .barcode img  { height: 50px; }
+  .barcode-text { font-size: 9px; color: #333; text-align: center; letter-spacing: 2px; margin-top: 2px; }
+
+  .auftrag-block {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+  }
+  .auftrag-header {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 7px 12px;
+    display: table;
+    width: 100%;
+  }
+  .auftrag-header-left  { display: table-cell; font-weight: bold; font-size: 12px; }
+  .auftrag-header-right { display: table-cell; text-align: right; font-size: 10px; color: #ccc; }
+  .auftrag-kunde {
+    background: #f0f4f8;
+    padding: 6px 12px;
+    font-size: 10px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+  }
+
+  table.pos-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.pos-table th {
+    background: #f5f5f5;
+    text-align: left;
+    padding: 5px 10px;
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1px solid #ddd;
+    color: #555;
+  }
+  table.pos-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+  }
+  table.pos-table tr:last-child td { border-bottom: none; }
+  .check-box {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid #333;
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+  .menge-cell {
+    font-size: 14px;
+    font-weight: bold;
+    color: #1e3a5f;
+    text-align: right;
+    width: 60px;
+  }
+
+  .footer {
+    border-top: 2px solid #1e3a5f;
+    margin-top: 20px;
+    padding-top: 8px;
+    display: table;
+    width: 100%;
+    font-size: 10px;
+    color: #555;
+  }
+  .footer-left  { display: table-cell; }
+  .footer-right { display: table-cell; text-align: right; }
+  .total-badge {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ══════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-left">
+    <div class="pl-nummer">{{ pl_nummer }}</div>
+    <div class="pl-meta">
+      Erstellt: {{ datum }} {{ uhrzeit }} Uhr &nbsp;|&nbsp;
+      {{ auftraege|length }} Auftrag{% if auftraege|length != 1 %}träge{% endif %} &nbsp;|&nbsp;
+      {{ gesamt_positionen }} Position{% if gesamt_positionen != 1 %}en{% endif %}
+    </div>
+    {% if erstellt_von %}
+    <div class="pl-meta">Erstellt von: {{ erstellt_von }}</div>
+    {% endif %}
+  </div>
+  <div class="header-right">
+    <div class="barcode">
+      <img src="data:image/png;base64,{{ barcode }}" alt="{{ pl_nummer }}">
+      <div class="barcode-text">{{ pl_nummer }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="total-badge">📋 PICKLISTE — {{ pl_nummer }}</div>
+
+<!-- ═══ AUFTRÄGE ═════════════════════════════════════════════════════════════ -->
+{% for auftrag in auftraege %}
+<div class="auftrag-block">
+  <div class="auftrag-header">
+    <div class="auftrag-header-left">{{ auftrag.auftrag_nr }}</div>
+    <div class="auftrag-header-right">
+      {{ auftrag.erstellt_am|date('d.m.Y') }}
+      &nbsp;|&nbsp;
+      {% if auftrag.lieferart == 'abholung' %}🏪 Abholung{% else %}📦 Versand{% endif %}
+    </div>
+  </div>
+
+  <div class="auftrag-kunde">
+    {% set k = auftrag.kunde %}
+    {% if k.firma %}{{ k.firma }}{% if k.vorname or k.nachname %} / {% endif %}{% endif %}
+    {{ k.vorname ?? '' }} {{ k.nachname ?? '' }}
+    {% if k.ort %}&nbsp;|&nbsp;{{ k.plz ?? '' }} {{ k.ort }}{% endif %}
+  </div>
+
+  <table class="pos-table">
+    <thead>
+      <tr>
+        <th style="width:20px"></th>
+        <th style="width:90px">Artikelnr.</th>
+        <th>Bezeichnung</th>
+        <th style="width:60px;text-align:right">Menge</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pos in auftrag.positionen %}
+      <tr>
+        <td><span class="check-box"></span></td>
+        <td style="font-size:10px;color:#777">{{ pos.artikelnummer ?? '—' }}</td>
+        <td>{{ pos.bezeichnung }}</td>
+        <td class="menge-cell">{{ pos.menge }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+<!-- ═══ FOOTER ═══════════════════════════════════════════════════════════════ -->
+<div class="footer">
+  <div class="footer-left">
+    {{ pl_nummer }} &nbsp;|&nbsp;
+    {{ datum }} {{ uhrzeit }} Uhr &nbsp;|&nbsp;
+    MeaLana ERP
+  </div>
+  <div class="footer-right">
+    Gesamt: {{ gesamt_positionen }} Position{% if gesamt_positionen != 1 %}en{% endif %}
+    in {{ auftraege|length }} Auftrag{% if auftraege|length != 1 %}trägen{% endif %}
+  </div>
+</div>
+
+</body>
+</html>
