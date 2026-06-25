@@ -45,9 +45,7 @@ require_once __DIR__ . '/includes/shell_top.php';
         line-height: 1.4;
     }
 
-    .ba-toc a:hover {
-        background: var(--color-bg);
-    }
+    .ba-toc a:hover { background: var(--color-bg); }
 
     .ba-toc a.sub {
         padding-left: 18px;
@@ -59,15 +57,12 @@ require_once __DIR__ . '/includes/shell_top.php';
         font-size: 18px;
         font-weight: 700;
         color: var(--color-nav);
-        margin: 32px 0 8px;
-        padding-top: 8px;
+        margin: 36px 0 8px;
+        padding-top: 12px;
         border-top: 2px solid var(--color-border);
     }
 
-    .ba-content h2:first-child {
-        margin-top: 0;
-        border-top: none;
-    }
+    .ba-content h2:first-child { margin-top: 0; border-top: none; }
 
     .ba-content h3 {
         font-size: 14px;
@@ -88,19 +83,88 @@ require_once __DIR__ . '/includes/shell_top.php';
         margin-left: 8px;
     }
 
-    .ba-badge-fertig {
-        background: #dcfce7;
-        color: #166534;
+    .ba-badge-fertig  { background: #dcfce7; color: #166534; }
+    .ba-badge-arbeit  { background: #fef9c3; color: #854d0e; }
+    .ba-badge-geplant { background: #f1f5f9; color: #64748b; }
+
+    .ba-content p {
+        font-size: 13px;
+        line-height: 1.7;
+        margin: 6px 0 12px;
+        color: var(--color-text);
     }
 
-    .ba-badge-arbeit {
-        background: #fef9c3;
-        color: #854d0e;
+    .ba-content ul, .ba-content ol {
+        font-size: 13px;
+        line-height: 1.8;
+        padding-left: 20px;
+        margin: 6px 0 12px;
+        color: var(--color-text);
     }
 
-    .ba-badge-geplant {
-        background: #f1f5f9;
-        color: #64748b;
+    .ba-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 10px 0 16px;
+    }
+
+    .ba-table th {
+        text-align: left;
+        padding: 6px 10px;
+        background: var(--color-bg);
+        border-bottom: 2px solid var(--color-border);
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .ba-table td {
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--color-border);
+        vertical-align: top;
+    }
+
+    .ba-hint {
+        background: #eff6ff;
+        border-left: 3px solid #3b82f6;
+        border-radius: 0 4px 4px 0;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin: 10px 0 16px;
+        color: #1e40af;
+    }
+
+    .ba-warn {
+        background: #fff7ed;
+        border-left: 3px solid #f97316;
+        border-radius: 0 4px 4px 0;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin: 10px 0 16px;
+        color: #9a3412;
+    }
+
+    .ba-step {
+        display: flex;
+        gap: 10px;
+        margin: 4px 0;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .ba-step-nr {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        background: var(--color-nav);
+        color: #fff;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 2px;
     }
 
     .ba-placeholder {
@@ -111,21 +175,6 @@ require_once __DIR__ . '/includes/shell_top.php';
         color: var(--color-text-muted);
         font-size: 13px;
         margin: 8px 0 16px;
-    }
-
-    .ba-content p {
-        font-size: 13px;
-        line-height: 1.7;
-        margin: 6px 0 12px;
-        color: var(--color-text);
-    }
-
-    .ba-content ul {
-        font-size: 13px;
-        line-height: 1.8;
-        padding-left: 20px;
-        margin: 6px 0 12px;
-        color: var(--color-text);
     }
 </style>
 
@@ -144,75 +193,220 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
             <a href="#lager">Lager</a>
             <a href="#lager-wareneingang" class="sub">↳ Wareneingang</a>
+            <a href="#packplatz">Packplatz</a>
+            <a href="#packplatz-scan" class="sub">↳ Artikel scannen</a>
+            <a href="#packplatz-versenden" class="sub">↳ Versenden</a>
             <a href="#einkauf">Einkauf & Bestellungen</a>
+            <a href="#verkauf">Aufträge & Verkauf</a>
+            <a href="#mahnwesen" class="sub">↳ Mahnwesen</a>
             <a href="#kunden">Kunden</a>
+            <a href="#partner">Partner & Mietfächer</a>
+            <a href="#einstellungen">Einstellungen</a>
+            <a href="#einstellungen-mail" class="sub">↳ Mail / SMTP</a>
             <a href="#lieferanten">Lieferanten</a>
             <a href="#hersteller">Hersteller</a>
-            <a href="#partner">Partner & Mietfächer</a>
             <a href="#benutzer">Benutzer & Rechte</a>
             <a href="#kasse">Kasse</a>
-            <a href="#verkauf">Verkauf & Aufträge</a>
             <a href="#inventur">Inventur</a>
         </nav>
 
         <!-- ── Kapitel ────────────────────────────────────────────────────── -->
         <div class="ba-content">
 
+            <!-- EINLEITUNG -->
             <h2 id="einleitung">Einleitung <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <p>MeaLana ERP ist das Warenwirtschaftssystem der Wollboutique MeaLana. Es umfasst Artikelverwaltung, Lager, Einkauf, Kunden und (zukünftig) Kasse und Onlineshop-Anbindung.</p>
-            <p>Das System läuft lokal auf einem Windows-PC mit XAMPP. Geöffnet wird es im Browser unter <strong>http://localhost/mealana/</strong>.</p>
+            <p>MeaLana ERP ist das Warenwirtschaftssystem der Wollboutique MeaLana. Es umfasst Artikelverwaltung, Lager, Einkauf, Aufträge, Packplatz und die Anbindung an WooCommerce-Shops.</p>
+            <p>Das System läuft lokal auf einem Windows-PC. Geöffnet wird es im Browser unter <strong>http://localhost/mealana/</strong> — oder über VPN von unterwegs.</p>
+            <p>Der <strong>Packplatz</strong> hat eine eigene dunkle Oberfläche: <strong>http://localhost/mealana/packplatz/</strong></p>
 
+            <!-- NAVIGATION -->
             <h2 id="navigation">Navigation <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <p>Die Hauptnavigation befindet sich oben: <strong>Artikel · Lager · Kunden · Einkauf · Partner</strong>. Ausgegraut = noch nicht fertig.</p>
-            <p>Links neben dem Inhalt befindet sich die <strong>Sidebar</strong> mit Unterseiten des aktiven Moduls. Zum Beispiel zeigt die Artikel-Sidebar: Liste · Neu erstellen · Kategorien · Merkmale · Preise/Aktionen · Hersteller.</p>
+            <p>Die <strong>Hauptnavigation</strong> befindet sich oben: Artikel · Lager · Aufträge · Einstellungen. Ausgegraut = noch nicht fertig.</p>
+            <p>Links befindet sich die <strong>Sidebar</strong> mit Unterseiten des aktiven Moduls.</p>
+            <p>Nach jeder Aktion erscheint kurz ein farbiger Balken oben:</p>
+            <table class="ba-table">
+                <tr><th>Farbe</th><th>Bedeutung</th></tr>
+                <tr><td>Grün</td><td>Aktion erfolgreich (verschwindet nach ~3 Sek.)</td></tr>
+                <tr><td>Rot</td><td>Fehler — bitte lesen was drinsteht</td></tr>
+                <tr><td>Gelb (!)</td><td>Hinweis — Aktion wurde trotzdem gespeichert</td></tr>
+            </table>
 
+            <!-- ARTIKEL -->
             <h2 id="artikel">Artikel <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <p>Unter <em>Artikel → Liste</em> sieht man alle Artikel. Mit dem Filter oben kann nach aktiv/inaktiv, Typ, Kategorie und Qualitätsproblemen (fehlende EAN, fehlende Bilder) gefiltert werden.</p>
+            <p>Unter <em>Artikel → Liste</em> sieht man alle Artikel. Filter: aktiv/inaktiv, Typ, Kategorie, fehlende EAN, fehlende Bilder. Spalten können über den Spalten-Picker (Zahnrad rechts oben) angepasst werden.</p>
+
+            <h3>Neuen Artikel anlegen</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>Artikelnummer</strong> eingeben — muss eindeutig sein (z.B. DROPS-LIMA-50)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Name</strong> eingeben — erscheint im Shop und auf Dokumenten</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Artikeltyp</strong> wählen: Standard oder Varianten-Vater (bei Farben/Größen)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Hersteller, Einheit, Steuerklasse auswählen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div><strong>EAN/GTIN</strong> eingeben — wichtig für den Packplatz-Scanner!</div></div>
+            <div class="ba-step"><div class="ba-step-nr">6</div><div>Brutto-VK eingeben, Kategorien zuweisen → Speichern</div></div>
+            <div class="ba-hint">💡 Ohne EAN kann der Barcode-Scanner am Packplatz den Artikel nicht erkennen. EAN immer eintragen!</div>
 
             <h3 id="artikel-varianten">Varianten & Achsen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Achsen anlegen, Varianten-Kombi-Generator, Vater-Kind-Prinzip.</div>
+            <p>Varianten-Artikel bestehen aus einem <strong>Vater-Artikel</strong> (z.B. "DROPS Lima") und mehreren <strong>Kind-Artikeln</strong> (je eine Farbe/Größe).</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Vater-Artikel öffnen → Tab <strong>Varianten</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Achsen zuweisen</strong> (z.B. "Farbe") und Werte eingeben (z.B. "Rot", "Blau")</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Tab Varianten → <strong>Kombinationen erstellen</strong> → Artikelnummern vergeben → Erstellen</div></div>
+            <p>Stammdaten (Beschreibung, Gewicht, Kategorien, Preise) werden automatisch vom Vater übernommen und bei Änderungen am Vater propagiert.</p>
 
             <h3 id="artikel-bilder">Bilder <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Upload, Hauptbild setzen, Reihenfolge, Alt-Text.</div>
+            <p>Artikel-Detail → Tab <strong>Bilder</strong>: Bild per Drag &amp; Drop hochladen. Das System verkleinert automatisch auf max. 1920px (JPG 85%).</p>
+            <ul>
+                <li><strong>Hauptbild:</strong> Stern ☆ klicken</li>
+                <li><strong>Reihenfolge:</strong> Pfeile ↑ / ↓</li>
+                <li><strong>Alt-Text:</strong> Bildbeschreibung für Barrierefreiheit und Google</li>
+            </ul>
+            <div class="ba-hint">💡 Erlaubte Formate: JPG, PNG, GIF, WebP. Das Original wird vor der Verkleinerung gespeichert.</div>
 
             <h3 id="artikel-merkmale">Merkmale <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Merkmal-Gruppen, Werte befüllen, WooCommerce-Slug.</div>
+            <p>Merkmale sind technische Eigenschaften (Nadelstärke, Material …). Sie erscheinen im Shop als Produktattribute.</p>
+            <p>Artikel-Detail → Tab <strong>Merkmale</strong> → Merkmal wählen → Wert eingeben oder auswählen → Speichern.</p>
 
             <h3 id="artikel-preise">Preise & Aktionen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Brutto/Netto, Kundengruppen, Aktionen anlegen, Kategorie-Zuweisung, Jarvis-Cronjob.</div>
+            <p>Preis-Priorität (höchste gewinnt):</p>
+            <table class="ba-table">
+                <tr><th>Priorität</th><th>Typ</th><th>Wo setzen</th></tr>
+                <tr><td>1 — höchste</td><td>SALE-Override</td><td>Artikel → Preise → SALE-Override</td></tr>
+                <tr><td>2</td><td>Aktionspreis</td><td>Artikel → Aktionen</td></tr>
+                <tr><td>3</td><td>Kundengruppen-Preis</td><td>Artikel → Preise → Zeile je KG</td></tr>
+                <tr><td>4 — niedrigste</td><td>Standard-Preis</td><td>Artikel → Preise → Standard-KG</td></tr>
+            </table>
+            <p><strong>Aktionen</strong> gelten für ganze Kategorien und laufen zeitlich begrenzt. Sie werden täglich um 0:00 Uhr automatisch aktiviert/deaktiviert (Cronjob).</p>
 
+            <!-- LAGER -->
             <h2 id="lager">Lager <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <p>Das Lager-Modul verwaltet Lagerbestände und Lagerbewegungen. Es gibt zwei Lager: <strong>K1 (Laden)</strong> und <strong>K2 (Lager/Messe)</strong>.</p>
+            <p>Das Lager-Modul verwaltet Bestände und Bewegungen. Zwei Lager: <strong>Standardlager</strong> und <strong>Lager Messe</strong>.</p>
+            <p>Bestand = <strong>Ist</strong> (physisch vorhanden) − <strong>Reserviert</strong> (für offene Aufträge) = <strong>Verfügbar</strong> (kann noch verkauft werden).</p>
+            <div class="ba-warn">⚠ Bestände nie direkt in der Datenbank ändern! Immer über Wareneingang oder Storno. Direkte Änderungen zerstören das Bewegungsprotokoll.</div>
 
             <h3 id="lager-wareneingang">Wareneingang <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <div class="ba-placeholder">Kapitel wird ergänzt: EAN scannen, Charge eingeben, Mengen buchen, Abschluss-Dialog.</div>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Lager → Wareneingang</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Artikel suchen oder EAN scannen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Menge, EK-Preis, Lager und optional Charge eingeben</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Optional: Lieferschein-Nr. des Lieferanten eintragen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div>→ Einbuchen</div></div>
+            <div class="ba-hint">💡 War ein Auslaufartikel auf Bestand 0 und bekommt jetzt Ware? Das System reaktiviert ihn automatisch.</div>
 
+            <!-- PACKPLATZ -->
+            <h2 id="packplatz">Packplatz <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>Eigene Oberfläche, optimiert für Touchscreen und Barcode-Scanner. Dunkles Design.</p>
+            <p>Adresse: <strong>http://localhost/mealana/packplatz/</strong></p>
+            <p>Hauptmenü: Warenausgang (fertig) · Wareneingang (fertig) · Intern (geplant) · Retoure (geplant)</p>
+
+            <h3 id="packplatz-scan">Artikel scannen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Packplatz → Warenausgang</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Auftrag wählen: Pickliste scannen/anklicken <em>oder</em> Auftragsnummer direkt eingeben</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Jeden Artikel scannen — Zeile wird <span style="color:#22c55e;font-weight:600">grün</span> wenn Menge vollständig, <span style="color:#ef4444;font-weight:600">rot</span> wenn zu viel</div></div>
+            <div class="ba-hint">💡 Vorwahl: Zahl eingeben und dann einmal scannen → bucht mehrere auf einmal. Bild des Artikels erscheint rechts.</div>
+
+            <h3 id="packplatz-versenden">Versenden <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Wenn alle Zeilen grün: Button <strong>Verpacken</strong> wird aktiv</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div>Overlay: <strong>Gewicht</strong> prüfen/korrigieren (aus Artikelgewichten vorausgefüllt)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">6</div><div><strong>Trackingnummer</strong> vom aufgedruckten Label abscannen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">7</div><div>→ Abschließen: Status wird auf "versendet" gesetzt, Versandmail an Kunden gesendet</div></div>
+            <p>Für <strong>Teillieferung</strong> (nicht alle Artikel lieferbar): Button "Teillieferung" statt "Verpacken" → gleicher Overlay-Flow.</p>
+
+            <!-- EINKAUF -->
             <h2 id="einkauf">Einkauf & Bestellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Bestellung anlegen, Positionen, Bestellung bei Lieferant bestätigen, Wareneingang erfassen, Teillieferungen, Sammelliste/Retroaktiv.</div>
+            <p>Hier werden Bestellungen bei Lieferanten verwaltet (Einkauf = wir bestellen bei Lieferanten, nicht: Kunden bestellen bei uns).</p>
+            <h3>Neue Bestellung anlegen</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Bestellungen → Neue Bestellung → Lieferant auswählen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Artikel + Menge + EK-Preis eintragen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Speichern → Bestellnummer wird generiert</div></div>
+            <h3>Wareneingang zur Bestellung buchen</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Bestellung öffnen → "Wareneingang buchen"</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Tatsächlich gelieferte Mengen + EK-Preis bestätigen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Optional: Charge eingeben → Einbuchen</div></div>
+            <p>Bei Teillieferungen: nur die gelieferten Mengen eingeben → Status "Teilweise geliefert". Beim nächsten Eingang erneut buchen.</p>
 
+            <!-- AUFTRÄGE -->
+            <h2 id="verkauf">Aufträge & Verkauf <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>Jeder Auftrag hat zwei getrennte Status:</p>
+            <table class="ba-table">
+                <tr><th>Status</th><th>Werte</th></tr>
+                <tr><td><strong>Zahlungsstatus</strong></td><td>ausstehend · bezahlt · teilbezahlt · storniert</td></tr>
+                <tr><td><strong>Lieferstatus</strong></td><td>neu · in Bearbeitung · versandbereit · versendet · teilgeliefert · abgeschlossen · storniert</td></tr>
+            </table>
+
+            <h3>Auftrag manuell anlegen</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Aufträge → Neuer Auftrag → Kunden suchen (oder "Laufkunde")</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Zahlungsart und Lieferart wählen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Artikel hinzufügen (EAN scannen oder Artikelnummer eingeben), Mengen anpassen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Notizen eintragen → Speichern</div></div>
+            <div class="ba-hint">💡 Auftragsnummer wird automatisch generiert (A-2026-00001).</div>
+
+            <h3>Zahlungseingang buchen</h3>
+            <p>Auftrag öffnen → <strong>Zahlung buchen</strong> → Betrag bestätigen → Zahlungsstatus wechselt auf "bezahlt". Bei Vorkasse-Aufträgen wird der Lagerabgang erst jetzt gebucht.</p>
+
+            <h3 id="mahnwesen">Mahnwesen — automatisch <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Der Cronjob läuft täglich und prüft alle offenen Aufträge:</p>
+            <table class="ba-table">
+                <tr><th>Zeitraum</th><th>Zahlungsart</th><th>Aktion</th></tr>
+                <tr><td>14 Tage offen</td><td>Vorkasse oder Rechnung</td><td>Zahlungserinnerung per Mail</td></tr>
+                <tr><td>30 Tage offen</td><td><strong>Vorkasse</strong></td><td>Automatische Stornierung + Lagerrückbuchung</td></tr>
+                <tr><td>30 Tage offen</td><td><strong>Rechnung</strong></td><td>Nur interner Hinweis — kein Auto-Storno!</td></tr>
+            </table>
+            <div class="ba-warn">⚠ Bei Rechnung gibt es keinen automatischen Storno — die Ware ist meist schon beim Kunden. Manuelle Prüfung nötig.</div>
+
+            <!-- KUNDEN -->
             <h2 id="kunden">Kunden <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Neuen Kunden anlegen, B2B/B2C-Unterschied, Adressen, DSGVO-Consent, Datenverschlüsselung.</div>
+            <p>Privat- und Geschäftskunden verwalten. Datenschutz-sensible Felder sind AES-256-verschlüsselt gespeichert (DSGVO-konform).</p>
+            <p><strong>Neuen Kunden anlegen:</strong> Kunden → Neuer Kunde → Typ wählen (Privat / B2B) → Felder ausfüllen → Speichern.</p>
+            <div class="ba-hint">💡 Wichtig: E-Mail-Adresse eintragen — sie wird für Auftragsbestätigungen und Mahnungen benötigt.</div>
+            <p>Shop-Kunden aus WooCommerce werden automatisch importiert und per E-Mail-Adresse mit bestehenden Kunden verknüpft.</p>
+            <p><strong>DSGVO-Löschung:</strong> Kunden-Detail → "Kunden löschen (DSGVO)" — persönliche Daten werden kryptografisch gelöscht, Bestellhistorie bleibt anonymisiert erhalten.</p>
 
-            <h2 id="lieferanten">Lieferanten <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Lieferant anlegen, Vertreter, Artikel-Verknüpfung (EK-Preis, Bestellnummer, Lieferzeit).</div>
-
-            <h2 id="hersteller">Hersteller <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Hersteller anlegen, EU/REO-Feld, Logo, Verknüpfung mit Artikel.</div>
-
+            <!-- PARTNER -->
             <h2 id="partner">Partner & Mietfächer <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Partnertypen (Kommission/Spende/Mietfach), Mietfach als physische Einheit, Vertragshistorie.</div>
+            <table class="ba-table">
+                <tr><th>Typ</th><th>Was ist das?</th></tr>
+                <tr><td><strong>Mietfach</strong></td><td>Physischer Platz im Geschäft — Partner verkauft eigene Ware</td></tr>
+                <tr><td><strong>Kommission</strong></td><td>Ware des Partners wird bei uns verkauft — Partner bekommt Anteil</td></tr>
+                <tr><td><strong>Spende</strong></td><td>Überschussware gespendet, Gegenwert protokolliert</td></tr>
+            </table>
+            <p><strong>Mietfach zuweisen:</strong> Partner öffnen → Tab Mietfächer → "Mietfach zuweisen" → Nummer, Mietbeginn, Monatsbetrag → Speichern. Vertragshistorie bleibt immer erhalten.</p>
 
+            <!-- EINSTELLUNGEN -->
+            <h2 id="einstellungen">Einstellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>Navigation: oben rechts ⚙ Einstellungen. Vier Tabs: <strong>Firma · Kanäle · Mail/SMTP · System</strong>.</p>
+            <p><strong>Firma:</strong> Firmenname, Adresse, Logo — erscheinen auf allen Rechnungen und Dokumenten. Vor dem ersten Druck ausfüllen!</p>
+            <p><strong>Kanäle:</strong> WooCommerce-Shops verwalten (Name, URL, API-Schlüssel, Logo).</p>
+            <p><strong>System:</strong> Preisanzeige in Aufträgen (Brutto/Netto), Kleinunternehmer-Modus, PLC-Polling-Ordner.</p>
+
+            <h3 id="einstellungen-mail">Mail / SMTP <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <table class="ba-table">
+                <tr><th>Feld</th><th>Beispiel</th></tr>
+                <tr><td>SMTP-Host</td><td>mail.gmx.net</td></tr>
+                <tr><td>SMTP-Port</td><td>587</td></tr>
+                <tr><td>Verschlüsselung</td><td>tls</td></tr>
+                <tr><td>Absender-Name</td><td>MEALANA KG</td></tr>
+                <tr><td><strong>Mail aktiv</strong></td><td>Muss auf "Ja" stehen!</td></tr>
+            </table>
+            <p><strong>Test-Mail:</strong> E-Mail-Adresse eingeben → "Test-Mail senden" → Postfach prüfen.</p>
+            <div class="ba-hint">💡 "Mail aktiv = Nein": System protokolliert intern, sendet aber nichts. Gut zum Testen.</div>
+
+            <!-- LIEFERANTEN -->
+            <h2 id="lieferanten">Lieferanten <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>Lieferanten werden bei den Artikel-Stammdaten verwaltet (Artikel → Tab Lieferanten). Dort: EK-Preis, Lieferanten-Artikelnummer, Lieferzeit und Mindestbestellmenge je Lieferant.</p>
+
+            <!-- HERSTELLER -->
+            <h2 id="hersteller">Hersteller <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>Hersteller anlegen: Artikel → Hersteller → Neu. Felder: Name, Logo, Website, GPSR-Kontakt (EU-Produktsicherheitsverordnung). Hersteller werden dann bei jedem Artikel zugeordnet.</p>
+
+            <!-- BENUTZER -->
             <h2 id="benutzer">Benutzer & Rechte <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <div class="ba-placeholder">Kapitel wird ergänzt: Rollen (superadmin/admin/mitarbeiter), Benutzer anlegen, Berechtigungsmatrix.</div>
+            <p>Rollen: <strong>superadmin</strong> (alles), <strong>admin</strong> (alles außer System), <strong>mitarbeiter</strong> (eingeschränkt).</p>
+            <p>Benutzer verwalten: Einstellungen → Benutzer (im Aufbau — aktuell über Datenbankzugriff).</p>
 
+            <!-- KASSE -->
             <h2 id="kasse">Kasse <span class="ba-badge ba-badge-geplant">Geplant</span></h2>
-            <div class="ba-placeholder">Kapitel folgt wenn Kasse implementiert ist: RKSV, Fiskaly, Barcode-Scan, Zahlarten, Tagesabschluss.</div>
+            <p>Kommt nach dem Packplatz-Modul. Geplant: Barcode-Scan, Zahlarten (Bar/Karte/Gutschein), RKSV-Signatur (BFR BONit), Tagesabschluss.</p>
 
-            <h2 id="verkauf">Verkauf & Aufträge <span class="ba-badge ba-badge-geplant">Geplant</span></h2>
-            <div class="ba-placeholder">Kapitel folgt wenn Verkauf implementiert ist: Auftragserfassung, Vorkasse/PayPal, Mahnläufe, Fehlbestand-Konzept.</div>
-
+            <!-- INVENTUR -->
             <h2 id="inventur">Inventur <span class="ba-badge ba-badge-geplant">Geplant</span></h2>
-            <div class="ba-placeholder">Kapitel folgt wenn Inventur implementiert ist: mobile Zählliste, EAN-Scan, Abschluss mit Differenzprotokoll.</div>
+            <p>Kommt nach der Kasse. Geplant: Mobile Zählliste per EAN-Scan, Abschluss mit Differenzprotokoll, Übernahme in Lagerbestand.</p>
 
         </div>
     </div>
