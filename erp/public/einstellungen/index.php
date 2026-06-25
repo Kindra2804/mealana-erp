@@ -276,8 +276,19 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             <div class="form-group" style="grid-column:1/-1">
                 <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px">
                     <input type="checkbox" name="mail_aktiv" value="1" <?= ($rows['mail_aktiv'] ?? '0') === '1' ? 'checked' : '' ?>>
-                    <span>Mailversand aktiv (deaktiviert = alle Mails werden nur geloggt, nicht versendet)</span>
+                    <span>Mailversand aktiv (deaktiviert = Mails werden nicht versendet, außer Test-Adresse ist gesetzt)</span>
                 </label>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Test-Adresse (optional)</label>
+                <input type="email" name="mail_test_adresse" class="erp-input"
+                       value="<?= htmlspecialchars($rows['mail_test_adresse'] ?? '') ?>"
+                       placeholder="z.B. jacky@mealana.at"
+                       style="max-width:280px">
+                <div style="font-size:12px;color:var(--color-text-muted);margin-top:4px">
+                    Wenn Mailversand deaktiviert und eine Test-Adresse eingetragen ist:
+                    Mails werden an diese Adresse umgeleitet (Betreff enthält den echten Empfänger).
+                </div>
             </div>
         </div>
     </div>

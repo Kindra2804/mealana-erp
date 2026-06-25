@@ -44,9 +44,18 @@ class Mailer
         bool   $erzwinge = false,
         array  $anhaenge = []
     ): void {
-        if (!$erzwinge && ($this->config['mail_aktiv'] ?? '0') !== '1') {
-            error_log("[Mailer] Mail NICHT gesendet (deaktiviert): An={$empfaenger} Betreff={$betreff}");
-            return;
+        $mailAktiv    = ($this->config['mail_aktiv']       ?? '0') === '1';
+        $testAdresse  =  trim($this->config['mail_test_adresse'] ?? '');
+
+        if (!$erzwinge && !$mailAktiv) {
+            if ($testAdresse) {
+                // Testmodus: Mail an Test-Adresse umleiten statt verwerfen
+                $betreff    = '[TEST an ' . $empfaenger . '] ' . $betreff;
+                $empfaenger = $testAdresse;
+            } else {
+                error_log("[Mailer] Mail NICHT gesendet (deaktiviert, kein Test-Empfänger): An={$empfaenger} Betreff={$betreff}");
+                return;
+            }
         }
 
         $mail = new PHPMailer(true);

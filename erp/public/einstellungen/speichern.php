@@ -142,6 +142,7 @@ if ($tab === 'mail') {
     setSetting($db, 'mail_from_name',       trim($_POST['mail_from_name'] ?? ''));
     setSetting($db, 'mail_from_address',    trim($_POST['mail_from_address'] ?? ''));
     setSetting($db, 'mail_aktiv',           isset($_POST['mail_aktiv']) ? '1' : '0');
+    setSetting($db, 'mail_test_adresse',   trim($_POST['mail_test_adresse'] ?? ''));
 
     // Passwort nur speichern wenn neu eingegeben (nicht leer)
     $neuesPasswort = $_POST['mail_smtp_pass'] ?? '';

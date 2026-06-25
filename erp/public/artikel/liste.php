@@ -46,7 +46,7 @@ function spalteHeader(string $key, string $aktSort, string $aktDir, array $getPa
     switch ($key) {
         case 'status':        return '<th style="width:130px">STATUS</th>';
         case 'shops':         return '<th style="width:100px">SHOPS</th>';
-        case 'bestand':       return '<th style="width:60px;text-align:right" title="Physischer Gesamtbestand">' . sortKopf('bestand', 'BST.', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'bestand':       return '<th style="width:80px;text-align:right" title="Ist · Reserviert · Verfügbar">' . sortKopf('bestand', 'BESTAND', $aktSort, $aktDir, $getParams) . '</th>';
         case 'preis':         return '<th style="width:90px;text-align:right">' . sortKopf('preis', 'PREIS', $aktSort, $aktDir, $getParams) . '</th>';
         case 'hersteller':    return '<th style="width:110px">' . sortKopf('hersteller', 'HERSTELLER', $aktSort, $aktDir, $getParams) . '</th>';
         case 'artikeltyp':    return '<th style="width:80px">' . sortKopf('artikeltyp', 'TYP', $aktSort, $aktDir, $getParams) . '</th>';
@@ -72,7 +72,16 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
         case 'shops':
             return '<td class="kanal-cell">' . renderShopChips($a) . '</td>';
         case 'bestand':
-            return '<td style="text-align:right" class="' . $bstKlasse . '" ' . $bstTitle . '>' . formatBestand($a['gesamtbestand']) . '</td>';
+            $ist  = (float)$a['gesamtbestand'];
+            $res  = (float)($a['reserviert'] ?? 0);
+            $verf = $ist - $res;
+            $html = formatBestand($ist);
+            if ($res > 0) {
+                $vc   = $verf <= 0 ? '#dc2626' : ($verf <= 2 ? '#d97706' : '#059669');
+                $html .= '<br><span style="font-size:10px;color:#d97706">' . formatBestand($res) . ' res.</span>';
+                $html .= '<br><span style="font-size:10px;color:' . $vc . ';font-weight:600">' . formatBestand($verf) . ' verf.</span>';
+            }
+            return '<td style="text-align:right;line-height:1.6" class="' . $bstKlasse . '" ' . $bstTitle . '>' . $html . '</td>';
         case 'preis':
             if (!$a['brutto_vk']) return '<td style="text-align:right" class="preis-cell">–</td>';
             $ab = $hatTeureresKind ? '<span style="font-size:10px;color:var(--color-text-muted)">ab </span>' : '';
@@ -112,7 +121,17 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
 function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kindBstTitle, string $kindStatusChips): string {
     switch ($key) {
         case 'status':   return '<td class="status-cell">' . $kindStatusChips . '</td>';
-        case 'bestand':  return '<td style="text-align:right;font-size:12px" class="' . $kindBstKlasse . '" ' . $kindBstTitle . '>' . formatBestand($k['gesamtbestand']) . '</td>';
+        case 'bestand':
+            $kist  = (float)$k['gesamtbestand'];
+            $kres  = (float)($k['reserviert'] ?? 0);
+            $kverf = $kist - $kres;
+            $khtml = formatBestand($kist);
+            if ($kres > 0) {
+                $kvc   = $kverf <= 0 ? '#dc2626' : ($kverf <= 2 ? '#d97706' : '#059669');
+                $khtml .= '<br><span style="font-size:10px;color:#d97706">' . formatBestand($kres) . ' res.</span>';
+                $khtml .= '<br><span style="font-size:10px;color:' . $kvc . '">' . formatBestand($kverf) . ' verf.</span>';
+            }
+            return '<td style="text-align:right;font-size:12px;line-height:1.6" class="' . $kindBstKlasse . '" ' . $kindBstTitle . '>' . $khtml . '</td>';
         case 'preis':    return '<td style="text-align:right;font-size:12px" class="preis-cell">' . ($k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–') . '</td>';
         case 'ean':      return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['ean'] ?? '–') . '</td>';
         case 'charge':   return '<td style="text-align:center">' . ($k['charge_pflicht'] ? '✓' : '') . '</td>';
