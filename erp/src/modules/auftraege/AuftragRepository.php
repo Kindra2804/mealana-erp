@@ -281,6 +281,39 @@ class AuftragRepository
     }
 
     /**
+     * Legt Lagerreservierungen für alle Positionen eines neuen Auftrags an.
+     */
+    public function legeReservierungenAn(int $auftragId, array $positionen, string $kanal): void
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO reservierungen
+                (artikel_id, lager_id, menge, kanal, referenz_tabelle, referenz_id, status)
+            VALUES
+                (:artikel_id, 1, :menge, :kanal, 'auftraege', :referenz_id, 'offen')
+        ");
+        foreach ($positionen as $pos) {
+            if (empty($pos['artikel_id'])) continue;
+            $stmt->execute([
+                ':artikel_id'  => (int)$pos['artikel_id'],
+                ':menge'       => (int)$pos['menge'],
+                ':kanal'       => $kanal,
+                ':referenz_id' => $auftragId,
+            ]);
+        }
+    }
+
+    /**
+     * Schließt alle Reservierungen eines Auftrags (nach Versand oder Stornierung).
+     */
+    public function schliesseReservierungen(int $auftragId): void
+    {
+        $this->db->prepare("
+            UPDATE reservierungen SET status = 'erledigt'
+            WHERE referenz_tabelle = 'auftraege' AND referenz_id = :id AND status = 'offen'
+        ")->execute([':id' => $auftragId]);
+    }
+
+    /**
      * Aktualisiert Zahlungs- und/oder Lieferstatus sowie optionale Felder.
      */
     public function updateStatus(int $id, array $felder): void

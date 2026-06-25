@@ -124,6 +124,9 @@ class AuftragService
             ]));
         }
 
+        // Lagerreservierungen anlegen (für Bestand-Anzeige und Picklisten-Allocation)
+        $this->repo->legeReservierungenAn($id, $berechnetePos, $auftragData['kanal'] ?? 'manuell');
+
         $this->repo->logStatus($id, ['lieferstatus' => [null, 'neu'], 'zahlungsstatus' => [null, 'ausstehend']], 'Auftrag angelegt', $_SESSION['benutzer']['id']);
         Logger::log('auftraege.anlegen', 'auftraege', $id, [
             'kanal'       => $auftragData['kanal'],
@@ -167,6 +170,11 @@ class AuftragService
             $this->repo->updateStatus($id, $update);
             $this->repo->logStatus($id, $changes, $notiz, $_SESSION['benutzer']['id']);
             Logger::log('auftraege.status', 'auftraege', $id, $changes);
+
+            // Reservierungen schließen wenn Auftrag versendet oder abgeschlossen
+            if (isset($changes['lieferstatus']) && in_array($changes['lieferstatus'][1], ['versendet', 'abgeschlossen'])) {
+                $this->repo->schliesseReservierungen($id);
+            }
         }
 
         return ['erfolg' => true];
@@ -197,6 +205,8 @@ class AuftragService
             'lieferstatus'   => [$auftrag['lieferstatus'], 'storniert'],
             'zahlungsstatus' => [$auftrag['zahlungsstatus'], 'storniert'],
         ], $notiz ?? 'Auftrag storniert', $_SESSION['benutzer']['id']);
+
+        $this->repo->schliesseReservierungen($id);
 
         Logger::log('auftraege.stornieren', 'auftraege', $id);
         return ['erfolg' => true];

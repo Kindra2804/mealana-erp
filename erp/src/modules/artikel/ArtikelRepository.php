@@ -597,7 +597,8 @@ class ArtikelRepository
                 ueberverkauf_erlaubt    = :ueberverkauf_erlaubt,
                 aktiv                  = :aktiv,
                 zustand                = :zustand,
-                zustand_vater_id       = :zustand_vater_id
+                zustand_vater_id       = :zustand_vater_id,
+                lieferzeit_text        = :lieferzeit_text
             WHERE id = :id
         ");
 
@@ -606,8 +607,20 @@ class ArtikelRepository
         $data['hoehe']            = $data['hoehe']            ?? null;
         $data['zustand']          = $data['zustand']          ?? 'neu';
         $data['zustand_vater_id'] = $data['zustand_vater_id'] ?? null;
+        $data['lieferzeit_text']  = $data['lieferzeit_text']  ?? null;
 
-        $stmt->execute($data);
+        // Nur die Keys übergeben die im SQL definiert sind (PHP 8.x PDO wirft HY093 bei Extra-Keys)
+        $erlaubt = [
+            'id', 'artikelnummer', 'hersteller_id', 'steuerklasse_id', 'artikeltyp_id',
+            'name', 'kurzbeschreibung', 'beschreibung', 'technische_details', 'beschreibung_intern',
+            'meta_titel', 'meta_description', 'url_slug',
+            'einheit_id', 'inhalt_menge', 'inhalt_einheit',
+            'gewicht_artikel', 'gewicht_versand', 'laenge', 'breite', 'hoehe',
+            'herkunftsland', 'taric_code', 'grundpreis_bezugsmenge', 'grundpreis_anzeigen',
+            'charge_pflicht', 'ist_auslaufartikel', 'ueberverkauf_erlaubt', 'aktiv',
+            'zustand', 'zustand_vater_id', 'lieferzeit_text',
+        ];
+        $stmt->execute(array_intersect_key($data, array_flip($erlaubt)));
         return true;
     }
 
