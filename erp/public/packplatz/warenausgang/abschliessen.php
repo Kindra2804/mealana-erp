@@ -108,7 +108,13 @@ if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand') {
 
 // ─── Versandmail senden ───────────────────────────────────────────────────────
 $kunden = json_decode($auftrag['kunden_snapshot'] ?? '{}', true);
-$lieferAdr = json_decode($auftrag['lieferadresse_snapshot'] ?? $auftrag['kunden_snapshot'] ?? '{}', true);
+if (!empty($auftrag['lieferadresse_snapshot'])) {
+    $lieferAdr = json_decode($auftrag['lieferadresse_snapshot'], true);
+} elseif (!empty($auftrag['rechnungsadresse_snapshot'])) {
+    $lieferAdr = json_decode($auftrag['rechnungsadresse_snapshot'], true);
+} else {
+    $lieferAdr = json_decode($auftrag['kunden_snapshot'] ?? '{}', true);
+}
 $email  = $kunden['email'] ?? '';
 $name   = trim(($kunden['vorname'] ?? '') . ' ' . ($kunden['nachname'] ?? '')) ?: ($kunden['firma'] ?? '');
 

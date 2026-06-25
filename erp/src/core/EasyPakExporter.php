@@ -23,7 +23,14 @@ class EasyPakExporter
         $firma = $this->db->query("SELECT schluessel, wert FROM system_einstellungen")
                           ->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        $lieferAdr = json_decode($auftrag['lieferadresse_snapshot'] ?? $auftrag['kunden_snapshot'] ?? '{}', true);
+        // Fallback-Kette: Lieferadresse → Rechnungsadresse → Kunden-Snapshot
+        if (!empty($auftrag['lieferadresse_snapshot'])) {
+            $lieferAdr = json_decode($auftrag['lieferadresse_snapshot'], true);
+        } elseif (!empty($auftrag['rechnungsadresse_snapshot'])) {
+            $lieferAdr = json_decode($auftrag['rechnungsadresse_snapshot'], true);
+        } else {
+            $lieferAdr = json_decode($auftrag['kunden_snapshot'] ?? '{}', true);
+        }
         $land      = $this->landISO($lieferAdr['land'] ?? 'Österreich');
         $istEU     = $this->istEU($land);
         $nachnahme = $auftrag['zahlungsart'] === 'nachnahme';
