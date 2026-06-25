@@ -283,7 +283,7 @@ class PreisRepository
             JOIN kundengruppen k ON ap.kundengruppen_id = k.id
             WHERE ap.artikel_id = :artikel_id
             AND ap.kundengruppen_id = :kundengruppen_id
-            AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
+            AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= NOW())
             AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= NOW())
             LIMIT 1
         ");
@@ -309,6 +309,8 @@ class PreisRepository
             JOIN kundengruppen k ON ap.kundengruppen_id = k.id
             WHERE ap.artikel_id = :artikel_id
             AND k.ist_standard = 1
+            AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= NOW())
+            AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= NOW())
             LIMIT 1
         ");
 
