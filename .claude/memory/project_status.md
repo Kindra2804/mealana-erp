@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-24 (Session 9)
+Stand: 2026-06-25 (Session 10)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -22,166 +22,82 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ```
 
 ## Schema-Referenz
-- 58 Migrations angewendet (001–058)
-- aktionen (042): umgebaut aus preis_aktionen, kein typ/zeitraum mehr auf Aktion selbst
-- aktionen_kategorien (042): Kategorie ↔ Aktion + Zeitraum pro Zuweisung
-- aktionen_artikel_preise (042): Preiseingaben pro Aktion + Vater + Sub-Achse + KG
-- aktionen.gestartet (043): manueller Start-Flag
-- kundengruppen.ist_standard (044): ersetzt rabatt_prozent, Endkunden = 1
-- artikel_bilder + artikel_bilder_shops (045)
-- zahlungsbedingungen (046): geteilt Kunden + Lieferanten, 5 Standard-Einträge
-- kunden + kunden_adressen + kunden_ansprechpartner + kunden_dsgvo_consent + kunden_shops + kunden_merge_queue (047): AES-256-GCM Verschlüsselung, Laufkunde id=1
-- hersteller: ALTER TABLE (048) — handelsname, email, strasse, plz, ort, logo_pfad, reo_name/strasse/plz/ort/land/email
-- partner + mietfaecher (049-052): Stamm, Belege, Spenden-Log, artikel_partner
-- mietfaecher redesign (053): physische Stammdaten, mietfach_mietvertraege (History)
-- partner.typ ENUM + 'mietfach' (054)
+- 69 Migrations angewendet (001–069)
+- Wichtige neue Tabellen: mahnungen (069), shops (067), auftraege/auftrag_positionen/rechnungen/auftrag_dokumente/auftrag_statuslog (060–062)
 - Dump aktualisieren: `& "C:\xampp\mysql\bin\mysqldump.exe" --host=localhost --user=root --no-tablespaces --routines --skip-comments mealana_erp | Out-File -FilePath "D:\ERP\mealana\erp\database\schema_current.sql" -Encoding utf8`
 
-## ✅ Fertige Module (Stand 2026-06-19)
+## ✅ Fertige Module (Stand 2026-06-25)
 
-### Artikel-Modul (erp/public/artikel/ — 36+ PHP-Dateien)
-- CRUD: neu, bearbeiten, detail, kopieren, delete
-- detail.php: 7 Tabs (Stammdaten, Varianten, Preise, Lager, Bilder*, Merkmale*, Lieferanten, SEO)
-- Preise: Kundengruppen, Staffel, UVP, Aktionen
-- Texte: kurzbeschreibung, beschreibung, technische_details, beschreibung_intern
-- Physikalisch: Gewicht, Maße, Versandklasse
-- SEO: meta_titel, meta_description, url_slug + seo_speichern.php
-- Zustandsartikel: 8 Zustände, in Liste eingerückt unter Vater
-- Artikel-Liste: Spalten-Picker (user-spezifisch), Massenauswahl, Sticky-Spalten, Loop-Rendering
-- Kategorien: Baum-Manager (AJAX CRUD, Drag-Drop Sort) + ist_aktions_kategorie Checkbox + ⏰-Symbol
-- Lieferanten-Tab: CRUD, Modal, AJAX-Save
-- Chargen-Tracking, Auslaufartikel, Überverkauf
-- deaktiviert_mit_vater + auslauf_mit_vater Kaskaden-Logik
-- Hersteller-Dropdown: + Button (schnell_speichern.php) in neu.php + bearbeiten.php
-
-### Vater-Kind Vererbung ✅ VOLLSTÄNDIG (2026-06-19)
-- erstelleKombinationen(): erbt alle ~25 Felder vom Vater (vorher nur 4)
-- kopiereVaterRelationenZuKindern(): Kategorien + Merkmale + Lieferanten + Preise beim Erstellen
-- propagiereZuKindern(): alle gemeinsamen Felder beim Vater-Update an Kinder
-- syncKategorienZuKindern(): Kategorie-Sync beim saveKategorien()
+### Artikel-Modul ✅ VOLLSTÄNDIG
+- CRUD, 7 Tabs, Varianten, Preise, Bilder, Merkmale, Lieferanten, SEO
+- lieferzeit_text: in detail.php + aktualisieren.php (erscheint auf Dokumenten wenn Lagerbestand=0)
+- Vater-Kind Vererbung vollständig
 
 ### Achsen-Modul ✅ VOLLSTÄNDIG
 ### Varianten-System ✅ VOLLSTÄNDIG
+### Lager-Modul ✅ VOLLSTÄNDIG
+### Lieferanten-Modul ✅ VOLLSTÄNDIG
+### Aktions-Modul ✅ VOLLSTÄNDIG
+### PreisService ✅ VOLLSTÄNDIG
+### Kunden-Modul ✅ VOLLSTÄNDIG (AES-256-GCM, DSGVO)
+### Partner-Modul ✅ VOLLSTÄNDIG (Mietfächer, Vertragshistory)
+### Hersteller-Modul ✅ VOLLSTÄNDIG (GPSR-Felder)
+### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG
 
-### Lager-Modul (erp/public/lager/)
-- Wareneingang mit EAN-Scan, Chargen-Tracking, Bewegungslog
+### Auftragsmodul/Verkauf ✅ WEITGEHEND FERTIG (2026-06-25)
+- Migrations 060–068 eingespielt
+- liste, neu, detail, bearbeiten (Positionen änderbar bis versendet/abgeschlossen), aktualisieren, stornieren
+- Dokumente: Rechnung, Auftragsbestätigung, Lieferschein, Abholzettel, Gutschrift (Vollstorno + Teilgutschrift)
+- detail.php: Adressboxen (RGN + Lieferadr), Verlauf einklappbar, Rechnung-Guard (kein Duplikat)
+- Gutschrift: erstelleGutschrift() in DokumentService, gutschrift_erstellen.php + gutschrift_speichern.php
+- DokumentService + DokumentRepository: wiederverwendbar für Kassa (gleicher Service, anderes UI)
 
-### Lieferanten-Modul (erp/public/lieferanten/)
-- CRUD + Vertreter
+### Einstellungen-Modul ✅ NEU (2026-06-25)
+- public/einstellungen/index.php — 4 Tabs: Firma / Kanäle / Mail+SMTP / System
+- Tab Firma: Adresse, UID, IBAN, Bank, Logo-Upload → befüllt PDF-Header/Footer sofort
+- Tab Kanäle: shops-Tabelle CRUD, Logo-Upload pro Kanal, WC-URL
+- Tab Mail/SMTP: Host, Port, User, Pass, Verschlüsselung, Absender + Test-Mail-Button
+- Tab System: Preisanzeige, Kleinunternehmer-Modus
+- ⚙️-Icon in Top-Nav jetzt aktiv (war disabled)
+- speichern.php + test_mail.php
 
-### Berechtigungssystem
-- 3 Rollen: superadmin, admin, mitarbeiter
-- 47 Permissions im Format modul.aktion
+### Mail-Infrastruktur ✅ NEU (2026-06-25)
+- PHPMailer ^7.1 via Composer (zip-Extension in php.ini aktiviert)
+- src/core/Mailer.php: SMTP-Wrapper, liest Config aus system_einstellungen
+- sendeTemplate(): Twig-Render + Mail in einem Schritt
+- mail_aktiv-Flag: 0 = nur loggen, 1 = wirklich senden; Test-Mail umgeht Flag
+- templates/mails/basis_layout.html.twig + mahnwesen/erinnerung.html.twig + stornierung.html.twig
 
-### Aktions-Modul ✅ VOLLSTÄNDIG (2026-06-18)
-### PreisService ✅ VOLLSTÄNDIG (2026-06-18)
+### Mahnwesen-Cronjob ✅ NEU (2026-06-25)
+- erp/cron/mahnwesen.php — täglich ausführen (empfohlen 06:00)
+- 14+ Tage unbezahlt → Erinnerungsmail (einmalig pro Auftrag)
+- 30+ Tage unbezahlt → automatische Stornierung + Lagerrückbuchung + Stornierungsmail
+- Protokoll in mahnungen-Tabelle (Migration 069)
+- Betrifft nur: zahlungsart='rechnung' + zahlungsstatus='offen' + nicht storniert/abgeschlossen
+- Windows Task Scheduler / Linux crontab — Befehl steht als Kommentar im File
 
-### Kunden-Modul ✅ VOLLSTÄNDIG (2026-06-19)
-- Migrations 046+047, AES-256-GCM, Laufkunde id=1
-- DSGVO-Consent-Log, Adressen-Modals
+## 🔴 Noch nicht gebaut (Reihenfolge = geplante Priorität)
 
-### Partner-Modul ✅ VOLLSTÄNDIG (2026-06-21)
-- Migrations 049–054 eingespielt
-- Partner-Typen: mietfach / kommission / spende / beides (+ Auto-Beleg-Typ)
-- Mietfächer als physische Einheiten (Maße, Ort, Standardpreis)
-- Mietverträge mit History (vertrag_starten / vertrag_beenden)
-- public/partner/: liste.php, mietfaecher.php + alle AJAX-Endpoints
-- MietfachRepository + MietfachService
-
-### Hersteller-Modul ✅ VOLLSTÄNDIG (2026-06-19)
-- Migration 048: GPSR-Felder (Adresse, E-Mail, Handelsname, Logo, REO)
-- HerstellerRepository + HerstellerService (EU-Check, GPSR-Status, Logo GD-Upload 200×200)
-- public/hersteller/: liste.php (Modal Neu+Bearbeiten), speichern, aktualisieren, loeschen, schnell_speichern
-- GPSR-Status-Chip: ✓ EU / ✓ REO / ⚠ REO fehlt
-- REO-Sektion im Modal: auto show/hide je nach Land (EU/nicht-EU)
-- shell_top.php: Hersteller im Artikel-Sidebar + eigenes Modul 'hersteller'
-- GPSR-Basis: EU 2023/988, seit 13.12.2024: Name, Adresse, E-Mail Pflicht im Shop
-- Drops (NO) + Lang Yarns (CH) = nicht EU → REO erforderlich!
-
-## 🟡 Offene Bugs
-
-| Bug | Priorität |
-|-----|-----------|
-| Aktions-Kategorie-Zuweisung: kein Auto-Aktionspreis | MITTEL |
-
-### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG (2026-06-23)
-- Migrations 055–059: meldebestand/sicherheitsbestand/standardbestellmenge, bestellungen, bestellung_positionen (inkl. lieferzeit_text 059), bestellung_eingaenge
-- BestellungRepository + BestellungService + WareneingangRepository + WareneingangService
-- public/bestellungen/: liste, neu, detail, bearbeiten (Header+Positionen+neue hinzufügen), aktualisieren, speichern, rechnung_speichern, stornieren + AJAX (artikel_ajax ?q=/?alle=1, reserviert_ajax)
-- public/wareneingang/: index (EAN-Scan + Kacheln), detail (Scan-Modus + Abschluss-Dialog + ✏ Artikel-bearbeiten pro Zeile), speichern, abschliessen + AJAX
-- Packplatz-ready: wareneingang als eigenständiges Modul
-- Reserviert-Infobox: VPE-Berechnung + 1-Klick Übernahme in Bestellung
-- Teillieferung-Dialog: "warten" oder "Rest streichen" (DROPS-Modell mit Gutschrift-Notiz)
-- Artikelbild beim Scan-Modus (Fehlerreduktion)
-- Shell: Einkauf-Nav → bestellungen/liste.php, Sidebar: Bestellungen + Wareneingang + Lieferanten
-
-**Babsi-Feedback (alle erledigt 2026-06-23):**
-- **Punkt 2** — EAN nicht gefunden → "Neuen Artikel anlegen" → Session-Breadcrumb → artikel/neu.php mit EAN vorbelegt → nach Save zurück zu WE mit EAN auto-gesucht
-  - wareneingang/artikel_vorbereiten.php (setzt $_SESSION['we_ean'] + we_rueckkehr)
-  - artikel/neu.php + speichern.php: Breadcrumb-Banner + Redirect zurück
-- **Punkt 1** — Artikel gefunden, keine offene Bestellung → "Zur Sammelliste" → Session-Durchlauf sammeln → Lieferant wählen → Bestellung anlegen + sofort erledigt buchen
-  - wareneingang/durchlauf_add.php + durchlauf_clear.php + bestellung_aus_durchlauf.php
-  - wareneingang/index.php: Sammelliste-Box oben wenn Durchlauf nicht leer
-- **Szenario B** — ✏-Button in WE-Detailansicht pro Position → Artikel bearbeiten → zurück zu WE
-  - wareneingang/artikel_bearbeiten_vorbereiten.php (Session-Breadcrumb)
-  - artikel/bearbeiten.php + aktualisieren.php: Breadcrumb-Banner + Redirect zurück
-- **bestellungen/bearbeiten.php** — Header-Edit + bestehende Positionen anzeigen + neue Positionen hinzufügen (Typeahead alle Artikel via ?alle=1)
-- **JS-Validierung** in bestellungen/neu.php: Artikel muss aus Typeahead geklickt werden (nicht nur getippt)
-- **ArtikelRepository Bugfix**: Qualitätslisten suchten `typ='ean'` statt `typ='GTIN13'` — behoben
-
-## ✅ Modulpflege abgeschlossen (2026-06-23)
-- **JS auslagern**: 21 JS-Dateien aus 21 PHP-Dateien extrahiert (kein inline JS-Block mehr außer PHP-Var-Initialisierern mit `window.*`)
-  - PHP→JS Brücke: `<script>window.VAR = <?= ... ?>;</script>` inline, dann `<script src="/mealana/js/xxx.js">` extern
-  - Erstellt: shell.js, artikel.js, artikel_detail.js, artikel_neu.js, artikel_bearbeiten.js, aktionen.js, aktionen_liste.js, bestellungen_neu.js, bestellungen_bearbeiten.js, wareneingang_index.js, wareneingang_detail.js, lager_wareneingang.js, partner_liste.js, partner_mietfaecher.js, achsen_liste.js, achsen_zuweisen.js, kategorien_verwalten.js, merkmale_verwalten.js, kunden.js, kunden_detail.js, hersteller_liste.js
-- **Bedienungsanleitung**: `public/bedienungsanleitung.php` mit TOC + Kapitel-Platzhaltern (Fertig/Geplant-Badges). 📖-Link in Top-Nav.
-
-### Auftragsmodul/Verkauf 🟡 IN ARBEIT (2026-06-24)
-- Migrations 060–062: auftraege, auftrag_positionen, rechnungen, auftrag_dokumente, auftrag_statuslog
-- Nummernkreise A-2026-XXXXX (Auftrag) + R-2026-XXXXX (Rechnung) via dokument_nummern
-- AuftragRepository + AuftragService: anlegen, statusAktualisieren, stornieren, Vorkasse-Überfälligkeit
-- public/auftraege/: liste (Kanal-Chip + 3 Filter), neu (Artikel+Kunden-Typeahead, Live-Summen), detail (Status-Update, Tracking, Statuslog), speichern, stornieren, status_ajax, artikel_ajax, kunden_ajax
-- Shell: Verkauf-Link aktiv, Sidebar Aufträge/Neuer Auftrag
-- Kunden-Snapshot: AES-verschlüsselte kunden-Felder → Name aus snapshot JSON gelesen
-- Design beschlossen: Gutscheine (project_gutscheine.md), Kassen-Bon Blocks (project_kasse_bon_design.md)
-
-**Offen (nächste Session):**
-- Mahnwesen-Cronjob (14/30 Tage Vorkasse)
-- Dashboard-Widget offene Aufträge / Fehlbestand
-- Rechnung/Lieferschein PDF (Twig + Dompdf — Template-System)
-- bearbeiten.php: Positionen änderbar solange lieferstatus nicht versendet/abgeschlossen (Babsi-Anforderung)
-- Rabatt % vs. Fixbetrag (Migration + UI — design in project_auftragsmodul.md)
-- Steuerflags A/B/C/D auf Rechnung/Bon (RKSV-Pflicht)
-- Versandkostenfrei ab X (system_einstellungen, pro Shop)
-
-**Erledigt heute (2026-06-24):**
-- Migration 063: lieferart ENUM auf auftraege
-- Migration 064: versandklassen.preis_brutto + 5 Standard-Einträge
-- Migration 065: versandklasse_id auf auftraege (FK)
-- Migration 066: preisanzeige_auftrag in system_einstellungen (Standard: brutto)
-- neu.php: Lieferart-Dropdown + Auto-Hide Versandfelder bei Abholung
-- neu.php: Versandklasse-Dropdown mit JS Auto-Fill Versandkosten
-- detail.php: bedingte Brutto/Netto-Spalten je nach system_einstellungen
-- detail.php: Summen-Div unabhängig von Tabelle (kein colspan-Problem mehr)
-
-## 🔴 Noch nicht gebaut
-
-| Modul | Priorität |
-|---|---|
-| Kasse/POS | HOCH (RKSV-Pflicht AT) — Design: project_kasse_bon_design.md |
-| Inventur | MITTEL |
-| Shop-Export (inkl. WooCommerce Kunden-Sync) | MITTEL — Design-Entscheidungen 2026-06-21 fertig (siehe db_design_entscheidungen.md) |
-| Gutschein-Modul | MITTEL — Design fertig (project_gutscheine.md) |
-| Buchhaltung/DATEV | MITTEL |
-| Kunden-Merge-UI (kunden_merge_queue) | NIEDRIG |
-| Seriennummern | NIEDRIG |
-
-## ✅ Modulpflege PHP-Kommentare (2026-06-24)
-- Alle 32 PHP-Klassen in `erp/src/` mit PHPDoc-Klassen-Kommentaren und Methoden-Kommentaren versehen
-- Kommentiert: alle Core-Klassen (Auth, Encryption, Database, Logger) + alle Module
-  (Artikel, Varianten, Achsen, Kategorien, Bilder, Merkmale, Preise, Aktionen, Lager,
-   Lieferanten, Hersteller, Kunden, Partner/Mietfach, Bestellungen, Wareneingang)
+| Modul | Priorität | Anmerkung |
+|---|---|---|
+| Packplatz | HOCH | eigenes Modul public/packplatz/, Tablet-Touch-freundlich |
+| Kasse/POS | HOCH (RKSV-Pflicht AT) | Design: project_kasse_bon_design.md |
+| Zentrales Dokumentenarchiv | MITTEL | alle Dokumente, Filter nach Typ+Zeitraum; wichtig für DATEV-Export |
+| Inventur | MITTEL | inkl. Inventurliste (Druck) + mobile App |
+| Shop-Export / WooCommerce Sync | MITTEL | Design: db_design_entscheidungen.md |
+| Gutschein-Modul | MITTEL | Design: project_gutscheine.md |
+| Buchhaltung/DATEV | MITTEL | Design: project_buchhaltung.md |
+| Etiketten-Modul | MITTEL | ZPL vs. Dompdf — Entscheidung offen |
+| Adressetiketten | MITTEL | A4-Druck, Sichtkuvert |
+| Installationsanleitung | MITTEL | Server-Setup, Composer, Migrations, Cronjobs (inkl. Mahnwesen), RKSV |
+| Abrechnung Mietfach | NIEDRIG | monatlich/quartalsweise |
+| Spendenübersicht Yarnpride | NIEDRIG | |
+| Preisliste | NIEDRIG | |
+| Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
+| Kunden-Merge-UI | NIEDRIG | |
+| Seriennummern | NIEDRIG | |
 
 ## Offene technische Punkte
 - Preis-Query Datums-Filter fehlt (gueltig_ab/gueltig_bis in artikel_preise-JOIN)
-- artikel_achsen.sort_order noch nicht genutzt (UI fehlt)
-- Hersteller: aktualisiert_am Spalte fehlt noch (nicht in Migration 048 aufgenommen)
+- artikel_achsen.sort_order noch nicht genutzt
+- Hersteller: aktualisiert_am Spalte fehlt noch
