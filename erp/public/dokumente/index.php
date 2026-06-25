@@ -103,8 +103,9 @@ function kundenName(string $snapshot): string
 {
     $d = json_decode($snapshot, true);
     if (!$d) return '—';
-    $name = trim(($d['vorname'] ?? '') . ' ' . ($d['nachname'] ?? ''));
-    return $d['firma'] ? $d['firma'] . ($name ? ' / ' . $name : '') : ($name ?: '—');
+    $firma = $d['firma'] ?? null;
+    $name  = trim(($d['vorname'] ?? '') . ' ' . ($d['nachname'] ?? ''));
+    return $firma ? $firma . ($name ? ' / ' . $name : '') : ($name ?: '—');
 }
 
 function buildUrl(array $extra = []): string
