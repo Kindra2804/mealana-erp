@@ -98,7 +98,7 @@ class ArtikelRepository
         } elseif ($sf === 'uv') {
             $conditions[] = "a.ueberverkauf_erlaubt = 1";
         } elseif ($sf === 'fehlbest') {
-            $having = 'HAVING gesamtbestand <= 0';
+            $having = 'HAVING gesamtbestand <= 0 OR (gesamtbestand - reserviert) < 0';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
         }
@@ -223,7 +223,7 @@ class ArtikelRepository
         } elseif ($sf === 'uv') {
             $conditions[] = "a.ueberverkauf_erlaubt = 1";
         } elseif ($sf === 'fehlbest') {
-            $having = 'HAVING gesamtbestand <= 0';
+            $having = 'HAVING gesamtbestand <= 0 OR (gesamtbestand - reserviert) < 0';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
         }

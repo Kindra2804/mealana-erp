@@ -367,7 +367,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <optgroup label="Status">
                 <option value="auslauf"  <?= $statusFilter === 'auslauf'  ? 'selected' : '' ?>>Auslaufartikel</option>
                 <option value="uv"       <?= $statusFilter === 'uv'       ? 'selected' : '' ?>>Überverkauf aktiv</option>
-                <option value="fehlbest" <?= $statusFilter === 'fehlbest' ? 'selected' : '' ?>>Fehlbestand (Bst=0)</option>
+                <option value="fehlbest" <?= $statusFilter === 'fehlbest' ? 'selected' : '' ?>>Fehlbestand / Unterdeckung</option>
                 <option value="inaktiv"  <?= $statusFilter === 'inaktiv'  ? 'selected' : '' ?>>Inaktiv</option>
                 <option value="ohnekat"  <?= $statusFilter === 'ohnekat'  ? 'selected' : '' ?>>Ohne Kategorie</option>
             </optgroup>
