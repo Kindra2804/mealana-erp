@@ -75,12 +75,10 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             $ist  = (float)$a['gesamtbestand'];
             $res  = (float)($a['reserviert'] ?? 0);
             $verf = $ist - $res;
+            $vc   = $verf <= 0 && $ist > 0 ? '#dc2626' : ($verf <= 2 && $res > 0 ? '#d97706' : '#059669');
             $html = formatBestand($ist);
-            if ($res > 0) {
-                $vc   = $verf <= 0 ? '#dc2626' : ($verf <= 2 ? '#d97706' : '#059669');
-                $html .= '<br><span style="font-size:10px;color:#d97706">' . formatBestand($res) . ' res.</span>';
-                $html .= '<br><span style="font-size:10px;color:' . $vc . ';font-weight:600">' . formatBestand($verf) . ' verf.</span>';
-            }
+            $html .= '<br><span style="font-size:10px;color:' . ($res > 0 ? '#d97706' : 'var(--color-text-muted)') . '">' . formatBestand($res) . ' res.</span>';
+            $html .= '<br><span style="font-size:10px;color:' . $vc . ';font-weight:' . ($res > 0 ? '600' : 'normal') . '">' . formatBestand($verf) . ' verf.</span>';
             return '<td style="text-align:right;line-height:1.6" class="' . $bstKlasse . '" ' . $bstTitle . '>' . $html . '</td>';
         case 'preis':
             if (!$a['brutto_vk']) return '<td style="text-align:right" class="preis-cell">–</td>';
@@ -125,12 +123,10 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
             $kist  = (float)$k['gesamtbestand'];
             $kres  = (float)($k['reserviert'] ?? 0);
             $kverf = $kist - $kres;
+            $kvc   = $kverf <= 0 && $kist > 0 ? '#dc2626' : ($kverf <= 2 && $kres > 0 ? '#d97706' : '#059669');
             $khtml = formatBestand($kist);
-            if ($kres > 0) {
-                $kvc   = $kverf <= 0 ? '#dc2626' : ($kverf <= 2 ? '#d97706' : '#059669');
-                $khtml .= '<br><span style="font-size:10px;color:#d97706">' . formatBestand($kres) . ' res.</span>';
-                $khtml .= '<br><span style="font-size:10px;color:' . $kvc . '">' . formatBestand($kverf) . ' verf.</span>';
-            }
+            $khtml .= '<br><span style="font-size:10px;color:' . ($kres > 0 ? '#d97706' : 'var(--color-text-muted)') . '">' . formatBestand($kres) . ' res.</span>';
+            $khtml .= '<br><span style="font-size:10px;color:' . $kvc . '">' . formatBestand($kverf) . ' verf.</span>';
             return '<td style="text-align:right;font-size:12px;line-height:1.6" class="' . $kindBstKlasse . '" ' . $kindBstTitle . '>' . $khtml . '</td>';
         case 'preis':    return '<td style="text-align:right;font-size:12px" class="preis-cell">' . ($k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–') . '</td>';
         case 'ean':      return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['ean'] ?? '–') . '</td>';

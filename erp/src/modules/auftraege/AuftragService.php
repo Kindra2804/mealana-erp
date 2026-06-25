@@ -109,8 +109,9 @@ class AuftragService
             'nettobetrag'               => $summen['netto'],
             'steuerbetrag'              => $summen['steuer'],
             'bruttobetrag'              => $summen['brutto'],
-            'notiz_intern'              => !empty($data['notiz_intern'])    ? $data['notiz_intern']    : null,
+            'notiz_intern'              => !empty($data['notiz_intern'])     ? $data['notiz_intern']     : null,
             'notiz_versand'             => !empty($data['notiz_versand'])   ? $data['notiz_versand']   : null,
+            'kontakt_notiz'             => !empty($data['kontakt_notiz'])   ? $data['kontakt_notiz']   : null,
             'erstellt_von'              => $_SESSION['benutzer']['id'],
         ];
 
