@@ -424,6 +424,8 @@ class AuftragRepository
         $params = ['id' => $id];
 
         $erlaubt = [
+            'kunden_id',
+            'kunden_snapshot',
             'zahlungsart',
             'lieferart',
             'versandklasse_id',

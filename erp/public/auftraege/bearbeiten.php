@@ -34,6 +34,11 @@ $positionen        = $service->getPositionen($id);
 $lieferAdresse     = !empty($auftrag['lieferadresse_snapshot'])    ? json_decode($auftrag['lieferadresse_snapshot'],    true) : [];
 $rechnungsAdresse  = !empty($auftrag['rechnungsadresse_snapshot']) ? json_decode($auftrag['rechnungsadresse_snapshot'], true) : [];
 
+// Sperrpunkt: aktive (nicht stornierte) Rechnung vorhanden → Adressen + Kunde gesperrt
+$rStmt = $db->prepare("SELECT COUNT(*) FROM rechnungen WHERE auftrag_id = ? AND storniert = 0");
+$rStmt->execute([$id]);
+$rechnungGesperrt = (int)$rStmt->fetchColumn() > 0;
+
 
 $pageTitle        = 'Auftrag bearbeiten';
 $activeModule     = 'verkauf';
@@ -60,10 +65,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div class="card-header">Auftragsdaten</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:16px;padding:16px">
 
-            <div class="form-group">
+            <div class="form-group" style="position:relative">
                 <label class="form-label">Kunde</label>
-                <input type="hidden" name="kunden_id" id="kunden-id" value="<?= htmlspecialchars($formdata['kunden_id'] ?? $auftrag['kunden_id']) ?>">
-                <p style="padding:6px 0;font-weight:500"><?= htmlspecialchars($auftrag['kunden_name']) ?></p>
+                <?php if ($rechnungGesperrt): ?>
+                    <p style="padding:6px 0;font-weight:500"><?= htmlspecialchars($auftrag['kunden_name']) ?></p>
+                    <small style="color:var(--color-text-muted)">🔒 Rechnung ausgestellt</small>
+                <?php else: ?>
+                    <input type="hidden" name="kunden_id" id="kunden-id" value="<?= htmlspecialchars($formdata['kunden_id'] ?? $auftrag['kunden_id'] ?? '') ?>">
+                    <input type="text" class="erp-input" id="kunden-suche" placeholder="Name oder E-Mail suchen…"
+                        value="<?= htmlspecialchars($formdata['kunden_name'] ?? $auftrag['kunden_name'] ?? '') ?>" autocomplete="off">
+                    <div id="kunden-dropdown" style="position:absolute;z-index:100;background:#fff;border:1px solid var(--color-border);border-radius:4px;width:320px;display:none"></div>
+                    <small style="color:var(--color-text-muted)">Leer lassen = Laufkunde bleibt</small>
+                <?php endif; ?>
             </div>
 
             <div class="form-group">
@@ -153,12 +166,24 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     <!-- Adressen -->
     <div class="card" style="margin-bottom:12px">
-        <div class="card-header">Adressen</div>
+        <div class="card-header" style="display:flex;align-items:center;gap:10px">
+            Adressen
+            <?php if ($rechnungGesperrt): ?>
+                <span style="font-size:12px;font-weight:400;color:#b45309;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px">
+                    🔒 Gesperrt — Rechnung ausgestellt.
+                    <a href="/mealana/auftraege/detail.php?id=<?= $id ?>#dokumente" style="color:#b45309">Rechnung stornieren</a> um Änderungen vorzunehmen.
+                </span>
+            <?php endif; ?>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px">
+
+            <!-- Rechnungsadresse -->
             <div>
-                <?php if (!empty($rechnungsAdresse)): ?>
-                    <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Rechnungsadresse <span style="font-weight:400">(eingefroren)</span></div>
-                    <p style="font-size:13px;line-height:1.6;color:var(--color-text)">
+                <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">
+                    Rechnungsadresse
+                </div>
+                <?php if ($rechnungGesperrt): ?>
+                    <p style="font-size:13px;line-height:1.8;color:var(--color-text)">
                         <?php if (!empty($rechnungsAdresse['firma'])) echo htmlspecialchars($rechnungsAdresse['firma']) . '<br>'; ?>
                         <?= htmlspecialchars(trim(($rechnungsAdresse['vorname'] ?? '') . ' ' . ($rechnungsAdresse['nachname'] ?? ''))) ?><br>
                         <?= htmlspecialchars(($rechnungsAdresse['strasse'] ?? '') . ' ' . ($rechnungsAdresse['hausnummer'] ?? '')) ?><br>
@@ -167,9 +192,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php if (!empty($rechnungsAdresse['zusatz'])): ?><br><em><?= htmlspecialchars($rechnungsAdresse['zusatz']) ?></em><?php endif; ?>
                     </p>
                 <?php else: ?>
-                    <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Rechnungsadresse <span style="font-weight:400;color:var(--color-warning)">(noch nicht gesetzt)</span></div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                        <?php $rfa = $formdata['rechnungsadresse'] ?? []; $r = fn($f) => htmlspecialchars($rfa[$f] ?? ''); ?>
+                        <?php
+                        $rfa = $formdata['rechnungsadresse'] ?? $rechnungsAdresse;
+                        $r = fn($f) => htmlspecialchars($rfa[$f] ?? '');
+                        ?>
                         <input type="text" name="rechnungsadresse[vorname]"    id="rechnungsadresse_vorname"    class="erp-input" placeholder="Vorname"       value="<?= $r('vorname') ?>">
                         <input type="text" name="rechnungsadresse[nachname]"   id="rechnungsadresse_nachname"   class="erp-input" placeholder="Nachname"      value="<?= $r('nachname') ?>">
                         <input type="text" name="rechnungsadresse[firma]"      id="rechnungsadresse_firma"      class="erp-input" placeholder="Firma (opt.)"  style="grid-column:1/-1" value="<?= $r('firma') ?>">
@@ -182,24 +209,40 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </div>
                 <?php endif; ?>
             </div>
+
+            <!-- Lieferadresse -->
             <div>
-                <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Lieferadresse <span style="font-weight:400">(änderbar)</span></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                    <?php
-                    $lfa = $formdata['lieferadresse'] ?? $lieferAdresse;
-                    $v = fn($f) => htmlspecialchars($lfa[$f] ?? '');
-                    ?>
-                    <input type="text" name="lieferadresse[vorname]"    id="lieferadresse_vorname"    class="erp-input" placeholder="Vorname"       value="<?= $v('vorname') ?>">
-                    <input type="text" name="lieferadresse[nachname]"   id="lieferadresse_nachname"   class="erp-input" placeholder="Nachname"      value="<?= $v('nachname') ?>">
-                    <input type="text" name="lieferadresse[firma]"      id="lieferadresse_firma"      class="erp-input" placeholder="Firma (opt.)"  style="grid-column:1/-1" value="<?= $v('firma') ?>">
-                    <input type="text" name="lieferadresse[strasse]"    id="lieferadresse_strasse"    class="erp-input" placeholder="Straße"        value="<?= $v('strasse') ?>">
-                    <input type="text" name="lieferadresse[hausnummer]" id="lieferadresse_hausnummer" class="erp-input" placeholder="Nr."           value="<?= $v('hausnummer') ?>">
-                    <input type="text" name="lieferadresse[plz]"        id="lieferadresse_plz"        class="erp-input" placeholder="PLZ"           value="<?= $v('plz') ?>" style="width:80px">
-                    <input type="text" name="lieferadresse[ort]"        id="lieferadresse_ort"        class="erp-input" placeholder="Ort"           value="<?= $v('ort') ?>">
-                    <input type="text" name="lieferadresse[land]"       id="lieferadresse_land"       class="erp-input" placeholder="Land"          value="<?= $v('land') ?: 'AT' ?>" style="width:60px">
-                    <input type="text" name="lieferadresse[zusatz]"     id="lieferadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= $v('zusatz') ?>">
+                <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">
+                    Lieferadresse
                 </div>
+                <?php if ($rechnungGesperrt): ?>
+                    <p style="font-size:13px;line-height:1.8;color:var(--color-text)">
+                        <?php if (!empty($lieferAdresse['firma'])) echo htmlspecialchars($lieferAdresse['firma']) . '<br>'; ?>
+                        <?= htmlspecialchars(trim(($lieferAdresse['vorname'] ?? '') . ' ' . ($lieferAdresse['nachname'] ?? ''))) ?><br>
+                        <?= htmlspecialchars(($lieferAdresse['strasse'] ?? '') . ' ' . ($lieferAdresse['hausnummer'] ?? '')) ?><br>
+                        <?= htmlspecialchars(($lieferAdresse['plz'] ?? '') . ' ' . ($lieferAdresse['ort'] ?? '')) ?><br>
+                        <?= htmlspecialchars($lieferAdresse['land'] ?? '') ?>
+                        <?php if (!empty($lieferAdresse['zusatz'])): ?><br><em><?= htmlspecialchars($lieferAdresse['zusatz']) ?></em><?php endif; ?>
+                    </p>
+                <?php else: ?>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <?php
+                        $lfa = $formdata['lieferadresse'] ?? $lieferAdresse;
+                        $v = fn($f) => htmlspecialchars($lfa[$f] ?? '');
+                        ?>
+                        <input type="text" name="lieferadresse[vorname]"    id="lieferadresse_vorname"    class="erp-input" placeholder="Vorname"       value="<?= $v('vorname') ?>">
+                        <input type="text" name="lieferadresse[nachname]"   id="lieferadresse_nachname"   class="erp-input" placeholder="Nachname"      value="<?= $v('nachname') ?>">
+                        <input type="text" name="lieferadresse[firma]"      id="lieferadresse_firma"      class="erp-input" placeholder="Firma (opt.)"  style="grid-column:1/-1" value="<?= $v('firma') ?>">
+                        <input type="text" name="lieferadresse[strasse]"    id="lieferadresse_strasse"    class="erp-input" placeholder="Straße"        value="<?= $v('strasse') ?>">
+                        <input type="text" name="lieferadresse[hausnummer]" id="lieferadresse_hausnummer" class="erp-input" placeholder="Nr."           value="<?= $v('hausnummer') ?>">
+                        <input type="text" name="lieferadresse[plz]"        id="lieferadresse_plz"        class="erp-input" placeholder="PLZ"           value="<?= $v('plz') ?>" style="width:80px">
+                        <input type="text" name="lieferadresse[ort]"        id="lieferadresse_ort"        class="erp-input" placeholder="Ort"           value="<?= $v('ort') ?>">
+                        <input type="text" name="lieferadresse[land]"       id="lieferadresse_land"       class="erp-input" placeholder="Land"          value="<?= $v('land') ?: 'AT' ?>" style="width:60px">
+                        <input type="text" name="lieferadresse[zusatz]"     id="lieferadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= $v('zusatz') ?>">
+                    </div>
+                <?php endif; ?>
             </div>
+
         </div>
     </div>
 

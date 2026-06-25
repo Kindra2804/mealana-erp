@@ -292,21 +292,30 @@ class AuftragService
 
         // 4. Header updaten (neues Repo-Method: updateHeader)
         $headerData = [
-            'zahlungsart'               => $data['zahlungsart'] ?? 'vorkasse',
-            'lieferart'                 => $data['lieferart'] ?? 'versand',
-            'versandklasse_id'          => !empty($data['versandklasse_id']) ? (int)$data['versandklasse_id'] : null,
-            'versandkosten'             => !empty($data['versandkosten'])   ? (float)$data['versandkosten']     : 0.00,
-            'nettobetrag'               => $positionenSummen['netto'],
-            'steuerbetrag'              => $positionenSummen['steuer'],
-            'bruttobetrag'              => $positionenSummen['brutto'],
-            'notiz_intern'           => !empty($data['notiz_intern'])  ? $data['notiz_intern']  : null,
-            'notiz_versand'          => !empty($data['notiz_versand']) ? $data['notiz_versand'] : null,
+            'zahlungsart'      => $data['zahlungsart'] ?? 'vorkasse',
+            'lieferart'        => $data['lieferart'] ?? 'versand',
+            'versandklasse_id' => !empty($data['versandklasse_id']) ? (int)$data['versandklasse_id'] : null,
+            'versandkosten'    => !empty($data['versandkosten'])    ? (float)$data['versandkosten']   : 0.00,
+            'nettobetrag'      => $positionenSummen['netto'],
+            'steuerbetrag'     => $positionenSummen['steuer'],
+            'bruttobetrag'     => $positionenSummen['brutto'],
+            'notiz_intern'     => !empty($data['notiz_intern'])  ? $data['notiz_intern']  : null,
+            'notiz_versand'    => !empty($data['notiz_versand']) ? $data['notiz_versand'] : null,
         ];
-        if (!empty($data['lieferadresse_snapshot'])) {
-            $headerData['lieferadresse_snapshot'] = json_encode($data['lieferadresse_snapshot'], JSON_UNESCAPED_UNICODE);
+
+        // Kunden-Wechsel (Laufkunde → Stammkunde oder Korrektur) — nur wenn kein Rechnungs-Lock
+        if (array_key_exists('kunden_id', $data)) {
+            $headerData['kunden_id']       = !empty($data['kunden_id']) ? (int)$data['kunden_id'] : null;
+            $headerData['kunden_snapshot'] = !empty($data['kunden_snapshot']) ? json_encode($data['kunden_snapshot'], JSON_UNESCAPED_UNICODE) : null;
         }
-        if (!empty($data['rechnungsadresse_snapshot'])) {
-            $headerData['rechnungsadresse_snapshot'] = json_encode($data['rechnungsadresse_snapshot'], JSON_UNESCAPED_UNICODE);
+
+        if (array_key_exists('lieferadresse_snapshot', $data)) {
+            $headerData['lieferadresse_snapshot'] = !empty($data['lieferadresse_snapshot'])
+                ? json_encode($data['lieferadresse_snapshot'], JSON_UNESCAPED_UNICODE) : null;
+        }
+        if (array_key_exists('rechnungsadresse_snapshot', $data)) {
+            $headerData['rechnungsadresse_snapshot'] = !empty($data['rechnungsadresse_snapshot'])
+                ? json_encode($data['rechnungsadresse_snapshot'], JSON_UNESCAPED_UNICODE) : null;
         }
 
         $this->repo->updateHeader($id, $headerData);
