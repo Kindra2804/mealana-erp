@@ -1,0 +1,47 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>wir freuen uns, Ihnen mitteilen zu können, dass Ihre Bestellung soeben versendet wurde!</p>
+
+<table class="table">
+  <tr>
+    <th>Auftragsnummer</th>
+    <th>Trackingnummer</th>
+  </tr>
+  <tr>
+    <td><strong>{{ auftrag_nummer }}</strong></td>
+    <td><strong style="font-size:16px;">{{ tracking }}</strong></td>
+  </tr>
+</table>
+
+{% if lieferadresse %}
+<p style="font-size:13px;color:#555;">
+  <strong>Lieferadresse:</strong><br>
+  {% if lieferadresse.firma %}{{ lieferadresse.firma }}<br>{% endif %}
+  {{ lieferadresse.vorname ?? '' }} {{ lieferadresse.nachname ?? '' }}<br>
+  {{ lieferadresse.strasse ?? '' }} {{ lieferadresse.hausnummer ?? '' }}<br>
+  {{ lieferadresse.plz ?? '' }} {{ lieferadresse.ort ?? '' }}<br>
+  {{ lieferadresse.land ?? '' }}
+</p>
+{% endif %}
+
+<div class="hinweis">
+  Mit der Trackingnummer <strong>{{ tracking }}</strong> können Sie Ihr Paket
+  auf der Website der Österreichischen Post verfolgen:<br>
+  <a href="https://www.post.at/sv/sendungsdetails?snr={{ tracking }}" style="color:#2c3e50">
+    → Sendung verfolgen
+  </a>
+</div>
+
+<p>
+  Bei Fragen stehen wir Ihnen gerne unter <a href="mailto:{{ firma_email }}">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Vielen Dank für Ihre Bestellung!<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Auftrag {{ auftrag_nummer }} &bull;
+{% endblock %}
