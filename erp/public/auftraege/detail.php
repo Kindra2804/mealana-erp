@@ -60,6 +60,23 @@ $istStorniert = in_array($auftrag['lieferstatus'], ['storniert']);
 $sperrZustände = ['versendet', 'abgeschlossen', 'storniert'];
 $istGesperrt = in_array($auftrag['lieferstatus'], $sperrZustände);
 
+// Adress-Snapshots dekodieren
+$rgnAdr  = json_decode($auftrag['rechnungsadresse_snapshot'] ?? $auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
+$liefAdr = json_decode($auftrag['lieferadresse_snapshot'] ?? '{}', true) ?: [];
+$hatLiefAdr = !empty($liefAdr['strasse']);
+
+function formatAdr(array $a): string {
+    $zeilen = [];
+    $name = trim(($a['vorname'] ?? '') . ' ' . ($a['nachname'] ?? ''));
+    if (!empty($a['firmenname'])) $zeilen[] = '<strong>' . htmlspecialchars($a['firmenname']) . '</strong>';
+    if ($name) $zeilen[] = htmlspecialchars($name);
+    if (!empty($a['strasse'])) $zeilen[] = htmlspecialchars($a['strasse']);
+    $plzOrt = trim(($a['plz'] ?? '') . ' ' . ($a['ort'] ?? ''));
+    if ($plzOrt) $zeilen[] = htmlspecialchars($plzOrt);
+    if (!empty($a['land']) && $a['land'] !== 'AT') $zeilen[] = htmlspecialchars($a['land']);
+    return implode('<br>', $zeilen);
+}
+
 $pageTitle        = 'Auftrag ' . htmlspecialchars($auftrag['auftrag_nr']);
 $activeModule     = 'verkauf';
 $actionBarContent = '<a href="/mealana/auftraege/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
@@ -85,7 +102,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <!-- Kopf-Übersicht -->
 <div class="card" style="margin-bottom:12px">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;padding:16px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:16px;padding:16px">
 
         <div>
             <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Auftrag</div>
@@ -100,6 +117,20 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($auftrag['kunden_email']) ?></div>
             <?php endif; ?>
         </div>
+
+        <?php if (!empty($rgnAdr)): ?>
+        <div>
+            <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Rechnungsadresse</div>
+            <div style="font-size:12px;line-height:1.6"><?= formatAdr($rgnAdr) ?></div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($hatLiefAdr): ?>
+        <div>
+            <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Lieferadresse</div>
+            <div style="font-size:12px;line-height:1.6"><?= formatAdr($liefAdr) ?></div>
+        </div>
+        <?php endif; ?>
 
         <div>
             <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Zahlung</div>
@@ -284,7 +315,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <!-- Statuslog -->
 <?php if (!empty($statuslog)): ?>
     <div class="card">
-        <div class="card-header">Verlauf</div>
+        <div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center"
+             onclick="toggleAbschnitt('verlauf-body', this)">
+            <span>Verlauf</span>
+            <span class="toggle-arrow" style="font-size:11px;color:var(--color-text-muted)">▼</span>
+        </div>
+        <div id="verlauf-body" style="display:none">
         <table class="erp-table">
             <thead>
                 <tr>
@@ -311,6 +347,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div><!-- /verlauf-body -->
     </div>
 <?php endif; ?>
 
@@ -400,6 +437,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
     window.AUFTRAG_ID = <?= $id ?>;
     window.STATUS_AJAX_URL = '/mealana/auftraege/status_ajax.php';
     window.STORNO_URL = '/mealana/auftraege/stornieren.php';
+
+    function toggleAbschnitt(bodyId, header) {
+        const body   = document.getElementById(bodyId);
+        const arrow  = header.querySelector('.toggle-arrow');
+        const hidden = body.style.display === 'none';
+        body.style.display = hidden ? '' : 'none';
+        if (arrow) arrow.textContent = hidden ? '▲' : '▼';
+    }
 </script>
 <script src="/mealana/js/auftraege_detail.js"></script>
 

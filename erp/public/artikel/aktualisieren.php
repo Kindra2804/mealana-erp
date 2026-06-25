@@ -62,14 +62,15 @@ $artikelData = array_intersect_key($data, array_flip([
     'ueberverkauf_erlaubt',
     'aktiv',
     'zustand',
-    'zustand_vater_id'
+    'zustand_vater_id',
+    'lieferzeit_text'
 ]));
 
 $artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;
 $artikelData['netto_vk']  = $data['netto_vk']  ?? null;
 $artikelData['ean_gtin13'] = $data['ean_gtin13'] ?? null;
 
-foreach (['technische_details', 'beschreibung_intern', 'meta_titel', 'meta_description', 'url_slug'] as $feld) {
+foreach (['technische_details', 'beschreibung_intern', 'meta_titel', 'meta_description', 'url_slug', 'lieferzeit_text'] as $feld) {
     if (!array_key_exists($feld, $artikelData)) {
         $artikelData[$feld] = null;
     }

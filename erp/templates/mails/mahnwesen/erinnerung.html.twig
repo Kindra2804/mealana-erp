@@ -1,0 +1,45 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  vielen Dank für Ihre Bestellung bei {{ firmenname }}.<br>
+  Leider haben wir noch keinen Zahlungseingang für die folgende Bestellung festgestellt:
+</p>
+
+<table class="table">
+  <tr>
+    <th>Auftragsnummer</th>
+    <th>Datum</th>
+    <th>Betrag</th>
+    <th>Zahlungsart</th>
+  </tr>
+  <tr>
+    <td><strong>{{ auftrag_nummer }}</strong></td>
+    <td>{{ auftrag_datum }}</td>
+    <td><strong>{{ betrag }} €</strong></td>
+    <td>{{ zahlungsart }}</td>
+  </tr>
+</table>
+
+<div class="hinweis">
+  <strong>Bitte überweisen Sie den ausstehenden Betrag bis zum {{ faellig_am }}.</strong><br>
+  Verwenden Sie dabei unbedingt die Auftragsnummer <strong>{{ auftrag_nummer }}</strong> als Verwendungszweck.
+</div>
+
+<p>
+  Falls Sie bereits bezahlt haben, bitten wir Sie, diese Erinnerung zu ignorieren —
+  Überweisungen können einige Banktage benötigen bis sie bei uns eintreffen.
+</p>
+
+<p>
+  Bei Fragen stehen wir Ihnen gerne unter <a href="mailto:{{ firma_email }}">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Mit freundlichen Grüßen,<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Auftrag {{ auftrag_nummer }} &bull;
+{% endblock %}

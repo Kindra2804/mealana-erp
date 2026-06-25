@@ -10,7 +10,8 @@ $moduleLabel = match ($activeModule ?? '') {
     'buchhaltung' => 'Buchhaltung',
     'lieferanten' => 'Lieferanten',
     'hersteller'  => 'Hersteller',
-    'partner'     => 'Partner',
+    'partner'      => 'Partner',
+    'einstellungen' => 'Einstellungen',
     default       => '',
 };
 
@@ -55,6 +56,12 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '👥', 'label' => 'Partner',           'href' => '/mealana/partner/liste.php'],
         ['icon' => '🗄',  'label' => 'Mietfächer',       'href' => '/mealana/partner/mietfaecher.php'],
     ],
+    'einstellungen' => [
+        ['icon' => '🏢', 'label' => 'Firma',       'href' => '/mealana/einstellungen/index.php?tab=firma'],
+        ['icon' => '🛍', 'label' => 'Kanäle',      'href' => '/mealana/einstellungen/index.php?tab=kanaele'],
+        ['icon' => '✉️', 'label' => 'Mail / SMTP', 'href' => '/mealana/einstellungen/index.php?tab=mail'],
+        ['icon' => '⚙️', 'label' => 'System',      'href' => '/mealana/einstellungen/index.php?tab=system'],
+    ],
     default => [],
 };
 
@@ -95,7 +102,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
             </div>
             <div class="erp-nav-icons">
                 <a href="/mealana/bedienungsanleitung.php" title="Bedienungsanleitung" class="erp-nav-icon">📖</a>
-                <a href="#" title="Einstellungen — kommt bald" class="erp-nav-icon erp-nav-link-disabled">⚙️</a>
+                <a href="/mealana/einstellungen/index.php" title="Einstellungen" class="erp-nav-icon <?= ($activeModule ?? '') === 'einstellungen' ? 'active' : '' ?>">⚙️</a>
                 <a href="#" title="Super-Admin — kommt bald"   class="erp-nav-icon erp-nav-link-disabled">···</a>
             </div>
             <div class="erp-nav-user">👤 Karl</div>

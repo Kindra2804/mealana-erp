@@ -547,6 +547,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <option value="muster" <?= ($artikel['zustand'] ?? '') === 'muster' ? 'selected' : '' ?>>Muster (MST)</option>
                             <option value="ausstellungsstueck" <?= ($artikel['zustand'] ?? '') === 'ausstellungsstueck' ? 'selected' : '' ?>>Ausstellungsstück (AST)</option>
                         </select>
+
+                        <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
+
+                        <div class="form-section-header" style="margin-top:var(--space-sm)">Lieferzeit</div>
+                        <input type="text" name="lieferzeit_text" class="erp-input" style="width:100%"
+                            placeholder="z.B. ca. 3–5 Werktage"
+                            value="<?= htmlspecialchars($artikel['lieferzeit_text'] ?? '') ?>">
+                        <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                            Wird auf Dokumenten angezeigt wenn Lagerbestand = 0
+                        </div>
                     </div>
                 </div>
             </div>

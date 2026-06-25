@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin:0; padding:0; background:#f5f5f5; font-family:Arial,sans-serif; font-size:14px; color:#333; }
+    .wrapper { max-width:600px; margin:20px auto; background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .header  { background:#2c3e50; padding:20px 28px; }
+    .header-name { color:#fff; font-size:18px; font-weight:700; }
+    .body    { padding:28px; }
+    .footer  { background:#f0f0f0; padding:14px 28px; font-size:11px; color:#777; border-top:1px solid #ddd; }
+    .btn     { display:inline-block; background:#2c3e50; color:#fff; padding:10px 22px; border-radius:4px; text-decoration:none; font-weight:700; margin-top:16px; }
+    .table   { width:100%; border-collapse:collapse; margin:16px 0; }
+    .table th{ background:#f5f5f5; text-align:left; padding:6px 10px; font-size:12px; border-bottom:2px solid #ddd; }
+    .table td{ padding:6px 10px; border-bottom:1px solid #eee; font-size:13px; }
+    .hinweis { background:#fff8e1; border-left:4px solid #f39c12; padding:12px 16px; margin:16px 0; border-radius:2px; font-size:13px; }
+    .warn    { background:#fdecea; border-left:4px solid #e74c3c; padding:12px 16px; margin:16px 0; border-radius:2px; font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="header-name">{{ firmenname }}</div>
+  </div>
+  <div class="body">
+    {% block inhalt %}{% endblock %}
+  </div>
+  <div class="footer">
+    {{ firmenname }} &bull; {% block footer_extra %}{% endblock %}
+    Diese Nachricht wurde automatisch erstellt.
+  </div>
+</div>
+</body>
+</html>

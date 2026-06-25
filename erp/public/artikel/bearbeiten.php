@@ -181,6 +181,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <label>Gewicht Versand (kg)</label>
             <input type="number" step="0.001" name="gewicht_versand"
                 value="<?= old('gewicht_versand', $formdata) ?>">
+
+            <label>Lieferzeit (Text, bei Nicht-Lagerware)</label>
+            <input type="text" name="lieferzeit_text"
+                placeholder="z.B. ca. 3–5 Werktage / aktuell nicht lieferbar"
+                value="<?= htmlspecialchars(old('lieferzeit_text', $formdata)) ?>">
         </div>
 
         <div class="gruppe">

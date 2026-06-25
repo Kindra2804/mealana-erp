@@ -6,7 +6,8 @@
         "php": ">=8.1",
         "twig/twig": "^3.0",
         "dompdf/dompdf": "^3.0",
-        "picqer/php-barcode-generator": "^2.0"
+        "picqer/php-barcode-generator": "^2.0",
+        "phpmailer/phpmailer": "^7.1"
     },
     "config": {
         "optimize-autoloader": true

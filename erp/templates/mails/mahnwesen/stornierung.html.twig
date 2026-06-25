@@ -1,0 +1,43 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  leider haben wir trotz unserer Zahlungserinnerung keinen Zahlungseingang für Ihre Bestellung
+  <strong>{{ auftrag_nummer }}</strong> erhalten.
+</p>
+
+<div class="warn">
+  <strong>Ihr Auftrag wurde daher automatisch storniert.</strong><br>
+  Die reservierten Artikel wurden wieder freigegeben.
+</div>
+
+<table class="table">
+  <tr>
+    <th>Auftragsnummer</th>
+    <th>Datum</th>
+    <th>Betrag</th>
+  </tr>
+  <tr>
+    <td>{{ auftrag_nummer }}</td>
+    <td>{{ auftrag_datum }}</td>
+    <td>{{ betrag }} €</td>
+  </tr>
+</table>
+
+<p>
+  Sollten Sie weiterhin Interesse an unseren Produkten haben, können Sie jederzeit eine neue Bestellung aufgeben.
+</p>
+
+<p>
+  Falls Sie der Meinung sind, dass diese Stornierung irrtümlich erfolgte, wenden Sie sich bitte
+  umgehend an uns: <a href="mailto:{{ firma_email }}">{{ firma_email }}</a>
+</p>
+
+<p>Mit freundlichen Grüßen,<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Auftrag {{ auftrag_nummer }} (storniert) &bull;
+{% endblock %}

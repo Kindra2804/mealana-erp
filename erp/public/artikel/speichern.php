@@ -39,6 +39,7 @@ $artikelData = array_intersect_key($data, array_flip([
     'inhalt_einheit',
     'gewicht_artikel',
     'gewicht_versand',
+    'lieferzeit_text',
     'herkunftsland',
     'taric_code',
     'grundpreis_bezugsmenge',
@@ -66,6 +67,7 @@ foreach (
         'beschreibung',
         'gewicht_artikel',
         'gewicht_versand',
+        'lieferzeit_text',
         'herkunftsland',
         'taric_code'
     ] as $feld
