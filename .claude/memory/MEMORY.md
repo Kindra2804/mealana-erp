@@ -43,3 +43,6 @@
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Blocks (auftrag/addon/storno), Rechnung erst am Bon, besser als JTL; Maximalfall: Auftrag+AddOn+Rückgabe+GS gleichzeitig machbar
 - [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen (Gruppe A/B/C/D), B2C=Brutto/B2B=Netto, Abholzettel+Barcode, Twig+Dompdf, WC=kein eigenes Rechnungssystem
 - [Installationsanleitung](project_installationsanleitung.md) — GEPLANT: Server-Setup von 0 (Composer, PHP-Ext., Migrations, Cronjobs, RKSV) für Jacky + Weitergabe
+- [Packplatz-Modul](project_packplatz.md) — Warenausgang fertig (Scan, EasyPak, Versandmail); offen: Picklisten-Manager, Intern, Retoure, Mail-Templates
+- [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
+- [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen

@@ -7,7 +7,7 @@ metadata:
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
 ---
 
-Stand: 2026-06-18
+Stand: 2026-06-26
 
 ## ✅ FERTIG — bereits vollständig implementiert
 
@@ -26,6 +26,7 @@ Stand: 2026-06-18
 - **Einheiten** — einheiten-Tabelle inkl. teilbar-Flag (Migrations 013, 032)
 - **Lieferanten-Tab** — CRUD, Modal, AJAX-Save, standard_lieferant Flag (detail.php Tab "Lieferanten")
 - **Artikel-Liste** — Spalten-Picker (user-spezifisch), Massenauswahl, Sticky-Spalten, Loop-basiertes Rendering
+- **CSV-Importer** — import.php: Tab+Semikolon auto-detect, Windows-1252→UTF-8 Konvertierung, Vorlage-Download, Post-UPDATE für meldebestand/ist_vater; Import-Button in liste.php verlinkt
 - **Chargen-Tracking** — charge_pflicht, lager_bewegungen mit charge-Spalte
 - **Lager & Wareneingang** — wareneingang.php, EAN-Scan, LagerService, Bewegungslog
 - **deaktiviert_mit_vater / auslauf_mit_vater** — Kaskaden-Logik bei Vater-Deaktivierung (Migrations 034-035)
