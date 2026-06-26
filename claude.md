@@ -546,7 +546,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-24, Session 9)
+## What's Implemented (Stand 2026-06-26, Session 11)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -558,6 +558,9 @@ $result = $service->wareneingang([
 - artikeltyp kommt aus DB (artikel_typen Tabelle, kein ENUM)
 - Lieferanten-Tab in detail.php
 - Filterung in liste.php (aktiv/inaktiv, Suche)
+- **Bulk-Kategorie-Zuweisung** ✅ (2026-06-26): Mehrfachauswahl → Aktion → Modal mit Kategoriebaum → INSERT IGNORE (inkl. Kinder)
+- **Fehlbest.-Chip**: nur wenn reserviert > gesamtbestand (nicht mehr bei Bestand=0 ohne Reservierung)
+- **artikel_preise JOIN**: Datumsfilter via korrelierter Subquery — aktiver Sonderpreis schlägt Basispreis
 
 ### Vater-Kind Vererbung (vollständig — 2026-06-19)
 - **erstelleKombinationen()** erbt alle ~25 Felder vom Vater (vorher nur 4)
@@ -566,18 +569,21 @@ $result = $service->wareneingang([
 - **syncKategorienZuKindern()** — Kategorien werden bei saveKategorien() auf alle Kinder synchronisiert
 - Nicht propagiert: artikelnummer, name, url_slug, aktiv, ist_auslaufartikel (eigene Logik), zustand
 
-### Varianten-System (vollständig — DB + UI + Generator fertig, Stand 2026-06-19)
+### Varianten-System (vollständig — DB + UI + Generator fertig, aktualisiert 2026-06-26)
 - Migrations 022–041 ausgeführt: Achsen, Werte, Kombinationen, abhängige Achsen, Gruppenachse-Flag
 - Kind-Artikel (Varianten) werden als artikel-Einträge mit vaterartikel_id gespeichert
 - **Achsen-Verwaltung** (public/achsen/) — volles CRUD ✅
 - **Achsen zuweisen** (public/artikel/achsen_zuweisen.php + achsen_speichern.php) ✅
   - Baumstruktur: Gruppenachse + eingerückte Sub-Achsen
-  - Chip-Input: Werte hinzufügen, ◀▶ sortieren, ↔ zwischen Achsen verschieben
+  - Chip-Input: Werte hinzufügen, ◀▶ sortieren, ↔ zwischen Achsen verschieben, Inline-Bearbeiten
   - Granulare Sperrung: 🔒-Chip für in-use Werte (in Kombinationen verwendet), freie editierbar
-  - Neue Werte hinzufügen + freie Werte löschen bleibt möglich auch wenn Varianten existieren
+  - **Aufpreis/Direktpreis pro Achse** (Migration 074): Toggle [+€][€] neben Achsenname, gilt für alle Werte
+  - **sort_order**: wird beim Speichern korrekt persistiert (INSERT + UPDATE)
 - **VarKombi-Generator** (in detail.php, Tab "Varianten") ✅
-  - Achsen-Hierarchie-bewusst: Sub-Achsen-Werte immer UNION (nie Kreuzprodukt) in eine Dimension
-  - Sub-Achsen-Name als Suffix: "gelb (02)" von UNI → "gelb (02) UNI"
+  - Achsen-Hierarchie-bewusst: Sub-Achsen-Werte immer UNION in eine Dimension
+  - Kindname = Vatername + Achsenname + Wert (sortierbar in Liste)
+  - EAN-Feld im Generator: direkt bei Erstellung eintragbar, wird in artikel_codes gespeichert
+  - EAN wird in liste.php (Kind-Zeilen) und detail.php (Varianten-Tab) angezeigt
   - Bereits bestehende Kombis erkannt (nicht doppelt erstellt)
   - Kind-Artikel erben: alle Vater-Felder + Kategorien + Merkmale + Lieferanten + Preise
 - AchsenRepository/Service + VariantenRepository/Service ✅
@@ -742,15 +748,16 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
   - Erreichbar via 📖 in der Top-Navigation (immer sichtbar)
   - Kapitel für alle Module + Fertig/Geplant-Badges — wird pro Modul weiter gefüllt
 
-6. **Auftragsmodul/Verkauf** 🟡 TEILFERTIG (2026-06-24):
-   - Migrations 060–066: auftraege, auftrag_positionen, rechnungen, auftrag_dokumente, auftrag_statuslog, versandklassen, preisanzeige_auftrag
-   - AuftragRepository + AuftragService: anlegen, bearbeiten, statusAktualisieren, stornieren
-   - public/auftraege/: liste (Kanal-Chip + Zahlungsart-Spalte), neu, detail, bearbeiten, speichern, aktualisieren, stornieren, status_ajax, artikel_ajax, kunden_ajax
-   - Preisanzeige: system_einstellungen 'preisanzeige_auftrag' (brutto/netto/beides) in neu+bearbeiten+detail
-   - Adressen: Rechnungsadresse eingefroren bei Anlage (editierbar wenn leer), Lieferadresse immer änderbar
-   - Kunden-Auswahl: Typeahead füllt beide Adressen automatisch aus Kundenstamm (adresstyp haupt/lieferung/rechnung)
-   - Sperr-Check: versendet/abgeschlossen/storniert = nicht mehr editierbar
-   - **Noch offen:** PDF-Rechnung/Lieferschein (Twig + Dompdf), Mahnwesen-Cronjob (14/30 Tage Vorkasse), Steuerflags A/B/C/D (RKSV)
+6. **Auftragsmodul/Verkauf** ✅ WEITGEHEND FERTIG (aktualisiert 2026-06-26):
+   - Migrations 060–068, 076; AuftragRepository + AuftragService vollständig
+   - public/auftraege/: liste, neu, detail, bearbeiten, speichern, aktualisieren, stornieren, status_ajax, artikel_ajax, kunden_ajax
+   - Dokumente: Rechnung (PDF), Auftragsbestätigung, Lieferschein, Abholzettel, Gutschrift (Vollstorno + Teilgutschrift)
+   - **Zahlung buchen** (Migration 076 — auftrag_zahlungen):
+     - detail.php: Buchungsformular (Betrag vorausgefüllt, Datepicker, Notiz), Zahlungsverlauf-Box
+     - Teilzahlung → Status 'teilbezahlt'; Vollzahlung → 'bezahlt'; Summe > Gesamt → Überbezahlt
+     - liste.php: Chips Teilbezahlt/Überbezahlt + Filter für alle Zahlungsstatus inkl. Überbezahlt
+   - **Mahnwesen-Cronjob** (erp/cron/mahnwesen.php): 14+Tage Erinnerungsmail, 30+Tage Storno+Mail
+   - Noch offen: Kasse/RKSV, Packplatz
 7. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
 8. **Packplatz/Picklisten** — Kommissionierung, Packliste
 9. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.

@@ -62,12 +62,14 @@ class VariantenService
             }
         }
 
-        // Neue Achsen einfügen (nur fehlende)
-        $currentAchsen   = $this->repo->findAchsenByArtikelId($artikelId);
+        // Neue Achsen einfügen (nur fehlende) + sort_order für alle setzen
+        $currentAchsen    = $this->repo->findAchsenByArtikelId($artikelId);
         $existingAchseSet = array_flip(array_map(fn($a) => (int)$a['achse_id'], $currentAchsen));
-        foreach ($achsenIds as $achseId) {
+        foreach ($achsenIds as $sortOrder => $achseId) {
             if (!isset($existingAchseSet[$achseId])) {
-                $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId]);
+                $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId, 'sort_order' => $sortOrder]);
+            } else {
+                $this->repo->updateAchseSortOrder($artikelId, $achseId, $sortOrder);
             }
         }
 
@@ -116,6 +118,11 @@ class VariantenService
         return $this->repo->findWertIdsInUse($artikelId);
     }
 
+    public function updateAchsePreis(int $artikelId, int $achseId, string $modus, float $wert): void
+    {
+        $this->repo->updateAchsePreis($artikelId, $achseId, $modus, $wert);
+    }
+
     /**
      * Erstellt Kind-Artikel für eine Liste von Wert-Kombinationen.
      * Jeder Kind-Artikel erbt ~25 Felder vom Vater (Stammdaten, Texte, Maße, Flags).
@@ -125,7 +132,13 @@ class VariantenService
      */
     public function erstelleKombinationen(array $vater, bool $hatEigenenLagerstand, array $kombis): array
     {
-        $neuErstellteIds = [];
+        $neuErstellteIds  = [];
+        $preisAnpassungen = [];
+        $eanMap           = [];   // [kindId => ean]
+
+        // Preis-Lookup für diesen Vater
+        $achsenPreisMap = $this->repo->findAchsenPreisMap($vater['id']);
+        $wertAchseMap   = !empty($achsenPreisMap) ? $this->repo->findWertAchseMap($vater['id']) : [];
 
         foreach ($kombis as $kombi) {
 
@@ -164,8 +177,36 @@ class VariantenService
                 'zustand_vater_id'       => null,
             ];
 
-            $kindId = $this->repo->insertKindArtikel($kind);
+            // Existiert die Artikelnummer bereits? (z.B. Abbruch eines früheren Durchlaufs)
+            $existingId = $this->repo->findIdByArtikelnummer($kind['artikelnummer']);
+            $kindId     = $existingId ?? $this->repo->insertKindArtikel($kind);
             $neuErstellteIds[] = $kindId;
+
+            $ean = trim($kombi['ean'] ?? '');
+            if ($ean !== '') {
+                $eanMap[$kindId] = $ean;
+            }
+
+            // Preisanpassung für dieses Kind berechnen
+            if (!empty($achsenPreisMap)) {
+                $direktpreis   = null;
+                $aufpreisSumme = 0.0;
+                foreach (array_map('intval', explode(',', $kombi['key'])) as $wid) {
+                    $achseId  = $wertAchseMap[$wid] ?? null;
+                    $preisInf = $achseId ? ($achsenPreisMap[$achseId] ?? null) : null;
+                    if (!$preisInf) continue;
+                    if ($preisInf['modus'] === 'direktpreis') {
+                        $direktpreis = $preisInf['preis_wert'];
+                    } else {
+                        $aufpreisSumme += $preisInf['preis_wert'];
+                    }
+                }
+                if ($direktpreis !== null) {
+                    $preisAnpassungen[$kindId] = ['modus' => 'direktpreis', 'preis_wert' => $direktpreis + $aufpreisSumme];
+                } elseif ($aufpreisSumme > 0) {
+                    $preisAnpassungen[$kindId] = ['modus' => 'aufpreis', 'preis_wert' => $aufpreisSumme];
+                }
+            }
 
             foreach (explode(',', $kombi['key']) as $w) {
                 $this->repo->insertKombinationWert([
@@ -177,6 +218,6 @@ class VariantenService
 
         Logger::log('varkombi.erstellen', 'artikel', $vater['id'], ['varKombi_anzahl' => count($kombis)]);
 
-        return ['erfolg' => true, 'anzahl' => count($kombis), 'ids' => $neuErstellteIds];
+        return ['erfolg' => true, 'anzahl' => count($kombis), 'ids' => $neuErstellteIds, 'preisAnpassungen' => $preisAnpassungen, 'eanMap' => $eanMap];
     }
 }

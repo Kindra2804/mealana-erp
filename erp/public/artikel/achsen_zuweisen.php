@@ -22,6 +22,12 @@ $wertIdsInUse    = array_map('intval', $varService->findWertIdsInUse($artikelId)
 $wertIdsInUseSet = array_flip($wertIdsInUse);
 $hatKindArtikel  = !empty($wertIdsInUse);
 
+// Preis-Map: achse_id → {preis_modus, preis_wert} aus artikel_achsen
+$preisMap = [];
+foreach ($zugewieseneRaw as $zr) {
+    $preisMap[(int)$zr['achse_id']] = ['preis_modus' => $zr['preis_modus'] ?? 'aufpreis', 'preis_wert' => (float)($zr['preis_wert'] ?? 0)];
+}
+
 // Achsenbaum aufbauen
 $roots  = [];
 $kinder = [];
@@ -66,6 +72,8 @@ function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = 
   <span style="font-size:9px;opacity:.7">🔒</span>
   <span class="chip-text">{$esc}</span>
   <input type="hidden" name="{$name}" value="{$esc}">
+  <button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten"
+          style="background:none;border:none;cursor:pointer;padding:0 0 0 3px;color:#94a3b8;font-size:11px;line-height:1">✎</button>
 </span>
 HTML;
     }
@@ -78,6 +86,8 @@ HTML;
           style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">◀</button>
   <span class="chip-text">{$esc}</span>
   <input type="hidden" name="{$name}" value="{$esc}">
+  <button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten"
+          style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">✎</button>
   <button type="button" onclick="chipSortieren(this,'rechts')" title="Nach rechts"
           style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">▶</button>
   <button type="button" onclick="chipVerschieben(this)" title="In andere Achse verschieben"
@@ -91,7 +101,7 @@ HTML;
 HTML;
 }
 
-function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $werteProAchse, int $pos = 0, int $total = 1, array $wertIdsInUseSet = []): void
+function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $werteProAchse, int $pos = 0, int $total = 1, array $wertIdsInUseSet = [], array $preisMap = []): void
 {
     $id             = (int)$achse['id'];
     $checked        = in_array($id, $zugewieseneIds);
@@ -125,8 +135,30 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
                    onchange="achseGeaendert(<?= $id ?>)"
                    onclick="event.stopPropagation()"
                    style="width:16px;height:16px;cursor:<?= $achseGesperrt ? 'not-allowed' : 'pointer' ?>;flex-shrink:0">
-            <span style="font-weight:600;font-size:14px;flex:1">
-                <?= htmlspecialchars($achse['name']) ?>
+            <?php
+            $pm    = $preisMap[$id] ?? ['preis_modus' => 'aufpreis', 'preis_wert' => 0];
+            $mod   = $pm['preis_modus'];
+            $pv    = number_format((float)$pm['preis_wert'], 2, '.', '');
+            $apAct = $mod === 'aufpreis'    ? 'background:#1e40af;color:#fff;border-color:#1e40af' : 'background:#f1f5f9;color:#64748b;border-color:#e2e8f0';
+            $dpAct = $mod === 'direktpreis' ? 'background:#1e40af;color:#fff;border-color:#1e40af' : 'background:#f1f5f9;color:#64748b;border-color:#e2e8f0';
+            ?>
+            <span style="flex:1;display:inline-flex;align-items:center;gap:8px">
+                <span style="font-weight:600;font-size:14px"><?= htmlspecialchars($achse['name']) ?></span>
+                <span onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:0;flex-shrink:0">
+                    <input type="hidden" name="preis_modi[<?= $id ?>]" id="pm-<?= $id ?>" value="<?= $mod ?>">
+                    <button type="button" id="pm-ap-<?= $id ?>"
+                            onclick="preisModiSetzen(<?= $id ?>,'aufpreis')"
+                            title="Aufpreis (wird auf Vater-VK addiert)"
+                            style="<?= $apAct ?>;border:1px solid;border-radius:4px 0 0 4px;padding:2px 6px;font-size:11px;cursor:pointer;line-height:1.4">+€</button>
+                    <button type="button" id="pm-dp-<?= $id ?>"
+                            onclick="preisModiSetzen(<?= $id ?>,'direktpreis')"
+                            title="Direktpreis (absoluter VK für alle Kinder dieser Achse)"
+                            style="<?= $dpAct ?>;border:1px solid;border-left:none;border-radius:0 4px 4px 0;padding:2px 6px;font-size:11px;cursor:pointer;line-height:1.4">€</button>
+                    <input type="number" name="preis_werte[<?= $id ?>]" id="pv-<?= $id ?>"
+                           value="<?= $pv ?>" step="0.01" min="0"
+                           style="width:64px;font-size:12px;border:1px solid #e2e8f0;border-left:none;border-radius:0 4px 4px 0;padding:3px 6px;text-align:right"
+                           onchange="formDirty=true" onclick="event.stopPropagation()">
+                </span>
             </span>
             <?php if ($isGruppe): ?>
                 <span style="background:#fef3c7;color:#92400e;border-radius:10px;padding:2px 8px;font-size:11px;flex-shrink:0">Gruppenachse</span>
@@ -205,7 +237,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
         <div id="kinder-<?= $id ?>" style="margin-top:8px">
             <?php $kindListe = $kinder[$id]; $kindTotal = count($kindListe); ?>
             <?php foreach ($kindListe as $ki => $kind): ?>
-                <?php renderAchse($kind, $kinder, $zugewieseneIds, $werteProAchse, $ki, $kindTotal, $wertIdsInUseSet); ?>
+                <?php renderAchse($kind, $kinder, $zugewieseneIds, $werteProAchse, $ki, $kindTotal, $wertIdsInUseSet, $preisMap); ?>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
@@ -299,7 +331,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php else: ?>
             <?php $rootTotal = count($roots); ?>
             <?php foreach ($roots as $ri => $root): ?>
-                <?php renderAchse($root, $kinder, $zugewieseneIds, $werteProAchse, $ri, $rootTotal, $wertIdsInUseSet); ?>
+                <?php renderAchse($root, $kinder, $zugewieseneIds, $werteProAchse, $ri, $rootTotal, $wertIdsInUseSet, $preisMap); ?>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>

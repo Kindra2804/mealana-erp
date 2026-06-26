@@ -27,7 +27,10 @@ $variantenService = new VariantenService();
 $result = $variantenService->erstelleKombinationen($vater, $hatEigenenLagerstand, $kombis);
 
 if ($result['erfolg']) {
-    $artikelService->kopiereVaterRelationenZuKindern($artikelId, $result['ids']);
+    $artikelService->kopiereVaterRelationenZuKindern($artikelId, $result['ids'], $result['preisAnpassungen'] ?? []);
+    foreach ($result['eanMap'] ?? [] as $kindId => $ean) {
+        $artikelService->speichereCode((int)$kindId, 'GTIN13', $ean);
+    }
     header('Location: detail.php?id=' . $artikelId . '&tab=varianten');
     exit;
 } else {

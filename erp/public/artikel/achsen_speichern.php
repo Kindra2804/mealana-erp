@@ -19,20 +19,27 @@ foreach ($_POST['werte'] ?? [] as $achseId => $reihen) {
     foreach ($reihen as $idx => $felder) {
         $text = trim($felder['wert'] ?? '');
         if ($text !== '') {
-            $werte[] = [
-                'achse_id'   => $achseId,
-                'wert'       => $text,
-                'sort_order' => (int)$idx,
-            ];
+            $werte[] = ['achse_id' => $achseId, 'wert' => $text, 'sort_order' => (int)$idx];
         }
     }
 }
 
-$achsenIds = array_map('intval', $_POST['achsen'] ?? []);
-$service   = new VariantenService();
-$result    = $service->speichereAchsenUndWerte($artikelId, $achsenIds, $werte);
+$achsenIds  = array_map('intval', $_POST['achsen'] ?? []);
+$preisModi  = $_POST['preis_modi']  ?? [];
+$preisWerte = $_POST['preis_werte'] ?? [];
+
+$service = new VariantenService();
+$result  = $service->speichereAchsenUndWerte($artikelId, $achsenIds, $werte);
 
 if ($result['erfolg']) {
+    // Preis-Modus + Preis-Wert pro Achse speichern
+    foreach ($achsenIds as $achseId) {
+        $modus = in_array($preisModi[$achseId] ?? '', ['aufpreis','direktpreis'])
+                 ? $preisModi[$achseId]
+                 : 'aufpreis';
+        $wert  = (float)($preisWerte[$achseId] ?? 0);
+        $service->updateAchsePreis($artikelId, $achseId, $modus, $wert);
+    }
     $_SESSION['erfolg'] = 'Achsen und Werte gespeichert';
 } else {
     $_SESSION['fehler'] = $result['fehler'];

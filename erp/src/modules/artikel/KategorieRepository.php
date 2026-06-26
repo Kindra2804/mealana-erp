@@ -209,6 +209,23 @@ class KategorieRepository
         }
     }
 
+    public function bulkAddKategorie(array $artikelIds, int $kategorieId): void
+    {
+        $stmt = $this->db->prepare("INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)");
+        foreach ($artikelIds as $aid) {
+            $stmt->execute([(int)$aid, $kategorieId]);
+        }
+        // Kinder von Vater-Artikeln mitziehen
+        $kindStmt = $this->db->prepare("SELECT id FROM artikel WHERE vaterartikel_id = ?");
+        $insStmt  = $this->db->prepare("INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)");
+        foreach ($artikelIds as $aid) {
+            $kindStmt->execute([(int)$aid]);
+            foreach ($kindStmt->fetchAll(\PDO::FETCH_COLUMN) as $kindId) {
+                $insStmt->execute([(int)$kindId, $kategorieId]);
+            }
+        }
+    }
+
     public function insert(string $name, ?int $parentId = null, bool $istAktionsKategorie = false): int
     {
         $stmt = $this->db->prepare("INSERT INTO kategorien (name, parent_id, ist_aktions_kategorie) VALUES (:name, :parent_id, :iak)");

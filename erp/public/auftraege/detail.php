@@ -25,6 +25,10 @@ $vorhandeneRechnung = $dokumentService->getRechnung($id);
 $db = Database::getInstance();
 $preisanzeige = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'preisanzeige_auftrag'")->fetchColumn() ?: 'brutto';
 
+$zahlungen   = $service->getZahlungen($id);
+$summeBezahlt = array_sum(array_column($zahlungen, 'betrag'));
+$offenBetrag  = (float)$auftrag['bruttobetrag'] - $summeBezahlt;
+
 $erfolg = $_SESSION['erfolg'] ?? null;
 $fehler = $_SESSION['fehler'] ?? [];
 unset($_SESSION['erfolg'], $_SESSION['fehler']);
@@ -141,11 +145,42 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     · <?= date('d.m.Y', strtotime($auftrag['bezahlt_am'])) ?>
                 <?php endif; ?>
             </div>
-            <?php if (!$istStorniert && $auftrag['zahlungsstatus'] === 'ausstehend'): ?>
-                <button class="btn btn-primary btn-sm" style="margin-top:8px"
-                    onclick="statusSetzen('zahlungsstatus','bezahlt','Zahlung manuell bestätigt')">
-                    ✓ Als bezahlt markieren
-                </button>
+            <?php if (!$istStorniert && !empty($zahlungen)): ?>
+                <div style="margin-top:10px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+                    <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Zahlungsverlauf</div>
+                    <?php foreach ($zahlungen as $z): ?>
+                        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid #e2e8f0">
+                            <span style="color:var(--color-text-muted)"><?= date('d.m.Y', strtotime($z['buchungsdatum'])) ?><?= $z['notiz'] ? ' · ' . htmlspecialchars($z['notiz']) : '' ?></span>
+                            <span style="font-weight:600;color:#059669">+<?= number_format((float)$z['betrag'], 2, ',', '.') ?> €</span>
+                        </div>
+                    <?php endforeach; ?>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
+                        <?php if ($offenBetrag < 0): ?>
+                            <span style="color:#d97706;font-weight:600">Überbezahlt</span>
+                            <span style="font-weight:600;color:#d97706"><?= number_format(abs($offenBetrag), 2, ',', '.') ?> € Gutschrift</span>
+                        <?php elseif ($offenBetrag > 0): ?>
+                            <span style="color:var(--color-text-muted)">Offen</span>
+                            <span style="font-weight:600;color:#dc2626"><?= number_format($offenBetrag, 2, ',', '.') ?> €</span>
+                        <?php else: ?>
+                            <span style="color:#059669;font-weight:600">Vollständig bezahlt</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+            <?php if (!$istStorniert && in_array($auftrag['zahlungsstatus'], ['ausstehend','teilbezahlt'])): ?>
+                <div style="margin-top:6px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+                    <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Zahlung buchen</div>
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                        <input type="number" id="zahl-betrag" class="erp-input" style="width:100px"
+                               value="<?= $offenBetrag > 0 ? number_format($offenBetrag, 2, '.', '') : '' ?>"
+                               step="0.01" min="0.01" placeholder="Betrag">
+                        <input type="date" id="zahl-datum" class="erp-input" style="width:140px"
+                               value="<?= date('Y-m-d') ?>">
+                        <input type="text" id="zahl-notiz" class="erp-input" style="flex:1;min-width:80px"
+                               placeholder="Notiz (optional)">
+                        <button class="btn btn-primary btn-sm" onclick="zahlungBuchen(<?= $id ?>)">✓ Buchen</button>
+                    </div>
+                </div>
             <?php endif; ?>
         </div>
 

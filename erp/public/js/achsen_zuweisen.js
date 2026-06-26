@@ -25,6 +25,8 @@ function chipHtmlJs(achseId, idx, text) {
          + 'style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">&#9664;</button>'
          + '<span class="chip-text">' + esc + '</span>'
          + '<input type="hidden" name="' + name + '" value="' + esc + '">'
+         + '<button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten" '
+         + 'style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">&#x270E;</button>'
          + '<button type="button" onclick="chipSortieren(this,\'rechts\')" title="Nach rechts" '
          + 'style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">&#9654;</button>'
          + '<button type="button" onclick="chipVerschieben(this)" title="Verschieben" '
@@ -34,6 +36,51 @@ function chipHtmlJs(achseId, idx, text) {
          + '<select class="chip-move-sel" style="display:none;font-size:11px;border:1px solid #93c5fd;border-radius:4px;margin-left:2px" '
          + 'onchange="moveAusfuehren(this)"><option value="">&#8594; verschieben nach...</option></select>'
          + '</span>';
+}
+
+function chipBearbeiten(btn) {
+    var chip   = btn.closest('.wert-chip');
+    var textEl = chip.querySelector('.chip-text');
+    var hidden = chip.querySelector('input[type="hidden"]');
+    if (chip.querySelector('.chip-edit-inp')) return;
+
+    var inp = document.createElement('input');
+    inp.type      = 'text';
+    inp.value     = textEl.textContent;
+    inp.className = 'chip-edit-inp';
+    inp.style.cssText = 'font-size:12px;border:1px solid #93c5fd;border-radius:4px;padding:1px 5px;'
+                      + 'width:' + Math.max(60, textEl.textContent.length * 8) + 'px;color:#1e40af;background:#fff;outline:none';
+
+    textEl.style.display = 'none';
+    textEl.after(inp);
+    inp.focus();
+    inp.select();
+
+    var bestaetigt = false;
+    function bestaetigen() {
+        if (bestaetigt) return;
+        var neu = inp.value.trim();
+        if (!neu) { inp.focus(); return; }
+        bestaetigt = true;
+        textEl.textContent   = neu;
+        hidden.value         = neu;
+        textEl.style.display = '';
+        inp.remove();
+        formDirty = true;
+    }
+    function abbrechen() {
+        if (bestaetigt) return;
+        bestaetigt = true;
+        textEl.style.display = '';
+        inp.remove();
+    }
+
+    inp.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter')  { e.preventDefault(); bestaetigen(); }
+        if (e.key === 'Escape') { abbrechen(); }
+    });
+    // setTimeout verhindert dass blur sofort beim focus()-Aufruf feuert
+    setTimeout(function() { inp.addEventListener('blur', bestaetigen); }, 0);
 }
 
 function chipEntfernen(btn) {
@@ -102,6 +149,21 @@ function moveAusfuehren(sel) {
     formDirty  = true;
     updateWerteCount(oldId);
     updateWerteCount(newId);
+}
+
+function preisModiSetzen(achseId, modus) {
+    document.getElementById('pm-' + achseId).value = modus;
+    var apBtn = document.getElementById('pm-ap-' + achseId);
+    var dpBtn = document.getElementById('pm-dp-' + achseId);
+    function setAktiv(btn, aktiv) {
+        if (!btn) return;
+        btn.style.background   = aktiv ? '#1e40af' : '#f1f5f9';
+        btn.style.color        = aktiv ? '#fff'    : '#64748b';
+        btn.style.borderColor  = aktiv ? '#1e40af' : '#e2e8f0';
+    }
+    setAktiv(apBtn, modus === 'aufpreis');
+    setAktiv(dpBtn, modus === 'direktpreis');
+    formDirty = true;
 }
 
 function achseGeaendert(achseId) {

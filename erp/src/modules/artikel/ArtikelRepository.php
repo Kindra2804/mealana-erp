@@ -98,7 +98,7 @@ class ArtikelRepository
         } elseif ($sf === 'uv') {
             $conditions[] = "a.ueberverkauf_erlaubt = 1";
         } elseif ($sf === 'fehlbest') {
-            $having = 'HAVING gesamtbestand <= 0 OR (gesamtbestand - reserviert) < 0';
+            $having = 'HAVING reserviert > gesamtbestand';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
         }
@@ -172,7 +172,15 @@ class ArtikelRepository
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN einheiten e ON a.einheit_id = e.id
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+            LEFT JOIN artikel_preise ap ON ap.id = (
+                SELECT id FROM artikel_preise
+                WHERE artikel_id = a.id
+                  AND kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+                  AND (gueltig_ab IS NULL OR CURDATE() >= gueltig_ab)
+                  AND (gueltig_bis IS NULL OR CURDATE() <= gueltig_bis)
+                ORDER BY (gueltig_ab IS NOT NULL) DESC, id DESC
+                LIMIT 1
+            )
             LEFT JOIN artikel_lieferanten al_std ON al_std.artikel_id = a.id AND al_std.standard_lieferant = 1
             LEFT JOIN artikel kind ON kind.vaterartikel_id = a.id
             LEFT JOIN lagerbestand lb ON lb.artikel_id = IFNULL(kind.id, a.id)
@@ -223,7 +231,7 @@ class ArtikelRepository
         } elseif ($sf === 'uv') {
             $conditions[] = "a.ueberverkauf_erlaubt = 1";
         } elseif ($sf === 'fehlbest') {
-            $having = 'HAVING gesamtbestand <= 0 OR (gesamtbestand - reserviert) < 0';
+            $having = 'HAVING reserviert > gesamtbestand';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
         }
@@ -338,7 +346,15 @@ class ArtikelRepository
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN einheiten e ON a.einheit_id = e.id
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+            LEFT JOIN artikel_preise ap ON ap.id = (
+                SELECT id FROM artikel_preise
+                WHERE artikel_id = a.id
+                  AND kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+                  AND (gueltig_ab IS NULL OR CURDATE() >= gueltig_ab)
+                  AND (gueltig_bis IS NULL OR CURDATE() <= gueltig_bis)
+                ORDER BY (gueltig_ab IS NOT NULL) DESC, id DESC
+                LIMIT 1
+            )
             WHERE a.id = :id
         ");
 
@@ -365,7 +381,15 @@ class ArtikelRepository
                 ac.code AS gtin,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
             FROM artikel a
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+            LEFT JOIN artikel_preise ap ON ap.id = (
+                SELECT id FROM artikel_preise
+                WHERE artikel_id = a.id
+                  AND kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+                  AND (gueltig_ab IS NULL OR CURDATE() >= gueltig_ab)
+                  AND (gueltig_bis IS NULL OR CURDATE() <= gueltig_bis)
+                ORDER BY (gueltig_ab IS NOT NULL) DESC, id DESC
+                LIMIT 1
+            )
             LEFT JOIN artikel_codes ac ON a.id = ac.artikel_id AND ac.typ = 'GTIN13'
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             $where
@@ -409,9 +433,18 @@ class ArtikelRepository
                 ap.brutto_vk,
                 h.name AS hersteller,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
-                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
+                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
+                (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean
             FROM artikel a
-            LEFT JOIN artikel_preise ap ON a.id = ap.artikel_id AND ap.kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+            LEFT JOIN artikel_preise ap ON ap.id = (
+                SELECT id FROM artikel_preise
+                WHERE artikel_id = a.id
+                  AND kundengruppen_id = (SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1)
+                  AND (gueltig_ab IS NULL OR CURDATE() >= gueltig_ab)
+                  AND (gueltig_bis IS NULL OR CURDATE() <= gueltig_bis)
+                ORDER BY (gueltig_ab IS NOT NULL) DESC, id DESC
+                LIMIT 1
+            )
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN artikel_typen at ON a.artikeltyp_id = at.id
@@ -910,6 +943,30 @@ class ArtikelRepository
         return $this->db->query("SELECT id, name, satz FROM steuerklassen WHERE aktiv = 1")->fetchAll();
     }
 
+    /** Passt Preise eines Kind-Artikels nach copyPreise() an (Aufpreis addieren oder Direktpreis setzen). */
+    public function passeKindPreiseAn(int $kindId, string $modus, float $preiswert): void
+    {
+        if ($modus === 'direktpreis') {
+            $this->db->prepare("
+                UPDATE artikel_preise ap
+                JOIN artikel a ON a.id = ap.artikel_id
+                JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
+                SET ap.brutto_vk = :d1,
+                    ap.netto_vk  = ROUND(:d2 / (1 + sk.satz / 100), 4)
+                WHERE ap.artikel_id = :kid
+            ")->execute(['d1' => $preiswert, 'd2' => $preiswert, 'kid' => $kindId]);
+        } else {
+            $this->db->prepare("
+                UPDATE artikel_preise ap
+                JOIN artikel a ON a.id = ap.artikel_id
+                JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
+                SET ap.brutto_vk = ap.brutto_vk + :ap,
+                    ap.netto_vk  = ROUND(ap.brutto_vk / (1 + sk.satz / 100), 4)
+                WHERE ap.artikel_id = :kid
+            ")->execute(['ap' => $preiswert, 'kid' => $kindId]);
+        }
+    }
+
     /**
      * Kopiert alle Preiszeilen vom Quell-Artikel zum neuen Artikel.
      * Wird beim Artikel-Kopieren und beim Vater-Kind-Erstellen genutzt.
@@ -918,21 +975,10 @@ class ArtikelRepository
     public function copyPreise(int $quellId, int $neueId)
     {
         $stmt = $this->db->prepare("
-            INSERT INTO artikel_preise (
-                artikel_id,
-                kundengruppen_id,
-                brutto_vk,
-                netto_vk,
-                gueltig_ab,
-                gueltig_bis
-                )
-            SELECT 
-                :neue_id,
-                kundengruppen_id,
-                brutto_vk,
-                netto_vk,
-                gueltig_ab,
-                gueltig_bis
+            INSERT IGNORE INTO artikel_preise (
+                artikel_id, kundengruppen_id, brutto_vk, netto_vk, gueltig_ab, gueltig_bis
+            )
+            SELECT :neue_id, kundengruppen_id, brutto_vk, netto_vk, gueltig_ab, gueltig_bis
             FROM artikel_preise
             WHERE artikel_id = :quell_id
         ");
@@ -948,13 +994,8 @@ class ArtikelRepository
     public function copyKategorien(int $quellId, int $neueId)
     {
         $stmt = $this->db->prepare("
-            INSERT INTO artikel_kategorien (
-                artikel_id,
-                kategorie_id
-                )
-            SELECT 
-                :neue_id,
-                kategorie_id
+            INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id)
+            SELECT :neue_id, kategorie_id
             FROM artikel_kategorien
             WHERE artikel_id = :quell_id
         ");
@@ -970,19 +1011,8 @@ class ArtikelRepository
     public function copyMerkmale(int $quellId, int $neueId)
     {
         $stmt = $this->db->prepare("
-            INSERT INTO artikel_merkmale (
-                artikel_id,
-                merkmal_id,
-                wert_text,
-                wert_zahl,
-                wert_bool
-                )
-            SELECT 
-                :neue_id,
-                merkmal_id,
-                wert_text,
-                wert_zahl,
-                wert_bool
+            INSERT IGNORE INTO artikel_merkmale (artikel_id, merkmal_id, merkmal_wert_id)
+            SELECT :neue_id, merkmal_id, merkmal_wert_id
             FROM artikel_merkmale
             WHERE artikel_id = :quell_id
         ");
@@ -1003,7 +1033,7 @@ class ArtikelRepository
     public function copyLieferanten(int $quellId, int $neueId)
     {
         $stmt = $this->db->prepare("
-            INSERT INTO artikel_lieferanten (
+            INSERT IGNORE INTO artikel_lieferanten (
                 artikel_id,
                 lieferant_id,
                 artikelnummer_lieferant,

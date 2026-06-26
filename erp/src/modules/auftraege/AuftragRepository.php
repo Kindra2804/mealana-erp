@@ -38,7 +38,9 @@ class AuftragRepository
         $where  = ['1=1'];
         $params = [];
 
-        if ($zahlungsstatus !== '') {
+        if ($zahlungsstatus === 'ueberbezahlt') {
+            $where[] = "a.zahlungsstatus = 'bezahlt' AND (SELECT COALESCE(SUM(az.betrag),0) FROM auftrag_zahlungen az WHERE az.auftrag_id = a.id) > a.bruttobetrag";
+        } elseif ($zahlungsstatus !== '') {
             $where[]                = 'a.zahlungsstatus = :zahlungsstatus';
             $params['zahlungsstatus'] = $zahlungsstatus;
         }
@@ -72,7 +74,8 @@ class AuftragRepository
                 a.kunden_id,
                 a.kunden_snapshot,
                 k.kundennummer,
-                COUNT(p.id) AS positionen_anzahl
+                COUNT(p.id) AS positionen_anzahl,
+                (SELECT COALESCE(SUM(az.betrag),0) FROM auftrag_zahlungen az WHERE az.auftrag_id = a.id) AS summe_zahlungen
             FROM auftraege a
             LEFT JOIN kunden k ON k.id = a.kunden_id
             LEFT JOIN auftrag_positionen p ON p.auftrag_id = a.id
@@ -454,5 +457,41 @@ class AuftragRepository
     {
         $stmt = $this->db->prepare("DELETE FROM auftrag_positionen WHERE auftrag_id = :id");
         $stmt->execute(['id' => $id]);
+    }
+
+    public function findZahlungen(int $auftragId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT az.*, b.formularname AS erfasst_von_name
+            FROM auftrag_zahlungen az
+            LEFT JOIN benutzer b ON az.erfasst_von = b.id
+            WHERE az.auftrag_id = :id
+            ORDER BY az.buchungsdatum, az.erfasst_am
+        ");
+        $stmt->execute(['id' => $auftragId]);
+        return $stmt->fetchAll();
+    }
+
+    public function insertZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, int $benutzerId): int
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
+            VALUES (:auftrag_id, :betrag, :buchungsdatum, :notiz, :erfasst_von)
+        ");
+        $stmt->execute([
+            'auftrag_id'    => $auftragId,
+            'betrag'        => $betrag,
+            'buchungsdatum' => $buchungsdatum,
+            'notiz'         => $notiz,
+            'erfasst_von'   => $benutzerId,
+        ]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function getSummeZahlungen(int $auftragId): float
+    {
+        $stmt = $this->db->prepare("SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = :id");
+        $stmt->execute(['id' => $auftragId]);
+        return (float)$stmt->fetchColumn();
     }
 }

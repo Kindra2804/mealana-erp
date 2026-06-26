@@ -12,11 +12,12 @@ $suche          = $_GET['suche']    ?? '';
 $auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche);
 
 $zahlungsLabels = [
-    'ausstehend'  => ['label' => 'Ausstehend',  'class' => 'chip-auslauf'],
-    'bezahlt'     => ['label' => 'Bezahlt',      'class' => 'chip-aktiv'],
-    'teilbezahlt' => ['label' => 'Teilbezahlt',  'class' => 'chip-auslauf'],
-    'erstattet'   => ['label' => 'Erstattet',    'class' => 'chip-inaktiv'],
-    'storniert'   => ['label' => 'Storniert',    'class' => 'chip-inaktiv'],
+    'ausstehend'   => ['label' => 'Ausstehend',  'class' => 'chip-auslauf'],
+    'bezahlt'      => ['label' => 'Bezahlt',     'class' => 'chip-aktiv'],
+    'teilbezahlt'  => ['label' => 'Teilbezahlt', 'class' => 'chip-auslauf'],
+    'ueberbezahlt' => ['label' => 'Überbezahlt', 'class' => 'chip-auslauf'],
+    'erstattet'    => ['label' => 'Erstattet',   'class' => 'chip-inaktiv'],
+    'storniert'    => ['label' => 'Storniert',   'class' => 'chip-inaktiv'],
 ];
 $zahlungsArtLabels = [
     'vorkasse'    => ['label' => 'Vorkasse',  'class' => 'chip-aktiv'],
@@ -54,15 +55,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
         onkeydown="if(event.key==='Enter') applyFilter()">
     <select class="erp-select" style="font-size:13px" id="filter-zahlung">
         <option value="">Alle Zahlung</option>
-        <option value="ausstehend" <?= $filterZahlung === 'ausstehend'  ? 'selected' : '' ?>>Ausstehend</option>
-        <option value="bezahlt" <?= $filterZahlung === 'bezahlt'     ? 'selected' : '' ?>>Bezahlt</option>
-        <option value="storniert" <?= $filterZahlung === 'storniert'   ? 'selected' : '' ?>>Storniert</option>
+        <option value="ausstehend"   <?= $filterZahlung === 'ausstehend'   ? 'selected' : '' ?>>Ausstehend</option>
+        <option value="teilbezahlt"  <?= $filterZahlung === 'teilbezahlt'  ? 'selected' : '' ?>>Teilbezahlt</option>
+        <option value="bezahlt"      <?= $filterZahlung === 'bezahlt'      ? 'selected' : '' ?>>Bezahlt</option>
+        <option value="ueberbezahlt" <?= $filterZahlung === 'ueberbezahlt' ? 'selected' : '' ?>>Überbezahlt</option>
+        <option value="storniert"    <?= $filterZahlung === 'storniert'    ? 'selected' : '' ?>>Storniert</option>
     </select>
     <select class="erp-select" style="font-size:13px" id="filter-lieferung">
         <option value="">Alle Lieferung</option>
         <option value="neu" <?= $filterLieferung === 'neu'             ? 'selected' : '' ?>>Neu</option>
         <option value="in_bearbeitung" <?= $filterLieferung === 'in_bearbeitung'  ? 'selected' : '' ?>>In Bearbeitung</option>
         <option value="versandbereit" <?= $filterLieferung === 'versandbereit'   ? 'selected' : '' ?>>Versandbereit</option>
+        <option value="teilgeliefert" <?= $filterLieferung === 'teilgeliefert'   ? 'selected' : '' ?>>Teilgeliefert</option>
         <option value="versendet" <?= $filterLieferung === 'versendet'       ? 'selected' : '' ?>>Versendet</option>
         <option value="zurueckgestellt" <?= $filterLieferung === 'zurueckgestellt' ? 'selected' : '' ?>>Zurückgestellt</option>
         <option value="abgeschlossen" <?= $filterLieferung === 'abgeschlossen'   ? 'selected' : '' ?>>Abgeschlossen</option>
@@ -115,7 +119,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <tbody>
                 <?php foreach ($auftraege as $a):
                     $za = $zahlungsArtLabels[$a['zahlungsart']] ?? ['label' => $a['zahlungsart'], 'class' => ''];
-                    $zl = $zahlungsLabels[$a['zahlungsstatus']] ?? ['label' => $a['zahlungsstatus'], 'class' => ''];
+                    $zStatus = $a['zahlungsstatus'];
+                    if ($zStatus === 'bezahlt' && (float)($a['summe_zahlungen'] ?? 0) > (float)$a['bruttobetrag']) {
+                        $zStatus = 'ueberbezahlt';
+                    }
+                    $zl = $zahlungsLabels[$zStatus] ?? ['label' => $zStatus, 'class' => ''];
                     $ll = $lieferLabels[$a['lieferstatus']]     ?? ['label' => $a['lieferstatus'],   'class' => ''];
                     $kl = $kanalLabels[$a['kanal']]             ?? ['label' => $a['kanal'],          'class' => ''];
                 ?>

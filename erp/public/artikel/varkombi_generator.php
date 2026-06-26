@@ -33,6 +33,12 @@ function kartesischesProdukt(array $arrays): array
     return $result;
 }
 
+// Achse-ID → Name Lookup
+$achseNamenMap = [];
+foreach ($achsen as $a) {
+    $achseNamenMap[(int)$a['achse_id']] = $a['name'];
+}
+
 // Werte nach achse_id gruppieren
 $werteProAchse = [];
 foreach ($werte as $w) {
@@ -112,9 +118,12 @@ foreach ($alleKombis as $kombi) {
                     <?php foreach ($neueKombis as $n => $k): ?>
                         <?php
                         // Vorschläge berechnen bevor wir in den HTML-Teil gehen
-                        $wertNamen  = array_column($k['kombi'], 'wert');
+                        $wertNamen     = array_column($k['kombi'], 'wert');
                         $vorschlagNr   = $vater['artikelnummer'] . '-' . implode('-', $wertNamen);
-                        $vorschlagName = $vater['name'] . ' ' . implode(' ', $wertNamen);
+                        $vorschlagName = $vater['name'] . ' ' . implode(' ', array_map(
+                            fn($w) => ($achseNamenMap[(int)$w['achse_id']] ?? '') . ' ' . $w['wert'],
+                            $k['kombi']
+                        ));
                         $aufpreis      = array_sum(array_column($k['kombi'], 'aufpreis'));
                         ?>
                         <tr>

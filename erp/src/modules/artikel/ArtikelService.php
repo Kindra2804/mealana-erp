@@ -315,14 +315,29 @@ class ArtikelService
      * Wird nach erstelleKombinationen() aufgerufen: Kategorien, Merkmale, Lieferanten und
      * Preise werden für jedes neue Kind kopiert damit es sofort vollständig befüllt ist.
      */
-    public function kopiereVaterRelationenZuKindern(int $vaterId, array $kindIds): void
+    public function kopiereVaterRelationenZuKindern(int $vaterId, array $kindIds, array $preisAnpassungen = []): void
     {
         foreach ($kindIds as $kindId) {
             $this->repo->copyKategorien($vaterId, $kindId);
             $this->repo->copyMerkmale($vaterId, $kindId);
             $this->repo->copyLieferanten($vaterId, $kindId);
             $this->repo->copyPreise($vaterId, $kindId);
+            if (isset($preisAnpassungen[$kindId])) {
+                $pa = $preisAnpassungen[$kindId];
+                $this->repo->passeKindPreiseAn($kindId, $pa['modus'], $pa['preis_wert']);
+            }
         }
+    }
+
+    public function bulkAddKategorie(array $artikelIds, int $kategorieId): void
+    {
+        $this->kategorieRepo->bulkAddKategorie($artikelIds, $kategorieId);
+        Logger::log('artikel.bulk_kategorie_hinzufuegen', 'kategorien', $kategorieId, ['artikel_anzahl' => count($artikelIds)]);
+    }
+
+    public function speichereCode(int $artikelId, string $typ, string $code): void
+    {
+        $this->repo->insertCode($artikelId, $typ, $code);
     }
 
     public function getKinderFuerListe(array $vaterIds, string $sortSpalte = 'a.artikelnummer', string $sortDir = 'ASC'): array

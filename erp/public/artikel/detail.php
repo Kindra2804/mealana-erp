@@ -281,6 +281,12 @@ foreach ($existing as $e) {
     $existingKeys[$e['wert_ids']] = $e;  // key: "1,3" → artikel-daten
 }
 
+// Achse-ID → Name Lookup für Namens-Vorschlag
+$achseNamenMap = [];
+foreach ($achsen as $a) {
+    $achseNamenMap[(int)$a['achse_id']] = $a['name'];
+}
+
 // Kombis aufteilen
 $neueKombis     = [];
 $vorhandeneKombis = [];
@@ -375,14 +381,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 <?php if ($flashErfolg): ?>
-    <div class="success-banner" id="flash-php">✓ <?= htmlspecialchars($flashErfolg) ?></div>
+    <div class="success-banner" id="flash-php">✓ <?= htmlspecialchars(is_array($flashErfolg) ? implode(', ', $flashErfolg) : $flashErfolg) ?></div>
 <?php endif; ?>
 <?php if ($flashFehler): ?>
-    <div class="error-banner" id="flash-php-err">✗ <?= htmlspecialchars($flashFehler) ?></div>
+    <div class="error-banner" id="flash-php-err">✗ <?= htmlspecialchars(is_array($flashFehler) ? implode(' · ', $flashFehler) : $flashFehler) ?></div>
 <?php endif; ?>
 <?php if ($flashHinweis): ?>
     <div id="flash-php-hinweis" style="background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;padding:10px 16px;margin:var(--space-sm) var(--space-md) 0;border-radius:6px;font-size:13px">
-        ℹ <?= htmlspecialchars($flashHinweis) ?>
+        ℹ <?= htmlspecialchars(is_array($flashHinweis) ? implode(' · ', $flashHinweis) : $flashHinweis) ?>
     </div>
 <?php endif; ?>
 <div id="ajax-flash" style="display:none;margin:var(--space-sm) var(--space-md) 0"></div>
@@ -781,6 +787,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                         <th style="width:32px"></th>
                                         <th>Artikelnummer</th>
                                         <th>Bezeichnung</th>
+                                        <th>EAN</th>
                                         <th>Aufpreis</th>
                                         <th>Status</th>
                                     </tr>
@@ -792,6 +799,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                             <td><input type="checkbox" disabled checked></td>
                                             <td><a href="detail.php?id=<?= $v['artikel']['id'] ?>"><?= htmlspecialchars($v['artikel']['artikelnummer']) ?></a></td>
                                             <td><?= htmlspecialchars($v['artikel']['name']) ?></td>
+                                            <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($v['artikel']['ean'] ?? '–') ?></td>
                                             <td>–</td>
                                             <td><span class="chip <?= $v['artikel']['aktiv'] === 1 ? 'chip-aktiv' : 'chip-inaktiv' ?>"><?= $v['artikel']['aktiv'] === 1 ? '✓ existiert' : '✗ inaktiv' ?></span></td>
                                         </tr>
@@ -800,9 +808,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <!-- Neue (editierbar) -->
                                     <?php foreach ($neueKombis as $n => $k): ?>
                                         <?php
-                                        $wertNamen     = array_map(fn($w) => trim($w['wert'] . (!empty($w['achse_suffix']) ? ' ' . $w['achse_suffix'] : '')), $k['kombi']);
+                                        $wertNamen     = array_column($k['kombi'], 'wert');
                                         $vorschlagNr   = $artikel['artikelnummer'] . '-' . implode('-', $wertNamen);
-                                        $vorschlagName = $artikel['name'] . ' ' . implode(' ', $wertNamen);
+                                        $vorschlagName = $artikel['name'] . ' ' . implode(' ', array_map(
+                                            fn($w) => ($achseNamenMap[(int)$w['achse_id']] ?? '') . ' ' . $w['wert'],
+                                            $k['kombi']
+                                        ));
                                         $aufpreis      = array_sum(array_column($k['kombi'], 'aufpreis'));
                                         ?>
                                         <tr style="background:#EBF8FF">
@@ -812,6 +823,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                             </td>
                                             <td><input type="text" name="kombis[<?= $n ?>][artikelnummer]" class="erp-input" style="width:160px" value="<?= htmlspecialchars($vorschlagNr) ?>"></td>
                                             <td><input type="text" name="kombis[<?= $n ?>][name]" class="erp-input" style="width:100%" value="<?= htmlspecialchars($vorschlagName) ?>"></td>
+                                            <td><input type="text" name="kombis[<?= $n ?>][ean]" class="erp-input" style="width:130px" value="" placeholder="optional"></td>
                                             <td><input type="number" name="kombis[<?= $n ?>][aufpreis]" class="erp-input" style="width:80px" value="<?= number_format($aufpreis, 2, '.', '') ?>" step="0.01"></td>
                                             <td><span class="chip" style="background:#BEE3F8; color:#2B6CB0">● neu</span></td>
                                         </tr>

@@ -343,4 +343,49 @@ class AuftragService
 
         return ['erfolg' => true, 'id' => $id];
     }
+
+    public function getZahlungen(int $auftragId): array
+    {
+        return $this->repo->findZahlungen($auftragId);
+    }
+
+    public function bucheZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz): array
+    {
+        if ($betrag <= 0) {
+            return ['erfolg' => false, 'fehler' => 'Betrag muss größer als 0 sein'];
+        }
+
+        $auftrag = $this->repo->findById($auftragId);
+        if (!$auftrag) {
+            return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden'];
+        }
+        if ($auftrag['zahlungsstatus'] === 'bezahlt') {
+            return ['erfolg' => false, 'fehler' => 'Auftrag ist bereits vollständig bezahlt'];
+        }
+
+        $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+        $this->repo->insertZahlung($auftragId, $betrag, $buchungsdatum, $notiz, $benutzerId);
+
+        $summe   = $this->repo->getSummeZahlungen($auftragId);
+        $gesamt  = (float)$auftrag['bruttobetrag'];
+
+        if ($summe >= $gesamt) {
+            $neuerStatus = 'bezahlt';
+            $bezahltAm   = $buchungsdatum;
+        } else {
+            $neuerStatus = 'teilbezahlt';
+            $bezahltAm   = null;
+        }
+
+        $felder = ['zahlungsstatus' => $neuerStatus];
+        if ($bezahltAm) {
+            $felder['bezahlt_am'] = $bezahltAm;
+        }
+        $this->repo->updateStatus($auftragId, $felder);
+        $this->repo->logStatus($auftragId, ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerStatus]], 'Zahlung gebucht: ' . number_format($betrag, 2, ',', '.') . ' €', $benutzerId);
+
+        Logger::log('auftraege.zahlung_buchen', 'auftraege', $auftragId, ['betrag' => $betrag, 'status' => $neuerStatus]);
+
+        return ['erfolg' => true, 'neuer_status' => $neuerStatus, 'summe' => $summe, 'gesamt' => $gesamt];
+    }
 }

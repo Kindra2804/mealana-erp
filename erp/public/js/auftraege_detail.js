@@ -1,5 +1,25 @@
 /* auftraege/detail.php — Statusänderungen, Tracking, Stornierung */
 
+async function zahlungBuchen(auftragId) {
+    const betrag = parseFloat(document.getElementById('zahl-betrag').value.replace(',', '.'));
+    const datum  = document.getElementById('zahl-datum').value;
+    const notiz  = document.getElementById('zahl-notiz').value.trim();
+    if (!betrag || betrag <= 0) { alert('Bitte gültigen Betrag eingeben'); return; }
+    if (!datum) { alert('Bitte Buchungsdatum eingeben'); return; }
+    const body = new FormData();
+    body.append('auftrag_id', auftragId);
+    body.append('betrag', betrag);
+    body.append('buchungsdatum', datum);
+    if (notiz) body.append('notiz', notiz);
+    const r    = await fetch('/mealana/auftraege/zahlung_buchen.php', { method: 'POST', body });
+    const data = await r.json();
+    if (data.erfolg) {
+        location.reload();
+    } else {
+        alert(data.fehler || 'Fehler beim Buchen');
+    }
+}
+
 async function statusSetzen(feld, wert, notiz) {
     const body = new FormData();
     body.append('id', window.AUFTRAG_ID);

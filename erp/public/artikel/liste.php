@@ -77,9 +77,11 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             $verf = $ist - $res;
             $vc   = $verf <= 0 && $ist > 0 ? '#dc2626' : ($verf <= 2 && $res > 0 ? '#d97706' : '#059669');
             $html = formatBestand($ist);
-            $html .= '<br><span style="font-size:10px;color:' . ($res > 0 ? '#d97706' : 'var(--color-text-muted)') . '">' . formatBestand($res) . ' res.</span>';
-            $html .= '<br><span style="font-size:10px;color:' . $vc . ';font-weight:' . ($res > 0 ? '600' : 'normal') . '">' . formatBestand($verf) . ' verf.</span>';
-            return '<td style="text-align:right;line-height:1.6" class="' . $bstKlasse . '" ' . $bstTitle . '>' . $html . '</td>';
+            if ($res > 0) {
+                $html .= ' / <span style="font-size:11px;color:#d97706">' . formatBestand($res) . '</span>'
+                       . ' / <span style="font-size:11px;color:' . $vc . ';font-weight:600">' . formatBestand($verf) . '</span>';
+            }
+            return '<td style="text-align:right;white-space:nowrap" class="' . $bstKlasse . '" ' . $bstTitle . '>' . $html . '</td>';
         case 'preis':
             if (!$a['brutto_vk']) return '<td style="text-align:right" class="preis-cell">–</td>';
             $ab = $hatTeureresKind ? '<span style="font-size:10px;color:var(--color-text-muted)">ab </span>' : '';
@@ -125,9 +127,11 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
             $kverf = $kist - $kres;
             $kvc   = $kverf <= 0 && $kist > 0 ? '#dc2626' : ($kverf <= 2 && $kres > 0 ? '#d97706' : '#059669');
             $khtml = formatBestand($kist);
-            $khtml .= '<br><span style="font-size:10px;color:' . ($kres > 0 ? '#d97706' : 'var(--color-text-muted)') . '">' . formatBestand($kres) . ' res.</span>';
-            $khtml .= '<br><span style="font-size:10px;color:' . $kvc . '">' . formatBestand($kverf) . ' verf.</span>';
-            return '<td style="text-align:right;font-size:12px;line-height:1.6" class="' . $kindBstKlasse . '" ' . $kindBstTitle . '>' . $khtml . '</td>';
+            if ($kres > 0) {
+                $khtml .= ' / <span style="font-size:11px;color:#d97706">' . formatBestand($kres) . '</span>'
+                        . ' / <span style="font-size:11px;color:' . $kvc . ';font-weight:600">' . formatBestand($kverf) . '</span>';
+            }
+            return '<td style="text-align:right;font-size:12px;white-space:nowrap" class="' . $kindBstKlasse . '" ' . $kindBstTitle . '>' . $khtml . '</td>';
         case 'preis':    return '<td style="text-align:right;font-size:12px" class="preis-cell">' . ($k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–') . '</td>';
         case 'ean':      return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['ean'] ?? '–') . '</td>';
         case 'charge':   return '<td style="text-align:center">' . ($k['charge_pflicht'] ? '✓' : '') . '</td>';
@@ -320,6 +324,7 @@ $actionBarContent = <<<HTML
         <option value="deaktivieren">Deaktivieren</option>
         <option value="ist_auslaufartikel">ist Auslaufartikel</option>
         <option value="kein_auslaufartikel">kein Auslaufartikel</option>
+        <option value="kategorie_zuweisen">Kategorie zuweisen</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
     <div class="actionbar-sep"></div>
@@ -422,12 +427,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $statusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
                 if ($a['ueberverkauf_erlaubt'])
                     $statusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
-                // Fehlbest. bei normalen Artikeln: aktiv, kein Üv, kein Auslauf, Bestand = 0
-                if ($a['aktiv'] && !$a['ueberverkauf_erlaubt'] && !$a['ist_auslaufartikel'] && (float)$a['gesamtbestand'] <= 0)
-                    $statusChips .= '<span class="sc sc-fehlbest" title="Kein Bestand vorhanden">Fehlbest.</span>';
-                // Fehlbest. zusätzlich zu Üv: wenn bereits auf Kundenauftrag/Reservierung
-                if ($a['aktiv'] && $a['ueberverkauf_erlaubt'] && (float)$a['gesamtbestand'] <= 0 && (float)($a['reserviert'] ?? 0) > 0)
-                    $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$a['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
+                // Fehlbest. nur wenn Reservierungen den physischen Bestand übersteigen
+                if ($a['aktiv'] && (float)($a['reserviert'] ?? 0) > (float)$a['gesamtbestand'])
+                    $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)($a['reserviert'] ?? 0) . ' / Bestand: ' . (int)$a['gesamtbestand'] . '">Fehlbest.</span>';
                 if ((int)($a['kat_anzahl'] ?? 1) === 0)
                     $statusChips .= '<span class="sc sc-ohnekat" title="Kein Kategorie-Eintrag – Artikel erscheint in keinem Shop">Kein Kat.</span>';
                 // Preis-Aktions-Chips
@@ -529,10 +531,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         $kindStatusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
                     if ($k['ueberverkauf_erlaubt'])
                         $kindStatusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
-                    if ($k['aktiv'] && !$k['ueberverkauf_erlaubt'] && !$k['ist_auslaufartikel'] && (float)$k['gesamtbestand'] <= 0)
-                        $kindStatusChips .= '<span class="sc sc-fehlbest" title="Kein Bestand vorhanden">Fehlbest.</span>';
-                    if ($k['aktiv'] && $k['ueberverkauf_erlaubt'] && (float)$k['gesamtbestand'] <= 0 && (float)($k['reserviert'] ?? 0) > 0)
-                        $kindStatusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)$k['reserviert'] . ' Stk. auf offenen Aufträgen">Fehlbest.</span>';
+                    if ($k['aktiv'] && (float)($k['reserviert'] ?? 0) > (float)$k['gesamtbestand'])
+                        $kindStatusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)($k['reserviert'] ?? 0) . ' / Bestand: ' . (int)$k['gesamtbestand'] . '">Fehlbest.</span>';
                     $kindBstKlasse = ((float)$k['gesamtbestand'] <= 0 && $k['aktiv']) ? 'bst-null' : '';
                     $kindBstTitle  = '';
                     if ((float)($k['reserviert'] ?? 0) > 0) {
@@ -754,6 +754,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             return;
         }
 
+        if (aktion === 'kategorie_zuweisen') {
+            bulkKatOeffnen(ids);
+            return;
+        }
+
         fetch('massenupdate.php', {
                 method: 'POST',
                 headers: {
@@ -841,6 +846,86 @@ require_once __DIR__ . '/../includes/shell_top.php';
             speichernUndLaden();
         });
     })();
+</script>
+
+<!-- Bulk-Kategorie Modal -->
+<div id="bulk-kat-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:8px;padding:20px;width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(0,0,0,.2)">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:var(--color-nav)">Kategorie zuweisen</div>
+        <div id="bulk-kat-info" style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px"></div>
+        <div id="bulk-kat-auswahl" style="font-size:12px;color:#1e40af;font-weight:600;min-height:18px;margin-bottom:8px"></div>
+        <div style="border:1px solid #e2e8f0;border-radius:6px;overflow-y:auto;flex:1;padding:6px 0">
+            <?php
+            function renderKatModalKnoten(array $k, int $tiefe): void {
+                $pad = 10 + $tiefe * 14;
+                echo '<div style="padding:5px 8px 5px ' . $pad . 'px;cursor:pointer;border-radius:4px;margin:1px 4px"'
+                   . ' class="bulk-kat-zeile" data-id="' . $k['id'] . '" data-name="' . htmlspecialchars($k['name'], ENT_QUOTES) . '"'
+                   . ' onclick="bulkKatWaehlen(this)">'
+                   . htmlspecialchars($k['name']) . '</div>';
+                foreach ($k['kinder'] ?? [] as $kind) {
+                    renderKatModalKnoten($kind, $tiefe + 1);
+                }
+            }
+            foreach ($kategorienBaum as $wurzel) {
+                renderKatModalKnoten($wurzel, 0);
+            }
+            ?>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+            <button onclick="bulkKatSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
+            <button id="bulk-kat-speichern" onclick="bulkKatSpeichern()" class="btn btn-primary btn-sm" disabled>Zuweisen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _bulkKatSelectedId   = null;
+var _bulkKatSelectedIds  = [];
+
+function bulkKatOeffnen(ids) {
+    _bulkKatSelectedId  = null;
+    _bulkKatSelectedIds = ids;
+    document.getElementById('bulk-kat-info').textContent = ids.length + ' Artikel ausgewählt';
+    document.getElementById('bulk-kat-auswahl').textContent = '';
+    document.getElementById('bulk-kat-speichern').disabled = true;
+    document.querySelectorAll('.bulk-kat-zeile').forEach(z => z.style.background = '');
+    var bd = document.getElementById('bulk-kat-backdrop');
+    bd.style.display = 'flex';
+}
+
+function bulkKatSchliessen() {
+    document.getElementById('bulk-kat-backdrop').style.display = 'none';
+}
+
+function bulkKatWaehlen(el) {
+    document.querySelectorAll('.bulk-kat-zeile').forEach(z => z.style.background = '');
+    el.style.background = '#dbeafe';
+    _bulkKatSelectedId = parseInt(el.dataset.id);
+    document.getElementById('bulk-kat-auswahl').textContent = '▶ ' + el.dataset.name;
+    document.getElementById('bulk-kat-speichern').disabled = false;
+}
+
+function bulkKatSpeichern() {
+    if (!_bulkKatSelectedId) return;
+    var btn = document.getElementById('bulk-kat-speichern');
+    btn.disabled = true;
+    btn.textContent = '...';
+    fetch('bulk_kategorie_speichern.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: _bulkKatSelectedIds, kategorie_id: _bulkKatSelectedId})
+    })
+    .then(r => r.json())
+    .then(data => {
+        bulkKatSchliessen();
+        if (data.fehler) { alert(data.fehler); return; }
+        location.reload();
+    });
+}
+
+document.getElementById('bulk-kat-backdrop').addEventListener('click', function(e) {
+    if (e.target === this) bulkKatSchliessen();
+});
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

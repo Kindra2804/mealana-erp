@@ -39,6 +39,8 @@ class VariantenRepository
             aa.bedingungs_achse_id,
             aa.bedingungs_wert_id,
             aa.sort_order,
+            aa.preis_modus,
+            aa.preis_wert,
             va.name,
             va.code,
             va.darstellungsform,
@@ -83,6 +85,12 @@ class VariantenRepository
         ]);
 
         return (int) $this->db->lastInsertId();
+    }
+
+    public function updateAchseSortOrder(int $artikelId, int $achseId, int $sortOrder): void
+    {
+        $stmt = $this->db->prepare("UPDATE artikel_achsen SET sort_order = :so WHERE artikel_id = :aid AND achse_id = :cid");
+        $stmt->execute(['so' => $sortOrder, 'aid' => $artikelId, 'cid' => $achseId]);
     }
 
     /** Löscht alle Achsen-Zuweisungen eines Artikels (vollständiger Replace-Ansatz). */
@@ -240,11 +248,12 @@ class VariantenRepository
     public function findExistingKombinationen(int $vaterId): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 a.id,
                 a.artikelnummer,
                 a.name,
                 a.aktiv,
+                (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
                 GROUP_CONCAT(vkw.wert_id ORDER BY vkw.wert_id) AS wert_ids
             FROM artikel a
             JOIN varianten_kombination_werte vkw ON vkw.kombination_id = a.id
@@ -283,6 +292,80 @@ class VariantenRepository
         $stmt->execute($ids);
 
         return $stmt->fetchAll();
+    }
+
+    /** Speichert Preismodus + Preiswert für eine Achsen-Zuweisung. */
+    public function updateAchsePreis(int $artikelId, int $achseId, string $modus, float $preiswert): void
+    {
+        $this->db->prepare("
+            UPDATE artikel_achsen
+            SET preis_modus = :modus, preis_wert = :wert
+            WHERE artikel_id = :art AND achse_id = :achse
+        ")->execute(['modus' => $modus, 'wert' => $preiswert, 'art' => $artikelId, 'achse' => $achseId]);
+    }
+
+    /** Gibt Map achse_id → {preis_modus, preis_wert} zurück (nur Einträge mit preis_wert > 0). */
+    public function findAchsenPreisMap(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT achse_id, preis_modus, preis_wert
+            FROM artikel_achsen
+            WHERE artikel_id = :art AND preis_wert > 0
+        ");
+        $stmt->execute(['art' => $artikelId]);
+        $map = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $map[(int)$row['achse_id']] = ['modus' => $row['preis_modus'], 'preis_wert' => (float)$row['preis_wert']];
+        }
+        return $map;
+    }
+
+    /** Gibt Map wert_id → achse_id für alle Werte eines Artikels zurück. */
+    public function findWertAchseMap(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, achse_id FROM varianten_achse_werte WHERE artikel_id = :art
+        ");
+        $stmt->execute(['art' => $artikelId]);
+        $map = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $map[(int)$row['id']] = (int)$row['achse_id'];
+        }
+        return $map;
+    }
+
+    /** Passt Preise eines Kind-Artikels an (nach copyPreise). */
+    public function passeKindPreiseAn(int $kindId, string $modus, float $preiswert): void
+    {
+        if ($modus === 'direktpreis') {
+            $this->db->prepare("
+                UPDATE artikel_preise ap
+                JOIN artikel a ON a.id = ap.artikel_id
+                JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
+                SET ap.brutto_vk = :d1,
+                    ap.netto_vk  = ROUND(:d2 / (1 + sk.satz / 100), 4)
+                WHERE ap.artikel_id = :kid
+            ")->execute(['d1' => $preiswert, 'd2' => $preiswert, 'kid' => $kindId]);
+        } else {
+            // aufpreis: addieren, dann netto aus neuem brutto berechnen
+            // MySQL wertet SET-Klauseln in Reihenfolge aus — brutto wird zuerst erhöht
+            $this->db->prepare("
+                UPDATE artikel_preise ap
+                JOIN artikel a ON a.id = ap.artikel_id
+                JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
+                SET ap.brutto_vk = ap.brutto_vk + :ap,
+                    ap.netto_vk  = ROUND(ap.brutto_vk / (1 + sk.satz / 100), 4)
+                WHERE ap.artikel_id = :kid
+            ")->execute(['ap' => $preiswert, 'kid' => $kindId]);
+        }
+    }
+
+    public function findIdByArtikelnummer(string $nr): ?int
+    {
+        $stmt = $this->db->prepare("SELECT id FROM artikel WHERE artikelnummer = :nr LIMIT 1");
+        $stmt->execute(['nr' => $nr]);
+        $row = $stmt->fetch();
+        return $row ? (int)$row['id'] : null;
     }
 
     public function insertKindArtikel(array $kind): int
@@ -327,7 +410,7 @@ class VariantenRepository
     public function insertKombinationWert(array $wert): bool
     {
         $stmt = $this->db->prepare("
-            INSERT INTO varianten_kombination_werte  (
+            INSERT IGNORE INTO varianten_kombination_werte (
                 kombination_id,
                 wert_id
             )
