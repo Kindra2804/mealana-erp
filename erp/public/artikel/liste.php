@@ -215,6 +215,16 @@ foreach ($alleKinder as $k) {
 
 $zustandsNachVater = $service->getZustandsArtikelFuerListe($vaterIds);
 
+// Zustandsartikel auch für Kind-Artikel (Varianten) prüfen
+$kindIds = array_column($alleKinder, 'id');
+$zustandsNachKind = [];
+if (!empty($kindIds)) {
+    $zsKinder = $service->getZustandsArtikelFuerListe($kindIds);
+    foreach ($zsKinder as $kindId => $_) {
+        $zustandsNachKind[$kindId] = true;
+    }
+}
+
 $gesamt = $controller->count($filter);
 $seitenAnzahl = (int) ceil($gesamt / $proSeite);
 
@@ -554,6 +564,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($k['name']) ?></span>
                             <?php if (!empty($kindAbw)): ?>
                                 <span class="warn-badge" title="Abweicht vom Vater: <?= htmlspecialchars(implode(', ', $kindAbw)) ?>">!</span>
+                            <?php endif; ?>
+                            <?php if (!empty($zustandsNachKind[$k['id']])): ?>
+                                <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
                             <?php endif; ?>
                         </td>
                         <?php foreach ($aktiveSpalten as $sp_key): echo spalteKindTd($sp_key, $k, $kindBstKlasse, $kindBstTitle, $kindStatusChips); endforeach; ?>
