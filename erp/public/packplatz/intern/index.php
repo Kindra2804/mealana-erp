@@ -99,17 +99,21 @@ require_once __DIR__ . '/../shell_top.php';
                     </div>
                 </div>
 
-                <!-- Direkte Zustandsänderung -->
-                <div id="zustandaend-bereich" class="int-card">
-                    <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">🏷 Zustand setzen</div>
-                    <div style="font-size:13px;color:#aaa;margin-bottom:12px">
-                        Aktueller Zustand: <span id="za-aktuell" style="color:#eee;font-weight:600"></span>
+                <!-- Zustandsumbuchung (immer sichtbar, legt Zustandsartikel automatisch an) -->
+                <div id="zustand-bereich" class="int-card">
+                    <div style="font-size:16px;font-weight:700;margin-bottom:6px;color:#e94560">🔁 Zustandsumbuchung</div>
+                    <div style="font-size:12px;color:#555;margin-bottom:14px">
+                        Stücke auf B-Ware umbuchen — Zustandsartikel wird automatisch angelegt wenn noch nicht vorhanden
                     </div>
                     <div style="display:flex;flex-direction:column;gap:12px">
                         <div>
-                            <label class="int-label">Neuer Zustand</label>
-                            <select id="za-zustand" class="int-select">
-                                <option value="neu">Neu</option>
+                            <label class="int-label">Menge</label>
+                            <input type="number" id="zs-menge" class="int-input" style="width:100%;font-size:28px;text-align:center;font-weight:700" min="1" step="1" placeholder="0">
+                            <div id="zs-von-bestand" style="font-size:12px;color:#aaa;margin-top:4px;text-align:center"></div>
+                        </div>
+                        <div>
+                            <label class="int-label">Zustand</label>
+                            <select id="zs-zustand" class="int-select">
                                 <option value="gebraucht">Gebraucht</option>
                                 <option value="generalueberholt">Generalüberholt</option>
                                 <option value="beschaedigt">Beschädigt</option>
@@ -119,51 +123,27 @@ require_once __DIR__ . '/../shell_top.php';
                                 <option value="ausstellungsstueck">Ausstellungsstück</option>
                             </select>
                         </div>
-                        <button class="pp-btn pp-btn-secondary" style="width:100%;font-size:18px;padding:14px" onclick="zustandAendernSpeichern()">
-                            ✎ Zustand speichern
-                        </button>
-                        <div id="za-fehler" style="color:#ef5350;font-size:13px;display:none"></div>
-                        <div id="za-erfolg" style="color:#4caf50;font-size:13px;display:none"></div>
-                    </div>
-                </div>
-
-                <!-- Zustandsumbuchung (nur wenn Zustandsartikel vorhanden) -->
-                <div id="zustand-bereich" class="int-card" style="display:none">
-                    <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">🔁 Zustand umbuchen</div>
-                    <div style="font-size:13px;color:#aaa;margin-bottom:12px">
-                        Einheiten vom Neuzustand auf einen B-Ware-Artikel umbuchen
-                    </div>
-                    <input type="hidden" id="z-von-artikel-id">
-                    <div style="display:flex;flex-direction:column;gap:12px">
                         <div>
-                            <label class="int-label">Zu Zustandsartikel</label>
-                            <select id="z-zu-artikel" class="int-select"></select>
+                            <label class="int-label">Von Lager</label>
+                            <select id="zs-von-lager" class="int-select" onchange="zsVonLagerGewaehlt()">
+                                <?php foreach ($alleLager as $l): ?>
+                                    <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div>
                             <label class="int-label">Zu Lager</label>
-                            <select id="z-lager" class="int-select">
+                            <select id="zs-zu-lager" class="int-select">
                                 <?php foreach ($alleLager as $l): ?>
                                     <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div>
-                            <label class="int-label">Menge</label>
-                            <input type="number" id="z-menge" class="int-input" style="width:100%;font-size:24px;text-align:center" min="1" step="1" placeholder="0">
-                        </div>
-                        <div>
-                            <label class="int-label">Von Lager</label>
-                            <select id="z-von-lager" class="int-select">
-                                <?php foreach ($alleLager as $l): ?>
-                                    <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <button class="pp-btn pp-btn-warning" style="width:100%;font-size:18px;padding:14px" onclick="zustandUmbuchenSpeichern()">
-                            → Umbuchen
+                        <button class="pp-btn pp-btn-warning" style="width:100%;font-size:18px;padding:14px" onclick="zustandAnlegenUmbuchen()">
+                            🔁 Umbuchen
                         </button>
-                        <div id="z-fehler" style="color:#ef5350;font-size:13px;display:none"></div>
-                        <div id="z-erfolg" style="color:#4caf50;font-size:13px;display:none"></div>
+                        <div id="zs-fehler" style="color:#ef5350;font-size:13px;display:none"></div>
+                        <div id="zs-erfolg" style="color:#4caf50;font-size:13px;display:none"></div>
                     </div>
                 </div>
 
@@ -175,13 +155,6 @@ require_once __DIR__ . '/../shell_top.php';
 
 <script>
 var artikelBestand = {};
-var zaArtikelId = null;
-
-var zustandLabels = {
-    neu: 'Neu', gebraucht: 'Gebraucht', generalueberholt: 'Generalüberholt',
-    beschaedigt: 'Beschädigt', retour: 'Retour', demo: 'Demo',
-    muster: 'Muster', ausstellungsstueck: 'Ausstellungsstück'
-};
 
 document.getElementById('ean-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); artikelSuchen(); }
@@ -205,7 +178,6 @@ async function artikelSuchen() {
 
     var a = data.artikel;
     document.getElementById('u-artikel-id').value = a.id;
-    document.getElementById('z-von-artikel-id').value = a.id;
     document.getElementById('artikel-name').textContent = a.name;
     document.getElementById('artikel-nr').textContent = a.artikelnummer;
     document.getElementById('artikel-ean').textContent = a.ean ? 'EAN: ' + a.ean : '';
@@ -230,26 +202,12 @@ async function artikelSuchen() {
     document.getElementById('lager-liste').innerHTML = lagerHtml || '<div style="color:#555;font-size:13px">Kein Lagerbestand</div>';
 
     vonLagerGewaehlt();
+    zsVonLagerGewaehlt();
 
-    // Zustandsartikel
-    if (data.zustandsartikel && data.zustandsartikel.length > 0) {
-        var opts = '';
-        data.zustandsartikel.forEach(function (z) {
-            opts += '<option value="' + z.id + '">' + escH(z.zustand_label) + ' — ' + escH(z.name) + '</option>';
-        });
-        document.getElementById('z-zu-artikel').innerHTML = opts;
-        document.getElementById('zustand-bereich').style.display = 'block';
-    } else {
-        document.getElementById('zustand-bereich').style.display = 'none';
-    }
-
-    // Zustandsänderung
-    zaArtikelId = a.id;
-    var aktuell = a.zustand || 'neu';
-    document.getElementById('za-aktuell').textContent = zustandLabels[aktuell] || aktuell;
-    document.getElementById('za-zustand').value = aktuell;
-    document.getElementById('za-fehler').style.display = 'none';
-    document.getElementById('za-erfolg').style.display = 'none';
+    // Zustandsumbuchung zurücksetzen
+    document.getElementById('zs-menge').value = '';
+    document.getElementById('zs-fehler').style.display = 'none';
+    document.getElementById('zs-erfolg').style.display = 'none';
 
     document.getElementById('artikel-bereich').style.display = 'block';
     document.getElementById('u-menge').focus();
@@ -292,59 +250,44 @@ async function umbuchenSpeichern() {
     }
 }
 
-async function zustandUmbuchenSpeichern() {
-    var vonArtikelId = document.getElementById('z-von-artikel-id').value;
-    var zuArtikelId  = document.getElementById('z-zu-artikel').value;
-    var vonLagerId   = document.getElementById('z-von-lager').value;
-    var zuLagerId    = document.getElementById('z-lager').value;
-    var menge        = parseFloat(document.getElementById('z-menge').value);
-    var fehlerEl     = document.getElementById('z-fehler');
-    var erfolgEl     = document.getElementById('z-erfolg');
+function zsVonLagerGewaehlt() {
+    var vonId   = parseInt(document.getElementById('zs-von-lager').value);
+    var bestand = artikelBestand[vonId] || 0;
+    document.getElementById('zs-von-bestand').textContent = 'Bestand: ' + bestand;
+    document.getElementById('zs-menge').max = bestand;
+}
+
+async function zustandAnlegenUmbuchen() {
+    var artikelId  = document.getElementById('u-artikel-id').value;
+    var menge      = parseFloat(document.getElementById('zs-menge').value);
+    var zustand    = document.getElementById('zs-zustand').value;
+    var vonLagerId = document.getElementById('zs-von-lager').value;
+    var zuLagerId  = document.getElementById('zs-zu-lager').value;
+    var fehlerEl   = document.getElementById('zs-fehler');
+    var erfolgEl   = document.getElementById('zs-erfolg');
 
     fehlerEl.style.display = 'none'; erfolgEl.style.display = 'none';
+    if (!artikelId) { fehlerEl.textContent = 'Kein Artikel geladen.'; fehlerEl.style.display = 'block'; return; }
     if (!menge || menge <= 0) { fehlerEl.textContent = 'Bitte Menge eingeben.'; fehlerEl.style.display = 'block'; return; }
 
     var body = new FormData();
-    body.append('von_artikel_id', vonArtikelId);
-    body.append('zu_artikel_id', zuArtikelId);
+    body.append('artikel_id',   artikelId);
+    body.append('menge',        menge);
+    body.append('zustand',      zustand);
     body.append('von_lager_id', vonLagerId);
-    body.append('zu_lager_id', zuLagerId);
-    body.append('menge', menge);
+    body.append('zu_lager_id',  zuLagerId);
 
-    var r    = await fetch('/mealana/packplatz/intern/zustand_umbuchen.php', { method: 'POST', body });
+    var r    = await fetch('/mealana/packplatz/intern/zustand_anlegen_umbuchen.php', { method: 'POST', body });
     var data = await r.json();
     if (data.erfolg) {
-        erfolgEl.textContent = '✓ Umgebucht!';
+        var msg = '✓ ' + menge + ' Stk. umgebucht → ' + escH(data.zs_nr);
+        if (data.neu_angelegt) msg += ' (Zustandsartikel neu angelegt)';
+        erfolgEl.innerHTML = msg;
         erfolgEl.style.display = 'block';
-        document.getElementById('z-menge').value = '';
+        document.getElementById('zs-menge').value = '';
         artikelSuchen();
     } else {
         fehlerEl.textContent = data.fehler || 'Fehler beim Umbuchen.';
-        fehlerEl.style.display = 'block';
-    }
-}
-
-async function zustandAendernSpeichern() {
-    var fehlerEl = document.getElementById('za-fehler');
-    var erfolgEl = document.getElementById('za-erfolg');
-    fehlerEl.style.display = 'none'; erfolgEl.style.display = 'none';
-
-    if (!zaArtikelId) { fehlerEl.textContent = 'Kein Artikel geladen.'; fehlerEl.style.display = 'block'; return; }
-
-    var neuerZustand = document.getElementById('za-zustand').value;
-    var body = new FormData();
-    body.append('artikel_id', zaArtikelId);
-    body.append('zustand', neuerZustand);
-
-    var r    = await fetch('/mealana/packplatz/intern/zustand_aendern.php', { method: 'POST', body });
-    var data = await r.json();
-    if (data.erfolg) {
-        var label = zustandLabels[neuerZustand] || neuerZustand;
-        document.getElementById('za-aktuell').textContent = label;
-        erfolgEl.textContent = '✓ Zustand gesetzt: ' + label;
-        erfolgEl.style.display = 'block';
-    } else {
-        fehlerEl.textContent = data.fehler || 'Fehler beim Speichern.';
         fehlerEl.style.display = 'block';
     }
 }
