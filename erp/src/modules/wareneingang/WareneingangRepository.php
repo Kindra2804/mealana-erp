@@ -140,6 +140,7 @@ class WareneingangRepository
                 bp.*,
                 COALESCE(vater.name, a.name)                     AS artikel_name,
                 COALESCE(vater.artikelnummer, a.artikelnummer)    AS artikel_nr,
+                a.artikelnummer                                   AS kind_artikelnummer,
                 CASE WHEN a.vaterartikel_id IS NOT NULL THEN a.name END AS variante_name,
                 a.charge_pflicht,
                 (SELECT dateiname

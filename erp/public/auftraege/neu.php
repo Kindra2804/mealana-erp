@@ -183,4 +183,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </script>
 <script src="/mealana/js/auftraege_neu.js"></script>
 
+<!-- Artikel-Browser Modal -->
+<div id="artikel-browser-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center">
+    <div style="background:var(--color-bg);border:1px solid var(--color-border);border-radius:8px;width:min(700px,95vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--color-border)">
+            <input id="browser-suche" type="text" class="erp-input" placeholder="Artikel suchen…" style="flex:1" oninput="browserSuche()">
+            <button type="button" onclick="closeArtikelBrowser()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
+        </div>
+        <div id="browser-ergebnisse" style="overflow-y:auto;flex:1;max-height:60vh"></div>
+    </div>
+</div>
+<script>
+document.getElementById('artikel-browser-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeArtikelBrowser();
+});
+document.getElementById('browser-suche').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeArtikelBrowser();
+});
+</script>
+
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

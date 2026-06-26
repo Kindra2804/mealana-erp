@@ -182,6 +182,20 @@ class AuftragRepository
      */
     public function findArtikelFuerSuche(string $suche): array
     {
+        $words = preg_split('/\s+/', trim($suche), -1, PREG_SPLIT_NO_EMPTY);
+        if (empty($words)) return [];
+
+        $whereParts = [];
+        $params = [];
+        foreach ($words as $i => $word) {
+            $k = 'w' . $i;
+            $whereParts[] = "(a.name LIKE :$k OR vater.name LIKE :$k OR a.artikelnummer LIKE :$k
+                             OR vater.artikelnummer LIKE :$k
+                             OR EXISTS (SELECT 1 FROM artikel_codes ac WHERE ac.artikel_id = a.id AND ac.code LIKE :$k))";
+            $params[$k] = '%' . $word . '%';
+        }
+        $where = implode(' AND ', $whereParts);
+
         $stmt = $this->db->prepare("
             SELECT
                 a.id,
@@ -191,25 +205,19 @@ class AuftragRepository
                 (SELECT ap.brutto_vk FROM artikel_preise ap
                     JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
                     WHERE ap.artikel_id = a.id
-                    LIMIT 1)                                             AS vk_brutto,
+                    LIMIT 1)                                   AS vk_brutto,
                 (SELECT sk.satz FROM steuerklassen sk WHERE sk.id = a.steuerklasse_id) AS steuer_prozent,
-                (SELECT MIN(c.code) FROM artikel_codes c WHERE c.artikel_id = a.id AND c.typ = 'GTIN13')
-                                                              AS ean,
+                (SELECT MIN(c.code) FROM artikel_codes c WHERE c.artikel_id = a.id AND c.typ = 'GTIN13') AS ean,
                 (SELECT dateiname FROM artikel_bilder WHERE artikel_id = a.id AND position = 0 LIMIT 1) AS bild_pfad
             FROM artikel a
             LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
             WHERE a.aktiv = 1
               AND (a.ist_vater = 0 OR a.ist_vater IS NULL)
-              AND (
-                  a.name LIKE :suche
-                  OR vater.name LIKE :suche
-                  OR a.artikelnummer LIKE :suche
-                  OR vater.artikelnummer LIKE :suche
-              )
+              AND ($where)
             ORDER BY COALESCE(vater.name, a.name), a.name
-            LIMIT 20
+            LIMIT 25
         ");
-        $stmt->execute(['suche' => '%' . $suche . '%']);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

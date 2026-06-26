@@ -25,13 +25,18 @@ function positionHinzufuegen(artikel) {
     const tr = document.createElement('tr');
     tr.dataset.idx = idx;
     tr.innerHTML = `
-        <td>
+        <td style="position:relative">
             <input type="hidden" name="positionen[${idx}][artikel_id]" class="pos-artikel-id" value="${a.artikel_id || a.id || ''}">
             <input type="hidden" name="positionen[${idx}][ean]"        value="${escH(a.ean || '')}">
-            <input type="text"   name="positionen[${idx}][bezeichnung]" class="erp-input pos-bezeichnung"
-                   value="${escH(a.bezeichnung || a.name || (a.variante_name ? a.variante_name : ''))}"
-                   placeholder="Artikel suchen…" autocomplete="off"
-                   data-idx="${idx}" style="width:100%">
+            <div style="display:flex;gap:4px">
+                <input type="text" name="positionen[${idx}][bezeichnung]" class="erp-input pos-bezeichnung"
+                       value="${escH(a.bezeichnung || a.name || (a.variante_name ? a.variante_name : ''))}"
+                       placeholder="Artikel suchen…" autocomplete="off"
+                       data-idx="${idx}" style="flex:1;min-width:0">
+                <button type="button" title="Artikel auswählen"
+                        onclick="openArtikelBrowser(${idx})"
+                        style="flex-shrink:0;padding:4px 8px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg-secondary);cursor:pointer;font-size:14px">📋</button>
+            </div>
             <div class="pos-dropdown" data-idx="${idx}" style="position:absolute;z-index:200;display:none;background:#fff;border:1px solid var(--color-border);border-radius:4px;min-width:320px"></div>
             <input type="hidden" name="positionen[${idx}][steuer_prozent]" class="pos-steuer" value="${a.steuer_prozent || 20}">
         </td>
@@ -212,6 +217,49 @@ function leereAdresse(prefix) {
 }
 
 // Hilfsfunktionen
+
+// Artikel-Browser Modal
+let browserIdx = null;
+let browserTimer = null;
+
+function openArtikelBrowser(idx) {
+    browserIdx = idx;
+    const modal = document.getElementById('artikel-browser-modal');
+    modal.style.display = 'flex';
+    const input = document.getElementById('browser-suche');
+    input.value = '';
+    document.getElementById('browser-ergebnisse').innerHTML = '<div style="color:var(--color-text-muted);padding:12px">Suchbegriff eingeben…</div>';
+    input.focus();
+}
+
+function closeArtikelBrowser() {
+    document.getElementById('artikel-browser-modal').style.display = 'none';
+    browserIdx = null;
+}
+
+function browserSuche() {
+    clearTimeout(browserTimer);
+    const val = document.getElementById('browser-suche').value.trim();
+    const box = document.getElementById('browser-ergebnisse');
+    if (val.length < 2) { box.innerHTML = '<div style="color:var(--color-text-muted);padding:12px">Mindestens 2 Zeichen eingeben…</div>'; return; }
+    box.innerHTML = '<div style="color:var(--color-text-muted);padding:12px">Suche…</div>';
+    browserTimer = setTimeout(async () => {
+        const res  = await fetch(`${window.ARTIKEL_AJAX_URL}?q=${encodeURIComponent(val)}`);
+        const list = await res.json();
+        if (!list.length) { box.innerHTML = '<div style="padding:12px;color:var(--color-text-muted)">Keine Treffer</div>'; return; }
+        box.innerHTML = '';
+        list.forEach(a => {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--color-border);transition:background .1s';
+            div.onmouseenter = () => div.style.background = 'var(--color-bg-secondary)';
+            div.onmouseleave = () => div.style.background = '';
+            const bez = a.variante_name ? escH(a.name) + ' <span style="color:var(--color-text-muted)">— ' + escH(a.variante_name) + '</span>' : escH(a.name);
+            div.innerHTML = `<div style="font-weight:600">${bez}</div><div style="font-size:12px;color:var(--color-text-muted)">${escH(a.artikelnummer || '')}${a.ean ? ' · EAN ' + escH(a.ean) : ''}${a.vk_brutto ? ' · ' + parseFloat(a.vk_brutto).toFixed(2).replace('.',',') + ' €' : ''}</div>`;
+            div.addEventListener('click', () => { artikelWaehlen(browserIdx, a); closeArtikelBrowser(); });
+            box.appendChild(div);
+        });
+    }, 250);
+}
 
 function fmtEur(val) {
     return val.toLocaleString('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
