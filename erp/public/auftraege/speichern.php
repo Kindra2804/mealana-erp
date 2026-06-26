@@ -30,8 +30,11 @@ if (!empty($data['kunden_id'])) {
         $anzeigeName = trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? ''));
         if ($kunde['ist_firma'] && !empty($kunde['firmenname'])) $anzeigeName = $kunde['firmenname'];
         $data['kunden_snapshot'] = [
-            'name'  => $anzeigeName ?: ('Kd. ' . $kunde['kundennummer']),
-            'email' => $kunde['email'] ?? '',
+            'name'     => $anzeigeName ?: ('Kd. ' . $kunde['kundennummer']),
+            'vorname'  => $kunde['vorname']    ?? '',
+            'nachname' => $kunde['nachname']   ?? '',
+            'firma'    => $kunde['firmenname'] ?? '',
+            'email'    => $kunde['email']      ?? '',
         ];
     }
 }

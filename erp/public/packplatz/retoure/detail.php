@@ -51,6 +51,7 @@ $alleLager = $lagerService->getAlleLager();
 $kd = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
 $kdName = trim(($kd['vorname'] ?? '') . ' ' . ($kd['nachname'] ?? ''));
 if (!empty($kd['firma'])) $kdName = $kd['firma'] . ($kdName ? ' / ' . $kdName : '');
+if (!$kdName) $kdName = $kd['name'] ?? '';
 $kdEmail = $kd['email'] ?? '';
 
 $pageTitle = 'Retoure — ' . htmlspecialchars($auftrag['auftrag_nr']);

@@ -120,6 +120,7 @@ if ($mailSenden) {
         try {
             $kdName = trim(($kd['vorname'] ?? '') . ' ' . ($kd['nachname'] ?? ''));
             if (!empty($kd['firma'])) $kdName = $kd['firma'];
+            if (!$kdName) $kdName = $kd['name'] ?? '';
 
             $mailer = new Mailer();
             $anhaenge = [];
