@@ -376,10 +376,12 @@ class LagerService
 
         $bestandZielVorher = $this->repo->getTotalBestand($artikelId, $zuLagerId);
         $this->repo->upsertBestand([
-            'artikel_id' => $artikelId,
-            'lager_id'   => $zuLagerId,
-            'menge'      => $menge,
-            'charge'     => null,
+            'artikel_id'     => $artikelId,
+            'lager_id'       => $zuLagerId,
+            'charge'         => null,
+            'charge_status'  => null,
+            'bestand'        => $bestandZielVorher + $menge,
+            'mindestbestand' => 0,
         ]);
         $this->repo->insertBewegung([
             'artikel_id'      => $artikelId,
