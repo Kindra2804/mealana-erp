@@ -17,22 +17,22 @@ require_once __DIR__ . '/shell_top.php';
         <div class="pp-kachel-sub">Pickliste verpacken · Auftrag verpacken</div>
     </a>
 
-    <a href="/mealana/lager/wareneingang.php" class="pp-kachel">
+    <a href="/mealana/packplatz/wareneingang/index.php" class="pp-kachel">
         <span class="pp-kachel-icon">📥</span>
         <div class="pp-kachel-label">Wareneingang</div>
         <div class="pp-kachel-sub">Mit Bestellung · Freier WE</div>
     </a>
 
-    <a href="/mealana/packplatz/intern/index.php" class="pp-kachel disabled">
+    <a href="/mealana/packplatz/intern/index.php" class="pp-kachel">
         <span class="pp-kachel-icon">🔧</span>
         <div class="pp-kachel-label">Intern</div>
-        <div class="pp-kachel-sub">Artikelzustand ändern</div>
+        <div class="pp-kachel-sub">Lagerumbuchung · Zustand</div>
     </a>
 
-    <a href="/mealana/packplatz/retoure/index.php" class="pp-kachel disabled">
+    <a href="/mealana/packplatz/retoure/index.php" class="pp-kachel">
         <span class="pp-kachel-icon">↩️</span>
         <div class="pp-kachel-label">Retoure</div>
-        <div class="pp-kachel-sub">Retourenverarbeitung</div>
+        <div class="pp-kachel-sub">Rückbuchen · GS · Ersatz</div>
     </a>
 
 </div>

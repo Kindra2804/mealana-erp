@@ -1,0 +1,56 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  Ihre Retoure zu Auftrag <strong>{{ auftrag_nummer }}</strong> ist bei uns eingelangt
+  und wurde bearbeitet.
+</p>
+
+<table class="table">
+  <tr>
+    <th>Artikel</th>
+    <th style="text-align:right">Menge</th>
+  </tr>
+  {% for p in positionen %}
+  <tr>
+    <td>{{ p.bezeichnung }}</td>
+    <td style="text-align:right">{{ p.menge }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% if ergebnis == 'gutschrift' %}
+<div class="hinweis">
+  <strong>Ergebnis: Gutschrift</strong><br>
+  Eine Gutschrift über <strong>€&nbsp;{{ gs_betrag|number_format(2, ',', '.') }}</strong>
+  wurde erstellt{% if gs_nr %} ({{ gs_nr }}){% endif %}.
+  {% if gs_nr %}Die Gutschrift ist im Anhang beigefügt.{% endif %}
+</div>
+{% elseif ergebnis == 'ersatz' %}
+<div class="hinweis">
+  <strong>Ergebnis: Ersatzlieferung</strong><br>
+  Wir werden Ihnen die entsprechenden Artikel baldmöglichst erneut zusenden.
+</div>
+{% else %}
+<div class="hinweis">
+  <strong>Ergebnis:</strong> {{ ergebnis_text }}
+</div>
+{% endif %}
+
+{% if notiz %}
+<p style="color:#555;font-size:13px"><strong>Hinweis:</strong> {{ notiz }}</p>
+{% endif %}
+
+<p>
+  Bei Fragen stehen wir Ihnen gerne unter
+  <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Mit freundlichen Grüßen<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Retoure zu Auftrag {{ auftrag_nummer }} &bull;
+{% endblock %}

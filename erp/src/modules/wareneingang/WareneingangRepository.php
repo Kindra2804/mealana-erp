@@ -145,7 +145,9 @@ class WareneingangRepository
                 (SELECT dateiname
                  FROM artikel_bilder
                  WHERE artikel_id = COALESCE(a.vaterartikel_id, a.id) AND position = 0
-                 LIMIT 1)                                         AS hauptbild
+                 LIMIT 1)                                         AS hauptbild,
+                (SELECT code FROM artikel_codes
+                 WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean
             FROM bestellung_positionen bp
             JOIN  artikel a ON a.id = bp.artikel_id
             LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id

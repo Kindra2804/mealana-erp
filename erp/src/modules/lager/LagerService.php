@@ -264,6 +264,54 @@ class LagerService
         return ['erfolg' => true];
     }
 
+    /**
+     * Bucht einen Warenausgang aus dem Lagerbestand.
+     *
+     * Pflichtfelder: artikel_id, lager_id, menge > 0.
+     * Schreibt lager_bewegungen (Typ 'ausgang'), reduziert lagerbestand,
+     * prüft Auslaufartikel-Automatik und erzeugt einen Logger-Eintrag.
+     */
+    public function warenausgang(array $data): array
+    {
+        $artikelId = (int)($data['artikel_id'] ?? 0);
+        $lagerId   = (int)($data['lager_id']   ?? 0);
+        $menge     = (float)($data['menge']     ?? 0);
+
+        if (!$artikelId || !$lagerId || $menge <= 0) {
+            return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Warenausgang'];
+        }
+
+        $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
+        $this->repo->reduziereBestand($artikelId, $lagerId, $menge);
+        $bestandNachher = max(0.0, $bestandVorher - $menge);
+
+        $bewegungId = $this->repo->insertBewegung([
+            'artikel_id'      => $artikelId,
+            'lager_id'        => $lagerId,
+            'lieferant_id'    => null,
+            'ek_preis'        => null,
+            'charge'          => null,
+            'bewegungstyp'    => 'ausgang',
+            'menge'           => $menge,
+            'bestand_vorher'  => $bestandVorher,
+            'bestand_nachher' => $bestandNachher,
+            'referenz'        => $data['referenz'] ?? null,
+            'notiz'           => $data['notiz']    ?? null,
+            'benutzer_id'     => $data['benutzer_id'] ?? null,
+        ]);
+
+        $this->pruefAuslaufartikelStatus($artikelId, $bestandNachher);
+
+        Logger::log('warenausgang.buchen', 'lagerbestand', $bewegungId, [
+            'artikel_id'      => $artikelId,
+            'lager_id'        => $lagerId,
+            'menge'           => $menge,
+            'bestand_nachher' => $bestandNachher,
+        ]);
+
+        return ['erfolg' => true];
+    }
+
     /** Gibt alle Lagerbestand-Einträge zurück bei denen die Charge noch nachzutragen ist. */
     public function getNachzutragendeChargen(): array
     {
@@ -289,5 +337,71 @@ class LagerService
     public function getBewegungslog(int $artikelId): array
     {
         return $this->repo->findBewegungslogFuerArtikel($artikelId);
+    }
+
+    /**
+     * Bucht Menge von einem Lager in ein anderes um.
+     * Legt zwei Bewegungen an: ausgang (Quelle) + eingang (Ziel).
+     */
+    public function umbucheZwischenLager(int $artikelId, int $vonLagerId, int $zuLagerId, float $menge, ?int $benutzerId = null): array
+    {
+        if (!$artikelId || !$vonLagerId || !$zuLagerId || $menge <= 0) {
+            return ['erfolg' => false, 'fehler' => 'Ungültige Daten'];
+        }
+        if ($vonLagerId === $zuLagerId) {
+            return ['erfolg' => false, 'fehler' => 'Quell- und Ziellager sind identisch'];
+        }
+
+        $bestandVorher = $this->repo->getTotalBestand($artikelId, $vonLagerId);
+        if ($bestandVorher < $menge) {
+            return ['erfolg' => false, 'fehler' => 'Nicht genug Bestand im Quelllager (verfügbar: ' . (int)$bestandVorher . ')'];
+        }
+
+        $referenz = 'Lagerumbuchung';
+        $this->repo->reduziereBestand($artikelId, $vonLagerId, $menge);
+        $this->repo->insertBewegung([
+            'artikel_id'      => $artikelId,
+            'lager_id'        => $vonLagerId,
+            'lieferant_id'    => null,
+            'ek_preis'        => null,
+            'charge'          => null,
+            'bewegungstyp'    => 'ausgang',
+            'menge'           => $menge,
+            'bestand_vorher'  => $bestandVorher,
+            'bestand_nachher' => $bestandVorher - $menge,
+            'referenz'        => $referenz,
+            'notiz'           => 'Umgebucht nach Lager ' . $zuLagerId,
+            'benutzer_id'     => $benutzerId,
+        ]);
+
+        $bestandZielVorher = $this->repo->getTotalBestand($artikelId, $zuLagerId);
+        $this->repo->upsertBestand([
+            'artikel_id' => $artikelId,
+            'lager_id'   => $zuLagerId,
+            'menge'      => $menge,
+            'charge'     => null,
+        ]);
+        $this->repo->insertBewegung([
+            'artikel_id'      => $artikelId,
+            'lager_id'        => $zuLagerId,
+            'lieferant_id'    => null,
+            'ek_preis'        => null,
+            'charge'          => null,
+            'bewegungstyp'    => 'eingang',
+            'menge'           => $menge,
+            'bestand_vorher'  => $bestandZielVorher,
+            'bestand_nachher' => $bestandZielVorher + $menge,
+            'referenz'        => $referenz,
+            'notiz'           => 'Umgebucht von Lager ' . $vonLagerId,
+            'benutzer_id'     => $benutzerId,
+        ]);
+
+        Logger::log('lager.umbuchen', 'artikel', $artikelId, [
+            'von_lager_id' => $vonLagerId,
+            'zu_lager_id'  => $zuLagerId,
+            'menge'        => $menge,
+        ]);
+
+        return ['erfolg' => true];
     }
 }

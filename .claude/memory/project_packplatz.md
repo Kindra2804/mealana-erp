@@ -21,7 +21,22 @@ metadata:
   - Polling-Ordner konfigurierbar in Einstellungen → System (`plc_polling_ordner`)
 - `templates/mails/versandbestaetigung.html.twig`: inkl. Post-Tracking-Link
 
-## 🔴 Noch offen (nach Mermaids + Bedienungsanleitung)
+## ✅ Neu fertig (2026-06-26)
+
+- **EAN Nachtragen** im WE-Detail: orange "+ EAN"-Button für Artikel ohne EAN → Modal → AJAX → `ean_nachtragen.php`
+- **Pickliste neues Fenster**: nach Erstellen → `picklisten.php?neu=X` → `window.open()` PDF in neuem Tab
+- **Packplatz/Intern** (`intern/index.php`):
+  - EAN/Artikelnummer-Scan → Lagerstand-Übersicht
+  - Lagerumbuchung: Von/Zu-Lager-Dropdown + Menge → `umbuchen.php` → `LagerService::umbucheZwischenLager()`
+  - Zustandsumbuchung: falls Zustandsartikel vorhanden → `zustand_umbuchen.php` (Ausgang Neu, Eingang Zustandsartikel)
+- **Packplatz/Retoure** (`retoure/`):
+  - `index.php`: Auftragsnummer scannen / zuletzt versendete Aufträge
+  - `detail.php`: Positionen mit Checkbox + Menge + Zustand-select, Lager-select, Ergebnis (GS/Ersatz/nur_einbuchen)
+  - `speichern.php`: Lager einbuchen + optionale GS via DokumentService + Mail via retoure.html.twig
+  - Mail-Template: `templates/mails/retoure.html.twig`
+- **LagerService**: neue Methode `umbucheZwischenLager()`
+
+## 🔴 Noch offen
 
 ### A — Picklisten-Manager (Babsi-Arbeitsplatz, nicht Packplatz-PC)
 - Übersicht: welche Aufträge können mit aktuellem Lagerbestand komplett ausgeliefert werden

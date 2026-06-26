@@ -10,7 +10,7 @@ $auftraegeRaw = $db->query("
     SELECT a.id, a.auftrag_nr, a.erstellt_am, a.kunden_snapshot,
            a.zahlungsart, a.zahlungsstatus, a.lieferart
     FROM auftraege a
-    WHERE a.lieferstatus = 'neu'
+    WHERE a.lieferstatus IN ('neu','in_bearbeitung','versandbereit','teilgeliefert')
       AND a.zahlungsstatus != 'storniert'
       AND (
           a.zahlungsstatus = 'bezahlt'
@@ -26,9 +26,11 @@ $auftraegeRaw = $db->query("
 
 // Positionen pro Auftrag laden
 $posStmt = $db->prepare("
-    SELECT p.artikel_id, p.bezeichnung, p.menge
+    SELECT p.artikel_id, p.bezeichnung,
+           p.menge - COALESCE(p.menge_geliefert, 0) AS menge
     FROM auftrag_positionen p
     WHERE p.auftrag_id = :id
+      AND p.menge - COALESCE(p.menge_geliefert, 0) > 0
     ORDER BY p.sort_order, p.id
 ");
 
@@ -108,7 +110,7 @@ $picklisten = $db->query("
 
 // ── Lagerstand-Übersicht (für collapsible Bereich) ─────────────────────────
 $lagerstand = $db->query("
-    SELECT ar.artikelnummer, ar.bezeichnung,
+    SELECT ar.artikelnummer, ar.name AS bezeichnung,
            COALESCE(SUM(lb.bestand), 0)          AS ist,
            COALESCE(SUM(r.res), 0)               AS reserviert,
            COALESCE(SUM(lb.bestand), 0)
@@ -121,13 +123,14 @@ $lagerstand = $db->query("
         GROUP BY artikel_id
     ) r ON r.artikel_id = ar.id
     WHERE lb.bestand > 0
-    GROUP BY ar.id, ar.artikelnummer, ar.bezeichnung
+    GROUP BY ar.id, ar.artikelnummer, ar.name
     ORDER BY verfuegbar ASC, ar.artikelnummer ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // ── Session-Meldungen ───────────────────────────────────────────────────────
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
+$neuPicklisteId = (int)($_GET['neu'] ?? 0);
 
 // ── Helper ──────────────────────────────────────────────────────────────────
 function kundeName(string $snap): string
@@ -343,5 +346,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 </div>
+
+<?php if ($neuPicklisteId): ?>
+<script>
+window.open('/mealana/lager/pickliste_pdf.php?id=<?= $neuPicklisteId ?>', '_blank');
+</script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

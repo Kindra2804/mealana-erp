@@ -112,6 +112,6 @@ $pdf->generiere('pickliste/standard.html.twig', [
 $db->prepare("UPDATE picklisten SET status = 'gedruckt' WHERE id = :id")
    ->execute([':id' => $plId]);
 
-// ── PDF sofort zum Download ─────────────────────────────────────────────────
-header('Location: /mealana/lager/pickliste_pdf.php?id=' . $plId);
+// ── Zurück zur Picklisten-Seite, PDF öffnet per JS in neuem Tab ────────────
+header('Location: /mealana/lager/picklisten.php?neu=' . $plId);
 exit;
