@@ -50,8 +50,9 @@ class Logger
             'aktion'           => $aktion,
             'referenz_tabelle' => $referenzTabelle,
             'referenz_id'      => $referenzId,
-            // details nur als JSON wenn nicht leer — spart Speicher und NULL ist explizit
-            'details' => empty($details) ? null : json_encode($details)
+            // details als JSON; JSON_INVALID_UTF8_SUBSTITUTE verhindert false-Rückgabe bei
+            // kaputten UTF-8-Sequenzen (z.B. Windows-1252-Umlaute aus Excel-CSV-Uploads)
+            'details' => empty($details) ? null : (json_encode($details, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: null)
         ]);
     }
 }

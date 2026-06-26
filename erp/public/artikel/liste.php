@@ -309,8 +309,8 @@ $actionBarContent = <<<HTML
 <a href="neu.php" class="btn btn-primary btn-sm">+ Neu</a>
 <button class="btn btn-secondary btn-sm">Kopieren</button>
 <div class="actionbar-sep"></div>
-<button class="btn btn-secondary btn-sm">⬇ Import</button>
-<button class="btn btn-secondary btn-sm">⬆ Export</button>
+<a href="import.php" class="btn btn-secondary btn-sm">⬇ Import</a>
+<button class="btn btn-secondary btn-sm" disabled title="Export kommt später">⬆ Export</button>
 <div class="actionbar-right">
     <span style="color:var(--color-text-muted);font-size:13px">Ausgewählt:</span>
     <span id="ausgewaehlt-count" style="color:var(--color-text-muted);font-size:13px">0</span>

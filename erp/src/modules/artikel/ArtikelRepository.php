@@ -547,16 +547,34 @@ class ArtikelRepository
             )
         ");
 
-        $data['vaterartikel_id']       = $data['vaterartikel_id'] ?? null;
+        $data['vaterartikel_id']        = $data['vaterartikel_id']        ?? null;
         $data['hat_eigenen_lagerstand'] = $data['hat_eigenen_lagerstand'] ?? 1;
-        $data['ist_auslaufartikel']     = $data['ist_auslaufartikel'] ?? 0;
-        $data['laenge']                = $data['laenge']  ?? null;
-        $data['breite']                = $data['breite']  ?? null;
-        $data['hoehe']                 = $data['hoehe']   ?? null;
-        $data['zustand']               = $data['zustand'] ?? 'neu';
-        $data['zustand_vater_id']      = $data['zustand_vater_id'] ?? null;
+        $data['ist_auslaufartikel']     = $data['ist_auslaufartikel']     ?? 0;
+        $data['technische_details']     = $data['technische_details']     ?? null;
+        $data['beschreibung_intern']    = $data['beschreibung_intern']    ?? null;
+        $data['meta_titel']             = $data['meta_titel']             ?? null;
+        $data['meta_description']       = $data['meta_description']       ?? null;
+        $data['url_slug']               = $data['url_slug']               ?? null;
+        $data['gewicht_versand']        = $data['gewicht_versand']        ?? null;
+        $data['laenge']                 = $data['laenge']                 ?? null;
+        $data['breite']                 = $data['breite']                 ?? null;
+        $data['hoehe']                  = $data['hoehe']                  ?? null;
+        $data['taric_code']             = $data['taric_code']             ?? null;
+        $data['ueberverkauf_erlaubt']   = $data['ueberverkauf_erlaubt']   ?? 0;
+        $data['zustand']                = $data['zustand']                ?? 'neu';
+        $data['zustand_vater_id']       = $data['zustand_vater_id']       ?? null;
 
-        $stmt->execute($data);
+        // PDO named-parameter execute braucht genau die 32 Placeholder-Keys — extra Keys entfernen
+        $erlaubteKeys = [
+            'vaterartikel_id', 'hat_eigenen_lagerstand', 'artikelnummer', 'hersteller_id',
+            'steuerklasse_id', 'artikeltyp_id', 'name', 'kurzbeschreibung', 'beschreibung',
+            'technische_details', 'beschreibung_intern', 'meta_titel', 'meta_description',
+            'url_slug', 'einheit_id', 'inhalt_menge', 'inhalt_einheit', 'gewicht_artikel',
+            'gewicht_versand', 'laenge', 'breite', 'hoehe', 'herkunftsland', 'taric_code',
+            'grundpreis_bezugsmenge', 'grundpreis_anzeigen', 'charge_pflicht',
+            'ist_auslaufartikel', 'ueberverkauf_erlaubt', 'aktiv', 'zustand', 'zustand_vater_id',
+        ];
+        $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
         return (int) $this->db->lastInsertId();
     }
 
