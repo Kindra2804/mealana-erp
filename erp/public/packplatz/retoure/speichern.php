@@ -96,7 +96,7 @@ if ($ergebnis === 'gutschrift' && $rechnungId) {
     );
     if ($gsResult['erfolg'] ?? false) {
         $gsNr    = $gsResult['gs_nr'] ?? null;
-        $storagePfad = dirname(__DIR__, 3) . '/storage/auftraege/' . $auftragId . '/' . ($gsResult['dateiname'] ?? '');
+        $storagePfad = dirname(__DIR__, 3) . '/storage/dokumente/' . $auftragId . '/' . ($gsResult['dateiname'] ?? '');
         $gsPfad  = file_exists($storagePfad) ? $storagePfad : null;
         // Brutto aus Positionen berechnen
         foreach ($rueckPositionen as $rp) {
@@ -139,6 +139,7 @@ if ($mailSenden) {
                     'ergebnis_text'  => ucfirst($ergebnis),
                     'positionen'     => $rueckPositionen,
                     'gs_nr'          => $gsNr,
+                    'gs_anhang'      => !empty($anhaenge),
                     'gs_betrag'      => $gsBrutto,
                     'notiz'          => $mailNotiz,
                     'firma_email'    => $konfig['firma_email'] ?? '',

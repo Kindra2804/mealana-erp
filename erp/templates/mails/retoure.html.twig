@@ -26,7 +26,7 @@
   <strong>Ergebnis: Gutschrift</strong><br>
   Eine Gutschrift über <strong>€&nbsp;{{ gs_betrag|number_format(2, ',', '.') }}</strong>
   wurde erstellt{% if gs_nr %} ({{ gs_nr }}){% endif %}.
-  {% if gs_nr %}Die Gutschrift ist im Anhang beigefügt.{% endif %}
+  {% if gs_anhang %}Die Gutschrift ist im Anhang beigefügt.{% endif %}
 </div>
 {% elseif ergebnis == 'ersatz' %}
 <div class="hinweis">
