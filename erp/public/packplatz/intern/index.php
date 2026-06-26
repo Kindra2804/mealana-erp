@@ -99,7 +99,35 @@ require_once __DIR__ . '/../shell_top.php';
                     </div>
                 </div>
 
-                <!-- Zustandsänderung -->
+                <!-- Direkte Zustandsänderung -->
+                <div id="zustandaend-bereich" class="int-card">
+                    <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">🏷 Zustand setzen</div>
+                    <div style="font-size:13px;color:#aaa;margin-bottom:12px">
+                        Aktueller Zustand: <span id="za-aktuell" style="color:#eee;font-weight:600"></span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                        <div>
+                            <label class="int-label">Neuer Zustand</label>
+                            <select id="za-zustand" class="int-select">
+                                <option value="neu">Neu</option>
+                                <option value="gebraucht">Gebraucht</option>
+                                <option value="generalueberholt">Generalüberholt</option>
+                                <option value="beschaedigt">Beschädigt</option>
+                                <option value="retour">Retour</option>
+                                <option value="demo">Demo</option>
+                                <option value="muster">Muster</option>
+                                <option value="ausstellungsstueck">Ausstellungsstück</option>
+                            </select>
+                        </div>
+                        <button class="pp-btn pp-btn-secondary" style="width:100%;font-size:18px;padding:14px" onclick="zustandAendernSpeichern()">
+                            ✎ Zustand speichern
+                        </button>
+                        <div id="za-fehler" style="color:#ef5350;font-size:13px;display:none"></div>
+                        <div id="za-erfolg" style="color:#4caf50;font-size:13px;display:none"></div>
+                    </div>
+                </div>
+
+                <!-- Zustandsumbuchung (nur wenn Zustandsartikel vorhanden) -->
                 <div id="zustand-bereich" class="int-card" style="display:none">
                     <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">🔁 Zustand umbuchen</div>
                     <div style="font-size:13px;color:#aaa;margin-bottom:12px">
@@ -146,7 +174,14 @@ require_once __DIR__ . '/../shell_top.php';
 </div>
 
 <script>
-var artikelBestand = {}; // lager_id → bestand
+var artikelBestand = {};
+var zaArtikelId = null;
+
+var zustandLabels = {
+    neu: 'Neu', gebraucht: 'Gebraucht', generalueberholt: 'Generalüberholt',
+    beschaedigt: 'Beschädigt', retour: 'Retour', demo: 'Demo',
+    muster: 'Muster', ausstellungsstueck: 'Ausstellungsstück'
+};
 
 document.getElementById('ean-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); artikelSuchen(); }
@@ -207,6 +242,14 @@ async function artikelSuchen() {
     } else {
         document.getElementById('zustand-bereich').style.display = 'none';
     }
+
+    // Zustandsänderung
+    zaArtikelId = a.id;
+    var aktuell = a.zustand || 'neu';
+    document.getElementById('za-aktuell').textContent = zustandLabels[aktuell] || aktuell;
+    document.getElementById('za-zustand').value = aktuell;
+    document.getElementById('za-fehler').style.display = 'none';
+    document.getElementById('za-erfolg').style.display = 'none';
 
     document.getElementById('artikel-bereich').style.display = 'block';
     document.getElementById('u-menge').focus();
@@ -277,6 +320,31 @@ async function zustandUmbuchenSpeichern() {
         artikelSuchen();
     } else {
         fehlerEl.textContent = data.fehler || 'Fehler beim Umbuchen.';
+        fehlerEl.style.display = 'block';
+    }
+}
+
+async function zustandAendernSpeichern() {
+    var fehlerEl = document.getElementById('za-fehler');
+    var erfolgEl = document.getElementById('za-erfolg');
+    fehlerEl.style.display = 'none'; erfolgEl.style.display = 'none';
+
+    if (!zaArtikelId) { fehlerEl.textContent = 'Kein Artikel geladen.'; fehlerEl.style.display = 'block'; return; }
+
+    var neuerZustand = document.getElementById('za-zustand').value;
+    var body = new FormData();
+    body.append('artikel_id', zaArtikelId);
+    body.append('zustand', neuerZustand);
+
+    var r    = await fetch('/mealana/packplatz/intern/zustand_aendern.php', { method: 'POST', body });
+    var data = await r.json();
+    if (data.erfolg) {
+        var label = zustandLabels[neuerZustand] || neuerZustand;
+        document.getElementById('za-aktuell').textContent = label;
+        erfolgEl.textContent = '✓ Zustand gesetzt: ' + label;
+        erfolgEl.style.display = 'block';
+    } else {
+        fehlerEl.textContent = data.fehler || 'Fehler beim Speichern.';
         fehlerEl.style.display = 'block';
     }
 }
