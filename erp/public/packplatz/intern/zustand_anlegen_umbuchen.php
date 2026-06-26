@@ -17,7 +17,7 @@ $vonLagerId = (int)($_POST['von_lager_id'] ?? 0);
 $zuLagerId  = (int)($_POST['zu_lager_id']  ?? 0);
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 
-$erlaubteZustaende = ['gebraucht','generalueberholt','beschaedigt','retour','demo','muster','ausstellungsstueck'];
+$erlaubteZustaende = ['neu','gebraucht','generalueberholt','beschaedigt','retour','demo','muster','ausstellungsstueck'];
 
 if (!$originalId || $menge <= 0 || !$vonLagerId || !$zuLagerId || !in_array($zustand, $erlaubteZustaende, true)) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Ungültige Daten']); exit;
@@ -26,9 +26,7 @@ if (!$originalId || $menge <= 0 || !$vonLagerId || !$zuLagerId || !in_array($zus
 $db         = Database::getInstance();
 $lagerSvc   = new LagerService();
 
-// ── Original-Artikel laden ────────────────────────────────────────────────
-$orig = $db->prepare("SELECT * FROM artikel WHERE id = :id")->execute([':id' => $originalId])
-    ?: null;
+// ── Artikel laden ─────────────────────────────────────────────────────────
 $stmt = $db->prepare("SELECT * FROM artikel WHERE id = :id");
 $stmt->execute([':id' => $originalId]);
 $orig = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -36,7 +34,41 @@ if (!$orig) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Artikel nicht gefunden']); exit;
 }
 
-// Bestand prüfen
+// ── Rückbuchung: zustand='neu' → zurück zum Vater-Artikel ────────────────
+if ($zustand === 'neu') {
+    if (!$orig['zustand_vater_id']) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Dieser Artikel ist kein Zustandsartikel — Rückbuchung nicht möglich.']); exit;
+    }
+    $vaterId = (int)$orig['zustand_vater_id'];
+
+    $bStmt = $db->prepare("SELECT COALESCE(SUM(bestand),0) FROM lagerbestand WHERE artikel_id = :aid AND lager_id = :lid");
+    $bStmt->execute([':aid' => $originalId, ':lid' => $vonLagerId]);
+    $bestand = (float)$bStmt->fetchColumn();
+    if ($bestand < $menge) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Nicht genug Bestand (verfügbar: ' . (int)$bestand . ')']); exit;
+    }
+
+    $refText = 'Rückbuchung → Normal';
+    $ausgang = $lagerSvc->warenausgang(['artikel_id' => $originalId, 'lager_id' => $vonLagerId, 'menge' => $menge, 'referenz' => $refText, 'benutzer_id' => $benutzerId]);
+    if (!($ausgang['erfolg'] ?? false)) {
+        echo json_encode(['erfolg' => false, 'fehler' => $ausgang['fehler'] ?? 'Ausgang fehlgeschlagen']); exit;
+    }
+    $eingang = $lagerSvc->wareneingang(['artikel_id' => $vaterId, 'lager_id' => $zuLagerId, 'menge' => $menge, 'charge' => null, 'referenz' => $refText, 'benutzer_id' => $benutzerId]);
+    if (!($eingang['erfolg'] ?? false)) {
+        echo json_encode(['erfolg' => false, 'fehler' => $eingang['fehler'] ?? 'Eingang fehlgeschlagen']); exit;
+    }
+
+    $vStmt = $db->prepare("SELECT artikelnummer, name FROM artikel WHERE id = :id");
+    $vStmt->execute([':id' => $vaterId]);
+    $vInfo = $vStmt->fetch(PDO::FETCH_ASSOC);
+
+    Logger::log('lager.zustandsrueckbuchung', 'artikel', $originalId, ['menge' => $menge, 'vater_id' => $vaterId], $benutzerId);
+
+    echo json_encode(['erfolg' => true, 'neu_angelegt' => false, 'zs_nr' => $vInfo['artikelnummer'], 'zs_name' => $vInfo['name']]);
+    exit;
+}
+
+// Bestand prüfen (normaler Weg)
 $bStmt = $db->prepare("SELECT COALESCE(SUM(bestand),0) FROM lagerbestand WHERE artikel_id = :aid AND lager_id = :lid");
 $bStmt->execute([':aid' => $originalId, ':lid' => $vonLagerId]);
 $bestand = (float)$bStmt->fetchColumn();

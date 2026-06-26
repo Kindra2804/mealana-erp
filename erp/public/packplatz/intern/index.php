@@ -114,6 +114,7 @@ require_once __DIR__ . '/../shell_top.php';
                         <div>
                             <label class="int-label">Zustand</label>
                             <select id="zs-zustand" class="int-select">
+                                <option value="neu">↩ Neu / Normal (Rückbuchung)</option>
                                 <option value="gebraucht">Gebraucht</option>
                                 <option value="generalueberholt">Generalüberholt</option>
                                 <option value="beschaedigt">Beschädigt</option>
