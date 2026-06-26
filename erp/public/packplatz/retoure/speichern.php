@@ -154,5 +154,5 @@ if ($mailSenden) {
 $_SESSION['erfolg'] = 'Retoure verarbeitet: ' . count($rueckPositionen) . ' Position(en) eingebucht.'
     . ($gsNr ? ' Gutschrift ' . $gsNr . ' erstellt.' : '')
     . ($mailSenden ? ' Mail gesendet.' : '');
-header('Location: /mealana/auftraege/detail.php?id=' . $auftragId);
+header('Location: /mealana/packplatz/retoure/index.php');
 exit;

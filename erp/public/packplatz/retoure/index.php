@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../src/core/Database.php';
 $db = Database::getInstance();
 
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
+$erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 
 // Letzte abgeschlossene/versendete Aufträge
 $auftraege = $db->query("
@@ -22,6 +23,11 @@ $headerSub = 'Retoure';
 require_once __DIR__ . '/../shell_top.php';
 ?>
 
+<?php if ($erfolg): ?>
+<div style="background:#0d2d0d;border:1px solid #4caf50;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#4caf50">
+    ✓ <?= htmlspecialchars($erfolg) ?>
+</div>
+<?php endif; ?>
 <?php if ($fehler): ?>
 <div style="background:#2d0d0d;border:1px solid #e94560;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#ef5350">
     <?= htmlspecialchars($fehler) ?>

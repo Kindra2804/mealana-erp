@@ -131,7 +131,8 @@ require_once __DIR__ . '/../shell_top.php';
                         <td>
                             <input type="number" name="positionen[<?= $i ?>][menge]" min="1"
                                    max="<?= (int)$p['menge'] ?>" value="1"
-                                   class="ret-input" style="width:70px;text-align:center;font-size:18px">
+                                   class="ret-input" style="width:70px;text-align:center;font-size:18px"
+                                   oninput="mengeGeaendert(this, 'chk<?= $i ?>')">
                         </td>
                         <td>
                             <select name="positionen[<?= $i ?>][zustand]" class="ret-select">
@@ -214,7 +215,7 @@ require_once __DIR__ . '/../shell_top.php';
         </div>
         <?php endif; ?>
 
-        <button type="submit" class="pp-btn pp-btn-success" style="width:100%;font-size:20px;padding:18px">
+        <button type="submit" id="submit-btn" class="pp-btn pp-btn-success" style="width:100%;font-size:20px;padding:18px">
             ✓ Retoure verarbeiten
         </button>
     </div>
@@ -222,10 +223,29 @@ require_once __DIR__ . '/../shell_top.php';
 </div>
 </form>
 
+<!-- Overlay beim Absenden -->
+<div id="sende-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+    <div style="width:52px;height:52px;border:5px solid #0f3460;border-top-color:#e94560;border-radius:50%;animation:spin .8s linear infinite"></div>
+    <div style="color:#eee;font-size:18px;font-weight:700">Retoure wird verarbeitet…</div>
+    <div style="color:#aaa;font-size:13px">Bitte warten</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
 <script>
 function ergebnisGewaehlt(val) {
     document.getElementById('gs-bereich').style.display = val === 'gutschrift' ? 'block' : 'none';
 }
+
+function mengeGeaendert(input, chkId) {
+    var chk = document.getElementById(chkId);
+    if (chk) chk.checked = (parseFloat(input.value) > 0);
+}
+
+document.querySelector('form').addEventListener('submit', function () {
+    var overlay = document.getElementById('sende-overlay');
+    overlay.style.display = 'flex';
+    document.getElementById('submit-btn').disabled = true;
+});
 </script>
 
 <?php require_once __DIR__ . '/../shell_bottom.php'; ?>
