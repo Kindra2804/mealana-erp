@@ -220,8 +220,13 @@ $kindIds = array_column($alleKinder, 'id');
 $zustandsNachKind = [];
 if (!empty($kindIds)) {
     $zsKinder = $service->getZustandsArtikelFuerListe($kindIds);
-    foreach ($zsKinder as $kindId => $_) {
-        $zustandsNachKind[$kindId] = true;
+    foreach ($zsKinder as $kindId => $zsListe) {
+        foreach ($zsListe as $zs) {
+            if ((float)$zs['gesamtbestand'] > 0) {
+                $zustandsNachKind[$kindId] = true;
+                break;
+            }
+        }
     }
 }
 
@@ -472,7 +477,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     }
                 }
                 $vaterHatAbweichung = !empty($vaterAbwTypen);
-                $hatZustandsArtikel = !empty($zustandsNachVater[$a['id']]);
+                $hatZustandsArtikel = !empty(array_filter($zustandsNachVater[$a['id']] ?? [], fn($z) => (float)$z['gesamtbestand'] > 0));
 
                 $bstKlasse = ((float)$a['gesamtbestand'] <= 0 && $a['aktiv']) ? 'bst-null' : '';
                 $bstTitle  = '';
