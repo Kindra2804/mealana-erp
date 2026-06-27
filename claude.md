@@ -757,8 +757,14 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
      - Teilzahlung → Status 'teilbezahlt'; Vollzahlung → 'bezahlt'; Summe > Gesamt → Überbezahlt
      - liste.php: Chips Teilbezahlt/Überbezahlt + Filter für alle Zahlungsstatus inkl. Überbezahlt
    - **Mahnwesen-Cronjob** (erp/cron/mahnwesen.php): 14+Tage Erinnerungsmail, 30+Tage Storno+Mail
-   - Noch offen: Kasse/RKSV, Packplatz
-7. **Kasse** — RKSV/Fiskaly, inkl. Duplikat-EAN-Dialog + Seriennummer-Zuweisung
+   - Noch offen: Packplatz-Picklisten, Mail-Templates
+7. **Kasse** ✅ Phase 1 FERTIG (2026-06-27):
+   - Migration 077: kassen, kassen_bons, kassen_bon_positionen, kassenbuch, offene_auswahl
+   - public/kasse/: 16 Dateien — shell, index, bon, ajax_artikel, bon_speichern, bon_druck, kassenbuch, kassensturz, offene_auswahl, bon_journal, bon_stornieren
+   - KassenService: erstelleBon, storniereBon, findArtikelByCode (FIFO-Charge), X-Bon/Z-Bon, Kassenbuch, Offene Auswahl
+   - Features: EAN-Scan, Vater→Variante-Auswahl, Divers-Artikel (freier Preis), Rabatt, Bar+Rückgeld, Karte extern (SumUp/Bankomat), Gutschein, Kombi, 80mm Browser-Druck, Zählhilfe
+   - Phase 2 offen: RKSV/BFR-BONit, Auftrag laden (Abholung), Bon-Park
+   - Druckkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen; @page { size: 80mm auto }
 8. **Packplatz/Picklisten** — Kommissionierung, Packliste
 9. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.
 10. **Inventur/Umbuchung (MOBILE-FIRST)** — PWA, EAN-Scan via Kamera, Bestand + Reservierung prüfen, Zählliste, Abschluss mit LOG

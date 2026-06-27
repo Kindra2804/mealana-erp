@@ -42,7 +42,7 @@ require_once __DIR__ . '/../shell_top.php';
         <?php else: ?>
             <div style="display:flex;flex-direction:column;gap:8px">
                 <?php foreach ($picklisten as $pl): ?>
-                    <a href="scan.php?pickliste_id=<?= $pl['id'] ?>"
+                    <a href="scan.php?modus=pickliste&pickliste_id=<?= $pl['id'] ?>"
                        style="background:#16213e;border:2px solid #0f3460;border-radius:8px;padding:14px 18px;text-decoration:none;color:#eee;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s"
                        onmouseover="this.style.borderColor='#e94560'" onmouseout="this.style.borderColor='#0f3460'">
                         <div>
@@ -90,9 +90,9 @@ require_once __DIR__ . '/../shell_top.php';
             <div style="font-size:14px;font-weight:600;color:#aaa;margin-bottom:10px">Oder aus offenen Aufträgen wählen:</div>
             <?php
             $offeneAuftraege = $db->query("
-                SELECT id, auftragsnummer, erstellt_am, bruttobetrag
+                SELECT id, auftrag_nr, erstellt_am, bruttobetrag
                 FROM auftraege
-                WHERE lieferstatus IN ('neu','verarbeitung')
+                WHERE lieferstatus IN ('neu','in_bearbeitung','versandbereit','teilgeliefert')
                   AND zahlungsstatus NOT IN ('storniert')
                 ORDER BY erstellt_am ASC
                 LIMIT 10
@@ -106,7 +106,7 @@ require_once __DIR__ . '/../shell_top.php';
                         <a href="scan.php?modus=auftrag&auftrag_id=<?= $a['id'] ?>"
                            style="background:#16213e;border:1px solid #0f3460;border-radius:6px;padding:10px 14px;text-decoration:none;color:#eee;display:flex;justify-content:space-between;font-size:13px"
                            onmouseover="this.style.borderColor='#e94560'" onmouseout="this.style.borderColor='#0f3460'">
-                            <span style="font-weight:600"><?= htmlspecialchars($a['auftragsnummer']) ?></span>
+                            <span style="font-weight:600"><?= htmlspecialchars($a['auftrag_nr']) ?></span>
                             <span style="color:#aaa"><?= date('d.m.', strtotime($a['erstellt_am'])) ?> · <?= number_format((float)$a['bruttobetrag'], 2, ',', '.') ?> €</span>
                         </a>
                     <?php endforeach; ?>

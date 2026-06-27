@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../../src/core/Database.php';
 
 $db   = Database::getInstance();
-$modus = $_GET['modus'] ?? 'auftrag';
+$modus = $_GET['modus'] ?? (isset($_GET['pickliste_id']) ? 'pickliste' : 'auftrag');
 
 // ─── Auftrag/Aufträge laden ───────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ if ($modus === 'pickliste') {
         $aId = (int)$_GET['auftrag_id'];
     } else {
         $nr   = trim($_GET['auftrag_nr'] ?? '');
-        $stmt = $db->prepare("SELECT id FROM auftraege WHERE auftragsnummer = ?");
+        $stmt = $db->prepare("SELECT id FROM auftraege WHERE auftrag_nr = ?");
         $stmt->execute([$nr]);
         $row  = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
@@ -77,16 +77,19 @@ if ($modus === 'pickliste') {
 $aktuellerAuftrag = $auftraege[0];
 $auftragId        = (int)$aktuellerAuftrag['id'];
 
-// Positionen laden
+// Positionen laden — nur noch offene Restmengen (menge - menge_geliefert)
 $positionen = $db->prepare("
-    SELECT ap.*, a.artikelnummer, a.name, a.ean_gtin13,
+    SELECT ap.*,
+           ap.menge - COALESCE(ap.menge_geliefert, 0) AS menge,
+           a.artikelnummer, a.name,
            a.gewicht_versand,
-           (SELECT bi.pfad FROM artikel_bilder bi
-            WHERE bi.artikel_id = ap.artikel_id AND bi.ist_hauptbild = 1
-            LIMIT 1) AS bild_pfad
+           (SELECT CONCAT('uploads/artikel/', ap.artikel_id, '/', bi.dateiname) FROM artikel_bilder bi
+            WHERE bi.artikel_id = ap.artikel_id
+            ORDER BY bi.position ASC LIMIT 1) AS bild_pfad
     FROM auftrag_positionen ap
     LEFT JOIN artikel a ON a.id = ap.artikel_id
     WHERE ap.auftrag_id = ?
+      AND ap.menge - COALESCE(ap.menge_geliefert, 0) > 0
     ORDER BY ap.sort_order, ap.id
 ");
 $positionen->execute([$auftragId]);
@@ -107,9 +110,9 @@ $gewichtBerechnet = round($gewichtBerechnet, 3);
 // Picklisten-Kontext für Navigations-Button
 $picklisteParam = $pickliste ? '?pickliste_id=' . $pickliste['id'] : '';
 
-$pageTitle = 'Verpacken: ' . $aktuellerAuftrag['auftragsnummer'];
+$pageTitle = 'Verpacken: ' . $aktuellerAuftrag['auftrag_nr'];
 $backUrl   = '/mealana/packplatz/warenausgang/index.php';
-$headerSub = 'Warenausgang › ' . $aktuellerAuftrag['auftragsnummer'];
+$headerSub = 'Warenausgang › ' . $aktuellerAuftrag['auftrag_nr'];
 require_once __DIR__ . '/../shell_top.php';
 ?>
 
@@ -150,7 +153,7 @@ require_once __DIR__ . '/../shell_top.php';
                 <tbody>
                 <?php foreach ($positionen as $i => $pos): ?>
                     <tr id="pos-row-<?= $i ?>" data-idx="<?= $i ?>"
-                        data-ean="<?= htmlspecialchars($pos['ean_gtin13'] ?? '') ?>"
+                        data-ean="<?= htmlspecialchars($pos['ean'] ?? '') ?>"
                         data-artnr="<?= htmlspecialchars($pos['artikelnummer'] ?? '') ?>"
                         data-gesamt="<?= (int)$pos['menge'] ?>"
                         data-gescannt="0"
@@ -159,12 +162,12 @@ require_once __DIR__ . '/../shell_top.php';
                         <td style="font-size:13px;font-family:monospace"><?= htmlspecialchars($pos['artikelnummer'] ?? '—') ?></td>
                         <td>
                             <div style="font-weight:600"><?= htmlspecialchars($pos['name'] ?? $pos['bezeichnung_snapshot'] ?? '—') ?></div>
-                            <?php if (empty($pos['ean_gtin13'])): ?>
+                            <?php if (empty($pos['ean'])): ?>
                                 <div style="font-size:11px;color:#e94560;margin-top:2px">⚠ Kein EAN</div>
                             <?php endif; ?>
                         </td>
                         <td style="font-family:monospace;font-size:13px;color:#aaa">
-                            <?= htmlspecialchars($pos['ean_gtin13'] ?? '—') ?>
+                            <?= htmlspecialchars($pos['ean'] ?? '—') ?>
                         </td>
                         <td style="text-align:center">
                             <span class="pp-menge-cell">
@@ -198,7 +201,7 @@ require_once __DIR__ . '/../shell_top.php';
     <div>
         <div class="pp-auftrag-info">
             <div style="font-size:15px;font-weight:700;margin-bottom:10px;color:#e94560">
-                <?= htmlspecialchars($aktuellerAuftrag['auftragsnummer']) ?>
+                <?= htmlspecialchars($aktuellerAuftrag['auftrag_nr']) ?>
             </div>
             <div>📅 <?= date('d.m.Y', strtotime($aktuellerAuftrag['erstellt_am'])) ?></div>
             <div>💳 <?= htmlspecialchars($aktuellerAuftrag['zahlungsart']) ?>
@@ -231,7 +234,7 @@ require_once __DIR__ . '/../shell_top.php';
                 <div style="font-size:12px;color:#aaa;margin-bottom:8px">Pickliste <?= htmlspecialchars($pickliste['nummer']) ?></div>
                 <?php foreach ($auftraege as $i => $a): ?>
                     <div style="font-size:13px;padding:4px 0;color:<?= $a['id'] === $auftragId ? '#e94560' : '#aaa' ?>;font-weight:<?= $a['id'] === $auftragId ? '700' : '400' ?>">
-                        <?= $i === 0 ? '▶ ' : '' ?><?= htmlspecialchars($a['auftragsnummer']) ?>
+                        <?= $i === 0 ? '▶ ' : '' ?><?= htmlspecialchars($a['auftrag_nr']) ?>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -299,7 +302,7 @@ require_once __DIR__ . '/../shell_top.php';
 <script>
 const POSITIONEN = <?= json_encode(array_map(fn($p, $i) => [
     'idx'     => $i,
-    'ean'     => $p['ean_gtin13'] ?? '',
+    'ean'     => $p['ean'] ?? '',
     'artnr'   => $p['artikelnummer'] ?? '',
     'gesamt'  => (int)$p['menge'],
     'name'    => $p['name'] ?? $p['bezeichnung_snapshot'] ?? '',

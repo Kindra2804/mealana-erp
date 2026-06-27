@@ -97,10 +97,11 @@ function abschliessenDialog() {
     });
 
     var bId = window.WE_BESTELLUNG_ID;
+    var abschliessenUrl = window.WE_ABSCHLIESSEN_URL || '/mealana/wareneingang/abschliessen.php';
     var html = '';
     if (offenCount === 0) {
         html  = '<div style="font-weight:600;margin-bottom:12px">Alle Positionen vollständig eingegangen.</div>';
-        html += '<form method="post" action="/mealana/wareneingang/abschliessen.php">';
+        html += '<form method="post" action="' + abschliessenUrl + '">';
         html += '<input type="hidden" name="bestellung_id" value="' + bId + '">';
         html += '<input type="hidden" name="aktion" value="komplett">';
         html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">';
@@ -109,7 +110,7 @@ function abschliessenDialog() {
         html += '</div></form>';
     } else {
         html  = '<div style="font-weight:600;margin-bottom:8px">Nicht alle Positionen eingegangen (' + offenCount + ' offen)</div>';
-        html += '<form method="post" action="/mealana/wareneingang/abschliessen.php">';
+        html += '<form method="post" action="' + abschliessenUrl + '">';
         html += '<input type="hidden" name="bestellung_id" value="' + bId + '">';
         html += '<div style="margin-bottom:12px">';
         html += '<label style="display:block;padding:10px;border:1px solid var(--color-border);border-radius:4px;cursor:pointer;margin-bottom:6px"><input type="radio" name="aktion" value="warten" checked style="margin-right:6px"> Auf Nachlieferung warten (Bestellung bleibt offen)</label>';

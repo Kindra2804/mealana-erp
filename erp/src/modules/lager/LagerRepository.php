@@ -180,6 +180,40 @@ class LagerRepository
         return $result ? (float) $result['bestand'] : 0.0;
     }
 
+    /** Gibt den Gesamtbestand eines Artikels in einem Lager zurück (Summe aller Chargen). */
+    public function getTotalBestand(int $artikelId, int $lagerId): float
+    {
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(bestand), 0) FROM lagerbestand
+            WHERE artikel_id = :aid AND lager_id = :lid
+        ");
+        $stmt->execute(['aid' => $artikelId, 'lid' => $lagerId]);
+        return (float) $stmt->fetchColumn();
+    }
+
+    /**
+     * Reduziert den Lagerbestand für einen Warenausgang.
+     * Greift zuerst auf die charge=NULL Zeile, dann auf die Zeile mit dem höchsten Bestand.
+     */
+    public function reduziereBestand(int $artikelId, int $lagerId, float $menge): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE lagerbestand
+            SET bestand = GREATEST(0, bestand - :menge), geaendert_am = NOW()
+            WHERE artikel_id = :aid AND lager_id = :lid AND charge IS NULL
+        ");
+        $stmt->execute(['menge' => $menge, 'aid' => $artikelId, 'lid' => $lagerId]);
+
+        if ($stmt->rowCount() === 0) {
+            $this->db->prepare("
+                UPDATE lagerbestand
+                SET bestand = GREATEST(0, bestand - :menge), geaendert_am = NOW()
+                WHERE artikel_id = :aid AND lager_id = :lid
+                ORDER BY bestand DESC LIMIT 1
+            ")->execute(['menge' => $menge, 'aid' => $artikelId, 'lid' => $lagerId]);
+        }
+    }
+
     /**
      * Speichert oder aktualisiert einen Lagerbestand-Eintrag.
      *

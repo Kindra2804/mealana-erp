@@ -4,6 +4,8 @@ require_once __DIR__ . '/../../../src/core/Database.php';
 require_once __DIR__ . '/../../../src/core/Logger.php';
 require_once __DIR__ . '/../../../src/core/Mailer.php';
 require_once __DIR__ . '/../../../src/core/EasyPakExporter.php';
+require_once __DIR__ . '/../../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../../src/modules/auftraege/AuftragRepository.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
@@ -34,45 +36,66 @@ if (!$auftrag) {
     exit;
 }
 
-$benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+$benutzerId  = (int)($_SESSION['benutzer']['id'] ?? 0);
+$lagerService = new LagerService();
+$auftragRepo  = new AuftragRepository();
 
+// ─── Auftrag-Positionen laden (gleiche Reihenfolge wie scan.php) ─────────────
+$stmtPos = $db->prepare("
+    SELECT id, artikel_id, menge
+    FROM auftrag_positionen
+    WHERE auftrag_id = ? AND artikel_id IS NOT NULL
+    ORDER BY sort_order, id
+");
+$stmtPos->execute([$auftragId]);
+$posMap = array_values($stmtPos->fetchAll(PDO::FETCH_ASSOC)); // 0-indexed = JS idx
+
+// ─── Lagerabbuchung + Status-Update in einer Transaktion ─────────────────────
 $db->beginTransaction();
 try {
-    // ─── Versandtracking + Datum speichern ───────────────────────────────────
-    $db->prepare("
-        UPDATE auftraege
-        SET versand_tracking  = ?,
-            versand_datum     = NOW(),
-            lieferstatus      = ?,
-            aktualisiert_am   = NOW()
-        WHERE id = ?
-    ")->execute([$tracking, $istTeillieferung ? 'teilgeliefert' : 'versendet', $auftragId]);
+    // Nur tatsächlich gescannte Mengen abbuchen + menge_geliefert setzen
+    foreach ($posGescannt as $ps) {
+        $idx      = (int)$ps['idx'];
+        $gescannt = (float)($ps['gescannt'] ?? 0);
+        if ($gescannt <= 0 || !isset($posMap[$idx])) continue;
 
-    // ─── Teillieferung: übrige Positionen aktualisieren ──────────────────────
-    if ($istTeillieferung) {
-        foreach ($posGescannt as $pos) {
-            $gescannt = (int)$pos['gescannt'];
-            $rest     = (int)$pos['gesamt'] - $gescannt;
-            // Gescannte Menge = diese Lieferung → Rest bleibt im Auftrag
-            // Wir buchen die gesendete Menge als eigene Position (vereinfacht:
-            // wir aktualisieren die Menge auf den Restwert)
-            if ($rest > 0) {
-                // Auftrag bleibt offen mit Restmenge — kein Update nötig
-                // (vollständige Teillieferungs-Split-Logik kommt in Phase 2)
-            }
-        }
+        $pos = $posMap[$idx];
+
+        $lagerService->warenausgang([
+            'artikel_id'  => $pos['artikel_id'],
+            'lager_id'    => 1,
+            'menge'       => $gescannt,
+            'referenz'    => $auftrag['auftrag_nr'],
+            'notiz'       => $istTeillieferung ? 'Packplatz Teillieferung' : 'Packplatz Versand',
+            'benutzer_id' => $benutzerId,
+        ]);
+
+        $db->prepare("
+            UPDATE auftrag_positionen
+            SET menge_geliefert = COALESCE(menge_geliefert, 0) + ?
+            WHERE id = ?
+        ")->execute([$gescannt, $pos['id']]);
     }
 
-    // ─── Statuslog ───────────────────────────────────────────────────────────
-    $aktion = $istTeillieferung
+    // Lieferstatus + Tracking speichern
+    $neuerStatus = $istTeillieferung ? 'teilgeliefert' : 'versendet';
+    $db->prepare("
+        UPDATE auftraege
+        SET versand_tracking = ?, versand_datum = NOW(),
+            lieferstatus = ?, aktualisiert_am = NOW()
+        WHERE id = ?
+    ")->execute([$tracking, $neuerStatus, $auftragId]);
+
+    // Reservierungen schließen
+    $auftragRepo->schliesseReservierungen($auftragId);
+
+    // Statuslog korrekt schreiben
+    $notizText = $istTeillieferung
         ? "Teillieferung versendet — Tracking: {$tracking}"
         : "Versendet — Tracking: {$tracking}";
-    $db->prepare("
-        INSERT INTO auftrag_status_log (auftrag_id, aktion, erstellt_von, erstellt_am)
-        VALUES (?, ?, ?, NOW())
-    ")->execute([$auftragId, $aktion, $benutzerId]);
+    $auftragRepo->logStatus($auftragId, ['lieferstatus' => [$auftrag['lieferstatus'], $neuerStatus]], $notizText, $benutzerId);
 
-    // ─── Pickliste abschließen (wenn alle Aufträge dieser Liste versendet) ──
+    // Pickliste abschließen (wenn alle Aufträge versendet)
     if ($picklisteId) {
         $offene = $db->prepare("
             SELECT COUNT(*) FROM pickliste_auftraege pa
@@ -95,6 +118,13 @@ try {
     exit;
 }
 
+// ─── Logger (außerhalb Transaktion) ──────────────────────────────────────────
+Logger::log('packplatz.versendet', 'auftraege', $auftragId, [
+    'tracking'      => $tracking,
+    'teillieferung' => $istTeillieferung,
+    'gewicht'       => $gewicht,
+]);
+
 // ─── EasyPak XML → PLC-Ordner ────────────────────────────────────────────────
 $plcOrdner = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel='plc_polling_ordner'")->fetchColumn();
 if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand') {
@@ -106,7 +136,7 @@ if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand') {
     }
 }
 
-// ─── Versandmail senden ───────────────────────────────────────────────────────
+// ─── Versandmail ──────────────────────────────────────────────────────────────
 $kunden = json_decode($auftrag['kunden_snapshot'] ?? '{}', true);
 if (!empty($auftrag['lieferadresse_snapshot'])) {
     $lieferAdr = json_decode($auftrag['lieferadresse_snapshot'], true);
@@ -115,20 +145,20 @@ if (!empty($auftrag['lieferadresse_snapshot'])) {
 } else {
     $lieferAdr = json_decode($auftrag['kunden_snapshot'] ?? '{}', true);
 }
-$email  = $kunden['email'] ?? '';
-$name   = trim(($kunden['vorname'] ?? '') . ' ' . ($kunden['nachname'] ?? '')) ?: ($kunden['firma'] ?? '');
+$email = $kunden['email'] ?? '';
+$name  = trim(($kunden['vorname'] ?? '') . ' ' . ($kunden['nachname'] ?? '')) ?: ($kunden['firma'] ?? '');
 
 if ($email && !$istTeillieferung) {
     try {
         $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
         $mailer = new Mailer();
         $mailer->sendeTemplate(
-            empfaenger:  $email,
-            betreff:     'Ihr Auftrag ' . $auftrag['auftragsnummer'] . ' wurde versendet',
+            empfaenger:   $email,
+            betreff:      'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde versendet',
             templatePfad: 'mails/versandbestaetigung.html.twig',
             variablen: [
                 'kunde_name'     => $name,
-                'auftrag_nummer' => $auftrag['auftragsnummer'],
+                'auftrag_nummer' => $auftrag['auftrag_nr'],
                 'tracking'       => $tracking,
                 'lieferadresse'  => $lieferAdr,
                 'firma_email'    => $firma['email'] ?? '',
@@ -140,16 +170,15 @@ if ($email && !$istTeillieferung) {
     }
 }
 
-// ─── Abholer-Info (kein Tracking, nur Benachrichtigung) ──────────────────────
 if ($email && $auftrag['lieferart'] === 'abholung') {
     try {
         $firma  = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
         $mailer = new Mailer();
         $mailer->sende(
             empfaenger: $email,
-            betreff:    'Ihre Bestellung ' . $auftrag['auftragsnummer'] . ' liegt zur Abholung bereit',
+            betreff:    'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' liegt zur Abholung bereit',
             htmlBody:   '<p>Sehr geehrte/r ' . htmlspecialchars($name) . ',</p>'
-                . '<p>Ihre Bestellung <strong>' . htmlspecialchars($auftrag['auftragsnummer']) . '</strong> '
+                . '<p>Ihre Bestellung <strong>' . htmlspecialchars($auftrag['auftrag_nr']) . '</strong> '
                 . 'liegt ab sofort zur Abholung bei uns bereit.</p>'
                 . '<p>Mit freundlichen Grüßen,<br>' . htmlspecialchars($firma['firmenname'] ?? 'MEALANA KG') . '</p>'
         );
@@ -158,15 +187,8 @@ if ($email && $auftrag['lieferart'] === 'abholung') {
     }
 }
 
-Logger::log('packplatz.versendet', 'auftraege', $auftragId, [
-    'tracking'       => $tracking,
-    'teillieferung'  => $istTeillieferung,
-    'gewicht'        => $gewicht,
-]);
-
-// Zurück zur Übersicht (nächster Auftrag der Pickliste oder Hauptübersicht)
+// ─── Weiterleitung ────────────────────────────────────────────────────────────
 if ($picklisteId) {
-    // Nächsten offenen Auftrag dieser Pickliste suchen
     $naechster = $db->prepare("
         SELECT pa.auftrag_id FROM pickliste_auftraege pa
         JOIN auftraege a ON a.id = pa.auftrag_id
