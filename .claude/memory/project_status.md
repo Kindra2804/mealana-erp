@@ -84,7 +84,16 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Modul | Priorität | Anmerkung |
 |---|---|---|
 | Kasse Phase 2 | HOCH | RKSV/BFR BONit, Auftrag laden, Bon-Park |
+| **Auth & Benutzer-Cluster** | **HOCH** | **Zusammenhängend, in dieser Reihenfolge bauen:** |
+| Login / Logout (Shell) | HOCH | Basis für alles weitere; rechts oben in Shell |
+| Anmeldeschirm + Rollenauswahl | HOCH | nach Login: ERP / Packplatz / Kasse je nach Rechten |
+| Benutzer-Profil UI | HOCH | Namen, Formularname, E-Mail ändern (derzeit nur in DB) |
+| Passwort ändern | HOCH | via E-Mail-Link (Mail-Infra bereits vorhanden) |
+| Rechteverwaltung | MITTEL | Admin-Seite: Rollen zuweisen; eher für Weitergabe |
+| Anmeldekontrolle / Zwangsabmeldung | MITTEL | Session-Management; für Weitergabe (Praktikanten) |
 | ~~Zentrales Dokumentenarchiv~~ | ✅ FERTIG 2026-06-27 | Kassenbons via UNION ALL integriert; X/Z-Bons in Einstellungen/Kassen |
+| Dashboard | MITTEL | Lagerwert, Low-Stock, Tagesübersicht; design_mockup.svg als Basis |
+| Log-Aufbereitung + Shell-Footer | MITTEL | info/warn/error Klassifizierung; Zeile in Shell-Bottom (siehe project_logger_ui.md) |
 | Inventur | MITTEL | inkl. Inventurliste (Druck) + mobile App |
 | Shop-Export / WooCommerce Sync | MITTEL | Design: db_design_entscheidungen.md |
 | Gutschein-Modul | MITTEL | Design: project_gutscheine.md |
