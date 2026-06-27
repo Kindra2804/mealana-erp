@@ -29,6 +29,20 @@ if ($kunde['ist_firma'] && $kunde['firmenname']) {
 
 $activeTab = $_GET['tab'] ?? 'stammdaten';
 
+$kundenAuftraege = [];
+if ($activeTab === 'bestellungen') {
+    $db = Database::getInstance();
+    $stmt = $db->prepare("
+        SELECT id, auftrag_nr, erstellt_am, zahlungsart, zahlungsstatus, lieferstatus,
+               bruttobetrag
+        FROM auftraege
+        WHERE kunden_id = :kid
+        ORDER BY erstellt_am DESC
+    ");
+    $stmt->execute(['kid' => $id]);
+    $kundenAuftraege = $stmt->fetchAll();
+}
+
 $statusChip = match($kunde['status']) {
     'aktiv'     => '<span class="chip chip-aktiv">Aktiv</span>',
     'gesperrt'  => '<span class="chip" style="background:#fff3cd;color:#856404">Gesperrt</span>',
@@ -40,6 +54,7 @@ $pageTitle        = $anzeigename;
 $activeModule     = 'kunden';
 $actionBarContent = <<<HTML
     <a href="bearbeiten.php?id={$id}" class="btn btn-primary btn-sm">✏ Bearbeiten</a>
+    <a href="/mealana/auftraege/neu.php?kunden_id={$id}" class="btn btn-secondary btn-sm">+ Auftrag erstellen</a>
     <a href="liste.php" class="btn btn-secondary btn-sm">← Liste</a>
 HTML;
 
@@ -98,7 +113,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     ];
     foreach ($tabs as $key => $label):
         $isActive = $activeTab === $key;
-        $disabled = in_array($key, ['bestellungen']) ? 'style="opacity:.4;pointer-events:none"' : '';
+        $disabled = '';
     ?>
         <a href="?id=<?= $id ?>&tab=<?= $key ?>"
            <?= $disabled ?>
@@ -383,6 +398,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <option value="newsletter">Newsletter</option>
                     <option value="marketing">Marketing</option>
                     <option value="profiling">Profiling</option>
+                    <option value="telefon">Telefon-Benachrichtigung</option>
+                    <option value="whatsapp">WhatsApp-Benachrichtigung</option>
+                    <option value="sms">SMS-Benachrichtigung</option>
                 </select>
             </div>
             <div>
@@ -411,9 +429,60 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <?php elseif ($activeTab === 'bestellungen'): ?>
-<div class="card" style="text-align:center;padding:32px;color:var(--color-text-muted)">
-    Bestellhistorie folgt mit dem Verkaufsmodul.
+<div style="display:flex;justify-content:flex-end;margin-bottom:var(--space-sm)">
+    <a href="/mealana/auftraege/neu.php?kunden_id=<?= $id ?>" class="btn btn-primary btn-sm">+ Neuer Auftrag</a>
 </div>
+<?php if (empty($kundenAuftraege)): ?>
+    <div class="card" style="text-align:center;padding:32px;color:var(--color-text-muted)">
+        Noch keine Aufträge für diesen Kunden.
+    </div>
+<?php else: ?>
+<div class="card">
+    <table class="erp-table">
+        <thead>
+            <tr>
+                <th>Auftrag</th>
+                <th>Datum</th>
+                <th>Zahlungsart</th>
+                <th>Zahlung</th>
+                <th>Lieferung</th>
+                <th style="text-align:right">Betrag</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($kundenAuftraege as $auf):
+            $zahlChip = match($auf['zahlungsstatus']) {
+                'bezahlt'    => '<span class="chip chip-aktiv">Bezahlt</span>',
+                'offen'      => '<span class="chip">Offen</span>',
+                'storniert'  => '<span class="chip chip-inaktiv">Storniert</span>',
+                'teilbezahlt' => '<span class="chip" style="background:#fff7ed;color:#c2410c">Teilbezahlt</span>',
+                default      => '<span class="chip">' . htmlspecialchars($auf['zahlungsstatus']) . '</span>',
+            };
+            $liefChip = match($auf['lieferstatus']) {
+                'geliefert'  => '<span class="chip chip-aktiv">Geliefert</span>',
+                'neu'        => '<span class="chip">Neu</span>',
+                'in_bearbeitung' => '<span class="chip" style="background:#eff6ff;color:#2563eb">In Bearb.</span>',
+                'versandbereit'  => '<span class="chip" style="background:#fef9c3;color:#854d0e">Versandbereit</span>',
+                'teilgeliefert'  => '<span class="chip" style="background:#fff7ed;color:#c2410c">Teilgeliefert</span>',
+                'storniert'  => '<span class="chip chip-inaktiv">Storniert</span>',
+                default      => '<span class="chip">' . htmlspecialchars($auf['lieferstatus']) . '</span>',
+            };
+        ?>
+        <tr>
+            <td><a href="/mealana/auftraege/detail.php?id=<?= $auf['id'] ?>" style="font-weight:600;color:var(--color-nav);text-decoration:none"><?= htmlspecialchars($auf['auftrag_nr']) ?></a></td>
+            <td style="color:var(--color-text-muted)"><?= date('d.m.Y', strtotime($auf['erstellt_am'])) ?></td>
+            <td style="color:var(--color-text-muted)"><?= htmlspecialchars(ucfirst($auf['zahlungsart'])) ?></td>
+            <td><?= $zahlChip ?></td>
+            <td><?= $liefChip ?></td>
+            <td style="text-align:right;font-weight:600"><?= number_format((float)$auf['bruttobetrag'], 2, ',', '.') ?> €</td>
+            <td><a href="/mealana/auftraege/detail.php?id=<?= $auf['id'] ?>" class="btn btn-secondary btn-sm" style="padding:2px 8px">→</a></td>
+        </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
 <?php endif; ?>
 
 <script src="/mealana/js/kunden_detail.js"></script>

@@ -10,7 +10,8 @@ require_once __DIR__ . '/../../src/modules/preise/PreisService.php';
 require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
 require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
 
-$id = (int) ($_GET['id'] ?? 0);
+$id       = (int) ($_GET['id'] ?? 0);
+$vonVater = (int) ($_GET['von_vater'] ?? 0);
 
 $service = new ArtikelService();
 $variantenService  = new VariantenService();
@@ -307,10 +308,17 @@ foreach ($alleKombis as $kombi) {
 $pageTitle    = htmlspecialchars($artikel['name']);
 $activeModule = 'artikel';
 
+$abbrechenUrl  = $vonVater > 0 ? "detail.php?id={$vonVater}&tab=varianten" : 'liste.php';
+$abbrechenText = $vonVater > 0 ? '← Zum Vater-Artikel' : 'Abbrechen';
+$weRueckkehrInput = $vonVater > 0
+    ? '<input type="hidden" name="we_rueckkehr" form="stammdaten-form" value="/mealana/artikel/detail.php?id=' . $vonVater . '&tab=varianten">'
+    : '';
+
 $actionBarContent = <<<HTML
 <div class="actionbar-left">
     <button form="stammdaten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
-    <a href="liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
+    <a href="{$abbrechenUrl}" class="btn btn-secondary btn-sm">{$abbrechenText}</a>
+    {$weRueckkehrInput}
     <div class="actionbar-sep"></div>
     <button class="btn btn-secondary btn-sm" style="color:var(--color-warning)">Deaktivieren</button>
     <button class="btn btn-secondary btn-sm" style="color:#0a6ebd">Im Shop ▼</button>
@@ -322,7 +330,7 @@ $actionBarContent = <<<HTML
 HTML;
 
 $sidebarItems = [
-    ['type' => 'back',    'label' => 'zur Liste', 'href' => '/mealana/artikel/liste.php'],
+    ['type' => 'back', 'label' => $vonVater > 0 ? 'zum Vater-Artikel' : 'zur Liste', 'href' => $vonVater > 0 ? "/mealana/artikel/detail.php?id={$vonVater}&tab=varianten" : '/mealana/artikel/liste.php'],
     ['type' => 'separator'],
     ['type' => 'context', 'artNr' => $artikel['artikelnummer'], 'name' => $artikel['name']],
     ['type' => 'separator'],
@@ -797,7 +805,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <?php foreach ($vorhandeneKombis as $v): ?>
                                         <tr>
                                             <td><input type="checkbox" disabled checked></td>
-                                            <td><a href="detail.php?id=<?= $v['artikel']['id'] ?>"><?= htmlspecialchars($v['artikel']['artikelnummer']) ?></a></td>
+                                            <td><a href="detail.php?id=<?= $v['artikel']['id'] ?>&von_vater=<?= $id ?>"><?= htmlspecialchars($v['artikel']['artikelnummer']) ?></a></td>
                                             <td><?= htmlspecialchars($v['artikel']['name']) ?></td>
                                             <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($v['artikel']['ean'] ?? '–') ?></td>
                                             <td>–</td>
@@ -865,7 +873,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <tbody>
                                 <?php foreach ($kinder as $k): ?>
                                     <tr <?= !$k['aktiv'] ? 'class="row-inaktiv"' : '' ?>>
-                                        <td><a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a></td>
+                                        <td><a href="detail.php?id=<?= $k['id'] ?>&von_vater=<?= $id ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a></td>
                                         <td><?= htmlspecialchars($k['name']) ?></td>
                                         <td><?= htmlspecialchars($k['gtin'] ?? '–') ?></td>
                                         <td><?= $k['brutto_vk'] ? number_format($k['brutto_vk'], 2, ',', '.') . ' €' : '–' ?></td>
@@ -1311,7 +1319,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         ?>
                             <tr>
                                 <td>
-                                    <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
+                                    <a href="detail.php?id=<?= $za['id'] ?>&von_vater=<?= $id ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
                                 </td>
                                 <td>
                                     <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;background:<?= $zbg ?>;color:<?= $zfg ?>">
@@ -1329,7 +1337,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs">✏️</a>
+                                    <a href="detail.php?id=<?= $za['id'] ?>&von_vater=<?= $id ?>" class="btn btn-secondary btn-xs">✏️</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

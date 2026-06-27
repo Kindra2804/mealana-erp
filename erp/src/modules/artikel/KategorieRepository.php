@@ -167,7 +167,6 @@ class KategorieRepository
                     FROM aktionen a
                     JOIN aktionen_kategorien ak ON ak.aktion_id = a.id
                     WHERE ak.kategorie_id IN ($pl)
-                      AND a.gestartet = 1
                       AND ak.gueltig_bis >= CURDATE()
                     GROUP BY a.id, a.name
                 ");
