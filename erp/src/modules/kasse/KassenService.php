@@ -61,7 +61,14 @@ class KassenService
                      FROM lagerbestand lb
                      WHERE lb.artikel_id = a.id AND lb.lager_id = :lager_id
                     ), 0
-                )                     AS lagerbestand,
+                )                     AS bestand_physisch,
+                COALESCE(
+                    (SELECT SUM(r.menge)
+                     FROM reservierungen r
+                     WHERE r.artikel_id = a.id AND r.lager_id = :lager_id2
+                       AND r.status = 'offen'
+                    ), 0
+                )                     AS bestand_reserviert,
                 (SELECT ac2.code
                  FROM artikel_codes ac2
                  WHERE ac2.artikel_id = a.id AND ac2.typ = 'GTIN13'
@@ -81,9 +88,11 @@ class KassenService
               )
             LIMIT 1
         ");
-        $stmt->execute([':code' => $code, ':code2' => $code, ':lager_id' => $lagerId]);
+        $stmt->execute([':code' => $code, ':code2' => $code, ':lager_id' => $lagerId, ':lager_id2' => $lagerId]);
         $artikel = $stmt->fetch();
         if (!$artikel) return null;
+
+        $artikel['bestand_verkaufbar'] = max(0, (float)$artikel['bestand_physisch'] - (float)$artikel['bestand_reserviert']);
 
         // Bei Vater-Artikel: Kinder zurückgeben statt Artikel selbst
         if ($artikel['ist_vater']) {
@@ -204,15 +213,16 @@ class KassenService
             foreach ($positionen as $i => $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, artikel_id, bezeichnung, ean, menge,
+                        (bon_id, block, artikel_id, bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
-                        (:bon_id, :artikel_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :artikel_id, :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge, :sort)
                 ");
                 $stmt2->execute([
                     ':bon_id'             => $bonId,
-                    ':artikel_id'         => $pos['artikel_id'] ?? null,
+                    ':block'              => $pos['block']              ?? null,
+                    ':artikel_id'         => $pos['artikel_id']         ?? null,
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean']                ?? null,
                     ':menge'              => $pos['menge']              ?? 1,
@@ -751,11 +761,234 @@ class KassenService
         return (float)$stmt->fetchColumn();
     }
 
+    /**
+     * Teilrückgabe einer offenen Auswahl.
+     * $rueckgabe: [{artikel_id, menge}] — nur was zurückkommt.
+     * Artikel die nicht in $rueckgabe sind gelten als gekauft → werden zu einem Bon.
+     */
+    public function offeneAuswahlTeilrueckgabe(int $oaId, array $rueckgabe, int $benutzerId): array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM offene_auswahl WHERE id = :id AND status = 'offen'");
+        $stmt->execute([':id' => $oaId]);
+        $oa = $stmt->fetch();
+        if (!$oa) return ['erfolg' => false, 'fehler' => 'Nicht gefunden oder bereits abgeschlossen.'];
+
+        $positionen = json_decode($oa['positionen'], true) ?: [];
+        $lagerId    = (int)$oa['lager_id'];
+        $lagerSvc   = new LagerService();
+
+        // Rückgabe-Index: artikel_id → zurückgekommen Menge
+        $rueckIdx = [];
+        foreach ($rueckgabe as $r) {
+            $rueckIdx[(int)$r['artikel_id']] = (float)$r['menge'];
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $bonPositionen = [];
+            foreach ($positionen as $pos) {
+                $artId      = (int)($pos['artikel_id'] ?? 0);
+                $mengaRaus  = (float)($pos['menge'] ?? 1);
+                $mengeRueck = $rueckIdx[$artId] ?? 0.0;
+                $mengeKauf  = $mengaRaus - $mengeRueck;
+
+                // Was zurückkommt → Lager zurückbuchen
+                if ($artId > 0 && $mengeRueck > 0) {
+                    $lagerSvc->wareneingang([
+                        'artikel_id'  => $artId,
+                        'lager_id'    => $lagerId,
+                        'menge'       => $mengeRueck,
+                        'charge'      => $pos['charge'] ?? null,
+                        'referenz'    => 'Teilrückgabe Offene Auswahl #' . $oaId,
+                        'benutzer_id' => $benutzerId,
+                    ]);
+                }
+
+                // Was behalten wird → Bon-Position
+                if ($mengeKauf > 0) {
+                    $bonPositionen[] = array_merge($pos, ['menge' => $mengeKauf, 'block' => 'addon']);
+                }
+            }
+
+            $this->db->prepare("UPDATE offene_auswahl SET status = 'gekauft' WHERE id = :id")
+                ->execute([':id' => $oaId]);
+
+            $this->db->commit();
+
+            $result = ['erfolg' => true, 'oa_id' => $oaId];
+            if (!empty($bonPositionen)) {
+                $result['bon_positionen'] = $bonPositionen;
+                $result['hinweis'] = 'Verkaufte Artikel als Bon abschließen.';
+            }
+            return $result;
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return ['erfolg' => false, 'fehler' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Schwund-Buchung: Artikel abschreiben ohne Verkauf (Verlust, Beschädigung, Messe-Differenz).
+     * $positionen: [{artikel_id, menge, charge?}]
+     */
+    public function schwundBuchen(array $positionen, string $grund, int $lagerId, int $benutzerId): array
+    {
+        if (empty($positionen)) return ['erfolg' => false, 'fehler' => 'Keine Positionen.'];
+
+        $lagerSvc = new LagerService();
+        $this->db->beginTransaction();
+        try {
+            foreach ($positionen as $pos) {
+                if (empty($pos['artikel_id']) || empty($pos['menge'])) continue;
+                $lagerSvc->warenausgang([
+                    'artikel_id'  => (int)$pos['artikel_id'],
+                    'lager_id'    => $lagerId,
+                    'menge'       => (float)$pos['menge'],
+                    'charge'      => $pos['charge'] ?? null,
+                    'referenz'    => 'Schwund: ' . $grund,
+                    'benutzer_id' => $benutzerId,
+                ]);
+            }
+            Logger::log('kasse.schwund', 'lagerbestand', 0, [
+                'grund'     => $grund,
+                'lager_id'  => $lagerId,
+                'positionen' => count($positionen),
+            ], $benutzerId);
+            $this->db->commit();
+            return ['erfolg' => true];
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return ['erfolg' => false, 'fehler' => $e->getMessage()];
+        }
+    }
+
     /** ID des Platzhalter-Artikels 99-9999 (Diverses) für auftrag_positionen. */
     private function getDiversArtikelId(): int
     {
         $stmt = $this->db->prepare("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1");
         $stmt->execute();
         return (int)($stmt->fetchColumn() ?: 0);
+    }
+
+    // ── Schnellwahl ───────────────────────────────────────────────────────────
+
+    public function getSchnellwahl(int $kasseId): array
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT s.slot, s.artikel_id, s.label,
+                       a.name              AS artikel_name,
+                       a.artikelnummer,
+                       COALESCE(s.label, a.name) AS anzeige_name,
+                       COALESCE(
+                           (SELECT ap.brutto_vk
+                            FROM artikel_preise ap
+                            INNER JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
+                            WHERE ap.artikel_id = a.id
+                              AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
+                              AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= CURDATE())
+                            ORDER BY ap.gueltig_ab DESC LIMIT 1
+                           ), 0
+                       ) AS brutto_vk,
+                       (SELECT ac.code FROM artikel_codes ac
+                        WHERE ac.artikel_id = a.id AND ac.typ = 'GTIN13' LIMIT 1
+                       ) AS ean,
+                       sk.satz AS steuer_prozent
+                FROM kassen_schnellwahl s
+                LEFT JOIN artikel a ON a.id = s.artikel_id
+                LEFT JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
+                WHERE s.kasse_id = :kasse_id
+                ORDER BY s.slot
+            ");
+            $stmt->execute([':kasse_id' => $kasseId]);
+            $rows = $stmt->fetchAll();
+            $result = [];
+            foreach ($rows as $r) {
+                $result[(int)$r['slot']] = $r;
+            }
+            return $result;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    public function setSchnellwahl(int $kasseId, int $slot, ?int $artikelId, ?string $label): bool
+    {
+        if ($artikelId === null) {
+            $stmt = $this->db->prepare("DELETE FROM kassen_schnellwahl WHERE kasse_id = :kid AND slot = :slot");
+            $stmt->execute([':kid' => $kasseId, ':slot' => $slot]);
+        } else {
+            $stmt = $this->db->prepare("
+                INSERT INTO kassen_schnellwahl (kasse_id, slot, artikel_id, label)
+                VALUES (:kid, :slot, :aid, :label)
+                ON DUPLICATE KEY UPDATE artikel_id = :aid2, label = :label2
+            ");
+            $stmt->execute([
+                ':kid'    => $kasseId,
+                ':slot'   => $slot,
+                ':aid'    => $artikelId,
+                ':label'  => $label ?: null,
+                ':aid2'   => $artikelId,
+                ':label2' => $label ?: null,
+            ]);
+        }
+        return true;
+    }
+
+    // ── Artikel-Textsuche (für Kasse) ─────────────────────────────────────────
+
+    public function sucheArtikel(string $suche, int $lagerId, int $limit = 20): array
+    {
+        $q = '%' . $suche . '%';
+        $stmt = $this->db->prepare("
+            SELECT
+                a.id,
+                a.name              AS bezeichnung,
+                a.artikelnummer,
+                a.ist_vater,
+                a.ueberverkauf_erlaubt,
+                sk.satz             AS steuer_prozent,
+                COALESCE(
+                    (SELECT ap.brutto_vk
+                     FROM artikel_preise ap
+                     INNER JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
+                     WHERE ap.artikel_id = a.id
+                       AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
+                       AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= CURDATE())
+                     ORDER BY ap.gueltig_ab DESC LIMIT 1
+                    ), 0
+                )                   AS brutto_vk,
+                COALESCE(
+                    (SELECT SUM(lb.bestand)
+                     FROM lagerbestand lb
+                     WHERE lb.artikel_id = a.id AND lb.lager_id = :lager_id
+                    ), 0
+                )                   AS bestand_physisch,
+                (SELECT ac.code FROM artikel_codes ac
+                 WHERE ac.artikel_id = a.id AND ac.typ = 'GTIN13' LIMIT 1
+                )                   AS ean
+            FROM artikel a
+            LEFT JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
+            WHERE a.aktiv = 1
+              AND (
+                  a.name LIKE :q
+                  OR a.artikelnummer LIKE :q2
+                  OR EXISTS (
+                      SELECT 1 FROM artikel_codes ac
+                      WHERE ac.artikel_id = a.id AND ac.code LIKE :q3
+                  )
+              )
+            ORDER BY a.name
+            LIMIT :lmt
+        ");
+        $stmt->execute([
+            ':q'        => $q,
+            ':q2'       => $q,
+            ':q3'       => $q,
+            ':lager_id' => $lagerId,
+            ':lmt'      => $limit,
+        ]);
+        return $stmt->fetchAll();
     }
 }

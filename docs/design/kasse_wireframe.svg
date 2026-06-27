@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" font-family="Segoe UI, Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="1280" height="800" fill="#f1f5f9"/>
+
+  <!-- === HEADER === -->
+  <rect width="1280" height="50" fill="#1e3a5f"/>
+  <text x="20" y="32" fill="white" font-size="18" font-weight="700">MeaLana · Kasse</text>
+  <text x="240" y="32" fill="#93c5fd" font-size="13">Lager: Hauptlager</text>
+  <circle cx="450" cy="25" r="6" fill="#22c55e"/>
+  <text x="463" y="30" fill="#86efac" font-size="12">RKSV aktiv</text>
+  <!-- ⚙ Kassen-Menü (Kassenbuch / Kassenstand / Journal) -->
+  <rect x="826" y="11" width="64" height="28" rx="5" fill="#334155"/>
+  <text x="858" y="29" fill="white" font-size="13" text-anchor="middle">⚙ Menü</text>
+  <!-- Mitgeben — gleiche Ebene wie Parken -->
+  <rect x="900" y="11" width="138" height="28" rx="5" fill="#b45309"/>
+  <text x="969" y="29" fill="white" font-size="12" text-anchor="middle">Mitgeben ▷</text>
+  <!-- Parken -->
+  <rect x="1048" y="11" width="100" height="28" rx="5" fill="#334155"/>
+  <text x="1098" y="29" fill="white" font-size="12" text-anchor="middle">⏸  Parken</text>
+  <!-- Schließen -->
+  <rect x="1158" y="11" width="112" height="28" rx="5" fill="#dc2626"/>
+  <text x="1214" y="29" fill="white" font-size="12" text-anchor="middle">✕  Schließen</text>
+
+  <!-- === LEFT COLUMN === -->
+  <!-- Customer bar -->
+  <rect x="0" y="50" width="550" height="50" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="20" y="80" fill="#1e3a5f" font-size="14">👤  Laufkunde</text>
+  <rect x="415" y="62" width="120" height="28" rx="5" fill="#2563eb"/>
+  <text x="475" y="81" fill="white" font-size="12" text-anchor="middle">+ Kunde suchen</text>
+
+  <!-- List column header -->
+  <rect x="0" y="100" width="550" height="32" fill="#e2e8f0"/>
+  <text x="18" y="121" fill="#475569" font-size="11" font-weight="700">#</text>
+  <text x="45" y="121" fill="#475569" font-size="11" font-weight="700">ARTIKEL</text>
+  <text x="360" y="121" fill="#475569" font-size="11" font-weight="700">MNG</text>
+  <text x="415" y="121" fill="#475569" font-size="11" font-weight="700">E-PREIS</text>
+  <text x="485" y="121" fill="#475569" font-size="11" font-weight="700">SUMME</text>
+
+  <!-- List area background -->
+  <rect x="0" y="132" width="550" height="608" fill="white"/>
+
+  <!-- Row 1 - ACTIVE (blue highlight + left indicator bar) -->
+  <rect x="0" y="132" width="550" height="80" fill="#eff6ff"/>
+  <rect x="0" y="132" width="3" height="80" fill="#2563eb"/>
+  <text x="18" y="158" fill="#1e3a5f" font-size="13">1</text>
+  <text x="45" y="158" fill="#1e3a5f" font-size="13" font-weight="600">Dinkel-Brötchen Bio</text>
+  <text x="365" y="158" fill="#1e3a5f" font-size="13">2</text>
+  <text x="415" y="158" fill="#475569" font-size="12">1,20 €</text>
+  <text x="485" y="158" fill="#1e3a5f" font-size="13" font-weight="600">2,40 €</text>
+  <!-- +/- buttons on active row - large, touch-friendly -->
+  <rect x="45" y="168" width="115" height="36" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="102" y="192" fill="#1d4ed8" font-size="24" text-anchor="middle" font-weight="700">−</text>
+  <rect x="172" y="168" width="115" height="36" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="229" y="192" fill="#1d4ed8" font-size="24" text-anchor="middle" font-weight="700">+</text>
+  <!-- Swipe hint label -->
+  <text x="380" y="195" fill="#94a3b8" font-size="10">← swipe: Storno</text>
+
+  <line x1="0" y1="212" x2="550" y2="212" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Row 2 -->
+  <rect x="0" y="212" width="550" height="52" fill="white"/>
+  <text x="18" y="242" fill="#1e3a5f" font-size="13">2</text>
+  <text x="45" y="242" fill="#1e3a5f" font-size="13">Bio-Aufstrich</text>
+  <text x="365" y="242" fill="#1e3a5f" font-size="13">1</text>
+  <text x="415" y="242" fill="#475569" font-size="12">3,50 €</text>
+  <text x="485" y="242" fill="#1e3a5f" font-size="13" font-weight="600">3,50 €</text>
+  <line x1="0" y1="264" x2="550" y2="264" stroke="#f1f5f9" stroke-width="1"/>
+
+  <!-- Row 3 -->
+  <rect x="0" y="264" width="550" height="52" fill="#fafafa"/>
+  <text x="18" y="294" fill="#1e3a5f" font-size="13">3</text>
+  <text x="45" y="294" fill="#1e3a5f" font-size="13">Kräutertee</text>
+  <text x="365" y="294" fill="#1e3a5f" font-size="13">3</text>
+  <text x="415" y="294" fill="#475569" font-size="12">2,20 €</text>
+  <text x="485" y="294" fill="#1e3a5f" font-size="13" font-weight="600">6,60 €</text>
+  <line x1="0" y1="316" x2="550" y2="316" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Left column border -->
+  <rect x="0" y="132" width="550" height="608" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- === FOOTER LEFT === -->
+  <rect x="0" y="740" width="550" height="60" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="20" y="764" fill="#475569" font-size="12">3 Artikel</text>
+  <text x="20" y="782" fill="#94a3b8" font-size="11">inkl. MwSt.</text>
+  <rect x="372" y="752" width="162" height="34" rx="6" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="453" y="774" fill="#2563eb" font-size="12" text-anchor="middle">% Bon-Rabatt</text>
+
+  <!-- === COLUMN DIVIDER === -->
+  <line x1="550" y1="0" x2="550" y2="800" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- === SCAN AREA === -->
+  <rect x="550" y="50" width="730" height="90" fill="white"/>
+  <rect x="565" y="66" width="490" height="44" rx="8" fill="#f8fafc" stroke="#2563eb" stroke-width="2"/>
+  <text x="582" y="94" fill="#94a3b8" font-size="14">🔍  EAN scannen oder Artikel suchen...</text>
+  <!-- Menge display -->
+  <rect x="1068" y="66" width="192" height="44" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="1164" y="84" fill="#64748b" font-size="10" text-anchor="middle" font-weight="700" letter-spacing="1">MENGE</text>
+  <text x="1164" y="104" fill="#1d4ed8" font-size="18" text-anchor="middle" font-weight="700">1 ×</text>
+
+  <line x1="550" y1="140" x2="1280" y2="140" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- === ARTICLE INFO === -->
+  <rect x="550" y="140" width="730" height="80" fill="#f8fafc"/>
+  <text x="568" y="159" fill="#1e3a5f" font-size="14" font-weight="700">Dinkel-Brötchen Bio</text>
+  <text x="568" y="174" fill="#64748b" font-size="11">Art-Nr: 10042  ·  EAN: 9001234567890</text>
+  <text x="568" y="194" fill="#1e293b" font-size="14" font-weight="700">1,20 € / Stk</text>
+  <rect x="660" y="183" width="120" height="20" rx="10" fill="#fef3c7" stroke="#fbbf24" stroke-width="1"/>
+  <text x="720" y="197" fill="#92400e" font-size="10" text-anchor="middle">⚡ AKTION −10%</text>
+  <!-- Lagerinfo: Ampel-Punkte + Werte -->
+  <circle cx="575" cy="212" r="4" fill="#22c55e"/>
+  <text x="584" y="216" fill="#475569" font-size="11">Physisch: 24</text>
+  <circle cx="668" cy="212" r="4" fill="#f59e0b"/>
+  <text x="677" cy="212" y="216" fill="#475569" font-size="11">Reserviert: 3</text>
+  <circle cx="770" cy="212" r="4" fill="#2563eb"/>
+  <text x="779" y="216" fill="#475569" font-size="11">Verkaufbar: 21</text>
+
+  <line x1="550" y1="220" x2="1280" y2="220" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- === SCHNELLWAHL === -->
+  <rect x="550" y="220" width="730" height="234" fill="white"/>
+  <text x="568" y="242" fill="#94a3b8" font-size="10" font-weight="700" letter-spacing="1.5">SCHNELLWAHL</text>
+
+  <!-- Row 1 — belegte Tasten -->
+  <rect x="560" y="250" width="230" height="54" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="675" y="282" fill="#1d4ed8" font-size="14" text-anchor="middle" font-weight="600">Brötchen</text>
+  <rect x="800" y="250" width="230" height="54" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="915" y="282" fill="#1d4ed8" font-size="14" text-anchor="middle" font-weight="600">Aufstrich</text>
+  <rect x="1040" y="250" width="230" height="54" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="1155" y="282" fill="#1d4ed8" font-size="14" text-anchor="middle" font-weight="600">Heißgetränke</text>
+
+  <!-- Row 2 -->
+  <rect x="560" y="316" width="230" height="54" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="675" y="348" fill="#1d4ed8" font-size="14" text-anchor="middle" font-weight="600">Kaltgetränke</text>
+  <rect x="800" y="316" width="230" height="54" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="915" y="348" fill="#1d4ed8" font-size="14" text-anchor="middle" font-weight="600">Snacks</text>
+  <rect x="1040" y="316" width="230" height="54" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="1155" y="348" fill="#1d4ed8" font-size="14" text-anchor="middle" font-weight="600">Süßwaren</text>
+
+  <!-- Row 3 — Sondertaste + freie Slots -->
+  <rect x="560" y="382" width="230" height="54" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="675" y="414" fill="#166534" font-size="14" text-anchor="middle" font-weight="600">Gutschein</text>
+  <rect x="800" y="382" width="230" height="54" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="915" y="414" fill="#94a3b8" font-size="13" text-anchor="middle">− − −</text>
+  <rect x="1040" y="382" width="230" height="54" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="1155" y="414" fill="#94a3b8" font-size="13" text-anchor="middle">− − −</text>
+
+  <line x1="550" y1="454" x2="1280" y2="454" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- === NUMPAD + FUNKTIONSTASTEN === -->
+  <rect x="550" y="454" width="730" height="286" fill="white"/>
+
+  <!-- Numpad: cols at x=560,664,768 · rows at y=464,534,604,674 · cell 95×58 -->
+  <!-- 7 8 9 -->
+  <rect x="560" y="464" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="607" y="501" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">7</text>
+  <rect x="664" y="464" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="711" y="501" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">8</text>
+  <rect x="768" y="464" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="815" y="501" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">9</text>
+  <!-- 4 5 6 -->
+  <rect x="560" y="534" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="607" y="571" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">4</text>
+  <rect x="664" y="534" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="711" y="571" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">5</text>
+  <rect x="768" y="534" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="815" y="571" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">6</text>
+  <!-- 1 2 3 -->
+  <rect x="560" y="604" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="607" y="641" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">1</text>
+  <rect x="664" y="604" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="711" y="641" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">2</text>
+  <rect x="768" y="604" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="815" y="641" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">3</text>
+  <!-- 0 (2-wide) + Komma -->
+  <rect x="560" y="674" width="199" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="659" y="711" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">0</text>
+  <rect x="768" y="674" width="95" height="58" rx="8" fill="white" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="815" y="711" fill="#1e293b" font-size="22" text-anchor="middle" font-weight="600">,</text>
+
+  <!-- Funktionstasten: cols at x=880,1080 · w=190 each -->
+  <!-- × Mal -->
+  <rect x="880" y="464" width="190" height="58" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="975" y="500" fill="#1d4ed8" font-size="15" text-anchor="middle" font-weight="700">× Mal</text>
+  <!-- % Rabatt (Artikel) -->
+  <rect x="1080" y="464" width="190" height="58" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="1175" y="500" fill="#1d4ed8" font-size="15" text-anchor="middle" font-weight="700">% Rabatt</text>
+
+  <!-- Backspace -->
+  <rect x="880" y="534" width="190" height="58" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
+  <text x="975" y="572" fill="#dc2626" font-size="24" text-anchor="middle">⌫</text>
+  <!-- Reserviert -->
+  <rect x="1080" y="534" width="190" height="58" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="1175" y="568" fill="#cbd5e1" font-size="12" text-anchor="middle">−</text>
+
+  <!-- STORNO — volle Breite -->
+  <rect x="880" y="604" width="390" height="58" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="2"/>
+  <text x="1075" y="641" fill="#dc2626" font-size="14" text-anchor="middle" font-weight="700">STORNO — aktive Zeile</text>
+
+  <!-- Reserviert — volle Breite -->
+  <rect x="880" y="674" width="390" height="58" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="1075" y="711" fill="#94a3b8" font-size="12" text-anchor="middle">− reserviert −</text>
+
+  <!-- === FOOTER RIGHT === -->
+  <rect x="550" y="740" width="730" height="60" fill="#1e3a5f"/>
+  <text x="568" y="760" fill="#93c5fd" font-size="11">3 Artikel · inkl. MwSt.</text>
+  <text x="568" y="784" fill="white" font-size="14" font-weight="700">GESAMT</text>
+  <text x="695" y="784" fill="white" font-size="22" font-weight="700">12,50 €</text>
+  <!-- Bezahlen button -->
+  <rect x="920" y="751" width="340" height="40" rx="8" fill="#16a34a"/>
+  <text x="1090" y="776" fill="white" font-size="17" text-anchor="middle" font-weight="700">BEZAHLEN  ▶</text>
+
+</svg>

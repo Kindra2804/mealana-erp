@@ -1,562 +1,1534 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
-require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 
-$service    = new KassenService();
-$lagerSvc   = new LagerService();
-$kasseInfo  = $service->getKasse(1);
-$lagerId    = (int)($kasseInfo['lager_id'] ?? 1);
-$kasseId    = (int)($kasseInfo['id'] ?? 1);
+$svc       = new KassenService();
+$kasseInfo = $svc->getKasse(1);
+$lagerId   = (int)($kasseInfo['lager_id']      ?? 1);
+$kasseId   = (int)($kasseInfo['id']            ?? 1);
+$lagerName = $kasseInfo['lager_name']          ?? 'Hauptlager';
+$rksvId    = $kasseInfo['rksv_kassen_id']      ?? null;
+$modus     = $kasseInfo['modus']               ?? 'online';
 
-$pageTitle    = 'Kassieren';
-$activeKasseNav = 'bon';
-require_once __DIR__ . '/shell_top.php';
+$schnellwahl = $svc->getSchnellwahl($kasseId);
 ?>
-
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kasse — <?= htmlspecialchars($kasseInfo['name'] ?? 'Kasse') ?></title>
 <style>
-#bon-layout {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 16px;
-  height: calc(100vh - 100px);
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f1f5f9;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-#scan-bereich { display: flex; flex-direction: column; gap: 12px; }
-#warenkorb-panel {
-  display: flex; flex-direction: column; gap: 0;
-  background: #0d1b2a;
-  border: 1px solid #1a3a5c;
-  border-radius: 10px;
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.ph {
+  background: #1e3a5f;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 12px;
+  position: relative;
+  z-index: 100;
+}
+.ph-title  { color: #fff; font-size: 17px; font-weight: 700; white-space: nowrap; }
+.ph-sub    { color: #93c5fd; font-size: 12px; white-space: nowrap; }
+.ph-rksv   { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #86efac; white-space: nowrap; }
+.ph-rksv-dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+.ph-rksv-dot.offline { background: #f59e0b; }
+.ph-right  { margin-left: auto; display: flex; gap: 7px; align-items: center; }
+.ph-btn {
+  border: none; border-radius: 5px;
+  padding: 0 14px; height: 30px; font-size: 12px; cursor: pointer;
+  white-space: nowrap; font-family: inherit; line-height: 30px;
+}
+.ph-btn-menu    { background: #334155; color: #e2e8f0; }
+.ph-btn-mitgeb  { background: #b45309; color: #fff; }
+.ph-btn-parken  { background: #334155; color: #e2e8f0; }
+.ph-btn-close   { background: #dc2626; color: #fff; }
+.ph-btn:hover   { filter: brightness(1.15); }
+
+/* ── Menü-Dropdown ───────────────────────────────────────────────────────── */
+.ph-dropdown {
+  display: none;
+  position: absolute;
+  top: 50px;
+  right: 14px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  min-width: 200px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
   overflow: hidden;
 }
-#warenkorb-liste { flex: 1; overflow-y: auto; max-height: 46vh; }
-#warenkorb-table { width: 100%; border-collapse: collapse; }
-#warenkorb-table th { background: #071018; color: #666; font-size: 11px; padding: 7px 10px; text-transform: uppercase; }
-#warenkorb-table td { padding: 9px 10px; border-bottom: 1px solid #071018; font-size: 14px; vertical-align: middle; }
-#warenkorb-table td:last-child { text-align: right; white-space: nowrap; }
-.wk-remove { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 16px; padding: 0 4px; }
-.wk-remove:hover { color: #e74c3c; }
-#warenkorb-footer { padding: 14px 16px; border-top: 2px solid #1a3a5c; }
-#warenkorb-gesamt { font-size: 28px; font-weight: 900; color: #e67e22; margin-bottom: 12px; }
-#warenkorb-leer { padding: 40px; text-align: center; color: #444; font-size: 14px; }
+.ph-dropdown.offen { display: block; }
+.ph-dd-item {
+  display: block;
+  padding: 12px 18px;
+  color: #e2e8f0;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.ph-dd-item:hover { background: #334155; }
+.ph-dd-sep { height: 1px; background: #334155; margin: 4px 0; }
 
-.pay-btn {
-  width: 100%; padding: 16px; font-size: 17px; font-weight: 700;
-  border: none; border-radius: 8px; cursor: pointer; margin-bottom: 8px;
+/* ── Hauptlayout ─────────────────────────────────────────────────────────── */
+.pos-layout {
+  display: flex;
+  height: calc(100vh - 50px);
+  overflow: hidden;
 }
-.pay-btn-bar   { background: #27ae60; color: #fff; }
-.pay-btn-bar:hover   { background: #1e8449; }
-.pay-btn-karte { background: #2980b9; color: #fff; }
-.pay-btn-karte:hover { background: #1a5276; }
-.pay-btn-gs    { background: #8e44ad; color: #fff; }
-.pay-btn-gs:hover    { background: #6c3483; }
-.pay-btn-kombi { background: #16a085; color: #fff; }
-.pay-btn-kombi:hover { background: #0e6655; }
-.pay-btn:disabled { opacity:.35; cursor:not-allowed; }
 
-/* Scan-Artikel-Info */
-#scan-info-box {
-  background: #071828;
-  border: 2px solid #1a3a5c;
-  border-radius: 10px;
-  padding: 16px;
-  min-height: 90px;
-  display: flex; gap: 14px; align-items: center;
+/* ── Linke Spalte (Bon-Liste) ─────────────────────────────────────────────── */
+.pos-links {
+  width: 550px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e2e8f0;
 }
-#scan-bild { width:80px;height:80px;object-fit:contain;border-radius:6px;background:#0a1520; }
-#scan-kinder-liste { margin-top: 10px; }
-.kind-chip {
-  display: inline-block; background: #0d2a4a; border: 1px solid #1a4a7c;
-  border-radius: 6px; padding: 6px 12px; margin: 3px; cursor: pointer;
-  font-size: 13px; color: #ccc;
+.pos-kunde {
+  height: 50px;
+  background: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  flex-shrink: 0;
 }
-.kind-chip:hover { background: #1a4a7c; color: #fff; }
+.pos-kunde-name { color: #1e3a5f; font-size: 14px; flex: 1; }
+.pos-kunde-btn {
+  background: #2563eb; color: #fff;
+  border: none; border-radius: 5px;
+  padding: 0 14px; height: 28px; font-size: 12px; cursor: pointer;
+  font-family: inherit;
+}
+.pos-kunde-btn:hover { background: #1d4ed8; }
+.pos-bonkopf {
+  height: 32px;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+.pos-bonkopf span:nth-child(1) { width: 28px; }
+.pos-bonkopf span:nth-child(2) { flex: 1; }
+.pos-bonkopf span:nth-child(3) { width: 50px; text-align: right; }
+.pos-bonkopf span:nth-child(4) { width: 74px; text-align: right; }
+.pos-bonkopf span:nth-child(5) { width: 74px; text-align: right; }
 
-/* Scan-Bar */
-#scan-bar {
-  display: flex; gap: 10px; align-items: center;
-  background: #0d1b2a; border: 1px solid #1a3a5c;
-  border-radius: 10px; padding: 12px 16px;
+.pos-bonliste {
+  flex: 1;
+  overflow-y: auto;
+  background: #fff;
 }
-#vorwahl {
-  background: #071018; border: 2px solid #1a3a5c; border-radius: 6px;
-  color: #e67e22; font-size: 22px; font-weight: 700;
-  padding: 8px 6px; width: 60px; text-align: center; outline: none;
+.bon-leer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  font-size: 14px;
 }
-#vorwahl:focus { border-color: #e67e22; }
+/* Bon-Zeile */
+.bon-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0 16px;
+  min-height: 52px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.08s;
+}
+.bon-row:hover { background: #f8fafc; }
+.bon-row.aktiv { background: #eff6ff; }
+.bon-row.aktiv::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: #2563eb;
+}
+.bon-row.storno-anim {
+  animation: storno-flash 0.3s ease;
+}
+@keyframes storno-flash {
+  0% { background: #fef2f2; }
+  100% { background: transparent; }
+}
+.bon-row-nr   { width: 28px; font-size: 13px; color: #94a3b8; flex-shrink: 0; padding: 14px 0; }
+.bon-row-name { flex: 1; font-size: 13px; font-weight: 600; color: #1e3a5f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 14px 8px 14px 0; }
+.bon-row-rabatt { font-size: 10px; color: #f59e0b; font-weight: 700; margin-left: 4px; }
+.bon-row-menge { width: 50px; font-size: 13px; color: #1e3a5f; text-align: right; padding: 14px 0; }
+.bon-row-ep    { width: 74px; font-size: 12px; color: #475569; text-align: right; padding: 14px 0; }
+.bon-row-summe { width: 74px; font-size: 13px; font-weight: 600; color: #1e3a5f; text-align: right; padding: 14px 0; }
+
+/* Kontroll-Buttons (sichtbar wenn aktiv) */
+.bon-row-ctrl {
+  display: none;
+  width: 100%;
+  padding: 4px 0 10px 28px;
+  gap: 8px;
+  align-items: center;
+}
+.bon-row.aktiv .bon-row-ctrl { display: flex; }
+.bon-ctrl {
+  width: 108px; height: 36px;
+  border: 1.5px solid #3b82f6;
+  border-radius: 6px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+}
+.bon-ctrl:hover { background: #bfdbfe; }
+.bon-ctrl:active { background: #93c5fd; }
+.bon-ctrl-hint { font-size: 10px; color: #94a3b8; margin-left: auto; }
+
+/* Linker Footer */
+.pos-links-footer {
+  height: 60px;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+.pos-footer-info { flex: 1; }
+.pos-footer-cnt  { font-size: 12px; color: #475569; }
+.pos-footer-tax  { font-size: 11px; color: #94a3b8; }
+.pos-bonrab-btn {
+  border: 1.5px solid #2563eb;
+  background: #fff;
+  color: #2563eb;
+  border-radius: 6px;
+  padding: 0 16px;
+  height: 34px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.pos-bonrab-btn:hover { background: #eff6ff; }
+
+/* ── Rechte Spalte ─────────────────────────────────────────────────────────── */
+.pos-rechts {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #fff;
+}
+
+/* Scan-Bereich */
+.pos-scan {
+  height: 90px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  flex-shrink: 0;
+}
 #scan-input {
-  background: #071018; border: 2px solid #1a3a5c; border-radius: 8px;
-  color: #fff; font-size: 20px; padding: 10px 14px; flex: 1; outline: none;
+  flex: 1;
+  height: 44px;
+  border: 2px solid #2563eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #1e293b;
+  font-size: 16px;
+  padding: 0 14px;
+  outline: none;
+  font-family: inherit;
 }
-#scan-input:focus { border-color: #e67e22; }
-
-/* Rabatt-Zeile im Warenkorb-Footer */
-#rabatt-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-#rabatt-input {
-  background: #071018; border: 1px solid #1a3a5c; border-radius: 6px;
-  color: #fff; font-size: 14px; padding: 6px 10px; width: 80px; outline: none;
+#scan-input:focus { border-color: #1d4ed8; background: #fff; }
+#scan-input::placeholder { color: #94a3b8; font-size: 14px; }
+.pos-menge-box {
+  width: 110px;
+  height: 44px;
+  background: #eff6ff;
+  border: 1.5px solid #93c5fd;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
 }
-#rabatt-input:focus { border-color: #e67e22; }
+.pos-menge-label { font-size: 9px; color: #64748b; font-weight: 700; letter-spacing: 1px; }
+#menge-display   { font-size: 20px; font-weight: 700; color: #1d4ed8; line-height: 1; }
 
-/* Payment overlay */
-.pay-overlay {
+/* Artikel-Info */
+.pos-ai {
+  height: 80px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pos-ai-leer  { color: #94a3b8; font-size: 13px; }
+.pos-ai-name  { font-size: 14px; font-weight: 700; color: #1e3a5f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-ai-meta  { font-size: 11px; color: #64748b; margin: 2px 0; }
+.pos-ai-prow  { display: flex; align-items: center; gap: 10px; }
+.pos-ai-preis { font-size: 14px; font-weight: 700; color: #1e293b; }
+.pos-ai-akt   { background: #fef3c7; border: 1px solid #fbbf24; border-radius: 10px; padding: 1px 8px; font-size: 10px; color: #92400e; }
+.pos-lager-row { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
+.pos-lag-item  { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #475569; }
+.pos-lag-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* Schnellwahl */
+.pos-sw {
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 120px;
+}
+.pos-sw-label {
+  font-size: 9px; color: #94a3b8; font-weight: 700; letter-spacing: 1.5px;
+  margin-bottom: 5px; flex-shrink: 0;
+}
+.pos-sw-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 5px;
+}
+.sw-btn {
+  border-radius: 8px;
+  border: 1.5px solid #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background 0.08s;
+}
+.sw-btn:hover  { background: #dbeafe; }
+.sw-btn:active { background: #93c5fd; }
+.sw-btn.leer   { background: #f8fafc; border: 1px dashed #cbd5e1; color: #94a3b8; cursor: default; font-size: 18px; }
+.sw-btn.sonder { background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; }
+
+/* Numpad */
+.pos-numpad {
+  height: 286px;
+  flex-shrink: 0;
+  padding: 7px 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) repeat(2, 1.55fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 5px;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+}
+.np {
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.06s;
+}
+.np:hover  { background: #f1f5f9; }
+.np:active { background: #e2e8f0; }
+.np-fn {
+  border: 1.5px solid #93c5fd;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  transition: background 0.06s;
+}
+.np-fn:hover  { background: #dbeafe; }
+.np-fn:active { background: #93c5fd; }
+.np-del {
+  border: 1.5px solid #fca5a5;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 22px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.06s;
+}
+.np-del:hover  { background: #fee2e2; }
+.np-storno {
+  border: 2px solid #fca5a5;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.06s;
+}
+.np-storno:hover  { background: #fee2e2; }
+.np-storno:active { background: #fca5a5; }
+.np-empty {
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+/* Rechter Footer */
+.pos-rf {
+  height: 60px;
+  background: #1e3a5f;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.pos-rf-info { display: flex; flex-direction: column; gap: 2px; }
+.pos-rf-cnt  { color: #93c5fd; font-size: 11px; }
+.pos-rf-ges  { color: #fff; font-size: 22px; font-weight: 700; }
+.pos-bez-btn {
+  margin-left: auto;
+  background: #16a34a; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 0 36px; height: 42px;
+  font-size: 16px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  white-space: nowrap;
+}
+.pos-bez-btn:hover    { background: #15803d; }
+.pos-bez-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Overlays ──────────────────────────────────────────────────────────────── */
+.ov {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+.ov.offen { display: flex; }
+.ov-box {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 32px 36px;
+  min-width: 360px;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.ov-title { font-size: 20px; font-weight: 700; color: #1e3a5f; margin-bottom: 20px; }
+.ov-label { font-size: 12px; color: #64748b; margin-bottom: 5px; font-weight: 600; }
+.ov-total { font-size: 36px; font-weight: 900; color: #1e3a5f; text-align: center; margin-bottom: 22px; }
+.ov-input {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 28px;
+  font-weight: 700;
+  padding: 10px 16px;
+  width: 100%;
+  text-align: right;
+  outline: none;
+  font-family: inherit;
+}
+.ov-input:focus { border-color: #2563eb; }
+.ov-input-sm {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 16px;
+  padding: 9px 14px;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+}
+.ov-input-sm:focus { border-color: #2563eb; }
+.ov-rueck { font-size: 20px; font-weight: 700; color: #16a34a; text-align: right; margin: 10px 0; }
+.ov-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.ov-btn {
+  border: none; border-radius: 8px;
+  padding: 13px 20px;
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  display: block; width: 100%; text-align: center;
+  text-decoration: none;
+}
+.ov-btn + .ov-btn { margin-top: 8px; }
+.ov-btn-prim  { background: #2563eb; color: #fff; }
+.ov-btn-prim:hover  { background: #1d4ed8; }
+.ov-btn-ok    { background: #16a34a; color: #fff; }
+.ov-btn-ok:hover    { background: #15803d; }
+.ov-btn-ok:disabled { opacity: .35; cursor: not-allowed; }
+.ov-btn-sec   { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.ov-btn-sec:hover   { background: #e2e8f0; }
+.ov-btn-red   { background: #dc2626; color: #fff; }
+.ov-btn-red:hover   { background: #b91c1c; }
+
+/* Schnellbeträge */
+.ov-schnell { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px; }
+.ov-schnell-btn {
+  background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 8px; font-size: 13px; cursor: pointer; font-family: inherit;
+  color: #1e3a5f; font-weight: 600;
+}
+.ov-schnell-btn:hover { background: #dbeafe; border-color: #93c5fd; }
+
+/* Suchergebnis-Liste */
+.such-liste { max-height: 300px; overflow-y: auto; margin-top: 10px; }
+.such-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.such-item:hover { background: #eff6ff; }
+.such-item-name { flex: 1; font-size: 14px; font-weight: 600; color: #1e3a5f; }
+.such-item-sub  { font-size: 11px; color: #64748b; }
+.such-item-preis { font-size: 14px; font-weight: 700; color: #1e293b; white-space: nowrap; }
+.such-item-bestand { font-size: 11px; white-space: nowrap; }
+
+/* Chip-Varianten */
+.kind-chip {
+  display: inline-flex; flex-direction: column;
+  background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 8px;
+  padding: 8px 14px; margin: 4px; cursor: pointer;
+  font-size: 13px; color: #1d4ed8; font-weight: 600;
+}
+.kind-chip:hover { background: #dbeafe; }
+.kind-chip-sub { font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px; }
+
+/* Feedback-Snackbar */
+#feedback {
+  position: fixed;
+  bottom: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  pointer-events: none;
+}
+.fb-msg {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  margin-bottom: 6px;
+}
+.fb-ok    { background: #16a34a; color: #fff; }
+.fb-fehler { background: #dc2626; color: #fff; }
+.fb-info  { background: #1e3a5f; color: #fff; }
+
+/* Reservierung-Warnung */
+.warn-box {
+  background: #fef3c7; border: 2px solid #fbbf24; border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 16px; font-size: 13px; color: #92400e;
+}
+
+/* Geldschein-Tasten (Bar) */
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.note-btn {
+  border: none; border-radius: 6px;
+  padding: 8px 4px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: #fff; text-align: center;
+  transition: filter 0.1s;
+}
+.note-btn:hover  { filter: brightness(1.15); }
+.note-btn:active { filter: brightness(0.9); }
+.note-5   { background: #78716c; }
+.note-10  { background: #dc2626; }
+.note-20  { background: #2563eb; }
+.note-50  { background: #d97706; }
+.note-100 { background: #16a34a; }
+.note-200 { background: #b45309; }
+.note-500 { background: #7c3aed; }
+.note-clr { background: #94a3b8; }
+.bar-gegeben-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.bar-gegeben-row .ov-label { white-space: nowrap; margin-bottom: 0; }
+
+/* Tab-Toggle (Rabatt % / €) */
+.tab-toggle { display: flex; border: 1.5px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
+.tab-btn { flex: 1; padding: 9px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; background: #f8fafc; color: #64748b; }
+.tab-btn.aktiv { background: #2563eb; color: #fff; }
+
+/* Preis-Override Button in aktiver Zeile */
+.bon-ctrl-preis {
+  width: auto; padding: 0 12px; height: 36px;
+  border: 1.5px solid #f59e0b;
+  border-radius: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+}
+.bon-ctrl-preis:hover { background: #fde68a; }
+
+/* Sondertasten im Numpad (Kassenlade + Freier Artikel) */
+.np-lade {
+  border: 1.5px solid #475569;
+  border-radius: 8px;
+  background: #334155;
+  color: #e2e8f0;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.08s;
+}
+.np-lade:hover  { background: #475569; }
+.np-add {
+  border: 1.5px solid #86efac;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.08s;
+}
+.np-add:hover  { background: #dcfce7; }
+
+/* Spinner */
+.spinner-overlay {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.85); z-index: 300;
+  background: rgba(0,0,0,.5); z-index: 700;
   align-items: center; justify-content: center;
 }
-.pay-overlay.aktiv { display: flex; }
-.pay-overlay-box {
-  background: #0d1b2a; border: 2px solid #e67e22;
-  border-radius: 16px; padding: 36px; min-width: 380px; max-width: 500px; width: 90%;
+.spinner-overlay.offen { display: flex; }
+.spinner {
+  width: 52px; height: 52px;
+  border: 5px solid rgba(255,255,255,.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
 }
-.pay-total { font-size: 36px; font-weight: 900; color: #e67e22; text-align: center; margin-bottom: 24px; }
-.pay-label { font-size: 13px; color: #888; margin-bottom: 6px; }
-.pay-big-input {
-  background: #071018; border: 2px solid #1a3a5c; border-radius: 8px;
-  color: #fff; font-size: 28px; font-weight: 700; padding: 12px 16px;
-  width: 100%; text-align: right; outline: none;
-}
-.pay-big-input:focus { border-color: #e67e22; }
-.pay-rueckgeld { font-size: 22px; font-weight: 700; color: #27ae60; text-align: right; margin: 12px 0; }
-
-/* Vater-Auswahl Overlay */
-#overlay-vater { }
-
-/* Divers-Overlay */
-#overlay-divers { }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
+</head>
+<body>
 
-<div id="bon-layout">
+<!-- ── HEADER ────────────────────────────────────────────────────────────── -->
+<div class="ph">
+  <div class="ph-title">MeaLana · Kasse</div>
+  <div class="ph-sub">Lager: <?= htmlspecialchars($lagerName) ?></div>
+  <?php if ($rksvId): ?>
+  <div class="ph-rksv">
+    <div class="ph-rksv-dot<?= $modus === 'offline' ? ' offline' : '' ?>"></div>
+    RKSV <?= $modus === 'offline' ? 'offline' : 'aktiv' ?>
+  </div>
+  <?php endif; ?>
+  <div class="ph-right">
+    <button class="ph-btn ph-btn-menu" onclick="toggleMenue(event)">⚙ Menü</button>
+    <button class="ph-btn ph-btn-mitgeb" onclick="mitgebenDialog()">Mitgeben ▷</button>
+    <button class="ph-btn ph-btn-parken" onclick="bonParken()">⏸ Parken</button>
+    <button class="ph-btn ph-btn-close" onclick="location.href='/mealana/kasse/index.php'">✕ Schließen</button>
+  </div>
+  <!-- Dropdown -->
+  <div class="ph-dropdown" id="ph-dropdown">
+    <button class="ph-dd-item" onclick="kasseladeOeffnen()">⊟ Kassenlade öffnen</button>
+    <button class="ph-dd-item" onclick="diversDialog()">+ Freier Artikel</button>
+    <div class="ph-dd-sep"></div>
+    <button class="ph-dd-item" onclick="bonAbrufen()">⏸ Geparkten Bon abrufen</button>
+    <div class="ph-dd-sep"></div>
+    <a class="ph-dd-item" href="/mealana/kasse/kassenbuch.php">💰 Kassenbuch</a>
+    <a class="ph-dd-item" href="/mealana/kasse/kassensturz.php">📊 Kassenstand / X-Bon</a>
+    <a class="ph-dd-item" href="/mealana/kasse/bon_journal.php">📋 Bon-Journal</a>
+    <div class="ph-dd-sep"></div>
+    <a class="ph-dd-item" href="/mealana/kasse/offene_auswahl.php">↗ Offene Auswahl (Mitgegeben)</a>
+  </div>
+</div>
 
-  <!-- LINKE SPALTE: SCAN + INFO -->
-  <div id="scan-bereich">
+<!-- ── HAUPTLAYOUT ────────────────────────────────────────────────────────── -->
+<div class="pos-layout">
 
-    <div id="scan-bar">
-      <div style="font-size:13px;color:#888">Menge</div>
-      <input type="number" id="vorwahl" value="1" min="1" max="999">
-      <input type="text" id="scan-input" placeholder="EAN oder Artikelnummer scannen…" autocomplete="off" autofocus>
-      <button class="ks-btn ks-btn-secondary" onclick="scannenOK()" style="white-space:nowrap">OK</button>
+  <!-- ── LINKE SPALTE ───────────────────────────────────────────────────── -->
+  <div class="pos-links">
+
+    <!-- Kundenkopf -->
+    <div class="pos-kunde">
+      <span style="font-size:18px">👤</span>
+      <span class="pos-kunde-name" id="kunden-anzeige">Laufkunde</span>
+      <button class="pos-kunde-btn" onclick="kundeDialog()">+ Kunde suchen</button>
     </div>
 
-    <div id="scan-info-box">
-      <div id="scan-info-leer" style="color:#444;font-size:14px">Scan-Ergebnis erscheint hier…</div>
-      <div id="scan-info-inhalt" style="display:none;width:100%">
-        <div style="display:flex;gap:14px;align-items:center">
-          <img id="scan-bild" src="" alt="" style="display:none">
-          <div id="scan-bild-placeholder" style="width:80px;height:80px;border-radius:6px;background:#071018;border:1px dashed #333;display:flex;align-items:center;justify-content:center;font-size:28px;color:#333">📦</div>
-          <div style="flex:1">
-            <div id="scan-name" style="font-size:18px;font-weight:700;color:#eee"></div>
-            <div id="scan-nr" style="font-size:12px;color:#888;margin-top:2px"></div>
-            <div id="scan-preis" style="font-size:22px;font-weight:700;color:#e67e22;margin-top:4px"></div>
-            <div id="scan-bestand" style="font-size:12px;color:#888;margin-top:2px"></div>
-            <div id="scan-charge" style="font-size:11px;color:#64b5f6;margin-top:2px;display:none">Charge: <span id="scan-charge-val"></span></div>
-          </div>
+    <!-- Spaltenkopf -->
+    <div class="pos-bonkopf">
+      <span>#</span><span>ARTIKEL</span><span>MNG</span><span>E-PREIS</span><span>SUMME</span>
+    </div>
+
+    <!-- Bon-Liste -->
+    <div class="pos-bonliste" id="bon-liste">
+      <div class="bon-leer" id="bon-leer">Noch keine Artikel</div>
+    </div>
+
+    <!-- Linker Footer -->
+    <div class="pos-links-footer">
+      <div class="pos-footer-info">
+        <div class="pos-footer-cnt" id="footer-cnt">0 Artikel</div>
+        <div class="pos-footer-tax" id="footer-tax">inkl. MwSt.</div>
+      </div>
+      <button class="pos-bonrab-btn" onclick="bonRabattDialog()">% Bon-Rabatt</button>
+    </div>
+
+  </div><!-- /pos-links -->
+
+  <!-- ── RECHTE SPALTE ──────────────────────────────────────────────────── -->
+  <div class="pos-rechts">
+
+    <!-- Scan-Bereich -->
+    <div class="pos-scan">
+      <input type="text" id="scan-input"
+             placeholder="🔍  EAN scannen oder Artikel suchen…"
+             autocomplete="off" spellcheck="false">
+      <div class="pos-menge-box" onclick="mengeReset()">
+        <div class="pos-menge-label">MENGE</div>
+        <div id="menge-display">1 ×</div>
+      </div>
+    </div>
+
+    <!-- Artikel-Info -->
+    <div class="pos-ai" id="ai-box">
+      <div class="pos-ai-leer" id="ai-leer">Scan-Ergebnis erscheint hier…</div>
+      <div id="ai-inhalt" style="display:none">
+        <div class="pos-ai-name" id="ai-name"></div>
+        <div class="pos-ai-meta" id="ai-meta"></div>
+        <div class="pos-ai-prow">
+          <span class="pos-ai-preis" id="ai-preis"></span>
+          <span class="pos-ai-akt"  id="ai-akt"  style="display:none"></span>
         </div>
-        <div id="scan-kinder-liste" style="display:none;margin-top:12px">
-          <div style="font-size:12px;color:#888;margin-bottom:6px">Bitte Variante wählen:</div>
-          <div id="scan-kinder-chips"></div>
-        </div>
+        <div class="pos-lager-row" id="ai-lager"></div>
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="ks-btn ks-btn-secondary" onclick="diversDialog()">+ Freier Preis</button>
-      <button class="ks-btn ks-btn-secondary" onclick="mitgebenDialog()">↗ Mitgeben</button>
-      <button class="ks-btn ks-btn-secondary" onclick="warenkorbLeeren()" id="btn-leeren" style="margin-left:auto;display:none">🗑 Leeren</button>
-    </div>
-
-    <!-- Feedback -->
-    <div id="scan-feedback"></div>
-
-  </div>
-
-  <!-- RECHTE SPALTE: WARENKORB + ZAHLUNG -->
-  <div id="warenkorb-panel">
-    <div style="padding:12px 16px;border-bottom:1px solid #071018;font-size:13px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px">
-      Warenkorb
-    </div>
-    <div id="warenkorb-liste">
-      <div id="warenkorb-leer">Noch keine Artikel</div>
-      <table id="warenkorb-table" style="display:none">
-        <thead><tr><th>Artikel</th><th>Mge</th><th>Preis</th><th></th></tr></thead>
-        <tbody id="warenkorb-body"></tbody>
-      </table>
-    </div>
-    <div id="warenkorb-footer">
-      <div id="rabatt-row" style="display:none">
-        <div style="font-size:13px;color:#888;white-space:nowrap">Gesamt-Rabatt:</div>
-        <input type="number" id="rabatt-input" value="0" min="0" max="100" step="1" oninput="aktualisiereAnzeige()">
-        <div style="color:#888;font-size:13px">%</div>
-        <button onclick="document.getElementById('rabatt-input').value=0;aktualisiereAnzeige();" style="background:none;border:none;color:#888;cursor:pointer;font-size:16px">✕</button>
-      </div>
-      <div id="warenkorb-gesamt">€ 0,00</div>
-      <div id="warenkorb-steuer" style="font-size:12px;color:#666;margin-bottom:12px"></div>
-
-      <button class="pay-btn pay-btn-bar"   id="btn-bar"   onclick="zahlenBar()"   disabled>💶 Bar</button>
-      <button class="pay-btn pay-btn-karte" id="btn-karte" onclick="zahlenKarte()" disabled>💳 Karte extern</button>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <button class="pay-btn pay-btn-gs"    id="btn-gs"    onclick="zahlenGutschein()" disabled style="font-size:15px">🎁 Gutschein</button>
-        <button class="pay-btn pay-btn-kombi" id="btn-kombi" onclick="zahlenKombi()"     disabled style="font-size:15px">💱 Kombi</button>
+    <!-- Schnellwahl -->
+    <div class="pos-sw">
+      <div class="pos-sw-label">SCHNELLWAHL</div>
+      <div class="pos-sw-grid" id="sw-grid">
+        <!-- Wird per PHP/JS befüllt -->
       </div>
     </div>
-  </div>
 
-</div>
-
-<!-- ── Overlay: BAR ───────────────────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-bar">
-  <div class="pay-overlay-box">
-    <div class="pay-total" id="bar-total-anzeige">€ 0,00</div>
-    <div class="pay-label">Gegeben</div>
-    <input class="pay-big-input" type="number" id="bar-gegeben" step="0.01" min="0" placeholder="0,00" oninput="berechneRueckgeld()">
-    <div class="pay-rueckgeld" id="bar-rueckgeld">Rückgeld: € 0,00</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
-      <div id="bar-schnell" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
-      <button class="ks-btn ks-btn-success ks-btn-lg" id="btn-bar-ok" onclick="bonAbschliessenBar()" disabled>✓ Abschließen</button>
+    <!-- Numpad -->
+    <div class="pos-numpad">
+      <!-- Zeile 1: 7 8 9 | ×Mal | %Rabatt -->
+      <button class="np" onclick="npDruck('7')">7</button>
+      <button class="np" onclick="npDruck('8')">8</button>
+      <button class="np" onclick="npDruck('9')">9</button>
+      <button class="np-fn" onclick="npMal()">× Mal</button>
+      <button class="np-fn" onclick="npRabatt()">% Rabatt</button>
+      <!-- Zeile 2: 4 5 6 | ⌫ | [leer] -->
+      <button class="np" onclick="npDruck('4')">4</button>
+      <button class="np" onclick="npDruck('5')">5</button>
+      <button class="np" onclick="npDruck('6')">6</button>
+      <button class="np-del" onclick="npBack()">⌫</button>
+      <div class="np-empty"></div>
+      <!-- Zeile 3: 1 2 3 | STORNO (span 2) -->
+      <button class="np" onclick="npDruck('1')">1</button>
+      <button class="np" onclick="npDruck('2')">2</button>
+      <button class="np" onclick="npDruck('3')">3</button>
+      <button class="np-storno" style="grid-column:4/6" onclick="npStorno()">STORNO — aktive Zeile</button>
+      <!-- Zeile 4: 0 (span 2) , | Kassenlade | Freier Artikel -->
+      <button class="np" style="grid-column:1/3" onclick="npDruck('0')">0</button>
+      <button class="np" onclick="npDruck(',')">&#44;</button>
+      <button class="np-lade" onclick="kasseladeOeffnen()" title="Kassenlade öffnen">⊟ Lade</button>
+      <button class="np-add"  onclick="diversDialog()"      title="Freier Artikel">+ Artikel</button>
     </div>
-    <button class="ks-btn ks-btn-secondary" style="width:100%;margin-top:12px" onclick="overlaySchliessen('overlay-bar')">Abbrechen</button>
-  </div>
-</div>
 
-<!-- ── Overlay: KARTE ────────────────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-karte">
-  <div class="pay-overlay-box">
-    <div class="pay-total" id="karte-total-anzeige">€ 0,00</div>
-    <div style="text-align:center;font-size:17px;color:#aaa;margin-bottom:28px">
-      💳 Bitte Zahlung am Terminal<br>(<span id="karte-terminal-hint">Bankomat oder SumUp</span>) abschließen.
+    <!-- Rechter Footer -->
+    <div class="pos-rf">
+      <div class="pos-rf-info">
+        <div class="pos-rf-cnt" id="rf-cnt">0 Artikel · inkl. MwSt.</div>
+        <div class="pos-rf-ges" id="rf-ges">€ 0,00</div>
+      </div>
+      <button class="pos-bez-btn" id="btn-bezahlen" onclick="bezahlenDialog()" disabled>BEZAHLEN ▶</button>
     </div>
-    <button class="ks-btn ks-btn-success ks-btn-lg" style="width:100%;margin-bottom:10px" onclick="bonAbschliessenKarte()">✓ Terminal bestätigt</button>
-    <button class="ks-btn ks-btn-secondary" style="width:100%" onclick="overlaySchliessen('overlay-karte')">Abbrechen</button>
+
+  </div><!-- /pos-rechts -->
+</div><!-- /pos-layout -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     OVERLAYS
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Bezahlen -->
+<div class="ov" id="ov-bezahlen">
+  <div class="ov-box" style="max-width:480px">
+    <div class="ov-title">Zahlung</div>
+    <div class="ov-total" id="bez-total">€ 0,00</div>
+    <div class="ov-grid2">
+      <button class="ov-btn" style="background:#16a34a;color:#fff;font-size:16px" onclick="zahlenBar()">💶 Bar</button>
+      <button class="ov-btn" style="background:#2563eb;color:#fff;font-size:16px" onclick="zahlenKarte()">💳 Karte</button>
+      <button class="ov-btn" style="background:#7c3aed;color:#fff" onclick="zahlenGutschein()">🎁 Gutschein</button>
+      <button class="ov-btn" style="background:#0891b2;color:#fff" onclick="zahlenKombi()">💱 Kombi</button>
+    </div>
+    <button class="ov-btn ov-btn-sec" style="margin-top:10px" onclick="ovSchliessen('ov-bezahlen')">Abbrechen</button>
   </div>
 </div>
 
-<!-- ── Overlay: GUTSCHEIN ────────────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-gutschein">
-  <div class="pay-overlay-box">
-    <div class="pay-total" id="gs-total-anzeige">€ 0,00</div>
-    <div class="pay-label">Gutschein-Code</div>
-    <input class="pay-big-input" type="text" id="gs-code" placeholder="Code eingeben…" style="font-size:20px;text-align:left" onkeyup="gsCodeGeaendert()">
-    <div id="gs-info" style="min-height:30px;margin-top:10px;font-size:14px;color:#888"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
-      <button class="ks-btn ks-btn-success ks-btn-lg" id="btn-gs-ok" onclick="bonAbschliessenGutschein()" disabled>✓ Einlösen</button>
-      <button class="ks-btn ks-btn-secondary" onclick="overlaySchliessen('overlay-gutschein')">Abbrechen</button>
+<!-- Bar -->
+<div class="ov" id="ov-bar">
+  <div class="ov-box" style="max-width:500px">
+    <div class="ov-title">Bar bezahlen</div>
+    <div class="ov-total" id="bar-total">€ 0,00</div>
+
+    <!-- Geldscheine — immer alle sichtbar, klick addiert -->
+    <div class="note-grid">
+      <button class="note-btn note-5"   onclick="barNoteAdd(5)">€ 5</button>
+      <button class="note-btn note-10"  onclick="barNoteAdd(10)">€ 10</button>
+      <button class="note-btn note-20"  onclick="barNoteAdd(20)">€ 20</button>
+      <button class="note-btn note-50"  onclick="barNoteAdd(50)">€ 50</button>
+      <button class="note-btn note-100" onclick="barNoteAdd(100)">€ 100</button>
+      <button class="note-btn note-200" onclick="barNoteAdd(200)">€ 200</button>
+      <button class="note-btn note-clr" onclick="barClear()" title="Zurücksetzen">C</button>
+    </div>
+
+    <!-- Zusammenfassung der eingetippten Scheine -->
+    <div id="bar-scheine-log" style="font-size:12px;color:#64748b;min-height:18px;margin-bottom:8px;text-align:right"></div>
+
+    <!-- Direkte Eingabe -->
+    <div class="bar-gegeben-row">
+      <div class="ov-label">Gegeben (€)</div>
+    </div>
+    <input class="ov-input" type="number" id="bar-gegeben" step="0.01" min="0"
+           placeholder="0,00" oninput="barBerechneManual()">
+
+    <div class="ov-rueck" id="bar-rueck"></div>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" id="btn-bar-ok" onclick="abschliessenBar()" disabled>✓ Abschließen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-bar')">Abbrechen</button>
     </div>
   </div>
 </div>
 
-<!-- ── Overlay: KOMBI ────────────────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-kombi">
-  <div class="pay-overlay-box">
-    <div class="pay-total" id="kombi-total-anzeige">€ 0,00</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+<!-- Karte -->
+<div class="ov" id="ov-karte">
+  <div class="ov-box" style="text-align:center">
+    <div class="ov-title" style="text-align:left">Kartenzahlung</div>
+    <div class="ov-total" id="karte-total">€ 0,00</div>
+    <p style="color:#64748b;font-size:15px;margin-bottom:24px">💳 Bitte Zahlung am Terminal<br>abschließen</p>
+    <button class="ov-btn ov-btn-ok" style="margin-bottom:10px" onclick="abschliessenKarte()">✓ Terminal bestätigt</button>
+    <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-karte')">Abbrechen</button>
+  </div>
+</div>
+
+<!-- Gutschein -->
+<div class="ov" id="ov-gutschein">
+  <div class="ov-box">
+    <div class="ov-title">Gutschein</div>
+    <div class="ov-total" id="gs-total">€ 0,00</div>
+    <div class="ov-label">Gutschein-Code</div>
+    <input class="ov-input-sm" type="text" id="gs-code" placeholder="Code eingeben…"
+           style="font-size:20px" onkeyup="gsPruefen()">
+    <div id="gs-info" style="min-height:24px;margin-top:8px;font-size:13px;color:#64748b"></div>
+    <div class="ov-grid2" style="margin-top:14px">
+      <button class="ov-btn ov-btn-ok" id="btn-gs-ok" onclick="abschliessenGS()" disabled>✓ Einlösen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-gutschein')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Kombi -->
+<div class="ov" id="ov-kombi">
+  <div class="ov-box">
+    <div class="ov-title">Kombizahlung</div>
+    <div class="ov-total" id="kombi-total">€ 0,00</div>
+    <div class="ov-grid2">
       <div>
-        <div class="pay-label">Karte (€)</div>
-        <input class="pay-big-input" type="number" id="kombi-karte" step="0.01" min="0" placeholder="0,00" oninput="kombiBerechnen()" style="font-size:22px">
+        <div class="ov-label">Karte (€)</div>
+        <input class="ov-input" type="number" id="kombi-karte" step="0.01" min="0"
+               placeholder="0,00" oninput="kombiBerechne()" style="font-size:22px">
       </div>
       <div>
-        <div class="pay-label">Bar (€)</div>
-        <input class="pay-big-input" type="number" id="kombi-bar" step="0.01" min="0" placeholder="0,00" oninput="kombiBerechnen()" style="font-size:22px">
+        <div class="ov-label">Bar (€)</div>
+        <input class="ov-input" type="number" id="kombi-bar" step="0.01" min="0"
+               placeholder="0,00" oninput="kombiBerechne()" style="font-size:22px">
       </div>
     </div>
-    <div class="pay-rueckgeld" id="kombi-diff" style="color:#888"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-      <button class="ks-btn ks-btn-success" id="btn-kombi-ok" onclick="bonAbschliessenKombi()" disabled>✓ Abschließen</button>
-      <button class="ks-btn ks-btn-secondary" onclick="overlaySchliessen('overlay-kombi')">Abbrechen</button>
+    <div class="ov-rueck" id="kombi-diff" style="color:#64748b"></div>
+    <div class="ov-grid2" style="margin-top:8px">
+      <button class="ov-btn ov-btn-ok" id="btn-kombi-ok" onclick="abschliessenKombi()" disabled>✓ Abschließen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-kombi')">Abbrechen</button>
     </div>
   </div>
 </div>
 
-<!-- ── Overlay: VATER-KINDER ────────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-vater">
-  <div class="pay-overlay-box" style="max-width:600px;max-height:80vh;overflow-y:auto">
-    <div class="ks-overlay-titel" id="overlay-vater-titel">Variante wählen</div>
-    <div id="overlay-vater-kinder"></div>
-    <button class="ks-btn ks-btn-secondary" style="width:100%;margin-top:16px" onclick="overlaySchliessen('overlay-vater')">Abbrechen</button>
+<!-- Vater-Variante -->
+<div class="ov" id="ov-vater">
+  <div class="ov-box" style="max-width:580px;max-height:80vh;overflow-y:auto">
+    <div class="ov-title" id="vater-titel">Variante wählen</div>
+    <div id="vater-kinder"></div>
+    <button class="ov-btn ov-btn-sec" style="margin-top:14px" onclick="ovSchliessen('ov-vater')">Abbrechen</button>
   </div>
 </div>
 
-<!-- ── Overlay: DIVERS-ARTIKEL ──────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-divers">
-  <div class="pay-overlay-box">
-    <div class="ks-overlay-titel">Freier Preis-Artikel</div>
-    <div class="pay-label">Bezeichnung</div>
-    <input class="pay-big-input" type="text" id="divers-name" placeholder="z.B. Strickberatung" style="font-size:16px;text-align:left;margin-bottom:14px" oninput="diversPruefen()">
-    <div class="pay-label">Bruttopreis (€)</div>
-    <input class="pay-big-input" type="number" id="divers-preis" step="0.01" min="0" placeholder="0,00" oninput="diversPruefen()">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
-      <div>
-        <div class="pay-label">Steuer</div>
-        <select class="ks-select" id="divers-steuer">
-          <option value="20">20 %</option>
-          <option value="10">10 %</option>
-          <option value="0">0 % (steuerbefreit)</option>
-        </select>
-      </div>
-      <div style="display:flex;align-items:flex-end">
-        <button class="ks-btn ks-btn-success" id="btn-divers-ok" onclick="diversHinzufuegen()" disabled style="width:100%">+ Hinzufügen</button>
-      </div>
-    </div>
-    <button class="ks-btn ks-btn-secondary" style="width:100%;margin-top:10px" onclick="overlaySchliessen('overlay-divers')">Abbrechen</button>
-  </div>
-</div>
-
-<!-- ── Overlay: MITGEBEN ────────────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-mitgeben">
-  <div class="pay-overlay-box">
-    <div class="ks-overlay-titel">↗ Mitgeben (Offene Auswahl)</div>
-    <div class="pay-label">Kundenname (optional)</div>
-    <input class="pay-big-input" type="text" id="mg-name" placeholder="Name oder leer lassen" style="font-size:16px;text-align:left;margin-bottom:14px">
-    <div class="pay-label">Rückgabe bis (optional)</div>
-    <input class="pay-big-input" type="date" id="mg-datum" style="font-size:16px;text-align:left;margin-bottom:14px">
-    <div style="font-size:13px;color:#888;margin-bottom:14px">
-      Die aktuellen Warenkorb-Artikel werden als "mitgegeben" gebucht und sofort aus dem Lager ausgebucht.
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <button class="ks-btn ks-btn-success" onclick="mitgebenSpeichern()">↗ Mitgeben</button>
-      <button class="ks-btn ks-btn-secondary" onclick="overlaySchliessen('overlay-mitgeben')">Abbrechen</button>
+<!-- Divers-Artikel -->
+<div class="ov" id="ov-divers">
+  <div class="ov-box">
+    <div class="ov-title">Freier Preis-Artikel</div>
+    <div class="ov-label">Bezeichnung</div>
+    <input class="ov-input-sm" type="text" id="div-name" placeholder="z.B. Strickberatung"
+           style="margin-bottom:12px" oninput="divPruefen()">
+    <div class="ov-label">Bruttopreis (€)</div>
+    <input class="ov-input" type="number" id="div-preis" step="0.01" min="0"
+           placeholder="0,00" oninput="divPruefen()" style="margin-bottom:12px;font-size:22px">
+    <div class="ov-label">Steuer</div>
+    <select class="ov-input-sm" id="div-steuer" style="margin-bottom:14px">
+      <option value="20">20 %</option>
+      <option value="10">10 %</option>
+      <option value="0">0 %</option>
+    </select>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" id="btn-div-ok" onclick="divHinzufuegen()" disabled>+ Hinzufügen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-divers')">Abbrechen</button>
     </div>
   </div>
 </div>
 
-<!-- ── Overlay: LADE-SPINNER ─────────────────────────────────────────── -->
-<div class="pay-overlay" id="overlay-laden">
-  <div style="text-align:center">
-    <div style="width:56px;height:56px;border:5px solid #1a3a5c;border-top-color:#e67e22;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px"></div>
-    <div style="color:#eee;font-size:16px">Bon wird gespeichert…</div>
+<!-- Mitgeben -->
+<div class="ov" id="ov-mitgeben">
+  <div class="ov-box">
+    <div class="ov-title">↗ Mitgeben (Offene Auswahl)</div>
+    <div class="ov-label">Kundenname (optional)</div>
+    <input class="ov-input-sm" type="text" id="mg-name" placeholder="Name oder leer lassen"
+           style="margin-bottom:12px">
+    <div class="ov-label">Rückgabe bis (optional)</div>
+    <input class="ov-input-sm" type="date" id="mg-datum" style="margin-bottom:14px">
+    <p style="font-size:12px;color:#64748b;margin-bottom:16px">
+      Die aktuellen Bon-Artikel werden als „mitgegeben" gebucht und aus dem Lager ausgebucht.
+      Beim Rückkauf wird der Bon erstellt.
+    </p>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" onclick="mitgebenSpeichern()">↗ Mitgeben</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-mitgeben')">Abbrechen</button>
+    </div>
   </div>
 </div>
-<style>@keyframes spin { to { transform:rotate(360deg) } }</style>
 
+<!-- Bon-Rabatt -->
+<div class="ov" id="ov-bonrab">
+  <div class="ov-box">
+    <div class="ov-title">Bon-Rabatt</div>
+
+    <!-- Toggle % / € -->
+    <div class="tab-toggle">
+      <button class="tab-btn aktiv" id="rab-tab-pct" onclick="rabTab('pct')">% Prozent</button>
+      <button class="tab-btn"       id="rab-tab-eur" onclick="rabTab('eur')">€ Neuer Gesamtpreis</button>
+    </div>
+
+    <!-- Prozent-Eingabe -->
+    <div id="rab-pct-area">
+      <div class="ov-label">Rabatt (%)</div>
+      <input class="ov-input" type="number" id="bonrab-pct" min="0" max="100" step="1"
+             placeholder="z.B. 10" style="font-size:28px;margin-bottom:12px" oninput="bonRabattVorschau()">
+    </div>
+
+    <!-- Betrag-Eingabe -->
+    <div id="rab-eur-area" style="display:none">
+      <div class="ov-label">Neuer Gesamtpreis (€)</div>
+      <input class="ov-input" type="number" id="bonrab-eur" min="0" step="0.01"
+             placeholder="0,00" style="font-size:28px;margin-bottom:8px" oninput="bonRabattVorschauEur()">
+      <p style="font-size:11px;color:#94a3b8;margin-bottom:12px">
+        Rabatt wird proportional auf alle Artikel aufgeteilt (anteilig je Steuerklasse — wie Lidl/Billa).
+      </p>
+    </div>
+
+    <div id="bonrab-vorschau" style="font-size:13px;color:#64748b;min-height:20px;margin-bottom:16px"></div>
+
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" onclick="bonRabattAnwenden()">✓ Anwenden</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-bonrab')">Abbrechen</button>
+    </div>
+    <button class="ov-btn ov-btn-sec" style="margin-top:8px" onclick="bonRabattEntfernen()">✕ Rabatt entfernen</button>
+  </div>
+</div>
+
+<!-- Kunden-Suche -->
+<div class="ov" id="ov-kunde">
+  <div class="ov-box" style="max-width:540px">
+    <div class="ov-title">👤 Kunde suchen</div>
+    <input class="ov-input-sm" type="text" id="kunde-input"
+           placeholder="Name, Firma, Kundennummer oder E-Mail…"
+           oninput="kundeSucheLive(this.value)" style="margin-bottom:6px">
+    <div class="such-liste" id="kunde-liste"></div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="ov-btn ov-btn-sec" style="flex:1" onclick="kundeLaufkunde()">Laufkunde</button>
+      <button class="ov-btn ov-btn-sec" style="flex:1" onclick="ovSchliessen('ov-kunde')">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Artikel-Suche -->
+<div class="ov" id="ov-suche">
+  <div class="ov-box" style="max-width:560px">
+    <div class="ov-title">Artikel suchen</div>
+    <input class="ov-input-sm" type="text" id="suche-input"
+           placeholder="Name, Artikelnummer oder EAN…"
+           oninput="sucheLive(this.value)" style="margin-bottom:6px">
+    <div class="such-liste" id="such-liste"></div>
+    <button class="ov-btn ov-btn-sec" style="margin-top:14px" onclick="ovSchliessen('ov-suche')">Schließen</button>
+  </div>
+</div>
+
+<!-- Reservierung-Warnung -->
+<div class="ov" id="ov-reswarn">
+  <div class="ov-box">
+    <div class="ov-title" style="color:#92400e">⚠ Lagerkonflikt</div>
+    <div class="warn-box" id="reswarn-text"></div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:16px">
+      Trotzdem hinzufügen? Der reservierte Auftrag könnte nicht mehr erfüllbar sein.
+    </p>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-red" onclick="reswarnBestaetigen()">Trotzdem buchen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-reswarn')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Spinner -->
+<div class="spinner-overlay" id="spinner">
+  <div class="spinner"></div>
+</div>
+
+<!-- Feedback Snackbar -->
+<div id="feedback"></div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
 <script>
 var KASSE_ID  = <?= $kasseId ?>;
 var LAGER_ID  = <?= $lagerId ?>;
-var warenkorb = [];
 
-// ── Scan ──────────────────────────────────────────────────────────────────
-document.getElementById('scan-input').addEventListener('keyup', function(e) {
+// ── Zustand ──────────────────────────────────────────────────────────────────
+var warenkorb    = [];
+var aktiveZeile  = -1;
+var globalRabatt = 0;
+var numpadBuf    = '';
+var pendingArtikel = null;  // wartet auf Reservierungs-Bestätigung
+var kundeId      = null;
+
+// ── Schnellwahl befüllen (PHP → JS) ─────────────────────────────────────────
+(function() {
+    var sw = <?= json_encode($schnellwahl) ?>;
+    var grid = document.getElementById('sw-grid');
+    for (var slot = 1; slot <= 9; slot++) {
+        var btn = document.createElement('button');
+        if (sw[slot] && sw[slot].artikel_id) {
+            var d = sw[slot];
+            btn.className = 'sw-btn';
+            btn.textContent = d.anzeige_name || d.artikel_name || 'Slot ' + slot;
+            btn.dataset.artikelId = d.artikel_id;
+            btn.dataset.bezeichnung = d.anzeige_name;
+            btn.dataset.ean = d.ean || '';
+            btn.dataset.preis = d.brutto_vk || '0';
+            btn.dataset.steuer = d.steuer_prozent || '20';
+            btn.onclick = function() { swArtikelLaden(this); };
+        } else {
+            btn.className = 'sw-btn leer';
+            btn.textContent = '—';
+        }
+        grid.appendChild(btn);
+    }
+})();
+
+// ── Schnellwahl: Artikel direkt hinzufügen ───────────────────────────────────
+function swArtikelLaden(btn) {
+    var artikelId = btn.dataset.artikelId;
+    if (!artikelId) return;
+    fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(btn.dataset.ean || btn.dataset.bezeichnung)
+        + '&lager_id=' + LAGER_ID)
+        .then(r => r.json())
+        .then(d => {
+            if (d.erfolg && d.typ !== 'vater') {
+                artikelHinzufuegen(d);
+            } else if (!d.erfolg) {
+                // Fallback: Artikel mit gespeicherten Daten
+                artikelHinzufuegen({
+                    id: parseInt(artikelId),
+                    bezeichnung: btn.dataset.bezeichnung,
+                    ean: btn.dataset.ean || null,
+                    brutto_vk: parseFloat(btn.dataset.preis) || 0,
+                    steuer_prozent: parseFloat(btn.dataset.steuer) || 20,
+                    bestand_physisch: 0, bestand_reserviert: 0, bestand_verkaufbar: 0,
+                    ueberverkauf_erlaubt: true, typ: 'artikel'
+                });
+            }
+        });
+}
+
+// ── Scan-Input ────────────────────────────────────────────────────────────────
+var scanInput = document.getElementById('scan-input');
+scanInput.addEventListener('keyup', function(e) {
     if (e.key === 'Enter') scannenOK();
+});
+scanInput.addEventListener('focus', function() {
+    aktiveZeile = -1;
+    renderBon();
 });
 
 function scannenOK() {
-    var code = document.getElementById('scan-input').value.trim();
-    if (!code) return;
-    scanFeedback('');
+    var raw = scanInput.value.trim();
+    if (!raw) return;
+    scanInput.value = '';
+
+    // Menge-Präfix: z.B. "5×4002309302009" oder "5*4002309302009"
+    var mengePrefix = raw.match(/^(\d+)[×*xX](.+)$/);
+    var menge, code;
+    if (mengePrefix) {
+        menge = parseInt(mengePrefix[1]) || 1;
+        code  = mengePrefix[2].trim();
+        numpadBuf = String(menge);
+        aktualisiereMenuge();
+    } else {
+        menge = getMenge();
+        code  = raw;
+    }
+
     fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
         .then(r => r.json())
-        .then(data => {
-            if (!data.erfolg) {
-                scanFeedback('❌ ' + (data.fehler || 'Artikel nicht gefunden'), 'fehler');
-                document.getElementById('scan-input').select();
+        .then(function(d) {
+            if (!d.erfolg) {
+                // Fallback: Textsuche
+                if (code.length >= 2) {
+                    ov('ov-suche');
+                    document.getElementById('suche-input').value = code;
+                    sucheLive(code);
+                } else {
+                    feedback('Artikel nicht gefunden: ' + code, 'fehler');
+                }
                 return;
             }
-            if (data.typ === 'vater') {
-                zeigeVaterAuswahl(data);
+            if (d.typ === 'vater') {
+                zeigeVaterAuswahl(d);
             } else {
-                artikelHinzufuegen(data);
+                artikelHinzufuegen(d);
             }
-            document.getElementById('scan-input').value = '';
-            document.getElementById('scan-input').focus();
         })
-        .catch(() => scanFeedback('❌ Verbindungsfehler', 'fehler'));
+        .catch(() => feedback('Verbindungsfehler', 'fehler'));
 }
 
+// ── Artikel hinzufügen ────────────────────────────────────────────────────────
+function artikelHinzufuegen(a) {
+    var menge = getMenge();
+    var preis = parseFloat(a.brutto_vk) || 0;
+    if (preis <= 0 && !a.istDivers) {
+        feedback('⚠ Kein Preis für: ' + a.bezeichnung, 'fehler');
+        return;
+    }
+
+    // Reservierungs-Prüfung
+    var physisch   = parseFloat(a.bestand_physisch)   || 0;
+    var reserviert = parseFloat(a.bestand_reserviert) || 0;
+    var verkaufbar = parseFloat(a.bestand_verkaufbar !== undefined ? a.bestand_verkaufbar : (physisch - reserviert));
+    if (!a.ueberverkauf_erlaubt && menge > verkaufbar && reserviert > 0) {
+        pendingArtikel = { a: a, menge: menge };
+        document.getElementById('reswarn-text').innerHTML =
+            '<strong>' + esc(a.bezeichnung) + '</strong><br>' +
+            'Physisch: ' + physisch + ' · Reserviert: ' + reserviert + ' · Verkaufbar: ' + Math.max(0,verkaufbar) + '<br>' +
+            'Angefordert: ' + menge;
+        ov('ov-reswarn');
+        return;
+    }
+
+    _artikelEinfuegen(a, menge);
+}
+
+function reswarnBestaetigen() {
+    ovSchliessen('ov-reswarn');
+    if (pendingArtikel) {
+        _artikelEinfuegen(pendingArtikel.a, pendingArtikel.menge);
+        pendingArtikel = null;
+    }
+}
+
+function _artikelEinfuegen(a, menge) {
+    var preis = parseFloat(a.brutto_vk) || 0;
+    var idx = warenkorb.findIndex(p => p.artikel_id == a.id && !p.istDivers);
+    if (idx >= 0 && a.id) {
+        warenkorb[idx].menge += menge;
+    } else {
+        warenkorb.push({
+            artikel_id:         a.id || null,
+            bezeichnung:        a.bezeichnung,
+            ean:                a.ean || null,
+            menge:              menge,
+            einzelpreis_brutto: preis,
+            steuer_prozent:     parseFloat(a.steuer_prozent) || 20,
+            rabatt_prozent:     0,
+            charge:             a.fifo_charge || null,
+            istDivers:          !!a.istDivers,
+            bestand_physisch:   parseFloat(a.bestand_physisch)   || 0,
+            bestand_reserviert: parseFloat(a.bestand_reserviert) || 0,
+            bestand_verkaufbar: parseFloat(a.bestand_verkaufbar !== undefined ? a.bestand_verkaufbar : 0)
+        });
+        idx = warenkorb.length - 1;
+    }
+    aktiveZeile = idx;
+    zeigeArtikelInfo(a);
+    renderBon();
+    clearNumpad();
+    feedback('✓ ' + a.bezeichnung + (menge > 1 ? ' (' + menge + '×)' : ''), 'ok');
+}
+
+// ── Artikel-Info Box ──────────────────────────────────────────────────────────
+function zeigeArtikelInfo(a) {
+    document.getElementById('ai-leer').style.display  = 'none';
+    document.getElementById('ai-inhalt').style.display = 'block';
+    document.getElementById('ai-name').textContent = a.bezeichnung;
+    document.getElementById('ai-meta').textContent =
+        'Art-Nr: ' + (a.artikelnummer || '—') + (a.ean ? '  ·  EAN: ' + a.ean : '');
+    document.getElementById('ai-preis').textContent = '€ ' + fmt(parseFloat(a.brutto_vk) || 0) + ' / Stk';
+    document.getElementById('ai-akt').style.display = 'none';
+
+    var physisch   = parseFloat(a.bestand_physisch)   || 0;
+    var reserviert = parseFloat(a.bestand_reserviert) || 0;
+    var verkaufbar = parseFloat(a.bestand_verkaufbar !== undefined ? a.bestand_verkaufbar : Math.max(0, physisch - reserviert));
+    document.getElementById('ai-lager').innerHTML =
+        lagerpunkt('#22c55e', 'Physisch: ' + physisch) +
+        lagerpunkt('#f59e0b', 'Reserviert: ' + reserviert) +
+        lagerpunkt('#2563eb', 'Verkaufbar: ' + Math.max(0, verkaufbar));
+}
+
+function lagerpunkt(farbe, text) {
+    return '<div class="pos-lag-item"><div class="pos-lag-dot" style="background:' + farbe + '"></div>' + esc(text) + '</div>';
+}
+
+// ── Vater-Auswahl ─────────────────────────────────────────────────────────────
 function zeigeVaterAuswahl(vater) {
-    document.getElementById('overlay-vater-titel').textContent = vater.bezeichnung + ' — Variante wählen';
+    document.getElementById('vater-titel').textContent = vater.bezeichnung + ' — Variante wählen';
     var html = '';
     (vater.kinder || []).forEach(function(k) {
-        var bestandFarbe = k.lagerbestand > 0 ? '#4caf50' : '#ef5350';
+        var bestand = parseInt(k.lagerbestand) || 0;
         html += '<div class="kind-chip" onclick=\'kindGewaehlt(' + JSON.stringify(k) + ')\'>'
-            + htmlEsc(k.bezeichnung)
-            + '<br><span style="font-size:11px;color:#aaa">€ ' + parseFloat(k.brutto_vk).toFixed(2).replace('.',',')
-            + ' · <span style="color:' + bestandFarbe + '">Bestand: ' + k.lagerbestand + '</span></span>'
+            + esc(k.bezeichnung)
+            + '<span class="kind-chip-sub">€ ' + fmt(parseFloat(k.brutto_vk))
+            + ' · <span style="color:' + (bestand > 0 ? '#16a34a' : '#dc2626') + '">Bestand: ' + bestand + '</span></span>'
             + '</div>';
     });
-    document.getElementById('overlay-vater-kinder').innerHTML = html || '<p style="color:#888">Keine Varianten verfügbar.</p>';
-    document.getElementById('overlay-vater').classList.add('aktiv');
+    document.getElementById('vater-kinder').innerHTML = html || '<p style="color:#64748b">Keine Varianten.</p>';
+    ov('ov-vater');
 }
-
 function kindGewaehlt(kind) {
-    overlaySchliessen('overlay-vater');
+    ovSchliessen('ov-vater');
+    kind.bestand_physisch = kind.lagerbestand || 0;
+    kind.bestand_reserviert = 0;
+    kind.bestand_verkaufbar = kind.lagerbestand || 0;
     artikelHinzufuegen(kind);
 }
 
-function artikelHinzufuegen(a) {
-    var menge = parseInt(document.getElementById('vorwahl').value) || 1;
-    var preis = parseFloat(a.brutto_vk) || 0;
-    if (!preis) {
-        scanFeedback('⚠ Kein Preis hinterlegt für: ' + a.bezeichnung, 'fehler');
-        return;
-    }
-    // Bestandsprüfung (Warnung, kein Stopp)
-    if (a.lagerbestand <= 0 && !a.ueberverkauf_erlaubt) {
-        if (!confirm('⚠ Kein Lagerbestand vorhanden.\n\nTrotzdem hinzufügen?')) return;
-    }
-
-    var existierend = warenkorb.findIndex(p => p.artikel_id === a.id && p.charge === (a.fifo_charge || null));
-    if (existierend >= 0) {
-        warenkorb[existierend].menge += menge;
-    } else {
-        warenkorb.push({
-            artikel_id: a.id,
-            bezeichnung: a.bezeichnung,
-            ean: a.ean || null,
-            menge: menge,
-            einzelpreis_brutto: preis,
-            steuer_prozent: parseFloat(a.steuer_prozent) || 20,
-            rabatt_prozent: 0,
-            charge: a.fifo_charge || null,
-            istDivers: false
-        });
-    }
-    zeigeArtikelInfo(a);
-    aktualisiereWarenkorb();
-    document.getElementById('vorwahl').value = 1;
-    scanFeedback('✓ ' + a.bezeichnung + ' (Menge: ' + menge + ')', 'ok');
-}
-
-function zeigeArtikelInfo(a) {
-    document.getElementById('scan-info-leer').style.display = 'none';
-    document.getElementById('scan-info-inhalt').style.display = 'block';
-    document.getElementById('scan-name').textContent = a.bezeichnung;
-    document.getElementById('scan-nr').textContent   = 'Art.-Nr.: ' + (a.artikelnummer || '—') + (a.ean ? '  EAN: ' + a.ean : '');
-    document.getElementById('scan-preis').textContent = '€ ' + parseFloat(a.brutto_vk).toFixed(2).replace('.', ',');
-    var bestandEl = document.getElementById('scan-bestand');
-    var bestand = parseInt(a.lagerbestand) || 0;
-    bestandEl.textContent = 'Bestand: ' + bestand;
-    bestandEl.style.color = bestand > 0 ? '#4caf50' : '#ef5350';
-
-    if (a.fifo_charge) {
-        document.getElementById('scan-charge').style.display = 'block';
-        document.getElementById('scan-charge-val').textContent = a.fifo_charge;
-    } else {
-        document.getElementById('scan-charge').style.display = 'none';
-    }
-
-    var bildEl = document.getElementById('scan-bild');
-    var placeholder = document.getElementById('scan-bild-placeholder');
-    if (a.bild_dateiname) {
-        bildEl.src = '/mealana/storage/bilder/' + (a.id || '') + '/' + a.bild_dateiname;
-        bildEl.style.display = 'block';
-        placeholder.style.display = 'none';
-    } else {
-        bildEl.style.display = 'none';
-        placeholder.style.display = 'flex';
-    }
-    document.getElementById('scan-kinder-liste').style.display = 'none';
-}
-
-// ── Warenkorb anzeigen ────────────────────────────────────────────────────
-function aktualisiereWarenkorb() {
-    var leer = document.getElementById('warenkorb-leer');
-    var tabelle = document.getElementById('warenkorb-table');
-    var body = document.getElementById('warenkorb-body');
-    var btnLeeren = document.getElementById('btn-leeren');
+// ── Bon rendern ───────────────────────────────────────────────────────────────
+function renderBon() {
+    var liste = document.getElementById('bon-liste');
+    var leer  = document.getElementById('bon-leer');
 
     if (warenkorb.length === 0) {
-        leer.style.display = 'block';
-        tabelle.style.display = 'none';
-        btnLeeren.style.display = 'none';
-    } else {
-        leer.style.display = 'none';
-        tabelle.style.display = 'table';
-        btnLeeren.style.display = 'inline-block';
-        var html = '';
-        warenkorb.forEach(function(p, i) {
-            var rabattFaktor = 1 - (p.rabatt_prozent / 100);
-            var zeile = (p.menge * p.einzelpreis_brutto * rabattFaktor).toFixed(2).replace('.', ',');
-            html += '<tr>';
-            html += '<td><strong>' + htmlEsc(p.bezeichnung) + '</strong>'
-                + (p.charge ? '<br><span style="font-size:11px;color:#64b5f6">Charge: ' + htmlEsc(p.charge) + '</span>' : '')
-                + (p.rabatt_prozent > 0 ? '<br><span style="font-size:11px;color:#e67e22">-' + p.rabatt_prozent + '%</span>' : '')
-                + '</td>';
-            html += '<td style="text-align:center"><button class="wk-remove" onclick="mengeMinus(' + i + ')">-</button>'
-                + ' <strong>' + p.menge + '</strong> '
-                + '<button class="wk-remove" onclick="mengePlus(' + i + ')" style="color:#27ae60">+</button></td>';
-            html += '<td>€ ' + zeile + '</td>';
-            html += '<td><button class="wk-remove" onclick="positionEntfernen(' + i + ')" title="Entfernen">✕</button></td>';
-            html += '</tr>';
-        });
-        body.innerHTML = html;
+        leer.style.display = 'flex';
+        // Entferne alle Zeilen außer dem Leer-Div
+        Array.from(liste.querySelectorAll('.bon-row')).forEach(r => r.remove());
+        document.getElementById('btn-bezahlen').disabled = true;
+        aktualisiereFooter();
+        return;
     }
-    aktualisiereAnzeige();
-    document.getElementById('rabatt-row').style.display = warenkorb.length > 0 ? 'flex' : 'none';
+    leer.style.display = 'none';
+
+    // Vorhandene Zeilen entfernen und neu aufbauen
+    Array.from(liste.querySelectorAll('.bon-row')).forEach(r => r.remove());
+
+    warenkorb.forEach(function(p, i) {
+        var rabFaktor = 1 - (Math.max(p.rabatt_prozent, globalRabatt) / 100);
+        var summe = p.menge * p.einzelpreis_brutto * rabFaktor;
+        var istAktiv = (i === aktiveZeile);
+
+        var div = document.createElement('div');
+        div.className = 'bon-row' + (istAktiv ? ' aktiv' : '');
+        div.dataset.idx = i;
+        div.onclick = function() { zeilaKlick(i); };
+
+        var rabHtml = (p.rabatt_prozent > 0 || globalRabatt > 0)
+            ? '<span class="bon-row-rabatt">-' + Math.max(p.rabatt_prozent, globalRabatt) + '%</span>'
+            : '';
+
+        div.innerHTML =
+            '<div class="bon-row-nr">' + (i + 1) + '</div>' +
+            '<div class="bon-row-name">' + esc(p.bezeichnung) + rabHtml + '</div>' +
+            '<div class="bon-row-menge">' + p.menge + '</div>' +
+            '<div class="bon-row-ep">€ ' + fmt(p.einzelpreis_brutto) + '</div>' +
+            '<div class="bon-row-summe">€ ' + fmt(summe) + '</div>' +
+            (istAktiv ?
+                '<div class="bon-row-ctrl">' +
+                '  <button class="bon-ctrl" onclick="event.stopPropagation();zeileMinus(' + i + ')">−</button>' +
+                '  <button class="bon-ctrl" onclick="event.stopPropagation();zeilePlus(' + i + ')">+</button>' +
+                '  <button class="bon-ctrl bon-ctrl-preis" onclick="event.stopPropagation();preisOverride(' + i + ')" title="Preis überschreiben (Zahl auf Numpad, dann hier drücken)">€ Preis</button>' +
+                '  <span class="bon-ctrl-hint">STORNO-Taste zum Entfernen</span>' +
+                '</div>'
+                : ''
+            );
+
+        liste.appendChild(div);
+    });
+
+    document.getElementById('btn-bezahlen').disabled = false;
+    aktualisiereFooter();
 }
 
-function aktualisiereAnzeige() {
-    var globalRabatt = parseFloat(document.getElementById('rabatt-input').value) || 0;
-    var gesamt = 0, steuer20 = 0, steuer10 = 0;
-    warenkorb.forEach(function(p) {
-        var posRabatt = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
-        var netto = p.menge * p.einzelpreis_brutto * posRabatt / (1 + p.steuer_prozent / 100);
-        gesamt += p.menge * p.einzelpreis_brutto * posRabatt;
-        if (p.steuer_prozent === 20) steuer20 += netto * 0.2;
-        else if (p.steuer_prozent === 10) steuer10 += netto * 0.1;
-    });
-    document.getElementById('warenkorb-gesamt').textContent = '€ ' + gesamt.toFixed(2).replace('.', ',');
-    var stInfo = [];
-    if (steuer20 > 0) stInfo.push('USt 20%: € ' + steuer20.toFixed(2).replace('.', ','));
-    if (steuer10 > 0) stInfo.push('USt 10%: € ' + steuer10.toFixed(2).replace('.', ','));
-    document.getElementById('warenkorb-steuer').textContent = stInfo.join('  ');
-    var hatArtikel = warenkorb.length > 0;
-    ['btn-bar','btn-karte','btn-gs','btn-kombi'].forEach(function(id) {
-        document.getElementById(id).disabled = !hatArtikel;
-    });
+function zeilaKlick(i) {
+    aktiveZeile = (aktiveZeile === i) ? -1 : i;
+    renderBon();
+    if (aktiveZeile >= 0) {
+        var p = warenkorb[aktiveZeile];
+        zeigeArtikelInfo({
+            bezeichnung: p.bezeichnung, artikelnummer: '', ean: p.ean,
+            brutto_vk: p.einzelpreis_brutto, steuer_prozent: p.steuer_prozent,
+            bestand_physisch: p.bestand_physisch, bestand_reserviert: p.bestand_reserviert,
+            bestand_verkaufbar: p.bestand_verkaufbar
+        });
+    }
 }
 
-function getGesamtBetrag() {
-    var globalRabatt = parseFloat(document.getElementById('rabatt-input').value) || 0;
-    var gesamt = 0;
-    warenkorb.forEach(function(p) {
-        var posRabatt = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
-        gesamt += p.menge * p.einzelpreis_brutto * posRabatt;
-    });
-    return Math.round(gesamt * 100) / 100;
+function zeileMinus(i) {
+    if (warenkorb[i].menge > 1) {
+        warenkorb[i].menge--;
+        renderBon();
+    } else {
+        zeileEntfernen(i);
+    }
 }
-
-function positionEntfernen(i) {
+function zeilePlus(i) {
+    warenkorb[i].menge++;
+    renderBon();
+}
+function zeileEntfernen(i) {
     warenkorb.splice(i, 1);
-    aktualisiereWarenkorb();
+    aktiveZeile = -1;
+    renderBon();
 }
-function mengeMinus(i) { if (warenkorb[i].menge > 1) { warenkorb[i].menge--; aktualisiereWarenkorb(); } }
-function mengePlus(i)  { warenkorb[i].menge++; aktualisiereWarenkorb(); }
-function warenkorbLeeren() { if (!confirm('Warenkorb leeren?')) return; warenkorb = []; aktualisiereWarenkorb(); }
 
-// ── Divers-Artikel ────────────────────────────────────────────────────────
+// ── Footer & Gesamt ───────────────────────────────────────────────────────────
+function aktualisiereFooter() {
+    var gesamt = 0, st20 = 0, st10 = 0, anzahl = 0;
+    warenkorb.forEach(function(p) {
+        var rab = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
+        var pos = p.menge * p.einzelpreis_brutto * rab;
+        gesamt += pos;
+        anzahl += p.menge;
+        var netto = pos / (1 + p.steuer_prozent / 100);
+        if (p.steuer_prozent == 20) st20 += netto * 0.2;
+        else if (p.steuer_prozent == 10) st10 += netto * 0.1;
+    });
+
+    document.getElementById('footer-cnt').textContent = anzahl + ' Artikel' + (globalRabatt > 0 ? ' · ' + globalRabatt + '% Rabatt' : '');
+    var stInfo = [];
+    if (st20 > 0) stInfo.push('USt 20%: € ' + fmt(st20));
+    if (st10 > 0) stInfo.push('USt 10%: € ' + fmt(st10));
+    document.getElementById('footer-tax').textContent = stInfo.length ? stInfo.join('  ') : 'inkl. MwSt.';
+
+    document.getElementById('rf-cnt').textContent  = anzahl + ' Artikel' + (globalRabatt > 0 ? ' · ' + globalRabatt + '% Rabatt' : '') + ' · inkl. MwSt.';
+    document.getElementById('rf-ges').textContent  = '€ ' + fmt(gesamt);
+}
+
+function getGesamt() {
+    var g = 0;
+    warenkorb.forEach(function(p) {
+        var rab = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
+        g += p.menge * p.einzelpreis_brutto * rab;
+    });
+    return Math.round(g * 100) / 100;
+}
+
+// ── Numpad ────────────────────────────────────────────────────────────────────
+function npDruck(z) {
+    if (z === ',' && numpadBuf.includes(',')) return;
+    if (numpadBuf.length >= 6) return;
+    numpadBuf += z;
+    aktualisiereMenuge();
+}
+function npBack() {
+    numpadBuf = numpadBuf.slice(0, -1);
+    aktualisiereMenuge();
+}
+function clearNumpad() {
+    numpadBuf = '';
+    aktualisiereMenuge();
+}
+function aktualisiereMenuge() {
+    var m = getMenge();
+    document.getElementById('menge-display').textContent = m + ' ×';
+}
+function getMenge() {
+    var v = numpadBuf.replace(',', '.');
+    return parseInt(v) || 1;
+}
+function mengeReset() {
+    clearNumpad();
+}
+
+function npMal() {
+    // Bestätigt die Menge, fokussiert Scan für nächsten Scan
+    aktualisiereMenuge();
+    scanInput.focus();
+    aktiveZeile = -1;
+    renderBon();
+}
+
+function npRabatt() {
+    var pct = parseFloat(numpadBuf.replace(',', '.')) || 0;
+    if (pct <= 0 || pct > 100) {
+        feedback('Bitte zuerst Rabatt % auf Numpad eingeben', 'info');
+        return;
+    }
+    if (aktiveZeile >= 0) {
+        warenkorb[aktiveZeile].rabatt_prozent = pct;
+        feedback('Positionsrabatt ' + pct + '% gesetzt', 'ok');
+    } else {
+        globalRabatt = pct;
+        feedback('Bon-Rabatt ' + pct + '% gesetzt', 'ok');
+    }
+    clearNumpad();
+    aktiveZeile = -1;
+    renderBon();
+}
+
+function npStorno() {
+    if (aktiveZeile < 0) {
+        feedback('Bitte zuerst eine Zeile auswählen', 'info');
+        return;
+    }
+    var p = warenkorb[aktiveZeile];
+    zeileEntfernen(aktiveZeile);
+    feedback('Storniert: ' + p.bezeichnung, 'ok');
+}
+
+// ── Bon-Rabatt Dialog ─────────────────────────────────────────────────────────
+function bonRabattDialog() {
+    rabTab('pct');
+    document.getElementById('bonrab-pct').value = globalRabatt || '';
+    document.getElementById('bonrab-eur').value = '';
+    bonRabattVorschau();
+    ov('ov-bonrab');
+}
+function bonRabattVorschau() {
+    var pct  = parseFloat(document.getElementById('bonrab-pct').value) || 0;
+    var ges  = getGesamt();
+    var nachR = ges * (1 - pct / 100);
+    document.getElementById('bonrab-vorschau').textContent =
+        pct > 0 ? 'Ersparnis: € ' + fmt(ges - nachR) + ' → Gesamt: € ' + fmt(nachR) : '';
+}
+function bonRabattAnwenden() {
+    var pct = parseFloat(document.getElementById('bonrab-val').value) || 0;
+    if (pct < 0 || pct > 100) { feedback('Ungültiger Wert', 'fehler'); return; }
+    globalRabatt = pct;
+    ovSchliessen('ov-bonrab');
+    renderBon();
+}
+function bonRabattEntfernen() {
+    globalRabatt = 0;
+    ovSchliessen('ov-bonrab');
+    renderBon();
+}
+
+// ── Divers-Artikel ────────────────────────────────────────────────────────────
 function diversDialog() {
-    document.getElementById('divers-name').value  = '';
-    document.getElementById('divers-preis').value = '';
-    document.getElementById('btn-divers-ok').disabled = true;
-    document.getElementById('overlay-divers').classList.add('aktiv');
-    setTimeout(() => document.getElementById('divers-name').focus(), 100);
+    document.getElementById('div-name').value  = '';
+    document.getElementById('div-preis').value = '';
+    document.getElementById('btn-div-ok').disabled = true;
+    ov('ov-divers');
+    setTimeout(() => document.getElementById('div-name').focus(), 100);
 }
-function diversPruefen() {
-    var ok = document.getElementById('divers-name').value.trim() && parseFloat(document.getElementById('divers-preis').value) > 0;
-    document.getElementById('btn-divers-ok').disabled = !ok;
+function divPruefen() {
+    var ok = document.getElementById('div-name').value.trim()
+             && parseFloat(document.getElementById('div-preis').value) > 0;
+    document.getElementById('btn-div-ok').disabled = !ok;
 }
-function diversHinzufuegen() {
-    var name  = document.getElementById('divers-name').value.trim();
-    var preis = parseFloat(document.getElementById('divers-preis').value) || 0;
-    var steuer = parseFloat(document.getElementById('divers-steuer').value) || 20;
+function divHinzufuegen() {
+    var name  = document.getElementById('div-name').value.trim();
+    var preis = parseFloat(document.getElementById('div-preis').value) || 0;
+    var steuer = parseFloat(document.getElementById('div-steuer').value) || 20;
     if (!name || preis <= 0) return;
-    warenkorb.push({ artikel_id: null, bezeichnung: name, ean: null, menge: 1,
-        einzelpreis_brutto: preis, steuer_prozent: steuer, rabatt_prozent: 0, charge: null, istDivers: true });
-    overlaySchliessen('overlay-divers');
-    aktualisiereWarenkorb();
+    var a = {
+        id: null, bezeichnung: name, ean: null,
+        brutto_vk: preis, steuer_prozent: steuer,
+        bestand_physisch: 0, bestand_reserviert: 0, bestand_verkaufbar: 0,
+        ueberverkauf_erlaubt: true, typ: 'artikel', istDivers: true
+    };
+    ovSchliessen('ov-divers');
+    _artikelEinfuegen(a, 1);
 }
 
-// ── Mitgeben ──────────────────────────────────────────────────────────────
+// ── Mitgeben ──────────────────────────────────────────────────────────────────
 function mitgebenDialog() {
-    if (warenkorb.length === 0) { scanFeedback('Warenkorb ist leer.', 'fehler'); return; }
+    if (warenkorb.length === 0) { feedback('Bon ist leer', 'info'); return; }
+    document.getElementById('mg-name').value  = '';
     document.getElementById('mg-datum').value = '';
-    document.getElementById('mg-name').value = '';
-    document.getElementById('overlay-mitgeben').classList.add('aktiv');
+    ov('ov-mitgeben');
 }
 function mitgebenSpeichern() {
     var positionen = warenkorb.filter(p => !p.istDivers && p.artikel_id);
-    if (!positionen.length) { alert('Nur echte Artikel können mitgegeben werden.'); return; }
+    if (!positionen.length) { feedback('Nur echte Artikel können mitgegeben werden', 'fehler'); return; }
     fetch('/mealana/kasse/offene_auswahl_speichern.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             kunden_name: document.getElementById('mg-name').value.trim() || null,
             rueckgabe_bis: document.getElementById('mg-datum').value || null,
@@ -564,185 +1536,398 @@ function mitgebenSpeichern() {
             positionen: positionen
         })
     }).then(r => r.json()).then(d => {
-        overlaySchliessen('overlay-mitgeben');
+        ovSchliessen('ov-mitgeben');
         if (d.erfolg) {
-            scanFeedback('✓ Artikel mitgegeben. OA #' + d.oa_id, 'ok');
-            warenkorb = []; aktualisiereWarenkorb();
+            warenkorb = []; aktiveZeile = -1; clearNumpad(); renderBon();
+            feedback('✓ Mitgegeben. OA #' + d.oa_id, 'ok');
         } else {
-            scanFeedback('❌ ' + (d.fehler || 'Fehler'), 'fehler');
+            feedback('❌ ' + (d.fehler || 'Fehler'), 'fehler');
         }
-    });
+    }).catch(() => feedback('Verbindungsfehler', 'fehler'));
 }
 
-// ── Bezahlen ──────────────────────────────────────────────────────────────
-function zahlenBar() {
-    var gesamt = getGesamtBetrag();
-    document.getElementById('bar-total-anzeige').textContent = '€ ' + gesamt.toFixed(2).replace('.', ',');
-    document.getElementById('bar-gegeben').value = '';
-    document.getElementById('bar-rueckgeld').textContent = 'Rückgeld: € 0,00';
-    document.getElementById('btn-bar-ok').disabled = true;
-
-    // Schnell-Beträge: nächste sinnvolle Geldschein-Werte
-    var schnellBetrage = [5, 10, 20, 50, 100, 200, 500].filter(b => b >= gesamt);
-    var html = '';
-    schnellBetrage.slice(0, 4).forEach(function(b) {
-        html += '<button class="ks-btn ks-btn-secondary" onclick="barGegeben(' + b + ')" style="padding:10px 8px;font-size:14px">€ ' + b + '</button>';
-    });
-    document.getElementById('bar-schnell').innerHTML = html;
-
-    document.getElementById('overlay-bar').classList.add('aktiv');
-    setTimeout(() => document.getElementById('bar-gegeben').focus(), 100);
+// ── Parken ────────────────────────────────────────────────────────────────────
+function bonParken() {
+    if (warenkorb.length === 0) { feedback('Kein Bon zum Parken', 'info'); return; }
+    sessionStorage.setItem('geparkterBon_' + KASSE_ID, JSON.stringify({ warenkorb, globalRabatt }));
+    warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad(); renderBon();
+    feedback('Bon geparkt', 'ok');
+    document.getElementById('ph-dropdown').classList.remove('offen');
+}
+function bonAbrufen() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+    var raw = sessionStorage.getItem('geparkterBon_' + KASSE_ID);
+    if (!raw) { feedback('Kein geparkter Bon vorhanden', 'info'); return; }
+    if (warenkorb.length > 0 && !confirm('Aktuellen Bon verwerfen und geparkten abrufen?')) return;
+    var data = JSON.parse(raw);
+    warenkorb = data.warenkorb || [];
+    globalRabatt = data.globalRabatt || 0;
+    aktiveZeile = -1;
+    sessionStorage.removeItem('geparkterBon_' + KASSE_ID);
+    renderBon();
+    feedback('Bon abgerufen', 'ok');
 }
 
-function barGegeben(betrag) {
-    document.getElementById('bar-gegeben').value = betrag.toFixed(2);
-    berechneRueckgeld();
+// ── Artikel-Suche ─────────────────────────────────────────────────────────────
+var suchTimer = null;
+function sucheLive(val) {
+    clearTimeout(suchTimer);
+    var liste = document.getElementById('such-liste');
+    if (val.length < 2) { liste.innerHTML = ''; return; }
+    suchTimer = setTimeout(function() {
+        fetch('/mealana/kasse/ajax_artikel.php?suche=' + encodeURIComponent(val) + '&lager_id=' + LAGER_ID)
+            .then(r => r.json())
+            .then(function(d) {
+                if (!d.erfolg || !d.ergebnisse.length) {
+                    liste.innerHTML = '<p style="color:#94a3b8;padding:12px;font-size:13px">Kein Treffer für „' + esc(val) + '"</p>';
+                    return;
+                }
+                var html = '';
+                d.ergebnisse.forEach(function(a) {
+                    var bestand = parseInt(a.bestand_physisch) || 0;
+                    html += '<div class="such-item" onclick=\'suchWaehlen(' + JSON.stringify(a) + ')\'>' +
+                        '<div>' +
+                        '<div class="such-item-name">' + esc(a.bezeichnung) + '</div>' +
+                        '<div class="such-item-sub">' + esc(a.artikelnummer || '—') + (a.ean ? ' · EAN: ' + esc(a.ean) : '') + '</div>' +
+                        '</div>' +
+                        '<div style="text-align:right">' +
+                        '<div class="such-item-preis">€ ' + fmt(parseFloat(a.brutto_vk)) + '</div>' +
+                        '<div class="such-item-bestand" style="color:' + (bestand > 0 ? '#16a34a' : '#dc2626') + '">Bestand: ' + bestand + '</div>' +
+                        '</div>' +
+                        '</div>';
+                });
+                liste.innerHTML = html;
+            });
+    }, 250);
 }
-
-function berechneRueckgeld() {
-    var gesamt  = getGesamtBetrag();
-    var gegeben = parseFloat(document.getElementById('bar-gegeben').value) || 0;
-    var rueck   = gegeben - gesamt;
-    var rueckEl = document.getElementById('bar-rueckgeld');
-    if (gegeben >= gesamt) {
-        rueckEl.textContent = 'Rückgeld: € ' + rueck.toFixed(2).replace('.', ',');
-        rueckEl.style.color = '#27ae60';
-        document.getElementById('btn-bar-ok').disabled = false;
+function suchWaehlen(a) {
+    ovSchliessen('ov-suche');
+    if (a.ist_vater) {
+        fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(a.artikelnummer) + '&lager_id=' + LAGER_ID)
+            .then(r => r.json()).then(d => { if (d.erfolg) zeigeVaterAuswahl(d); });
     } else {
-        rueckEl.textContent = rueck < 0 ? 'Noch fehlend: € ' + Math.abs(rueck).toFixed(2).replace('.', ',') : '';
-        rueckEl.style.color = '#ef5350';
-        document.getElementById('btn-bar-ok').disabled = true;
+        a.bestand_verkaufbar = Math.max(0, (parseFloat(a.bestand_physisch) || 0));
+        artikelHinzufuegen(a);
     }
 }
 
-function bonAbschliessenBar() {
-    var gesamt  = getGesamtBetrag();
-    var gegeben = parseFloat(document.getElementById('bar-gegeben').value) || 0;
-    if (gegeben < gesamt) return;
-    bonSpeichern({ zahlungsart: 'bar', gegeben: gegeben, rueckgeld: Math.max(0, gegeben - gesamt) });
+// ── Kunde suchen ──────────────────────────────────────────────────────────────
+function kundeDialog() {
+    document.getElementById('kunde-input').value = '';
+    document.getElementById('kunde-liste').innerHTML = '';
+    ov('ov-kunde');
+    setTimeout(() => document.getElementById('kunde-input').focus(), 100);
+}
+
+var kundeTimer = null;
+function kundeSucheLive(val) {
+    clearTimeout(kundeTimer);
+    var liste = document.getElementById('kunde-liste');
+    if (val.length < 2) { liste.innerHTML = ''; return; }
+    kundeTimer = setTimeout(function() {
+        fetch('/mealana/kasse/ajax_kunden_suche.php?suche=' + encodeURIComponent(val))
+            .then(r => r.json())
+            .then(function(d) {
+                if (!d.erfolg || !d.kunden.length) {
+                    liste.innerHTML = '<p style="color:#94a3b8;padding:12px;font-size:13px">Kein Treffer für „' + esc(val) + '"</p>';
+                    return;
+                }
+                var html = '';
+                d.kunden.forEach(function(k) {
+                    html += '<div class="such-item" onclick=\'kundeWaehlen(' + JSON.stringify(k) + ')\'>' +
+                        '<div style="font-size:16px;margin-right:4px">' + (k.ist_firma ? '🏢' : '👤') + '</div>' +
+                        '<div style="flex:1">' +
+                        '  <div class="such-item-name">' + esc(k.name) + '</div>' +
+                        '  <div class="such-item-sub">' + esc(k.kundennummer) +
+                            (k.kundengruppe ? ' · ' + esc(k.kundengruppe) : '') +
+                            (k.email ? ' · ' + esc(k.email) : '') + '</div>' +
+                        '</div>' +
+                        '</div>';
+                });
+                liste.innerHTML = html;
+            });
+    }, 250);
+}
+
+function kundeWaehlen(k) {
+    kundeId = k.id;
+    document.getElementById('kunden-anzeige').textContent = k.name + ' (' + k.kundennummer + ')';
+    ovSchliessen('ov-kunde');
+    feedback('Kunde: ' + k.name, 'ok');
+}
+
+function kundeLaufkunde() {
+    kundeId = null;
+    document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
+    ovSchliessen('ov-kunde');
+}
+
+// ── Menü-Dropdown ─────────────────────────────────────────────────────────────
+function toggleMenue(e) {
+    e.stopPropagation();
+    document.getElementById('ph-dropdown').classList.toggle('offen');
+}
+document.addEventListener('click', function() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+});
+
+// ── Bezahlen ──────────────────────────────────────────────────────────────────
+function bezahlenDialog() {
+    if (warenkorb.length === 0) return;
+    var g = getGesamt();
+    document.getElementById('bez-total').textContent = '€ ' + fmt(g);
+    ov('ov-bezahlen');
+}
+
+function zahlenBar() {
+    ovSchliessen('ov-bezahlen');
+    var g = getGesamt();
+    document.getElementById('bar-total').textContent = '€ ' + fmt(g);
+    barClear();
+    ov('ov-bar');
+    setTimeout(() => document.getElementById('bar-gegeben').focus(), 100);
+}
+function barBerechne() {
+    var g = getGesamt();
+    var geg = parseFloat(document.getElementById('bar-gegeben').value) || 0;
+    var rueck = geg - g;
+    var el = document.getElementById('bar-rueck');
+    if (geg >= g) {
+        el.textContent = 'Rückgeld: € ' + fmt(rueck);
+        el.style.color = '#16a34a';
+        document.getElementById('btn-bar-ok').disabled = false;
+    } else {
+        el.textContent = rueck < 0 ? 'Fehlend: € ' + fmt(Math.abs(rueck)) : '';
+        el.style.color = '#dc2626';
+        document.getElementById('btn-bar-ok').disabled = true;
+    }
+}
+function abschliessenBar() {
+    var g = getGesamt();
+    var geg = parseFloat(document.getElementById('bar-gegeben').value) || 0;
+    if (geg < g) return;
+    bonSpeichern({ zahlungsart: 'bar', gegeben: geg, rueckgeld: Math.max(0, geg - g) });
 }
 
 function zahlenKarte() {
-    var gesamt = getGesamtBetrag();
-    document.getElementById('karte-total-anzeige').textContent = '€ ' + gesamt.toFixed(2).replace('.', ',');
-    document.getElementById('overlay-karte').classList.add('aktiv');
+    ovSchliessen('ov-bezahlen');
+    document.getElementById('karte-total').textContent = '€ ' + fmt(getGesamt());
+    ov('ov-karte');
 }
-function bonAbschliessenKarte() {
-    bonSpeichern({ zahlungsart: 'karte_extern' });
-}
+function abschliessenKarte() { bonSpeichern({ zahlungsart: 'karte_extern' }); }
 
 function zahlenGutschein() {
-    var gesamt = getGesamtBetrag();
-    document.getElementById('gs-total-anzeige').textContent = '€ ' + gesamt.toFixed(2).replace('.', ',');
+    ovSchliessen('ov-bezahlen');
+    document.getElementById('gs-total').textContent = '€ ' + fmt(getGesamt());
     document.getElementById('gs-code').value = '';
     document.getElementById('gs-info').textContent = '';
     document.getElementById('btn-gs-ok').disabled = true;
-    document.getElementById('overlay-gutschein').classList.add('aktiv');
+    ov('ov-gutschein');
     setTimeout(() => document.getElementById('gs-code').focus(), 100);
 }
-function gsCodeGeaendert() {
+function gsPruefen() {
     var code = document.getElementById('gs-code').value.trim();
     document.getElementById('btn-gs-ok').disabled = code.length < 3;
 }
-function bonAbschliessenGutschein() {
+function abschliessenGS() {
     var code = document.getElementById('gs-code').value.trim();
     if (!code) return;
     bonSpeichern({ zahlungsart: 'gutschein', gutschein_code: code });
 }
 
 function zahlenKombi() {
-    var gesamt = getGesamtBetrag();
-    document.getElementById('kombi-total-anzeige').textContent = '€ ' + gesamt.toFixed(2).replace('.', ',');
+    ovSchliessen('ov-bezahlen');
+    document.getElementById('kombi-total').textContent = '€ ' + fmt(getGesamt());
     document.getElementById('kombi-karte').value = '';
     document.getElementById('kombi-bar').value   = '';
     document.getElementById('kombi-diff').textContent = '';
     document.getElementById('btn-kombi-ok').disabled = true;
-    document.getElementById('overlay-kombi').classList.add('aktiv');
+    ov('ov-kombi');
 }
-function kombiBerechnen() {
-    var gesamt = getGesamtBetrag();
-    var karte  = parseFloat(document.getElementById('kombi-karte').value) || 0;
-    var bar    = parseFloat(document.getElementById('kombi-bar').value)   || 0;
-    var diff   = karte + bar - gesamt;
-    var diffEl = document.getElementById('kombi-diff');
+function kombiBerechne() {
+    var g = getGesamt();
+    var k = parseFloat(document.getElementById('kombi-karte').value) || 0;
+    var b = parseFloat(document.getElementById('kombi-bar').value)   || 0;
+    var diff = k + b - g;
+    var el = document.getElementById('kombi-diff');
     if (Math.abs(diff) < 0.005) {
-        diffEl.textContent = '✓ Passt genau';
-        diffEl.style.color = '#27ae60';
+        el.textContent = '✓ Passt genau'; el.style.color = '#16a34a';
         document.getElementById('btn-kombi-ok').disabled = false;
     } else if (diff > 0.005) {
-        diffEl.textContent = 'Rückgeld Bar: € ' + diff.toFixed(2).replace('.', ',');
-        diffEl.style.color = '#27ae60';
+        el.textContent = 'Rückgeld Bar: € ' + fmt(diff); el.style.color = '#16a34a';
         document.getElementById('btn-kombi-ok').disabled = false;
     } else {
-        diffEl.textContent = 'Noch fehlend: € ' + Math.abs(diff).toFixed(2).replace('.', ',');
-        diffEl.style.color = '#ef5350';
+        el.textContent = 'Fehlend: € ' + fmt(Math.abs(diff)); el.style.color = '#dc2626';
         document.getElementById('btn-kombi-ok').disabled = true;
     }
 }
-function bonAbschliessenKombi() {
-    var karte = parseFloat(document.getElementById('kombi-karte').value) || 0;
-    var bar   = parseFloat(document.getElementById('kombi-bar').value)   || 0;
-    var diff  = karte + bar - getGesamtBetrag();
-    bonSpeichern({ zahlungsart: 'kombi', karten_betrag: karte, bar_betrag: bar, rueckgeld: Math.max(0, diff) });
+function abschliessenKombi() {
+    var k = parseFloat(document.getElementById('kombi-karte').value) || 0;
+    var b = parseFloat(document.getElementById('kombi-bar').value)   || 0;
+    var diff = k + b - getGesamt();
+    bonSpeichern({ zahlungsart: 'kombi', karten_betrag: k, bar_betrag: b, rueckgeld: Math.max(0, diff) });
 }
 
-// ── Bon speichern ─────────────────────────────────────────────────────────
-function bonSpeichern(zahlungsDaten) {
-    ['overlay-bar','overlay-karte','overlay-gutschein','overlay-kombi'].forEach(overlaySchliessen);
-    document.getElementById('overlay-laden').classList.add('aktiv');
+// ── Bon speichern ─────────────────────────────────────────────────────────────
+function bonSpeichern(zahlDaten) {
+    ['ov-bar','ov-karte','ov-gutschein','ov-kombi'].forEach(ovSchliessen);
+    document.getElementById('spinner').classList.add('offen');
 
-    var globalRabatt = parseFloat(document.getElementById('rabatt-input').value) || 0;
+    var g = getGesamt();
     var positionen = warenkorb.map(function(p) {
-        return Object.assign({}, p, { rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt) });
+        return Object.assign({}, p, {
+            rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt)
+        });
     });
 
     fetch('/mealana/kasse/bon_speichern.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.assign({
             kasse_id: KASSE_ID,
             lager_id: LAGER_ID,
-            bruttobetrag: getGesamtBetrag(),
+            kunden_id: kundeId,
+            bruttobetrag: g,
             positionen: positionen
-        }, zahlungsDaten))
+        }, zahlDaten))
     })
     .then(r => r.json())
     .then(function(d) {
-        document.getElementById('overlay-laden').classList.remove('aktiv');
+        document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
-            warenkorb = [];
-            aktualisiereWarenkorb();
-            document.getElementById('scan-info-leer').style.display = 'block';
-            document.getElementById('scan-info-inhalt').style.display = 'none';
+            warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad(); kundeId = null;
+            document.getElementById('ai-leer').style.display = 'block';
+            document.getElementById('ai-inhalt').style.display = 'none';
+            document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
+            renderBon();
             window.open('/mealana/kasse/bon_druck.php?id=' + d.bon_id, '_blank');
         } else {
-            alert('Fehler: ' + (d.fehler || 'Unbekannt'));
+            feedback('❌ ' + (d.fehler || 'Unbekannter Fehler'), 'fehler');
         }
     })
     .catch(function() {
-        document.getElementById('overlay-laden').classList.remove('aktiv');
-        alert('Netzwerkfehler. Bitte erneut versuchen.');
+        document.getElementById('spinner').classList.remove('offen');
+        feedback('Netzwerkfehler — bitte erneut versuchen', 'fehler');
     });
 }
 
-// ── Hilfs-Funktionen ──────────────────────────────────────────────────────
-function overlaySchliessen(id) {
-    document.getElementById(id).classList.remove('aktiv');
-    document.getElementById('scan-input').focus();
+// ── Overlay-Helfer ────────────────────────────────────────────────────────────
+function ov(id) {
+    document.getElementById(id).classList.add('offen');
+}
+function ovSchliessen(id) {
+    document.getElementById(id).classList.remove('offen');
+    scanInput.focus();
 }
 
-function scanFeedback(msg, typ) {
-    var el = document.getElementById('scan-feedback');
-    if (!msg) { el.innerHTML = ''; return; }
-    el.innerHTML = '<div class="ks-feedback ' + (typ || 'info') + '">' + htmlEsc(msg) + '</div>';
-    if (typ === 'ok') setTimeout(() => { if (el.innerHTML) el.innerHTML = ''; }, 3000);
+// ── Feedback Snackbar ─────────────────────────────────────────────────────────
+var feedbackTimer = null;
+function feedback(msg, typ) {
+    var el = document.getElementById('feedback');
+    el.innerHTML = '<div class="fb-msg fb-' + (typ || 'info') + '">' + esc(msg) + '</div>';
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => { el.innerHTML = ''; }, typ === 'fehler' ? 5000 : 2500);
 }
 
-function htmlEsc(s) {
+// ── Preis-Override in aktiver Zeile ──────────────────────────────────────────
+function preisOverride(i) {
+    var neuerPreis = parseFloat(numpadBuf.replace(',', '.'));
+    if (!neuerPreis || neuerPreis <= 0) {
+        feedback('Bitte zuerst neuen Preis auf Numpad eingeben', 'info');
+        return;
+    }
+    var alt = warenkorb[i].einzelpreis_brutto;
+    warenkorb[i].einzelpreis_brutto = neuerPreis;
+    clearNumpad();
+    renderBon();
+    feedback('Preis: € ' + fmt(alt) + ' → € ' + fmt(neuerPreis), 'ok');
+}
+
+// ── Bar: Geldscheine akkumulieren ─────────────────────────────────────────────
+var barScheine = [];
+
+function barNoteAdd(betrag) {
+    barScheine.push(betrag);
+    var summe = barScheine.reduce(function(a, b) { return a + b; }, 0);
+    document.getElementById('bar-gegeben').value = summe.toFixed(2);
+    var log = barScheine.join(' + ') + ' = € ' + fmt(summe);
+    document.getElementById('bar-scheine-log').textContent = log;
+    barBerechne();
+}
+function barClear() {
+    barScheine = [];
+    document.getElementById('bar-gegeben').value = '';
+    document.getElementById('bar-scheine-log').textContent = '';
+    document.getElementById('bar-rueck').textContent = '';
+    document.getElementById('btn-bar-ok').disabled = true;
+}
+function barBerechneManual() {
+    barScheine = [];  // Manuelle Eingabe überschreibt Schein-Log
+    document.getElementById('bar-scheine-log').textContent = '';
+    barBerechne();
+}
+
+// ── Rabatt: Tab-Umschalter ────────────────────────────────────────────────────
+var rabaktivTab = 'pct';
+function rabTab(tab) {
+    rabaktivTab = tab;
+    document.getElementById('rab-tab-pct').classList.toggle('aktiv', tab === 'pct');
+    document.getElementById('rab-tab-eur').classList.toggle('aktiv', tab === 'eur');
+    document.getElementById('rab-pct-area').style.display = tab === 'pct' ? 'block' : 'none';
+    document.getElementById('rab-eur-area').style.display = tab === 'eur' ? 'block' : 'none';
+    document.getElementById('bonrab-vorschau').textContent = '';
+}
+function bonRabattVorschauEur() {
+    var neu = parseFloat(document.getElementById('bonrab-eur').value) || 0;
+    var alt = getGesamt();
+    if (alt <= 0 || neu <= 0 || neu >= alt) {
+        document.getElementById('bonrab-vorschau').textContent =
+            neu >= alt ? '⚠ Neuer Preis muss unter aktuellem Gesamt liegen' : '';
+        return;
+    }
+    var pct = (1 - neu / alt) * 100;
+    var ersparnis = alt - neu;
+    document.getElementById('bonrab-vorschau').textContent =
+        'Entspricht ' + pct.toFixed(2).replace('.', ',') + '% Rabatt · Ersparnis: € ' + fmt(ersparnis);
+}
+function bonRabattAnwenden() {
+    var pct;
+    if (rabaktivTab === 'pct') {
+        pct = parseFloat(document.getElementById('bonrab-pct').value) || 0;
+    } else {
+        var neu = parseFloat(document.getElementById('bonrab-eur').value) || 0;
+        var alt = getGesamt();
+        if (neu <= 0 || neu >= alt) { feedback('Ungültiger Betrag', 'fehler'); return; }
+        pct = (1 - neu / alt) * 100;
+    }
+    if (pct < 0 || pct > 100) { feedback('Ungültiger Rabatt', 'fehler'); return; }
+    globalRabatt = Math.round(pct * 100) / 100;
+    ovSchliessen('ov-bonrab');
+    renderBon();
+    feedback('Bon-Rabatt ' + fmt(globalRabatt).replace(',00','') + '% angewendet', 'ok');
+}
+
+// ── Kassenlade öffnen ─────────────────────────────────────────────────────────
+function kasseladeOeffnen() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+    fetch('/mealana/kasse/ajax_kassenlade.php', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { feedback(d.hinweis || '⊟ Kassenlade geöffnet', 'ok'); })
+        .catch(() => feedback('⊟ Kassenlade-Befehl gesendet', 'ok'));
+}
+
+// ── Hilfsfunktionen ──────────────────────────────────────────────────────────
+function fmt(n) {
+    return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',');
+}
+function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-document.getElementById('scan-input').focus();
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderBon();
+scanInput.focus();
 </script>
 
-<?php require_once __DIR__ . '/shell_bottom.php'; ?>
+</body>
+</html>
