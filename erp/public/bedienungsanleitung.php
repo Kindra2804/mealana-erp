@@ -249,7 +249,38 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Vater-Artikel öffnen → Tab <strong>Varianten</strong></div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Achsen zuweisen</strong> (z.B. "Farbe") und Werte eingeben (z.B. "Rot", "Blau")</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Tab Varianten → <strong>Kombinationen erstellen</strong> → Artikelnummern vergeben → Erstellen</div></div>
-            <p>Stammdaten (Beschreibung, Gewicht, Kategorien, Preise) werden automatisch vom Vater übernommen und bei Änderungen am Vater propagiert.</p>
+            <p>Stammdaten werden automatisch vom Vater an alle Kinder weitergegeben — beim Erstellen der Kinder, und bei jeder Änderung am Vater-Artikel.</p>
+
+            <h4>Was wird vom Vater an die Kinder weitergegeben?</h4>
+            <table class="ba-table">
+                <thead><tr><th>Feld</th><th>Vererbt?</th></tr></thead>
+                <tbody>
+                    <tr><td>Hersteller</td><td>✅ ja</td></tr>
+                    <tr><td>Steuerklasse (MwSt.)</td><td>✅ ja</td></tr>
+                    <tr><td>Artikeltyp</td><td>✅ ja</td></tr>
+                    <tr><td>Kurzbeschreibung</td><td>✅ ja</td></tr>
+                    <tr><td>Beschreibung (Langtext)</td><td>✅ ja</td></tr>
+                    <tr><td>Technische Details</td><td>✅ ja</td></tr>
+                    <tr><td>Interne Beschreibung</td><td>✅ ja</td></tr>
+                    <tr><td>Meta-Titel / Meta-Description</td><td>✅ ja</td></tr>
+                    <tr><td>Einheit</td><td>✅ ja</td></tr>
+                    <tr><td>Inhaltsmenge / Inhalt-Einheit</td><td>✅ ja</td></tr>
+                    <tr><td>Gewicht (Artikel + Versand)</td><td>✅ ja</td></tr>
+                    <tr><td>Abmessungen (L × B × H)</td><td>✅ ja</td></tr>
+                    <tr><td>Herkunftsland / TARIC-Code</td><td>✅ ja</td></tr>
+                    <tr><td>Grundpreis-Bezugsmenge / Anzeigen</td><td>✅ ja</td></tr>
+                    <tr><td>Charge-Pflicht</td><td>✅ ja</td></tr>
+                    <tr><td>Überverkauf erlaubt</td><td>✅ ja</td></tr>
+                    <tr><td>Kategorien</td><td>✅ ja (beim Kategorien-Speichern)</td></tr>
+                    <tr><td>Artikelnummer</td><td>❌ nein — jedes Kind hat eigene</td></tr>
+                    <tr><td>Name</td><td>❌ nein — jedes Kind hat eigenen</td></tr>
+                    <tr><td>Preis</td><td>❌ nein — Kinder können eigene Preise haben</td></tr>
+                    <tr><td>Aktiv / Inaktiv</td><td>❌ nein — Kind kann separat deaktiviert sein</td></tr>
+                    <tr><td>Auslaufartikel-Flag</td><td>❌ nein — Kind kann separat Auslauf sein</td></tr>
+                    <tr><td>EAN</td><td>❌ nein — jedes Kind hat eigene EAN</td></tr>
+                    <tr><td>Bilder</td><td>❌ nein — jedes Kind hat eigene Bilder</td></tr>
+                </tbody>
+            </table>
 
             <h3 id="artikel-bilder">Bilder <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Artikel-Detail → Tab <strong>Bilder</strong>: Bild per Drag &amp; Drop hochladen. Das System verkleinert automatisch auf max. 1920px (JPG 85%).</p>

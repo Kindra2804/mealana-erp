@@ -104,13 +104,14 @@ if ($result['erfolg']) {
     $neueArtikelId = $result['id'];
     $pdo = Database::getInstance();
 
-    // Kategorien zuweisen (optional, aus neu.php — mehrfach möglich)
-    $kategorieIds = array_map('intval', array_filter((array)($data['kategorien'] ?? [])));
-    foreach ($kategorieIds as $katId) {
-        if ($katId > 0) {
-            $pdo->prepare('INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)')
-                ->execute([$neueArtikelId, $katId]);
-        }
+    // Kategorien zuweisen — über saveKategorien() damit Aktionspreise geprüft werden
+    $kategorieIds    = array_map('intval', array_filter((array)($data['kategorien'] ?? [])));
+    $aktionsHinweise = $service->saveKategorien($neueArtikelId, $kategorieIds);
+    if (!empty($aktionsHinweise)) {
+        $_SESSION['aktionspreis_offen'] = [
+            'artikel_id' => $neueArtikelId,
+            'aktionen'   => $aktionsHinweise,
+        ];
     }
 
     // Lieferant + EK (optional, aus neu.php)

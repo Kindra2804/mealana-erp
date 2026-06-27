@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-27 (Session 14)
+Stand: 2026-06-27 (Session 15)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -42,7 +42,14 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 
 ### Varianten-System ✅ VOLLSTÄNDIG
 ### Lager-Modul ✅ VOLLSTÄNDIG
-### Lieferanten-Modul ✅ VOLLSTÄNDIG
+### Lieferanten-Modul ✅ VOLLSTÄNDIG + ERWEITERT (2026-06-27)
+- Migrations 085+086: neue Felder (Adresse, Kundennr., Währung, Zahlungskonditionen, Lieferkonditionen, Notizen) + Tabelle lieferanten_zugaenge (AES-256-GCM Passwörter)
+- detail.php: 5 Tabs (Stammdaten | Vertreter | Artikel | Bestellungen | Zugänge)
+- Artikel-Tab: aus artikel_lieferanten (korrekte Spalten: artikelnummer_lieferant, netto_ek, vpe_menge)
+- Bestellungen-Tab: alle EK-Bestellungen mit Status-Chips
+- Zugänge-Tab: Passwort-Manager mit Show/Hide Toggle
+- Lager-Einstieg: Topnav "Lager" → picklisten.php (war wareneingang.php)
+- Kunden-Modul: Tab "Bestellungen" aktiviert + Einwilligungstypen Telefon/WhatsApp/SMS + "Auftrag erstellen"-Button mit Adress-Vorausfüllung
 ### Aktions-Modul ✅ VOLLSTÄNDIG
 ### PreisService ✅ VOLLSTÄNDIG
 - artikel_preise JOIN mit Datumsfilter: bevorzugt aktiven Sonderpreis über Basispreis

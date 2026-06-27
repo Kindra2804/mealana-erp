@@ -94,18 +94,37 @@ class ArtikelRepository
 
         $sf = $filter['status_filter'] ?? '';
         if ($sf === 'auslauf') {
-            $conditions[] = "a.ist_auslaufartikel = 1";
+            // Zeigt Väter die selbst Auslauf sind ODER mindestens ein Kind das ist
+            $conditions[] = "(a.ist_auslaufartikel = 1 OR EXISTS (SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id AND k.ist_auslaufartikel = 1))";
         } elseif ($sf === 'uv') {
-            $conditions[] = "a.ueberverkauf_erlaubt = 1";
+            $conditions[] = "(a.ueberverkauf_erlaubt = 1 OR EXISTS (SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id AND k.ueberverkauf_erlaubt = 1))";
         } elseif ($sf === 'fehlbest') {
             $having = 'HAVING reserviert > gesamtbestand';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
         }
 
+        // Multi-Word-Suche: jedes Wort muss irgendwo matchen (Vater-Name/Nr, Kind-Name/Nr, EAN)
         if (!empty($filter['q'])) {
-            $conditions[] = "(a.name LIKE :q OR a.artikelnummer LIKE :q)";
-            $params['q'] = '%' . $filter['q'] . '%';
+            $terms = array_values(array_filter(explode(' ', trim($filter['q']))));
+            foreach ($terms as $i => $term) {
+                $key = 'q_' . $i;
+                $conditions[] = "(
+                    a.name LIKE :{$key}
+                    OR a.artikelnummer LIKE :{$key}
+                    OR EXISTS (SELECT 1 FROM artikel_codes ac_s{$i} WHERE ac_s{$i}.artikel_id = a.id AND ac_s{$i}.code LIKE :{$key})
+                    OR EXISTS (
+                        SELECT 1 FROM artikel k_s{$i}
+                        WHERE k_s{$i}.vaterartikel_id = a.id
+                        AND (
+                            k_s{$i}.name LIKE :{$key}
+                            OR k_s{$i}.artikelnummer LIKE :{$key}
+                            OR EXISTS (SELECT 1 FROM artikel_codes kc_s{$i} WHERE kc_s{$i}.artikel_id = k_s{$i}.id AND kc_s{$i}.code LIKE :{$key})
+                        )
+                    )
+                )";
+                $params[$key] = '%' . $term . '%';
+            }
         }
 
         if (!empty($filter['kategorie_ids'])) {
@@ -227,18 +246,37 @@ class ArtikelRepository
 
         $sf = $filter['status_filter'] ?? '';
         if ($sf === 'auslauf') {
-            $conditions[] = "a.ist_auslaufartikel = 1";
+            // Zeigt Väter die selbst Auslauf sind ODER mindestens ein Kind das ist
+            $conditions[] = "(a.ist_auslaufartikel = 1 OR EXISTS (SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id AND k.ist_auslaufartikel = 1))";
         } elseif ($sf === 'uv') {
-            $conditions[] = "a.ueberverkauf_erlaubt = 1";
+            $conditions[] = "(a.ueberverkauf_erlaubt = 1 OR EXISTS (SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id AND k.ueberverkauf_erlaubt = 1))";
         } elseif ($sf === 'fehlbest') {
             $having = 'HAVING reserviert > gesamtbestand';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
         }
 
+        // Multi-Word-Suche: jedes Wort muss irgendwo matchen (Vater-Name/Nr, Kind-Name/Nr, EAN)
         if (!empty($filter['q'])) {
-            $conditions[] = "(a.name LIKE :q OR a.artikelnummer LIKE :q)";
-            $params['q'] = '%' . $filter['q'] . '%';
+            $terms = array_values(array_filter(explode(' ', trim($filter['q']))));
+            foreach ($terms as $i => $term) {
+                $key = 'q_' . $i;
+                $conditions[] = "(
+                    a.name LIKE :{$key}
+                    OR a.artikelnummer LIKE :{$key}
+                    OR EXISTS (SELECT 1 FROM artikel_codes ac_s{$i} WHERE ac_s{$i}.artikel_id = a.id AND ac_s{$i}.code LIKE :{$key})
+                    OR EXISTS (
+                        SELECT 1 FROM artikel k_s{$i}
+                        WHERE k_s{$i}.vaterartikel_id = a.id
+                        AND (
+                            k_s{$i}.name LIKE :{$key}
+                            OR k_s{$i}.artikelnummer LIKE :{$key}
+                            OR EXISTS (SELECT 1 FROM artikel_codes kc_s{$i} WHERE kc_s{$i}.artikel_id = k_s{$i}.id AND kc_s{$i}.code LIKE :{$key})
+                        )
+                    )
+                )";
+                $params[$key] = '%' . $term . '%';
+            }
         }
 
         if (!empty($filter['kategorie_ids'])) {

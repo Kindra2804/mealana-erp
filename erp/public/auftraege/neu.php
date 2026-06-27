@@ -12,6 +12,60 @@ $fehler   = $_SESSION['fehler']   ?? [];
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['formdata']);
 
+// Kunden-Vorauswahl via GET (z.B. aus Kunden-Detailseite "Auftrag erstellen")
+$vorKunde      = null;
+$vorRechAdr    = [];
+$vorLiefAdr    = [];
+if (isset($_GET['kunden_id']) && empty($formdata)) {
+    $ks = new KundenService();
+    $vk = $ks->getById((int)$_GET['kunden_id']);
+    if ($vk) {
+        $vorKundeName = trim(($vk['vorname'] ?? '') . ' ' . ($vk['nachname'] ?? ''));
+        if (!$vorKundeName && ($vk['firmenname'] ?? '')) $vorKundeName = $vk['firmenname'];
+        $vorKunde = ['id' => $vk['id'], 'name' => $vorKundeName];
+
+        // Adressen laden und nach Typ sortieren
+        $alleAdr = $ks->getAdressen((int)$_GET['kunden_id']);
+        $byTyp   = ['haupt' => [], 'rechnung' => [], 'lieferung' => []];
+        foreach ($alleAdr as $a) {
+            $byTyp[$a['adresstyp']][] = $a;
+            if ($a['ist_standard']) {
+                array_unshift($byTyp[$a['adresstyp']], array_pop($byTyp[$a['adresstyp']]));
+            }
+        }
+        // Rechnungsadresse: erst explizite Rechnungsadresse, sonst Hauptadresse
+        $rechSrc = $byTyp['rechnung'][0] ?? $byTyp['haupt'][0] ?? null;
+        if ($rechSrc) {
+            $vorRechAdr = [
+                'vorname'    => $rechSrc['vorname']    ?? '',
+                'nachname'   => $rechSrc['nachname']   ?? '',
+                'firma'      => $rechSrc['firma']      ?? '',
+                'strasse'    => $rechSrc['strasse']    ?? '',
+                'hausnummer' => $rechSrc['hausnummer'] ?? '',
+                'plz'        => $rechSrc['plz']        ?? '',
+                'ort'        => $rechSrc['ort']        ?? '',
+                'land'       => $rechSrc['land']       ?? 'AT',
+                'zusatz'     => $rechSrc['zusatz']     ?? '',
+            ];
+        }
+        // Lieferadresse nur befüllen wenn explizit vorhanden (sonst "wie Rechnungsadresse")
+        $liefSrc = $byTyp['lieferung'][0] ?? null;
+        if ($liefSrc) {
+            $vorLiefAdr = [
+                'vorname'    => $liefSrc['vorname']    ?? '',
+                'nachname'   => $liefSrc['nachname']   ?? '',
+                'firma'      => $liefSrc['firma']      ?? '',
+                'strasse'    => $liefSrc['strasse']    ?? '',
+                'hausnummer' => $liefSrc['hausnummer'] ?? '',
+                'plz'        => $liefSrc['plz']        ?? '',
+                'ort'        => $liefSrc['ort']        ?? '',
+                'land'       => $liefSrc['land']       ?? 'AT',
+                'zusatz'     => $liefSrc['zusatz']     ?? '',
+            ];
+        }
+    }
+}
+
 $pageTitle        = 'Neuer Auftrag';
 $activeModule     = 'verkauf';
 $actionBarContent = <<<HTML
@@ -38,9 +92,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
             <div class="form-group">
                 <label class="form-label">Kunde</label>
-                <input type="hidden" name="kunden_id" id="kunden-id" value="<?= htmlspecialchars($formdata['kunden_id'] ?? '') ?>">
+                <input type="hidden" name="kunden_id" id="kunden-id" value="<?= htmlspecialchars($formdata['kunden_id'] ?? $vorKunde['id'] ?? '') ?>">
                 <input type="text" class="erp-input" id="kunden-suche" placeholder="Name oder E-Mail suchen…"
-                    value="<?= htmlspecialchars($formdata['kunden_name'] ?? '') ?>" autocomplete="off">
+                    value="<?= htmlspecialchars($formdata['kunden_name'] ?? $vorKunde['name'] ?? '') ?>" autocomplete="off">
                 <div id="kunden-dropdown" style="position:absolute;z-index:100;background:#fff;border:1px solid var(--color-border);border-radius:4px;width:320px;display:none"></div>
                 <small style="color:var(--color-text-muted)">Leer lassen = Laufkunde</small>
             </div>
@@ -146,29 +200,41 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <div>
                 <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Rechnungsadresse</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                    <input type="text" name="rechnungsadresse[vorname]"    id="rechnungsadresse_vorname"    class="erp-input" placeholder="Vorname"    value="<?= htmlspecialchars($formdata['rechnungsadresse']['vorname']    ?? '') ?>">
-                    <input type="text" name="rechnungsadresse[nachname]"   id="rechnungsadresse_nachname"   class="erp-input" placeholder="Nachname"   value="<?= htmlspecialchars($formdata['rechnungsadresse']['nachname']   ?? '') ?>">
-                    <input type="text" name="rechnungsadresse[firma]"      id="rechnungsadresse_firma"      class="erp-input" placeholder="Firma (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['rechnungsadresse']['firma']      ?? '') ?>">
-                    <input type="text" name="rechnungsadresse[strasse]"    id="rechnungsadresse_strasse"    class="erp-input" placeholder="Straße"     value="<?= htmlspecialchars($formdata['rechnungsadresse']['strasse']    ?? '') ?>">
-                    <input type="text" name="rechnungsadresse[hausnummer]" id="rechnungsadresse_hausnummer" class="erp-input" placeholder="Nr."        value="<?= htmlspecialchars($formdata['rechnungsadresse']['hausnummer'] ?? '') ?>">
-                    <input type="text" name="rechnungsadresse[plz]"        id="rechnungsadresse_plz"        class="erp-input" placeholder="PLZ"        value="<?= htmlspecialchars($formdata['rechnungsadresse']['plz']        ?? '') ?>" style="width:80px">
-                    <input type="text" name="rechnungsadresse[ort]"        id="rechnungsadresse_ort"        class="erp-input" placeholder="Ort"        value="<?= htmlspecialchars($formdata['rechnungsadresse']['ort']        ?? '') ?>">
-                    <input type="text" name="rechnungsadresse[land]"       id="rechnungsadresse_land"       class="erp-input" placeholder="Land"       value="<?= htmlspecialchars($formdata['rechnungsadresse']['land']       ?? 'AT') ?>" style="width:60px">
-                    <input type="text" name="rechnungsadresse[zusatz]"     id="rechnungsadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['rechnungsadresse']['zusatz']     ?? '') ?>">
+                    <?php
+                    function raFeld(string $feld, string $default = ''): string {
+                        global $formdata, $vorRechAdr;
+                        return htmlspecialchars($formdata['rechnungsadresse'][$feld] ?? $vorRechAdr[$feld] ?? $default);
+                    }
+                    ?>
+                    <input type="text" name="rechnungsadresse[vorname]"    id="rechnungsadresse_vorname"    class="erp-input" placeholder="Vorname"    value="<?= raFeld('vorname') ?>">
+                    <input type="text" name="rechnungsadresse[nachname]"   id="rechnungsadresse_nachname"   class="erp-input" placeholder="Nachname"   value="<?= raFeld('nachname') ?>">
+                    <input type="text" name="rechnungsadresse[firma]"      id="rechnungsadresse_firma"      class="erp-input" placeholder="Firma (opt.)" style="grid-column:1/-1" value="<?= raFeld('firma') ?>">
+                    <input type="text" name="rechnungsadresse[strasse]"    id="rechnungsadresse_strasse"    class="erp-input" placeholder="Straße"     value="<?= raFeld('strasse') ?>">
+                    <input type="text" name="rechnungsadresse[hausnummer]" id="rechnungsadresse_hausnummer" class="erp-input" placeholder="Nr."        value="<?= raFeld('hausnummer') ?>">
+                    <input type="text" name="rechnungsadresse[plz]"        id="rechnungsadresse_plz"        class="erp-input" placeholder="PLZ"        value="<?= raFeld('plz') ?>" style="width:80px">
+                    <input type="text" name="rechnungsadresse[ort]"        id="rechnungsadresse_ort"        class="erp-input" placeholder="Ort"        value="<?= raFeld('ort') ?>">
+                    <input type="text" name="rechnungsadresse[land]"       id="rechnungsadresse_land"       class="erp-input" placeholder="Land"       value="<?= raFeld('land', 'AT') ?>" style="width:60px">
+                    <input type="text" name="rechnungsadresse[zusatz]"     id="rechnungsadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= raFeld('zusatz') ?>">
                 </div>
             </div>
             <div>
                 <div style="font-weight:600;margin-bottom:10px;color:var(--color-text-muted);font-size:12px;text-transform:uppercase">Lieferadresse <span style="font-weight:400">(leer = wie Rechnungsadresse)</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                    <input type="text" name="lieferadresse[vorname]"    id="lieferadresse_vorname"    class="erp-input" placeholder="Vorname"    value="<?= htmlspecialchars($formdata['lieferadresse']['vorname']    ?? '') ?>">
-                    <input type="text" name="lieferadresse[nachname]"   id="lieferadresse_nachname"   class="erp-input" placeholder="Nachname"   value="<?= htmlspecialchars($formdata['lieferadresse']['nachname']   ?? '') ?>">
-                    <input type="text" name="lieferadresse[firma]"      id="lieferadresse_firma"      class="erp-input" placeholder="Firma (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['lieferadresse']['firma']      ?? '') ?>">
-                    <input type="text" name="lieferadresse[strasse]"    id="lieferadresse_strasse"    class="erp-input" placeholder="Straße"     value="<?= htmlspecialchars($formdata['lieferadresse']['strasse']    ?? '') ?>">
-                    <input type="text" name="lieferadresse[hausnummer]" id="lieferadresse_hausnummer" class="erp-input" placeholder="Nr."        value="<?= htmlspecialchars($formdata['lieferadresse']['hausnummer'] ?? '') ?>">
-                    <input type="text" name="lieferadresse[plz]"        id="lieferadresse_plz"        class="erp-input" placeholder="PLZ"        value="<?= htmlspecialchars($formdata['lieferadresse']['plz']        ?? '') ?>" style="width:80px">
-                    <input type="text" name="lieferadresse[ort]"        id="lieferadresse_ort"        class="erp-input" placeholder="Ort"        value="<?= htmlspecialchars($formdata['lieferadresse']['ort']        ?? '') ?>">
-                    <input type="text" name="lieferadresse[land]"       id="lieferadresse_land"       class="erp-input" placeholder="Land"       value="<?= htmlspecialchars($formdata['lieferadresse']['land']       ?? '') ?>" style="width:60px">
-                    <input type="text" name="lieferadresse[zusatz]"     id="lieferadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= htmlspecialchars($formdata['lieferadresse']['zusatz']     ?? '') ?>">
+                    <?php
+                    function laFeld(string $feld): string {
+                        global $formdata, $vorLiefAdr;
+                        return htmlspecialchars($formdata['lieferadresse'][$feld] ?? $vorLiefAdr[$feld] ?? '');
+                    }
+                    ?>
+                    <input type="text" name="lieferadresse[vorname]"    id="lieferadresse_vorname"    class="erp-input" placeholder="Vorname"    value="<?= laFeld('vorname') ?>">
+                    <input type="text" name="lieferadresse[nachname]"   id="lieferadresse_nachname"   class="erp-input" placeholder="Nachname"   value="<?= laFeld('nachname') ?>">
+                    <input type="text" name="lieferadresse[firma]"      id="lieferadresse_firma"      class="erp-input" placeholder="Firma (opt.)" style="grid-column:1/-1" value="<?= laFeld('firma') ?>">
+                    <input type="text" name="lieferadresse[strasse]"    id="lieferadresse_strasse"    class="erp-input" placeholder="Straße"     value="<?= laFeld('strasse') ?>">
+                    <input type="text" name="lieferadresse[hausnummer]" id="lieferadresse_hausnummer" class="erp-input" placeholder="Nr."        value="<?= laFeld('hausnummer') ?>">
+                    <input type="text" name="lieferadresse[plz]"        id="lieferadresse_plz"        class="erp-input" placeholder="PLZ"        value="<?= laFeld('plz') ?>" style="width:80px">
+                    <input type="text" name="lieferadresse[ort]"        id="lieferadresse_ort"        class="erp-input" placeholder="Ort"        value="<?= laFeld('ort') ?>">
+                    <input type="text" name="lieferadresse[land]"       id="lieferadresse_land"       class="erp-input" placeholder="Land"       value="<?= laFeld('land') ?>" style="width:60px">
+                    <input type="text" name="lieferadresse[zusatz]"     id="lieferadresse_zusatz"     class="erp-input" placeholder="Zusatz (opt.)" style="grid-column:1/-1" value="<?= laFeld('zusatz') ?>">
                 </div>
             </div>
         </div>

@@ -10,12 +10,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $data = $_POST;
 
 $lieferantenData = array_intersect_key($data, array_flip([
-    'name',
-    'land',
-    'website',
-    'email',
-    'telefon',
-    'aktiv'
+    'name', 'land', 'strasse', 'plz', 'ort', 'kundennummer', 'waehrung',
+    'website', 'email', 'telefon',
+    'zahlungsziel_tage', 'skonto_prozent', 'skonto_tage',
+    'mindestbestellwert', 'lieferzeit_tage', 'lieferbedingung',
+    'interne_notizen', 'aktiv',
 ]));
 
 // Leere Strings zu NULL konvertieren

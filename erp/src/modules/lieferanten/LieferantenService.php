@@ -171,4 +171,62 @@ class LieferantenService
     {
         return $this->repo->findVertreterById($id);
     }
+
+    // -------------------------------------------------------------------------
+    // Zugänge
+    // -------------------------------------------------------------------------
+
+    public function getZugaenge(int $lieferantId): array
+    {
+        return $this->repo->findZugaengeByLieferantId($lieferantId);
+    }
+
+    public function getZugangById(int $id): array|false
+    {
+        return $this->repo->findZugangById($id);
+    }
+
+    public function saveZugang(array $data): array
+    {
+        if (empty($data['bezeichnung'])) {
+            return ['erfolg' => false, 'fehler' => ['Bezeichnung ist Pflichtfeld']];
+        }
+        $id = $this->repo->insertZugang($data);
+        Logger::log('zugang.anlegen', 'lieferanten_zugaenge', $id, ['bezeichnung' => $data['bezeichnung']]);
+        return ['erfolg' => true, 'id' => $id];
+    }
+
+    public function updateZugang(array $data): array
+    {
+        if (empty($data['bezeichnung'])) {
+            return ['erfolg' => false, 'fehler' => ['Bezeichnung ist Pflichtfeld']];
+        }
+        $this->repo->updateZugang($data);
+        Logger::log('zugang.bearbeiten', 'lieferanten_zugaenge', $data['id'], ['bezeichnung' => $data['bezeichnung']]);
+        return ['erfolg' => true];
+    }
+
+    public function deleteZugang(int $id): array
+    {
+        if ($this->repo->findZugangById($id) === false) {
+            return ['erfolg' => false, 'fehler' => ['Zugang nicht gefunden']];
+        }
+        $this->repo->deleteZugang($id);
+        Logger::log('zugang.loeschen', 'lieferanten_zugaenge', $id);
+        return ['erfolg' => true];
+    }
+
+    // -------------------------------------------------------------------------
+    // Artikel & Bestellungen (read-only)
+    // -------------------------------------------------------------------------
+
+    public function getArtikel(int $lieferantId): array
+    {
+        return $this->repo->findArtikelByLieferantId($lieferantId);
+    }
+
+    public function getBestellungen(int $lieferantId): array
+    {
+        return $this->repo->findBestellungenByLieferantId($lieferantId);
+    }
 }

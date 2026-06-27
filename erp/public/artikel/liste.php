@@ -4,6 +4,22 @@ require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
+// === LISTEN-ZUSTAND PERSISTENZ ===
+// ?fresh=1 → State löschen und wirklich neu starten
+if (isset($_GET['fresh'])) {
+    unset($_SESSION['artikel_liste_state']);
+    header('Location: liste.php');
+    exit;
+}
+// Keine GET-Parameter = Nav-Klick → gespeicherten Zustand wiederherstellen
+if (empty($_GET) && !empty($_SESSION['artikel_liste_state'])) {
+    header('Location: liste.php?' . http_build_query($_SESSION['artikel_liste_state']));
+    exit;
+}
+// GET-Parameter vorhanden → aktuellen Zustand speichern
+if (!empty($_GET)) {
+    $_SESSION['artikel_liste_state'] = $_GET;
+}
 
 $controller = new ArtikelController();
 $service = new ArtikelService();
@@ -283,6 +299,19 @@ function renderShopChips(array $artikel): string
     return $html;
 }
 
+/**
+ * Prüft ob ein Artikel-Array alle Suchwörter enthält (Name + Nr + EAN).
+ * Alle Terme müssen matchen (AND-Logik).
+ */
+function matchesSuche(array $artikel, array $terms): bool
+{
+    $haystack = strtolower(($artikel['name'] ?? '') . ' ' . ($artikel['artikelnummer'] ?? '') . ' ' . ($artikel['ean'] ?? ''));
+    foreach ($terms as $term) {
+        if (!str_contains($haystack, $term)) return false;
+    }
+    return true;
+}
+
 function kindAbweichungen(array $kind, array $vater): array
 {
     $abw = [];
@@ -413,6 +442,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <input type="hidden" name="kategorie_id" value="<?= $aktivKategorieId ?>">
         <?php endif; ?>
         <button type="submit" class="btn btn-secondary btn-sm">Suchen</button>
+        <?php if (!empty($_GET)): ?>
+            <a href="liste.php?fresh=1" class="btn btn-secondary btn-sm" title="Alle Filter zurücksetzen und von vorn starten">× Reset</a>
+        <?php endif; ?>
     </form>
 </div>
 
@@ -431,8 +463,35 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </tr>
         </thead>
         <tbody>
+            <?php
+            // Such-Terme für Render-Filter vorbereiten (leer = keine Suche aktiv)
+            $suchAktiv = !empty($filter['q']);
+            $renderTerms = $suchAktiv ? array_values(array_filter(explode(' ', strtolower(trim($filter['q']))))) : [];
+            ?>
             <?php foreach ($artikel as $a):
                 $kinder = $kinderNachVater[$a['id']] ?? [];
+
+                // Kinder filtern: nur matchende anzeigen wenn Vater selbst nicht matcht
+                // Gilt für Text-Suche UND Status-Filter die Kinder einschließen
+                $kinderGefiltertFuerSuche = false;
+                if (!empty($kinder)) {
+                    if ($suchAktiv && !matchesSuche($a, $renderTerms)) {
+                        $kinder = array_values(array_filter($kinder, fn($k) => matchesSuche($k, $renderTerms)));
+                        $kinderGefiltertFuerSuche = true;
+                    } elseif ($filter['status_filter'] === 'auslauf' && !$a['ist_auslaufartikel']) {
+                        // Vater matcht nur wegen Kind-Auslauf → nur Auslauf-Kinder zeigen
+                        $kinder = array_values(array_filter($kinder, fn($k) => $k['ist_auslaufartikel']));
+                        $kinderGefiltertFuerSuche = true;
+                    } elseif ($filter['status_filter'] === 'uv' && !$a['ueberverkauf_erlaubt']) {
+                        // Vater matcht nur wegen Kind-ÜV → nur ÜV-Kinder zeigen
+                        $kinder = array_values(array_filter($kinder, fn($k) => $k['ueberverkauf_erlaubt']));
+                        $kinderGefiltertFuerSuche = true;
+                    }
+                }
+
+                // Auto-Expand: bei aktiver Suche ODER wenn Kinder gefiltert wurden
+                $autoExpand = $suchAktiv || $kinderGefiltertFuerSuche;
+
                 $hatKinder = count($kinder) > 0;
                 // Status-Chips für Vater
                 $statusChips = '';
@@ -503,8 +562,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td class="cb-sticky" style="text-align:center; width:28px">
                         <input type="checkbox" class="zeile-cb" value="<?= $a['id'] ?>">
                         <?php if ($hatKinder || $hatZustandsArtikel): ?>
+                            <?php $pfeilStart = $autoExpand ? '▼' : '▶'; ?>
                             <br><span id="pfeil-<?= $a['id'] ?>" onclick="toggleKinder(<?= $a['id'] ?>)"
-                                class="expand-arrow">▶</span>
+                                class="expand-arrow"><?= $pfeilStart ?></span>
                         <?php endif; ?>
                     </td>
                     <td class="thumb-cell">
@@ -557,7 +617,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             . formatBestand($kvk) . ' verkaufbar"';
                     }
                 ?>
-                    <tr class="kind-zeile-<?= $a['id'] ?> versteckt kind-zeile<?= !$k['aktiv'] ? ' row-inaktiv' : '' ?>">
+                    <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$k['aktiv'] ? ' row-inaktiv' : '' ?>">
                         <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $k['id'] ?>"></td>
                         <td class="thumb-cell">
                             <div class="artikel-thumb artikel-thumb-kind"></div>
@@ -598,7 +658,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     ];
                     $zaSuffix = $zustandLabels[$za['zustand']] ?? strtoupper($za['zustand']);
                 ?>
-                    <tr class="kind-zeile-<?= $a['id'] ?> versteckt kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
+                    <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
                         <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $za['id'] ?>"></td>
                         <td class="thumb-cell">
                             <div class="artikel-thumb artikel-thumb-kind"></div>
