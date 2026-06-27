@@ -151,19 +151,31 @@ class MesseSyncService
         ")->fetchAll();
 
         // Kassen-Konfiguration
-        $kasse = $this->db->prepare("SELECT * FROM kassen WHERE id = :id");
-        $kasse->execute([':id' => $sync['kasse_id']]);
-        $kasseConfig = $kasse->fetch();
+        $stmtKasse = $this->db->prepare("SELECT * FROM kassen WHERE id = :id");
+        $stmtKasse->execute([':id' => $sync['kasse_id']]);
+        $kasseConfig = $stmtKasse->fetch();
+
+        // Schnellwahl-Slots
+        $stmtSw = $this->db->prepare("
+            SELECT ksw.slot, ksw.artikel_id, ksw.label, a.name AS artikel_name
+            FROM kassen_schnellwahl ksw
+            LEFT JOIN artikel a ON a.id = ksw.artikel_id
+            WHERE ksw.kasse_id = :id
+            ORDER BY ksw.slot
+        ");
+        $stmtSw->execute([':id' => $sync['kasse_id']]);
+        $schnellwahl = $stmtSw->fetchAll();
 
         return [
-            'erfolg'     => true,
-            'sync_id'    => $syncId,
-            'sync_token' => $sync['sync_token'],
+            'erfolg'        => true,
+            'sync_id'       => $syncId,
+            'sync_token'    => $sync['sync_token'],
             'exportiert_am' => date('Y-m-d H:i:s'),
-            'kasse'      => $kasseConfig,
-            'lager_id'   => $lagerId,
-            'artikel'    => $artikel,
-            'gutscheine' => $gutscheine,
+            'kasse'         => $kasseConfig,
+            'lager_id'      => $lagerId,
+            'artikel'       => $artikel,
+            'gutscheine'    => $gutscheine,
+            'schnellwahl'   => $schnellwahl,
         ];
     }
 
@@ -185,7 +197,6 @@ class MesseSyncService
         }
 
         $bons         = $payload['bons']      ?? [];
-        $lagerId      = (int)$sync['lager_id'];
         $kasseId      = (int)$sync['kasse_id'];
         $bonCount     = 0;
         $umsatz       = 0.0;
@@ -335,13 +346,26 @@ class MesseSyncService
                     ]);
                 }
 
-                // Schwund: Ausgang aus Messe-Lager ohne Gegenbuchung
+                // Schwund: eigener Bewegungstyp 'schwund' für klare Filterbarkeit
                 if ($mengeSchwund > 0) {
-                    $lagerSvc->warenausgang([
+                    $lagerSvc->warenSchwund([
                         'artikel_id'  => $artId,
                         'lager_id'    => $vonLagerId,
                         'menge'       => $mengeSchwund,
                         'referenz'    => 'Schwund Messe Sync #' . $syncId,
+                        'benutzer_id' => $benutzerId,
+                    ]);
+                }
+
+                // Verkaufte Menge aus Messe-Lager ausbuchen
+                // (Offline-Kasse hat lokal gebucht; MariaDB-Stand war noch menge_raus)
+                $mengeVerkauft = (float)$umb['menge_raus'] - $mengeRueck - $mengeSchwund;
+                if ($mengeVerkauft > 0) {
+                    $lagerSvc->warenausgang([
+                        'artikel_id'  => $artId,
+                        'lager_id'    => $vonLagerId,
+                        'menge'       => $mengeVerkauft,
+                        'referenz'    => 'Messe-Verkäufe Sync #' . $syncId,
                         'benutzer_id' => $benutzerId,
                     ]);
                 }
@@ -387,7 +411,7 @@ class MesseSyncService
     public function getOffeneSyncs(int $kasseId): array
     {
         $stmt = $this->db->prepare("
-            SELECT s.*, l.bezeichnung AS lager_name
+            SELECT s.*, l.name AS lager_name
             FROM kassen_messe_sync s
             LEFT JOIN lager l ON l.id = s.lager_id
             WHERE s.kasse_id = :kid AND s.status = 'vorbereitet'

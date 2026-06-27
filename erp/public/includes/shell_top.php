@@ -63,6 +63,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '🛍', 'label' => 'Kanäle',      'href' => '/mealana/einstellungen/index.php?tab=kanaele'],
         ['icon' => '✉️', 'label' => 'Mail / SMTP', 'href' => '/mealana/einstellungen/index.php?tab=mail'],
         ['icon' => '⚙️', 'label' => 'System',      'href' => '/mealana/einstellungen/index.php?tab=system'],
+        ['icon' => '🖨️', 'label' => 'Kassen',      'href' => '/mealana/einstellungen/index.php?tab=kassen'],
     ],
     default => [],
 };

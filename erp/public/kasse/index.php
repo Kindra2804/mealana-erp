@@ -6,12 +6,19 @@ $service   = new KassenService();
 $kasseInfo = $service->getKasse(1);
 $pageTitle = 'Kasse — Startportal';
 require_once __DIR__ . '/shell_top.php';
+
+$istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
 ?>
 
 <div style="text-align:center;margin:50px 0 36px">
   <div style="font-size:32px;font-weight:900;color:#e67e22">MeaLana Kasse</div>
-  <div style="font-size:16px;color:#888;margin-top:6px">
-    <?= htmlspecialchars($kasseInfo['name'] ?? 'Hauptkasse') ?> · <?= date('d.m.Y') ?>
+  <div style="font-size:16px;color:#888;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:12px">
+    <span><?= htmlspecialchars($kasseInfo['name'] ?? 'Hauptkasse') ?> · <?= date('d.m.Y') ?></span>
+    <?php if ($istMesse): ?>
+      <span style="font-size:12px;font-weight:700;padding:3px 12px;border-radius:12px;background:#fff3e0;color:#e67e22;letter-spacing:.5px">MESSEBETRIEB</span>
+    <?php else: ?>
+      <span style="font-size:12px;font-weight:700;padding:3px 12px;border-radius:12px;background:#e8f5e9;color:#2e7d32;letter-spacing:.5px">ONLINE</span>
+    <?php endif; ?>
   </div>
 </div>
 

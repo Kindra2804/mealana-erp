@@ -37,6 +37,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         'kanaele'  => 'Kanäle',
         'mail'     => 'Mail / SMTP',
         'system'   => 'System',
+        'kassen'   => 'Kassen',
     ] as $tabId => $tabLabel): ?>
         <a href="?tab=<?= $tabId ?>"
            style="padding:8px 20px;font-size:13px;font-weight:600;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;
@@ -379,6 +380,64 @@ function testMail() {
         <button type="submit" class="btn btn-primary">System-Einstellungen speichern</button>
     </div>
 </form>
+<?php elseif ($aktTab === 'kassen'): ?>
+<!-- ═══════════ TAB: KASSEN ═══════════ -->
+<?php
+$kassen = $db->query("
+    SELECT k.*, l.name AS lager_name
+    FROM kassen k
+    LEFT JOIN lager l ON l.id = k.lager_id
+    ORDER BY k.id
+")->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <a href="kasse_edit.php?neu=1" class="btn btn-primary btn-sm">+ Neue Kasse</a>
+</div>
+
+<div class="card">
+    <div class="card-header">Registrierkassen</div>
+    <table class="erp-table" style="width:100%">
+        <thead>
+            <tr>
+                <th style="width:60px">Nr.</th>
+                <th>Name</th>
+                <th>Lager</th>
+                <th style="width:100px">Modus</th>
+                <th style="width:80px">RKSV-ID</th>
+                <th style="width:60px">Bon-Logo</th>
+                <th style="width:60px">Aktiv</th>
+                <th style="width:80px"></th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($kassen as $k): ?>
+            <tr>
+                <td><code><?= htmlspecialchars($k['kasse_nr']) ?></code></td>
+                <td><?= htmlspecialchars($k['name']) ?></td>
+                <td><?= htmlspecialchars($k['lager_name'] ?? '—') ?></td>
+                <td>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:10px;
+                        background:<?= $k['modus'] === 'online' ? 'var(--color-success-bg,#e8f5e9)' : '#fff3e0' ?>;
+                        color:<?= $k['modus'] === 'online' ? 'var(--color-success)' : '#e67e22' ?>">
+                        <?= $k['modus'] === 'online' ? 'Online' : 'Offline' ?>
+                    </span>
+                </td>
+                <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($k['rksv_kassen_id'] ?? '—') ?></td>
+                <td style="text-align:center"><?= $k['bon_logo'] ? '✓' : '—' ?></td>
+                <td style="text-align:center"><?= $k['aktiv'] ? '✓' : '—' ?></td>
+                <td>
+                    <a href="kasse_edit.php?id=<?= $k['id'] ?>" class="btn btn-secondary btn-sm">Bearbeiten</a>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if (empty($kassen)): ?>
+            <tr><td colspan="8" style="text-align:center;color:var(--color-text-muted);padding:20px">Noch keine Kassen angelegt.</td></tr>
+        <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

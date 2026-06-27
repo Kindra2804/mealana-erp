@@ -672,6 +672,12 @@ body {
 <div class="ph">
   <div class="ph-title">MeaLana · Kasse</div>
   <div class="ph-sub">Lager: <?= htmlspecialchars($lagerName) ?></div>
+  <div style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;letter-spacing:.4px;white-space:nowrap;
+              <?= $modus === 'offline'
+                  ? 'background:#451a03;color:#f59e0b;'
+                  : 'background:#052e16;color:#4ade80;' ?>">
+    <?= $modus === 'offline' ? 'MESSEBETRIEB' : 'ONLINE' ?>
+  </div>
   <?php if ($rksvId): ?>
   <div class="ph-rksv">
     <div class="ph-rksv-dot<?= $modus === 'offline' ? ' offline' : '' ?>"></div>
