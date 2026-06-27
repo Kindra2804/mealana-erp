@@ -40,3 +40,15 @@ Nur wenige **Stammkunden** zahlen auf Rechnung (Rechnungszahler).
 Fehlbestandsliste zeigt Artikel + Aufträge + Bestellstatus.
 
 **How to apply:** Im Einkauf-Modul und Lager-Modul muss Fehlbestand prominent sichtbar sein. Beim Wareneingang automatisch den Fehlbestand auflösen und betroffene Aufträge auf Pickliste setzen.
+
+## Offene Auswahl ("Mitgeben") — Stammkunden-Workflow
+
+Pendant zu LS-POS "Offene Auswahl": Stammkunde nimmt Ware mit OHNE sofortige Bezahlung. Bringt später alles oder einen Teil zurück, erst dann wird der Bon/Rechnung erstellt.
+
+**Ablauf:**
+1. Kasse: "Mitgeben"-Button → Kundenzuweisung Pflicht (kein Laufkunde)
+2. Positionen scannen → vorläufiger Datensatz (kein Bon, keine RKSV-Signatur)
+3. Kunde kommt zurück → Rückgabe-Positionen erfassen (negativ)
+4. Finalisieren → echter Bon + RKSV-Signatur + Rechnungsnummer
+
+**How to apply:** An der Kasse als eigener Button "Mitgeben ▷" (Amber/Orange) neben BEZAHLEN. Kundenzuweisung ist Pflichtfeld. Die offene Auswahl ist kein Bon — erst bei Finalisierung wird RKSV-Signatur erzeugt. Liste offener Auswahlvorgänge muss in der Kasse abrufbar sein.

@@ -41,8 +41,10 @@
 - [Gutschein-Modul Design](project_gutscheine.md) — ERP=Single Source of Truth, WooCommerce als Slave (kein Design/Text in WC), on+offline, 3 DB-Tabellen
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix, Twig+Dompdf Templates, WC-Sync umschaltbar, Packplatz eigene Seite
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Blocks (auftrag/addon/storno), Rechnung erst am Bon, besser als JTL; Maximalfall: Auftrag+AddOn+Rückgabe+GS gleichzeitig machbar
+- [Kassen-Verwaltung](project_kassen_verwaltung.md) — Kasse = konfigurierbare Instanz (Lager+Modus+RKSV-ID), Messe-Workflow (Umbuchung→Pre-Sync→Offline→Post-Sync→Rückkehr), Kasse 2 auch als Normal-Kasse nutzbar
 - [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen (Gruppe A/B/C/D), B2C=Brutto/B2B=Netto, Abholzettel+Barcode, Twig+Dompdf, WC=kein eigenes Rechnungssystem
 - [Installationsanleitung](project_installationsanleitung.md) — GEPLANT: Server-Setup von 0 (Composer, PHP-Ext., Migrations, Cronjobs, RKSV) für Jacky + Weitergabe
 - [Packplatz-Modul](project_packplatz.md) — Warenausgang fertig (Scan, EasyPak, Versandmail); offen: Picklisten-Manager, Intern, Retoure, Mail-Templates
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
+- [Inventur: Schwund-Typ](project_inventur_hinweis.md) — bewegungstyp 'schwund' seit Migration 083 vorhanden; LagerService::warenSchwund() nutzen, kein neuer Typ nötig

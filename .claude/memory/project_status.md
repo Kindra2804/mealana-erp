@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-27 (Session 12)
+Stand: 2026-06-27 (Session 13)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -84,7 +84,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Modul | Priorität | Anmerkung |
 |---|---|---|
 | Kasse Phase 2 | HOCH | RKSV/BFR BONit, Auftrag laden, Bon-Park |
-| Zentrales Dokumentenarchiv | MITTEL | alle Dokumente, Filter nach Typ+Zeitraum; wichtig für DATEV-Export |
+| ~~Zentrales Dokumentenarchiv~~ | ✅ FERTIG 2026-06-27 | Kassenbons via UNION ALL integriert; X/Z-Bons in Einstellungen/Kassen |
 | Inventur | MITTEL | inkl. Inventurliste (Druck) + mobile App |
 | Shop-Export / WooCommerce Sync | MITTEL | Design: db_design_entscheidungen.md |
 | Gutschein-Modul | MITTEL | Design: project_gutscheine.md |

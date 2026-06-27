@@ -18,19 +18,19 @@ $where  = ['1=1'];
 $params = [];
 
 if ($typ) {
-    $where[]       = 'ad.typ = :typ';
+    $where[]       = 'alle.typ = :typ';
     $params['typ'] = $typ;
 }
 if ($von) {
-    $where[]       = 'ad.erstellt_am >= :von';
+    $where[]       = 'alle.erstellt_am >= :von';
     $params['von'] = $von . ' 00:00:00';
 }
 if ($bis) {
-    $where[]       = 'ad.erstellt_am <= :bis';
+    $where[]       = 'alle.erstellt_am <= :bis';
     $params['bis'] = $bis . ' 23:59:59';
 }
 if ($suche) {
-    $where[]          = '(a.auftrag_nr LIKE :suche OR a.kunden_snapshot LIKE :suche2)';
+    $where[]          = '(alle.auftrag_nr LIKE :suche OR alle.kunden_snapshot LIKE :suche2)';
     $params['suche']  = '%' . $suche . '%';
     $params['suche2'] = '%' . $suche . '%';
 }
@@ -39,8 +39,24 @@ $whereStr = implode(' AND ', $where);
 
 // Anzahl für Paginierung
 $countStmt = $db->prepare("
-    SELECT COUNT(*) FROM auftrag_dokumente ad
-    JOIN auftraege a ON a.id = ad.auftrag_id
+    SELECT COUNT(*) FROM (
+        SELECT 
+            ad.typ, 
+            ad.erstellt_am, 
+            a.auftrag_nr, 
+            a.kunden_snapshot
+        FROM auftrag_dokumente ad
+        JOIN auftraege a ON a.id = ad.auftrag_id
+        UNION ALL
+        SELECT
+            IF(kb.storniert,'kassenbon_storno','kassenbon') COLLATE utf8mb4_unicode_ci,
+            kb.erstellt_am,
+            COALESCE(a.auftrag_nr, kb.bon_nr COLLATE utf8mb4_unicode_ci),
+            COALESCE(a.kunden_snapshot, '{}' COLLATE utf8mb4_unicode_ci)
+        FROM kassen_bons kb
+        LEFT JOIN auftraege a ON a.id = kb.auftrag_id
+        WHERE kb.typ IN ('verkauf', 'storno')
+    ) AS alle
     WHERE $whereStr
 ");
 $countStmt->execute($params);
@@ -49,28 +65,50 @@ $seitenAnzahl = max(1, (int)ceil($gesamtAnzahl / $proSeite));
 
 // Hauptabfrage
 $stmt = $db->prepare("
-    SELECT
-        ad.id,
-        ad.auftrag_id,
-        ad.typ,
-        ad.dateiname,
-        ad.erstellt_am,
-        a.auftrag_nr,
-        a.kunden_snapshot,
-        a.lieferstatus,
-        a.zahlungsstatus,
-        r.rechnung_nr,
-        r.storniert        AS rechnung_storniert,
-        b.formularname     AS erstellt_von_name
-    FROM auftrag_dokumente ad
-    JOIN auftraege a  ON a.id = ad.auftrag_id
-    LEFT JOIN rechnungen r ON r.auftrag_id = ad.auftrag_id
-                          AND r.storniert = 0
-                          AND ad.typ IN ('rechnung','gutschrift')
-    LEFT JOIN benutzer b ON b.id = ad.erstellt_von
-    WHERE $whereStr
-    ORDER BY ad.erstellt_am DESC
-    LIMIT :limit OFFSET :offset
+    SELECT * FROM (
+        SELECT
+            'auftrag_dok' COLLATE utf8mb4_unicode_ci AS quelle,
+            ad.id AS id,
+            ad.auftrag_id AS auftrag_id,
+            ad.typ AS typ,
+            ad.dateiname AS dateiname,
+            ad.erstellt_am AS erstellt_am,
+            a.auftrag_nr AS auftrag_nr,
+            a.kunden_snapshot AS kunden_snapshot,
+            a.lieferstatus AS lieferstatus,
+            a.zahlungsstatus AS zahlungsstatus,
+            r.rechnung_nr AS rechnung_nr,
+            r.storniert        AS rechnung_storniert,
+            b.formularname     AS erstellt_von_name
+        FROM auftrag_dokumente ad
+        JOIN auftraege a  ON a.id = ad.auftrag_id
+        LEFT JOIN rechnungen r ON r.auftrag_id = ad.auftrag_id
+                            AND r.storniert = 0
+                            AND ad.typ IN ('rechnung','gutschrift')
+        LEFT JOIN benutzer b ON b.id = ad.erstellt_von
+        UNION ALL
+        SELECT
+            'kassenbon' COLLATE utf8mb4_unicode_ci AS quelle,
+            kb.id AS id,
+            kb.auftrag_id AS auftrag_id,
+            IF(kb.storniert, 'kassenbon_storno', 'kassenbon') COLLATE utf8mb4_unicode_ci AS typ,
+            kb.bon_nr COLLATE utf8mb4_unicode_ci AS dateiname,
+            kb.erstellt_am AS erstellt_am,
+            COALESCE(a.auftrag_nr, kb.bon_nr COLLATE utf8mb4_unicode_ci) AS auftrag_nr,
+            COALESCE(a.kunden_snapshot, '{}' COLLATE utf8mb4_unicode_ci) AS kunden_snapshot,
+            NULL AS lieferstatus,
+            kb.zahlungsart COLLATE utf8mb4_unicode_ci AS zahlungsstatus,
+            kb.bon_nr COLLATE utf8mb4_unicode_ci AS rechnung_nr,
+            kb.storniert AS rechnung_storniert,
+            b.formularname AS erstellt_von_name
+        FROM kassen_bons kb
+        LEFT JOIN auftraege a ON a.id = kb.auftrag_id
+        LEFT JOIN benutzer b ON b.id = kb.benutzer_id
+        WHERE kb.typ IN ('verkauf', 'storno')
+    ) AS alle
+     WHERE $whereStr
+     ORDER BY alle.erstellt_am DESC
+     LIMIT :limit OFFSET :offset
 ");
 $stmt->bindValue(':limit',  $proSeite, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset,   PDO::PARAM_INT);
@@ -87,6 +125,8 @@ $typen = [
     'gutschrift'         => 'Gutschrift',
     'abholzettel'        => 'Abholzettel',
     'mahnung'            => 'Mahnung',
+    'kassenbon'          => 'Kassenbon',
+    'kassenbon_storno'   => 'Kassenbon Storno',
 ];
 
 $typLabels = [
@@ -96,6 +136,8 @@ $typLabels = [
     'gutschrift'           => ['label' => 'GS',  'color' => '#dc2626', 'bg' => '#fef2f2'],
     'abholzettel'          => ['label' => 'AZ',  'color' => '#7c3aed', 'bg' => '#f5f3ff'],
     'mahnung'              => ['label' => 'MA',  'color' => '#d97706', 'bg' => '#fffbeb'],
+    'kassenbon'            => ['label' => 'KB',  'color' => '#16a34a', 'bg' => '#dcfce7'],
+    'kassenbon_storno'     => ['label' => 'KS',  'color' => '#dc2626', 'bg' => '#fef2f2'],
 ];
 
 // ── Helper ─────────────────────────────────────────────────────────────────
@@ -125,35 +167,99 @@ require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
 <style>
-.dok-filter {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: flex-end;
-    margin-bottom: 18px;
-}
-.dok-filter label { font-size: 11px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .05em; color: var(--color-text-muted); display: block; margin-bottom: 4px; }
-.dok-filter input, .dok-filter select {
-    padding: 6px 10px; border: 1px solid var(--color-border);
-    border-radius: 4px; font-size: 13px; background: var(--color-card); color: var(--color-text);
-}
-.dok-chip {
-    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .05em; padding: 2px 8px; border-radius: 10px; white-space: nowrap;
-}
-.dok-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.dok-table th { text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--color-border);
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-    color: var(--color-text-muted); white-space: nowrap; }
-.dok-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
-.dok-table tr:hover td { background: var(--color-bg); }
-.dok-pagination { display: flex; gap: 6px; margin-top: 18px; align-items: center; font-size: 13px; }
-.dok-pagination a, .dok-pagination span {
-    padding: 5px 10px; border-radius: 4px; border: 1px solid var(--color-border);
-    text-decoration: none; color: var(--color-text); }
-.dok-pagination a:hover { background: var(--color-bg); }
-.dok-pagination .aktiv { background: var(--color-nav); color: #fff; border-color: var(--color-nav); }
+    .dok-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+        margin-bottom: 18px;
+    }
+
+    .dok-filter label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--color-text-muted);
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .dok-filter input,
+    .dok-filter select {
+        padding: 6px 10px;
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        font-size: 13px;
+        background: var(--color-card);
+        color: var(--color-text);
+    }
+
+    .dok-chip {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        padding: 2px 8px;
+        border-radius: 10px;
+        white-space: nowrap;
+    }
+
+    .dok-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .dok-table th {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 2px solid var(--color-border);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+    }
+
+    .dok-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--color-border);
+        vertical-align: middle;
+    }
+
+    .dok-table tr:hover td {
+        background: var(--color-bg);
+    }
+
+    .dok-pagination {
+        display: flex;
+        gap: 6px;
+        margin-top: 18px;
+        align-items: center;
+        font-size: 13px;
+    }
+
+    .dok-pagination a,
+    .dok-pagination span {
+        padding: 5px 10px;
+        border-radius: 4px;
+        border: 1px solid var(--color-border);
+        text-decoration: none;
+        color: var(--color-text);
+    }
+
+    .dok-pagination a:hover {
+        background: var(--color-bg);
+    }
+
+    .dok-pagination .aktiv {
+        background: var(--color-nav);
+        color: #fff;
+        border-color: var(--color-nav);
+    }
 </style>
 
 <div class="card" style="padding:20px">
@@ -163,7 +269,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div>
             <label>Suche</label>
             <input type="text" name="suche" value="<?= htmlspecialchars($suche) ?>"
-                   placeholder="Auftragsnr. oder Kundenname" style="width:200px">
+                placeholder="Auftragsnr. oder Kundenname" style="width:200px">
         </div>
         <div>
             <label>Typ</label>
@@ -193,101 +299,110 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php if (empty($dokumente)): ?>
         <p style="color:var(--color-text-muted);text-align:center;padding:40px">Keine Dokumente gefunden.</p>
     <?php else: ?>
-    <table class="dok-table">
-        <thead>
-            <tr>
-                <th>Typ</th>
-                <th>Auftrag</th>
-                <th>Kunde</th>
-                <th>Dokument-Nr.</th>
-                <th>Erstellt am</th>
-                <th>Erstellt von</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-        <?php foreach ($dokumente as $dok):
-            $kunden = json_decode($dok['kunden_snapshot'] ?? '{}', true);
-            $name   = kundenName($dok['kunden_snapshot'] ?? '{}');
-            $tInfo  = $typLabels[$dok['typ']] ?? ['label' => strtoupper($dok['typ']), 'color' => '#64748b', 'bg' => '#f1f5f9'];
-            $istStorniert = $dok['rechnung_storniert'] ?? false;
-        ?>
-        <tr>
-            <td>
-                <span class="dok-chip" style="background:<?= $tInfo['bg'] ?>;color:<?= $tInfo['color'] ?>">
-                    <?= $tInfo['label'] ?>
-                </span>
-            </td>
-            <td>
-                <a href="/mealana/auftraege/detail.php?id=<?= $dok['auftrag_id'] ?>"
-                   style="font-weight:600;text-decoration:none;color:var(--color-nav)">
-                    <?= htmlspecialchars($dok['auftrag_nr']) ?>
-                </a>
-            </td>
-            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                <?= htmlspecialchars($name) ?>
-            </td>
-            <td style="font-family:monospace;font-size:12px">
-                <?php if ($dok['rechnung_nr']): ?>
-                    <?= htmlspecialchars($dok['rechnung_nr']) ?>
-                <?php else: ?>
-                    <span style="color:var(--color-text-muted)"><?= htmlspecialchars(pathinfo($dok['dateiname'], PATHINFO_FILENAME)) ?></span>
-                <?php endif; ?>
-            </td>
-            <td style="white-space:nowrap;color:var(--color-text-muted)">
-                <?= date('d.m.Y H:i', strtotime($dok['erstellt_am'])) ?>
-            </td>
-            <td style="color:var(--color-text-muted)">
-                <?= htmlspecialchars($dok['erstellt_von_name'] ?? '—') ?>
-            </td>
-            <td>
-                <?php if ($istStorniert): ?>
-                    <span style="font-size:11px;color:#dc2626;font-weight:600">STORNIERT</span>
-                <?php elseif ($dok['zahlungsstatus'] === 'storniert'): ?>
-                    <span style="font-size:11px;color:#6b7280">Auftrag storniert</span>
-                <?php else: ?>
-                    <span style="font-size:11px;color:#16a34a">Aktiv</span>
-                <?php endif; ?>
-            </td>
-            <td style="white-space:nowrap">
-                <a href="/mealana/auftraege/dokument_download.php?auftrag_id=<?= $dok['auftrag_id'] ?>&datei=<?= urlencode($dok['dateiname']) ?>"
-                   target="_blank"
-                   class="btn btn-secondary"
-                   style="padding:3px 10px;font-size:12px">
-                    PDF
-                </a>
-            </td>
-        </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
+        <table class="dok-table">
+            <thead>
+                <tr>
+                    <th>Typ</th>
+                    <th>Auftrag</th>
+                    <th>Kunde</th>
+                    <th>Dokument-Nr.</th>
+                    <th>Erstellt am</th>
+                    <th>Erstellt von</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($dokumente as $dok):
+                    $kunden = json_decode($dok['kunden_snapshot'] ?? '{}', true);
+                    $name   = kundenName($dok['kunden_snapshot'] ?? '{}');
+                    $tInfo  = $typLabels[$dok['typ']] ?? ['label' => strtoupper($dok['typ']), 'color' => '#64748b', 'bg' => '#f1f5f9'];
+                    $istStorniert = $dok['rechnung_storniert'] ?? false;
+                ?>
+                    <tr>
+                        <td>
+                            <span class="dok-chip" style="background:<?= $tInfo['bg'] ?>;color:<?= $tInfo['color'] ?>">
+                                <?= $tInfo['label'] ?>
+                            </span>
+                        </td>
+                        <td>
+                            <a href="/mealana/auftraege/detail.php?id=<?= $dok['auftrag_id'] ?>"
+                                style="font-weight:600;text-decoration:none;color:var(--color-nav)">
+                                <?= htmlspecialchars($dok['auftrag_nr']) ?>
+                            </a>
+                        </td>
+                        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                            <?= htmlspecialchars($name) ?>
+                        </td>
+                        <td style="font-family:monospace;font-size:12px">
+                            <?php if ($dok['rechnung_nr']): ?>
+                                <?= htmlspecialchars($dok['rechnung_nr']) ?>
+                            <?php else: ?>
+                                <span style="color:var(--color-text-muted)"><?= htmlspecialchars(pathinfo($dok['dateiname'], PATHINFO_FILENAME)) ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="white-space:nowrap;color:var(--color-text-muted)">
+                            <?= date('d.m.Y H:i', strtotime($dok['erstellt_am'])) ?>
+                        </td>
+                        <td style="color:var(--color-text-muted)">
+                            <?= htmlspecialchars($dok['erstellt_von_name'] ?? '—') ?>
+                        </td>
+                        <td>
+                            <?php if ($istStorniert): ?>
+                                <span style="font-size:11px;color:#dc2626;font-weight:600">STORNIERT</span>
+                            <?php elseif ($dok['zahlungsstatus'] === 'storniert'): ?>
+                                <span style="font-size:11px;color:#6b7280">Auftrag storniert</span>
+                            <?php else: ?>
+                                <span style="font-size:11px;color:#16a34a">Aktiv</span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="white-space:nowrap">
+                            <?php if ($dok['quelle'] === 'kassenbon') { ?>
+                                <a href="/mealana/kasse/bon_druck.php?id=<?= $dok['id'] ?>&datei=<?= urlencode($dok['dateiname']) ?>"
+                                    target="_blank"
+                                    class="btn btn-secondary"
+                                    style="padding:3px 10px;font-size:12px">
+                                    PDF
+                                </a>
+                            <?php } else { ?>
+                                <a href="/mealana/auftraege/dokument_download.php?auftrag_id=<?= $dok['auftrag_id'] ?>&datei=<?= urlencode($dok['dateiname']) ?>"
+                                    target="_blank"
+                                    class="btn btn-secondary"
+                                    style="padding:3px 10px;font-size:12px">
+                                    PDF
+                                </a>
+                            <?php } ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
 
-    <!-- Paginierung -->
-    <?php if ($seitenAnzahl > 1): ?>
-    <div class="dok-pagination">
-        <span style="color:var(--color-text-muted);margin-right:6px">
-            Seite <?= $seite ?> von <?= $seitenAnzahl ?>
-        </span>
-        <?php if ($seite > 1): ?>
-            <a href="<?= buildUrl(['seite' => $seite - 1]) ?>">‹ Zurück</a>
+        <!-- Paginierung -->
+        <?php if ($seitenAnzahl > 1): ?>
+            <div class="dok-pagination">
+                <span style="color:var(--color-text-muted);margin-right:6px">
+                    Seite <?= $seite ?> von <?= $seitenAnzahl ?>
+                </span>
+                <?php if ($seite > 1): ?>
+                    <a href="<?= buildUrl(['seite' => $seite - 1]) ?>">‹ Zurück</a>
+                <?php endif; ?>
+                <?php
+                $start = max(1, $seite - 2);
+                $end   = min($seitenAnzahl, $seite + 2);
+                for ($i = $start; $i <= $end; $i++):
+                ?>
+                    <?php if ($i === $seite): ?>
+                        <span class="aktiv"><?= $i ?></span>
+                    <?php else: ?>
+                        <a href="<?= buildUrl(['seite' => $i]) ?>"><?= $i ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+                <?php if ($seite < $seitenAnzahl): ?>
+                    <a href="<?= buildUrl(['seite' => $seite + 1]) ?>">Weiter ›</a>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
-        <?php
-        $start = max(1, $seite - 2);
-        $end   = min($seitenAnzahl, $seite + 2);
-        for ($i = $start; $i <= $end; $i++):
-        ?>
-            <?php if ($i === $seite): ?>
-                <span class="aktiv"><?= $i ?></span>
-            <?php else: ?>
-                <a href="<?= buildUrl(['seite' => $i]) ?>"><?= $i ?></a>
-            <?php endif; ?>
-        <?php endfor; ?>
-        <?php if ($seite < $seitenAnzahl): ?>
-            <a href="<?= buildUrl(['seite' => $seite + 1]) ?>">Weiter ›</a>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
     <?php endif; ?>
 </div>
 
