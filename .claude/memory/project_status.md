@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-27 (Session 13)
+Stand: 2026-06-27 (Session 14)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -85,14 +85,13 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 |---|---|---|
 | Kasse Phase 2 | HOCH | RKSV/BFR BONit, Auftrag laden, Bon-Park |
 | **Auth & Benutzer-Cluster** | **HOCH** | **Zusammenhängend, in dieser Reihenfolge bauen:** |
-| Login / Logout (Shell) | HOCH | Basis für alles weitere; rechts oben in Shell |
-| Anmeldeschirm + Rollenauswahl | HOCH | nach Login: ERP / Packplatz / Kasse je nach Rechten |
-| Benutzer-Profil UI | HOCH | Namen, Formularname, E-Mail ändern (derzeit nur in DB) |
-| Passwort ändern | HOCH | via E-Mail-Link (Mail-Infra bereits vorhanden) |
+| ~~Login / Logout (Shell)~~ | ✅ FERTIG 2026-06-27 | login.php gestylt, Shell-Header mit Profil-Link + Abmelden |
+| ~~Anmeldeschirm + Rollenauswahl~~ | ✅ FERTIG 2026-06-27 | start.php: Begrüßung + 3 Kacheln (ERP/Kasse/Packplatz) |
+| ~~Benutzer-Profil UI~~ | ✅ FERTIG 2026-06-27 | benutzer/profil.php: Stammdaten + Passwort ändern; Barbara-Account Migration 084 |
 | Rechteverwaltung | MITTEL | Admin-Seite: Rollen zuweisen; eher für Weitergabe |
 | Anmeldekontrolle / Zwangsabmeldung | MITTEL | Session-Management; für Weitergabe (Praktikanten) |
 | ~~Zentrales Dokumentenarchiv~~ | ✅ FERTIG 2026-06-27 | Kassenbons via UNION ALL integriert; X/Z-Bons in Einstellungen/Kassen |
-| Dashboard | MITTEL | Lagerwert, Low-Stock, Tagesübersicht; design_mockup.svg als Basis |
+| Dashboard | MITTEL | Lagerwert, Low-Stock, Tagesübersicht; design_mockup.svg als Basis — wenn fertig: ERP-Kachel in start.php auf dashboard.php umlenken (derzeit artikel/liste.php) |
 | Log-Aufbereitung + Shell-Footer | MITTEL | info/warn/error Klassifizierung; Zeile in Shell-Bottom (siehe project_logger_ui.md) |
 | Inventur | MITTEL | inkl. Inventurliste (Druck) + mobile App |
 | Shop-Export / WooCommerce Sync | MITTEL | Design: db_design_entscheidungen.md |

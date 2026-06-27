@@ -93,22 +93,25 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <img src="/mealana/img/logo.png" alt="MeaLana ERP">
             </a>
             <div class="erp-nav-links">
-                <a href="/mealana/artikel/liste.php"      class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
+                <a href="/mealana/artikel/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
                 <a href="/mealana/lager/wareneingang.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
-                <a href="/mealana/kunden/liste.php"       class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
-                <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf','lieferanten']) ? 'active' : '' ?>">Einkauf</a>
-                <a href="/mealana/partner/liste.php"      class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
-                <a href="/mealana/auftraege/liste.php"    class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
-                <a href="#" title="Versand — kommt bald"      class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
-                <a href="#" title="Retouren — kommt bald"     class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
-                <a href="#" title="Buchhaltung — kommt bald"  class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
+                <a href="/mealana/kunden/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
+                <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
+                <a href="/mealana/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
+                <a href="/mealana/auftraege/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
+                <a href="#" title="Versand — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
+                <a href="#" title="Retouren — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
+                <a href="#" title="Buchhaltung — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-icons">
                 <a href="/mealana/bedienungsanleitung.php" title="Bedienungsanleitung" class="erp-nav-icon">📖</a>
                 <a href="/mealana/einstellungen/index.php" title="Einstellungen" class="erp-nav-icon <?= ($activeModule ?? '') === 'einstellungen' ? 'active' : '' ?>">⚙️</a>
-                <a href="#" title="Super-Admin — kommt bald"   class="erp-nav-icon erp-nav-link-disabled">···</a>
+                <a href="#" title="Super-Admin — kommt bald" class="erp-nav-icon erp-nav-link-disabled">···</a>
             </div>
-            <div class="erp-nav-user">👤 Karl</div>
+            <div class="erp-nav-user">
+                <a href="/mealana/benutzer/profil.php" style="color:white;text-decoration:none">👤 <?= htmlspecialchars(Auth::benutzer()['formularname']) ?></a>
+                <a class="btn" href="/mealana/logout.php" style="color:white;font-size:11px;margin-left:6px">Abmelden</a>
+            </div>
         </nav>
         <div class="erp-actionbar"><?= $actionBarContent ?? '' ?></div>
         <aside class="erp-sidebar">
@@ -226,7 +229,9 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                         <?php endif; ?>
                     </nav>
                 </div>
-                <script>window.MEALANA_AKTIV_KAT = <?= (int)($aktivKatId ?? 0) ?>;</script>
+                <script>
+                    window.MEALANA_AKTIV_KAT = <?= (int)($aktivKatId ?? 0) ?>;
+                </script>
                 <script src="/mealana/js/shell.js"></script>
 
                 <!-- Neue Kategorie Modal -->

@@ -5,3 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/../../src/core/Auth.php';
 Auth::check();
+// Browser darf keine ERP-Seiten cachen — Back-Button nach Logout zeigt sonst alte Seite
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
