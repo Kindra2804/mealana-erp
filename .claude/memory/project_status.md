@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-26 (Session 11)
+Stand: 2026-06-27 (Session 12)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -22,7 +22,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ```
 
 ## Schema-Referenz
-- 76 Migrations angewendet (001–076)
+- 77 Migrations angewendet (001–077)
 - Wichtige neue Tabellen: auftrag_zahlungen (076), mahnungen (069), shops (067), auftraege/auftrag_positionen/rechnungen/auftrag_dokumente/auftrag_statuslog (060–062)
 - Dump aktualisieren: `& "C:\xampp\mysql\bin\mysqldump.exe" --host=localhost --user=root --no-tablespaces --routines --skip-comments mealana_erp | Out-File -FilePath "D:\ERP\mealana\erp\database\schema_current.sql" -Encoding utf8`
 
@@ -66,12 +66,18 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ### Mail-Infrastruktur ✅ NEU (2026-06-25)
 ### Mahnwesen-Cronjob ✅ NEU (2026-06-25)
 
+### Kasse/POS ✅ Phase 1 FERTIG (2026-06-27)
+- Migration 077: kassen, kassen_bons, kassen_bon_positionen, kassenbuch, offene_auswahl
+- public/kasse/: 16 Dateien — index, bon, ajax_artikel, bon_speichern, bon_druck, kassenbuch(+speichern), kassensturz(+speichern), offene_auswahl(+speichern+verarbeiten), bon_journal, bon_stornieren
+- KassenService: erstelleBon, storniereBon, findArtikelByCode(FIFO-Charge), X-Bon/Z-Bon, Kassenbuch, Offene Auswahl
+- Features: EAN-Scan, Vater→Variante-Auswahl, Divers-Artikel, Rabatt, Bar+Rückgeld, Karte extern, Gutschein, Kombi, 80mm Druck, Zählhilfe
+- Phase 2 offen: RKSV/BFR-BONit, Auftrag laden (Abholung), Bon-Park, ZVT
+
 ## 🔴 Noch nicht gebaut (Reihenfolge = geplante Priorität)
 
 | Modul | Priorität | Anmerkung |
 |---|---|---|
-| Packplatz | HOCH | eigenes Modul public/packplatz/, Tablet-Touch-freundlich |
-| Kasse/POS | HOCH (RKSV-Pflicht AT) | Design: project_kasse_bon_design.md |
+| Kasse Phase 2 | HOCH | RKSV/BFR BONit, Auftrag laden, Bon-Park |
 | Zentrales Dokumentenarchiv | MITTEL | alle Dokumente, Filter nach Typ+Zeitraum; wichtig für DATEV-Export |
 | Inventur | MITTEL | inkl. Inventurliste (Druck) + mobile App |
 | Shop-Export / WooCommerce Sync | MITTEL | Design: db_design_entscheidungen.md |
