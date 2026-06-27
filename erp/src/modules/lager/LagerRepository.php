@@ -215,6 +215,39 @@ class LagerRepository
     }
 
     /**
+     * Wie reduziereBestand(), aber erlaubt negativen Bestand (für Kasse-Verkauf bei 0-Bestand).
+     * Verwendet kein GREATEST() — die Bewegung wird korrekt geloggt.
+     */
+    public function reduziereBestandKasse(int $artikelId, int $lagerId, float $menge): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE lagerbestand
+            SET bestand = bestand - :menge, geaendert_am = NOW()
+            WHERE artikel_id = :aid AND lager_id = :lid AND charge IS NULL
+        ");
+        $stmt->execute(['menge' => $menge, 'aid' => $artikelId, 'lid' => $lagerId]);
+
+        if ($stmt->rowCount() === 0) {
+            $stmt2 = $this->db->prepare("
+                UPDATE lagerbestand
+                SET bestand = bestand - :menge, geaendert_am = NOW()
+                WHERE artikel_id = :aid AND lager_id = :lid
+                ORDER BY bestand DESC LIMIT 1
+            ");
+            $stmt2->execute(['menge' => $menge, 'aid' => $artikelId, 'lid' => $lagerId]);
+
+            // Kein Lagerbestand-Eintrag vorhanden → negativen Eintrag anlegen
+            if ($stmt2->rowCount() === 0) {
+                $this->db->prepare("
+                    INSERT INTO lagerbestand (artikel_id, lager_id, bestand, geaendert_am)
+                    VALUES (:aid, :lid, :neg, NOW())
+                    ON DUPLICATE KEY UPDATE bestand = bestand - :menge2, geaendert_am = NOW()
+                ")->execute(['aid' => $artikelId, 'lid' => $lagerId, 'neg' => -$menge, 'menge2' => $menge]);
+            }
+        }
+    }
+
+    /**
      * Speichert oder aktualisiert einen Lagerbestand-Eintrag.
      *
      * WICHTIG: Zwei unterschiedliche Code-Pfade je nach Charge:

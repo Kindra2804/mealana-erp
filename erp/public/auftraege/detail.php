@@ -62,6 +62,15 @@ $kl  = $kanalLabels[$auftrag['kanal']]             ?? ['label' => $auftrag['kana
 
 $istStorniert = in_array($auftrag['lieferstatus'], ['storniert']);
 $sperrZustände = ['versendet', 'abgeschlossen', 'storniert'];
+
+// Kassen-Auftrag: eigene Logik, keine normalen Dokumente erlaubt
+$istKasse  = ($auftrag['kanal'] === 'kasse');
+$kasseBon  = null;
+if ($istKasse) {
+    $stmtBon = $db->prepare("SELECT id, bon_nr FROM kassen_bons WHERE auftrag_id = :aid AND typ='verkauf' LIMIT 1");
+    $stmtBon->execute([':aid' => $id]);
+    $kasseBon = $stmtBon->fetch() ?: null;
+}
 $istGesperrt = in_array($auftrag['lieferstatus'], $sperrZustände);
 
 // Adress-Snapshots dekodieren
@@ -390,7 +399,26 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div style="margin-top:24px;">
     <h3 style="margin-bottom:10px;">Dokumente</h3>
 
-    <!-- Erzeugen-Buttons -->
+    <?php if ($istKasse): ?>
+    <!-- Kassen-Auftrag: Kassenbon ist der Beleg, keine zusätzlichen Dokumente erlaubt -->
+    <div style="background:#fff8e1; border:1px solid #f0c040; border-radius:6px;
+                padding:12px 16px; margin-bottom:14px; font-size:0.92em; color:#7a5f00;">
+        Dieser Auftrag wurde an der Kasse erstellt. Der Kassenbon ist der steuerliche Beleg —
+        eine zusätzliche Rechnung würde zur Doppelbesteuerung führen und ist daher gesperrt.
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+        <?php if ($kasseBon): ?>
+            <a href="/mealana/kasse/bon_druck.php?id=<?= $kasseBon['id'] ?>" target="_blank"
+               class="erp-btn erp-btn-secondary">
+                Kassenbon <?= htmlspecialchars($kasseBon['bon_nr']) ?> drucken
+            </a>
+        <?php else: ?>
+            <span style="color:#aaa; font-size:0.9em;">Kassenbon nicht gefunden.</span>
+        <?php endif; ?>
+    </div>
+
+    <?php else: ?>
+    <!-- Erzeugen-Buttons (normale Aufträge) -->
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
         <?php if ($vorhandeneRechnung): ?>
             <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px;
@@ -424,9 +452,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </form>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
-    <!-- Bereits erzeugte Dokumente -->
-    <?php if (!empty($dokumente)): ?>
+    <!-- Bereits erzeugte Dokumente (nur bei normalen Aufträgen) -->
+    <?php if (!$istKasse && !empty($dokumente)): ?>
         <table class="erp-table" style="max-width:700px;">
             <thead>
                 <tr>

@@ -312,6 +312,52 @@ class LagerService
         return ['erfolg' => true];
     }
 
+    /**
+     * Wie warenausgang(), aber erlaubt negativen Bestand.
+     * Für Kasse-Verkauf wenn ueberverkauf_erlaubt=1 und Bestand=0.
+     * Bewegungslog zeigt den echten Wert (z.B. vorher=0, nachher=-1).
+     */
+    public function warenausgangKasse(array $data): array
+    {
+        $artikelId = (int)($data['artikel_id'] ?? 0);
+        $lagerId   = (int)($data['lager_id']   ?? 0);
+        $menge     = (float)($data['menge']     ?? 0);
+
+        if (!$artikelId || !$lagerId || $menge <= 0) {
+            return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Warenausgang'];
+        }
+
+        $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
+        $this->repo->reduziereBestandKasse($artikelId, $lagerId, $menge);
+        $bestandNachher = $bestandVorher - $menge; // kein max(0,...) — erlaubt negativ
+
+        $bewegungId = $this->repo->insertBewegung([
+            'artikel_id'      => $artikelId,
+            'lager_id'        => $lagerId,
+            'lieferant_id'    => null,
+            'ek_preis'        => null,
+            'charge'          => null,
+            'bewegungstyp'    => 'ausgang',
+            'menge'           => $menge,
+            'bestand_vorher'  => $bestandVorher,
+            'bestand_nachher' => $bestandNachher,
+            'referenz'        => $data['referenz'] ?? null,
+            'notiz'           => $data['notiz']    ?? null,
+            'benutzer_id'     => $data['benutzer_id'] ?? null,
+        ]);
+
+        $this->pruefAuslaufartikelStatus($artikelId, $bestandNachher);
+
+        Logger::log('kasse.warenausgang', 'lagerbestand', $bewegungId, [
+            'artikel_id'      => $artikelId,
+            'lager_id'        => $lagerId,
+            'menge'           => $menge,
+            'bestand_nachher' => $bestandNachher,
+        ]);
+
+        return ['erfolg' => true];
+    }
+
     /** Gibt alle Lagerbestand-Einträge zurück bei denen die Charge noch nachzutragen ist. */
     public function getNachzutragendeChargen(): array
     {

@@ -25,6 +25,18 @@ Wird erstellt wenn System produktionsreif ist (oder kurz davor).
 - RKSV/BFR-BONit Registrierung + Kassen-Konfiguration (AT-Pflicht)
 - Erster Benutzer (superadmin) anlegen
 
+## System-Stammdaten die automatisch bei Erstinstallation angelegt werden müssen
+
+Analog zu **Jarvis** (Benutzer id=2, username='system') gibt es System-Stammdaten die fix vorhanden sein müssen:
+
+| Was | Artikelnummer | Zweck | Referenz im Code |
+|---|---|---|---|
+| Diverses (Kasse) | `99-9999` | FK-Platzhalter in auftrag_positionen für freie Kassen-Positionen (Divers-Artikel ohne echtem Artikel-Datensatz) | `KassenService::getDiversArtikelId()` sucht via artikelnummer, keine hardcodierte ID |
+
+**Warum:** `auftrag_positionen.artikel_id NOT NULL` — Divers-Positionen an der Kasse brauchen einen echten Artikel-FK, sonst fehlen sie in der Auftrags-Übersicht.
+
+**Wichtig für Installation:** Dieser Artikel muss VOR der ersten Kassenbuchung existieren. `getDiversArtikelId()` fällt graceful zurück (überspringt die Position wenn nicht gefunden), aber das ist nur ein Fallback. Korrekt: Migration 078 bei Erstinstallation ausführen.
+
 ## Zielgruppe
 
 - Jacky selbst (beim Umzug auf Produktiv-Server)

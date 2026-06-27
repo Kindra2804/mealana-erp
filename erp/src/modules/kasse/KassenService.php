@@ -45,11 +45,11 @@ class KassenService
                 a.charge_pflicht,
                 a.ueberverkauf_erlaubt,
                 a.aktiv,
-                sk.prozentsatz        AS steuer_prozent,
+                sk.satz               AS steuer_prozent,
                 COALESCE(
                     (SELECT ap.brutto_vk
                      FROM artikel_preise ap
-                     INNER JOIN kundengruppen kg ON kg.id = ap.kunden_gruppe_id AND kg.ist_standard = 1
+                     INNER JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
                      WHERE ap.artikel_id = a.id
                        AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
                        AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= CURDATE())
@@ -107,11 +107,11 @@ class KassenService
                 a.name                AS bezeichnung,
                 a.artikelnummer,
                 a.charge_pflicht,
-                sk.prozentsatz        AS steuer_prozent,
+                sk.satz               AS steuer_prozent,
                 COALESCE(
                     (SELECT ap.brutto_vk
                      FROM artikel_preise ap
-                     INNER JOIN kundengruppen kg ON kg.id = ap.kunden_gruppe_id AND kg.ist_standard = 1
+                     INNER JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
                      WHERE ap.artikel_id = a.id
                        AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
                        AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= CURDATE())
@@ -225,18 +225,119 @@ class KassenService
 
                 // Lager ausbuchen (nur echte Artikel, nicht Divers)
                 if (!empty($pos['artikel_id'])) {
+                    $artId    = (int)$pos['artikel_id'];
+                    $posMenge = (float)($pos['menge'] ?? 1);
+                    $kasseNr  = explode('-', $bonNr)[0]; // z.B. 'K1'
+
+                    // Korrekturbuchung wenn Bestand nicht ausreicht
+                    // (Artikel war physisch vorhanden, Systembestand war falsch)
+                    $aktBestand = $this->getAktuellerBestand($artId, $lagerId);
+                    if ($aktBestand < $posMenge) {
+                        $korrMenge = $posMenge - max(0.0, $aktBestand);
+                        $lagerSvc->wareneingang([
+                            'artikel_id'  => $artId,
+                            'lager_id'    => $lagerId,
+                            'menge'       => $korrMenge,
+                            'referenz'    => 'Korrekturbuchung ' . $kasseNr . ' – ' . $bonNr,
+                            'notiz'       => 'Automatische Korrekturbuchung bei Kassenverkauf (Überverkauf bestätigt)',
+                            'benutzer_id' => $benutzerId,
+                        ]);
+                    }
+
                     $lagerSvc->warenausgang([
-                        'artikel_id'  => (int)$pos['artikel_id'],
+                        'artikel_id'  => $artId,
                         'lager_id'    => $lagerId,
-                        'menge'       => (float)($pos['menge'] ?? 1),
+                        'menge'       => $posMenge,
                         'referenz'    => 'Kassenbon ' . $bonNr,
                         'benutzer_id' => $benutzerId,
                     ]);
                 }
             }
 
+            // Auftrag-Eintrag anlegen (kanal='kasse') → erscheint in auftraege/liste.php
+            $netto = 0.0;
+            $steuer = 0.0;
+            foreach ($positionen as $p) {
+                $zeileBrutto = (float)($p['menge'] ?? 1)
+                    * (float)($p['einzelpreis_brutto'] ?? 0)
+                    * (1 - (float)($p['rabatt_prozent'] ?? 0) / 100);
+                $faktor   = 1 + ((float)($p['steuer_prozent'] ?? 0) / 100);
+                $zeileNet = $faktor > 0 ? $zeileBrutto / $faktor : $zeileBrutto;
+                $netto   += $zeileNet;
+                $steuer  += $zeileBrutto - $zeileNet;
+            }
+            $aufZahlungsart = match($bonDaten['zahlungsart'] ?? 'bar') {
+                'bar'       => 'bar',
+                'gutschein' => 'gutschein',
+                default     => 'gemischt',
+            };
+            $kundenSnapshot = $bonDaten['kunden_id']
+                ? null
+                : json_encode(['name' => 'Laufkunde', 'kundennummer' => '-'], JSON_UNESCAPED_UNICODE);
+            $stmtAuf = $this->db->prepare("
+                INSERT INTO auftraege
+                    (auftrag_nr, kunden_id, kunden_snapshot, kanal,
+                     zahlungsstatus, lieferstatus, zahlungsart,
+                     nettobetrag, steuerbetrag, bruttobetrag,
+                     bezahlt_am, lieferart, erstellt_von)
+                VALUES
+                    (:bon_nr, :kunden_id, :kunden_snapshot, 'kasse',
+                     'bezahlt', 'abgeschlossen', :zahlungsart,
+                     :netto, :steuer, :brutto,
+                     NOW(), 'abholung', :erstellt_von)
+            ");
+            $stmtAuf->execute([
+                ':bon_nr'          => $bonNr,
+                ':kunden_id'       => $bonDaten['kunden_id'] ?: null,
+                ':kunden_snapshot' => $kundenSnapshot,
+                ':zahlungsart'     => $aufZahlungsart,
+                ':netto'           => round($netto, 2),
+                ':steuer'          => round($steuer, 2),
+                ':brutto'          => $bonDaten['bruttobetrag'] ?? 0,
+                ':erstellt_von'    => $benutzerId,
+            ]);
+            $auftragId = (int)$this->db->lastInsertId();
+
+            // Positionen in auftrag_positionen spiegeln
+            // Divers (artikel_id=null) → Platzhalter-Artikel 99-9999, Bezeichnung bleibt frei
+            $diversArtikelId = $this->getDiversArtikelId();
+            $stmtPos = $this->db->prepare("
+                INSERT INTO auftrag_positionen
+                    (auftrag_id, artikel_id, bezeichnung, menge,
+                     einzelpreis_netto, steuer_prozent, rabatt_prozent, gesamtpreis_netto)
+                VALUES
+                    (:auftrag_id, :artikel_id, :bezeichnung, :menge,
+                     :einzelpreis_netto, :steuer_prozent, :rabatt_prozent, :gesamtpreis_netto)
+            ");
+            foreach ($positionen as $p) {
+                $artIdPos  = !empty($p['artikel_id']) ? (int)$p['artikel_id'] : $diversArtikelId;
+                if (!$artIdPos) continue; // 99-9999 nicht angelegt? überspringen
+                $brutto    = (float)($p['einzelpreis_brutto'] ?? 0);
+                $stProzent = (float)($p['steuer_prozent'] ?? 20);
+                $faktor    = 1 + $stProzent / 100;
+                $nettEP    = $faktor > 0 ? round($brutto / $faktor, 4) : $brutto;
+                $menge     = (float)($p['menge'] ?? 1);
+                $rabatt    = (float)($p['rabatt_prozent'] ?? 0);
+                $gesNetto  = round($menge * $nettEP * (1 - $rabatt / 100), 2);
+                $stmtPos->execute([
+                    ':auftrag_id'         => $auftragId,
+                    ':artikel_id'         => $artIdPos,
+                    ':bezeichnung'        => $p['bezeichnung'],
+                    ':menge'              => (int)$menge,
+                    ':einzelpreis_netto'  => $nettEP,
+                    ':steuer_prozent'     => $stProzent,
+                    ':rabatt_prozent'     => $rabatt,
+                    ':gesamtpreis_netto'  => $gesNetto,
+                ]);
+            }
+
+            // Bon mit Auftrag verknüpfen
+            $this->db->prepare("UPDATE kassen_bons SET auftrag_id = :aid WHERE id = :bid")
+                ->execute([':aid' => $auftragId, ':bid' => $bonId]);
+
             Logger::log('kasse.bon.erstellt', 'kassen_bons', $bonId, [
                 'bon_nr'       => $bonNr,
+                'auftrag_id'   => $auftragId,
                 'zahlungsart'  => $bonDaten['zahlungsart'] ?? 'bar',
                 'bruttobetrag' => $bonDaten['bruttobetrag'] ?? 0,
             ], $benutzerId);
@@ -636,5 +737,25 @@ class KassenService
             ->execute([':id' => $oaId]);
 
         return ['erfolg' => true];
+    }
+
+    /** Aktuellen Lagerbestand eines Artikels in einem Lager holen (für Korrekturbuchungs-Prüfung). */
+    private function getAktuellerBestand(int $artikelId, int $lagerId): float
+    {
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(bestand), 0)
+            FROM lagerbestand
+            WHERE artikel_id = :aid AND lager_id = :lid
+        ");
+        $stmt->execute([':aid' => $artikelId, ':lid' => $lagerId]);
+        return (float)$stmt->fetchColumn();
+    }
+
+    /** ID des Platzhalter-Artikels 99-9999 (Diverses) für auftrag_positionen. */
+    private function getDiversArtikelId(): int
+    {
+        $stmt = $this->db->prepare("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1");
+        $stmt->execute();
+        return (int)($stmt->fetchColumn() ?: 0);
     }
 }
