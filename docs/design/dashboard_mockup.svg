@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1280 702" width="1280" height="702">
+<defs>
+  <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/></filter>
+  <style>text { font-family: 'Segoe UI', Arial, sans-serif; }</style>
+</defs>
+
+<!-- BACKGROUND -->
+<rect width="1280" height="702" fill="#EEF2F7"/>
+
+<!-- ══ TOP NAV ══ -->
+<rect width="1280" height="52" fill="#1B3A6B"/>
+<rect x="6" y="5" width="100" height="42" rx="5" fill="white"/>
+<image href="LOGO.png" x="8" y="7" width="96" height="38"/>
+<rect x="120" y="8" width="94" height="36" rx="5" fill="#2D5FA6"/>
+<text x="167" y="31" fill="white" font-size="12.5" font-weight="700" text-anchor="middle">Dashboard</text>
+<text x="240" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Artikel</text>
+<text x="304" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Lager</text>
+<text x="370" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Kunden</text>
+<text x="436" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Verkauf</text>
+<text x="504" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Versand</text>
+<text x="572" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Retouren</text>
+<text x="638" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Einkauf</text>
+<text x="724" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Buchhaltung</text>
+<text x="806" y="33" fill="#8BAECF" font-size="18" text-anchor="middle">⚙</text>
+<text x="836" y="30" fill="#8BAECF" font-size="14" text-anchor="middle">&#x2026;</text>
+<rect x="1112" y="9" width="160" height="34" rx="5" fill="#0D2045"/>
+<text x="1192" y="30" fill="#7EC8E3" font-size="12" text-anchor="middle">&#128100; Karl Huber &#9660;</text>
+
+<!-- ══ ACTION BAR ══ -->
+<rect y="52" width="1280" height="34" fill="#F8FAFC"/>
+<line x1="0" y1="52" x2="1280" y2="52" stroke="#D8E0E8" stroke-width="1"/>
+<line x1="0" y1="86" x2="1280" y2="86" stroke="#D8E0E8" stroke-width="1"/>
+<text x="14" y="73" fill="#4A5568" font-size="11.5">&#8635; Aktualisieren</text>
+<text x="1268" y="73" fill="#718096" font-size="11" text-anchor="end">Freitag, 12. Juni 2026</text>
+
+<!-- ══ KPI CARDS  y=94 h=120 — zentrierter Inhalt ══ -->
+<!-- cx: Card1=131  Card2=385  Card3=639  Card4=893  Card5=1148 -->
+
+<!-- Card 1: Aufträge -->
+<rect x="8" y="94" width="246" height="120" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="131" y="112" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8" text-anchor="middle">AUFTRÄGE</text>
+<text x="131" y="147" fill="#1A202C" font-size="32" font-weight="800" text-anchor="middle">23</text>
+<text x="131" y="161" font-size="11" text-anchor="middle"><tspan fill="#718096">offen  ·  </tspan><tspan fill="#27AE60" font-weight="700">+5 neu heute</tspan></text>
+<line x1="20" y1="168" x2="242" y2="168" stroke="#EDF2F7" stroke-width="1"/>
+<text x="131" y="181" font-size="10.5" text-anchor="middle"><tspan fill="#4A5568">Picklisten: </tspan><tspan fill="#1A202C" font-weight="700">2</tspan><tspan fill="#718096">  ·  </tspan><tspan fill="#C05621" font-weight="700">&#9888; Fehlbestand: 4 &#8594;</tspan></text>
+<line x1="20" y1="188" x2="242" y2="188" stroke="#EDF2F7" stroke-width="1"/>
+<text x="131" y="202" fill="#C05621" font-size="10.5" font-weight="700" text-anchor="middle">&#9888; Bestandswarn.: <tspan font-weight="800">3 &#8594;</tspan></text>
+
+<!-- Card 2: Umsatz Heute -->
+<rect x="262" y="94" width="246" height="120" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="385" y="112" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8" text-anchor="middle">UMSATZ HEUTE</text>
+<text x="385" y="149" fill="#1A202C" font-size="26" font-weight="800" text-anchor="middle">&#8364; 2.847,&#8211;</text>
+<text x="385" y="168" font-size="11" text-anchor="middle"><tspan fill="#276749" font-weight="700">&#8593; +12%</tspan><tspan fill="#718096">  vs. Gestern</tspan></text>
+<line x1="274" y1="176" x2="496" y2="176" stroke="#EDF2F7" stroke-width="1"/>
+<text x="385" y="202" fill="#718096" font-size="10.5" text-anchor="middle">5 Kanäle aktiv heute</text>
+
+<!-- Card 3: Umsatz Monat -->
+<rect x="516" y="94" width="246" height="120" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="639" y="112" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8" text-anchor="middle">UMSATZ JUNI</text>
+<text x="639" y="149" fill="#1A202C" font-size="26" font-weight="800" text-anchor="middle">&#8364; 48.320,&#8211;</text>
+<text x="639" y="168" font-size="11" text-anchor="middle"><tspan fill="#276749" font-weight="700">&#8593; +7,9%</tspan><tspan fill="#718096">  vs. Mai</tspan></text>
+<line x1="528" y1="176" x2="750" y2="176" stroke="#EDF2F7" stroke-width="1"/>
+<text x="639" y="202" fill="#718096" font-size="10.5" text-anchor="middle">Mai: &#8364; 44.800,&#8211;</text>
+
+<!-- Card 4: Kundenrechnungen -->
+<rect x="770" y="94" width="246" height="120" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="893" y="112" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8" text-anchor="middle">KUNDEN-RECHNUNGEN</text>
+<text x="893" y="149" fill="#1A202C" font-size="26" font-weight="800" text-anchor="middle">&#8364; 12.450,&#8211;</text>
+<text x="893" y="168" fill="#C53030" font-size="11" font-weight="700" text-anchor="middle">&#9888; 3 &#215; &gt; 30 Tage</text>
+<line x1="782" y1="176" x2="1004" y2="176" stroke="#EDF2F7" stroke-width="1"/>
+<text x="893" y="202" fill="#718096" font-size="10.5" text-anchor="middle">8 offene Rechnungen</text>
+
+<!-- Card 5: Lieferantenrechnungen -->
+<rect x="1024" y="94" width="248" height="120" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="1148" y="112" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8" text-anchor="middle">LIEF.-RECHNUNGEN</text>
+<text x="1148" y="149" fill="#1A202C" font-size="26" font-weight="800" text-anchor="middle">&#8364; 34.800,&#8211;</text>
+<text x="1148" y="168" fill="#C05621" font-size="11" font-weight="700" text-anchor="middle">&#9888; &#8364; 8.200 diese Woche</text>
+<line x1="1036" y1="176" x2="1260" y2="176" stroke="#EDF2F7" stroke-width="1"/>
+<text x="1148" y="202" fill="#27AE60" font-size="10.5" font-weight="600" text-anchor="middle">&#10003; &#8364; 5.400 nächste Woche</text>
+
+<!-- ══ MIDDLE ROW  y=222  h=170 ══ -->
+<rect x="8" y="222" width="632" height="170" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="20" y="243" fill="#1B3A6B" font-size="12" font-weight="700">UMSATZ HEUTE NACH KANAL</text>
+<text x="20" y="268" fill="#4A5568" font-size="11">Kassa Wollboutique</text>
+<rect x="188" y="255" width="370" height="14" rx="3" fill="#1B3A6B"/>
+<text x="565" y="268" fill="#1A202C" font-size="11" font-weight="600">&#8364; 980,&#8211;</text>
+<text x="20" y="294" fill="#4A5568" font-size="11">Kassa Messe</text>
+<rect x="188" y="281" width="159" height="14" rx="3" fill="#2D5FA6"/>
+<text x="354" y="294" fill="#1A202C" font-size="11" font-weight="600">&#8364; 420,&#8211;</text>
+<text x="20" y="320" fill="#4A5568" font-size="11">Shop MeaLana</text>
+<rect x="188" y="307" width="257" height="14" rx="3" fill="#5590C0"/>
+<text x="452" y="320" fill="#1A202C" font-size="11" font-weight="600">&#8364; 680,&#8211;</text>
+<text x="20" y="346" fill="#4A5568" font-size="11">Shop Sockenwolle online</text>
+<rect x="188" y="333" width="193" height="14" rx="3" fill="#7EC8E3"/>
+<text x="388" y="346" fill="#1A202C" font-size="11" font-weight="600">&#8364; 510,&#8211;</text>
+<text x="20" y="372" fill="#4A5568" font-size="11">Shop Bio-Wolle</text>
+<rect x="188" y="359" width="97" height="14" rx="3" fill="#A8D4F0"/>
+<text x="292" y="372" fill="#1A202C" font-size="11" font-weight="600">&#8364; 257,&#8211;</text>
+<line x1="20" y1="379" x2="628" y2="379" stroke="#EDF2F7" stroke-width="1"/>
+<text x="20" y="392" fill="#718096" font-size="10.5">Gesamt: <tspan fill="#1A202C" font-weight="700">&#8364; 2.847,&#8211;</tspan></text>
+
+<rect x="648" y="222" width="624" height="170" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="660" y="243" fill="#1B3A6B" font-size="12" font-weight="700">MONAT JUNI vs. MAI</text>
+<text x="660" y="282" fill="#4A5568" font-size="12">Mai 2026</text>
+<rect x="742" y="267" width="390" height="22" rx="4" fill="#7EC8E3"/>
+<text x="1140" y="282" fill="#1A202C" font-size="12" font-weight="600">&#8364; 44.800,&#8211;</text>
+<text x="660" y="322" fill="#4A5568" font-size="12">Juni 2026</text>
+<rect x="742" y="307" width="419" height="22" rx="4" fill="#1B3A6B"/>
+<text x="1169" y="322" fill="#1A202C" font-size="12" font-weight="600">&#8364; 48.320,&#8211;</text>
+<rect x="660" y="338" width="76" height="22" rx="4" fill="#F0FFF4"/>
+<text x="698" y="353" fill="#276749" font-size="12" font-weight="700" text-anchor="middle">&#8593; +7,9%</text>
+<text x="745" y="353" fill="#718096" font-size="12">gegenüber Vormonat</text>
+<text x="660" y="377" fill="#718096" font-size="10.5">Ziel Juni: &#8364; 50.000,&#8211;  (96,6% erreicht)</text>
+<rect x="660" y="381" width="560" height="6" rx="3" fill="#EDF2F7"/>
+<rect x="660" y="381" width="541" height="6" rx="3" fill="#7EC8E3"/>
+
+<!-- ══ BOTTOM ROW  y=400  h=200 ══ -->
+<rect x="8" y="400" width="632" height="200" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="20" y="421" fill="#1B3A6B" font-size="12" font-weight="700">OFFENE AUFTRÄGE</text>
+<text x="628" y="421" fill="#2D5FA6" font-size="11" text-anchor="end">alle Aufträge &#8594;</text>
+<rect x="8" y="425" width="632" height="20" fill="#F7FAFC"/>
+<text x="20" y="439" fill="#718096" font-size="9.5" font-weight="700">NR.</text>
+<text x="66" y="439" fill="#718096" font-size="9.5" font-weight="700">KUNDE</text>
+<text x="248" y="439" fill="#718096" font-size="9.5" font-weight="700">BETRAG</text>
+<text x="334" y="439" fill="#718096" font-size="9.5" font-weight="700">KANAL</text>
+<text x="528" y="439" fill="#718096" font-size="9.5" font-weight="700">STATUS</text>
+<line x1="8" y1="445" x2="640" y2="445" stroke="#EDF2F7" stroke-width="1"/>
+<text x="20" y="460" fill="#2D5FA6" font-size="11" font-weight="600">#4521</text>
+<text x="66" y="460" fill="#1A202C" font-size="11">Müller, Karl</text>
+<text x="248" y="460" fill="#1A202C" font-size="11" font-weight="600">&#8364; 129,&#8211;</text>
+<text x="334" y="460" fill="#4A5568" font-size="10.5">Shop MeaLana</text>
+<rect x="520" y="449" width="44" height="15" rx="7" fill="#EBF8FF"/>
+<text x="542" y="460" fill="#1B3A6B" font-size="9.5" font-weight="700" text-anchor="middle">Neu</text>
+<rect x="8" y="463" width="632" height="30" fill="#F9FBFD"/>
+<text x="20" y="482" fill="#2D5FA6" font-size="11" font-weight="600">#4520</text>
+<text x="66" y="482" fill="#1A202C" font-size="11">Weber, Maria</text>
+<text x="248" y="482" fill="#1A202C" font-size="11" font-weight="600">&#8364; 89,&#8211;</text>
+<text x="334" y="482" fill="#4A5568" font-size="10.5">Kassa Wollboutique</text>
+<rect x="520" y="471" width="44" height="15" rx="7" fill="#EBF8FF"/>
+<text x="542" y="482" fill="#1B3A6B" font-size="9.5" font-weight="700" text-anchor="middle">Neu</text>
+<line x1="8" y1="493" x2="640" y2="493" stroke="#EDF2F7" stroke-width="1"/>
+<text x="20" y="508" fill="#2D5FA6" font-size="11" font-weight="600">#4518</text>
+<text x="66" y="508" fill="#1A202C" font-size="11">Schmidt, Anna</text>
+<text x="248" y="508" fill="#1A202C" font-size="11" font-weight="600">&#8364; 234,&#8211;</text>
+<text x="334" y="508" fill="#4A5568" font-size="10.5">Shop Sockenwolle</text>
+<rect x="516" y="497" width="56" height="15" rx="7" fill="#FFFBEB"/>
+<text x="544" y="508" fill="#B7791F" font-size="9.5" font-weight="700" text-anchor="middle">Pickliste</text>
+<rect x="8" y="511" width="632" height="30" fill="#F9FBFD"/>
+<text x="20" y="530" fill="#2D5FA6" font-size="11" font-weight="600">#4515</text>
+<text x="66" y="530" fill="#1A202C" font-size="11">Jones Ltd.</text>
+<text x="248" y="530" fill="#1A202C" font-size="11" font-weight="600">&#8364; 890,&#8211;</text>
+<text x="334" y="530" fill="#4A5568" font-size="10.5">Shop Bio-Wolle</text>
+<rect x="514" y="519" width="62" height="15" rx="7" fill="#FFF0E6"/>
+<text x="545" y="530" fill="#C05621" font-size="9.5" font-weight="700" text-anchor="middle">Packplatz</text>
+<line x1="8" y1="541" x2="640" y2="541" stroke="#EDF2F7" stroke-width="1"/>
+<text x="20" y="556" fill="#2D5FA6" font-size="11" font-weight="600">#4512</text>
+<text x="66" y="556" fill="#1A202C" font-size="11">Maier, Sophie</text>
+<text x="248" y="556" fill="#1A202C" font-size="11" font-weight="600">&#8364; 45,&#8211;</text>
+<text x="334" y="556" fill="#4A5568" font-size="10.5">Kassa Messe</text>
+<rect x="516" y="545" width="56" height="15" rx="7" fill="#F0FFF4"/>
+<text x="544" y="556" fill="#276749" font-size="9.5" font-weight="700" text-anchor="middle">Versandt</text>
+
+<!-- Right: Kundenrechnungen Aging -->
+<rect x="648" y="400" width="624" height="200" rx="7" fill="white" stroke="#E2E8F0" stroke-width="1" filter="url(#s)"/>
+<text x="660" y="421" fill="#1B3A6B" font-size="12" font-weight="700">OFFENE KUNDENRECHNUNGEN</text>
+<text x="1260" y="421" fill="#2D5FA6" font-size="11" text-anchor="end">alle (8 Stk.) &#8594;</text>
+<rect x="660" y="428" width="114" height="18" rx="9" fill="#FEEBC8"/>
+<text x="717" y="440" fill="#C05621" font-size="10" font-weight="700" text-anchor="middle">14+ Tage: 3 Stk. &#8594;</text>
+<rect x="782" y="428" width="114" height="18" rx="9" fill="#FED7D7"/>
+<text x="839" y="440" fill="#C53030" font-size="10" font-weight="700" text-anchor="middle">30+ Tage: 2 Stk. &#8594;</text>
+<rect x="648" y="448" width="624" height="18" fill="#F7FAFC"/>
+<text x="660" y="461" fill="#718096" font-size="9.5" font-weight="700">KUNDE</text>
+<text x="810" y="461" fill="#718096" font-size="9.5" font-weight="700">BETRAG</text>
+<text x="900" y="461" fill="#718096" font-size="9.5" font-weight="700">TAGE</text>
+<text x="944" y="461" fill="#718096" font-size="9.5" font-weight="700">AGING</text>
+<text x="1130" y="461" fill="#718096" font-size="9.5" font-weight="700">AKTION</text>
+<rect x="648" y="466" width="624" height="26" fill="#FFF5F5"/>
+<text x="660" y="483" fill="#1A202C" font-size="11">Firma ABC GmbH</text>
+<text x="810" y="483" fill="#1A202C" font-size="11" font-weight="600">&#8364; 4.200,&#8211;</text>
+<text x="900" y="483" fill="#C53030" font-size="11" font-weight="800">47</text>
+<rect x="940" y="473" width="160" height="9" rx="3" fill="#FED7D7"/>
+<rect x="940" y="473" width="63" height="9" rx="3" fill="#E53E3E"/>
+<rect x="1122" y="470" width="114" height="17" rx="8" fill="#FED7D7"/>
+<text x="1179" y="482" fill="#C53030" font-size="10" font-weight="700" text-anchor="middle">&#9888; Stornieren?</text>
+<line x1="648" y1="492" x2="1272" y2="492" stroke="#FEE2E2" stroke-width="1"/>
+<text x="660" y="508" fill="#1A202C" font-size="11">Huber GmbH</text>
+<text x="810" y="508" fill="#1A202C" font-size="11" font-weight="600">&#8364; 3.100,&#8211;</text>
+<text x="900" y="508" fill="#C53030" font-size="11" font-weight="800">33</text>
+<rect x="940" y="498" width="160" height="9" rx="3" fill="#FED7D7"/>
+<rect x="940" y="498" width="44" height="9" rx="3" fill="#E53E3E"/>
+<rect x="1122" y="495" width="114" height="17" rx="8" fill="#FED7D7"/>
+<text x="1179" y="507" fill="#C53030" font-size="10" font-weight="700" text-anchor="middle">&#9888; Stornieren?</text>
+<rect x="648" y="518" width="624" height="26" fill="#F9FBFD"/>
+<text x="660" y="535" fill="#1A202C" font-size="11">Bauer, Elisabeth</text>
+<text x="810" y="535" fill="#1A202C" font-size="11" font-weight="600">&#8364; 2.800,&#8211;</text>
+<text x="900" y="535" fill="#4A5568" font-size="11">21</text>
+<rect x="940" y="525" width="160" height="9" rx="3" fill="#EDF2F7"/>
+<rect x="940" y="525" width="28" height="9" rx="3" fill="#68D391"/>
+<rect x="1120" y="522" width="116" height="17" rx="8" fill="#F0FFF4"/>
+<text x="1178" y="534" fill="#276749" font-size="10" font-weight="700" text-anchor="middle">&#10003; Mail gesendet</text>
+<line x1="648" y1="544" x2="1272" y2="544" stroke="#EDF2F7" stroke-width="1"/>
+<text x="660" y="560" fill="#1A202C" font-size="11">Koch, Regina</text>
+<text x="810" y="560" fill="#1A202C" font-size="11" font-weight="600">&#8364; 1.450,&#8211;</text>
+<text x="900" y="560" fill="#C05621" font-size="11" font-weight="700">16</text>
+<rect x="940" y="550" width="160" height="9" rx="3" fill="#EDF2F7"/>
+<rect x="940" y="550" width="21" height="9" rx="3" fill="#ED8936"/>
+<rect x="1116" y="547" width="120" height="17" rx="8" fill="#FFFAF0"/>
+<text x="1176" y="559" fill="#C05621" font-size="10" font-weight="700" text-anchor="middle">&#8594; Erinnerung senden</text>
+<rect x="648" y="570" width="624" height="26" fill="#F9FBFD"/>
+<text x="660" y="587" fill="#1A202C" font-size="11">Stern GmbH</text>
+<text x="810" y="587" fill="#1A202C" font-size="11" font-weight="600">&#8364; 900,&#8211;</text>
+<text x="900" y="587" fill="#718096" font-size="11">3</text>
+<rect x="940" y="577" width="160" height="9" rx="3" fill="#EDF2F7"/>
+<rect x="940" y="577" width="4" height="9" rx="3" fill="#CBD5E0"/>
+
+<!-- ══ WARNING STRIP  y=608 ══ -->
+<rect y="608" width="1280" height="32" fill="#FFFBEB"/>
+<line x1="0" y1="608" x2="1280" y2="608" stroke="#ECC94B" stroke-width="1.5"/>
+<text x="14" y="628" fill="#744210" font-size="11.5">&#9888;&#160; Artikel #0815 unter Mindestbestand (2 Stk.)&#160;&#160;&#183;&#160;&#160;Import 10:21 fehlgeschlagen (2 Artikel)</text>
+<text x="1266" y="628" fill="#D69E2E" font-size="11" text-anchor="end" font-weight="600">Details &#8594;</text>
+
+<!-- ══ LOG BAR  y=640 ══ -->
+<rect y="640" width="1280" height="36" fill="#1E1E2E"/>
+<text x="12" y="662" fill="#7EC8E3" font-size="11.5" font-weight="700">&#9654; LOG</text>
+<text x="52" y="662" fill="#68D391" font-size="11">&#9679; 10:24</text>
+<text x="94" y="662" fill="#A0AEC0" font-size="11">[OK] Auftrag #4521 angelegt — Müller, Karl</text>
+<text x="360" y="662" fill="#F6E05E" font-size="11">&#9679; 10:23</text>
+<text x="402" y="662" fill="#A0AEC0" font-size="11">[WARN] Mindestbestand: Artikel #0815</text>
+<text x="648" y="662" fill="#FC8181" font-size="11">&#9679; 10:21</text>
+<text x="690" y="662" fill="#A0AEC0" font-size="11">[ERROR] Import fehlgeschlagen (2 Zeilen)</text>
+
+<!-- ══ STATUS BAR  y=676 ══ -->
+<rect y="676" width="1280" height="26" fill="#0D2045"/>
+<text x="12" y="693" fill="#7EC8E3" font-size="11">&#128100; Karl Huber</text>
+<line x1="108" y1="680" x2="108" y2="698" stroke="#2D5FA6" stroke-width="1"/>
+<text x="116" y="693" fill="#7EC8E3" font-size="11">Lager: Wien</text>
+<line x1="204" y1="680" x2="204" y2="698" stroke="#2D5FA6" stroke-width="1"/>
+<text x="212" y="693" fill="#7EC8E3" font-size="11">MeaLana GmbH</text>
+<line x1="332" y1="680" x2="332" y2="698" stroke="#2D5FA6" stroke-width="1"/>
+<text x="340" y="693" fill="#718096" font-size="11">&#8635; Sync: 10:24:01</text>
+
+</svg>

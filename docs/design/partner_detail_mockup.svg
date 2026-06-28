@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1280 702" width="1280" height="702">
+<defs>
+  <filter id="sp"><feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#00000040"/></filter>
+  <style>text { font-family: 'Segoe UI', Arial, sans-serif; }</style>
+</defs>
+
+<!-- BACKGROUND (faded liste view) -->
+<rect width="1280" height="702" fill="#EEF2F7"/>
+<rect width="1280" height="52" fill="#1B3A6B"/>
+<rect x="6" y="5" width="100" height="42" rx="5" fill="white"/>
+<image href="LOGO.png" x="8" y="7" width="96" height="38"/>
+<text x="703" y="31" fill="white" font-size="11" font-weight="700" text-anchor="middle">Partner</text>
+<rect x="668" y="8" width="70" height="36" rx="5" fill="#2D5FA6"/>
+<text x="703" y="31" fill="white" font-size="11" font-weight="700" text-anchor="middle">Partner</text>
+<rect x="0" y="86" width="210" height="616" fill="white" opacity="0.6"/>
+<rect x="210" y="86" width="1070" height="616" fill="#EEF2F7" opacity="0.5"/>
+
+<!-- DARK OVERLAY -->
+<rect width="1280" height="702" fill="#0D2045" opacity="0.55"/>
+
+<!-- MODAL CARD -->
+<rect x="140" y="22" width="1000" height="658" rx="10" fill="white" filter="url(#sp)"/>
+
+<!-- Modal Header -->
+<rect x="140" y="22" width="1000" height="54" rx="10" fill="#1B3A6B"/>
+<rect x="140" y="56" width="1000" height="20" fill="#1B3A6B"/>
+<text x="168" y="54" fill="white" font-size="14" font-weight="700">Partner bearbeiten</text>
+<text x="168" y="70" fill="#8BAECF" font-size="11">M&#252;ller Wolle GmbH</text>
+<text x="1118" y="56" fill="white" font-size="22" text-anchor="middle" font-weight="300">&#10005;</text>
+
+<!-- ── SECTION 1: STAMMDATEN ── -->
+<rect x="140" y="76" width="1000" height="26" fill="#F7FAFC"/>
+<line x1="140" y1="76" x2="1140" y2="76" stroke="#E2E8F0" stroke-width="1"/>
+<text x="160" y="93" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8">STAMMDATEN</text>
+
+<!-- Name -->
+<text x="160" y="116" fill="#718096" font-size="10">Name</text>
+<rect x="160" y="120" width="960" height="28" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="174" y="138" fill="#2D3748" font-size="12">M&#252;ller Wolle GmbH</text>
+
+<!-- Email + Telefon -->
+<text x="160" y="162" fill="#718096" font-size="10">E-Mail</text>
+<rect x="160" y="166" width="450" height="28" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="174" y="184" fill="#2D3748" font-size="12">wolle@mueller.at</text>
+<text x="626" y="162" fill="#718096" font-size="10">Telefon</text>
+<rect x="626" y="166" width="494" height="28" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="640" y="184" fill="#2D3748" font-size="12">+43 123 456789</text>
+
+<!-- IBAN + UID -->
+<text x="160" y="208" fill="#718096" font-size="10">IBAN</text>
+<rect x="160" y="212" width="460" height="28" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="174" y="230" fill="#2D3748" font-size="12">AT61 1904 3002 3457 3201</text>
+<text x="636" y="208" fill="#718096" font-size="10">UID-Nummer</text>
+<rect x="636" y="212" width="240" height="28" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="650" y="230" fill="#2D3748" font-size="12">ATU12345678</text>
+<!-- KU Checkbox -->
+<rect x="892" y="216" width="16" height="16" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="914" y="229" fill="#4A5568" font-size="12">Kleinunternehmer</text>
+
+<!-- ── SECTION 2: TYP &amp; ABRECHNUNG ── -->
+<line x1="140" y1="254" x2="1140" y2="254" stroke="#E2E8F0" stroke-width="1"/>
+<rect x="140" y="254" width="1000" height="26" fill="#F7FAFC"/>
+<text x="160" y="271" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8">TYP &amp; ABRECHNUNG</text>
+
+<!-- Typ -->
+<text x="160" y="296" fill="#718096" font-size="10">Typ</text>
+<!-- Kommission selected -->
+<circle cx="172" cy="312" r="7" fill="white" stroke="#2D5FA6" stroke-width="2"/>
+<circle cx="172" cy="312" r="3.5" fill="#2D5FA6"/>
+<text x="184" y="316" fill="#2D3748" font-size="12">Kommission</text>
+<!-- Spende unselected -->
+<circle cx="304" cy="312" r="7" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="316" y="316" fill="#718096" font-size="12">Spende</text>
+<!-- Beides unselected -->
+<circle cx="396" cy="312" r="7" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="408" y="316" fill="#718096" font-size="12">Beides</text>
+
+<!-- Provision -->
+<text x="160" y="342" fill="#718096" font-size="10">Provision auf Verk&#228;ufe</text>
+<rect x="160" y="346" width="120" height="28" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="174" y="364" fill="#2D3748" font-size="12">0,00</text>
+<text x="286" y="364" fill="#718096" font-size="12">%</text>
+<text x="314" y="364" fill="#9CA3AF" font-size="11">(0 = nur Mieteinnahme)</text>
+
+<!-- Abrechnung Modus -->
+<text x="160" y="392" fill="#718096" font-size="10">Abrechnungsmodus</text>
+<circle cx="172" cy="408" r="7" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="184" y="412" fill="#718096" font-size="12">Getrennte Belege</text>
+<!-- Gegenverrechnung selected -->
+<circle cx="330" cy="408" r="7" fill="white" stroke="#2D5FA6" stroke-width="2"/>
+<circle cx="330" cy="408" r="3.5" fill="#2D5FA6"/>
+<text x="342" y="412" fill="#2D3748" font-size="12">Gegenverrechnung</text>
+
+<!-- Beleg-Typ -->
+<text x="160" y="434" fill="#718096" font-size="10">Belegtyp f&#252;r Kommissions-Abrechnung</text>
+<!-- Gutschrift selected -->
+<circle cx="172" cy="450" r="7" fill="white" stroke="#2D5FA6" stroke-width="2"/>
+<circle cx="172" cy="450" r="3.5" fill="#2D5FA6"/>
+<text x="184" y="454" fill="#2D3748" font-size="12">Gutschrift (wir erstellen)</text>
+<circle cx="360" cy="450" r="7" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="372" y="454" fill="#718096" font-size="12">Fremdrechnung (Mieter stellt)</text>
+<circle cx="568" cy="450" r="7" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="580" y="454" fill="#718096" font-size="12">Info-Abrechnung (kein Steuerbeleg)</text>
+
+<!-- ── SECTION 3: MIETFÄCHER ── -->
+<line x1="140" y1="470" x2="1140" y2="470" stroke="#E2E8F0" stroke-width="1"/>
+<rect x="140" y="470" width="1000" height="26" fill="#F7FAFC"/>
+<text x="160" y="487" fill="#718096" font-size="10" font-weight="700" letter-spacing="0.8">GEMIETETE F&#196;CHER</text>
+
+<!-- Mini table header -->
+<rect x="160" y="500" width="920" height="24" fill="#F7FAFC" stroke="#E2E8F0" stroke-width="1"/>
+<text x="172" y="516" fill="#718096" font-size="10" font-weight="700">FACH</text>
+<text x="310" y="516" fill="#718096" font-size="10" font-weight="700">&#8364;/MONAT</text>
+<text x="440" y="516" fill="#718096" font-size="10" font-weight="700">MWST</text>
+<text x="530" y="516" fill="#718096" font-size="10" font-weight="700">SEIT</text>
+<text x="680" y="516" fill="#718096" font-size="10" font-weight="700">STATUS</text>
+
+<!-- Fach Row 1 -->
+<rect x="160" y="524" width="920" height="32" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="172" y="544" fill="#2D3748" font-size="11" font-weight="600">Fach 3</text>
+<text x="310" y="544" fill="#2D3748" font-size="11">50,00 &#8364;</text>
+<text x="440" y="544" fill="#2D3748" font-size="11">20 %</text>
+<text x="530" y="544" fill="#2D3748" font-size="11">01.01.2026</text>
+<rect x="672" y="530" width="50" height="18" rx="9" fill="#C6F6D5"/>
+<text x="697" y="543" fill="#276749" font-size="10" text-anchor="middle" font-weight="600">aktiv</text>
+<text x="1054" y="544" fill="#2D5FA6" font-size="14">&#9998;</text>
+
+<!-- Fach Row 2 -->
+<rect x="160" y="556" width="920" height="32" fill="#FAFAFA" stroke="#E2E8F0" stroke-width="1"/>
+<text x="172" y="576" fill="#2D3748" font-size="11" font-weight="600">Fach 7</text>
+<text x="310" y="576" fill="#2D3748" font-size="11">50,00 &#8364;</text>
+<text x="440" y="576" fill="#2D3748" font-size="11">20 %</text>
+<text x="530" y="576" fill="#2D3748" font-size="11">01.03.2026</text>
+<rect x="672" y="562" width="50" height="18" rx="9" fill="#C6F6D5"/>
+<text x="697" y="575" fill="#276749" font-size="10" text-anchor="middle" font-weight="600">aktiv</text>
+<text x="1054" y="576" fill="#2D5FA6" font-size="14">&#9998;</text>
+
+<!-- + Fach -->
+<text x="160" y="607" fill="#2D5FA6" font-size="11" font-weight="600">+ Fach hinzuf&#252;gen</text>
+
+<!-- FOOTER -->
+<line x1="140" y1="622" x2="1140" y2="622" stroke="#E2E8F0" stroke-width="1"/>
+<rect x="880" y="632" width="110" height="32" rx="5" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="935" y="652" fill="#4A5568" font-size="12" text-anchor="middle">Abbrechen</text>
+<rect x="1004" y="632" width="120" height="32" rx="5" fill="#1B3A6B"/>
+<text x="1064" y="652" fill="white" font-size="12" font-weight="700" text-anchor="middle">Speichern</text>
+
+</svg>

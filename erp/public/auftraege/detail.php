@@ -29,6 +29,17 @@ $zahlungen   = $service->getZahlungen($id);
 $summeBezahlt = array_sum(array_column($zahlungen, 'betrag'));
 $offenBetrag  = (float)$auftrag['bruttobetrag'] - $summeBezahlt;
 
+$lieferungen = $db->prepare("
+    SELECT al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung,
+           b.formularname AS benutzer
+    FROM auftrag_lieferungen al
+    LEFT JOIN benutzer b ON b.id = al.benutzer_id
+    WHERE al.auftrag_id = ?
+    ORDER BY al.versand_datum ASC
+");
+$lieferungen->execute([$id]);
+$lieferungen = $lieferungen->fetchAll(PDO::FETCH_ASSOC);
+
 $erfolg = $_SESSION['erfolg'] ?? null;
 $fehler = $_SESSION['fehler'] ?? [];
 unset($_SESSION['erfolg'], $_SESSION['fehler']);
@@ -196,6 +207,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div>
             <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Lieferstatus</div>
             <span class="chip <?= $ll['class'] ?>"><?= $ll['label'] ?></span>
+            <?php if ($auftrag['versand_datum']): ?>
+                <div style="margin-top:5px;font-size:12px;color:var(--color-text-muted)">
+                    📅 <?= date('d.m.Y H:i', strtotime($auftrag['versand_datum'])) ?>
+                </div>
+            <?php endif; ?>
             <?php if (!$istStorniert): ?>
                 <div style="margin-top:8px">
                     <select class="erp-select" style="font-size:12px" id="lieferstatus-select">
@@ -214,22 +230,88 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     <!-- Tracking -->
     <?php if (!$istStorniert): ?>
-        <div style="border-top:1px solid var(--color-border);padding:12px 16px;display:flex;gap:12px;align-items:flex-end">
-            <div class="form-group" style="margin:0;flex:1">
-                <label class="form-label" style="font-size:11px">Tracking-Nr.</label>
-                <input type="text" class="erp-input" id="tracking-nr" value="<?= htmlspecialchars($auftrag['tracking_nr'] ?? '') ?>" placeholder="z.B. 12345678">
+        <?php
+        $dlLabels = [
+            'post_at' => 'Österreichische Post',
+            'dhl'     => 'DHL',
+            'dpd'     => 'DPD',
+            'gls'     => 'GLS',
+        ];
+        // Fallback auf alte Einzelspalte falls noch kein History-Eintrag
+        $trackingNr  = $auftrag['tracking_nr'] ?: ($auftrag['versand_tracking'] ?? '');
+        ?>
+        <?php if (!empty($lieferungen)): ?>
+        <!-- Lieferhistory-Tabelle -->
+        <div style="border-top:1px solid var(--color-border);padding:12px 16px">
+            <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:8px">
+                Lieferungen / Tracking
             </div>
-            <div class="form-group" style="margin:0;flex:1">
-                <label class="form-label" style="font-size:11px">Versanddienstleister</label>
-                <select class="erp-select" id="versand-dl">
-                    <option value="">—</option>
-                    <option value="post_at" <?= $auftrag['versanddienstleister'] === 'post_at'  ? 'selected' : '' ?>>Österreichische Post</option>
-                    <option value="dhl" <?= $auftrag['versanddienstleister'] === 'dhl'      ? 'selected' : '' ?>>DHL</option>
-                    <option value="dpd" <?= $auftrag['versanddienstleister'] === 'dpd'      ? 'selected' : '' ?>>DPD</option>
-                    <option value="gls" <?= $auftrag['versanddienstleister'] === 'gls'      ? 'selected' : '' ?>>GLS</option>
-                </select>
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead>
+                    <tr style="color:var(--color-text-muted);border-bottom:1px solid var(--color-border)">
+                        <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">#</th>
+                        <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">Datum</th>
+                        <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">Dienstleister</th>
+                        <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">Tracking-Nr.</th>
+                        <th style="text-align:left;padding:4px 0 6px 0;font-weight:600">Typ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($lieferungen as $i => $lf): ?>
+                    <tr style="border-bottom:1px solid var(--color-border-light,#f0f0f0)">
+                        <td style="padding:5px 8px 5px 0;color:var(--color-text-muted)"><?= $i + 1 ?></td>
+                        <td style="padding:5px 8px 5px 0;white-space:nowrap"><?= date('d.m.Y H:i', strtotime($lf['versand_datum'])) ?></td>
+                        <td style="padding:5px 8px 5px 0"><?= htmlspecialchars($dlLabels[$lf['versanddienstleister']] ?? ($lf['versanddienstleister'] ?: '—')) ?></td>
+                        <td style="padding:5px 8px 5px 0;font-family:monospace;font-weight:600"><?= htmlspecialchars($lf['tracking_nr']) ?></td>
+                        <td style="padding:5px 0">
+                            <?php if ($lf['ist_teillieferung']): ?>
+                                <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:10px">Teillieferung</span>
+                            <?php else: ?>
+                                <span style="font-size:10px;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:10px">Vollständig</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php elseif (!empty($trackingNr)): ?>
+        <!-- Fallback: Einzelnes Tracking aus alter Spalte (kein History-Eintrag) -->
+        <div style="border-top:1px solid var(--color-border);padding:12px 16px">
+            <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:6px">Tracking</div>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+                <?php if ($auftrag['versanddienstleister']): ?>
+                <span style="font-size:13px;color:var(--color-text-muted)"><?= htmlspecialchars($dlLabels[$auftrag['versanddienstleister']] ?? $auftrag['versanddienstleister']) ?></span>
+                <?php endif; ?>
+                <span style="font-size:14px;font-weight:600;font-family:monospace"><?= htmlspecialchars($trackingNr) ?></span>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="trackingSpeichern()">Tracking speichern</button>
+        </div>
+        <?php endif; ?>
+
+        <!-- Tracking manuell hinzufügen (immer sichtbar wenn nicht storniert) -->
+        <div style="border-top:1px solid var(--color-border);padding:10px 16px">
+            <details style="font-size:12px">
+                <summary style="cursor:pointer;color:var(--color-text-muted);user-select:none">
+                    <?= !empty($lieferungen) ? '+ Weiteres Tracking hinzufügen' : 'Tracking eingeben' ?>
+                </summary>
+                <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:10px">
+                    <div class="form-group" style="margin:0;flex:1;min-width:120px">
+                        <label class="form-label" style="font-size:11px">Tracking-Nr.</label>
+                        <input type="text" class="erp-input" id="tracking-nr" value="" placeholder="z.B. 12345678">
+                    </div>
+                    <div class="form-group" style="margin:0;flex:1;min-width:120px">
+                        <label class="form-label" style="font-size:11px">Versanddienstleister</label>
+                        <select class="erp-select" id="versand-dl">
+                            <option value="">—</option>
+                            <option value="post_at">Österreichische Post</option>
+                            <option value="dhl">DHL</option>
+                            <option value="dpd">DPD</option>
+                            <option value="gls">GLS</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="trackingSpeichern()">Speichern</button>
+                </div>
+            </details>
         </div>
     <?php endif; ?>
 </div>

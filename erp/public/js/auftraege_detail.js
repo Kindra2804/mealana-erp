@@ -58,6 +58,12 @@ async function trackingSpeichern() {
     }
 }
 
+function trackingBearbeitenToggle() {
+    var form = document.getElementById('tracking-edit-form');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
 function storniereAuftrag() {
     if (!confirm('Auftrag wirklich stornieren? Dies kann nicht rückgängig gemacht werden.')) return;
     const notiz = prompt('Stornierungsgrund (optional):') || '';

@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1280 702" width="1280" height="702">
+<defs>
+  <filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/></filter>
+  <filter id="sp"><feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#00000030"/></filter>
+  <style>text { font-family: 'Segoe UI', Arial, sans-serif; }</style>
+</defs>
+
+<rect width="1280" height="702" fill="#EEF2F7"/>
+
+<!-- ══ TOP NAV ══ -->
+<rect width="1280" height="52" fill="#1B3A6B"/>
+<rect x="6" y="5" width="100" height="42" rx="5" fill="white"/>
+<image href="LOGO.png" x="8" y="7" width="96" height="38"/>
+<text x="167" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Dashboard</text>
+<rect x="198" y="8" width="80" height="36" rx="5" fill="#2D5FA6"/>
+<text x="238" y="31" fill="white" font-size="12.5" font-weight="700" text-anchor="middle">Artikel</text>
+<text x="308" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Lager</text>
+<text x="372" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Kunden</text>
+<text x="438" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Verkauf</text>
+<text x="506" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Versand</text>
+<text x="574" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Retouren</text>
+<text x="640" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Einkauf</text>
+<text x="726" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Buchhaltung</text>
+<text x="808" y="33" fill="#8BAECF" font-size="18" text-anchor="middle">⚙</text>
+<text x="838" y="30" fill="#8BAECF" font-size="14">&#x2026;</text>
+<rect x="1112" y="9" width="160" height="34" rx="5" fill="#0D2045"/>
+<text x="1192" y="30" fill="#7EC8E3" font-size="12" text-anchor="middle">&#128100; Karl Huber &#9660;</text>
+
+<!-- ══ ACTION BAR ══ -->
+<rect y="52" width="1280" height="34" fill="#F8FAFC"/>
+<line x1="0" y1="52" x2="1280" y2="52" stroke="#D8E0E8" stroke-width="1"/>
+<line x1="0" y1="86" x2="1280" y2="86" stroke="#D8E0E8" stroke-width="1"/>
+<rect x="14" y="61" width="70" height="24" rx="4" fill="#1B3A6B"/>
+<text x="49" y="77" fill="white" font-size="11.5" font-weight="700" text-anchor="middle">+ Neu</text>
+<text x="96" y="77" fill="#4A5568" font-size="11.5">Kopieren</text>
+<line x1="140" y1="62" x2="140" y2="80" stroke="#E2E8F0" stroke-width="1"/>
+<text x="160" y="77" fill="#4A5568" font-size="11.5">&#128229; Import</text>
+<text x="220" y="77" fill="#4A5568" font-size="11.5">&#128228; Export</text>
+<text x="990" y="77" fill="#718096" font-size="11">Ausgewählt: 0</text>
+<rect x="1060" y="61" width="96" height="24" rx="4" fill="#EBF8FF" stroke="#BEE3F8" stroke-width="1"/>
+<text x="1108" y="77" fill="#2B6CB0" font-size="11" text-anchor="middle">Aktion &#9660;</text>
+
+<!-- ══ SIDEBAR ══ -->
+<rect x="0" y="86" width="210" height="554" fill="white"/>
+<line x1="210" y1="86" x2="210" y2="640" stroke="#E2E8F0" stroke-width="1"/>
+<rect x="0" y="86" width="210" height="26" fill="#F7FAFC"/>
+<text x="16" y="104" fill="#1B3A6B" font-size="11" font-weight="700" letter-spacing="0.5">ARTIKEL</text>
+<text x="196" y="103" fill="#718096" font-size="13" text-anchor="end">&#9664;</text>
+
+<!-- Module nav -->
+<rect x="0" y="112" width="210" height="28" fill="#EBF8FF"/>
+<rect x="0" y="112" width="3" height="28" fill="#2D5FA6"/>
+<text x="20" y="131" fill="#1B3A6B" font-size="12" font-weight="700">&#128203; Liste</text>
+<text x="20" y="157" fill="#4A5568" font-size="11.5">&#10133; Neu erstellen</text>
+<text x="20" y="181" fill="#4A5568" font-size="11.5">&#128247; Bilder</text>
+<text x="20" y="205" fill="#4A5568" font-size="11.5">&#127991; Merkmale</text>
+<text x="20" y="229" fill="#4A5568" font-size="11.5">&#128178; Preise</text>
+<text x="20" y="253" fill="#4A5568" font-size="11.5">&#127760; SEO</text>
+<text x="20" y="277" fill="#4A5568" font-size="11.5">&#128202; Statistik</text>
+
+<!-- Kategorien -->
+<line x1="12" y1="292" x2="198" y2="292" stroke="#E2E8F0" stroke-width="1"/>
+<text x="16" y="310" fill="#9CA3AF" font-size="10" font-weight="700" letter-spacing="0.5">KATEGORIEN</text>
+<rect x="0" y="316" width="210" height="22" fill="#F0F7FF"/>
+<rect x="0" y="316" width="3" height="22" fill="#7EC8E3"/>
+<text x="16" y="331" fill="#1B3A6B" font-size="11" font-weight="600">&#9679; Alle Artikel (234)</text>
+<text x="16" y="355" fill="#4A5568" font-size="11">&#9660; Wolle <tspan fill="#9CA3AF">(156)</tspan></text>
+<rect x="30" y="360" width="22" height="13" rx="3" fill="#5590C0"/>
+<text x="41" y="370" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<rect x="56" y="360" width="22" height="13" rx="3" fill="#7EC8E3"/>
+<text x="67" y="370" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S2</text>
+<rect x="82" y="360" width="22" height="13" rx="3" fill="#A8D4F0"/>
+<text x="93" y="370" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S3</text>
+<text x="30" y="391" fill="#4A5568" font-size="10.5">&#8627; Sockenwolle <tspan fill="#9CA3AF">(48)</tspan></text>
+<rect x="44" y="396" width="22" height="12" rx="3" fill="#5590C0"/>
+<text x="55" y="405" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<rect x="70" y="396" width="22" height="12" rx="3" fill="#7EC8E3"/>
+<text x="81" y="405" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S2</text>
+<text x="30" y="420" fill="#4A5568" font-size="10.5">&#8627; Bio-Wolle <tspan fill="#9CA3AF">(28)</tspan></text>
+<rect x="44" y="425" width="22" height="12" rx="3" fill="#A8D4F0"/>
+<text x="55" y="434" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S3</text>
+<text x="30" y="449" fill="#4A5568" font-size="10.5">&#8627; Merinowolle <tspan fill="#9CA3AF">(32)</tspan></text>
+<rect x="44" y="454" width="22" height="12" rx="3" fill="#5590C0"/>
+<text x="55" y="463" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<rect x="70" y="454" width="22" height="12" rx="3" fill="#7EC8E3"/>
+<text x="81" y="463" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S2</text>
+<text x="16" y="484" fill="#4A5568" font-size="11">&#9654; Nadeln &amp; Zubehör <tspan fill="#9CA3AF">(45)</tspan></text>
+<rect x="30" y="489" width="22" height="12" rx="3" fill="#5590C0"/>
+<text x="41" y="498" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<text x="16" y="517" fill="#4A5568" font-size="11">&#9654; Bücher &amp; Anleit. <tspan fill="#9CA3AF">(18)</tspan></text>
+<rect x="30" y="522" width="22" height="12" rx="3" fill="#5590C0"/>
+<text x="41" y="531" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+
+<!-- Legende -->
+<line x1="12" y1="543" x2="198" y2="543" stroke="#E2E8F0" stroke-width="1"/>
+<text x="16" y="557" fill="#9CA3AF" font-size="9" font-weight="700">KANAL-LEGENDE</text>
+<rect x="16" y="562" width="18" height="11" rx="2" fill="#1B3A6B"/>
+<text x="25" y="571" fill="white" font-size="7.5" font-weight="700" text-anchor="middle">K1</text>
+<text x="38" y="571" fill="#718096" font-size="9">Kassa Boutique (Vollsortiment)</text>
+<rect x="16" y="576" width="18" height="11" rx="2" fill="#2D5FA6"/>
+<text x="25" y="585" fill="white" font-size="7.5" font-weight="700" text-anchor="middle">K2</text>
+<text x="38" y="585" fill="#718096" font-size="9">Kassa Messe (Vollsortiment)</text>
+<rect x="16" y="590" width="18" height="11" rx="2" fill="#5590C0"/>
+<text x="25" y="599" fill="white" font-size="7.5" font-weight="700" text-anchor="middle">S1</text>
+<text x="38" y="599" fill="#718096" font-size="9">Shop MeaLana</text>
+<rect x="16" y="604" width="18" height="11" rx="2" fill="#7EC8E3"/>
+<text x="25" y="613" fill="#1B3A6B" font-size="7.5" font-weight="700" text-anchor="middle">S2</text>
+<text x="38" y="613" fill="#718096" font-size="9">Shop Sockenwolle</text>
+<rect x="104" y="590" width="18" height="11" rx="2" fill="#A8D4F0"/>
+<text x="113" y="599" fill="#1B3A6B" font-size="7.5" font-weight="700" text-anchor="middle">S3</text>
+<text x="126" y="599" fill="#718096" font-size="9">Shop Bio-Wolle</text>
+<text x="104" y="613" fill="#9CA3AF" font-size="8" font-style="italic">K1/K2 = immer alle Artikel</text>
+
+<!-- ══ CONTENT AREA ══ -->
+
+<!-- Filter bar -->
+<rect x="211" y="86" width="1069" height="44" fill="#F8FAFC"/>
+<rect x="226" y="96" width="320" height="26" rx="5" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="240" y="113" fill="#9CA3AF" font-size="11">&#128269; Suche Artikel, EAN, Name&#x2026;</text>
+<rect x="554" y="96" width="90" height="26" rx="5" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="599" y="113" fill="#4A5568" font-size="11" text-anchor="middle">Kanal &#9660;</text>
+<rect x="652" y="96" width="130" height="26" rx="5" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="717" y="113" fill="#4A5568" font-size="11" text-anchor="middle">Status / Sale &#9660;</text>
+<rect x="790" y="96" width="100" height="26" rx="5" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="840" y="113" fill="#4A5568" font-size="11" text-anchor="middle">Bestand &#9660;</text>
+<rect x="1164" y="96" width="98" height="26" rx="5" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="1213" y="113" fill="#4A5568" font-size="11" text-anchor="middle">&#9881; Spalten</text>
+
+<!-- TABLE HEADER  y=130 -->
+<!-- Columns: CB(32) | Thumb(46) | Art-Nr(88) | STATUS(118) | Name(340) | Kanäle(92) | Bst(64) | Preis(86) | Akt(122) -->
+<!-- x:        226     258         304           394           512          852          944       1008         1094-1272  -->
+<rect x="211" y="130" width="1069" height="24" fill="#F7FAFC"/>
+<line x1="211" y1="130" x2="1280" y2="130" stroke="#E2E8F0" stroke-width="1"/>
+<line x1="211" y1="154" x2="1280" y2="154" stroke="#D1D9E8" stroke-width="1.5"/>
+<text x="304" y="146" fill="#718096" font-size="9.5" font-weight="700">ART.-NR.</text>
+<text x="396" y="146" fill="#718096" font-size="9.5" font-weight="700">STATUS</text>
+<text x="514" y="146" fill="#718096" font-size="9.5" font-weight="700">ARTIKELNAME</text>
+<text x="854" y="146" fill="#718096" font-size="9.5" font-weight="700">KANÄLE</text>
+<text x="1004" y="146" fill="#718096" font-size="9.5" font-weight="700" text-anchor="end">BST.</text>
+<text x="1090" y="146" fill="#718096" font-size="9.5" font-weight="700" text-anchor="end">PREIS</text>
+
+<!-- ═ ROW 1: ART-00123 Nike Air Max — Parent expanded ═ -->
+<rect x="211" y="154" width="1069" height="32" fill="white"/>
+<line x1="211" y1="186" x2="1280" y2="186" stroke="#EDF2F7" stroke-width="1"/>
+<rect x="228" y="163" width="16" height="16" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="252" y="175" fill="#718096" font-size="11">&#9660;</text>
+<rect x="262" y="158" width="38" height="24" rx="3" fill="#E8ECF4" stroke="#D1D9E8" stroke-width="0.5"/>
+<text x="281" y="173" fill="#A0ADB8" font-size="8" text-anchor="middle">img</text>
+<text x="304" y="175" fill="#2D5FA6" font-size="11" font-weight="600">00123</text>
+<!-- (no status flags - normal active) -->
+<text x="514" y="175" fill="#1A202C" font-size="11" font-weight="600">Nike Air Max 270</text>
+<text x="662" y="175" fill="#9CA3AF" font-size="10">3 Varianten</text>
+<rect x="854" y="162" width="22" height="14" rx="3" fill="#5590C0"/>
+<text x="865" y="173" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<text x="1004" y="175" fill="#1A202C" font-size="11" text-anchor="end">12</text>
+<text x="1090" y="175" fill="#1A202C" font-size="11" text-anchor="end">&#8364; 89,&#8211;</text>
+
+<!-- ═ ROW 2: child 00123-38 (mit Thumbnail) ═ -->
+<rect x="211" y="186" width="1069" height="28" fill="#FAFCFF"/>
+<line x1="211" y1="214" x2="1280" y2="214" stroke="#EDF2F7" stroke-width="1"/>
+<rect x="228" y="194" width="14" height="14" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="256" y="204" fill="#C4CDD6" font-size="11">&#8627;</text>
+<!-- Thumbnail Schwarz (color swatch) -->
+<rect x="268" y="190" width="32" height="20" rx="3" fill="#2C2C2C" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="308" y="204" fill="#718096" font-size="10.5">00123-38</text>
+<text x="514" y="204" fill="#4A5568" font-size="10.5">Größe 38 / Schwarz</text>
+<rect x="854" y="190" width="22" height="14" rx="3" fill="#5590C0"/>
+<text x="865" y="201" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<text x="1004" y="204" fill="#1A202C" font-size="10.5" text-anchor="end">4</text>
+<text x="1090" y="204" fill="#4A5568" font-size="10.5" text-anchor="end">&#8364; 89,&#8211;</text>
+
+<!-- ═ ROW 3: child 00123-40 ═ -->
+<rect x="211" y="214" width="1069" height="28" fill="#FAFCFF"/>
+<line x1="211" y1="242" x2="1280" y2="242" stroke="#EDF2F7" stroke-width="1"/>
+<rect x="228" y="222" width="14" height="14" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="256" y="232" fill="#C4CDD6" font-size="11">&#8627;</text>
+<rect x="268" y="218" width="32" height="20" rx="3" fill="#2C2C2C" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="308" y="232" fill="#718096" font-size="10.5">00123-40</text>
+<text x="514" y="232" fill="#4A5568" font-size="10.5">Größe 40 / Schwarz</text>
+<rect x="854" y="218" width="22" height="14" rx="3" fill="#5590C0"/>
+<text x="865" y="229" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<text x="1004" y="232" fill="#1A202C" font-size="10.5" text-anchor="end">8</text>
+<text x="1090" y="232" fill="#4A5568" font-size="10.5" text-anchor="end">&#8364; 89,&#8211;</text>
+
+<!-- ═ ROW 4: child 00123-42 DEAKTIVIERT ═ -->
+<rect x="211" y="242" width="1069" height="28" fill="#F4F6F8"/>
+<line x1="211" y1="270" x2="1280" y2="270" stroke="#E2E8F0" stroke-width="1"/>
+<rect x="228" y="250" width="14" height="14" rx="3" fill="#EAECEE" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="256" y="260" fill="#C4CDD6" font-size="11">&#8627;</text>
+<!-- Blue color swatch, grayed out -->
+<rect x="268" y="246" width="32" height="20" rx="3" fill="#7BA5C4" opacity="0.45" stroke="#A0BDD4" stroke-width="0.5"/>
+<text x="308" y="260" fill="#A0ADB8" font-size="10.5">00123-42</text>
+<!-- Status: Deaktiviert — now prominently in status column -->
+<rect x="396" y="249" width="62" height="15" rx="7" fill="#E2E8F0"/>
+<text x="427" y="260" fill="#718096" font-size="9.5" font-weight="700" text-anchor="middle">Deaktiviert</text>
+<text x="514" y="260" fill="#A0ADB8" font-size="10.5">Größe 42 / Blau</text>
+<text x="1004" y="260" fill="#A0ADB8" font-size="10.5" text-anchor="end">0</text>
+<text x="1090" y="260" fill="#A0ADB8" font-size="10.5" text-anchor="end">&#8364; 89,&#8211;</text>
+
+<!-- ═ ROW 5: ART-00456 Sockenwolle + SALE — HOVER STATE ═ -->
+<rect x="211" y="270" width="1069" height="32" fill="#EBF8FF"/>
+<line x1="211" y1="302" x2="1280" y2="302" stroke="#BEE3F8" stroke-width="1"/>
+<rect x="228" y="279" width="16" height="16" rx="3" fill="white" stroke="#7EC8E3" stroke-width="1.5"/>
+<rect x="262" y="274" width="38" height="24" rx="3" fill="#E4DDD0" stroke="#BEE3F8" stroke-width="1.5"/>
+<text x="281" y="289" fill="#9C8870" font-size="8" text-anchor="middle">img</text>
+<text x="304" y="291" fill="#2D5FA6" font-size="11" font-weight="600">00456</text>
+<!-- Status: Sale badge -->
+<rect x="396" y="279" width="38" height="15" rx="7" fill="#FAF5FF"/>
+<text x="415" y="290" fill="#7E22CE" font-size="9.5" font-weight="700" text-anchor="middle">Sale</text>
+<text x="514" y="291" fill="#1A202C" font-size="11" font-weight="600">Sockenwolle "Merino" 100g</text>
+<rect x="854" y="278" width="22" height="14" rx="3" fill="#5590C0"/>
+<text x="865" y="289" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<rect x="880" y="278" width="22" height="14" rx="3" fill="#7EC8E3"/>
+<text x="891" y="289" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S2</text>
+<text x="1004" y="291" fill="#27AE60" font-size="11" font-weight="700" text-anchor="end">45</text>
+<text x="1090" y="291" fill="#1A202C" font-size="11" text-anchor="end">&#8364; 8,&#8211;</text>
+<!-- Hover actions -->
+<rect x="1148" y="278" width="26" height="16" rx="4" fill="#2D5FA6"/>
+<text x="1161" y="290" fill="white" font-size="11" text-anchor="middle">&#9998;</text>
+<rect x="1178" y="278" width="26" height="16" rx="4" fill="#5590C0"/>
+<text x="1191" y="290" fill="white" font-size="11" text-anchor="middle">&#10064;</text>
+<rect x="1208" y="278" width="26" height="16" rx="4" fill="#E2E8F0"/>
+<text x="1221" y="290" fill="#718096" font-size="11" text-anchor="middle">&#8856;</text>
+
+<!-- ═ HOVER POPUP (floating above row 5 thumbnail) ═ -->
+<rect x="260" y="130" width="138" height="142" rx="8" fill="white" stroke="#CBD5E0" stroke-width="1" filter="url(#sp)"/>
+<rect x="270" y="138" width="118" height="88" rx="5" fill="#DDD6CC"/>
+<text x="329" y="186" fill="#9C8870" font-size="9" text-anchor="middle">[ Produktbild ]</text>
+<text x="329" y="198" fill="#9C8870" font-size="9" text-anchor="middle">130 × 130 px</text>
+<line x1="270" y1="230" x2="388" y2="230" stroke="#EDF2F7" stroke-width="1"/>
+<text x="329" y="244" fill="#1A202C" font-size="9.5" text-anchor="middle" font-weight="600">Merino 100g</text>
+<text x="329" y="257" fill="#7E22CE" font-size="9.5" text-anchor="middle" font-weight="700">Sale  &#8364; 8,&#8211;</text>
+<!-- Pointer -->
+<polygon points="300,272 292,264 308,264" fill="white"/>
+<line x1="292" y1="264" x2="300" y2="272" stroke="#CBD5E0" stroke-width="1"/>
+<line x1="308" y1="264" x2="300" y2="272" stroke="#CBD5E0" stroke-width="1"/>
+
+<!-- ═ ROW 6: ART-00457 Bio-Merinowolle — collapsed parent, Üv ═ -->
+<rect x="211" y="302" width="1069" height="32" fill="white"/>
+<line x1="211" y1="334" x2="1280" y2="334" stroke="#EDF2F7" stroke-width="1"/>
+<rect x="228" y="311" width="16" height="16" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="252" y="323" fill="#718096" font-size="11">&#9654;</text>
+<rect x="262" y="306" width="38" height="24" rx="3" fill="#EDE8E0" stroke="#D4CFC6" stroke-width="0.5"/>
+<text x="281" y="321" fill="#9C9080" font-size="8" text-anchor="middle">img</text>
+<text x="304" y="323" fill="#2D5FA6" font-size="11" font-weight="600">00457</text>
+<!-- Status: Überverkauf -->
+<rect x="396" y="311" width="34" height="15" rx="7" fill="#FEEBC8"/>
+<text x="413" y="322" fill="#C05621" font-size="9.5" font-weight="700" text-anchor="middle">Üv</text>
+<text x="514" y="323" fill="#1A202C" font-size="11" font-weight="600">Bio-Merinowolle 100g</text>
+<text x="638" y="323" fill="#9CA3AF" font-size="10">2 Varianten</text>
+<rect x="854" y="311" width="22" height="14" rx="3" fill="#A8D4F0"/>
+<text x="865" y="322" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S3</text>
+<text x="1004" y="323" fill="#C05621" font-size="11" font-weight="700" text-anchor="end">2</text>
+<text x="1090" y="323" fill="#1A202C" font-size="11" text-anchor="end">&#8364; 12,&#8211;</text>
+
+<!-- ═ ROW 7: child 00457-1 Naturweiß, Fehlbest+Üv ═ -->
+<rect x="211" y="334" width="1069" height="28" fill="#FFFCF9"/>
+<line x1="211" y1="362" x2="1280" y2="362" stroke="#FEF2E4" stroke-width="1"/>
+<rect x="228" y="342" width="14" height="14" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="256" y="352" fill="#C4CDD6" font-size="11">&#8627;</text>
+<!-- Naturweiß color swatch -->
+<rect x="268" y="338" width="32" height="20" rx="3" fill="#F5F0E8" stroke="#D4CFC6" stroke-width="0.5"/>
+<text x="308" y="352" fill="#718096" font-size="10.5">00457-1</text>
+<!-- Status: Üv + Fehlbestand -->
+<rect x="396" y="340" width="34" height="15" rx="7" fill="#FEEBC8"/>
+<text x="413" y="351" fill="#C05621" font-size="9.5" font-weight="700" text-anchor="middle">Üv</text>
+<rect x="434" y="340" width="52" height="15" rx="7" fill="#FED7D7"/>
+<text x="460" y="351" fill="#C53030" font-size="9" font-weight="700" text-anchor="middle">Fehlbest.</text>
+<text x="514" y="352" fill="#4A5568" font-size="10.5">Naturweiß</text>
+<rect x="854" y="338" width="22" height="14" rx="3" fill="#A8D4F0"/>
+<text x="865" y="349" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S3</text>
+<text x="1004" y="352" fill="#C53030" font-size="10.5" font-weight="700" text-anchor="end">0</text>
+<text x="1090" y="352" fill="#4A5568" font-size="10.5" text-anchor="end">&#8364; 12,&#8211;</text>
+
+<!-- ═ ROW 8: child 00457-2 Grau ═ -->
+<rect x="211" y="362" width="1069" height="28" fill="#FFFCF9"/>
+<line x1="211" y1="390" x2="1280" y2="390" stroke="#EDF2F7" stroke-width="1"/>
+<rect x="228" y="370" width="14" height="14" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="256" y="380" fill="#C4CDD6" font-size="11">&#8627;</text>
+<!-- Grau color swatch -->
+<rect x="268" y="366" width="32" height="20" rx="3" fill="#B0B0B0" stroke="#989898" stroke-width="0.5"/>
+<text x="308" y="380" fill="#718096" font-size="10.5">00457-2</text>
+<rect x="396" y="368" width="34" height="15" rx="7" fill="#FEEBC8"/>
+<text x="413" y="379" fill="#C05621" font-size="9.5" font-weight="700" text-anchor="middle">Üv</text>
+<text x="514" y="380" fill="#4A5568" font-size="10.5">Grau</text>
+<rect x="854" y="366" width="22" height="14" rx="3" fill="#A8D4F0"/>
+<text x="865" y="377" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S3</text>
+<text x="1004" y="380" fill="#1A202C" font-size="10.5" text-anchor="end">2</text>
+<text x="1090" y="380" fill="#4A5568" font-size="10.5" text-anchor="end">&#8364; 12,&#8211;</text>
+
+<!-- ═ ROW 9: ART-00789 Stricknadeln ═ -->
+<rect x="211" y="390" width="1069" height="32" fill="#FAFCFF"/>
+<line x1="211" y1="422" x2="1280" y2="422" stroke="#EDF2F7" stroke-width="1"/>
+<rect x="228" y="399" width="16" height="16" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<rect x="262" y="394" width="38" height="24" rx="3" fill="#E8E4EC" stroke="#D8D0E4" stroke-width="0.5"/>
+<text x="281" y="409" fill="#A890B0" font-size="8" text-anchor="middle">img</text>
+<text x="304" y="411" fill="#2D5FA6" font-size="11" font-weight="600">00789</text>
+<text x="514" y="411" fill="#1A202C" font-size="11" font-weight="600">Stricknadeln-Set 5mm</text>
+<rect x="854" y="399" width="22" height="14" rx="3" fill="#5590C0"/>
+<text x="865" y="410" fill="white" font-size="8" font-weight="700" text-anchor="middle">S1</text>
+<rect x="880" y="399" width="22" height="14" rx="3" fill="#7EC8E3"/>
+<text x="891" y="410" fill="#1B3A6B" font-size="8" font-weight="700" text-anchor="middle">S2</text>
+<text x="1004" y="411" fill="#1A202C" font-size="11" text-anchor="end">8</text>
+<text x="1090" y="411" fill="#1A202C" font-size="11" text-anchor="end">&#8364; 24,&#8211;</text>
+
+<!-- ═ ROW 10: ART-00790 Auslaufartikel ═ -->
+<rect x="211" y="422" width="1069" height="32" fill="#FAFCFF"/>
+<line x1="211" y1="454" x2="1280" y2="454" stroke="#EDF2F7" stroke-width="1"/>
+<rect x="228" y="431" width="16" height="16" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<rect x="262" y="426" width="38" height="24" rx="3" fill="#EDE8E0" stroke="#D4CFC6" stroke-width="0.5"/>
+<text x="281" y="441" fill="#9C9080" font-size="8" text-anchor="middle">img</text>
+<text x="304" y="443" fill="#2D5FA6" font-size="11" font-weight="600">00790</text>
+<!-- Auslauf badge in status column -->
+<rect x="396" y="431" width="54" height="15" rx="7" fill="#FEFCBF"/>
+<text x="423" y="442" fill="#744210" font-size="9.5" font-weight="700" text-anchor="middle">Auslauf</text>
+<text x="514" y="443" fill="#1A202C" font-size="11" font-weight="600">Häkelnadel-Set</text>
+<text x="1004" y="443" fill="#C53030" font-size="11" font-weight="700" text-anchor="end">0</text>
+<text x="1090" y="443" fill="#1A202C" font-size="11" text-anchor="end">&#8364; 18,&#8211;</text>
+
+<!-- ══ PAGINATION ══ -->
+<rect x="211" y="454" width="1069" height="36" fill="#F7FAFC"/>
+<line x1="211" y1="454" x2="1280" y2="454" stroke="#E2E8F0" stroke-width="1.5"/>
+<text x="226" y="476" fill="#718096" font-size="11">Zeige 1&#8211;10 von 234 Artikeln</text>
+<rect x="560" y="462" width="28" height="20" rx="4" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="574" y="476" fill="#4A5568" font-size="11" text-anchor="middle">&#8249;</text>
+<rect x="594" y="462" width="28" height="20" rx="4" fill="#1B3A6B"/>
+<text x="608" y="476" fill="white" font-size="11" font-weight="700" text-anchor="middle">1</text>
+<rect x="628" y="462" width="28" height="20" rx="4" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="642" y="476" fill="#4A5568" font-size="11" text-anchor="middle">2</text>
+<rect x="662" y="462" width="28" height="20" rx="4" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="676" y="476" fill="#4A5568" font-size="11" text-anchor="middle">3</text>
+<text x="700" y="476" fill="#9CA3AF" font-size="11">&#8230;</text>
+<rect x="714" y="462" width="28" height="20" rx="4" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="728" y="476" fill="#4A5568" font-size="11" text-anchor="middle">24</text>
+<rect x="748" y="462" width="28" height="20" rx="4" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="762" y="476" fill="#4A5568" font-size="11" text-anchor="middle">&#8250;</text>
+<text x="1154" y="476" fill="#718096" font-size="11" text-anchor="end">Zeilen/Seite:</text>
+<rect x="1160" y="462" width="52" height="20" rx="4" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="1186" y="476" fill="#4A5568" font-size="11" text-anchor="middle">10 &#9660;</text>
+
+<!-- ══ LOG BAR ══ -->
+<rect y="640" width="1280" height="36" fill="#1E1E2E"/>
+<text x="12" y="662" fill="#7EC8E3" font-size="11.5" font-weight="700">&#9654; LOG</text>
+<text x="52" y="662" fill="#68D391" font-size="11">&#9679; 10:31</text>
+<text x="94" y="662" fill="#A0AEC0" font-size="11">[OK] Artikel #00456 geöffnet</text>
+<text x="318" y="662" fill="#F6E05E" font-size="11">&#9679; 10:28</text>
+<text x="360" y="662" fill="#A0AEC0" font-size="11">[OK] Artikel #00457 gespeichert — Überverkauf aktiviert</text>
+
+<!-- ══ STATUS BAR ══ -->
+<rect y="676" width="1280" height="26" fill="#0D2045"/>
+<text x="12" y="693" fill="#7EC8E3" font-size="11">&#128100; Karl Huber</text>
+<line x1="108" y1="680" x2="108" y2="698" stroke="#2D5FA6" stroke-width="1"/>
+<text x="116" y="693" fill="#7EC8E3" font-size="11">Lager: Wien</text>
+<line x1="204" y1="680" x2="204" y2="698" stroke="#2D5FA6" stroke-width="1"/>
+<text x="212" y="693" fill="#7EC8E3" font-size="11">MeaLana GmbH</text>
+<line x1="332" y1="680" x2="332" y2="698" stroke="#2D5FA6" stroke-width="1"/>
+<text x="340" y="693" fill="#718096" font-size="11">&#8635; Sync: 10:31:14</text>
+
+</svg>

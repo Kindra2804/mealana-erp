@@ -258,6 +258,16 @@ require_once __DIR__ . '/../shell_top.php';
             </div>
         </div>
 
+        <div style="margin-bottom:16px">
+            <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Versanddienstleister:</label>
+            <select id="overlay-dl" class="pp-overlay-input" style="cursor:pointer">
+                <option value="post_at" selected>🇦🇹 Österreichische Post</option>
+                <option value="dhl">DHL</option>
+                <option value="dpd">DPD</option>
+                <option value="gls">GLS</option>
+            </select>
+        </div>
+
         <div>
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Trackingnummer scannen:</label>
             <input type="text" id="overlay-tracking" class="pp-overlay-input"
@@ -286,6 +296,13 @@ require_once __DIR__ . '/../shell_top.php';
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Gewicht (kg):</label>
             <input type="number" id="overlay-tl-gewicht" class="pp-overlay-input"
                 value="<?= $gewichtBerechnet ?>" step="0.001" min="0.001" style="margin-bottom:16px">
+            <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Versanddienstleister:</label>
+            <select id="overlay-tl-dl" class="pp-overlay-input" style="cursor:pointer;margin-bottom:16px">
+                <option value="post_at" selected>🇦🇹 Österreichische Post</option>
+                <option value="dhl">DHL</option>
+                <option value="dpd">DPD</option>
+                <option value="gls">GLS</option>
+            </select>
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Trackingnummer scannen:</label>
             <input type="text" id="overlay-tl-tracking" class="pp-overlay-input"
                 placeholder="Barcode vom Label scannen ..." autocomplete="off">

@@ -57,7 +57,7 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
 </div>
 
 <div style="text-align:center;margin-top:60px">
-  <a href="/mealana/auftraege/liste.php" style="color:#444;font-size:13px;text-decoration:none">→ Zurück zum ERP</a>
+  <a href="/mealana/start.php" style="color:#444;font-size:13px;text-decoration:none">→ Startseite</a>
   &nbsp;&nbsp;·&nbsp;&nbsp;
   <a href="/mealana/logout.php" style="color:#444;font-size:13px;text-decoration:none">Abmelden</a>
 </div>

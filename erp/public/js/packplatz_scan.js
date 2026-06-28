@@ -140,6 +140,9 @@ function verpackenAbschliessen(istTeillieferung) {
     const gewicht = istTeillieferung
         ? document.getElementById('overlay-tl-gewicht').value
         : document.getElementById('overlay-gewicht').value;
+    const dienstleister = istTeillieferung
+        ? (document.getElementById('overlay-tl-dl')?.value || 'post_at')
+        : (document.getElementById('overlay-dl')?.value || 'post_at');
 
     if (!tracking) return;
 
@@ -153,12 +156,13 @@ function verpackenAbschliessen(istTeillieferung) {
     form.action = 'abschliessen.php';
 
     const felder = {
-        auftrag_id:      AUFTRAG_ID,
-        pickliste_id:    PICKLISTE_ID ?? '',
-        tracking:        tracking,
-        gewicht:         gewicht,
-        teillieferung:   istTeillieferung ? '1' : '0',
-        positionen_json: JSON.stringify(posData),
+        auftrag_id:          AUFTRAG_ID,
+        pickliste_id:        PICKLISTE_ID ?? '',
+        tracking:            tracking,
+        versanddienstleister: dienstleister,
+        gewicht:             gewicht,
+        teillieferung:       istTeillieferung ? '1' : '0',
+        positionen_json:     JSON.stringify(posData),
     };
 
     for (const [k, v] of Object.entries(felder)) {

@@ -10,7 +10,7 @@ $kacheln = [
         'titel'  => 'ERP',
         'icon'   => '📦',
         'text'   => 'Artikel, Lager, Einkauf, Verkauf',
-        'href'   => '/mealana/artikel/liste.php',
+        'href'   => '/mealana/dashboard.php',
         'farbe'  => '#4a7cb5',
     ],
     [
