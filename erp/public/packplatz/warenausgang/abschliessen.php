@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../src/core/Mailer.php';
 require_once __DIR__ . '/../../../src/core/EasyPakExporter.php';
 require_once __DIR__ . '/../../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../../src/modules/auftraege/AuftragRepository.php';
+require_once __DIR__ . '/../../../src/modules/dokumente/DokumentService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
@@ -137,6 +138,53 @@ Logger::log('packplatz.versendet', 'auftraege', $auftragId, [
     'gewicht'       => $gewicht,
 ]);
 
+// ─── Gelieferte Positionen aufbauen (für Mail + Lieferschein) ────────────────
+$geliefertePositionen = [];  // für Mail-Template (bezeichnung, artikelnummer, menge_versendet, einheit)
+$gelieferteFuerPdf    = [];  // für DokumentService (menge statt menge_versendet + Preisfelder)
+
+if (!empty($posGescannt)) {
+    $stmtDet = $db->prepare("
+        SELECT p.id, p.bezeichnung, p.einzelpreis_netto, p.gesamtpreis_netto,
+               p.steuer_prozent, p.rabatt_prozent,
+               a.artikelnummer, a.einheit
+        FROM auftrag_positionen p
+        LEFT JOIN artikel a ON a.id = p.artikel_id
+        WHERE p.auftrag_id = ? AND p.artikel_id IS NOT NULL
+        ORDER BY p.sort_order, p.id
+    ");
+    $stmtDet->execute([$auftragId]);
+    $posDetailsById = [];
+    foreach ($stmtDet->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $posDetailsById[$row['id']] = $row;
+    }
+
+    foreach ($posGescannt as $ps) {
+        $idx      = (int)$ps['idx'];
+        $gescannt = (float)($ps['gescannt'] ?? 0);
+        if ($gescannt <= 0 || !isset($posMap[$idx])) continue;
+
+        $pos = $posMap[$idx];
+        $det = $posDetailsById[$pos['id']] ?? [];
+
+        $geliefertePositionen[] = [
+            'bezeichnung'     => $det['bezeichnung'] ?? ('Pos. ' . ($idx + 1)),
+            'artikelnummer'   => $det['artikelnummer'] ?? '',
+            'menge_versendet' => $gescannt,
+            'einheit'         => $det['einheit'] ?? 'Stk.',
+        ];
+
+        $gelieferteFuerPdf[] = [
+            'bezeichnung'       => $det['bezeichnung'] ?? ('Pos. ' . ($idx + 1)),
+            'artikelnummer'     => $det['artikelnummer'] ?? '',
+            'menge'             => $gescannt,
+            'einzelpreis_netto' => (float)($det['einzelpreis_netto'] ?? 0),
+            'gesamtpreis_netto' => round((float)($det['einzelpreis_netto'] ?? 0) * $gescannt * (1 - (float)($det['rabatt_prozent'] ?? 0) / 100), 4),
+            'steuer_prozent'    => (float)($det['steuer_prozent'] ?? 0),
+            'rabatt_prozent'    => (float)($det['rabatt_prozent'] ?? 0),
+        ];
+    }
+}
+
 // ─── EasyPak XML → PLC-Ordner ────────────────────────────────────────────────
 $plcOrdner = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel='plc_polling_ordner'")->fetchColumn();
 if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand') {
@@ -148,7 +196,7 @@ if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand') {
     }
 }
 
-// ─── Versandmail ──────────────────────────────────────────────────────────────
+// ─── Mail-Stammdaten ─────────────────────────────────────────────────────────
 $kunden = json_decode($auftrag['kunden_snapshot'] ?? '{}', true);
 if (!empty($auftrag['lieferadresse_snapshot'])) {
     $lieferAdr = json_decode($auftrag['lieferadresse_snapshot'], true);
@@ -157,42 +205,132 @@ if (!empty($auftrag['lieferadresse_snapshot'])) {
 } else {
     $lieferAdr = json_decode($auftrag['kunden_snapshot'] ?? '{}', true);
 }
-$email = $kunden['email'] ?? '';
-$name  = trim(($kunden['vorname'] ?? '') . ' ' . ($kunden['nachname'] ?? '')) ?: ($kunden['firma'] ?? '');
+$email    = $kunden['email']    ?? '';
+$anrede   = $kunden['anrede']   ?? '';
+$nachname = $kunden['nachname'] ?? '';
+$name     = trim(($kunden['vorname'] ?? '') . ' ' . $nachname) ?: ($kunden['firma'] ?? '');
 
-if ($email && !$istTeillieferung) {
+$mailerFirma = [];
+if ($email) {
+    $firma       = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $mailerFirma = $firma; // alias für spätere Nutzung
+}
+
+// ─── PDF-Anhang (Rechnung oder Lieferschein) + Auto-Rechnungsmail ─────────────
+$anhaenge        = [];
+$autoRechnungMail = null; // wird unten befüllt wenn Rechnung frisch erstellt wurde
+if ($email && $auftrag['lieferart'] !== 'abholung') {
     try {
-        $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $dokumentService = new DokumentService();
+        $istBezahlt      = $auftrag['zahlungsstatus'] === 'bezahlt';
+
+        if ($istBezahlt && !$istTeillieferung) {
+            $rgnRes = $dokumentService->holeOderErstelleRechnung($auftragId, $benutzerId);
+            if ($rgnRes['erfolg']) {
+                $anhaenge[] = ['pfad' => $rgnRes['pfad'], 'name' => 'Rechnung_' . $auftrag['auftrag_nr'] . '.pdf'];
+
+                // Rechnung-Mail nur wenn gerade frisch auto-erstellt (kein Doppelversand)
+                if ($rgnRes['neu_erstellt']) {
+                    $rStmt = $db->prepare("SELECT rechnung_nr, bruttobetrag FROM rechnungen WHERE auftrag_id = ? AND storniert = 0 ORDER BY erstellt_am DESC LIMIT 1");
+                    $rStmt->execute([$auftragId]);
+                    $autoRechnungMail = $rStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                }
+            }
+        } else {
+            $lsResult = $dokumentService->erstelleLieferscheinFuerLieferung($auftragId, $benutzerId, $gelieferteFuerPdf);
+            if ($lsResult['erfolg']) {
+                $anhaenge[] = [
+                    'pfad' => $dokumentService->getDateipfad($auftragId, $lsResult['dateiname']),
+                    'name' => 'Lieferschein_' . $auftrag['auftrag_nr'] . '.pdf',
+                ];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('[VersandPDF] Fehler: ' . $e->getMessage());
+    }
+}
+
+// ─── Versandmail ──────────────────────────────────────────────────────────────
+if ($email && $auftrag['lieferart'] !== 'abholung') {
+    $trackingUrlBase = [
+        'post_at' => 'https://www.post.at/sv/sendungsdetails?snr=',
+        'dhl'     => 'https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=',
+        'dpd'     => 'https://tracking.dpd.de/status/de_DE/parcel/',
+        'gls'     => 'https://gls-group.eu/track/',
+    ];
+    $dlLabels = [
+        'post_at' => 'Österreichische Post',
+        'dhl'     => 'DHL',
+        'dpd'     => 'DPD',
+        'gls'     => 'GLS',
+    ];
+    $trackingUrl = ($trackingUrlBase[$versanddienstleister] ?? '') . urlencode($tracking);
+    $betreff     = $istTeillieferung
+        ? 'Teillieferung zu Auftrag ' . $auftrag['auftrag_nr'] . ' versendet'
+        : 'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde versendet';
+    try {
         $mailer = new Mailer();
         $mailer->sendeTemplate(
             empfaenger:   $email,
-            betreff:      'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde versendet',
+            betreff:      $betreff,
             templatePfad: 'mails/versandbestaetigung.html.twig',
             variablen: [
-                'kunde_name'     => $name,
-                'auftrag_nummer' => $auftrag['auftrag_nr'],
-                'tracking'       => $tracking,
-                'lieferadresse'  => $lieferAdr,
-                'firma_email'    => $firma['email'] ?? '',
-                'firmenname'     => $firma['firmenname'] ?? 'MEALANA KG',
-            ]
+                'logo_base64'               => $mailer->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
+                'anrede'                    => $anrede,
+                'nachname'                  => $nachname,
+                'kunde_name'                => $name,
+                'auftrag_nummer'            => $auftrag['auftrag_nr'],
+                'tracking'                  => $tracking,
+                'tracking_url'              => $trackingUrl,
+                'versanddienstleister_label'=> $dlLabels[$versanddienstleister] ?? $versanddienstleister,
+                'ist_teillieferung'         => $istTeillieferung,
+                'positionen'                => $geliefertePositionen,
+                'lieferadresse'             => $lieferAdr,
+                'firma_email'               => $firma['mail_from_address'] ?? '',
+            ],
+            anhaenge: $anhaenge,
         );
     } catch (Throwable $e) {
         error_log('[Versandmail] Fehler: ' . $e->getMessage());
     }
+
+    // Auto-Rechnungsmail: nur wenn Rechnung gerade frisch auto-erstellt wurde
+    if ($autoRechnungMail && $email) {
+        try {
+            $mailerR = new Mailer();
+            $mailerR->sendeTemplate(
+                empfaenger:   $email,
+                betreff:      'Ihre Rechnung ' . $autoRechnungMail['rechnung_nr'],
+                templatePfad: 'mails/rechnung_mail.html.twig',
+                variablen: [
+                    'logo_base64'    => $mailerR->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
+                    'anrede'         => $anrede,
+                    'nachname'       => $nachname,
+                    'kunde_name'     => $name,
+                    'auftrag_nummer' => $auftrag['auftrag_nr'],
+                    'rechnung_nr'    => $autoRechnungMail['rechnung_nr'],
+                    'brutto_gesamt'  => (float)$autoRechnungMail['bruttobetrag'],
+                    'faellig_datum'  => date('d.m.Y', strtotime('+14 days')),
+                    'firma_email'    => $firma['mail_from_address'] ?? '',
+                ],
+                anhaenge: [['pfad' => $rgnRes['pfad'], 'name' => $autoRechnungMail['rechnung_nr'] . '.pdf']],
+            );
+        } catch (Throwable $e) {
+            error_log('[AutoRechnungMail] Fehler: ' . $e->getMessage());
+        }
+    }
 }
 
+// ─── Abholmail ────────────────────────────────────────────────────────────────
 if ($email && $auftrag['lieferart'] === 'abholung') {
     try {
-        $firma  = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
         $mailer = new Mailer();
         $mailer->sende(
             empfaenger: $email,
             betreff:    'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' liegt zur Abholung bereit',
-            htmlBody:   '<p>Sehr geehrte/r ' . htmlspecialchars($name) . ',</p>'
-                . '<p>Ihre Bestellung <strong>' . htmlspecialchars($auftrag['auftrag_nr']) . '</strong> '
+            htmlBody:   '<p>Ihre Bestellung <strong>' . htmlspecialchars($auftrag['auftrag_nr']) . '</strong> '
                 . 'liegt ab sofort zur Abholung bei uns bereit.</p>'
-                . '<p>Mit freundlichen Grüßen,<br>' . htmlspecialchars($firma['firmenname'] ?? 'MEALANA KG') . '</p>'
+                . '<p>' . htmlspecialchars($firma['firmenname'] ?? 'MEALANA KG') . '</p>'
         );
     } catch (Throwable $e) {
         error_log('[Abholmail] Fehler: ' . $e->getMessage());

@@ -192,8 +192,9 @@ $letzteAuftraege = $db->query("
     SELECT a.id, a.auftrag_nr, a.kanal, a.zahlungsstatus, a.lieferstatus,
            a.bruttobetrag, a.erstellt_am, a.kunden_snapshot
     FROM auftraege a
-    WHERE a.lieferstatus != 'storniert'
-    ORDER BY a.erstellt_am DESC
+    WHERE a.zahlungsstatus NOT IN ('storniert')
+      AND a.lieferstatus NOT IN ('storniert', 'abgeschlossen')
+    ORDER BY a.erstellt_am ASC
     LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
 

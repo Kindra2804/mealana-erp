@@ -268,6 +268,57 @@ class DokumentService
     }
 
     /**
+     * Erzeugt einen Lieferschein für eine bestimmte (Teil-)Lieferung.
+     * $positionen enthält nur die tatsächlich versendeten Artikel dieser Lieferung.
+     * Erwartet pro Position: bezeichnung, artikelnummer, menge (Pflicht).
+     */
+    public function erstelleLieferscheinFuerLieferung(int $auftragId, int $benutzerId, array $positionen): array
+    {
+        $daten = $this->ladeDaten($auftragId);
+        if (!$daten) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden.'];
+
+        $daten['positionen'] = $positionen;
+
+        $dateiname = 'LS-' . $daten['auftrag']['auftrag_nr'] . '-' . date('His') . '.pdf';
+        $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
+
+        $this->pdf->generiere('lieferschein/standard.html.twig', $daten, $dateipfad);
+        $this->repo->speichern($auftragId, 'lieferschein', $dateiname, $benutzerId);
+
+        return ['erfolg' => true, 'dateiname' => $dateiname, 'auftrag_id' => $auftragId];
+    }
+
+    /**
+     * Gibt Pfad + Dateiname + neu_erstellt-Flag zurück.
+     * neu_erstellt=true → Rechnung wurde gerade frisch angelegt (noch kein Mail verschickt).
+     * neu_erstellt=false → Rechnung existierte bereits (Mail wurde ggf. schon gesendet).
+     */
+    public function holeOderErstelleRechnung(int $auftragId, int $benutzerId): array
+    {
+        foreach ($this->repo->ladeByAuftrag($auftragId) as $dok) {
+            if ($dok['typ'] === 'rechnung') {
+                $pfad = $this->storagePfad . '/' . $auftragId . '/' . $dok['dateiname'];
+                if (file_exists($pfad)) {
+                    return ['erfolg' => true, 'pfad' => $pfad, 'dateiname' => $dok['dateiname'], 'neu_erstellt' => false];
+                }
+            }
+        }
+
+        $result = $this->erstelleRechnung($auftragId, $benutzerId);
+        if (!$result['erfolg']) return ['erfolg' => false];
+
+        $pfad = $this->storagePfad . '/' . $auftragId . '/' . $result['dateiname'];
+        return ['erfolg' => true, 'pfad' => $pfad, 'dateiname' => $result['dateiname'], 'neu_erstellt' => true];
+    }
+
+    /** @deprecated Nutze holeOderErstelleRechnung() für den neu_erstellt-Flag */
+    public function holeOderErstelleRechnungPfad(int $auftragId, int $benutzerId): ?string
+    {
+        $res = $this->holeOderErstelleRechnung($auftragId, $benutzerId);
+        return $res['erfolg'] ? $res['pfad'] : null;
+    }
+
+    /**
      * Liefert alle gespeicherten Dokumente eines Auftrags.
      */
     public function getDokumente(int $auftragId): array

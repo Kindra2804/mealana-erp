@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-28 (Session 16)
+Stand: 2026-06-28 (Session 17)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -71,6 +71,20 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
   - liste.php: Chips Teilbezahlt/Überbezahlt + Filter für alle Zahlungsstatus
 
 ### Einstellungen-Modul ✅ NEU (2026-06-25)
+### Mail-System ✅ VOLLSTÄNDIG ÜBERARBEITET (2026-06-28, Session 17)
+- Tracking-IDs in auftraege/detail.php klickbar (carrier-spezifische URLs: Post AT / DHL / DPD / GLS)
+- basis_layout.html.twig: Logo (per Shop, base64), Social-Links + Tel + Web im Footer
+- versandbestaetigung.html.twig: persönliche Anrede (Sehr geehrte/r), versendete Positionen, Tracking-Card
+- auftragsbestaetigung.html.twig: Komplett neu — Anrede, ÜV-Warnung (rote Box), Status-Nachricht ("sofort für Versand" wenn bezahlt+lagernd), Positionen mit Art.nr., Rechnungs-/Lieferadresse, volle Bankverbindung bei Vorkasse
+- zahlungseingang.html.twig: NEU — Zahlungsbestätigung mit Bestellübersicht, Teilzahlung-Anzeige (offen/bezahlt)
+- Mailer.php: ladeShopLogo(shopId), auto-inject Firma/Social-Daten in alle Templates, Fallback website→firma_web, telefon→firma_tel
+- Migration 090: social_instagram/facebook/tiktok/youtube/pinterest/firma_web als Settings
+- Einstellungen/Firma: Neue Karte "Online-Präsenz & Social Media" mit URL-Feldern für alle 5 Kanäle
+- DokumentService: holeOderErstelleRechnung() mit neu_erstellt-Flag (verhindert Mail-Doppelversand)
+- abschliessen.php (Packplatz): Auto-Rechnungserstellung + Auto-Rechnungsmail wenn bezahlt + vollständig
+- zahlung_buchen.php: Zahlungseingangs-Mail nach manuellem Buchen (außer Bar/Karte/Nachnahme)
+- auftraege/detail.php: Hinweis unter Dokument-Buttons welche Typen automatisch mailen
+
 ### Mail-Infrastruktur ✅ NEU (2026-06-25)
 ### Mahnwesen-Cronjob ✅ NEU (2026-06-25)
 
@@ -114,6 +128,12 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
+
+## Session 17 erledigt (2026-06-28)
+- Mail-System Komplett-Überarbeitung (siehe Mail-System oben)
+- Page-Loader Overlay global in shell_bottom.php (alle Views, verhindert Wild-Klicken bei langsamen Abfragen)
+- Loader zeigt bei jedem Link-Klick / Form-Submit, versteckt sich bei pageshow (inkl. Zurück-Button)
+- Ausnahmen: `target="_blank"`, Anker-Links, `data-no-loader`, AJAX-Formulare; 15s Sicherheits-Timeout
 
 ## Session 16 erledigt (2026-06-28)
 - Dashboard gebaut (dashboard.php): KPIs, Fehlbestand-Greedy, Kanal-Balken, Log-Bar

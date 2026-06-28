@@ -127,6 +127,37 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         </div>
 
         <div class="card" style="margin-bottom:12px">
+            <div class="card-header">Online-Präsenz &amp; Social Media</div>
+            <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group">
+                    <label class="form-label">Website (URL)</label>
+                    <input type="url" name="firma_web" class="erp-input" placeholder="https://mealana.at" value="<?= $s('firma_web') ?>">
+                </div>
+                <div class="form-group"></div>
+                <div class="form-group">
+                    <label class="form-label">Instagram</label>
+                    <input type="url" name="social_instagram" class="erp-input" placeholder="https://instagram.com/mealana" value="<?= $s('social_instagram') ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Facebook</label>
+                    <input type="url" name="social_facebook" class="erp-input" placeholder="https://facebook.com/mealana" value="<?= $s('social_facebook') ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">TikTok</label>
+                    <input type="url" name="social_tiktok" class="erp-input" placeholder="https://tiktok.com/@mealana" value="<?= $s('social_tiktok') ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">YouTube</label>
+                    <input type="url" name="social_youtube" class="erp-input" placeholder="https://youtube.com/@mealana" value="<?= $s('social_youtube') ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pinterest</label>
+                    <input type="url" name="social_pinterest" class="erp-input" placeholder="https://pinterest.com/mealana" value="<?= $s('social_pinterest') ?>">
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
             <div class="card-header">Hauptlogo (erscheint auf Dokumenten oben links)</div>
             <div style="padding:16px;display:flex;align-items:center;gap:24px">
                 <?php

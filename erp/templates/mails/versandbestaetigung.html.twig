@@ -1,47 +1,90 @@
 {% extends "mails/basis_layout.html.twig" %}
 
 {% block inhalt %}
-<p>Sehr geehrte/r {{ kunde_name }},</p>
 
-<p>wir freuen uns, Ihnen mitteilen zu können, dass Ihre Bestellung soeben versendet wurde!</p>
+{% if anrede == 'Frau' %}
+<p>Sehr geehrte Frau {{ nachname }},</p>
+{% elseif anrede == 'Herr' %}
+<p>Sehr geehrter Herr {{ nachname }},</p>
+{% else %}
+<p>Guten Tag{% if kunde_name %} {{ kunde_name }}{% endif %},</p>
+{% endif %}
 
-<table class="table">
-  <tr>
-    <th>Auftragsnummer</th>
-    <th>Trackingnummer</th>
-  </tr>
-  <tr>
-    <td><strong>{{ auftrag_nummer }}</strong></td>
-    <td><strong style="font-size:16px;">{{ tracking }}</strong></td>
-  </tr>
+{% if ist_teillieferung %}
+<div class="hinweis" style="border-left-color:#3b82f6;background:#eff6ff">
+    <strong>Teillieferung:</strong> Ein Teil Ihrer Bestellung ist auf dem Weg zu Ihnen.
+    Die restlichen Artikel folgen in einer separaten Sendung.
+</div>
+{% endif %}
+
+<p>Ihre Bestellung <strong>{{ auftrag_nummer }}</strong> wurde soeben versendet!</p>
+
+{% if positionen is defined and positionen|length %}
+<p style="font-size:12px;font-weight:600;color:#666;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.05em">
+    Versendete Artikel
+</p>
+<table class="table" style="margin:0 0 20px">
+    <tbody>
+    {% for pos in positionen %}
+    <tr>
+        <td style="width:60px;font-size:13px;color:#555;white-space:nowrap;padding:7px 10px">
+            {{ pos.menge_versendet }}&thinsp;{{ pos.einheit ?? 'Stk.' }}
+        </td>
+        <td style="padding:7px 10px;font-size:13px">
+            {{ pos.bezeichnung }}
+            {% if pos.artikelnummer %}
+            <br><span style="font-size:11px;color:#999">{{ pos.artikelnummer }}</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
 </table>
+{% endif %}
 
 {% if lieferadresse %}
-<p style="font-size:13px;color:#555;">
-  <strong>Lieferadresse:</strong><br>
-  {% if lieferadresse.firma %}{{ lieferadresse.firma }}<br>{% endif %}
-  {{ lieferadresse.vorname ?? '' }} {{ lieferadresse.nachname ?? '' }}<br>
-  {{ lieferadresse.strasse ?? '' }} {{ lieferadresse.hausnummer ?? '' }}<br>
-  {{ lieferadresse.plz ?? '' }} {{ lieferadresse.ort ?? '' }}<br>
-  {{ lieferadresse.land ?? '' }}
+<p style="font-size:12px;font-weight:600;color:#666;margin:0 0 6px;text-transform:uppercase;letter-spacing:.05em">Lieferadresse</p>
+<p style="font-size:13px;color:#444;margin:0 0 20px;line-height:1.7">
+    {% if lieferadresse.firma %}{{ lieferadresse.firma }}<br>{% endif %}
+    {{ lieferadresse.vorname ?? '' }} {{ lieferadresse.nachname ?? '' }}<br>
+    {{ lieferadresse.strasse ?? '' }} {{ lieferadresse.hausnummer ?? '' }}<br>
+    {{ lieferadresse.plz ?? '' }} {{ lieferadresse.ort ?? '' }}<br>
+    {% if lieferadresse.land is defined and lieferadresse.land and lieferadresse.land not in ['Österreich','AT'] %}
+    {{ lieferadresse.land }}<br>
+    {% endif %}
 </p>
 {% endif %}
 
-<div class="hinweis">
-  Mit der Trackingnummer <strong>{{ tracking }}</strong> können Sie Ihr Paket
-  auf der Website der Österreichischen Post verfolgen:<br>
-  <a href="https://www.post.at/sv/sendungsdetails?snr={{ tracking }}" style="color:#2c3e50">
-    → Sendung verfolgen
-  </a>
+<div style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:16px 20px;margin:20px 0">
+    <p style="margin:0 0 12px;font-weight:700;font-size:14px">Sendungsverfolgung</p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr>
+            <td style="color:#666;padding:3px 0;width:110px">Versandart:</td>
+            <td style="padding:3px 0">{{ versanddienstleister_label ?? 'Österreichische Post' }}</td>
+        </tr>
+        <tr>
+            <td style="color:#666;padding:3px 0">Tracking-Nr.:</td>
+            <td style="padding:3px 0;font-family:monospace;font-weight:700;font-size:14px;letter-spacing:.03em">{{ tracking }}</td>
+        </tr>
+    </table>
+    {% if tracking_url %}
+    <a href="{{ tracking_url }}" class="btn" style="margin-top:14px">→ Sendung online verfolgen</a>
+    {% endif %}
+    <p style="font-size:11px;color:#999;margin:12px 0 0;line-height:1.5">
+        Es kann bis zu 24 Stunden dauern, bis die Sendungsdaten beim Dienstleister abrufbar sind.
+    </p>
 </div>
 
-<p>
-  Bei Fragen stehen wir Ihnen gerne unter <a href="mailto:{{ firma_email }}">{{ firma_email }}</a> zur Verfügung.
+<p style="font-size:13px;color:#555;margin-top:20px">
+    Bei Fragen stehen wir Ihnen gerne unter
+    <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
 </p>
 
-<p>Vielen Dank für Ihre Bestellung!<br>Ihr {{ firmenname }}-Team</p>
+<p style="font-size:13px;margin-top:16px">
+    Mit freundlichen Grüßen,<br>
+    Ihr {{ firmenname }}-Team
+</p>
+
 {% endblock %}
 
-{% block footer_extra %}
-Auftrag {{ auftrag_nummer }} &bull;
-{% endblock %}
+{% block footer_extra %}Auftrag {{ auftrag_nummer }} &bull; {% endblock %}

@@ -11,10 +11,11 @@ $auftraegeRaw = $db->query("
            a.zahlungsart, a.zahlungsstatus, a.lieferart
     FROM auftraege a
     WHERE a.lieferstatus IN ('neu','in_bearbeitung','versandbereit','teilgeliefert')
-      AND a.zahlungsstatus != 'storniert'
+      AND a.zahlungsstatus NOT IN ('storniert','erstattet')
       AND (
-          a.zahlungsstatus = 'bezahlt'
+          a.lieferart = 'abholung'
           OR a.zahlungsart IN ('bar', 'rechnung', 'nachnahme')
+          OR a.zahlungsstatus = 'bezahlt'
       )
       AND a.id NOT IN (
           SELECT pa.auftrag_id FROM pickliste_auftraege pa

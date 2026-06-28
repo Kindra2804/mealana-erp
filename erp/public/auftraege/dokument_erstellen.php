@@ -61,47 +61,100 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
         $email = trim($kunde['email'] ?? '');
         if (!$email) return;
 
-        $kundeName = trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? ''));
+        $anrede   = $kunde['anrede']   ?? '';
+        $nachname = $kunde['nachname'] ?? '';
+        $kundeName = trim(($kunde['vorname'] ?? '') . ' ' . $nachname);
         if (!$kundeName) $kundeName = $kunde['firma'] ?? $email;
 
-        $einst = $db->query("
-            SELECT schluessel, wert FROM system_einstellungen
-            WHERE schluessel IN ('firmenname','mail_from_address','firma_iban')
-        ")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $firmaEmail = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel='mail_from_address'")
+                        ->fetchColumn() ?: '';
 
+        $logoBase64  = $mailer->ladeShopLogo((int)($auftrag['shop_id'] ?? 1));
         $storagePfad = __DIR__ . '/../../storage/dokumente/' . $auftragId . '/' . $ergebnis['dateiname'];
 
         if ($typ === 'auftragsbestaetigung') {
+
+            // Positionen mit Artikelnummer + Lagerbestand für ÜV-Check
             $pStmt = $db->prepare("
-                SELECT bezeichnung, menge,
-                       einzelpreis_netto, gesamtpreis_netto, steuer_prozent
-                FROM auftrag_positionen
-                WHERE auftrag_id = :id
-                ORDER BY sort_order, id
+                SELECT p.id, p.bezeichnung, p.menge,
+                       p.einzelpreis_netto, p.gesamtpreis_netto, p.steuer_prozent,
+                       a.artikelnummer,
+                       COALESCE(SUM(lb.bestand), 0) AS verfuegbar_bestand
+                FROM auftrag_positionen p
+                LEFT JOIN artikel a ON a.id = p.artikel_id
+                LEFT JOIN lagerbestand lb ON lb.artikel_id = p.artikel_id
+                WHERE p.auftrag_id = :id
+                GROUP BY p.id
+                ORDER BY p.sort_order, p.id
             ");
             $pStmt->execute([':id' => $auftragId]);
-            $positionen    = $pStmt->fetchAll(PDO::FETCH_ASSOC);
-            $bruttoGesamt  = 0.0;
-            foreach ($positionen as &$pos) {
-                $pos['einzelpreis_brutto'] = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-                $pos['gesamt_brutto']      = round($pos['gesamtpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-                $bruttoGesamt += $pos['gesamt_brutto'];
+            $rohdaten = $pStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $positionen   = [];
+            $positionenUv = [];
+            $nettoGesamt  = 0.0;
+            $bruttoGesamt = 0.0;
+
+            foreach ($rohdaten as $pos) {
+                $einzelBrutto = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
+                $gesamtBrutto = round($pos['gesamtpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
+                $bruttoGesamt += $gesamtBrutto;
+                $nettoGesamt  += (float)$pos['gesamtpreis_netto'];
+
+                $istUv = (float)$pos['verfuegbar_bestand'] < (float)$pos['menge'];
+
+                $positionen[] = [
+                    'bezeichnung'       => $pos['bezeichnung'],
+                    'menge'             => $pos['menge'],
+                    'artikelnummer'     => $pos['artikelnummer'] ?? '',
+                    'einzelpreis_brutto'=> $einzelBrutto,
+                    'gesamt_brutto'     => $gesamtBrutto,
+                    'lieferzeit_text'   => $istUv ? 'bestellbar / Lieferverzögerung möglich' : '',
+                ];
+
+                if ($istUv) {
+                    $positionenUv[] = [
+                        'bezeichnung' => $pos['bezeichnung'],
+                        'menge'       => $pos['menge'],
+                        'bestand'     => (int)$pos['verfuegbar_bestand'],
+                    ];
+                }
             }
-            unset($pos);
+
+            $allesLagernd   = empty($positionenUv);
+            $mwstGesamt     = round($bruttoGesamt - $nettoGesamt, 2);
+            $zahlungsstatus = $auftrag['zahlungsstatus'] ?? '';
+            $zahlungsart    = $auftrag['zahlungsart']    ?? '';
+
+            // Adressen
+            $raSnapshot  = json_decode($auftrag['rechnungsadresse_snapshot'] ?? '{}', true) ?: $kunde;
+            $laSnapshot  = json_decode($auftrag['lieferadresse_snapshot']    ?? '{}', true) ?: [];
+            // Lieferadresse nur anzeigen wenn sie von der Rechnungsadresse abweicht
+            $laNachname  = trim(($laSnapshot['nachname'] ?? '') . ($laSnapshot['strasse'] ?? ''));
+            $raNachname  = trim(($raSnapshot['nachname'] ?? '') . ($raSnapshot['strasse'] ?? ''));
+            $lieferadresse = (!empty($laSnapshot) && $laNachname !== $raNachname) ? $laSnapshot : [];
 
             $mailer->sendeTemplate(
                 $email,
                 'Auftragsbestätigung ' . $auftrag['auftrag_nr'],
                 'mails/auftragsbestaetigung.html.twig',
                 [
+                    'logo_base64'    => $logoBase64,
+                    'anrede'         => $anrede,
+                    'nachname'       => $nachname,
                     'kunde_name'     => $kundeName,
                     'auftrag_nummer' => $auftrag['auftrag_nr'],
                     'positionen'     => $positionen,
+                    'positionen_uv'  => $positionenUv,
+                    'alles_lagernd'  => $allesLagernd,
                     'brutto_gesamt'  => $bruttoGesamt,
-                    'zahlungsart'    => $auftrag['zahlungsart'] ?? '',
+                    'mwst_gesamt'    => $mwstGesamt,
+                    'zahlungsart'    => $zahlungsart,
+                    'zahlungsstatus' => $zahlungsstatus,
+                    'rechnungsadresse' => $raSnapshot,
+                    'lieferadresse'  => $lieferadresse,
                     'datum_heute'    => date('d.m.Y'),
-                    'firma_email'    => $einst['mail_from_address'] ?? '',
-                    'firma_iban'     => $einst['firma_iban'] ?? '',
+                    'firma_email'    => $firmaEmail,
                 ]
             );
 
@@ -120,13 +173,15 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
                 'Ihre Rechnung ' . $rechnung['rechnung_nr'],
                 'mails/rechnung_mail.html.twig',
                 [
+                    'logo_base64'    => $logoBase64,
+                    'anrede'         => $anrede,
+                    'nachname'       => $nachname,
                     'kunde_name'     => $kundeName,
                     'auftrag_nummer' => $auftrag['auftrag_nr'],
                     'rechnung_nr'    => $rechnung['rechnung_nr'],
                     'brutto_gesamt'  => (float)$rechnung['bruttobetrag'],
                     'faellig_datum'  => date('d.m.Y', strtotime('+14 days')),
-                    'firma_email'    => $einst['mail_from_address'] ?? '',
-                    'firma_iban'     => $einst['firma_iban'] ?? '',
+                    'firma_email'    => $firmaEmail,
                 ],
                 [['pfad' => $storagePfad, 'name' => $rechnung['rechnung_nr'] . '.pdf']]
             );

@@ -49,3 +49,4 @@
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
 - [Inventur: Schwund-Typ](project_inventur_hinweis.md) — bewegungstyp 'schwund' seit Migration 083 vorhanden; LagerService::warenSchwund() nutzen, kein neuer Typ nötig
 - [Rechte & Rollen Design](project_rechte_rollen.md) — 8 Rollen (Super-Admin→Readonly), Manager-Override Popup, atomare Rechte, Lizenz-Instanzierung (max_instanzen), Pakete
+- [PLC / EasyPak Versand](project_plc_versand.md) — EasyPak XML-Format (Öst. Post), Item-IDs (430101/07/04/06), Ausgabepfad+Dateiname konfigurierbar, Bankdaten aus Firma-Tab

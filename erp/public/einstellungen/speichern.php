@@ -40,7 +40,9 @@ function speichereShopLogo(array $file, string $slug): ?string
 if ($tab === 'firma') {
     $felder = ['firmenname', 'strasse', 'plz', 'ort', 'land',
                'telefon', 'fax', 'email', 'website',
-               'uid_nummer', 'steuernummer', 'bank_name', 'iban', 'bic'];
+               'uid_nummer', 'steuernummer', 'bank_name', 'iban', 'bic',
+               'firma_web', 'social_instagram', 'social_facebook', 'social_tiktok',
+               'social_youtube', 'social_pinterest'];
 
     foreach ($felder as $feld) {
         setSetting($db, $feld, trim($_POST[$feld] ?? ''));
