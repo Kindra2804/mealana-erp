@@ -1,83 +1,184 @@
 {% extends "mails/basis_layout.html.twig" %}
 
 {% block inhalt %}
-<p>Sehr geehrte/r {{ kunde_name }},</p>
 
-<p>vielen Dank für Ihre Bestellung! Wir haben Ihren Auftrag erhalten und bestätigen ihn hiermit.</p>
+{% if anrede == 'Frau' %}
+<p>Sehr geehrte Frau {{ nachname }},</p>
+{% elseif anrede == 'Herr' %}
+<p>Sehr geehrter Herr {{ nachname }},</p>
+{% else %}
+<p>Guten Tag{% if kunde_name %} {{ kunde_name }}{% endif %},</p>
+{% endif %}
 
-<table class="table">
-  <tr>
-    <th>Auftragsnummer</th>
-    <th>Datum</th>
-  </tr>
-  <tr>
-    <td><strong>{{ auftrag_nummer }}</strong></td>
-    <td>{{ datum_heute ?? 'heute' }}</td>
-  </tr>
-</table>
+<p>vielen Dank für Ihre Bestellung bei {{ firmenname }}!</p>
 
-<p style="font-weight:600;margin-top:20px;margin-bottom:8px">Bestellte Artikel:</p>
+{# ── Status-Nachricht ────────────────────────────────────────────────────── #}
+{% if alles_lagernd is defined and alles_lagernd %}
+  {% if zahlungsstatus == 'bezahlt' %}
+  <div class="success">
+      ✅ <strong>Alle bestellten Artikel sind auf Lager und Ihre Zahlung ist eingegangen.</strong>
+      Ihre Bestellung wird sofort für den Versand vorbereitet!
+  </div>
+  {% else %}
+  <div class="hinweis">
+      Alle bestellten Artikel sind auf Lager.
+      {% if zahlungsart == 'vorkasse' %}
+      Sobald Ihre Überweisung bei uns eingeht, wird Ihre Bestellung sofort für den Versand vorbereitet.
+      {% else %}
+      Über den weiteren Verlauf Ihrer Bestellung werden wir Sie gesondert informieren.
+      {% endif %}
+  </div>
+  {% endif %}
+{% endif %}
 
-<table class="table">
-  <tr>
-    <th style="width:50%">Artikel</th>
-    <th style="text-align:right;width:15%">Menge</th>
-    <th style="text-align:right;width:17%">Einzelpreis</th>
-    <th style="text-align:right;width:18%">Gesamt</th>
-  </tr>
-  {% for pos in positionen %}
-  <tr>
-    <td>{{ pos.bezeichnung }}</td>
-    <td style="text-align:right">{{ pos.menge }}</td>
-    <td style="text-align:right">€&nbsp;{{ pos.einzelpreis_brutto|number_format(2, ',', '.') }}</td>
-    <td style="text-align:right"><strong>€&nbsp;{{ pos.gesamt_brutto|number_format(2, ',', '.') }}</strong></td>
-  </tr>
-  {% endfor %}
-  <tr style="border-top:2px solid #ddd;background:#f9fafb">
-    <td colspan="3" style="text-align:right;font-weight:700;padding-top:10px">Gesamtbetrag (inkl. MwSt.)</td>
-    <td style="text-align:right;font-weight:700;font-size:15px;padding-top:10px">€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</td>
-  </tr>
-</table>
-
-{% if zahlungsart == 'vorkasse' %}
-<div class="hinweis">
-  <strong>Zahlungsart: Vorkasse</strong><br>
-  Bitte überweisen Sie den Betrag von <strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong>
-  unter Angabe der Auftragsnummer <strong>{{ auftrag_nummer }}</strong> auf unser Konto.
-  {% if firma_iban %}<br>IBAN: <strong>{{ firma_iban }}</strong>{% endif %}
-  Ihre Bestellung wird nach Zahlungseingang bearbeitet.
-</div>
-{% elseif zahlungsart == 'paypal' %}
-<div class="hinweis">
-  <strong>Zahlungsart: PayPal</strong><br>
-  Sie haben PayPal als Zahlungsart gewählt. Die Zahlung wird direkt über PayPal abgewickelt.
-</div>
-{% elseif zahlungsart == 'bar' %}
-<div class="hinweis">
-  <strong>Zahlungsart: Barzahlung</strong><br>
-  Bitte bezahlen Sie bei Abholung / vor Ort in bar. Wir freuen uns auf Ihren Besuch!
-</div>
-{% elseif zahlungsart == 'rechnung' %}
-<div class="hinweis">
-  <strong>Zahlungsart: Kauf auf Rechnung</strong><br>
-  Sie erhalten Ihre Rechnung separat. Bitte begleichen Sie diese bis zum angegebenen Fälligkeitsdatum.
-</div>
-{% elseif zahlungsart == 'nachnahme' %}
-<div class="hinweis">
-  <strong>Zahlungsart: Nachnahme</strong><br>
-  Bitte halten Sie den Betrag von <strong>€&nbsp;{{ brutto_gesamt|number_format(2, ',', '.') }}</strong>
-  für den Paketboten bereit.
+{# ── Überverkauf-Warnung ─────────────────────────────────────────────────── #}
+{% if positionen_uv is defined and positionen_uv|length %}
+<div class="warn">
+    <strong>Hinweis: Folgende Artikel sind derzeit nicht in ausreichender Menge auf Lager</strong>
+    — die Lieferung kann sich dadurch um 2–3 Wochen verzögern.
+    Den genauen Einlieferungstermin können Sie gerne telefonisch erfragen
+    {% if firma_tel is defined and firma_tel %}({{ firma_tel }}){% endif %}:
+    <ul style="margin:8px 0 0;padding-left:20px">
+    {% for uv in positionen_uv %}
+        <li>{{ uv.bezeichnung }} ({{ uv.menge }} Stk. bestellt, {{ uv.bestand }} Stk. verfügbar)</li>
+    {% endfor %}
+    </ul>
 </div>
 {% endif %}
 
-<p>
-  Bei Fragen stehen wir Ihnen gerne unter
-  <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+{# ── Positionen ──────────────────────────────────────────────────────────── #}
+<p style="font-size:12px;font-weight:600;color:#666;margin:20px 0 0;text-transform:uppercase;letter-spacing:.05em">
+    Bestellung {{ auftrag_nummer }}
 </p>
 
-<p>Mit freundlichen Grüßen<br>Ihr {{ firmenname }}-Team</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Artikel</th>
+            <th style="text-align:right;width:50px">Menge</th>
+            <th style="text-align:right;width:80px">Einzelpreis</th>
+            <th style="text-align:right;width:85px">Gesamt</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for pos in positionen %}
+    <tr>
+        <td style="padding:8px 10px;font-size:13px">
+            <strong>{{ pos.bezeichnung }}</strong>
+            {% if pos.artikelnummer is defined and pos.artikelnummer %}
+            <br><span style="font-size:11px;color:#999">{{ pos.artikelnummer }}</span>
+            {% endif %}
+            {% if pos.lieferzeit_text is defined and pos.lieferzeit_text %}
+            <br><span style="font-size:11px;color:#e67e22">Lieferzeit: {{ pos.lieferzeit_text }}</span>
+            {% endif %}
+        </td>
+        <td style="text-align:right;padding:8px 10px;font-size:13px">{{ pos.menge }}</td>
+        <td style="text-align:right;padding:8px 10px;font-size:13px">{{ pos.einzelpreis_brutto|number_format(2, ',', '.') }} €</td>
+        <td style="text-align:right;padding:8px 10px;font-size:13px"><strong>{{ pos.gesamt_brutto|number_format(2, ',', '.') }} €</strong></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr style="background:#f9fafb;border-top:2px solid #ddd">
+            <td colspan="3" style="text-align:right;padding:10px;font-size:12px;color:#666">inkl. {{ mwst_prozent ?? 20 }}% MwSt.</td>
+            <td style="text-align:right;padding:10px;font-size:12px;color:#666">{{ mwst_gesamt|number_format(2, ',', '.') }} €</td>
+        </tr>
+        <tr style="background:#f9fafb">
+            <td colspan="3" style="text-align:right;padding:8px 10px;font-weight:700;font-size:14px">Gesamtbetrag</td>
+            <td style="text-align:right;padding:8px 10px;font-weight:700;font-size:15px">{{ brutto_gesamt|number_format(2, ',', '.') }} €</td>
+        </tr>
+    </tfoot>
+</table>
+
+{# ── Adressen ────────────────────────────────────────────────────────────── #}
+<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:16px">
+    <tr>
+        <td style="width:50%;vertical-align:top;padding-right:12px">
+            <p style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px">Rechnungsadresse</p>
+            {% set ra = rechnungsadresse ?? {} %}
+            <p style="margin:0;line-height:1.7;color:#444">
+                {% if ra.firma is defined and ra.firma %}{{ ra.firma }}<br>{% endif %}
+                {{ ra.vorname ?? '' }} {{ ra.nachname ?? '' }}<br>
+                {{ ra.strasse ?? '' }} {{ ra.hausnummer ?? '' }}<br>
+                {{ ra.plz ?? '' }} {{ ra.ort ?? '' }}<br>
+                {% if ra.land is defined and ra.land and ra.land not in ['Österreich','AT'] %}{{ ra.land }}<br>{% endif %}
+                {% if ra.email is defined and ra.email %}<span style="color:#666">{{ ra.email }}</span>{% endif %}
+            </p>
+        </td>
+        {% if lieferadresse is defined and lieferadresse|length %}
+        <td style="width:50%;vertical-align:top;padding-left:12px;border-left:1px solid #eee">
+            <p style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px">Lieferadresse</p>
+            {% set la = lieferadresse %}
+            <p style="margin:0;line-height:1.7;color:#444">
+                {% if la.firma is defined and la.firma %}{{ la.firma }}<br>{% endif %}
+                {{ la.vorname ?? '' }} {{ la.nachname ?? '' }}<br>
+                {{ la.strasse ?? '' }} {{ la.hausnummer ?? '' }}<br>
+                {{ la.plz ?? '' }} {{ la.ort ?? '' }}<br>
+                {% if la.land is defined and la.land and la.land not in ['Österreich','AT'] %}{{ la.land }}<br>{% endif %}
+            </p>
+        </td>
+        {% endif %}
+    </tr>
+</table>
+
+{# ── Zahlungsart-Block ───────────────────────────────────────────────────── #}
+<div style="margin-top:20px">
+{% if zahlungsart == 'vorkasse' %}
+<div class="hinweis">
+    <p style="margin:0 0 10px"><strong>Zahlungsart: Vorkasse – Überweisung</strong></p>
+    <p style="margin:0 0 8px">Bitte überweisen Sie den Betrag auf folgendes Konto:</p>
+    <table style="font-size:13px;border-collapse:collapse">
+        <tr><td style="color:#666;padding:2px 16px 2px 0">Kontoinhaber:</td><td><strong>{{ firmenname }}</strong></td></tr>
+        {% if firma_bank is defined and firma_bank %}<tr><td style="color:#666;padding:2px 16px 2px 0">Bankinstitut:</td><td>{{ firma_bank }}</td></tr>{% endif %}
+        {% if firma_iban is defined and firma_iban %}<tr><td style="color:#666;padding:2px 16px 2px 0">IBAN:</td><td><strong>{{ firma_iban }}</strong></td></tr>{% endif %}
+        {% if firma_bic is defined and firma_bic %}<tr><td style="color:#666;padding:2px 16px 2px 0">BIC:</td><td>{{ firma_bic }}</td></tr>{% endif %}
+        <tr><td style="color:#666;padding:2px 16px 2px 0">Verwendungszweck:</td><td><strong>{{ auftrag_nummer }}</strong></td></tr>
+        <tr><td style="color:#666;padding:4px 16px 0 0;font-weight:700">Betrag:</td><td style="font-weight:700;font-size:15px">{{ brutto_gesamt|number_format(2, ',', '.') }} €</td></tr>
+    </table>
+    <p style="margin:10px 0 0;font-size:12px;color:#666">
+        Bitte beachten Sie: unbezahlte Bestellungen werden nach 14 Tagen automatisch storniert.
+    </p>
+</div>
+
+{% elseif zahlungsart == 'paypal' %}
+<div class="hinweis">
+    <strong>Zahlungsart: PayPal</strong><br>
+    Die Zahlung wird direkt über PayPal abgewickelt.
+</div>
+
+{% elseif zahlungsart == 'nachnahme' %}
+<div class="hinweis">
+    <strong>Zahlungsart: Nachnahme</strong><br>
+    Bitte halten Sie den Betrag von <strong>{{ brutto_gesamt|number_format(2, ',', '.') }} €</strong>
+    für den Paketboten bereit.
+</div>
+
+{% elseif zahlungsart == 'bar' %}
+<div class="hinweis">
+    <strong>Zahlungsart: Barzahlung bei Abholung</strong><br>
+    Wir informieren Sie, sobald Ihre Bestellung zur Abholung bereit ist.
+</div>
+
+{% elseif zahlungsart == 'rechnung' %}
+<div class="hinweis">
+    <strong>Zahlungsart: Kauf auf Rechnung</strong><br>
+    Sie erhalten Ihre Rechnung gemeinsam mit der Lieferung.
+</div>
+{% endif %}
+</div>
+
+<p style="font-size:13px;color:#555;margin-top:20px">
+    Über den weiteren Verlauf Ihrer Bestellung werden wir Sie jeweils gesondert informieren.<br>
+    Bei Fragen stehen wir Ihnen gerne unter
+    <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a>
+    {% if firma_tel is defined and firma_tel %}oder {{ firma_tel }}{% endif %} zur Verfügung.
+</p>
+
+<p style="font-size:13px;margin-top:16px">
+    Mit freundlichen Grüßen,<br>
+    Ihr {{ firmenname }}-Team
+</p>
+
 {% endblock %}
 
-{% block footer_extra %}
-Auftragsbestätigung {{ auftrag_nummer }} &bull;
-{% endblock %}
+{% block footer_extra %}Auftragsbestätigung {{ auftrag_nummer }} &bull; {% endblock %}

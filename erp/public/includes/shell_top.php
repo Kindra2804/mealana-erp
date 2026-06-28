@@ -54,6 +54,11 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📋', 'label' => 'Liste',            'href' => '/mealana/hersteller/liste.php'],
         ['icon' => '◀',  'label' => 'Zurück: Artikel',  'href' => '/mealana/artikel/liste.php', 'type' => 'back'],
     ],
+    'versand' => [
+        ['icon' => '⚙️', 'label' => 'PLC-Einstellungen', 'href' => '/mealana/versand/index.php'],
+        ['icon' => '📦', 'label' => 'Packplatz',          'href' => '/mealana/packplatz/warenausgang/index.php'],
+        ['icon' => '↩️', 'label' => 'Retouren',           'href' => '/mealana/packplatz/retoure/index.php'],
+    ],
     'partner' => [
         ['icon' => '👥', 'label' => 'Partner',           'href' => '/mealana/partner/liste.php'],
         ['icon' => '🗄',  'label' => 'Mietfächer',       'href' => '/mealana/partner/mietfaecher.php'],
@@ -87,7 +92,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
 </head>
 
 <body>
-    <div class="erp-shell">
+    <div class="erp-shell<?= (empty($sidebarItems) && empty($kategorienBaum)) ? ' no-sidebar' : '' ?>">
         <nav class="erp-topnav">
             <a href="#" class="erp-nav-logo">
                 <img src="/mealana/img/logo.png" alt="MeaLana ERP">
@@ -100,8 +105,8 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
                 <a href="/mealana/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
                 <a href="/mealana/auftraege/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
-                <a href="#" title="Versand — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
-                <a href="#" title="Retouren — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
+                <a href="/mealana/versand/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
+                <a href="/mealana/packplatz/retoure/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
                 <a href="#" title="Buchhaltung — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-icons">

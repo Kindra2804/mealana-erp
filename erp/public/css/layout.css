@@ -33,6 +33,13 @@ html, body {
     "statusbar statusbar";
 }
 
+.erp-shell.no-sidebar {
+  grid-template-columns: 0 1fr;
+}
+.erp-shell.no-sidebar .erp-sidebar {
+  display: none;
+}
+
 .erp-topnav {
   grid-area: topnav;
   background: var(--color-nav);

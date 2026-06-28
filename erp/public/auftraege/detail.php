@@ -165,6 +165,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     · <?= date('d.m.Y', strtotime($auftrag['bezahlt_am'])) ?>
                 <?php endif; ?>
             </div>
+            <?php if (!$istStorniert && $auftrag['zahlungsart'] === 'nachnahme'): ?>
+                <form method="post" action="/mealana/auftraege/zahlungsart_aendern.php"
+                      onsubmit="return confirm('Zahlungsart auf Vorkasse (Überweisung) umstellen? Der EasyPak-Export enthält dann keinen Nachnahme-Aufschlag mehr.')">
+                    <input type="hidden" name="id" value="<?= $id ?>">
+                    <input type="hidden" name="zahlungsart" value="vorkasse">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:6px;font-size:11px">
+                        💳 Zahlung eingegangen – kein Nachnahme
+                    </button>
+                </form>
+            <?php endif; ?>
             <?php if (!$istStorniert && !empty($zahlungen)): ?>
                 <div style="margin-top:10px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
                     <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Zahlungsverlauf</div>
@@ -237,6 +247,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
             'dpd'     => 'DPD',
             'gls'     => 'GLS',
         ];
+        $trackingUrls = [
+            'post_at' => 'https://www.post.at/sv/sendungsdetails?snr=',
+            'dhl'     => 'https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=',
+            'dpd'     => 'https://tracking.dpd.de/status/de_DE/parcel/',
+            'gls'     => 'https://gls-group.eu/track/',
+        ];
         // Fallback auf alte Einzelspalte falls noch kein History-Eintrag
         $trackingNr  = $auftrag['tracking_nr'] ?: ($auftrag['versand_tracking'] ?? '');
         ?>
@@ -262,7 +278,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <td style="padding:5px 8px 5px 0;color:var(--color-text-muted)"><?= $i + 1 ?></td>
                         <td style="padding:5px 8px 5px 0;white-space:nowrap"><?= date('d.m.Y H:i', strtotime($lf['versand_datum'])) ?></td>
                         <td style="padding:5px 8px 5px 0"><?= htmlspecialchars($dlLabels[$lf['versanddienstleister']] ?? ($lf['versanddienstleister'] ?: '—')) ?></td>
-                        <td style="padding:5px 8px 5px 0;font-family:monospace;font-weight:600"><?= htmlspecialchars($lf['tracking_nr']) ?></td>
+                        <td style="padding:5px 8px 5px 0;font-family:monospace;font-weight:600">
+                            <?php $tUrl = ($trackingUrls[$lf['versanddienstleister']] ?? '') . urlencode($lf['tracking_nr']); ?>
+                            <?php if ($tUrl): ?>
+                                <a href="<?= htmlspecialchars($tUrl) ?>" target="_blank" rel="noopener"
+                                   style="color:var(--color-nav);text-decoration:none;font-family:monospace;font-weight:600">
+                                    <?= htmlspecialchars($lf['tracking_nr']) ?>
+                                </a>
+                            <?php else: ?>
+                                <?= htmlspecialchars($lf['tracking_nr']) ?>
+                            <?php endif; ?>
+                        </td>
                         <td style="padding:5px 0">
                             <?php if ($lf['ist_teillieferung']): ?>
                                 <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:10px">Teillieferung</span>
@@ -283,7 +309,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php if ($auftrag['versanddienstleister']): ?>
                 <span style="font-size:13px;color:var(--color-text-muted)"><?= htmlspecialchars($dlLabels[$auftrag['versanddienstleister']] ?? $auftrag['versanddienstleister']) ?></span>
                 <?php endif; ?>
-                <span style="font-size:14px;font-weight:600;font-family:monospace"><?= htmlspecialchars($trackingNr) ?></span>
+                <?php $tUrlFb = ($trackingUrls[$auftrag['versanddienstleister'] ?? ''] ?? '') . urlencode($trackingNr); ?>
+                <?php if ($tUrlFb): ?>
+                    <a href="<?= htmlspecialchars($tUrlFb) ?>" target="_blank" rel="noopener"
+                       style="font-size:14px;font-weight:600;font-family:monospace;color:var(--color-nav);text-decoration:none">
+                        <?= htmlspecialchars($trackingNr) ?>
+                    </a>
+                <?php else: ?>
+                    <span style="font-size:14px;font-weight:600;font-family:monospace"><?= htmlspecialchars($trackingNr) ?></span>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
@@ -533,6 +567,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <button type="submit" class="erp-btn erp-btn-secondary">Abholzettel</button>
         </form>
         <?php endif; ?>
+    </div>
+    <div style="margin-top:6px;font-size:11px;color:var(--color-text-muted)">
+        📧 <strong>Auftragsbestätigung</strong> und <strong>Rechnung</strong> senden beim Erstellen automatisch eine E-Mail an den Kunden.
+        Lieferschein und Abholzettel werden nur als PDF erstellt (kein automatisches Mail).
     </div>
     <?php endif; ?>
 

@@ -13,7 +13,7 @@ class EasyPakExporter
 {
     public function __construct(private PDO $db) {}
 
-    public function exportiere(int $auftragId, float $gewichtKg, string $zielOrdner): string
+    public function exportiere(int $auftragId, float $gewichtKg, string $zielOrdner, ?float $nachnahmeBetrag = null): string
     {
         $auftrag = $this->db->prepare("SELECT * FROM auftraege WHERE id = ?");
         $auftrag->execute([$auftragId]);
@@ -35,11 +35,15 @@ class EasyPakExporter
         $istEU     = $this->istEU($land);
         $nachnahme = $auftrag['zahlungsart'] === 'nachnahme';
 
+        $itemAt          = $firma['plc_item_at']            ?? '430101';
+        $itemEU          = $firma['plc_item_eu']            ?? '430106';
+        $itemIntl        = $firma['plc_item_international'] ?? '430104';
+
         // Item-ID + Contract nach Lieferland
         [$itemId, $contract] = match(true) {
-            $land === 'AT'                  => ['430101', 'Paket Österreich'],
-            $istEU                          => ['430106', 'Paket Premium International'],
-            default                         => ['430104', 'Paket International'],
+            $land === 'AT' => [$itemAt,   'Paket Österreich'],
+            $istEU         => [$itemEU,   'Paket Premium International'],
+            default        => [$itemIntl, 'Paket International'],
         };
 
         $name1 = $lieferAdr['firma'] ?: trim(($lieferAdr['vorname'] ?? '') . ' ' . ($lieferAdr['nachname'] ?? ''));
@@ -60,7 +64,7 @@ class EasyPakExporter
         $xml .= "          <item id=\"" . $itemId . "\"/>\n";
         if ($nachnahme) {
             $xml .= "          <item id=\"430124\">\n";
-            $xml .= "            <StateValue><Amount>" . number_format((float)$auftrag['bruttobetrag'], 2, '.', '') . "</Amount></StateValue>\n";
+            $xml .= "            <StateValue><Amount>" . number_format($nachnahmeBetrag ?? (float)$auftrag['bruttobetrag'], 2, '.', '') . "</Amount></StateValue>\n";
             $xml .= "            <CODReceiver>\n";
             $xml .= "              <UseSenderAsCODReceiver>false</UseSenderAsCODReceiver>\n";
             $xml .= "              <BankName>" . $this->x($firma['bank_name'] ?? '') . "</BankName>\n";

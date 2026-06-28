@@ -4,8 +4,6 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/Database.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception as MailException;
 
 class Mailer
 {
@@ -14,11 +12,30 @@ class Mailer
     public function __construct()
     {
         $db   = Database::getInstance();
-        $rows = $db->query("SELECT schluessel, wert FROM system_einstellungen
-                            WHERE schluessel LIKE 'mail_%'
-                               OR schluessel = 'firmenname'")
-                   ->fetchAll(PDO::FETCH_KEY_PAIR);
-        $this->config = $rows;
+        $this->config = $db->query("
+            SELECT schluessel, wert FROM system_einstellungen
+            WHERE schluessel LIKE 'mail_%'
+               OR schluessel LIKE 'social_%'
+               OR schluessel IN (
+                   'firmenname','iban','bic','bank_name',
+                   'strasse','plz','ort','tel','telefon',
+                   'firma_web','website'
+               )
+        ")->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+
+    /**
+     * Lädt das Shop-Logo als Base64-String (für Mail-Templates).
+     * Aufrufer übergeben den Wert als 'logo_base64' in den Template-Variablen.
+     */
+    public function ladeShopLogo(int $shopId = 1): string
+    {
+        $db   = Database::getInstance();
+        $stmt = $db->prepare("SELECT logo_pfad FROM shops WHERE id = ?");
+        $stmt->execute([$shopId]);
+        $pfadRel = $stmt->fetchColumn() ?: 'img/logo.png';
+        $pfad    = __DIR__ . '/../../public/' . $pfadRel;
+        return file_exists($pfad) ? base64_encode(file_get_contents($pfad)) : '';
     }
 
     /**
@@ -111,9 +128,22 @@ class Mailer
         $loader = new \Twig\Loader\FilesystemLoader(__DIR__ . '/../../templates');
         $twig   = new \Twig\Environment($loader);
 
-        $htmlBody = $twig->render($templatePfad, array_merge($variablen, [
-            'firmenname' => $this->config['firmenname'] ?? 'MEALANA KG',
-        ]));
+        // Globale Firma-/Social-Daten als Defaults — caller-Werte in $variablen haben Vorrang
+        $defaults = [
+            'firmenname'       => $this->config['firmenname']       ?? 'MEALANA KG',
+            'logo_base64'      => '',
+            'firma_web'        => $this->config['firma_web']  ?? $this->config['website']  ?? '',
+            'firma_tel'        => $this->config['tel']       ?? $this->config['telefon']  ?? '',
+            'firma_iban'       => $this->config['iban']             ?? '',
+            'firma_bic'        => $this->config['bic']              ?? '',
+            'firma_bank'       => $this->config['bank_name']        ?? '',
+            'social_instagram' => $this->config['social_instagram'] ?? '',
+            'social_facebook'  => $this->config['social_facebook']  ?? '',
+            'social_tiktok'    => $this->config['social_tiktok']    ?? '',
+            'social_youtube'   => $this->config['social_youtube']   ?? '',
+            'social_pinterest' => $this->config['social_pinterest'] ?? '',
+        ];
+        $htmlBody = $twig->render($templatePfad, array_merge($defaults, $variablen));
 
         $this->sende($empfaenger, $betreff, $htmlBody, '', false, $anhaenge);
     }

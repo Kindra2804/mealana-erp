@@ -546,7 +546,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-26, Session 11)
+## What's Implemented (Stand 2026-06-28, Session 17)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -757,7 +757,11 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
      - Teilzahlung → Status 'teilbezahlt'; Vollzahlung → 'bezahlt'; Summe > Gesamt → Überbezahlt
      - liste.php: Chips Teilbezahlt/Überbezahlt + Filter für alle Zahlungsstatus inkl. Überbezahlt
    - **Mahnwesen-Cronjob** (erp/cron/mahnwesen.php): 14+Tage Erinnerungsmail, 30+Tage Storno+Mail
-   - Noch offen: Packplatz-Picklisten, Mail-Templates
+   - **Mail-System** ✅ VOLLSTÄNDIG (2026-06-28): basis_layout mit Logo+Social-Footer, persönliche Anrede in allen Templates, auftragsbestaetigung (ÜV-Warnung, Status-Nachricht, Bankverbindung), versandbestaetigung (Positionen, Tracking), zahlungseingang (NEU), Auto-Rechnung+Mail am Packplatz, Zahlungsmail nach Buchen
+   - Migration 090: social_instagram/facebook/tiktok/youtube/pinterest/firma_web in system_einstellungen
+   - Einstellungen/Firma: Karte "Online-Präsenz & Social Media"
+   - DokumentService: holeOderErstelleRechnung() mit neu_erstellt-Flag
+   - shell_bottom.php: Page-Loader Overlay global (zeigt bei Link/Form, Ausnahmen: _blank/Anker/data-no-loader/AJAX)
 7. **Kasse** ✅ Phase 1 FERTIG (2026-06-27):
    - Migration 077: kassen, kassen_bons, kassen_bon_positionen, kassenbuch, offene_auswahl
    - public/kasse/: 16 Dateien — shell, index, bon, ajax_artikel, bon_speichern, bon_druck, kassenbuch, kassensturz, offene_auswahl, bon_journal, bon_stornieren
