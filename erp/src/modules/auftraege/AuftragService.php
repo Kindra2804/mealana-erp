@@ -320,12 +320,31 @@ class AuftragService
 
         $this->repo->updateHeader($id, $headerData);
 
-        // 5. Alte Positionen löschen (neues Repo-Method: deletePositionen)
+        // 5. Alte menge_geliefert-Werte merken (von Packplatz/Kasse gesetzt, sollen erhalten bleiben)
+        $alteGeliefert = [];
+        foreach ($this->repo->findPositionen($id) as $p) {
+            if (!empty($p['artikel_id']) && (float)$p['menge_geliefert'] > 0) {
+                $alteGeliefert[(int)$p['artikel_id']] = (float)$p['menge_geliefert'];
+            }
+        }
+
+        // 6. Alte Positionen löschen
         $this->repo->deletePositionen($id);
 
-        // 6. Neue Positionen einfügen (insertPosition() — schon vorhanden!)
+        // 7. Neue Positionen einfügen
         foreach ($positionenBerechnet as $i => $pos) {
             $this->repo->insertPosition(array_merge($pos, ['auftrag_id' => $id, 'sort_order' => $i]));
+        }
+
+        // 8. menge_geliefert für gleiche Artikel wiederherstellen (max. die neue Menge)
+        if (!empty($alteGeliefert)) {
+            foreach ($this->repo->findPositionen($id) as $p) {
+                $artId = (int)$p['artikel_id'];
+                if (isset($alteGeliefert[$artId])) {
+                    $restore = min($alteGeliefert[$artId], (float)$p['menge']);
+                    $this->repo->setMengeGeliefert((int)$p['id'], $restore);
+                }
+            }
         }
 
         // Reservierungen aktualisieren: alte schließen, neue anlegen

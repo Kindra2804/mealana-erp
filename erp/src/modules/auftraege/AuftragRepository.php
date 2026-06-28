@@ -467,6 +467,12 @@ class AuftragRepository
         $stmt->execute(['id' => $id]);
     }
 
+    public function setMengeGeliefert(int $positionId, float $menge): void
+    {
+        $this->db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ? WHERE id = ?")
+                 ->execute([$menge, $positionId]);
+    }
+
     public function findZahlungen(int $auftragId): array
     {
         $stmt = $this->db->prepare("

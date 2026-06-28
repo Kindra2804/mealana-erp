@@ -1,0 +1,39 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+
+{% if anrede == 'Frau' %}
+<p>Sehr geehrte Frau {{ nachname }},</p>
+{% elseif anrede == 'Herr' %}
+<p>Sehr geehrter Herr {{ nachname }},</p>
+{% else %}
+<p>Guten Tag{% if kunde_name %} {{ kunde_name }}{% endif %},</p>
+{% endif %}
+
+<div class="success">
+    ✅ <strong>Ihre Artikel wurden erfolgreich abgeholt — vielen Dank!</strong>
+</div>
+
+<p>
+    Wir bestätigen, dass Ihre Bestellung <strong>{{ auftrag_nummer }}</strong>
+    heute bei uns abgeholt und vollständig bezahlt wurde.
+    {% if bon_nr %}Bon-Nr.: <strong>{{ bon_nr }}</strong>.{% endif %}
+</p>
+
+<p style="font-size:13px;color:#555;margin-top:16px">
+    Wir wünschen Ihnen viel Freude mit Ihrem Einkauf!
+</p>
+
+<p style="font-size:13px;color:#555;margin-top:8px">
+    Bei Fragen oder Anliegen stehen wir Ihnen jederzeit unter
+    <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p style="font-size:13px;margin-top:20px">
+    Mit freundlichen Grüßen,<br>
+    Ihr {{ firmenname }}-Team
+</p>
+
+{% endblock %}
+
+{% block footer_extra %}Bestellung {{ auftrag_nummer }} &bull; {% endblock %}

@@ -1,0 +1,71 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+
+{% if anrede == 'Frau' %}
+<p>Sehr geehrte Frau {{ nachname }},</p>
+{% elseif anrede == 'Herr' %}
+<p>Sehr geehrter Herr {{ nachname }},</p>
+{% else %}
+<p>Guten Tag{% if kunde_name %} {{ kunde_name }}{% endif %},</p>
+{% endif %}
+
+<div class="success">
+    🏪 <strong>Ihre Bestellung liegt zur Abholung bereit!</strong>
+</div>
+
+<p>
+    Ihre Bestellung <strong>{{ auftrag_nummer }}</strong> wurde zusammengestellt
+    und kann ab sofort bei uns abgeholt werden.
+    Den Abholzettel finden Sie im Anhang dieser E-Mail.
+</p>
+
+{% if positionen is defined and positionen|length %}
+<p style="font-size:12px;font-weight:600;color:#666;margin:20px 0 4px;text-transform:uppercase;letter-spacing:.05em">
+    Ihre Artikel
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Artikel</th>
+            <th style="text-align:right;width:60px">Menge</th>
+            <th style="text-align:right;width:60px">Einheit</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for pos in positionen %}
+    <tr>
+        <td style="padding:7px 10px;font-size:13px">{{ pos.bezeichnung }}</td>
+        <td style="text-align:right;padding:7px 10px;font-size:13px">{{ pos.menge_versendet }}</td>
+        <td style="text-align:right;padding:7px 10px;font-size:13px;color:#666">{{ pos.einheit }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if firma_adresse or firma_plz_ort %}
+<p style="font-size:12px;font-weight:600;color:#666;margin:20px 0 4px;text-transform:uppercase;letter-spacing:.05em">
+    Abholadresse
+</p>
+<div style="background:#f9fafb;border:1px solid #e2e8f0;border-radius:6px;padding:14px 16px;font-size:13px;line-height:1.7">
+    <strong>{{ firmenname }}</strong><br>
+    {% if firma_adresse %}{{ firma_adresse }}<br>{% endif %}
+    {% if firma_plz_ort %}{{ firma_plz_ort }}<br>{% endif %}
+    {% if firma_tel %}<span style="color:#666">Tel: {{ firma_tel }}</span><br>{% endif %}
+    {% if firma_email %}<a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a>{% endif %}
+</div>
+{% endif %}
+
+<p style="font-size:13px;color:#555;margin-top:16px">
+    Bitte bringen Sie bei der Abholung dieses Mail oder den beigelegten Abholzettel mit.
+</p>
+
+<p style="font-size:13px;margin-top:20px">
+    Wir freuen uns auf Ihren Besuch!<br>
+    Ihr {{ firmenname }}-Team
+</p>
+
+{% endblock %}
+
+{% block footer_extra %}Bestellung {{ auftrag_nummer }} &bull; {% endblock %}

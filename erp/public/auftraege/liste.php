@@ -36,6 +36,8 @@ $lieferLabels = [
     'versendet'        => ['label' => 'Versendet',        'class' => 'chip-aktiv'],
     'abgeschlossen'    => ['label' => 'Abgeschlossen',    'class' => 'chip-inaktiv'],
     'storniert'        => ['label' => 'Storniert',        'class' => 'chip-inaktiv'],
+    'kommissioniert'   => ['label' => 'Kommissioniert',   'class' => 'chip-auslauf'],
+    'abholbereit'      => ['label' => 'Abholbereit',      'class' => 'chip-aktiv'],
 ];
 $kanalLabels = [
     'woocommerce' => ['label' => 'WooCommerce', 'class' => 'chip-aktiv'],
@@ -70,6 +72,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <option value="versendet" <?= $filterLieferung === 'versendet'       ? 'selected' : '' ?>>Versendet</option>
         <option value="zurueckgestellt" <?= $filterLieferung === 'zurueckgestellt' ? 'selected' : '' ?>>Zurückgestellt</option>
         <option value="abgeschlossen" <?= $filterLieferung === 'abgeschlossen'   ? 'selected' : '' ?>>Abgeschlossen</option>
+        <option value="kommissioniert" <?= $filterLieferung === 'kommissioniert' ? 'selected' : '' ?>>Kommissioniert</option>
+        <option value="abholbereit" <?= $filterLieferung === 'abholbereit'    ? 'selected' : '' ?>>Abholbereit</option>
     </select>
     <select class="erp-select" style="font-size:13px" id="filter-kanal">
         <option value="">Alle Kanäle</option>

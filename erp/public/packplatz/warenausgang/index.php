@@ -14,6 +14,16 @@ $picklisten = $db->query("
     ORDER BY pl.erstellt_am DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+// Kommissionierte Aufträge (warten auf Tracking)
+$kommissioniert = $db->query("
+    SELECT id, auftrag_nr, erstellt_am, bruttobetrag, aktualisiert_am
+    FROM auftraege
+    WHERE lieferstatus = 'kommissioniert'
+      AND zahlungsstatus NOT IN ('storniert')
+    ORDER BY aktualisiert_am DESC
+    LIMIT 20
+")->fetchAll(PDO::FETCH_ASSOC);
+
 $fehler   = $_SESSION['fehler'] ?? null;
 unset($_SESSION['fehler']);
 
@@ -26,6 +36,31 @@ require_once __DIR__ . '/../shell_top.php';
 <?php if ($fehler): ?>
 <div style="background:#2d0d0d;border:1px solid #e94560;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#ef5350">
     <?= htmlspecialchars($fehler) ?>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($kommissioniert)): ?>
+<div style="background:#1a2a1a;border:1px solid #2d4a2d;border-radius:10px;padding:18px 20px;margin-bottom:24px;max-width:1100px;margin-left:auto;margin-right:auto">
+    <div style="font-size:15px;font-weight:700;color:#4ade80;margin-bottom:12px">
+        📦 Kommissioniert — Tracking ausstehend (<?= count($kommissioniert) ?>)
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+        <?php foreach ($kommissioniert as $k): ?>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#16213e;border:1px solid #0f3460;border-radius:6px;padding:10px 14px">
+            <div>
+                <span style="font-weight:700;color:#e2e8f0"><?= htmlspecialchars($k['auftrag_nr']) ?></span>
+                <span style="color:#64748b;font-size:12px;margin-left:10px">
+                    kommissioniert <?= date('d.m. H:i', strtotime($k['aktualisiert_am'])) ?>
+                </span>
+            </div>
+            <a href="tracking_eintragen.php?auftrag_id=<?= $k['id'] ?>"
+               style="background:#0f3460;border:1px solid #1e4a8a;color:#60a5fa;padding:6px 14px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:600"
+               onmouseover="this.style.background='#1e4a8a'" onmouseout="this.style.background='#0f3460'">
+                ⏩ Tracking eintragen
+            </a>
+        </div>
+        <?php endforeach; ?>
+    </div>
 </div>
 <?php endif; ?>
 

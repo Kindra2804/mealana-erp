@@ -43,14 +43,14 @@ function beleg_chip(string $typ): string {
 <div class="card">
     <div class="filter-bar" style="margin-bottom:16px">
         <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select name="typ" class="erp-select" onchange="this.form.submit()">
+            <select name="typ" class="erp-select" onchange="this.form.requestSubmit()">
                 <option value=""           <?= $filterTyp === ''           ? 'selected' : '' ?>>Alle Typen</option>
                 <option value="mietfach"   <?= $filterTyp === 'mietfach'   ? 'selected' : '' ?>>Mietfach</option>
                 <option value="kommission" <?= $filterTyp === 'kommission' ? 'selected' : '' ?>>Kommission</option>
                 <option value="spende"     <?= $filterTyp === 'spende'     ? 'selected' : '' ?>>Spende</option>
                 <option value="beides"     <?= $filterTyp === 'beides'     ? 'selected' : '' ?>>Sonderfall</option>
             </select>
-            <select name="aktiv" class="erp-select" onchange="this.form.submit()">
+            <select name="aktiv" class="erp-select" onchange="this.form.requestSubmit()">
                 <option value="1" <?= $filterAktiv === '1' ? 'selected' : '' ?>>Nur aktive</option>
                 <option value=""  <?= $filterAktiv === ''  ? 'selected' : '' ?>>Alle</option>
                 <option value="0" <?= $filterAktiv === '0' ? 'selected' : '' ?>>Nur inaktive</option>

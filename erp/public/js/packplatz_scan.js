@@ -97,9 +97,42 @@ function pruefeFertig() {
 
 // ─── Verpacken-Overlay ──────────────────────────────────────────────────────
 
-function verpackenStarten() {
+function verpackenStarten(lieferart) {
+    if (lieferart === 'abholung') {
+        document.getElementById('overlay-abholung').classList.add('aktiv');
+        return;
+    }
+    // Fortschritt sofort sichern — fire-and-forget
+    fetch('/mealana/packplatz/warenausgang/ajax_status_setzen.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({auftrag_id: AUFTRAG_ID, status: 'kommissioniert'}),
+    }).catch(() => {});
     document.getElementById('overlay-verpacken').classList.add('aktiv');
     setTimeout(() => document.getElementById('overlay-tracking').focus(), 100);
+}
+
+function abholungAbschliessen() {
+    const posData = POSITIONEN.map((p, i) => ({ idx: i, gesamt: p.gesamt, gescannt: gescannt[i] }));
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'abschliessen.php';
+    const felder = {
+        auftrag_id:           AUFTRAG_ID,
+        pickliste_id:         PICKLISTE_ID ?? '',
+        tracking:             '',
+        versanddienstleister: '',
+        gewicht:              '0',
+        teillieferung:        '0',
+        positionen_json:      JSON.stringify(posData),
+    };
+    for (const [k, v] of Object.entries(felder)) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = k; inp.value = v;
+        form.appendChild(inp);
+    }
+    document.body.appendChild(form);
+    form.submit();
 }
 
 const trackingInput = document.getElementById('overlay-tracking');
@@ -130,6 +163,8 @@ function teillieferung() {
 function overlaySchliessen() {
     document.getElementById('overlay-verpacken').classList.remove('aktiv');
     document.getElementById('overlay-teillieferung').classList.remove('aktiv');
+    const abholOv = document.getElementById('overlay-abholung');
+    if (abholOv) abholOv.classList.remove('aktiv');
     scanField.focus();
 }
 

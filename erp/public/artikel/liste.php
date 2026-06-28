@@ -395,7 +395,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <input type="text" name="q" class="erp-input"
             value="<?= htmlspecialchars($_GET['q'] ?? '') ?>"
             placeholder="🔍 Suche Artikel, EAN, Name…" style="min-width:240px">
-        <select name="hersteller_id" class="erp-select" onchange="this.form.submit()">
+        <select name="hersteller_id" class="erp-select" onchange="this.form.requestSubmit()">
             <option value="">– Hersteller –</option>
             <?php foreach ($alleHersteller as $h): ?>
                 <option value="<?= $h['id'] ?>" <?= ($_GET['hersteller_id'] ?? '') == $h['id'] ? 'selected' : '' ?>>
@@ -403,7 +403,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </option>
             <?php endforeach; ?>
         </select>
-        <select name="artikeltyp_id" class="erp-select" onchange="this.form.submit()">
+        <select name="artikeltyp_id" class="erp-select" onchange="this.form.requestSubmit()">
             <option value="">– Artikel-Typ –</option>
             <?php foreach ($alleArtikeltypen as $t): ?>
                 <option value="<?= $t['id'] ?>" <?= ($_GET['artikeltyp_id'] ?? '') == $t['id'] ? 'selected' : '' ?>>
@@ -411,7 +411,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </option>
             <?php endforeach; ?>
         </select>
-        <select name="status_filter" class="erp-select" onchange="this.form.submit()">
+        <select name="status_filter" class="erp-select" onchange="this.form.requestSubmit()">
             <option value="">– Status / Qualität –</option>
             <optgroup label="Status">
                 <option value="auslauf"  <?= $statusFilter === 'auslauf'  ? 'selected' : '' ?>>Auslaufartikel</option>
@@ -435,9 +435,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <option>S3 Bio-Wolle</option>
         </select>
         <label>
-            <input onchange="this.form.submit()" type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand
+            <input onchange="this.form.requestSubmit()" type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand
         </label>
-        <label><input onchange="this.form.submit()" type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
+        <label><input onchange="this.form.requestSubmit()" type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
         <?php if ($aktivKategorieId): ?>
             <input type="hidden" name="kategorie_id" value="<?= $aktivKategorieId ?>">
         <?php endif; ?>
@@ -702,12 +702,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div class="">
             Hauptartikel/Seite:
             <select name="pro_seite" onchange="
+            document.getElementById('page-loader').style.display='flex';
             var p = new URLSearchParams(window.location.search);
             p.set('pro_seite', this.value);
             p.set('seite', 1);
             window.location.href = 'liste.php?' + p.toString();
         ">
-                <option value="10" <?= $proSeite == 12 ? 'selected' : '' ?>>12</option>
+                <option value="12" <?= $proSeite == 12 ? 'selected' : '' ?>>12</option>
                 <option value="25" <?= $proSeite == 25 ? 'selected' : '' ?>>25</option>
                 <option value="50" <?= $proSeite == 50 ? 'selected' : '' ?>>50</option>
                 <option value="100" <?= $proSeite == 100 ? 'selected' : '' ?>>100</option>

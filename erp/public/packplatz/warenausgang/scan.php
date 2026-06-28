@@ -187,11 +187,17 @@ require_once __DIR__ . '/../shell_top.php';
 
         <!-- Bottom-Bar -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:16px;background:#16213e;border-radius:10px">
+            <?php if ($aktuellerAuftrag['lieferart'] !== 'abholung'): ?>
             <button type="button" class="pp-btn pp-btn-warning" onclick="teillieferung()" id="btn-teillieferung">
                 Teillieferung
             </button>
-            <button type="button" class="pp-btn pp-btn-success" id="btn-verpacken" disabled onclick="verpackenStarten()">
-                ✓ Verpacken
+            <?php else: ?>
+            <div></div>
+            <?php endif; ?>
+            <button type="button" class="pp-btn pp-btn-success" id="btn-verpacken" disabled
+                    data-lieferart="<?= htmlspecialchars($aktuellerAuftrag['lieferart']) ?>"
+                    onclick="verpackenStarten(this.dataset.lieferart)">
+                <?= $aktuellerAuftrag['lieferart'] === 'abholung' ? '✓ Bereit zur Abholung' : '✓ Verpacken' ?>
             </button>
         </div>
 
@@ -261,10 +267,11 @@ require_once __DIR__ . '/../shell_top.php';
         <div style="margin-bottom:16px">
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Versanddienstleister:</label>
             <select id="overlay-dl" class="pp-overlay-input" style="cursor:pointer">
-                <option value="post_at" selected>🇦🇹 Österreichische Post</option>
+                <option value="post_at" selected>🇦🇹 Österreichische Post (PLC)</option>
                 <option value="dhl">DHL</option>
                 <option value="dpd">DPD</option>
                 <option value="gls">GLS</option>
+                <option value="manuell">✋ Manuell (kein PLC)</option>
             </select>
         </div>
 
@@ -298,10 +305,11 @@ require_once __DIR__ . '/../shell_top.php';
                 value="<?= $gewichtBerechnet ?>" step="0.001" min="0.001" style="margin-bottom:16px">
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Versanddienstleister:</label>
             <select id="overlay-tl-dl" class="pp-overlay-input" style="cursor:pointer;margin-bottom:16px">
-                <option value="post_at" selected>🇦🇹 Österreichische Post</option>
+                <option value="post_at" selected>🇦🇹 Österreichische Post (PLC)</option>
                 <option value="dhl">DHL</option>
                 <option value="dpd">DPD</option>
                 <option value="gls">GLS</option>
+                <option value="manuell">✋ Manuell (kein PLC)</option>
             </select>
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Trackingnummer scannen:</label>
             <input type="text" id="overlay-tl-tracking" class="pp-overlay-input"
@@ -312,6 +320,21 @@ require_once __DIR__ . '/../shell_top.php';
             <button class="pp-btn pp-btn-warning" id="btn-tl-ok" onclick="verpackenAbschliessen(true)" disabled>
                 Teillieferung abschließen
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- OVERLAY: Abholung -->
+<div class="pp-overlay" id="overlay-abholung">
+    <div class="pp-overlay-box" style="min-width:400px">
+        <div class="pp-overlay-titel">🏪 Bereit zur Abholung</div>
+        <div style="color:#aaa;font-size:14px;margin-bottom:20px;line-height:1.6">
+            Alle Artikel wurden kommissioniert und sind bereit.<br>
+            Der Abholzettel wird erstellt und eine Benachrichtigung an den Kunden gesendet.
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:24px">
+            <button class="pp-btn pp-btn-secondary" onclick="overlaySchliessen()">Abbrechen</button>
+            <button class="pp-btn pp-btn-success" onclick="abholungAbschliessen()">✓ Abschließen</button>
         </div>
     </div>
 </div>
@@ -328,6 +351,7 @@ const POSITIONEN = <?= json_encode(array_map(fn($p, $i) => [
 const AUFTRAG_ID    = <?= $auftragId ?>;
 const PICKLISTE_ID  = <?= $pickliste ? $pickliste['id'] : 'null' ?>;
 const IS_VERSAND    = <?= json_encode($aktuellerAuftrag['lieferart'] === 'versand') ?>;
+const IS_ABHOLUNG   = <?= json_encode($aktuellerAuftrag['lieferart'] === 'abholung') ?>;
 </script>
 <script src="/mealana/js/packplatz_scan.js"></script>
 
