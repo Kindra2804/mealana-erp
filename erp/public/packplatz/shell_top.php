@@ -229,6 +229,7 @@
     <?php if (!empty($backUrl)): ?>
       <a href="<?= htmlspecialchars($backUrl) ?>" class="pp-back">← Zurück</a>
     <?php endif; ?>
+    <a href="/mealana/start.php" class="pp-back">→ Start</a>
     <div class="pp-user">👤 <?= htmlspecialchars($_SESSION['benutzer']['formularname'] ?? 'User') ?></div>
   </div>
 </div>

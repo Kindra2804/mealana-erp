@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-27 (Session 15)
+Stand: 2026-06-28 (Session 16)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -22,11 +22,12 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ```
 
 ## Schema-Referenz
-- 78 Migrations angewendet (001–078)
+- 87 Migrations angewendet (001–087)
+- Migration 087: auftrag_lieferungen (Tracking-History pro Auftrag für Teillieferungen)
 - Wichtige neue Tabellen: auftrag_zahlungen (076), mahnungen (069), shops (067), auftraege/auftrag_positionen/rechnungen/auftrag_dokumente/auftrag_statuslog (060–062)
 - Dump aktualisieren: `& "C:\xampp\mysql\bin\mysqldump.exe" --host=localhost --user=root --no-tablespaces --routines --skip-comments mealana_erp | Out-File -FilePath "D:\ERP\mealana\erp\database\schema_current.sql" -Encoding utf8`
 
-## ✅ Fertige Module (Stand 2026-06-26)
+## ✅ Fertige Module (Stand 2026-06-28)
 
 ### Artikel-Modul ✅ VOLLSTÄNDIG
 - CRUD, 7 Tabs, Varianten, Preise, Bilder, Merkmale, Lieferanten, SEO
@@ -98,7 +99,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Rechteverwaltung | MITTEL | Admin-Seite: Rollen zuweisen; eher für Weitergabe |
 | Anmeldekontrolle / Zwangsabmeldung | MITTEL | Session-Management; für Weitergabe (Praktikanten) |
 | ~~Zentrales Dokumentenarchiv~~ | ✅ FERTIG 2026-06-27 | Kassenbons via UNION ALL integriert; X/Z-Bons in Einstellungen/Kassen |
-| Dashboard | MITTEL | Lagerwert, Low-Stock, Tagesübersicht; design_mockup.svg als Basis — wenn fertig: ERP-Kachel in start.php auf dashboard.php umlenken (derzeit artikel/liste.php) |
+| ~~Dashboard~~ | ✅ FERTIG 2026-06-28 | dashboard.php: 5 KPI-Cards (Card 5 Platzhalter bis Buchhaltung), Kanal-Balken, Fehlbestand-Greedy-Logik aus picklisten.php, Lieferhistory, Log-Bar |
 | Log-Aufbereitung + Shell-Footer | MITTEL | info/warn/error Klassifizierung; Zeile in Shell-Bottom (siehe project_logger_ui.md) |
 | Inventur | MITTEL | inkl. Inventurliste (Druck) + mobile App |
 | Shop-Export / WooCommerce Sync | MITTEL | Design: db_design_entscheidungen.md |
@@ -113,6 +114,19 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
+
+## Session 16 erledigt (2026-06-28)
+- Dashboard gebaut (dashboard.php): KPIs, Fehlbestand-Greedy, Kanal-Balken, Log-Bar
+- Shell "···" → Dropdown (Kasse/Packplatz/Lizenzverwaltung), Dashboard-Link in Nav
+- start.php → ERP-Kachel zeigt auf dashboard.php
+- Kasse/Packplatz: "→ Zurück zum ERP" auf start.php umgeleitet
+- KassenService: versand_datum=NOW() bei Bon-Erstellung (= Lieferdatum/Rechnungsdatum)
+- Pickliste: eine pro Auftrag statt alle zusammen
+- Packplatz abschliessen.php: Index-Fix (gleicher Filter wie scan.php) → Teillieferung bucht jetzt korrekt
+- Packplatz Overlays: Carrier-Dropdown (Post/DHL/DPD/GLS, Default Post AT)
+- Tracking-Spalten vereinheitlicht: Packplatz schreibt tracking_nr + versanddienstleister
+- Migration 087: auftrag_lieferungen (History-Tabelle für alle Lieferungen inkl. Teillieferungen)
+- auftraege/detail.php: Tracking-Tabelle statt Einzelfeld, Auto-Migration alter Einträge
 
 ## Offene technische Punkte
 - ~~Preis-Query Datums-Filter~~ ✅ behoben 2026-06-26

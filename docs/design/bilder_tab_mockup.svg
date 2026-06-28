@@ -1,0 +1,174 @@
+<svg width="900" height="580" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000015"/>
+    </filter>
+  </defs>
+
+  <!-- Hintergrund -->
+  <rect width="900" height="580" fill="#f1f5f9"/>
+
+  <!-- ===== TAB-LEISTE ===== -->
+  <rect width="900" height="42" fill="white"/>
+
+  <!-- Tab: Stammdaten -->
+  <rect x="10" y="8" width="100" height="28" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="60" y="26" text-anchor="middle" fill="#64748b" font-size="12">Stammdaten</text>
+
+  <!-- Tab: Preise -->
+  <rect x="116" y="8" width="68" height="28" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="150" y="26" text-anchor="middle" fill="#64748b" font-size="12">Preise</text>
+
+  <!-- Tab: Lager -->
+  <rect x="190" y="8" width="60" height="28" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="220" y="26" text-anchor="middle" fill="#64748b" font-size="12">Lager</text>
+
+  <!-- Tab: Bilder (AKTIV) — ragt bis zur Trennlinie und überdeckt sie -->
+  <rect x="256" y="4" width="68" height="39" rx="4" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="258" y="40" width="64" height="4" fill="white"/>
+  <text x="290" y="27" text-anchor="middle" fill="#2563eb" font-size="12" font-weight="600">Bilder</text>
+
+  <!-- Tab: Merkmale -->
+  <rect x="330" y="8" width="80" height="28" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="370" y="26" text-anchor="middle" fill="#64748b" font-size="12">Merkmale</text>
+
+  <!-- Tab: Texte -->
+  <rect x="416" y="8" width="56" height="28" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="444" y="26" text-anchor="middle" fill="#64748b" font-size="12">Texte</text>
+
+  <!-- Trennlinie -->
+  <line x1="0" y1="42" x2="900" y2="42" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ===== INHALTSBEREICH ===== -->
+  <rect y="42" width="900" height="538" fill="white"/>
+
+  <!-- ===== DROP-ZONE ===== -->
+  <rect x="20" y="56" width="860" height="108" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="2" stroke-dasharray="8,5"/>
+
+  <!-- Upload-Pfeil (SVG-Pfad) -->
+  <g transform="translate(450, 95)">
+    <line x1="0" y1="16" x2="0" y2="-10" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="-10,-2 0,-16 10,-2" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="-16" y1="16" x2="16" y2="16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <text x="450" y="122" text-anchor="middle" fill="#1d4ed8" font-size="13" font-weight="500">Bilder hier reinziehen oder klicken</text>
+  <text x="450" y="140" text-anchor="middle" fill="#94a3b8" font-size="11">JPG, PNG, WEBP  ·  Mehrere Dateien gleichzeitig möglich  ·  max. 10 MB pro Datei</text>
+
+  <!-- ===== INFOZEILE ===== -->
+  <text x="20" y="186" fill="#64748b" font-size="12">4 Bilder hochgeladen</text>
+
+  <!-- Synchronisieren-Button -->
+  <rect x="733" y="170" width="147" height="30" rx="5" fill="#2563eb"/>
+  <text x="806" y="189" text-anchor="middle" fill="white" font-size="12" font-weight="500">↑ Synchronisieren  ▾</text>
+
+  <!-- ============================================================ -->
+  <!-- KARTE 1 — Hauptbild (x=20) -->
+  <!-- ============================================================ -->
+  <rect x="20" y="202" width="200" height="255" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
+
+  <!-- Bildbereich -->
+  <rect x="21" y="203" width="198" height="130" fill="#dde1e7" rx="5"/>
+  <!-- Bild-Platzhalter-Icon -->
+  <rect x="95" y="248" width="50" height="38" rx="3" fill="none" stroke="#9ca3af" stroke-width="1.5"/>
+  <circle cx="107" cy="259" r="5" fill="#9ca3af"/>
+  <polyline points="95,285 112,268 125,277 135,263 145,285" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Hauptbild-Badge -->
+  <rect x="27" y="210" width="76" height="19" rx="3" fill="#f59e0b"/>
+  <text x="65" y="223" text-anchor="middle" fill="white" font-size="10" font-weight="600">★ Hauptbild</text>
+
+  <!-- Kontrollzeile -->
+  <text x="34" y="361" fill="#94a3b8" font-size="9" font-style="italic">nicht verschiebbar</text>
+  <rect x="171" y="345" width="40" height="24" rx="4" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="191" y="361" text-anchor="middle" fill="#ef4444" font-size="13">✕</text>
+
+  <!-- Alt-Text-Feld -->
+  <rect x="27" y="378" width="186" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="34" y="394" fill="#374151" font-size="10">Merinowolle dunkelblau, Knäuel</text>
+
+  <!-- Shop-Status -->
+  <circle cx="30" cy="417" r="4" fill="#22c55e"/>
+  <text x="39" y="421" fill="#22c55e" font-size="10">Shop 1: synchronisiert</text>
+  <rect x="27" y="432" width="7" height="2" rx="1" fill="#cbd5e1"/>
+  <text x="39" y="437" fill="#94a3b8" font-size="10">Shop 2: nicht synchronisiert</text>
+
+  <!-- ============================================================ -->
+  <!-- KARTE 2 (x=237) -->
+  <!-- ============================================================ -->
+  <rect x="237" y="202" width="200" height="255" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
+
+  <rect x="238" y="203" width="198" height="130" fill="#dde1e7" rx="5"/>
+  <rect x="312" y="248" width="50" height="38" rx="3" fill="none" stroke="#9ca3af" stroke-width="1.5"/>
+  <circle cx="324" cy="259" r="5" fill="#9ca3af"/>
+  <polyline points="312,285 329,268 342,277 352,263 362,285" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Hoch/Runter-Buttons -->
+  <rect x="244" y="345" width="32" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="260" y="361" text-anchor="middle" fill="#6b7280" font-size="13">↑</text>
+  <rect x="281" y="345" width="32" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="297" y="361" text-anchor="middle" fill="#6b7280" font-size="13">↓</text>
+  <!-- Löschen -->
+  <rect x="388" y="345" width="40" height="24" rx="4" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="408" y="361" text-anchor="middle" fill="#ef4444" font-size="13">✕</text>
+
+  <rect x="244" y="378" width="186" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="251" y="394" fill="#94a3b8" font-size="10">Alt-Text (SEO)...</text>
+
+  <circle cx="247" cy="417" r="4" fill="#22c55e"/>
+  <text x="256" y="421" fill="#22c55e" font-size="10">Shop 1: synchronisiert</text>
+  <rect x="244" y="432" width="7" height="2" rx="1" fill="#cbd5e1"/>
+  <text x="256" y="437" fill="#94a3b8" font-size="10">Shop 2: nicht synchronisiert</text>
+
+  <!-- ============================================================ -->
+  <!-- KARTE 3 (x=454) -->
+  <!-- ============================================================ -->
+  <rect x="454" y="202" width="200" height="255" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
+
+  <rect x="455" y="203" width="198" height="130" fill="#dde1e7" rx="5"/>
+  <rect x="529" y="248" width="50" height="38" rx="3" fill="none" stroke="#9ca3af" stroke-width="1.5"/>
+  <circle cx="541" cy="259" r="5" fill="#9ca3af"/>
+  <polyline points="529,285 546,268 559,277 569,263 579,285" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <rect x="461" y="345" width="32" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="477" y="361" text-anchor="middle" fill="#6b7280" font-size="13">↑</text>
+  <rect x="498" y="345" width="32" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="514" y="361" text-anchor="middle" fill="#6b7280" font-size="13">↓</text>
+  <rect x="605" y="345" width="40" height="24" rx="4" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="625" y="361" text-anchor="middle" fill="#ef4444" font-size="13">✕</text>
+
+  <rect x="461" y="378" width="186" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="468" y="394" fill="#94a3b8" font-size="10">Alt-Text (SEO)...</text>
+
+  <rect x="458" y="413" width="7" height="2" rx="1" fill="#cbd5e1"/>
+  <text x="470" y="421" fill="#94a3b8" font-size="10">Shop 1: nicht synchronisiert</text>
+  <rect x="458" y="432" width="7" height="2" rx="1" fill="#cbd5e1"/>
+  <text x="470" y="437" fill="#94a3b8" font-size="10">Shop 2: nicht synchronisiert</text>
+
+  <!-- ============================================================ -->
+  <!-- KARTE 4 (x=671) -->
+  <!-- ============================================================ -->
+  <rect x="671" y="202" width="200" height="255" rx="6" fill="white" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
+
+  <rect x="672" y="203" width="198" height="130" fill="#dde1e7" rx="5"/>
+  <rect x="746" y="248" width="50" height="38" rx="3" fill="none" stroke="#9ca3af" stroke-width="1.5"/>
+  <circle cx="758" cy="259" r="5" fill="#9ca3af"/>
+  <polyline points="746,285 763,268 776,277 786,263 796,285" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <rect x="678" y="345" width="32" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="694" y="361" text-anchor="middle" fill="#6b7280" font-size="13">↑</text>
+  <rect x="715" y="345" width="32" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="731" y="361" text-anchor="middle" fill="#6b7280" font-size="13">↓</text>
+  <rect x="822" y="345" width="40" height="24" rx="4" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="842" y="361" text-anchor="middle" fill="#ef4444" font-size="13">✕</text>
+
+  <rect x="678" y="378" width="186" height="24" rx="4" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="685" y="394" fill="#94a3b8" font-size="10">Alt-Text (SEO)...</text>
+
+  <rect x="675" y="413" width="7" height="2" rx="1" fill="#cbd5e1"/>
+  <text x="687" y="421" fill="#94a3b8" font-size="10">Shop 1: nicht synchronisiert</text>
+  <rect x="675" y="432" width="7" height="2" rx="1" fill="#cbd5e1"/>
+  <text x="687" y="437" fill="#94a3b8" font-size="10">Shop 2: nicht synchronisiert</text>
+
+</svg>

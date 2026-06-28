@@ -55,6 +55,20 @@
     };
 })();
 
+window.erpNavMoreToggle = function () {
+    var menu = document.getElementById('erp-nav-more-menu');
+    if (!menu) return;
+    menu.classList.toggle('open');
+};
+
+document.addEventListener('click', function (e) {
+    var wrap = document.getElementById('erp-nav-more-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+        var menu = document.getElementById('erp-nav-more-menu');
+        if (menu) menu.classList.remove('open');
+    }
+});
+
 window.katNeuOeffnen = function () {
     document.getElementById('kat-neu-modal').style.display = 'flex';
     document.getElementById('kat-neu-name').focus();

@@ -205,7 +205,7 @@
     <a href="/mealana/kasse/kassensturz.php"  class="<?= $cur === 'ks'     ? 'aktiv' : '' ?>">📊 Kassenstand</a>
     <a href="/mealana/kasse/bon_journal.php"  class="<?= $cur === 'journal' ? 'aktiv' : '' ?>">📋 Journal</a>
     <div class="ks-nav-sep"></div>
-    <a href="/mealana/auftraege/liste.php" class="ks-back">→ ERP</a>
+    <a href="/mealana/start.php" class="ks-back">→ Start</a>
   </div>
   <div class="ks-user">👤 <?= htmlspecialchars($_SESSION['benutzer']['formularname'] ?? '') ?></div>
 </div>

@@ -130,7 +130,9 @@ $lagerstand = $db->query("
 // ── Session-Meldungen ───────────────────────────────────────────────────────
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
-$neuPicklisteId = (int)($_GET['neu'] ?? 0);
+// Komma-getrennte IDs für mehrere gleichzeitig erstellte Picklisten
+$neuPicklisteIds = array_filter(array_map('intval', explode(',', $_GET['neu'] ?? '')));
+$neuPicklisteId  = count($neuPicklisteIds) === 1 ? reset($neuPicklisteIds) : 0; // Compat
 
 // ── Helper ──────────────────────────────────────────────────────────────────
 function kundeName(string $snap): string
@@ -347,9 +349,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 </div>
 
-<?php if ($neuPicklisteId): ?>
+<?php if (!empty($neuPicklisteIds)): ?>
 <script>
-window.open('/mealana/lager/pickliste_pdf.php?id=<?= $neuPicklisteId ?>', '_blank');
+<?php foreach ($neuPicklisteIds as $pid): ?>
+window.open('/mealana/lager/pickliste_pdf.php?id=<?= (int)$pid ?>', '_blank');
+<?php endforeach; ?>
 </script>
 <?php endif; ?>
 

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1280 702" width="1280" height="702">
+<defs>
+  <filter id="sp"><feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#00000040"/></filter>
+  <style>text { font-family: 'Segoe UI', Arial, sans-serif; }</style>
+</defs>
+
+<!-- BACKGROUND: faded partner detail -->
+<rect width="1280" height="702" fill="#EEF2F7"/>
+<rect width="1280" height="52" fill="#1B3A6B"/>
+<rect x="6" y="5" width="100" height="42" rx="5" fill="white"/>
+<image href="LOGO.png" x="8" y="7" width="96" height="38"/>
+<rect x="668" y="8" width="70" height="36" rx="5" fill="#2D5FA6"/>
+<text x="703" y="31" fill="white" font-size="11" font-weight="700" text-anchor="middle">Partner</text>
+
+<!-- Faded partner-detail modal behind -->
+<rect x="140" y="22" width="1000" height="658" rx="10" fill="white" opacity="0.4"/>
+<rect x="140" y="22" width="1000" height="54" rx="10" fill="#1B3A6B" opacity="0.4"/>
+<text x="168" y="54" fill="white" font-size="13" opacity="0.5">Partner bearbeiten — M&#252;ller Wolle GmbH</text>
+<text x="160" y="100" fill="#9CA3AF" font-size="10" opacity="0.6">STAMMDATEN</text>
+<rect x="160" y="106" width="960" height="24" rx="4" fill="#EEF2F7" opacity="0.6"/>
+<text x="160" y="152" fill="#9CA3AF" font-size="10" opacity="0.6">TYP &amp; ABRECHNUNG</text>
+<rect x="160" y="158" width="400" height="18" rx="4" fill="#EEF2F7" opacity="0.6"/>
+
+<!-- DARKER OVERLAY for sub-modal -->
+<rect width="1280" height="702" fill="#0D2045" opacity="0.60"/>
+
+<!-- MIETFACH MODAL (small, centered) -->
+<rect x="430" y="140" width="420" height="382" rx="10" fill="white" filter="url(#sp)"/>
+
+<!-- Modal Header -->
+<rect x="430" y="140" width="420" height="50" rx="10" fill="#1B3A6B"/>
+<rect x="430" y="170" width="420" height="20" fill="#1B3A6B"/>
+<text x="454" y="170" fill="white" font-size="14" font-weight="700">Mietfach</text>
+<text x="830" y="166" fill="white" font-size="20" text-anchor="middle" font-weight="300">&#10005;</text>
+
+<!-- Form fields -->
+<!-- Bezeichnung -->
+<text x="454" y="210" fill="#718096" font-size="10">Bezeichnung</text>
+<rect x="454" y="215" width="372" height="30" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="468" y="234" fill="#2D3748" font-size="12">Fach 3</text>
+
+<!-- Miete/Monat -->
+<text x="454" y="262" fill="#718096" font-size="10">Miete pro Monat (&#8364;)</text>
+<rect x="454" y="267" width="160" height="30" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="468" y="286" fill="#2D3748" font-size="12">50,00</text>
+<text x="620" y="286" fill="#718096" font-size="12">&#8364;</text>
+
+<!-- MwSt -->
+<text x="660" y="262" fill="#718096" font-size="10">MwSt</text>
+<rect x="660" y="267" width="166" height="30" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="674" y="286" fill="#2D3748" font-size="12">20 % &#9660;</text>
+<text x="808" y="286" fill="#9CA3AF" font-size="10">(KU-Modus &#8594; 0%)</text>
+
+<!-- Mietbeginn -->
+<text x="454" y="315" fill="#718096" font-size="10">Mietbeginn</text>
+<rect x="454" y="320" width="200" height="30" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="468" y="339" fill="#2D3748" font-size="12">01.01.2026</text>
+<text x="662" y="315" fill="#718096" font-size="10">&#128197;</text>
+
+<!-- Mietende -->
+<text x="454" y="367" fill="#718096" font-size="10">Mietende (leer = unbefristet)</text>
+<rect x="454" y="372" width="200" height="30" rx="4" fill="white" stroke="#E2E8F0" stroke-width="1"/>
+<text x="468" y="391" fill="#C0C0C0" font-size="12">TT.MM.JJJJ</text>
+<text x="662" y="391" fill="#CBD5E0" font-size="10">&#128197;</text>
+
+<!-- Aktiv checkbox -->
+<rect x="454" y="416" width="16" height="16" rx="3" fill="#2D5FA6" stroke="#2D5FA6" stroke-width="1"/>
+<text x="462" y="428" fill="white" font-size="11" text-anchor="middle" font-weight="700">&#10003;</text>
+<text x="478" y="428" fill="#4A5568" font-size="12">Aktiv</text>
+
+<!-- Footer -->
+<line x1="430" y1="448" x2="850" y2="448" stroke="#E2E8F0" stroke-width="1"/>
+<rect x="596" y="458" width="110" height="32" rx="5" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="651" y="478" fill="#4A5568" font-size="12" text-anchor="middle">Abbrechen</text>
+<rect x="716" y="458" width="114" height="32" rx="5" fill="#1B3A6B"/>
+<text x="773" y="478" fill="white" font-size="12" font-weight="700" text-anchor="middle">Speichern</text>
+
+<!-- hint: geöffnet aus Partner-Detail -->
+<text x="640" y="540" fill="#8BAECF" font-size="11" text-anchor="middle">&#x2197; ge&#246;ffnet aus: Partner bearbeiten &#8250; Mietf&#228;cher</text>
+
+</svg>

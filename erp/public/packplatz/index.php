@@ -38,9 +38,7 @@ require_once __DIR__ . '/shell_top.php';
 </div>
 
 <div style="text-align:center;margin-top:60px">
-    <a href="/mealana/auftraege/liste.php" style="color:#555;font-size:13px;text-decoration:none">
-        → Zurück zum ERP-System
-    </a>
+    <a href="/mealana/start.php" style="color:#555;font-size:13px;text-decoration:none">→ Startseite</a>
     &nbsp;&nbsp;·&nbsp;&nbsp;
     <a href="/mealana/logout.php" style="color:#555;font-size:13px;text-decoration:none">Abmelden</a>
 </div>

@@ -289,12 +289,12 @@ class KassenService
                     (auftrag_nr, kunden_id, kunden_snapshot, kanal,
                      zahlungsstatus, lieferstatus, zahlungsart,
                      nettobetrag, steuerbetrag, bruttobetrag,
-                     bezahlt_am, lieferart, erstellt_von)
+                     bezahlt_am, versand_datum, lieferart, erstellt_von)
                 VALUES
                     (:bon_nr, :kunden_id, :kunden_snapshot, 'kasse',
                      'bezahlt', 'abgeschlossen', :zahlungsart,
                      :netto, :steuer, :brutto,
-                     NOW(), 'abholung', :erstellt_von)
+                     NOW(), NOW(), 'abholung', :erstellt_von)
             ");
             $stmtAuf->execute([
                 ':bon_nr'          => $bonNr,

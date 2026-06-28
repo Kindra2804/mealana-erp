@@ -15,8 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $db             = Database::getInstance();
 $auftragId      = (int)($_POST['auftrag_id']   ?? 0);
 $picklisteId    = (int)($_POST['pickliste_id'] ?? 0) ?: null;
-$tracking       = trim($_POST['tracking']      ?? '');
-$gewicht        = (float)($_POST['gewicht']    ?? 0);
+$tracking             = trim($_POST['tracking']              ?? '');
+$versanddienstleister = trim($_POST['versanddienstleister'] ?? 'post_at');
+$gewicht              = (float)($_POST['gewicht']           ?? 0);
 $istTeillieferung = ($_POST['teillieferung'] ?? '0') === '1';
 $positionenJson = $_POST['positionen_json'] ?? '[]';
 $posGescannt    = json_decode($positionenJson, true) ?: [];
@@ -40,11 +41,14 @@ $benutzerId  = (int)($_SESSION['benutzer']['id'] ?? 0);
 $lagerService = new LagerService();
 $auftragRepo  = new AuftragRepository();
 
-// ─── Auftrag-Positionen laden (gleiche Reihenfolge wie scan.php) ─────────────
+// ─── Auftrag-Positionen laden (GLEICHER Filter wie scan.php!) ────────────────
+// scan.php filtert auf Restmenge > 0, deshalb müssen die Indizes hier identisch sein.
+// Positionen die bereits vollständig geliefert wurden, werden ausgeschlossen.
 $stmtPos = $db->prepare("
     SELECT id, artikel_id, menge
     FROM auftrag_positionen
     WHERE auftrag_id = ? AND artikel_id IS NOT NULL
+      AND menge - COALESCE(menge_geliefert, 0) > 0
     ORDER BY sort_order, id
 ");
 $stmtPos->execute([$auftragId]);
@@ -77,14 +81,22 @@ try {
         ")->execute([$gescannt, $pos['id']]);
     }
 
-    // Lieferstatus + Tracking speichern
+    // Lieferstatus + Tracking speichern (letzten Wert im Hauptdatensatz + History)
     $neuerStatus = $istTeillieferung ? 'teilgeliefert' : 'versendet';
     $db->prepare("
         UPDATE auftraege
-        SET versand_tracking = ?, versand_datum = NOW(),
+        SET tracking_nr = ?, versanddienstleister = ?,
+            versand_tracking = ?, versand_datum = NOW(),
             lieferstatus = ?, aktualisiert_am = NOW()
         WHERE id = ?
-    ")->execute([$tracking, $neuerStatus, $auftragId]);
+    ")->execute([$tracking, $versanddienstleister, $tracking, $neuerStatus, $auftragId]);
+
+    // Lieferhistory-Eintrag
+    $db->prepare("
+        INSERT INTO auftrag_lieferungen
+            (auftrag_id, tracking_nr, versanddienstleister, ist_teillieferung, benutzer_id)
+        VALUES (?, ?, ?, ?, ?)
+    ")->execute([$auftragId, $tracking, $versanddienstleister ?: null, $istTeillieferung ? 1 : 0, $benutzerId]);
 
     // Reservierungen schließen
     $auftragRepo->schliesseReservierungen($auftragId);

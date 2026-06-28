@@ -93,6 +93,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <img src="/mealana/img/logo.png" alt="MeaLana ERP">
             </a>
             <div class="erp-nav-links">
+                <a href="/mealana/dashboard.php" class="erp-nav-link <?= ($activeModule ?? '') === 'dashboard' ? 'active' : '' ?>">🏠</a>
                 <a href="/mealana/artikel/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
                 <a href="/mealana/lager/picklisten.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
                 <a href="/mealana/kunden/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
@@ -106,7 +107,17 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
             <div class="erp-nav-icons">
                 <a href="/mealana/bedienungsanleitung.php" title="Bedienungsanleitung" class="erp-nav-icon">📖</a>
                 <a href="/mealana/einstellungen/index.php" title="Einstellungen" class="erp-nav-icon <?= ($activeModule ?? '') === 'einstellungen' ? 'active' : '' ?>">⚙️</a>
-                <a href="#" title="Super-Admin — kommt bald" class="erp-nav-icon erp-nav-link-disabled">···</a>
+                <div class="erp-nav-more" id="erp-nav-more-wrap">
+                    <button class="erp-nav-icon erp-nav-more-btn" onclick="erpNavMoreToggle()" title="Weitere Bereiche">···</button>
+                    <div class="erp-nav-more-menu" id="erp-nav-more-menu">
+                        <a href="/mealana/kasse/bon.php" class="erp-nav-more-item">🛒 Kasse</a>
+                        <a href="/mealana/packplatz/index.php" class="erp-nav-more-item">📦 Packplatz</a>
+                        <?php if (Auth::kann('api.zugriff')): ?>
+                        <div class="erp-nav-more-sep"></div>
+                        <a href="#" class="erp-nav-more-item erp-nav-more-item-disabled" title="Kommt bald">🔑 Lizenzverwaltung</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
             <div class="erp-nav-user">
                 <a href="/mealana/benutzer/profil.php" style="color:white;text-decoration:none">👤 <?= htmlspecialchars(Auth::benutzer()['formularname']) ?></a>
@@ -232,8 +243,6 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <script>
                     window.MEALANA_AKTIV_KAT = <?= (int)($aktivKatId ?? 0) ?>;
                 </script>
-                <script src="/mealana/js/shell.js"></script>
-
                 <!-- Neue Kategorie Modal -->
                 <div id="kat-neu-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
                     <div style="background:#fff;border-radius:8px;padding:20px;width:320px;box-shadow:0 4px 24px rgba(0,0,0,.2)">
@@ -270,4 +279,5 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 </div>
             <?php endif; ?>
         </aside>
+        <script src="/mealana/js/shell.js"></script>
         <main class="erp-main">

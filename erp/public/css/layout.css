@@ -187,6 +187,64 @@ html, body {
     color: white;
 }
 
+/* ··· Dropdown-Menü */
+.erp-nav-more {
+    position: relative;
+}
+.erp-nav-more-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: #8BAECF;
+    padding: 6px 8px;
+    border-radius: 4px;
+    line-height: 1;
+}
+.erp-nav-more-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+.erp-nav-more-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: #1e3a5f;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+    min-width: 180px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    z-index: 200;
+    padding: 4px 0;
+}
+.erp-nav-more-menu.open {
+    display: block;
+}
+.erp-nav-more-item {
+    display: block;
+    padding: 9px 16px;
+    color: rgba(255,255,255,0.85);
+    text-decoration: none;
+    font-size: 13px;
+    white-space: nowrap;
+}
+.erp-nav-more-item:hover {
+    background: rgba(255,255,255,0.08);
+    color: white;
+}
+.erp-nav-more-item-disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+.erp-nav-more-sep {
+    height: 1px;
+    background: rgba(255,255,255,0.12);
+    margin: 4px 0;
+}
+
 .erp-nav-user {
   color: rgba(255,255,255,0.85);
   font-size: 13px;

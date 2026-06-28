@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1280 900" width="1280" height="900">
+<defs>
+  <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#00000018"/></filter>
+  <style>text { font-family: 'Segoe UI', Arial, sans-serif; }</style>
+</defs>
+
+<rect width="1280" height="900" fill="#EEF2F7"/>
+
+<!-- ══ TOP NAV ══ -->
+<rect width="1280" height="52" fill="#1B3A6B"/>
+<rect x="6" y="5" width="100" height="42" rx="5" fill="white"/>
+<image href="LOGO.png" x="8" y="7" width="96" height="38"/>
+<text x="167" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Dashboard</text>
+<rect x="198" y="8" width="80" height="36" rx="5" fill="#2D5FA6"/>
+<text x="238" y="31" fill="white" font-size="12.5" font-weight="700" text-anchor="middle">Artikel</text>
+<text x="308" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Lager</text>
+<text x="372" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Kunden</text>
+<text x="438" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Verkauf</text>
+<text x="506" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Versand</text>
+<text x="574" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Retouren</text>
+<text x="640" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Einkauf</text>
+<text x="726" y="31" fill="#8BAECF" font-size="12" text-anchor="middle">Buchhaltung</text>
+<text x="808" y="33" fill="#8BAECF" font-size="18" text-anchor="middle">&#9881;</text>
+<text x="838" y="30" fill="#8BAECF" font-size="14">&#x2026;</text>
+<rect x="1112" y="9" width="160" height="34" rx="5" fill="#0D2045"/>
+<text x="1192" y="30" fill="#7EC8E3" font-size="12" text-anchor="middle">&#128100; Karl Huber &#9660;</text>
+
+<!-- ══ ACTION BAR ══ -->
+<rect y="52" width="1280" height="34" fill="#F8FAFC"/>
+<line x1="0" y1="52" x2="1280" y2="52" stroke="#D8E0E8" stroke-width="1"/>
+<line x1="0" y1="86" x2="1280" y2="86" stroke="#D8E0E8" stroke-width="1"/>
+<rect x="14" y="61" width="96" height="24" rx="4" fill="#1B3A6B"/>
+<text x="62" y="77" fill="white" font-size="11.5" font-weight="700" text-anchor="middle">&#128190; Speichern</text>
+<text x="124" y="77" fill="#4A5568" font-size="11.5">&#10005; Abbrechen</text>
+<line x1="192" y1="62" x2="192" y2="80" stroke="#E2E8F0" stroke-width="1"/>
+<text x="206" y="77" fill="#C05621" font-size="11.5">&#8856; Deaktivieren</text>
+<rect x="326" y="61" width="108" height="24" rx="4" fill="#EBF8FF" stroke="#BEE3F8" stroke-width="1"/>
+<text x="380" y="77" fill="#2B6CB0" font-size="11.5" text-anchor="middle">&#8594; Im Shop &#9660;</text>
+<line x1="448" y1="62" x2="448" y2="80" stroke="#E2E8F0" stroke-width="1"/>
+<text x="462" y="77" fill="#E53E3E" font-size="11.5">&#128465; L&#246;schen</text>
+<!-- unsaved indicator -->
+<circle cx="574" cy="69" r="4" fill="#F6AD55"/>
+<text x="582" y="77" fill="#C05621" font-size="10.5" font-style="italic">ungespeicherte &#196;nderungen</text>
+
+<!-- ══ SIDEBAR — DETAIL MODE ══ -->
+<rect x="0" y="86" width="210" height="754" fill="white"/>
+<line x1="210" y1="86" x2="210" y2="840" stroke="#E2E8F0" stroke-width="1"/>
+
+<rect x="0" y="86" width="210" height="26" fill="#F7FAFC"/>
+<text x="16" y="104" fill="#1B3A6B" font-size="11" font-weight="700" letter-spacing="0.5">ARTIKEL</text>
+<text x="194" y="103" fill="#718096" font-size="13" text-anchor="end">&#9664;</text>
+
+<!-- Back link -->
+<text x="16" y="128" fill="#2D5FA6" font-size="11.5" text-decoration="underline">&#8592; zur Liste</text>
+
+<line x1="12" y1="140" x2="198" y2="140" stroke="#E2E8F0" stroke-width="1"/>
+
+<!-- Article context box -->
+<rect x="10" y="148" width="190" height="44" rx="5" fill="#F0F7FF" stroke="#BEE3F8" stroke-width="1"/>
+<text x="18" y="163" fill="#9CA3AF" font-size="9.5" font-weight="700">ART-00456</text>
+<text x="18" y="180" fill="#1B3A6B" font-size="11.5" font-weight="600">Merino Sockengarn 100g</text>
+
+<line x1="12" y1="202" x2="198" y2="202" stroke="#E2E8F0" stroke-width="1"/>
+
+<!-- Nav: Stammdaten (active) -->
+<rect x="0" y="207" width="210" height="26" fill="#EBF8FF"/>
+<rect x="0" y="207" width="3" height="26" fill="#2D5FA6"/>
+<text x="20" y="225" fill="#1B3A6B" font-size="11.5" font-weight="700">&#128203; Stammdaten</text>
+
+<!-- Nav: Varianten -->
+<text x="20" y="251" fill="#4A5568" font-size="11.5">&#8644; Varianten</text>
+<rect x="156" y="241" width="22" height="14" rx="7" fill="#2D5FA6"/>
+<text x="167" y="251" fill="white" font-size="9" font-weight="700" text-anchor="middle">3</text>
+
+<text x="20" y="275" fill="#4A5568" font-size="11.5">&#128178; Preise</text>
+<text x="20" y="299" fill="#4A5568" font-size="11.5">&#127981; Lager</text>
+
+<!-- Nav: Bilder -->
+<text x="20" y="323" fill="#4A5568" font-size="11.5">&#128247; Bilder</text>
+<rect x="156" y="313" width="22" height="14" rx="7" fill="#718096"/>
+<text x="167" y="323" fill="white" font-size="9" font-weight="700" text-anchor="middle">5</text>
+
+<text x="20" y="347" fill="#4A5568" font-size="11.5">&#127991; Merkmale</text>
+<text x="20" y="371" fill="#4A5568" font-size="11.5">&#128666; Lieferanten</text>
+
+<line x1="12" y1="385" x2="198" y2="385" stroke="#E2E8F0" stroke-width="1"/>
+
+<!-- Sidebar-only items -->
+<text x="20" y="404" fill="#9CA3AF" font-size="11">&#127760; SEO</text>
+<text x="20" y="424" fill="#9CA3AF" font-size="11">&#128202; Statistik</text>
+<text x="20" y="444" fill="#CBD5E0" font-size="9" font-style="italic">nur &#252;ber Sidebar</text>
+
+<!-- ══ ARTICLE HEADER ══ -->
+<rect x="211" y="86" width="1069" height="68" fill="white"/>
+<line x1="211" y1="154" x2="1280" y2="154" stroke="#E2E8F0" stroke-width="1.5"/>
+
+<!-- Thumbnail — HAZEL Farbton -->
+<rect x="226" y="94" width="52" height="52" rx="6" fill="#C4936A" stroke="#B07850" stroke-width="1"/>
+<text x="252" y="123" fill="#FDECD4" font-size="8" text-anchor="middle" font-weight="600">HAZEL</text>
+
+<!-- Article name + meta -->
+<text x="290" y="116" fill="#1A202C" font-size="17" font-weight="700">Sockenwolle &#8220;Merino&#8221; 100g</text>
+<text x="292" y="136" fill="#718096" font-size="11">
+  <tspan fill="#2D5FA6" font-weight="700">ART-00456</tspan>
+  <tspan fill="#CBD5E0">  &#9474;  </tspan>
+  <tspan>Garn</tspan>
+  <tspan fill="#CBD5E0">  &#9474;  </tspan>
+  <tspan>Wolle &#8250; Sockenwolle</tspan>
+  <tspan fill="#CBD5E0">  &#9474;  </tspan>
+  <tspan fill="#27AE60">Lang Yarns</tspan>
+</text>
+
+<!-- Active toggle -->
+<circle cx="1186" cy="111" r="7" fill="#48BB78"/>
+<text x="1198" y="115" fill="#276749" font-size="12.5" font-weight="700">Aktiv</text>
+<text x="1186" y="137" fill="#9CA3AF" font-size="9.5" text-anchor="middle">Klick zum Deaktivieren</text>
+
+<!-- ══ TAB BAR ══ -->
+<rect x="211" y="154" width="1069" height="38" fill="#F8FAFC"/>
+<line x1="211" y1="192" x2="1280" y2="192" stroke="#D1D9E8" stroke-width="1.5"/>
+
+<!-- Active tab: Stammdaten -->
+<rect x="211" y="154" width="124" height="38" fill="white"/>
+<rect x="211" y="189" width="124" height="3" fill="#2D5FA6"/>
+<text x="273" y="177" fill="#1B3A6B" font-size="11.5" font-weight="700" text-anchor="middle">Stammdaten</text>
+
+<!-- Inactive tabs -->
+<text x="393" y="177" fill="#718096" font-size="11.5" text-anchor="middle">Varianten</text>
+<rect x="418" y="163" width="18" height="13" rx="6" fill="#2D5FA6"/>
+<text x="427" y="173" fill="white" font-size="9" font-weight="700" text-anchor="middle">3</text>
+
+<text x="503" y="177" fill="#718096" font-size="11.5" text-anchor="middle">Preise</text>
+<text x="580" y="177" fill="#718096" font-size="11.5" text-anchor="middle">Lager</text>
+<text x="660" y="177" fill="#718096" font-size="11.5" text-anchor="middle">Bilder</text>
+<rect x="682" y="163" width="18" height="13" rx="6" fill="#718096"/>
+<text x="691" y="173" fill="white" font-size="9" font-weight="700" text-anchor="middle">5</text>
+
+<text x="772" y="177" fill="#718096" font-size="11.5" text-anchor="middle">Merkmale</text>
+<text x="873" y="177" fill="#718096" font-size="11.5" text-anchor="middle">Lieferanten</text>
+
+<!-- Tab separators -->
+<line x1="335" y1="162" x2="335" y2="184" stroke="#E2E8F0" stroke-width="1"/>
+<line x1="445" y1="162" x2="445" y2="184" stroke="#E2E8F0" stroke-width="1"/>
+<line x1="536" y1="162" x2="536" y2="184" stroke="#E2E8F0" stroke-width="1"/>
+<line x1="612" y1="162" x2="612" y2="184" stroke="#E2E8F0" stroke-width="1"/>
+<line x1="706" y1="162" x2="706" y2="184" stroke="#E2E8F0" stroke-width="1"/>
+<line x1="828" y1="162" x2="828" y2="184" stroke="#E2E8F0" stroke-width="1"/>
+<line x1="920" y1="162" x2="920" y2="184" stroke="#E2E8F0" stroke-width="1"/>
+
+<!-- ══ FORM CARD (Stammdaten Tab) ══ -->
+<rect x="226" y="200" width="1034" height="618" rx="8" fill="white" filter="url(#sh)"/>
+
+<!-- ─ SECTION: GRUNDDATEN ─ -->
+<text x="246" y="220" fill="#9CA3AF" font-size="10" font-weight="700" letter-spacing="1">GRUNDDATEN</text>
+<line x1="316" y1="216" x2="1242" y2="216" stroke="#EDF2F7" stroke-width="1"/>
+
+<!-- Label helper: right-align at x=348, inputs start at x=360 -->
+
+<!-- Row 1: Bezeichnung -->
+<text x="348" y="242" fill="#718096" font-size="11" text-anchor="end">Bezeichnung</text>
+<rect x="360" y="230" width="620" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="247" fill="#1A202C" font-size="11.5">Sockenwolle &#8222;Merino&#8220; 100g</text>
+
+<!-- Row 2: Kurzname -->
+<text x="348" y="272" fill="#718096" font-size="11" text-anchor="end">Kurzname</text>
+<rect x="360" y="260" width="290" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="277" fill="#1A202C" font-size="11.5">Merino Sockengarn 100g</text>
+
+<!-- Row 3: Artikelnummer + EAN -->
+<text x="348" y="302" fill="#718096" font-size="11" text-anchor="end">Art.-Nr.</text>
+<rect x="360" y="290" width="150" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="307" fill="#1A202C" font-size="11.5">ART-00456</text>
+<text x="524" y="302" fill="#718096" font-size="11">EAN / GTIN</text>
+<rect x="596" y="290" width="200" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="607" y="307" fill="#1A202C" font-size="11.5">4012345678901</text>
+
+<!-- Row 4: Artikeltyp + Einheit -->
+<text x="348" y="332" fill="#718096" font-size="11" text-anchor="end">Artikeltyp</text>
+<rect x="360" y="320" width="160" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="337" fill="#1A202C" font-size="11.5">Garn</text>
+<text x="518" y="337" fill="#A0ADB8" font-size="13">&#9660;</text>
+<text x="540" y="332" fill="#718096" font-size="11">Einheit</text>
+<rect x="588" y="320" width="130" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="599" y="337" fill="#1A202C" font-size="11.5">Kn&#228;uel</text>
+<text x="716" y="337" fill="#A0ADB8" font-size="13">&#9660;</text>
+
+<!-- Row 5: Kategorie -->
+<text x="348" y="362" fill="#718096" font-size="11" text-anchor="end">Kategorie</text>
+<rect x="360" y="350" width="380" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="367" fill="#1A202C" font-size="11.5">Wolle &#8250; Sockenwolle</text>
+<rect x="750" y="350" width="74" height="26" rx="4" fill="#EBF8FF" stroke="#BEE3F8" stroke-width="1"/>
+<text x="787" y="367" fill="#2B6CB0" font-size="11" text-anchor="middle">&#128193; &#196;ndern</text>
+
+<!-- Row 6: Hersteller -->
+<text x="348" y="392" fill="#718096" font-size="11" text-anchor="end">Hersteller</text>
+<rect x="360" y="380" width="220" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="397" fill="#1A202C" font-size="11.5">Lang Yarns</text>
+<text x="578" y="397" fill="#A0ADB8" font-size="13">&#9660;</text>
+
+<!-- Row 7: Herstellerfarb-Code -->
+<text x="348" y="422" fill="#718096" font-size="11" text-anchor="end">Farb-Code</text>
+<rect x="360" y="410" width="140" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="427" fill="#1A202C" font-size="11.5">HAZEL</text>
+<!-- Color dot preview -->
+<circle cx="514" cy="423" r="9" fill="#C4936A" stroke="#A07448" stroke-width="1"/>
+<text x="530" y="427" fill="#9CA3AF" font-size="10" font-style="italic">Hersteller-Farbbezeichnung (Lang Yarns)</text>
+
+<!-- ─ SECTION: BESCHREIBUNG ─ -->
+<line x1="246" y1="452" x2="1242" y2="452" stroke="#EDF2F7" stroke-width="1"/>
+<text x="246" y="448" fill="#9CA3AF" font-size="10" font-weight="700" letter-spacing="1">BESCHREIBUNG</text>
+
+<!-- Kurzbeschreibung -->
+<text x="348" y="472" fill="#718096" font-size="11" text-anchor="end">Kurzbeschr.</text>
+<!-- WYSIWYG outer container -->
+<rect x="360" y="460" width="700" height="102" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<!-- Toolbar background -->
+<rect x="361" y="461" width="698" height="26" rx="3" fill="#F7FAFC"/>
+<line x1="360" y1="487" x2="1060" y2="487" stroke="#CBD5E0" stroke-width="1"/>
+<!-- Toolbar buttons -->
+<rect x="368" y="466" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="379" y="477" fill="#2D5FA6" font-size="11" font-weight="700" text-anchor="middle">B</text>
+<rect x="394" y="466" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="405" y="477" fill="#4A5568" font-size="11" font-style="italic" text-anchor="middle">I</text>
+<rect x="420" y="466" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="431" y="477" fill="#4A5568" font-size="10.5" text-anchor="middle">U&#818;</text>
+<line x1="448" y1="466" x2="448" y2="480" stroke="#CBD5E0" stroke-width="1"/>
+<rect x="454" y="466" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="465" y="477" fill="#4A5568" font-size="12" text-anchor="middle">&#8801;</text>
+<rect x="480" y="466" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="491" y="477" fill="#4A5568" font-size="10" text-anchor="middle">&#128279;</text>
+<!-- Editor content -->
+<text x="372" y="503" fill="#1A202C" font-size="11.5">Feines Merino-Sockengarn, 4-f&#228;dig — ideal f&#252;r Socken, Babyartikel und leichte Accessoires.</text>
+<text x="372" y="521" fill="#1A202C" font-size="11.5">Besonders weich, maschinenwaschbar, langlebig.</text>
+<!-- cursor blink -->
+<rect x="372" y="534" width="1.5" height="16" fill="#2D5FA6"/>
+
+<!-- Vollbeschreibung -->
+<text x="348" y="582" fill="#718096" font-size="11" text-anchor="end">Beschreibung</text>
+<!-- WYSIWYG outer container -->
+<rect x="360" y="570" width="700" height="140" rx="4" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<!-- Toolbar background -->
+<rect x="361" y="571" width="698" height="26" rx="3" fill="#F7FAFC"/>
+<line x1="360" y1="597" x2="1060" y2="597" stroke="#CBD5E0" stroke-width="1"/>
+<!-- Toolbar buttons -->
+<rect x="368" y="576" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="379" y="587" fill="#2D5FA6" font-size="11" font-weight="700" text-anchor="middle">B</text>
+<rect x="394" y="576" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="405" y="587" fill="#4A5568" font-size="11" font-style="italic" text-anchor="middle">I</text>
+<rect x="420" y="576" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="431" y="587" fill="#4A5568" font-size="10.5" text-anchor="middle">U&#818;</text>
+<line x1="448" y1="576" x2="448" y2="590" stroke="#CBD5E0" stroke-width="1"/>
+<rect x="454" y="576" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="465" y="587" fill="#4A5568" font-size="12" text-anchor="middle">&#8801;</text>
+<rect x="480" y="576" width="22" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="491" y="587" fill="#4A5568" font-size="10" text-anchor="middle">&#128279;</text>
+<line x1="508" y1="576" x2="508" y2="590" stroke="#CBD5E0" stroke-width="1"/>
+<!-- Format dropdown in full editor -->
+<rect x="514" y="576" width="70" height="15" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1"/>
+<text x="549" y="587" fill="#4A5568" font-size="10" text-anchor="middle">Normal &#9660;</text>
+<!-- Editor content (rich text sample) -->
+<text x="372" y="614" fill="#1A202C" font-size="11.5" font-weight="600">Unser beliebtestes Merino-Sockengarn</text>
+<text x="372" y="632" fill="#1A202C" font-size="11.5">&#252;berzeugt durch au&#223;ergew&#246;hnliche Weichheit und Langlebigkeit. Das 4-f&#228;dige</text>
+<text x="372" y="650" fill="#1A202C" font-size="11.5">Garn eignet sich perfekt f&#252;r Socken, Babysachen und leichte Strickprojekte.</text>
+<!-- Bullet list in editor -->
+<circle cx="378" cy="669" r="2.5" fill="#4A5568"/>
+<text x="390" y="673" fill="#4A5568" font-size="11">Zusammensetzung: 75% Schurwolle (Merino), 25% Polyamid</text>
+<circle cx="378" cy="688" r="2.5" fill="#4A5568"/>
+<text x="390" y="692" fill="#4A5568" font-size="11">Laufl&#228;nge: 210m / 100g &#9474; Nadelst&#228;rke: 2&#8211;3mm</text>
+
+<!-- ─ SECTION: PHYSISCH / VERSAND ─ -->
+<line x1="246" y1="726" x2="1242" y2="726" stroke="#EDF2F7" stroke-width="1"/>
+<text x="246" y="722" fill="#9CA3AF" font-size="10" font-weight="700" letter-spacing="1">PHYSISCH / VERSAND</text>
+
+<!-- Gewicht + Maße -->
+<text x="348" y="748" fill="#718096" font-size="11" text-anchor="end">Gewicht</text>
+<rect x="360" y="736" width="80" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="753" fill="#1A202C" font-size="11.5">100</text>
+<text x="446" y="753" fill="#718096" font-size="11">g</text>
+<text x="476" y="748" fill="#718096" font-size="11">L &#215;</text>
+<rect x="494" y="736" width="68" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="505" y="753" fill="#A0ADB8" font-size="11">&#8212;</text>
+<text x="568" y="748" fill="#718096" font-size="11">B &#215;</text>
+<rect x="586" y="736" width="68" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="597" y="753" fill="#A0ADB8" font-size="11">&#8212;</text>
+<text x="660" y="748" fill="#718096" font-size="11">H mm</text>
+<rect x="704" y="736" width="68" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="715" y="753" fill="#A0ADB8" font-size="11">&#8212;</text>
+
+<!-- Zustand + Versandklasse -->
+<text x="348" y="780" fill="#718096" font-size="11" text-anchor="end">Zustand</text>
+<rect x="360" y="768" width="140" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="371" y="785" fill="#1A202C" font-size="11.5">Neu</text>
+<text x="498" y="785" fill="#A0ADB8" font-size="13">&#9660;</text>
+<text x="524" y="780" fill="#718096" font-size="11">Versandklasse</text>
+<rect x="606" y="768" width="180" height="26" rx="4" fill="#F8FAFC" stroke="#CBD5E0" stroke-width="1"/>
+<text x="617" y="785" fill="#1A202C" font-size="11.5">Standard-Paket</text>
+<text x="784" y="785" fill="#A0ADB8" font-size="13">&#9660;</text>
+
+<!-- Flags / Checkboxes -->
+<text x="348" y="810" fill="#718096" font-size="11" text-anchor="end">Optionen</text>
+<!-- Checkbox: Überverkauf (unchecked) -->
+<rect x="360" y="800" width="14" height="14" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="380" y="812" fill="#4A5568" font-size="11">&#220;berverkauf erlaubt</text>
+<!-- Checkbox: Auslaufartikel (unchecked) -->
+<rect x="510" y="800" width="14" height="14" rx="3" fill="white" stroke="#CBD5E0" stroke-width="1.5"/>
+<text x="530" y="812" fill="#4A5568" font-size="11">Auslaufartikel</text>
+<!-- Checkbox: Chargenpflicht (CHECKED) -->
+<rect x="638" y="800" width="14" height="14" rx="3" fill="#2D5FA6" stroke="#2D5FA6" stroke-width="1.5"/>
+<text x="644" y="812" fill="white" font-size="10" font-weight="700">&#10003;</text>
+<text x="658" y="812" fill="#1A202C" font-size="11" font-weight="600">Chargenpflicht</text>
+
+<!-- ══ LOG BAR ══ -->
+<rect y="840" width="1280" height="36" fill="#1E1E2E"/>
+<text x="12" y="862" fill="#7EC8E3" font-size="11.5" font-weight="700">&#9654; LOG</text>
+<text x="52" y="862" fill="#68D391" font-size="11">&#9679; 10:47</text>
+<text x="94" y="862" fill="#A0AEC0" font-size="11">[OK] ART-00456 ge&#246;ffnet (Bearbeitungsmodus)</text>
+<text x="390" y="862" fill="#F6E05E" font-size="11">&#9679; 10:31</text>
+<text x="432" y="862" fill="#A0AEC0" font-size="11">[WARN] Variante ART-00456-3 hat kein Bild gesetzt</text>
+
+<!-- ══ STATUS BAR ══ -->
+<rect y="876" width="1280" height="26" fill="#0D2045"/>
+<text x="12" y="893" fill="#7EC8E3" font-size="11">&#128100; Karl Huber</text>
+<line x1="108" y1="880" x2="108" y2="898" stroke="#2D5FA6" stroke-width="1"/>
+<text x="116" y="893" fill="#7EC8E3" font-size="11">Lager: Wien</text>
+<line x1="204" y1="880" x2="204" y2="898" stroke="#2D5FA6" stroke-width="1"/>
+<text x="212" y="893" fill="#7EC8E3" font-size="11">MeaLana GmbH</text>
+<line x1="332" y1="880" x2="332" y2="898" stroke="#2D5FA6" stroke-width="1"/>
+<text x="340" y="893" fill="#718096" font-size="11">&#8635; Sync: 10:31:14</text>
+
+</svg>

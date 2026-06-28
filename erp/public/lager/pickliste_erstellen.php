@@ -22,10 +22,27 @@ $db         = Database::getInstance();
 $repo       = new DokumentRepository();
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 
-// ── Nächste PL-Nummer ───────────────────────────────────────────────────────
-$plNummer = $repo->naechsteNummer('pickliste', (int)date('Y'));
+$ersteller = $db->prepare("SELECT formularname FROM benutzer WHERE id = :id");
+$ersteller->execute([':id' => $benutzerId]);
+$erstellerName = $ersteller->fetchColumn() ?: 'System';
 
-// ── Auftragsdaten laden ─────────────────────────────────────────────────────
+$pdf = new PdfGenerator();
+
+$storagePfad = __DIR__ . '/../../storage/picklisten';
+if (!is_dir($storagePfad)) mkdir($storagePfad, 0755, true);
+
+$neueIds = [];
+
+// Positionen-Statement vorbereiten
+$posStmt = $db->prepare("
+    SELECT p.id, p.bezeichnung, p.menge, p.artikel_id, ar.artikelnummer
+    FROM auftrag_positionen p
+    LEFT JOIN artikel ar ON ar.id = p.artikel_id
+    WHERE p.auftrag_id = :id
+    ORDER BY p.sort_order, p.id
+");
+
+// Auftragsdaten laden (alle auf einmal für Reihenfolge)
 $placeholders = implode(',', array_fill(0, count($auftragIds), '?'));
 $stmt = $db->prepare("
     SELECT a.id, a.auftrag_nr, a.kunden_snapshot, a.lieferadresse_snapshot,
@@ -37,81 +54,61 @@ $stmt = $db->prepare("
 $stmt->execute(array_values($auftragIds));
 $auftraege = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-if (empty($auftraege)) {
-    $_SESSION['fehler'] = 'Aufträge nicht gefunden.';
-    header('Location: /mealana/lager/picklisten.php');
-    exit;
-}
+foreach ($auftraege as $auftrag) {
+    $posStmt->execute([':id' => $auftrag['id']]);
+    $positionen = $posStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Positionen je Auftrag laden
-$posStmt = $db->prepare("
-    SELECT p.id, p.bezeichnung, p.menge, p.artikel_id, ar.artikelnummer
-    FROM auftrag_positionen p
-    LEFT JOIN artikel ar ON ar.id = p.artikel_id
-    WHERE p.auftrag_id = :id
-    ORDER BY p.sort_order, p.id
-");
-foreach ($auftraege as &$a) {
-    $posStmt->execute([':id' => $a['id']]);
-    $a['positionen'] = $posStmt->fetchAll(PDO::FETCH_ASSOC);
-    $a['kunde']      = json_decode($a['kunden_snapshot'] ?? '{}', true) ?: [];
-}
-unset($a);
+    $auftragMitPos              = $auftrag;
+    $auftragMitPos['positionen'] = $positionen;
+    $auftragMitPos['kunde']      = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
 
-// ── Pickliste in DB speichern ───────────────────────────────────────────────
-$db->beginTransaction();
-try {
-    $db->prepare("
-        INSERT INTO picklisten (nummer, status, erstellt_von, erstellt_am)
-        VALUES (:nr, 'offen', :uid, NOW())
-    ")->execute([':nr' => $plNummer, ':uid' => $benutzerId]);
+    // PL-Nummer und Pickliste in DB
+    $plNummer = $repo->naechsteNummer('pickliste', (int)date('Y'));
 
-    $plId = (int)$db->lastInsertId();
+    $db->beginTransaction();
+    try {
+        $db->prepare("
+            INSERT INTO picklisten (nummer, status, erstellt_von, erstellt_am)
+            VALUES (:nr, 'offen', :uid, NOW())
+        ")->execute([':nr' => $plNummer, ':uid' => $benutzerId]);
 
-    $paStmt = $db->prepare("
-        INSERT IGNORE INTO pickliste_auftraege (pickliste_id, auftrag_id)
-        VALUES (:plid, :aid)
-    ");
-    foreach ($auftraege as $a) {
-        $paStmt->execute([':plid' => $plId, ':aid' => $a['id']]);
+        $plId = (int)$db->lastInsertId();
+
+        $db->prepare("
+            INSERT IGNORE INTO pickliste_auftraege (pickliste_id, auftrag_id)
+            VALUES (:plid, :aid)
+        ")->execute([':plid' => $plId, ':aid' => $auftrag['id']]);
+
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        $_SESSION['fehler'] = 'Fehler beim Speichern: ' . $e->getMessage();
+        header('Location: /mealana/lager/picklisten.php');
+        exit;
     }
 
-    $db->commit();
-} catch (Exception $e) {
-    $db->rollBack();
-    $_SESSION['fehler'] = 'Fehler beim Speichern: ' . $e->getMessage();
-    header('Location: /mealana/lager/picklisten.php');
-    exit;
+    // PDF generieren
+    $dateiname = $plNummer . '.pdf';
+    $dateipfad = $storagePfad . '/' . $dateiname;
+
+    $barcode = $pdf->barcodeAlsBase64($plNummer);
+    $pdf->generiere('pickliste/standard.html.twig', [
+        'pl_nummer'          => $plNummer,
+        'datum'              => date('d.m.Y'),
+        'uhrzeit'            => date('H:i'),
+        'erstellt_von'       => $erstellerName,
+        'auftraege'          => [$auftragMitPos],
+        'barcode'            => $barcode,
+        'gesamt_positionen'  => count($positionen),
+    ], $dateipfad);
+
+    // Status auf 'gedruckt' setzen
+    $db->prepare("UPDATE picklisten SET status = 'gedruckt' WHERE id = :id")
+       ->execute([':id' => $plId]);
+
+    $neueIds[] = $plId;
 }
 
-// ── PDF generieren ──────────────────────────────────────────────────────────
-$storagePfad = __DIR__ . '/../../storage/picklisten';
-if (!is_dir($storagePfad)) mkdir($storagePfad, 0755, true);
-
-$dateiname = $plNummer . '.pdf';
-$dateipfad = $storagePfad . '/' . $dateiname;
-
-$ersteller = $db->prepare("SELECT formularname FROM benutzer WHERE id = :id");
-$ersteller->execute([':id' => $benutzerId]);
-$erstellerName = $ersteller->fetchColumn() ?: 'System';
-
-$pdf = new PdfGenerator();
-$barcode = $pdf->barcodeAlsBase64($plNummer);
-
-$pdf->generiere('pickliste/standard.html.twig', [
-    'pl_nummer'    => $plNummer,
-    'datum'        => date('d.m.Y'),
-    'uhrzeit'      => date('H:i'),
-    'erstellt_von' => $erstellerName,
-    'auftraege'    => $auftraege,
-    'barcode'      => $barcode,
-    'gesamt_positionen' => array_sum(array_map(fn($a) => count($a['positionen']), $auftraege)),
-], $dateipfad);
-
-// Status auf 'gedruckt' setzen
-$db->prepare("UPDATE picklisten SET status = 'gedruckt' WHERE id = :id")
-   ->execute([':id' => $plId]);
-
-// ── Zurück zur Picklisten-Seite, PDF öffnet per JS in neuem Tab ────────────
-header('Location: /mealana/lager/picklisten.php?neu=' . $plId);
+// Zurück — alle neuen Picklisten-IDs übergeben
+header('Location: /mealana/lager/picklisten.php?neu=' . implode(',', $neueIds));
 exit;
