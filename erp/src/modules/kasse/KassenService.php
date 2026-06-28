@@ -233,8 +233,9 @@ class KassenService
                     ':sort'               => $i,
                 ]);
 
-                // Lager ausbuchen (nur echte Artikel, nicht Divers)
-                if (!empty($pos['artikel_id'])) {
+                // Lager ausbuchen — überspringen wenn Position individuell gesperrt
+                // (abholbereit → Packplatz hat schon gebucht; nur_zahlung → Packplatz bucht später)
+                if (!empty($pos['artikel_id']) && empty($pos['kein_lagerabzug'])) {
                     $artId    = (int)$pos['artikel_id'];
                     $posMenge = (float)($pos['menge'] ?? 1);
                     $kasseNr  = explode('-', $bonNr)[0]; // z.B. 'K1'

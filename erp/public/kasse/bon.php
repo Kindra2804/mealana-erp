@@ -183,6 +183,10 @@ body {
 .bon-row-nr   { width: 28px; font-size: 13px; color: #94a3b8; flex-shrink: 0; padding: 14px 0; }
 .bon-row-name { flex: 1; font-size: 13px; font-weight: 600; color: #1e3a5f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 14px 8px 14px 0; }
 .bon-row-rabatt { font-size: 10px; color: #f59e0b; font-weight: 700; margin-left: 4px; }
+.bon-row-auftrag { border-left: 3px solid #3b82f6; padding-left: 6px; background: rgba(59,130,246,.04); }
+.bon-row-auftrag-badge { font-size: 11px; margin-right: 4px; opacity: .7; }
+.bon-row-separator { font-size: 10px; color: #94a3b8; text-align: center; padding: 4px 0; letter-spacing: .05em; }
+.bon-row-auftrag-header { font-size: 11px; color: #3b82f6; padding: 6px 0 2px 6px; font-weight: 700; }
 .bon-row-menge { width: 50px; font-size: 13px; color: #1e3a5f; text-align: right; padding: 14px 0; }
 .bon-row-ep    { width: 74px; font-size: 12px; color: #475569; text-align: right; padding: 14px 0; }
 .bon-row-summe { width: 74px; font-size: 13px; font-weight: 600; color: #1e3a5f; text-align: right; padding: 14px 0; }
@@ -625,6 +629,39 @@ body {
 }
 .bon-ctrl-preis:hover { background: #fde68a; }
 
+/* Auftrag laden Taste */
+.np-auftrag {
+  border: 1.5px solid #f59e0b;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 2px;
+  transition: background 0.08s;
+  line-height: 1.2;
+}
+.np-auftrag:hover { background: #fde68a; }
+.np-auftrag.geladen { background: #fde68a; border-color: #d97706; }
+
+/* Auftrag-Suchliste */
+.auftrag-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+}
+.auftrag-item:hover { background: #eff6ff; }
+.auftrag-item-nr { font-size: 13px; font-weight: 700; color: #1e3a5f; width: 120px; flex-shrink: 0; }
+.auftrag-item-info { flex: 1; font-size: 13px; color: #374151; }
+.auftrag-item-status { display: flex; gap: 4px; flex-shrink: 0; }
+.auftrag-item-betrag { font-size: 14px; font-weight: 700; color: #1e3a5f; width: 80px; text-align: right; flex-shrink: 0; }
+.a-chip { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.a-chip-offen { background: #dbeafe; color: #1e40af; }
+.a-chip-bezahlt { background: #dcfce7; color: #166534; }
+.a-chip-versandbereit { background: #fef3c7; color: #92400e; }
+.a-chip-abgeschlossen { background: #f3f4f6; color: #6b7280; }
+
 /* Sondertasten im Numpad (Kassenlade + Freier Artikel) */
 .np-lade {
   border: 1.5px solid #475569;
@@ -788,7 +825,7 @@ body {
       <button class="np" onclick="npDruck('5')">5</button>
       <button class="np" onclick="npDruck('6')">6</button>
       <button class="np-del" onclick="npBack()">⌫</button>
-      <div class="np-empty"></div>
+      <button class="np-auftrag" id="btn-auftrag-laden" onclick="auftragLadenDialog()" title="Auftrag laden / Abholung">📦<span>Auftrag</span></button>
       <!-- Zeile 3: 1 2 3 | STORNO (span 2) -->
       <button class="np" onclick="npDruck('1')">1</button>
       <button class="np" onclick="npDruck('2')">2</button>
@@ -1057,6 +1094,50 @@ body {
   <div class="spinner"></div>
 </div>
 
+<!-- ── Auftrag laden ──────────────────────────────────────────────────────── -->
+<div class="ov" id="ov-auftrag-laden">
+  <div class="ov-box" style="max-width:620px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="ov-title">📦 Auftrag laden / Abholung</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+      <input type="text" id="auftrag-such-feld" class="ov-input" placeholder="Auftragsnummer oder Kundenname …"
+             oninput="auftragSuchen()" style="flex:1;margin-bottom:0">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;cursor:pointer">
+        <input type="checkbox" id="auftrag-alle-cb" onchange="auftragSucheAusfuehren()"> Alle Aufträge
+      </label>
+    </div>
+    <div id="auftrag-liste" style="flex:1;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;min-height:200px">
+      <div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">Lädt …</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button class="ov-btn ov-btn-sec" style="width:auto;padding:0 20px;height:40px" onclick="ovSchliessen('ov-auftrag-laden')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Mitnehmen-Frage ────────────────────────────────────────────────────── -->
+<div class="ov" id="ov-mitnehmen">
+  <div class="ov-box" style="max-width:480px">
+    <div class="ov-title">📦 Auftrag — Was passiert mit der Ware?</div>
+    <div id="ov-mitnehmen-info" style="color:#94a3b8;font-size:13px;margin-bottom:20px"></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <button class="ov-btn ov-btn-ok" onclick="auftragMitnahmeBestaetigen(true)"
+              style="font-size:14px;padding:14px 20px;text-align:left">
+        ✓ Ware wird jetzt mitgenommen
+        <div style="font-size:11px;color:#86efac;margin-top:3px;font-weight:400">Lager wird abgebucht, Auftrag abgeschlossen</div>
+      </button>
+      <button class="ov-btn ov-btn-sec" onclick="auftragMitnahmeBestaetigen(false)"
+              style="font-size:14px;padding:14px 20px;text-align:left">
+        💳 Nur Zahlung — Versand/Abholung folgt
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px;font-weight:400">Auftrag bleibt offen, Packplatz-Flow läuft weiter</div>
+      </button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="ov-btn ov-btn-sec" style="width:auto;padding:0 20px;height:36px;font-size:13px"
+              onclick="auftragMitnehmenAbbrechen()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Feedback Snackbar -->
 <div id="feedback"></div>
 
@@ -1068,12 +1149,16 @@ var KASSE_ID  = <?= $kasseId ?>;
 var LAGER_ID  = <?= $lagerId ?>;
 
 // ── Zustand ──────────────────────────────────────────────────────────────────
-var warenkorb    = [];
-var aktiveZeile  = -1;
-var globalRabatt = 0;
-var numpadBuf    = '';
-var pendingArtikel = null;  // wartet auf Reservierungs-Bestätigung
-var kundeId      = null;
+var warenkorb          = [];
+var aktiveZeile        = -1;
+var globalRabatt       = 0;
+var numpadBuf          = '';
+var pendingArtikel     = null;
+var kundeId            = null;
+var geladenerAuftragId       = null;
+var geladenerAuftragNr       = null;
+var geladenerAuftragStatus   = null;
+var geladenerAuftragMitnehmen = null;
 
 // ── Schnellwahl befüllen (PHP → JS) ─────────────────────────────────────────
 (function() {
@@ -1211,7 +1296,7 @@ function reswarnBestaetigen() {
 
 function _artikelEinfuegen(a, menge) {
     var preis = parseFloat(a.brutto_vk) || 0;
-    var idx = warenkorb.findIndex(p => p.artikel_id == a.id && !p.istDivers);
+    var idx = warenkorb.findIndex(p => p.artikel_id == a.id && !p.istDivers && !p.vonAuftrag);
     if (idx >= 0 && a.id) {
         warenkorb[idx].menge += menge;
     } else {
@@ -1299,33 +1384,56 @@ function renderBon() {
     }
     leer.style.display = 'none';
 
-    // Vorhandene Zeilen entfernen und neu aufbauen
-    Array.from(liste.querySelectorAll('.bon-row')).forEach(r => r.remove());
+    // Vorhandene Zeilen und Separator entfernen und neu aufbauen
+    Array.from(liste.querySelectorAll('.bon-row, .bon-row-separator')).forEach(r => r.remove());
+
+    var hatAuftrag     = warenkorb.some(p => p.vonAuftrag);
+    var hatNormal      = warenkorb.some(p => !p.vonAuftrag);
+    var sepGesetzt     = false;
+    var hdrGesetzt     = false;
 
     warenkorb.forEach(function(p, i) {
+        // Auftrag-Header über den ersten 📦-Zeilen
+        if (p.vonAuftrag && !hdrGesetzt && geladenerAuftragNr) {
+            var hdr = document.createElement('div');
+            hdr.className = 'bon-row-auftrag-header';
+            hdr.innerHTML = '📦 <strong>' + esc(geladenerAuftragNr) + '</strong>';
+            liste.appendChild(hdr);
+            hdrGesetzt = true;
+        }
+        // Trennlinie zwischen Auftrag-Block und normalen Artikeln
+        if (hatAuftrag && hatNormal && !p.vonAuftrag && !sepGesetzt) {
+            var sep = document.createElement('div');
+            sep.className = 'bon-row-separator';
+            sep.textContent = '─── weitere Artikel ───';
+            liste.appendChild(sep);
+            sepGesetzt = true;
+        }
+
         var rabFaktor = 1 - (Math.max(p.rabatt_prozent, globalRabatt) / 100);
         var summe = p.menge * p.einzelpreis_brutto * rabFaktor;
         var istAktiv = (i === aktiveZeile);
 
         var div = document.createElement('div');
-        div.className = 'bon-row' + (istAktiv ? ' aktiv' : '');
+        div.className = 'bon-row' + (istAktiv ? ' aktiv' : '') + (p.vonAuftrag ? ' bon-row-auftrag' : '');
         div.dataset.idx = i;
         div.onclick = function() { zeilaKlick(i); };
 
         var rabHtml = (p.rabatt_prozent > 0 || globalRabatt > 0)
             ? '<span class="bon-row-rabatt">-' + Math.max(p.rabatt_prozent, globalRabatt) + '%</span>'
             : '';
+        var auftragBadge = p.vonAuftrag ? '<span class="bon-row-auftrag-badge">📦</span>' : '';
 
         div.innerHTML =
             '<div class="bon-row-nr">' + (i + 1) + '</div>' +
-            '<div class="bon-row-name">' + esc(p.bezeichnung) + rabHtml + '</div>' +
+            '<div class="bon-row-name">' + auftragBadge + esc(p.bezeichnung) + rabHtml + '</div>' +
             '<div class="bon-row-menge">' + p.menge + '</div>' +
             '<div class="bon-row-ep">€ ' + fmt(p.einzelpreis_brutto) + '</div>' +
             '<div class="bon-row-summe">€ ' + fmt(summe) + '</div>' +
             (istAktiv ?
                 '<div class="bon-row-ctrl">' +
                 '  <button class="bon-ctrl" onclick="event.stopPropagation();zeileMinus(' + i + ')">−</button>' +
-                '  <button class="bon-ctrl" onclick="event.stopPropagation();zeilePlus(' + i + ')">+</button>' +
+                (!p.vonAuftrag ? '  <button class="bon-ctrl" onclick="event.stopPropagation();zeilePlus(' + i + ')">+</button>' : '') +
                 '  <button class="bon-ctrl bon-ctrl-preis" onclick="event.stopPropagation();preisOverride(' + i + ')" title="Preis überschreiben (Zahl auf Numpad, dann hier drücken)">€ Preis</button>' +
                 '  <span class="bon-ctrl-hint">STORNO-Taste zum Entfernen</span>' +
                 '</div>'
@@ -1362,6 +1470,7 @@ function zeileMinus(i) {
     }
 }
 function zeilePlus(i) {
+    if (warenkorb[i].vonAuftrag) return;
     warenkorb[i].menge++;
     renderBon();
 }
@@ -1794,7 +1903,10 @@ function bonSpeichern(zahlDaten) {
             lager_id: LAGER_ID,
             kunden_id: kundeId,
             bruttobetrag: g,
-            positionen: positionen
+            positionen: positionen,
+            web_auftrag_id:       geladenerAuftragId,
+            web_auftrag_status:   geladenerAuftragStatus,
+            web_auftrag_mitnehmen: geladenerAuftragMitnehmen,
         }, zahlDaten))
     })
     .then(r => r.json())
@@ -1802,6 +1914,9 @@ function bonSpeichern(zahlDaten) {
         document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
             warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad(); kundeId = null;
+            geladenerAuftragId = null; geladenerAuftragNr = null;
+            geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
+            document.getElementById('btn-auftrag-laden').classList.remove('geladen');
             document.getElementById('ai-leer').style.display = 'block';
             document.getElementById('ai-inhalt').style.display = 'none';
             document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
@@ -1928,6 +2043,125 @@ function fmt(n) {
 }
 function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Auftrag laden ─────────────────────────────────────────────────────────────
+var auftragSuchTimer = null;
+
+function auftragLadenDialog() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+    document.getElementById('auftrag-such-feld').value = '';
+    document.getElementById('auftrag-alle-cb').checked = false;
+    ov('ov-auftrag-laden');
+    auftragSucheAusfuehren();
+    setTimeout(() => document.getElementById('auftrag-such-feld').focus(), 150);
+}
+
+function auftragSuchen() {
+    clearTimeout(auftragSuchTimer);
+    auftragSuchTimer = setTimeout(auftragSucheAusfuehren, 350);
+}
+
+function auftragSucheAusfuehren() {
+    var q    = document.getElementById('auftrag-such-feld').value.trim();
+    var alle = document.getElementById('auftrag-alle-cb').checked ? '1' : '0';
+    var liste = document.getElementById('auftrag-liste');
+    liste.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">Lädt …</div>';
+
+    fetch('/mealana/kasse/ajax_auftrag_laden.php?q=' + encodeURIComponent(q) + '&alle=' + alle)
+        .then(r => r.json())
+        .then(function(data) {
+            if (!data.length) {
+                liste.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">Keine offenen Aufträge gefunden</div>';
+                return;
+            }
+            liste.innerHTML = '';
+            data.forEach(function(a) {
+                var div = document.createElement('div');
+                div.className = 'auftrag-item';
+                div._auftragDaten = a;
+                div.innerHTML = '<div class="auftrag-item-nr">' + esc(a.auftrag_nr) + '</div>'
+                    + '<div class="auftrag-item-info">' + esc(a.kunden_name) + '<br><span style="font-size:11px;color:#94a3b8">' + esc(a.erstellt_datum) + '</span></div>'
+                    + '<div class="auftrag-item-status">'
+                        + '<span class="a-chip a-chip-' + a.lieferstatus + '">' + esc(a.lieferstatus_label) + '</span>'
+                        + '<span class="a-chip a-chip-' + a.zahlungsstatus + '">' + esc(a.zahlungsstatus_label) + '</span>'
+                    + '</div>'
+                    + '<div class="auftrag-item-betrag">€ ' + fmt(parseFloat(a.bruttobetrag)) + '</div>';
+                div.addEventListener('click', function() {
+                    var d = this._auftragDaten;
+                    auftragWaehlen(d.id, d.auftrag_nr, d.positionen, d.lieferstatus);
+                });
+                liste.appendChild(div);
+            });
+        })
+        .catch(function() {
+            liste.innerHTML = '<div style="padding:24px;text-align:center;color:#dc2626;font-size:13px">Fehler beim Laden</div>';
+        });
+}
+
+function auftragWaehlen(id, nr, positionen, lieferstatus) {
+    if (warenkorb.length > 0) {
+        if (!confirm('Aktueller Bon hat ' + warenkorb.length + ' Position(en) — wirklich ersetzen?')) return;
+        warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
+    }
+    geladenerAuftragId     = id;
+    geladenerAuftragNr     = nr;
+    geladenerAuftragStatus = lieferstatus || null;
+    geladenerAuftragMitnehmen = null;
+
+    positionen.forEach(function(p) {
+        warenkorb.push({
+            artikel_id:           p.artikel_id,
+            bezeichnung:          p.bezeichnung,
+            ean:                  p.ean || null,
+            menge:                parseFloat(p.menge),
+            einzelpreis_brutto:   parseFloat(p.einzelpreis_brutto),
+            steuer_prozent:       parseFloat(p.steuer_prozent) || 20,
+            rabatt_prozent:       parseFloat(p.rabatt_prozent) || 0,
+            charge:               null,
+            istDivers:            false,
+            bestand_physisch:     0,
+            bestand_reserviert:   0,
+            bestand_verkaufbar:   0,
+            vonAuftrag:           true,
+            auftrag_position_id:  p.auftrag_position_id || null,
+        });
+    });
+    document.getElementById('kunden-anzeige').textContent = '📦 Auftrag ' + nr;
+    document.getElementById('btn-auftrag-laden').classList.add('geladen');
+    renderBon();
+    ovSchliessen('ov-auftrag-laden');
+
+    if (lieferstatus === 'abholbereit') {
+        geladenerAuftragMitnehmen = null;
+        feedback('Auftrag ' + nr + ' geladen — bereit zur Abholung', 'ok');
+    } else {
+        document.getElementById('ov-mitnehmen-info').textContent =
+            'Auftrag ' + nr + ' — was passiert mit der Ware?';
+        ov('ov-mitnehmen');
+    }
+}
+
+function auftragMitnahmeBestaetigen(mitnehmen) {
+    geladenerAuftragMitnehmen = mitnehmen;
+    ovSchliessen('ov-mitnehmen');
+    feedback(
+        mitnehmen
+            ? 'Auftrag ' + geladenerAuftragNr + ' — Ware wird mitgenommen'
+            : 'Auftrag ' + geladenerAuftragNr + ' — nur Zahlung, Versand folgt',
+        'ok'
+    );
+}
+
+function auftragMitnehmenAbbrechen() {
+    ovSchliessen('ov-mitnehmen');
+    warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
+    geladenerAuftragId = null; geladenerAuftragNr = null;
+    geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
+    document.getElementById('kunden-anzeige').textContent = '';
+    document.getElementById('btn-auftrag-laden').classList.remove('geladen');
+    renderBon();
+    feedback('Auftrag entladen', 'info');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

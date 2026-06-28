@@ -23,7 +23,7 @@ $istTeillieferung = ($_POST['teillieferung'] ?? '0') === '1';
 $positionenJson = $_POST['positionen_json'] ?? '[]';
 $posGescannt    = json_decode($positionenJson, true) ?: [];
 
-if (!$auftragId || !$tracking) {
+if (!$auftragId) {
     $_SESSION['fehler'] = 'Fehlende Pflichtdaten.';
     header('Location: index.php');
     exit;
@@ -34,6 +34,13 @@ $auftrag->execute([$auftragId]);
 $auftrag = $auftrag->fetch(PDO::FETCH_ASSOC);
 if (!$auftrag) {
     $_SESSION['fehler'] = 'Auftrag nicht gefunden.';
+    header('Location: index.php');
+    exit;
+}
+
+$isAbholung = ($auftrag['lieferart'] ?? '') === 'abholung';
+if (!$isAbholung && !$tracking) {
+    $_SESSION['fehler'] = 'Trackingnummer fehlt.';
     header('Location: index.php');
     exit;
 }
@@ -82,30 +89,41 @@ try {
         ")->execute([$gescannt, $pos['id']]);
     }
 
-    // Lieferstatus + Tracking speichern (letzten Wert im Hauptdatensatz + History)
-    $neuerStatus = $istTeillieferung ? 'teilgeliefert' : 'versendet';
-    $db->prepare("
-        UPDATE auftraege
-        SET tracking_nr = ?, versanddienstleister = ?,
-            versand_tracking = ?, versand_datum = NOW(),
-            lieferstatus = ?, aktualisiert_am = NOW()
-        WHERE id = ?
-    ")->execute([$tracking, $versanddienstleister, $tracking, $neuerStatus, $auftragId]);
+    // Lieferstatus + Tracking speichern
+    $neuerStatus = $isAbholung ? 'abholbereit' : ($istTeillieferung ? 'teilgeliefert' : 'versendet');
 
-    // Lieferhistory-Eintrag
-    $db->prepare("
-        INSERT INTO auftrag_lieferungen
-            (auftrag_id, tracking_nr, versanddienstleister, ist_teillieferung, benutzer_id)
-        VALUES (?, ?, ?, ?, ?)
-    ")->execute([$auftragId, $tracking, $versanddienstleister ?: null, $istTeillieferung ? 1 : 0, $benutzerId]);
+    if ($isAbholung) {
+        $db->prepare("
+            UPDATE auftraege
+            SET lieferstatus = ?, aktualisiert_am = NOW()
+            WHERE id = ?
+        ")->execute([$neuerStatus, $auftragId]);
+    } else {
+        $db->prepare("
+            UPDATE auftraege
+            SET tracking_nr = ?, versanddienstleister = ?,
+                versand_tracking = ?, versand_datum = NOW(),
+                lieferstatus = ?, aktualisiert_am = NOW()
+            WHERE id = ?
+        ")->execute([$tracking, $versanddienstleister, $tracking, $neuerStatus, $auftragId]);
+
+        // Lieferhistory-Eintrag (nur für Versand)
+        $db->prepare("
+            INSERT INTO auftrag_lieferungen
+                (auftrag_id, tracking_nr, versanddienstleister, ist_teillieferung, benutzer_id)
+            VALUES (?, ?, ?, ?, ?)
+        ")->execute([$auftragId, $tracking, $versanddienstleister ?: null, $istTeillieferung ? 1 : 0, $benutzerId]);
+    }
 
     // Reservierungen schließen
     $auftragRepo->schliesseReservierungen($auftragId);
 
     // Statuslog korrekt schreiben
-    $notizText = $istTeillieferung
-        ? "Teillieferung versendet — Tracking: {$tracking}"
-        : "Versendet — Tracking: {$tracking}";
+    $notizText = $isAbholung
+        ? "Bereit zur Abholung — Abholzettel erstellt"
+        : ($istTeillieferung
+            ? "Teillieferung versendet — Tracking: {$tracking}"
+            : "Versendet — Tracking: {$tracking}");
     $auftragRepo->logStatus($auftragId, ['lieferstatus' => [$auftrag['lieferstatus'], $neuerStatus]], $notizText, $benutzerId);
 
     // Pickliste abschließen (wenn alle Aufträge versendet)
@@ -146,9 +164,10 @@ if (!empty($posGescannt)) {
     $stmtDet = $db->prepare("
         SELECT p.id, p.bezeichnung, p.einzelpreis_netto, p.gesamtpreis_netto,
                p.steuer_prozent, p.rabatt_prozent,
-               a.artikelnummer, a.einheit
+               a.artikelnummer, e.kuerzel AS einheit
         FROM auftrag_positionen p
         LEFT JOIN artikel a ON a.id = p.artikel_id
+        LEFT JOIN einheiten e ON e.id = a.einheit_id
         WHERE p.auftrag_id = ? AND p.artikel_id IS NOT NULL
         ORDER BY p.sort_order, p.id
     ");
@@ -187,7 +206,7 @@ if (!empty($posGescannt)) {
 
 // ─── EasyPak XML → PLC-Ordner ────────────────────────────────────────────────
 $plcOrdner = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel='plc_polling_ordner'")->fetchColumn();
-if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand') {
+if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand' && $versanddienstleister === 'post_at') {
     try {
         $exporter = new EasyPakExporter($db);
         $exporter->exportiere($auftragId, $gewicht, $plcOrdner);
@@ -218,8 +237,9 @@ if ($email) {
 
 // ─── PDF-Anhang (Rechnung oder Lieferschein) + Auto-Rechnungsmail ─────────────
 $anhaenge        = [];
-$autoRechnungMail = null; // wird unten befüllt wenn Rechnung frisch erstellt wurde
-if ($email && $auftrag['lieferart'] !== 'abholung') {
+$autoRechnungMail = null;
+$rgnRes           = null; // wird unten befüllt wenn Rechnung frisch erstellt wurde
+if ($email && !$isAbholung) {
     try {
         $dokumentService = new DokumentService();
         $istBezahlt      = $auftrag['zahlungsstatus'] === 'bezahlt';
@@ -251,20 +271,23 @@ if ($email && $auftrag['lieferart'] !== 'abholung') {
 }
 
 // ─── Versandmail ──────────────────────────────────────────────────────────────
-if ($email && $auftrag['lieferart'] !== 'abholung') {
+if ($email && !$isAbholung) {
     $trackingUrlBase = [
         'post_at' => 'https://www.post.at/sv/sendungsdetails?snr=',
         'dhl'     => 'https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=',
         'dpd'     => 'https://tracking.dpd.de/status/de_DE/parcel/',
         'gls'     => 'https://gls-group.eu/track/',
+        'manuell' => '',
     ];
     $dlLabels = [
         'post_at' => 'Österreichische Post',
         'dhl'     => 'DHL',
         'dpd'     => 'DPD',
         'gls'     => 'GLS',
+        'manuell' => 'Paketdienst',
     ];
-    $trackingUrl = ($trackingUrlBase[$versanddienstleister] ?? '') . urlencode($tracking);
+    $baseUrl     = $trackingUrlBase[$versanddienstleister] ?? '';
+    $trackingUrl = $baseUrl ? $baseUrl . urlencode($tracking) : '';
     $betreff     = $istTeillieferung
         ? 'Teillieferung zu Auftrag ' . $auftrag['auftrag_nr'] . ' versendet'
         : 'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde versendet';
@@ -321,19 +344,49 @@ if ($email && $auftrag['lieferart'] !== 'abholung') {
     }
 }
 
-// ─── Abholmail ────────────────────────────────────────────────────────────────
-if ($email && $auftrag['lieferart'] === 'abholung') {
+// ─── Abholzettel + Abholmail ─────────────────────────────────────────────────
+if ($isAbholung) {
+    $abholAnhaenge = [];
     try {
-        $mailer = new Mailer();
-        $mailer->sende(
-            empfaenger: $email,
-            betreff:    'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' liegt zur Abholung bereit',
-            htmlBody:   '<p>Ihre Bestellung <strong>' . htmlspecialchars($auftrag['auftrag_nr']) . '</strong> '
-                . 'liegt ab sofort zur Abholung bei uns bereit.</p>'
-                . '<p>' . htmlspecialchars($firma['firmenname'] ?? 'MEALANA KG') . '</p>'
-        );
+        $dokumentService = new DokumentService();
+        $azRes = $dokumentService->erstelleAbholzettel($auftragId, $benutzerId);
+        if ($azRes['erfolg']) {
+            $abholAnhaenge[] = [
+                'pfad' => $dokumentService->getDateipfad($auftragId, $azRes['dateiname']),
+                'name' => 'Abholzettel_' . $auftrag['auftrag_nr'] . '.pdf',
+            ];
+        }
     } catch (Throwable $e) {
-        error_log('[Abholmail] Fehler: ' . $e->getMessage());
+        error_log('[Abholzettel] Fehler: ' . $e->getMessage());
+    }
+
+    if ($email) {
+        if (!isset($firma)) {
+            $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
+        }
+        try {
+            $mailerAb = new Mailer();
+            $mailerAb->sendeTemplate(
+                empfaenger:   $email,
+                betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' liegt zur Abholung bereit',
+                templatePfad: 'mails/fertig_zur_abholung.html.twig',
+                variablen: [
+                    'logo_base64'    => $mailerAb->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
+                    'anrede'         => $anrede,
+                    'nachname'       => $nachname,
+                    'kunde_name'     => $name,
+                    'auftrag_nummer' => $auftrag['auftrag_nr'],
+                    'positionen'     => $geliefertePositionen,
+                    'firma_adresse'  => trim(($firma['strasse'] ?? '') . ' ' . ($firma['hausnummer'] ?? '')),
+                    'firma_plz_ort'  => trim(($firma['plz'] ?? '') . ' ' . ($firma['ort'] ?? '')),
+                    'firma_email'    => $firma['mail_from_address'] ?? '',
+                    'firma_tel'      => $firma['telefon'] ?? '',
+                ],
+                anhaenge: $abholAnhaenge,
+            );
+        } catch (Throwable $e) {
+            error_log('[Abholmail] Fehler: ' . $e->getMessage());
+        }
     }
 }
 

@@ -60,6 +60,8 @@ $lieferLabels = [
     'versendet'       => ['label' => 'Versendet',       'class' => 'chip-aktiv'],
     'abgeschlossen'   => ['label' => 'Abgeschlossen',   'class' => 'chip-inaktiv'],
     'storniert'       => ['label' => 'Storniert',       'class' => 'chip-inaktiv'],
+    'kommissioniert'  => ['label' => 'Kommissioniert',  'class' => 'chip-auslauf'],
+    'abholbereit'     => ['label' => 'Abholbereit',     'class' => 'chip-aktiv'],
 ];
 $kanalLabels = [
     'woocommerce' => ['label' => 'WooCommerce', 'class' => 'chip-aktiv'],
@@ -81,6 +83,14 @@ if ($istKasse) {
     $stmtBon = $db->prepare("SELECT id, bon_nr FROM kassen_bons WHERE auftrag_id = :aid AND typ='verkauf' LIMIT 1");
     $stmtBon->execute([':aid' => $id]);
     $kasseBon = $stmtBon->fetch() ?: null;
+}
+// Web-Auftrag der an der Kasse bezahlt wurde → Bon ist der Beleg
+$kassenBonId = (int)($auftrag['kassen_bon_id'] ?? 0);
+if (!$kasseBon && $kassenBonId) {
+    $stmtBon = $db->prepare("SELECT id, bon_nr FROM kassen_bons WHERE id = ? LIMIT 1");
+    $stmtBon->execute([$kassenBonId]);
+    $kasseBon  = $stmtBon->fetch() ?: null;
+    $istKasse  = true; // gleiche Sperr-Logik für Dokumente
 }
 $istGesperrt = in_array($auftrag['lieferstatus'], $sperrZustände);
 
@@ -252,6 +262,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             'dhl'     => 'https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=',
             'dpd'     => 'https://tracking.dpd.de/status/de_DE/parcel/',
             'gls'     => 'https://gls-group.eu/track/',
+            'manuell' => '',
         ];
         // Fallback auf alte Einzelspalte falls noch kein History-Eintrag
         $trackingNr  = $auftrag['tracking_nr'] ?: ($auftrag['versand_tracking'] ?? '');
