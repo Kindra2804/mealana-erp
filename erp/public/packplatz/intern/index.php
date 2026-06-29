@@ -138,6 +138,12 @@ require_once __DIR__ . '/../shell_top.php';
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div id="zs-charge-bereich" style="display:none">
+                            <label class="int-label">Charge</label>
+                            <select id="zs-charge" class="int-select">
+                                <option value="">— Charge wählen —</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="int-label">Zu Lager</label>
                             <select id="zs-zu-lager" class="int-select">
@@ -292,11 +298,40 @@ async function umbuchenSpeichern() {
     }
 }
 
-function zsVonLagerGewaehlt() {
+async function zsVonLagerGewaehlt() {
     var vonId   = parseInt(document.getElementById('zs-von-lager').value);
     var bestand = artikelBestand[vonId] || 0;
     document.getElementById('zs-von-bestand').textContent = 'Bestand: ' + bestand;
     document.getElementById('zs-menge').max = bestand;
+
+    var chargeBereich = document.getElementById('zs-charge-bereich');
+    var chargeSelect  = document.getElementById('zs-charge');
+
+    if (!aktuellerArtikel || (!aktuellerArtikel.charge_pflicht && !aktuellerArtikel.hat_chargen)) {
+        chargeBereich.style.display = 'none';
+        return;
+    }
+
+    var artikelId = document.getElementById('u-artikel-id').value;
+    try {
+        var r       = await fetch('/mealana/packplatz/warenausgang/chargen_ajax.php?artikel_id=' + artikelId + '&lager_id=' + vonId);
+        var chargen = await r.json();
+
+        chargeSelect.innerHTML = '<option value="">— Charge wählen —</option>';
+        chargen.forEach(function(c) {
+            var label = c.charge_status === 'nachzutragen'
+                ? 'nachzutragen (' + parseFloat(c.bestand).toFixed(0) + ' Stk.)'
+                : c.charge + ' (' + parseFloat(c.bestand).toFixed(0) + ' Stk.)';
+            var opt = document.createElement('option');
+            opt.value       = c.charge;
+            opt.textContent = label;
+            chargeSelect.appendChild(opt);
+        });
+
+        chargeBereich.style.display = chargen.length > 0 ? 'block' : 'none';
+    } catch {
+        chargeBereich.style.display = 'none';
+    }
 }
 
 async function zustandAnlegenUmbuchen() {
@@ -312,12 +347,15 @@ async function zustandAnlegenUmbuchen() {
     if (!artikelId) { fehlerEl.textContent = 'Kein Artikel geladen.'; fehlerEl.style.display = 'block'; return; }
     if (!menge || menge <= 0) { fehlerEl.textContent = 'Bitte Menge eingeben.'; fehlerEl.style.display = 'block'; return; }
 
+    var charge = document.getElementById('zs-charge').value || null;
+
     var body = new FormData();
     body.append('artikel_id',   artikelId);
     body.append('menge',        menge);
     body.append('zustand',      zustand);
     body.append('von_lager_id', vonLagerId);
     body.append('zu_lager_id',  zuLagerId);
+    if (charge) body.append('charge', charge);
 
     var r    = await fetch('/mealana/packplatz/intern/zustand_anlegen_umbuchen.php', { method: 'POST', body });
     var data = await r.json();
