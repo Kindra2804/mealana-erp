@@ -79,6 +79,12 @@ require_once __DIR__ . '/../shell_top.php';
                             </select>
                             <div id="u-von-bestand" style="font-size:12px;color:#aaa;margin-top:4px"></div>
                         </div>
+                        <div id="u-charge-bereich" style="display:none">
+                            <label class="int-label">Charge</label>
+                            <select id="u-charge" class="int-select">
+                                <option value="">— alle (ohne Charge-Aufteilung) —</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="int-label">Zu Lager</label>
                             <select id="u-zu-lager" class="int-select">
@@ -155,7 +161,8 @@ require_once __DIR__ . '/../shell_top.php';
 </div>
 
 <script>
-var artikelBestand = {};
+var artikelBestand  = {};
+var aktuellerArtikel = null;
 
 document.getElementById('ean-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); artikelSuchen(); }
@@ -178,6 +185,7 @@ async function artikelSuchen() {
     }
 
     var a = data.artikel;
+    aktuellerArtikel = a;
     document.getElementById('u-artikel-id').value = a.id;
     document.getElementById('artikel-name').textContent = a.name;
     document.getElementById('artikel-nr').textContent = a.artikelnummer;
@@ -214,11 +222,41 @@ async function artikelSuchen() {
     document.getElementById('u-menge').focus();
 }
 
-function vonLagerGewaehlt() {
-    var vonId  = parseInt(document.getElementById('u-von-lager').value);
+async function vonLagerGewaehlt() {
+    var vonId   = parseInt(document.getElementById('u-von-lager').value);
     var bestand = artikelBestand[vonId] || 0;
     document.getElementById('u-von-bestand').textContent = 'Bestand: ' + bestand;
     document.getElementById('u-menge').max = bestand;
+
+    var chargeBereich = document.getElementById('u-charge-bereich');
+    var chargeSelect  = document.getElementById('u-charge');
+
+    if (!aktuellerArtikel || (!aktuellerArtikel.charge_pflicht && !aktuellerArtikel.hat_chargen)) {
+        chargeBereich.style.display = 'none';
+        return;
+    }
+
+    // Chargen für Von-Lager laden
+    var artikelId = document.getElementById('u-artikel-id').value;
+    try {
+        var r      = await fetch('/mealana/packplatz/warenausgang/chargen_ajax.php?artikel_id=' + artikelId + '&lager_id=' + vonId);
+        var chargen = await r.json();
+
+        chargeSelect.innerHTML = '<option value="">— Charge wählen —</option>';
+        chargen.forEach(function(c) {
+            var label = c.charge_status === 'nachzutragen'
+                ? 'nachzutragen (' + parseFloat(c.bestand).toFixed(0) + ' Stk.)'
+                : c.charge + ' (' + parseFloat(c.bestand).toFixed(0) + ' Stk.)';
+            var opt = document.createElement('option');
+            opt.value       = c.charge;
+            opt.textContent = label;
+            chargeSelect.appendChild(opt);
+        });
+
+        chargeBereich.style.display = chargen.length > 0 ? 'block' : 'none';
+    } catch {
+        chargeBereich.style.display = 'none';
+    }
 }
 
 async function umbuchenSpeichern() {
@@ -232,11 +270,14 @@ async function umbuchenSpeichern() {
     fehlerEl.style.display = 'none'; erfolgEl.style.display = 'none';
     if (!menge || menge <= 0) { fehlerEl.textContent = 'Bitte Menge eingeben.'; fehlerEl.style.display = 'block'; return; }
 
+    var charge = document.getElementById('u-charge').value || null;
+
     var body = new FormData();
     body.append('artikel_id', artikelId);
     body.append('von_lager_id', vonLager);
     body.append('zu_lager_id', zuLager);
     body.append('menge', menge);
+    if (charge) body.append('charge', charge);
 
     var r    = await fetch('/mealana/packplatz/intern/umbuchen.php', { method: 'POST', body });
     var data = await r.json();

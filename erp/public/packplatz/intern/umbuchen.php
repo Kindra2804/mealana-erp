@@ -8,13 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['erfolg' => false, 'fehler' => 'Ungültige Anfrage']); exit;
 }
 
-$artikelId  = (int)($_POST['artikel_id']  ?? 0);
+$artikelId  = (int)($_POST['artikel_id']   ?? 0);
 $vonLagerId = (int)($_POST['von_lager_id'] ?? 0);
 $zuLagerId  = (int)($_POST['zu_lager_id']  ?? 0);
 $menge      = (float)($_POST['menge']      ?? 0);
+$charge     = !empty($_POST['charge']) ? trim($_POST['charge']) : null;
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 
 $service = new LagerService();
-$result  = $service->umbucheZwischenLager($artikelId, $vonLagerId, $zuLagerId, $menge, $benutzerId);
+$result  = $service->umbucheZwischenLager($artikelId, $vonLagerId, $zuLagerId, $menge, $benutzerId, $charge);
 
 echo json_encode($result);

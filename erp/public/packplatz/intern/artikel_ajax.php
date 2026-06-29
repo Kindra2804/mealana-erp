@@ -12,6 +12,7 @@ $db = Database::getInstance();
 // Suche per EAN oder Artikelnummer
 $stmt = $db->prepare("
     SELECT a.id, a.name, a.artikelnummer, a.zustand, a.zustand_vater_id,
+           COALESCE(a.charge_pflicht, 0) AS charge_pflicht,
            (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
            (SELECT dateiname FROM artikel_bilder WHERE artikel_id = COALESCE(a.vaterartikel_id, a.id) AND position = 0 LIMIT 1) AS hauptbild
     FROM artikel a
@@ -62,6 +63,16 @@ if (empty($artikel['zustand_vater_id'])) {
         $zustandsartikel[]  = $z;
     }
 }
+
+// Hat der Artikel Chargen im Lager?
+$hatChargen = $db->prepare("
+    SELECT EXISTS(
+        SELECT 1 FROM lagerbestand
+        WHERE artikel_id = :id AND charge IS NOT NULL AND bestand > 0
+    ) AS hat
+");
+$hatChargen->execute([':id' => $artikelId]);
+$artikel['hat_chargen'] = (bool)$hatChargen->fetchColumn();
 
 echo json_encode([
     'gefunden'       => true,
