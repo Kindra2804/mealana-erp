@@ -546,7 +546,7 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
-## What's Implemented (Stand 2026-06-28, Session 17)
+## What's Implemented (Stand 2026-06-29, Session 19)
 
 ### Artikel Module (CRUD Complete)
 - List with search + active/inactive filter
@@ -769,6 +769,8 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
    - Features: EAN-Scan, Vater→Variante-Auswahl, Divers-Artikel (freier Preis), Rabatt, Bar+Rückgeld, Karte extern (SumUp/Bankomat), Gutschein, Kombi, 80mm Browser-Druck, Zählhilfe
    - **Abholbereit+bezahlt Flow ✅ (2026-06-29)**: exakt/retour/extra/mix; kein Bon wenn exakt, Retour-Bon mit Barauszahlung, Extra-Bon nur für Extras; Gutschein-Hook vorbereitet
    - **K1-Bon Laufkunde Bug ✅ (2026-06-29)**: kunden_snapshot immer vom Original-Auftrag kopieren
+   - **Chargen-Dialog ✅ (2026-06-29)**: Overlay ov-charge — Charge wählen/nachzutragen/ohne; bon_speichern.php Rückbuchung liest Charge aus auftrag_positionen
+   - **Namenssuche ✅ (2026-06-29)**: Artikel-Suche Modal, sucheArtikel() LIMIT PDO::PARAM_INT Fix
    - Phase 2 noch offen: RKSV/BFR-BONit, Bon-Park, A4-Bon als Rechnung
    - Druckkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen; @page { size: 80mm auto }
 8. **Packplatz/Picklisten** — Kommissionierung, Packliste
