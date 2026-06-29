@@ -100,8 +100,11 @@ class KassenService
             $artikel['typ']    = 'vater';
         } else {
             $artikel['typ']    = 'artikel';
-            if ($artikel['charge_pflicht']) {
-                $artikel['fifo_charge'] = $this->getFifoCharge((int)$artikel['id'], $lagerId);
+            $hatChargen = $this->hatChargen((int)$artikel['id'], $lagerId);
+            $artikel['hat_chargen'] = $hatChargen;
+            if ($artikel['charge_pflicht'] || $hatChargen) {
+                $artikel['fifo_charge']   = $this->getFifoCharge((int)$artikel['id'], $lagerId);
+                $artikel['alle_chargen']  = $this->getAlleChargenFuerKasse((int)$artikel['id'], $lagerId);
             }
         }
 
@@ -155,6 +158,34 @@ class KassenService
         $stmt->execute([':aid' => $artikelId, ':lid' => $lagerId]);
         $row = $stmt->fetch();
         return $row ? $row['charge'] : null;
+    }
+
+    /** Alle verfügbaren Chargen für die Kasse-Auswahl (id, charge, bestand, charge_status) */
+    private function getAlleChargenFuerKasse(int $artikelId, int $lagerId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, charge, bestand, charge_status
+            FROM lagerbestand
+            WHERE artikel_id = :aid AND lager_id = :lid
+              AND charge IS NOT NULL AND bestand > 0
+            ORDER BY charge_status = 'nachzutragen' DESC, erstellt_am ASC
+        ");
+        $stmt->execute([':aid' => $artikelId, ':lid' => $lagerId]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /** Prüft ob ein Artikel Chargen im Lager hat (für optionale Chargen) */
+    private function hatChargen(int $artikelId, int $lagerId): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT EXISTS(
+                SELECT 1 FROM lagerbestand
+                WHERE artikel_id = :aid AND lager_id = :lid
+                  AND charge IS NOT NULL AND bestand > 0
+            )
+        ");
+        $stmt->execute([':aid' => $artikelId, ':lid' => $lagerId]);
+        return (bool)$stmt->fetchColumn();
     }
 
     // ── Bon erstellen ─────────────────────────────────────────────────────────
@@ -255,11 +286,20 @@ class KassenService
                         ]);
                     }
 
+                    $charge   = $pos['charge'] ?? null;
+                    $ntLbId   = !empty($pos['nachzutragen_lagerbestand_id'])
+                        ? (int)$pos['nachzutragen_lagerbestand_id'] : null;
+
+                    // Wenn Charge aus "nachzutragen"-Zeile kommt: zuerst konvertieren
+                    if ($charge && $ntLbId) {
+                        $lagerSvc->chargeNachtragen($ntLbId, $charge, $posMenge, $benutzerId);
+                    }
+
                     $lagerSvc->warenausgang([
                         'artikel_id'  => $artId,
                         'lager_id'    => $lagerId,
                         'menge'       => $posMenge,
-                        'charge'      => $pos['charge'] ?? null,
+                        'charge'      => $charge,
                         'referenz'    => 'Kassenbon ' . $bonNr,
                         'benutzer_id' => $benutzerId,
                     ]);
