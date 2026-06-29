@@ -55,6 +55,18 @@ gutschein_transaktionen (
 1. Shop-Bestellung mit Gutschein-Produkt → ERP importiert → erzeugt Code → WC-Coupon anlegen
 2. Kasse: Code scannen/eingeben → ERP-Abfrage (Restguthaben, gültig?) → einlösen → WC-Coupon deaktivieren
 
+## Kasse-Erstattung via Gutschein (geplant)
+
+Wenn Auftrag `abholbereit + bezahlt` und Kd. nimmt **weniger** als bestellt:
+- Derzeit: Barauszahlung (Differenz bar zurück)
+- **Sobald Gutschein-Modul fertig**: Kasse bietet automatisch Wahl an:
+  - "Bar zurückgeben" ODER "Gutschein ausstellen"
+  - Bei Gutschein-Wahl: automatisch neuen Gutschein über Differenzbetrag erstellen
+  - Gutschein in `gutscheine` Tabelle, verknüpft mit Erstattungs-Bon (`kassen_bon_id`)
+  - Gutschein personalisiert auf `kunden_id` wenn bekannt
+
+→ **Muss mit der Abholbereit+bezahlt-Implementierung koordiniert werden**
+
 ## WooCommerce-Limitation (bewusst akzeptiert)
 - Kein Design, kein Von/An-Feld, kein persönlicher Text im WC
 - Wird mit eigenem Shop gelöst (Zukunft)

@@ -1138,6 +1138,38 @@ body {
   </div>
 </div>
 
+<!-- Bereits bezahlt: kein Bon nötig -->
+<div id="ov-bezahlt-info" class="overlay">
+  <div class="overlay-box" style="max-width:440px">
+    <div class="overlay-header">✅ Auftrag bereits bezahlt</div>
+    <div style="padding:20px;text-align:center">
+      <div id="bezahlt-info-text" style="font-size:15px;margin-bottom:12px;color:#374151"></div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:24px">
+        Kein Bon — Status wird auf <strong>Abgeschlossen</strong> gesetzt und eine Bestätigungsmail gesendet.
+      </p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button onclick="ovSchliessen('ov-bezahlt-info')" class="btn btn-secondary">Abbrechen</button>
+        <button onclick="abschliessenOhneBon()" class="btn btn-primary">✓ Abschließen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Retour-Bon: Barauszahlung bestätigen -->
+<div id="ov-retour-bar" class="overlay">
+  <div class="overlay-box" style="max-width:440px">
+    <div class="overlay-header">↩ Rückgabe — Barauszahlung</div>
+    <div style="padding:20px;text-align:center">
+      <div id="retour-betrag-anzeige" style="font-size:32px;font-weight:700;color:#dc2626;margin-bottom:8px"></div>
+      <p id="retour-info-text" style="font-size:13px;color:#6b7280;margin-bottom:24px"></p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button onclick="ovSchliessen('ov-retour-bar')" class="btn btn-secondary">Abbrechen</button>
+        <button onclick="retourBestaetigen()" class="btn btn-danger">↩ Auszahlen + Bon</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Feedback Snackbar -->
 <div id="feedback"></div>
 
@@ -1158,7 +1190,10 @@ var kundeId            = null;
 var geladenerAuftragId       = null;
 var geladenerAuftragNr       = null;
 var geladenerAuftragStatus   = null;
-var geladenerAuftragMitnehmen = null;
+var geladenerAuftragMitnehmen     = null;
+var geladenerAuftragZahlungsstatus = null;
+var aktuellerZahlBetrag            = null;
+var zusatzPositionen               = [];
 
 // ── Schnellwahl befüllen (PHP → JS) ─────────────────────────────────────────
 (function() {
@@ -1385,7 +1420,7 @@ function renderBon() {
     leer.style.display = 'none';
 
     // Vorhandene Zeilen und Separator entfernen und neu aufbauen
-    Array.from(liste.querySelectorAll('.bon-row, .bon-row-separator')).forEach(r => r.remove());
+    Array.from(liste.querySelectorAll('.bon-row, .bon-row-separator, .bon-row-auftrag-header')).forEach(r => r.remove());
 
     var hatAuftrag     = warenkorb.some(p => p.vonAuftrag);
     var hatNormal      = warenkorb.some(p => !p.vonAuftrag);
@@ -1787,23 +1822,105 @@ document.addEventListener('click', function() {
 });
 
 // ── Bezahlen ──────────────────────────────────────────────────────────────────
+function _zahlBetrag() {
+    return aktuellerZahlBetrag !== null ? aktuellerZahlBetrag : getGesamt();
+}
+
+function berechneAbrechnungsModus() {
+    var extraBrutto  = 0;
+    var retourBrutto = 0;
+    warenkorb.forEach(function(p) {
+        var rab = 1 - (Math.max(p.rabatt_prozent, globalRabatt) / 100);
+        if (p.vonAuftrag) {
+            var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
+            var diff = origMenge - p.menge;
+            if (diff > 0.001) retourBrutto += diff * p.einzelpreis_brutto * rab;
+        } else {
+            extraBrutto += p.menge * p.einzelpreis_brutto * rab;
+        }
+    });
+    var netBrutto = extraBrutto - retourBrutto;
+    var modus = (retourBrutto < 0.005 && extraBrutto < 0.005) ? 'exakt'
+              : (netBrutto < -0.005)                          ? 'retour'
+              :                                                  'extra';
+    return { modus: modus, extraBrutto: extraBrutto, retourBrutto: retourBrutto, netBrutto: netBrutto };
+}
+
+function berechneZusatzPositionen() {
+    zusatzPositionen = [];
+    warenkorb.forEach(function(p) {
+        if (!p.vonAuftrag) return;
+        var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
+        var diff = origMenge - p.menge;
+        if (diff < 0.001) return;
+        zusatzPositionen.push({
+            artikel_id: p.artikel_id, bezeichnung: p.bezeichnung, ean: p.ean || null,
+            menge: -diff, einzelpreis_brutto: p.einzelpreis_brutto,
+            steuer_prozent: p.steuer_prozent,
+            rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt),
+            charge: p.charge || null, istDivers: false,
+            vonAuftrag: false, auftrag_position_id: null,
+            kein_lagerabzug: true, block: 'retour',
+        });
+    });
+}
+
 function bezahlenDialog() {
     if (warenkorb.length === 0) return;
+
+    if (geladenerAuftragZahlungsstatus === 'bezahlt' && geladenerAuftragId) {
+        var m = berechneAbrechnungsModus();
+        aktuellerZahlBetrag = m.netBrutto;
+
+        if (m.modus === 'exakt') {
+            var origTotal = 0;
+            warenkorb.forEach(function(p) {
+                if (p.vonAuftrag) {
+                    var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
+                    origTotal += orig * p.einzelpreis_brutto * (1 - Math.max(p.rabatt_prozent, globalRabatt) / 100);
+                }
+            });
+            document.getElementById('bezahlt-info-text').textContent =
+                'Auftrag ' + geladenerAuftragNr + ' · € ' + fmt(origTotal) + ' — vollständig bezahlt.';
+            ov('ov-bezahlt-info');
+            return;
+        }
+        if (m.modus === 'retour') {
+            var auszahlung = Math.abs(m.netBrutto);
+            document.getElementById('retour-betrag-anzeige').textContent = '€ ' + fmt(auszahlung);
+            document.getElementById('retour-info-text').textContent = m.extraBrutto > 0.005
+                ? 'Extras +€' + fmt(m.extraBrutto) + ' · Rückgabe −€' + fmt(m.retourBrutto) + ' · Auszahlung: €' + fmt(auszahlung)
+                : 'Rückgabe: €' + fmt(m.retourBrutto) + ' werden bar ausgezahlt.';
+            ov('ov-retour-bar');
+            return;
+        }
+        // modus === 'extra' (netto positiv oder 0)
+        if (Math.abs(m.netBrutto) < 0.005) {
+            berechneZusatzPositionen();
+            bonSpeichern({ zahlungsart: 'bar', gegeben: 0, rueckgeld: 0 });
+            return;
+        }
+        document.getElementById('bez-total').textContent = '€ ' + fmt(m.netBrutto);
+        ov('ov-bezahlen');
+        return;
+    }
+
     var g = getGesamt();
+    aktuellerZahlBetrag = g;
     document.getElementById('bez-total').textContent = '€ ' + fmt(g);
     ov('ov-bezahlen');
 }
 
 function zahlenBar() {
     ovSchliessen('ov-bezahlen');
-    var g = getGesamt();
+    var g = _zahlBetrag();
     document.getElementById('bar-total').textContent = '€ ' + fmt(g);
     barClear();
     ov('ov-bar');
     setTimeout(() => document.getElementById('bar-gegeben').focus(), 100);
 }
 function barBerechne() {
-    var g = getGesamt();
+    var g = _zahlBetrag();
     var geg = parseFloat(document.getElementById('bar-gegeben').value) || 0;
     var rueck = geg - g;
     var el = document.getElementById('bar-rueck');
@@ -1818,22 +1935,22 @@ function barBerechne() {
     }
 }
 function abschliessenBar() {
-    var g = getGesamt();
+    var g = _zahlBetrag();
     var geg = parseFloat(document.getElementById('bar-gegeben').value) || 0;
-    if (geg < g) return;
+    if (geg < g && g > 0.005) return;
     bonSpeichern({ zahlungsart: 'bar', gegeben: geg, rueckgeld: Math.max(0, geg - g) });
 }
 
 function zahlenKarte() {
     ovSchliessen('ov-bezahlen');
-    document.getElementById('karte-total').textContent = '€ ' + fmt(getGesamt());
+    document.getElementById('karte-total').textContent = '€ ' + fmt(_zahlBetrag());
     ov('ov-karte');
 }
 function abschliessenKarte() { bonSpeichern({ zahlungsart: 'karte_extern' }); }
 
 function zahlenGutschein() {
     ovSchliessen('ov-bezahlen');
-    document.getElementById('gs-total').textContent = '€ ' + fmt(getGesamt());
+    document.getElementById('gs-total').textContent = '€ ' + fmt(_zahlBetrag());
     document.getElementById('gs-code').value = '';
     document.getElementById('gs-info').textContent = '';
     document.getElementById('btn-gs-ok').disabled = true;
@@ -1852,7 +1969,7 @@ function abschliessenGS() {
 
 function zahlenKombi() {
     ovSchliessen('ov-bezahlen');
-    document.getElementById('kombi-total').textContent = '€ ' + fmt(getGesamt());
+    document.getElementById('kombi-total').textContent = '€ ' + fmt(_zahlBetrag());
     document.getElementById('kombi-karte').value = '';
     document.getElementById('kombi-bar').value   = '';
     document.getElementById('kombi-diff').textContent = '';
@@ -1860,7 +1977,7 @@ function zahlenKombi() {
     ov('ov-kombi');
 }
 function kombiBerechne() {
-    var g = getGesamt();
+    var g = _zahlBetrag();
     var k = parseFloat(document.getElementById('kombi-karte').value) || 0;
     var b = parseFloat(document.getElementById('kombi-bar').value)   || 0;
     var diff = k + b - g;
@@ -1879,21 +1996,33 @@ function kombiBerechne() {
 function abschliessenKombi() {
     var k = parseFloat(document.getElementById('kombi-karte').value) || 0;
     var b = parseFloat(document.getElementById('kombi-bar').value)   || 0;
-    var diff = k + b - getGesamt();
+    var diff = k + b - _zahlBetrag();
     bonSpeichern({ zahlungsart: 'kombi', karten_betrag: k, bar_betrag: b, rueckgeld: Math.max(0, diff) });
 }
 
 // ── Bon speichern ─────────────────────────────────────────────────────────────
+function _resetKasseState() {
+    warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad(); kundeId = null;
+    geladenerAuftragId = null; geladenerAuftragNr = null;
+    geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
+    geladenerAuftragZahlungsstatus = null; aktuellerZahlBetrag = null; zusatzPositionen = [];
+    document.getElementById('btn-auftrag-laden').classList.remove('geladen');
+    document.getElementById('ai-leer').style.display = 'block';
+    document.getElementById('ai-inhalt').style.display = 'none';
+    document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
+    renderBon();
+}
+
 function bonSpeichern(zahlDaten) {
     ['ov-bar','ov-karte','ov-gutschein','ov-kombi'].forEach(ovSchliessen);
     document.getElementById('spinner').classList.add('offen');
 
-    var g = getGesamt();
+    var g = _zahlBetrag();
     var positionen = warenkorb.map(function(p) {
-        return Object.assign({}, p, {
-            rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt)
-        });
-    });
+        return Object.assign({}, p, { rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt) });
+    }).concat(zusatzPositionen);
+    var zp = zusatzPositionen.slice(); // Kopie vor Reset
+    zusatzPositionen = [];
 
     fetch('/mealana/kasse/bon_speichern.php', {
         method: 'POST',
@@ -1904,25 +2033,22 @@ function bonSpeichern(zahlDaten) {
             kunden_id: kundeId,
             bruttobetrag: g,
             positionen: positionen,
-            web_auftrag_id:       geladenerAuftragId,
-            web_auftrag_status:   geladenerAuftragStatus,
-            web_auftrag_mitnehmen: geladenerAuftragMitnehmen,
+            web_auftrag_id:              geladenerAuftragId,
+            web_auftrag_status:          geladenerAuftragStatus,
+            web_auftrag_mitnehmen:       geladenerAuftragMitnehmen,
+            web_auftrag_zahlungsstatus:  geladenerAuftragZahlungsstatus,
         }, zahlDaten))
     })
     .then(r => r.json())
     .then(function(d) {
         document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
-            warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad(); kundeId = null;
-            geladenerAuftragId = null; geladenerAuftragNr = null;
-            geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
-            document.getElementById('btn-auftrag-laden').classList.remove('geladen');
-            document.getElementById('ai-leer').style.display = 'block';
-            document.getElementById('ai-inhalt').style.display = 'none';
-            document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
-            renderBon();
-            window.open('/mealana/kasse/bon_druck.php?id=' + d.bon_id, '_blank');
+            _resetKasseState();
+            if (d.bon_id) {
+                window.open('/mealana/kasse/bon_druck.php?id=' + d.bon_id, '_blank');
+            }
         } else {
+            zusatzPositionen = zp; // Rücksetzen bei Fehler
             feedback('❌ ' + (d.fehler || 'Unbekannter Fehler'), 'fehler');
         }
     })
@@ -1930,6 +2056,47 @@ function bonSpeichern(zahlDaten) {
         document.getElementById('spinner').classList.remove('offen');
         feedback('Netzwerkfehler — bitte erneut versuchen', 'fehler');
     });
+}
+
+function abschliessenOhneBon() {
+    ovSchliessen('ov-bezahlt-info');
+    document.getElementById('spinner').classList.add('offen');
+    var positionen = warenkorb.map(function(p) {
+        return Object.assign({}, p, { rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt) });
+    });
+    fetch('/mealana/kasse/bon_speichern.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            kasse_id: KASSE_ID, lager_id: LAGER_ID, kunden_id: kundeId, bruttobetrag: 0,
+            zahlungsart: 'bar', positionen: positionen,
+            web_auftrag_id:             geladenerAuftragId,
+            web_auftrag_status:         geladenerAuftragStatus,
+            web_auftrag_mitnehmen:      geladenerAuftragMitnehmen,
+            web_auftrag_zahlungsstatus: geladenerAuftragZahlungsstatus,
+            nur_abschliessen:           true,
+        })
+    })
+    .then(r => r.json())
+    .then(function(d) {
+        document.getElementById('spinner').classList.remove('offen');
+        if (d.erfolg) {
+            _resetKasseState();
+            feedback('✓ Auftrag ' + (d.auftrag_nr || '') + ' abgeschlossen — Bestätigung gesendet', 'ok');
+        } else {
+            feedback('❌ ' + (d.fehler || 'Fehler beim Abschließen'), 'fehler');
+        }
+    })
+    .catch(function() {
+        document.getElementById('spinner').classList.remove('offen');
+        feedback('Netzwerkfehler', 'fehler');
+    });
+}
+
+function retourBestaetigen() {
+    ovSchliessen('ov-retour-bar');
+    berechneZusatzPositionen();
+    bonSpeichern({ zahlungsart: 'bar', gegeben: 0, rueckgeld: 0 });
 }
 
 // ── Overlay-Helfer ────────────────────────────────────────────────────────────
@@ -2089,7 +2256,7 @@ function auftragSucheAusfuehren() {
                     + '<div class="auftrag-item-betrag">€ ' + fmt(parseFloat(a.bruttobetrag)) + '</div>';
                 div.addEventListener('click', function() {
                     var d = this._auftragDaten;
-                    auftragWaehlen(d.id, d.auftrag_nr, d.positionen, d.lieferstatus);
+                    auftragWaehlen(d.id, d.auftrag_nr, d.positionen, d.lieferstatus, d.kunden_id, d.kunden_name, d.zahlungsstatus);
                 });
                 liste.appendChild(div);
             });
@@ -2099,22 +2266,27 @@ function auftragSucheAusfuehren() {
         });
 }
 
-function auftragWaehlen(id, nr, positionen, lieferstatus) {
+function auftragWaehlen(id, nr, positionen, lieferstatus, kunden_id, kunden_name, zahlungsstatus) {
     if (warenkorb.length > 0) {
         if (!confirm('Aktueller Bon hat ' + warenkorb.length + ' Position(en) — wirklich ersetzen?')) return;
         warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
     }
-    geladenerAuftragId     = id;
-    geladenerAuftragNr     = nr;
-    geladenerAuftragStatus = lieferstatus || null;
-    geladenerAuftragMitnehmen = null;
+    geladenerAuftragId              = id;
+    geladenerAuftragNr              = nr;
+    geladenerAuftragStatus          = lieferstatus || null;
+    geladenerAuftragMitnehmen       = null;
+    geladenerAuftragZahlungsstatus  = zahlungsstatus || null;
+    aktuellerZahlBetrag             = null;
+    kundeId = kunden_id || null;
 
     positionen.forEach(function(p) {
+        var menge = parseFloat(p.menge);
         warenkorb.push({
             artikel_id:           p.artikel_id,
             bezeichnung:          p.bezeichnung,
             ean:                  p.ean || null,
-            menge:                parseFloat(p.menge),
+            menge:                menge,
+            original_menge:       menge,
             einzelpreis_brutto:   parseFloat(p.einzelpreis_brutto),
             steuer_prozent:       parseFloat(p.steuer_prozent) || 20,
             rabatt_prozent:       parseFloat(p.rabatt_prozent) || 0,
@@ -2127,14 +2299,17 @@ function auftragWaehlen(id, nr, positionen, lieferstatus) {
             auftrag_position_id:  p.auftrag_position_id || null,
         });
     });
-    document.getElementById('kunden-anzeige').textContent = '📦 Auftrag ' + nr;
+    document.getElementById('kunden-anzeige').textContent = '📦 ' + nr + (kunden_name ? ' · ' + kunden_name : '');
     document.getElementById('btn-auftrag-laden').classList.add('geladen');
     renderBon();
     ovSchliessen('ov-auftrag-laden');
 
     if (lieferstatus === 'abholbereit') {
         geladenerAuftragMitnehmen = null;
-        feedback('Auftrag ' + nr + ' geladen — bereit zur Abholung', 'ok');
+        var msg = zahlungsstatus === 'bezahlt'
+            ? 'Auftrag ' + nr + ' geladen — bereits bezahlt · Abholung'
+            : 'Auftrag ' + nr + ' geladen — bereit zur Abholung';
+        feedback(msg, 'ok');
     } else {
         document.getElementById('ov-mitnehmen-info').textContent =
             'Auftrag ' + nr + ' — was passiert mit der Ware?';
@@ -2158,6 +2333,8 @@ function auftragMitnehmenAbbrechen() {
     warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
     geladenerAuftragId = null; geladenerAuftragNr = null;
     geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
+    geladenerAuftragZahlungsstatus = null; aktuellerZahlBetrag = null; zusatzPositionen = [];
+    kundeId = null;
     document.getElementById('kunden-anzeige').textContent = '';
     document.getElementById('btn-auftrag-laden').classList.remove('geladen');
     renderBon();

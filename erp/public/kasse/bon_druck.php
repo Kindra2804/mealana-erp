@@ -16,14 +16,15 @@ $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE sc
 $firmenname = $konfig['firmenname'] ?? 'MeaLana';
 $firmaUid   = $konfig['firma_uid'] ?? '';
 
-// Steuer-Totale berechnen
+// Steuer-Totale berechnen (signed: Retour-Positionen reduzieren, Storno ignoriert Vorzeichen via $stSign)
 $steuerTotale = [];
 $nettoBetrag  = 0;
 foreach ($bon['positionen'] as $p) {
-    $menge      = abs((float)$p['menge']);
+    $rohmenge   = (float)$p['menge'];
+    $menge      = ($p['block'] === 'retour') ? $rohmenge : abs($rohmenge); // Retour signed, sonst abs
     $brutto     = $menge * (float)$p['einzelpreis_brutto'] * (1 - (float)$p['rabatt_prozent'] / 100);
     $satz       = (float)$p['steuer_prozent'];
-    $netto      = $brutto / (1 + $satz / 100);
+    $netto      = $satz > 0 ? $brutto / (1 + $satz / 100) : $brutto;
     $steuer     = $brutto - $netto;
     $key        = number_format($satz, 0);
     if (!isset($steuerTotale[$key])) $steuerTotale[$key] = ['satz' => $satz, 'netto' => 0, 'steuer' => 0, 'brutto' => 0];
@@ -33,7 +34,9 @@ foreach ($bon['positionen'] as $p) {
     $nettoBetrag += $netto;
 }
 
-$bruttoBetrag = abs((float)$bon['bruttobetrag']);
+$bonBrutto    = (float)$bon['bruttobetrag'];
+$istRetour    = $bonBrutto < -0.005;
+$bruttoBetrag = abs($bonBrutto);
 $zahlungsartLabel = [
     'bar'          => 'Bar',
     'karte_extern' => 'Karte (extern)',
@@ -60,7 +63,8 @@ $zahlungsartLabel = [
     .zentriert { text-align: center; }
     .rechts    { text-align: right; }
     .fett      { font-weight: bold; }
-    .linie     { border-top: 1px dashed #000; margin: 3px 0; }
+    .linie        { border-top: 1px dashed #000; margin: 3px 0; }
+    .linie-doppelt{ border-top: 2px double #000; margin: 3px 0; }
     .pos-zeile { display: flex; justify-content: space-between; margin: 1px 0; }
     .pos-sub   { font-size: 10px; color: #444; padding-left: 4px; }
     .storno-kopf { border: 2px solid #000; padding: 3px; text-align: center; font-weight: bold; margin-bottom: 6px; }
@@ -116,30 +120,102 @@ $zahlungsartLabel = [
 
 <div class="linie"></div>
 
-<!-- Positionen -->
-<?php foreach ($bon['positionen'] as $pos): ?>
-  <?php
-    $menge    = (float)$pos['menge'];
-    $preis    = (float)$pos['einzelpreis_brutto'];
-    $rabatt   = (float)$pos['rabatt_prozent'];
-    $gesamt   = $menge * $preis * (1 - $rabatt / 100);
-    $stSign   = $bon['typ'] === 'storno' ? '-' : '';
-  ?>
-  <div class="pos-zeile">
-    <span><?= htmlspecialchars(mb_substr($pos['bezeichnung'], 0, 28)) ?></span>
-    <span class="fett"><?= $stSign ?>€ <?= number_format(abs($gesamt), 2, ',', '.') ?></span>
-  </div>
-  <?php if (abs($menge) != 1 || $rabatt > 0): ?>
-  <div class="pos-sub">
-    <?= abs($menge) ?>× €<?= number_format(abs($preis), 2, ',', '.') ?>
-    <?= $rabatt > 0 ? ' -' . number_format($rabatt, 0) . '%' : '' ?>
-    · <?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt
-    <?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?>
-  </div>
-  <?php else: ?>
-  <div class="pos-sub"><?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt<?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
-  <?php endif; ?>
+<?php
+// Positionen nach Block gruppieren
+$posBlocks = [];
+foreach ($bon['positionen'] as $pos) {
+    $posBlocks[$pos['block'] ?? 'normal'][] = $pos;
+}
+$stSign    = $bon['typ'] === 'storno' ? '-' : '';
+$hatAuftrag = isset($posBlocks['auftrag']);
+$hatRest    = isset($posBlocks['normal']) || isset($posBlocks['addon']);
+?>
+
+<?php if ($hatAuftrag): ?>
+<div class="linie-doppelt"></div>
+<div class="fett" style="font-size:11px;margin:2px 0"><?= htmlspecialchars($bon['web_auftrag_nr'] ?? 'Auftrag') ?></div>
+<?php foreach ($posBlocks['auftrag'] as $pos):
+    $menge  = (float)$pos['menge'];
+    $preis  = (float)$pos['einzelpreis_brutto'];
+    $rabatt = (float)$pos['rabatt_prozent'];
+    $gesamt = $menge * $preis * (1 - $rabatt / 100);
+?>
+<div class="pos-zeile">
+  <span><?= htmlspecialchars(mb_substr($pos['bezeichnung'], 0, 28)) ?></span>
+  <span class="fett"><?= $stSign ?>€ <?= number_format(abs($gesamt), 2, ',', '.') ?></span>
+</div>
+<?php if (abs($menge) != 1 || $rabatt > 0): ?>
+<div class="pos-sub">
+  <?= abs($menge) ?>× €<?= number_format(abs($preis), 2, ',', '.') ?>
+  <?= $rabatt > 0 ? ' -' . number_format($rabatt, 0) . '%' : '' ?>
+  · <?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt
+  <?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?>
+</div>
+<?php else: ?>
+<div class="pos-sub"><?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt<?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
+<?php endif; ?>
 <?php endforeach; ?>
+<?php endif; ?>
+
+<?php
+// Retour-Positionen (zurückgegebene Ware aus bereits bezahltem Auftrag)
+$retourPositionen = $posBlocks['retour'] ?? [];
+if (!empty($retourPositionen)):
+?>
+<div class="linie-doppelt"></div>
+<div class="fett" style="font-size:11px;margin:2px 0">↩ RÜCKGABE</div>
+<?php foreach ($retourPositionen as $pos):
+    $menge  = abs((float)$pos['menge']);
+    $preis  = (float)$pos['einzelpreis_brutto'];
+    $rabatt = (float)$pos['rabatt_prozent'];
+    $gesamt = $menge * $preis * (1 - $rabatt / 100);
+?>
+<div class="pos-zeile">
+  <span><?= htmlspecialchars(mb_substr($pos['bezeichnung'], 0, 28)) ?></span>
+  <span class="fett">-€ <?= number_format($gesamt, 2, ',', '.') ?></span>
+</div>
+<?php if ($menge != 1 || $rabatt > 0): ?>
+<div class="pos-sub">
+  <?= $menge ?>× <?= number_format($preis, 2, ',', '.') ?>€
+  <?= $rabatt > 0 ? ' -' . number_format($rabatt, 0) . '%' : '' ?>
+  · <?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt
+</div>
+<?php else: ?>
+<div class="pos-sub"><?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt</div>
+<?php endif; ?>
+<?php endforeach; ?>
+<?php endif; ?>
+
+<?php
+// Restliche Positionen (normal + addon)
+$restPositionen = array_merge($posBlocks['normal'] ?? [], $posBlocks['addon'] ?? []);
+if (!empty($restPositionen)):
+?>
+<?php if ($hatAuftrag || !empty($retourPositionen)): ?>
+<div class="linie-doppelt"></div>
+<?php endif; ?>
+<?php foreach ($restPositionen as $pos):
+    $menge  = (float)$pos['menge'];
+    $preis  = (float)$pos['einzelpreis_brutto'];
+    $rabatt = (float)$pos['rabatt_prozent'];
+    $gesamt = $menge * $preis * (1 - $rabatt / 100);
+?>
+<div class="pos-zeile">
+  <span><?= htmlspecialchars(mb_substr($pos['bezeichnung'], 0, 28)) ?></span>
+  <span class="fett"><?= $stSign ?>€ <?= number_format(abs($gesamt), 2, ',', '.') ?></span>
+</div>
+<?php if (abs($menge) != 1 || $rabatt > 0): ?>
+<div class="pos-sub">
+  <?= abs($menge) ?>× <?= number_format(abs($preis), 2, ',', '.') ?>€
+  <?= $rabatt > 0 ? ' -' . number_format($rabatt, 0) . '%' : '' ?>
+  · <?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt
+  <?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?>
+</div>
+<?php else: ?>
+<div class="pos-sub"><?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt<?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
+<?php endif; ?>
+<?php endforeach; ?>
+<?php endif; ?>
 
 <div class="linie"></div>
 
@@ -158,8 +234,8 @@ $zahlungsartLabel = [
 <div class="linie"></div>
 
 <div class="pos-zeile fett" style="font-size:15px">
-  <span>GESAMT</span>
-  <span>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
+  <span><?= $istRetour ? 'RÜCKGABE' : 'GESAMT' ?></span>
+  <span><?= $istRetour ? '-' : '' ?>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
 </div>
 
 <div class="pos-zeile" style="margin-top:4px">

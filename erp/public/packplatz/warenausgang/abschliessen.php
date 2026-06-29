@@ -390,22 +390,5 @@ if ($isAbholung) {
     }
 }
 
-// ─── Weiterleitung ────────────────────────────────────────────────────────────
-if ($picklisteId) {
-    $naechster = $db->prepare("
-        SELECT pa.auftrag_id FROM pickliste_auftraege pa
-        JOIN auftraege a ON a.id = pa.auftrag_id
-        WHERE pa.pickliste_id = ?
-          AND a.lieferstatus NOT IN ('versendet','teilgeliefert','abgeschlossen','storniert')
-        LIMIT 1
-    ");
-    $naechster->execute([$picklisteId]);
-    $naechsterId = $naechster->fetchColumn();
-    if ($naechsterId) {
-        header('Location: scan.php?modus=auftrag&auftrag_id=' . $naechsterId . '&pickliste_id=' . $picklisteId);
-        exit;
-    }
-}
-
 header('Location: index.php');
 exit;

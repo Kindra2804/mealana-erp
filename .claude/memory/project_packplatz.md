@@ -36,6 +36,15 @@ metadata:
   - Mail-Template: `templates/mails/retoure.html.twig`
 - **LagerService**: neue Methode `umbucheZwischenLager()`
 
+## 🔴 Bugfixes (Session 2026-06-29)
+
+- Picklisten-Anzeige: nach Verpacken+Tracking ausblenden, nach Verpacken ohne Tracking → nur Tracking-Eingabe (kein Scan)
+- Navigation: nach Abschluss immer → index.php (nicht auf nächste scan.php)
+- Refresh-Button (Touchscreen) + Auto-Refresh (Page Visibility API) auf index.php
+- Loader-Overlay in Packplatz-Shell einbauen
+- **Teilgeliefert-Workflow (ERP, nicht Packplatz):** Im ERP unter Lager/Picklisten müssen für Aufträge mit lieferstatus='teilgeliefert' neue Picklisten für die noch offenen Positionen erstellt werden können (nur Restmengen drauf). → Noch nicht angegangen.
+- **Chargen-Bug:** Zieht sich durch Wareneingang, Lagerabbuchung, Packplatz, Inventur — wird als eigener großer Bugfix-Zyklus separat behandelt.
+
 ## 🔴 Noch offen
 
 ### A — Picklisten-Manager (Babsi-Arbeitsplatz, nicht Packplatz-PC)

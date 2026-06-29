@@ -119,8 +119,9 @@ class AuftragService
 
         foreach ($berechnetePos as $i => $pos) {
             $this->repo->insertPosition(array_merge($pos, [
-                'auftrag_id' => $id,
-                'sort_order' => $i,
+                'auftrag_id'      => $id,
+                'sort_order'      => $i,
+                'menge_geliefert' => 0,
             ]));
         }
 
@@ -323,7 +324,7 @@ class AuftragService
         // 5. Alte menge_geliefert-Werte merken (von Packplatz/Kasse gesetzt, sollen erhalten bleiben)
         $alteGeliefert = [];
         foreach ($this->repo->findPositionen($id) as $p) {
-            if (!empty($p['artikel_id']) && (float)$p['menge_geliefert'] > 0) {
+            if (!empty($p['artikel_id'])) {
                 $alteGeliefert[(int)$p['artikel_id']] = (float)$p['menge_geliefert'];
             }
         }
@@ -331,20 +332,39 @@ class AuftragService
         // 6. Alte Positionen löschen
         $this->repo->deletePositionen($id);
 
-        // 7. Neue Positionen einfügen
+        // 7. Neue Positionen einfügen — menge_geliefert direkt beim INSERT wiederherstellen
+        $alleNeuGeliefert    = true;
+        $irgendetwasGelief   = false;
         foreach ($positionenBerechnet as $i => $pos) {
-            $this->repo->insertPosition(array_merge($pos, ['auftrag_id' => $id, 'sort_order' => $i]));
+            $artId = (int)($pos['artikel_id'] ?? 0);
+            $mg = ($artId && array_key_exists($artId, $alteGeliefert))
+                ? min($alteGeliefert[$artId], (float)$pos['menge'])
+                : 0.0;
+            if ($mg < (float)$pos['menge']) $alleNeuGeliefert  = false;
+            if ($mg > 0)                    $irgendetwasGelief = true;
+            $this->repo->insertPosition(array_merge($pos, [
+                'auftrag_id'      => $id,
+                'sort_order'      => $i,
+                'menge_geliefert' => $mg,
+            ]));
         }
 
-        // 8. menge_geliefert für gleiche Artikel wiederherstellen (max. die neue Menge)
-        if (!empty($alteGeliefert)) {
-            foreach ($this->repo->findPositionen($id) as $p) {
-                $artId = (int)$p['artikel_id'];
-                if (isset($alteGeliefert[$artId])) {
-                    $restore = min($alteGeliefert[$artId], (float)$p['menge']);
-                    $this->repo->setMengeGeliefert((int)$p['id'], $restore);
+        // 8. Status neu berechnen wenn sich durch Menge-Korrektur Lieferung/Zahlung vervollständigt hat
+        if ($irgendetwasGelief && in_array($auftragsdaten['lieferstatus'], ['teilgeliefert', 'abholbereit', 'kommissioniert'])) {
+            $neuerLieferstatus = $alleNeuGeliefert ? 'abgeschlossen' : 'teilgeliefert';
+            $statusUpdate = ['lieferstatus' => $neuerLieferstatus];
+
+            if ($alleNeuGeliefert) {
+                $zahlungen = $this->repo->findZahlungen($id);
+                $bezahlt   = array_sum(array_column($zahlungen, 'betrag'));
+                if ($bezahlt >= $positionenSummen['brutto'] - 0.01) {
+                    $statusUpdate['zahlungsstatus'] = 'bezahlt';
+                } elseif ($bezahlt > 0) {
+                    $statusUpdate['zahlungsstatus'] = 'teilbezahlt';
                 }
             }
+
+            $this->repo->updateStatus($id, $statusUpdate);
         }
 
         // Reservierungen aktualisieren: alte schließen, neue anlegen
