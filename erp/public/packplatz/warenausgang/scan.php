@@ -78,14 +78,21 @@ $aktuellerAuftrag = $auftraege[0];
 $auftragId        = (int)$aktuellerAuftrag['id'];
 
 // Positionen laden — nur noch offene Restmengen (menge - menge_geliefert)
+$lagerId    = 1; // Packplatz bucht immer aus Standardlager
 $positionen = $db->prepare("
     SELECT ap.*,
            ap.menge - COALESCE(ap.menge_geliefert, 0) AS menge,
            a.artikelnummer, a.name,
            a.gewicht_versand,
+           COALESCE(a.charge_pflicht, 0) AS charge_pflicht,
            (SELECT CONCAT('uploads/artikel/', ap.artikel_id, '/', bi.dateiname) FROM artikel_bilder bi
             WHERE bi.artikel_id = ap.artikel_id
-            ORDER BY bi.position ASC LIMIT 1) AS bild_pfad
+            ORDER BY bi.position ASC LIMIT 1) AS bild_pfad,
+           EXISTS (
+               SELECT 1 FROM lagerbestand lb
+               WHERE lb.artikel_id = ap.artikel_id AND lb.lager_id = {$lagerId}
+                 AND lb.charge IS NOT NULL AND lb.bestand > 0
+           ) AS hat_chargen
     FROM auftrag_positionen ap
     LEFT JOIN artikel a ON a.id = ap.artikel_id
     WHERE ap.auftrag_id = ?
@@ -324,6 +331,24 @@ require_once __DIR__ . '/../shell_top.php';
     </div>
 </div>
 
+<!-- OVERLAY: Charge-Auswahl -->
+<div class="pp-overlay" id="overlay-charge">
+    <div class="pp-overlay-box" style="min-width:520px;max-width:640px">
+        <div class="pp-overlay-titel" id="charge-popup-titel">Charge auswählen</div>
+        <div id="charge-popup-body" style="max-height:360px;overflow-y:auto;margin-bottom:16px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:10px 0;border-top:1px solid #0f3460">
+            <span style="color:#aaa;font-size:13px">Benötigt: <strong id="charge-popup-benoetigt">0</strong></span>
+            <span style="font-size:14px">Gewählt: <strong id="charge-popup-gewaehlt" style="color:#00b4d8">0</strong></span>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center">
+            <button class="pp-btn pp-btn-secondary" onclick="chargeAbbrechen()">Abbrechen</button>
+            <button class="pp-btn pp-btn-success" id="btn-charge-ok" onclick="chargeBestaetigen()" disabled>
+                ✓ Bestätigen
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- OVERLAY: Abholung -->
 <div class="pp-overlay" id="overlay-abholung">
     <div class="pp-overlay-box" style="min-width:400px">
@@ -341,13 +366,17 @@ require_once __DIR__ . '/../shell_top.php';
 
 <script>
 const POSITIONEN = <?= json_encode(array_map(fn($p, $i) => [
-    'idx'     => $i,
-    'ean'     => $p['ean'] ?? '',
-    'artnr'   => $p['artikelnummer'] ?? '',
-    'gesamt'  => (int)$p['menge'],
-    'name'    => $p['name'] ?? $p['bezeichnung_snapshot'] ?? '',
-    'bild'    => $p['bild_pfad'] ?? '',
+    'idx'          => $i,
+    'ean'          => $p['ean'] ?? '',
+    'artnr'        => $p['artikelnummer'] ?? '',
+    'gesamt'       => (int)$p['menge'],
+    'name'         => $p['name'] ?? $p['bezeichnung_snapshot'] ?? '',
+    'bild'         => $p['bild_pfad'] ?? '',
+    'artikel_id'   => (int)$p['artikel_id'],
+    'charge_pflicht' => (bool)$p['charge_pflicht'],
+    'hat_chargen'  => (bool)$p['hat_chargen'],
 ], $positionen, array_keys($positionen))) ?>;
+const LAGER_ID = <?= $lagerId ?>;
 const AUFTRAG_ID    = <?= $auftragId ?>;
 const PICKLISTE_ID  = <?= $pickliste ? $pickliste['id'] : 'null' ?>;
 const IS_VERSAND    = <?= json_encode($aktuellerAuftrag['lieferart'] === 'versand') ?>;
