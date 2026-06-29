@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-29 (Session 18)
+Stand: 2026-06-29 (Session 19)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -130,6 +130,21 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
+
+## Session 19 erledigt (2026-06-29)
+- **Chargen-Tracking vollständig** (bug_charge_tracking.md → BEHOBEN):
+  - Kasse: Charge-Dialog Popup (Overlay ov-charge) — wählen/nachzutragen/ohne Charge
+  - bon_speichern.php: Rückbuchung liest `charge` aus `auftrag_positionen` statt NULL zu buchen
+  - Packplatz intern: Umlagerung + Zustandsumbuchung beide mit Charge-Dropdown (async Fetch aus chargen_ajax.php)
+- **Kasse Namenssuche**: Artikel-Suche Modal (ov-artikelsuche) mit 250ms Debounce + ajax_artikel.php?suche=
+  - PDO LIMIT-Bug behoben: `sucheArtikel()` nutzt jetzt `bindValue(':lmt', $limit, PDO::PARAM_INT)`
+  - Such-Button: kompaktes 44×44 Icon (🔍), kein langer Textbutton
+- **Wareneingang**: Multi-Search (Leerzeichen-getrennte Wörter), Kind-Name + Vater-Name getrennt anzeigen
+- **Aufträge/Liste**: Abgeschlossene ausgeblendet by default, Checkbox "Abgeschlossene anzeigen", graue gedimmte Zeilen
+- **Bestellvorschläge**: Einträge mit meldebestand=0 oder NULL ausgeblendet (HAVING-Klausel)
+- **Kunden-Dropdown** in Aufträge/Neu: 3-Zeilen-Anzeige (Name fett, E-Mail, Adresse)
+- **Nav-Trennlinien**: Hellblaue vertikale Divider (erp-nav-divider) nach Dashboard und vor Einkauf
+- **Aufträge Artikel-Limit**: findArtikelFuerSuche() LIMIT 25→75; Artikel-Browser in neu.php breiter
 
 ## Session 18 erledigt (2026-06-29)
 - **K1-Bon Laufkunde Bug**: kunden_snapshot vom Original-Auftrag immer auf K1 kopieren (bon_speichern.php K1-UPDATE)
