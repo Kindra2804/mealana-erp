@@ -782,11 +782,11 @@ body {
     <!-- Scan-Bereich -->
     <div class="pos-scan">
       <input type="text" id="scan-input"
-             placeholder="🔍  EAN / Artikelnummer scannen…"
+             placeholder="EAN / Artikelnummer scannen…"
              autocomplete="off" spellcheck="false">
-      <button type="button" class="ov-btn" onclick="openArtikelSuche()"
-          style="height:44px;padding:0 14px;font-size:13px;background:#1e40af;border:none;color:#fff;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">
-          🔍 Suche
+      <button type="button" onclick="openArtikelSuche()" title="Artikel nach Name suchen"
+          style="height:44px;width:44px;padding:0;font-size:20px;background:none;border:2px solid #2563eb;border-radius:8px;color:#2563eb;cursor:pointer;flex-shrink:0">
+          🔍
       </button>
       <div class="pos-menge-box" onclick="mengeReset()">
         <div class="pos-menge-label">MENGE</div>
