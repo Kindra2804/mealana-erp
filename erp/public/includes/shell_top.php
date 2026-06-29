@@ -99,14 +99,16 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
             </a>
             <div class="erp-nav-links">
                 <a href="/mealana/dashboard.php" class="erp-nav-link <?= ($activeModule ?? '') === 'dashboard' ? 'active' : '' ?>">🏠</a>
+                <div class="erp-nav-divider"></div>
                 <a href="/mealana/artikel/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
-                <a href="/mealana/lager/picklisten.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
                 <a href="/mealana/kunden/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
-                <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
-                <a href="/mealana/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
                 <a href="/mealana/auftraege/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
+                <a href="/mealana/lager/picklisten.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
                 <a href="/mealana/versand/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
                 <a href="/mealana/packplatz/retoure/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
+                <div class="erp-nav-divider"></div>
+                <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
+                <a href="/mealana/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
                 <a href="#" title="Buchhaltung — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-icons">
@@ -118,8 +120,8 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                         <a href="/mealana/kasse/bon.php" class="erp-nav-more-item">🛒 Kasse</a>
                         <a href="/mealana/packplatz/index.php" class="erp-nav-more-item">📦 Packplatz</a>
                         <?php if (Auth::kann('api.zugriff')): ?>
-                        <div class="erp-nav-more-sep"></div>
-                        <a href="#" class="erp-nav-more-item erp-nav-more-item-disabled" title="Kommt bald">🔑 Lizenzverwaltung</a>
+                            <div class="erp-nav-more-sep"></div>
+                            <a href="#" class="erp-nav-more-item erp-nav-more-item-disabled" title="Kommt bald">🔑 Lizenzverwaltung</a>
                         <?php endif; ?>
                     </div>
                 </div>

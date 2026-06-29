@@ -194,6 +194,11 @@ html, body {
     color: white;
 }
 
+.erp-nav-vertical-line {
+  border-left: 6px solid #2D5FA6;
+  height: 100%;
+}
+
 /* ··· Dropdown-Menü */
 .erp-nav-more {
     position: relative;
@@ -250,6 +255,13 @@ html, body {
     height: 1px;
     background: rgba(255,255,255,0.12);
     margin: 4px 0;
+}
+.erp-nav-divider {
+    width: 1px;
+    height: 20px;
+    background: #2D6EA6;
+    margin: 0 6px;
+    flex-shrink: 0;
 }
 
 .erp-nav-user {
