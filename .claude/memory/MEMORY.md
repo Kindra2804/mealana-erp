@@ -51,3 +51,4 @@
 - [Rechte & Rollen Design](project_rechte_rollen.md) — 8 Rollen (Super-Admin→Readonly), Manager-Override Popup, atomare Rechte, Lizenz-Instanzierung (max_instanzen), Pakete
 - [PLC / EasyPak Versand](project_plc_versand.md) — EasyPak XML-Format (Öst. Post), Item-IDs (430101/07/04/06), Ausgabepfad+Dateiname konfigurierbar, Bankdaten aus Firma-Tab
 - [🔴 BUG: Chargen-Tracking](bug_charge_tracking.md) — Packplatz+Kasse buchen charge=NULL statt richtiger Charge; Race Condition im Log; FIFO-Fix + Charge-Dialog geplant
+- [Chargen-Konzept (vollständig)](project_chargen_konzept.md) — 3 Typen (keine/optional/Pflicht), alle Lagerbewegungsstellen, UX-Flows Kasse/Packplatz/Umlagerung/Auftrag
