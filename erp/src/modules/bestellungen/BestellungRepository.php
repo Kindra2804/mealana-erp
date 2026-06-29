@@ -277,7 +277,7 @@ class BestellungRepository
             LEFT JOIN lieferanten l ON l.id = al.lieferant_id
             WHERE a.aktiv = 1 AND a.ist_vater = 0
             HAVING
-                (a.meldebestand IS NOT NULL AND gesamtbestand <= a.meldebestand)
+                (a.meldebestand IS NOT NULL AND a.meldebestand > 0 AND gesamtbestand <= a.meldebestand)
                 OR (gesamtbestand - reserviert) < 0
             ORDER BY a.name
         ");

@@ -28,9 +28,10 @@ class AuftragService
         string $zahlungsstatus = '',
         string $lieferstatus = '',
         string $kanal = '',
-        string $suche = ''
+        string $suche = '',
+        bool   $mitAbgeschlossenen = false
     ): array {
-        return $this->repo->findAll($zahlungsstatus, $lieferstatus, $kanal, $suche);
+        return $this->repo->findAll($zahlungsstatus, $lieferstatus, $kanal, $suche, $mitAbgeschlossenen);
     }
 
     /** Gibt einen Auftrag anhand ID zurück. */

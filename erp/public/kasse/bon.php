@@ -782,11 +782,29 @@ body {
     <!-- Scan-Bereich -->
     <div class="pos-scan">
       <input type="text" id="scan-input"
-             placeholder="🔍  EAN scannen oder Artikel suchen…"
+             placeholder="🔍  EAN / Artikelnummer scannen…"
              autocomplete="off" spellcheck="false">
+      <button type="button" class="ov-btn" onclick="openArtikelSuche()"
+          style="height:44px;padding:0 14px;font-size:13px;background:#1e40af;border:none;color:#fff;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+          🔍 Suche
+      </button>
       <div class="pos-menge-box" onclick="mengeReset()">
         <div class="pos-menge-label">MENGE</div>
         <div id="menge-display">1 ×</div>
+      </div>
+    </div>
+
+    <!-- Artikel-Suche Modal -->
+    <div class="ov" id="ov-artikelsuche">
+      <div class="ov-box" style="max-width:600px;width:90vw">
+        <div class="ov-title">Artikel suchen</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" id="as-input" class="bon-input" style="flex:1;font-size:15px"
+              placeholder="Name, Artikelnummer oder EAN…"
+              oninput="artikelSucheInput()" autocomplete="off">
+          <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-artikelsuche')">✕</button>
+        </div>
+        <div id="as-ergebnisse" style="max-height:400px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -2275,6 +2293,60 @@ function _fortsetzungNachChargeAuswahl(a, menge) {
         return;
     }
     _artikelEinfuegen(a, menge);
+}
+
+// ── Kasse Artikel-Suche Modal ─────────────────────────────────────────────────
+var artikelSucheTimer = null;
+
+function openArtikelSuche() {
+    ov('ov-artikelsuche');
+    var inp = document.getElementById('as-input');
+    inp.value = '';
+    document.getElementById('as-ergebnisse').innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px">Mindestens 2 Zeichen eingeben…</div>';
+    setTimeout(function() { inp.focus(); }, 100);
+}
+
+function artikelSucheInput() {
+    clearTimeout(artikelSucheTimer);
+    var val = document.getElementById('as-input').value.trim();
+    var box = document.getElementById('as-ergebnisse');
+    if (val.length < 2) {
+        box.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px">Mindestens 2 Zeichen eingeben…</div>';
+        return;
+    }
+    box.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px">Suche…</div>';
+    artikelSucheTimer = setTimeout(function() {
+        fetch('/mealana/kasse/ajax_artikel.php?suche=' + encodeURIComponent(val) + '&lager_id=' + LAGER_ID)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.erfolg || !d.ergebnisse || !d.ergebnisse.length) {
+                    box.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px">Keine Treffer.</div>';
+                    return;
+                }
+                box.innerHTML = '';
+                d.ergebnisse.forEach(function(a) {
+                    var div = document.createElement('div');
+                    div.style.cssText = 'padding:10px 14px;border-bottom:1px solid #e2e8f0;cursor:pointer;display:flex;justify-content:space-between;align-items:center';
+                    div.onmouseenter = function() { div.style.background = '#f1f5f9'; };
+                    div.onmouseleave = function() { div.style.background = ''; };
+                    var preis = a.brutto_vk ? parseFloat(a.brutto_vk).toFixed(2).replace('.', ',') + ' €' : '—';
+                    var bestand = parseFloat(a.bestand_physisch || 0).toFixed(0);
+                    div.innerHTML = '<div>'
+                        + '<div style="font-weight:600;font-size:14px">' + esc(a.bezeichnung) + '</div>'
+                        + '<div style="font-size:12px;color:#64748b">' + esc(a.artikelnummer || '') + (a.ean ? ' · ' + esc(a.ean) : '') + '</div>'
+                        + '</div>'
+                        + '<div style="text-align:right;flex-shrink:0;margin-left:12px">'
+                        + '<div style="font-weight:700;font-size:14px">' + preis + '</div>'
+                        + '<div style="font-size:11px;color:#94a3b8">Lager: ' + bestand + '</div>'
+                        + '</div>';
+                    div.addEventListener('click', function() {
+                        ovSchliessen('ov-artikelsuche');
+                        artikelHinzufuegen(a);
+                    });
+                    box.appendChild(div);
+                });
+            });
+    }, 250);
 }
 
 // ── Overlay-Helfer ────────────────────────────────────────────────────────────

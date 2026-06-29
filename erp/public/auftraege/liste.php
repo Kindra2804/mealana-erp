@@ -4,12 +4,13 @@ require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 
 $service = new AuftragService();
 
-$filterZahlung  = $_GET['zahlung']  ?? '';
-$filterLieferung = $_GET['lieferung'] ?? '';
-$filterKanal    = $_GET['kanal']    ?? '';
-$suche          = $_GET['suche']    ?? '';
+$filterZahlung        = $_GET['zahlung']  ?? '';
+$filterLieferung      = $_GET['lieferung'] ?? '';
+$filterKanal          = $_GET['kanal']    ?? '';
+$suche                = $_GET['suche']    ?? '';
+$mitAbgeschlossenen   = isset($_GET['abgeschlossene']);
 
-$auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche);
+$auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche, $mitAbgeschlossenen);
 
 $zahlungsLabels = [
     'ausstehend'   => ['label' => 'Ausstehend',  'class' => 'chip-auslauf'],
@@ -81,6 +82,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <option value="manuell" <?= $filterKanal === 'manuell'     ? 'selected' : '' ?>>Manuell</option>
         <option value="kasse" <?= $filterKanal === 'kasse'       ? 'selected' : '' ?>>Kasse</option>
     </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--color-text-muted)">
+        <input type="checkbox" id="filter-abgeschlossene" onchange="applyFilter()" <?= $mitAbgeschlossenen ? 'checked' : '' ?>>
+        Abgeschlossene anzeigen
+    </label>
 </div>
 
 <script>
@@ -90,10 +95,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
         const z = document.getElementById('filter-zahlung').value;
         const l = document.getElementById('filter-lieferung').value;
         const k = document.getElementById('filter-kanal').value;
+        const a = document.getElementById('filter-abgeschlossene').checked;
         if (s) p.set('suche', s);
         if (z) p.set('zahlung', z);
         if (l) p.set('lieferung', l);
         if (k) p.set('kanal', k);
+        if (a) p.set('abgeschlossene', '1');
         window.location = '?' + p.toString();
     }
     document.getElementById('filter-zahlung').addEventListener('change', applyFilter);
@@ -130,8 +137,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $zl = $zahlungsLabels[$zStatus] ?? ['label' => $zStatus, 'class' => ''];
                     $ll = $lieferLabels[$a['lieferstatus']]     ?? ['label' => $a['lieferstatus'],   'class' => ''];
                     $kl = $kanalLabels[$a['kanal']]             ?? ['label' => $a['kanal'],          'class' => ''];
+                    $istErledigt = $a['lieferstatus'] === 'abgeschlossen' && $a['zahlungsstatus'] === 'bezahlt';
                 ?>
-                    <tr>
+                    <tr<?= $istErledigt ? ' style="opacity:0.55;background:var(--color-bg-secondary)"' : '' ?>>
                         <td>
                             <a href="/mealana/auftraege/detail.php?id=<?= $a['id'] ?>" style="font-weight:600">
                                 <?= htmlspecialchars($a['auftrag_nr']) ?>
