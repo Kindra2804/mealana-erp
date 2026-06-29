@@ -104,7 +104,7 @@ if ($nurAbschliessen && $webAuftragId) {
             }
         }
 
-        $origPosStmt = $db->prepare("SELECT id, artikel_id, menge FROM auftrag_positionen WHERE auftrag_id = ?");
+        $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, charge FROM auftrag_positionen WHERE auftrag_id = ?");
         $origPosStmt->execute([$webAuftragId]);
         $origPositionen = $origPosStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -118,6 +118,7 @@ if ($nurAbschliessen && $webAuftragId) {
                     'artikel_id'  => (int)$op['artikel_id'],
                     'lager_id'    => $lagerId,
                     'menge'       => $rueck,
+                    'charge'      => $op['charge'] ?? null,
                     'referenz'    => 'Nicht abgeholt — Auftrag ' . $auftrag['auftrag_nr'],
                     'notiz'       => 'Abholung Kasse ohne Bon',
                     'benutzer_id' => $benutzerId,
@@ -282,8 +283,8 @@ if ($result['erfolg'] && $webAuftragId) {
                 }
             }
 
-            // Alle Original-Positionen des Auftrags laden (inkl. artikel_id für Rückbuchung)
-            $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, menge_geliefert FROM auftrag_positionen WHERE auftrag_id = ?");
+            // Alle Original-Positionen des Auftrags laden (inkl. artikel_id + charge für Rückbuchung)
+            $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, menge_geliefert, charge FROM auftrag_positionen WHERE auftrag_id = ?");
             $origPosStmt->execute([$webAuftragId]);
             $origPositionen = $origPosStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -300,11 +301,12 @@ if ($result['erfolg'] && $webAuftragId) {
                     // Packplatz hat menge_geliefert schon gesetzt — wir korrigieren nur die Differenz
                     $rueck = $gepackt - $imBon;
                     if ($rueck > 0.001 && !empty($op['artikel_id'])) {
-                        // Nicht mitgenommene Artikel zurück ins Lager buchen
+                        // Nicht mitgenommene Artikel zurück ins Lager — mit Charge aus auftrag_positionen
                         $lagerSvc->wareneingang([
                             'artikel_id'  => (int)$op['artikel_id'],
                             'lager_id'    => $lagerId,
                             'menge'       => $rueck,
+                            'charge'      => $op['charge'] ?? null,
                             'referenz'    => 'Rückgabe Kasse — Bon ' . $bonNr,
                             'notiz'       => 'Abholbereit, aber nicht mitgenommen — Auftrag ' . $auftrag['auftrag_nr'],
                             'benutzer_id' => $benutzerId,
