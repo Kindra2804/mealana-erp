@@ -268,6 +268,7 @@ class LagerService
      * Bucht einen Warenausgang aus dem Lagerbestand.
      *
      * Pflichtfelder: artikel_id, lager_id, menge > 0.
+     * Optional: charge — wenn angegeben, wird genau diese Charge reduziert.
      * Schreibt lager_bewegungen (Typ 'ausgang'), reduziert lagerbestand,
      * prüft Auslaufartikel-Automatik und erzeugt einen Logger-Eintrag.
      */
@@ -276,13 +277,14 @@ class LagerService
         $artikelId = (int)($data['artikel_id'] ?? 0);
         $lagerId   = (int)($data['lager_id']   ?? 0);
         $menge     = (float)($data['menge']     ?? 0);
+        $charge    = $data['charge'] ?? null;
 
         if (!$artikelId || !$lagerId || $menge <= 0) {
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Warenausgang'];
         }
 
         $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
-        $this->repo->reduziereBestand($artikelId, $lagerId, $menge);
+        $this->repo->reduziereBestand($artikelId, $lagerId, $menge, $charge);
         $bestandNachher = max(0.0, $bestandVorher - $menge);
 
         $bewegungId = $this->repo->insertBewegung([
@@ -290,7 +292,7 @@ class LagerService
             'lager_id'        => $lagerId,
             'lieferant_id'    => null,
             'ek_preis'        => null,
-            'charge'          => null,
+            'charge'          => $charge,
             'bewegungstyp'    => 'ausgang',
             'menge'           => $menge,
             'bestand_vorher'  => $bestandVorher,
@@ -306,6 +308,7 @@ class LagerService
             'artikel_id'      => $artikelId,
             'lager_id'        => $lagerId,
             'menge'           => $menge,
+            'charge'          => $charge,
             'bestand_nachher' => $bestandNachher,
         ]);
 
@@ -315,19 +318,21 @@ class LagerService
     /**
      * Bucht Schwund (Verlust, Beschädigung) aus einem Lager aus.
      * Wie warenausgang(), aber bewegungstyp='schwund' — filterbar im Lagerprotokoll.
+     * Optional: charge — wenn angegeben, wird genau diese Charge als Schwund gebucht.
      */
     public function warenSchwund(array $data): array
     {
         $artikelId = (int)($data['artikel_id'] ?? 0);
         $lagerId   = (int)($data['lager_id']   ?? 0);
         $menge     = (float)($data['menge']     ?? 0);
+        $charge    = $data['charge'] ?? null;
 
         if (!$artikelId || !$lagerId || $menge <= 0) {
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Schwundbuchung'];
         }
 
         $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
-        $this->repo->reduziereBestand($artikelId, $lagerId, $menge);
+        $this->repo->reduziereBestand($artikelId, $lagerId, $menge, $charge);
         $bestandNachher = max(0.0, $bestandVorher - $menge);
 
         $bewegungId = $this->repo->insertBewegung([
@@ -335,7 +340,7 @@ class LagerService
             'lager_id'        => $lagerId,
             'lieferant_id'    => null,
             'ek_preis'        => null,
-            'charge'          => null,
+            'charge'          => $charge,
             'bewegungstyp'    => 'schwund',
             'menge'           => $menge,
             'bestand_vorher'  => $bestandVorher,
@@ -358,6 +363,7 @@ class LagerService
     /**
      * Wie warenausgang(), aber erlaubt negativen Bestand.
      * Für Kasse-Verkauf wenn ueberverkauf_erlaubt=1 und Bestand=0.
+     * Optional: charge — wenn angegeben, wird genau diese Charge reduziert.
      * Bewegungslog zeigt den echten Wert (z.B. vorher=0, nachher=-1).
      */
     public function warenausgangKasse(array $data): array
@@ -365,13 +371,14 @@ class LagerService
         $artikelId = (int)($data['artikel_id'] ?? 0);
         $lagerId   = (int)($data['lager_id']   ?? 0);
         $menge     = (float)($data['menge']     ?? 0);
+        $charge    = $data['charge'] ?? null;
 
         if (!$artikelId || !$lagerId || $menge <= 0) {
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Warenausgang'];
         }
 
         $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
-        $this->repo->reduziereBestandKasse($artikelId, $lagerId, $menge);
+        $this->repo->reduziereBestandKasse($artikelId, $lagerId, $menge, $charge);
         $bestandNachher = $bestandVorher - $menge; // kein max(0,...) — erlaubt negativ
 
         $bewegungId = $this->repo->insertBewegung([
@@ -379,7 +386,7 @@ class LagerService
             'lager_id'        => $lagerId,
             'lieferant_id'    => null,
             'ek_preis'        => null,
-            'charge'          => null,
+            'charge'          => $charge,
             'bewegungstyp'    => 'ausgang',
             'menge'           => $menge,
             'bestand_vorher'  => $bestandVorher,
@@ -395,6 +402,7 @@ class LagerService
             'artikel_id'      => $artikelId,
             'lager_id'        => $lagerId,
             'menge'           => $menge,
+            'charge'          => $charge,
             'bestand_nachher' => $bestandNachher,
         ]);
 
@@ -431,8 +439,9 @@ class LagerService
     /**
      * Bucht Menge von einem Lager in ein anderes um.
      * Legt zwei Bewegungen an: ausgang (Quelle) + eingang (Ziel).
+     * Optional: charge — die Charge wandert mit (gleiche Chargennummer im Ziellager).
      */
-    public function umbucheZwischenLager(int $artikelId, int $vonLagerId, int $zuLagerId, float $menge, ?int $benutzerId = null): array
+    public function umbucheZwischenLager(int $artikelId, int $vonLagerId, int $zuLagerId, float $menge, ?int $benutzerId = null, ?string $charge = null): array
     {
         if (!$artikelId || !$vonLagerId || !$zuLagerId || $menge <= 0) {
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten'];
@@ -441,19 +450,22 @@ class LagerService
             return ['erfolg' => false, 'fehler' => 'Quell- und Ziellager sind identisch'];
         }
 
-        $bestandVorher = $this->repo->getTotalBestand($artikelId, $vonLagerId);
+        $bestandVorher = $charge !== null
+            ? $this->repo->getBestand($artikelId, $vonLagerId, $charge)
+            : $this->repo->getTotalBestand($artikelId, $vonLagerId);
+
         if ($bestandVorher < $menge) {
             return ['erfolg' => false, 'fehler' => 'Nicht genug Bestand im Quelllager (verfügbar: ' . (int)$bestandVorher . ')'];
         }
 
         $referenz = 'Lagerumbuchung';
-        $this->repo->reduziereBestand($artikelId, $vonLagerId, $menge);
+        $this->repo->reduziereBestand($artikelId, $vonLagerId, $menge, $charge);
         $this->repo->insertBewegung([
             'artikel_id'      => $artikelId,
             'lager_id'        => $vonLagerId,
             'lieferant_id'    => null,
             'ek_preis'        => null,
-            'charge'          => null,
+            'charge'          => $charge,
             'bewegungstyp'    => 'ausgang',
             'menge'           => $menge,
             'bestand_vorher'  => $bestandVorher,
@@ -463,12 +475,15 @@ class LagerService
             'benutzer_id'     => $benutzerId,
         ]);
 
-        $bestandZielVorher = $this->repo->getTotalBestand($artikelId, $zuLagerId);
+        $bestandZielVorher = $charge !== null
+            ? $this->repo->getBestand($artikelId, $zuLagerId, $charge)
+            : $this->repo->getTotalBestand($artikelId, $zuLagerId);
+
         $this->repo->upsertBestand([
             'artikel_id'     => $artikelId,
             'lager_id'       => $zuLagerId,
-            'charge'         => null,
-            'charge_status'  => null,
+            'charge'         => $charge,
+            'charge_status'  => $charge !== null ? 'erfasst' : null,
             'bestand'        => $bestandZielVorher + $menge,
             'mindestbestand' => 0,
         ]);
@@ -477,7 +492,7 @@ class LagerService
             'lager_id'        => $zuLagerId,
             'lieferant_id'    => null,
             'ek_preis'        => null,
-            'charge'          => null,
+            'charge'          => $charge,
             'bewegungstyp'    => 'eingang',
             'menge'           => $menge,
             'bestand_vorher'  => $bestandZielVorher,
@@ -491,6 +506,7 @@ class LagerService
             'von_lager_id' => $vonLagerId,
             'zu_lager_id'  => $zuLagerId,
             'menge'        => $menge,
+            'charge'       => $charge,
         ]);
 
         return ['erfolg' => true];

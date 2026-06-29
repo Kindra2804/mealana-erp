@@ -259,6 +259,7 @@ class KassenService
                         'artikel_id'  => $artId,
                         'lager_id'    => $lagerId,
                         'menge'       => $posMenge,
+                        'charge'      => $pos['charge'] ?? null,
                         'referenz'    => 'Kassenbon ' . $bonNr,
                         'benutzer_id' => $benutzerId,
                     ]);

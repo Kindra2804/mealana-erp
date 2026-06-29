@@ -193,10 +193,20 @@ class LagerRepository
 
     /**
      * Reduziert den Lagerbestand für einen Warenausgang.
-     * Greift zuerst auf die charge=NULL Zeile, dann auf die Zeile mit dem höchsten Bestand.
+     * Wenn $charge angegeben: direkt diese Charge-Zeile reduzieren.
+     * Ohne $charge: erst charge=NULL Zeile, dann Zeile mit höchstem Bestand (Fallback).
      */
-    public function reduziereBestand(int $artikelId, int $lagerId, float $menge): void
+    public function reduziereBestand(int $artikelId, int $lagerId, float $menge, ?string $charge = null): void
     {
+        if ($charge !== null) {
+            $this->db->prepare("
+                UPDATE lagerbestand
+                SET bestand = GREATEST(0, bestand - :menge), geaendert_am = NOW()
+                WHERE artikel_id = :aid AND lager_id = :lid AND charge = :charge
+            ")->execute(['menge' => $menge, 'aid' => $artikelId, 'lid' => $lagerId, 'charge' => $charge]);
+            return;
+        }
+
         $stmt = $this->db->prepare("
             UPDATE lagerbestand
             SET bestand = GREATEST(0, bestand - :menge), geaendert_am = NOW()
@@ -216,10 +226,28 @@ class LagerRepository
 
     /**
      * Wie reduziereBestand(), aber erlaubt negativen Bestand (für Kasse-Verkauf bei 0-Bestand).
-     * Verwendet kein GREATEST() — die Bewegung wird korrekt geloggt.
+     * Wenn $charge angegeben: direkt diese Charge-Zeile reduzieren (kann negativ werden).
      */
-    public function reduziereBestandKasse(int $artikelId, int $lagerId, float $menge): void
+    public function reduziereBestandKasse(int $artikelId, int $lagerId, float $menge, ?string $charge = null): void
     {
+        if ($charge !== null) {
+            $stmt = $this->db->prepare("
+                UPDATE lagerbestand
+                SET bestand = bestand - :menge, geaendert_am = NOW()
+                WHERE artikel_id = :aid AND lager_id = :lid AND charge = :charge
+            ");
+            $stmt->execute(['menge' => $menge, 'aid' => $artikelId, 'lid' => $lagerId, 'charge' => $charge]);
+            if ($stmt->rowCount() === 0) {
+                // Charge existiert noch nicht → negativen Eintrag anlegen
+                $this->db->prepare("
+                    INSERT INTO lagerbestand (artikel_id, lager_id, charge, charge_status, bestand, geaendert_am)
+                    VALUES (:aid, :lid, :charge, 'erfasst', :neg, NOW())
+                    ON DUPLICATE KEY UPDATE bestand = bestand - :menge2, geaendert_am = NOW()
+                ")->execute(['aid' => $artikelId, 'lid' => $lagerId, 'charge' => $charge, 'neg' => -$menge, 'menge2' => $menge]);
+            }
+            return;
+        }
+
         $stmt = $this->db->prepare("
             UPDATE lagerbestand
             SET bestand = bestand - :menge, geaendert_am = NOW()
