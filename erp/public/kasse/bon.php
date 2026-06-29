@@ -1074,6 +1074,22 @@ body {
   </div>
 </div>
 
+<!-- Charge-Auswahl -->
+<div class="ov" id="ov-charge">
+  <div class="ov-box" style="max-width:540px">
+    <div class="ov-title" id="charge-ov-titel">Charge auswählen</div>
+    <div id="charge-ov-body" style="max-height:320px;overflow-y:auto;margin-bottom:16px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #e2e8f0;margin-bottom:12px">
+      <span style="font-size:13px;color:#64748b">Menge: <strong id="charge-ov-menge">—</strong></span>
+      <span style="font-size:13px">Charge: <strong id="charge-ov-gewaehlt" style="color:#2563eb">—</strong></span>
+    </div>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-sec" onclick="chargeKasseAbbrechen()">Abbrechen</button>
+      <button class="ov-btn ov-btn-blue" id="btn-charge-kasse-ok" onclick="chargeKasseBestaetigen()" disabled>✓ Bestätigen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reservierung-Warnung -->
 <div class="ov" id="ov-reswarn">
   <div class="ov-box">
@@ -1304,6 +1320,12 @@ function artikelHinzufuegen(a) {
         return;
     }
 
+    // Charge-Auswahl wenn Artikel Chargen hat oder charge_pflicht=1
+    if (a.charge_pflicht || a.hat_chargen) {
+        zeigeKasseChargePopup(a, menge);
+        return;
+    }
+
     // Reservierungs-Prüfung
     var physisch   = parseFloat(a.bestand_physisch)   || 0;
     var reserviert = parseFloat(a.bestand_reserviert) || 0;
@@ -1330,24 +1352,30 @@ function reswarnBestaetigen() {
 }
 
 function _artikelEinfuegen(a, menge) {
-    var preis = parseFloat(a.brutto_vk) || 0;
-    var idx = warenkorb.findIndex(p => p.artikel_id == a.id && !p.istDivers && !p.vonAuftrag);
+    var preis      = parseFloat(a.brutto_vk) || 0;
+    var chargeNeu  = a._gewaehltCharge !== undefined ? a._gewaehltCharge : (a.fifo_charge || null);
+    // Gleiche Charge: zusammenführen; unterschiedliche Charge: neue Zeile
+    var idx = warenkorb.findIndex(p =>
+        p.artikel_id == a.id && !p.istDivers && !p.vonAuftrag
+        && (p.charge || null) === (chargeNeu || null)
+    );
     if (idx >= 0 && a.id) {
         warenkorb[idx].menge += menge;
     } else {
         warenkorb.push({
-            artikel_id:         a.id || null,
-            bezeichnung:        a.bezeichnung,
-            ean:                a.ean || null,
-            menge:              menge,
-            einzelpreis_brutto: preis,
-            steuer_prozent:     parseFloat(a.steuer_prozent) || 20,
-            rabatt_prozent:     0,
-            charge:             a.fifo_charge || null,
-            istDivers:          !!a.istDivers,
-            bestand_physisch:   parseFloat(a.bestand_physisch)   || 0,
-            bestand_reserviert: parseFloat(a.bestand_reserviert) || 0,
-            bestand_verkaufbar: parseFloat(a.bestand_verkaufbar !== undefined ? a.bestand_verkaufbar : 0)
+            artikel_id:                  a.id || null,
+            bezeichnung:                 a.bezeichnung,
+            ean:                         a.ean || null,
+            menge:                       menge,
+            einzelpreis_brutto:          preis,
+            steuer_prozent:              parseFloat(a.steuer_prozent) || 20,
+            rabatt_prozent:              0,
+            charge:                      chargeNeu,
+            nachzutragen_lagerbestand_id: a._nachtragen_lagerbestand_id || null,
+            istDivers:                   !!a.istDivers,
+            bestand_physisch:            parseFloat(a.bestand_physisch)   || 0,
+            bestand_reserviert:          parseFloat(a.bestand_reserviert) || 0,
+            bestand_verkaufbar:          parseFloat(a.bestand_verkaufbar !== undefined ? a.bestand_verkaufbar : 0)
         });
         idx = warenkorb.length - 1;
     }
@@ -2097,6 +2125,156 @@ function retourBestaetigen() {
     ovSchliessen('ov-retour-bar');
     berechneZusatzPositionen();
     bonSpeichern({ zahlungsart: 'bar', gegeben: 0, rueckgeld: 0 });
+}
+
+// ── Charge-Auswahl (Kasse) ───────────────────────────────────────────────────
+var kasseChargePendingArtikel = null;
+var kasseChargePendingMenge   = 1;
+var kasseChargeGewaehlt       = null; // {charge, lagerbestand_id, nachtragen}
+
+function zeigeKasseChargePopup(a, menge) {
+    kasseChargePendingArtikel = a;
+    kasseChargePendingMenge   = menge;
+    kasseChargeGewaehlt       = null;
+
+    document.getElementById('charge-ov-titel').textContent = 'Charge — ' + a.bezeichnung;
+    document.getElementById('charge-ov-menge').textContent = menge + ' Stk.';
+    document.getElementById('charge-ov-gewaehlt').textContent = '—';
+    document.getElementById('btn-charge-kasse-ok').disabled = true;
+
+    var chargen = a.alle_chargen || [];
+    var body    = document.getElementById('charge-ov-body');
+    body.innerHTML = '';
+
+    if (chargen.length === 0) {
+        body.innerHTML = '<p style="color:#64748b;font-size:13px">Keine Chargen im Lager vorhanden.</p>';
+        if (a.charge_pflicht) {
+            body.innerHTML += '<p style="color:#dc2626;font-size:12px">Charge-Pflicht: bitte zuerst Charge im Wareneingang eintragen.</p>';
+        }
+    } else {
+        var html = '<table style="width:100%;border-collapse:collapse">';
+        html += '<thead><tr style="font-size:12px;color:#94a3b8"><th style="text-align:left;padding:6px 8px">Charge</th><th style="text-align:right;padding:6px 8px">Bestand</th><th style="text-align:center;padding:6px 8px">Wählen</th></tr></thead><tbody>';
+
+        chargen.forEach(function(c, i) {
+            var isNt  = c.charge_status === 'nachzutragen';
+            var rowId = 'kc-row-' + i;
+            html += '<tr id="' + rowId + '" style="border-top:1px solid #e2e8f0;cursor:pointer" onclick="kasseChargeWaehlen(' + i + ')">';
+            if (isNt) {
+                html += '<td style="padding:8px"><input type="text" id="kc-name-' + i + '" class="bon-input" style="width:130px;padding:4px 8px" placeholder="Chargennummer" onclick="event.stopPropagation()" oninput="kasseChargeNtInput(' + i + ',' + c.id + ')"></td>';
+            } else {
+                html += '<td style="padding:8px;font-family:monospace;font-size:13px">' + esc(c.charge) + '</td>';
+            }
+            html += '<td style="text-align:right;padding:8px;color:#94a3b8">' + parseFloat(c.bestand).toFixed(0) + '</td>';
+            html += '<td style="text-align:center;padding:8px"><div id="kc-sel-' + i + '" style="width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto"></div></td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        // Kein-Charge Option (nur wenn nicht charge_pflicht)
+        if (!a.charge_pflicht) {
+            html += '<div style="margin-top:12px;padding:8px;border-top:1px solid #e2e8f0">';
+            html += '<button class="ov-btn ov-btn-sec" style="width:100%;font-size:12px" onclick="kasseChargeOhne()">Ohne Charge buchen</button>';
+            html += '</div>';
+        }
+
+        body.innerHTML = html;
+
+        // FIFO-Charge vorselektieren wenn vorhanden
+        if (a.fifo_charge) {
+            var fifoIdx = chargen.findIndex(function(c) { return c.charge === a.fifo_charge; });
+            if (fifoIdx >= 0) kasseChargeWaehlen(fifoIdx);
+        }
+    }
+
+    ov('ov-charge');
+}
+
+function kasseChargeWaehlen(idx) {
+    var chargen = kasseChargePendingArtikel ? (kasseChargePendingArtikel.alle_chargen || []) : [];
+    var c = chargen[idx];
+    if (!c) return;
+    if (c.charge_status === 'nachzutragen') {
+        // Für nachzutragen: Name aus Input holen
+        kasseChargeNtInput(idx, c.id);
+        return;
+    }
+
+    // Markierung setzen
+    chargen.forEach(function(_, i) {
+        var sel = document.getElementById('kc-sel-' + i);
+        if (sel) sel.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto';
+    });
+    var selEl = document.getElementById('kc-sel-' + idx);
+    if (selEl) selEl.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #2563eb;background:#2563eb;margin:auto';
+
+    kasseChargeGewaehlt = { charge: c.charge, lagerbestand_id: c.id, nachtragen: false };
+    document.getElementById('charge-ov-gewaehlt').textContent = c.charge;
+    document.getElementById('btn-charge-kasse-ok').disabled = false;
+}
+
+function kasseChargeNtInput(idx, lbId) {
+    var input = document.getElementById('kc-name-' + idx);
+    var name  = input ? input.value.trim() : '';
+
+    // Markierung
+    var chargen = kasseChargePendingArtikel ? (kasseChargePendingArtikel.alle_chargen || []) : [];
+    chargen.forEach(function(_, i) {
+        var sel = document.getElementById('kc-sel-' + i);
+        if (sel) sel.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto';
+    });
+    var selEl = document.getElementById('kc-sel-' + idx);
+
+    if (name) {
+        if (selEl) selEl.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #2563eb;background:#2563eb;margin:auto';
+        kasseChargeGewaehlt = { charge: name, lagerbestand_id: lbId, nachtragen: true };
+        document.getElementById('charge-ov-gewaehlt').textContent = name + ' (neu)';
+        document.getElementById('btn-charge-kasse-ok').disabled = false;
+    } else {
+        if (selEl) selEl.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto';
+        kasseChargeGewaehlt = null;
+        document.getElementById('charge-ov-gewaehlt').textContent = '—';
+        document.getElementById('btn-charge-kasse-ok').disabled = true;
+    }
+}
+
+function kasseChargeOhne() {
+    kasseChargeGewaehlt = { charge: null, lagerbestand_id: null, nachtragen: false };
+    ovSchliessen('ov-charge');
+    var a = Object.assign({}, kasseChargePendingArtikel, { _gewaehltCharge: null });
+    _fortsetzungNachChargeAuswahl(a, kasseChargePendingMenge);
+}
+
+function chargeKasseBestaetigen() {
+    if (!kasseChargeGewaehlt) return;
+    ovSchliessen('ov-charge');
+    var a = Object.assign({}, kasseChargePendingArtikel, {
+        _gewaehltCharge:          kasseChargeGewaehlt.charge,
+        _nachtragen_lagerbestand_id: kasseChargeGewaehlt.nachtragen ? kasseChargeGewaehlt.lagerbestand_id : null,
+    });
+    _fortsetzungNachChargeAuswahl(a, kasseChargePendingMenge);
+}
+
+function chargeKasseAbbrechen() {
+    ovSchliessen('ov-charge');
+    kasseChargePendingArtikel = null;
+    kasseChargeGewaehlt       = null;
+}
+
+function _fortsetzungNachChargeAuswahl(a, menge) {
+    // Reservierungs-Prüfung (wie in artikelHinzufuegen)
+    var physisch   = parseFloat(a.bestand_physisch)   || 0;
+    var reserviert = parseFloat(a.bestand_reserviert) || 0;
+    var verkaufbar = parseFloat(a.bestand_verkaufbar !== undefined ? a.bestand_verkaufbar : (physisch - reserviert));
+    if (!a.ueberverkauf_erlaubt && menge > verkaufbar && reserviert > 0) {
+        pendingArtikel = { a: a, menge: menge };
+        document.getElementById('reswarn-text').innerHTML =
+            '<strong>' + esc(a.bezeichnung) + '</strong><br>' +
+            'Physisch: ' + physisch + ' · Reserviert: ' + reserviert + ' · Verkaufbar: ' + Math.max(0,verkaufbar) + '<br>' +
+            'Angefordert: ' + menge;
+        ov('ov-reswarn');
+        return;
+    }
+    _artikelEinfuegen(a, menge);
 }
 
 // ── Overlay-Helfer ────────────────────────────────────────────────────────────

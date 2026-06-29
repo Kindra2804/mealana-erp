@@ -51,7 +51,8 @@ foreach ($positionen as $p) {
         'einzelpreis_brutto'  => (float)($p['einzelpreis_brutto'] ?? 0),
         'steuer_prozent'      => (float)($p['steuer_prozent'] ?? 20),
         'rabatt_prozent'      => (float)($p['rabatt_prozent'] ?? 0),
-        'charge'              => $p['charge'] ?? null,
+        'charge'                       => $p['charge'] ?? null,
+        'nachzutragen_lagerbestand_id' => isset($p['nachzutragen_lagerbestand_id']) ? (int)$p['nachzutragen_lagerbestand_id'] : null,
         'block'               => !empty($p['vonAuftrag']) ? 'auftrag' : ($p['block'] ?? null),
         'auftrag_position_id' => isset($p['auftrag_position_id']) ? (int)$p['auftrag_position_id'] : null,
     ];
