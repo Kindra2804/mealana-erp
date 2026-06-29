@@ -65,28 +65,62 @@ $posMap = array_values($stmtPos->fetchAll(PDO::FETCH_ASSOC)); // 0-indexed = JS 
 // ─── Lagerabbuchung + Status-Update in einer Transaktion ─────────────────────
 $db->beginTransaction();
 try {
-    // Nur tatsächlich gescannte Mengen abbuchen + menge_geliefert setzen
+    // Nur tatsächlich gescannte Mengen abbuchen + menge_geliefert + charge setzen
     foreach ($posGescannt as $ps) {
         $idx      = (int)$ps['idx'];
         $gescannt = (float)($ps['gescannt'] ?? 0);
         if ($gescannt <= 0 || !isset($posMap[$idx])) continue;
 
-        $pos = $posMap[$idx];
+        $pos       = $posMap[$idx];
+        $notiz     = $istTeillieferung ? 'Packplatz Teillieferung' : 'Packplatz Versand';
+        $chargenListe = $ps['chargen'] ?? [];
 
-        $lagerService->warenausgang([
-            'artikel_id'  => $pos['artikel_id'],
-            'lager_id'    => 1,
-            'menge'       => $gescannt,
-            'referenz'    => $auftrag['auftrag_nr'],
-            'notiz'       => $istTeillieferung ? 'Packplatz Teillieferung' : 'Packplatz Versand',
-            'benutzer_id' => $benutzerId,
-        ]);
+        if (!empty($chargenListe)) {
+            // Charge-bewusste Buchung: eine Bewegung pro Charge
+            $chargeNummern = [];
+            foreach ($chargenListe as $ce) {
+                $charge = trim($ce['charge'] ?? '');
+                $cmenge = (float)($ce['menge'] ?? 0);
+                if ($cmenge <= 0 || $charge === '') continue;
 
-        $db->prepare("
-            UPDATE auftrag_positionen
-            SET menge_geliefert = COALESCE(menge_geliefert, 0) + ?
-            WHERE id = ?
-        ")->execute([$gescannt, $pos['id']]);
+                // Wenn nachzutragen: erst Charge eintragen, dann ausbuchen
+                if (!empty($ce['nachtragen']) && !empty($ce['lagerbestand_id'])) {
+                    $lagerService->chargeNachtragen((int)$ce['lagerbestand_id'], $charge, $cmenge, $benutzerId);
+                }
+
+                $lagerService->warenausgang([
+                    'artikel_id'  => $pos['artikel_id'],
+                    'lager_id'    => 1,
+                    'menge'       => $cmenge,
+                    'charge'      => $charge,
+                    'referenz'    => $auftrag['auftrag_nr'],
+                    'notiz'       => $notiz,
+                    'benutzer_id' => $benutzerId,
+                ]);
+                $chargeNummern[] = $charge;
+            }
+            $chargeStr = implode(', ', array_unique($chargeNummern));
+            $db->prepare("
+                UPDATE auftrag_positionen
+                SET menge_geliefert = COALESCE(menge_geliefert, 0) + ?, charge = ?
+                WHERE id = ?
+            ")->execute([$gescannt, $chargeStr ?: null, $pos['id']]);
+        } else {
+            // Kein Charge-Dialog genutzt: direkt buchen
+            $lagerService->warenausgang([
+                'artikel_id'  => $pos['artikel_id'],
+                'lager_id'    => 1,
+                'menge'       => $gescannt,
+                'referenz'    => $auftrag['auftrag_nr'],
+                'notiz'       => $notiz,
+                'benutzer_id' => $benutzerId,
+            ]);
+            $db->prepare("
+                UPDATE auftrag_positionen
+                SET menge_geliefert = COALESCE(menge_geliefert, 0) + ?
+                WHERE id = ?
+            ")->execute([$gescannt, $pos['id']]);
+        }
     }
 
     // Lieferstatus + Tracking speichern
