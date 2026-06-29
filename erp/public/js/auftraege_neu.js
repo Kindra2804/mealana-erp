@@ -185,11 +185,21 @@ async function sucheKunden(suche) {
     const list = await res.json();
     const drop = document.getElementById('kunden-dropdown');
     drop.innerHTML = '';
-    if (!list.length) { drop.style.display = 'none'; return; }
+    if (!list.length) {
+        drop.innerHTML = '<div style="padding:10px 12px;font-size:13px;color:var(--color-text-muted)">Kein Kunde gefunden.</div>';
+        drop.style.display = 'block';
+        return;
+    }
     list.forEach(k => {
         const item = document.createElement('div');
-        item.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--color-border)';
-        item.innerHTML = `<strong>${escH(k.name)}</strong> <small style="color:var(--color-text-muted)">${escH(k.email || '')}</small>`;
+        item.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--color-border);transition:background .1s';
+        item.onmouseenter = () => item.style.background = 'var(--color-bg-secondary)';
+        item.onmouseleave = () => item.style.background = '';
+        const ra = k.rechnungsadresse;
+        const adrZeile = ra ? [ra.strasse + ' ' + ra.hausnummer, ra.plz + ' ' + ra.ort].filter(Boolean).join(', ') : '';
+        item.innerHTML = `<div style="font-weight:600;font-size:13px">${escH(k.name)}</div>`
+            + (k.email ? `<div style="font-size:11px;color:var(--color-text-muted)">${escH(k.email)}</div>` : '')
+            + (adrZeile ? `<div style="font-size:11px;color:var(--color-text-muted)">${escH(adrZeile.trim())}</div>` : '');
         item.addEventListener('mousedown', () => {
             document.getElementById('kunden-id').value = k.id;
             kundenSuche.value = k.name;

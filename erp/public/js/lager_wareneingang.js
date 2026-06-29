@@ -21,17 +21,24 @@ function sucheVariante() {
                 return;
             }
             div.innerHTML = data.map(function (v) {
+                var label = v.kind_name
+                    ? v.artikel_name + ' <span style="color:var(--color-text-muted)">— ' + v.kind_name + '</span>'
+                    : v.artikel_name;
                 return '<div style="border:1px solid var(--color-border);padding:8px 12px;margin-bottom:4px;border-radius:4px;cursor:pointer" onclick="waehleVariante(' + JSON.stringify(v).replace(/"/g, '&quot;') + ')">'
-                    + '<strong>' + v.artikelnummer + '</strong> – ' + v.artikel_name + '</div>';
+                    + '<strong>' + v.varianten_artikelnummer || v.artikelnummer + '</strong> – ' + label + '</div>';
             }).join('');
         });
 }
 
 function waehleVariante(v) {
     document.getElementById('artikel_id').value = v.id;
+    var label = v.kind_name
+        ? v.artikel_name + ' — ' + v.kind_name
+        : v.artikel_name;
+    var nr = v.varianten_artikelnummer || v.artikelnummer;
     document.getElementById('variante_ergebnis').innerHTML =
         '<div style="background:var(--color-success-light,#d4edda);padding:10px 12px;border-radius:4px;display:flex;justify-content:space-between;align-items:center">'
-        + '<span>✅ <strong>' + v.artikelnummer + '</strong> – ' + v.artikel_name + '</span>'
+        + '<span>✅ <strong>' + nr + '</strong> – ' + label + '</span>'
         + '<button type="button" class="btn btn-secondary btn-sm" onclick="varianteZuruecksetzen()">✖</button></div>';
 }
 

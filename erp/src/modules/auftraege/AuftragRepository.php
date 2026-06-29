@@ -33,10 +33,16 @@ class AuftragRepository
         string $zahlungsstatus = '',
         string $lieferstatus = '',
         string $kanal = '',
-        string $suche = ''
+        string $suche = '',
+        bool   $mitAbgeschlossenen = false
     ): array {
         $where  = ['1=1'];
         $params = [];
+
+        // Abgeschlossene (lieferung=abgeschlossen UND zahlung=bezahlt) standardmäßig ausblenden
+        if (!$mitAbgeschlossenen && $lieferstatus === '' && $zahlungsstatus === '') {
+            $where[] = "NOT (a.lieferstatus = 'abgeschlossen' AND a.zahlungsstatus = 'bezahlt')";
+        }
 
         if ($zahlungsstatus === 'ueberbezahlt') {
             $where[] = "a.zahlungsstatus = 'bezahlt' AND (SELECT COALESCE(SUM(az.betrag),0) FROM auftrag_zahlungen az WHERE az.auftrag_id = a.id) > a.bruttobetrag";
@@ -215,7 +221,7 @@ class AuftragRepository
               AND (a.ist_vater = 0 OR a.ist_vater IS NULL)
               AND ($where)
             ORDER BY COALESCE(vater.name, a.name), a.name
-            LIMIT 25
+            LIMIT 75
         ");
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
