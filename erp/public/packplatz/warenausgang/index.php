@@ -4,17 +4,19 @@ require_once __DIR__ . '/../../../src/core/Database.php';
 
 $db = Database::getInstance();
 
-// Offene Picklisten laden
+// Offene Picklisten — nur wenn zugehöriger Auftrag noch nicht verpackt/versendet/abgeholt
 $picklisten = $db->query("
-    SELECT pl.*, COUNT(pa.auftrag_id) AS anzahl_auftraege
+    SELECT pl.*
     FROM picklisten pl
     LEFT JOIN pickliste_auftraege pa ON pa.pickliste_id = pl.id
+    LEFT JOIN auftraege a ON a.id = pa.auftrag_id
     WHERE pl.status IN ('offen','gedruckt')
-    GROUP BY pl.id
+      AND (a.lieferstatus IS NULL
+           OR a.lieferstatus NOT IN ('kommissioniert','versendet','teilgeliefert','abholbereit','abgeschlossen','storniert'))
     ORDER BY pl.erstellt_am DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// Kommissionierte Aufträge (warten auf Tracking)
+// Kommissionierte Aufträge (verpackt, warten auf Tracking)
 $kommissioniert = $db->query("
     SELECT id, auftrag_nr, erstellt_am, bruttobetrag, aktualisiert_am
     FROM auftraege
@@ -24,7 +26,7 @@ $kommissioniert = $db->query("
     LIMIT 20
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-$fehler   = $_SESSION['fehler'] ?? null;
+$fehler = $_SESSION['fehler'] ?? null;
 unset($_SESSION['fehler']);
 
 $pageTitle = 'Warenausgang';
@@ -68,7 +70,13 @@ require_once __DIR__ . '/../shell_top.php';
 
     <!-- PICKLISTE -->
     <div>
-        <div style="font-size:18px;font-weight:700;margin-bottom:16px;color:#e94560">📋 Pickliste öffnen</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="font-size:18px;font-weight:700;color:#e94560">📋 Pickliste öffnen</div>
+            <button onclick="location.reload()" data-no-loader
+                    style="background:#0f3460;border:1px solid #1e4a8a;color:#60a5fa;padding:8px 18px;border-radius:6px;font-size:15px;cursor:pointer;font-weight:700">
+                ↺ Refresh
+            </button>
+        </div>
 
         <?php if (empty($picklisten)): ?>
             <div style="color:#666;font-size:14px;padding:20px;background:#16213e;border-radius:8px;text-align:center">
@@ -83,7 +91,6 @@ require_once __DIR__ . '/../shell_top.php';
                         <div>
                             <div style="font-size:18px;font-weight:700"><?= htmlspecialchars($pl['nummer']) ?></div>
                             <div style="font-size:12px;color:#aaa;margin-top:3px">
-                                <?= (int)$pl['anzahl_auftraege'] ?> Auftrag/Aufträge ·
                                 <?= date('d.m.Y H:i', strtotime($pl['erstellt_am'])) ?>
                             </div>
                         </div>
@@ -151,5 +158,12 @@ require_once __DIR__ . '/../shell_top.php';
     </div>
 
 </div>
+
+<script>
+// Auto-Refresh wenn Tab wieder in den Vordergrund kommt (z.B. nach Scan-Seite)
+document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) location.reload();
+});
+</script>
 
 <?php require_once __DIR__ . '/../shell_bottom.php'; ?>

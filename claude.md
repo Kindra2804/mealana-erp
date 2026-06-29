@@ -762,12 +762,14 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
    - Einstellungen/Firma: Karte "Online-Präsenz & Social Media"
    - DokumentService: holeOderErstelleRechnung() mit neu_erstellt-Flag
    - shell_bottom.php: Page-Loader Overlay global (zeigt bei Link/Form, Ausnahmen: _blank/Anker/data-no-loader/AJAX)
-7. **Kasse** ✅ Phase 1 FERTIG (2026-06-27):
+7. **Kasse** ✅ Phase 1+2 FERTIG (zuletzt 2026-06-29):
    - Migration 077: kassen, kassen_bons, kassen_bon_positionen, kassenbuch, offene_auswahl
    - public/kasse/: 16 Dateien — shell, index, bon, ajax_artikel, bon_speichern, bon_druck, kassenbuch, kassensturz, offene_auswahl, bon_journal, bon_stornieren
    - KassenService: erstelleBon, storniereBon, findArtikelByCode (FIFO-Charge), X-Bon/Z-Bon, Kassenbuch, Offene Auswahl
    - Features: EAN-Scan, Vater→Variante-Auswahl, Divers-Artikel (freier Preis), Rabatt, Bar+Rückgeld, Karte extern (SumUp/Bankomat), Gutschein, Kombi, 80mm Browser-Druck, Zählhilfe
-   - Phase 2 offen: RKSV/BFR-BONit, Auftrag laden (Abholung), Bon-Park
+   - **Abholbereit+bezahlt Flow ✅ (2026-06-29)**: exakt/retour/extra/mix; kein Bon wenn exakt, Retour-Bon mit Barauszahlung, Extra-Bon nur für Extras; Gutschein-Hook vorbereitet
+   - **K1-Bon Laufkunde Bug ✅ (2026-06-29)**: kunden_snapshot immer vom Original-Auftrag kopieren
+   - Phase 2 noch offen: RKSV/BFR-BONit, Bon-Park, A4-Bon als Rechnung
    - Druckkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen; @page { size: 80mm auto }
 8. **Packplatz/Picklisten** — Kommissionierung, Packliste
 9. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.

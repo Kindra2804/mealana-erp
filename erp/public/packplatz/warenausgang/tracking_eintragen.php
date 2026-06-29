@@ -28,6 +28,11 @@ $positionen = $db->prepare("
 $positionen->execute([$auftragId]);
 $positionen = $positionen->fetchAll(PDO::FETCH_ASSOC);
 
+// Pickliste zu diesem Auftrag ermitteln (damit abschliessen.php die Pickliste schließt)
+$plStmt = $db->prepare("SELECT pickliste_id FROM pickliste_auftraege WHERE auftrag_id = ? LIMIT 1");
+$plStmt->execute([$auftragId]);
+$picklisteId = (int)($plStmt->fetchColumn() ?: 0);
+
 // Offene Menge je Position (für positionen_json)
 $posJson = [];
 foreach ($positionen as $i => $p) {
@@ -57,7 +62,7 @@ require_once __DIR__ . '/../shell_top.php';
     <!-- Tracking-Formular -->
     <form method="POST" action="abschliessen.php">
         <input type="hidden" name="auftrag_id"      value="<?= $auftragId ?>">
-        <input type="hidden" name="pickliste_id"    value="">
+        <input type="hidden" name="pickliste_id"    value="<?= $picklisteId ?>">
         <input type="hidden" name="teillieferung"   value="0">
         <input type="hidden" name="positionen_json" value="<?= htmlspecialchars(json_encode($posJson)) ?>">
 
@@ -86,7 +91,7 @@ require_once __DIR__ . '/../shell_top.php';
 
             <div>
                 <label style="display:block;font-size:12px;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Gewicht (g) <span style="color:#475569;font-weight:400">optional</span></label>
-                <input type="number" name="gewicht" value="0" min="0"
+                <input type="number" name="gewicht" value="0" min="0" step="0.001"
                        style="width:100%;background:#0d1b2a;border:1px solid #334155;color:#e2e8f0;padding:10px 14px;border-radius:6px;font-size:14px;box-sizing:border-box">
             </div>
 

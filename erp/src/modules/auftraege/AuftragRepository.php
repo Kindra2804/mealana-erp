@@ -280,11 +280,11 @@ class AuftragRepository
         $stmt = $this->db->prepare("
             INSERT INTO auftrag_positionen (
                 auftrag_id, artikel_id, charge, bezeichnung, ean,
-                menge, einzelpreis_netto, steuer_prozent, rabatt_prozent,
+                menge, menge_geliefert, einzelpreis_netto, steuer_prozent, rabatt_prozent,
                 gesamtpreis_netto, sort_order
             ) VALUES (
                 :auftrag_id, :artikel_id, :charge, :bezeichnung, :ean,
-                :menge, :einzelpreis_netto, :steuer_prozent, :rabatt_prozent,
+                :menge, :menge_geliefert, :einzelpreis_netto, :steuer_prozent, :rabatt_prozent,
                 :gesamtpreis_netto, :sort_order
             )
         ");

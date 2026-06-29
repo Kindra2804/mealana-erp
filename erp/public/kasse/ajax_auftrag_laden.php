@@ -33,7 +33,7 @@ if ($q !== '') {
 
 $stmt = $db->prepare("
     SELECT a.id, a.auftrag_nr, a.bruttobetrag, a.zahlungsstatus, a.lieferstatus,
-           a.erstellt_am, a.kunden_snapshot
+           a.erstellt_am, a.kunden_snapshot, a.kunden_id
     FROM auftraege a
     LEFT JOIN kunden k ON k.id = a.kunden_id
     WHERE {$where}
@@ -102,6 +102,7 @@ foreach ($auftraege as $a) {
         'lieferstatus_label'   => $lieferLabels[$a['lieferstatus']] ?? $a['lieferstatus'],
         'erstellt_datum'    => date('d.m.Y', strtotime($a['erstellt_am'])),
         'positionen'        => $positionen,
+        'kunden_id'         => $a['kunden_id'] ? (int)$a['kunden_id'] : null,
     ];
 }
 

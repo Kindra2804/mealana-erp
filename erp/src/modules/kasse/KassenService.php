@@ -470,10 +470,12 @@ class KassenService
     {
         $stmt = $this->db->prepare("
             SELECT b.*, k.name AS kasse_name, k.kasse_nr,
-                   u.formularname AS benutzer_name
+                   u.formularname AS benutzer_name,
+                   wa.auftrag_nr AS web_auftrag_nr
             FROM kassen_bons b
             LEFT JOIN kassen k ON k.id = b.kasse_id
             LEFT JOIN benutzer u ON u.id = b.benutzer_id
+            LEFT JOIN auftraege wa ON wa.id = b.web_auftrag_id
             WHERE b.id = :id
         ");
         $stmt->execute([':id' => $bonId]);

@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-28 (Session 17)
+Stand: 2026-06-29 (Session 18)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -88,7 +88,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ### Mail-Infrastruktur ✅ NEU (2026-06-25)
 ### Mahnwesen-Cronjob ✅ NEU (2026-06-25)
 
-### Kasse/POS ✅ Phase 1 FERTIG + Bugfixes (2026-06-27)
+### Kasse/POS ✅ Phase 1+2 FERTIG (zuletzt 2026-06-29)
 - Migration 077: kassen, kassen_bons, kassen_bon_positionen, kassenbuch, offene_auswahl
 - Migration 078: Divers-Platzhalter-Artikel 99-9999 (für auftrag_positionen FK)
 - public/kasse/: 16 Dateien — index, bon, ajax_artikel, bon_speichern, bon_druck, kassenbuch(+speichern), kassensturz(+speichern), offene_auswahl(+speichern+verarbeiten), bon_journal, bon_stornieren
@@ -99,7 +99,9 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - **Divers-Positionen in auftrag_positionen** via Platzhalter 99-9999 (getDiversArtikelId())
 - **auftraege/detail.php**: kanal='kasse' → Dokumente gesperrt, nur "Kassenbon drucken" sichtbar
 - Bugfixes: steuerklassen.satz (war prozentsatz), artikel_preise.kundengruppen_id (war kunden_gruppe_id)
-- Phase 2 offen: RKSV/BFR-BONit, Auftrag laden (Abholung), Bon-Park, A4-Bon als Rechnung
+- **Abholbereit+bezahlt Flow ✅ FERTIG (2026-06-29)**: exakt/retour/extra/mix — alle 4 Fälle; nur_abschliessen, Retour-Bon, neg. auftrag_zahlungen, Gutschein-Hook vorbereitet
+- **K1-Bon Laufkunde Bug ✅ BEHOBEN (2026-06-29)**: kunden_snapshot vom Original-Auftrag immer auf K1 kopieren
+- Phase 2 noch offen: RKSV/BFR-BONit, Bon-Park, A4-Bon als Rechnung
 
 ## 🔴 Noch nicht gebaut (Reihenfolge = geplante Priorität)
 
@@ -128,6 +130,14 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
+
+## Session 18 erledigt (2026-06-29)
+- **K1-Bon Laufkunde Bug**: kunden_snapshot vom Original-Auftrag immer auf K1 kopieren (bon_speichern.php K1-UPDATE)
+- **Abholbereit+bezahlt Flow**: exakt (kein Bon) / retour (Retour-Bon + Barauszahlung) / extra (nur Extras) / mix — alle 4 Fälle implementiert
+  - bon.php: 5 neue Funktionen, 3 neue State-Variablen, 2 neue Overlays, _zahlBetrag() Helper
+  - bon_speichern.php: nur_abschliessen Pfad, bezahlt-Filter für bonErstellungPositionen, Retour-Zahlungsbuchung (negativ)
+  - bon_druck.php: block='retour' Abschnitt "↩ RÜCKGABE", signed Steuer-Totale, GESAMT vs. RÜCKGABE
+  - Gutschein-Hook vorbereitet (ov-retour-bar Button → wenn Gutschein-Modul fertig)
 
 ## Session 17 erledigt (2026-06-28)
 - Mail-System Komplett-Überarbeitung (siehe Mail-System oben)
