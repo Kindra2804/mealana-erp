@@ -1026,13 +1026,12 @@ class KassenService
             ORDER BY a.name
             LIMIT :lmt
         ");
-        $stmt->execute([
-            ':q'        => $q,
-            ':q2'       => $q,
-            ':q3'       => $q,
-            ':lager_id' => $lagerId,
-            ':lmt'      => $limit,
-        ]);
+        $stmt->bindValue(':q',        $q,       \PDO::PARAM_STR);
+        $stmt->bindValue(':q2',       $q,       \PDO::PARAM_STR);
+        $stmt->bindValue(':q3',       $q,       \PDO::PARAM_STR);
+        $stmt->bindValue(':lager_id', $lagerId, \PDO::PARAM_INT);
+        $stmt->bindValue(':lmt',      $limit,   \PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetchAll();
     }
 }
