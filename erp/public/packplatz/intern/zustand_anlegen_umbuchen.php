@@ -10,11 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['erfolg' => false, 'fehler' => 'Ungültige Anfrage']); exit;
 }
 
-$originalId = (int)($_POST['artikel_id']  ?? 0);
-$menge      = (float)($_POST['menge']     ?? 0);
-$zustand    = trim($_POST['zustand']      ?? '');
+$originalId = (int)($_POST['artikel_id']   ?? 0);
+$menge      = (float)($_POST['menge']      ?? 0);
+$zustand    = trim($_POST['zustand']       ?? '');
 $vonLagerId = (int)($_POST['von_lager_id'] ?? 0);
 $zuLagerId  = (int)($_POST['zu_lager_id']  ?? 0);
+$charge     = !empty($_POST['charge']) ? trim($_POST['charge']) : null;
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 
 $erlaubteZustaende = ['neu','gebraucht','generalueberholt','beschaedigt','retour','demo','muster','ausstellungsstueck'];
@@ -49,11 +50,11 @@ if ($zustand === 'neu') {
     }
 
     $refText = 'Rückbuchung → Normal';
-    $ausgang = $lagerSvc->warenausgang(['artikel_id' => $originalId, 'lager_id' => $vonLagerId, 'menge' => $menge, 'referenz' => $refText, 'benutzer_id' => $benutzerId]);
+    $ausgang = $lagerSvc->warenausgang(['artikel_id' => $originalId, 'lager_id' => $vonLagerId, 'menge' => $menge, 'charge' => $charge, 'referenz' => $refText, 'benutzer_id' => $benutzerId]);
     if (!($ausgang['erfolg'] ?? false)) {
         echo json_encode(['erfolg' => false, 'fehler' => $ausgang['fehler'] ?? 'Ausgang fehlgeschlagen']); exit;
     }
-    $eingang = $lagerSvc->wareneingang(['artikel_id' => $vaterId, 'lager_id' => $zuLagerId, 'menge' => $menge, 'charge' => null, 'referenz' => $refText, 'benutzer_id' => $benutzerId]);
+    $eingang = $lagerSvc->wareneingang(['artikel_id' => $vaterId, 'lager_id' => $zuLagerId, 'menge' => $menge, 'charge' => $charge, 'referenz' => $refText, 'benutzer_id' => $benutzerId]);
     if (!($eingang['erfolg'] ?? false)) {
         echo json_encode(['erfolg' => false, 'fehler' => $eingang['fehler'] ?? 'Eingang fehlgeschlagen']); exit;
     }
@@ -163,6 +164,7 @@ $ausgang = $lagerSvc->warenausgang([
     'artikel_id'  => $originalId,
     'lager_id'    => $vonLagerId,
     'menge'       => $menge,
+    'charge'      => $charge,
     'referenz'    => $refText,
     'benutzer_id' => $benutzerId,
 ]);
@@ -174,7 +176,7 @@ $eingang = $lagerSvc->wareneingang([
     'artikel_id'  => $zustandsArtikelId,
     'lager_id'    => $zuLagerId,
     'menge'       => $menge,
-    'charge'      => null,
+    'charge'      => $charge,
     'referenz'    => $refText,
     'benutzer_id' => $benutzerId,
 ]);
