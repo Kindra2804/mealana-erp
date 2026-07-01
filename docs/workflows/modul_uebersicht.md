@@ -20,7 +20,7 @@ graph TD
     EINSTELLUNGEN["⚙ Einstellungen\nsystem_einstellungen\nshops · kanäle"]
     PARTNER["🤝 Partner-Modul\npartner · partner_belege\nmietfaecher · spenden_log"]
     BESTELLUNG["🛒 Bestellmodul (Einkauf)\nbestellungen · bestellung_positionen\nbestellung_eingaenge"]
-    KASSE["🖥 Kasse (TODO)\nBONs · RKSV / BFR"]
+    KASSE["🖥 Kasse (POS)\nkassen_bons · kassen_bon_positionen\nkassenbuch · offene_auswahl"]
     WOO["🌐 WooCommerce-Sync\nshops · artikel_bilder_shops\nkanal_auftrag_id"]
 
     ARTIKEL -->|"Artikel-Daten"| PREIS
@@ -46,7 +46,7 @@ graph TD
 
 ---
 
-## Fertige Module (Stand 2026-06-25)
+## Fertige Module (Stand 2026-07-01)
 
 | Modul | Seiten | Status |
 |-------|--------|--------|
@@ -65,6 +65,7 @@ graph TD
 | **Kundendatenbank** | Liste / Detail / AES-256 | ✅ Fertig |
 | **Partner-Modul** | Mietfächer / Kommission / Spenden | ✅ Fertig |
 | **Bestellmodul (Einkauf)** | Bestellungen / Positionen / Eingang | ✅ Fertig |
+| **Kasse (POS) Phase 1+2** | EAN-Scan, Bon-Erstellung, Kassensturz, Abholbereit-Flow, Chargen-Dialog | ✅ Fertig |
 
 ## Offene Module (Reihenfolge laut Plan)
 
@@ -72,7 +73,8 @@ graph TD
 |-------|-----------|----------------|
 | Picklisten-Manager (Babsi) | 🔴 Nächste Phase | Lagerstand ist/reserviert/verfügbar |
 | Packplatz: Intern / Retoure | 🔴 Nächste Phase | Packplatz-Warenausgang fertig |
-| Kasse / POS | 🟡 Nach Packplatz | RKSV / BFR-API (Referenz: reference_bfr_api.md) |
+| Kasse Phase 3: RKSV | 🟡 Nach Phase 1+2 | BFR-BONit API (Referenz: reference_bfr_api.md) |
+| Kasse Phase 3: Bon-Park | 🟡 Nach Phase 1+2 | Kasse Phase 1 fertig |
 | WooCommerce-Sync | 🟡 Parallel | artikel_bilder_shops, shops-Tabelle |
 | Druck-Listen | 🟢 Mit Druck-Modul | EAN/Bilder-Qualitätslisten |
 | Statistik / Dashboard | 🟢 Nach Verkauf | Auftragsmodul + Lager |
@@ -91,7 +93,22 @@ graph TD
 | `VariantenService` | `src/services/VariantenService.php` | Achsen + VarKombi |
 | `LagerService` | `src/services/LagerService.php` | Alle Lagerbewegungen |
 | `PreisService` | `src/services/PreisService.php` | Effektivpreis-Berechnung |
-| `DokumentService` | `src/services/DokumentService.php` | Twig + Dompdf (TODO vollständig) |
+| `DokumentService` | `src/services/DokumentService.php` | Twig + Dompdf |
+| `KassenService` | `src/services/KassenService.php` | erstelleBon, storniereBon, X-Bon/Z-Bon, FIFO-Charge |
+| `EasyPakExporter` | `src/core/EasyPakExporter.php` | EasyPak-XML für PLC (Österr. Post) |
+
+---
+
+## Workflow-Dokumente
+
+| Datei | Inhalt |
+|-------|--------|
+| [artikel_workflows.md](artikel_workflows.md) | Artikel-CRUD, Varianten, Propagierung |
+| [auftraege_workflows.md](auftraege_workflows.md) | Auftrag anlegen, Zahlung, Storno, Mahnwesen |
+| [lager_workflows.md](lager_workflows.md) | Wareneingang, Bewegungsprotokoll |
+| [packplatz_workflows.md](packplatz_workflows.md) | Scan-Interface, EasyPak, Picklisten |
+| [dokumente_workflows.md](dokumente_workflows.md) | PDF-Erzeugung, Rechnung, Gutschrift |
+| [kasse_workflows.md](kasse_workflows.md) | Bon-Erstellung, Abholbereit-Flow, Kassensturz, Chargen-Dialog |
 
 ---
 
