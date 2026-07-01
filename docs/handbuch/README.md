@@ -20,6 +20,7 @@
 | [08 Partner-Modul](08_partner.md) | Mietfächer, Kommission, Spenden |
 | [09 Einstellungen](09_einstellungen.md) | Firmenadresse, E-Mail/SMTP, Kanäle |
 | [10 Häufige Fragen (FAQ)](10_faq.md) | Problemlösung für den Alltag |
+| [11 Kasse (POS)](11_kasse.md) | Bon-Erstellung, Zahlarten, Kassensturz, Abholbereit-Flow |
 
 ---
 
@@ -36,3 +37,7 @@
 | Kunde ruft wegen Bestellung an | [04 Auftragsmodul → Suche](04_auftraege.md) |
 | Preis für Aktion ändern | [02 Preise → Aktionen](02_preise_aktionen.md#aktionen) |
 | Neuer Mietfach-Inhaber | [08 Partner-Modul](08_partner.md) |
+| Verkauf an der Kasse | [11 Kasse](11_kasse.md) |
+| Tagesabschluss / Z-Bon | [11 Kasse → Kassensturz](11_kasse.md#kassensturz--tagesabschluss) |
+| Bon stornieren | [11 Kasse → Bon stornieren](11_kasse.md#bon-stornieren) |
+| Abholung eines Auftrags | [11 Kasse → Abholbereit](11_kasse.md#abholbereitbezahlt--aufträge-übergeben) |

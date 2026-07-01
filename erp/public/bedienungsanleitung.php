@@ -207,6 +207,9 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#hersteller">Hersteller</a>
             <a href="#benutzer">Benutzer & Rechte</a>
             <a href="#kasse">Kasse</a>
+            <a href="#kasse-bon" class="sub">↳ Bon erstellen</a>
+            <a href="#kasse-abholbereit" class="sub">↳ Abholbereit / Aufträge</a>
+            <a href="#kasse-kassensturz" class="sub">↳ Kassensturz / Z-Bon</a>
             <a href="#inventur">Inventur</a>
         </nav>
 
@@ -432,8 +435,47 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p>Benutzer verwalten: Einstellungen → Benutzer (im Aufbau — aktuell über Datenbankzugriff).</p>
 
             <!-- KASSE -->
-            <h2 id="kasse">Kasse <span class="ba-badge ba-badge-geplant">Geplant</span></h2>
-            <p>Kommt nach dem Packplatz-Modul. Geplant: Barcode-Scan, Zahlarten (Bar/Karte/Gutschein), RKSV-Signatur (BFR BONit), Tagesabschluss.</p>
+            <h2 id="kasse">Kasse <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>Das Point-of-Sale-System für das Ladengeschäft. Eigene Oberfläche, optimiert für Touchscreen und Barcode-Scanner.</p>
+            <p><strong>Adresse:</strong> <code>http://localhost/mealana/kasse/</code></p>
+
+            <h3 id="kasse-bon">Bon erstellen — Normaler Verkauf <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>EAN scannen</strong> — Barcode-Scanner auf Ware richten → Artikel erscheint sofort im Warenkorb<br><small>Oder: Lupe-Symbol → Namenssuche (Name/Artikelnummer eintippen)</small></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Bei <strong>Varianten-Artikeln</strong> (z.B. DROPS Lima mit Farben) öffnet sich automatisch ein Auswahlfeld → Variante wählen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Bei <strong>Garnen mit Chargen-Pflicht</strong> öffnet sich der Chargen-Dialog → Partie/Charge wählen (FIFO — älteste zuerst)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div><strong>Zahlart wählen:</strong> Bar (Rückgeld wird berechnet) / Karte extern / Gutschein</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div>→ <strong>Bon erstellen</strong> — Bon wird gedruckt, Lagerabgang automatisch gebucht</div></div>
+            <div class="ba-hint">💡 Mehrfachmengen: Zahl eintippen, dann einmal scannen → Menge sofort eingetragen. Rabatt: Position antippen → % eingeben.</div>
+            <table class="ba-table">
+                <tr><th>Zahlart</th><th>Was passiert</th></tr>
+                <tr><td><strong>Bar</strong></td><td>Gegeben-Betrag eingeben → Rückgeld wird angezeigt</td></tr>
+                <tr><td><strong>Karte extern</strong></td><td>SumUp/Bankomat — Betrag extern bestätigen, hier nur dokumentiert</td></tr>
+                <tr><td><strong>Gutschein</strong></td><td>Gutschein-Code eingeben → Betrag wird abgezogen</td></tr>
+                <tr><td><strong>Divers</strong></td><td>Freie Position ohne Stammdaten — Beschreibung + Betrag eingeben</td></tr>
+            </table>
+
+            <h3 id="kasse-abholbereit">Abholbereit+bezahlt — Aufträge übergeben <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Wenn ein ERP-Auftrag auf "Abholbereit" gesetzt und bezahlt ist, erscheint er in der Kasse unter <strong>Offene Auswahl</strong>.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Kasse → <strong>Offene Auswahl</strong> → Auftrag wählen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Tatsächlich mitgenommene Mengen eingeben (kann vom Auftrag abweichen)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>System erkennt automatisch den Fall:</div></div>
+            <table class="ba-table">
+                <tr><th>Fall</th><th>Was passiert</th></tr>
+                <tr><td><strong>Exakt</strong> — Mengen stimmen</td><td>Kein Bon nötig, Auftrag direkt abgeschlossen</td></tr>
+                <tr><td><strong>Retour</strong> — Kunde nimmt weniger</td><td>Retour-Bon wird erstellt, Differenz in Bar zurückgezahlt</td></tr>
+                <tr><td><strong>Extra</strong> — Kunde nimmt mehr</td><td>Extra-Bon für die Zugaben, Zusatzbetrag einzahlen</td></tr>
+                <tr><td><strong>Mix</strong> — teils retour, teils extra</td><td>Retour-Bon + Extra-Bon werden erstellt</td></tr>
+            </table>
+
+            <h3 id="kasse-kassensturz">Kassensturz / Tagesabschluss <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p><strong>X-Bon</strong> (Zwischenbericht): Zeigt den aktuellen Stand ohne Abschluss — gut für Zwischenkontrollen.</p>
+            <p><strong>Z-Bon</strong> (Tagesabschluss):</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Kasse → <strong>Kassensturz</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Zählhilfe:</strong> Scheine und Münzen einzeln eingeben → Summe wird berechnet</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>→ <strong>Z-Bon erstellen</strong> — echter Tagesabschluss, Z-Bon wird gedruckt</div></div>
+            <div class="ba-hint">💡 Bon stornieren: Kasse → Bon-Journal → Bon suchen → Stornieren. Lagerabgang wird automatisch rückgebucht.</div>
+            <div class="ba-hint">💡 Druckerkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen. Im Browser: Rand "Keine", Kopfzeile "Aus".</div>
+            <div class="ba-warn">⚠ Phase 2 noch offen: RKSV-Signatur (BFR BONit) und Bon-Park (mehrere Bons gleichzeitig offen) sind noch in Planung.</div>
 
             <!-- INVENTUR -->
             <h2 id="inventur">Inventur <span class="ba-badge ba-badge-geplant">Geplant</span></h2>

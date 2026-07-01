@@ -917,7 +917,7 @@ body {
 
     <div class="ov-rueck" id="bar-rueck"></div>
     <div class="ov-grid2">
-      <button class="ov-btn ov-btn-ok" id="btn-bar-ok" onclick="abschliessenBar()" disabled>✓ Abschließen</button>
+      <button class="ov-btn ov-btn-ok" id="btn-bar-ok" onclick="abschliessenBar()">✓ Abschließen</button>
       <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-bar')">Abbrechen</button>
     </div>
   </div>
@@ -2045,21 +2045,24 @@ function barBerechne() {
     var geg = parseFloat(document.getElementById('bar-gegeben').value) || 0;
     var rueck = geg - g;
     var el = document.getElementById('bar-rueck');
-    if (geg >= g) {
+    if (geg > 0 && geg >= g) {
         el.textContent = 'Rückgeld: € ' + fmt(rueck);
         el.style.color = '#16a34a';
-        document.getElementById('btn-bar-ok').disabled = false;
-    } else {
-        el.textContent = rueck < 0 ? 'Fehlend: € ' + fmt(Math.abs(rueck)) : '';
+    } else if (geg > 0) {
+        el.textContent = 'Fehlend: € ' + fmt(Math.abs(rueck));
         el.style.color = '#dc2626';
-        document.getElementById('btn-bar-ok').disabled = true;
+    } else {
+        el.textContent = '';
     }
 }
 function abschliessenBar() {
-    var g = _zahlBetrag();
+    var g   = _zahlBetrag();
     var geg = parseFloat(document.getElementById('bar-gegeben').value) || 0;
-    if (geg < g && g > 0.005) return;
-    bonSpeichern({ zahlungsart: 'bar', gegeben: geg, rueckgeld: Math.max(0, geg - g) });
+    if (geg > 0) {
+        bonSpeichern({ zahlungsart: 'bar', gegeben: geg, rueckgeld: Math.max(0, geg - g) });
+    } else {
+        bonSpeichern({ zahlungsart: 'bar' });
+    }
 }
 
 function zahlenKarte() {
@@ -2487,7 +2490,6 @@ function barClear() {
     document.getElementById('bar-gegeben').value = '';
     document.getElementById('bar-scheine-log').textContent = '';
     document.getElementById('bar-rueck').textContent = '';
-    document.getElementById('btn-bar-ok').disabled = true;
 }
 function barBerechneManual() {
     barScheine = [];  // Manuelle Eingabe überschreibt Schein-Log
