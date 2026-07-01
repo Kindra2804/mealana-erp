@@ -460,9 +460,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         </div>
 
                         <?php if (empty($artikel['artikel_gruppe_id'])): ?>
-                        <div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:8px 12px;margin-bottom:10px;border-radius:4px;font-size:12px">
-                            ⚠ Dieser Artikel hat noch <strong>keine Artikelgruppe</strong> — bitte unten zuordnen und speichern.
-                        </div>
+                            <div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:8px 12px;margin-bottom:10px;border-radius:4px;font-size:12px">
+                                ⚠ Dieser Artikel hat noch <strong>keine Artikelgruppe</strong> — bitte unten zuordnen und speichern.
+                            </div>
                         <?php endif; ?>
 
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-md)">
@@ -606,12 +606,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
                     <div class="form-group">
                         <label class="form-label">Kurzbeschreibung</label>
-                        <input type="text" name="kurzbeschreibung" class="erp-input" style="width:100%"
-                            value="<?= htmlspecialchars($artikel['kurzbeschreibung'] ?? '') ?>">
+                        <textarea id="kurzbeschreibung" name="kurzbeschreibung"
+                            class="erp-input" style="width:100%"><?= htmlspecialchars($artikel['kurzbeschreibung'] ?? '') ?></textarea>
+
                     </div>
                     <div class="form-group">
                         <label class="form-label">Langbeschreibung</label>
-                        <textarea name="beschreibung" class="erp-input" style="width:100%;height:120px"><?= htmlspecialchars($artikel['beschreibung'] ?? '') ?></textarea>
+                        <textarea id="beschreibung" name="beschreibung" class="erp-input" style="width:100%;height:120px"><?= htmlspecialchars($artikel['beschreibung'] ?? '') ?></textarea>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
                         <div class="form-group">
@@ -1046,7 +1047,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php
         $heute             = date('Y-m-d');
         $hatAktionen       = !empty($preisAktionen);
-        $hatAktiveAktionen = !empty(array_filter($preisAktionen, fn($a) =>
+        $hatAktiveAktionen = !empty(array_filter(
+            $preisAktionen,
+            fn($a) =>
             $a['gestartet'] && $a['gueltig_ab'] <= $heute && $a['gueltig_bis'] >= $heute
         ));
         ?>
@@ -1433,7 +1436,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
             <!-- Drop-Zone -->
             <div id="bild-dropzone"
-                 style="border:2px dashed #93c5fd;border-radius:8px;background:#eff6ff;
+                style="border:2px dashed #93c5fd;border-radius:8px;background:#eff6ff;
                         padding:32px 20px;text-align:center;cursor:pointer;margin-bottom:20px;
                         transition:background .15s,border-color .15s">
                 <div style="font-size:28px;color:#93c5fd;margin-bottom:8px">⬆</div>
@@ -1444,8 +1447,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     JPG, PNG, WEBP &middot; Mehrere Dateien gleichzeitig möglich &middot; max. 10 MB pro Datei
                 </div>
                 <input type="file" id="bild-datei-input" multiple
-                       accept="image/jpeg,image/png,image/webp"
-                       style="display:none">
+                    accept="image/jpeg,image/png,image/webp"
+                    style="display:none">
             </div>
 
             <!-- Infozeile + Upload-Fortschritt -->
@@ -1460,17 +1463,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <div id="bild-grid" data-artikel-id="<?= $id ?>" style="display:flex;flex-wrap:wrap;gap:16px">
                 <?php foreach ($bilder as $i => $bild): ?>
                     <?php
-                        $bildUrl  = '/mealana/uploads/artikel/' . $id . '/' . htmlspecialchars($bild['dateiname']);
-                        $istHaupt = $i === 0;
+                    $bildUrl  = '/mealana/uploads/artikel/' . $id . '/' . htmlspecialchars($bild['dateiname']);
+                    $istHaupt = $i === 0;
                     ?>
                     <div class="bild-karte" data-bild-id="<?= $bild['id'] ?>" data-artikel-id="<?= $id ?>"
-                         style="width:200px;border:1px solid #e2e8f0;border-radius:6px;
+                        style="width:200px;border:1px solid #e2e8f0;border-radius:6px;
                                 background:white;box-shadow:0 1px 4px #0000000f;overflow:hidden;flex-shrink:0">
 
                         <!-- Bild -->
                         <div class="bild-img-overlay" style="position:relative">
                             <img src="<?= $bildUrl ?>" alt="<?= htmlspecialchars($bild['alt_text']) ?>"
-                                 style="width:100%;height:140px;object-fit:cover;display:block">
+                                style="width:100%;height:140px;object-fit:cover;display:block">
                             <?php if ($istHaupt): ?>
                                 <span style="position:absolute;top:8px;left:8px;
                                              background:#f59e0b;color:white;font-size:10px;
@@ -1479,11 +1482,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 </span>
                             <?php else: ?>
                                 <button class="btn-hauptbild"
-                                        style="position:absolute;top:8px;left:8px;
+                                    style="position:absolute;top:8px;left:8px;
                                                background:rgba(255,255,255,.9);border:1px solid #e2e8f0;
                                                color:#64748b;font-size:10px;padding:3px 7px;
                                                border-radius:3px;cursor:pointer;white-space:nowrap"
-                                        title="Als Hauptbild setzen">
+                                    title="Als Hauptbild setzen">
                                     ☆ Hauptbild
                                 </button>
                             <?php endif; ?>
@@ -1492,34 +1495,34 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <!-- Steuerung -->
                         <div style="padding:8px 8px 0">
                             <!-- Pfeile + Löschen -->
-<div class="bild-steuer" style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+                            <div class="bild-steuer" style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
                                 <?php if ($istHaupt): ?>
                                     <span style="font-size:10px;color:#94a3b8;font-style:italic;flex:1">
                                         nicht verschiebbar
                                     </span>
                                 <?php else: ?>
                                     <button class="btn-pos-hoch"
-                                            style="padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;
+                                        style="padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;
                                                    background:#f8fafc;cursor:pointer;font-size:13px"
-                                            title="Weiter vorne">↑</button>
+                                        title="Weiter vorne">↑</button>
                                     <button class="btn-pos-runter"
-                                            style="padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;
+                                        style="padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;
                                                    background:#f8fafc;cursor:pointer;font-size:13px"
-                                            title="Weiter hinten">↓</button>
+                                        title="Weiter hinten">↓</button>
                                     <span style="flex:1"></span>
                                 <?php endif; ?>
                                 <button class="btn-bild-loeschen"
-                                        style="padding:3px 8px;border:1px solid #fca5a5;border-radius:4px;
+                                    style="padding:3px 8px;border:1px solid #fca5a5;border-radius:4px;
                                                background:#fef2f2;color:#ef4444;cursor:pointer;font-size:13px"
-                                        title="Bild löschen">✕</button>
+                                    title="Bild löschen">✕</button>
                             </div>
 
                             <!-- Alt-Text -->
                             <input type="text"
-                                   class="erp-input bild-alt-text"
-                                   placeholder="Alt-Text (SEO)..."
-                                   value="<?= htmlspecialchars($bild['alt_text']) ?>"
-                                   style="width:100%;font-size:11px;margin-bottom:8px;box-sizing:border-box">
+                                class="erp-input bild-alt-text"
+                                placeholder="Alt-Text (SEO)..."
+                                value="<?= htmlspecialchars($bild['alt_text']) ?>"
+                                style="width:100%;font-size:11px;margin-bottom:8px;box-sizing:border-box">
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -1540,51 +1543,52 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <a href="/mealana/artikel/merkmale_verwalten.php">Merkmale verwalten →</a>
             </div>
         <?php else: ?>
-        <div class="card">
-            <div class="form-section-header" style="margin-bottom:var(--space-sm)">Merkmale</div>
+            <div class="card">
+                <div class="form-section-header" style="margin-bottom:var(--space-sm)">Merkmale</div>
 
-            <?php foreach ($merkmaleFuerTyp as $m): ?>
-            <?php
-                $gesetzteWerte = array_filter($artikelMerkmale, fn($am) => $am['merkmal_id'] == $m['id']);
-                $gesetzteWerteIds = array_column(array_values($gesetzteWerte), 'merkmal_wert_id');
-            ?>
-            <div class="form-row" style="align-items:flex-start;margin-bottom:var(--space-sm)">
-                <label class="form-label" style="min-width:160px;padding-top:4px">
-                    <?= htmlspecialchars($m['name']) ?>
-                    <?php if ($m['mehrfach_auswahl']): ?>
-                        <span style="font-size:10px;color:var(--color-text-muted)">(mehrere)</span>
-                    <?php endif; ?>
-                </label>
-                <div style="flex:1">
-                    <!-- Chip-Anzeige der gewählten Werte -->
-                    <div id="merk-chips-<?= $m['id'] ?>" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-                        <?php foreach ($gesetzteWerteIds as $wid): ?>
-                            <?php $w = array_filter($m['werte'], fn($v) => $v['id'] == $wid); $w = reset($w); ?>
-                            <?php if ($w): ?>
-                                <span class="chip chip-aktiv" style="font-size:12px"><?= htmlspecialchars($w['wert']) ?></span>
-                                <input type="hidden" name="merk[<?= $m['id'] ?>][]" value="<?= $wid ?>">
+                <?php foreach ($merkmaleFuerTyp as $m): ?>
+                    <?php
+                    $gesetzteWerte = array_filter($artikelMerkmale, fn($am) => $am['merkmal_id'] == $m['id']);
+                    $gesetzteWerteIds = array_column(array_values($gesetzteWerte), 'merkmal_wert_id');
+                    ?>
+                    <div class="form-row" style="align-items:flex-start;margin-bottom:var(--space-sm)">
+                        <label class="form-label" style="min-width:160px;padding-top:4px">
+                            <?= htmlspecialchars($m['name']) ?>
+                            <?php if ($m['mehrfach_auswahl']): ?>
+                                <span style="font-size:10px;color:var(--color-text-muted)">(mehrere)</span>
                             <?php endif; ?>
-                        <?php endforeach; ?>
-                        <?php if (empty($gesetzteWerteIds)): ?>
-                            <span style="font-size:12px;color:var(--color-text-muted)">–</span>
-                        <?php endif; ?>
+                        </label>
+                        <div style="flex:1">
+                            <!-- Chip-Anzeige der gewählten Werte -->
+                            <div id="merk-chips-<?= $m['id'] ?>" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+                                <?php foreach ($gesetzteWerteIds as $wid): ?>
+                                    <?php $w = array_filter($m['werte'], fn($v) => $v['id'] == $wid);
+                                    $w = reset($w); ?>
+                                    <?php if ($w): ?>
+                                        <span class="chip chip-aktiv" style="font-size:12px"><?= htmlspecialchars($w['wert']) ?></span>
+                                        <input type="hidden" name="merk[<?= $m['id'] ?>][]" value="<?= $wid ?>">
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                                <?php if (empty($gesetzteWerteIds)): ?>
+                                    <span style="font-size:12px;color:var(--color-text-muted)">–</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($m['werte'])): ?>
+                                <button type="button" class="btn btn-secondary btn-sm"
+                                    onclick="merkmalWaehlen(<?= $m['id'] ?>, <?= (int)$m['mehrfach_auswahl'] ?>, <?= htmlspecialchars(json_encode($m['werte'])) ?>, <?= htmlspecialchars(json_encode($gesetzteWerteIds)) ?>)">
+                                    Wählen
+                                </button>
+                            <?php else: ?>
+                                <a href="/mealana/artikel/merkmale_verwalten.php" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px">Werte konfigurieren →</a>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <?php if (!empty($m['werte'])): ?>
-                    <button type="button" class="btn btn-secondary btn-sm"
-                            onclick="merkmalWaehlen(<?= $m['id'] ?>, <?= (int)$m['mehrfach_auswahl'] ?>, <?= htmlspecialchars(json_encode($m['werte'])) ?>, <?= htmlspecialchars(json_encode($gesetzteWerteIds)) ?>)">
-                        Wählen
-                    </button>
-                    <?php else: ?>
-                    <a href="/mealana/artikel/merkmale_verwalten.php" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px">Werte konfigurieren →</a>
-                    <?php endif; ?>
+                <?php endforeach; ?>
+
+                <div style="margin-top:var(--space-md)">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="merkmaleSpeichern(<?= $id ?>)">💾 Merkmale speichern</button>
                 </div>
             </div>
-            <?php endforeach; ?>
-
-            <div style="margin-top:var(--space-md)">
-                <button type="button" class="btn btn-primary btn-sm" onclick="merkmaleSpeichern(<?= $id ?>)">💾 Merkmale speichern</button>
-            </div>
-        </div>
         <?php endif; ?>
     </div>
     <div id="tab-lieferanten" class="versteckt">
@@ -1678,316 +1682,316 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     <?php
     function renderKatBaumModal(array $nodes, int $tiefe = 0): string
-        {
-            $html = '';
-            $last = count($nodes) - 1;
-            foreach ($nodes as $idx => $node) {
-                $isLast   = ($idx === $last);
-                $pl       = $tiefe * 20;
-                $linie    = $tiefe > 0
-                    ? '<span class="kat-linie">' . ($isLast ? '└─' : '├─') . '</span>'
-                    : '';
-                $labelCls = $tiefe === 0 ? 'kat-label kat-wurzel' : 'kat-label';
-                $count    = $node['artikel_anzahl'] > 0
-                    ? ' <span class="kat-count">' . (int)$node['artikel_anzahl'] . '</span>'
-                    : '';
-                $aktionsSymbol = '';
-                if (!empty($node['ist_aktions_kategorie'])) {
-                    $farbe = !empty($node['aktion_aktiv']) ? '#e67e22' : '#aaa';
-                    $titel = !empty($node['aktion_aktiv']) ? 'Aktions-Kategorie (aktiv)' : 'Aktions-Kategorie (geplant/inaktiv)';
-                    $aktionsSymbol = ' <span title="' . $titel . '" style="color:' . $farbe . '">⏰</span>';
-                }
-                $html .= '<label class="kat-zeile" data-tiefe="' . $tiefe . '" style="padding-left:' . $pl . 'px">'
-                    . $linie
-                    . '<input type="checkbox" value="' . (int)$node['id'] . '"'
-                    . ' data-name="' . htmlspecialchars($node['name']) . '"'
-                    . ' data-parent-id="' . (int)($node['parent_id'] ?? 0) . '">'
-                    . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . $aktionsSymbol . '</span>'
-                    . $count
-                    . '</label>';
-                if (!empty($node['kinder'])) {
-                    $html .= renderKatBaumModal($node['kinder'], $tiefe + 1);
-                }
+    {
+        $html = '';
+        $last = count($nodes) - 1;
+        foreach ($nodes as $idx => $node) {
+            $isLast   = ($idx === $last);
+            $pl       = $tiefe * 20;
+            $linie    = $tiefe > 0
+                ? '<span class="kat-linie">' . ($isLast ? '└─' : '├─') . '</span>'
+                : '';
+            $labelCls = $tiefe === 0 ? 'kat-label kat-wurzel' : 'kat-label';
+            $count    = $node['artikel_anzahl'] > 0
+                ? ' <span class="kat-count">' . (int)$node['artikel_anzahl'] . '</span>'
+                : '';
+            $aktionsSymbol = '';
+            if (!empty($node['ist_aktions_kategorie'])) {
+                $farbe = !empty($node['aktion_aktiv']) ? '#e67e22' : '#aaa';
+                $titel = !empty($node['aktion_aktiv']) ? 'Aktions-Kategorie (aktiv)' : 'Aktions-Kategorie (geplant/inaktiv)';
+                $aktionsSymbol = ' <span title="' . $titel . '" style="color:' . $farbe . '">⏰</span>';
             }
-            return $html;
+            $html .= '<label class="kat-zeile" data-tiefe="' . $tiefe . '" style="padding-left:' . $pl . 'px">'
+                . $linie
+                . '<input type="checkbox" value="' . (int)$node['id'] . '"'
+                . ' data-name="' . htmlspecialchars($node['name']) . '"'
+                . ' data-parent-id="' . (int)($node['parent_id'] ?? 0) . '">'
+                . '<span class="' . $labelCls . '">' . htmlspecialchars($node['name']) . $aktionsSymbol . '</span>'
+                . $count
+                . '</label>';
+            if (!empty($node['kinder'])) {
+                $html .= renderKatBaumModal($node['kinder'], $tiefe + 1);
+            }
         }
-        ?>
-        <div id="kat-backdrop" class="modal-backdrop" onclick="katModalSchliessen()">
-            <div id="kat-modal" class="modal" onclick="event.stopPropagation()">
-                <div class="modal-header">Kategorien zuweisen</div>
+        return $html;
+    }
+    ?>
+    <div id="kat-backdrop" class="modal-backdrop" onclick="katModalSchliessen()">
+        <div id="kat-modal" class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">Kategorien zuweisen</div>
 
-                <div id="kat-checkboxen">
-                    <?= renderKatBaumModal($kategorienBaum) ?>
-                </div>
+            <div id="kat-checkboxen">
+                <?= renderKatBaumModal($kategorienBaum) ?>
+            </div>
 
-                <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
+            <hr style="border:none;border-top:1px solid var(--color-border);margin:var(--space-sm) 0">
 
-                <div id="kat-neu">
-                    <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Neue Kategorie anlegen</div>
-                    <div style="display:flex;gap:var(--space-sm);align-items:center">
-                        <select id="neue-kat-parent" class="erp-select" style="width:160px">
-                            <option value="">– Obergruppe (Root) –</option>
-                            <?php foreach ($alleKategorien as $k): ?>
-                                <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <input type="text" id="neue-kat-name" class="erp-input" placeholder="Name..." style="flex:1">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="katAnlegen()">Anlegen</button>
-                    </div>
-                </div>
-
-                <div id="kat-aktionen" style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);justify-content:flex-end">
-                    <button type="button" class="btn btn-secondary" onclick="katModalSchliessen()">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" onclick="katUebernehmen()">Übernehmen</button>
+            <div id="kat-neu">
+                <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Neue Kategorie anlegen</div>
+                <div style="display:flex;gap:var(--space-sm);align-items:center">
+                    <select id="neue-kat-parent" class="erp-select" style="width:160px">
+                        <option value="">– Obergruppe (Root) –</option>
+                        <?php foreach ($alleKategorien as $k): ?>
+                            <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" id="neue-kat-name" class="erp-input" placeholder="Name..." style="flex:1">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="katAnlegen()">Anlegen</button>
                 </div>
             </div>
-        </div>
 
-        <div id="we-backdrop" class="modal-backdrop" onclick="weModalSchliessen()">
-            <div id="we-modal" class="modal" onclick="event.stopPropagation()">
-                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-xs)">
-                    Wareneingang buchen
-                </div>
-                <form method="POST" action="lager_schnell_we.php" style="display:flex;flex-direction:column;gap:var(--space-sm)">
-                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
-                    <div class="form-row">
-                        <label class="form-label">Lager *</label>
-                        <select name="lager_id" class="erp-select" style="width:100%" required>
-                            <option value="">– Lager auswählen –</option>
-                            <?php foreach ($alleLager as $l): ?>
-                                <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Menge *</label>
-                        <input type="number" name="menge" class="erp-input" style="width:100%"
-                            step="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>"
-                            min="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>" required>
-                    </div>
-                    <?php if ($artikel['charge_pflicht']): ?>
-                        <div class="form-row">
-                            <label class="form-label">Charge *</label>
-                            <input type="text" name="charge" class="erp-input" style="width:100%" required>
-                        </div>
-                    <?php else: ?>
-                        <div class="form-row">
-                            <label class="form-label">Charge</label>
-                            <input type="text" name="charge" class="erp-input" style="width:100%" placeholder="optional">
-                        </div>
-                    <?php endif; ?>
-                    <div class="form-row">
-                        <label class="form-label">Notiz</label>
-                        <input type="text" name="notiz" class="erp-input" style="width:100%" placeholder="optional">
-                    </div>
-                    <div style="display:flex;justify-content:flex-end;gap:var(--space-sm);padding-top:var(--space-sm)">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="weModalSchliessen()">Abbrechen</button>
-                        <button type="submit" class="btn btn-primary btn-sm">Buchen</button>
-                    </div>
-                </form>
+            <div id="kat-aktionen" style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);justify-content:flex-end">
+                <button type="button" class="btn btn-secondary" onclick="katModalSchliessen()">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="katUebernehmen()">Übernehmen</button>
             </div>
         </div>
+    </div>
 
-        <div id="lief-backdrop" class="modal-backdrop" onclick="liefModalSchliessen()">
-            <div id="lief-modal" class="modal" onclick="event.stopPropagation()">
-                <div id="lief-titel" style="font-size:15px; font-weight:600; padding-bottom:var(--space-sm); border-bottom:1px solid var(--color-border); margin-bottom:var(--space-xs)">
-                    Lieferant bearbeiten:
-                </div>
-                <form style="display:flex; flex-direction:column; gap:var(--space-sm)" action="">
-                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
-                    <input type="hidden" name="al_id" id="lief-al-id" value="">
-                    <div class="form-row">
-                        <label class="form-label">Lieferant</label>
-                        <select class="erp-select" style="width:100%" name="lieferant_id" id="lief-lieferant-id">
-                            <option value="">– Lieferant auswählen –</option>
-                            <?php foreach ($alleLieferanten as $l): ?>
-                                <option value="<?= $l['id'] ?>">
-                                    <?= htmlspecialchars($l['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Artikelnummer beim Lieferant</label>
-                        <input class="erp-input" style="width:100%" type="text" name="artikelnummer_lieferant" id="lief-artnr"
-                            value="">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Netto-EK</label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.0001" name="netto_ek" id="lief-ek" value=""
-                               oninput="liefCalcBrutto()">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Brutto-EK</label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.0001" name="brutto_ek" id="lief-brutto-ek" value=""
-                               oninput="liefCalcNetto()">
-                        <span style="font-size:11px;color:var(--color-text-muted);margin-top:2px">bei <?= (float)($artikel['steuersatz'] ?? 20) ?>% MwSt.</span>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Währung</label>
-                        <input class="erp-input" style="width:100%" type="text" name="waehrung" id="lief-waehrung"
-                            value="">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">VPE</label>
-                        <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="vpe_menge" id="lief-vpe"
-                            value="">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">VPE-EAN</label>
-                        <input class="erp-input" style="width:100%" type="text" name="vpe_ean" id="lief-vpe-ean"
-                            maxlength="13" placeholder="z.B. 7071723011379" value="">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Lieferzeit</label>
-                        <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="lieferzeit_tage" id="lief-lz"
-                            value="">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Mindestbestellmenge</label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.1" name="mindestabnahme" id="lief-mba"
-                            value="">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Ist Standardlieferant</label>
-                        <input type="checkbox" name="standard_lieferant" id="lief-standard" value="1">
-                    </div>
-                    <div style="display:flex; gap:var(--space-sm); justify-content:flex-end; margin-top:var(--space-sm)">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="liefSpeichern()">Übernehmen</button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="liefModalSchliessen()">Abbrechen</button>
-                    </div>
-                </form>
+    <div id="we-backdrop" class="modal-backdrop" onclick="weModalSchliessen()">
+        <div id="we-modal" class="modal" onclick="event.stopPropagation()">
+            <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-xs)">
+                Wareneingang buchen
             </div>
-        </div>
-
-        <div id="staffel-backdrop" class="modal-backdrop" onclick="staffelModalSchliessen()">
-            <div id="staffel-modal" class="modal" onclick="event.stopPropagation()">
-                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
-                    <span id="staffel-titel">Staffelpreis hinzufügen</span>
+            <form method="POST" action="lager_schnell_we.php" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                <div class="form-row">
+                    <label class="form-label">Lager *</label>
+                    <select name="lager_id" class="erp-select" style="width:100%" required>
+                        <option value="">– Lager auswählen –</option>
+                        <?php foreach ($alleLager as $l): ?>
+                            <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-                <form id="staffel-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
-                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
-                    <input type="hidden" name="id" id="staffel-id" value="">
-                    <div class="form-row">
-                        <label class="form-label">Kundengruppe</label>
-                        <select class="erp-select" style="width:100%" name="kundengruppen_id" id="staffel-kg">
-                            <option value="">– bitte wählen –</option>
-                            <?php foreach ($kundengruppenPreise as $kp): ?>
-                                <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Menge ab</label>
-                        <input class="erp-input" style="width:100%" type="number" step="1" min="1"
-                            name="menge_ab" id="staffel-menge" placeholder="z.B. 10">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Brutto VK (€)</label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
-                            name="brutto_vk" id="staffel-brutto" placeholder="0,00" oninput="staffelNettoBerechnen()">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
-                            name="netto_vk" id="staffel-netto" placeholder="0,0000">
-                    </div>
-                    <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="staffelSpeichern()">Speichern</button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="staffelModalSchliessen()">Abbrechen</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div id="preis-backdrop" class="modal-backdrop" onclick="preisModalSchliessen()">
-            <div id="preis-modal" class="modal" onclick="event.stopPropagation()">
-                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
-                    Preis — <span id="preis-kg-name"></span>
+                <div class="form-row">
+                    <label class="form-label">Menge *</label>
+                    <input type="number" name="menge" class="erp-input" style="width:100%"
+                        step="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>"
+                        min="<?= $artikel['artikeltyp_teilbar'] ? '0.001' : '1' ?>" required>
                 </div>
-                <form id="preis-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
-                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
-                    <input type="hidden" name="kundengruppen_id" id="preis-kg-id" value="">
+                <?php if ($artikel['charge_pflicht']): ?>
                     <div class="form-row">
-                        <label class="form-label">Brutto VK (€)</label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
-                            name="brutto_vk" id="preis-brutto" placeholder="0,00" oninput="preisNettoBerechnen()">
+                        <label class="form-label">Charge *</label>
+                        <input type="text" name="charge" class="erp-input" style="width:100%" required>
                     </div>
+                <?php else: ?>
                     <div class="form-row">
-                        <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
-                            name="netto_vk" id="preis-netto" placeholder="0,0000">
+                        <label class="form-label">Charge</label>
+                        <input type="text" name="charge" class="erp-input" style="width:100%" placeholder="optional">
                     </div>
-                    <div class="form-row">
-                        <label class="form-label">Gültig ab</label>
-                        <input class="erp-input" style="width:100%" type="date" name="gueltig_ab" id="preis-ab">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Gültig bis</label>
-                        <input class="erp-input" style="width:100%" type="date" name="gueltig_bis" id="preis-bis">
-                    </div>
-                    <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="preisSpeichern()">Speichern</button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="preisModalSchliessen()">Abbrechen</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- SALE-Override-Modal -->
-        <div id="sale-backdrop" class="modal-backdrop" style="display:none" onclick="saleModalSchliessen()">
-            <div id="sale-modal" class="modal" onclick="event.stopPropagation()">
-                <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
-                    SALE-Override
+                <?php endif; ?>
+                <div class="form-row">
+                    <label class="form-label">Notiz</label>
+                    <input type="text" name="notiz" class="erp-input" style="width:100%" placeholder="optional">
                 </div>
-                <form id="sale-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
-                    <input type="hidden" name="id" id="sale-id" value="">
-                    <input type="hidden" name="artikel_id" value="<?= $id ?>">
-                    <div class="form-row">
-                        <label class="form-label">Kundengruppe <span style="font-size:11px;color:var(--color-text-muted)">(leer = alle)</span></label>
-                        <select class="erp-select" style="width:100%" name="kundengruppen_id" id="sale-kg">
-                            <option value="">– Alle Kundengruppen –</option>
-                            <?php foreach ($kundengruppenPreise as $kp): ?>
-                                <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Sale-Preis Brutto (€)</label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
-                            name="brutto_vk" id="sale-brutto" placeholder="0,00" oninput="saleNettoBerechnen()">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Sale-Preis Netto (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
-                            name="netto_vk" id="sale-netto" placeholder="0,0000">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Preis vorher Brutto (€) <span style="font-size:11px;color:var(--color-text-muted)">(optional, für Streichpreis)</span></label>
-                        <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
-                            name="preis_vorher_brutto" id="sale-vorher" placeholder="0,00">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Gültig ab</label>
-                        <input class="erp-input" style="width:100%" type="datetime-local" name="gueltig_ab" id="sale-ab">
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Gültig bis</label>
-                        <input class="erp-input" style="width:100%" type="datetime-local" name="gueltig_bis" id="sale-bis">
-                    </div>
-                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
-                        <input type="checkbox" name="bis_lagerstand_null" id="sale-lagerstand" value="1">
-                        <label for="sale-lagerstand" style="cursor:pointer">Endet wenn Lagerstand = 0</label>
-                    </div>
-                    <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="saleSpeichern()">Speichern</button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="saleModalSchliessen()">Abbrechen</button>
-                    </div>
-                </form>
-            </div>
+                <div style="display:flex;justify-content:flex-end;gap:var(--space-sm);padding-top:var(--space-sm)">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="weModalSchliessen()">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Buchen</button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <?php if ($aktionspreisOffen): ?>
+    <div id="lief-backdrop" class="modal-backdrop" onclick="liefModalSchliessen()">
+        <div id="lief-modal" class="modal" onclick="event.stopPropagation()">
+            <div id="lief-titel" style="font-size:15px; font-weight:600; padding-bottom:var(--space-sm); border-bottom:1px solid var(--color-border); margin-bottom:var(--space-xs)">
+                Lieferant bearbeiten:
+            </div>
+            <form style="display:flex; flex-direction:column; gap:var(--space-sm)" action="">
+                <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                <input type="hidden" name="al_id" id="lief-al-id" value="">
+                <div class="form-row">
+                    <label class="form-label">Lieferant</label>
+                    <select class="erp-select" style="width:100%" name="lieferant_id" id="lief-lieferant-id">
+                        <option value="">– Lieferant auswählen –</option>
+                        <?php foreach ($alleLieferanten as $l): ?>
+                            <option value="<?= $l['id'] ?>">
+                                <?= htmlspecialchars($l['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Artikelnummer beim Lieferant</label>
+                    <input class="erp-input" style="width:100%" type="text" name="artikelnummer_lieferant" id="lief-artnr"
+                        value="">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Netto-EK</label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.0001" name="netto_ek" id="lief-ek" value=""
+                        oninput="liefCalcBrutto()">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Brutto-EK</label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.0001" name="brutto_ek" id="lief-brutto-ek" value=""
+                        oninput="liefCalcNetto()">
+                    <span style="font-size:11px;color:var(--color-text-muted);margin-top:2px">bei <?= (float)($artikel['steuersatz'] ?? 20) ?>% MwSt.</span>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Währung</label>
+                    <input class="erp-input" style="width:100%" type="text" name="waehrung" id="lief-waehrung"
+                        value="">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">VPE</label>
+                    <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="vpe_menge" id="lief-vpe"
+                        value="">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">VPE-EAN</label>
+                    <input class="erp-input" style="width:100%" type="text" name="vpe_ean" id="lief-vpe-ean"
+                        maxlength="13" placeholder="z.B. 7071723011379" value="">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Lieferzeit</label>
+                    <input class="erp-input" style="width:100%" type="number" step="1" min="1" name="lieferzeit_tage" id="lief-lz"
+                        value="">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Mindestbestellmenge</label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.1" name="mindestabnahme" id="lief-mba"
+                        value="">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Ist Standardlieferant</label>
+                    <input type="checkbox" name="standard_lieferant" id="lief-standard" value="1">
+                </div>
+                <div style="display:flex; gap:var(--space-sm); justify-content:flex-end; margin-top:var(--space-sm)">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="liefSpeichern()">Übernehmen</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="liefModalSchliessen()">Abbrechen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="staffel-backdrop" class="modal-backdrop" onclick="staffelModalSchliessen()">
+        <div id="staffel-modal" class="modal" onclick="event.stopPropagation()">
+            <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+                <span id="staffel-titel">Staffelpreis hinzufügen</span>
+            </div>
+            <form id="staffel-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                <input type="hidden" name="id" id="staffel-id" value="">
+                <div class="form-row">
+                    <label class="form-label">Kundengruppe</label>
+                    <select class="erp-select" style="width:100%" name="kundengruppen_id" id="staffel-kg">
+                        <option value="">– bitte wählen –</option>
+                        <?php foreach ($kundengruppenPreise as $kp): ?>
+                            <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Menge ab</label>
+                    <input class="erp-input" style="width:100%" type="number" step="1" min="1"
+                        name="menge_ab" id="staffel-menge" placeholder="z.B. 10">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Brutto VK (€)</label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                        name="brutto_vk" id="staffel-brutto" placeholder="0,00" oninput="staffelNettoBerechnen()">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                        name="netto_vk" id="staffel-netto" placeholder="0,0000">
+                </div>
+                <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="staffelSpeichern()">Speichern</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="staffelModalSchliessen()">Abbrechen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="preis-backdrop" class="modal-backdrop" onclick="preisModalSchliessen()">
+        <div id="preis-modal" class="modal" onclick="event.stopPropagation()">
+            <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+                Preis — <span id="preis-kg-name"></span>
+            </div>
+            <form id="preis-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                <input type="hidden" name="kundengruppen_id" id="preis-kg-id" value="">
+                <div class="form-row">
+                    <label class="form-label">Brutto VK (€)</label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                        name="brutto_vk" id="preis-brutto" placeholder="0,00" oninput="preisNettoBerechnen()">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Netto VK (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                        name="netto_vk" id="preis-netto" placeholder="0,0000">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Gültig ab</label>
+                    <input class="erp-input" style="width:100%" type="date" name="gueltig_ab" id="preis-ab">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Gültig bis</label>
+                    <input class="erp-input" style="width:100%" type="date" name="gueltig_bis" id="preis-bis">
+                </div>
+                <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="preisSpeichern()">Speichern</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="preisModalSchliessen()">Abbrechen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SALE-Override-Modal -->
+    <div id="sale-backdrop" class="modal-backdrop" style="display:none" onclick="saleModalSchliessen()">
+        <div id="sale-modal" class="modal" onclick="event.stopPropagation()">
+            <div style="font-size:15px;font-weight:600;padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border);margin-bottom:var(--space-md)">
+                SALE-Override
+            </div>
+            <form id="sale-form" style="display:flex;flex-direction:column;gap:var(--space-sm)">
+                <input type="hidden" name="id" id="sale-id" value="">
+                <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                <div class="form-row">
+                    <label class="form-label">Kundengruppe <span style="font-size:11px;color:var(--color-text-muted)">(leer = alle)</span></label>
+                    <select class="erp-select" style="width:100%" name="kundengruppen_id" id="sale-kg">
+                        <option value="">– Alle Kundengruppen –</option>
+                        <?php foreach ($kundengruppenPreise as $kp): ?>
+                            <option value="<?= $kp['id'] ?>"><?= htmlspecialchars($kp['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Sale-Preis Brutto (€)</label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                        name="brutto_vk" id="sale-brutto" placeholder="0,00" oninput="saleNettoBerechnen()">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Sale-Preis Netto (€) <span style="font-size:11px;color:var(--color-text-muted)">(auto)</span></label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.0001" min="0"
+                        name="netto_vk" id="sale-netto" placeholder="0,0000">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Preis vorher Brutto (€) <span style="font-size:11px;color:var(--color-text-muted)">(optional, für Streichpreis)</span></label>
+                    <input class="erp-input" style="width:100%" type="number" step="0.01" min="0"
+                        name="preis_vorher_brutto" id="sale-vorher" placeholder="0,00">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Gültig ab</label>
+                    <input class="erp-input" style="width:100%" type="datetime-local" name="gueltig_ab" id="sale-ab">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Gültig bis</label>
+                    <input class="erp-input" style="width:100%" type="datetime-local" name="gueltig_bis" id="sale-bis">
+                </div>
+                <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                    <input type="checkbox" name="bis_lagerstand_null" id="sale-lagerstand" value="1">
+                    <label for="sale-lagerstand" style="cursor:pointer">Endet wenn Lagerstand = 0</label>
+                </div>
+                <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saleSpeichern()">Speichern</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="saleModalSchliessen()">Abbrechen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <?php if ($aktionspreisOffen): ?>
         <!-- Aktionspreis-Schnelleingabe-Modal (nach Kategorie-Zuweisung) -->
         <div id="aktpreis-backdrop" class="modal-backdrop" style="display:flex">
             <div class="modal" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">
@@ -2011,77 +2015,77 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         $statusBorder   = $istAktiv ? '#f59e0b' : '#93c5fd';
                         $vorhandene     = $akt['vorhandene_preise'] ?? [];
                     ?>
-                    <div style="margin-bottom:var(--space-lg);border:1px solid var(--color-border);border-radius:6px;overflow:hidden">
-                        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border-bottom:1px solid var(--color-border)">
-                            <span style="font-size:13px;font-weight:600"><?= htmlspecialchars($akt['aktion_name']) ?></span>
-                            <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;
+                        <div style="margin-bottom:var(--space-lg);border:1px solid var(--color-border);border-radius:6px;overflow:hidden">
+                            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f8fafc;border-bottom:1px solid var(--color-border)">
+                                <span style="font-size:13px;font-weight:600"><?= htmlspecialchars($akt['aktion_name']) ?></span>
+                                <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;
                                 background:<?= $statusBg ?>;color:<?= $statusColor ?>;border:1px solid <?= $statusBorder ?>">
-                                <?= $statusLabel ?>
-                            </span>
-                            <?php if (!$istAktiv && !empty($akt['naechster_start'])): ?>
-                                <span style="font-size:11px;color:#64748b">ab <?= date('d.m.Y', strtotime($akt['naechster_start'])) ?></span>
-                            <?php endif; ?>
+                                    <?= $statusLabel ?>
+                                </span>
+                                <?php if (!$istAktiv && !empty($akt['naechster_start'])): ?>
+                                    <span style="font-size:11px;color:#64748b">ab <?= date('d.m.Y', strtotime($akt['naechster_start'])) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <table class="erp-table" style="font-size:13px;margin:0">
+                                <thead>
+                                    <tr>
+                                        <th>Kundengruppe</th>
+                                        <?php if (!empty($aktionspreisOffen['sub_achsen'])): ?>
+                                            <?php foreach ($aktionspreisOffen['sub_achsen'] as $sa): ?>
+                                                <th style="text-align:right"><?= htmlspecialchars($sa['name']) ?></th>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <th style="text-align:right">Brutto VK</th>
+                                        <?php endif; ?>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($aktionspreisOffen['kundengruppen'] as $kg): ?>
+                                        <tr>
+                                            <td>
+                                                <?php if ($kg['ist_standard']): ?><span style="color:#FFB300">★</span> <?php endif; ?>
+                                                <?= htmlspecialchars($kg['name']) ?>
+                                            </td>
+                                            <?php if (!empty($aktionspreisOffen['sub_achsen'])): ?>
+                                                <?php foreach ($aktionspreisOffen['sub_achsen'] as $sa):
+                                                    $vKey = $kg['id'] . ':' . $sa['id'];
+                                                    $vVal = isset($vorhandene[$vKey]) ? number_format($vorhandene[$vKey], 2, '.', '') : '';
+                                                ?>
+                                                    <td style="text-align:right">
+                                                        <input type="number" step="0.01" min="0"
+                                                            class="erp-input aktpreis-input"
+                                                            style="width:90px;text-align:right"
+                                                            value="<?= $vVal ?>"
+                                                            data-aktion-id="<?= $akt['aktion_id'] ?>"
+                                                            data-kg-id="<?= $kg['id'] ?>"
+                                                            data-artikel-id="<?= $id ?>"
+                                                            data-sub-achse-id="<?= $sa['id'] ?>"
+                                                            data-mwst="<?= $aktionspreisOffen['mwst_satz'] ?>"
+                                                            placeholder="0.00">
+                                                    </td>
+                                                <?php endforeach; ?>
+                                            <?php else:
+                                                $vKey = $kg['id'] . ':0';
+                                                $vVal = isset($vorhandene[$vKey]) ? number_format($vorhandene[$vKey], 2, '.', '') : '';
+                                            ?>
+                                                <td style="text-align:right">
+                                                    <input type="number" step="0.01" min="0"
+                                                        class="erp-input aktpreis-input"
+                                                        style="width:90px;text-align:right"
+                                                        value="<?= $vVal ?>"
+                                                        data-aktion-id="<?= $akt['aktion_id'] ?>"
+                                                        data-kg-id="<?= $kg['id'] ?>"
+                                                        data-artikel-id="<?= $id ?>"
+                                                        data-sub-achse-id=""
+                                                        data-mwst="<?= $aktionspreisOffen['mwst_satz'] ?>"
+                                                        placeholder="0.00">
+                                                </td>
+                                            <?php endif; ?>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
-                        <table class="erp-table" style="font-size:13px;margin:0">
-                            <thead>
-                                <tr>
-                                    <th>Kundengruppe</th>
-                                    <?php if (!empty($aktionspreisOffen['sub_achsen'])): ?>
-                                        <?php foreach ($aktionspreisOffen['sub_achsen'] as $sa): ?>
-                                            <th style="text-align:right"><?= htmlspecialchars($sa['name']) ?></th>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <th style="text-align:right">Brutto VK</th>
-                                    <?php endif; ?>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($aktionspreisOffen['kundengruppen'] as $kg): ?>
-                                <tr>
-                                    <td>
-                                        <?php if ($kg['ist_standard']): ?><span style="color:#FFB300">★</span> <?php endif; ?>
-                                        <?= htmlspecialchars($kg['name']) ?>
-                                    </td>
-                                    <?php if (!empty($aktionspreisOffen['sub_achsen'])): ?>
-                                        <?php foreach ($aktionspreisOffen['sub_achsen'] as $sa):
-                                            $vKey = $kg['id'] . ':' . $sa['id'];
-                                            $vVal = isset($vorhandene[$vKey]) ? number_format($vorhandene[$vKey], 2, '.', '') : '';
-                                        ?>
-                                        <td style="text-align:right">
-                                            <input type="number" step="0.01" min="0"
-                                                class="erp-input aktpreis-input"
-                                                style="width:90px;text-align:right"
-                                                value="<?= $vVal ?>"
-                                                data-aktion-id="<?= $akt['aktion_id'] ?>"
-                                                data-kg-id="<?= $kg['id'] ?>"
-                                                data-artikel-id="<?= $id ?>"
-                                                data-sub-achse-id="<?= $sa['id'] ?>"
-                                                data-mwst="<?= $aktionspreisOffen['mwst_satz'] ?>"
-                                                placeholder="0.00">
-                                        </td>
-                                        <?php endforeach; ?>
-                                    <?php else:
-                                        $vKey = $kg['id'] . ':0';
-                                        $vVal = isset($vorhandene[$vKey]) ? number_format($vorhandene[$vKey], 2, '.', '') : '';
-                                    ?>
-                                        <td style="text-align:right">
-                                            <input type="number" step="0.01" min="0"
-                                                class="erp-input aktpreis-input"
-                                                style="width:90px;text-align:right"
-                                                value="<?= $vVal ?>"
-                                                data-aktion-id="<?= $akt['aktion_id'] ?>"
-                                                data-kg-id="<?= $kg['id'] ?>"
-                                                data-artikel-id="<?= $id ?>"
-                                                data-sub-achse-id=""
-                                                data-mwst="<?= $aktionspreisOffen['mwst_satz'] ?>"
-                                                placeholder="0.00">
-                                        </td>
-                                    <?php endif; ?>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
                     <?php endforeach; ?>
                 </div>
                 <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;align-items:center;padding:var(--space-sm) var(--space-md);border-top:1px solid var(--color-border)">
@@ -2091,105 +2095,106 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </div>
             </div>
         </div>
-        <?php endif; ?>
+    <?php endif; ?>
 
-        <!-- Merkmal-Auswahl-Modal -->
-        <div id="merk-backdrop" class="modal-backdrop" style="display:none" onclick="merkmalModalSchliessen()">
-            <div class="modal" style="max-width:420px;max-height:70vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
-                <div class="modal-header" id="merk-modal-titel">Merkmal wählen</div>
-                <div id="merk-modal-liste" style="overflow-y:auto;flex:1;padding:var(--space-sm)"></div>
-                <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;padding:var(--space-sm);border-top:1px solid var(--color-border)">
-                    <button class="btn btn-secondary" onclick="merkmalModalSchliessen()">Abbrechen</button>
-                    <button class="btn btn-primary" onclick="merkmalUebernehmen()">Übernehmen</button>
-                </div>
+    <!-- Merkmal-Auswahl-Modal -->
+    <div id="merk-backdrop" class="modal-backdrop" style="display:none" onclick="merkmalModalSchliessen()">
+        <div class="modal" style="max-width:420px;max-height:70vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+            <div class="modal-header" id="merk-modal-titel">Merkmal wählen</div>
+            <div id="merk-modal-liste" style="overflow-y:auto;flex:1;padding:var(--space-sm)"></div>
+            <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;padding:var(--space-sm);border-top:1px solid var(--color-border)">
+                <button class="btn btn-secondary" onclick="merkmalModalSchliessen()">Abbrechen</button>
+                <button class="btn btn-primary" onclick="merkmalUebernehmen()">Übernehmen</button>
             </div>
         </div>
+    </div>
 
-        <script>
-            window.MEALANA_ARTIKEL_ID = <?= $id ?>;
-            window.MEALANA_MWST_SATZ  = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
-        </script>
-        <script src="/mealana/js/artikel_detail.js"></script>
+    <script>
+        window.MEALANA_ARTIKEL_ID = <?= $id ?>;
+        window.MEALANA_MWST_SATZ = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
+    </script>
+    <script src="/mealana/js/tinymce/tinymce.min.js"></script>
+    <script src="/mealana/js/artikel_detail.js"></script>
 
-        <?php if (!$istKind): ?>
-            <!-- ── Achsen-Modal ────────────────────────────────────────────────── -->
-            <div id="achsen-backdrop" class="modal-backdrop" onclick="achsenModalSchliessen()">
-                <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
-                    <div class="modal-header" style="flex-shrink:0">
-                        Achsen &amp; Variantenwerte
-                        <button onclick="achsenModalSchliessen()" class="modal-close">✕</button>
-                    </div>
-                    <div style="overflow-y:auto;flex:1;padding:var(--space-md)">
-                        <?php if (empty($alleGlobalenAchsen)): ?>
-                            <p style="color:var(--color-text-muted);font-size:13px">
-                                Keine Achsen im System — erst
-                                <a href="/mealana/achsen/liste.php" target="_blank">Achsen anlegen ↗</a>
-                            </p>
-                        <?php else: ?>
-                            <?php foreach ($alleGlobalenAchsen as $ga):
-                                $istChecked      = in_array($ga['id'], $zugewieseneAchsenIds);
-                                $werteVorhanden  = $werteProAchse[$ga['id']] ?? [];
-                                $achseGesperrt   = !empty(array_filter(
-                                    $werteVorhanden,
-                                    fn($w) => isset($wertIdsInUseSet[$w['id']])
-                                ));
-                            ?>
-                                <div style="margin-bottom:var(--space-md);padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
-                                    <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;font-size:13px">
-                                        <input type="checkbox" class="achse-checkbox"
-                                            data-achse-id="<?= $ga['id'] ?>"
-                                            <?= $istChecked ? 'checked' : '' ?>
-                                            <?= $achseGesperrt ? 'data-has-locked="1"' : '' ?>
-                                            onchange="achseToggle(this)">
-                                        <?= htmlspecialchars($ga['name']) ?>
-                                        <span style="font-size:11px;color:var(--color-text-muted);font-weight:400"><?= htmlspecialchars($ga['darstellungsform']) ?></span>
-                                        <?php if ($achseGesperrt): ?>
-                                            <span style="font-size:11px;color:var(--color-text-muted)">— hat Kind-Artikel</span>
-                                        <?php endif; ?>
-                                    </label>
-                                    <div id="achse-werte-<?= $ga['id'] ?>" style="margin-top:8px;margin-left:22px;<?= !$istChecked ? 'display:none' : '' ?>">
-                                        <div id="achse-chips-<?= $ga['id'] ?>" style="margin-bottom:6px">
-                                            <?php foreach ($werteVorhanden as $w):
-                                                $wertGesperrt = isset($wertIdsInUseSet[$w['id']]);
-                                            ?>
-                                                <div class="achse-wert-zeile" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px">
-                                                    <span class="achse-chip-text" style="font-size:13px"><?= htmlspecialchars($w['wert']) ?></span>
-                                                    <div style="display:flex;gap:2px;flex-shrink:0;align-items:center">
-                                                        <button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>
-                                                        <button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>
-                                                        <?php if ($wertGesperrt): ?>
-                                                            <span title="Wird von einem Kind-Artikel verwendet — kann nicht entfernt werden"
-                                                                style="font-size:12px;color:var(--color-text-muted);padding:0 4px;cursor:default">🔒</span>
-                                                        <?php else: ?>
-                                                            <button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>
-                                                        <?php endif; ?>
-                                                    </div>
+    <?php if (!$istKind): ?>
+        <!-- ── Achsen-Modal ────────────────────────────────────────────────── -->
+        <div id="achsen-backdrop" class="modal-backdrop" onclick="achsenModalSchliessen()">
+            <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+                <div class="modal-header" style="flex-shrink:0">
+                    Achsen &amp; Variantenwerte
+                    <button onclick="achsenModalSchliessen()" class="modal-close">✕</button>
+                </div>
+                <div style="overflow-y:auto;flex:1;padding:var(--space-md)">
+                    <?php if (empty($alleGlobalenAchsen)): ?>
+                        <p style="color:var(--color-text-muted);font-size:13px">
+                            Keine Achsen im System — erst
+                            <a href="/mealana/achsen/liste.php" target="_blank">Achsen anlegen ↗</a>
+                        </p>
+                    <?php else: ?>
+                        <?php foreach ($alleGlobalenAchsen as $ga):
+                            $istChecked      = in_array($ga['id'], $zugewieseneAchsenIds);
+                            $werteVorhanden  = $werteProAchse[$ga['id']] ?? [];
+                            $achseGesperrt   = !empty(array_filter(
+                                $werteVorhanden,
+                                fn($w) => isset($wertIdsInUseSet[$w['id']])
+                            ));
+                        ?>
+                            <div style="margin-bottom:var(--space-md);padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
+                                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;font-size:13px">
+                                    <input type="checkbox" class="achse-checkbox"
+                                        data-achse-id="<?= $ga['id'] ?>"
+                                        <?= $istChecked ? 'checked' : '' ?>
+                                        <?= $achseGesperrt ? 'data-has-locked="1"' : '' ?>
+                                        onchange="achseToggle(this)">
+                                    <?= htmlspecialchars($ga['name']) ?>
+                                    <span style="font-size:11px;color:var(--color-text-muted);font-weight:400"><?= htmlspecialchars($ga['darstellungsform']) ?></span>
+                                    <?php if ($achseGesperrt): ?>
+                                        <span style="font-size:11px;color:var(--color-text-muted)">— hat Kind-Artikel</span>
+                                    <?php endif; ?>
+                                </label>
+                                <div id="achse-werte-<?= $ga['id'] ?>" style="margin-top:8px;margin-left:22px;<?= !$istChecked ? 'display:none' : '' ?>">
+                                    <div id="achse-chips-<?= $ga['id'] ?>" style="margin-bottom:6px">
+                                        <?php foreach ($werteVorhanden as $w):
+                                            $wertGesperrt = isset($wertIdsInUseSet[$w['id']]);
+                                        ?>
+                                            <div class="achse-wert-zeile" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;background:#F7FAFC;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:3px">
+                                                <span class="achse-chip-text" style="font-size:13px"><?= htmlspecialchars($w['wert']) ?></span>
+                                                <div style="display:flex;gap:2px;flex-shrink:0;align-items:center">
+                                                    <button type="button" onclick="achseWertHoch(this)" class="btn btn-secondary btn-xs" title="Nach oben">▲</button>
+                                                    <button type="button" onclick="achseWertRunter(this)" class="btn btn-secondary btn-xs" title="Nach unten">▼</button>
+                                                    <?php if ($wertGesperrt): ?>
+                                                        <span title="Wird von einem Kind-Artikel verwendet — kann nicht entfernt werden"
+                                                            style="font-size:12px;color:var(--color-text-muted);padding:0 4px;cursor:default">🔒</span>
+                                                    <?php else: ?>
+                                                        <button type="button" onclick="achseZeileEntfernen(this)" class="btn btn-danger btn-xs" title="Entfernen">✕</button>
+                                                    <?php endif; ?>
                                                 </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                        <div style="display:flex;gap:4px">
-                                            <input type="text" class="erp-input achse-wert-input"
-                                                data-achse-id="<?= $ga['id'] ?>"
-                                                placeholder="Wert eingeben + Enter"
-                                                style="font-size:12px;padding:4px 8px;flex:1"
-                                                onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();achseWertHinzufuegen(<?= $ga['id'] ?>)}">
-                                            <button type="button" class="btn btn-secondary btn-xs"
-                                                onclick="achseWertHinzufuegen(<?= $ga['id'] ?>)">+</button>
-                                        </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div style="display:flex;gap:4px">
+                                        <input type="text" class="erp-input achse-wert-input"
+                                            data-achse-id="<?= $ga['id'] ?>"
+                                            placeholder="Wert eingeben + Enter"
+                                            style="font-size:12px;padding:4px 8px;flex:1"
+                                            onkeydown="if(event.key==='Enter'||event.key==='Tab'){event.preventDefault();achseWertHinzufuegen(<?= $ga['id'] ?>)}">
+                                        <button type="button" class="btn btn-secondary btn-xs"
+                                            onclick="achseWertHinzufuegen(<?= $ga['id'] ?>)">+</button>
                                     </div>
                                 </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </div>
-                    <div style="flex-shrink:0;padding:var(--space-sm) var(--space-md);border-top:1px solid var(--color-border);display:flex;gap:var(--space-sm);justify-content:flex-end">
-                        <button onclick="achsenModalSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
-                        <button id="achsen-speichern-btn" onclick="achsenSpeichern()" class="btn btn-primary btn-sm">Speichern</button>
-                    </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
-
+                <div style="flex-shrink:0;padding:var(--space-sm) var(--space-md);border-top:1px solid var(--color-border);display:flex;gap:var(--space-sm);justify-content:flex-end">
+                    <button onclick="achsenModalSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
+                    <button id="achsen-speichern-btn" onclick="achsenSpeichern()" class="btn btn-primary btn-sm">Speichern</button>
+                </div>
             </div>
 
-        <?php endif; ?>
+        </div>
 
-        <script src="/mealana/js/bilder.js"></script>
-        <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
+    <?php endif; ?>
+
+    <script src="/mealana/js/bilder.js"></script>
+    <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

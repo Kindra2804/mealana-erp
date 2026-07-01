@@ -1,6 +1,6 @@
 // Zustand-Artikel Bearbeiten (nur aktiv wenn BEARB_ZUSTAND_SUFFIX gesetzt)
 function zustandBearbeitenGeaendert(wert) {
-    var suffix     = (window.BEARB_ZUSTAND_SUFFIX || {})[wert] || '';
+    var suffix = (window.BEARB_ZUSTAND_SUFFIX || {})[wert] || '';
     var artnrInput = document.getElementById('artikelnummer');
     if (suffix) artnrInput.value = (window.BEARB_VATER_ARTNR || '') + '-' + suffix;
 }
@@ -30,3 +30,23 @@ function zustandBearbeitenGeaendert(wert) {
     berechneNetto();
     berechneGrundpreis();
 })();
+
+// TinyMCE init
+tinymce.init({
+    selector: '#beschreibung',
+    menubar: false,
+    plugins: 'lists link',
+    toolbar: 'bold italic underline | bullist numlist | link | removeformat',
+    height: 300,
+    content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }'
+});
+
+tinymce.init({
+    selector: '#kurzbeschreibung',
+    menubar: false,
+    plugins: '',
+    toolbar: 'bold italic underline | removeformat',
+    height: 120,
+    content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }'
+});
+
