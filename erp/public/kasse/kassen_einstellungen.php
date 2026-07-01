@@ -34,7 +34,7 @@ require_once __DIR__ . '/shell_top.php';
 <?php endif; ?>
 
 <?php foreach ($kassen as $k): ?>
-<div class="card" style="margin-bottom:24px">
+<div class="ks-card" style="margin-bottom:24px">
   <div style="font-size:16px;font-weight:700;color:#1e3a5f;margin-bottom:16px">
     ⚙ Kasse <?= (int)$k['id'] ?>: <?= htmlspecialchars($k['name'] ?? '') ?>
     <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px">(<?= htmlspecialchars($k['kasse_nr'] ?? '') ?>)</span>
@@ -76,7 +76,7 @@ require_once __DIR__ . '/shell_top.php';
     </div>
 
     <div style="text-align:right">
-      <button type="submit" class="btn btn-primary">✓ Speichern</button>
+      <button type="submit" class="ks-btn ks-btn-primary">✓ Speichern</button>
     </div>
   </form>
 </div>
