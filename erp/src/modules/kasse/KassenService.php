@@ -167,7 +167,8 @@ class KassenService
             SELECT id, charge, bestand, charge_status
             FROM lagerbestand
             WHERE artikel_id = :aid AND lager_id = :lid
-              AND charge IS NOT NULL AND bestand > 0
+              AND (charge IS NOT NULL OR charge_status = 'nachzutragen')
+              AND bestand > 0
             ORDER BY charge_status = 'nachzutragen' DESC, erstellt_am ASC
         ");
         $stmt->execute([':aid' => $artikelId, ':lid' => $lagerId]);
