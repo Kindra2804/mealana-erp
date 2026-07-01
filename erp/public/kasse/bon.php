@@ -1123,6 +1123,24 @@ body {
   </div>
 </div>
 
+<div class="ov" id="ov-nullbestand">
+  <div class="ov-box">
+    <div class="ov-title" style="color:#92400e">⚠ Lagerbestand 0</div>
+    <div class="warn-box" style="margin-bottom:14px">
+      <strong id="nullbest-name" style="display:block;margin-bottom:4px"></strong>
+      <span style="font-size:12px;color:#64748b" id="nullbest-artnr"></span>
+    </div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:16px">
+      Systembestand ist 0 — Artikel physisch gefunden?<br>
+      Eine Korrekturbuchung wird automatisch erstellt.
+    </p>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-red" onclick="nullbestandBestaetigen()">Trotzdem buchen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-nullbestand')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Spinner -->
 <div class="spinner-overlay" id="spinner">
   <div class="spinner"></div>
@@ -1219,7 +1237,9 @@ var warenkorb          = [];
 var aktiveZeile        = -1;
 var globalRabatt       = 0;
 var numpadBuf          = '';
-var pendingArtikel     = null;
+var pendingArtikel        = null;
+var nullbestandPendingArtikel = null;
+var nullbestandPendingMenge   = 1;
 var kundeId            = null;
 var geladenerAuftragId       = null;
 var geladenerAuftragNr       = null;
@@ -1338,6 +1358,16 @@ function artikelHinzufuegen(a) {
         return;
     }
 
+    // Bestand=0 Warnung (gilt für alle Artikel ausser Divers)
+    if ((parseFloat(a.bestand_physisch) || 0) <= 0 && !a.istDivers) {
+        nullbestandPendingArtikel = a;
+        nullbestandPendingMenge   = menge;
+        document.getElementById('nullbest-name').textContent  = a.bezeichnung;
+        document.getElementById('nullbest-artnr').textContent = a.artikelnummer || '';
+        ov('ov-nullbestand');
+        return;
+    }
+
     // Charge-Auswahl wenn Artikel Chargen hat oder charge_pflicht=1
     if (a.charge_pflicht || a.hat_chargen) {
         zeigeKasseChargePopup(a, menge);
@@ -1366,6 +1396,24 @@ function reswarnBestaetigen() {
     if (pendingArtikel) {
         _artikelEinfuegen(pendingArtikel.a, pendingArtikel.menge);
         pendingArtikel = null;
+    }
+}
+
+function nullbestandBestaetigen() {
+    ovSchliessen('ov-nullbestand');
+    var a = nullbestandPendingArtikel;
+    var m = nullbestandPendingMenge;
+    nullbestandPendingArtikel = null;
+    if (!a) return;
+    if (a.hat_chargen || a.charge_pflicht) {
+        // Synthetische "neue Charge"-Zeile — kein bestehender Lagerbestand-Eintrag
+        var aMitNeu = Object.assign({}, a, {
+            alle_chargen: [{ id: null, charge: null, bestand: 0, charge_status: 'nachzutragen' }],
+            fifo_charge: null
+        });
+        zeigeKasseChargePopup(aMitNeu, m);
+    } else {
+        _artikelEinfuegen(a, m);
     }
 }
 
@@ -1562,7 +1610,15 @@ function zeilePlus(i) {
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.erfolg) {
-                    zeigeKasseChargePopup(d, 1);
+                    if ((parseFloat(d.bestand_physisch) || 0) <= 0) {
+                        nullbestandPendingArtikel = d;
+                        nullbestandPendingMenge   = 1;
+                        document.getElementById('nullbest-name').textContent  = d.bezeichnung;
+                        document.getElementById('nullbest-artnr').textContent = d.artikelnummer || '';
+                        ov('ov-nullbestand');
+                    } else {
+                        zeigeKasseChargePopup(d, 1);
+                    }
                 } else {
                     p.menge++;
                     renderBon();
