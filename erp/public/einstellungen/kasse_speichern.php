@@ -14,8 +14,9 @@ $istNeu = $id === 0;
 $name          = trim($_POST['name'] ?? '');
 $kasseNr       = trim($_POST['kasse_nr'] ?? '');
 $lagerId       = (int)($_POST['lager_id'] ?? 0);
-$modus         = in_array($_POST['modus'] ?? '', ['online','offline']) ? $_POST['modus'] : 'online';
-$rksvKassenId  = trim($_POST['rksv_kassen_id'] ?? '') ?: null;
+$modus          = in_array($_POST['modus'] ?? '', ['online','offline']) ? $_POST['modus'] : 'online';
+$ausgabeFormat  = in_array($_POST['ausgabe_format'] ?? '', ['fragen','80mm','a4']) ? $_POST['ausgabe_format'] : 'fragen';
+$rksvKassenId   = trim($_POST['rksv_kassen_id'] ?? '') ?: null;
 $bonLogo       = isset($_POST['bon_logo']) ? 1 : 0;
 $aktiv         = isset($_POST['aktiv']) ? 1 : 0;
 
@@ -41,18 +42,18 @@ try {
 
     if ($istNeu) {
         $stmt = $db->prepare("
-            INSERT INTO kassen (name, kasse_nr, lager_id, modus, rksv_kassen_id, bon_logo, aktiv)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO kassen (name, kasse_nr, lager_id, modus, ausgabe_format, rksv_kassen_id, bon_logo, aktiv)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$name, $kasseNr, $lagerId, $modus, $rksvKassenId, $bonLogo, $aktiv]);
+        $stmt->execute([$name, $kasseNr, $lagerId, $modus, $ausgabeFormat, $rksvKassenId, $bonLogo, $aktiv]);
         $id = (int)$db->lastInsertId();
     } else {
         $stmt = $db->prepare("
             UPDATE kassen
-            SET name = ?, lager_id = ?, modus = ?, rksv_kassen_id = ?, bon_logo = ?, aktiv = ?
+            SET name = ?, lager_id = ?, modus = ?, ausgabe_format = ?, rksv_kassen_id = ?, bon_logo = ?, aktiv = ?
             WHERE id = ?
         ");
-        $stmt->execute([$name, $lagerId, $modus, $rksvKassenId, $bonLogo, $aktiv, $id]);
+        $stmt->execute([$name, $lagerId, $modus, $ausgabeFormat, $rksvKassenId, $bonLogo, $aktiv, $id]);
 
         // Schnellwahl speichern
         $swArtikelIds = $_POST['sw_artikel_id'] ?? [];

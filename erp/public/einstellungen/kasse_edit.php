@@ -111,6 +111,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
 
             <div class="form-group">
+                <label class="form-label">Bon-Ausgabeformat</label>
+                <select name="ausgabe_format" class="erp-select">
+                    <option value="fragen" <?= ($kasse['ausgabe_format'] ?? 'fragen') === 'fragen' ? 'selected' : '' ?>>Nach jeder Zahlung fragen (80mm / A4 / ohne)</option>
+                    <option value="80mm"   <?= ($kasse['ausgabe_format'] ?? 'fragen') === '80mm'   ? 'selected' : '' ?>>Immer 80mm Thermodruck</option>
+                    <option value="a4"     <?= ($kasse['ausgabe_format'] ?? 'fragen') === 'a4'     ? 'selected' : '' ?>>Immer A4-Rechnung (PDF)</option>
+                </select>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">Offline/Messe erzwingt immer 80mm, unabhängig von dieser Einstellung.</div>
+            </div>
+
+            <div class="form-group">
                 <label class="form-label">RKSV-Kassen-ID</label>
                 <input type="text" name="rksv_kassen_id" class="erp-input"
                     value="<?= htmlspecialchars($kasse['rksv_kassen_id'] ?? '') ?>"
