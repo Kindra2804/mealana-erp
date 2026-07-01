@@ -7,7 +7,7 @@ $moduleLabel = match ($activeModule ?? '') {
     'versand'     => 'Versand',
     'retouren'    => 'Retouren',
     'einkauf'     => 'Einkauf',
-    'buchhaltung' => 'Buchhaltung',
+    'buchhaltung'   => 'Buchhaltung',
     'lieferanten' => 'Lieferanten',
     'hersteller'  => 'Hersteller',
     'partner'      => 'Partner',
@@ -63,6 +63,9 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '👥', 'label' => 'Partner',           'href' => '/mealana/partner/liste.php'],
         ['icon' => '🗄',  'label' => 'Mietfächer',       'href' => '/mealana/partner/mietfaecher.php'],
     ],
+    'buchhaltung' => [
+        ['icon' => '🏷', 'label' => 'Artikelgruppen',   'href' => '/mealana/buchhaltung/artikel_gruppen.php'],
+    ],
     'einstellungen' => [
         ['icon' => '🏢', 'label' => 'Firma',       'href' => '/mealana/einstellungen/index.php?tab=firma'],
         ['icon' => '🛍', 'label' => 'Kanäle',      'href' => '/mealana/einstellungen/index.php?tab=kanaele'],
@@ -109,7 +112,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <div class="erp-nav-divider"></div>
                 <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
                 <a href="/mealana/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
-                <a href="#" title="Buchhaltung — kommt bald" class="erp-nav-link erp-nav-link-disabled <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
+                <a href="/mealana/buchhaltung/artikel_gruppen.php" class="erp-nav-link <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-icons">
                 <a href="/mealana/bedienungsanleitung.php" title="Bedienungsanleitung" class="erp-nav-icon">📖</a>

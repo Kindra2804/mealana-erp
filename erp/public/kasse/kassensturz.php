@@ -143,6 +143,10 @@ function eur(float $v): string { return '€ ' . number_format($v, 2, ',', '.');
         </form>
       </div>
     </div>
+    <div style="border-top:1px solid #2a4a6c;margin-top:14px;padding-top:14px;display:flex;gap:10px">
+      <a href="abschluss_periode.php" class="ks-btn ks-btn-secondary" style="flex:1;text-align:center">📅 Monats-/Quartalsabschluss</a>
+      <a href="abschluss_liste.php"   class="ks-btn ks-btn-secondary" style="flex:1;text-align:center">📋 Abschluss-Archiv</a>
+    </div>
   </div>
 
 </div>

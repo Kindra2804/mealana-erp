@@ -32,6 +32,12 @@ $artikelTypen    = $service->getAllArtikelTypen();
 $alleEinheiten   = $service->getAllEinheiten();
 $alleHersteller  = $service->getAllHersteller();
 $steuerklassen   = $service->getAllSteuerklassen();
+
+$db_detail = \Database::getInstance();
+$artikelGruppen = $db_detail->query("
+    SELECT id, konto_nr, name FROM artikel_gruppen WHERE aktiv = 1 ORDER BY sortierung, konto_nr
+")->fetchAll();
+
 $variantenService  = new VariantenService();
 $achsen            = $variantenService->findAchsenByArtikelId($id);
 $werte             = $variantenService->findWerteByArtikelId($id);
@@ -453,7 +459,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             </div>
                         </div>
 
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
+                        <?php if (empty($artikel['artikel_gruppe_id'])): ?>
+                        <div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:8px 12px;margin-bottom:10px;border-radius:4px;font-size:12px">
+                            ⚠ Dieser Artikel hat noch <strong>keine Artikelgruppe</strong> — bitte unten zuordnen und speichern.
+                        </div>
+                        <?php endif; ?>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-md)">
                             <div class="form-group">
                                 <label class="form-label">Hersteller</label>
                                 <select name="hersteller_id" class="erp-select" style="width:100%">
@@ -473,6 +485,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                         <option value="<?= $s['id'] ?>"
                                             <?= (string)($artikel['steuerklasse_id'] ?? '') === (string)$s['id'] ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($s['name']) ?> (<?= $s['satz'] ?>%)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Artikelgruppe *</label>
+                                <select name="artikel_gruppe_id" class="erp-select" style="width:100%;<?= empty($artikel['artikel_gruppe_id']) ? 'border-color:#f59e0b' : '' ?>">
+                                    <option value="">– bitte wählen –</option>
+                                    <?php foreach ($artikelGruppen as $ag): ?>
+                                        <option value="<?= $ag['id'] ?>"
+                                            <?= (string)($artikel['artikel_gruppe_id'] ?? '') === (string)$ag['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($ag['konto_nr'] . ' – ' . $ag['name']) ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
