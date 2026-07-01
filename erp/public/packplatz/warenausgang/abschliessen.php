@@ -160,13 +160,20 @@ try {
             : "Versendet — Tracking: {$tracking}");
     $auftragRepo->logStatus($auftragId, ['lieferstatus' => [$auftrag['lieferstatus'], $neuerStatus]], $notizText, $benutzerId);
 
+    // Auto-Abgeschlossen: versendet + bezahlt → abgeschlossen
+    if ($neuerStatus === 'versendet' && ($auftrag['zahlungsstatus'] ?? '') === 'bezahlt') {
+        $db->prepare("UPDATE auftraege SET lieferstatus='abgeschlossen', aktualisiert_am=NOW() WHERE id=?")
+           ->execute([$auftragId]);
+        $auftragRepo->logStatus($auftragId, ['lieferstatus' => ['versendet', 'abgeschlossen']], 'Automatisch abgeschlossen (versendet + bezahlt)', $benutzerId);
+    }
+
     // Pickliste abschließen (wenn alle Aufträge versendet)
     if ($picklisteId) {
         $offene = $db->prepare("
             SELECT COUNT(*) FROM pickliste_auftraege pa
             JOIN auftraege a ON a.id = pa.auftrag_id
             WHERE pa.pickliste_id = ?
-              AND a.lieferstatus NOT IN ('versendet','teilgeliefert','abgeschlossen','storniert')
+              AND a.lieferstatus NOT IN ('versendet','teilgeliefert','abgeschlossen','storniert','abholbereit')
         ");
         $offene->execute([$picklisteId]);
         if ((int)$offene->fetchColumn() === 0) {

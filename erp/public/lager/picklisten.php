@@ -109,6 +109,20 @@ $picklisten = $db->query("
     ORDER BY pl.erstellt_am DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+// ── Abgeschlossene Picklisten (letzte 20, für History-Sektion) ─────────────
+$picklistenAbgeschlossen = $db->query("
+    SELECT pl.id, pl.nummer, pl.status, pl.erstellt_am, pl.abgeschlossen_am,
+           COUNT(pa.auftrag_id) AS anzahl_auftraege,
+           b.formularname AS erstellt_von_name
+    FROM picklisten pl
+    LEFT JOIN pickliste_auftraege pa ON pa.pickliste_id = pl.id
+    LEFT JOIN benutzer b ON b.id = pl.erstellt_von
+    WHERE pl.status = 'abgeschlossen'
+    GROUP BY pl.id
+    ORDER BY pl.abgeschlossen_am DESC
+    LIMIT 20
+")->fetchAll(PDO::FETCH_ASSOC);
+
 // ── Lagerstand-Übersicht (für collapsible Bereich) ─────────────────────────
 $lagerstand = $db->query("
     SELECT ar.artikelnummer, ar.name AS bezeichnung,
@@ -334,6 +348,39 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
         <?php endif; ?>
     </div>
+
+    <!-- Abgeschlossene Picklisten (eingeklappt) -->
+    <?php if (!empty($picklistenAbgeschlossen)): ?>
+    <div class="pl-card" style="padding:0">
+        <details>
+            <summary style="padding:12px 14px;cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--color-text-muted)">▶</span>
+                Abgeschlossene Picklisten
+                <span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:4px">(letzte <?= count($picklistenAbgeschlossen) ?>)</span>
+            </summary>
+            <div style="border-top:1px solid var(--color-border);padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+                <?php foreach ($picklistenAbgeschlossen as $apl): ?>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px">
+                    <div>
+                        <span style="font-weight:600;font-family:monospace"><?= htmlspecialchars($apl['nummer']) ?></span>
+                        <span style="color:var(--color-text-muted);font-size:11px;margin-left:6px">
+                            <?= (int)$apl['anzahl_auftraege'] ?> Auftr.
+                        </span>
+                    </div>
+                    <div style="font-size:11px;color:var(--color-text-muted);white-space:nowrap">
+                        <?= $apl['abgeschlossen_am'] ? date('d.m.Y H:i', strtotime($apl['abgeschlossen_am'])) : '–' ?>
+                    </div>
+                    <a href="/mealana/lager/pickliste_pdf.php?id=<?= $apl['id'] ?>"
+                       target="_blank"
+                       style="font-size:11px;color:var(--color-text-muted);text-decoration:none;border:1px solid var(--color-border);border-radius:4px;padding:2px 8px;white-space:nowrap">
+                        📄 PDF
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </details>
+    </div>
+    <?php endif; ?>
 
     <!-- Legende -->
     <div class="pl-card" style="font-size:12px;color:var(--color-text-muted)">
