@@ -12,7 +12,7 @@ require_once __DIR__ . '/../../core/Database.php';
  *
  * Wichtige Designentscheidungen:
  *   - findAll() / countAll() verwenden dasselbe $filter-Array für identische Ergebnismengen
- *   - Qualitätslisten (keine_ean / doppelte_ean / keine_bilder) als Subquery-Filter in findAll()
+ *   - Qualitätslisten (keine_ean / doppelte_ean / keine_bilder / keine_gruppe) als Subquery-Filter in findAll()
  *   - propagiereZuKindern() ist ein einziger Bulk-UPDATE: Vater-Werte → alle Kinder auf einmal
  *   - getStandardKgId() cached die Standard-Kundengruppe per static (1× pro Request)
  *   - updatePreis() macht bewusst kein ON DUPLICATE KEY UPDATE weil das Datum-Feld gueltig_ab fehlt
@@ -53,7 +53,7 @@ class ArtikelRepository
      * $filter-Keys:
      *   q, hersteller_id, artikeltyp_id, kategorie_ids, nurKategorielos,
      *   nurMitBestand, mitInaktiven, status_filter (auslauf|uv|fehlbest|inaktiv),
-     *   qualitaet (keine_ean|doppelte_ean|keine_bilder), sort, dir
+     *   qualitaet (keine_ean|doppelte_ean|keine_bilder|keine_gruppe), sort, dir
      */
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
@@ -157,6 +157,8 @@ class ArtikelRepository
             )";
         } elseif ($qf === 'keine_bilder') {
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
+        } elseif ($qf === 'keine_gruppe') {
+            $conditions[] = "a.artikel_gruppe_id IS NULL";
         }
 
         $where = "WHERE " . implode(" AND ", $conditions);
@@ -307,6 +309,8 @@ class ArtikelRepository
             )";
         } elseif ($qf === 'keine_bilder') {
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
+        } elseif ($qf === 'keine_gruppe') {
+            $conditions[] = "a.artikel_gruppe_id IS NULL";
         }
 
         $where = "WHERE " . implode(" AND ", $conditions);
@@ -344,6 +348,7 @@ class ArtikelRepository
                 a.hat_eigenen_lagerstand,
                 a.hersteller_id,
                 a.steuerklasse_id,
+                a.artikel_gruppe_id,
                 a.artikeltyp_id,
                 a.grundpreis_bezugsmenge,
                 a.grundpreis_anzeigen,
@@ -555,6 +560,7 @@ class ArtikelRepository
                 artikelnummer,
                 hersteller_id,
                 steuerklasse_id,
+                artikel_gruppe_id,
                 artikeltyp_id,
                 name,
                 kurzbeschreibung,
@@ -588,6 +594,7 @@ class ArtikelRepository
                 :artikelnummer,
                 :hersteller_id,
                 :steuerklasse_id,
+                :artikel_gruppe_id,
                 :artikeltyp_id,
                 :name,
                 :kurzbeschreibung,
@@ -634,15 +641,16 @@ class ArtikelRepository
         $data['ueberverkauf_erlaubt']   = $data['ueberverkauf_erlaubt']   ?? 0;
         $data['zustand']                = $data['zustand']                ?? 'neu';
         $data['zustand_vater_id']       = $data['zustand_vater_id']       ?? null;
+        $data['artikel_gruppe_id']      = $data['artikel_gruppe_id']      ?? null;
 
-        // PDO named-parameter execute braucht genau die 32 Placeholder-Keys — extra Keys entfernen
+        // PDO named-parameter execute braucht genau die 33 Placeholder-Keys — extra Keys entfernen
         $erlaubteKeys = [
             'vaterartikel_id', 'hat_eigenen_lagerstand', 'artikelnummer', 'hersteller_id',
-            'steuerklasse_id', 'artikeltyp_id', 'name', 'kurzbeschreibung', 'beschreibung',
-            'technische_details', 'beschreibung_intern', 'meta_titel', 'meta_description',
-            'url_slug', 'einheit_id', 'inhalt_menge', 'inhalt_einheit', 'gewicht_artikel',
-            'gewicht_versand', 'laenge', 'breite', 'hoehe', 'herkunftsland', 'taric_code',
-            'grundpreis_bezugsmenge', 'grundpreis_anzeigen', 'charge_pflicht',
+            'steuerklasse_id', 'artikel_gruppe_id', 'artikeltyp_id', 'name', 'kurzbeschreibung',
+            'beschreibung', 'technische_details', 'beschreibung_intern', 'meta_titel',
+            'meta_description', 'url_slug', 'einheit_id', 'inhalt_menge', 'inhalt_einheit',
+            'gewicht_artikel', 'gewicht_versand', 'laenge', 'breite', 'hoehe', 'herkunftsland',
+            'taric_code', 'grundpreis_bezugsmenge', 'grundpreis_anzeigen', 'charge_pflicht',
             'ist_auslaufartikel', 'ueberverkauf_erlaubt', 'aktiv', 'zustand', 'zustand_vater_id',
         ];
         $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
@@ -660,6 +668,7 @@ class ArtikelRepository
                 artikelnummer       = :artikelnummer,
                 hersteller_id       = :hersteller_id,
                 steuerklasse_id     = :steuerklasse_id,
+                artikel_gruppe_id   = :artikel_gruppe_id,
                 artikeltyp_id       = :artikeltyp_id,
                 name                = :name,
                 kurzbeschreibung    = :kurzbeschreibung,
@@ -696,13 +705,14 @@ class ArtikelRepository
         $data['hoehe']            = $data['hoehe']            ?? null;
         $data['zustand']          = $data['zustand']          ?? 'neu';
         $data['zustand_vater_id'] = $data['zustand_vater_id'] ?? null;
-        $data['lieferzeit_text']  = $data['lieferzeit_text']  ?? null;
+        $data['lieferzeit_text']    = $data['lieferzeit_text']    ?? null;
+        $data['artikel_gruppe_id']  = $data['artikel_gruppe_id']  ?? null;
 
         // Nur die Keys übergeben die im SQL definiert sind (PHP 8.x PDO wirft HY093 bei Extra-Keys)
         $erlaubt = [
-            'id', 'artikelnummer', 'hersteller_id', 'steuerklasse_id', 'artikeltyp_id',
-            'name', 'kurzbeschreibung', 'beschreibung', 'technische_details', 'beschreibung_intern',
-            'meta_titel', 'meta_description', 'url_slug',
+            'id', 'artikelnummer', 'hersteller_id', 'steuerklasse_id', 'artikel_gruppe_id',
+            'artikeltyp_id', 'name', 'kurzbeschreibung', 'beschreibung', 'technische_details',
+            'beschreibung_intern', 'meta_titel', 'meta_description', 'url_slug',
             'einheit_id', 'inhalt_menge', 'inhalt_einheit',
             'gewicht_artikel', 'gewicht_versand', 'laenge', 'breite', 'hoehe',
             'herkunftsland', 'taric_code', 'grundpreis_bezugsmenge', 'grundpreis_anzeigen',
@@ -1122,6 +1132,7 @@ class ArtikelRepository
             UPDATE artikel SET
                 hersteller_id          = :hersteller_id,
                 steuerklasse_id        = :steuerklasse_id,
+                artikel_gruppe_id      = :artikel_gruppe_id,
                 artikeltyp_id          = :artikeltyp_id,
                 kurzbeschreibung       = :kurzbeschreibung,
                 beschreibung           = :beschreibung,
@@ -1148,6 +1159,7 @@ class ArtikelRepository
             'vater_id'               => $vaterId,
             'hersteller_id'          => $vater['hersteller_id'],
             'steuerklasse_id'        => $vater['steuerklasse_id'],
+            'artikel_gruppe_id'      => $vater['artikel_gruppe_id'],
             'artikeltyp_id'          => $vater['artikeltyp_id'],
             'kurzbeschreibung'       => $vater['kurzbeschreibung'],
             'beschreibung'           => $vater['beschreibung'],

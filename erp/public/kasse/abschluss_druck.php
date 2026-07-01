@@ -15,7 +15,8 @@ $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE sc
 
 $daten = $a['daten'];
 $kz    = $daten['kennzahlen'];
-$st    = $daten['steuer'] ?? [];
+$st    = $daten['steuer']           ?? [];
+$ag    = $daten['artikel_gruppen']  ?? [];
 
 $istZ       = $a['typ'] === 'z';
 $typLabel   = $istZ ? 'Z-BON — TAGESABSCHLUSS' : 'X-BON — ZWISCHENABSCHLUSS';
@@ -208,6 +209,53 @@ function esc(string $v): string { return htmlspecialchars($v); }
       <td class="r"><?= eur($nettoBetrag) ?></td>
       <td class="r"><?= eur($steuerGes) ?></td>
       <td class="r"><?= eur($nettoBetrag + $steuerGes) ?></td>
+    </tr>
+  </tfoot>
+</table>
+<?php endif; ?>
+
+<!-- ARTIKELGRUPPEN-UMSÄTZE -->
+<?php if (!empty($ag)): ?>
+<h2>Umsatz nach Artikelgruppe</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Konto</th>
+      <th>Gruppe</th>
+      <th class="r">USt %</th>
+      <th class="r">Netto</th>
+      <th class="r">USt</th>
+      <th class="r">Brutto</th>
+    </tr>
+  </thead>
+  <tbody>
+    <?php
+    $agGesNetto  = 0;
+    $agGesSteuer = 0;
+    $agGesBrutto = 0;
+    $letzteGruppe = null;
+    foreach ($ag as $g):
+        $agGesNetto  += $g['netto'];
+        $agGesSteuer += $g['steuer'];
+        $agGesBrutto += $g['brutto'];
+        $gruppeWechsel = $letzteGruppe !== null && $letzteGruppe !== $g['konto_nr'];
+    ?>
+    <tr <?= $gruppeWechsel ? 'style="border-top:1px solid #cbd5e1"' : '' ?>>
+      <td><code style="font-size:9pt"><?= esc($g['konto_nr']) ?></code></td>
+      <td><?= esc($g['gruppe_name']) ?></td>
+      <td class="r"><?= number_format($g['satz'], 0) ?> %</td>
+      <td class="r"><?= eur($g['netto']) ?></td>
+      <td class="r"><?= eur($g['steuer']) ?></td>
+      <td class="r"><?= eur($g['brutto']) ?></td>
+    </tr>
+    <?php $letzteGruppe = $g['konto_nr']; endforeach; ?>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="3">Summe</td>
+      <td class="r"><?= eur($agGesNetto) ?></td>
+      <td class="r"><?= eur($agGesSteuer) ?></td>
+      <td class="r"><?= eur($agGesBrutto) ?></td>
     </tr>
   </tfoot>
 </table>

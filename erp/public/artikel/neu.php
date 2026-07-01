@@ -22,6 +22,11 @@ $alleKategorien  = $service->getAlleKategorien();
 $kategorienBaum  = $service->getKategorienBaum();
 $alleLieferanten = $lieferantService->findAll();
 
+$db = \Database::getInstance();
+$artikelGruppen = $db->query("
+    SELECT id, konto_nr, name FROM artikel_gruppen WHERE aktiv = 1 ORDER BY sortierung, konto_nr
+")->fetchAll();
+
 $zustandSuffixMap = [
     'neu'                => '',
     'gebraucht'          => 'GEB',
@@ -146,6 +151,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <option value="<?= $s['id'] ?>" data-satz="<?= $s['satz'] ?>"
                             <?= selected('steuerklasse_id', (string)$s['id'], $formdata) ?>>
                             <?= htmlspecialchars($s['name']) ?> (<?= $s['satz'] ?>%)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-row">
+                <label class="form-label">Artikelgruppe <span class="pflicht-stern">*</span></label>
+                <select name="artikel_gruppe_id" class="erp-select">
+                    <option value="">– bitte wählen –</option>
+                    <?php foreach ($artikelGruppen as $ag): ?>
+                        <option value="<?= $ag['id'] ?>"
+                            <?= selected('artikel_gruppe_id', (string)$ag['id'], $formdata) ?>>
+                            <?= htmlspecialchars($ag['konto_nr'] . ' – ' . $ag['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

@@ -195,7 +195,7 @@ if ($aktivKategorieId) {
     $alleKatIds = array_merge([$aktivKategorieId], $service->getAlleNachkommenIds($aktivKategorieId));
 }
 
-$qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder']) ? $statusFilter : '';
+$qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder', 'keine_gruppe']) ? $statusFilter : '';
 
 $filter = [
     'q'               => trim($_GET['q'] ?? ''),
@@ -424,6 +424,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <option value="keine_ean"    <?= $statusFilter === 'keine_ean'    ? 'selected' : '' ?>>Keine EAN</option>
                 <option value="doppelte_ean" <?= $statusFilter === 'doppelte_ean' ? 'selected' : '' ?>>Doppelte EAN</option>
                 <option value="keine_bilder" <?= $statusFilter === 'keine_bilder' ? 'selected' : '' ?>>Keine Bilder</option>
+                <option value="keine_gruppe" <?= $statusFilter === 'keine_gruppe' ? 'selected' : '' ?>>Keine Artikelgruppe</option>
             </optgroup>
         </select>
         <select name="kanal_filter" class="erp-select" disabled title="Kanäle-Modul noch nicht aktiv">

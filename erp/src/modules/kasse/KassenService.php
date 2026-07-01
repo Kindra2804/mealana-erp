@@ -666,6 +666,114 @@ class KassenService
         return array_merge($kennzahlen, $kassenbuch, ['datum' => $datum]);
     }
 
+    /** Kennzahlen für einen beliebigen Zeitraum (Monats-/Quartalsabschluss) */
+    public function getPeriodeKennzahlen(int $kasseId, string $von, string $bis): array
+    {
+        $params = [':kid' => $kasseId, ':von' => $von, ':bis' => $bis];
+
+        // Umsatz + Zahlungsarten
+        $stmt = $this->db->prepare("
+            SELECT
+                COUNT(*)                                                                         AS anzahl_bons,
+                COALESCE(SUM(bruttobetrag), 0)                                                   AS umsatz_gesamt,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'bar'          THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'    THEN bruttobetrag ELSE 0 END), 0) AS umsatz_gs,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi'        THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0)     AS umsatz_kombi_bar,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi'        THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0)  AS umsatz_kombi_karte,
+                COALESCE(SUM(CASE WHEN storniert = 1                THEN bruttobetrag ELSE 0 END), 0) AS storniert_betrag,
+                COUNT(CASE WHEN storniert = 1 THEN 1 END)                                        AS anzahl_stornos,
+                MIN(DATE(erstellt_am))                                                           AS datum_von,
+                MAX(DATE(erstellt_am))                                                           AS datum_bis,
+                MIN(bon_nr)                                                                      AS bon_nr_von,
+                MAX(bon_nr)                                                                      AS bon_nr_bis
+            FROM kassen_bons
+            WHERE kasse_id = :kid AND typ = 'verkauf'
+              AND DATE(erstellt_am) BETWEEN :von AND :bis
+        ");
+        $stmt->execute($params);
+        $kz = $stmt->fetch();
+
+        // Kassenbuch-Bewegungen im Zeitraum
+        $kb = $this->db->prepare("
+            SELECT
+                COALESCE(SUM(CASE WHEN typ = 'einlage'  THEN betrag ELSE 0 END), 0) AS einlagen,
+                COALESCE(SUM(CASE WHEN typ = 'entnahme' THEN betrag ELSE 0 END), 0) AS entnahmen
+            FROM kassenbuch
+            WHERE kasse_id = :kid AND DATE(erstellt_am) BETWEEN :von AND :bis
+        ");
+        $kb->execute($params);
+        $kassenbuch = $kb->fetch();
+
+        // Steueraufstellung aus Positionen
+        $stStmt = $this->db->prepare("
+            SELECT bp.steuer_prozent,
+                   SUM(ABS(bp.menge) * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+            FROM kassen_bon_positionen bp
+            INNER JOIN kassen_bons b ON b.id = bp.bon_id
+            WHERE b.kasse_id = :kid AND b.typ = 'verkauf' AND b.storniert = 0
+              AND DATE(b.erstellt_am) BETWEEN :von AND :bis
+            GROUP BY bp.steuer_prozent ORDER BY bp.steuer_prozent DESC
+        ");
+        $stStmt->execute($params);
+        $steuer = [];
+        foreach ($stStmt->fetchAll() as $r) {
+            $brutto = (float)$r['brutto'];
+            $satz   = (float)$r['steuer_prozent'];
+            $netto  = $satz > 0 ? $brutto / (1 + $satz / 100) : $brutto;
+            $steuer[] = ['satz' => $satz, 'netto' => round($netto, 2), 'steuer' => round($brutto - $netto, 2), 'brutto' => round($brutto, 2)];
+        }
+
+        // Artikelgruppen-Umsätze im Zeitraum
+        $agStmt = $this->db->prepare("
+            SELECT COALESCE(ag.konto_nr, '?')            AS konto_nr,
+                   COALESCE(ag.name, 'Nicht zugeordnet') AS gruppe_name,
+                   bp.steuer_prozent,
+                   SUM(ABS(bp.menge) * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+            FROM kassen_bon_positionen bp
+            INNER JOIN kassen_bons b ON b.id = bp.bon_id
+            LEFT JOIN artikel a      ON a.id  = bp.artikel_id
+            LEFT JOIN artikel_gruppen ag ON ag.id = a.artikel_gruppe_id
+            WHERE b.kasse_id = :kid AND b.typ = 'verkauf' AND b.storniert = 0
+              AND DATE(b.erstellt_am) BETWEEN :von AND :bis
+            GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
+            ORDER BY COALESCE(ag.konto_nr, 'ZZZ'), bp.steuer_prozent DESC
+        ");
+        $agStmt->execute($params);
+        $artikelGruppen = [];
+        foreach ($agStmt->fetchAll() as $r) {
+            $brutto = (float)$r['brutto'];
+            $satz   = (float)$r['steuer_prozent'];
+            $netto  = $satz > 0 ? $brutto / (1 + $satz / 100) : $brutto;
+            $artikelGruppen[] = [
+                'konto_nr'    => $r['konto_nr'],
+                'gruppe_name' => $r['gruppe_name'],
+                'satz'        => $satz,
+                'netto'       => round($netto, 2),
+                'steuer'      => round($brutto - $netto, 2),
+                'brutto'      => round($brutto, 2),
+            ];
+        }
+
+        // Z-Bons im Zeitraum (Übersicht)
+        $zStmt = $this->db->prepare("
+            SELECT a.id, a.datum, a.kassenstand, b.bon_nr
+            FROM kassen_abschluesse a
+            LEFT JOIN kassen_bons b ON b.id = a.bon_id
+            WHERE a.kasse_id = :kid AND a.typ = 'z' AND a.datum BETWEEN :von AND :bis
+            ORDER BY a.datum
+        ");
+        $zStmt->execute($params);
+        $zBons = $zStmt->fetchAll();
+
+        return array_merge($kz, $kassenbuch, [
+            'steuer'          => $steuer,
+            'artikel_gruppen' => $artikelGruppen,
+            'z_bons'          => $zBons,
+            'anzahl_z_bons'   => count($zBons),
+        ]);
+    }
+
     public function erstelleXBon(int $kasseId, int $benutzerId): array
     {
         $daten = $this->sammleAbschlussDaten($kasseId);
@@ -752,6 +860,37 @@ class KassenService
             ];
         }
 
+        // Artikelgruppen-Umsätze (pro Gruppe + Steuersatz)
+        $agStmt = $this->db->prepare("
+            SELECT COALESCE(ag.konto_nr, '?')            AS konto_nr,
+                   COALESCE(ag.name, 'Nicht zugeordnet') AS gruppe_name,
+                   bp.steuer_prozent,
+                   SUM(ABS(bp.menge) * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+            FROM kassen_bon_positionen bp
+            INNER JOIN kassen_bons b ON b.id = bp.bon_id
+            LEFT JOIN artikel a      ON a.id  = bp.artikel_id
+            LEFT JOIN artikel_gruppen ag ON ag.id = a.artikel_gruppe_id
+            WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
+              AND b.typ = 'verkauf' AND b.storniert = 0
+            GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
+            ORDER BY COALESCE(ag.konto_nr, 'ZZZ'), bp.steuer_prozent DESC
+        ");
+        $agStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $artikelGruppen = [];
+        foreach ($agStmt->fetchAll() as $r) {
+            $brutto = (float)$r['brutto'];
+            $satz   = (float)$r['steuer_prozent'];
+            $netto  = $satz > 0 ? $brutto / (1 + $satz / 100) : $brutto;
+            $artikelGruppen[] = [
+                'konto_nr'    => $r['konto_nr'],
+                'gruppe_name' => $r['gruppe_name'],
+                'satz'        => $satz,
+                'netto'       => round($netto, 2),
+                'steuer'      => round($brutto - $netto, 2),
+                'brutto'      => round($brutto, 2),
+            ];
+        }
+
         // Bon-Nummernbereich heute
         $rStmt = $this->db->prepare("
             SELECT MIN(bon_nr) AS bon_nr_von, MAX(bon_nr) AS bon_nr_bis
@@ -762,12 +901,13 @@ class KassenService
         $range = $rStmt->fetch();
 
         return [
-            'datum'        => $datum,
-            'kassenstand'  => $kassenstand,
-            'kennzahlen'   => $kennzahlen,
-            'steuer'       => $steuerTabelle,
-            'bon_nr_von'   => $range['bon_nr_von'] ?? null,
-            'bon_nr_bis'   => $range['bon_nr_bis'] ?? null,
+            'datum'          => $datum,
+            'kassenstand'    => $kassenstand,
+            'kennzahlen'     => $kennzahlen,
+            'steuer'         => $steuerTabelle,
+            'artikel_gruppen'=> $artikelGruppen,
+            'bon_nr_von'     => $range['bon_nr_von'] ?? null,
+            'bon_nr_bis'     => $range['bon_nr_bis'] ?? null,
         ];
     }
 

@@ -130,6 +130,7 @@ class ArtikelService
             'artikeltyp'           => $vater['artikeltyp'],
             'hersteller_id'        => $vater['hersteller_id'],
             'steuerklasse_id'      => $vater['steuerklasse_id'],
+            'artikel_gruppe_id'    => $vater['artikel_gruppe_id'],
             'einheit_id'           => $vater['einheit_id'],
             'name'                 => $data['name'] ?? $vater['name'],
             'inhalt_menge'         => $vater['inhalt_menge'],
@@ -478,6 +479,9 @@ class ArtikelService
         }
         if (empty($data['artikeltyp'])) {
             $fehler[] = 'Artikeltyp ist Pflichtfeld';
+        }
+        if (empty($data['artikel_gruppe_id'])) {
+            $fehler[] = 'Artikelgruppe ist Pflichtfeld';
         }
 
         $zustand = $data['zustand'] ?? 'neu';

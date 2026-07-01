@@ -67,6 +67,11 @@ if ($istZustandsArtikel) {
 $hersteller   = $service->getAllHersteller();
 $steuerklassen = $service->getAllSteuerklassen();
 
+$db = \Database::getInstance();
+$artikelGruppen = $db->query("
+    SELECT id, konto_nr, name FROM artikel_gruppen WHERE aktiv = 1 ORDER BY sortierung, konto_nr
+")->fetchAll();
+
 // Hilfsfunktion: war dieser Wert im letzten Submit?
 function old(string $field, array $formdata, string $default = ''): string
 {
@@ -170,6 +175,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         data-satz="<?= $s['satz'] ?>"
                         <?= selected('steuerklasse_id', (string)$s['id'], $formdata) ?>>
                         <?= htmlspecialchars($s['name']) ?> (<?= $s['satz'] ?>%)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <label>Artikelgruppe <span class="pflicht">*</span></label>
+            <select name="artikel_gruppe_id">
+                <option value="">– bitte wählen –</option>
+                <?php foreach ($artikelGruppen as $ag): ?>
+                    <option value="<?= $ag['id'] ?>"
+                        <?= selected('artikel_gruppe_id', (string)$ag['id'], $formdata) ?>>
+                        <?= htmlspecialchars($ag['konto_nr'] . ' – ' . $ag['name']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>

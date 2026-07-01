@@ -25,6 +25,7 @@ $artikelData = array_intersect_key($data, array_flip([
     'artikelnummer',
     'hersteller_id',
     'steuerklasse_id',
+    'artikel_gruppe_id',
     'artikeltyp',
     'name',
     'kurzbeschreibung',
