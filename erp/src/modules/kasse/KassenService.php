@@ -272,6 +272,10 @@ class KassenService
                     $posMenge = (float)($pos['menge'] ?? 1);
                     $kasseNr  = explode('-', $bonNr)[0]; // z.B. 'K1'
 
+                    $charge   = $pos['charge'] ?? null;
+                    $ntLbId   = !empty($pos['nachzutragen_lagerbestand_id'])
+                        ? (int)$pos['nachzutragen_lagerbestand_id'] : null;
+
                     // Korrekturbuchung wenn Bestand nicht ausreicht
                     // (Artikel war physisch vorhanden, Systembestand war falsch)
                     $aktBestand = $this->getAktuellerBestand($artId, $lagerId);
@@ -281,17 +285,14 @@ class KassenService
                             'artikel_id'  => $artId,
                             'lager_id'    => $lagerId,
                             'menge'       => $korrMenge,
+                            'charge'      => $charge ?: null,
                             'referenz'    => 'Korrekturbuchung ' . $kasseNr . ' – ' . $bonNr,
                             'notiz'       => 'Automatische Korrekturbuchung bei Kassenverkauf (Überverkauf bestätigt)',
                             'benutzer_id' => $benutzerId,
                         ]);
                     }
 
-                    $charge   = $pos['charge'] ?? null;
-                    $ntLbId   = !empty($pos['nachzutragen_lagerbestand_id'])
-                        ? (int)$pos['nachzutragen_lagerbestand_id'] : null;
-
-                    // Wenn Charge aus "nachzutragen"-Zeile kommt: zuerst konvertieren
+                    // Wenn Charge aus bestehender "nachzutragen"-Zeile kommt: zuerst konvertieren
                     if ($charge && $ntLbId) {
                         $lagerSvc->chargeNachtragen($ntLbId, $charge, $posMenge, $benutzerId);
                     }
