@@ -15,17 +15,17 @@ $service = new KassenService();
 if ($aktion === 'x_bon') {
     $result = $service->erstelleXBon($kasseId, $benutzerId);
     if ($result['erfolg']) {
-        $_SESSION['letzter_x_bon'] = $result;
-    } else {
-        $_SESSION['fehler'] = $result['fehler'] ?? 'Fehler beim X-Bon.';
+        header('Location: abschluss_druck.php?id=' . $result['abschluss_id']);
+        exit;
     }
+    $_SESSION['fehler'] = $result['fehler'] ?? 'Fehler beim X-Bon.';
 } elseif ($aktion === 'z_bon') {
     $result = $service->erstelleZBon($kasseId, $benutzerId);
     if ($result['erfolg']) {
-        $_SESSION['letzter_z_bon'] = $result;
-    } else {
-        $_SESSION['fehler'] = $result['fehler'] ?? 'Fehler beim Z-Bon.';
+        header('Location: abschluss_druck.php?id=' . $result['abschluss_id']);
+        exit;
     }
+    $_SESSION['fehler'] = $result['fehler'] ?? 'Fehler beim Z-Bon.';
 } else {
     $_SESSION['fehler'] = 'Unbekannte Aktion.';
 }

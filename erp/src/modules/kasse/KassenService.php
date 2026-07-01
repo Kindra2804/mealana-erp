@@ -668,39 +668,162 @@ class KassenService
 
     public function erstelleXBon(int $kasseId, int $benutzerId): array
     {
-        $kennzahlen = $this->getTagesKennzahlen($kasseId);
+        $daten = $this->sammleAbschlussDaten($kasseId);
         $bonNr = $this->naechsteBonNr($kasseId, 'X');
-        $stmt = $this->db->prepare("
-            INSERT INTO kassen_bons (bon_nr, typ, kasse_id, bruttobetrag, benutzer_id, notiz)
-            VALUES (:bon_nr, 'x_bon', :kasse_id, :bruttobetrag, :benutzer_id, 'X-Bon Zwischenabschluss')
-        ");
-        $stmt->execute([
-            ':bon_nr'       => $bonNr,
-            ':kasse_id'     => $kasseId,
-            ':bruttobetrag' => $kennzahlen['umsatz_gesamt'],
-            ':benutzer_id'  => $benutzerId,
-        ]);
-        return ['erfolg' => true, 'bon_nr' => $bonNr, 'kennzahlen' => $kennzahlen];
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO kassen_bons (bon_nr, typ, kasse_id, bruttobetrag, benutzer_id, notiz)
+                VALUES (:bon_nr, 'x_bon', :kasse_id, :bruttobetrag, :benutzer_id, 'X-Bon Zwischenabschluss')
+            ");
+            $stmt->execute([
+                ':bon_nr'       => $bonNr,
+                ':kasse_id'     => $kasseId,
+                ':bruttobetrag' => $daten['kennzahlen']['umsatz_gesamt'],
+                ':benutzer_id'  => $benutzerId,
+            ]);
+            $bonId = (int)$this->db->lastInsertId();
+            $abschlussId = $this->speichereAbschluss($bonId, $kasseId, $benutzerId, 'x', $daten);
+            $this->db->commit();
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            return ['erfolg' => false, 'fehler' => $e->getMessage()];
+        }
+        return ['erfolg' => true, 'bon_nr' => $bonNr, 'abschluss_id' => $abschlussId, 'kennzahlen' => $daten['kennzahlen']];
     }
 
     public function erstelleZBon(int $kasseId, int $benutzerId): array
     {
-        $kennzahlen = $this->getTagesKennzahlen($kasseId);
+        $daten = $this->sammleAbschlussDaten($kasseId);
         $bonNr = $this->naechsteBonNr($kasseId, 'Z');
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO kassen_bons (bon_nr, typ, kasse_id, bruttobetrag, benutzer_id, notiz)
+                VALUES (:bon_nr, 'z_bon', :kasse_id, :bruttobetrag, :benutzer_id, :notiz)
+            ");
+            $stmt->execute([
+                ':bon_nr'       => $bonNr,
+                ':kasse_id'     => $kasseId,
+                ':bruttobetrag' => $daten['kennzahlen']['umsatz_gesamt'],
+                ':benutzer_id'  => $benutzerId,
+                ':notiz'        => 'Z-Bon ' . date('d.m.Y') . ' | Stand: ' . number_format($daten['kassenstand'], 2, '.', ''),
+            ]);
+            $bonId = (int)$this->db->lastInsertId();
+            $abschlussId = $this->speichereAbschluss($bonId, $kasseId, $benutzerId, 'z', $daten);
+            $this->db->commit();
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            return ['erfolg' => false, 'fehler' => $e->getMessage()];
+        }
+        Logger::log('kasse.z_bon', 'kassen_abschluesse', $abschlussId, $daten['kennzahlen'], $benutzerId);
+        return ['erfolg' => true, 'bon_nr' => $bonNr, 'abschluss_id' => $abschlussId, 'kennzahlen' => $daten['kennzahlen'], 'kassenstand' => $daten['kassenstand']];
+    }
+
+    private function sammleAbschlussDaten(int $kasseId): array
+    {
+        $datum       = date('Y-m-d');
+        $kennzahlen  = $this->getTagesKennzahlen($kasseId);
         $kassenstand = $this->getKassenstand($kasseId);
+
+        // Steueraufstellung aus Bon-Positionen
+        $stStmt = $this->db->prepare("
+            SELECT bp.steuer_prozent,
+                   SUM(ABS(bp.menge) * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+            FROM kassen_bon_positionen bp
+            INNER JOIN kassen_bons b ON b.id = bp.bon_id
+            WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
+              AND b.typ = 'verkauf' AND b.storniert = 0
+            GROUP BY bp.steuer_prozent
+            ORDER BY bp.steuer_prozent DESC
+        ");
+        $stStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $steuerRohdaten = $stStmt->fetchAll();
+        $steuerTabelle = [];
+        foreach ($steuerRohdaten as $r) {
+            $brutto = (float)$r['brutto'];
+            $satz   = (float)$r['steuer_prozent'];
+            $netto  = $satz > 0 ? $brutto / (1 + $satz / 100) : $brutto;
+            $steuerTabelle[] = [
+                'satz'   => $satz,
+                'netto'  => round($netto, 2),
+                'steuer' => round($brutto - $netto, 2),
+                'brutto' => round($brutto, 2),
+            ];
+        }
+
+        // Bon-Nummernbereich heute
+        $rStmt = $this->db->prepare("
+            SELECT MIN(bon_nr) AS bon_nr_von, MAX(bon_nr) AS bon_nr_bis
+            FROM kassen_bons
+            WHERE kasse_id = :kid AND DATE(erstellt_am) = :datum AND typ = 'verkauf'
+        ");
+        $rStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $range = $rStmt->fetch();
+
+        return [
+            'datum'        => $datum,
+            'kassenstand'  => $kassenstand,
+            'kennzahlen'   => $kennzahlen,
+            'steuer'       => $steuerTabelle,
+            'bon_nr_von'   => $range['bon_nr_von'] ?? null,
+            'bon_nr_bis'   => $range['bon_nr_bis'] ?? null,
+        ];
+    }
+
+    private function speichereAbschluss(int $bonId, int $kasseId, int $benutzerId, string $typ, array $daten): int
+    {
         $stmt = $this->db->prepare("
-            INSERT INTO kassen_bons (bon_nr, typ, kasse_id, bruttobetrag, benutzer_id, notiz)
-            VALUES (:bon_nr, 'z_bon', :kasse_id, :bruttobetrag, :benutzer_id, :notiz)
+            INSERT INTO kassen_abschluesse (bon_id, kasse_id, kassierer_id, typ, datum, kassenstand, daten)
+            VALUES (:bon_id, :kasse_id, :kassierer_id, :typ, :datum, :kassenstand, :daten)
         ");
         $stmt->execute([
-            ':bon_nr'       => $bonNr,
-            ':kasse_id'     => $kasseId,
-            ':bruttobetrag' => $kennzahlen['umsatz_gesamt'],
-            ':benutzer_id'  => $benutzerId,
-            ':notiz'        => 'Z-Bon Tagesabschluss ' . date('d.m.Y') . ' | Kassenstand: ' . number_format($kassenstand, 2, '.', ''),
+            ':bon_id'      => $bonId,
+            ':kasse_id'    => $kasseId,
+            ':kassierer_id'=> $benutzerId ?: null,
+            ':typ'         => $typ,
+            ':datum'       => $daten['datum'],
+            ':kassenstand' => $daten['kassenstand'],
+            ':daten'       => json_encode($daten, JSON_UNESCAPED_UNICODE),
         ]);
-        Logger::log('kasse.z_bon', 'kassen_bons', (int)$this->db->lastInsertId(), $kennzahlen, $benutzerId);
-        return ['erfolg' => true, 'bon_nr' => $bonNr, 'kennzahlen' => $kennzahlen, 'kassenstand' => $kassenstand];
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function getAbschluss(int $id): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT a.*, b.bon_nr, k.name AS kasse_name, k.kasse_nr,
+                   u.formularname AS kassierer_name
+            FROM kassen_abschluesse a
+            LEFT JOIN kassen_bons b   ON b.id = a.bon_id
+            LEFT JOIN kassen k        ON k.id = a.kasse_id
+            LEFT JOIN benutzer u      ON u.id = a.kassierer_id
+            WHERE a.id = :id
+        ");
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch();
+        if (!$row) return null;
+        $row['daten'] = json_decode($row['daten'], true);
+        return $row;
+    }
+
+    public function getAbschlussListe(int $kasseId, int $limit = 90): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT a.id, a.typ, a.datum, a.kassenstand, a.erstellt_am, b.bon_nr,
+                   u.formularname AS kassierer_name,
+                   JSON_UNQUOTE(JSON_EXTRACT(a.daten, '$.kennzahlen.umsatz_gesamt')) AS umsatz
+            FROM kassen_abschluesse a
+            LEFT JOIN kassen_bons b  ON b.id = a.bon_id
+            LEFT JOIN benutzer u     ON u.id = a.kassierer_id
+            WHERE a.kasse_id = :kid
+            ORDER BY a.erstellt_am DESC
+            LIMIT :lim
+        ");
+        $stmt->bindValue(':kid', $kasseId, \PDO::PARAM_INT);
+        $stmt->bindValue(':lim', $limit,   \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
 
     // ── Offene Auswahl ────────────────────────────────────────────────────────
