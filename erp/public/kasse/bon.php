@@ -1166,6 +1166,19 @@ body {
   </div>
 </div>
 
+<!-- ── Geparkte Bons ─────────────────────────────────────────────────────── -->
+<div class="ov" id="ov-geparkt">
+  <div class="ov-box" style="max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="ov-title">⏸ Geparkte Bons</div>
+    <div id="geparkt-liste" style="flex:1;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;min-height:120px;margin-bottom:14px">
+      <div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Lädt …</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="ov-btn ov-btn-sec" style="width:auto;padding:0 20px;height:38px" onclick="ovSchliessen('ov-geparkt')">Schließen</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Mitnehmen-Frage ────────────────────────────────────────────────────── -->
 <div class="ov" id="ov-mitnehmen">
   <div class="ov-box" style="max-width:480px">
@@ -1820,23 +1833,124 @@ function mitgebenSpeichern() {
 // ── Parken ────────────────────────────────────────────────────────────────────
 function bonParken() {
     if (warenkorb.length === 0) { feedback('Kein Bon zum Parken', 'info'); return; }
-    sessionStorage.setItem('geparkterBon_' + KASSE_ID, JSON.stringify({ warenkorb, globalRabatt }));
-    warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad(); renderBon();
-    feedback('Bon geparkt', 'ok');
     document.getElementById('ph-dropdown').classList.remove('offen');
+    var kundenAnzeige = document.getElementById('kunden-anzeige').textContent.trim();
+    fetch('/mealana/kasse/ajax_parken.php?aktion=speichern', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            kasse_id:     KASSE_ID,
+            warenkorb:    warenkorb,
+            global_rabatt: globalRabatt,
+            kunden_id:    kundeId,
+            kunden_name:  kundenId ? kundenAnzeige : null,
+            auftrag_id:   geladenerAuftragId,
+            kontext: {
+                auftrag_nr:              geladenerAuftragNr,
+                auftrag_status:          geladenerAuftragStatus,
+                auftrag_mitnehmen:       geladenerAuftragMitnehmen,
+                auftrag_zahlungsstatus:  geladenerAuftragZahlungsstatus,
+                zusatz_positionen:       zusatzPositionen,
+            },
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (!d.erfolg) { feedback('Parken fehlgeschlagen', 'fehler'); return; }
+        // Bon zurücksetzen
+        warenkorb = []; aktiveZeile = -1; globalRabatt = 0;
+        kundeId = null; geladenerAuftragId = null; geladenerAuftragNr = null;
+        geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
+        geladenerAuftragZahlungsstatus = null; zusatzPositionen = [];
+        document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
+        document.getElementById('btn-auftrag-laden').classList.remove('geladen');
+        clearNumpad(); renderBon();
+        feedback('Bon geparkt (#' + d.id + ')', 'ok');
+    })
+    .catch(() => feedback('Verbindungsfehler', 'fehler'));
 }
+
 function bonAbrufen() {
     document.getElementById('ph-dropdown').classList.remove('offen');
-    var raw = sessionStorage.getItem('geparkterBon_' + KASSE_ID);
-    if (!raw) { feedback('Kein geparkter Bon vorhanden', 'info'); return; }
-    if (warenkorb.length > 0 && !confirm('Aktuellen Bon verwerfen und geparkten abrufen?')) return;
-    var data = JSON.parse(raw);
-    warenkorb = data.warenkorb || [];
-    globalRabatt = data.globalRabatt || 0;
-    aktiveZeile = -1;
-    sessionStorage.removeItem('geparkterBon_' + KASSE_ID);
-    renderBon();
-    feedback('Bon abgerufen', 'ok');
+    fetch('/mealana/kasse/ajax_parken.php?aktion=liste&kasse_id=' + KASSE_ID)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.erfolg || d.liste.length === 0) {
+                feedback('Keine geparkten Bons vorhanden', 'info'); return;
+            }
+            renderGeparktListe(d.liste);
+            ov('ov-geparkt');
+        })
+        .catch(() => feedback('Verbindungsfehler', 'fehler'));
+}
+
+function renderGeparktListe(liste) {
+    var html = '';
+    liste.forEach(function(b) {
+        var zeit = b.erstellt_am ? b.erstellt_am.substring(11, 16) : '';
+        var datum = b.erstellt_am ? b.erstellt_am.substring(0, 10) : '';
+        var kunde = b.kunden_name || 'Laufkunde';
+        var total = b.total ? parseFloat(b.total).toFixed(2).replace('.', ',') : '—';
+        var auftrag = b.auftrag_id ? (' · Auftrag #' + b.auftrag_id) : '';
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #f1f5f9">';
+        html +=   '<div style="flex:1">';
+        html +=     '<div style="font-size:14px;font-weight:600;color:#1e3a5f">' + esc(kunde) + auftrag + '</div>';
+        html +=     '<div style="font-size:11px;color:#64748b">' + datum + ' ' + zeit + ' · ' + b.positionen_anz + ' Pos.</div>';
+        if (b.notiz) html += '<div style="font-size:11px;color:#92400e;margin-top:2px">' + esc(b.notiz) + '</div>';
+        html +=   '</div>';
+        html +=   '<div style="font-size:15px;font-weight:700;color:#1e293b;min-width:70px;text-align:right">€ ' + total + '</div>';
+        html +=   '<button onclick="geparktenLaden(' + b.id + ')" style="height:34px;padding:0 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">Laden</button>';
+        html +=   '<button onclick="geparktenLoeschen(' + b.id + ', this)" style="height:34px;padding:0 10px;background:#fef2f2;color:#dc2626;border:1.5px solid #fca5a5;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit">✕</button>';
+        html += '</div>';
+    });
+    document.getElementById('geparkt-liste').innerHTML = html || '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Keine geparkten Bons</div>';
+}
+
+function geparktenLaden(id) {
+    if (warenkorb.length > 0 && !confirm('Aktuellen Bon verwerfen und geparkten Bon laden?')) return;
+    fetch('/mealana/kasse/ajax_parken.php?aktion=laden&id=' + id + '&kasse_id=' + KASSE_ID)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.erfolg) { feedback(d.fehler || 'Fehler', 'fehler'); return; }
+            var b = d.bon;
+            warenkorb    = b.warenkorb || [];
+            globalRabatt = parseFloat(b.global_rabatt) || 0;
+            kundeId      = b.kunden_id ? parseInt(b.kunden_id) : null;
+            if (b.kunden_name) document.getElementById('kunden-anzeige').textContent = b.kunden_name;
+            else               document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
+            var ktx = b.kontext ? (typeof b.kontext === 'string' ? JSON.parse(b.kontext) : b.kontext) : {};
+            geladenerAuftragId             = b.auftrag_id ? parseInt(b.auftrag_id) : null;
+            geladenerAuftragNr             = ktx.auftrag_nr             || null;
+            geladenerAuftragStatus         = ktx.auftrag_status         || null;
+            geladenerAuftragMitnehmen      = ktx.auftrag_mitnehmen      || null;
+            geladenerAuftragZahlungsstatus = ktx.auftrag_zahlungsstatus || null;
+            zusatzPositionen               = ktx.zusatz_positionen      || [];
+            if (geladenerAuftragId) document.getElementById('btn-auftrag-laden').classList.add('geladen');
+            aktiveZeile = -1;
+            // Nach Laden aus DB löschen
+            fetch('/mealana/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' });
+            ovSchliessen('ov-geparkt');
+            renderBon();
+            feedback('Bon geladen', 'ok');
+        })
+        .catch(() => feedback('Verbindungsfehler', 'fehler'));
+}
+
+function geparktenLoeschen(id, btn) {
+    if (!confirm('Geparkten Bon löschen?')) return;
+    fetch('/mealana/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.erfolg) { feedback('Löschen fehlgeschlagen', 'fehler'); return; }
+            var zeile = btn.closest('div[style]');
+            if (zeile) zeile.remove();
+            if (!document.getElementById('geparkt-liste').querySelector('div[style]')) {
+                document.getElementById('geparkt-liste').innerHTML =
+                    '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Keine geparkten Bons</div>';
+            }
+            feedback('Gelöscht', 'ok');
+        })
+        .catch(() => feedback('Verbindungsfehler', 'fehler'));
 }
 
 // ── Artikel-Suche ─────────────────────────────────────────────────────────────
