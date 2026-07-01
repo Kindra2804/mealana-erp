@@ -131,6 +131,22 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
 
+## Session 20 erledigt (2026-07-01) — Bug-Fix Session
+- **Picklisten**: 'abholbereit' Aufträge erscheinen nicht mehr in "offene" Picklisten-Liste
+  - abschliessen.php: 'abholbereit' in NOT IN Ausschlussliste
+  - picklisten.php: `<details>`-Abschnitt mit letzten 20 abgeschlossenen Picklisten (eingeklappt)
+- **Punkt 2 (Lagerbewegungen vorher/nachher)**: Bestätigt als altes Relikt-Testdaten — kein Code-Fix nötig
+- **Packplatz Chargen-Popup**: Vorgewählte Mengen beim erneuten Öffnen sichtbar; "+" gesperrt wenn total ≥ benötigt
+  - packplatz_scan.js: `zeigeChargePopup` füllt `chargeEingaben` aus `chargenAuswahl[idx]` vor; `chargeUpdateGesamt` disabled alle Plus-Buttons bei Vollbelegung
+- **Kassa Chargen-Popup**: +/- Buttons pro Charge-Zeile; Multi-Charge; Überbestand erlaubt
+  - bon.php: `_kasseChargenDaten[]` Array (kein String in onclick); `kasseChargeBtn(rowIdx,delta)`; `_kasseChargeZeileAktualisieren(rowIdx,menge)`; `chargeKasseBestaetigen()` erstellt einen Bon-Eintrag pro Charge
+  - **Bug Fix**: onclick HTML-Attribut-Quoting-Problem (charge-Strings mit Anführungszeichen brachen onclick) → Lösung: nur Integer rowIdx in onclick, Daten aus `_kasseChargenDaten[rowIdx]`
+- **Kassa Zeile+ mit Charge**: `zeilePlus(i)` prüft `hat_chargen`/`charge_pflicht` und öffnet Charge-Popup statt blind +1
+  - bon.php: `artnr`, `hat_chargen`, `charge_pflicht` werden im warenkorb-Objekt mitgespeichert
+- **Auto-Abgeschlossen** (lieferart='versand', bezahlt + versendet → 'abgeschlossen'):
+  - packplatz/warenausgang/abschliessen.php: nach logStatus prüfen ob zahlungsstatus='bezahlt' → UPDATE zu 'abgeschlossen'
+  - AuftragService.php bucheZahlung(): prüfen ob lieferstatus='versendet' → UPDATE zu 'abgeschlossen'
+
 ## Session 19 erledigt (2026-06-29)
 - **Chargen-Tracking vollständig** (bug_charge_tracking.md → BEHOBEN):
   - Kasse: Charge-Dialog Popup (Overlay ov-charge) — wählen/nachzutragen/ohne Charge

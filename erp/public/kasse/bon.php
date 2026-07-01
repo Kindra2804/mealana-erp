@@ -1098,8 +1098,8 @@ body {
     <div class="ov-title" id="charge-ov-titel">Charge auswählen</div>
     <div id="charge-ov-body" style="max-height:320px;overflow-y:auto;margin-bottom:16px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #e2e8f0;margin-bottom:12px">
-      <span style="font-size:13px;color:#64748b">Menge: <strong id="charge-ov-menge">—</strong></span>
-      <span style="font-size:13px">Charge: <strong id="charge-ov-gewaehlt" style="color:#2563eb">—</strong></span>
+      <span style="font-size:13px;color:#64748b">Benötigt: <strong id="charge-ov-menge">—</strong></span>
+      <span style="font-size:13px">Gewählt: <strong id="charge-ov-gesamt" style="color:#2563eb">0</strong></span>
     </div>
     <div class="ov-grid2">
       <button class="ov-btn ov-btn-sec" onclick="chargeKasseAbbrechen()">Abbrechen</button>
@@ -1384,6 +1384,7 @@ function _artikelEinfuegen(a, menge) {
             artikel_id:                  a.id || null,
             bezeichnung:                 a.bezeichnung,
             ean:                         a.ean || null,
+            artnr:                       a.artikelnummer || null,
             menge:                       menge,
             einzelpreis_brutto:          preis,
             steuer_prozent:              parseFloat(a.steuer_prozent) || 20,
@@ -1391,6 +1392,8 @@ function _artikelEinfuegen(a, menge) {
             charge:                      chargeNeu,
             nachzutragen_lagerbestand_id: a._nachtragen_lagerbestand_id || null,
             istDivers:                   !!a.istDivers,
+            hat_chargen:                 !!a.hat_chargen,
+            charge_pflicht:              !!a.charge_pflicht,
             bestand_physisch:            parseFloat(a.bestand_physisch)   || 0,
             bestand_reserviert:          parseFloat(a.bestand_reserviert) || 0,
             bestand_verkaufbar:          parseFloat(a.bestand_verkaufbar !== undefined ? a.bestand_verkaufbar : 0)
@@ -1552,7 +1555,23 @@ function zeileMinus(i) {
 }
 function zeilePlus(i) {
     if (warenkorb[i].vonAuftrag) return;
-    warenkorb[i].menge++;
+    var p = warenkorb[i];
+    if ((p.hat_chargen || p.charge_pflicht) && p.artikel_id) {
+        var code = p.ean || p.artnr || String(p.artikel_id);
+        fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.erfolg) {
+                    zeigeKasseChargePopup(d, 1);
+                } else {
+                    p.menge++;
+                    renderBon();
+                }
+            })
+            .catch(function() { p.menge++; renderBon(); });
+        return;
+    }
+    p.menge++;
     renderBon();
 }
 function zeileEntfernen(i) {
@@ -2148,134 +2167,149 @@ function retourBestaetigen() {
 // ── Charge-Auswahl (Kasse) ───────────────────────────────────────────────────
 var kasseChargePendingArtikel = null;
 var kasseChargePendingMenge   = 1;
-var kasseChargeGewaehlt       = null; // {charge, lagerbestand_id, nachtragen}
+var kasseChargeEingaben       = {}; // 'row_N' → {charge, menge, lagerbestand_id, nachtragen}
+var _kasseChargenDaten        = []; // aktuell angezeigte Chargen-Zeilen
 
 function zeigeKasseChargePopup(a, menge) {
     kasseChargePendingArtikel = a;
     kasseChargePendingMenge   = menge;
-    kasseChargeGewaehlt       = null;
+    kasseChargeEingaben       = {};
+    _kasseChargenDaten        = a.alle_chargen || [];
 
     document.getElementById('charge-ov-titel').textContent = 'Charge — ' + a.bezeichnung;
     document.getElementById('charge-ov-menge').textContent = menge + ' Stk.';
-    document.getElementById('charge-ov-gewaehlt').textContent = '—';
+    document.getElementById('charge-ov-gesamt').textContent = '0';
     document.getElementById('btn-charge-kasse-ok').disabled = true;
 
-    var chargen = a.alle_chargen || [];
+    var chargen = _kasseChargenDaten;
     var body    = document.getElementById('charge-ov-body');
     body.innerHTML = '';
 
     if (chargen.length === 0) {
         body.innerHTML = '<p style="color:#64748b;font-size:13px">Keine Chargen im Lager vorhanden.</p>';
         if (a.charge_pflicht) {
-            body.innerHTML += '<p style="color:#dc2626;font-size:12px">Charge-Pflicht: bitte zuerst Charge im Wareneingang eintragen.</p>';
+            body.innerHTML += '<p style="color:#dc2626;font-size:12px;margin-top:6px">Charge-Pflicht: bitte zuerst Charge im Wareneingang eintragen.</p>';
         }
     } else {
         var html = '<table style="width:100%;border-collapse:collapse">';
-        html += '<thead><tr style="font-size:12px;color:#94a3b8"><th style="text-align:left;padding:6px 8px">Charge</th><th style="text-align:right;padding:6px 8px">Bestand</th><th style="text-align:center;padding:6px 8px">Wählen</th></tr></thead><tbody>';
+        html += '<thead><tr style="font-size:12px;color:#94a3b8">' +
+            '<th style="text-align:left;padding:6px 8px">Charge</th>' +
+            '<th style="text-align:right;padding:6px 8px">Bestand</th>' +
+            '<th style="text-align:center;padding:6px 8px;min-width:160px">Menge</th>' +
+            '</tr></thead><tbody>';
 
-        chargen.forEach(function(c, i) {
-            var isNt  = c.charge_status === 'nachzutragen';
-            var rowId = 'kc-row-' + i;
-            html += '<tr id="' + rowId + '" style="border-top:1px solid #e2e8f0;cursor:pointer" onclick="kasseChargeWaehlen(' + i + ')">';
-            if (isNt) {
-                html += '<td style="padding:8px"><input type="text" id="kc-name-' + i + '" class="bon-input" style="width:130px;padding:4px 8px" placeholder="Chargennummer" onclick="event.stopPropagation()" oninput="kasseChargeNtInput(' + i + ',' + c.id + ')"></td>';
-            } else {
-                html += '<td style="padding:8px;font-family:monospace;font-size:13px">' + esc(c.charge) + '</td>';
-            }
+        chargen.forEach(function(c, rowIdx) {
+            var isNt = c.charge_status === 'nachzutragen';
+            var chargeLabel = isNt
+                ? '<input type="text" id="kc-name-' + rowIdx + '" class="bon-input" style="width:120px;padding:4px 8px;font-size:12px" placeholder="Chargennummer" oninput="kasseChargeNtNamen(' + rowIdx + ')">'
+                : '<span style="font-family:monospace;font-size:13px">' + esc(c.charge) + '</span>';
+
+            html += '<tr style="border-top:1px solid #e2e8f0">';
+            html += '<td style="padding:8px">' + chargeLabel + '</td>';
             html += '<td style="text-align:right;padding:8px;color:#94a3b8">' + parseFloat(c.bestand).toFixed(0) + '</td>';
-            html += '<td style="text-align:center;padding:8px"><div id="kc-sel-' + i + '" style="width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto"></div></td>';
-            html += '</tr>';
+            html += '<td style="text-align:center;padding:8px">';
+            html += '<div style="display:flex;align-items:center;gap:5px;justify-content:center">';
+            html += '<button type="button" onclick="kasseChargeBtn(' + rowIdx + ',-1)" ' +
+                'style="width:30px;height:30px;background:#dc2626;border:none;border-radius:6px;color:#fff;font-size:16px;cursor:pointer;line-height:1">−</button>';
+            html += '<input type="number" id="kc-menge-' + rowIdx + '" value="0" min="0" ' +
+                'style="width:54px;text-align:center;background:#f8fafc;border:1px solid #cbd5e1;color:#1e293b;padding:4px;border-radius:6px;font-size:13px" ' +
+                'oninput="kasseChargeInputGeaendert(' + rowIdx + ',this.value)">';
+            html += '<button type="button" onclick="kasseChargeBtn(' + rowIdx + ',1)" ' +
+                'style="width:30px;height:30px;background:#2563eb;border:none;border-radius:6px;color:#fff;font-size:16px;cursor:pointer;line-height:1">+</button>';
+            html += '</div></td></tr>';
         });
         html += '</tbody></table>';
 
-        // Kein-Charge Option (nur wenn nicht charge_pflicht)
         if (!a.charge_pflicht) {
-            html += '<div style="margin-top:12px;padding:8px;border-top:1px solid #e2e8f0">';
-            html += '<button class="ov-btn ov-btn-sec" style="width:100%;font-size:12px" onclick="kasseChargeOhne()">Ohne Charge buchen</button>';
-            html += '</div>';
+            html += '<div style="margin-top:12px;padding:8px;border-top:1px solid #e2e8f0">' +
+                '<button class="ov-btn ov-btn-sec" style="width:100%;font-size:12px" onclick="kasseChargeOhne()">Ohne Charge buchen</button>' +
+                '</div>';
         }
 
         body.innerHTML = html;
 
-        // FIFO-Charge vorselektieren wenn vorhanden
+        // FIFO-Charge vorbelegen
         if (a.fifo_charge) {
             var fifoIdx = chargen.findIndex(function(c) { return c.charge === a.fifo_charge; });
-            if (fifoIdx >= 0) kasseChargeWaehlen(fifoIdx);
+            if (fifoIdx >= 0) {
+                document.getElementById('kc-menge-' + fifoIdx).value = menge;
+                _kasseChargeZeileAktualisieren(fifoIdx, menge);
+            }
         }
     }
 
     ov('ov-charge');
 }
 
-function kasseChargeWaehlen(idx) {
-    var chargen = kasseChargePendingArtikel ? (kasseChargePendingArtikel.alle_chargen || []) : [];
-    var c = chargen[idx];
-    if (!c) return;
-    if (c.charge_status === 'nachzutragen') {
-        // Für nachzutragen: Name aus Input holen
-        kasseChargeNtInput(idx, c.id);
-        return;
-    }
-
-    // Markierung setzen
-    chargen.forEach(function(_, i) {
-        var sel = document.getElementById('kc-sel-' + i);
-        if (sel) sel.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto';
-    });
-    var selEl = document.getElementById('kc-sel-' + idx);
-    if (selEl) selEl.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #2563eb;background:#2563eb;margin:auto';
-
-    kasseChargeGewaehlt = { charge: c.charge, lagerbestand_id: c.id, nachtragen: false };
-    document.getElementById('charge-ov-gewaehlt').textContent = c.charge;
-    document.getElementById('btn-charge-kasse-ok').disabled = false;
+// Helfer: rowIdx → Charge-Daten aus _kasseChargenDaten nachschlagen
+function kasseChargeBtn(rowIdx, delta) {
+    var input = document.getElementById('kc-menge-' + rowIdx);
+    if (!input) return;
+    var neu = Math.max(0, (parseFloat(input.value) || 0) + delta);
+    input.value = neu;
+    _kasseChargeZeileAktualisieren(rowIdx, neu);
 }
 
-function kasseChargeNtInput(idx, lbId) {
-    var input = document.getElementById('kc-name-' + idx);
-    var name  = input ? input.value.trim() : '';
+function kasseChargeInputGeaendert(rowIdx, val) {
+    _kasseChargeZeileAktualisieren(rowIdx, parseFloat(val) || 0);
+}
 
-    // Markierung
-    var chargen = kasseChargePendingArtikel ? (kasseChargePendingArtikel.alle_chargen || []) : [];
-    chargen.forEach(function(_, i) {
-        var sel = document.getElementById('kc-sel-' + i);
-        if (sel) sel.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto';
-    });
-    var selEl = document.getElementById('kc-sel-' + idx);
+function kasseChargeNtNamen(rowIdx) {
+    var menge = parseFloat((document.getElementById('kc-menge-' + rowIdx) || {}).value) || 0;
+    _kasseChargeZeileAktualisieren(rowIdx, menge);
+}
 
-    if (name) {
-        if (selEl) selEl.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #2563eb;background:#2563eb;margin:auto';
-        kasseChargeGewaehlt = { charge: name, lagerbestand_id: lbId, nachtragen: true };
-        document.getElementById('charge-ov-gewaehlt').textContent = name + ' (neu)';
-        document.getElementById('btn-charge-kasse-ok').disabled = false;
+function _kasseChargeZeileAktualisieren(rowIdx, menge) {
+    var c  = _kasseChargenDaten[rowIdx];
+    if (!c) return;
+    var isNt  = c.charge_status === 'nachzutragen';
+    var charge = isNt
+        ? ((document.getElementById('kc-name-' + rowIdx) || {}).value || '').trim()
+        : c.charge;
+    var key = 'row_' + rowIdx;
+    if (menge <= 0) {
+        delete kasseChargeEingaben[key];
     } else {
-        if (selEl) selEl.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid #cbd5e1;margin:auto';
-        kasseChargeGewaehlt = null;
-        document.getElementById('charge-ov-gewaehlt').textContent = '—';
-        document.getElementById('btn-charge-kasse-ok').disabled = true;
+        kasseChargeEingaben[key] = { charge: charge || null, menge: menge, lagerbestand_id: c.id, nachtragen: isNt };
     }
+    kasseChargeUpdateGesamt();
+}
+
+function kasseChargeUpdateGesamt() {
+    var total = Object.values(kasseChargeEingaben).reduce(function(s, e) { return s + e.menge; }, 0);
+    document.getElementById('charge-ov-gesamt').textContent = total;
+    document.getElementById('btn-charge-kasse-ok').disabled = total <= 0;
 }
 
 function kasseChargeOhne() {
-    kasseChargeGewaehlt = { charge: null, lagerbestand_id: null, nachtragen: false };
     ovSchliessen('ov-charge');
-    var a = Object.assign({}, kasseChargePendingArtikel, { _gewaehltCharge: null });
+    var a = Object.assign({}, kasseChargePendingArtikel, { _gewaehltCharge: null, _nachtragen_lagerbestand_id: null });
     _fortsetzungNachChargeAuswahl(a, kasseChargePendingMenge);
 }
 
 function chargeKasseBestaetigen() {
-    if (!kasseChargeGewaehlt) return;
+    var eintraege = Object.values(kasseChargeEingaben);
+    if (eintraege.length === 0) return;
+    for (var i = 0; i < eintraege.length; i++) {
+        if (eintraege[i].nachtragen && !eintraege[i].charge) {
+            alert('Bitte Chargennummer für alle "nachzutragen"-Zeilen eingeben.');
+            return;
+        }
+    }
     ovSchliessen('ov-charge');
-    var a = Object.assign({}, kasseChargePendingArtikel, {
-        _gewaehltCharge:          kasseChargeGewaehlt.charge,
-        _nachtragen_lagerbestand_id: kasseChargeGewaehlt.nachtragen ? kasseChargeGewaehlt.lagerbestand_id : null,
+    eintraege.forEach(function(entry) {
+        var a = Object.assign({}, kasseChargePendingArtikel, {
+            _gewaehltCharge:             entry.charge,
+            _nachtragen_lagerbestand_id: entry.nachtragen ? entry.lagerbestand_id : null,
+        });
+        _fortsetzungNachChargeAuswahl(a, entry.menge);
     });
-    _fortsetzungNachChargeAuswahl(a, kasseChargePendingMenge);
 }
 
 function chargeKasseAbbrechen() {
     ovSchliessen('ov-charge');
     kasseChargePendingArtikel = null;
-    kasseChargeGewaehlt       = null;
+    kasseChargeEingaben       = {};
 }
 
 function _fortsetzungNachChargeAuswahl(a, menge) {

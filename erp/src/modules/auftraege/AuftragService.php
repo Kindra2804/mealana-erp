@@ -424,6 +424,12 @@ class AuftragService
         $this->repo->updateStatus($auftragId, $felder);
         $this->repo->logStatus($auftragId, ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerStatus]], 'Zahlung gebucht: ' . number_format($betrag, 2, ',', '.') . ' €', $benutzerId);
 
+        // Auto-Abgeschlossen: bezahlt + bereits versendet → abgeschlossen
+        if ($neuerStatus === 'bezahlt' && $auftrag['lieferstatus'] === 'versendet') {
+            $this->repo->updateStatus($auftragId, ['lieferstatus' => 'abgeschlossen']);
+            $this->repo->logStatus($auftragId, ['lieferstatus' => ['versendet', 'abgeschlossen']], 'Automatisch abgeschlossen (bezahlt + versendet)', $benutzerId);
+        }
+
         Logger::log('auftraege.zahlung_buchen', 'auftraege', $auftragId, ['betrag' => $betrag, 'status' => $neuerStatus]);
 
         return ['erfolg' => true, 'neuer_status' => $neuerStatus, 'summe' => $summe, 'gesamt' => $gesamt];

@@ -261,11 +261,21 @@ async function pruefeUndBuche(idx, menge) {
 function zeigeChargePopup(idx, chargen) {
     chargePopupIdx   = idx;
     chargePopupDaten = chargen;
-    chargeEingaben   = {};
+
+    // Bereits bestätigte Chargen als Startwert laden (Wiederöffnen)
+    chargeEingaben = {};
+    const bereitsGewaehlt = chargenAuswahl[idx] || {};
+    for (const [chargeName, entry] of Object.entries(bereitsGewaehlt)) {
+        // Zeilen-Key aus Chargen-Array ableiten
+        const rowIdx = chargen.findIndex(c => c.charge === chargeName);
+        const key = rowIdx >= 0 ? `row_${rowIdx}` : `row_nacht_${chargeName}`;
+        chargeEingaben[key] = { ...entry };
+    }
 
     const pos = POSITIONEN[idx];
+    const benoetigt = pos.gesamt - gescannt[idx];
     document.getElementById('charge-popup-titel').textContent = 'Charge auswählen — ' + pos.name;
-    document.getElementById('charge-popup-benoetigt').textContent = pos.gesamt - gescannt[idx];
+    document.getElementById('charge-popup-benoetigt').textContent = benoetigt;
 
     const body = document.getElementById('charge-popup-body');
     body.innerHTML = '';
@@ -285,13 +295,15 @@ function zeigeChargePopup(idx, chargen) {
         chargen.forEach((c, rowIdx) => {
             const isNachtragen = c.charge_status === 'nachzutragen';
             const key = `row_${rowIdx}`;
+            const vorwert = chargeEingaben[key]?.menge ?? 0;
 
             const tr = document.createElement('tr');
             tr.style.borderTop = '1px solid #0f3460';
 
             const chargeLabel = isNachtragen
                 ? `<input type="text" id="charge-name-${rowIdx}" class="pp-overlay-input"
-                     style="width:140px;padding:4px 8px;font-size:13px" placeholder="Chargennummer eingeben">`
+                     style="width:140px;padding:4px 8px;font-size:13px" placeholder="Chargennummer eingeben"
+                     value="${chargeEingaben[key]?.charge ?? ''}">`
                 : `<span style="font-family:monospace;font-size:13px">${c.charge}</span>`;
 
             tr.innerHTML = `
@@ -299,12 +311,12 @@ function zeigeChargePopup(idx, chargen) {
                 <td style="text-align:right;padding:8px;color:#aaa">${parseFloat(c.bestand).toFixed(0)}</td>
                 <td style="text-align:center;padding:8px">
                     <div style="display:flex;align-items:center;gap:6px;justify-content:center">
-                        <button type="button" onclick="chargeAendern('${key}',${c.id},${isNachtragen},-1)"
+                        <button type="button" id="charge-minus-${rowIdx}" onclick="chargeAendern('${key}',${c.id},${isNachtragen},-1)"
                             style="width:32px;height:32px;background:#e94560;border:none;border-radius:6px;color:#fff;font-size:18px;cursor:pointer;line-height:1">−</button>
-                        <input type="number" id="charge-menge-${rowIdx}" value="0" min="0" max="${parseFloat(c.bestand)}"
+                        <input type="number" id="charge-menge-${rowIdx}" value="${vorwert}" min="0" max="${parseFloat(c.bestand)}"
                             style="width:64px;text-align:center;background:#0f3460;border:1px solid #1a4a8a;color:#fff;padding:4px;border-radius:6px;font-size:14px"
                             oninput="chargeUpdate('${key}',${c.id},${isNachtragen},this.value,${rowIdx})">
-                        <button type="button" onclick="chargeAendern('${key}',${c.id},${isNachtragen},1)"
+                        <button type="button" id="charge-plus-${rowIdx}" onclick="chargeAendern('${key}',${c.id},${isNachtragen},1)"
                             style="width:32px;height:32px;background:#00b4d8;border:none;border-radius:6px;color:#fff;font-size:18px;cursor:pointer;line-height:1">+</button>
                     </div>
                 </td>`;
@@ -356,6 +368,17 @@ function chargeUpdateGesamt() {
     const total = Object.values(chargeEingaben).reduce((s, e) => s + e.menge, 0);
     document.getElementById('charge-popup-gewaehlt').textContent = total;
     document.getElementById('btn-charge-ok').disabled = total <= 0;
+
+    // "+" sperren sobald Gesamtmenge die noch benötigte Menge erreicht
+    if (chargePopupIdx >= 0) {
+        const pos = POSITIONEN[chargePopupIdx];
+        const benoetigt = pos.gesamt - gescannt[chargePopupIdx];
+        const istVoll = total >= benoetigt;
+        chargePopupDaten.forEach((_, rowIdx) => {
+            const btn = document.getElementById('charge-plus-' + rowIdx);
+            if (btn) btn.disabled = istVoll;
+        });
+    }
 }
 
 function chargeBestaetigen() {
