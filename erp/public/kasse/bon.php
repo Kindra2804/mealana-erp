@@ -1235,6 +1235,25 @@ body {
   </div>
 </div>
 
+<!-- ── Ausgabe-Auswahl nach Zahlung ──────────────────────────────────────── -->
+<div class="ov" id="ov-ausgabe">
+  <div class="ov-box" style="max-width:400px;text-align:center">
+    <div style="font-size:28px;margin-bottom:8px">✓</div>
+    <div class="ov-title" style="text-align:center;margin-bottom:6px">Bon gespeichert</div>
+    <div id="ov-ausgabe-nr" style="font-size:13px;color:#64748b;margin-bottom:22px"></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="ov-btn" id="btn-ausgabe-80mm"
+              style="background:#1e3a5f;color:#fff;font-size:15px;padding:14px"
+              onclick="ausgabeOeffnen('80mm')">🖨 80mm Bon drucken</button>
+      <button class="ov-btn" id="btn-ausgabe-a4"
+              style="background:#2563eb;color:#fff;font-size:15px;padding:14px"
+              onclick="ausgabeOeffnen('a4')">📄 A4 Rechnung öffnen</button>
+      <button class="ov-btn ov-btn-sec" style="padding:12px"
+              onclick="ovSchliessen('ov-ausgabe')">✕ Ohne Druck fertig</button>
+    </div>
+  </div>
+</div>
+
 <!-- Feedback Snackbar -->
 <div id="feedback"></div>
 
@@ -1242,8 +1261,10 @@ body {
      JAVASCRIPT
      ══════════════════════════════════════════════════════════════════════════ -->
 <script>
-var KASSE_ID  = <?= $kasseId ?>;
-var LAGER_ID  = <?= $lagerId ?>;
+var KASSE_ID       = <?= $kasseId ?>;
+var LAGER_ID       = <?= $lagerId ?>;
+var AUSGABE_FORMAT = <?= json_encode($kasseInfo['ausgabe_format'] ?? 'fragen') ?>;
+var KASSE_MODUS    = <?= json_encode($modus) ?>;
 
 // ── Zustand ──────────────────────────────────────────────────────────────────
 var warenkorb          = [];
@@ -1830,6 +1851,32 @@ function mitgebenSpeichern() {
     }).catch(() => feedback('Verbindungsfehler', 'fehler'));
 }
 
+// ── Ausgabe nach Zahlung ──────────────────────────────────────────────────────
+var _letzterBonId = null;
+
+function ausgabeNachZahlung(bonId, bonNr) {
+    _letzterBonId = bonId;
+    // Offline oder fix konfiguriert: direkt ausgeben ohne Dialog
+    var format = AUSGABE_FORMAT;
+    if (KASSE_MODUS === 'offline') format = '80mm';
+    if (format === '80mm') { ausgabeOeffnen('80mm'); return; }
+    if (format === 'a4')   { ausgabeOeffnen('a4');   return; }
+    // 'fragen': Auswahl-Overlay zeigen
+    document.getElementById('ov-ausgabe-nr').textContent = bonNr ? 'Bon-Nr.: ' + bonNr : '';
+    ov('ov-ausgabe');
+}
+
+function ausgabeOeffnen(format) {
+    ovSchliessen('ov-ausgabe');
+    if (!_letzterBonId) return;
+    if (format === '80mm') {
+        window.open('/mealana/kasse/bon_druck.php?id=' + _letzterBonId, '_blank');
+    } else {
+        window.open('/mealana/kasse/bon_a4.php?id=' + _letzterBonId, '_blank');
+    }
+    _letzterBonId = null;
+}
+
 // ── Parken ────────────────────────────────────────────────────────────────────
 function bonParken() {
     if (warenkorb.length === 0) { feedback('Kein Bon zum Parken', 'info'); return; }
@@ -2283,7 +2330,7 @@ function bonSpeichern(zahlDaten) {
         if (d.erfolg) {
             _resetKasseState();
             if (d.bon_id) {
-                window.open('/mealana/kasse/bon_druck.php?id=' + d.bon_id, '_blank');
+                ausgabeNachZahlung(d.bon_id, d.bon_nr || '');
             }
         } else {
             zusatzPositionen = zp; // Rücksetzen bei Fehler
