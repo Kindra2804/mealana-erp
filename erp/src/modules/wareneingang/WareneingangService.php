@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/WareneingangRepository.php';
 require_once __DIR__ . '/../lager/LagerRepository.php';
 require_once __DIR__ . '/../bestellungen/BestellungService.php';
+require_once __DIR__ . '/../lager/LagerService.php';
 
 /**
  * WareneingangService – Geschäftslogik für den Wareneingangs-Workflow
@@ -31,11 +32,13 @@ class WareneingangService
 {
     private WareneingangRepository $repo;
     private LagerRepository        $lagerRepo;
+    private LagerService           $lagerService;
 
     public function __construct()
     {
         $this->repo      = new WareneingangRepository();
         $this->lagerRepo = new LagerRepository();
+        $this->lagerService = new LagerService();
     }
 
     /** Gibt alle offenen und teilgelieferten Bestellungen zurück. */
@@ -135,6 +138,8 @@ class WareneingangService
             'bestand'        => $bestandNachher,
             'mindestbestand' => 0,
         ]);
+
+        $this->lagerService->pruefAuslaufartikelStatus($artikelId, $bestandNachher);
 
         // Lager-Bewegung mit Bestellnummer als Referenz
         $bewegungId = $this->lagerRepo->insertBewegung([

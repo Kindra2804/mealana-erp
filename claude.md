@@ -762,7 +762,17 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
    - Einstellungen/Firma: Karte "Online-Präsenz & Social Media"
    - DokumentService: holeOderErstelleRechnung() mit neu_erstellt-Flag
    - shell_bottom.php: Page-Loader Overlay global (zeigt bei Link/Form, Ausnahmen: _blank/Anker/data-no-loader/AJAX)
-7. **Kasse** ✅ Phase 1+2 FERTIG (zuletzt 2026-06-29):
+7. **Buchhaltung / Artikelgruppen** ✅ FERTIG (2026-07-01):
+   - Migration 096: `artikel_gruppen` (11 Startwerte 4000–4900) + FK `artikel_gruppe_id` an `artikel` + `versandklassen`
+   - `public/buchhaltung/artikel_gruppen.php` — CRUD mit Modal, Warnung getrennt Väter vs. Kinder
+   - Versandklassen-CRUD in `versand/index.php` mit Artikelgruppen-Dropdown (unter PLC-Einstellungen)
+   - `ArtikelRepository`: `artikel_gruppe_id` in insert/update/propagiereZuKindern/findById + Qualitätsfilter `keine_gruppe`
+   - `ArtikelService::saveKind()` + `validiere()`: Pflichtfeld, VATER→KIND-Vererbung
+   - Artikel-Formular (neu/bearbeiten): Dropdown; detail.php: 3er-Grid (Hersteller|Steuerklasse|Artikelgruppe) + Warnung bei leer
+   - `KassenService`: Artikelgruppen-Umsatz in `sammleAbschlussDaten()` + `getPeriodeKennzahlen()`
+   - Abschluss-Seiten (X/Z-Bon + Periodenabschluss): Tabelle "Umsatz nach Artikelgruppe" mit USt-Aufschlüsselung
+   - Buchhaltung-Topnav-Link aktiviert (war zuvor `erp-nav-link-disabled`)
+8. **Kasse** ✅ Phase 1+2 FERTIG (zuletzt 2026-06-29):
    - Migration 077: kassen, kassen_bons, kassen_bon_positionen, kassenbuch, offene_auswahl
    - public/kasse/: 16 Dateien — shell, index, bon, ajax_artikel, bon_speichern, bon_druck, kassenbuch, kassensturz, offene_auswahl, bon_journal, bon_stornieren
    - KassenService: erstelleBon, storniereBon, findArtikelByCode (FIFO-Charge), X-Bon/Z-Bon, Kassenbuch, Offene Auswahl
