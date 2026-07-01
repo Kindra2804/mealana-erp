@@ -54,6 +54,12 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
     <div class="ks-kachel-sub">Alle Bons · Suche · Storno</div>
   </a>
 
+  <a href="/mealana/kasse/kassen_einstellungen.php" class="ks-kachel">
+    <span class="ks-kachel-icon">⚙</span>
+    <div class="ks-kachel-label">Einstellungen</div>
+    <div class="ks-kachel-sub">Ausgabeformat · Modus</div>
+  </a>
+
 </div>
 
 <div style="text-align:center;margin-top:60px">
