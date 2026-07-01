@@ -57,7 +57,7 @@ class LagerService
      *   Neuer Bestand = 0 + Artikel gerade aktiv → deaktivieren
      *   Bei Kind-Artikel: Vater-Aktivstatus abhängig von Anzahl aktiver Kinder
      */
-    private function pruefAuslaufartikelStatus(int $artikelId, float $neuerBestand): void
+    public function pruefAuslaufartikelStatus(int $artikelId, float $neuerBestand): void
     {
         $artikel = $this->artikelRepo->findById($artikelId);
         if (!$artikel || !$artikel['ist_auslaufartikel']) return;
