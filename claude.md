@@ -224,9 +224,22 @@ artikel_merkmale    → Values assigned to articles
 
 ### Suppliers
 ```sql
+laender             → ISO-3166 Länder-Referenz (iso_code PK, name_de, ist_eu_mitglied)
 lieferanten         → Supplier master data
+                      - firma/firmenzusatz (offizieller Name, name bleibt Such-/Kurzbezeichnung)
+                      - land FK → laender.iso_code, ustid, steuerregel ENUM(inland/eu_igl/drittland_einfuhr/reverse_charge)
+                      - standard_lieferkosten (Vorbelegung Bestellung), iban/bic/bank_name/kontoinhaber
 artikel_lieferanten → Supplier-specific SKU, cost (netto_ek), MOQ, lead times
-lieferanten_vertreter → Contact persons per supplier
+lieferanten_vertreter → Contact persons per supplier (+ anrede)
+```
+
+### RKSV / BFR (Kassen-Signatur, Migrations 097–104)
+```sql
+kassen              → + bfr_url, bfr_umsatzzaehler, bfr_aktiv_seit (Stichtag: Belege davor nie signieren)
+kassen_bons          → + steuer_a..e, bfr_status(signiert/ausstehend/fehler), bfr_fehlergrund, signiert_am, nachsignierungs_lauf_id
+bfr_nachsignierungs_laeufe → Sammelbeleg-Protokoll: wann wie viele Belege nachsigniert wurden
+bfr_nullbelege       → Monats-/manuelle Nullbelege, eigener Belegnummernkreis
+bfr_kassen_registrierungen → Protokoll/Backup der FinanzOnline-Meldung (nicht die Quelle der Wahrheit — das BFR-Admin-Tool macht die echte Meldung)
 ```
 
 ### Auth & Permissions (RBAC)
@@ -546,6 +559,27 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-02, Session 21)
+
+### RKSV/BFR-Integration ✅ VOLLSTÄNDIG (2026-07-02)
+- Migrations 097–104: `laender` (Referenztabelle + EU-Flag), `lieferanten`-Erweiterung (siehe unten), `bfr_nachsignierungs_laeufe`, `bfr_nullbelege`, `kassen_bons` (steuer_a-e, bfr_status, bfr_fehlergrund, signiert_am, nachsignierungs_lauf_id), `kassen` (bfr_url, bfr_umsatzzaehler, bfr_aktiv_seit), `bfr_kassen_registrierungen`
+- **`src/modules/kasse/BfrService.php`**: Signierung Verkauf+Storno (`signiereAusstehende`, TN-Reihenfolge strikt eingehalten), Nullbeleg (monatlich automatisch + manuell), Gesamtumsatzzähler-Sperre (Storno vorab abgelehnt statt falsches "ausgefallen"-Signal), Kassen-Registrierung (Protokoll/Backup für FinanzOnline-Meldung, sperrt sich nach Abschluss), `bfr_aktiv_seit`-Stichtag verhindert Nachsignierung historischer/Kassen-ID-fremder Belege
+- `KassenService::erstelleBon()`/`storniereBon()`: Steuergruppen-Berechnung + Signierung nach Commit (BFR-Ausfall darf Verkauf nie verhindern)
+- `public/kasse/nacherfassung.php` — offene/fehlerhafte Belege + Sammelbeleg-Historie (Nachsignierungsläufe) + Retry
+- `public/einstellungen/kasse_registrierung.php` — Kassen-ID/BFR-URL-Verwaltung, sperrt sich nach Abschluss (Hardware-Wechsel = neue Registrierung)
+- `cron/bfr_nachsignierung.php` — alle 5 Min: Nullbeleg-Check + Nachsignierung pro Kasse
+- `src/core/QrCode.php` (endroid/qr-code) — echter QR-Code live aus `rksv_qr` gerendert, kein Datei-Caching nötig
+- X-Bon/Z-Bon sind laut RKSV NICHT signaturpflichtig (reine interne Berichte)
+
+### Lieferanten-Erweiterung ✅ (2026-07-02)
+- Migrations 097–099: `laender`-Tabelle (Land-Dropdown statt Freitext), `lieferanten` ALTER (firma, firmenzusatz, ustid, steuerregel-Enum, standard_lieferkosten, iban/bic/bank_name/kontoinhaber)
+- `lieferanten_vertreter`: `anrede`-Feld; Vertreter-Anlage als Repeatable-Row im Lieferanten-Neuformular (`public/js/lieferanten_neu.js`)
+- Kreditorennummer/DATEV-Zuordnung bewusst NICHT hier — kommt als eigene Liste im Buchhaltungsmodul
+
+### Bugfix: Hersteller-Neuanlage ✅ (2026-07-02)
+- `HerstellerService::save()`: verstecktes `id`-Feld aus dem Modal-Formular brach `insert()` (PDO `HY093: number of bound variables`) — mit `unset($data['id'])` behoben
+- Systemweit geprüft: `ArtikelRepository` bereits sicher (`array_intersect_key`), `PartnerRepository::insert()` technisch gleiche Schwachstelle aber aktuell nicht ausgelöst (separates Neu-Formular ohne id-Feld)
+
 ## What's Implemented (Stand 2026-06-29, Session 19)
 
 ### Artikel Module (CRUD Complete)
@@ -781,7 +815,7 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
    - **K1-Bon Laufkunde Bug ✅ (2026-06-29)**: kunden_snapshot immer vom Original-Auftrag kopieren
    - **Chargen-Dialog ✅ (2026-06-29)**: Overlay ov-charge — Charge wählen/nachzutragen/ohne; bon_speichern.php Rückbuchung liest Charge aus auftrag_positionen
    - **Namenssuche ✅ (2026-06-29)**: Artikel-Suche Modal, sucheArtikel() LIMIT PDO::PARAM_INT Fix
-   - Phase 2 noch offen: RKSV/BFR-BONit, Bon-Park, A4-Bon als Rechnung
+   - RKSV/BFR-BONit ✅ FERTIG (2026-07-02, siehe oben) — Phase 2 noch offen: Bon-Park, A4-Bon als Rechnung
    - Druckkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen; @page { size: 80mm auto }
 8. **Packplatz/Picklisten** — Kommissionierung, Packliste
 9. **Versandmodul** — Österr. Post/PLC fix eingebaut, erweiterbar: DHL/DPD/GLS/UPS. Paketschein, Tracking, Versandkosten. Verbunden mit Packplatz.

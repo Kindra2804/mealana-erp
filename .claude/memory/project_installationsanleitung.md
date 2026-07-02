@@ -24,6 +24,7 @@ Wird erstellt wenn System produktionsreif ist (oder kurz davor).
 - system_einstellungen Basis-Konfiguration (Firmenname, UID, IBAN ...)
 - RKSV/BFR-BONit Registrierung + Kassen-Konfiguration (AT-Pflicht)
 - Erster Benutzer (superadmin) anlegen
+- **TinyMCE 6.x self-hosted** einrichten: Version 6.8.6 (MIT, NICHT v7!) von tiny.cloud/get-tiny/self-hosted herunterladen, entpacken nach `public/js/tinymce/` — wird für Artikel-Beschreibungen (kurzbeschreibung + beschreibung) benötigt; kein API-Key nötig
 
 ## System-Stammdaten die automatisch bei Erstinstallation angelegt werden müssen
 

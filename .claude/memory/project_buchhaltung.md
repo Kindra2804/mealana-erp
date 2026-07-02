@@ -7,7 +7,22 @@ metadata:
   originSessionId: 2201806f-a656-4f8c-9f4f-9cf04a3cdd71
 ---
 
-Stand: 2026-06-28
+Stand: 2026-07-01
+
+## ✅ Artikelgruppen-Modul (Migration 096) — FERTIG 2026-07-01
+
+Warengruppen mit Kontozuordnung für Buchhaltungsberichte.
+
+**DB:** `artikel_gruppen` (id, konto_nr, name, aktiv, sortierung) + FK `artikel_gruppe_id` an `artikel` + `versandklassen`.
+**Startwerte:** 4000 Wolle … 4900 Versandkosten (11 Gruppen).
+**Vererbung:** VATER→KIND via `propagiereZuKindern()` (ArtikelRepository) + `saveKind()` (ArtikelService).
+**UI Buchhaltung:** `public/buchhaltung/artikel_gruppen.php` — CRUD-Modal, Warnung getrennt (Väter vs. Kinder ohne Gruppe).
+**UI Versand:** Versandklassen-CRUD in `versand/index.php` mit Artikelgruppen-Dropdown (unten, nicht in rechter Spalte).
+**UI Artikel:** Pflichtfeld in `neu.php`, `bearbeiten.php`, `detail.php` (3er-Grid: Hersteller|Steuerklasse|Artikelgruppe). Warnung im Detail wenn leer. Filter "Keine Artikelgruppe" in liste.php.
+**Berichte:** Kassen X/Z-Bon + Monats/Quartalsabschluss zeigen "Umsatz nach Artikelgruppe" mit Steuersatz-Aufschlüsselung (JOIN über artikel.artikel_gruppe_id).
+**Buchhaltungs-Nav:** Topnav-Link war disabled → jetzt aktiv (`/mealana/buchhaltung/artikel_gruppen.php`).
+
+**Wichtig — Warnung:** Zählt NUR Väter/Standalone (nicht Kinder, weil die beim nächsten Vater-Speichern erben). `vaterartikel_id IS NULL AND zustand_vater_id IS NULL`.
 
 ## ⚡ Beim Buchhaltungs-Start erledigen
 - Dashboard Card 5 "Offene Lieferantenrechnungen" aktivieren (TODO BUCHHALTUNG in dashboard.php)
@@ -93,6 +108,10 @@ zahlungsart_konten (
 ```
 
 So wird jede Kassen-Buchung und jede Rechnung automatisch den richtigen Konten zugeordnet → DATEV-Export schreibt sich fast von selbst.
+
+## Kreditoren-Zuordnung (Lieferanten)
+
+Geplant: eigene Liste/Seite im Buchhaltungsmodul mit allen Lieferanten (siehe [[project_lieferanten_erweiterung]]), auf der man jedem Lieferanten ein Kreditorenkonto zuweist — nicht am Lieferanten-Stammdatensatz selbst. Jacky hat das am 2026-07-02 explizit so bestätigt: "quasi eine Liste wo alle Lieferanten drin stehen und dort kann man die Kreditorenzuweisung machen".
 
 ## Odoo als Referenz
 

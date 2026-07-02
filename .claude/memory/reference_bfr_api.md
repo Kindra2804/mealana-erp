@@ -1,10 +1,8 @@
 ---
-name: reference-bfr-api
-description: "BFR BONit Fiscal Recorder – RKSV-Signatur-API (lokale Signaturkarte, AT, offline-tauglich)"
+name: ""
 metadata: 
   node_type: memory
-  type: reference
-  originSessionId: 7c2206d0-2966-4b33-8077-f725a9bdff96
+  originSessionId: eefd559b-9c02-443d-a0cb-164e3dadf876
 ---
 
 ## BFR BONit Fiscal Recorder — RKSV Schnittstelle
@@ -111,8 +109,17 @@ Pro Beleg:
 ## Kassen-Implementation Hinweise
 
 - Belegnummer je Kasse getrennt führen (BFR0226 für Laden, anderer Name für Messe)
-- Startbeleg (Nullbeleg) bei Tagesöffnung
-- Jahresbeleg (Nullbeleg) am 31.12.
 - `/state` beim App-Start aufrufen und RN validieren
 - BFR-Erreichbarkeit: `http://127.0.0.1:8787` (lokal) oder IP im LAN (z.B. Messe-PC greift auf Server-PC zu)
 - Für Messe offline: BFR-Dienst + Karte direkt am Messe-Laptop installiert → kein Netz nötig
+
+## Korrekturen aus der echten BFR-Installationsanleitung (2026-07-02)
+
+Referenzdokument: `D:\ERP\mealana\import\BFR_Installationsanleitung.pdf` (bonit.at Software, für andere Kassensoftware geschrieben, technisch aber übertragbar — enthält u.a. den echten `/state`-Response mit allen Feldern und einen Screenshot mit realen Beispielwerten für SC/Zertifikat).
+
+- **Startbeleg wird vom BFR selbst erstellt** — im separaten BFR-Admin-Tool durch den Techniker (Schritt 7 der Anleitung), **nicht** von der Kassensoftware über `/register`. "Ein weiterer Startbeleg/Nullbeleg in der Kassensoftware ist nicht erforderlich."
+- **Monats- und Jahres-Nullbelege erstellt BFR ebenfalls automatisch selbst intern**, sobald der erste Beleg eines neuen Monats zur Signatur ankommt ("wird ein Nullbeleg vorgeschoben"). Der letzte Nullbeleg nach dem 31.12. ist gleichzeitig der Jahresbeleg.
+- **Der "Sammelbeleg nach Ausfall und Wiederinbetriebnahme" wird ebenfalls automatisch von BFR selbst erstellt und gespeichert** (gesetzliche Vorgabe).
+- Die eigentliche FinanzOnline-Meldung (Zertifikat registrieren, Kassen-ID registrieren, Startbeleg prüfen) passiert **im BFR-Admin-Tool selbst**, über einen eigenen Registrierkassen-Webservice-Benutzer — die Kassensoftware hat darauf keinen direkten Zugriff.
+- `<SC>` im `/state`-Response hat das Format `UID:Vertrauensdiensteanbieter:Zertifikat-Seriennummer-Hex` (Beispiel: `ATU65033000:AT1:5619064c`) — daraus lässt sich die Zertifikat-Seriennummer automatisch parsen (Hex direkt, Dez via `hexdec()`).
+- **MeaLana-Entscheidung:** Trotz dieser BFR-eigenen Automatik bauen wir unsere eigene Nullbeleg-/Nachsignierungs-Logik bewusst NICHT zurück — Jacky akzeptiert die Redundanz ("besser doppelt als vergessen"). Siehe [[project_rksv_bfr]] für die volle Historie inkl. Kassen-Registrierungs-Seite mit Aktiv-seit-Stichtag.

@@ -140,11 +140,12 @@ Aufbau: [Vater-Nr.] [Trennzeichen] [Variabler Teil]
 - Verfügbare aber ungenutzte Blöcke als gestrichelte Chips neben der Vorlage
 - Live-Vorschau der ersten paar Kombinationen direkt im Builder
 
-### WYSIWYG
-Zwei getrennte Editoren auf Stammdaten-Tab:
-- **Kurzbeschreibung** (1-2 Zeilen, für Shopvorschau)
-- **Vollbeschreibung** (vollwertig, Rich Text)
-Open Source: TinyMCE oder Quill.js, self-hosted
+### WYSIWYG ✅ FERTIG (2026-07-01)
+- **TinyMCE 6.8.6** self-hosted (`public/js/tinymce/`) — MIT-Lizenz, kein API-Key, kommerzielle Weitergabe OK
+- **NICHT TinyMCE 7** — v7 braucht Lizenzschlüssel auch self-hosted
+- Eingebunden in `artikel/detail.php` + `artikel/bearbeiten.php`
+- Init in `artikel_detail.js` + `artikel_bearbeiten.js` (kein license_key nötig bei v6)
+- Kurzbeschreibung: Mini-Toolbar (bold/italic/underline), Langbeschreibung: voll (lists/link)
 
 ### Sidebar im Detail-Modus
 ```
