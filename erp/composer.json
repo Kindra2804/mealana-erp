@@ -7,7 +7,8 @@
         "twig/twig": "^3.0",
         "dompdf/dompdf": "^3.0",
         "picqer/php-barcode-generator": "^2.0",
-        "phpmailer/phpmailer": "^7.1"
+        "phpmailer/phpmailer": "^7.1",
+        "endroid/qr-code": "^6.0"
     },
     "config": {
         "optimize-autoloader": true

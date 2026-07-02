@@ -120,13 +120,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">Offline/Messe erzwingt immer 80mm, unabhängig von dieser Einstellung.</div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">RKSV-Kassen-ID</label>
-                <input type="text" name="rksv_kassen_id" class="erp-input"
-                    value="<?= htmlspecialchars($kasse['rksv_kassen_id'] ?? '') ?>"
-                    placeholder="z.B. RKSV-K1">
-                <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">Muss mit der BFR BONit Fiscal Recorder Konfiguration übereinstimmen.</div>
+            <?php if (!$istNeu): ?>
+            <div class="form-group" style="grid-column:span 2">
+                <label class="form-label">RKSV / BFR</label>
+                <div style="font-size:13px;padding:8px 0">
+                    <?php if (!empty($kasse['rksv_kassen_id'])): ?>
+                        Kassen-ID <strong><?= htmlspecialchars($kasse['rksv_kassen_id']) ?></strong>
+                        · <?= htmlspecialchars($kasse['bfr_url'] ?? '–') ?>
+                    <?php else: ?>
+                        <span style="color:var(--color-text-muted)">Noch keine RKSV-Kassen-ID registriert.</span>
+                    <?php endif; ?>
+                </div>
+                <a href="kasse_registrierung.php?id=<?= (int)$kasse['id'] ?>" class="btn btn-secondary btn-sm">
+                    RKSV-Registrierung verwalten
+                </a>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">Kassen-ID/BFR-URL werden über die Registrierungs-Seite gesetzt, nicht hier — dort mit Zeitstempeln protokolliert und nach Abschluss gesperrt.</div>
             </div>
+            <?php endif; ?>
 
             <div class="form-group" style="display:flex;flex-direction:column;justify-content:center;gap:10px;padding-top:18px">
                 <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px">
