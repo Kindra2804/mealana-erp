@@ -84,6 +84,8 @@ class HerstellerService
 
         $data = $this->bereinige($data);
         $data['logo_pfad'] = null;  // Erst nach dem Insert setzen (ID wird als Dateiname verwendet)
+        unset($data['id']);        // Das Modal-Formular schickt immer ein (bei Neuanlage leeres) id-Feld mit —
+                                    // insert() hat aber keinen :id-Platzhalter, das würde PDO durcheinanderbringen
 
         $id = $this->repo->insert($data);
 
