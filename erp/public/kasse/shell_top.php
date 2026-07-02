@@ -204,6 +204,7 @@
     <a href="/mealana/kasse/kassenbuch.php"   class="<?= $cur === 'kb'     ? 'aktiv' : '' ?>">💰 Kassenbuch</a>
     <a href="/mealana/kasse/kassensturz.php"  class="<?= $cur === 'ks'     ? 'aktiv' : '' ?>">📊 Kassenstand</a>
     <a href="/mealana/kasse/bon_journal.php"  class="<?= $cur === 'journal' ? 'aktiv' : '' ?>">📋 Journal</a>
+    <a href="/mealana/kasse/nacherfassung.php" class="<?= $cur === 'nacherfassung' ? 'aktiv' : '' ?>">🔏 RKSV</a>
     <div class="ks-nav-sep"></div>
     <a href="/mealana/start.php" class="ks-back">→ Start</a>
   </div>

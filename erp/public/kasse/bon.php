@@ -42,7 +42,7 @@ body {
 }
 .ph-title  { color: #fff; font-size: 17px; font-weight: 700; white-space: nowrap; }
 .ph-sub    { color: #93c5fd; font-size: 12px; white-space: nowrap; }
-.ph-rksv   { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #86efac; white-space: nowrap; }
+.ph-rksv   { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #86efac; white-space: nowrap; cursor: pointer; }
 .ph-rksv-dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
 .ph-rksv-dot.offline { background: #f59e0b; }
 .ph-right  { margin-left: auto; display: flex; gap: 7px; align-items: center; }
@@ -716,7 +716,7 @@ body {
     <?= $modus === 'offline' ? 'MESSEBETRIEB' : 'ONLINE' ?>
   </div>
   <?php if ($rksvId): ?>
-  <div class="ph-rksv">
+  <div class="ph-rksv" onclick="nullbonDialog()" title="Nullbon erstellen">
     <div class="ph-rksv-dot<?= $modus === 'offline' ? ' offline' : '' ?>"></div>
     RKSV <?= $modus === 'offline' ? 'offline' : 'aktiv' ?>
   </div>
@@ -1137,6 +1137,20 @@ body {
     <div class="ov-grid2">
       <button class="ov-btn ov-btn-red" onclick="nullbestandBestaetigen()">Trotzdem buchen</button>
       <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-nullbestand')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-nullbon">
+  <div class="ov-box">
+    <div class="ov-title">RKSV Nullbon</div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:16px">
+      Nullbon jetzt erstellen? Kein Umsatz, dient nur der RKSV-Absicherung
+      (z.B. monatliche Kontrolle oder auf Wunsch der Buchhaltung).
+    </p>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" onclick="nullbonBestaetigen()">Nullbon erstellen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-nullbon')">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -2705,6 +2719,28 @@ function kasseladeOeffnen() {
         .then(r => r.json())
         .then(d => { feedback(d.hinweis || '⊟ Kassenlade geöffnet', 'ok'); })
         .catch(() => feedback('⊟ Kassenlade-Befehl gesendet', 'ok'));
+}
+
+function nullbonDialog() {
+    ov('ov-nullbon');
+}
+
+function nullbonBestaetigen() {
+    ovSchliessen('ov-nullbon');
+    fetch('/mealana/kasse/ajax_nullbon.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'kasse_id=' + <?= (int)$kasseId ?>,
+    })
+        .then(r => r.json())
+        .then(d => {
+            if (d.erfolg) {
+                feedback('✓ Nullbon erstellt (' + d.beleg_nr + ')', 'ok');
+            } else {
+                feedback(d.fehler || 'Nullbon fehlgeschlagen', 'fehler');
+            }
+        })
+        .catch(() => feedback('Nullbon fehlgeschlagen — keine Antwort vom Server', 'fehler'));
 }
 
 // ── Hilfsfunktionen ──────────────────────────────────────────────────────────

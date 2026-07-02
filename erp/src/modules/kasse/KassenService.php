@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
+require_once __DIR__ . '/BfrService.php';
 
 class KassenService
 {
@@ -209,19 +210,31 @@ class KassenService
         $kasseId = (int)($bonDaten['kasse_id'] ?? 1);
         $lagerId = (int)($bonDaten['lager_id'] ?? 1);
 
+        // Vor der ersten Buchung des Monats: Nullbeleg sicherstellen (RKSV-Absicherung).
+        // Läuft bewusst außerhalb der Verkaufs-Transaktion — ein BFR-Problem hier
+        // darf den Verkauf nicht verhindern.
+        try {
+            (new BfrService())->sicherstelleMonatsNullbeleg($kasseId);
+        } catch (Throwable $e) {
+            error_log('[BFR-Nullbeleg] ' . $e->getMessage());
+        }
+
         $this->db->beginTransaction();
         try {
-            $bonNr = $this->naechsteBonNr($kasseId);
+            $bonNr    = $this->naechsteBonNr($kasseId);
+            $steuer   = BfrService::steuerGruppenAusPositionen($positionen);
 
             $stmt = $this->db->prepare("
                 INSERT INTO kassen_bons
                     (bon_nr, typ, kasse_id, auftrag_id, kunden_id, zahlungsart,
                      bruttobetrag, gegeben, rueckgeld, bar_betrag, karten_betrag,
-                     gutschein_code, gutschein_betrag, benutzer_id, notiz)
+                     gutschein_code, gutschein_betrag, benutzer_id, notiz,
+                     steuer_a, steuer_b, steuer_c, steuer_d, steuer_e)
                 VALUES
                     (:bon_nr, 'verkauf', :kasse_id, :auftrag_id, :kunden_id, :zahlungsart,
                      :bruttobetrag, :gegeben, :rueckgeld, :bar_betrag, :karten_betrag,
-                     :gutschein_code, :gutschein_betrag, :benutzer_id, :notiz)
+                     :gutschein_code, :gutschein_betrag, :benutzer_id, :notiz,
+                     :steuer_a, :steuer_b, :steuer_c, :steuer_d, :steuer_e)
             ");
             $stmt->execute([
                 ':bon_nr'           => $bonNr,
@@ -238,6 +251,11 @@ class KassenService
                 ':gutschein_betrag' => $bonDaten['gutschein_betrag'] ?? null,
                 ':benutzer_id'      => $benutzerId,
                 ':notiz'            => $bonDaten['notiz']            ?? null,
+                ':steuer_a'         => $steuer['a'],
+                ':steuer_b'         => $steuer['b'],
+                ':steuer_c'         => $steuer['c'],
+                ':steuer_d'         => $steuer['d'],
+                ':steuer_e'         => $steuer['e'],
             ]);
             $bonId = (int)$this->db->lastInsertId();
 
@@ -397,12 +415,20 @@ class KassenService
             ], $benutzerId);
 
             $this->db->commit();
-            return ['erfolg' => true, 'bon_id' => $bonId, 'bon_nr' => $bonNr];
-
         } catch (Exception $e) {
             $this->db->rollBack();
             return ['erfolg' => false, 'fehler' => 'Datenbankfehler: ' . $e->getMessage()];
         }
+
+        // BFR-Signatur nach dem Commit versuchen — ein Ausfall der Signiereinrichtung
+        // darf den bereits abgeschlossenen Verkauf nicht mehr rückgängig machen.
+        try {
+            (new BfrService())->signiereAusstehende($kasseId);
+        } catch (Throwable $e) {
+            error_log('[BFR] ' . $e->getMessage());
+        }
+
+        return ['erfolg' => true, 'bon_id' => $bonId, 'bon_nr' => $bonNr];
     }
 
     /**
@@ -416,6 +442,14 @@ class KassenService
         if ($bon['storniert']) return ['erfolg' => false, 'fehler' => 'Bon ist bereits storniert.'];
         if ($bon['typ'] !== 'verkauf') return ['erfolg' => false, 'fehler' => 'Nur Verkaufsbons können storniert werden.'];
 
+        // RKSV-Vorabcheck: der BFR selbst ist funktionsfähig, wir lehnen hier rein aus
+        // eigener Business-Logik ab — deshalb den ganzen Storno verhindern statt einen
+        // Beleg mit falschem "Sicherheitseinrichtung ausgefallen"-Aufdruck zu drucken.
+        $stornoBetrag = -abs((float)$bon['bruttobetrag']);
+        if ((new BfrService())->wuerdeUmsatzzaehlerNegativWerden((int)$bon['kasse_id'], $stornoBetrag)) {
+            return ['erfolg' => false, 'fehler' => 'Storno nicht möglich: Der RKSV-Gesamtumsatzzähler würde dadurch negativ werden. Bitte administrativ prüfen.'];
+        }
+
         $kasse = $this->getKasse((int)$bon['kasse_id']);
         $lagerId = $kasse ? (int)$kasse['lager_id'] : 1;
 
@@ -425,13 +459,24 @@ class KassenService
                 ->execute([':id' => $bonId]);
 
             $stornoBonNr = $this->naechsteBonNr((int)$bon['kasse_id'], 'S');
+
+            // Steuergruppen aus den (negativen) Original-Mengen — dieselbe Berechnung
+            // wie bei erstelleBon(), das negative Vorzeichen wandert automatisch durch.
+            $stornoPositionen = array_map(function ($pos) {
+                $pos['menge'] = -abs((float)$pos['menge']);
+                return $pos;
+            }, $bon['positionen']);
+            $steuer = BfrService::steuerGruppenAusPositionen($stornoPositionen);
+
             $stmt = $this->db->prepare("
                 INSERT INTO kassen_bons
                     (bon_nr, typ, kasse_id, zahlungsart, bruttobetrag,
-                     benutzer_id, storno_von_id, notiz)
+                     benutzer_id, storno_von_id, notiz,
+                     steuer_a, steuer_b, steuer_c, steuer_d, steuer_e)
                 VALUES
                     (:bon_nr, 'storno', :kasse_id, :zahlungsart, :bruttobetrag,
-                     :benutzer_id, :storno_von_id, :notiz)
+                     :benutzer_id, :storno_von_id, :notiz,
+                     :steuer_a, :steuer_b, :steuer_c, :steuer_d, :steuer_e)
             ");
             $stmt->execute([
                 ':bon_nr'        => $stornoBonNr,
@@ -441,6 +486,11 @@ class KassenService
                 ':benutzer_id'   => $benutzerId,
                 ':storno_von_id' => $bonId,
                 ':notiz'         => 'Storno von ' . $bon['bon_nr'],
+                ':steuer_a'      => $steuer['a'],
+                ':steuer_b'      => $steuer['b'],
+                ':steuer_c'      => $steuer['c'],
+                ':steuer_d'      => $steuer['d'],
+                ':steuer_e'      => $steuer['e'],
             ]);
             $stornoBonId = (int)$this->db->lastInsertId();
 
@@ -483,12 +533,19 @@ class KassenService
             ], $benutzerId);
 
             $this->db->commit();
-            return ['erfolg' => true, 'storno_bon_id' => $stornoBonId, 'bon_nr' => $stornoBonNr];
-
         } catch (Exception $e) {
             $this->db->rollBack();
             return ['erfolg' => false, 'fehler' => $e->getMessage()];
         }
+
+        // BFR-Signatur nach dem Commit, außerhalb der Transaktion — siehe erstelleBon().
+        try {
+            (new BfrService())->signiereAusstehende((int)$bon['kasse_id']);
+        } catch (Throwable $e) {
+            error_log('[BFR] ' . $e->getMessage());
+        }
+
+        return ['erfolg' => true, 'storno_bon_id' => $stornoBonId, 'bon_nr' => $stornoBonNr];
     }
 
     // ── Bon-Nr generieren ─────────────────────────────────────────────────────

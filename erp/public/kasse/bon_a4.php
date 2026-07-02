@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/core/QrCode.php';
 
 $bonId   = (int)($_GET['id'] ?? 0);
 $service = new KassenService();
@@ -359,12 +360,15 @@ if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftra
 <?php endif; ?>
 
 <!-- ── RKSV ── -->
-<?php if ($bon['rksv_signatur']): ?>
-<div style="font-size:8pt;color:#94a3b8;margin-bottom:6mm;border-top:1px solid #e2e8f0;padding-top:4px">
-  RKSV: <?= htmlspecialchars($bon['rksv_signatur']) ?>
+<?php if ($bon['bfr_status'] === 'signiert'): ?>
+<div style="margin-bottom:6mm;border-top:1px solid #e2e8f0;padding-top:4px;display:flex;align-items:center;gap:8px">
+  <?php if ($bon['rksv_qr']): ?>
+  <img src="<?= QrCode::dataUri($bon['rksv_qr'], 100) ?>" style="width:25mm;height:25mm">
+  <?php endif; ?>
+  <div style="font-size:8pt;color:#94a3b8">RKSV: <?= htmlspecialchars($bon['rksv_signatur']) ?></div>
 </div>
 <?php else: ?>
-<div style="font-size:7.5pt;color:#cbd5e1;margin-bottom:6mm">[RKSV-Signatur: ausstehend]</div>
+<div style="font-size:7.5pt;font-weight:bold;color:#334155;margin-bottom:6mm;border-top:1px solid #e2e8f0;padding-top:4px">Sicherheitseinrichtung ausgefallen</div>
 <?php endif; ?>
 
 <!-- ── FUSSZEILE ── -->
