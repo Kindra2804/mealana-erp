@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-06-29 (Session 19)
+Stand: 2026-07-02 (Session 21)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -22,7 +22,9 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ```
 
 ## Schema-Referenz
-- 87 Migrations angewendet (001–087)
+- 104 Migrations angewendet (001–104)
+- Migration 097–099: Lieferanten-Erweiterung (laender-Tabelle, firma/ustid/steuerregel/Bankverbindung)
+- Migration 100–104: RKSV/BFR komplett (Nachsignierung, Nullbeleg, Umsatzzähler, Nacherfassung, Kassen-Registrierung)
 - Migration 087: auftrag_lieferungen (Tracking-History pro Auftrag für Teillieferungen)
 - Wichtige neue Tabellen: auftrag_zahlungen (076), mahnungen (069), shops (067), auftraege/auftrag_positionen/rechnungen/auftrag_dokumente/auftrag_statuslog (060–062)
 - Dump aktualisieren: `& "C:\xampp\mysql\bin\mysqldump.exe" --host=localhost --user=root --no-tablespaces --routines --skip-comments mealana_erp | Out-File -FilePath "D:\ERP\mealana\erp\database\schema_current.sql" -Encoding utf8`
@@ -43,14 +45,17 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 
 ### Varianten-System ✅ VOLLSTÄNDIG
 ### Lager-Modul ✅ VOLLSTÄNDIG
-### Lieferanten-Modul ✅ VOLLSTÄNDIG + ERWEITERT (2026-06-27)
+### Lieferanten-Modul ✅ VOLLSTÄNDIG + ERWEITERT (2026-07-02)
 - Migrations 085+086: neue Felder (Adresse, Kundennr., Währung, Zahlungskonditionen, Lieferkonditionen, Notizen) + Tabelle lieferanten_zugaenge (AES-256-GCM Passwörter)
+- **Migrations 097–099 (2026-07-02)**: `laender`-Referenztabelle (Land-Dropdown statt Freitext), `firma`/`firmenzusatz` (name bleibt Such-/Kurzbezeichnung), `ustid`, `steuerregel`-Enum, `standard_lieferkosten`, Bankverbindung (iban/bic/bank_name/kontoinhaber), Vertreter-`anrede`
+- Vertreter-Anlage als Repeatable-Row direkt im Lieferanten-Neuformular (kein Umweg mehr über separate Seite)
 - detail.php: 5 Tabs (Stammdaten | Vertreter | Artikel | Bestellungen | Zugänge)
 - Artikel-Tab: aus artikel_lieferanten (korrekte Spalten: artikelnummer_lieferant, netto_ek, vpe_menge)
 - Bestellungen-Tab: alle EK-Bestellungen mit Status-Chips
 - Zugänge-Tab: Passwort-Manager mit Show/Hide Toggle
 - Lager-Einstieg: Topnav "Lager" → picklisten.php (war wareneingang.php)
 - Kunden-Modul: Tab "Bestellungen" aktiviert + Einwilligungstypen Telefon/WhatsApp/SMS + "Auftrag erstellen"-Button mit Adress-Vorausfüllung
+- Offen: Kreditorennummer/DATEV-Zuordnung kommt als eigene Liste im Buchhaltungsmodul; Doku (bedienungsanleitung.php + Handbuch) noch nicht nachgezogen
 ### Aktions-Modul ✅ VOLLSTÄNDIG
 ### PreisService ✅ VOLLSTÄNDIG
 - artikel_preise JOIN mit Datumsfilter: bevorzugt aktiven Sonderpreis über Basispreis
@@ -58,6 +63,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ### Kunden-Modul ✅ VOLLSTÄNDIG (AES-256-GCM, DSGVO)
 ### Partner-Modul ✅ VOLLSTÄNDIG (Mietfächer, Vertragshistory)
 ### Hersteller-Modul ✅ VOLLSTÄNDIG (GPSR-Felder, aktualisiert_am)
+- **Bugfix 2026-07-02**: Neuanlage über das Modal warf "Netzwerkfehler" (PDO HY093 durch mitgeschicktes leeres `id`-Feld in `insert()`) — `unset($data['id'])` in `HerstellerService::save()`. Gleiches Muster in `PartnerRepository::insert()` latent (aktuell nicht ausgelöst).
 ### Bestellwesen/Einkauf ✅ VOLLSTÄNDIG
 
 ### Auftragsmodul/Verkauf ✅ WEITGEHEND FERTIG (aktualisiert 2026-06-26)
@@ -88,7 +94,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 ### Mail-Infrastruktur ✅ NEU (2026-06-25)
 ### Mahnwesen-Cronjob ✅ NEU (2026-06-25)
 
-### Kasse/POS ✅ Phase 1+2 FERTIG (zuletzt 2026-06-29)
+### Kasse/POS ✅ Phase 1+2 FERTIG (zuletzt 2026-07-02 — RKSV/BFR komplett)
 - Migration 077: kassen, kassen_bons, kassen_bon_positionen, kassenbuch, offene_auswahl
 - Migration 078: Divers-Platzhalter-Artikel 99-9999 (für auftrag_positionen FK)
 - public/kasse/: 16 Dateien — index, bon, ajax_artikel, bon_speichern, bon_druck, kassenbuch(+speichern), kassensturz(+speichern), offene_auswahl(+speichern+verarbeiten), bon_journal, bon_stornieren
@@ -101,13 +107,14 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - Bugfixes: steuerklassen.satz (war prozentsatz), artikel_preise.kundengruppen_id (war kunden_gruppe_id)
 - **Abholbereit+bezahlt Flow ✅ FERTIG (2026-06-29)**: exakt/retour/extra/mix — alle 4 Fälle; nur_abschliessen, Retour-Bon, neg. auftrag_zahlungen, Gutschein-Hook vorbereitet
 - **K1-Bon Laufkunde Bug ✅ BEHOBEN (2026-06-29)**: kunden_snapshot vom Original-Auftrag immer auf K1 kopieren
-- Phase 2 noch offen: RKSV/BFR-BONit, Bon-Park, A4-Bon als Rechnung
+- **RKSV/BFR-BONit ✅ FERTIG (2026-07-02)**: BfrService (Verkauf+Storno-Signierung, Nachsignierung mit Sammelbeleg-Protokoll, Nullbeleg monatlich+manuell, Gesamtumsatzzähler-Sperre), Nacherfassungs-Seite, Kassen-Registrierung mit Aktiv-seit-Stichtag (Hardware-Wechsel-sicher), Cronjob, echter QR-Code (endroid/qr-code) — Details: siehe project_rksv_bfr.md
+- Phase 2 noch offen: Bon-Park, A4-Bon als Rechnung
 
 ## 🔴 Noch nicht gebaut (Reihenfolge = geplante Priorität)
 
 | Modul | Priorität | Anmerkung |
 |---|---|---|
-| Kasse Phase 2 | HOCH | RKSV/BFR BONit, Auftrag laden, Bon-Park |
+| Kasse Phase 2 | HOCH | ~~RKSV/BFR BONit~~ ✅ 2026-07-02, Auftrag laden, Bon-Park |
 | **Auth & Benutzer-Cluster** | **HOCH** | **Zusammenhängend, in dieser Reihenfolge bauen:** |
 | ~~Login / Logout (Shell)~~ | ✅ FERTIG 2026-06-27 | login.php gestylt, Shell-Header mit Profil-Link + Abmelden |
 | ~~Anmeldeschirm + Rollenauswahl~~ | ✅ FERTIG 2026-06-27 | start.php: Begrüßung + 3 Kacheln (ERP/Kasse/Packplatz) |
@@ -130,6 +137,16 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
+
+## Session 21 erledigt (2026-07-02)
+- **Lieferanten-Erweiterung** (Migrations 097–099): laender-Referenztabelle mit EU-Flag, firma/firmenzusatz, ustid, steuerregel-Enum, standard_lieferkosten, Bankverbindung, Vertreter-anrede; Vertreter-Anlage als Repeatable-Row im Neuformular
+- **RKSV/BFR-Integration komplett** (Migrations 100–104): BfrService (Verkauf+Storno-Signierung mit strikter TN-Reihenfolge, Nachsignierung mit Sammelbeleg-Protokoll bfr_nachsignierungs_laeufe, Nullbeleg monatlich+manuell, Gesamtumsatzzähler-Sperre VOR statt NACH Belegerstellung), Nacherfassungs-Seite (public/kasse/nacherfassung.php), Kassen-Registrierung mit bfr_aktiv_seit-Stichtag (verhindert Nachsignierung historischer/Kassen-ID-fremder Belege bei Hardware-Wechsel), Cronjob (cron/bfr_nachsignierung.php), echter QR-Code via endroid/qr-code (composer) statt Klartext
+  - Reale BFR-Installationsanleitung gelesen (D:\ERP\mealana\import\BFR_Installationsanleitung.pdf) — Startbeleg + Monats-/Jahres-Nullbelege macht BFR intern selbst, unsere Logik bleibt trotzdem als bewusste Redundanz
+  - X-Bon/Z-Bon bestätigt NICHT signaturpflichtig nach österr. RKSV
+  - Nebenbei-Bugfix: Logger::log() fiel in Hintergrund-Kontexten (kein $_SESSION) auf null zurück → SYSTEM_BENUTZER_ID (Jarvis) jetzt explizit übergeben; gleicher Bug in cron/mahnwesen.php noch offen
+  - Details: siehe project_rksv_bfr.md
+- **Bugfix Hersteller-Neuanlage**: Modal schickte immer ein leeres `id`-Feld mit, `insert()` hatte keinen `:id`-Platzhalter → PDO HY093 Fatal Error → "Netzwerkfehler" im Browser. Fix: `unset($data['id'])` in HerstellerService::save(). Systemweit geprüft — PartnerRepository::insert() hat dieselbe Schwachstelle, aktuell aber nicht ausgelöst (separates Formular ohne id-Feld)
+- Memory-Backup nach D:\ERP\mealana\.claude\memory\ gesynct
 
 ## Session 20 erledigt (2026-07-01) — Bug-Fix Session
 - **Picklisten**: 'abholbereit' Aufträge erscheinen nicht mehr in "offene" Picklisten-Liste

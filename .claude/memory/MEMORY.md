@@ -36,7 +36,7 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline
+- [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — XAMPP+MariaDB lokal, WireGuard VPN statt Port-Forwarding, Messe-Kasse Variante B (Offline+SQLite)
 - [Gutschein-Modul Design](project_gutscheine.md) — ERP=Single Source of Truth, WooCommerce als Slave (kein Design/Text in WC), on+offline, 3 DB-Tabellen
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix, Twig+Dompdf Templates, WC-Sync umschaltbar, Packplatz eigene Seite
@@ -52,3 +52,7 @@
 - [PLC / EasyPak Versand](project_plc_versand.md) — EasyPak XML-Format (Öst. Post), Item-IDs (430101/07/04/06), Ausgabepfad+Dateiname konfigurierbar, Bankdaten aus Firma-Tab
 - [🔴 BUG: Chargen-Tracking](bug_charge_tracking.md) — Packplatz+Kasse buchen charge=NULL statt richtiger Charge; Race Condition im Log; FIFO-Fix + Charge-Dialog geplant
 - [Chargen-Konzept (vollständig)](project_chargen_konzept.md) — 3 Typen (keine/optional/Pflicht), alle Lagerbewegungsstellen, UX-Flows Kasse/Packplatz/Umlagerung/Auftrag
+- [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — FERTIG 2026-07-02: BfrService komplett (Verkauf+Storno, Nachsignierung, Nullbeleg, Umsatzzähler-Sperre, Nacherfassung, Kassen-Registrierung, Cronjob, echter QR-Code via endroid/qr-code); Logger/$_SESSION-Bugfund (mahnwesen.php betroffen)
+- [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede; Doku-Schuld offen
+- [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — Unicode-Flaggen rendern auf Jackys Windows-Browsern nicht, nur Buchstaben-Fallback — nicht verwenden
+- [🟢 BUG: Hersteller-Modal Insert](bug_hersteller_modal_insert.md) — BEHOBEN 2026-07-02: extra id-Key im Formular bricht PDO insert() — gleiches Muster bei Partner-Modul latent, noch nicht gefixt
