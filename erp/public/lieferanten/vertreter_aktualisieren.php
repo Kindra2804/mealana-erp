@@ -20,6 +20,7 @@ foreach ($data as $key => $value) {
 $vertreterData = array_intersect_key($data, array_flip([
     'id',
     'lieferant_id',
+    'anrede',
     'vorname',
     'nachname',
     'telefon',

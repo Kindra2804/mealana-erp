@@ -24,12 +24,25 @@ class LieferantenRepository
     {
         $where = $mitInaktiven ? '' : 'WHERE l.aktiv = 1';
         $stmt  = $this->db->query("
-            SELECT l.id, l.name, l.land, l.website, l.email, l.telefon,
+            SELECT l.id, l.name, l.firma, l.land, ln.name_de AS land_name,
+                   l.website, l.email, l.telefon,
                    l.waehrung, l.zahlungsziel_tage, l.lieferzeit_tage,
                    l.aktiv, l.erstellt_am
             FROM lieferanten l
+            LEFT JOIN laender ln ON ln.iso_code = l.land
             $where
             ORDER BY l.name ASC
+        ");
+        return $stmt->fetchAll();
+    }
+
+    /** Alle Länder für das Land-Dropdown, alphabetisch nach deutschem Namen. */
+    public function findAllLaender(): array
+    {
+        $stmt = $this->db->query("
+            SELECT iso_code, name_de, ist_eu_mitglied
+            FROM laender
+            ORDER BY name_de ASC
         ");
         return $stmt->fetchAll();
     }
@@ -37,13 +50,16 @@ class LieferantenRepository
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT id, name, land, strasse, plz, ort, kundennummer, waehrung,
-                   website, email, telefon,
-                   zahlungsziel_tage, skonto_prozent, skonto_tage,
-                   mindestbestellwert, lieferzeit_tage, lieferbedingung,
-                   interne_notizen, aktiv, erstellt_am, geaendert_am
-            FROM lieferanten
-            WHERE id = :id
+            SELECT l.id, l.name, l.firma, l.firmenzusatz, l.land, ln.name_de AS land_name,
+                   l.strasse, l.plz, l.ort, l.kundennummer, l.ustid, l.steuerregel, l.waehrung,
+                   l.website, l.email, l.telefon,
+                   l.zahlungsziel_tage, l.skonto_prozent, l.skonto_tage,
+                   l.mindestbestellwert, l.standard_lieferkosten, l.lieferzeit_tage, l.lieferbedingung,
+                   l.iban, l.bic, l.bank_name, l.kontoinhaber,
+                   l.interne_notizen, l.aktiv, l.erstellt_am, l.geaendert_am
+            FROM lieferanten l
+            LEFT JOIN laender ln ON ln.iso_code = l.land
+            WHERE l.id = :id
         ");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
@@ -82,16 +98,20 @@ class LieferantenRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO lieferanten
-                (name, land, strasse, plz, ort, kundennummer, waehrung,
+                (name, firma, firmenzusatz, land, strasse, plz, ort, kundennummer,
+                 ustid, steuerregel, waehrung,
                  website, email, telefon,
                  zahlungsziel_tage, skonto_prozent, skonto_tage,
-                 mindestbestellwert, lieferzeit_tage, lieferbedingung,
+                 mindestbestellwert, standard_lieferkosten, lieferzeit_tage, lieferbedingung,
+                 iban, bic, bank_name, kontoinhaber,
                  interne_notizen, aktiv)
             VALUES
-                (:name, :land, :strasse, :plz, :ort, :kundennummer, :waehrung,
+                (:name, :firma, :firmenzusatz, :land, :strasse, :plz, :ort, :kundennummer,
+                 :ustid, :steuerregel, :waehrung,
                  :website, :email, :telefon,
                  :zahlungsziel_tage, :skonto_prozent, :skonto_tage,
-                 :mindestbestellwert, :lieferzeit_tage, :lieferbedingung,
+                 :mindestbestellwert, :standard_lieferkosten, :lieferzeit_tage, :lieferbedingung,
+                 :iban, :bic, :bank_name, :kontoinhaber,
                  :interne_notizen, :aktiv)
         ");
         $stmt->execute($this->buildParams($data));
@@ -102,25 +122,34 @@ class LieferantenRepository
     {
         $stmt = $this->db->prepare("
             UPDATE lieferanten SET
-                name               = :name,
-                land               = :land,
-                strasse            = :strasse,
-                plz                = :plz,
-                ort                = :ort,
-                kundennummer       = :kundennummer,
-                waehrung           = :waehrung,
-                website            = :website,
-                email              = :email,
-                telefon            = :telefon,
-                zahlungsziel_tage  = :zahlungsziel_tage,
-                skonto_prozent     = :skonto_prozent,
-                skonto_tage        = :skonto_tage,
-                mindestbestellwert = :mindestbestellwert,
-                lieferzeit_tage    = :lieferzeit_tage,
-                lieferbedingung    = :lieferbedingung,
-                interne_notizen    = :interne_notizen,
-                aktiv              = :aktiv,
-                geaendert_am       = NOW()
+                name                  = :name,
+                firma                 = :firma,
+                firmenzusatz          = :firmenzusatz,
+                land                  = :land,
+                strasse               = :strasse,
+                plz                   = :plz,
+                ort                   = :ort,
+                kundennummer          = :kundennummer,
+                ustid                 = :ustid,
+                steuerregel           = :steuerregel,
+                waehrung              = :waehrung,
+                website               = :website,
+                email                 = :email,
+                telefon               = :telefon,
+                zahlungsziel_tage     = :zahlungsziel_tage,
+                skonto_prozent        = :skonto_prozent,
+                skonto_tage           = :skonto_tage,
+                mindestbestellwert    = :mindestbestellwert,
+                standard_lieferkosten = :standard_lieferkosten,
+                lieferzeit_tage       = :lieferzeit_tage,
+                lieferbedingung       = :lieferbedingung,
+                iban                  = :iban,
+                bic                   = :bic,
+                bank_name             = :bank_name,
+                kontoinhaber          = :kontoinhaber,
+                interne_notizen       = :interne_notizen,
+                aktiv                 = :aktiv,
+                geaendert_am          = NOW()
             WHERE id = :id
         ");
         $params       = $this->buildParams($data);
@@ -139,9 +168,11 @@ class LieferantenRepository
     public function search(string $q): array
     {
         $stmt = $this->db->prepare("
-            SELECT id, name, land, website, email, telefon, aktiv, erstellt_am
-            FROM lieferanten
-            WHERE (name LIKE :q OR land LIKE :q)
+            SELECT l.id, l.name, l.firma, l.land, ln.name_de AS land_name,
+                   l.website, l.email, l.telefon, l.aktiv, l.erstellt_am
+            FROM lieferanten l
+            LEFT JOIN laender ln ON ln.iso_code = l.land
+            WHERE (l.name LIKE :q OR l.firma LIKE :q OR ln.name_de LIKE :q)
         ");
         $stmt->execute(['q' => '%' . $q . '%']);
         return $stmt->fetchAll();
@@ -151,24 +182,33 @@ class LieferantenRepository
     {
         $n = fn($k) => (isset($data[$k]) && $data[$k] !== '') ? $data[$k] : null;
         return [
-            'name'               => $data['name'],
-            'land'               => $n('land'),
-            'strasse'            => $n('strasse'),
-            'plz'                => $n('plz'),
-            'ort'                => $n('ort'),
-            'kundennummer'       => $n('kundennummer'),
-            'waehrung'           => $data['waehrung'] ?? 'EUR',
-            'website'            => $n('website'),
-            'email'              => $n('email'),
-            'telefon'            => $n('telefon'),
-            'zahlungsziel_tage'  => $n('zahlungsziel_tage'),
-            'skonto_prozent'     => $n('skonto_prozent'),
-            'skonto_tage'        => $n('skonto_tage'),
-            'mindestbestellwert' => $n('mindestbestellwert'),
-            'lieferzeit_tage'    => $n('lieferzeit_tage'),
-            'lieferbedingung'    => $n('lieferbedingung'),
-            'interne_notizen'    => $n('interne_notizen'),
-            'aktiv'              => isset($data['aktiv']) ? (int) $data['aktiv'] : 1,
+            'name'                  => $data['name'],
+            'firma'                 => $n('firma'),
+            'firmenzusatz'          => $n('firmenzusatz'),
+            'land'                  => $data['land'] ?? 'AT',
+            'strasse'               => $n('strasse'),
+            'plz'                   => $n('plz'),
+            'ort'                   => $n('ort'),
+            'kundennummer'          => $n('kundennummer'),
+            'ustid'                 => $n('ustid'),
+            'steuerregel'           => $data['steuerregel'] ?? 'inland',
+            'waehrung'              => $data['waehrung'] ?? 'EUR',
+            'website'               => $n('website'),
+            'email'                 => $n('email'),
+            'telefon'               => $n('telefon'),
+            'zahlungsziel_tage'     => $n('zahlungsziel_tage'),
+            'skonto_prozent'        => $n('skonto_prozent'),
+            'skonto_tage'           => $n('skonto_tage'),
+            'mindestbestellwert'    => $n('mindestbestellwert'),
+            'standard_lieferkosten' => $n('standard_lieferkosten'),
+            'lieferzeit_tage'       => $n('lieferzeit_tage'),
+            'lieferbedingung'       => $n('lieferbedingung'),
+            'iban'                  => $n('iban'),
+            'bic'                   => $n('bic'),
+            'bank_name'             => $n('bank_name'),
+            'kontoinhaber'          => $n('kontoinhaber'),
+            'interne_notizen'       => $n('interne_notizen'),
+            'aktiv'                 => isset($data['aktiv']) ? (int) $data['aktiv'] : 1,
         ];
     }
 
@@ -179,7 +219,7 @@ class LieferantenRepository
     public function findVertreterByLieferantId(int $lieferantId): array
     {
         $stmt = $this->db->prepare("
-            SELECT id, vorname, nachname, telefon, email, mobil, notizen,
+            SELECT id, anrede, vorname, nachname, telefon, email, mobil, notizen,
                    erstellt_am, geaendert_am
             FROM lieferanten_vertreter
             WHERE lieferant_id = :lieferant_id AND aktiv = 1
@@ -192,7 +232,7 @@ class LieferantenRepository
     public function findVertreterById(int $id): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT id, lieferant_id, vorname, nachname, telefon, email, mobil, notizen, aktiv
+            SELECT id, lieferant_id, anrede, vorname, nachname, telefon, email, mobil, notizen, aktiv
             FROM lieferanten_vertreter
             WHERE id = :id
         ");
@@ -204,12 +244,13 @@ class LieferantenRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO lieferanten_vertreter
-                (lieferant_id, vorname, nachname, telefon, email, mobil, notizen, aktiv)
+                (lieferant_id, anrede, vorname, nachname, telefon, email, mobil, notizen, aktiv)
             VALUES
-                (:lieferant_id, :vorname, :nachname, :telefon, :email, :mobil, :notizen, :aktiv)
+                (:lieferant_id, :anrede, :vorname, :nachname, :telefon, :email, :mobil, :notizen, :aktiv)
         ");
         $stmt->execute([
             'lieferant_id' => $data['lieferant_id'],
+            'anrede'       => $data['anrede']       ?? null,
             'vorname'      => $data['vorname']      ?? null,
             'nachname'     => $data['nachname'],
             'telefon'      => $data['telefon']      ?? null,
@@ -225,6 +266,7 @@ class LieferantenRepository
     {
         $stmt = $this->db->prepare("
             UPDATE lieferanten_vertreter SET
+                anrede       = :anrede,
                 vorname      = :vorname,
                 nachname     = :nachname,
                 telefon      = :telefon,
@@ -237,6 +279,7 @@ class LieferantenRepository
         ");
         $stmt->execute([
             'id'       => $data['id'],
+            'anrede'   => $data['anrede']   ?? null,
             'vorname'  => $data['vorname']  ?? null,
             'nachname' => $data['nachname'] ?? null,
             'telefon'  => $data['telefon']  ?? null,

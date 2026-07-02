@@ -95,6 +95,12 @@ class LieferantenService
         return $this->repo->findAll($mitInaktiven);
     }
 
+    /** Gibt alle Länder für das Land-Dropdown zurück. */
+    public function laender(): array
+    {
+        return $this->repo->findAllLaender();
+    }
+
     /** Gibt alle aktiven Vertreter eines Lieferanten zurück. */
     public function findVertreterByLieferantId(int $lieferantId): array
     {

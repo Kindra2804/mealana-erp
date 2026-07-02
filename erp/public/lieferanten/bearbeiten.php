@@ -13,6 +13,7 @@ $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['formdata']);
 
 $service = new LieferantenService();
+$laender = $service->laender();
 
 if (empty($formdata)) {
     $lieferant = $service->findById($id);
@@ -56,15 +57,48 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
 
         <div>
-            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Land</label>
-            <input type="text" name="land" class="erp-input" style="width:100%" maxlength="2" placeholder="AT"
-                   value="<?= htmlspecialchars($formdata['land'] ?? '') ?>">
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Firma</label>
+            <input type="text" name="firma" class="erp-input" style="width:100%"
+                   value="<?= htmlspecialchars($formdata['firma'] ?? '') ?>">
+        </div>
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Firmenzusatz</label>
+            <input type="text" name="firmenzusatz" class="erp-input" style="width:100%" placeholder="z.B. Niederlassung, c/o"
+                   value="<?= htmlspecialchars($formdata['firmenzusatz'] ?? '') ?>">
         </div>
         <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Kundennummer (bei Lieferant)</label>
             <input type="text" name="kundennummer" class="erp-input" style="width:100%"
                    value="<?= htmlspecialchars($formdata['kundennummer'] ?? '') ?>">
         </div>
+
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Land</label>
+            <select name="land" class="erp-select" style="width:100%">
+                <?php foreach ($laender as $l): ?>
+                    <option value="<?= $l['iso_code'] ?>"
+                        <?= ($formdata['land'] ?? 'AT') === $l['iso_code'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($l['name_de']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">UStID</label>
+            <input type="text" name="ustid" class="erp-input" style="width:100%" placeholder="z.B. ATU12345678"
+                   value="<?= htmlspecialchars($formdata['ustid'] ?? '') ?>">
+        </div>
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Steuerregel</label>
+            <select name="steuerregel" class="erp-select" style="width:100%">
+                <?php $sr = $formdata['steuerregel'] ?? 'inland'; ?>
+                <option value="inland"            <?= $sr === 'inland'            ? 'selected' : '' ?>>Inland</option>
+                <option value="eu_igl"            <?= $sr === 'eu_igl'            ? 'selected' : '' ?>>EU – Innergem. Erwerb (USt-frei)</option>
+                <option value="drittland_einfuhr" <?= $sr === 'drittland_einfuhr' ? 'selected' : '' ?>>Drittland – Einfuhr</option>
+                <option value="reverse_charge"    <?= $sr === 'reverse_charge'    ? 'selected' : '' ?>>Reverse-Charge (Dienstleistung)</option>
+            </select>
+        </div>
+
         <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Währung</label>
             <select name="waehrung" class="erp-select" style="width:100%">
@@ -73,7 +107,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php endforeach; ?>
             </select>
         </div>
-
         <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Straße</label>
             <input type="text" name="strasse" class="erp-input" style="width:100%"
@@ -84,12 +117,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <input type="text" name="plz" class="erp-input" style="width:100%"
                    value="<?= htmlspecialchars($formdata['plz'] ?? '') ?>">
         </div>
+
         <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Ort</label>
             <input type="text" name="ort" class="erp-input" style="width:100%"
                    value="<?= htmlspecialchars($formdata['ort'] ?? '') ?>">
         </div>
-
         <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Website</label>
             <input type="text" name="website" class="erp-input" style="width:100%"
@@ -100,12 +133,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <input type="email" name="email" class="erp-input" style="width:100%"
                    value="<?= htmlspecialchars($formdata['email'] ?? '') ?>">
         </div>
+
         <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Telefon</label>
             <input type="text" name="telefon" class="erp-input" style="width:100%"
                    value="<?= htmlspecialchars($formdata['telefon'] ?? '') ?>">
         </div>
-
         <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Status</label>
             <select name="aktiv" class="erp-select" style="width:100%">
@@ -141,6 +174,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                    value="<?= htmlspecialchars($formdata['mindestbestellwert'] ?? '') ?>">
         </div>
         <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Standard-Lieferkosten (€)</label>
+            <input type="number" name="standard_lieferkosten" class="erp-input" style="width:100%" min="0" step="0.01" placeholder="Vorbelegung für Bestellung"
+                   value="<?= htmlspecialchars($formdata['standard_lieferkosten'] ?? '') ?>">
+        </div>
+        <div>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Standard-Lieferzeit (Tage)</label>
             <input type="number" name="lieferzeit_tage" class="erp-input" style="width:100%" min="0"
                    value="<?= htmlspecialchars($formdata['lieferzeit_tage'] ?? '') ?>">
@@ -154,6 +192,32 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <option value="ab_lager"  <?= ($formdata['lieferbedingung'] ?? '') === 'ab_lager'  ? 'selected' : '' ?>>Ab Lager</option>
                 <option value="sonstige"  <?= ($formdata['lieferbedingung'] ?? '') === 'sonstige'  ? 'selected' : '' ?>>Sonstige</option>
             </select>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:12px">
+    <h3 style="margin:0 0 14px">Bankverbindung</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px 16px">
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">IBAN</label>
+            <input type="text" name="iban" class="erp-input" style="width:100%"
+                   value="<?= htmlspecialchars($formdata['iban'] ?? '') ?>">
+        </div>
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">BIC</label>
+            <input type="text" name="bic" class="erp-input" style="width:100%"
+                   value="<?= htmlspecialchars($formdata['bic'] ?? '') ?>">
+        </div>
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Bank</label>
+            <input type="text" name="bank_name" class="erp-input" style="width:100%"
+                   value="<?= htmlspecialchars($formdata['bank_name'] ?? '') ?>">
+        </div>
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Kontoinhaber</label>
+            <input type="text" name="kontoinhaber" class="erp-input" style="width:100%" placeholder="nur falls abweichend von Firma"
+                   value="<?= htmlspecialchars($formdata['kontoinhaber'] ?? '') ?>">
         </div>
     </div>
 </div>

@@ -52,6 +52,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px">
             <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Anrede</label>
+                <select name="anrede" class="erp-select" style="width:100%">
+                    <?php $an = $formdata['anrede'] ?? ''; ?>
+                    <option value="">–</option>
+                    <option value="herr"   <?= $an === 'herr'   ? 'selected' : '' ?>>Herr</option>
+                    <option value="frau"   <?= $an === 'frau'   ? 'selected' : '' ?>>Frau</option>
+                    <option value="divers" <?= $an === 'divers' ? 'selected' : '' ?>>Divers</option>
+                </select>
+            </div>
+            <div>
                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Vorname</label>
                 <input type="text" name="vorname" class="erp-input" style="width:100%"
                        value="<?= htmlspecialchars($formdata['vorname'] ?? '') ?>">
