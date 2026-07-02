@@ -11,6 +11,7 @@ $data = $_POST;
 
 $vertreterData = array_intersect_key($data, array_flip([
     'lieferant_id',
+    'anrede',
     'vorname',
     'nachname',
     'telefon',

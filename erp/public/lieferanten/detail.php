@@ -53,6 +53,15 @@ $lieferbedingungLabels = [
     'sonstige'  => 'Sonstige',
 ];
 
+$steuerregelLabels = [
+    'inland'            => 'Inland',
+    'eu_igl'            => 'EU – Innergem. Erwerb (USt-frei)',
+    'drittland_einfuhr' => 'Drittland – Einfuhr',
+    'reverse_charge'    => 'Reverse-Charge (Dienstleistung)',
+];
+
+$anredeLabels = ['herr' => 'Herr', 'frau' => 'Frau', 'divers' => 'Divers'];
+
 $statusLabels = [
     'entwurf'       => ['label' => 'Entwurf',       'class' => 'chip-inaktiv'],
     'offen'         => ['label' => 'Offen',          'class' => 'chip-aktiv'],
@@ -70,7 +79,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 <?php endif; ?>
 
-<h2 style="margin:0 0 14px;font-size:20px;font-weight:700"><?= htmlspecialchars($lieferant['name']) ?></h2>
+<h2 style="margin:0 0 2px;font-size:20px;font-weight:700"><?= htmlspecialchars($lieferant['name']) ?></h2>
+<?php if ($lieferant['firma']): ?>
+<div style="color:var(--color-text-muted);font-size:13px;margin-bottom:12px">
+    <?= htmlspecialchars($lieferant['firma']) ?><?= $lieferant['firmenzusatz'] ? ' · ' . htmlspecialchars($lieferant['firmenzusatz']) : '' ?>
+</div>
+<?php else: ?>
+<div style="margin-bottom:12px"></div>
+<?php endif; ?>
 
 <!-- Tab-Navigation -->
 <div style="display:flex;gap:0;border-bottom:2px solid var(--color-border);margin-bottom:16px">
@@ -116,11 +132,20 @@ foreach ($tabs as $key => $label):
 
         <div>
             <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Land</div>
-            <div><?= htmlspecialchars($lieferant['land'] ?? '–') ?></div>
+            <div><?= htmlspecialchars($lieferant['land_name'] ?? $lieferant['land'] ?? '–') ?></div>
         </div>
         <div>
             <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Kundennummer (bei Lieferant)</div>
             <div><?= htmlspecialchars($lieferant['kundennummer'] ?? '–') ?></div>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">UStID</div>
+            <div><?= htmlspecialchars($lieferant['ustid'] ?? '–') ?></div>
+        </div>
+
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Steuerregel</div>
+            <div><?= htmlspecialchars($steuerregelLabels[$lieferant['steuerregel'] ?? ''] ?? '–') ?></div>
         </div>
         <div>
             <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Lieferbedingung</div>
@@ -180,8 +205,36 @@ foreach ($tabs as $key => $label):
             <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Standard-Lieferzeit</div>
             <div><?= $lieferant['lieferzeit_tage'] !== null ? $lieferant['lieferzeit_tage'] . ' Tage' : '–' ?></div>
         </div>
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Standard-Lieferkosten</div>
+            <div><?= $lieferant['standard_lieferkosten'] !== null ? '€ ' . number_format((float)$lieferant['standard_lieferkosten'], 2, ',', '.') : '–' ?></div>
+        </div>
     </div>
 </div>
+
+<?php if ($lieferant['iban'] || $lieferant['bic'] || $lieferant['bank_name'] || $lieferant['kontoinhaber']): ?>
+<div class="card" style="margin-bottom:12px">
+    <h3 style="margin:0 0 12px">Bankverbindung</h3>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px 24px">
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">IBAN</div>
+            <div><?= htmlspecialchars($lieferant['iban'] ?? '–') ?></div>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">BIC</div>
+            <div><?= htmlspecialchars($lieferant['bic'] ?? '–') ?></div>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Bank</div>
+            <div><?= htmlspecialchars($lieferant['bank_name'] ?? '–') ?></div>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Kontoinhaber</div>
+            <div><?= htmlspecialchars($lieferant['kontoinhaber'] ?? $lieferant['firma'] ?? $lieferant['name']) ?></div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if ($lieferant['interne_notizen']): ?>
 <div class="card">
@@ -216,7 +269,7 @@ foreach ($tabs as $key => $label):
             <tbody>
             <?php foreach ($lieferant['vertreter'] as $v): ?>
                 <tr>
-                    <td><strong><?= htmlspecialchars(trim($v['vorname'] . ' ' . $v['nachname'])) ?></strong></td>
+                    <td><strong><?= htmlspecialchars(trim(($anredeLabels[$v['anrede'] ?? ''] ?? '') . ' ' . $v['vorname'] . ' ' . $v['nachname'])) ?></strong></td>
                     <td><?= htmlspecialchars($v['email'] ?? '–') ?></td>
                     <td><?= htmlspecialchars($v['telefon'] ?? '–') ?></td>
                     <td><?= htmlspecialchars($v['mobil'] ?? '–') ?></td>

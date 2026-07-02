@@ -50,7 +50,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <tr>
                 <th style="width:60px">NR.</th>
                 <th>NAME</th>
-                <th style="width:80px">LAND</th>
+                <th style="width:140px">LAND</th>
                 <th>WEBSITE</th>
                 <th>E-MAIL</th>
                 <th style="width:130px">TELEFON</th>
@@ -62,8 +62,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php foreach ($lieferanten as $l): ?>
             <tr <?= $l['aktiv'] ? '' : 'style="opacity:.6"' ?>>
                 <td><a href="detail.php?id=<?= $l['id'] ?>"><?= htmlspecialchars($l['id']) ?></a></td>
-                <td><a href="detail.php?id=<?= $l['id'] ?>"><strong><?= htmlspecialchars($l['name']) ?></strong></a></td>
-                <td><?= htmlspecialchars($l['land'] ?? '') ?></td>
+                <td><a href="detail.php?id=<?= $l['id'] ?>"><strong><?= htmlspecialchars($l['name']) ?></strong></a>
+                    <?php if ($l['firma']): ?>
+                        <div style="font-size:11px;color:var(--color-text-muted)"><?= htmlspecialchars($l['firma']) ?></div>
+                    <?php endif; ?>
+                </td>
+                <td><?= htmlspecialchars($l['land_name'] ?? $l['land'] ?? '') ?></td>
                 <td><?= htmlspecialchars($l['website'] ?? '') ?></td>
                 <td><?= htmlspecialchars($l['email'] ?? '') ?></td>
                 <td><?= htmlspecialchars($l['telefon'] ?? '') ?></td>
