@@ -1,0 +1,8 @@
+# Dateien die bei "git archive" (Deployment-Paket für neue Installationen)
+# NICHT mit exportiert werden sollen — echte Dev-/Produktivdaten, kein
+# Bestandteil einer sauberen Installation.
+erp/database/schema_current.sql export-ignore
+erp/public/uploads/artikel/**    export-ignore
+erp/public/img/hersteller/**     export-ignore
+erp/public/img/logos/**          export-ignore
+erp/public/shell-test.php        export-ignore

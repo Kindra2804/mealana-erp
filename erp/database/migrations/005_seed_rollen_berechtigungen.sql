@@ -1,4 +1,4 @@
-INSERT INTO `rollen`(`name`, `beschreibung`) VALUES ('superadmin','Zugriff auf Alles + API-Zugriff + Benutzerverwaltung'),('admin','Administrator Zugang zu Artikel, Lager, Lieferanten, Berichte'),('mitarbeiter','Lager, Kasse, Packplatz')
+INSERT INTO `rollen`(`name`, `beschreibung`) VALUES ('superadmin','Zugriff auf Alles + API-Zugriff + Benutzerverwaltung'),('admin','Administrator Zugang zu Artikel, Lager, Lieferanten, Berichte'),('mitarbeiter','Lager, Kasse, Packplatz');
 
 INSERT INTO `berechtigungen`(`name`, `beschreibung`) 
 VALUES (
