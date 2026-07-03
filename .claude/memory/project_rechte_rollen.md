@@ -123,3 +123,8 @@ ALTER TABLE modul_lizenzen ADD COLUMN max_instanzen INT NULL;
 8. Lizenzserver (wenn erste externe Installation)
 
 **Why:** Reihenfolge so weil: ohne Login kein Rechtecheck; ohne Rechtecheck kein Manager-Override sinnvoll testbar.
+
+## Offener Punkt für die künftige "Neuen Benutzer anlegen"-Seite (Admin-UI)
+
+Aktuell (Stand 2026-07-03) gibt es noch KEINE UI zum Anlegen neuer Benutzer — nur `erp/database/create_admin.php` (CLI, siehe [[project_installationsanleitung]]) und direktes SQL. Der System-User Jarvis (`username='system'`, wird automatisch per Migration 105 angelegt, siehe [[project_installationsanleitung]]) muss dort als **reservierter Username gesperrt** werden, sobald die Admin-Oberfläche für Benutzerverwaltung gebaut wird — sonst könnte jemand versehentlich einen echten Login-Benutzer mit dem Namen anlegen, der eigentlich für automatische/Cron-Log-Einträge reserviert ist.
+**How to apply:** Beim Bauen von Schritt 5 der Implementierungsreihenfolge oben (Rollen-Zuweisung im Admin) bzw. einer separaten "Benutzer anlegen"-Seite: Validierung einbauen, die `username = 'system'` ablehnt.

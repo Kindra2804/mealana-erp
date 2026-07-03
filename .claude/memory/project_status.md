@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-07-02 (Session 21)
+Stand: 2026-07-03 (Session 22)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -137,6 +137,19 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
+
+## Session 22 erledigt (2026-07-03) — erstes Live-Deployment + VPN
+
+- **Merkmale/Bilder-Modul im Code verifiziert**: beide bereits vollständig fertig, Memory war veraltet ("in Arbeit") — korrigiert
+- **Installationsanleitung geschrieben** (`docs/installation.md`) — auch für Tester-Weitergabe gedacht (siehe [[project_installationsanleitung]])
+- **Migrations-Runner gebaut**: `erp/database/migrate.php` (run/status/bootstrap) + `baseline_schema.sql` (Struktur-Dump als Installationsgrundlage, da Migrationen 001–003 fehlen und `004`–`104` nicht von Null durchlaufen)
+- **`create_admin.php`**: interaktive Admin-Anlage statt Hash-von-Hand; bewusst kein fixer Superadmin-Account über alle Installationen (Sicherheitsentscheidung nach Diskussion)
+- **Migration 105**: Jarvis-Systembenutzer automatisch geseedet (idempotent, keine feste ID)
+- **Drei Bugs gefunden + behoben** beim ersten echten Live-Test: fehlendes Semikolon in Migration 005, `BfrService.php` hart codierte Jarvis-ID (jetzt per Username wie `LagerService`), `mahnwesen.php`-Cronjob crashte an `Logger::log()` ohne Session (NOT-NULL-Verletzung), `dashboard.php` `TypeError` bei leerer Kassenumsatz-Liste (frische DB), fehlendes `erp/public/index.php` (Apache zeigte Verzeichnisliste)
+- **Server-PC live aufgesetzt**: XAMPP+MariaDB, DB migriert, Admin+Jarvis angelegt, Cronjobs (Mahnwesen täglich 6 Uhr, BFR-Nachsignierung alle 5 Min) über Windows Task Scheduler
+- **WireGuard-VPN produktiv**: Server `10.13.13.1` + erster Client `10.13.13.2`, Portfreigabe UDP 51820 am UPC/Magenta-Router, siehe [[project_infrastruktur]] + `docs/installation.md` Anhang C. Zwei Firewall-Stolpersteine dokumentiert (ICMP + Port 80 auf neuem virtuellen Adapter)
+- **Backup-Strategie besprochen und geplant** (noch nicht gebaut) — siehe [[project_backup_strategie]]
+- **Für nächste Session vorgemerkt**: `/mealana/`-Pfad konfigurierbar machen, Versionsnummer in Fußzeile, Logo-Konfiguration (siehe [[project_whitelabel_branding]])
 
 ## Session 21 erledigt (2026-07-02)
 - **Lieferanten-Erweiterung** (Migrations 097–099): laender-Referenztabelle mit EU-Flag, firma/firmenzusatz, ustid, steuerregel-Enum, standard_lieferkosten, Bankverbindung, Vertreter-anrede; Vertreter-Anlage als Repeatable-Row im Neuformular

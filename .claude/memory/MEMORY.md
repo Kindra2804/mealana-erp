@@ -8,7 +8,7 @@
 - [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Jedes neue Modul startet mit Referenz-Check (große WAWIs) + MeaLana-Extras
 - [Feedback: CSS-Strategie](feedback_css_strategie.md) — Derzeit inline style-Tags, beim Frontend-Refactor dann externe Stylesheets
 - [Projekt: Bestellmodul Design](project_bestellmodul.md) — Vollständige Anforderungen: PO-Workflow, EAN-Scan, Rückstandsliste, DB-Tabellen
-- [Artikel-Features Roadmap](project_artikel_features.md) — Was fertig ist (alles inkl. Filter+Typ-Spalte) + was offen (Merkmale in Arbeit, Bilder morgen)
+- [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale UND Bilder-Upload sind fertig (im Code verifiziert 2026-07-03, Datei war veraltet)
 - [Merkmale-Modul Design](project_merkmale.md) — 2-Ebenen (Merkmal/Wert), Single/Multi, Artikeltyp-Filter, WooCommerce slug, Modal wie Kategorie
 - [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Systemweiter Lücken-Vergleich (JTL/Shopware/Sage/LS-POS): Artikel-Texte, Lagerplätze, Reservierungen, Kasse, Inventur, Auftragsfertigung (Stand 2026-06-08)
 - [Buchhaltungsmodul](project_buchhaltung.md) — DATEV-Schnittstelle (Export, nicht nachbauen), Kontenplan (AT), Mappings Steuerklassen→Konten, Odoo als Referenz
@@ -37,13 +37,15 @@
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
-- [Infrastruktur / Server-Setup](project_infrastruktur.md) — XAMPP+MariaDB lokal, WireGuard VPN statt Port-Forwarding, Messe-Kasse Variante B (Offline+SQLite)
+- [Infrastruktur / Server-Setup](project_infrastruktur.md) — XAMPP+MariaDB UND WireGuard VPN jetzt live umgesetzt (2026-07-03, nicht mehr nur geplant); Messe-Kasse Variante B (Offline+SQLite)
+- [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
 - [Gutschein-Modul Design](project_gutscheine.md) — ERP=Single Source of Truth, WooCommerce als Slave (kein Design/Text in WC), on+offline, 3 DB-Tabellen
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix, Twig+Dompdf Templates, WC-Sync umschaltbar, Packplatz eigene Seite
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Blocks (auftrag/addon/storno), Rechnung erst am Bon, besser als JTL; Maximalfall: Auftrag+AddOn+Rückgabe+GS gleichzeitig machbar
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — Kasse = konfigurierbare Instanz (Lager+Modus+RKSV-ID), Messe-Workflow (Umbuchung→Pre-Sync→Offline→Post-Sync→Rückkehr), Kasse 2 auch als Normal-Kasse nutzbar
 - [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen (Gruppe A/B/C/D), B2C=Brutto/B2B=Netto, Abholzettel+Barcode, Twig+Dompdf, WC=kein eigenes Rechnungssystem
-- [Installationsanleitung](project_installationsanleitung.md) — GEPLANT: Server-Setup von 0 (Composer, PHP-Ext., Migrations, Cronjobs, RKSV) für Jacky + Weitergabe
+- [Installationsanleitung](project_installationsanleitung.md) — GESCHRIEBEN 2026-07-03 + migrate.php-Runner gebaut; Baseline-Dump statt 101-Dateien-Replay (Bug in Migration 005 gefunden+behoben)
+- [Whitelabel/Branding](project_whitelabel_branding.md) — GEPLANT: /mealana/-Pfad konfigurierbar, Logo in Einstellungen oder fixes Software-Branding (Entscheidung offen)
 - [Packplatz-Modul](project_packplatz.md) — Warenausgang fertig (Scan, EasyPak, Versandmail); offen: Picklisten-Manager, Intern, Retoure, Mail-Templates
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen

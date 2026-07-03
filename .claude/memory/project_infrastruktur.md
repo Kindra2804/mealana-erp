@@ -75,3 +75,13 @@ metadata:
 
 **Why:** Diskussion 2026-06-23: Sorge über Offline-Resilienz + Datenschutz beim Umstieg auf eigenes ERP.
 **How to apply:** Kasse-Modul mit SQLite-Offline-Modus + Pre/Post-Sync planen; BFR immer lokal am Gerät installiert.
+
+## Update 2026-07-03: WireGuard VPN tatsächlich umgesetzt (nicht mehr nur geplant)
+
+Server-PC (192.168.178.222, statische lokale IP — dort läuft auch der JTL-WAWI-Server mit eigener Portfreigabe) hat jetzt XAMPP+MariaDB (siehe [[project_installationsanleitung]]) UND WireGuard produktiv laufen.
+
+- Adressschema: Server = `10.13.13.1/24`, Clients fortlaufend ab `10.13.13.2`. Port `51820/UDP` am Router (UPC/Magenta Fiber Box — nur klassische Portweiterleitung, kein eigenes VPN-Menü nötig) auf die Server-IP weitergeleitet. Bestehender no-ip-DDNS-Hostname wiederverwendet.
+- Vollständige Schritt-für-Schritt-Anleitung inkl. "weiteren Client hinzufügen" steht in `docs/installation.md` Anhang C.
+- **Zwei Stolpersteine beim Ersteinsatz, für nächstes Mal:** Windows-Firewall blockt auf dem neuen virtuellen WireGuard-Adapter standardmäßig sowohl ICMP (Ping) als auch TCP/80 (Apache) — beides braucht eine explizite `netsh advfirewall`-Freigabe auf dem Server, sonst Timeout trotz technisch funktionierendem Tunnel (sent/received zählt in der WireGuard-App schon hoch).
+- Jeder weitere PC (z.B. Barbaras Büro-PC) braucht ein **eigenes** Schlüsselpaar + eigene `10.13.13.X`-Adresse, nie geteilte Client-Daten (Begründung siehe Anhang C in der Anleitung).
+**How to apply:** Bei jedem weiteren VPN-Client diese Memory + Anhang C konsultieren statt von Null zu recherchieren.
