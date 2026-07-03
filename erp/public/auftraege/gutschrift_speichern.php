@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -18,7 +18,7 @@ $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 
 if (!$auftragId || !$rechnungId || !$benutzerId) {
     $_SESSION['fehler'] = ['Ungültige Anfrage.'];
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -39,7 +39,7 @@ if ($gsArt === 'teilgutschrift' && !empty($_POST['positionen'])) {
     if (empty($positionen)) {
         $_SESSION['fehler']   = ['Bitte mindestens eine Position auswählen.'];
         $_SESSION['formdata'] = $_POST;
-        header('Location: /mealana/auftraege/gutschrift_erstellen.php?auftrag_id=' . $auftragId);
+        header('Location: ' . BASE_PATH . '/auftraege/gutschrift_erstellen.php?auftrag_id=' . $auftragId);
         exit;
     }
 }
@@ -55,12 +55,12 @@ if ($ergebnis['erfolg']) {
     versendeGutschriftMail($auftragId, $rechnungId, $gsArt, $grund, $ergebnis);
 
     $_SESSION['erfolg'] = 'Gutschrift ' . $ergebnis['gs_nr'] . ' wurde erstellt.';
-    header('Location: /mealana/auftraege/dokument_download.php?auftrag_id=' . $auftragId
+    header('Location: ' . BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $auftragId
         . '&datei=' . urlencode($ergebnis['dateiname']));
 } else {
     $_SESSION['fehler']   = [$ergebnis['fehler'] ?? 'Fehler beim Erstellen der Gutschrift.'];
     $_SESSION['formdata'] = $_POST;
-    header('Location: /mealana/auftraege/gutschrift_erstellen.php?auftrag_id=' . $auftragId);
+    header('Location: ' . BASE_PATH . '/auftraege/gutschrift_erstellen.php?auftrag_id=' . $auftragId);
 }
 exit;
 

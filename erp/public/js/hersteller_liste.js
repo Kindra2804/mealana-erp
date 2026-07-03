@@ -55,7 +55,7 @@ function modalBearbeiten(id) {
     document.getElementById('h-logo').value        = '';
     document.getElementById('h-fehler').textContent = '';
     var vorschau = document.getElementById('h-logo-vorschau');
-    if (h.logo_pfad) { vorschau.src = '/mealana/img/hersteller/' + h.logo_pfad; vorschau.style.display = 'block'; }
+    if (h.logo_pfad) { vorschau.src = window.BASE_PATH + '/img/hersteller/' + h.logo_pfad; vorschau.style.display = 'block'; }
     else vorschau.style.display = 'none';
     updateReoSichtbarkeit();
     document.getElementById('h-modal').style.display = 'flex';
@@ -84,7 +84,7 @@ async function modalSpeichern() {
     btn.disabled = true;
     btn.textContent = 'Speichern…';
     document.getElementById('h-fehler').textContent = '';
-    var url = hAktion === 'neu' ? '/mealana/hersteller/speichern.php' : '/mealana/hersteller/aktualisieren.php';
+    var url = hAktion === 'neu' ? window.BASE_PATH + '/hersteller/speichern.php' : window.BASE_PATH + '/hersteller/aktualisieren.php';
     try {
         var fd   = new FormData(document.getElementById('h-form'));
         var resp = await fetch(url, { method: 'POST', body: fd });

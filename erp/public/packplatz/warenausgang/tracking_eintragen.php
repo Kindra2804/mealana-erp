@@ -41,7 +41,7 @@ foreach ($positionen as $i => $p) {
 }
 
 $pageTitle = 'Tracking eintragen';
-$backUrl   = '/mealana/packplatz/warenausgang/index.php';
+$backUrl   = BASE_PATH . '/packplatz/warenausgang/index.php';
 $headerSub = 'Warenausgang';
 require_once __DIR__ . '/../shell_top.php';
 ?>

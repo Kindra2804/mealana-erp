@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/wareneingang/WareneingangService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /mealana/wareneingang/index.php');
+    header('Location: ' . BASE_PATH . '/wareneingang/index.php');
     exit;
 }
 
@@ -20,11 +20,11 @@ if ($aktion === 'komplett' || $aktion === 'streichen') {
         $_SESSION['erfolg'] = $aktion === 'streichen'
             ? 'Bestellung abgeschlossen — Rest gestrichen.'
             : 'Bestellung erfolgreich abgeschlossen.';
-        header('Location: /mealana/bestellungen/detail.php?id=' . $bestellungId);
+        header('Location: ' . BASE_PATH . '/bestellungen/detail.php?id=' . $bestellungId);
         exit;
     }
 }
 
 // 'warten' oder Fehler → zurück zum Wareneingang
-header('Location: /mealana/wareneingang/detail.php?bestellung_id=' . $bestellungId);
+header('Location: ' . BASE_PATH . '/wareneingang/detail.php?bestellung_id=' . $bestellungId);
 exit;

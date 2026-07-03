@@ -11,8 +11,9 @@ $kunden = $service->getAll($suche, $status);
 
 $pageTitle       = 'Kunden';
 $activeModule    = 'kunden';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/kunden/neu.php" class="btn btn-primary btn-sm">+ Neuer Kunde</a>
+    <a href="{$basePath}/kunden/neu.php" class="btn btn-primary btn-sm">+ Neuer Kunde</a>
 HTML;
 
 require_once __DIR__ . '/../includes/shell_top.php';

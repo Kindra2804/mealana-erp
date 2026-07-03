@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../src/core/Database.php';
 $service    = new BestellungService();
 $id         = (int)($_GET['id'] ?? 0);
 $bestellung = $service->getById($id);
-if (!$bestellung) { header('Location: /mealana/bestellungen/liste.php'); exit; }
+if (!$bestellung) { header('Location: ' . BASE_PATH . '/bestellungen/liste.php'); exit; }
 
 $positionen = $service->getPositionen($id);
 $nr         = BestellungService::bestellnummer($id, $bestellung['bestelldatum']);
@@ -41,11 +41,11 @@ $aktivitaeten = $stmt->fetchAll();
 
 $pageTitle    = $nr;
 $activeModule = 'einkauf';
-$actionBarContent = '<a href="/mealana/bestellungen/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/bestellungen/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
 if (!$istAbgeschlossen) {
-    $actionBarContent .= ' <a href="/mealana/bestellungen/bearbeiten.php?id=' . $id . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
-    $actionBarContent .= ' <a href="/mealana/wareneingang/detail.php?bestellung_id=' . $id . '" class="btn btn-primary btn-sm">Wareneingang →</a>';
-    $actionBarContent .= '<div class="actionbar-sep"></div><div class="actionbar-right"><form method="post" action="/mealana/bestellungen/stornieren.php" onsubmit="return confirm(\'Bestellung stornieren?\')"><input type="hidden" name="id" value="' . $id . '"><button type="submit" class="btn btn-danger btn-sm">Stornieren</button></form></div>';
+    $actionBarContent .= ' <a href="' . BASE_PATH . '/bestellungen/bearbeiten.php?id=' . $id . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
+    $actionBarContent .= ' <a href="' . BASE_PATH . '/wareneingang/detail.php?bestellung_id=' . $id . '" class="btn btn-primary btn-sm">Wareneingang →</a>';
+    $actionBarContent .= '<div class="actionbar-sep"></div><div class="actionbar-right"><form method="post" action="' . BASE_PATH . '/bestellungen/stornieren.php" onsubmit="return confirm(\'Bestellung stornieren?\')"><input type="hidden" name="id" value="' . $id . '"><button type="submit" class="btn btn-danger btn-sm">Stornieren</button></form></div>';
 }
 
 require_once __DIR__ . '/../includes/shell_top.php';
@@ -122,7 +122,7 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
 <!-- Rechnung -->
 <div class="card" style="margin-bottom:12px">
     <strong style="font-size:13px;display:block;margin-bottom:10px">Rechnung / Lieferschein</strong>
-    <form method="post" action="/mealana/bestellungen/rechnung_speichern.php">
+    <form method="post" action="<?= BASE_PATH ?>/bestellungen/rechnung_speichern.php">
         <input type="hidden" name="id" value="<?= $id ?>">
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end">
             <div>

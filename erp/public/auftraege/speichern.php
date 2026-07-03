@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/modules/kunden/KundenService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -56,10 +56,10 @@ $ergebnis = $service->anlegen($data, $positionen);
 if (!$ergebnis['erfolg']) {
     $_SESSION['fehler']   = $ergebnis['fehler'];
     $_SESSION['formdata'] = $_POST;
-    header('Location: /mealana/auftraege/neu.php');
+    header('Location: ' . BASE_PATH . '/auftraege/neu.php');
     exit;
 }
 
 $_SESSION['erfolg'] = 'Auftrag wurde angelegt.';
-header('Location: /mealana/auftraege/detail.php?id=' . $ergebnis['id']);
+header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $ergebnis['id']);
 exit;

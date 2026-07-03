@@ -76,7 +76,7 @@ $laender = [
             <tr <?= $h['aktiv'] ? '' : 'style="opacity:.55"' ?>>
                 <td>
                     <?php if ($h['logo_pfad']): ?>
-                        <img src="/mealana/img/hersteller/<?= htmlspecialchars($h['logo_pfad']) ?>"
+                        <img src="<?= BASE_PATH ?>/img/hersteller/<?= htmlspecialchars($h['logo_pfad']) ?>"
                              style="width:44px;height:44px;object-fit:contain;border-radius:4px">
                     <?php else: ?>
                         <div style="width:44px;height:44px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:20px">🏭</div>
@@ -244,6 +244,6 @@ $laender = [
 
 <script>window.HERSTELLER_EU_ISO = <?= $service->getEuLaenderJson() ?>;
 window.HERSTELLER_DATEN = <?= json_encode($hersteller, JSON_UNESCAPED_UNICODE) ?>;</script>
-<script src="/mealana/js/hersteller_liste.js"></script>
+<script src="<?= BASE_PATH ?>/js/hersteller_liste.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

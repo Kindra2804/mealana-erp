@@ -37,22 +37,23 @@
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
-- [Infrastruktur / Server-Setup](project_infrastruktur.md) — XAMPP+MariaDB UND WireGuard VPN jetzt live umgesetzt (2026-07-03, nicht mehr nur geplant); Messe-Kasse Variante B (Offline+SQLite)
+- [Infrastruktur / Server-Setup](project_infrastruktur.md) — XAMPP+MariaDB UND WireGuard VPN live (2026-07-03); Messe-Kasse Variante B jetzt IndexedDB+direkter BFR-Call statt SQLite (korrigiert 2026-07-03)
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
 - [Gutschein-Modul Design](project_gutscheine.md) — ERP=Single Source of Truth, WooCommerce als Slave (kein Design/Text in WC), on+offline, 3 DB-Tabellen
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix, Twig+Dompdf Templates, WC-Sync umschaltbar, Packplatz eigene Seite
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Blocks (auftrag/addon/storno), Rechnung erst am Bon, besser als JTL; Maximalfall: Auftrag+AddOn+Rückgabe+GS gleichzeitig machbar
-- [Kassen-Verwaltung](project_kassen_verwaltung.md) — Kasse = konfigurierbare Instanz (Lager+Modus+RKSV-ID), Messe-Workflow (Umbuchung→Pre-Sync→Offline→Post-Sync→Rückkehr), Kasse 2 auch als Normal-Kasse nutzbar
+- [Kassen-Verwaltung](project_kassen_verwaltung.md) — Messe-Sync Server-API fertig (entdeckt 2026-07-03); Offline-Client-Architektur ENTSCHIEDEN: JS/IndexedDB + direkter Browser→BFR-Call (nicht SQLite), Client-Bau noch offen
 - [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen (Gruppe A/B/C/D), B2C=Brutto/B2B=Netto, Abholzettel+Barcode, Twig+Dompdf, WC=kein eigenes Rechnungssystem
 - [Installationsanleitung](project_installationsanleitung.md) — GESCHRIEBEN 2026-07-03 + migrate.php-Runner gebaut; Baseline-Dump statt 101-Dateien-Replay (Bug in Migration 005 gefunden+behoben)
-- [Whitelabel/Branding](project_whitelabel_branding.md) — GEPLANT: /mealana/-Pfad konfigurierbar, Logo in Einstellungen oder fixes Software-Branding (Entscheidung offen)
-- [Packplatz-Modul](project_packplatz.md) — Warenausgang fertig (Scan, EasyPak, Versandmail); offen: Picklisten-Manager, Intern, Retoure, Mail-Templates
+- [Whitelabel/Branding](project_whitelabel_branding.md) — Root-Pfad FERTIG; NAHTLOS-Logo ersetzt Kunden-Logo im Header (entschieden, wartet auf Assets); Shop-Footer-Idee
+- [Update-Mechanismus](project_update_mechanismus.md) — ZURÜCKGESTELLT bis Lizenz-Thema: ZIP-Vollpaket + migrate.php statt Delta-Patches, kein Versions-Tracking pro Installation nötig
+- [Packplatz-Modul](project_packplatz.md) — Warenausgang/Intern/Retoure/Mail-Templates fertig; Picklisten-Teilliefer-Bug behoben 2026-07-03; offen: Picklisten-Manager-UI + EAN-Nacherfassen beim Picken
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
 - [Inventur: Schwund-Typ](project_inventur_hinweis.md) — bewegungstyp 'schwund' seit Migration 083 vorhanden; LagerService::warenSchwund() nutzen, kein neuer Typ nötig
-- [Rechte & Rollen Design](project_rechte_rollen.md) — 8 Rollen (Super-Admin→Readonly), Manager-Override Popup, atomare Rechte, Lizenz-Instanzierung (max_instanzen), Pakete
+- [Rechte & Rollen Design](project_rechte_rollen.md) — Basis-RBAC (3 Rollen, Auth::kann()) schon live; 8-Rollen-Vision/Manager-Override/Lizenz-Instanzierung noch Zielbild; Benutzer-anlegen-UI fehlt weiterhin
 - [PLC / EasyPak Versand](project_plc_versand.md) — EasyPak XML-Format (Öst. Post), Item-IDs (430101/07/04/06), Ausgabepfad+Dateiname konfigurierbar, Bankdaten aus Firma-Tab
-- [🔴 BUG: Chargen-Tracking](bug_charge_tracking.md) — Packplatz+Kasse buchen charge=NULL statt richtiger Charge; Race Condition im Log; FIFO-Fix + Charge-Dialog geplant
+- [Chargen-Tracking](bug_charge_tracking.md) — BEHOBEN 2026-06-29: Kasse/Packplatz/Umlagerung alle mit Charge; Rest (Race Condition, warenSchwund) kommt mit Inventur-Modul
 - [Chargen-Konzept (vollständig)](project_chargen_konzept.md) — 3 Typen (keine/optional/Pflicht), alle Lagerbewegungsstellen, UX-Flows Kasse/Packplatz/Umlagerung/Auftrag
 - [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — FERTIG 2026-07-02: BfrService komplett (Verkauf+Storno, Nachsignierung, Nullbeleg, Umsatzzähler-Sperre, Nacherfassung, Kassen-Registrierung, Cronjob, echter QR-Code via endroid/qr-code); Logger/$_SESSION-Bugfund (mahnwesen.php betroffen)
 - [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede; Doku-Schuld offen

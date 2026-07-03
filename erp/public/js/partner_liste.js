@@ -28,7 +28,7 @@ function modalNeuSchliessen() { document.getElementById('modal-neu').style.displ
 
 async function partnerSpeichern(e) {
     e.preventDefault();
-    var res  = await fetch('/mealana/partner/speichern.php', { method: 'POST', body: new FormData(e.target) });
+    var res  = await fetch(window.BASE_PATH + '/partner/speichern.php', { method: 'POST', body: new FormData(e.target) });
     var data = await res.json();
     if (data.erfolg) { zeigeBanner('Partner gespeichert.'); modalNeuSchliessen(); setTimeout(function () { location.reload(); }, 600); }
     else             { zeigeBanner(data.fehler.join(' | '), false); }
@@ -57,7 +57,7 @@ function modalBearbeitenSchliessen() { document.getElementById('modal-bearbeiten
 
 async function partnerAktualisieren(e) {
     e.preventDefault();
-    var res  = await fetch('/mealana/partner/aktualisieren.php', { method: 'POST', body: new FormData(e.target) });
+    var res  = await fetch(window.BASE_PATH + '/partner/aktualisieren.php', { method: 'POST', body: new FormData(e.target) });
     var data = await res.json();
     if (data.erfolg) { zeigeBanner('Partner gespeichert.'); modalBearbeitenSchliessen(); setTimeout(function () { location.reload(); }, 600); }
     else             { zeigeBanner(data.fehler.join(' | '), false); }
@@ -66,7 +66,7 @@ async function partnerAktualisieren(e) {
 async function statusToggle(id, aktiv) {
     var fd = new FormData();
     fd.append('id', id); fd.append('aktiv', aktiv);
-    var res  = await fetch('/mealana/partner/status_setzen.php', { method: 'POST', body: fd });
+    var res  = await fetch(window.BASE_PATH + '/partner/status_setzen.php', { method: 'POST', body: fd });
     var data = await res.json();
     if (data.erfolg) { zeigeBanner(aktiv ? 'Aktiviert.' : 'Deaktiviert.'); setTimeout(function () { location.reload(); }, 600); }
     else             { zeigeBanner('Fehler beim Speichern.', false); }

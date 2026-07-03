@@ -98,7 +98,7 @@ $mode = $mode ?? 'liste';
                             <?php endif; ?>
                         <?php else: ?>
                             <?php if ($stdLiefId): ?>
-                                <a href="/mealana/bestellungen/neu.php?lieferant_id=<?= $stdLiefId ?>" class="btn btn-secondary btn-sm" style="font-size:12px">Bestellen</a>
+                                <a href="<?= BASE_PATH ?>/bestellungen/neu.php?lieferant_id=<?= $stdLiefId ?>" class="btn btn-secondary btn-sm" style="font-size:12px">Bestellen</a>
                             <?php else: ?>
                                 <span style="font-size:11px;color:var(--color-text-muted)">kein Std.-Lieferant</span>
                             <?php endif; ?>

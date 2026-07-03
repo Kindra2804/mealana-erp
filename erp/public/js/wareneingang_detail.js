@@ -11,7 +11,7 @@ document.getElementById('ean-scan').addEventListener('keydown', function (e) {
 function eanSuchen() {
     var ean = document.getElementById('ean-scan').value.trim();
     if (!ean) return;
-    fetch('/mealana/wareneingang/artikel_suche.php?ean=' + encodeURIComponent(ean))
+    fetch(window.BASE_PATH + '/wareneingang/artikel_suche.php?ean=' + encodeURIComponent(ean))
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (!data.gefunden) { alert('EAN nicht gefunden: ' + ean); return; }
@@ -38,12 +38,12 @@ function positionWaehlen(row) {
 
     var bildBox = document.getElementById('artikel-bild-box');
     if (hauptbild) {
-        bildBox.innerHTML = '<img src="/mealana/uploads/artikel/' + artikelId + '/' + escHtml(hauptbild) + '" style="width:90px;height:90px;object-fit:cover;border-radius:6px" onerror="this.parentElement.innerHTML=\'📦\'">';
+        bildBox.innerHTML = '<img src="' + window.BASE_PATH + '/uploads/artikel/' + artikelId + '/' + escHtml(hauptbild) + '" style="width:90px;height:90px;object-fit:cover;border-radius:6px" onerror="this.parentElement.innerHTML=\'📦\'">';
     } else {
         bildBox.innerHTML = '📦';
     }
 
-    fetch('/mealana/wareneingang/chargen_ajax.php?artikel_id=' + artikelId)
+    fetch(window.BASE_PATH + '/wareneingang/chargen_ajax.php?artikel_id=' + artikelId)
         .then(function (r) { return r.json(); })
         .then(function (chargen) {
             var sel = document.getElementById('charge-select');
@@ -97,7 +97,7 @@ function abschliessenDialog() {
     });
 
     var bId = window.WE_BESTELLUNG_ID;
-    var abschliessenUrl = window.WE_ABSCHLIESSEN_URL || '/mealana/wareneingang/abschliessen.php';
+    var abschliessenUrl = window.WE_ABSCHLIESSEN_URL || window.BASE_PATH + '/wareneingang/abschliessen.php';
     var html = '';
     if (offenCount === 0) {
         html  = '<div style="font-weight:600;margin-bottom:12px">Alle Positionen vollständig eingegangen.</div>';

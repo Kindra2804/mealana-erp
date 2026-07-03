@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -14,7 +14,7 @@ $typ       = trim($_POST['typ'] ?? '');
 
 if (!$auftragId || !$typ) {
     $_SESSION['fehler'] = ['Ungültige Anfrage.'];
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -36,11 +36,11 @@ if ($ergebnis['erfolg']) {
     }
 
     $_SESSION['erfolg'] = 'Dokument wurde erstellt.';
-    header('Location: /mealana/auftraege/dokument_download.php?auftrag_id=' . $auftragId
+    header('Location: ' . BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $auftragId
         . '&datei=' . urlencode($ergebnis['dateiname']));
 } else {
     $_SESSION['fehler'] = [$ergebnis['fehler'] ?? 'Fehler beim Erstellen des Dokuments.'];
-    header('Location: /mealana/auftraege/detail.php?id=' . $auftragId);
+    header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $auftragId);
 }
 exit;
 

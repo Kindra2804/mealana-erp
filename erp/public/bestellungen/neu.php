@@ -17,9 +17,10 @@ $bestellService = $service;
 
 $pageTitle        = 'Neue Bestellung';
 $activeModule     = 'einkauf';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
 <button form="bestellung-form" type="submit" class="btn btn-primary btn-sm">Speichern</button>
-<a href="/mealana/bestellungen/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
+<a href="{$basePath}/bestellungen/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
 HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -34,7 +35,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 <?php endif; ?>
 
-<form id="bestellung-form" method="post" action="/mealana/bestellungen/speichern.php">
+<form id="bestellung-form" method="post" action="<?= BASE_PATH ?>/bestellungen/speichern.php">
 
     <div class="card" style="margin-bottom:12px">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -105,7 +106,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     window.BESTELLUNGEN_SAVED_POS = <?= json_encode($formdata['positionen'] ?? []) ?>;
     window.VORGEWAEHLT_LIEFERANT_ID = <?= (int)($formdata['lieferant_id'] ?? 0) ?>;
 </script>
-<script src="/mealana/js/bestellungen_neu.js"></script>
+<script src="<?= BASE_PATH ?>/js/bestellungen_neu.js"></script>
 <script>
     // Vorschlag-Buttons sofort aktivieren wenn Lieferant vorgewählt
     if (window.VORGEWAEHLT_LIEFERANT_ID) {

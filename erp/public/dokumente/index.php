@@ -326,7 +326,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             </span>
                         </td>
                         <td>
-                            <a href="/mealana/auftraege/detail.php?id=<?= $dok['auftrag_id'] ?>"
+                            <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $dok['auftrag_id'] ?>"
                                 style="font-weight:600;text-decoration:none;color:var(--color-nav)">
                                 <?= htmlspecialchars($dok['auftrag_nr']) ?>
                             </a>
@@ -358,14 +358,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         </td>
                         <td style="white-space:nowrap">
                             <?php if ($dok['quelle'] === 'kassenbon') { ?>
-                                <a href="/mealana/kasse/bon_druck.php?id=<?= $dok['id'] ?>&datei=<?= urlencode($dok['dateiname']) ?>"
+                                <a href="<?= BASE_PATH ?>/kasse/bon_druck.php?id=<?= $dok['id'] ?>&datei=<?= urlencode($dok['dateiname']) ?>"
                                     target="_blank"
                                     class="btn btn-secondary"
                                     style="padding:3px 10px;font-size:12px">
                                     PDF
                                 </a>
                             <?php } else { ?>
-                                <a href="/mealana/auftraege/dokument_download.php?auftrag_id=<?= $dok['auftrag_id'] ?>&datei=<?= urlencode($dok['dateiname']) ?>"
+                                <a href="<?= BASE_PATH ?>/auftraege/dokument_download.php?auftrag_id=<?= $dok['auftrag_id'] ?>&datei=<?= urlencode($dok['dateiname']) ?>"
                                     target="_blank"
                                     class="btn btn-secondary"
                                     style="padding:3px 10px;font-size:12px">

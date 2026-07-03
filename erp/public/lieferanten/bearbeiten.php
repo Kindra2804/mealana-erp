@@ -26,8 +26,9 @@ if (empty($formdata)) {
 
 $pageTitle        = 'Lieferant bearbeiten';
 $activeModule     = 'lieferanten';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/lieferanten/detail.php?id={$id}" class="btn btn-secondary btn-sm">← Zurück</a>
+    <a href="{$basePath}/lieferanten/detail.php?id={$id}" class="btn btn-secondary btn-sm">← Zurück</a>
 HTML;
 
 require_once __DIR__ . '/../includes/shell_top.php';

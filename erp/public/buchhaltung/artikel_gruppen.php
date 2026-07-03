@@ -65,7 +65,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <span style="font-size:18px">⚠</span>
     <span>
         <strong><?= $ohneGruppeVater ?> Artikel</strong> (Väter / Standalone) haben noch keine Artikelgruppe —
-        <a href="/mealana/artikel/liste.php?status=keine_gruppe" style="color:var(--color-nav)">→ Liste anzeigen</a>
+        <a href="<?= BASE_PATH ?>/artikel/liste.php?status=keine_gruppe" style="color:var(--color-nav)">→ Liste anzeigen</a>
         <?php if ($ohneGruppeKind > 0): ?>
         <br><span style="font-size:11px;color:var(--color-text-muted)">
             + <?= $ohneGruppeKind ?> Kind-Artikel erben die Gruppe automatisch wenn ihr Vater gespeichert wird.
@@ -98,7 +98,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <td style="text-align:center">
                     <?php $a = (int)($anzahlen[$g['id']] ?? 0); ?>
                     <?php if ($a > 0): ?>
-                        <a href="/mealana/artikel/liste.php?gruppe_id=<?= $g['id'] ?>"
+                        <a href="<?= BASE_PATH ?>/artikel/liste.php?gruppe_id=<?= $g['id'] ?>"
                            style="color:var(--color-nav);font-size:12px"><?= $a ?></a>
                     <?php else: ?>
                         <span style="color:var(--color-text-muted);font-size:12px">0</span>
@@ -171,5 +171,5 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
-<script src="/mealana/js/buchhaltung_artikel_gruppen.js"></script>
+<script src="<?= BASE_PATH ?>/js/buchhaltung_artikel_gruppen.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

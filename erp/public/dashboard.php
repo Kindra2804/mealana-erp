@@ -327,7 +327,7 @@ require_once __DIR__ . '/includes/shell_top.php';
     <span style="font-size:16px">⚠</span>
     <span style="color:#92400e">
         <strong><?= $bestandsWarnungen ?> Artikel</strong> unter Mindestbestand —
-        <a href="/mealana/lager/uebersicht.php" style="color:#b45309">Details im Lager →</a>
+        <a href="<?= BASE_PATH ?>/lager/uebersicht.php" style="color:#b45309">Details im Lager →</a>
     </span>
 </div>
 <?php endif; ?>
@@ -349,20 +349,20 @@ require_once __DIR__ . '/includes/shell_top.php';
         </div>
         <?php if ($fehlbestandAuftraege > 0): ?>
         <div style="margin-bottom:5px">
-            <a href="/mealana/lager/picklisten.php" style="text-decoration:none">
+            <a href="<?= BASE_PATH ?>/lager/picklisten.php" style="text-decoration:none">
                 <span class="db-chip db-chip-red">⚠ Fehlbestand: <?= $fehlbestandAuftraege ?> →</span>
             </a>
         </div>
         <?php endif; ?>
         <?php if ($bestandsWarnungen > 0): ?>
         <div style="margin-bottom:5px">
-            <a href="/mealana/lager/uebersicht.php" style="text-decoration:none">
+            <a href="<?= BASE_PATH ?>/lager/uebersicht.php" style="text-decoration:none">
                 <span class="db-chip db-chip-amber">⚠ Bestandswarn.: <?= $bestandsWarnungen ?> →</span>
             </a>
         </div>
         <?php endif; ?>
         <div style="margin-top:6px">
-            <a href="/mealana/auftraege/liste.php" style="font-size:11px;color:#2563eb">→ Alle Aufträge</a>
+            <a href="<?= BASE_PATH ?>/auftraege/liste.php" style="font-size:11px;color:#2563eb">→ Alle Aufträge</a>
         </div>
     </div>
 
@@ -445,7 +445,7 @@ require_once __DIR__ . '/includes/shell_top.php';
         </div>
         <?php endif; ?>
         <div style="margin-top:8px">
-            <a href="/mealana/auftraege/liste.php?zahlung=ausstehend" style="font-size:11px;color:#2563eb">→ Unbezahlte Aufträge</a>
+            <a href="<?= BASE_PATH ?>/auftraege/liste.php?zahlung=ausstehend" style="font-size:11px;color:#2563eb">→ Unbezahlte Aufträge</a>
         </div>
     </div>
 
@@ -529,7 +529,7 @@ require_once __DIR__ . '/includes/shell_top.php';
     <div class="db-card" style="padding:0">
         <div style="padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:center">
             <div style="font-weight:700;font-size:13px;color:#1e3a5f">Offene Aufträge</div>
-            <a href="/mealana/auftraege/liste.php" style="font-size:11px;color:#2563eb">alle <?= $auftraegeOffen ?> →</a>
+            <a href="<?= BASE_PATH ?>/auftraege/liste.php" style="font-size:11px;color:#2563eb">alle <?= $auftraegeOffen ?> →</a>
         </div>
         <table class="db-table">
             <thead>
@@ -551,7 +551,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                 };
             ?>
             <tr>
-                <td><a href="/mealana/auftraege/detail.php?id=<?= $a['id'] ?? '' ?>" style="color:#2563eb;font-weight:600;text-decoration:none">
+                <td><a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $a['id'] ?? '' ?>" style="color:#2563eb;font-weight:600;text-decoration:none">
                     <?= htmlspecialchars($a['auftrag_nr']) ?>
                 </a></td>
                 <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
@@ -580,7 +580,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <?php if ($forderungenUeberfaellig30 > 0): ?>
                 <span class="db-chip db-chip-red">&gt;30 Tage: <?= $forderungenUeberfaellig30 ?></span>
                 <?php endif; ?>
-                <a href="/mealana/auftraege/liste.php?zahlung=ausstehend" style="font-size:11px;color:#2563eb;line-height:20px">alle (<?= $forderungenAnzahl ?>) →</a>
+                <a href="<?= BASE_PATH ?>/auftraege/liste.php?zahlung=ausstehend" style="font-size:11px;color:#2563eb;line-height:20px">alle (<?= $forderungenAnzahl ?>) →</a>
             </div>
         </div>
         <table class="db-table">

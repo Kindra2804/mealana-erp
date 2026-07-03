@@ -68,9 +68,10 @@ if (isset($_GET['kunden_id']) && empty($formdata)) {
 
 $pageTitle        = 'Neuer Auftrag';
 $activeModule     = 'verkauf';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
 <button form="auftrag-form" type="submit" class="btn btn-primary btn-sm">Auftrag anlegen</button>
-<a href="/mealana/auftraege/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
+<a href="{$basePath}/auftraege/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
 HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -83,7 +84,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 <?php endif; ?>
 
-<form id="auftrag-form" method="post" action="/mealana/auftraege/speichern.php">
+<form id="auftrag-form" method="post" action="<?= BASE_PATH ?>/auftraege/speichern.php">
 
     <!-- Kopfdaten -->
     <div class="card" style="margin-bottom:12px">
@@ -243,11 +244,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </form>
 
 <script>
-    window.ARTIKEL_AJAX_URL = '/mealana/auftraege/artikel_ajax.php';
-    window.KUNDEN_AJAX_URL  = '/mealana/auftraege/kunden_ajax.php';
+    window.ARTIKEL_AJAX_URL = '<?= BASE_PATH ?>/auftraege/artikel_ajax.php';
+    window.KUNDEN_AJAX_URL  = '<?= BASE_PATH ?>/auftraege/kunden_ajax.php';
     window.PREISANZEIGE     = '<?= $preisanzeige ?>';
 </script>
-<script src="/mealana/js/auftraege_neu.js"></script>
+<script src="<?= BASE_PATH ?>/js/auftraege_neu.js"></script>
 
 <!-- Artikel-Browser Modal -->
 <div id="artikel-browser-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center">

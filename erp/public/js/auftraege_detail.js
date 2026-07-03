@@ -11,7 +11,7 @@ async function zahlungBuchen(auftragId) {
     body.append('betrag', betrag);
     body.append('buchungsdatum', datum);
     if (notiz) body.append('notiz', notiz);
-    const r    = await fetch('/mealana/auftraege/zahlung_buchen.php', { method: 'POST', body });
+    const r    = await fetch(window.BASE_PATH + '/auftraege/zahlung_buchen.php', { method: 'POST', body });
     const data = await r.json();
     if (data.erfolg) {
         location.reload();

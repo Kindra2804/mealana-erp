@@ -15,7 +15,7 @@ unset($_SESSION['fehler_we']);
 
 $pageTitle        = 'Wareneingang';
 $activeModule     = 'einkauf';
-$actionBarContent = '<a href="/mealana/lager/wareneingang.php" class="btn btn-secondary btn-sm">Freier Wareneingang</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/lager/wareneingang.php" class="btn btn-secondary btn-sm">Freier Wareneingang</a>';
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
@@ -39,7 +39,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
         <?php endforeach; ?>
     </div>
-    <form method="post" action="/mealana/wareneingang/bestellung_aus_durchlauf.php"
+    <form method="post" action="<?= BASE_PATH ?>/wareneingang/bestellung_aus_durchlauf.php"
           style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div>
             <label style="font-size:11px;color:var(--color-text-muted);display:block;margin-bottom:2px">Lieferant *</label>
@@ -70,7 +70,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <input type="text" id="ean-input" class="erp-input" style="flex:1;font-size:16px;padding:10px"
             placeholder="EAN-Code scannen..." autofocus autocomplete="off">
         <button class="btn btn-primary" onclick="eanSuchen()" style="padding:10px 20px">Suchen</button>
-        <a href="/mealana/lager/wareneingang.php" class="btn btn-secondary" style="padding:10px 16px">Freier Wareneingang →</a>
+        <a href="<?= BASE_PATH ?>/lager/wareneingang.php" class="btn btn-secondary" style="padding:10px 16px">Freier Wareneingang →</a>
     </div>
 
     <!-- Scan-Ergebnis -->
@@ -88,7 +88,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 $istTeil = $b['status'] === 'teilgeliefert';
                 $fortsch = $b['anzahl_positionen'] > 0 ? round((float)$b['positionen_erledigt'] / (float)$b['anzahl_positionen'] * 100) : 0;
             ?>
-                <a href="/mealana/wareneingang/detail.php?bestellung_id=<?= $b['id'] ?>" style="text-decoration:none;color:inherit">
+                <a href="<?= BASE_PATH ?>/wareneingang/detail.php?bestellung_id=<?= $b['id'] ?>" style="text-decoration:none;color:inherit">
                     <div class="card" style="cursor:pointer;transition:box-shadow .15s;border:1px solid <?= $istTeil ? 'var(--color-warning)' : 'var(--color-border)' ?>" onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.12)'" onmouseout="this.style.boxShadow=''">
                         <div style="font-weight:600;font-size:13px;margin-bottom:4px"><?= htmlspecialchars($b['lieferant_name']) ?></div>
                         <div style="font-size:12px;color:var(--color-text-muted)"><?= date('d.m.Y', strtotime($b['bestelldatum'])) ?></div>
@@ -108,6 +108,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php endif; ?>
 </div>
 
-<script src="/mealana/js/wareneingang_index.js"></script>
+<script src="<?= BASE_PATH ?>/js/wareneingang_index.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

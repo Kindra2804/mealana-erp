@@ -10,7 +10,7 @@ $aktionen = $service->findAll();
 $pageTitle       = 'Preise / Aktionen';
 $activeModule    = 'artikel';
 $kategorienBaum = $artikelService->getKategorienBaum();
-$actionBarContent = '<a href="/mealana/aktionen/bearbeiten.php" class="btn btn-primary btn-sm">+ Neue Aktion</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/aktionen/bearbeiten.php" class="btn btn-primary btn-sm">+ Neue Aktion</a>';
 
 require_once __DIR__ . '/../includes/shell_top.php';
 
@@ -26,7 +26,7 @@ $statusLabel = [
     <?php if (empty($aktionen)): ?>
         <p style="color:var(--color-text-muted);padding:var(--space-md)">
             Noch keine Aktionen angelegt.
-            <a href="/mealana/aktionen/bearbeiten.php" class="btn btn-primary btn-sm" style="margin-left:8px">Erste Aktion anlegen</a>
+            <a href="<?= BASE_PATH ?>/aktionen/bearbeiten.php" class="btn btn-primary btn-sm" style="margin-left:8px">Erste Aktion anlegen</a>
         </p>
     <?php else: ?>
         <table class="erp-table">
@@ -53,7 +53,7 @@ $statusLabel = [
                 ?>
                     <tr>
                         <td>
-                            <a href="/mealana/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
+                            <a href="<?= BASE_PATH ?>/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
                                 style="font-weight:600;color:var(--color-nav);text-decoration:none">
                                 <?= htmlspecialchars($a['name']) ?>
                             </a>
@@ -84,7 +84,7 @@ $statusLabel = [
                             </span>
                         </td>
                         <td style="text-align:right;white-space:nowrap">
-                            <a href="/mealana/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
+                            <a href="<?= BASE_PATH ?>/aktionen/bearbeiten.php?id=<?= $a['id'] ?>"
                                 class="btn btn-secondary btn-xs">Bearbeiten</a>
                             <button onclick="aktionLoeschen(<?= $a['id'] ?>, <?= htmlspecialchars(json_encode($a['name'])) ?>)"
                                 class="btn btn-danger btn-xs" style="margin-left:4px">Löschen</button>
@@ -116,6 +116,6 @@ $statusLabel = [
     </div>
 </div>
 
-<script src="/mealana/js/aktionen_liste.js"></script>
+<script src="<?= BASE_PATH ?>/js/aktionen_liste.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

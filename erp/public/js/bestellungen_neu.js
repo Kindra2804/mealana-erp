@@ -31,7 +31,7 @@ function ladeReserviert(lieferantId) {
     aktualisiereVorschlagButtons(lieferantId);
     var box = document.getElementById('reserviert-box');
     if (!lieferantId) { box.style.display = 'none'; box.innerHTML = ''; return; }
-    fetch('/mealana/bestellungen/reserviert_ajax.php?lieferant_id=' + lieferantId)
+    fetch(window.BASE_PATH + '/bestellungen/reserviert_ajax.php?lieferant_id=' + lieferantId)
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (!data.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
@@ -92,7 +92,7 @@ function artikelSuchen(input, idx) {
     var q = input.value.trim();
     if (q.length < 2) { document.getElementById('dropdown-' + idx).style.display = 'none'; return; }
     var lieferantId = document.getElementById('lieferant_id').value;
-    fetch('/mealana/bestellungen/artikel_ajax.php?lieferant_id=' + lieferantId + '&q=' + encodeURIComponent(q))
+    fetch(window.BASE_PATH + '/bestellungen/artikel_ajax.php?lieferant_id=' + lieferantId + '&q=' + encodeURIComponent(q))
         .then(function (r) { return r.json(); })
         .then(function (daten) {
             var dropdown = document.getElementById('dropdown-' + idx);

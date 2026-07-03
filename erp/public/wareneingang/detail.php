@@ -8,11 +8,11 @@ $service       = new WareneingangService();
 $bestService   = new BestellungService();
 
 $bestellungId  = (int)($_GET['bestellung_id'] ?? 0);
-if (!$bestellungId) { header('Location: /mealana/wareneingang/index.php'); exit; }
+if (!$bestellungId) { header('Location: ' . BASE_PATH . '/wareneingang/index.php'); exit; }
 
 $bestellung = $bestService->getById($bestellungId);
 if (!$bestellung || !in_array($bestellung['status'], ['offen', 'teilgeliefert'])) {
-    header('Location: /mealana/wareneingang/index.php');
+    header('Location: ' . BASE_PATH . '/wareneingang/index.php');
     exit;
 }
 
@@ -30,8 +30,8 @@ $scanEan       = $_GET['scan_ean'] ?? '';
 
 $pageTitle    = 'Wareneingang — ' . $nr;
 $activeModule = 'einkauf';
-$actionBarContent = '<a href="/mealana/wareneingang/index.php" class="btn btn-secondary btn-sm">← Wareneingang</a>'
-    . ' <a href="/mealana/bestellungen/detail.php?id=' . $bestellungId . '" class="btn btn-secondary btn-sm">Bestellung</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/wareneingang/index.php" class="btn btn-secondary btn-sm">← Wareneingang</a>'
+    . ' <a href="' . BASE_PATH . '/bestellungen/detail.php?id=' . $bestellungId . '" class="btn btn-secondary btn-sm">Bestellung</a>';
 require_once __DIR__ . '/../includes/shell_top.php';
 
 // Aktuell gescannter Artikel (aus Session oder GET-Parameter)
@@ -72,7 +72,7 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
         <!-- Artikelbild -->
         <div id="artikel-bild-box" style="width:90px;height:90px;background:#f0f0f0;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:28px">
             <?php if ($aktivArtikel && $aktivArtikel['hauptbild']): ?>
-                <img src="/mealana/uploads/artikel/<?= $aktivArtikelId ?>/<?= htmlspecialchars($aktivArtikel['hauptbild']) ?>"
+                <img src="<?= BASE_PATH ?>/uploads/artikel/<?= $aktivArtikelId ?>/<?= htmlspecialchars($aktivArtikel['hauptbild']) ?>"
                      style="width:90px;height:90px;object-fit:cover;border-radius:6px">
             <?php else: ?>
                 📦
@@ -103,7 +103,7 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
 
     <!-- Buchungs-Formular -->
     <div id="buchungs-form" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--color-border);display:<?= $aktivArtikel ? 'block' : 'none' ?>">
-        <form method="post" action="/mealana/wareneingang/speichern.php" id="eingang-form">
+        <form method="post" action="<?= BASE_PATH ?>/wareneingang/speichern.php" id="eingang-form">
             <input type="hidden" name="bestellung_id" value="<?= $bestellungId ?>">
             <input type="hidden" name="position_id"   id="position_id" value="<?= $aktivPositionId ?>">
             <input type="hidden" name="artikel_id"    id="artikel_id"  value="<?= $aktivArtikelId ?>">
@@ -163,7 +163,7 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
                     <td><?= $p['gestrichen'] ? '—' : (int)$offen ?></td>
                     <td><?= $icon ?></td>
                     <td onclick="event.stopPropagation()">
-                        <a href="/mealana/wareneingang/artikel_bearbeiten_vorbereiten.php?artikel_id=<?= $p['artikel_id'] ?>&bestellung_id=<?= $bestellungId ?>"
+                        <a href="<?= BASE_PATH ?>/wareneingang/artikel_bearbeiten_vorbereiten.php?artikel_id=<?= $p['artikel_id'] ?>&bestellung_id=<?= $bestellungId ?>"
                            class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px">✏</a>
                     </td>
                 </tr>
@@ -185,6 +185,6 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
 </div>
 
 <script>window.WE_BESTELLUNG_ID = <?= (int)$bestellungId ?>;</script>
-<script src="/mealana/js/wareneingang_detail.js"></script>
+<script src="<?= BASE_PATH ?>/js/wareneingang_detail.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

@@ -260,7 +260,7 @@ document.getElementById('sw-suche-input')?.addEventListener('input', function() 
 function swSuche(q) {
     const res = document.getElementById('sw-suche-ergebnisse');
     res.innerHTML = '<div style="font-size:12px;color:var(--color-text-muted);padding:4px">Suche...</div>';
-    fetch('/mealana/kasse/ajax_artikel.php?suche=' + encodeURIComponent(q) + '&lager_id=<?= $kasse['lager_id'] ?? 1 ?>')
+    fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?suche=' + encodeURIComponent(q) + '&lager_id=<?= $kasse['lager_id'] ?? 1 ?>')
         .then(r => r.json())
         .then(d => {
             if (!d.erfolg || !d.ergebnisse?.length) {

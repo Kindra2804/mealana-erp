@@ -13,7 +13,7 @@ function stammdatenSpeichern() {
     var name        = document.getElementById('akt-name').value.trim();
     var beschreibung = document.getElementById('akt-beschreibung').value.trim();
     if (!name) { zeigeBanner('Name ist Pflichtfeld', false); return; }
-    fetch('/mealana/aktionen/aktion_speichern.php', {
+    fetch(window.BASE_PATH + '/aktionen/aktion_speichern.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'modus=update&id=' + AKTION_ID + '&name=' + encodeURIComponent(name) + '&beschreibung=' + encodeURIComponent(beschreibung)
@@ -23,7 +23,7 @@ function stammdatenSpeichern() {
 }
 
 function aktionStarten() {
-    fetch('/mealana/aktionen/aktion_starten_ajax.php', {
+    fetch(window.BASE_PATH + '/aktionen/aktion_starten_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'id=' + AKTION_ID + '&aktion=starten'
@@ -36,7 +36,7 @@ function aktionStarten() {
 }
 
 function aktionStoppen() {
-    fetch('/mealana/aktionen/aktion_starten_ajax.php', {
+    fetch(window.BASE_PATH + '/aktionen/aktion_starten_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'id=' + AKTION_ID + '&aktion=stoppen'
@@ -56,7 +56,7 @@ function katHinzufuegen() {
     if (!katId)      { fehler.textContent = 'Bitte Kategorie wählen'; return; }
     if (!von || !bis){ fehler.textContent = 'Von und Bis sind Pflichtfelder'; return; }
     fehler.textContent = '';
-    fetch('/mealana/aktionen/aktion_kategorie_ajax.php', {
+    fetch(window.BASE_PATH + '/aktionen/aktion_kategorie_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'aktion=hinzufuegen&aktion_id=' + AKTION_ID + '&kategorie_id=' + katId + '&von=' + von + '&bis=' + bis
@@ -71,7 +71,7 @@ function katHinzufuegen() {
 function katEntfernen(akId, btn) {
     if (!confirm('Kategorie-Zuweisung entfernen?')) return;
     btn.disabled = true;
-    fetch('/mealana/aktionen/aktion_kategorie_ajax.php', {
+    fetch(window.BASE_PATH + '/aktionen/aktion_kategorie_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'aktion=entfernen&ak_id=' + akId
@@ -94,7 +94,7 @@ function artikelLaden() {
         return;
     }
     inhalt.innerHTML = '<p style="color:var(--color-text-muted);font-size:12px">Lade Artikel…</p>';
-    fetch('/mealana/aktionen/aktion_artikel_laden.php?aktion_id=' + AKTION_ID + '&kategorie_id=' + katId + '&kg_id=' + kgId)
+    fetch(window.BASE_PATH + '/aktionen/aktion_artikel_laden.php?aktion_id=' + AKTION_ID + '&kategorie_id=' + katId + '&kg_id=' + kgId)
         .then(function (r) { return r.json(); })
         .then(function (d) {
             if (!d.erfolg) {
@@ -171,7 +171,7 @@ function preiseSpeichern(kgId) {
     });
     var info = document.getElementById('preis-save-info');
     info.textContent = 'Speichern…';
-    fetch('/mealana/aktionen/aktion_preise_speichern.php', {
+    fetch(window.BASE_PATH + '/aktionen/aktion_preise_speichern.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ aktion_id: AKTION_ID, kg_id: kgId, preise: preise })

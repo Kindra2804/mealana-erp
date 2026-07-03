@@ -123,6 +123,26 @@ try {
         }
     }
 
+    // Prüfen ob nach dieser Buchung noch offene Positionen übrig sind — ein Auftrag
+    // darf nicht auf 'teilgeliefert' hängen bleiben, wenn tatsächlich schon alles
+    // geliefert ist (sonst bleibt er dauerhaft in der Picklisten-Liste sichtbar,
+    // siehe Bugfix 2026-07-03).
+    $restStmt = $db->prepare("
+        SELECT COUNT(*) FROM auftrag_positionen
+        WHERE auftrag_id = ? AND artikel_id IS NOT NULL
+          AND menge - COALESCE(menge_geliefert, 0) > 0
+    ");
+    $restStmt->execute([$auftragId]);
+    $allesGeliefert = ((int)$restStmt->fetchColumn() === 0);
+
+    // Korrigiert die vom Formular übergebene Teillieferung-Markierung, falls durch
+    // diese Buchung tatsächlich alles ausgeliefert wurde — wirkt sich dadurch
+    // automatisch auch auf Statuslog, Rechnung-vs-Lieferschein-Entscheidung und
+    // Mailtext weiter unten aus.
+    if ($allesGeliefert) {
+        $istTeillieferung = false;
+    }
+
     // Lieferstatus + Tracking speichern
     $neuerStatus = $isAbholung ? 'abholbereit' : ($istTeillieferung ? 'teilgeliefert' : 'versendet');
 

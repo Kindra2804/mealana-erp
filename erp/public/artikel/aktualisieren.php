@@ -99,7 +99,7 @@ if ($result['erfolg']) {
         ];
     }
     $_SESSION['erfolg'] = 'Artikel wurde aktualisiert!';
-    if ($weRueckkehr && str_starts_with($weRueckkehr, '/mealana/')) {
+    if ($weRueckkehr && str_starts_with($weRueckkehr, BASE_PATH . '/')) {
         header('Location: ' . $weRueckkehr);
     } else {
         header('Location: detail.php?id=' . $data['id']);

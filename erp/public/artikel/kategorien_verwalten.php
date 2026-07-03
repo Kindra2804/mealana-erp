@@ -203,7 +203,7 @@ $flacheListe = flattenBaum($kategorienBaum);
 </div>
 
 
-<script src="/mealana/js/kategorien_verwalten.js"></script>
+<script src="<?= BASE_PATH ?>/js/kategorien_verwalten.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
 

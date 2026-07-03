@@ -9,7 +9,7 @@ function aktionLoeschen(id, name) {
 document.getElementById('del-btn').addEventListener('click', function () {
     if (!delAktionId) return;
     this.disabled = true;
-    fetch('/mealana/aktionen/aktion_loeschen.php', {
+    fetch(window.BASE_PATH + '/aktionen/aktion_loeschen.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'id=' + delAktionId

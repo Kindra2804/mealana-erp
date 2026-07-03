@@ -725,7 +725,7 @@ body {
     <button class="ph-btn ph-btn-menu" onclick="toggleMenue(event)">⚙ Menü</button>
     <button class="ph-btn ph-btn-mitgeb" onclick="mitgebenDialog()">Mitgeben ▷</button>
     <button class="ph-btn ph-btn-parken" onclick="bonParken()">⏸ Parken</button>
-    <button class="ph-btn ph-btn-close" onclick="location.href='/mealana/kasse/index.php'">✕ Schließen</button>
+    <button class="ph-btn ph-btn-close" onclick="location.href='<?= BASE_PATH ?>/kasse/index.php'">✕ Schließen</button>
   </div>
   <!-- Dropdown -->
   <div class="ph-dropdown" id="ph-dropdown">
@@ -734,11 +734,11 @@ body {
     <div class="ph-dd-sep"></div>
     <button class="ph-dd-item" onclick="bonAbrufen()">⏸ Geparkten Bon abrufen</button>
     <div class="ph-dd-sep"></div>
-    <a class="ph-dd-item" href="/mealana/kasse/kassenbuch.php">💰 Kassenbuch</a>
-    <a class="ph-dd-item" href="/mealana/kasse/kassensturz.php">📊 Kassenstand / X-Bon</a>
-    <a class="ph-dd-item" href="/mealana/kasse/bon_journal.php">📋 Bon-Journal</a>
+    <a class="ph-dd-item" href="<?= BASE_PATH ?>/kasse/kassenbuch.php">💰 Kassenbuch</a>
+    <a class="ph-dd-item" href="<?= BASE_PATH ?>/kasse/kassensturz.php">📊 Kassenstand / X-Bon</a>
+    <a class="ph-dd-item" href="<?= BASE_PATH ?>/kasse/bon_journal.php">📋 Bon-Journal</a>
     <div class="ph-dd-sep"></div>
-    <a class="ph-dd-item" href="/mealana/kasse/offene_auswahl.php">↗ Offene Auswahl (Mitgegeben)</a>
+    <a class="ph-dd-item" href="<?= BASE_PATH ?>/kasse/offene_auswahl.php">↗ Offene Auswahl (Mitgegeben)</a>
   </div>
 </div>
 
@@ -1325,7 +1325,7 @@ var zusatzPositionen               = [];
 function swArtikelLaden(btn) {
     var artikelId = btn.dataset.artikelId;
     if (!artikelId) return;
-    fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(btn.dataset.ean || btn.dataset.bezeichnung)
+    fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(btn.dataset.ean || btn.dataset.bezeichnung)
         + '&lager_id=' + LAGER_ID)
         .then(r => r.json())
         .then(d => {
@@ -1374,7 +1374,7 @@ function scannenOK() {
         code  = raw;
     }
 
-    fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
+    fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
         .then(r => r.json())
         .then(function(d) {
             if (!d.erfolg) {
@@ -1654,7 +1654,7 @@ function zeilePlus(i) {
     var p = warenkorb[i];
     if ((p.hat_chargen || p.charge_pflicht) && p.artikel_id) {
         var code = p.ean || p.artnr || String(p.artikel_id);
-        fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
+        fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.erfolg) {
@@ -1845,7 +1845,7 @@ function mitgebenDialog() {
 function mitgebenSpeichern() {
     var positionen = warenkorb.filter(p => !p.istDivers && p.artikel_id);
     if (!positionen.length) { feedback('Nur echte Artikel können mitgegeben werden', 'fehler'); return; }
-    fetch('/mealana/kasse/offene_auswahl_speichern.php', {
+    fetch('<?= BASE_PATH ?>/kasse/offene_auswahl_speichern.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1884,9 +1884,9 @@ function ausgabeOeffnen(format) {
     ovSchliessen('ov-ausgabe');
     if (!_letzterBonId) return;
     if (format === '80mm') {
-        window.open('/mealana/kasse/bon_druck.php?id=' + _letzterBonId, '_blank');
+        window.open('<?= BASE_PATH ?>/kasse/bon_druck.php?id=' + _letzterBonId, '_blank');
     } else {
-        window.open('/mealana/kasse/bon_a4.php?id=' + _letzterBonId, '_blank');
+        window.open('<?= BASE_PATH ?>/kasse/bon_a4.php?id=' + _letzterBonId, '_blank');
     }
     _letzterBonId = null;
 }
@@ -1896,7 +1896,7 @@ function bonParken() {
     if (warenkorb.length === 0) { feedback('Kein Bon zum Parken', 'info'); return; }
     document.getElementById('ph-dropdown').classList.remove('offen');
     var kundenAnzeige = document.getElementById('kunden-anzeige').textContent.trim();
-    fetch('/mealana/kasse/ajax_parken.php?aktion=speichern', {
+    fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=speichern', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1933,7 +1933,7 @@ function bonParken() {
 
 function bonAbrufen() {
     document.getElementById('ph-dropdown').classList.remove('offen');
-    fetch('/mealana/kasse/ajax_parken.php?aktion=liste&kasse_id=' + KASSE_ID)
+    fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=liste&kasse_id=' + KASSE_ID)
         .then(r => r.json())
         .then(d => {
             if (!d.erfolg || d.liste.length === 0) {
@@ -1969,7 +1969,7 @@ function renderGeparktListe(liste) {
 
 function geparktenLaden(id) {
     if (warenkorb.length > 0 && !confirm('Aktuellen Bon verwerfen und geparkten Bon laden?')) return;
-    fetch('/mealana/kasse/ajax_parken.php?aktion=laden&id=' + id + '&kasse_id=' + KASSE_ID)
+    fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=laden&id=' + id + '&kasse_id=' + KASSE_ID)
         .then(r => r.json())
         .then(d => {
             if (!d.erfolg) { feedback(d.fehler || 'Fehler', 'fehler'); return; }
@@ -1989,7 +1989,7 @@ function geparktenLaden(id) {
             if (geladenerAuftragId) document.getElementById('btn-auftrag-laden').classList.add('geladen');
             aktiveZeile = -1;
             // Nach Laden aus DB löschen
-            fetch('/mealana/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' });
+            fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' });
             ovSchliessen('ov-geparkt');
             renderBon();
             feedback('Bon geladen', 'ok');
@@ -1999,7 +1999,7 @@ function geparktenLaden(id) {
 
 function geparktenLoeschen(id, btn) {
     if (!confirm('Geparkten Bon löschen?')) return;
-    fetch('/mealana/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' })
+    fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' })
         .then(r => r.json())
         .then(d => {
             if (!d.erfolg) { feedback('Löschen fehlgeschlagen', 'fehler'); return; }
@@ -2021,7 +2021,7 @@ function sucheLive(val) {
     var liste = document.getElementById('such-liste');
     if (val.length < 2) { liste.innerHTML = ''; return; }
     suchTimer = setTimeout(function() {
-        fetch('/mealana/kasse/ajax_artikel.php?suche=' + encodeURIComponent(val) + '&lager_id=' + LAGER_ID)
+        fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?suche=' + encodeURIComponent(val) + '&lager_id=' + LAGER_ID)
             .then(r => r.json())
             .then(function(d) {
                 if (!d.erfolg || !d.ergebnisse.length) {
@@ -2049,7 +2049,7 @@ function sucheLive(val) {
 function suchWaehlen(a) {
     ovSchliessen('ov-suche');
     if (a.ist_vater) {
-        fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(a.artikelnummer) + '&lager_id=' + LAGER_ID)
+        fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(a.artikelnummer) + '&lager_id=' + LAGER_ID)
             .then(r => r.json()).then(d => { if (d.erfolg) zeigeVaterAuswahl(d); });
     } else {
         a.bestand_verkaufbar = Math.max(0, (parseFloat(a.bestand_physisch) || 0));
@@ -2071,7 +2071,7 @@ function kundeSucheLive(val) {
     var liste = document.getElementById('kunde-liste');
     if (val.length < 2) { liste.innerHTML = ''; return; }
     kundeTimer = setTimeout(function() {
-        fetch('/mealana/kasse/ajax_kunden_suche.php?suche=' + encodeURIComponent(val))
+        fetch('<?= BASE_PATH ?>/kasse/ajax_kunden_suche.php?suche=' + encodeURIComponent(val))
             .then(r => r.json())
             .then(function(d) {
                 if (!d.erfolg || !d.kunden.length) {
@@ -2323,7 +2323,7 @@ function bonSpeichern(zahlDaten) {
     var zp = zusatzPositionen.slice(); // Kopie vor Reset
     zusatzPositionen = [];
 
-    fetch('/mealana/kasse/bon_speichern.php', {
+    fetch('<?= BASE_PATH ?>/kasse/bon_speichern.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.assign({
@@ -2363,7 +2363,7 @@ function abschliessenOhneBon() {
     var positionen = warenkorb.map(function(p) {
         return Object.assign({}, p, { rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt) });
     });
-    fetch('/mealana/kasse/bon_speichern.php', {
+    fetch('<?= BASE_PATH ?>/kasse/bon_speichern.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2584,7 +2584,7 @@ function artikelSucheInput() {
     }
     box.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px">Suche…</div>';
     artikelSucheTimer = setTimeout(function() {
-        fetch('/mealana/kasse/ajax_artikel.php?suche=' + encodeURIComponent(val) + '&lager_id=' + LAGER_ID)
+        fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?suche=' + encodeURIComponent(val) + '&lager_id=' + LAGER_ID)
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (!d.erfolg || !d.ergebnisse || !d.ergebnisse.length) {
@@ -2715,7 +2715,7 @@ function bonRabattAnwenden() {
 // ── Kassenlade öffnen ─────────────────────────────────────────────────────────
 function kasseladeOeffnen() {
     document.getElementById('ph-dropdown').classList.remove('offen');
-    fetch('/mealana/kasse/ajax_kassenlade.php', { method: 'POST' })
+    fetch('<?= BASE_PATH ?>/kasse/ajax_kassenlade.php', { method: 'POST' })
         .then(r => r.json())
         .then(d => { feedback(d.hinweis || '⊟ Kassenlade geöffnet', 'ok'); })
         .catch(() => feedback('⊟ Kassenlade-Befehl gesendet', 'ok'));
@@ -2727,7 +2727,7 @@ function nullbonDialog() {
 
 function nullbonBestaetigen() {
     ovSchliessen('ov-nullbon');
-    fetch('/mealana/kasse/ajax_nullbon.php', {
+    fetch('<?= BASE_PATH ?>/kasse/ajax_nullbon.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'kasse_id=' + <?= (int)$kasseId ?>,
@@ -2774,7 +2774,7 @@ function auftragSucheAusfuehren() {
     var liste = document.getElementById('auftrag-liste');
     liste.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">Lädt …</div>';
 
-    fetch('/mealana/kasse/ajax_auftrag_laden.php?q=' + encodeURIComponent(q) + '&alle=' + alle)
+    fetch('<?= BASE_PATH ?>/kasse/ajax_auftrag_laden.php?q=' + encodeURIComponent(q) + '&alle=' + alle)
         .then(r => r.json())
         .then(function(data) {
             if (!data.length) {

@@ -10,7 +10,7 @@ $aktion   = $id ? $service->findById($id) : null;
 $istNeu   = ($aktion === null && $id === 0);
 
 if ($id && !$aktion) {
-    header('Location: /mealana/aktionen/liste.php');
+    header('Location: ' . BASE_PATH . '/aktionen/liste.php');
     exit;
 }
 
@@ -47,7 +47,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div class="card" style="max-width:560px">
         <div style="padding:var(--space-md)">
             <h2 style="font-size:15px;font-weight:700;margin-bottom:var(--space-md);color:var(--color-nav)">Neue Aktion anlegen</h2>
-            <form method="POST" action="/mealana/aktionen/aktion_speichern.php">
+            <form method="POST" action="<?= BASE_PATH ?>/aktionen/aktion_speichern.php">
                 <input type="hidden" name="modus" value="neu">
                 <div class="form-row">
                     <label class="form-label">Name *</label>
@@ -61,7 +61,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </div>
                 <div id="neu-fehler" style="color:var(--color-danger);font-size:12px;min-height:16px"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:var(--space-md)">
-                    <a href="/mealana/aktionen/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
+                    <a href="<?= BASE_PATH ?>/aktionen/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
                     <button type="submit" class="btn btn-primary btn-sm">Anlegen & weiter</button>
                 </div>
             </form>
@@ -148,7 +148,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php if (empty($aktionsKategorien)): ?>
                 <p style="font-size:12px;color:var(--color-text-muted);margin-top:8px">
                     ⚠ Keine Aktions-Kategorien vorhanden. Bitte zuerst in der
-                    <a href="/mealana/artikel/kategorien_verwalten.php">Kategorieverwaltung</a>
+                    <a href="<?= BASE_PATH ?>/artikel/kategorien_verwalten.php">Kategorieverwaltung</a>
                     Kategorien als Aktions-Kategorie markieren.
                 </p>
             <?php endif; ?>
@@ -191,6 +191,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
 <script>var AKTION_ID = <?= $id ?>;</script>
-<script src="/mealana/js/aktionen.js"></script>
+<script src="<?= BASE_PATH ?>/js/aktionen.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

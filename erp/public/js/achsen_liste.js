@@ -1,5 +1,5 @@
 function achseSortieren(id, richtung) {
-    fetch('/mealana/achsen/sort_ajax.php', {
+    fetch(window.BASE_PATH + '/achsen/sort_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ id: id, richtung: richtung })
@@ -57,7 +57,7 @@ function editAbsenden() {
     document.getElementById('edit-fehler').textContent = '';
     if (!name) { document.getElementById('edit-fehler').textContent = 'Name ist Pflichtfeld'; document.getElementById('edit-name').focus(); return; }
     if (!code) { document.getElementById('edit-fehler').textContent = 'Code ist Pflichtfeld'; document.getElementById('edit-code').focus(); return; }
-    var url       = id > 0 ? '/mealana/achsen/achse_aktualisieren_ajax.php' : '/mealana/achsen/achse_speichern_ajax.php';
+    var url       = id > 0 ? window.BASE_PATH + '/achsen/achse_aktualisieren_ajax.php' : window.BASE_PATH + '/achsen/achse_speichern_ajax.php';
     var istGruppe = document.getElementById('edit-ist-gruppe').checked ? '1' : '0';
     var body = new FormData();
     if (id > 0) body.append('id', id);
@@ -105,7 +105,7 @@ function delBestaetigt() {
     document.getElementById('del-btn').disabled = true;
     var form    = document.createElement('form');
     form.method = 'POST';
-    form.action = '/mealana/achsen/loeschen.php';
+    form.action = window.BASE_PATH + '/achsen/loeschen.php';
     var input   = document.createElement('input');
     input.type  = 'hidden';
     input.name  = 'id';

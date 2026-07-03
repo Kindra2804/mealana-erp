@@ -11,7 +11,7 @@ function gruppeNeu() {
     document.getElementById('f-sort').value     = '10';
     document.getElementById('f-aktiv').checked  = true;
     document.getElementById('modal-fehler').textContent = '';
-    document.getElementById('gruppe-form').action = '/mealana/buchhaltung/artikel_gruppen_speichern.php';
+    document.getElementById('gruppe-form').action = window.BASE_PATH + '/buchhaltung/artikel_gruppen_speichern.php';
     btnLoesen.style.display = 'none';
     modal.style.display     = 'flex';
     document.getElementById('f-konto').focus();
@@ -26,7 +26,7 @@ function gruppeBearbeiten(g) {
     document.getElementById('f-sort').value     = g.sortierung;
     document.getElementById('f-aktiv').checked  = g.aktiv == 1;
     document.getElementById('modal-fehler').textContent = '';
-    document.getElementById('gruppe-form').action = '/mealana/buchhaltung/artikel_gruppen_speichern.php';
+    document.getElementById('gruppe-form').action = window.BASE_PATH + '/buchhaltung/artikel_gruppen_speichern.php';
     btnLoesen.style.display = '';
     modal.style.display     = 'flex';
     document.getElementById('f-name').focus();
@@ -37,7 +37,7 @@ function gruppeLoeschen() {
     if (!confirm('Artikelgruppe wirklich löschen?\nNur möglich wenn keine Artikel oder Versandklassen zugeordnet sind.')) return;
     var f = document.createElement('form');
     f.method  = 'post';
-    f.action  = '/mealana/buchhaltung/artikel_gruppen_loeschen.php';
+    f.action  = window.BASE_PATH + '/buchhaltung/artikel_gruppen_loeschen.php';
     var inp   = document.createElement('input');
     inp.type  = 'hidden';
     inp.name  = 'id';

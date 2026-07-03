@@ -7,7 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 $db      = Database::getInstance();
 $aktion  = $_GET['aktion'] ?? $_POST['aktion'] ?? '';
 $kasseId = (int)($_GET['kasse_id'] ?? $_POST['kasse_id'] ?? 0);
-$userId  = (int)($_SESSION['user_id'] ?? 0);
+$userId  = (int)($_SESSION['benutzer']['id'] ?? 0);
 
 if (!$kasseId) { echo json_encode(['erfolg' => false, 'fehler' => 'Keine Kasse-ID']); exit; }
 

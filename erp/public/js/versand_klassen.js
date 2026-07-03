@@ -36,7 +36,7 @@ function vskLoeschen() {
     if (!confirm('Versandklasse wirklich löschen?')) return;
     var f = document.createElement('form');
     f.method = 'post';
-    f.action = '/mealana/versand/versandklasse_loeschen.php';
+    f.action = window.BASE_PATH + '/versand/versandklasse_loeschen.php';
     var inp  = document.createElement('input');
     inp.type  = 'hidden';
     inp.name  = 'id';

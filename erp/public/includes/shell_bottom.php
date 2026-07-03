@@ -6,6 +6,7 @@
     <span>👤 Karl</span>
     <span>📦 Ladengeschäft</span>
     <span>🕐 Sync: 14:23</span>
+    <span>v<?= htmlspecialchars(APP_VERSION) ?></span>
 </div>
 </div>
 

@@ -48,7 +48,7 @@ $kanalLabels = [
 
 $pageTitle        = 'Aufträge';
 $activeModule     = 'verkauf';
-$actionBarContent = '<a href="/mealana/auftraege/neu.php" class="btn btn-primary btn-sm">+ Neuer Auftrag</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/auftraege/neu.php" class="btn btn-primary btn-sm">+ Neuer Auftrag</a>';
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
@@ -141,7 +141,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 ?>
                     <tr<?= $istErledigt ? ' style="opacity:0.55;background:var(--color-bg-secondary)"' : '' ?>>
                         <td>
-                            <a href="/mealana/auftraege/detail.php?id=<?= $a['id'] ?>" style="font-weight:600">
+                            <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $a['id'] ?>" style="font-weight:600">
                                 <?= htmlspecialchars($a['auftrag_nr']) ?>
                             </a>
                             <?php if ($a['mahnung_stufe'] > 0): ?>
@@ -157,7 +157,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <td><span class="chip <?= $zl['class'] ?>"><?= $zl['label'] ?></span></td>
                         <td><span class="chip <?= $ll['class'] ?>"><?= $ll['label'] ?></span></td>
                         <td>
-                            <a href="/mealana/auftraege/detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-sm">Detail</a>
+                            <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-sm">Detail</a>
                         </td>
                     </tr>
                 <?php endforeach ?>

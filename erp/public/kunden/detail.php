@@ -52,9 +52,10 @@ $statusChip = match($kunde['status']) {
 
 $pageTitle        = $anzeigename;
 $activeModule     = 'kunden';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
     <a href="bearbeiten.php?id={$id}" class="btn btn-primary btn-sm">✏ Bearbeiten</a>
-    <a href="/mealana/auftraege/neu.php?kunden_id={$id}" class="btn btn-secondary btn-sm">+ Auftrag erstellen</a>
+    <a href="{$basePath}/auftraege/neu.php?kunden_id={$id}" class="btn btn-secondary btn-sm">+ Auftrag erstellen</a>
     <a href="liste.php" class="btn btn-secondary btn-sm">← Liste</a>
 HTML;
 
@@ -430,7 +431,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <?php elseif ($activeTab === 'bestellungen'): ?>
 <div style="display:flex;justify-content:flex-end;margin-bottom:var(--space-sm)">
-    <a href="/mealana/auftraege/neu.php?kunden_id=<?= $id ?>" class="btn btn-primary btn-sm">+ Neuer Auftrag</a>
+    <a href="<?= BASE_PATH ?>/auftraege/neu.php?kunden_id=<?= $id ?>" class="btn btn-primary btn-sm">+ Neuer Auftrag</a>
 </div>
 <?php if (empty($kundenAuftraege)): ?>
     <div class="card" style="text-align:center;padding:32px;color:var(--color-text-muted)">
@@ -470,13 +471,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
             };
         ?>
         <tr>
-            <td><a href="/mealana/auftraege/detail.php?id=<?= $auf['id'] ?>" style="font-weight:600;color:var(--color-nav);text-decoration:none"><?= htmlspecialchars($auf['auftrag_nr']) ?></a></td>
+            <td><a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $auf['id'] ?>" style="font-weight:600;color:var(--color-nav);text-decoration:none"><?= htmlspecialchars($auf['auftrag_nr']) ?></a></td>
             <td style="color:var(--color-text-muted)"><?= date('d.m.Y', strtotime($auf['erstellt_am'])) ?></td>
             <td style="color:var(--color-text-muted)"><?= htmlspecialchars(ucfirst($auf['zahlungsart'])) ?></td>
             <td><?= $zahlChip ?></td>
             <td><?= $liefChip ?></td>
             <td style="text-align:right;font-weight:600"><?= number_format((float)$auf['bruttobetrag'], 2, ',', '.') ?> €</td>
-            <td><a href="/mealana/auftraege/detail.php?id=<?= $auf['id'] ?>" class="btn btn-secondary btn-sm" style="padding:2px 8px">→</a></td>
+            <td><a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $auf['id'] ?>" class="btn btn-secondary btn-sm" style="padding:2px 8px">→</a></td>
         </tr>
         <?php endforeach; ?>
         </tbody>
@@ -485,5 +486,5 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <?php endif; ?>
 <?php endif; ?>
 
-<script src="/mealana/js/kunden_detail.js"></script>
+<script src="<?= BASE_PATH ?>/js/kunden_detail.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

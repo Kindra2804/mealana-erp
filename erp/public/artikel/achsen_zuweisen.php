@@ -432,6 +432,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <script>window.ACHSEN_NAMEN = <?= $achsenNamenJson ?>;</script>
-<script src="/mealana/js/achsen_zuweisen.js"></script>
+<script src="<?= BASE_PATH ?>/js/achsen_zuweisen.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

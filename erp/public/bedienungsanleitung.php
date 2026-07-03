@@ -219,8 +219,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <!-- EINLEITUNG -->
             <h2 id="einleitung">Einleitung <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>MeaLana ERP ist das Warenwirtschaftssystem der Wollboutique MeaLana. Es umfasst Artikelverwaltung, Lager, Einkauf, Aufträge, Packplatz und die Anbindung an WooCommerce-Shops.</p>
-            <p>Das System läuft lokal auf einem Windows-PC. Geöffnet wird es im Browser unter <strong>http://localhost/mealana/</strong> — oder über VPN von unterwegs.</p>
-            <p>Der <strong>Packplatz</strong> hat eine eigene dunkle Oberfläche: <strong>http://localhost/mealana/packplatz/</strong></p>
+            <p>Das System läuft lokal auf einem Windows-PC. Geöffnet wird es im Browser unter <strong>http://localhost<?= BASE_PATH ?>/</strong> — oder über VPN von unterwegs.</p>
+            <p>Der <strong>Packplatz</strong> hat eine eigene dunkle Oberfläche: <strong>http://localhost<?= BASE_PATH ?>/packplatz/</strong></p>
 
             <!-- NAVIGATION -->
             <h2 id="navigation">Navigation <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
@@ -326,7 +326,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <!-- PACKPLATZ -->
             <h2 id="packplatz">Packplatz <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Eigene Oberfläche, optimiert für Touchscreen und Barcode-Scanner. Dunkles Design.</p>
-            <p>Adresse: <strong>http://localhost/mealana/packplatz/</strong></p>
+            <p>Adresse: <strong>http://localhost<?= BASE_PATH ?>/packplatz/</strong></p>
             <p>Hauptmenü: Warenausgang (fertig) · Wareneingang (fertig) · Intern (geplant) · Retoure (geplant)</p>
 
             <h3 id="packplatz-scan">Artikel scannen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
@@ -437,7 +437,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <!-- KASSE -->
             <h2 id="kasse">Kasse <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Das Point-of-Sale-System für das Ladengeschäft. Eigene Oberfläche, optimiert für Touchscreen und Barcode-Scanner.</p>
-            <p><strong>Adresse:</strong> <code>http://localhost/mealana/kasse/</code></p>
+            <p><strong>Adresse:</strong> <code>http://localhost<?= BASE_PATH ?>/kasse/</code></p>
 
             <h3 id="kasse-bon">Bon erstellen — Normaler Verkauf <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>EAN scannen</strong> — Barcode-Scanner auf Ware richten → Artikel erscheint sofort im Warenkorb<br><small>Oder: Lupe-Symbol → Namenssuche (Name/Artikelnummer eintippen)</small></div></div>

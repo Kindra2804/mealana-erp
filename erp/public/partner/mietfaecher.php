@@ -293,6 +293,6 @@ function fachFormFelder(string $prefix = ''): string {
 }
 ?>
 
-<script src="/mealana/js/partner_mietfaecher.js"></script>
+<script src="<?= BASE_PATH ?>/js/partner_mietfaecher.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

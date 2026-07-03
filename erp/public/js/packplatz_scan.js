@@ -70,7 +70,7 @@ function bucheMenge(idx, menge) {
 
     // Artikelbild anzeigen
     if (pos.bild) {
-        bildBox.innerHTML = `<img src="/mealana/${pos.bild}" class="pp-scan-bild" alt="">`;
+        bildBox.innerHTML = `<img src="${window.BASE_PATH}/${pos.bild}" class="pp-scan-bild" alt="">`;
     } else {
         bildBox.innerHTML = `<div class="pp-scan-bild-placeholder">📷</div>`;
     }
@@ -103,7 +103,7 @@ function verpackenStarten(lieferart) {
         return;
     }
     // Fortschritt sofort sichern — fire-and-forget
-    fetch('/mealana/packplatz/warenausgang/ajax_status_setzen.php', {
+    fetch(window.BASE_PATH + '/packplatz/warenausgang/ajax_status_setzen.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({auftrag_id: AUFTRAG_ID, status: 'kommissioniert'}),
@@ -246,7 +246,7 @@ async function pruefeUndBuche(idx, menge) {
         return;
     }
     try {
-        const resp = await fetch(`/mealana/packplatz/warenausgang/chargen_ajax.php?artikel_id=${pos.artikel_id}&lager_id=${LAGER_ID}`);
+        const resp = await fetch(`${window.BASE_PATH}/packplatz/warenausgang/chargen_ajax.php?artikel_id=${pos.artikel_id}&lager_id=${LAGER_ID}`);
         const chargen = await resp.json();
         if (chargen.length === 0 && !pos.charge_pflicht) {
             bucheMenge(idx, menge);

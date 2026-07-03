@@ -15,9 +15,10 @@ $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1")->fetchAll();
 
 $pageTitle        = 'Wareneingang';
 $activeModule     = 'lager';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/lager/uebersicht.php" class="btn btn-secondary btn-sm">← Lagerübersicht</a>
-    <a href="/mealana/wareneingang/index.php" class="btn btn-secondary btn-sm">← Wareneingang</a>
+    <a href="{$basePath}/lager/uebersicht.php" class="btn btn-secondary btn-sm">← Lagerübersicht</a>
+    <a href="{$basePath}/wareneingang/index.php" class="btn btn-secondary btn-sm">← Wareneingang</a>
 HTML;
 
 
@@ -126,6 +127,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </form>
 </div>
 
-<script src="/mealana/js/lager_wareneingang.js"></script>
+<script src="<?= BASE_PATH ?>/js/lager_wareneingang.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

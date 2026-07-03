@@ -40,7 +40,7 @@ function katvSpeichern() {
     if (!name) { fehler.textContent = 'Name ist Pflichtfeld'; return; }
     fehler.textContent = '';
     var iak  = document.getElementById('katv-ist-aktions-kat').checked ? '1' : '0';
-    var url  = editId ? '/mealana/artikel/kategorie_bearbeiten_ajax.php' : '/mealana/artikel/kategorie_erstellen.php';
+    var url  = editId ? window.BASE_PATH + '/artikel/kategorie_bearbeiten_ajax.php' : window.BASE_PATH + '/artikel/kategorie_erstellen.php';
     var body = 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parentId) + '&ist_aktions_kategorie=' + iak;
     if (editId) body += '&id=' + encodeURIComponent(editId);
     fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
@@ -59,7 +59,7 @@ function katLoeschenVorschau(id, name) {
     document.getElementById('katv-del-optionen').style.display = 'none';
     document.getElementById('katv-del-btn').disabled = true;
     document.getElementById('katv-del-modal').style.display = 'flex';
-    fetch('/mealana/artikel/kategorie_loeschen_ajax.php', {
+    fetch(window.BASE_PATH + '/artikel/kategorie_loeschen_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'id=' + id + '&aktion=vorschau'
@@ -106,7 +106,7 @@ function katvLoeschenBestaetigt() {
     var modus       = document.querySelector('input[name="katv-del-modus"]:checked');
     var verschiebeId = '';
     if (modus && modus.value === 'verschieben' && katvLoeschParentId) verschiebeId = katvLoeschParentId;
-    fetch('/mealana/artikel/kategorie_loeschen_ajax.php', {
+    fetch(window.BASE_PATH + '/artikel/kategorie_loeschen_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'id=' + katvLoeschId + '&aktion=loeschen&verschiebe_zu_parent_id=' + verschiebeId
@@ -119,7 +119,7 @@ function katvLoeschenBestaetigt() {
 }
 
 function katSortieren(id, richtung) {
-    fetch('/mealana/artikel/kategorie_sort_ajax.php', {
+    fetch(window.BASE_PATH + '/artikel/kategorie_sort_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ id: id, richtung: richtung })

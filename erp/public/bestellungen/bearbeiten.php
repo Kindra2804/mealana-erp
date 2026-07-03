@@ -30,9 +30,10 @@ function fsel(string $field, string $value, array $data): string {
 
 $pageTitle        = 'Bestellung bearbeiten — ' . $nr;
 $activeModule     = 'einkauf';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
 <button form="bestellung-edit-form" type="submit" class="btn btn-primary btn-sm">Speichern</button>
-<a href="/mealana/bestellungen/detail.php?id={$id}" class="btn btn-secondary btn-sm">Abbrechen</a>
+<a href="{$basePath}/bestellungen/detail.php?id={$id}" class="btn btn-secondary btn-sm">Abbrechen</a>
 HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -45,7 +46,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 <?php endif; ?>
 
-<form id="bestellung-edit-form" method="post" action="/mealana/bestellungen/aktualisieren.php">
+<form id="bestellung-edit-form" method="post" action="<?= BASE_PATH ?>/bestellungen/aktualisieren.php">
     <input type="hidden" name="id" value="<?= $id ?>">
 
     <!-- Kopfdaten -->
@@ -132,6 +133,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 </form>
 
-<script src="/mealana/js/bestellungen_bearbeiten.js"></script>
+<script src="<?= BASE_PATH ?>/js/bestellungen_bearbeiten.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

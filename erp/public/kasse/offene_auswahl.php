@@ -91,7 +91,7 @@ require_once __DIR__ . '/shell_top.php';
             <input type="hidden" name="aktion" value="zurueck">
             <button type="submit" class="ks-btn ks-btn-secondary" style="font-size:13px;padding:8px 14px">↩ Zurückgegeben</button>
           </form>
-          <a href="/mealana/kasse/bon.php" class="ks-btn ks-btn-success" style="font-size:13px;padding:8px 14px">
+          <a href="<?= BASE_PATH ?>/kasse/bon.php" class="ks-btn ks-btn-success" style="font-size:13px;padding:8px 14px">
             🛒 Kassieren
           </a>
         </div>
@@ -183,7 +183,7 @@ document.getElementById('neu-lager').addEventListener('change', function() {
 function neuArtikelSuchen() {
     var code = document.getElementById('neu-scan').value.trim();
     if (!code) return;
-    fetch('/mealana/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + neuLagerId)
+    fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + neuLagerId)
         .then(r => r.json())
         .then(function(d) {
             if (!d.erfolg || d.typ === 'vater') {
@@ -228,7 +228,7 @@ function neuPosEntfernen(i) {
 
 function neuSpeichern() {
     if (!neuPositionen.length) { alert('Bitte mindestens einen Artikel hinzufügen.'); return; }
-    fetch('/mealana/kasse/offene_auswahl_speichern.php', {
+    fetch('<?= BASE_PATH ?>/kasse/offene_auswahl_speichern.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({

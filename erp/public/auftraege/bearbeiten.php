@@ -18,7 +18,7 @@ unset($_SESSION['fehler'], $_SESSION['formdata']);
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -26,7 +26,7 @@ $auftrag = $service->getById($id);
 
 if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'storniert'])) {
     $_SESSION['fehler'] = ['Dieser Auftrag kann nicht mehr bearbeitet werden.'];
-    header('Location: /mealana/auftraege/detail.php?id=' . $id);
+    header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $id);
     exit;
 }
 
@@ -42,9 +42,10 @@ $rechnungGesperrt = (int)$rStmt->fetchColumn() > 0;
 
 $pageTitle        = 'Auftrag bearbeiten';
 $activeModule     = 'verkauf';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
 <button form="auftrag-form" type="submit" class="btn btn-primary btn-sm">Auftrag updaten</button>
-<a href="/mealana/auftraege/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
+<a href="{$basePath}/auftraege/liste.php" class="btn btn-secondary btn-sm">Abbrechen</a>
 HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -57,7 +58,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 <?php endif; ?>
 
-<form id="auftrag-form" method="post" action="/mealana/auftraege/aktualisieren.php">
+<form id="auftrag-form" method="post" action="<?= BASE_PATH ?>/auftraege/aktualisieren.php">
     <input type="hidden" name="id" value="<?= $auftrag['id'] ?>">
 
     <!-- Kopfdaten -->
@@ -171,7 +172,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php if ($rechnungGesperrt): ?>
                 <span style="font-size:12px;font-weight:400;color:#b45309;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px">
                     🔒 Gesperrt — Rechnung ausgestellt.
-                    <a href="/mealana/auftraege/detail.php?id=<?= $id ?>#dokumente" style="color:#b45309">Rechnung stornieren</a> um Änderungen vorzunehmen.
+                    <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $id ?>#dokumente" style="color:#b45309">Rechnung stornieren</a> um Änderungen vorzunehmen.
                 </span>
             <?php endif; ?>
         </div>
@@ -250,10 +251,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <script>
     window.POSITIONEN      = <?= json_encode($positionen) ?>;
-    window.ARTIKEL_AJAX_URL = '/mealana/auftraege/artikel_ajax.php';
-    window.KUNDEN_AJAX_URL  = '/mealana/auftraege/kunden_ajax.php';
+    window.ARTIKEL_AJAX_URL = '<?= BASE_PATH ?>/auftraege/artikel_ajax.php';
+    window.KUNDEN_AJAX_URL  = '<?= BASE_PATH ?>/auftraege/kunden_ajax.php';
     window.PREISANZEIGE     = '<?= $preisanzeige ?>';
 </script>
-<script src="/mealana/js/auftraege_neu.js"></script>
+<script src="<?= BASE_PATH ?>/js/auftraege_neu.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

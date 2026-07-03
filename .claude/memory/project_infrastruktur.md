@@ -53,18 +53,19 @@ metadata:
 **Ablauf:**
 1. Tag vorher (noch im lokalen Netz):
    - Ware → Umlagerung Hauptlager → Messe-Lager (K2)
-   - Pre-Sync: Artikelkatalog + Messe-Lager-Stand + Preise → lokale SQLite am Messe-Laptop
+   - Pre-Sync: Artikelkatalog + Messe-Lager-Stand + Preise → lokal im Browser (IndexedDB)
 2. Während Messe (vollständig offline):
-   - Kasse arbeitet auf lokaler SQLite
-   - RKSV: BFR-Dienst + Signaturkarte direkt am Messe-Laptop (kein Internet nötig!)
+   - Kasse arbeitet auf lokaler IndexedDB (kein SQLite, kein lokaler Server nötig — siehe [[project_kassen_verwaltung]] für die Architekturentscheidung 2026-07-03)
+   - RKSV: Browser ruft BFR-Dienst direkt per `fetch()` an (127.0.0.1:8787), Signaturkarte am Messe-Laptop (kein Internet nötig!)
    - Nur Abgänge aus Messe-Lager
-   - Kunden = Laufkunde (kein Kundendatensatz nötig)
+   - Kunden = Laufkunde (kein Kundendatensatz nötig — Verschlüsselungskey verlässt den Server ohnehin nie)
 3. Nach Messe (zurück im lokalen Netz):
-   - Post-Sync: Kassenbuchungen → ERP Umsatz, Lagerabgänge → Messe-Lager-Buchungen
+   - Post-Sync: Kassenbuchungen → ERP Umsatz, Lagerabgänge → Messe-Lager-Buchungen (Server-API dafür bereits fertig: `MesseSyncService::postSyncVerarbeiten()`/`rueckkehrVerarbeiten()`)
    - RKSV-Belegkette → archivieren
    - Restbestand → Umlagerung zurück ins Hauptlager
 
 **Sync-Konflikte:** minimal bis keine, weil Messe-Lager isoliert ist und niemand parallel darauf bucht.
+**Korrektur 2026-07-03:** ursprünglich war "lokale SQLite" geplant — bewusst verworfen zugunsten von IndexedDB + direktem Browser→BFR-Call, um dauerhafte Pflege zweier SQL-Dialekte (MariaDB vs. SQLite) zu vermeiden. Details siehe [[project_kassen_verwaltung]].
 
 ## Datenschutz-Gewinn
 

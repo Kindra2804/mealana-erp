@@ -126,8 +126,11 @@ Composer-Paket `endroid/qr-code` (^6.0, PHP-8.1-kompatible Version — die neues
 
 ## Noch offen (kleinere Restpunkte, kein Blocker)
 
-- Rückfrage an Hersteller: ist "Sicherheitseinrichtung ausgefallen" die korrekte Behandlung, wenn der BFR erreichbar ist aber eine Anfrage aktiv ablehnt (RC != 'OK')? Aktuell nur pragmatisch wie ein Ausfall behandelt.
-- `cron/mahnwesen.php`: gleicher Logger/$_SESSION-Bug wie oben beschrieben, bei Gelegenheit fixen
+(keine — `cron/mahnwesen.php`-Logger-Bug war laut Commit f284050 bereits gefixt, beim Prüfen 2026-07-03 verifiziert)
+
+## GEKLÄRT (2026-07-03): Hersteller-Rückmeldung zu RC != 'OK'
+
+Frage war offen: ist "Sicherheitseinrichtung ausgefallen" korrekt, wenn der BFR erreichbar ist aber eine Anfrage aktiv ablehnt (`Result RC != 'OK'`)? Hersteller-Antwort: **die BFR-Antwort ist immer entweder `RC='OK'` oder gar keine Antwort** — ein "erreichbar, aber aktiv abgelehnt"-Fall existiert in der Praxis nicht. Der bestehende `fehler`-Zweig für `RC != 'OK'` bleibt als Sicherheitsnetz im Code, wird aber laut dieser Auskunft nie greifen. **Kein Code-Änderungsbedarf** — reine Bestätigung, dass die bisherige pragmatische Übergangslösung so bleiben kann.
 
 **Why:** RKSV verlangt lückenlose, aufsteigend signierte Belege; bei Geräteausfall muss trotzdem weiterverkauft werden dürfen (§8), aber die Nachsignierung muss korrekt und nachvollziehbar ablaufen.
 

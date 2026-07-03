@@ -10,21 +10,21 @@ $kacheln = [
         'titel'  => 'ERP',
         'icon'   => '📦',
         'text'   => 'Artikel, Lager, Einkauf, Verkauf',
-        'href'   => '/mealana/dashboard.php',
+        'href'   => BASE_PATH . '/dashboard.php',
         'farbe'  => '#4a7cb5',
     ],
     [
         'titel'  => 'Kasse',
         'icon'   => '🛒',
         'text'   => 'POS · Kassenbuch · Tagesabschluss',
-        'href'   => '/mealana/kasse/index.php',
+        'href'   => BASE_PATH . '/kasse/index.php',
         'farbe'  => '#2e7d54',
     ],
     [
         'titel'  => 'Packplatz',
         'icon'   => '📬',
         'text'   => 'Versand · Retouren · Picklisten',
-        'href'   => '/mealana/packplatz/index.php',
+        'href'   => BASE_PATH . '/packplatz/index.php',
         'farbe'  => '#7b5ea7',
     ],
 ];
@@ -51,12 +51,17 @@ $kacheln = [
             margin-bottom: 40px;
         }
         .start-logo {
-            font-size: 18px;
-            font-weight: 700;
-            color: #90aecb;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-bottom: 14px;
+            display: inline-block;
+            background: #fff;
+            border-radius: 12px;
+            padding: 14px 22px 10px;
+            margin-bottom: 22px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+        .start-logo img {
+            width: 170px;
+            height: auto;
+            display: block;
         }
         .start-gruss {
             font-size: 28px;
@@ -124,7 +129,7 @@ $kacheln = [
 </head>
 <body>
     <div class="start-header">
-        <div class="start-logo">MeaLana ERP</div>
+        <div class="start-logo"><img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS – ERP für Handarbeitsgeschäfte"></div>
         <div class="start-gruss"><?= $gruss ?>, <strong><?= htmlspecialchars($benutzer['formularname']) ?></strong></div>
         <div class="start-frage">Womit möchtest du beginnen?</div>
     </div>
@@ -140,6 +145,6 @@ $kacheln = [
         <?php endforeach; ?>
     </div>
 
-    <a href="/mealana/logout.php" class="logout-link">Abmelden</a>
+    <a href="<?= BASE_PATH ?>/logout.php" class="logout-link">Abmelden</a>
 </body>
 </html>

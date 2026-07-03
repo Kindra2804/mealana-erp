@@ -7,7 +7,7 @@ metadata:
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
 ---
 
-Stand: 2026-07-03 (Session 22)
+Stand: 2026-07-03 (Session 23)
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -108,18 +108,19 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - **Abholbereit+bezahlt Flow ✅ FERTIG (2026-06-29)**: exakt/retour/extra/mix — alle 4 Fälle; nur_abschliessen, Retour-Bon, neg. auftrag_zahlungen, Gutschein-Hook vorbereitet
 - **K1-Bon Laufkunde Bug ✅ BEHOBEN (2026-06-29)**: kunden_snapshot vom Original-Auftrag immer auf K1 kopieren
 - **RKSV/BFR-BONit ✅ FERTIG (2026-07-02)**: BfrService (Verkauf+Storno-Signierung, Nachsignierung mit Sammelbeleg-Protokoll, Nullbeleg monatlich+manuell, Gesamtumsatzzähler-Sperre), Nacherfassungs-Seite, Kassen-Registrierung mit Aktiv-seit-Stichtag (Hardware-Wechsel-sicher), Cronjob, echter QR-Code (endroid/qr-code) — Details: siehe project_rksv_bfr.md
-- Phase 2 noch offen: Bon-Park, A4-Bon als Rechnung
+- **Bon-Park ✅ FERTIG** (war schon länger fertig, Memory kannte es nicht): persistent in DB (`kassen_geparkte_bons`), `ajax_parken.php`, mehrere Bons gleichzeitig
+- **A4-Bon als Rechnung ✅ FERTIG** (`bon_a4.php`, ebenfalls schon fertig) — zwei kleine Lücken bleiben: kein Link dazu im Bon-Journal für alte Bons, Mailversand hängt noch das schmale 68mm-PDF statt der A4-Version an (siehe Nächste Schritte)
 
 ## 🔴 Noch nicht gebaut (Reihenfolge = geplante Priorität)
 
 | Modul | Priorität | Anmerkung |
 |---|---|---|
-| Kasse Phase 2 | HOCH | ~~RKSV/BFR BONit~~ ✅ 2026-07-02, Auftrag laden, Bon-Park |
+| ~~Kasse Phase 2~~ | ✅ FERTIG (verifiziert 2026-07-03) | RKSV/BFR, Bon-Park, A4-Bon alle fertig — nur A4-Journal-Link + Mail-Anhang-Umstellung offen |
 | **Auth & Benutzer-Cluster** | **HOCH** | **Zusammenhängend, in dieser Reihenfolge bauen:** |
 | ~~Login / Logout (Shell)~~ | ✅ FERTIG 2026-06-27 | login.php gestylt, Shell-Header mit Profil-Link + Abmelden |
 | ~~Anmeldeschirm + Rollenauswahl~~ | ✅ FERTIG 2026-06-27 | start.php: Begrüßung + 3 Kacheln (ERP/Kasse/Packplatz) |
 | ~~Benutzer-Profil UI~~ | ✅ FERTIG 2026-06-27 | benutzer/profil.php: Stammdaten + Passwort ändern; Barbara-Account Migration 084 |
-| Rechteverwaltung | MITTEL | Admin-Seite: Rollen zuweisen; eher für Weitergabe |
+| Rechteverwaltung | HOCH | DB-Schema existiert (3 Rollen), aber **keine tatsächliche Zugriffssteuerung** im Code — `Auth::kann()` wird nur an 1 Stelle geprüft. Komplett ungebaut, nicht nur "fehlt UI" |
 | Anmeldekontrolle / Zwangsabmeldung | MITTEL | Session-Management; für Weitergabe (Praktikanten) |
 | ~~Zentrales Dokumentenarchiv~~ | ✅ FERTIG 2026-06-27 | Kassenbons via UNION ALL integriert; X/Z-Bons in Einstellungen/Kassen |
 | ~~Dashboard~~ | ✅ FERTIG 2026-06-28 | dashboard.php: 5 KPI-Cards (Card 5 Platzhalter bis Buchhaltung), Kanal-Balken, Fehlbestand-Greedy-Logik aus picklisten.php, Lieferhistory, Log-Bar |
@@ -137,6 +138,16 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | Anzahlungsrechnung | NIEDRIG | ANZ-2026-XXXXX |
 | Kunden-Merge-UI | NIEDRIG | |
 | Seriennummern | NIEDRIG | |
+
+## Session 23 erledigt (2026-07-03) — Root-Pfad, NAHTLOS-Branding, Bugfix-Runde + Memory-Audit
+
+- **Root-Pfad konfigurierbar**: `erp/config/bootstrap.php` (neu) definiert `BASE_PATH` automatisch aus `SCRIPT_NAME` + `APP_VERSION` aus `erp/VERSION`. 449 hartcodierte `/mealana/`-Stellen in 122 Dateien ersetzt (PHP-Tokenizer-Script + Sonderfälle von Hand)
+- **NAHTLOS-Branding**: Barbara-Logo ersetzt Kunden-Logo im Header (nur Icon) + Vollversion auf Login/Start/Kasse-Auswahl/Packplatz-Auswahl (weiße Karte auf dunklem Grund, da PNG kein Alpha hat)
+- **Memory-Audit**: mehrere als "noch offen" markierte Punkte waren in Wirklichkeit schon fertig (Messe-Sync-Backend, mahnwesen.php-Bug, Bon-Park, A4-Bon-Rechnung, Packplatz Intern/Retoure/Mail-Templates) — alle korrigiert. Umgekehrt: Rechte&Rollen war optimistischer dokumentiert als der Code hergibt (keine tatsächliche Rechteprüfung) — auch korrigiert
+- **Bugfixes**: `ajax_parken.php` Session-Key (`$_SESSION['user_id']` → `['benutzer']['id']`), Teillieferung-Status-Korrektur in `abschliessen.php` (verhindert fälschliches Hängenbleiben auf `teilgeliefert`), Picklisten schlossen nie wenn über "Auftrag direkt verpacken" statt über die Pickliste abgeschlossen (`scan.php` + `warenausgang/index.php`) + einmalige Bereinigung von 15 hängenden Picklisten
+- **Offline-Kasse-Architektur entschieden**: IndexedDB-Client + direkter Browser→BFR-`fetch()`, kein SQLite/lokaler Server — Details siehe [[project_kassen_verwaltung]]
+- **RKSV-Rückfrage geklärt**: BFR antwortet immer `RC='OK'` oder gar nicht, kein Code-Änderungsbedarf
+- **Für nächste Session vorgemerkt**: A4-Rechnungsnachdruck-Link im Bon-Journal, Mailversand auf A4 statt 68mm-Bon umstellen, Offline-Kasse-Client fertigbauen (Ziel: echter BFR-Hardware-Test mit Demo-Signaturkarte)
 
 ## Session 22 erledigt (2026-07-03) — erstes Live-Deployment + VPN
 

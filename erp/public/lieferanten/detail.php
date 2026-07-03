@@ -36,13 +36,14 @@ unset($_SESSION['erfolg']);
 
 $pageTitle    = htmlspecialchars($lieferant['name']);
 $activeModule = 'lieferanten';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/lieferanten/bearbeiten.php?id={$id}" class="btn btn-secondary btn-sm">✏ Bearbeiten</a>
-    <a href="/mealana/lieferanten/delete.php?id={$id}" class="btn btn-danger btn-sm"
+    <a href="{$basePath}/lieferanten/bearbeiten.php?id={$id}" class="btn btn-secondary btn-sm">✏ Bearbeiten</a>
+    <a href="{$basePath}/lieferanten/delete.php?id={$id}" class="btn btn-danger btn-sm"
        onclick="return confirm('Lieferant wirklich deaktivieren?')">Deaktivieren</a>
     <div class="actionbar-sep"></div>
     <div class="actionbar-right">
-        <a href="/mealana/lieferanten/liste.php" class="btn btn-secondary btn-sm">← Liste</a>
+        <a href="{$basePath}/lieferanten/liste.php" class="btn btn-secondary btn-sm">← Liste</a>
     </div>
 HTML;
 
@@ -313,7 +314,7 @@ foreach ($tabs as $key => $label):
             <tbody>
             <?php foreach ($lieferantArtikel as $a): ?>
                 <tr>
-                    <td><a href="/mealana/artikel/detail.php?id=<?= $a['id'] ?>" style="color:var(--color-primary)"><?= htmlspecialchars($a['artikelnummer']) ?></a></td>
+                    <td><a href="<?= BASE_PATH ?>/artikel/detail.php?id=<?= $a['id'] ?>" style="color:var(--color-primary)"><?= htmlspecialchars($a['artikelnummer']) ?></a></td>
                     <td><?= htmlspecialchars($a['name']) ?></td>
                     <td><?= htmlspecialchars($a['artikelnummer_lieferant'] ?? '–') ?></td>
                     <td><?= $a['netto_ek'] !== null ? '€ ' . number_format((float)$a['netto_ek'], 4, ',', '.') : '–' ?></td>
@@ -333,7 +334,7 @@ foreach ($tabs as $key => $label):
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <h3 style="margin:0">Bestellungen</h3>
-        <a href="/mealana/bestellungen/neu.php?lieferant_id=<?= $id ?>" class="btn btn-primary btn-sm">+ Neue Bestellung</a>
+        <a href="<?= BASE_PATH ?>/bestellungen/neu.php?lieferant_id=<?= $id ?>" class="btn btn-primary btn-sm">+ Neue Bestellung</a>
     </div>
 
     <?php if (empty($lieferantBestellungen)): ?>
@@ -360,7 +361,7 @@ foreach ($tabs as $key => $label):
                     <td><?= $b['erwartet_am'] ? htmlspecialchars($b['erwartet_am']) : '–' ?></td>
                     <td><?= htmlspecialchars($b['ab_nummer'] ?? '–') ?></td>
                     <td><?= $b['rechnung_betrag'] !== null ? '€ ' . number_format((float)$b['rechnung_betrag'], 2, ',', '.') : '–' ?></td>
-                    <td><a href="/mealana/bestellungen/detail.php?id=<?= $b['id'] ?>" style="color:var(--color-primary);font-size:12px">→ Detail</a></td>
+                    <td><a href="<?= BASE_PATH ?>/bestellungen/detail.php?id=<?= $b['id'] ?>" style="color:var(--color-primary);font-size:12px">→ Detail</a></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

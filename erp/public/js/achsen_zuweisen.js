@@ -199,7 +199,7 @@ function uaSpeichern(parentId) {
     var body = new FormData();
     body.append('name', name); body.append('code', code); body.append('darstellungsform', 'swatches');
     body.append('ist_gruppe', isGruppe); body.append('abhaengig_von_achse_id', parentId); body.append('sort_order', '0');
-    fetch('/mealana/achsen/achse_speichern_ajax.php', { method: 'POST', body: body })
+    fetch(window.BASE_PATH + '/achsen/achse_speichern_ajax.php', { method: 'POST', body: body })
         .then(function (r) { return r.json(); })
         .then(function (d) {
             if (d.erfolg) window.location.reload();
@@ -233,7 +233,7 @@ function neueAchseSpeichern() {
     body.append('name', name); body.append('code', code); body.append('darstellungsform', darst);
     body.append('ist_gruppe', isGruppe); body.append('abhaengig_von_achse_id', ''); body.append('sort_order', '0');
     document.getElementById('na-btn').disabled = true;
-    fetch('/mealana/achsen/achse_speichern_ajax.php', { method: 'POST', body: body })
+    fetch(window.BASE_PATH + '/achsen/achse_speichern_ajax.php', { method: 'POST', body: body })
         .then(function (r) { return r.json(); })
         .then(function (d) {
             if (d.erfolg) window.location.reload();
@@ -243,7 +243,7 @@ function neueAchseSpeichern() {
 }
 
 function achseSort(id, richtung, parentId) {
-    fetch('/mealana/achsen/achse_sort_tree_ajax.php', {
+    fetch(window.BASE_PATH + '/achsen/achse_sort_tree_ajax.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ id: id, richtung: richtung, parent_id: parentId })
@@ -309,7 +309,7 @@ function achseBBSpeichern() {
     body.append('darstellungsform', darst); body.append('ist_gruppe', isGruppe);
     body.append('abhaengig_von_achse_id', abhaengig); body.append('sort_order', sort);
     document.getElementById('abb-save-btn').disabled = true;
-    fetch('/mealana/achsen/achse_aktualisieren_ajax.php', { method: 'POST', body: body })
+    fetch(window.BASE_PATH + '/achsen/achse_aktualisieren_ajax.php', { method: 'POST', body: body })
         .then(function (r) { return r.json(); })
         .then(function (d) {
             if (d.erfolg) window.location.reload();
@@ -324,7 +324,7 @@ function achseBBLoeschen() {
     var id   = document.getElementById('abb-id').value;
     var body = new FormData();
     body.append('id', id);
-    fetch('/mealana/achsen/achse_loeschen_ajax.php', { method: 'POST', body: body })
+    fetch(window.BASE_PATH + '/achsen/achse_loeschen_ajax.php', { method: 'POST', body: body })
         .then(function (r) { return r.json(); })
         .then(function (d) {
             if (d.erfolg) window.location.reload();

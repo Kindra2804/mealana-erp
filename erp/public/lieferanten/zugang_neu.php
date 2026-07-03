@@ -13,8 +13,9 @@ if ($lieferant_id <= 0) {
 
 $pageTitle        = 'Neuer Zugang';
 $activeModule     = 'lieferanten';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/lieferanten/detail.php?id={$lieferant_id}&tab=zugaenge" class="btn btn-secondary btn-sm">← Zurück zu Zugängen</a>
+    <a href="{$basePath}/lieferanten/detail.php?id={$lieferant_id}&tab=zugaenge" class="btn btn-secondary btn-sm">← Zurück zu Zugängen</a>
 HTML;
 
 require_once __DIR__ . '/../includes/shell_top.php';

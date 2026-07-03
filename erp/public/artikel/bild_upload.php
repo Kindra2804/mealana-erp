@@ -63,7 +63,7 @@ echo json_encode([
     'erfolg'    => true,
     'bild_id'   => $bildId,
     'dateiname' => $dateiname,
-    'url'       => '/mealana/uploads/artikel/' . $artikelId . '/' . $dateiname,
+    'url'       => BASE_PATH . '/uploads/artikel/' . $artikelId . '/' . $dateiname,
 ]);
 
 // ─── Hilfsfunktion ───────────────────────────────────────────────────────────

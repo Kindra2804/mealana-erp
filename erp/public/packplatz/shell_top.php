@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <link rel="stylesheet" href="/mealana/css/variables.css">
+  <link rel="stylesheet" href="<?= BASE_PATH ?>/css/variables.css">
   <title><?= htmlspecialchars($pageTitle ?? 'Packplatz') ?></title>
   <style>
     * { box-sizing: border-box; }
@@ -229,7 +229,7 @@
     <?php if (!empty($backUrl)): ?>
       <a href="<?= htmlspecialchars($backUrl) ?>" class="pp-back">← Zurück</a>
     <?php endif; ?>
-    <a href="/mealana/start.php" class="pp-back">→ Start</a>
+    <a href="<?= BASE_PATH ?>/start.php" class="pp-back">→ Start</a>
     <div class="pp-user">👤 <?= htmlspecialchars($_SESSION['benutzer']['formularname'] ?? 'User') ?></div>
   </div>
 </div>

@@ -427,7 +427,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
-<script src="/mealana/js/artikel.js"></script>
+<script src="<?= BASE_PATH ?>/js/artikel.js"></script>
 
 <script>
     window.BEARB_INIT_TYP = '<?= old('artikeltyp', $formdata) ?>';
@@ -436,8 +436,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
         window.BEARB_VATER_ARTNR = '<?= htmlspecialchars($vaterArtikel['artikelnummer']) ?>';
     <?php endif; ?>
 </script>
-<script src="/mealana/js/tinymce/tinymce.min.js"></script>
-<script src="/mealana/js/artikel_bearbeiten.js"></script>
+<script src="<?= BASE_PATH ?>/js/tinymce/tinymce.min.js"></script>
+<script src="<?= BASE_PATH ?>/js/artikel_bearbeiten.js"></script>
 
 <!-- Hersteller Schnell-Anlegen Modal -->
 <div id="hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center">

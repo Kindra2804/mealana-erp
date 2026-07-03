@@ -203,7 +203,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 Keine lieferbereiten Aufträge vorhanden.
             </p>
         <?php else: ?>
-        <form method="post" action="/mealana/lager/pickliste_erstellen.php">
+        <form method="post" action="<?= BASE_PATH ?>/lager/pickliste_erstellen.php">
             <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px">
                 <?= count($auftraege) ?> Auftrag/Aufträge wartend — Reihenfolge: ältester zuerst.
                 Vollständig lieferbare Aufträge sind vorausgewählt.
@@ -329,12 +329,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </span>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:10px">
-                    <a href="/mealana/lager/pickliste_pdf.php?id=<?= $pl['id'] ?>"
+                    <a href="<?= BASE_PATH ?>/lager/pickliste_pdf.php?id=<?= $pl['id'] ?>"
                        target="_blank"
                        class="btn btn-secondary" style="font-size:12px;padding:4px 12px">
                         📄 PDF
                     </a>
-                    <form method="post" action="/mealana/lager/pickliste_loeschen.php"
+                    <form method="post" action="<?= BASE_PATH ?>/lager/pickliste_loeschen.php"
                           onsubmit="return confirm('Pickliste <?= htmlspecialchars($pl['nummer']) ?> löschen?')">
                         <input type="hidden" name="id" value="<?= $pl['id'] ?>">
                         <button type="submit" class="btn btn-secondary"
@@ -370,7 +370,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <div style="font-size:11px;color:var(--color-text-muted);white-space:nowrap">
                         <?= $apl['abgeschlossen_am'] ? date('d.m.Y H:i', strtotime($apl['abgeschlossen_am'])) : '–' ?>
                     </div>
-                    <a href="/mealana/lager/pickliste_pdf.php?id=<?= $apl['id'] ?>"
+                    <a href="<?= BASE_PATH ?>/lager/pickliste_pdf.php?id=<?= $apl['id'] ?>"
                        target="_blank"
                        style="font-size:11px;color:var(--color-text-muted);text-decoration:none;border:1px solid var(--color-border);border-radius:4px;padding:2px 8px;white-space:nowrap">
                         📄 PDF
@@ -400,7 +400,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <?php if (!empty($neuPicklisteIds)): ?>
 <script>
 <?php foreach ($neuPicklisteIds as $pid): ?>
-window.open('/mealana/lager/pickliste_pdf.php?id=<?= (int)$pid ?>', '_blank');
+window.open('<?= BASE_PATH ?>/lager/pickliste_pdf.php?id=<?= (int)$pid ?>', '_blank');
 <?php endforeach; ?>
 </script>
 <?php endif; ?>

@@ -559,6 +559,55 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-03, Session 23)
+
+### Root-Pfad konfigurierbar + Versionsnummer ✅ (2026-07-03)
+- **`erp/config/bootstrap.php`** (neu): definiert `BASE_PATH` (aus `$_SERVER['SCRIPT_NAME']`, erster Pfadteil — passt sich automatisch an, egal wie der Installationsordner heißt) und `APP_VERSION` (aus neuer Datei `erp/VERSION`, aktuell `0.1.0`). Eingebunden in `auth_check.php`, `login.php`, `index.php` — deckt praktisch jede Seite ab.
+- `window.BASE_PATH` einmal in `shell_top.php` gesetzt, alle `.js`-Dateien nutzen das statt hartem `/mealana/`.
+- Alle 449 hartcodierten `/mealana/`-Stellen in 122 Dateien ersetzt (PHP-Tokenizer-Script für den Großteil, ~19 Heredoc-Sonderfälle mit `{$basePath}`-Interpolation von Hand, JS-Dateien über einen zeichenweisen Quote-Parser).
+- `APP_VERSION` wird in der Statusbar (`shell_bottom.php`) sowie im Footer von `kasse/index.php` und `packplatz/index.php` angezeigt.
+
+### NAHTLOS-Branding ✅ (2026-07-03)
+- Barbara hat ein eigenes Software-Logo designt (Nadel/Kleeblatt-Icon + Wortmarke "NahtlOS" + Tagline). Entscheidung: NAHTLOS ersetzt komplett das bisherige Kunden-/Shop-Logo im Header (wie JTL/Shopware ihre eigene Marke zeigen, nicht die des Kunden) — spart die "Logo pro Installation konfigurierbar machen"-Aufgabe aus der Weitergabe-Liste komplett ein.
+- `erp/public/img/nahtlos.png` (Vollversion) + `nahtlos_icon.png` (per PHP-GD rausgeschnittenes Icon ohne Schriftzug, für den knappen Nav-Header)
+- Header (`shell_top.php`): nur das Icon, gleiche Größe wie vorheriges Logo (36px)
+- Vollversion prominent auf Login, Start-Seite, Kasse-Auswahl (`kasse/index.php`), Packplatz-Auswahl (`packplatz/index.php`) — auf dunklen Hintergründen in einer weißen Karte (PNG hat keinen Alpha-Kanal)
+
+### Bugfixes Kasse/Packplatz (2026-07-03)
+- **`ajax_parken.php`**: las `$_SESSION['user_id']` (existiert nicht) statt `$_SESSION['benutzer']['id']` — `kassierer_id` beim Bon-Parken war immer NULL
+- **Teillieferung-Status**: `packplatz/warenausgang/abschliessen.php` prüft jetzt nach jeder Buchung ob wirklich noch offene Positionen übrig sind, statt blind der vom Formular übergebenen Teillieferung-Markierung zu vertrauen — verhindert dass Aufträge fälschlich auf `teilgeliefert` hängen bleiben
+- **Picklisten schlossen nie, wenn über "Auftrag direkt verpacken" statt über die Pickliste selbst abgeschlossen** (`scan.php` erkennt die zugehörige Pickliste jetzt automatisch; `warenausgang/index.php` blendet Aufträge die schon auf einer Pickliste stehen aus der Direktauswahl aus). Einmalige Datenbereinigung: 15 bereits betroffene Picklisten auf `abgeschlossen` gesetzt.
+
+### Rechte & Rollen / Kleinunternehmer — Ist-Stand richtiggestellt (kein Code, nur Klarheit)
+- Rechte & Rollen: DB-Tabellen existieren (3 Rollen, ~40 Berechtigungen), aber `Auth::kann()` wird im gesamten Code nur an einer einzigen (deaktivierten) Stelle geprüft — **keine tatsächliche Zugriffssteuerung** auf Artikel/Lager/etc. Die von Jacky vorgesehene Gruppen-Logik (Pool an Berechtigungen, Admin weist zu, Superadmin schaltet Admins frei) ist komplett ungebaut.
+- Kleinunternehmer-Modus: "Kein Steuerausweis auf Rechnungen" funktioniert (DokumentService + Twig-Template), "EK brutto verbuchen"/Lagerbewertung ist NICHT an den Schalter gekoppelt.
+
+### RKSV/BFR — offene Rückfrage geklärt
+Hersteller bestätigt: BFR antwortet immer entweder `RC='OK'` oder gar nicht — der Fall "erreichbar aber aktiv abgelehnt" existiert nicht in der Praxis. Kein Code-Änderungsbedarf, RKSV-Integration bleibt vollständig wie am 2026-07-02 fertiggestellt.
+
+## What's Implemented (Stand 2026-07-03, Session 22)
+
+### Erstes Live-Deployment ✅ (2026-07-03)
+- Server-PC (separates Windows-System, 192.168.178.222, läuft daneben auch MS SQL Server Express für den alten JTL-WAWI) neu mit XAMPP (Apache+MariaDB+PHP 8.2) aufgesetzt, Code per `git archive` deployed (siehe `docs/installation.md`)
+- **`erp/database/migrate.php`**: Migrations-Runner mit Tracking-Tabelle `schema_migrations` — `run`/`status`/`bootstrap`. Ersetzt manuelles Einspielen aller Migrationsdateien
+- **`erp/database/baseline_schema.sql`**: Struktur-only-Dump (kein Daten) als Installationsgrundlage — nötig weil Migrationen 001–003 fehlen und `004`–`104` sich nicht von einer leeren DB weg durchspielen lassen (FK-Fehler ab Migration 006)
+- **`erp/database/create_admin.php`**: interaktives CLI-Skript für den ersten Admin-Benutzer (kein manuelles Hash-Basteln mehr). Bewusst **kein** fix eingebauter Superadmin mit gleichem Passwort über alle Installationen (Sicherheitsrisiko, siehe `docs/installation.md` Anhang B)
+- **Migration 105**: seedet Jarvis-Systembenutzer automatisch (idempotent, `INSERT IGNORE`, keine feste ID)
+- **WireGuard-VPN** produktiv eingerichtet (Server `10.13.13.1`, erster Client `10.13.13.2`) — Remote-Zugriff ohne AnyDesk, Anleitung inkl. "weiteren Client hinzufügen" in `docs/installation.md` Anhang C
+- **`.gitattributes`** mit `export-ignore` für `schema_current.sql`, echte Artikelbilder/Logos, `shell-test.php` — `git archive` liefert seither ein sauberes Deployment-Paket ohne Dev-/Produktivdaten
+- `docs/installation.md` neu geschrieben — Zielgruppe: eigener Rollout UND spätere Weitergabe an Tester
+
+### Bugfixes, beim ersten echten Live-Test gefunden (2026-07-03)
+- **Migration 005**: fehlendes Semikolon brach Multi-Statement-Ausführung
+- **`BfrService.php`**: Jarvis-Lookup war hart auf `id=2` codiert, jetzt (wie `LagerService`) per `username='system'`
+- **`erp/cron/mahnwesen.php`**: `Logger::log()` ohne Session (Cron-Kontext) crashte an `aktivitaeten.benutzer_id NOT NULL` — Jarvis-ID jetzt explizit übergeben
+- **`erp/public/dashboard.php`**: `max(1, ...array_column(...))` warf `TypeError` bei leerem Array (frische Installation ohne Kassenbons) — jetzt `max([1, ...])`
+- **`erp/public/index.php`**: fehlte komplett — Apache zeigte Verzeichnisliste statt zum Login weiterzuleiten
+
+### Backup-Strategie — geplant, noch nicht gebaut
+- DB täglich, Artikelbilder quartalsweise (Jackys bewusste Entscheidung), `erp/storage/`-PDFs brauchen kein eigenes Backup (aus DB+Templates neu erzeugbar), `encryption.php` getrennt vom DB-Backup aufbewahren
+- Speicherort offen — Jacky prüft eigene Proxmox-Infrastruktur (Kandidat: Proxmox Backup Server)
+
 ## What's Implemented (Stand 2026-07-02, Session 21)
 
 ### RKSV/BFR-Integration ✅ VOLLSTÄNDIG (2026-07-02)
@@ -711,6 +760,18 @@ $result = $service->wareneingang([
 - shell_top.php: Kunden-Sidebar (Liste + Neuer Kunde) ergänzt
 
 ## Nächste Schritte (Priorität)
+
+### Für die nächste Session vorgemerkt (Stand 2026-07-03, Session 23)
+1. **A4-Rechnungsnachdruck**: Link/Button in `kasse/bon_journal.php` zu `bon_a4.php?id=X` ergänzen (aktuell nur direkt nach Bon-Erstellung erreichbar, nicht für ältere Bons)
+2. **Mailversand: A4 statt 68mm-Bon** — `bon_speichern.php` baut beim Mailanhang (Abholbestätigung) aktuell ein eigenes schmales 68mm-Thermobon-PDF inline, obwohl die deutlich bessere A4-Rechnung (`bon_a4.php`) schon existiert. Umstellen auf die A4-Rendering-Logik.
+3. **Offline-Kasse fertigbauen** — Ziel: eine Instanz mitsamt Testdaten zum BFR-Hersteller bringen für einen echten Signaturkarten-Test (Demo-UID). Architektur bereits entschieden (siehe unten) — jetzt Client implementieren.
+
+### Offline-Kasse: Architektur entschieden (2026-07-03), Client-Bau noch offen
+- **Entscheidung:** kein SQLite/kein lokaler Server am Messe-Laptop — stattdessen ein JS-Client mit **IndexedDB** als lokale Datenbank. Grund: MariaDB nutzt bereits `ON DUPLICATE KEY UPDATE`, `JSON_TABLE`/`->>`-Pfade, `DATEDIFF()` u.a. ohne SQLite-Äquivalent — bei >100 Migrationen wäre ein zweiter SQL-Dialekt eine dauerhafte statt einmalige Wartungslast.
+- **RKSV-Signatur:** Browser ruft `http://127.0.0.1:8787/register` (BFR) direkt per `fetch()` auf, keine PHP-Zwischenschicht nötig — BFR ist bewusst als eigenständiges XML-über-HTTP-Gerät gebaut.
+- **Lagerbuchungen:** keine Live-Buchung während der Messe nötig, nur lokale Anzeige. Echte Buchung passiert gesammelt bei der Rückkehr — macht `MesseSyncService::rueckkehrVerarbeiten()` schon heute so.
+- **Server-Seite bereits fertig** (überraschend beim Nachschauen entdeckt, war nie dokumentiert): `MesseSyncService.php` (Umbuchung/Pre-Sync/Post-Sync/Rückkehr), `ajax_messe.php`, Migration 080 — wird unverändert wiederverwendet.
+- **Noch zu bauen:** die eigentliche Offline-Variante von `bon.php` (oder Modus-Umschaltung darin), IndexedDB-Schema, Sync-Flow, Fehlerbehandlung bei abgebrochenem Upload.
 
 ### Varianten-System UI ✅ komplett
 1. ~~Achsen-Verwaltung~~ ✅

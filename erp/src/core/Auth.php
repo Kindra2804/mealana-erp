@@ -100,7 +100,7 @@ class Auth
             setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
         }
         session_destroy();
-        header('Location: /mealana/login.php');
+        header('Location: ' . BASE_PATH . '/login.php');
         exit;
     }
 
@@ -112,7 +112,7 @@ class Auth
     public static function check(): void
     {
         if (empty($_SESSION['benutzer']['id'])) {
-            header('Location: /mealana/login.php');
+            header('Location: ' . BASE_PATH . '/login.php');
             exit;
         }
     }

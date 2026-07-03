@@ -12,7 +12,7 @@ $fehler = $_SESSION['fehler'] ?? null;
 unset($_SESSION['fehler']);
 
 $pageTitle = 'Wareneingang';
-$backUrl   = '/mealana/packplatz/index.php';
+$backUrl   = BASE_PATH . '/packplatz/index.php';
 $headerSub = 'Wareneingang';
 require_once __DIR__ . '/../shell_top.php';
 ?>
@@ -66,7 +66,7 @@ require_once __DIR__ . '/../shell_top.php';
     <!-- Freier Wareneingang: Artikel ohne Bestellung einscannen -->
     <div style="margin-top:30px;background:#16213e;border:1px solid #0f3460;border-radius:10px;padding:16px 20px">
         <div style="font-size:14px;font-weight:600;color:#aaa;margin-bottom:12px">Freier Wareneingang</div>
-        <form method="post" action="/mealana/lager/wareneingang_speichern.php" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <form method="post" action="<?= BASE_PATH ?>/lager/wareneingang_speichern.php" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
             <div>
                 <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Lieferant</label>
                 <select name="lieferant_id" style="background:#0a0a1a;border:2px solid #0f3460;border-radius:8px;color:#eee;font-size:16px;padding:10px 14px;outline:none">
@@ -76,7 +76,7 @@ require_once __DIR__ . '/../shell_top.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <a href="/mealana/packplatz/wareneingang/frei.php"
+            <a href="<?= BASE_PATH ?>/packplatz/wareneingang/frei.php"
                style="background:#0f3460;color:#eee;border:none;border-radius:8px;padding:12px 24px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center">
                 → Freier WE öffnen
             </a>

@@ -197,6 +197,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
-<script src="/mealana/js/achsen_liste.js"></script>
+<script src="<?= BASE_PATH ?>/js/achsen_liste.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

@@ -285,7 +285,7 @@ function mailSenden() {
     if (!confirm('Abschluss-PDF per E-Mail senden?')) return;
     var btn = event.target;
     btn.disabled = true; btn.textContent = '⏳ Wird gesendet…';
-    fetch('/mealana/kasse/abschluss_mail.php', {
+    fetch('<?= BASE_PATH ?>/kasse/abschluss_mail.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: ABSCHLUSS_ID })

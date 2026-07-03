@@ -16,7 +16,7 @@ function modalFachNeuOeffnen() {
 
 async function fachSpeichern(e) {
     e.preventDefault();
-    var res  = await fetch('/mealana/partner/fach_speichern.php', { method: 'POST', body: new FormData(e.target) });
+    var res  = await fetch(window.BASE_PATH + '/partner/fach_speichern.php', { method: 'POST', body: new FormData(e.target) });
     var data = await res.json();
     if (data.erfolg) { zeigeBanner('Fach gespeichert.'); setTimeout(function () { location.reload(); }, 600); }
     else             { zeigeBanner(data.fehler.join(' | '), false); }
@@ -38,7 +38,7 @@ function modalFachBearbeitenOeffnen(f) {
 
 async function fachAktualisieren(e) {
     e.preventDefault();
-    var res  = await fetch('/mealana/partner/fach_aktualisieren.php', { method: 'POST', body: new FormData(e.target) });
+    var res  = await fetch(window.BASE_PATH + '/partner/fach_aktualisieren.php', { method: 'POST', body: new FormData(e.target) });
     var data = await res.json();
     if (data.erfolg) { zeigeBanner('Fach gespeichert.'); setTimeout(function () { location.reload(); }, 600); }
     else             { zeigeBanner(data.fehler.join(' | '), false); }
@@ -58,7 +58,7 @@ function modalVertragOeffnen(fachId, bezeichnung, standardPreis) {
 
 async function vertragSpeichern(e) {
     e.preventDefault();
-    var res  = await fetch('/mealana/partner/vertrag_speichern.php', { method: 'POST', body: new FormData(e.target) });
+    var res  = await fetch(window.BASE_PATH + '/partner/vertrag_speichern.php', { method: 'POST', body: new FormData(e.target) });
     var data = await res.json();
     if (data.erfolg) { zeigeBanner('Vertrag gestartet.'); setTimeout(function () { location.reload(); }, 600); }
     else             { zeigeBanner(data.fehler.join(' | '), false); }
@@ -74,7 +74,7 @@ function modalVertragBeendenOeffnen(vertragId, bezeichnung, mieterName) {
 
 async function vertragBeenden(e) {
     e.preventDefault();
-    var res  = await fetch('/mealana/partner/vertrag_beenden.php', { method: 'POST', body: new FormData(e.target) });
+    var res  = await fetch(window.BASE_PATH + '/partner/vertrag_beenden.php', { method: 'POST', body: new FormData(e.target) });
     var data = await res.json();
     if (data.erfolg) { zeigeBanner('Vertrag beendet. Fach ist wieder frei.'); setTimeout(function () { location.reload(); }, 600); }
     else             { zeigeBanner(data.fehler.join(' | '), false); }

@@ -85,7 +85,7 @@ window.katNeuSpeichern = function () {
     var fehler = document.getElementById('kat-neu-fehler');
     if (!name) { fehler.textContent = 'Name ist Pflichtfeld'; return; }
     fehler.textContent = '';
-    fetch('/mealana/artikel/kategorie_erstellen.php', {
+    fetch(window.BASE_PATH + '/artikel/kategorie_erstellen.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parent)

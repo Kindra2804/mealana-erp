@@ -21,5 +21,5 @@ if ($result['erfolg']) {
 } else {
     $_SESSION['fehler'] = is_array($result['fehler']) ? implode(', ', $result['fehler']) : $result['fehler'];
 }
-header('Location: /mealana/packplatz/wareneingang/frei.php');
+header('Location: ' . BASE_PATH . '/packplatz/wareneingang/frei.php');
 exit;

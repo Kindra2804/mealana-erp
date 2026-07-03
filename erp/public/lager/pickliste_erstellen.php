@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../src/modules/dokumente/DokumentRepository.php';
 require_once __DIR__ . '/../../src/modules/dokumente/PdfGenerator.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /mealana/lager/picklisten.php');
+    header('Location: ' . BASE_PATH . '/lager/picklisten.php');
     exit;
 }
 
@@ -14,7 +14,7 @@ $auftragIds = array_filter($auftragIds, fn($id) => $id > 0);
 
 if (empty($auftragIds)) {
     $_SESSION['fehler'] = 'Bitte mindestens einen Auftrag auswählen.';
-    header('Location: /mealana/lager/picklisten.php');
+    header('Location: ' . BASE_PATH . '/lager/picklisten.php');
     exit;
 }
 
@@ -83,7 +83,7 @@ foreach ($auftraege as $auftrag) {
     } catch (Exception $e) {
         $db->rollBack();
         $_SESSION['fehler'] = 'Fehler beim Speichern: ' . $e->getMessage();
-        header('Location: /mealana/lager/picklisten.php');
+        header('Location: ' . BASE_PATH . '/lager/picklisten.php');
         exit;
     }
 
@@ -110,5 +110,5 @@ foreach ($auftraege as $auftrag) {
 }
 
 // Zurück — alle neuen Picklisten-IDs übergeben
-header('Location: /mealana/lager/picklisten.php?neu=' . implode(',', $neueIds));
+header('Location: ' . BASE_PATH . '/lager/picklisten.php?neu=' . implode(',', $neueIds));
 exit;

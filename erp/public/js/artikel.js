@@ -82,7 +82,7 @@ function herstellerSchnellSpeichern() {
     var fd = new FormData();
     fd.append('name', name);
     fd.append('land', land);
-    fetch('/mealana/hersteller/schnell_speichern.php', { method: 'POST', body: fd })
+    fetch(window.BASE_PATH + '/hersteller/schnell_speichern.php', { method: 'POST', body: fd })
         .then(function (r) { return r.json(); })
         .then(function (d) {
             if (d.erfolg) {

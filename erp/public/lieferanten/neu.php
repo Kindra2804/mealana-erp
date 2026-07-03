@@ -11,8 +11,9 @@ $laender = $service->laender();
 
 $pageTitle        = 'Neuer Lieferant';
 $activeModule     = 'lieferanten';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/lieferanten/liste.php" class="btn btn-secondary btn-sm">← Zurück</a>
+    <a href="{$basePath}/lieferanten/liste.php" class="btn btn-secondary btn-sm">← Zurück</a>
 HTML;
 
 /**
@@ -284,6 +285,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
 window.LIEFERANT_VERTRETER_INDEX    = <?= count($vertreterRows) ?>;
 window.LIEFERANT_VERTRETER_TEMPLATE = <?= json_encode(vertreterFeldZeile('__INDEX__')) ?>;
 </script>
-<script src="/mealana/js/lieferanten_neu.js"></script>
+<script src="<?= BASE_PATH ?>/js/lieferanten_neu.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

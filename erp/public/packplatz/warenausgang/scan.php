@@ -70,7 +70,18 @@ if ($modus === 'pickliste') {
         exit;
     }
     $auftraege = [$auftrag];
-    $pickliste = null;
+
+    // Pickliste automatisch erkennen, auch wenn der Auftrag über "Direkt verpacken"
+    // statt über die Pickliste selbst aufgerufen wurde (Bugfix 2026-07-03: Picklisten
+    // schlossen sich sonst nie, wenn ihr letzter Auftrag über diesen Weg abgeschlossen wurde).
+    $plStmt = $db->prepare("
+        SELECT pl.* FROM picklisten pl
+        JOIN pickliste_auftraege pa ON pa.pickliste_id = pl.id
+        WHERE pa.auftrag_id = ? AND pl.status IN ('offen','gedruckt')
+        LIMIT 1
+    ");
+    $plStmt->execute([$aId]);
+    $pickliste = $plStmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
 // Nur den ersten Auftrag aktiv anzeigen (bei Pickliste: einer nach dem anderen)
@@ -118,7 +129,7 @@ $gewichtBerechnet = round($gewichtBerechnet, 3);
 $picklisteParam = $pickliste ? '?pickliste_id=' . $pickliste['id'] : '';
 
 $pageTitle = 'Verpacken: ' . $aktuellerAuftrag['auftrag_nr'];
-$backUrl   = '/mealana/packplatz/warenausgang/index.php';
+$backUrl   = BASE_PATH . '/packplatz/warenausgang/index.php';
 $headerSub = 'Warenausgang › ' . $aktuellerAuftrag['auftrag_nr'];
 require_once __DIR__ . '/../shell_top.php';
 ?>
@@ -382,6 +393,6 @@ const PICKLISTE_ID  = <?= $pickliste ? $pickliste['id'] : 'null' ?>;
 const IS_VERSAND    = <?= json_encode($aktuellerAuftrag['lieferart'] === 'versand') ?>;
 const IS_ABHOLUNG   = <?= json_encode($aktuellerAuftrag['lieferart'] === 'abholung') ?>;
 </script>
-<script src="/mealana/js/packplatz_scan.js"></script>
+<script src="<?= BASE_PATH ?>/js/packplatz_scan.js"></script>
 
 <?php require_once __DIR__ . '/../shell_bottom.php'; ?>

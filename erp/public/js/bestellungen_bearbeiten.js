@@ -19,7 +19,7 @@ function positionHinzufuegen() {
 function artikelSuchen(input, idx) {
     var q = input.value.trim();
     if (q.length < 2) { document.getElementById('dropdown-' + idx).style.display = 'none'; return; }
-    fetch('/mealana/bestellungen/artikel_ajax.php?alle=1&q=' + encodeURIComponent(q))
+    fetch(window.BASE_PATH + '/bestellungen/artikel_ajax.php?alle=1&q=' + encodeURIComponent(q))
         .then(function (r) { return r.json(); })
         .then(function (daten) {
             var dropdown = document.getElementById('dropdown-' + idx);

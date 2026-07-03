@@ -131,16 +131,16 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group">
                     <label class="form-label">Website (URL)</label>
-                    <input type="url" name="firma_web" class="erp-input" placeholder="https://mealana.at" value="<?= $s('firma_web') ?>">
+                    <input type="url" name="firma_web" class="erp-input" placeholder="https:/<?= BASE_PATH ?>.at" value="<?= $s('firma_web') ?>">
                 </div>
                 <div class="form-group"></div>
                 <div class="form-group">
                     <label class="form-label">Instagram</label>
-                    <input type="url" name="social_instagram" class="erp-input" placeholder="https://instagram.com/mealana" value="<?= $s('social_instagram') ?>">
+                    <input type="url" name="social_instagram" class="erp-input" placeholder="https://instagram.com<?= BASE_PATH ?>" value="<?= $s('social_instagram') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Facebook</label>
-                    <input type="url" name="social_facebook" class="erp-input" placeholder="https://facebook.com/mealana" value="<?= $s('social_facebook') ?>">
+                    <input type="url" name="social_facebook" class="erp-input" placeholder="https://facebook.com<?= BASE_PATH ?>" value="<?= $s('social_facebook') ?>">
                 </div>
                 <div class="form-group">
                     <label class="form-label">TikTok</label>
@@ -152,7 +152,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 </div>
                 <div class="form-group">
                     <label class="form-label">Pinterest</label>
-                    <input type="url" name="social_pinterest" class="erp-input" placeholder="https://pinterest.com/mealana" value="<?= $s('social_pinterest') ?>">
+                    <input type="url" name="social_pinterest" class="erp-input" placeholder="https://pinterest.com<?= BASE_PATH ?>" value="<?= $s('social_pinterest') ?>">
                 </div>
             </div>
         </div>
@@ -171,7 +171,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 $logoPfad = $logoShop['logo_pfad'] ?? '';
                 ?>
                 <?php if ($logoPfad && file_exists(__DIR__ . '/../' . $logoPfad)): ?>
-                    <img src="/mealana/<?= htmlspecialchars($logoPfad) ?>" style="max-height:60px;max-width:200px;border:1px solid var(--color-border);border-radius:4px;padding:4px">
+                    <img src="<?= BASE_PATH ?>/<?= htmlspecialchars($logoPfad) ?>" style="max-height:60px;max-width:200px;border:1px solid var(--color-border);border-radius:4px;padding:4px">
                 <?php else: ?>
                     <div style="width:200px;height:60px;border:2px dashed var(--color-border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-text-muted)">Kein Logo</div>
                 <?php endif; ?>
@@ -230,7 +230,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     <!-- Logo -->
                     <div style="text-align:center">
                         <?php if ($shop['logo_pfad'] && file_exists(__DIR__ . '/../' . $shop['logo_pfad'])): ?>
-                            <img src="/mealana/<?= htmlspecialchars($shop['logo_pfad']) ?>" style="max-height:40px;max-width:110px">
+                            <img src="<?= BASE_PATH ?>/<?= htmlspecialchars($shop['logo_pfad']) ?>" style="max-height:40px;max-width:110px">
                         <?php else: ?>
                             <div style="width:110px;height:40px;border:1px dashed var(--color-border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-text-muted)">kein Logo</div>
                         <?php endif; ?>
@@ -524,7 +524,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                                                 <td><?= htmlspecialchars($bons['formularname'] ?? '—') ?></td>
                                                 <td><?= htmlspecialchars($bons['gedruckt'] ? '✓' : '—') ?></td>
                                                 <td>
-                                                    <a href="/mealana/kasse/bon_druck.php?id=<?= $bons['id'] ?>" target="_blank"
+                                                    <a href="<?= BASE_PATH ?>/kasse/bon_druck.php?id=<?= $bons['id'] ?>" target="_blank"
                                                         class="erp-btn erp-btn-secondary">
                                                         X/Z-Bon <?= htmlspecialchars($bons['bon_nr']) ?> drucken
                                                     </a>

@@ -6,7 +6,7 @@ $lagerService = new LagerService();
 $alleLager    = $lagerService->getAlleLager();
 
 $pageTitle = 'Intern';
-$backUrl   = '/mealana/packplatz/index.php';
+$backUrl   = BASE_PATH . '/packplatz/index.php';
 $headerSub = 'Intern';
 require_once __DIR__ . '/../shell_top.php';
 ?>
@@ -180,7 +180,7 @@ async function artikelSuchen() {
     if (!q) return;
     fehler.style.display = 'none';
 
-    var r    = await fetch('/mealana/packplatz/intern/artikel_ajax.php?q=' + encodeURIComponent(q));
+    var r    = await fetch('<?= BASE_PATH ?>/packplatz/intern/artikel_ajax.php?q=' + encodeURIComponent(q));
     var data = await r.json();
 
     if (!data.gefunden) {
@@ -199,7 +199,7 @@ async function artikelSuchen() {
 
     if (a.hauptbild) {
         document.getElementById('artikel-bild').innerHTML =
-            '<img src="/mealana/uploads/artikel/' + a.id + '/' + escH(a.hauptbild) + '" style="width:80px;height:80px;object-fit:contain;border-radius:8px" onerror="this.parentElement.innerHTML=\'📦\'">';
+            '<img src="<?= BASE_PATH ?>/uploads/artikel/' + a.id + '/' + escH(a.hauptbild) + '" style="width:80px;height:80px;object-fit:contain;border-radius:8px" onerror="this.parentElement.innerHTML=\'📦\'">';
     } else {
         document.getElementById('artikel-bild').innerHTML = '📦';
     }
@@ -245,7 +245,7 @@ async function vonLagerGewaehlt() {
     // Chargen für Von-Lager laden
     var artikelId = document.getElementById('u-artikel-id').value;
     try {
-        var r      = await fetch('/mealana/packplatz/warenausgang/chargen_ajax.php?artikel_id=' + artikelId + '&lager_id=' + vonId);
+        var r      = await fetch('<?= BASE_PATH ?>/packplatz/warenausgang/chargen_ajax.php?artikel_id=' + artikelId + '&lager_id=' + vonId);
         var chargen = await r.json();
 
         chargeSelect.innerHTML = '<option value="">— Charge wählen —</option>';
@@ -285,7 +285,7 @@ async function umbuchenSpeichern() {
     body.append('menge', menge);
     if (charge) body.append('charge', charge);
 
-    var r    = await fetch('/mealana/packplatz/intern/umbuchen.php', { method: 'POST', body });
+    var r    = await fetch('<?= BASE_PATH ?>/packplatz/intern/umbuchen.php', { method: 'POST', body });
     var data = await r.json();
     if (data.erfolg) {
         erfolgEl.textContent = '✓ Umgebucht! ' + menge + ' Stk.';
@@ -314,7 +314,7 @@ async function zsVonLagerGewaehlt() {
 
     var artikelId = document.getElementById('u-artikel-id').value;
     try {
-        var r       = await fetch('/mealana/packplatz/warenausgang/chargen_ajax.php?artikel_id=' + artikelId + '&lager_id=' + vonId);
+        var r       = await fetch('<?= BASE_PATH ?>/packplatz/warenausgang/chargen_ajax.php?artikel_id=' + artikelId + '&lager_id=' + vonId);
         var chargen = await r.json();
 
         chargeSelect.innerHTML = '<option value="">— Charge wählen —</option>';
@@ -357,7 +357,7 @@ async function zustandAnlegenUmbuchen() {
     body.append('zu_lager_id',  zuLagerId);
     if (charge) body.append('charge', charge);
 
-    var r    = await fetch('/mealana/packplatz/intern/zustand_anlegen_umbuchen.php', { method: 'POST', body });
+    var r    = await fetch('<?= BASE_PATH ?>/packplatz/intern/zustand_anlegen_umbuchen.php', { method: 'POST', body });
     var data = await r.json();
     if (data.erfolg) {
         var msg = '✓ ' + menge + ' Stk. umgebucht → ' + escH(data.zs_nr);

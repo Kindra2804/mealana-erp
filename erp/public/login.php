@@ -1,9 +1,10 @@
 <?php
+require_once __DIR__ . '/../config/bootstrap.php';
 session_start();
 require_once __DIR__ . '/../src/core/Auth.php';
 
 if (!empty($_SESSION['benutzer']['id'])) {
-    header('Location: /mealana/start.php');
+    header('Location: ' . BASE_PATH . '/start.php');
     exit;
 }
 
@@ -11,11 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $passwort = $_POST['passwort'] ?? '';
     if (Auth::login($username, $passwort)) {
-        header('Location: /mealana/start.php');
+        header('Location: ' . BASE_PATH . '/start.php');
         exit;
     } else {
         $_SESSION['fehler'] = 'Ungültige Anmeldedaten!';
-        header('Location: /mealana/login.php');
+        header('Location: ' . BASE_PATH . '/login.php');
         exit;
     }
 }
@@ -47,21 +48,13 @@ unset($_SESSION['fehler']);
         }
         .login-logo {
             text-align: center;
-            margin-bottom: 28px;
+            margin-bottom: 20px;
         }
-        .login-logo span {
-            font-size: 26px;
-            font-weight: 700;
-            color: #1e2a38;
-            letter-spacing: 1px;
-        }
-        .login-logo small {
+        .login-logo img {
+            width: 150px;
+            height: auto;
             display: block;
-            font-size: 11px;
-            color: #888;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-top: 2px;
+            margin: 0 auto;
         }
         .fehler {
             background: #fde8e8;
@@ -113,15 +106,14 @@ unset($_SESSION['fehler']);
 <body>
     <div class="login-card">
         <div class="login-logo">
-            <span>MeaLana</span>
-            <small>ERP</small>
+            <img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS – ERP für Handarbeitsgeschäfte">
         </div>
 
         <?php if ($fehler): ?>
             <div class="fehler"><?= htmlspecialchars($fehler) ?></div>
         <?php endif; ?>
 
-        <form method="POST" action="/mealana/login.php">
+        <form method="POST" action="<?= BASE_PATH ?>/login.php">
             <label for="username">Benutzername</label>
             <input type="text" id="username" name="username" autofocus autocomplete="username">
 

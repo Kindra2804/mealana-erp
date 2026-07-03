@@ -17,8 +17,9 @@ foreach ($lagerinhalt as $row) {
 
 $pageTitle        = 'Lagerübersicht';
 $activeModule     = 'lager';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/lager/wareneingang.php" class="btn btn-primary btn-sm">+ Wareneingang</a>
+    <a href="{$basePath}/lager/wareneingang.php" class="btn btn-primary btn-sm">+ Wareneingang</a>
 HTML;
 
 require_once __DIR__ . '/../includes/shell_top.php';

@@ -83,7 +83,7 @@ require_once __DIR__ . '/shell_top.php';
 <?php endforeach; ?>
 
 <div style="margin-top:10px">
-  <a href="/mealana/kasse/index.php" style="color:#64748b;font-size:13px;text-decoration:none">← Zurück zur Kasse</a>
+  <a href="<?= BASE_PATH ?>/kasse/index.php" style="color:#64748b;font-size:13px;text-decoration:none">← Zurück zur Kasse</a>
 </div>
 
 </div>

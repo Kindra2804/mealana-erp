@@ -17,8 +17,9 @@ $statusLabels = [
 
 $pageTitle        = 'Bestellungen';
 $activeModule     = 'einkauf';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-<a href="/mealana/bestellungen/neu.php" class="btn btn-primary btn-sm">+ Neue Bestellung</a>
+<a href="{$basePath}/bestellungen/neu.php" class="btn btn-primary btn-sm">+ Neue Bestellung</a>
 <div class="actionbar-sep"></div>
 <div class="actionbar-right">
     <select class="erp-select" style="font-size:13px" onchange="window.location='?status='+this.value">
@@ -59,7 +60,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $offen   = (float)$b['gesamt_bestellt'] - (float)$b['gesamt_eingegangen'];
                 ?>
                     <tr>
-                        <td><a href="/mealana/bestellungen/detail.php?id=<?= $b['id'] ?>" style="font-weight:600"><?= htmlspecialchars($nr) ?></a></td>
+                        <td><a href="<?= BASE_PATH ?>/bestellungen/detail.php?id=<?= $b['id'] ?>" style="font-weight:600"><?= htmlspecialchars($nr) ?></a></td>
                         <td><?= htmlspecialchars($b['lieferant_name']) ?></td>
                         <td><?= date('d.m.Y', strtotime($b['bestelldatum'])) ?></td>
                         <td><?= $b['erwartet_am'] ? date('d.m.Y', strtotime($b['erwartet_am'])) : ($b['lieferzeit_text'] ? htmlspecialchars($b['lieferzeit_text']) : '—') ?></td>
@@ -67,9 +68,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <td><?= $b['gesamt_ek'] !== null ? number_format((float)$b['gesamt_ek'], 2, ',', '.') . ' €' : '—' ?></td>
                         <td><span class="chip <?= $sl['class'] ?>"><?= $sl['label'] ?></span></td>
                         <td>
-                            <a href="/mealana/bestellungen/detail.php?id=<?= $b['id'] ?>" class="btn btn-secondary btn-sm">Detail</a>
+                            <a href="<?= BASE_PATH ?>/bestellungen/detail.php?id=<?= $b['id'] ?>" class="btn btn-secondary btn-sm">Detail</a>
                             <?php if (in_array($b['status'], ['offen','teilgeliefert'])): ?>
-                                <a href="/mealana/wareneingang/detail.php?bestellung_id=<?= $b['id'] ?>" class="btn btn-primary btn-sm">Wareneingang</a>
+                                <a href="<?= BASE_PATH ?>/wareneingang/detail.php?bestellung_id=<?= $b['id'] ?>" class="btn btn-primary btn-sm">Wareneingang</a>
                             <?php endif; ?>
                         </td>
                     </tr>

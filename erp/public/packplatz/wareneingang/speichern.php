@@ -17,5 +17,5 @@ if ($result['erfolg']) {
     $_SESSION['fehler'] = $result['fehler'];
 }
 
-header('Location: /mealana/packplatz/wareneingang/detail.php?bestellung_id=' . $bestellungId);
+header('Location: ' . BASE_PATH . '/packplatz/wareneingang/detail.php?bestellung_id=' . $bestellungId);
 exit;

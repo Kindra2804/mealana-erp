@@ -142,6 +142,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
-<script src="/mealana/js/merkmale_verwalten.js"></script>
+<script src="<?= BASE_PATH ?>/js/merkmale_verwalten.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

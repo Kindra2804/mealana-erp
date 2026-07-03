@@ -12,7 +12,7 @@ $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
 
 $pageTitle = 'Freier Wareneingang';
-$backUrl   = '/mealana/packplatz/wareneingang/index.php';
+$backUrl   = BASE_PATH . '/packplatz/wareneingang/index.php';
 $headerSub = 'Freier WE';
 require_once __DIR__ . '/../shell_top.php';
 ?>
@@ -60,7 +60,7 @@ require_once __DIR__ . '/../shell_top.php';
                 </div>
             </div>
 
-            <form method="post" action="/mealana/packplatz/wareneingang/frei_speichern.php">
+            <form method="post" action="<?= BASE_PATH ?>/packplatz/wareneingang/frei_speichern.php">
                 <input type="hidden" id="f-artikel-id" name="artikel_id">
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -119,7 +119,7 @@ async function artikelSuchen() {
     fehlerEl.style.display = 'none';
     if (!q) return;
 
-    var r    = await fetch('/mealana/packplatz/intern/artikel_ajax.php?q=' + encodeURIComponent(q));
+    var r    = await fetch('<?= BASE_PATH ?>/packplatz/intern/artikel_ajax.php?q=' + encodeURIComponent(q));
     var data = await r.json();
 
     if (!data.gefunden) {
@@ -143,7 +143,7 @@ async function artikelSuchen() {
     // Bild
     if (a.hauptbild) {
         document.getElementById('artikel-bild').innerHTML =
-            '<img src="/mealana/uploads/artikel/' + a.id + '/' + a.hauptbild.replace(/"/g,'') +
+            '<img src="<?= BASE_PATH ?>/uploads/artikel/' + a.id + '/' + a.hauptbild.replace(/"/g,'') +
             '" style="width:72px;height:72px;object-fit:contain;border-radius:6px" onerror="this.parentElement.innerHTML=\'📦\'">';
     } else {
         document.getElementById('artikel-bild').textContent = '📦';

@@ -55,7 +55,7 @@ if (!$kdName) $kdName = $kd['name'] ?? '';
 $kdEmail = $kd['email'] ?? '';
 
 $pageTitle = 'Retoure — ' . htmlspecialchars($auftrag['auftrag_nr']);
-$backUrl   = '/mealana/packplatz/retoure/index.php';
+$backUrl   = BASE_PATH . '/packplatz/retoure/index.php';
 $headerSub = 'Retoure — ' . $auftrag['auftrag_nr'];
 require_once __DIR__ . '/../shell_top.php';
 ?>

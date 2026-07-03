@@ -5,14 +5,14 @@ require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
 $service   = new AuftragService();
 $auftrag   = $service->getById($id);
 if (!$auftrag) {
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -113,9 +113,9 @@ function formatAdr(array $a): string {
 
 $pageTitle        = 'Auftrag ' . htmlspecialchars($auftrag['auftrag_nr']);
 $activeModule     = 'verkauf';
-$actionBarContent = '<a href="/mealana/auftraege/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/auftraege/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
 if (!$istGesperrt) {
-    $actionBarContent .= '<a href="/mealana/auftraege/bearbeiten.php?id=' . $auftrag['id'] . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
+    $actionBarContent .= '<a href="' . BASE_PATH . '/auftraege/bearbeiten.php?id=' . $auftrag['id'] . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
 }
 if (!$istStorniert) {
     $actionBarContent .= '<div class="actionbar-sep"></div><div class="actionbar-right"><button type="button" class="btn btn-danger btn-sm" onclick="storniereAuftrag()">Stornieren</button></div>';
@@ -176,7 +176,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php endif; ?>
             </div>
             <?php if (!$istStorniert && $auftrag['zahlungsart'] === 'nachnahme'): ?>
-                <form method="post" action="/mealana/auftraege/zahlungsart_aendern.php"
+                <form method="post" action="<?= BASE_PATH ?>/auftraege/zahlungsart_aendern.php"
                       onsubmit="return confirm('Zahlungsart auf Vorkasse (Überweisung) umstellen? Der EasyPak-Export enthält dann keinen Nachnahme-Aufschlag mehr.')">
                     <input type="hidden" name="id" value="<?= $id ?>">
                     <input type="hidden" name="zahlungsart" value="vorkasse">
@@ -398,7 +398,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <tr>
                     <td>
                         <?php if (!empty($p['bild_pfad'])): ?>
-                            <img src="/mealana/<?= htmlspecialchars($p['bild_pfad']) ?>" style="width:36px;height:36px;object-fit:cover;border-radius:3px">
+                            <img src="<?= BASE_PATH ?>/<?= htmlspecialchars($p['bild_pfad']) ?>" style="width:36px;height:36px;object-fit:cover;border-radius:3px">
                         <?php else: ?>
                             <div style="width:36px;height:36px;background:var(--color-bg);border-radius:3px;border:1px solid var(--color-border)"></div>
                         <?php endif; ?>
@@ -535,7 +535,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
         <?php if ($kasseBon): ?>
-            <a href="/mealana/kasse/bon_druck.php?id=<?= $kasseBon['id'] ?>" target="_blank"
+            <a href="<?= BASE_PATH ?>/kasse/bon_druck.php?id=<?= $kasseBon['id'] ?>" target="_blank"
                class="erp-btn erp-btn-secondary">
                 Kassenbon <?= htmlspecialchars($kasseBon['bon_nr']) ?> drucken
             </a>
@@ -552,27 +552,27 @@ require_once __DIR__ . '/../includes/shell_top.php';
                          border:1px solid #ccc; border-radius:4px; font-size:0.9em; color:#555;">
                 &#10003; <?= htmlspecialchars($vorhandeneRechnung['rechnung_nr']) ?>
             </span>
-            <a href="/mealana/auftraege/gutschrift_erstellen.php?auftrag_id=<?= $id ?>"
+            <a href="<?= BASE_PATH ?>/auftraege/gutschrift_erstellen.php?auftrag_id=<?= $id ?>"
                class="erp-btn erp-btn-secondary">Gutschrift erstellen</a>
         <?php else: ?>
-            <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+            <form method="post" action="<?= BASE_PATH ?>/auftraege/dokument_erstellen.php" style="display:inline;">
                 <input type="hidden" name="auftrag_id" value="<?= $id ?>">
                 <input type="hidden" name="typ" value="rechnung">
                 <button type="submit" class="erp-btn">Rechnung erstellen</button>
             </form>
         <?php endif; ?>
-        <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+        <form method="post" action="<?= BASE_PATH ?>/auftraege/dokument_erstellen.php" style="display:inline;">
             <input type="hidden" name="auftrag_id" value="<?= $id ?>">
             <input type="hidden" name="typ" value="auftragsbestaetigung">
             <button type="submit" class="erp-btn erp-btn-secondary">Auftragsbestätigung</button>
         </form>
-        <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+        <form method="post" action="<?= BASE_PATH ?>/auftraege/dokument_erstellen.php" style="display:inline;">
             <input type="hidden" name="auftrag_id" value="<?= $id ?>">
             <input type="hidden" name="typ" value="lieferschein">
             <button type="submit" class="erp-btn erp-btn-secondary">Lieferschein</button>
         </form>
         <?php if (($auftrag['lieferart'] ?? '') === 'abholung'): ?>
-        <form method="post" action="/mealana/auftraege/dokument_erstellen.php" style="display:inline;">
+        <form method="post" action="<?= BASE_PATH ?>/auftraege/dokument_erstellen.php" style="display:inline;">
             <input type="hidden" name="auftrag_id" value="<?= $id ?>">
             <input type="hidden" name="typ" value="abholzettel">
             <button type="submit" class="erp-btn erp-btn-secondary">Abholzettel</button>
@@ -614,7 +614,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td><?= htmlspecialchars(date('d.m.Y H:i', strtotime($dok['erstellt_am']))) ?></td>
                     <td><?= htmlspecialchars($dok['erstellt_von_name'] ?? '—') ?></td>
                     <td>
-                        <a href="/mealana/auftraege/dokument_download.php?auftrag_id=<?= $id ?>&datei=<?= urlencode($dok['dateiname']) ?>"
+                        <a href="<?= BASE_PATH ?>/auftraege/dokument_download.php?auftrag_id=<?= $id ?>&datei=<?= urlencode($dok['dateiname']) ?>"
                            class="erp-btn erp-btn-secondary erp-btn-sm" target="_blank">
                             PDF &darr;
                         </a>
@@ -630,8 +630,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <script>
     window.AUFTRAG_ID = <?= $id ?>;
-    window.STATUS_AJAX_URL = '/mealana/auftraege/status_ajax.php';
-    window.STORNO_URL = '/mealana/auftraege/stornieren.php';
+    window.STATUS_AJAX_URL = '<?= BASE_PATH ?>/auftraege/status_ajax.php';
+    window.STORNO_URL = '<?= BASE_PATH ?>/auftraege/stornieren.php';
 
     function toggleAbschnitt(bodyId, header) {
         const body   = document.getElementById(bodyId);
@@ -641,6 +641,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
         if (arrow) arrow.textContent = hidden ? '▲' : '▼';
     }
 </script>
-<script src="/mealana/js/auftraege_detail.js"></script>
+<script src="<?= BASE_PATH ?>/js/auftraege_detail.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

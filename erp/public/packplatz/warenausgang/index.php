@@ -30,7 +30,7 @@ $fehler = $_SESSION['fehler'] ?? null;
 unset($_SESSION['fehler']);
 
 $pageTitle = 'Warenausgang';
-$backUrl   = '/mealana/packplatz/index.php';
+$backUrl   = BASE_PATH . '/packplatz/index.php';
 $headerSub = 'Warenausgang';
 require_once __DIR__ . '/../shell_top.php';
 ?>
@@ -131,11 +131,19 @@ require_once __DIR__ . '/../shell_top.php';
         <div style="margin-top:30px">
             <div style="font-size:14px;font-weight:600;color:#aaa;margin-bottom:10px">Oder aus offenen Aufträgen wählen:</div>
             <?php
+            // Aufträge die bereits auf einer offenen Pickliste stehen bewusst ausschließen
+            // (Bugfix 2026-07-03: sonst konnte man sie hier "direkt" abschließen, ohne dass
+            // die zugehörige Pickliste jemals auf abgeschlossen wechselt)
             $offeneAuftraege = $db->query("
                 SELECT id, auftrag_nr, erstellt_am, bruttobetrag
-                FROM auftraege
+                FROM auftraege a
                 WHERE lieferstatus IN ('neu','in_bearbeitung','versandbereit','teilgeliefert')
                   AND zahlungsstatus NOT IN ('storniert')
+                  AND a.id NOT IN (
+                      SELECT pa.auftrag_id FROM pickliste_auftraege pa
+                      JOIN picklisten pl ON pl.id = pa.pickliste_id
+                      WHERE pl.status IN ('offen','gedruckt')
+                  )
                 ORDER BY erstellt_am ASC
                 LIMIT 10
             ")->fetchAll(PDO::FETCH_ASSOC);

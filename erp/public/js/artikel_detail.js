@@ -27,7 +27,7 @@ async function aktpreisSpeichern() {
     let gesamt = 0;
     for (const entry of Object.values(byAktionKg)) {
         if (entry.preise.length === 0) continue;
-        const r = await fetch('/mealana/aktionen/aktion_preise_speichern.php', {
+        const r = await fetch(window.BASE_PATH + '/aktionen/aktion_preise_speichern.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(entry)
@@ -458,7 +458,7 @@ function achsenSpeichern() {
         });
         achsenDaten.push({ id: achseId, werte: werte });
     });
-    fetch('/mealana/artikel/achsen_zuweisen_ajax.php', {
+    fetch(window.BASE_PATH + '/artikel/achsen_zuweisen_ajax.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artikel_id: window.MEALANA_ARTIKEL_ID, achsen: achsenDaten })

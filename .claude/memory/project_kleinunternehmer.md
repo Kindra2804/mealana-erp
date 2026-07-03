@@ -57,3 +57,11 @@ besteuerungsart VARCHAR(20) DEFAULT 'normal'
 Vor jedem neuen Modul (Kassa, Auftrag, Shop-Sync) prüfen: funktioniert das auch im Kleinunternehmer-Modus? Steuer-Logik immer über Helper-Funktion (nicht inline) damit ein Schalter alles ändert.
 
 Beim Kassa-Modul: RKSV-Testmodus zuerst mit `normal`, dann Kleinunternehmer-Modus verifizieren.
+
+## Ist-Stand geprüft 2026-07-03 (Jacky wusste selbst nicht genau, wie weit es umgesetzt ist)
+
+- ✅ **Rechnungen/Dokumente:** Checkbox in `einstellungen/index.php` (Tab System) steuert `system_einstellungen.kleinunternehmer`. `DokumentService.php` liest das Flag (`$kleinuntern`), übergibt es an die Twig-Templates — `_steuerblock.html.twig` blendet bei aktivem Modus den Steuerausweis aus und zeigt stattdessen den Pflichthinweis "Kein Steuerausweis gemäß § 6 Abs. 1 Z 27 UStG". **Funktioniert.**
+- ❌ **EK brutto / Lagerbewertung brutto:** NICHT an den Schalter gekoppelt. Das `brutto_ek`-Feld bei Lieferanten-Zuordnungen (`artikel/detail.php`, Lieferanten-Tab) ist einfach immer verfügbar als optionale Eingabe-Alternative zu `netto_ek` — unabhängig davon, ob Kleinunternehmer-Modus an oder aus ist. Keine bedingte Logik gefunden, die bei aktivem Modus automatisch auf Brutto umschaltet oder die Lagerbewertung entsprechend berechnet.
+- ❓ Shop-Anzeige (B2C/B2B Preisdarstellung) und RKSV-Steuerbeträge bei Kleinunternehmer: nicht geprüft.
+
+**How to apply:** Wenn das Thema wieder aufkommt: nur der Rechnungs-Teil ist als Referenz für "wie macht man einen globalen Schalter" zu gebrauchen — der Rest (Artikel/Preise, Lagerbewertung, Shop) muss noch gebaut werden, nicht nur verifiziert.

@@ -413,8 +413,8 @@ window.NEU_ZUSTAND_SUFFIX = <?= json_encode(array_filter($zustandSuffixMap)) ?>;
 window.NEU_INIT_ZUSTAND   = '<?= old('zustand', $formdata, 'neu') ?>';
 window.NEU_INIT_TYP       = '<?= old('artikeltyp', $formdata) ?>';
 </script>
-<script src="/mealana/js/artikel.js"></script>
-<script src="/mealana/js/artikel_neu.js"></script>
+<script src="<?= BASE_PATH ?>/js/artikel.js"></script>
+<script src="<?= BASE_PATH ?>/js/artikel_neu.js"></script>
 
 <!-- Hersteller Schnell-Anlegen Modal -->
 <div id="hs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center">

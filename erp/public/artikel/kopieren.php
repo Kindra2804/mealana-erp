@@ -31,7 +31,7 @@ if ($artikel === false) {
 <head>
     <meta charset="UTF-8">
     <title>Artikel kopieren – MeaLana ERP</title>
-    <link rel="stylesheet" href="/mealana/css/app.css">
+    <link rel="stylesheet" href="<?= BASE_PATH ?>/css/app.css">
 </head>
 
 <body>

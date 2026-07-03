@@ -17,61 +17,61 @@ $moduleLabel = match ($activeModule ?? '') {
 
 $sidebarItems = match ($activeModule ?? '') {
     'artikel' => [
-        ['icon' => '📋', 'label' => 'Liste',            'href' => '/mealana/artikel/liste.php'],
-        ['icon' => '➕', 'label' => 'Neu erstellen',     'href' => '/mealana/artikel/neu.php'],
-        ['icon' => '🗂', 'label' => 'Kategorien',       'href' => '/mealana/artikel/kategorien_verwalten.php'],
-        ['icon' => '🏷', 'label' => 'Merkmale',         'href' => '/mealana/artikel/merkmale_verwalten.php'],
-        ['icon' => '💲', 'label' => 'Preise / Aktionen', 'href' => '/mealana/aktionen/liste.php'],
-        ['icon' => '🏭', 'label' => 'Hersteller',       'href' => '/mealana/hersteller/liste.php'],
+        ['icon' => '📋', 'label' => 'Liste',            'href' => BASE_PATH . '/artikel/liste.php'],
+        ['icon' => '➕', 'label' => 'Neu erstellen',     'href' => BASE_PATH . '/artikel/neu.php'],
+        ['icon' => '🗂', 'label' => 'Kategorien',       'href' => BASE_PATH . '/artikel/kategorien_verwalten.php'],
+        ['icon' => '🏷', 'label' => 'Merkmale',         'href' => BASE_PATH . '/artikel/merkmale_verwalten.php'],
+        ['icon' => '💲', 'label' => 'Preise / Aktionen', 'href' => BASE_PATH . '/aktionen/liste.php'],
+        ['icon' => '🏭', 'label' => 'Hersteller',       'href' => BASE_PATH . '/hersteller/liste.php'],
     ],
     'lager' => [
-        ['icon' => '📦', 'label' => 'Übersicht',          'href' => '/mealana/lager/uebersicht.php'],
-        ['icon' => '📥', 'label' => 'Wareneingang',       'href' => '/mealana/lager/wareneingang.php'],
-        ['icon' => '🔖', 'label' => 'Chargen-Nachtrag',  'href' => '/mealana/lager/nachtrag_liste.php'],
-        ['icon' => '📋', 'label' => 'Picklisten',         'href' => '/mealana/lager/picklisten.php'],
+        ['icon' => '📦', 'label' => 'Übersicht',          'href' => BASE_PATH . '/lager/uebersicht.php'],
+        ['icon' => '📥', 'label' => 'Wareneingang',       'href' => BASE_PATH . '/lager/wareneingang.php'],
+        ['icon' => '🔖', 'label' => 'Chargen-Nachtrag',  'href' => BASE_PATH . '/lager/nachtrag_liste.php'],
+        ['icon' => '📋', 'label' => 'Picklisten',         'href' => BASE_PATH . '/lager/picklisten.php'],
     ],
     'verkauf' => [
-        ['icon' => '📋', 'label' => 'Aufträge',           'href' => '/mealana/auftraege/liste.php'],
-        ['icon' => '➕', 'label' => 'Neuer Auftrag',      'href' => '/mealana/auftraege/neu.php'],
-        ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => '/mealana/dokumente/index.php'],
+        ['icon' => '📋', 'label' => 'Aufträge',           'href' => BASE_PATH . '/auftraege/liste.php'],
+        ['icon' => '➕', 'label' => 'Neuer Auftrag',      'href' => BASE_PATH . '/auftraege/neu.php'],
+        ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => BASE_PATH . '/dokumente/index.php'],
     ],
     'einkauf' => [
-        ['icon' => '📋', 'label' => 'Bestellungen',    'href' => '/mealana/bestellungen/liste.php'],
-        ['icon' => '➕', 'label' => 'Neue Bestellung', 'href' => '/mealana/bestellungen/neu.php'],
-        ['icon' => '📥', 'label' => 'Wareneingang',    'href' => '/mealana/wareneingang/index.php'],
-        ['icon' => '🏢', 'label' => 'Lieferanten',     'href' => '/mealana/lieferanten/liste.php'],
+        ['icon' => '📋', 'label' => 'Bestellungen',    'href' => BASE_PATH . '/bestellungen/liste.php'],
+        ['icon' => '➕', 'label' => 'Neue Bestellung', 'href' => BASE_PATH . '/bestellungen/neu.php'],
+        ['icon' => '📥', 'label' => 'Wareneingang',    'href' => BASE_PATH . '/wareneingang/index.php'],
+        ['icon' => '🏢', 'label' => 'Lieferanten',     'href' => BASE_PATH . '/lieferanten/liste.php'],
     ],
     'lieferanten' => [
-        ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/lieferanten/liste.php'],
-        ['icon' => '➕', 'label' => 'Neu',          'href' => '/mealana/lieferanten/neu.php'],
-        ['icon' => '◀',  'label' => 'Zurück: Einkauf', 'href' => '/mealana/bestellungen/liste.php', 'type' => 'back'],
+        ['icon' => '📋', 'label' => 'Liste',        'href' => BASE_PATH . '/lieferanten/liste.php'],
+        ['icon' => '➕', 'label' => 'Neu',          'href' => BASE_PATH . '/lieferanten/neu.php'],
+        ['icon' => '◀',  'label' => 'Zurück: Einkauf', 'href' => BASE_PATH . '/bestellungen/liste.php', 'type' => 'back'],
     ],
     'kunden' => [
-        ['icon' => '📋', 'label' => 'Liste',        'href' => '/mealana/kunden/liste.php'],
-        ['icon' => '➕', 'label' => 'Neuer Kunde',  'href' => '/mealana/kunden/neu.php'],
+        ['icon' => '📋', 'label' => 'Liste',        'href' => BASE_PATH . '/kunden/liste.php'],
+        ['icon' => '➕', 'label' => 'Neuer Kunde',  'href' => BASE_PATH . '/kunden/neu.php'],
     ],
     'hersteller' => [
-        ['icon' => '📋', 'label' => 'Liste',            'href' => '/mealana/hersteller/liste.php'],
-        ['icon' => '◀',  'label' => 'Zurück: Artikel',  'href' => '/mealana/artikel/liste.php', 'type' => 'back'],
+        ['icon' => '📋', 'label' => 'Liste',            'href' => BASE_PATH . '/hersteller/liste.php'],
+        ['icon' => '◀',  'label' => 'Zurück: Artikel',  'href' => BASE_PATH . '/artikel/liste.php', 'type' => 'back'],
     ],
     'versand' => [
-        ['icon' => '⚙️', 'label' => 'PLC-Einstellungen', 'href' => '/mealana/versand/index.php'],
-        ['icon' => '📦', 'label' => 'Packplatz',          'href' => '/mealana/packplatz/warenausgang/index.php'],
-        ['icon' => '↩️', 'label' => 'Retouren',           'href' => '/mealana/packplatz/retoure/index.php'],
+        ['icon' => '⚙️', 'label' => 'PLC-Einstellungen', 'href' => BASE_PATH . '/versand/index.php'],
+        ['icon' => '📦', 'label' => 'Packplatz',          'href' => BASE_PATH . '/packplatz/warenausgang/index.php'],
+        ['icon' => '↩️', 'label' => 'Retouren',           'href' => BASE_PATH . '/packplatz/retoure/index.php'],
     ],
     'partner' => [
-        ['icon' => '👥', 'label' => 'Partner',           'href' => '/mealana/partner/liste.php'],
-        ['icon' => '🗄',  'label' => 'Mietfächer',       'href' => '/mealana/partner/mietfaecher.php'],
+        ['icon' => '👥', 'label' => 'Partner',           'href' => BASE_PATH . '/partner/liste.php'],
+        ['icon' => '🗄',  'label' => 'Mietfächer',       'href' => BASE_PATH . '/partner/mietfaecher.php'],
     ],
     'buchhaltung' => [
-        ['icon' => '🏷', 'label' => 'Artikelgruppen',   'href' => '/mealana/buchhaltung/artikel_gruppen.php'],
+        ['icon' => '🏷', 'label' => 'Artikelgruppen',   'href' => BASE_PATH . '/buchhaltung/artikel_gruppen.php'],
     ],
     'einstellungen' => [
-        ['icon' => '🏢', 'label' => 'Firma',       'href' => '/mealana/einstellungen/index.php?tab=firma'],
-        ['icon' => '🛍', 'label' => 'Kanäle',      'href' => '/mealana/einstellungen/index.php?tab=kanaele'],
-        ['icon' => '✉️', 'label' => 'Mail / SMTP', 'href' => '/mealana/einstellungen/index.php?tab=mail'],
-        ['icon' => '⚙️', 'label' => 'System',      'href' => '/mealana/einstellungen/index.php?tab=system'],
-        ['icon' => '🖨️', 'label' => 'Kassen',      'href' => '/mealana/einstellungen/index.php?tab=kassen'],
+        ['icon' => '🏢', 'label' => 'Firma',       'href' => BASE_PATH . '/einstellungen/index.php?tab=firma'],
+        ['icon' => '🛍', 'label' => 'Kanäle',      'href' => BASE_PATH . '/einstellungen/index.php?tab=kanaele'],
+        ['icon' => '✉️', 'label' => 'Mail / SMTP', 'href' => BASE_PATH . '/einstellungen/index.php?tab=mail'],
+        ['icon' => '⚙️', 'label' => 'System',      'href' => BASE_PATH . '/einstellungen/index.php?tab=system'],
+        ['icon' => '🖨️', 'label' => 'Kassen',      'href' => BASE_PATH . '/einstellungen/index.php?tab=kassen'],
     ],
     default => [],
 };
@@ -88,9 +88,10 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/mealana/css/variables.css">
-    <link rel="stylesheet" href="/mealana/css/layout.css">
-    <link rel="stylesheet" href="/mealana/css/components.css">
+    <script>window.BASE_PATH = <?= json_encode(BASE_PATH) ?>;</script>
+    <link rel="stylesheet" href="<?= BASE_PATH ?>/css/variables.css">
+    <link rel="stylesheet" href="<?= BASE_PATH ?>/css/layout.css">
+    <link rel="stylesheet" href="<?= BASE_PATH ?>/css/components.css">
     <title><?= htmlspecialchars($pageTitle ?? 'MeaLana ERP') ?></title>
 </head>
 
@@ -98,30 +99,30 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
     <div class="erp-shell<?= (empty($sidebarItems) && empty($kategorienBaum)) ? ' no-sidebar' : '' ?>">
         <nav class="erp-topnav">
             <a href="#" class="erp-nav-logo">
-                <img src="/mealana/img/logo.png" alt="MeaLana ERP">
+                <img src="<?= BASE_PATH ?>/img/nahtlos_icon.png" alt="NahtlOS">
             </a>
             <div class="erp-nav-links">
-                <a href="/mealana/dashboard.php" class="erp-nav-link <?= ($activeModule ?? '') === 'dashboard' ? 'active' : '' ?>">🏠</a>
+                <a href="<?= BASE_PATH ?>/dashboard.php" class="erp-nav-link <?= ($activeModule ?? '') === 'dashboard' ? 'active' : '' ?>">🏠</a>
                 <div class="erp-nav-divider"></div>
-                <a href="/mealana/artikel/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
-                <a href="/mealana/kunden/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
-                <a href="/mealana/auftraege/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
-                <a href="/mealana/lager/picklisten.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
-                <a href="/mealana/versand/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
-                <a href="/mealana/packplatz/retoure/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
+                <a href="<?= BASE_PATH ?>/artikel/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
+                <a href="<?= BASE_PATH ?>/kunden/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
+                <a href="<?= BASE_PATH ?>/auftraege/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
+                <a href="<?= BASE_PATH ?>/lager/picklisten.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
+                <a href="<?= BASE_PATH ?>/versand/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
+                <a href="<?= BASE_PATH ?>/packplatz/retoure/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
                 <div class="erp-nav-divider"></div>
-                <a href="/mealana/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
-                <a href="/mealana/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
-                <a href="/mealana/buchhaltung/artikel_gruppen.php" class="erp-nav-link <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
+                <a href="<?= BASE_PATH ?>/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
+                <a href="<?= BASE_PATH ?>/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
+                <a href="<?= BASE_PATH ?>/buchhaltung/artikel_gruppen.php" class="erp-nav-link <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-icons">
-                <a href="/mealana/bedienungsanleitung.php" title="Bedienungsanleitung" class="erp-nav-icon">📖</a>
-                <a href="/mealana/einstellungen/index.php" title="Einstellungen" class="erp-nav-icon <?= ($activeModule ?? '') === 'einstellungen' ? 'active' : '' ?>">⚙️</a>
+                <a href="<?= BASE_PATH ?>/bedienungsanleitung.php" title="Bedienungsanleitung" class="erp-nav-icon">📖</a>
+                <a href="<?= BASE_PATH ?>/einstellungen/index.php" title="Einstellungen" class="erp-nav-icon <?= ($activeModule ?? '') === 'einstellungen' ? 'active' : '' ?>">⚙️</a>
                 <div class="erp-nav-more" id="erp-nav-more-wrap">
                     <button class="erp-nav-icon erp-nav-more-btn" onclick="erpNavMoreToggle()" title="Weitere Bereiche">···</button>
                     <div class="erp-nav-more-menu" id="erp-nav-more-menu">
-                        <a href="/mealana/kasse/bon.php" class="erp-nav-more-item">🛒 Kasse</a>
-                        <a href="/mealana/packplatz/index.php" class="erp-nav-more-item">📦 Packplatz</a>
+                        <a href="<?= BASE_PATH ?>/kasse/bon.php" class="erp-nav-more-item">🛒 Kasse</a>
+                        <a href="<?= BASE_PATH ?>/packplatz/index.php" class="erp-nav-more-item">📦 Packplatz</a>
                         <?php if (Auth::kann('api.zugriff')): ?>
                             <div class="erp-nav-more-sep"></div>
                             <a href="#" class="erp-nav-more-item erp-nav-more-item-disabled" title="Kommt bald">🔑 Lizenzverwaltung</a>
@@ -130,8 +131,8 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 </div>
             </div>
             <div class="erp-nav-user">
-                <a href="/mealana/benutzer/profil.php" style="color:white;text-decoration:none">👤 <?= htmlspecialchars(Auth::benutzer()['formularname']) ?></a>
-                <a class="btn" href="/mealana/logout.php" style="color:white;font-size:11px;margin-left:6px">Abmelden</a>
+                <a href="<?= BASE_PATH ?>/benutzer/profil.php" style="color:white;text-decoration:none">👤 <?= htmlspecialchars(Auth::benutzer()['formularname']) ?></a>
+                <a class="btn" href="<?= BASE_PATH ?>/logout.php" style="color:white;font-size:11px;margin-left:6px">Abmelden</a>
             </div>
         </nav>
         <div class="erp-actionbar"><?= $actionBarContent ?? '' ?></div>
@@ -178,7 +179,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <div class="sidebar-kat-wrapper">
                     <div class="sidebar-kat-header">
                         <span>Kategorien</span>
-                        <a href="/mealana/artikel/kategorien_verwalten.php"
+                        <a href="<?= BASE_PATH ?>/artikel/kategorien_verwalten.php"
                             style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--color-nav);padding:0 2px;line-height:1"
                             title="Kategorieverwaltung">🗂</a>
                     </div>
@@ -289,5 +290,5 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 </div>
             <?php endif; ?>
         </aside>
-        <script src="/mealana/js/shell.js"></script>
+        <script src="<?= BASE_PATH ?>/js/shell.js"></script>
         <main class="erp-main">

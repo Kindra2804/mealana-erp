@@ -40,7 +40,7 @@ foreach ($positionen as $p) {
 $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : [];
 
 $pageTitle = 'WE — ' . $nr;
-$backUrl   = '/mealana/packplatz/wareneingang/index.php';
+$backUrl   = BASE_PATH . '/packplatz/wareneingang/index.php';
 $headerSub = $nr . ' · ' . htmlspecialchars($bestellung['lieferant_name'] ?? '');
 require_once __DIR__ . '/../shell_top.php';
 ?>
@@ -107,7 +107,7 @@ require_once __DIR__ . '/../shell_top.php';
             <div style="display:flex;gap:14px;align-items:center">
                 <div id="artikel-bild-box" class="pp-scan-bild-placeholder">
                     <?php if ($aktivArtikel && !empty($aktivArtikel['hauptbild'])): ?>
-                        <img src="/mealana/uploads/artikel/<?= $aktivArtikelId ?>/<?= htmlspecialchars($aktivArtikel['hauptbild']) ?>"
+                        <img src="<?= BASE_PATH ?>/uploads/artikel/<?= $aktivArtikelId ?>/<?= htmlspecialchars($aktivArtikel['hauptbild']) ?>"
                              class="pp-scan-bild">
                     <?php else: ?>📦<?php endif; ?>
                 </div>
@@ -124,7 +124,7 @@ require_once __DIR__ . '/../shell_top.php';
 
         <!-- Buchungs-Formular -->
         <div id="buchungs-form" class="we-card" style="display:<?= $aktivArtikel ? 'block' : 'none' ?>">
-            <form method="post" action="/mealana/packplatz/wareneingang/speichern.php" id="eingang-form">
+            <form method="post" action="<?= BASE_PATH ?>/packplatz/wareneingang/speichern.php" id="eingang-form">
                 <input type="hidden" name="bestellung_id" value="<?= $bestellungId ?>">
                 <input type="hidden" name="position_id"   id="position_id" value="<?= $aktivPositionId ?>">
                 <input type="hidden" name="artikel_id"    id="artikel_id"  value="<?= $aktivArtikelId ?>">
@@ -243,7 +243,7 @@ require_once __DIR__ . '/../shell_top.php';
 
 <script>
 window.WE_BESTELLUNG_ID    = <?= (int)$bestellungId ?>;
-window.WE_ABSCHLIESSEN_URL = '/mealana/packplatz/wareneingang/abschliessen.php';
+window.WE_ABSCHLIESSEN_URL = '<?= BASE_PATH ?>/packplatz/wareneingang/abschliessen.php';
 </script>
 <script>
 // Lager-Sync
@@ -261,7 +261,7 @@ document.getElementById('ean-scan').addEventListener('keydown', function (e) {
 function eanSuchen() {
     var ean = document.getElementById('ean-scan').value.trim();
     if (!ean) return;
-    fetch('/mealana/wareneingang/artikel_suche.php?ean=' + encodeURIComponent(ean))
+    fetch('<?= BASE_PATH ?>/wareneingang/artikel_suche.php?ean=' + encodeURIComponent(ean))
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (!data.gefunden) { alert('EAN nicht gefunden: ' + ean); return; }
@@ -289,13 +289,13 @@ function positionWaehlen(row) {
 
     var bildBox = document.getElementById('artikel-bild-box');
     if (hauptbild) {
-        bildBox.innerHTML = '<img src="/mealana/uploads/artikel/' + artikelId + '/' + escH(hauptbild) + '" class="pp-scan-bild" onerror="this.parentElement.innerHTML=\'📦\'">';
+        bildBox.innerHTML = '<img src="<?= BASE_PATH ?>/uploads/artikel/' + artikelId + '/' + escH(hauptbild) + '" class="pp-scan-bild" onerror="this.parentElement.innerHTML=\'📦\'">';
     } else {
         bildBox.innerHTML = '📦';
         bildBox.className = 'pp-scan-bild-placeholder';
     }
 
-    fetch('/mealana/wareneingang/chargen_ajax.php?artikel_id=' + artikelId)
+    fetch('<?= BASE_PATH ?>/wareneingang/chargen_ajax.php?artikel_id=' + artikelId)
         .then(function (r) { return r.json(); })
         .then(function (chargen) {
             var sel = document.getElementById('charge-select');
@@ -417,7 +417,7 @@ async function eanSpeichern() {
     var body = new FormData();
     body.append('artikel_id', artikelId);
     body.append('ean', ean);
-    var r    = await fetch('/mealana/packplatz/wareneingang/ean_nachtragen.php', { method: 'POST', body });
+    var r    = await fetch('<?= BASE_PATH ?>/packplatz/wareneingang/ean_nachtragen.php', { method: 'POST', body });
     var data = await r.json();
     if (data.erfolg) {
         if (eanBtn) {

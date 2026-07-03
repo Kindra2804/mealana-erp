@@ -11,8 +11,9 @@ $zeilen  = $service->getNachzutragendeChargen();
 
 $pageTitle        = 'Chargen-Nachtrag';
 $activeModule     = 'lager';
+$basePath = BASE_PATH;
 $actionBarContent = <<<HTML
-    <a href="/mealana/lager/uebersicht.php" class="btn btn-secondary btn-sm">← Lagerübersicht</a>
+    <a href="{$basePath}/lager/uebersicht.php" class="btn btn-secondary btn-sm">← Lagerübersicht</a>
 HTML;
 
 require_once __DIR__ . '/../includes/shell_top.php';

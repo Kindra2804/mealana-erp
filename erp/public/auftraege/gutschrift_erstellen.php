@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
 
 $auftragId = (int)($_GET['auftrag_id'] ?? 0);
 if (!$auftragId) {
-    header('Location: /mealana/auftraege/liste.php');
+    header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
 }
 
@@ -18,7 +18,7 @@ $rechnung   = $dokumentService->getRechnung($auftragId);
 
 if (!$auftrag || !$rechnung) {
     $_SESSION['fehler'] = ['Kein gültiger Auftrag oder keine Rechnung gefunden.'];
-    header('Location: /mealana/auftraege/detail.php?id=' . $auftragId);
+    header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $auftragId);
     exit;
 }
 
@@ -44,7 +44,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 <?php endif; ?>
 
-<form method="post" action="/mealana/auftraege/gutschrift_speichern.php" id="gs-form">
+<form method="post" action="<?= BASE_PATH ?>/auftraege/gutschrift_speichern.php" id="gs-form">
     <input type="hidden" name="auftrag_id" value="<?= $auftragId ?>">
     <input type="hidden" name="rechnung_id" value="<?= $rechnung['id'] ?>">
 
@@ -150,10 +150,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     <div style="display:flex; gap:10px;">
         <button type="submit" class="erp-btn">Gutschrift erstellen</button>
-        <a href="/mealana/auftraege/detail.php?id=<?= $auftragId ?>" class="erp-btn erp-btn-secondary">Abbrechen</a>
+        <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $auftragId ?>" class="erp-btn erp-btn-secondary">Abbrechen</a>
     </div>
 </form>
 </div>
 
-<script src="/mealana/js/auftraege_gutschrift.js"></script>
+<script src="<?= BASE_PATH ?>/js/auftraege_gutschrift.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

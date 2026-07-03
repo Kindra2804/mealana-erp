@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../src/modules/bestellungen/BestellungService.php';
 require_once __DIR__ . '/../../src/modules/wareneingang/WareneingangService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /mealana/wareneingang/index.php');
+    header('Location: ' . BASE_PATH . '/wareneingang/index.php');
     exit;
 }
 
@@ -14,7 +14,7 @@ $lagerId     = (int)($_POST['lager_id'] ?? 1);
 
 if (empty($durchlauf) || !$lieferantId) {
     $_SESSION['fehler_we'] = 'Lieferant und mindestens ein Artikel sind erforderlich.';
-    header('Location: /mealana/wareneingang/index.php');
+    header('Location: ' . BASE_PATH . '/wareneingang/index.php');
     exit;
 }
 
@@ -41,7 +41,7 @@ $result = $bestellService->anlegen([
 
 if (!$result['erfolg']) {
     $_SESSION['fehler_we'] = implode(', ', $result['fehler']);
-    header('Location: /mealana/wareneingang/index.php');
+    header('Location: ' . BASE_PATH . '/wareneingang/index.php');
     exit;
 }
 
@@ -65,5 +65,5 @@ foreach ($allePositionen as $pos) {
 unset($_SESSION['we_durchlauf']);
 
 $_SESSION['erfolg'] = 'Retroaktive Bestellung angelegt und Lager gebucht.';
-header('Location: /mealana/bestellungen/detail.php?id=' . $bestellungId);
+header('Location: ' . BASE_PATH . '/bestellungen/detail.php?id=' . $bestellungId);
 exit;

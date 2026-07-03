@@ -48,7 +48,7 @@ function selected(string $field, string $value, array $formdata): string
 <head>
     <meta charset="UTF-8">
     <title>Achse bearbeiten – MeaLana ERP</title>
-    <link rel="stylesheet" href="/mealana/css/app.css">
+    <link rel="stylesheet" href="<?= BASE_PATH ?>/css/app.css">
 </head>
 
 <body>

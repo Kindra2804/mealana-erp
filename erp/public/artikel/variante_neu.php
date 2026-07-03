@@ -28,7 +28,7 @@ function old(string $field, array $formdata, string $default = ''): string {
 <head>
     <meta charset="UTF-8">
     <title>Neue Variante – MeaLana ERP</title>
-    <link rel="stylesheet" href="/mealana/css/app.css">
+    <link rel="stylesheet" href="<?= BASE_PATH ?>/css/app.css">
 </head>
 <body>
     <?php require_once __DIR__ . '/../includes/nav.php'; ?>

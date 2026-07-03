@@ -317,7 +317,7 @@ $activeModule = 'artikel';
 $abbrechenUrl  = $vonVater > 0 ? "detail.php?id={$vonVater}&tab=varianten" : 'liste.php';
 $abbrechenText = $vonVater > 0 ? '← Zum Vater-Artikel' : 'Abbrechen';
 $weRueckkehrInput = $vonVater > 0
-    ? '<input type="hidden" name="we_rueckkehr" form="stammdaten-form" value="/mealana/artikel/detail.php?id=' . $vonVater . '&tab=varianten">'
+    ? '<input type="hidden" name="we_rueckkehr" form="stammdaten-form" value="' . BASE_PATH . '/artikel/detail.php?id=' . $vonVater . '&tab=varianten">'
     : '';
 
 $actionBarContent = <<<HTML
@@ -336,7 +336,7 @@ $actionBarContent = <<<HTML
 HTML;
 
 $sidebarItems = [
-    ['type' => 'back', 'label' => $vonVater > 0 ? 'zum Vater-Artikel' : 'zur Liste', 'href' => $vonVater > 0 ? "/mealana/artikel/detail.php?id={$vonVater}&tab=varianten" : '/mealana/artikel/liste.php'],
+    ['type' => 'back', 'label' => $vonVater > 0 ? 'zum Vater-Artikel' : 'zur Liste', 'href' => $vonVater > 0 ? BASE_PATH . "/artikel/detail.php?id={$vonVater}&tab=varianten" : BASE_PATH . '/artikel/liste.php'],
     ['type' => 'separator'],
     ['type' => 'context', 'artNr' => $artikel['artikelnummer'], 'name' => $artikel['name']],
     ['type' => 'separator'],
@@ -1463,7 +1463,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <div id="bild-grid" data-artikel-id="<?= $id ?>" style="display:flex;flex-wrap:wrap;gap:16px">
                 <?php foreach ($bilder as $i => $bild): ?>
                     <?php
-                    $bildUrl  = '/mealana/uploads/artikel/' . $id . '/' . htmlspecialchars($bild['dateiname']);
+                    $bildUrl  = BASE_PATH . '/uploads/artikel/' . $id . '/' . htmlspecialchars($bild['dateiname']);
                     $istHaupt = $i === 0;
                     ?>
                     <div class="bild-karte" data-bild-id="<?= $bild['id'] ?>" data-artikel-id="<?= $id ?>"
@@ -1540,7 +1540,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php if (empty($merkmaleFuerTyp)): ?>
             <div class="card" style="color:var(--color-text-muted);font-size:13px">
                 Für diesen Artikeltyp sind keine Merkmale konfiguriert.
-                <a href="/mealana/artikel/merkmale_verwalten.php">Merkmale verwalten →</a>
+                <a href="<?= BASE_PATH ?>/artikel/merkmale_verwalten.php">Merkmale verwalten →</a>
             </div>
         <?php else: ?>
             <div class="card">
@@ -1579,7 +1579,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     Wählen
                                 </button>
                             <?php else: ?>
-                                <a href="/mealana/artikel/merkmale_verwalten.php" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px">Werte konfigurieren →</a>
+                                <a href="<?= BASE_PATH ?>/artikel/merkmale_verwalten.php" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px">Werte konfigurieren →</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -2113,8 +2113,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
         window.MEALANA_ARTIKEL_ID = <?= $id ?>;
         window.MEALANA_MWST_SATZ = <?= (float)($artikel['steuersatz'] ?? 20) ?>;
     </script>
-    <script src="/mealana/js/tinymce/tinymce.min.js"></script>
-    <script src="/mealana/js/artikel_detail.js"></script>
+    <script src="<?= BASE_PATH ?>/js/tinymce/tinymce.min.js"></script>
+    <script src="<?= BASE_PATH ?>/js/artikel_detail.js"></script>
 
     <?php if (!$istKind): ?>
         <!-- ── Achsen-Modal ────────────────────────────────────────────────── -->
@@ -2128,7 +2128,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php if (empty($alleGlobalenAchsen)): ?>
                         <p style="color:var(--color-text-muted);font-size:13px">
                             Keine Achsen im System — erst
-                            <a href="/mealana/achsen/liste.php" target="_blank">Achsen anlegen ↗</a>
+                            <a href="<?= BASE_PATH ?>/achsen/liste.php" target="_blank">Achsen anlegen ↗</a>
                         </p>
                     <?php else: ?>
                         <?php foreach ($alleGlobalenAchsen as $ga):
@@ -2196,5 +2196,5 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     <?php endif; ?>
 
-    <script src="/mealana/js/bilder.js"></script>
+    <script src="<?= BASE_PATH ?>/js/bilder.js"></script>
     <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

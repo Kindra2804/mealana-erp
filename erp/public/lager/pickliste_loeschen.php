@@ -3,14 +3,14 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /mealana/lager/picklisten.php');
+    header('Location: ' . BASE_PATH . '/lager/picklisten.php');
     exit;
 }
 
 $id = (int)($_POST['id'] ?? 0);
 if (!$id) {
     $_SESSION['fehler'] = 'Ungültige Anfrage.';
-    header('Location: /mealana/lager/picklisten.php');
+    header('Location: ' . BASE_PATH . '/lager/picklisten.php');
     exit;
 }
 
@@ -21,13 +21,13 @@ $pl   = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$pl) {
     $_SESSION['fehler'] = 'Pickliste nicht gefunden.';
-    header('Location: /mealana/lager/picklisten.php');
+    header('Location: ' . BASE_PATH . '/lager/picklisten.php');
     exit;
 }
 
 if ($pl['status'] === 'abgeschlossen') {
     $_SESSION['fehler'] = 'Abgeschlossene Picklisten können nicht gelöscht werden.';
-    header('Location: /mealana/lager/picklisten.php');
+    header('Location: ' . BASE_PATH . '/lager/picklisten.php');
     exit;
 }
 
@@ -42,5 +42,5 @@ if (file_exists($dateipfad)) {
 }
 
 $_SESSION['erfolg'] = 'Pickliste ' . $pl['nummer'] . ' wurde gelöscht.';
-header('Location: /mealana/lager/picklisten.php');
+header('Location: ' . BASE_PATH . '/lager/picklisten.php');
 exit;

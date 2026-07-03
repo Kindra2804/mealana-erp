@@ -46,7 +46,7 @@
             const form = new FormData();
             form.append('bild_id', bildId);
             form.append('artikel_id', artikelId);
-            const res  = await fetch('/mealana/artikel/bild_loeschen.php', { method: 'POST', body: form });
+            const res  = await fetch(window.BASE_PATH + '/artikel/bild_loeschen.php', { method: 'POST', body: form });
             const data = await res.json();
             if (data.erfolg) {
                 karte.remove();
@@ -139,7 +139,7 @@
             form.append('artikel_id', artikelId);
 
             try {
-                const res  = await fetch('/mealana/artikel/bild_upload.php', { method: 'POST', body: form });
+                const res  = await fetch(window.BASE_PATH + '/artikel/bild_upload.php', { method: 'POST', body: form });
                 const data = await res.json();
                 if (data.erfolg) {
                     fuegeKarteEin(data.bild_id, data.url);
@@ -252,7 +252,7 @@
         form.append('aktion', aktion);
         form.append('artikel_id', artikelId);
         for (const [k, v] of Object.entries(params)) form.append(k, v);
-        const res = await fetch('/mealana/artikel/bild_ajax.php', { method: 'POST', body: form });
+        const res = await fetch(window.BASE_PATH + '/artikel/bild_ajax.php', { method: 'POST', body: form });
         return res.json();
     }
 

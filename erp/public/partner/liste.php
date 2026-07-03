@@ -89,7 +89,7 @@ function beleg_chip(string $typ): string {
                 <td>
                     <?php $anzahl = (int)($p['aktuelle_faecher'] ?? 0); ?>
                     <?php if ($anzahl > 0): ?>
-                        <a href="/mealana/partner/mietfaecher.php"
+                        <a href="<?= BASE_PATH ?>/partner/mietfaecher.php"
                            style="font-size:12px;color:var(--color-primary)">
                             <?= $anzahl ?> Fach<?= $anzahl !== 1 ? '&auml;cher' : '' ?>
                         </a>
@@ -251,6 +251,6 @@ function partnerFormFelder(string $prefix = ''): string {
 }
 ?>
 
-<script src="/mealana/js/partner_liste.js"></script>
+<script src="<?= BASE_PATH ?>/js/partner_liste.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

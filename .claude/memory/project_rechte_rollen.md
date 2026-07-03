@@ -124,6 +124,13 @@ ALTER TABLE modul_lizenzen ADD COLUMN max_instanzen INT NULL;
 
 **Why:** Reihenfolge so weil: ohne Login kein Rechtecheck; ohne Rechtecheck kein Manager-Override sinnvoll testbar.
 
+## Korrektur 2026-07-03 (präzisiert, nach Jackys Rückfrage): Tabellen existieren, aber FAKTISCH KEINE Durchsetzung
+
+Erste Korrektur war zu großzügig formuliert ("Basis-RBAC existiert schon") — Jacky hat zurecht nachgefragt, weil sein Erinnerungsbild (Zugriffssteuerung zu Artikel-bearbeiten usw. kommt erst noch) näher an der Wahrheit war. Genauer nachgeschaut: `Auth::kann()` wird im **gesamten Code nur an exakt einer Stelle** aufgerufen — `shell_top.php`, für einen deaktivierten "Lizenzverwaltung"-Menüpunkt (`href="#"`, Titel "Kommt bald"). Es gibt **keine einzige** Stelle, die prüft, ob ein Benutzer Artikel bearbeiten, Lager buchen, Preise ändern etc. darf. Tabellen `rollen`/`berechtigungen`/`rollen_berechtigungen`/`benutzer_rollen` (Migrationen 004/005) + 3 seed-Rollen existieren als reines DB-Gerüst, ohne jede funktionale Auswirkung. Login/Logout (`login.php`/`logout.php`) funktionieren, sind aber unabhängig von der Berechtigungsfrage (jeder eingeloggte Benutzer kann aktuell alles).
+
+**Fazit:** Die von Jacky beschriebene Vision (Gruppen mit Berechtigungs-Pool, Admin weist zu, Superadmin schaltet neue Admins frei, granulare Rollen wie Kassier/Datenbearbeiter/Praktikant) ist **komplett ungebaut** — nur besprochen. Einzig vorhanden: das DB-Schema als möglicher Ausgangspunkt, kein funktionierendes Feature.
+**Weiterhin fehlt:** feingranulare Rollen-Struktur, Manager-Override-Popup, Lizenz-Instanzierung (`max_instanzen`), Admin-UI zum Benutzer-Anlegen/Rollen-Zuweisen (nur `erp/database/create_admin.php` CLI existiert), UND jegliche tatsächliche Rechteprüfung im Code.
+
 ## Offener Punkt für die künftige "Neuen Benutzer anlegen"-Seite (Admin-UI)
 
 Aktuell (Stand 2026-07-03) gibt es noch KEINE UI zum Anlegen neuer Benutzer — nur `erp/database/create_admin.php` (CLI, siehe [[project_installationsanleitung]]) und direktes SQL. Der System-User Jarvis (`username='system'`, wird automatisch per Migration 105 angelegt, siehe [[project_installationsanleitung]]) muss dort als **reservierter Username gesperrt** werden, sobald die Admin-Oberfläche für Benutzerverwaltung gebaut wird — sonst könnte jemand versehentlich einen echten Login-Benutzer mit dem Namen anlegen, der eigentlich für automatische/Cron-Log-Einträge reserviert ist.

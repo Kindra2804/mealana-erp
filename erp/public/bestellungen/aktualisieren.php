@@ -18,10 +18,10 @@ if ($result['erfolg']) {
         }
     }
     $_SESSION['erfolg'] = 'Bestellung aktualisiert.';
-    header('Location: /mealana/bestellungen/detail.php?id=' . $id);
+    header('Location: ' . BASE_PATH . '/bestellungen/detail.php?id=' . $id);
 } else {
     $_SESSION['fehler']   = $result['fehler'];
     $_SESSION['formdata'] = $_POST;
-    header('Location: /mealana/bestellungen/bearbeiten.php?id=' . (int)$_POST['id']);
+    header('Location: ' . BASE_PATH . '/bestellungen/bearbeiten.php?id=' . (int)$_POST['id']);
 }
 exit;

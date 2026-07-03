@@ -21,11 +21,11 @@ if ($aktion === 'komplett' || $aktion === 'streichen') {
             ? 'Bestellung abgeschlossen — Rest gestrichen.'
             : 'Bestellung erfolgreich abgeschlossen.';
         // Zurück zur Wareneingang-Liste: Bestellung ist fertig
-        header('Location: /mealana/packplatz/wareneingang/index.php');
+        header('Location: ' . BASE_PATH . '/packplatz/wareneingang/index.php');
         exit;
     }
 }
 
 // 'warten' oder Fehler → zurück zum Detail
-header('Location: /mealana/packplatz/wareneingang/detail.php?bestellung_id=' . $bestellungId);
+header('Location: ' . BASE_PATH . '/packplatz/wareneingang/detail.php?bestellung_id=' . $bestellungId);
 exit;

@@ -18,7 +18,7 @@ $auftraege = $db->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = 'Retoure';
-$backUrl   = '/mealana/packplatz/index.php';
+$backUrl   = BASE_PATH . '/packplatz/index.php';
 $headerSub = 'Retoure';
 require_once __DIR__ . '/../shell_top.php';
 ?>

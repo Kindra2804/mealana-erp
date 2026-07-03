@@ -16,11 +16,11 @@ $beschreibung = trim($_POST['beschreibung'] ?? '') ?: null;
 if ($modus === 'neu') {
     $result = $service->create($name, $beschreibung);
     if ($result['erfolg']) {
-        header('Location: /mealana/aktionen/bearbeiten.php?id=' . $result['id']);
+        header('Location: ' . BASE_PATH . '/aktionen/bearbeiten.php?id=' . $result['id']);
         exit;
     }
     // Bei Fehler: zurück mit Fehlermeldung (einfach als GET-Param)
-    header('Location: /mealana/aktionen/bearbeiten.php?fehler=' . urlencode($result['fehler']));
+    header('Location: ' . BASE_PATH . '/aktionen/bearbeiten.php?fehler=' . urlencode($result['fehler']));
     exit;
 }
 

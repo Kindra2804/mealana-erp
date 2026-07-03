@@ -96,7 +96,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <div style="font-size:12px;font-weight:600;margin-bottom:12px">Bankverbindung (für Nachnahme)</div>
                     <div style="font-size:12px;color:var(--color-text-muted)">
                         Bankverbindung wird aus den
-                        <a href="/mealana/einstellungen/index.php?tab=firma" style="color:var(--color-nav)">Firmen-Einstellungen</a>
+                        <a href="<?= BASE_PATH ?>/einstellungen/index.php?tab=firma" style="color:var(--color-nav)">Firmen-Einstellungen</a>
                         übernommen (IBAN, BIC, Bank).
                     </div>
 
@@ -120,10 +120,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:14px;line-height:1.6">
                     Der eigentliche Versandworkflow (Scannen, EasyPak-Export, Versandmail) läuft im Packplatz.
                 </div>
-                <a href="/mealana/packplatz/warenausgang/index.php" class="btn btn-primary" style="width:100%;text-align:center;margin-bottom:8px">
+                <a href="<?= BASE_PATH ?>/packplatz/warenausgang/index.php" class="btn btn-primary" style="width:100%;text-align:center;margin-bottom:8px">
                     📦 Packplatz öffnen
                 </a>
-                <a href="/mealana/auftraege/liste.php" class="btn btn-secondary" style="width:100%;text-align:center">
+                <a href="<?= BASE_PATH ?>/auftraege/liste.php" class="btn btn-secondary" style="width:100%;text-align:center">
                     📋 Aufträge
                 </a>
             </div>
@@ -218,7 +218,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div style="background:#fff;border-radius:8px;padding:20px;width:440px;box-shadow:0 4px 24px rgba(0,0,0,.2)">
         <div style="font-weight:700;font-size:14px;margin-bottom:14px;color:var(--color-nav)" id="vsk-modal-titel">Neue Versandklasse</div>
 
-        <form id="vsk-form" method="post" action="/mealana/versand/versandklasse_speichern.php">
+        <form id="vsk-form" method="post" action="<?= BASE_PATH ?>/versand/versandklasse_speichern.php">
             <input type="hidden" name="id" id="vsk-id">
 
             <div class="form-group" style="margin-bottom:10px">
@@ -272,5 +272,5 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
-<script src="/mealana/js/versand_klassen.js"></script>
+<script src="<?= BASE_PATH ?>/js/versand_klassen.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
