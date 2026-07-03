@@ -250,7 +250,7 @@ $aktuellerMonat = $monatsNamenDE[(int)date('n') - 1] . ' ' . date('Y');
 $vormonatName   = $monatsNamenDE[(int)date('n', strtotime('-1 month')) - 1];
 
 // ── Kanal-Balken: max für relative Breiten ───────────────────────────────────
-$maxKasseUmsatz = max(1, ...array_column($kassenumsatzHeuteRows, 'umsatz_heute'));
+$maxKasseUmsatz = max([1, ...array_column($kassenumsatzHeuteRows, 'umsatz_heute')]);
 
 // ── Seite aufbauen ───────────────────────────────────────────────────────────
 $pageTitle    = 'Dashboard';
