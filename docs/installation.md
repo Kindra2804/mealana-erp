@@ -247,3 +247,54 @@ Die Software ist noch aktiv in Entwicklung. Vor einer Weitergabe an einen fremde
 - **Multi-Shop/WooCommerce-Sync:** teilweise vorbereitet, aber noch nicht fertig.
 - **Migration `005_seed_rollen_berechtigungen.sql` legt am Ende einen echten Admin-Account an** (fixer bcrypt-Hash + die private E-Mail-Adresse `indy1@gmx.at`) — historischer Rest, nicht generisch. Da der Baseline+Bootstrap-Weg (Schritt 7) diese INSERT-Anweisung ohnehin nie ausführt, betrifft es aktuelle Installationen nicht — aber der Block sollte bei Gelegenheit aus der Datei entfernt werden, bevor Migration 005 mal woanders per `migrate.php run` von Grund auf durchläuft.
 - **Empfehlung:** Testinstallationen bei Dritten klar als Testversion kommunizieren, nicht mit echten Kunden-/Zahlungsdaten produktiv laufen lassen, solange Rechteverwaltung und Lizenzsystem fehlen.
+
+---
+
+## Anhang C — VPN-Zugriff (WireGuard) für Remote-Zugriff ohne AnyDesk
+
+Ersetzt Port-Forwarding direkt auf die Anwendung — nur ein einziger WireGuard-Port wird am Router freigegeben, nicht Port 80 direkt ins Internet.
+
+**Einmalig am Server:**
+1. WireGuard für Windows installieren (https://www.wireguard.com/install/).
+2. "Leeren Tunnel hinzufügen" → generiert automatisch ein Schlüsselpaar. Ergänzen:
+   ```
+   [Interface]
+   PrivateKey = <automatisch erzeugt>
+   Address = 10.13.13.1/24
+   ListenPort = 51820
+   ```
+3. Am Router: Portweiterleitung **UDP 51820** → feste lokale IP des Servers, Port 51820.
+4. Windows-Firewall auf dem Server öffnen (sonst Timeout trotz funktionierendem Tunnel):
+   ```powershell
+   netsh advfirewall firewall add rule name="ICMP Ping erlauben" protocol=icmpv4:8,any dir=in action=allow
+   netsh advfirewall firewall add rule name="Apache HTTP erlauben" protocol=TCP dir=in localport=80 action=allow
+   ```
+
+**Für jeden weiteren PC, der Zugriff bekommen soll (eigenes Schlüsselpaar + eigene Adresse — niemals dieselben Client-Daten auf zwei Geräten, siehe unten warum):**
+
+1. Auf dem jeweiligen PC: WireGuard installieren, "Leeren Tunnel hinzufügen", ergänzen:
+   ```
+   [Interface]
+   PrivateKey = <automatisch erzeugt>
+   Address = 10.13.13.X/24
+   
+   [Peer]
+   PublicKey = <Server-Public-Key>
+   Endpoint = EUER-NOIP-HOSTNAME:51820
+   AllowedIPs = 10.13.13.1/32
+   PersistentKeepalive = 25
+   ```
+   `X` = nächste freie Nummer (zweiter PC: 2, dritter PC: 3, ...).
+2. Am Server im Tunnel `wg-erp-server` einen weiteren Block ergänzen:
+   ```
+   [Peer]
+   PublicKey = <Public-Key des neuen Clients>
+   AllowedIPs = 10.13.13.X/32
+   ```
+3. Beide Tunnel aktivieren, dann `http://10.13.13.1/mealana/` im Browser des Client-PCs aufrufen.
+
+**Warum eigene Schlüssel pro Gerät, nicht ein geteilter "Standard-Client":** WireGuard identifiziert Peers über ihren Public Key. Zwei Geräte mit demselben Key + derselben Adresse konkurrieren um dieselbe Route auf dem Server — die Verbindung wird für eines der beiden Geräte unzuverlässig, je nachdem wer zuletzt verbunden hat. Außerdem lässt sich einem einzelnen kompromittierten/verlorenen Gerät so nicht gezielt der Zugriff entziehen. Der **Tunnel-Name** in der App (z.B. "wg-erp-client") ist dagegen rein kosmetisch und darf überall gleich lauten.
+
+**Typische Stolpersteine (beide beim Ersteinsatz aufgetreten):**
+- Ping/Verbindung timeout trotz sichtbarem Datenverkehr in der WireGuard-App → Windows-Firewall blockt ICMP/TCP auf dem neuen virtuellen Adapter standardmäßig (siehe Firewall-Befehle oben).
+- Router-Modelle ohne eigenes "VPN"-Menü sind kein Problem — WireGuard läuft komplett als Software auf dem Server, der Router muss nur einen einzelnen UDP-Port stur weiterleiten (klassische Portweiterleitung reicht).
