@@ -26,6 +26,10 @@ require_once __DIR__ . '/../src/core/Logger.php';
 $db  = Database::getInstance();
 $log = fn(string $msg) => print('[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL);
 
+// Logger::log() faellt ohne expliziten Wert auf $_SESSION zurueck, die es im
+// Cron-Kontext nicht gibt -> Jarvis-ID muss hier immer explizit mitgegeben werden.
+$jarvisId = (int) $db->query("SELECT id FROM benutzer WHERE username = 'system'")->fetchColumn();
+
 $log('=== Mahnwesen-Cronjob gestartet ===');
 
 // Alle offenen Aufträge mit Zahlungsrückstand (Vorkasse + Rechnung)
@@ -136,7 +140,7 @@ foreach ($offene as $auftrag) {
                 $log("  → Keine E-Mail-Adresse — Mail übersprungen");
             }
 
-            Logger::log('mahnwesen.stornierung', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage]);
+            Logger::log('mahnwesen.stornierung', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage], $jarvisId);
         } catch (Throwable $e) {
             $db->rollBack();
             $log("  → FEHLER bei Stornierung: " . $e->getMessage());
@@ -158,7 +162,7 @@ foreach ($offene as $auftrag) {
             VALUES (?, 'Rechnung 30+ Tage unbezahlt — bitte manuell prüfen (kein Auto-Storno bei Rechnungszahlern)', NOW())
         ")->execute([$id]);
 
-        Logger::log('mahnwesen.rechnung_ueberfaellig', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage]);
+        Logger::log('mahnwesen.rechnung_ueberfaellig', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage], $jarvisId);
         continue;
     }
 
@@ -200,7 +204,7 @@ foreach ($offene as $auftrag) {
             $log("  → Keine E-Mail-Adresse — Erinnerung nur geloggt");
         }
 
-        Logger::log('mahnwesen.erinnerung', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage]);
+        Logger::log('mahnwesen.erinnerung', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage], $jarvisId);
         continue;
     }
 

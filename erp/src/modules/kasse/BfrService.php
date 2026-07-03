@@ -19,13 +19,24 @@ class BfrService
 
     private const TIMEOUT_SEKUNDEN            = 5;
     private const PAUSE_ZWISCHEN_SIGNATUREN_MS = 200;
-    // "Jarvis"-Systembenutzer für Logger::log() — BfrService läuft auch ohne Session
-    // (Cronjob, Nachsignierung im Hintergrund), $_SESSION wäre dort nicht gesetzt.
-    private const SYSTEM_BENUTZER_ID = 2;
 
     public function __construct()
     {
         $this->db = Database::getInstance();
+    }
+
+    /**
+     * Gibt die ID des System-Users "Jarvis" zurück, für Logger::log() wenn
+     * BfrService ohne Session läuft (Cronjob, Nachsignierung im Hintergrund).
+     * Gleiches Muster wie LagerService::getJarvisId() — bewusst per Username
+     * nachgeschlagen statt fixer ID, damit keine bestimmte benutzer.id bei der
+     * Installation erzwungen werden muss.
+     */
+    private function getJarvisId(): int
+    {
+        $stmt = $this->db->prepare("SELECT id FROM benutzer WHERE username = 'system'");
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -368,7 +379,7 @@ class BfrService
 
         Logger::log('kasse.bfr.registrierung_abgeschlossen', 'kassen', (int)$reg['kasse_id'], [
             'rksv_kassen_id' => $reg['rksv_kassen_id'],
-        ], self::SYSTEM_BENUTZER_ID);
+        ], $this->getJarvisId());
 
         return ['erfolg' => true];
     }
@@ -643,7 +654,7 @@ class BfrService
         Logger::log('kasse.bfr.fehler', 'kassen_bons', $bonId, [
             'grund'   => $ergebnis['grund'],
             'meldung' => $ergebnis['meldung'] ?? null,
-        ], self::SYSTEM_BENUTZER_ID);
+        ], $this->getJarvisId());
     }
 
     private function starteNachsignierungslauf(int $kasseId, string $ausgeloestDurch): int

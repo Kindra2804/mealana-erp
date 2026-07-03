@@ -153,24 +153,16 @@ Es gibt jetzt ein Migrations-Tool: `erp\database\migrate.php`. Für eine **neue*
 
 ## 8. Erste Benutzer anlegen
 
-Es gibt keine Registrierung/Setup-Assistent — beide Benutzer müssen per SQL angelegt werden.
+**a) System-Benutzer "Jarvis"** — kommt automatisch mit Migration `105_jarvis_seed.sql` (Teil von Schritt 7, sobald `migrate.php` einmal gelaufen ist). Keine manuelle Aktion nötig. Wird von Cronjobs und automatischen Buchungen für Log-Einträge gebraucht, hat ein absichtlich ungültiges Passwort (`'!'`) und kann sich nie einloggen. Wichtig: es gibt bewusst **keine feste ID** dafür — überall im Code wird Jarvis per `username = 'system'` nachgeschlagen, damit keine bestimmte `benutzer.id` bei der Installation erzwungen werden muss.
 
-**a) System-Benutzer "Jarvis" (zwingend, `id=2`)** — wird von Cronjobs und automatischen Buchungen für Log-Einträge gebraucht:
-```sql
-INSERT INTO benutzer (id, username, passwort, name, aktiv) VALUES (2, 'system', '!', 'Jarvis (System)', 1);
-```
-(Passwort `'!'` ist absichtlich kein gültiger Hash — dieser Account kann sich nie einloggen.)
-
-**b) Erster Admin-Benutzer:**
-
-Hash erzeugen:
+**b) Erster Admin-Benutzer** — interaktives Skript, kein manuelles Hash-Basteln mehr nötig:
 ```powershell
-C:\xampp\php\php.exe -r "echo password_hash('DeinPasswort123', PASSWORD_DEFAULT);"
+cd C:\ERP\mealana\erp\database
+C:\xampp\php\php.exe create_admin.php
 ```
-Dann (Hash aus der Ausgabe einsetzen):
-```sql
-INSERT INTO benutzer (username, passwort, name, aktiv) VALUES ('admin', 'HASH_HIER_EINFUEGEN', 'Admin', 1);
-```
+Fragt nacheinander Benutzername, Anzeigename und Passwort ab und legt den Benutzer inkl. Rolle `superadmin` an.
+
+⚠️ Bewusst **kein** fix eingebauter Admin-Account mit gleichbleibendem Passwort über alle Installationen hinweg — das wäre ein geteilter Generalschlüssel für jede Installation gleichzeitig. Jede Installation bekommt ihr eigenes, frei gewähltes Admin-Passwort.
 Danach ggf. die passende Rolle zuweisen (siehe `benutzer_rollen`-Tabelle, seedet in Migration 005 die Rollen `superadmin`/`admin`/`mitarbeiter`).
 
 ---
