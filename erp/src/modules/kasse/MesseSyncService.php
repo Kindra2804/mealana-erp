@@ -20,6 +20,9 @@ class MesseSyncService
      * Erstellt einen Sync-Datensatz als Pre-Sync-Basis.
      *
      * $positionen: [{artikel_id, bezeichnung, ean?, menge, charge?}]
+     * Pro Artikel+Charge-Kombination eine eigene Position (nicht pro Artikel
+     * zusammengefasst) — sonst kann bei der Rückkehr nicht mehr rekonstruiert
+     * werden, welche Charge zurückkommt/verkauft/Schwund ist.
      * Gibt sync_id zurück — wird für Pre-Sync benötigt.
      */
     public function umbuchungZurMesse(array $positionen, int $vonLagerId, int $nachLagerId, int $kasseId, int $benutzerId): array
@@ -28,40 +31,65 @@ class MesseSyncService
             return ['erfolg' => false, 'fehler' => 'Keine Positionen übergeben.'];
         }
 
-        $lagerSvc  = new LagerService();
-        $syncToken = bin2hex(random_bytes(16));
+        $lagerSvc = new LagerService();
 
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare("
-                INSERT INTO kassen_messe_sync
-                    (kasse_id, lager_id, typ, status, artikel_count, sync_token, benutzer_id)
-                VALUES
-                    (:kasse_id, :lager_id, 'pre', 'vorbereitet', :anzahl, :token, :uid)
+            // Offene Vorbereitung für diese Kasse+Lager-Kombination wiederverwenden,
+            // statt bei jedem "Umbuchung durchführen"-Klick ein neues Sync-Paket anzulegen.
+            $stmtFind = $this->db->prepare("
+                SELECT id, sync_token FROM kassen_messe_sync
+                WHERE kasse_id = :kasse_id AND lager_id = :lager_id AND status = 'vorbereitet'
+                ORDER BY id DESC LIMIT 1
             ");
-            $stmt->execute([
-                ':kasse_id' => $kasseId,
-                ':lager_id' => $nachLagerId,
-                ':anzahl'   => count($positionen),
-                ':token'    => $syncToken,
-                ':uid'      => $benutzerId,
-            ]);
-            $syncId = (int)$this->db->lastInsertId();
+            $stmtFind->execute([':kasse_id' => $kasseId, ':lager_id' => $nachLagerId]);
+            $bestehend = $stmtFind->fetch();
 
+            if ($bestehend) {
+                $syncId    = (int)$bestehend['id'];
+                $syncToken = $bestehend['sync_token'];
+            } else {
+                $syncToken = bin2hex(random_bytes(16));
+                $stmt = $this->db->prepare("
+                    INSERT INTO kassen_messe_sync
+                        (kasse_id, lager_id, typ, status, artikel_count, sync_token, benutzer_id)
+                    VALUES
+                        (:kasse_id, :lager_id, 'pre', 'vorbereitet', 0, :token, :uid)
+                ");
+                $stmt->execute([
+                    ':kasse_id' => $kasseId,
+                    ':lager_id' => $nachLagerId,
+                    ':token'    => $syncToken,
+                    ':uid'      => $benutzerId,
+                ]);
+                $syncId = (int)$this->db->lastInsertId();
+            }
+
+            // Gleicher Artikel+Charge in diesem Sync schon vorhanden? -> Menge addieren statt Duplikat anlegen
+            // (rueckkehrVerarbeiten() geht von genau einer Zeile pro Artikel+Charge pro Sync aus)
+            $stmtFindUmb = $this->db->prepare("
+                SELECT id FROM kassen_messe_umbuchungen
+                WHERE sync_id = :sync_id AND artikel_id = :artikel_id AND charge <=> :charge
+            ");
+            $stmtUpdUmb = $this->db->prepare("
+                UPDATE kassen_messe_umbuchungen SET menge_raus = menge_raus + :menge WHERE id = :id
+            ");
             $stmtUmb = $this->db->prepare("
                 INSERT INTO kassen_messe_umbuchungen
-                    (sync_id, artikel_id, bezeichnung, ean, menge_raus)
+                    (sync_id, artikel_id, bezeichnung, ean, charge, menge_raus)
                 VALUES
-                    (:sync_id, :artikel_id, :bezeichnung, :ean, :menge)
+                    (:sync_id, :artikel_id, :bezeichnung, :ean, :charge, :menge)
             ");
 
             foreach ($positionen as $pos) {
+                $charge = $pos['charge'] ?? null;
+
                 // Umlagerung: Ausgang aus Hauptlager
                 $lagerSvc->warenausgang([
                     'artikel_id'  => (int)$pos['artikel_id'],
                     'lager_id'    => $vonLagerId,
                     'menge'       => (float)$pos['menge'],
-                    'charge'      => $pos['charge'] ?? null,
+                    'charge'      => $charge,
                     'referenz'    => 'Messe-Umbuchung Sync #' . $syncId,
                     'benutzer_id' => $benutzerId,
                 ]);
@@ -70,19 +98,36 @@ class MesseSyncService
                     'artikel_id'  => (int)$pos['artikel_id'],
                     'lager_id'    => $nachLagerId,
                     'menge'       => (float)$pos['menge'],
-                    'charge'      => $pos['charge'] ?? null,
+                    'charge'      => $charge,
                     'referenz'    => 'Messe-Umbuchung Sync #' . $syncId,
                     'benutzer_id' => $benutzerId,
                 ]);
 
-                $stmtUmb->execute([
+                $stmtFindUmb->execute([
                     ':sync_id'    => $syncId,
                     ':artikel_id' => (int)$pos['artikel_id'],
-                    ':bezeichnung'=> $pos['bezeichnung'],
-                    ':ean'        => $pos['ean'] ?? null,
-                    ':menge'      => (float)$pos['menge'],
+                    ':charge'     => $charge,
                 ]);
+                $vorhanden = $stmtFindUmb->fetch();
+
+                if ($vorhanden) {
+                    $stmtUpdUmb->execute([':menge' => (float)$pos['menge'], ':id' => $vorhanden['id']]);
+                } else {
+                    $stmtUmb->execute([
+                        ':sync_id'    => $syncId,
+                        ':artikel_id' => (int)$pos['artikel_id'],
+                        ':bezeichnung'=> $pos['bezeichnung'],
+                        ':ean'        => $pos['ean'] ?? null,
+                        ':charge'     => $charge,
+                        ':menge'      => (float)$pos['menge'],
+                    ]);
+                }
             }
+
+            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM kassen_messe_umbuchungen WHERE sync_id = :id");
+            $stmtCount->execute([':id' => $syncId]);
+            $this->db->prepare("UPDATE kassen_messe_sync SET artikel_count = :n WHERE id = :id")
+                ->execute([':n' => (int)$stmtCount->fetchColumn(), ':id' => $syncId]);
 
             Logger::log('messe.umbuchung', 'kassen_messe_sync', $syncId, [
                 'von_lager'  => $vonLagerId,
@@ -103,14 +148,17 @@ class MesseSyncService
 
     /**
      * Gibt alle Daten zurück die die Messe-Kasse für den Offline-Betrieb braucht.
-     * Wird als JSON an die Offline-Kasse geliefert, die daraus ihre SQLite befüllt.
+     * Wird als JSON an die Offline-Kasse geliefert, die daraus ihre IndexedDB befüllt.
+     * lagerId wird nicht mehr vom Aufrufer verlangt — steht schon im Sync-Datensatz
+     * (vereinfacht den Client: der braucht nur noch die sync_id aus der URL).
      */
-    public function preSyncExportieren(int $syncId, int $lagerId): array
+    public function preSyncExportieren(int $syncId): array
     {
         $sync = $this->getSyncById($syncId);
         if (!$sync || $sync['typ'] !== 'pre') {
             return ['erfolg' => false, 'fehler' => 'Sync-Datensatz nicht gefunden.'];
         }
+        $lagerId = (int)$sync['lager_id'];
 
         // Artikel aus dem Messe-Lager
         $stmt = $this->db->prepare("
@@ -142,13 +190,31 @@ class MesseSyncService
         $stmt->execute([':sync_id' => $syncId, ':lager_id' => $lagerId]);
         $artikel = $stmt->fetchAll();
 
-        // Gültige Gutscheine
-        $gutscheine = $this->db->query("
-            SELECT code, betrag_original, betrag_verbleibend, gueltig_bis
-            FROM gutscheine
-            WHERE aktiv = 1 AND betrag_verbleibend > 0
-              AND (gueltig_bis IS NULL OR gueltig_bis >= CURDATE())
-        ")->fetchAll();
+        // Chargen-Aufschlüsselung je Artikel — genau die Chargen (+ Mengen), die für
+        // DIESEN Sync tatsächlich umgebucht wurden. Kritisch für charge_pflicht-Artikel:
+        // der Offline-Client darf nur aus diesen echten Chargen verkaufen, keine Freitext-Eingabe.
+        $stmtChargen = $this->db->prepare("
+            SELECT artikel_id, charge, menge_raus
+            FROM kassen_messe_umbuchungen
+            WHERE sync_id = :sync_id AND charge IS NOT NULL
+        ");
+        $stmtChargen->execute([':sync_id' => $syncId]);
+        $chargenProArtikel = [];
+        foreach ($stmtChargen->fetchAll() as $c) {
+            $chargenProArtikel[(int)$c['artikel_id']][] = [
+                'charge' => $c['charge'],
+                'menge'  => (float)$c['menge_raus'],
+            ];
+        }
+        foreach ($artikel as &$a) {
+            $a['chargen'] = $chargenProArtikel[(int)$a['id']] ?? [];
+        }
+        unset($a);
+
+        // Gültige Gutscheine — Gutschein-Modul (Tabelle `gutscheine`) existiert noch nicht,
+        // daher hier bewusst leer statt Fehler. Sobald das Modul gebaut ist, hier die
+        // echte Abfrage ergänzen.
+        $gutscheine = [];
 
         // Kassen-Konfiguration
         $stmtKasse = $this->db->prepare("SELECT * FROM kassen WHERE id = :id");
@@ -166,16 +232,32 @@ class MesseSyncService
         $stmtSw->execute([':id' => $sync['kasse_id']]);
         $schnellwahl = $stmtSw->fetchAll();
 
+        // Startzähler für die Offline-Belegnummerierung: Anzahl bereits vorhandener
+        // Bons dieser Kasse im laufenden Jahr (gleiche Logik wie KassenService::naechsteBonNr()),
+        // damit der Offline-Client lückenlos weiterzählen kann statt Kollisionen zu riskieren.
+        $stmtCount = $this->db->prepare("
+            SELECT COUNT(*) FROM kassen_bons
+            WHERE kasse_id = :kasse_id AND YEAR(erstellt_am) = :jahr
+        ");
+        $stmtCount->execute([':kasse_id' => $sync['kasse_id'], ':jahr' => date('Y')]);
+        $bonNrStart = (int)$stmtCount->fetchColumn();
+
+        // Divers-Platzhalter (99-9999) für "Freier Artikel" — gleicher Mechanismus wie online
+        $diversArtikelId = (int)($this->db->query("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1")->fetchColumn() ?: 0);
+
         return [
-            'erfolg'        => true,
-            'sync_id'       => $syncId,
-            'sync_token'    => $sync['sync_token'],
-            'exportiert_am' => date('Y-m-d H:i:s'),
-            'kasse'         => $kasseConfig,
-            'lager_id'      => $lagerId,
-            'artikel'       => $artikel,
-            'gutscheine'    => $gutscheine,
-            'schnellwahl'   => $schnellwahl,
+            'erfolg'         => true,
+            'sync_id'        => $syncId,
+            'sync_token'     => $sync['sync_token'],
+            'exportiert_am'  => date('Y-m-d H:i:s'),
+            'kasse'          => $kasseConfig,
+            'lager_id'       => $lagerId,
+            'artikel'        => $artikel,
+            'gutscheine'     => $gutscheine,
+            'schnellwahl'    => $schnellwahl,
+            'bon_nr_jahr'    => (int)date('Y'),
+            'bon_nr_zaehler' => $bonNrStart,
+            'divers_artikel_id' => $diversArtikelId,
         ];
     }
 
@@ -301,9 +383,11 @@ class MesseSyncService
 
     /**
      * Verarbeitet die Rückkehr von der Messe.
-     * $rueckgabe: [{artikel_id, menge_rueck}] — was zurückkommt.
+     * $rueckgabe: [{artikel_id, charge?, menge_rueck}] — was zurückkommt.
      * Rest (menge_raus - menge_rueck) = verkauft + Schwund wird vom System berechnet.
-     * $schwund: [{artikel_id, menge}] — separat erfasste Verluste.
+     * $schwund: [{artikel_id, charge?, menge}] — separat erfasste Verluste.
+     * Wichtig: pro Charge einzeln buchen (nicht pro Artikel zusammengefasst),
+     * sonst würde die Rückbuchung die Chargen-Zuordnung im Lagerbestand zerstören.
      */
     public function rueckkehrVerarbeiten(int $syncId, array $rueckgabe, array $schwund, int $vonLagerId, int $nachLagerId, int $benutzerId): array
     {
@@ -311,29 +395,34 @@ class MesseSyncService
         if (!$sync) return ['erfolg' => false, 'fehler' => 'Sync nicht gefunden.'];
 
         $lagerSvc  = new LagerService();
+        $schluessel = fn($artId, $charge) => $artId . '|' . ($charge ?? '');
+
         $rueckIdx  = [];
         foreach ($rueckgabe as $r) {
-            $rueckIdx[(int)$r['artikel_id']] = (float)$r['menge_rueck'];
+            $rueckIdx[$schluessel((int)$r['artikel_id'], $r['charge'] ?? null)] = (float)$r['menge_rueck'];
         }
         $schwundIdx = [];
         foreach ($schwund as $s) {
-            $schwundIdx[(int)$s['artikel_id']] = (float)$s['menge'];
+            $schwundIdx[$schluessel((int)$s['artikel_id'], $s['charge'] ?? null)] = (float)$s['menge'];
         }
 
         $this->db->beginTransaction();
         try {
             $umbuchungen = $this->getUmbuchungenBySyncId($syncId);
             foreach ($umbuchungen as $umb) {
-                $artId      = (int)$umb['artikel_id'];
-                $mengeRueck = $rueckIdx[$artId]  ?? 0.0;
-                $mengeSchwund = $schwundIdx[$artId] ?? 0.0;
+                $artId        = (int)$umb['artikel_id'];
+                $charge       = $umb['charge'] ?? null;
+                $key          = $schluessel($artId, $charge);
+                $mengeRueck   = $rueckIdx[$key]   ?? 0.0;
+                $mengeSchwund = $schwundIdx[$key] ?? 0.0;
 
-                // Rücklagerung: Messe-Lager → Hauptlager
+                // Rücklagerung: Messe-Lager → Hauptlager (gleiche Charge!)
                 if ($mengeRueck > 0) {
                     $lagerSvc->warenausgang([
                         'artikel_id'  => $artId,
                         'lager_id'    => $vonLagerId,
                         'menge'       => $mengeRueck,
+                        'charge'      => $charge,
                         'referenz'    => 'Messe-Rückkehr Sync #' . $syncId,
                         'benutzer_id' => $benutzerId,
                     ]);
@@ -341,6 +430,7 @@ class MesseSyncService
                         'artikel_id'  => $artId,
                         'lager_id'    => $nachLagerId,
                         'menge'       => $mengeRueck,
+                        'charge'      => $charge,
                         'referenz'    => 'Messe-Rückkehr Sync #' . $syncId,
                         'benutzer_id' => $benutzerId,
                     ]);
@@ -352,12 +442,13 @@ class MesseSyncService
                         'artikel_id'  => $artId,
                         'lager_id'    => $vonLagerId,
                         'menge'       => $mengeSchwund,
+                        'charge'      => $charge,
                         'referenz'    => 'Schwund Messe Sync #' . $syncId,
                         'benutzer_id' => $benutzerId,
                     ]);
                 }
 
-                // Verkaufte Menge aus Messe-Lager ausbuchen
+                // Verkaufte Menge aus Messe-Lager ausbuchen (gleiche Charge!)
                 // (Offline-Kasse hat lokal gebucht; MariaDB-Stand war noch menge_raus)
                 $mengeVerkauft = (float)$umb['menge_raus'] - $mengeRueck - $mengeSchwund;
                 if ($mengeVerkauft > 0) {
@@ -365,6 +456,7 @@ class MesseSyncService
                         'artikel_id'  => $artId,
                         'lager_id'    => $vonLagerId,
                         'menge'       => $mengeVerkauft,
+                        'charge'      => $charge,
                         'referenz'    => 'Messe-Verkäufe Sync #' . $syncId,
                         'benutzer_id' => $benutzerId,
                     ]);
@@ -421,7 +513,21 @@ class MesseSyncService
         return $stmt->fetchAll();
     }
 
-    private function getUmbuchungenBySyncId(int $syncId): array
+    /** Post-gesynct (Bons hochgeladen), aber noch nicht zurückgebucht — für die "Von Messe zurück"-Seite. */
+    public function getSyncsFuerRueckkehr(): array
+    {
+        $stmt = $this->db->query("
+            SELECT s.*, l.name AS lager_name, k.name AS kasse_name
+            FROM kassen_messe_sync s
+            LEFT JOIN lager l ON l.id = s.lager_id
+            LEFT JOIN kassen k ON k.id = s.kasse_id
+            WHERE s.status = 'abgeschlossen'
+            ORDER BY s.erstellt_am DESC
+        ");
+        return $stmt->fetchAll();
+    }
+
+    public function getUmbuchungenBySyncId(int $syncId): array
     {
         $stmt = $this->db->prepare("
             SELECT * FROM kassen_messe_umbuchungen WHERE sync_id = :id

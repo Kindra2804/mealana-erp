@@ -539,6 +539,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                class="erp-btn erp-btn-secondary">
                 Kassenbon <?= htmlspecialchars($kasseBon['bon_nr']) ?> drucken
             </a>
+            <a href="<?= BASE_PATH ?>/kasse/bon_a4.php?id=<?= $kasseBon['id'] ?>" target="_blank"
+               class="erp-btn erp-btn-secondary">
+                Als A4 drucken
+            </a>
         <?php else: ?>
             <span style="color:#aaa; font-size:0.9em;">Kassenbon nicht gefunden.</span>
         <?php endif; ?>

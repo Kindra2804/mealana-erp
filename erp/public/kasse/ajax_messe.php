@@ -1,14 +1,13 @@
 <?php
-require_once __DIR__ . '/../../src/core/Auth.php';
+require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/MesseSyncService.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
 
-Auth::requireLogin();
 header('Content-Type: application/json; charset=utf-8');
 
 $aktion = $_POST['aktion'] ?? $_GET['aktion'] ?? '';
 $svc    = new MesseSyncService();
-$uid    = (int)Auth::getUserId();
+$uid    = (int)($_SESSION['benutzer']['id'] ?? 0);
 
 switch ($aktion) {
 
@@ -28,16 +27,15 @@ switch ($aktion) {
         break;
 
     // ── Pre-Sync Export ───────────────────────────────────────────────────────
-    // GET: aktion, sync_id, lager_id
+    // GET: aktion, sync_id
     case 'pre_sync_export':
-        $syncId  = (int)($_GET['sync_id']  ?? 0);
-        $lagerId = (int)($_GET['lager_id'] ?? 0);
+        $syncId = (int)($_GET['sync_id'] ?? 0);
 
-        if (!$syncId || !$lagerId) {
+        if (!$syncId) {
             echo json_encode(['erfolg' => false, 'fehler' => 'Fehlende Parameter.']);
             exit;
         }
-        echo json_encode($svc->preSyncExportieren($syncId, $lagerId));
+        echo json_encode($svc->preSyncExportieren($syncId));
         break;
 
     // ── Post-Sync: Offline-Bons einlesen ────────────────────────────────────

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title><?= htmlspecialchars($pageTitle ?? 'Kasse') ?></title>
+  <script>window.BASE_PATH = <?= json_encode(BASE_PATH) ?>;</script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -205,6 +206,7 @@
     <a href="<?= BASE_PATH ?>/kasse/kassensturz.php"  class="<?= $cur === 'ks'     ? 'aktiv' : '' ?>">📊 Kassenstand</a>
     <a href="<?= BASE_PATH ?>/kasse/bon_journal.php"  class="<?= $cur === 'journal' ? 'aktiv' : '' ?>">📋 Journal</a>
     <a href="<?= BASE_PATH ?>/kasse/nacherfassung.php" class="<?= $cur === 'nacherfassung' ? 'aktiv' : '' ?>">🔏 RKSV</a>
+    <a href="<?= BASE_PATH ?>/kasse/messe_vorbereiten.php" class="<?= $cur === 'messe' ? 'aktiv' : '' ?>">🎪 Messe</a>
     <div class="ks-nav-sep"></div>
     <a href="<?= BASE_PATH ?>/start.php" class="ks-back">→ Start</a>
   </div>

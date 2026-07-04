@@ -430,10 +430,16 @@ class LagerService
         return $this->repo->findBestandChargeProLager($artikelId);
     }
 
-    /** Gibt die letzten 10 Lagerbewegungen für einen Artikel zurück. */
-    public function getBewegungslog(int $artikelId): array
+    /** Gibt die letzten 10 Lagerbewegungen für einen Artikel zurück (oder, mit $charge, die volle Historie dieser Charge). */
+    public function getBewegungslog(int $artikelId, ?string $charge = null): array
     {
-        return $this->repo->findBewegungslogFuerArtikel($artikelId);
+        return $this->repo->findBewegungslogFuerArtikel($artikelId, $charge);
+    }
+
+    /** Alle bekannten Chargen eines Artikels — für das Chargen-Filter-Dropdown. */
+    public function getChargenFuerArtikel(int $artikelId): array
+    {
+        return $this->repo->findChargenFuerArtikel($artikelId);
     }
 
     /**

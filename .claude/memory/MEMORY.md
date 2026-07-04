@@ -1,6 +1,7 @@
 # Memory Index
 
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Frau Barbara schaut bei UI mit
+- [Chargen-Nachverfolgung (geplant)](project_chargen_nachverfolgung.md) — zentrale Seite: Artikelsuche→Chargen-Dropdown→Bewegungshistorie; Kandidat-Ort erp/public/lager/
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
 - [Feedback: End-of-Day Updates](feedback_eod.md) — CLAUDE.md am Ende jedes Tages aktualisieren
 - [Projekt: MeaLana ERP Status](project_status.md) — Aktueller Implementierungsstand
@@ -15,7 +16,7 @@
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
 - [UI Redesign Plan](project_ui_redesign.md) — JTL-inspiriertes Layout nach Artikel-Modul: Top-Nav Module, Sidebar Untergruppen, 1280×1024 Basis, Barbara hat Mitspracherecht
 - [Verkauf Workflows](project_verkauf_workflows.md) — Vorkasse/PayPal, 14-Tage Mahnung, 30-Tage Stornierung, Fehlbestand-Konzept (Überverkauf + Bestellstatus)
-- [Lager Konzept](project_lager_konzept.md) — Standardlager/Lager Messe, K1 immer normal, K2 umschaltbar (Normal↔Messe), Umlagerungsfunktion geplant
+- [Lager Konzept](project_lager_konzept.md) — Altes K2-Umschaltmodell durch echten Messe-Workflow ersetzt (siehe Kassen-Verwaltung); Lager-Verwaltungs-UI fehlt komplett (nur SQL)
 - [Feedback: Design-Workflow](feedback_design_workflow.md) — 3-Stufen: ASCII-Wireframe → SVG → HTML, nie direkt in HTML, SVG für Barbara
 - [Feedback: Banner Auto-Hide](feedback_banner_autohide.md) — Erfolgs/Fehler-Banner in detail.php sollen nach ~3s automatisch verschwinden
 - [Feedback: Barbara UI](feedback_barbara_ui.md) — Blaues "!" statt ⚠, konfigurierbarer Indikator, ⚠=kaputt für Barbara
@@ -42,8 +43,8 @@
 - [Gutschein-Modul Design](project_gutscheine.md) — ERP=Single Source of Truth, WooCommerce als Slave (kein Design/Text in WC), on+offline, 3 DB-Tabellen
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix, Twig+Dompdf Templates, WC-Sync umschaltbar, Packplatz eigene Seite
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Blocks (auftrag/addon/storno), Rechnung erst am Bon, besser als JTL; Maximalfall: Auftrag+AddOn+Rückgabe+GS gleichzeitig machbar
-- [Kassen-Verwaltung](project_kassen_verwaltung.md) — Messe-Sync Server-API fertig (entdeckt 2026-07-03); Offline-Client-Architektur ENTSCHIEDEN: JS/IndexedDB + direkter Browser→BFR-Call (nicht SQLite), Client-Bau noch offen
-- [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen (Gruppe A/B/C/D), B2C=Brutto/B2B=Netto, Abholzettel+Barcode, Twig+Dompdf, WC=kein eigenes Rechnungssystem
+- [Kassen-Verwaltung](project_kassen_verwaltung.md) — Messe-Workflow fertig + browser-getestet 2026-07-04 (5 Bugs gefunden+behoben: BASE_PATH, Auth-Methoden, Sync-Duplikation, Quell-Lager, Chargen-Stepper) — bereit für BFR-Hardware-Test
+- [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen (Gruppe A/B/C/D), B2C=Brutto/B2B=Netto, Abholzettel+Barcode, Twig+Dompdf; Lücken 2026-07-04: Bestellungen an Lieferant ohne PDF/Mail, manueller Storno ohne Kundenmail, Nummernkreise nirgends konfigurierbar
 - [Installationsanleitung](project_installationsanleitung.md) — GESCHRIEBEN 2026-07-03 + migrate.php-Runner gebaut; Baseline-Dump statt 101-Dateien-Replay (Bug in Migration 005 gefunden+behoben)
 - [Whitelabel/Branding](project_whitelabel_branding.md) — Root-Pfad FERTIG; NAHTLOS-Logo ersetzt Kunden-Logo im Header (entschieden, wartet auf Assets); Shop-Footer-Idee
 - [Update-Mechanismus](project_update_mechanismus.md) — ZURÜCKGESTELLT bis Lizenz-Thema: ZIP-Vollpaket + migrate.php statt Delta-Patches, kein Versions-Tracking pro Installation nötig
@@ -59,3 +60,4 @@
 - [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede; Doku-Schuld offen
 - [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — Unicode-Flaggen rendern auf Jackys Windows-Browsern nicht, nur Buchstaben-Fallback — nicht verwenden
 - [🟢 BUG: Hersteller-Modal Insert](bug_hersteller_modal_insert.md) — BEHOBEN 2026-07-02: extra id-Key im Formular bricht PDO insert() — gleiches Muster bei Partner-Modul latent, noch nicht gefixt
+- [Feedback: Test-Isolation](feedback_test_isolation.md) — Scratch-Testskripte nicht gegen echte Artikel/Kassen ohne Cleanup laufen lassen (Kontamination sah wie neuer Bug aus)

@@ -381,6 +381,15 @@ if ($email && !$isAbholung) {
     // Auto-Rechnungsmail: nur wenn Rechnung gerade frisch auto-erstellt wurde
     if ($autoRechnungMail && $email) {
         try {
+            $zahlungenRoh = $auftragRepo->findZahlungen($auftragId);
+            $zahlungenMail = array_map(fn($z) => [
+                'buchungsdatum' => date('d.m.Y', strtotime($z['buchungsdatum'])),
+                'betrag'        => (float)$z['betrag'],
+                'notiz'         => $z['notiz'] ?? '',
+            ], $zahlungenRoh);
+            $bezahltGesamt = array_sum(array_column($zahlungenRoh, 'betrag'));
+            $offenerBetrag = (float)$autoRechnungMail['bruttobetrag'] - $bezahltGesamt;
+
             $mailerR = new Mailer();
             $mailerR->sendeTemplate(
                 empfaenger:   $email,
@@ -396,6 +405,9 @@ if ($email && !$isAbholung) {
                     'brutto_gesamt'  => (float)$autoRechnungMail['bruttobetrag'],
                     'faellig_datum'  => date('d.m.Y', strtotime('+14 days')),
                     'firma_email'    => $firma['mail_from_address'] ?? '',
+                    'zahlungsstatus' => $auftrag['zahlungsstatus'],
+                    'zahlungen'      => $zahlungenMail,
+                    'offener_betrag' => $offenerBetrag,
                 ],
                 anhaenge: [['pfad' => $rgnRes['pfad'], 'name' => $autoRechnungMail['rechnung_nr'] . '.pdf']],
             );

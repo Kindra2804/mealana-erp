@@ -831,9 +831,9 @@ class KassenService
         ]);
     }
 
-    public function erstelleXBon(int $kasseId, int $benutzerId): array
+    public function erstelleXBon(int $kasseId, int $benutzerId, ?string $datum = null): array
     {
-        $daten = $this->sammleAbschlussDaten($kasseId);
+        $daten = $this->sammleAbschlussDaten($kasseId, $datum);
         $bonNr = $this->naechsteBonNr($kasseId, 'X');
         $this->db->beginTransaction();
         try {
@@ -857,9 +857,14 @@ class KassenService
         return ['erfolg' => true, 'bon_nr' => $bonNr, 'abschluss_id' => $abschlussId, 'kennzahlen' => $daten['kennzahlen']];
     }
 
-    public function erstelleZBon(int $kasseId, int $benutzerId): array
+    /**
+     * $datum optional (Y-m-d) — für nachträgliche Z-Bons, z.B. nach einer
+     * mehrtägigen Messe wenn die Bons erst nach Rückkehr hochgeladen wurden.
+     * Ohne Angabe wie bisher: heutiger Tag.
+     */
+    public function erstelleZBon(int $kasseId, int $benutzerId, ?string $datum = null): array
     {
-        $daten = $this->sammleAbschlussDaten($kasseId);
+        $daten = $this->sammleAbschlussDaten($kasseId, $datum);
         $bonNr = $this->naechsteBonNr($kasseId, 'Z');
         $this->db->beginTransaction();
         try {
@@ -872,7 +877,7 @@ class KassenService
                 ':kasse_id'     => $kasseId,
                 ':bruttobetrag' => $daten['kennzahlen']['umsatz_gesamt'],
                 ':benutzer_id'  => $benutzerId,
-                ':notiz'        => 'Z-Bon ' . date('d.m.Y') . ' | Stand: ' . number_format($daten['kassenstand'], 2, '.', ''),
+                ':notiz'        => 'Z-Bon ' . date('d.m.Y', strtotime($datum ?: 'now')) . ' | Stand: ' . number_format($daten['kassenstand'], 2, '.', ''),
             ]);
             $bonId = (int)$this->db->lastInsertId();
             $abschlussId = $this->speichereAbschluss($bonId, $kasseId, $benutzerId, 'z', $daten);
@@ -885,10 +890,10 @@ class KassenService
         return ['erfolg' => true, 'bon_nr' => $bonNr, 'abschluss_id' => $abschlussId, 'kennzahlen' => $daten['kennzahlen'], 'kassenstand' => $daten['kassenstand']];
     }
 
-    private function sammleAbschlussDaten(int $kasseId): array
+    private function sammleAbschlussDaten(int $kasseId, ?string $datum = null): array
     {
-        $datum       = date('Y-m-d');
-        $kennzahlen  = $this->getTagesKennzahlen($kasseId);
+        $datum       = $datum ?: date('Y-m-d');
+        $kennzahlen  = $this->getTagesKennzahlen($kasseId, $datum);
         $kassenstand = $this->getKassenstand($kasseId);
 
         // Steueraufstellung aus Bon-Positionen

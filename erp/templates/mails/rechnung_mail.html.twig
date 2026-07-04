@@ -23,18 +23,58 @@
   </tr>
 </table>
 
-{% if firma_iban %}
-<div class="hinweis">
-  <strong>Überweisung:</strong><br>
-  Bitte überweisen Sie den Betrag bis <strong>{{ faellig_datum }}</strong>
-  unter Angabe der Rechnungsnummer <strong>{{ rechnung_nr }}</strong>.<br>
-  IBAN: <strong>{{ firma_iban }}</strong>
+{% if zahlungsstatus == 'bezahlt' %}
+<div class="hinweis" style="background:#f0fdf4;border-color:#86efac">
+  <strong>Vielen Dank — diese Rechnung ist bereits vollständig bezahlt.</strong>
 </div>
+{% if zahlungen|length > 0 %}
+<table class="table">
+  <tr><th>Datum</th><th>Betrag</th><th>Anmerkung</th></tr>
+  {% for z in zahlungen %}
+  <tr>
+    <td>{{ z.buchungsdatum }}</td>
+    <td>€&nbsp;{{ z.betrag|number_format(2, ',', '.') }}</td>
+    <td>{{ z.notiz }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% elseif zahlungsstatus == 'teilbezahlt' %}
+<div class="hinweis">
+  <strong>Teilzahlung erhalten</strong> — bereits verbucht:
+</div>
+<table class="table">
+  <tr><th>Datum</th><th>Betrag</th><th>Anmerkung</th></tr>
+  {% for z in zahlungen %}
+  <tr>
+    <td>{{ z.buchungsdatum }}</td>
+    <td>€&nbsp;{{ z.betrag|number_format(2, ',', '.') }}</td>
+    <td>{{ z.notiz }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<div class="hinweis">
+  Restbetrag <strong>€&nbsp;{{ offener_betrag|number_format(2, ',', '.') }}</strong>
+  bitte bis <strong>{{ faellig_datum }}</strong> unter Angabe der Rechnungsnummer
+  <strong>{{ rechnung_nr }}</strong> überweisen.
+  {% if firma_iban %}<br>IBAN: <strong>{{ firma_iban }}</strong>{% endif %}
+</div>
+
 {% else %}
-<div class="hinweis">
-  Bitte begleichen Sie die Rechnung bis <strong>{{ faellig_datum }}</strong>
-  unter Angabe der Rechnungsnummer <strong>{{ rechnung_nr }}</strong>.
-</div>
+  {% if firma_iban %}
+  <div class="hinweis">
+    <strong>Überweisung:</strong><br>
+    Bitte überweisen Sie den Betrag bis <strong>{{ faellig_datum }}</strong>
+    unter Angabe der Rechnungsnummer <strong>{{ rechnung_nr }}</strong>.<br>
+    IBAN: <strong>{{ firma_iban }}</strong>
+  </div>
+  {% else %}
+  <div class="hinweis">
+    Bitte begleichen Sie die Rechnung bis <strong>{{ faellig_datum }}</strong>
+    unter Angabe der Rechnungsnummer <strong>{{ rechnung_nr }}</strong>.
+  </div>
+  {% endif %}
 {% endif %}
 
 <p>

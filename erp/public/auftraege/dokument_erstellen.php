@@ -168,6 +168,20 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
             $rechnung = $rStmt->fetch(PDO::FETCH_ASSOC);
             if (!$rechnung) return;
 
+            $zStmt = $db->prepare("
+                SELECT betrag, buchungsdatum, notiz FROM auftrag_zahlungen
+                WHERE auftrag_id = :id ORDER BY buchungsdatum, erfasst_am
+            ");
+            $zStmt->execute([':id' => $auftragId]);
+            $zahlungenRoh = $zStmt->fetchAll(PDO::FETCH_ASSOC);
+            $zahlungenMail = array_map(fn($z) => [
+                'buchungsdatum' => date('d.m.Y', strtotime($z['buchungsdatum'])),
+                'betrag'        => (float)$z['betrag'],
+                'notiz'         => $z['notiz'] ?? '',
+            ], $zahlungenRoh);
+            $bezahltGesamt = array_sum(array_column($zahlungenRoh, 'betrag'));
+            $offenerBetrag = (float)$rechnung['bruttobetrag'] - $bezahltGesamt;
+
             $mailer->sendeTemplate(
                 $email,
                 'Ihre Rechnung ' . $rechnung['rechnung_nr'],
@@ -182,6 +196,9 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
                     'brutto_gesamt'  => (float)$rechnung['bruttobetrag'],
                     'faellig_datum'  => date('d.m.Y', strtotime('+14 days')),
                     'firma_email'    => $firmaEmail,
+                    'zahlungsstatus' => $auftrag['zahlungsstatus'] ?? '',
+                    'zahlungen'      => $zahlungenMail,
+                    'offener_betrag' => $offenerBetrag,
                 ],
                 [['pfad' => $storagePfad, 'name' => $rechnung['rechnung_nr'] . '.pdf']]
             );

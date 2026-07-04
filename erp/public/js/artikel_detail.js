@@ -571,3 +571,23 @@ tinymce.init({
     content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }'
 });
 
+// ── Bewegungslog: Chargen-Filter ─────────────────────────────────────────────
+
+function bewegungslogChargeFilterAendern(charge) {
+    const titel = document.getElementById('bewegungslog-titel');
+    const inhalt = document.getElementById('bewegungslog-inhalt');
+    titel.textContent = charge ? 'Verlauf Charge ' + charge : 'Letzte Lagerbewegungen';
+    inhalt.style.opacity = '0.5';
+
+    const url = window.BASE_PATH + '/artikel/bewegungslog_ajax.php?artikel_id=' + window.MEALANA_ARTIKEL_ID
+        + (charge ? '&charge=' + encodeURIComponent(charge) : '');
+
+    fetch(url)
+        .then(r => r.text())
+        .then(html => { inhalt.innerHTML = html; inhalt.style.opacity = '1'; })
+        .catch(() => {
+            inhalt.innerHTML = '<p style="color:var(--color-danger);font-size:13px">Fehler beim Laden der Bewegungen.</p>';
+            inhalt.style.opacity = '1';
+        });
+}
+

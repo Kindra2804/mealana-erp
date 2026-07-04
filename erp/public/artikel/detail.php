@@ -47,8 +47,22 @@ $alleLieferanten   = $lieferantenService->findAll();
 $achsService        = new AchsenService();
 $alleGlobalenAchsen = $achsService->findAll();
 
-$lagerService  = new LagerService();
-$lagerGruppen  = $lagerService->getLagerBestandChargen($id);
+$lagerService       = new LagerService();
+$lagerGruppen       = $lagerService->getLagerBestandChargen($id);
+$chargenFuerArtikel = $lagerService->getChargenFuerArtikel($id);
+
+// Chargen-Liste bereinigen: nur Chargen mit tatsächlichem Bestand zeigen (sonst stehen
+// nach Jahren zig längst verkaufte 0-Stück-Chargen mit in der Liste). Die Charge=NULL-Zeile
+// (Bestand ohne Zuordnung) ist bei chargenpflichtigen Artikeln eine echte Datenqualitäts-
+// Warnung und bleibt sichtbar, bei normalen Artikeln ist sie der Regelfall und wird ausgeblendet.
+foreach ($lagerGruppen as &$lg) {
+    $lg['chargen'] = array_values(array_filter($lg['chargen'], function ($ch) use ($artikel) {
+        if ((float)$ch['bestand'] <= 0) return false;
+        if ($ch['charge'] === null && empty($artikel['charge_pflicht'])) return false;
+        return true;
+    }));
+}
+unset($lg);
 $bewegungslog  = $lagerService->getBewegungslog($id);
 $alleLager     = $lagerService->getAlleLager();
 
@@ -1294,7 +1308,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                             <tbody>
                                                 <?php foreach ($lg['chargen'] as $ch): ?>
                                                     <tr>
-                                                        <td style="padding-left:32px"><?= htmlspecialchars($ch['charge']) ?></td>
+                                                        <td style="padding-left:32px">
+                                                            <?php if ($ch['charge'] === null): ?>
+                                                                <em style="color:var(--color-danger)">— ohne Charge —</em>
+                                                            <?php else: ?>
+                                                                <?= htmlspecialchars($ch['charge']) ?>
+                                                            <?php endif; ?>
+                                                        </td>
                                                         <td><?= htmlspecialchars($ch['charge_status'] ?? '–') ?></td>
                                                         <td style="text-align:right"><?= formatBestand($ch['bestand']) ?></td>
                                                     </tr>
@@ -1375,59 +1395,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         <!-- Bewegungslog -->
         <div class="card" style="margin-top:var(--space-md)">
-            <div style="font-weight:600;padding-bottom:var(--space-xs);margin-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
-                Letzte Lagerbewegungen
-            </div>
-            <?php if (empty($bewegungslog)): ?>
-                <p style="color:var(--color-text-muted);font-size:13px">Noch keine Lagerbewegungen vorhanden.</p>
-            <?php else: ?>
-                <table class="erp-table">
-                    <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Typ</th>
-                            <th style="text-align:right">Menge</th>
-                            <th>Vorher → Nachher</th>
-                            <th>Charge</th>
-                            <th>Lager</th>
-                            <th>Referenz / Notiz</th>
-                            <th>Benutzer</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $typFarben = [
-                            'eingang'   => ['#dcfce7', '#166534'],
-                            'ausgang'   => ['#fee2e2', '#991b1b'],
-                            'korrektur' => ['#fff7ed', '#9a3412'],
-                            'inventur'  => ['#eff6ff', '#1e40af'],
-                        ];
-                        ?>
-                        <?php foreach ($bewegungslog as $b): ?>
-                            <?php [$bg, $fg] = $typFarben[$b['bewegungstyp']] ?? ['#f1f5f9', '#334155']; ?>
-                            <tr>
-                                <td style="white-space:nowrap"><?= date('d.m.Y H:i', strtotime($b['erstellt_am'])) ?></td>
-                                <td>
-                                    <span style="background:<?= $bg ?>;color:<?= $fg ?>;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">
-                                        <?= htmlspecialchars(ucfirst($b['bewegungstyp'])) ?>
-                                    </span>
-                                </td>
-                                <td style="text-align:right"><?= formatBestand($b['menge']) ?></td>
-                                <td style="white-space:nowrap"><?= formatBestand($b['bestand_vorher']) ?> → <?= formatBestand($b['bestand_nachher']) ?></td>
-                                <td><?= htmlspecialchars($b['charge'] ?? '–') ?></td>
-                                <td><?= htmlspecialchars($b['lager_name']) ?></td>
-                                <td>
-                                    <?php if (!empty($b['referenz'])): ?>
-                                        <span style="font-weight:600"><?= htmlspecialchars($b['referenz']) ?></span><?= !empty($b['notiz']) ? ' · ' : '' ?>
-                                    <?php endif; ?>
-                                    <?= htmlspecialchars($b['notiz'] ?? (!empty($b['referenz']) ? '' : '–')) ?>
-                                </td>
-                                <td><?= htmlspecialchars($b['formularname'] ?? '–') ?></td>
-                            </tr>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:var(--space-xs);margin-bottom:var(--space-sm);border-bottom:1px solid var(--color-border)">
+                <div style="font-weight:600" id="bewegungslog-titel">Letzte Lagerbewegungen</div>
+                <?php if (!empty($chargenFuerArtikel)): ?>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <label for="bewegung-charge-filter" style="font-size:12px;color:var(--color-text-muted)">Charge:</label>
+                    <select id="bewegung-charge-filter" class="erp-select" style="font-size:12px;padding:3px 6px" onchange="bewegungslogChargeFilterAendern(this.value)">
+                        <option value="">Letzte 10 (alle Chargen)</option>
+                        <?php foreach ($chargenFuerArtikel as $ch): ?>
+                            <option value="<?= htmlspecialchars($ch) ?>"><?= htmlspecialchars($ch) ?> — vollständiger Verlauf</option>
                         <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div id="bewegungslog-inhalt">
+                <?php include __DIR__ . '/bewegungslog_tabelle.php'; ?>
+            </div>
         </div>
 
     </div>

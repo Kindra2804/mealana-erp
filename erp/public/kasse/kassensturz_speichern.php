@@ -9,6 +9,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $aktion  = $_POST['aktion']   ?? '';
 $kasseId = (int)($_POST['kasse_id'] ?? 1);
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+// Nur bei Z-Bon relevant: nachträglicher Abschluss für einen vergangenen Tag
+// (z.B. nach mehrtägiger Messe, wenn Bons erst nachträglich hochgeladen wurden)
+$datum = trim($_POST['datum'] ?? '') ?: null;
 
 $service = new KassenService();
 
@@ -20,7 +23,7 @@ if ($aktion === 'x_bon') {
     }
     $_SESSION['fehler'] = $result['fehler'] ?? 'Fehler beim X-Bon.';
 } elseif ($aktion === 'z_bon') {
-    $result = $service->erstelleZBon($kasseId, $benutzerId);
+    $result = $service->erstelleZBon($kasseId, $benutzerId, $datum);
     if ($result['erfolg']) {
         header('Location: abschluss_druck.php?id=' . $result['abschluss_id']);
         exit;

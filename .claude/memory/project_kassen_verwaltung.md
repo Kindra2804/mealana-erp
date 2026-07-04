@@ -146,12 +146,103 @@ Zwei Optionen abgewogen: (a) dieselbe PHP-Codebasis am Messe-Laptop gegen lokale
 
 **Noch offen (nächster Schritt):** konkrete Implementierung — eigene Offline-Variante von `bon.php` (oder Modus-Umschaltung darin), IndexedDB-Schema, Sync-Flow (Pre-Sync laden → offline arbeiten → Post-Sync hochladen), Fehlerbehandlung bei abgebrochenem Upload.
 
-## 🔴 Zwei Lücken bei A4-Rechnung/Mailversand gefunden 2026-07-03 (Jackys Verdacht bestätigt)
+## ✅ Kompletter Messe-Workflow gebaut (2026-07-04) — bereit für BFR-Hardware-Test
 
-- **Kein nachträglicher Zugriff:** `bon_a4.php` ist nur direkt nach Bon-Erstellung per Button aus `bon.php` heraus verlinkt (`window.open(...bon_a4.php?id=' + _letzterBonId)`). Im Bon-Journal (`bon_journal.php`, die Such-/Verlaufsseite) gibt es **keinen Link** zu `bon_a4.php` für ältere Bons — technisch über die URL erreichbar, aber kein UI-Zugang.
-- **Mailversand nutzt nicht die A4-Version:** In `bon_speichern.php` (Abholbestätigungs-Mail, ~Zeile 410) wird ein eigens inline gebautes **68mm-Thermobon-PDF** (Courier New, 68mm Breite, Bondrucker-Optik) als Mail-Anhang erzeugt — nicht die vorhandene, deutlich bessere A4-Rechnung aus `bon_a4.php`.
+Alle drei fehlenden UI-Teile jetzt gebaut, End-to-End getestet (Service-Layer-Tests, kein echter Browser verfügbar):
 
-**How to apply:** Beide sind kleine, klar umrissene Fixes: (1) Link/Button in `bon_journal.php` pro Zeile auf `bon_a4.php?id=X` ergänzen. (2) `bon_speichern.php` beim Mailanhang auf die A4-Rendering-Logik aus `bon_a4.php` umstellen statt der doppelt gepflegten 68mm-Variante.
+**1. `public/kasse/messe_vorbereiten.php`** (+ `js/kasse_messe_vorbereiten.js`) — Scan-Seite: Offline-Kasse + Ziel-Lager wählen, Artikel scannen/eingeben (nutzt bestehendes `ajax_artikel.php`), Mengen editierbar, Warnung bei Menge > Bestand. Ruft `ajax_messe.php?aktion=umbuchung_zur_messe` auf. Zeigt darunter alle bereits vorbereiteten offenen Sync-Pakete mit Link zur Offline-Kasse.
+
+**2. `public/kasse/bon_offline.php`** (+ `js/kasse_bon_offline.js`) — der eigentliche Offline-Client:
+- IndexedDB-Schema: `konfig` (Sync-Metadaten, Kassenkonfig inkl. `bfr_url`/`kasse_nr`, laufender Belegnummernzähler, `diversArtikelId`), `artikel` (Pre-Sync-Kopie inkl. `chargen`-Array), `bons` (Warteschlange fertiger Belege)
+- Lädt einmalig `ajax_messe.php?aktion=pre_sync_export` während noch Serververbindung besteht, danach komplett ohne Server lauffähig
+- Verkaufsbildschirm: Scan **und Textsuche** (Artikelname, min. 2 Zeichen, Dropdown mit bis zu 8 Treffern) gegen lokale Artikel-Kopie, Warenkorb, Bar/Karte-Zahlung mit Rückgeld-Berechnung
+- **Direkte RKSV-Signierung**: baut dieselbe XML-Struktur wie `BfrService::baueSignierXml()` (per Test 1:1 abgeglichen, nur der optionale XML-Prolog ergänzt) und ruft `fetch(bfr_url + '/register')` direkt aus dem Browser auf. BFR nicht erreichbar → Bon läuft trotzdem durch, `bfr_status='ausstehend'`, landet nach Upload in der bestehenden Nachsignierungs-Logik
+- Belegnummer offline: `{kasse_nr}-{jahr}-{6-stellig}`, Startzähler kommt aus `preSyncExportieren()` (`bon_nr_jahr`/`bon_nr_zaehler`)
+- Quittungsanzeige on-screen + druckbar, "Bons hochladen"-Button ruft `ajax_messe.php?aktion=post_sync` sobald wieder online
+
+**3. `public/kasse/messe_rueckkehr.php`** (+ `js/kasse_messe_rueckkehr.js`) — zeigt alle Sync-Pakete mit Status `abgeschlossen` (Bons schon hochgeladen), **pro Charge eine eigene Zeile** (nicht mehr pro Artikel), Eingabe "Zurück" + "Schwund" mit live berechnetem "Verkauft", ruft `ajax_messe.php?aktion=rueckkehr` auf. `MesseSyncService` ergänzt: `getSyncsFuerRueckkehr()` (neu, öffentlich), `getUmbuchungenBySyncId()` (von private auf public gestellt).
+
+**Navigation:** neuer "🎪 Messe"-Punkt in der Kasse-Kopfzeile (`shell_top.php`), führt zu `messe_vorbereiten.php`.
+
+## Korrekturrunde 2026-07-04 (nach Jackys Praxis-Einwänden) — alle fünf Punkte behoben
+
+Jacky hat die erste Version zurecht abgelehnt: Freier Artikel/Textsuche fehlten (Muss für Messen), Chargen waren nur Freitext (Risiko für falsche Lagerstände), der Browser-Tab durfte nicht geschlossen werden (in der Praxis unhaltbar), Z-Bon war nur für "heute" möglich.
+
+**1. Chargen jetzt durchgängig statt Freitext — größter Umbau:**
+- Migration 106: `kassen_messe_umbuchungen.charge` (neue Spalte) — eine Zeile pro Artikel **+ Charge**-Kombination statt nur pro Artikel
+- `umbuchungZurMesse()`: nimmt jetzt echte Charge pro Position entgegen, gibt sie an `LagerService` durch (der konnte das schon immer, wurde bisher nur nie genutzt)
+- `preSyncExportieren()`: liefert pro Artikel ein `chargen`-Array (echte, tatsächlich mitgenommene Chargen + Mengen) — der Offline-Client kennt dadurch nur die real vorhandenen Chargen, keine Erfindung möglich
+- `messe_vorbereiten.php`: bei `charge_pflicht`-Artikeln öffnet sich jetzt ein Chargen-Auswahl-Overlay (nutzt das bestehende `packplatz/warenausgang/chargen_ajax.php`) statt den Artikel blind hinzuzufügen
+- `bon_offline.php`: Chargen-Auswahl ist jetzt ein Dropdown der echten, mitgenommenen Chargen mit lokal berechneter Restmenge (`obChargeBestandVerbleibend()` — Original minus bereits im Warenkorb) — kein Verkauf über die mitgenommene Menge hinaus möglich
+- `rueckkehrVerarbeiten()`: verarbeitet Rückgabe/Schwund jetzt **pro Charge** (Schlüssel `artikel_id|charge`), nicht mehr aggregiert — sonst wäre bei der Rückbuchung die Chargen-Zuordnung im Lagerbestand zerstört worden
+- `messe_rueckkehr.php`: eigene Spalte + Zeile pro Charge
+
+**2. Freier Artikel ergänzt** (`bon_offline.php`): "➕ Freier Artikel"-Button → Overlay (Bezeichnung, Preis, Steuersatz) → Position mit dem `divers_artikel_id` (99-9999-Platzhalter, jetzt auch in `preSyncExportieren()` mitgeliefert). **Nebenbefund:** der 99-9999-Artikel fehlte in der Dev-DB komplett — Migration 078 ist zwar als "angewendet" markiert, hat aber wegen `INSERT IGNORE` beim ersten Lauf still nichts eingefügt (vermutlich lief sie vor den Einheiten-Seed-Daten). Manuell nachgetragen; für andere Installationen im Hinterkopf behalten falls dieselbe stille Lücke auftritt.
+
+**3. Textsuche ergänzt** (`bon_offline.php`): Eingabefeld filtert ab 2 Zeichen die lokale Artikelliste nach Bezeichnung (Substring, case-insensitive), reine Ziffern-Eingaben werden nicht als Textsuche behandelt (Scanner-Kompatibilität).
+
+**4. Service Worker für echte Offline-Resilienz** — der wichtigste Fix:
+- `bon_offline.php` ist jetzt eine **rein statische Seite** — keine PHP-Werte mehr im Output außer beim allerersten Laden (`auth_check.php`). `sync_id` wird clientseitig aus der URL gelesen (`URLSearchParams`), `BASE_PATH` clientseitig aus `location.pathname` berechnet — dadurch ist die Seite unabhängig vom Installationspfad cachebar
+- `preSyncExportieren()` vereinfacht: braucht `lager_id` nicht mehr als Parameter (steht schon im Sync-Datensatz) — reduziert das, was der Client wissen muss, auf nur noch `sync_id`
+- Neuer `public/kasse/sw_bon_offline.js`: Service Worker, cached `bon_offline.php` + `kasse_bon_offline.js` beim ersten (Online-)Laden, liefert sie bei Serverausfall aus dem Cache. Fängt bewusst NUR GET-Requests auf diese beiden Dateien ab — `ajax_messe.php`-Aufrufe und die direkte BFR-Signierung werden nicht abgefangen, müssen ehrlich funktionieren oder fehlschlagen
+- **Damit gelöst:** Laptop daheim herunterfahren, zum Hersteller/zur Messe fahren, Browser dort neu öffnen (auch nach Absturz) — funktioniert jetzt ohne jede Serververbindung vor Ort
+
+**5. Z-Bon pro Tag nachträglich möglich:**
+- `KassenService::sammleAbschlussDaten()`/`erstelleXBon()`/`erstelleZBon()` bekommen einen optionalen `$datum`-Parameter (Default: heute, unverändertes Verhalten wenn nicht angegeben)
+- `kassensturz.php`: neues Datumsfeld beim Z-Bon-Formular ("Für Tag — leer = heute")
+- Für eine mehrtägige Messe: nach dem Post-Sync-Upload aller Tage kann pro Tag einzeln ein korrekter Z-Bon nachträglich erzeugt werden
+
+**Getestet (Service-Layer, PHP-CLI, kein echter Browser verfügbar):** kompletter Kreislauf inkl. echter Charge (Artikel 245, Charge `59f47f`) durch alle vier Phasen (Umbuchung → Pre-Sync-Export mit Chargen-Array → simulierter Bon mit Charge → Post-Sync → Rückkehr) — Lagerbestand wanderte korrekt pro Charge zwischen Hauptlager und Messestand. `getTagesKennzahlen()` mit unterschiedlichen Datumswerten liefert korrekt unterschiedliche Ergebnisse.
+
+**Für den echten Test beim BFR-Hersteller weiterhin offen:**
+- Echter Browser-Test (IndexedDB, DOMParser, fetch, Service Worker) wurde in dieser Session nicht durchgeführt — nur die zugrundeliegende Logik verifiziert. Insbesondere der Service Worker sollte einmal bewusst getestet werden (Seite laden, DevTools → Network → Offline aktivieren, Seite neu laden)
+- Test-Kasse "Messe-Laptop (Test)" (id=2) wurde für die Tests direkt per SQL angelegt — vor dem echten Einsatz eine echte Kasse über Einstellungen→Kassen anlegen (inkl. `bfr_url` + RKSV-Kassen-ID-Registrierung)
+
+**Weiterhin bewusst nicht gebaut** (siehe `docs/offline_kasse_anleitung.md` für die vollständige Liste): Bon parken, Schnellwahl-UI, Kombi-Zahlung, Rabatt-UI, Storno, Kundensuche, Gutschein (Modul existiert nicht).
+
+**Why:** Jackys Einwände waren alle sachlich berechtigt — v.a. Chargen-Korrektheit ist nicht verhandelbar, und "Browser darf nicht geschlossen werden" ist für einen mehrtägigen Messe-Einsatz schlicht untauglich.
+**How to apply:** Vor dem echten BFR-Termin: echte Kasse anlegen, Test-Kasse (id=2) ggf. löschen, kompletten Ablauf einmal im echten Browser durchspielen inkl. bewusstem Offline-Test des Service Workers.
+
+## ✅ Zwei A4-Rechnung/Mailversand-Lücken behoben (2026-07-04)
+
+Beide am 2026-07-03 gefundenen Lücken sind jetzt gefixt:
+1. **Nachträglicher Zugriff**: `bon_journal.php` hat jetzt pro Zeile (bei `typ` verkauf/storno) einen zusätzlichen "A4"-Button neben dem bisherigen 🖨-Button, verlinkt auf `bon_a4.php?id=X`.
+2. **Mailversand nutzt jetzt A4 statt 68mm**: Die komplette Bon-A4-Logik wurde aus `bon_a4.php` in `src/modules/kasse/BonA4Renderer.php` extrahiert (`BonA4Renderer::render(int $bonId, bool $fuerPdf): ?string`) — eine einzige Quelle für Browser-Ansicht UND Mail-PDF, keine doppelt gepflegte Vorlage mehr. `$fuerPdf=true` blendet die Druck-/Schließen-Buttons aus. `bon_speichern.php` (Abholbestätigungs-Mail) generiert den PDF-Anhang jetzt über diesen Renderer + Dompdf auf A4-Papierformat statt der bisherigen inline gebauten 68mm-Thermobon-Vorlage.
+3. Getestet: Renderer liefert für einen echten Bon in beiden Modi korrektes HTML (Druckleiste nur im Screen-Modus), Dompdf erzeugt daraus ein valides PDF (Magic-Bytes geprüft).
+
+## ✅ Rechnung-Mail zeigt jetzt korrekten Zahlungsstatus (2026-07-04)
+
+Jacky aufgefallen: `templates/mails/rechnung_mail.html.twig` zeigte **immer** "Bitte überweisen Sie den Betrag bis..." — auch wenn die Rechnung schon (ganz oder teilweise) bezahlt war. Betraf beide Auslöser: Auto-Mail nach Packplatz-Abschluss (`packplatz/warenausgang/abschliessen.php`, läuft nur wenn `zahlungsstatus='bezahlt'` — zeigte aber trotzdem den Zahlungshinweis!) und den manuellen "Rechnung per Mail"-Button (`auftraege/dokument_erstellen.php`).
+
+**Fix:** Template bekommt jetzt `zahlungsstatus`, `zahlungen` (Liste aus `auftrag_zahlungen`) und `offener_betrag` übergeben (Zahlungsdaten in `dokument_erstellen.php` per Direktabfrage, in `abschliessen.php` über die schon instanziierte `AuftragRepository::findZahlungen()`). Drei Zustände:
+- `bezahlt`: "Vielen Dank, bereits bezahlt" + Tabelle aller verzeichneten Zahlungen, kein Zahlungshinweis mehr
+- `teilbezahlt`: Tabelle der bisherigen Zahlungen + Resthinweis mit verbleibendem Betrag + Fälligkeitsdatum
+- sonst (offen/ausstehend): unverändertes Verhalten wie zuvor
+
+Getestet: alle drei Zustände per Standalone-Twig-Render verifiziert (kein Rendering-Fehler, korrekte Beträge/Zeilen je Zustand).
+
+## ✅ A4-Druck auch in auftraege/detail.php für Kassen-Aufträge (2026-07-04)
+Im gesperrten Kassen-Auftrag-Bereich (`$istKasse`-Block) gibt's jetzt neben "Kassenbon drucken" (80mm, `bon_druck.php`) auch "Als A4 drucken" (`bon_a4.php`) — beide nutzen dieselbe `$kasseBon['id']`. Normale (nicht-Kasse) Aufträge unverändert, die haben ihre reguläre A4-Rechnung schon über die Dokumente-Buttons.
 
 **Why:** Vermeidet dauerhafte Doppelpflege zweier SQL-Dialekte; nutzt BFRs eigene Offline-Fähigkeit direkt statt sie hinter einer zusätzlichen Server-Schicht zu verstecken.
 **How to apply:** Bei der Implementierung: Server-Seite (Pre-/Post-Sync-API in `MesseSyncService`/`ajax_messe.php`) ist bereits fertig und wird unverändert wiederverwendet — nur der Client ist neu zu bauen.
+
+## Korrekturrunde 3 (2026-07-04, nach echtem Browser-Test von Jacky) — Offline-Kasse jetzt browser-getestet
+
+Nach dem Service-Layer-Test kam der erste echte Klick-Test im Browser — dabei kamen fünf reale Bugs zum Vorschein, die reine PHP-CLI-Tests nicht gefangen hatten:
+
+1. **`kasse/shell_top.php` fehlte `window.BASE_PATH`** — beim BASE_PATH-Umbau (Session 23) wurde nur `includes/shell_top.php` angepasst, die separate Kasse-eigene Shell übersehen. Externe JS-Dateien (Messe-Vorbereitung/-Rückkehr) bauten dadurch URLs wie `.../undefined/kasse/ajax_artikel.php` → 404 → "Fehler bei der Suche". Jetzt behoben.
+2. **`ajax_messe.php` rief `Auth::requireLogin()`/`Auth::getUserId()`** — beide Methoden existieren nicht (Projekt-Konvention: `require auth_check.php` + `$_SESSION['benutzer']['id']`). PHP-Fatal-Error → HTML statt JSON → "Netzwerkfehler bei der Umbuchung" im Frontend, obwohl serverseitig (vor dem Fehler) teils schon reale Bestandsbuchungen gelaufen waren.
+3. **`umbuchungZurMesse()` legte bei jedem Klick ein neues Sync-Paket an** — Jacky bemerkte: "mit jedem Umbuchung durchführen Klick wird neue Offline-Kasse laden angelegt?" Jetzt: offenes (`status='vorbereitet'`) Paket pro Kasse+Lager wird wiederverwendet, gleiche Artikel+Charge werden addiert statt dupliziert (wichtig, da `rueckkehrVerarbeiten()` von genau einer Zeile pro Artikel+Charge pro Sync ausgeht).
+4. **Quell-Lager war hart auf 1 codiert** (`kasse_messe_vorbereiten.js`) — Jacky: "aus welchem Lager wir die Messe befüllen wollen wird auch nicht hinterfragt". Echtes Problem, da im System bereits zwei normale Lager existieren (Ladengeschäft + Privathaus-Keller). Jetzt eigenes "Von Lager"-Dropdown in `messe_vorbereiten.php`.
+5. **Chargen-Auswahl-UX**: der einzelne "+"-Button war eigentlich ein "Übernehmen"-Button (Menge erst eintippen, dann klicken), ohne Möglichkeit etwas wieder zu entfernen. Umgebaut zu echtem Stepper (−/Anzahl/+) mit Live-Anzeige "verfügbar"/"im Warenkorb", Buttons deaktivieren sich am Limit.
+
+**Wichtige Lektion (Testkontamination):** Beim Debuggen von Punkt 1 wurden Scratch-Testskripte direkt gegen echte Artikel (u.a. Artikel 245) und Jackys echte Test-Kasse "Messe-Laptop (Test)" (id=2) ausgeführt, ohne danach aufzuräumen — Jacky bemerkte die Kontamination selbst ("Lagerstand falsch, Artikel irgendwo, Chargen wieder beim Teufel"). Musste rückwirkend per SQL bereinigt werden (Lagerbestand zurückgerechnet, Test-Sync-Datensätze gelöscht). Siehe [[feedback_test_isolation]].
+
+## ✅ Chargen-Sichtbarkeit im Artikel-Lagerbestand behoben (2026-07-04)
+
+Nebenbefund beim Testen: `artikel/detail.php` (Tab Lager) zeigte "Gesamtbestand: 3" aber nur Chargen, die in Summe 2 ergaben — 1 Einheit lag in einer `charge=NULL`-Zeile (`charge_status='nachzutragen'`), die `LagerRepository::findBestandChargeProLager()` bewusst aus der Chargen-Liste gefiltert hatte (Kommentar: "Zeilen ohne Charge fließen nur in die Summe"), aber weiterhin mitzählte. Jetzt: bei chargenpflichtigen Artikeln wird diese Zeile sichtbar ("— ohne Charge —", rot), bei normalen Artikeln bleibt sie ausgeblendet (Regelfall, keine Warnung nötig). Zusätzlich: Chargen mit Bestand 0 werden jetzt grundsätzlich weder gezählt noch angezeigt (Jackys Einwand: sonst sammeln sich bei gut laufenden Artikeln nach einem Jahr zig längst leere Chargen an).
+
+## ✅ Chargen-Filter im Bewegungslog (Artikel-Detailseite) — 2026-07-04
+
+`artikel/detail.php` (Tab Lager, "Letzte Lagerbewegungen") hat jetzt ein Dropdown mit allen historischen Chargen des Artikels. Auswahl lädt per AJAX (`artikel/bewegungslog_ajax.php`, HTML-Fragment via `artikel/bewegungslog_tabelle.php`) die **vollständige** Bewegungshistorie dieser einen Charge (EK bis letzter Verkauf) — ohne die sonst übliche 10er-Anzeigegrenze. Das ist die artikel-eigene Variante von Jackys Chargen-Nachverfolgbarkeit-Wunsch; die zentrale, artikelübergreifende Version ist separat vorgemerkt, siehe [[project_chargen_nachverfolgung]].

@@ -539,11 +539,7 @@ class LagerRepository
             }
 
             $lagerGruppen[$lid]['gesamt'] += $row['bestand'];
-
-            // Nur Chargen-Zeilen in die Liste — Zeilen ohne Charge fließen nur in die Summe
-            if ($row['charge'] !== null) {
-                $lagerGruppen[$lid]['chargen'][] = $row;
-            }
+            $lagerGruppen[$lid]['chargen'][] = $row;
         }
 
         return $lagerGruppen;
@@ -557,13 +553,15 @@ class LagerRepository
     }
 
     /**
-     * Gibt die letzten 10 Lagerbewegungen für einen Artikel zurück.
+     * Gibt die Lagerbewegungen für einen Artikel zurück.
      * Enthält: Bewegungstyp, Menge, Bestand vorher/nachher, Charge, Referenz (Bestellnummer),
-     * Benutzer-Formularname und Lager-Name. Nur letzte 10 für schnelle Anzeige.
+     * Benutzer-Formularname und Lager-Name.
+     * Ohne Charge-Filter: nur die letzten 10 (schnelle Standardansicht).
+     * Mit Charge-Filter: vollständige Historie dieser einen Charge (EK bis letzter Verkauf) — kein Limit.
      */
-    public function findBewegungslogFuerArtikel(int $artikelId): array
+    public function findBewegungslogFuerArtikel(int $artikelId, ?string $charge = null): array
     {
-        $stmt = $this->db->prepare("
+        $sql = "
         SELECT
             lb.artikel_id,
             lb.lager_id,
@@ -582,14 +580,36 @@ class LagerRepository
             LEFT JOIN benutzer b ON b.id = lb.benutzer_id
             JOIN lager l ON l.id = lb.lager_id
             WHERE lb.artikel_id = :artikel_id
-            ORDER BY lb.erstellt_am DESC
-            LIMIT 10
-        ");
+        ";
+        $params = ['artikel_id' => $artikelId];
 
+        if ($charge !== null) {
+            $sql .= " AND lb.charge = :charge";
+            $params['charge'] = $charge;
+        }
+
+        $sql .= " ORDER BY lb.erstellt_am DESC";
+
+        if ($charge === null) {
+            $sql .= " LIMIT 10";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Alle bekannten (historischen) Chargen eines Artikels — für das Chargen-Filter-Dropdown. */
+    public function findChargenFuerArtikel(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT charge FROM lager_bewegungen
+            WHERE artikel_id = :artikel_id AND charge IS NOT NULL
+            ORDER BY charge
+        ");
         $stmt->execute(['artikel_id' => $artikelId]);
 
-        $bewegungen = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return $bewegungen;
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

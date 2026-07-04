@@ -139,6 +139,8 @@ function eur(float $v): string { return '€ ' . number_format($v, 2, ',', '.');
         <form method="post" action="kassensturz_speichern.php" onsubmit="return confirm('Tagesabschluss wirklich durchführen?')">
           <input type="hidden" name="aktion" value="z_bon">
           <input type="hidden" name="kasse_id" value="<?= $kasseId ?>">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:3px">Für Tag (leer = heute — z.B. nachträglich nach Messe-Upload)</label>
+          <input type="date" name="datum" class="ks-input" style="margin-bottom:8px" max="<?= date('Y-m-d') ?>">
           <button type="submit" class="ks-btn ks-btn-primary" style="width:100%">🔒 Z-Bon / Tagesabschluss</button>
         </form>
       </div>

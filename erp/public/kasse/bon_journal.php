@@ -83,7 +83,11 @@ require_once __DIR__ . '/shell_top.php';
           <td style="color:#666;font-size:12px"><?= htmlspecialchars($bon['benutzer_name'] ?? '—') ?></td>
           <td style="white-space:nowrap">
             <a href="bon_druck.php?id=<?= $bon['id'] ?>" target="_blank"
-               class="ks-btn ks-btn-secondary" style="padding:5px 10px;font-size:12px">🖨</a>
+               class="ks-btn ks-btn-secondary" style="padding:5px 10px;font-size:12px" title="80mm-Bon">🖨</a>
+            <?php if (in_array($bon['typ'], ['verkauf', 'storno'], true)): ?>
+              <a href="bon_a4.php?id=<?= $bon['id'] ?>" target="_blank"
+                 class="ks-btn ks-btn-secondary" style="padding:5px 10px;font-size:12px" title="Als A4-Rechnung anzeigen/drucken">A4</a>
+            <?php endif; ?>
             <?php if ($bon['typ'] === 'verkauf' && !$bon['storniert']): ?>
               <form method="post" action="bon_stornieren.php" style="display:inline" onsubmit="return confirm('Bon wirklich stornieren?')">
                 <input type="hidden" name="bon_id" value="<?= $bon['id'] ?>">
