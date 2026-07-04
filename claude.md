@@ -559,6 +559,35 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-04, Session 24)
+
+### A4-Rechnungsdruck komplett ✅ (2026-07-04)
+- **`src/modules/kasse/BonA4Renderer.php`** (neu): HTML/CSS-Aufbau aus `bon_a4.php` extrahiert in `render(int $bonId, bool $fuerPdf = false)` — `fuerPdf=true` unterdrückt die Druck/Schließen-Buttonleiste
+- `kasse/bon_a4.php`: jetzt dünner Wrapper um `BonA4Renderer::render()`
+- `kasse/bon_speichern.php`: Mailanhang (Abholbestätigung) nutzt jetzt die A4-Rechnung statt eines eigenen inline gebauten 68mm-Thermobon-PDFs; Dompdf-Papierformat auf A4 Hochformat umgestellt
+- `kasse/bon_journal.php`: "A4"-Button neben dem bestehenden 🖨-Button für Verkauf/Storno-Zeilen (Nachdruck älterer Bons, vorher nur direkt nach Erstellung erreichbar)
+- `auftraege/detail.php`: bei Kassen-Aufträgen zusätzlich "Als A4 drucken" neben "Kassenbon drucken"
+
+### Rechnung-Mail: Zahlungsstatus korrekt anzeigen ✅ (2026-07-04)
+- `templates/mails/rechnung_mail.html.twig`: 3 Zustände (`bezahlt` → Dank + Zahlungsübersicht, `teilbezahlt` → Teilzahlungen + Restbetrag, sonst → ursprünglicher "bitte zahlen"-Text) statt immer denselben Zahlungshinweis
+- `packplatz/warenausgang/abschliessen.php` (Auto-Mail) + `auftraege/dokument_erstellen.php` (manueller Versand): beide ermitteln jetzt `zahlungsstatus`/`bezahlt_gesamt`/`offener_betrag` über `AuftragRepository::findZahlungen()` und übergeben sie ans Template
+
+### Offline-Kasse (Messe) ✅ FERTIG — bereit für BFR-Hardware-Test (2026-07-04)
+Kompletter Workflow: **Vorbereitung → Offline-Verkauf → Rückkehr**, nicht nur der Kassen-Client allein.
+- `kasse/messe_vorbereiten.php` + `js/kasse_messe_vorbereiten.js`: Artikel scannen/suchen, Ziel-Kasse + Ziel-Lager + **Quell-Lager wählen** (war anfangs hart auf Lager 1 codiert — echter Bug, da mehrere Quelllager existieren können), bei chargenpflichtigen Artikeln echte Chargen-Auswahl mit +/−-Stepper (live "verfügbar"/"im Warenkorb", keine Übermengen möglich)
+- `kasse/bon_offline.php` + `js/kasse_bon_offline.js` + `kasse/sw_bon_offline.js`: der eigentliche Offline-Client. **Überlebt Browser-Absturz/Neustart ganz ohne Serververbindung** (Service Worker cached die App-Hülle, IndexedDB hält Artikel/Chargen/noch nicht hochgeladene Bons) — Sync-Daten müssen nur einmalig online geladen werden. Freier Artikel (Divers-Platzhalter), Textsuche ab 2 Zeichen, echte Chargen-Auswahl (keine Freitext-Chargen!), BFR-Signierung direkt per `fetch()` vom Browser
+- `kasse/messe_rueckkehr.php` + `js/kasse_messe_rueckkehr.js`: Rückbuchung pro Charge (Rückgabe/Schwund), danach retroaktiver Z-Bon pro Messetag möglich (Datumsfeld in `kassensturz.php`, leer = heute)
+- `src/modules/kasse/MesseSyncService.php`: Chargen-Tracking durchgängig (`kassen_messe_umbuchungen.charge`, Migration 106), `preSyncExportieren()` liefert `bon_nr_zaehler`/`divers_artikel_id`/`chargen` an den Offline-Client
+- **Korrekturrunde nach Praxis-Feedback**: ursprüngliche Version verlangte durchgehend geöffneten Browser-Tab (unbrauchbar bei mehrtägigen Messen) und erlaubte Freitext-Chargen beim Umbuchen (hätte Lagerstände korrumpiert) — beides überarbeitet, siehe [[project_kassen_verwaltung]]
+- `docs/offline_kasse_anleitung.md`: vollständige Anleitung inkl. Feature-Vergleich online/offline und bekannte Lücken
+
+### Bugfixes beim ersten echten Browser-Test gefunden (2026-07-04)
+- **`kasse/shell_top.php` fehlte `window.BASE_PATH`**: beim gestrigen BASE_PATH-Umbau übersehen (nur die allgemeine `includes/shell_top.php` hatte es bekommen) — Kasse-Seiten mit externem JS (Messe-Vorbereitung/-Rückkehr) bauten dadurch kaputte URLs (`.../undefined/kasse/...`)
+- **`ajax_messe.php` rief `Auth::requireLogin()`/`Auth::getUserId()`** — beide Methoden existieren nicht in der `Auth`-Klasse (Konvention im Projekt: `require auth_check.php` + `$_SESSION['benutzer']['id']`). Verursachte einen PHP-Fatal-Error → HTML statt JSON → "Netzwerkfehler" im Frontend
+- **`MesseSyncService::umbuchungZurMesse()` legte bei jedem Klick ein neues Sync-Paket an** — jetzt wird ein offenes ("vorbereitet") Paket pro Kasse+Lager-Kombination wiederverwendet, gleiche Artikel+Charge werden addiert statt dupliziert
+- **Artikel-Lagerbestand ohne Chargen-Zuordnung war unsichtbar**: `LagerRepository::findBestandChargeProLager()` filterte Zeilen mit `charge IS NULL` komplett aus der Chargen-Liste, zählte sie aber in der Gesamtsumme mit — führte zu "Gesamt: 3, aber nur 2 in Chargen auffindbar". Jetzt sichtbar (rot, "— ohne Charge —") bei chargenpflichtigen Artikeln; zusätzlich werden Chargen mit Bestand 0 komplett ausgeblendet (sonst sammeln sich bei guten Sellern nach Jahren viele längst leere Chargen an)
+- **Bewegungslog-Chargen-Filter** (`artikel/detail.php`, Tab Lager): Dropdown mit allen historischen Chargen eines Artikels — Auswahl lädt per AJAX (`artikel/bewegungslog_ajax.php`) die vollständige Bewegungshistorie dieser einen Charge (EK bis letzter Verkauf) ohne die sonst übliche 10er-Anzeigegrenze
+
 ## What's Implemented (Stand 2026-07-03, Session 23)
 
 ### Root-Pfad konfigurierbar + Versionsnummer ✅ (2026-07-03)
@@ -761,17 +790,12 @@ Hersteller bestätigt: BFR antwortet immer entweder `RC='OK'` oder gar nicht —
 
 ## Nächste Schritte (Priorität)
 
-### Für die nächste Session vorgemerkt (Stand 2026-07-03, Session 23)
-1. **A4-Rechnungsnachdruck**: Link/Button in `kasse/bon_journal.php` zu `bon_a4.php?id=X` ergänzen (aktuell nur direkt nach Bon-Erstellung erreichbar, nicht für ältere Bons)
-2. **Mailversand: A4 statt 68mm-Bon** — `bon_speichern.php` baut beim Mailanhang (Abholbestätigung) aktuell ein eigenes schmales 68mm-Thermobon-PDF inline, obwohl die deutlich bessere A4-Rechnung (`bon_a4.php`) schon existiert. Umstellen auf die A4-Rendering-Logik.
-3. **Offline-Kasse fertigbauen** — Ziel: eine Instanz mitsamt Testdaten zum BFR-Hersteller bringen für einen echten Signaturkarten-Test (Demo-UID). Architektur bereits entschieden (siehe unten) — jetzt Client implementieren.
-
-### Offline-Kasse: Architektur entschieden (2026-07-03), Client-Bau noch offen
-- **Entscheidung:** kein SQLite/kein lokaler Server am Messe-Laptop — stattdessen ein JS-Client mit **IndexedDB** als lokale Datenbank. Grund: MariaDB nutzt bereits `ON DUPLICATE KEY UPDATE`, `JSON_TABLE`/`->>`-Pfade, `DATEDIFF()` u.a. ohne SQLite-Äquivalent — bei >100 Migrationen wäre ein zweiter SQL-Dialekt eine dauerhafte statt einmalige Wartungslast.
-- **RKSV-Signatur:** Browser ruft `http://127.0.0.1:8787/register` (BFR) direkt per `fetch()` auf, keine PHP-Zwischenschicht nötig — BFR ist bewusst als eigenständiges XML-über-HTTP-Gerät gebaut.
-- **Lagerbuchungen:** keine Live-Buchung während der Messe nötig, nur lokale Anzeige. Echte Buchung passiert gesammelt bei der Rückkehr — macht `MesseSyncService::rueckkehrVerarbeiten()` schon heute so.
-- **Server-Seite bereits fertig** (überraschend beim Nachschauen entdeckt, war nie dokumentiert): `MesseSyncService.php` (Umbuchung/Pre-Sync/Post-Sync/Rückkehr), `ajax_messe.php`, Migration 080 — wird unverändert wiederverwendet.
-- **Noch zu bauen:** die eigentliche Offline-Variante von `bon.php` (oder Modus-Umschaltung darin), IndexedDB-Schema, Sync-Flow, Fehlerbehandlung bei abgebrochenem Upload.
+### Für die nächste Session vorgemerkt (Stand 2026-07-04, Session 24)
+1. **Echter BFR-Hardware-Test** — Offline-Kasse ist jetzt funktional fertig (siehe Session 24 oben), nächster Schritt ist der reale Test mit Demo-Signaturkarte beim BFR-Hersteller.
+2. **Lager-Verwaltungs-UI** — neue Lager anlegen/bearbeiten geht aktuell nur per SQL. Bewusst zurückgestellt bis die Offline-Kasse funktional brauchbar war (jetzt der Fall). Sollte ein Flag "für Offline-Kassen auswählbar" bekommen statt sich auf `lager.typ='messe'` zu verlassen.
+3. **Nummernkreis-Verwaltung** — weder Kassenbon-Nummern (pro Kasse) noch Dokumenten-Nummern (`dokument_nummern`) sind irgendwo einsehbar/konfigurierbar. Ebenfalls bewusst zurückgestellt.
+4. **Zentrale Chargen-Nachverfolgung** — artikelübergreifende Seite (Artikelsuche → Chargen-Dropdown → volle Bewegungshistorie), vermutlich bei `erp/public/lager/` neben dem bestehenden Chargen-Nachtrag. Siehe [[project_chargen_nachverfolgung]]. Die artikel-eigene Variante (Tab Lager in `artikel/detail.php`) ist bereits fertig (Session 24).
+5. **Kassen-Identität (Online-Kasse)** — `bon.php`/`kassensturz.php` etc. haben `getKasse(1)` hart codiert, kein Mechanismus für "welche Kasse bin ich" bei einer zweiten Ladenkasse. Betrifft nicht die Offline-Kasse (deren Identität kommt über die Sync-URL). Passendes, bereits geplantes (aber ungebautes) Feature dafür existiert im Datenmodell: `arbeitsplaetze`-Tabelle mit Geräte-UUID-Token.
 
 ### Varianten-System UI ✅ komplett
 1. ~~Achsen-Verwaltung~~ ✅
