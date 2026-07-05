@@ -35,6 +35,22 @@ if (!$auftrag) {
     header('Location: index.php'); exit;
 }
 
+// ── Manager-Override: Gutschrift braucht packplatz.gutschrift oder Manager-PIN ──
+// Läuft VOR dem Lager-Einbuchen weiter unten, damit bei fehlender Freigabe wirklich
+// nichts gebucht wird (keine Ware im Lager ohne zugehörige Gutschrift-Entscheidung).
+if ($ergebnis === 'gutschrift' && !Auth::kann('packplatz.gutschrift')) {
+    $manager = Auth::pruefeManagerPin((string)($_POST['manager_pin'] ?? ''));
+    if (!$manager) {
+        $_SESSION['fehler'] = 'Gutschrift braucht eine Manager-Freigabe (PIN).';
+        header('Location: detail.php?auftrag_id=' . $auftragId); exit;
+    }
+    Logger::log('manager_override', 'auftraege', $auftragId, [
+        'ausgeloest_von'  => $benutzerId,
+        'freigegeben_von' => $manager['id'],
+        'kontext'         => 'packplatz_gutschrift',
+    ]);
+}
+
 // ── Positionen filtern (nur angehakte) ─────────────────────────────────────
 $positionen = $_POST['positionen'] ?? [];
 $rueckPositionen = [];

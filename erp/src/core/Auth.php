@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/Zugriffsregeln.php';
 
 /**
  * Auth – Session-basierte Authentifizierung und Berechtigungsprüfung
@@ -54,6 +55,21 @@ class Auth
             $_SESSION['benutzer'] = $user;
 
             $id = $user['id'];
+
+            // Eigene Rolle + Rang laden — bestimmt in der Rollen-Matrix-UI, wessen
+            // Rechte dieser Benutzer bearbeiten darf (nur echt niedrigerer Rang).
+            $rolleStmt = $db->prepare("
+                SELECT r.id AS rolle_id, r.rang
+                FROM benutzer_rollen br
+                INNER JOIN rollen r ON r.id = br.rolle_id
+                WHERE br.benutzer_id = :id
+                ORDER BY r.rang DESC
+                LIMIT 1
+            ");
+            $rolleStmt->execute(['id' => $id]);
+            $rolle = $rolleStmt->fetch(PDO::FETCH_ASSOC);
+            $_SESSION['benutzer']['rolle_id'] = $rolle['rolle_id'] ?? null;
+            $_SESSION['benutzer']['rolle_rang'] = (int)($rolle['rang'] ?? 0);
 
             // Alle Berechtigungen über Rollen-Join laden
             $stmt = $db->prepare("
@@ -120,10 +136,20 @@ class Auth
     /**
      * Prüft ob der eingeloggte Benutzer eine bestimmte Berechtigung hat.
      *
+     * Superadmin hat IMMER alles — unabhängig von rollen_berechtigungen. Das ist
+     * bewusst ein Code-Invariant statt einer Daten-Abhängigkeit: sonst müsste bei
+     * jeder neuen Berechtigung daran gedacht werden, sie auch Superadmin explizit
+     * zuzuweisen (Ausnahme: lizenz.verwalten bleibt trotzdem exklusiv Superadmin,
+     * das ändert diese Regel nicht — sie macht Superadmin nur zusätzlich robust
+     * gegen vergessene Zuweisungen bei künftigen neuen Berechtigungen).
+     *
      * @param string $berechtigung Format: "modul.aktion" (z.B. "artikel.bearbeiten")
      */
     public static function kann(string $berechtigung): bool
     {
+        if (($_SESSION['benutzer']['rolle_rang'] ?? 0) >= 100) {
+            return true;
+        }
         return in_array($berechtigung, $_SESSION['berechtigungen'] ?? []);
     }
 
@@ -134,5 +160,102 @@ class Auth
     public static function benutzer(): array
     {
         return $_SESSION['benutzer'] ?? [];
+    }
+
+    /**
+     * Seiten-Rechtecheck: schlägt in Zugriffsregeln nach, welche Berechtigung
+     * das aufgerufene Skript braucht, und blockt bei Bedarf. Wird von
+     * auth_check.php auf jeder Seite direkt nach check() aufgerufen.
+     *
+     * Kein Eintrag in Zugriffsregeln → keine Blockade (nur Login-Pflicht wie bisher).
+     * Fehlende Berechtigung → JSON-Fehler (AJAX-Endpunkte) oder Redirect auf
+     * zugriff_verweigert.php (normale Seiten).
+     */
+    public static function pruefeSeite(): void
+    {
+        $publicRoot = realpath(__DIR__ . '/../../public');
+        $scriptDir  = realpath(dirname($_SERVER['SCRIPT_FILENAME']));
+        $datei      = basename($_SERVER['SCRIPT_FILENAME']);
+
+        if ($publicRoot === false || $scriptDir === false || strpos($scriptDir, $publicRoot) !== 0) {
+            return;
+        }
+        $verzeichnis = ltrim(str_replace('\\', '/', substr($scriptDir, strlen($publicRoot))), '/');
+
+        $benoetigt = Zugriffsregeln::benoetigteBerechtigung($verzeichnis, $datei);
+        if ($benoetigt === null || self::kann($benoetigt)) {
+            return;
+        }
+
+        if (Zugriffsregeln::istJsonEndpunkt($verzeichnis, $datei)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['erfolg' => false, 'fehler' => 'Keine Berechtigung für diese Aktion.']);
+            exit;
+        }
+
+        header('Location: ' . BASE_PATH . '/zugriff_verweigert.php');
+        exit;
+    }
+
+    /**
+     * Fallback-Ziel für Benutzer ohne dashboard.zugriff (z.B. Praktikant).
+     * Reihenfolge = grobe Priorität der Module; benutzer/profil.php am Ende
+     * ist immer erreichbar (kein Rechte-Eintrag), damit niemand ganz ohne
+     * Ziel dasteht.
+     *
+     * @return string Absoluter Pfad ab BASE_PATH, z.B. "/artikel/liste.php"
+     */
+    public static function startseiteFuerBenutzer(): string
+    {
+        $kandidaten = [
+            'artikel.anzeigen'     => '/artikel/liste.php',
+            'lager.anzeigen'       => '/lager/uebersicht.php',
+            'kunden.anzeigen'      => '/kunden/liste.php',
+            'auftraege.anzeigen'   => '/auftraege/liste.php',
+            'bestellwesen.anzeigen' => '/bestellungen/liste.php',
+            'partner.anzeigen'     => '/partner/liste.php',
+            'buchhaltung.anzeigen' => '/buchhaltung/artikel_gruppen.php',
+            'einstellungen.anzeigen' => '/einstellungen/index.php',
+            'benutzer.anzeigen'    => '/benutzer/liste.php',
+        ];
+        foreach ($kandidaten as $berechtigung => $ziel) {
+            if (self::kann($berechtigung)) {
+                return $ziel;
+            }
+        }
+        return '/benutzer/profil.php';
+    }
+
+    /**
+     * Manager-Override: prüft einen eingegebenen PIN gegen alle aktiven Benutzer
+     * mit Rolle Manager+ (rang >= 70), die einen PIN gesetzt haben.
+     *
+     * Bewusst ohne Benutzername — an der Kasse/Packplatz soll der Manager nur
+     * seinen PIN eintippen, nicht sich selbst erst auswählen müssen.
+     *
+     * @return array{id:int, formularname:string}|null Der Manager bei Erfolg, sonst null
+     */
+    public static function pruefeManagerPin(string $pin): ?array
+    {
+        $pin = trim($pin);
+        if ($pin === '') {
+            return null;
+        }
+
+        $db = Database::getInstance();
+        $stmt = $db->query("
+            SELECT DISTINCT u.id, u.formularname, u.manager_pin_hash
+            FROM benutzer u
+            INNER JOIN benutzer_rollen br ON br.benutzer_id = u.id
+            INNER JOIN rollen r ON r.id = br.rolle_id
+            WHERE u.aktiv = 1 AND u.manager_pin_hash IS NOT NULL AND r.rang >= 70
+        ");
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (password_verify($pin, $row['manager_pin_hash'])) {
+                return ['id' => (int)$row['id'], 'formularname' => $row['formularname']];
+            }
+        }
+        return null;
     }
 }

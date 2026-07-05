@@ -22,8 +22,10 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/core/Database.php';
 require_once __DIR__ . '/../src/core/Mailer.php';
 require_once __DIR__ . '/../src/core/Logger.php';
+require_once __DIR__ . '/../src/modules/auftraege/AuftragRepository.php';
 
 $db  = Database::getInstance();
+$auftragRepo = new AuftragRepository();
 $log = fn(string $msg) => print('[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL);
 
 // Logger::log() faellt ohne expliziten Wert auf $_SESSION zurueck, die es im
@@ -35,24 +37,25 @@ $log('=== Mahnwesen-Cronjob gestartet ===');
 // Alle offenen Aufträge mit Zahlungsrückstand (Vorkasse + Rechnung)
 // Vorkasse:  30 Tage → Auto-Stornierung (Ware noch nicht weg)
 // Rechnung:  30 Tage → nur Hinweis, KEIN Auto-Storno (Ware evtl. schon versendet!)
+// kunden.email/name sind AES-verschlüsselt (kein Klartext-Spaltenzugriff möglich) —
+// kunden_snapshot auf auftraege ist der etablierte Weg (siehe dashboard.php, dokumente/index.php),
+// deshalb kein JOIN auf kunden nötig.
 $offene = $db->query("
     SELECT
         a.id,
-        a.auftragsnummer,
+        a.auftrag_nr,
         a.erstellt_am,
         a.bruttobetrag,
         a.zahlungsart,
         a.kunden_id,
         a.kunden_snapshot,
         DATEDIFF(NOW(), a.erstellt_am) AS tage_offen,
-        k.email AS kunden_email,
         (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'erinnerung')   AS erinnerung_gesendet,
         (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'stornierung')  AS stornierung_gesendet,
         (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'hinweis')      AS hinweis_gesendet
     FROM auftraege a
-    LEFT JOIN kunden k ON k.id = a.kunden_id
     WHERE a.zahlungsart IN ('vorkasse', 'rechnung')
-      AND a.zahlungsstatus IN ('offen', 'ausstehend')
+      AND a.zahlungsstatus IN ('ausstehend', 'teilbezahlt')
       AND a.lieferstatus NOT IN ('storniert', 'abgeschlossen')
     ORDER BY a.erstellt_am ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -64,13 +67,13 @@ $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchA
 foreach ($offene as $auftrag) {
     $tage    = (int)$auftrag['tage_offen'];
     $id      = (int)$auftrag['id'];
-    $nummer  = $auftrag['auftragsnummer'];
+    $nummer  = $auftrag['auftrag_nr'];
 
-    // Kunden-Snapshot für Namen + Fallback-Email
+    // Kunden-Snapshot für Namen + Email (kunden.* ist verschlüsselt, Snapshot ist Klartext-Quelle)
     $snapshot   = !empty($auftrag['kunden_snapshot']) ? json_decode($auftrag['kunden_snapshot'], true) : [];
     $kundeName  = trim(($snapshot['vorname'] ?? '') . ' ' . ($snapshot['nachname'] ?? ''));
     if (!$kundeName) $kundeName = $snapshot['firma'] ?? 'Kunde';
-    $email      = $auftrag['kunden_email'] ?: ($snapshot['email'] ?? '');
+    $email      = $snapshot['email'] ?? '';
 
     $istVorkasse = $auftrag['zahlungsart'] === 'vorkasse';
     $istRechnung = $auftrag['zahlungsart'] === 'rechnung';
@@ -108,13 +111,14 @@ foreach ($offene as $auftrag) {
                 VALUES (?, 'stornierung', ?, 'cronjob')
             ")->execute([$id, $email]);
 
-            // Statuslog
-            $db->prepare("
-                INSERT INTO auftrag_status_log (auftrag_id, aktion, erstellt_am)
-                VALUES (?, 'Automatisch storniert (30 Tage unbezahlt — Mahnwesen-Cronjob)', NOW())
-            ")->execute([$id]);
-
             $db->commit();
+
+            // Statuslog (nach commit — logStatus ist keine eigene Transaktion)
+            $auftragRepo->logStatus($id,
+                ['zahlungsstatus' => 'storniert', 'lieferstatus' => 'storniert'],
+                'Automatisch storniert (30 Tage unbezahlt — Mahnwesen-Cronjob)',
+                $jarvisId
+            );
 
             // Mail senden
             if ($email) {
@@ -157,10 +161,11 @@ foreach ($offene as $auftrag) {
             VALUES (?, 'hinweis', ?, 'cronjob')
         ")->execute([$id, $email]);
 
-        $db->prepare("
-            INSERT INTO auftrag_status_log (auftrag_id, aktion, erstellt_am)
-            VALUES (?, 'Rechnung 30+ Tage unbezahlt — bitte manuell prüfen (kein Auto-Storno bei Rechnungszahlern)', NOW())
-        ")->execute([$id]);
+        $auftragRepo->logStatus($id,
+            [],
+            'Rechnung 30+ Tage unbezahlt — bitte manuell prüfen (kein Auto-Storno bei Rechnungszahlern)',
+            $jarvisId
+        );
 
         Logger::log('mahnwesen.rechnung_ueberfaellig', 'auftraege', $id, ['nummer' => $nummer, 'tage' => $tage], $jarvisId);
         continue;

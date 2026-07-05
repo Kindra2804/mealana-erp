@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../src/core/Logger.php';
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -73,6 +74,45 @@ $webMitnehmen     = $input['web_auftrag_mitnehmen'] ?? null;
 $nurAbschliessen      = ($input['nur_abschliessen'] ?? false) === true;
 $webAuftragZahlStatus = $input['web_auftrag_zahlungsstatus'] ?? null;
 $webAuftragBezahlt    = ($webAuftragZahlStatus === 'bezahlt');
+
+// ── Manager-Override: Barauszahlung bei Retour eines bereits bezahlten Web-Auftrags ──
+// Läuft VOR jeder Buchung (erstelleBon() folgt erst weiter unten), damit bei fehlender
+// Freigabe wirklich nichts passiert — kein halb gebuchter Bon, keine Lagerbewegung.
+if (!$nurAbschliessen && $webAuftragBezahlt && $webAuftragId) {
+    $vorabStmt = Database::getInstance()->prepare("SELECT bruttobetrag FROM auftraege WHERE id = ?");
+    $vorabStmt->execute([$webAuftragId]);
+    $vorabBruttobetrag = (float)($vorabStmt->fetchColumn() ?: 0);
+
+    $vorabAuftragAnteil = 0.0;
+    foreach ($sauberePositionen as $bp) {
+        if (!empty($bp['auftrag_position_id'])) {
+            $vorabAuftragAnteil += $bp['menge'] * $bp['einzelpreis_brutto'] * (1 - $bp['rabatt_prozent'] / 100);
+        }
+    }
+    $vorabAuftragAnteil = round($vorabAuftragAnteil, 2);
+    if ($vorabAuftragAnteil <= 0) {
+        $vorabAuftragAnteil = $vorabBruttobetrag;
+    }
+    $vorabRetourBetrag = round($vorabBruttobetrag - $vorabAuftragAnteil, 2);
+
+    if ($vorabRetourBetrag > 0.005 && !Auth::kann('kasse.auszahlung')) {
+        $manager = Auth::pruefeManagerPin((string)($input['manager_pin'] ?? ''));
+        if (!$manager) {
+            echo json_encode([
+                'erfolg' => false,
+                'fehler' => 'Auszahlung von € ' . number_format($vorabRetourBetrag, 2, ',', '.') . ' braucht eine Manager-Freigabe (PIN).',
+                'braucht_manager_pin' => true,
+            ]);
+            exit;
+        }
+        Logger::log('manager_override', 'auftraege', $webAuftragId, [
+            'ausgeloest_von'  => $benutzerId,
+            'freigegeben_von' => $manager['id'],
+            'kontext'         => 'kasse_auszahlung',
+            'betrag'          => $vorabRetourBetrag,
+        ]);
+    }
+}
 
 // Per-Position: kein_lagerabzug für Auftrag-Positionen (schon gebucht) + Retour-Positionen
 foreach ($sauberePositionen as &$bp) {
@@ -338,11 +378,22 @@ if ($result['erfolg'] && $webAuftragId) {
             }
 
             // ── Zahlung buchen ────────────────────────────────────────────────
+            // $summeBezahltGesamt bleibt null wenn $webAuftragBezahlt (Retour-Zweig, siehe unten) —
+            // dort wird der Zahlstatus über $retourBetrag entschieden, nicht über die Summe.
+            $summeBezahltGesamt = null;
             if (!$webAuftragBezahlt) {
                 $db->prepare("
                     INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
                     VALUES (?, ?, CURDATE(), ?, ?)
                 ")->execute([$webAuftragId, $auftragAnteil, 'Bezahlt an der Kasse — Bon ' . $bonNr, $benutzerId]);
+
+                // Kumulierte Summe ALLER Zahlungen (nicht nur dieser Transaktion!) entscheidet
+                // über "vollständig bezahlt" — ein $auftragAnteil-Vergleich allein würde bei
+                // mehreren Teilzahlungen oder Rundungsdifferenzen zwischen Positions- und
+                // Kopfbetrag fälschlich dauerhaft auf 'teilbezahlt' stehen bleiben.
+                $summeStmt = $db->prepare("SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = ?");
+                $summeStmt->execute([$webAuftragId]);
+                $summeBezahltGesamt = (float)$summeStmt->fetchColumn();
             } else {
                 // Bereits bezahlt: nur Erstattung (negativen Betrag) buchen wenn Retour
                 $retourBetrag = round((float)$auftrag['bruttobetrag'] - $auftragAnteil, 2);
@@ -360,7 +411,7 @@ if ($result['erfolg'] && $webAuftragId) {
                 if ($webAuftragBezahlt) {
                     $neuerZahlStatus = isset($retourBetrag) && $retourBetrag > 0.005 ? 'erstattet' : 'bezahlt';
                 } else {
-                    $neuerZahlStatus = $auftragAnteil >= (float)$auftrag['bruttobetrag'] ? 'bezahlt' : 'teilbezahlt';
+                    $neuerZahlStatus = $summeBezahltGesamt >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt' : 'teilbezahlt';
                 }
 
                 $db->prepare("
@@ -377,7 +428,9 @@ if ($result['erfolg'] && $webAuftragId) {
                 );
             } else {
                 // nur Zahlung — Lieferstatus unverändert
-                $neuerZahlStatus = $auftragAnteil >= (float)$auftrag['bruttobetrag'] ? 'bezahlt' : 'teilbezahlt';
+                // Kumulierte Summe entscheidet (siehe Kommentar oben) — Fallback auf $auftragAnteil
+                // nur für den (praktisch nicht erreichbaren) Fall $webAuftragBezahlt=true in diesem Zweig.
+                $neuerZahlStatus = ($summeBezahltGesamt ?? $auftragAnteil) >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt' : 'teilbezahlt';
                 $db->prepare("
                     UPDATE auftraege SET zahlungsstatus = ?, aktualisiert_am = NOW() WHERE id = ?
                 ")->execute([$neuerZahlStatus, $webAuftragId]);

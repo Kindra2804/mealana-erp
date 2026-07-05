@@ -57,8 +57,25 @@ if (isset($_POST['aktion']) && $_POST['aktion'] === 'passwort') {
     }
 }
 
+// ── Manager-PIN setzen/ändern ─────────────────────────────────────────────────
+$istManagerPlus = ($_SESSION['benutzer']['rolle_rang'] ?? 0) >= 70;
+if ($istManagerPlus && isset($_POST['aktion']) && $_POST['aktion'] === 'manager_pin') {
+    $neuPin  = trim($_POST['pin_neu'] ?? '');
+    $pinBest = trim($_POST['pin_bestaetigung'] ?? '');
+
+    if (!preg_match('/^\d{4,6}$/', $neuPin)) {
+        $fehler = 'PIN muss 4-6 Ziffern haben.';
+    } elseif ($neuPin !== $pinBest) {
+        $fehler = 'PIN und Bestätigung stimmen nicht überein.';
+    } else {
+        $stmt = $db->prepare("UPDATE benutzer SET manager_pin_hash = :pin WHERE id = :id");
+        $stmt->execute(['pin' => password_hash($neuPin, PASSWORD_BCRYPT), 'id' => $ich['id']]);
+        $meldung = 'Manager-PIN gespeichert.';
+    }
+}
+
 // Aktuelle Daten laden
-$zeile = $db->prepare("SELECT vorname, nachname, formularname, email FROM benutzer WHERE id = :id");
+$zeile = $db->prepare("SELECT vorname, nachname, formularname, email, manager_pin_hash FROM benutzer WHERE id = :id");
 $zeile->execute(['id' => $ich['id']]);
 $daten = $zeile->fetch(PDO::FETCH_ASSOC);
 
@@ -130,6 +147,30 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <button type="submit" class="btn btn-primary">Passwort ändern</button>
             </form>
         </div>
+
+        <?php if ($istManagerPlus): ?>
+        <!-- Manager-PIN -->
+        <div class="card" style="flex:1;min-width:280px">
+            <h2 style="margin-bottom:16px;font-size:16px">Manager-PIN</h2>
+            <p style="color:#888;font-size:12px;margin-bottom:16px">
+                Wird an Kasse/Packplatz für die Freigabe von Auszahlungen und Gutschriften anderer Benutzer abgefragt.
+                <?= !empty($daten['manager_pin_hash']) ? '<br>Aktuell gesetzt.' : '<br>Noch nicht gesetzt.' ?>
+            </p>
+            <form method="POST">
+                <input type="hidden" name="aktion" value="manager_pin">
+                <div class="form-group">
+                    <label class="form-label">Neuer PIN</label>
+                    <input class="erp-input" type="password" inputmode="numeric" pattern="\d{4,6}" name="pin_neu" autocomplete="off">
+                    <small style="color:#888;font-size:12px">4-6 Ziffern</small>
+                </div>
+                <div class="form-group" style="margin-bottom:16px">
+                    <label class="form-label">Bestätigung</label>
+                    <input class="erp-input" type="password" inputmode="numeric" pattern="\d{4,6}" name="pin_bestaetigung" autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary">PIN speichern</button>
+            </form>
+        </div>
+        <?php endif; ?>
 
     </div>
 </div>

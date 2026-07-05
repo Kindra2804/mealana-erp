@@ -1249,6 +1249,24 @@ body {
   </div>
 </div>
 
+<!-- Manager-Freigabe per PIN (Auszahlung ohne kasse.auszahlung-Recht) -->
+<div id="ov-manager-pin" class="overlay">
+  <div class="overlay-box" style="max-width:360px">
+    <div class="overlay-header">🔒 Manager-Freigabe nötig</div>
+    <div style="padding:20px;text-align:center">
+      <p id="manager-pin-info-text" style="font-size:13px;color:#6b7280;margin-bottom:16px"></p>
+      <input type="password" id="manager-pin-input" inputmode="numeric" pattern="\d{4,6}" maxlength="6"
+             placeholder="PIN" autocomplete="off"
+             style="width:140px;text-align:center;font-size:22px;letter-spacing:6px;padding:10px;border:1px solid #d0d7e0;border-radius:6px;margin-bottom:8px">
+      <p id="manager-pin-fehler" style="color:#dc2626;font-size:12px;min-height:16px;margin-bottom:12px"></p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button onclick="managerPinAbbrechen()" class="btn btn-secondary">Abbrechen</button>
+        <button onclick="managerPinBestaetigen()" class="btn btn-primary">Freigeben</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Ausgabe-Auswahl nach Zahlung ──────────────────────────────────────── -->
 <div class="ov" id="ov-ausgabe">
   <div class="ov-box" style="max-width:400px;text-align:center">
@@ -2346,6 +2364,14 @@ function bonSpeichern(zahlDaten) {
             if (d.bon_id) {
                 ausgabeNachZahlung(d.bon_id, d.bon_nr || '');
             }
+        } else if (d.braucht_manager_pin) {
+            zusatzPositionen = zp; // Rücksetzen, Retry übernimmt zp erneut
+            _managerPinPendingZahlDaten = zahlDaten;
+            document.getElementById('manager-pin-info-text').textContent = d.fehler;
+            document.getElementById('manager-pin-fehler').textContent = '';
+            document.getElementById('manager-pin-input').value = '';
+            ov('ov-manager-pin');
+            setTimeout(() => document.getElementById('manager-pin-input').focus(), 100);
         } else {
             zusatzPositionen = zp; // Rücksetzen bei Fehler
             feedback('❌ ' + (d.fehler || 'Unbekannter Fehler'), 'fehler');
@@ -2396,6 +2422,26 @@ function retourBestaetigen() {
     ovSchliessen('ov-retour-bar');
     berechneZusatzPositionen();
     bonSpeichern({ zahlungsart: 'bar', gegeben: 0, rueckgeld: 0 });
+}
+
+// ── Manager-Freigabe per PIN ─────────────────────────────────────────────────
+var _managerPinPendingZahlDaten = null;
+
+function managerPinAbbrechen() {
+    ovSchliessen('ov-manager-pin');
+    _managerPinPendingZahlDaten = null;
+    document.getElementById('spinner').classList.remove('offen');
+}
+
+function managerPinBestaetigen() {
+    var pin = document.getElementById('manager-pin-input').value.trim();
+    if (!/^\d{4,6}$/.test(pin)) {
+        document.getElementById('manager-pin-fehler').textContent = 'PIN muss 4-6 Ziffern haben.';
+        return;
+    }
+    var zahlDaten = Object.assign({}, _managerPinPendingZahlDaten, { manager_pin: pin });
+    ovSchliessen('ov-manager-pin');
+    bonSpeichern(zahlDaten);
 }
 
 // ── Charge-Auswahl (Kasse) ───────────────────────────────────────────────────

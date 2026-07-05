@@ -194,6 +194,11 @@ require_once __DIR__ . '/../shell_top.php';
             <div id="gs-bereich" style="display:none;border-top:1px solid #0f3460;padding-top:12px;margin-top:4px">
                 <label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Grund (Gutschrift)</label>
                 <input type="text" name="gs_grund" class="ret-input" style="width:100%" placeholder="z.B. Reklamation, falsche Ware…">
+                <?php if (!Auth::kann('packplatz.gutschrift')): ?>
+                <label style="font-size:12px;color:#aaa;display:block;margin:10px 0 4px">🔒 Manager-PIN (Freigabe nötig)</label>
+                <input type="password" name="manager_pin" class="ret-input" inputmode="numeric" pattern="\d{4,6}" maxlength="6"
+                       style="width:100%;letter-spacing:4px" placeholder="PIN" autocomplete="off">
+                <?php endif; ?>
             </div>
         </div>
 

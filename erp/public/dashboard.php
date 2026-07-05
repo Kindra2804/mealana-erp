@@ -2,6 +2,11 @@
 require_once __DIR__ . '/includes/auth_check.php';
 require_once __DIR__ . '/../src/core/Database.php';
 
+if (!Auth::kann('dashboard.zugriff')) {
+    header('Location: ' . BASE_PATH . Auth::startseiteFuerBenutzer());
+    exit;
+}
+
 $db = Database::getInstance();
 
 // ── Aufträge ────────────────────────────────────────────────────────────────
@@ -143,19 +148,26 @@ $trendMonat = $kasseUmsatzVormonat > 0
 $monatsName = date('F Y'); // z.B. "June 2026" → wir formatieren auf Deutsch unten
 
 // ── Offene Forderungen ───────────────────────────────────────────────────────
+// tage_ueberfaellig = Tage NACH der Fälligkeit (kann negativ sein, solange die
+// 14-Tage-Frist noch läuft) — steuert nur die Ampelfarbe/den Aging-Balken.
+// alter_tage = echtes Alter des Auftrags seit Bestellung — das zeigen wir in der
+// "Tage"-Spalte an, sonst wirkt die Liste bei jungen Vorkasse-Aufträgen wie eingefroren
+// (Jacky-Bugmeldung 2026-07-05: "5+ Tage alt, wird aber mit <1 angezeigt").
 $forderungenRows = $db->query("
     SELECT a.id, a.auftrag_nr, a.bruttobetrag, a.erstellt_am,
            a.zahlungsstatus, a.kunden_snapshot,
            COALESCE(SUM(z.betrag), 0) AS bezahlt,
            r.faellig_am,
-           DATEDIFF(CURDATE(), COALESCE(r.faellig_am, DATE_ADD(a.erstellt_am, INTERVAL 14 DAY))) AS tage_ueberfaellig
+           DATEDIFF(CURDATE(), COALESCE(r.faellig_am, DATE_ADD(a.erstellt_am, INTERVAL 14 DAY))) AS tage_ueberfaellig,
+           DATEDIFF(CURDATE(), a.erstellt_am) AS alter_tage
     FROM auftraege a
     LEFT JOIN auftrag_zahlungen z ON z.auftrag_id = a.id
     LEFT JOIN rechnungen r ON r.auftrag_id = a.id AND r.storniert = 0
     WHERE a.zahlungsstatus IN ('ausstehend','teilbezahlt')
       AND a.lieferstatus != 'storniert'
     GROUP BY a.id, r.faellig_am
-    ORDER BY tage_ueberfaellig DESC
+    HAVING (a.bruttobetrag - bezahlt) > 0.01
+    ORDER BY alter_tage DESC
     LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -168,16 +180,24 @@ $forderungenGesamt = (float)$db->query("
 ")->fetchColumn();
 
 $forderungenAnzahl = (int)$db->query("
-    SELECT COUNT(*) FROM auftraege
-    WHERE zahlungsstatus IN ('ausstehend','teilbezahlt') AND lieferstatus != 'storniert'
+    SELECT COUNT(*) FROM auftraege a
+    LEFT JOIN (SELECT auftrag_id, SUM(betrag) AS bezahlt FROM auftrag_zahlungen GROUP BY auftrag_id) z
+           ON z.auftrag_id = a.id
+    WHERE a.zahlungsstatus IN ('ausstehend','teilbezahlt') AND a.lieferstatus != 'storniert'
+      AND (a.bruttobetrag - COALESCE(z.bezahlt,0)) > 0.01
 ")->fetchColumn();
 
+// >30 Tage = dieselbe Alters-Schwelle, ab der cron/mahnwesen.php Vorkasse-Aufträge
+// automatisch storniert (siehe Kommentar oben — der Cron rechnet mit dem Bestellalter,
+// nicht mit r.faellig_am).
 $forderungenUeberfaellig30 = (int)$db->query("
     SELECT COUNT(*) FROM auftraege a
-    LEFT JOIN rechnungen r ON r.auftrag_id = a.id AND r.storniert = 0
+    LEFT JOIN (SELECT auftrag_id, SUM(betrag) AS bezahlt FROM auftrag_zahlungen GROUP BY auftrag_id) z
+           ON z.auftrag_id = a.id
     WHERE a.zahlungsstatus IN ('ausstehend','teilbezahlt')
       AND a.lieferstatus != 'storniert'
-      AND DATEDIFF(CURDATE(), COALESCE(r.faellig_am, DATE_ADD(a.erstellt_am, INTERVAL 14 DAY))) > 30
+      AND (a.bruttobetrag - COALESCE(z.bezahlt,0)) > 0.01
+      AND DATEDIFF(CURDATE(), a.erstellt_am) >= 30
 ")->fetchColumn();
 
 $mahnungenAktiv = (int)$db->query("
@@ -594,12 +614,17 @@ require_once __DIR__ . '/includes/shell_top.php';
             </thead>
             <tbody>
             <?php foreach ($forderungenRows as $f):
-                $tage = (int)$f['tage_ueberfaellig'];
-                if ($tage > 30) {
+                // Alter_tage = echtes Bestellalter — dieselbe Kennzahl, die auch
+                // cron/mahnwesen.php für die 14-/30-Tage-Schwellen verwendet (Erinnerung/
+                // Storno hängen dort NICHT an r.faellig_am, sondern rein am Bestelldatum).
+                // Ampelfarbe richtet sich deshalb nach denselben Schwellen, damit die
+                // Dashboard-Anzeige vorwegnimmt, was der Cronjob als Nächstes tun wird.
+                $tage = (int)$f['alter_tage'];
+                if ($tage >= 30) {
                     $agingFarbe = '#dc2626'; $agingPct = min(100, 33 + $tage);
-                } elseif ($tage > 14) {
+                } elseif ($tage >= 14) {
                     $agingFarbe = '#f59e0b'; $agingPct = 50;
-                } elseif ($tage > 0) {
+                } elseif ($tage >= 7) {
                     $agingFarbe = '#fb923c'; $agingPct = 25;
                 } else {
                     $agingFarbe = '#86efac'; $agingPct = 10;
@@ -611,8 +636,8 @@ require_once __DIR__ . '/includes/shell_top.php';
                     <?= htmlspecialchars(kundenName($f['kunden_snapshot'], 'Unbekannt')) ?>
                 </td>
                 <td style="text-align:right;font-weight:600"><?= eur($offen) ?></td>
-                <td style="text-align:center;font-weight:700;color:<?= $tage > 30 ? '#dc2626' : ($tage > 14 ? '#f59e0b' : '#64748b') ?>">
-                    <?= $tage > 0 ? $tage : '&lt;1' ?>
+                <td style="text-align:center;font-weight:700;color:<?= $tage >= 30 ? '#dc2626' : ($tage >= 14 ? '#f59e0b' : '#64748b') ?>">
+                    <?= $tage ?>
                 </td>
                 <td>
                     <span class="db-aging-track">
