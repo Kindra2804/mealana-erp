@@ -44,6 +44,8 @@ verkauft in deren Namen und auf deren Rechnung. Kein MeaLana-Ausgangsbeleg.
 **Lagerverwaltung:** Identisch zu Yarnpride/Händler-Konsignation — eigenes "Lager" (extern_partner),
 Lagerbewegungen werden vollständig gebucht (Eingang, Verkauf, Rücklauf).
 
+**Korrektur 2026-07-05:** Die externe Lagerverwaltung dafür läuft NICHT über einen eigenen `typ='extern_partner'`, sondern über das im Zug der Lagerverwaltungs-UI-Planung finalisierte Schema: `lager.lager_beziehung='partner_bestand'` + `lager.partner_id` (siehe [[project-lager-konzept]]). Zuweisung welches Lager zu welchem Partner gehört passiert im Partner-Formular (Dropdown auf Lager mit `lager_beziehung='partner_bestand' AND partner_id IS NULL`), nicht im Lager-Formular selbst.
+
 **DB-Erweiterung (noch nicht migriert):**
 ```sql
 ALTER TABLE partner

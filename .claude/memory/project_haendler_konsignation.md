@@ -52,3 +52,19 @@ Händler sind normale Kunden mit:
 **How to apply:** Beim Lager-Modul lager.typ + haendler_kunden_id einbauen. Buchungsregeln als Business-Logic in Umlagerungs-Funktion. Händler-Übersichtsseite erst nach Kern-Verkauf.
 
 Verwandt: [[project-lager-konzept]], [[project-verkauf-workflows]]
+
+## Korrektur 2026-07-05: Händler = Kunde bestätigt, Schema-Feldnamen aktualisiert
+
+Alte Planung oben (`lager.typ='extern_haendler'`, `haendler_kunden_id`) ist überholt — im Zug der Lagerverwaltungs-UI-Planung ([[project-lager-konzept]]) wurde das finale Schema festgelegt: `lager.lager_beziehung ENUM('eigen','partner_bestand','haendler_aussenlager')` + `lager.kunde_id` (statt `haendler_kunden_id`). Kein neuer `typ`-Enum-Wert, `typ` bleibt wie bisher (ladengeschaeft/messe/extern/lager).
+
+**Bestätigt:** Kundengruppe "Händler" existiert bereits (`kundengruppen.id=2`, seit dem allerersten Seed) — das Preise-Modul war von Anfang an für dieses Szenario mitgedacht. Kein neues `ist_haendler`-Flag auf `kunden` nötig — die Existenz einer `lager`-Zeile mit `kunde_id=X` reicht als Kennzeichnung.
+
+**Verkaufsmeldungs-Workflow (Jackys Konzept 2026-07-05, noch nicht gebaut):**
+- Button "Händler-Verkaufsmeldung" auf der (künftigen) Händler-Lager-Detailseite
+- Zeigt aktuellen Bestand je Artikel im Händler-Lager, daneben +/- Stepper zur Eingabe der vom Händler gemeldeten Verkaufsmenge
+- Diese Menge ist Basis für die Rechnung (zum Kundengruppen-Preis des Händlers) — normaler VK-Ablauf, nur zeitversetzt, mit Händler-Kundengruppen-Preis statt Standard-VK, und Buchung gegen das Händler-Lager statt Hauptlager
+- Lagerstand wird entsprechend der Rechnung reduziert
+- **Beendigung/Komplettretoure:** Ist/Soll-Abgleich ähnlich [[project-kassen-verwaltung]]s Messe-Rückkehr-Logik — Differenz zwischen gemeldetem und tatsächlich zurückgekommenem Bestand wird entweder nachverrechnet oder als Schwund gebucht
+- **Rechnungs-Timing bewusst anders als normaler Kundenauftrag:** keine Rechnung bei Einlagerung/Umbuchung ins Händler-Lager, sondern erst bei der Verkaufsmeldung — beim Bau der Umlagerungs-Funktion ins Händler-Lager keinen Auto-Rechnungs-Trigger einbauen
+
+**How to apply:** Beim Bau der Händler-Übersichtsseite (kommt nach Kern-Verkauf) diesen Workflow 1:1 umsetzen, Wiederverwendung der Messe-Rückkehr-Abgleichslogik prüfen.

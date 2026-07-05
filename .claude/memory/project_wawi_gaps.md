@@ -160,6 +160,16 @@ MeaLana nimmt Strickaufträge entgegen (Make-to-Order). Vor Fertigungsstart zahl
 
 ---
 
+## Freitext-Position ("99er Artikel")
+
+Jacky-Notiz 2026-07-05: Klassisches WAWI-Konzept — eine generische Dummy-Artikelnummer (z.B. "99999") für Freitext-Positionen in Auftrag/Rechnung/Bon, die keinen echten Artikelstammsatz brauchen (Sonderleistung, Text-Zeile, Einmalposten). Bei MeaLana noch nicht geplant.
+
+Jackys Idee: Freitext-Positionen sollen in eine **Auslieferungs-Datenbank** wandern — Jacky hat dabei die gleiche Architektur wie bei Jarvis (automatischer Hintergrund-Check/Log, siehe `PreisService::pruefPendingAktionen()` in [[project_preise]]) im Kopf. Genauer Mechanismus/Zweck der Auslieferungs-Datenbank noch nicht ausformuliert — beim Aufgreifen zuerst nachfragen was genau damit gemeint ist (Versand-Tracking? Externe Meldung an ein Auslieferungssystem?), bevor gebaut wird.
+
+**How to apply:** Erst konkretisieren wenn das Thema wieder aufkommt, dann ins Auftragsmodul ([[project_auftragsmodul]]) einordnen (auftrag_positionen bräuchte artikel_id NULL + Freitext-Feld).
+
+---
+
 ## Noch nicht zugeordnet / offen
 
 - **Wechselkurse** — wenn Lieferant in CHF/USD fakturiert: `wechselkurse (id, waehrung, kurs, datum)` — bei Bedarf

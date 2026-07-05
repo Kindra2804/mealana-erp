@@ -54,7 +54,10 @@ Analog zu **Jarvis** (Benutzer id=2, username='system') gibt es System-Stammdate
 
 **Warum:** `auftrag_positionen.artikel_id NOT NULL` — Divers-Positionen an der Kasse brauchen einen echten Artikel-FK, sonst fehlen sie in der Auftrags-Übersicht.
 
-**Wichtig für Installation:** Dieser Artikel muss VOR der ersten Kassenbuchung existieren. `getDiversArtikelId()` fällt graceful zurück (überspringt die Position wenn nicht gefunden), aber das ist nur ein Fallback. Korrekt: Migration 078 bei Erstinstallation ausführen.
+**Wichtig für Installation:** Dieser Artikel muss VOR der ersten Kassenbuchung existieren. `getDiversArtikelId()` fällt graceful zurück (überspringt die Position wenn nicht gefunden), aber das ist nur ein Fallback.
+
+**Korrektur Jacky 2026-07-05:** Ursprünglich per Migration 078 nachträglich in die Dev-DB eingefügt — dort dadurch mit einer hohen, zufälligen ID (2957) gelandet, weil zu diesem Zeitpunkt schon tausende Demo-Artikel existierten. Für zukünftige Auslieferungen soll das **nicht mehr über eine Migration** laufen, sondern der Artikel soll direkt Teil der Baseline-/Seed-Daten sein, die bei einer Neuinstallation als Erstes eingespielt werden (analog Jarvis-Systembenutzer id=2, siehe oben) — dadurch bekommt er auf einer frischen Installation eine niedrige, vorhersagbare ID (idealerweise `1`) statt einer zufälligen hohen wie in der Dev-DB.
+**How to apply:** Beim nächsten Überarbeiten von `baseline_schema.sql`/dem Neuinstallations-Ablauf ([[project_installationsanleitung]] oben) diesen Artikel als festen Seed-Datensatz mit fixer ID mit aufnehmen, nicht mehr über eine der 004–104-Migrationen laufen lassen.
 
 ## Zielgruppe
 

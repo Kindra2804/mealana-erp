@@ -11,11 +11,11 @@
 - [Projekt: Bestellmodul Design](project_bestellmodul.md) — Vollständige Anforderungen: PO-Workflow, EAN-Scan, Rückstandsliste, DB-Tabellen
 - [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale UND Bilder-Upload sind fertig (im Code verifiziert 2026-07-03, Datei war veraltet)
 - [Merkmale-Modul Design](project_merkmale.md) — 2-Ebenen (Merkmal/Wert), Single/Multi, Artikeltyp-Filter, WooCommerce slug, Modal wie Kategorie
-- [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Systemweiter Lücken-Vergleich (JTL/Shopware/Sage/LS-POS): Artikel-Texte, Lagerplätze, Reservierungen, Kasse, Inventur, Auftragsfertigung (Stand 2026-06-08)
+- [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Lücken-Vergleich (JTL/Shopware/Sage/LS-POS) + 99er-Freitext-Artikel-Idee (2026-07-05)
 - [Buchhaltungsmodul](project_buchhaltung.md) — DATEV-Schnittstelle (Export, nicht nachbauen), Kontenplan (AT), Mappings Steuerklassen→Konten, Odoo als Referenz
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
 - [UI Redesign Plan](project_ui_redesign.md) — JTL-inspiriertes Layout nach Artikel-Modul: Top-Nav Module, Sidebar Untergruppen, 1280×1024 Basis, Barbara hat Mitspracherecht
-- [Verkauf Workflows](project_verkauf_workflows.md) — Vorkasse/PayPal, 14-Tage Mahnung, 30-Tage Stornierung, Fehlbestand-Konzept (Überverkauf + Bestellstatus)
+- [Verkauf Workflows](project_verkauf_workflows.md) — Mahnwesen-Cron war seit Kunden-Verschlüsselung nie lauffähig, BEHOBEN 2026-07-05 + Zahlstatus-Bugfix Kasse
 - [Lager Konzept](project_lager_konzept.md) — Altes K2-Umschaltmodell durch echten Messe-Workflow ersetzt (siehe Kassen-Verwaltung); Lager-Verwaltungs-UI fehlt komplett (nur SQL)
 - [Feedback: Design-Workflow](feedback_design_workflow.md) — 3-Stufen: ASCII-Wireframe → SVG → HTML, nie direkt in HTML, SVG für Barbara
 - [Feedback: Banner Auto-Hide](feedback_banner_autohide.md) — Erfolgs/Fehler-Banner in detail.php sollen nach ~3s automatisch verschwinden
@@ -51,13 +51,13 @@
 - [Packplatz-Modul](project_packplatz.md) — Warenausgang/Intern/Retoure/Mail-Templates fertig; Picklisten-Teilliefer-Bug behoben 2026-07-03; offen: Picklisten-Manager-UI + EAN-Nacherfassen beim Picken
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
-- [Inventur: Schwund-Typ](project_inventur_hinweis.md) — bewegungstyp 'schwund' seit Migration 083 vorhanden; LagerService::warenSchwund() nutzen, kein neuer Typ nötig
-- [Rechte & Rollen Design](project_rechte_rollen.md) — Basis-RBAC (3 Rollen, Auth::kann()) schon live; 8-Rollen-Vision/Manager-Override/Lizenz-Instanzierung noch Zielbild; Benutzer-anlegen-UI fehlt weiterhin
+- [Inventur: Schwund-Typ + Warndreieck-Idee](project_inventur_hinweis.md) — 'schwund' via LagerService::warenSchwund(); Warndreieck bei manueller Mengenkorrektur → "Zwischeninventur empfohlen" (2026-07-05)
+- [Rechte & Rollen Design](project_rechte_rollen.md) — Rollen/Matrix/Durchsetzung/Manager-Override-PIN KOMPLETT FERTIG (2026-07-05); nur Lizenzserver (2-Ebenen-Konzept besprochen) noch offen
 - [PLC / EasyPak Versand](project_plc_versand.md) — EasyPak XML-Format (Öst. Post), Item-IDs (430101/07/04/06), Ausgabepfad+Dateiname konfigurierbar, Bankdaten aus Firma-Tab
 - [Chargen-Tracking](bug_charge_tracking.md) — BEHOBEN 2026-06-29: Kasse/Packplatz/Umlagerung alle mit Charge; Rest (Race Condition, warenSchwund) kommt mit Inventur-Modul
 - [Chargen-Konzept (vollständig)](project_chargen_konzept.md) — 3 Typen (keine/optional/Pflicht), alle Lagerbewegungsstellen, UX-Flows Kasse/Packplatz/Umlagerung/Auftrag
 - [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — FERTIG 2026-07-02: BfrService komplett (Verkauf+Storno, Nachsignierung, Nullbeleg, Umsatzzähler-Sperre, Nacherfassung, Kassen-Registrierung, Cronjob, echter QR-Code via endroid/qr-code); Logger/$_SESSION-Bugfund (mahnwesen.php betroffen)
 - [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede; Doku-Schuld offen
 - [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — Unicode-Flaggen rendern auf Jackys Windows-Browsern nicht, nur Buchstaben-Fallback — nicht verwenden
-- [🟢 BUG: Hersteller-Modal Insert](bug_hersteller_modal_insert.md) — BEHOBEN 2026-07-02: extra id-Key im Formular bricht PDO insert() — gleiches Muster bei Partner-Modul latent, noch nicht gefixt
+- [🟢 BUG: PDO extra Array-Key bricht insert()/update()](bug_hersteller_modal_insert.md) — Hersteller (2026-07-02) + Lager (2026-07-05) behoben; Partner-Modul latent, noch nicht gefixt
 - [Feedback: Test-Isolation](feedback_test_isolation.md) — Scratch-Testskripte nicht gegen echte Artikel/Kassen ohne Cleanup laufen lassen (Kontamination sah wie neuer Bug aus)

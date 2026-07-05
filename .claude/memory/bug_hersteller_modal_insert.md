@@ -21,3 +21,9 @@ metadata:
 - `PartnerRepository::insert()` — reicht `$data` roh durch (technisch gleiche Schwachstelle), aber aktuell nicht betroffen weil "Neuer Partner" ein komplett eigenes `<form>` ganz ohne `id`-Feld ist (kein gemeinsames Modal wie bei Hersteller). **Nicht gefixt, nur vermerkt** — falls das Partner-Neu/Bearbeiten-Modal mal zusammengelegt wird, hier zuerst dieselbe Absicherung einbauen.
 
 **How to apply:** Bei jedem neuen "gemeinsames Modal für Neu+Bearbeiten mit verstecktem id-Feld"-Umbau (z.B. wenn Achsen das noch bekommt, siehe [[feedback_achsen_modal]]) prüfen, ob die zugehörige `insert()`-Methode extra Array-Keys verträgt — entweder durch `unset($data['id'])` im Service vor dem Insert, oder durch explizites Key-Filtering in der Repository wie bei Artikel.
+
+## Zweiter Fall bestätigt: LagerRepository::updateLager() (2026-07-05)
+
+Gleiches Muster, diesmal beim **Update statt Insert**: `LagerService::bereinigeLager()` reichert `$data` um `partner_id`/`kunde_id` an (für den späteren Insert gebraucht), aber `updateLager()`s SQL kennt diese Platzhalter nicht → PDO warf beim Speichern im Bearbeiten-Modal `SQLSTATE[HY093]`, Frontend zeigte gar keine Fehlermeldung (Modal blieb einfach offen, `res.json()` scheiterte lautlos an der HTML-Fehlerseite). Siehe [[project_lager_konzept]] für Details. Bestätigt damit: das PDO-Verhalten ist **kein Insert-spezifisches Problem**, sondern gilt für jede `execute()`-Aufruf mit überzähligen Array-Keys, egal ob INSERT oder UPDATE.
+
+**Fix-Muster, das sich bewährt hat:** In der Repository-Methode das gebundene Array explizit selbst bauen (nur die Keys, die die Query auch wirklich referenziert), statt `$data`/`$_POST` roh durchzureichen — robuster als einzelne `unset()`-Aufrufe im Service, weil es nicht vergessen werden kann wenn später neue Felder zum Formular dazukommen.

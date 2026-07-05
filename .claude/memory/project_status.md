@@ -120,7 +120,10 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | ~~Login / Logout (Shell)~~ | ✅ FERTIG 2026-06-27 | login.php gestylt, Shell-Header mit Profil-Link + Abmelden |
 | ~~Anmeldeschirm + Rollenauswahl~~ | ✅ FERTIG 2026-06-27 | start.php: Begrüßung + 3 Kacheln (ERP/Kasse/Packplatz) |
 | ~~Benutzer-Profil UI~~ | ✅ FERTIG 2026-06-27 | benutzer/profil.php: Stammdaten + Passwort ändern; Barbara-Account Migration 084 |
-| Rechteverwaltung | HOCH | DB-Schema existiert (3 Rollen), aber **keine tatsächliche Zugriffssteuerung** im Code — `Auth::kann()` wird nur an 1 Stelle geprüft. Komplett ungebaut, nicht nur "fehlt UI" |
+| ~~Benutzer anlegen (Admin-UI)~~ | ✅ FERTIG 2026-07-05 | benutzer/liste.php, Passwort-Setzen-Link per Mail (Fallback: direkt setzen), "Passwort vergessen" auf Login — siehe [[project_rechte_rollen]] |
+| ~~Rollen/Rechte-Datenmodell + Matrix-UI~~ | ✅ FERTIG 2026-07-05 | 9 Rollen (inkl. neuer "Assistent"), 72 Berechtigungen, `rollen/matrix.php` mit Rang-Bearbeitungssperre — siehe [[project_rechte_rollen]] |
+| ~~Rechteverwaltung: echte Durchsetzung~~ | ✅ KOMPLETT FERTIG 2026-07-05 | Zentrale `Zugriffsregeln.php` (alle Module) + Manager-Override per PIN (Kasse-Auszahlung/Packplatz-Gutschrift) — siehe [[project_rechte_rollen]]. Browser-Durchklick vor BFR-Test steht noch aus (Jacky übernimmt das) |
+| **Lagerverwaltungs-UI (Stammdaten)** | ✅ FERTIG 2026-07-05 | lager/verwaltung.php: 3 Cards (Eigen/Partner-Bestand/Händler-Außenlager), siehe [[project_lager_konzept]] |
 | Anmeldekontrolle / Zwangsabmeldung | MITTEL | Session-Management; für Weitergabe (Praktikanten) |
 | ~~Zentrales Dokumentenarchiv~~ | ✅ FERTIG 2026-06-27 | Kassenbons via UNION ALL integriert; X/Z-Bons in Einstellungen/Kassen |
 | ~~Dashboard~~ | ✅ FERTIG 2026-06-28 | dashboard.php: 5 KPI-Cards (Card 5 Platzhalter bis Buchhaltung), Kanal-Balken, Fehlbestand-Greedy-Logik aus picklisten.php, Lieferhistory, Log-Bar |

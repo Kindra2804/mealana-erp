@@ -103,6 +103,25 @@ Eigene Tabelle oder Erweiterung partner_dokumente wenn gebaut.
 - **Kassa-Wiederverwendung**: Kassa ruft denselben `DokumentService` auf — nur anderes UI-Frontend (kein neues Repo/Service nötig)
 - Für Rückgabe ohne ERP-Auftrag (Barkauf): `erstelleRueckgabeOhneAuftrag()` kommt später im Kassa-Modul
 
+## Lücken gefunden 2026-07-04 (Bestandsaufnahme aller Vorlagen)
+
+Alle bestehenden Dokumente/Mails geprüft (17 Templates unter `erp/templates/`) — jedes wird tatsächlich irgendwo im Code ausgelöst, keine toten Vorlagen. Zwei echte Lücken aber gefunden:
+
+1. **Einkaufsseite hat gar kein Dokument/Mail**: `public/bestellungen/` (Lieferanten-Bestellungen) hat weder PDF-Erzeugung noch Mailversand — nirgends im Code (`grep` auf mail/Mailer/pdf: 0 Treffer). Die eigentliche Bestellung an den Lieferanten läuft komplett am System vorbei. Bei einem vollständigen WAWI wäre "Bestellung als PDF/Mail an Lieferant senden" Standard — fehlt hier komplett als Konzept, nicht nur als Umsetzung.
+2. **Manueller Storno ohne Kundenmail**: `auftraege/stornieren.php` (Mitarbeiter storniert von Hand) sendet keine Mail an den Kunden. Nur die automatische Mahnwesen-Stornierung (30+ Tage unbezahlt, `mahnwesen/stornierung.html.twig`) hat eine Vorlage — ein Auftrag der aus anderen Gründen (Lagerausfall, Kundenwunsch) manuell storniert wird, bekommt keine Benachrichtigung.
+
+**Why:** Beim Rundum-Check der A4-Rechnung/Mailversand-Themen (2026-07-04) aufgefallen, auf Jackys Bitte hin systematisch alle Vorlagen durchgeschaut.
+**How to apply:** Nicht von selbst angehen — vorgemerkt bis Jacky eins davon aktiv anspricht. Punkt 1 ist der größere/wichtigere der beiden (fehlendes Konzept, nicht nur fehlende Umsetzung).
+
+## Lücke gefunden 2026-07-04: Nummernkreise nirgends konfigurierbar/einsehbar
+
+Beim Testen der Offline-Kasse aufgefallen (Jacky fragte nach den Kassenbon-Nummernkreisen). Zwei verschiedene Mechanismen, beide ohne jede Admin-Oberfläche:
+- **Kassenbons** (`K1-2026-000024` etc.): `KassenService::naechsteBonNr()` zählt `COUNT(*) FROM kassen_bons WHERE kasse_id=X` hoch — korrekt pro Kasse getrennt, aber theoretisches Race-Condition-Risiko bei exakt zeitgleichen Verkäufen auf derselben Kasse (kein atomarer Zähler).
+- **Dokumente** (Rechnung/AB/Gutschrift, `R-2026-XXXXX` etc.): `DokumentRepository::naechsteNummer()` nutzt eine echte atomare Zählertabelle `dokument_nummern` (typ+jahr+praefix+letzt_nr) — sicherer als die Kassenbon-Variante, aber **komplett global pro Dokumenttyp**, nicht pro Shop/Kanal, und ebenfalls nirgends einsehbar oder konfigurierbar.
+
+**Why:** Für Buchhaltung/DATEV und Mehr-Kanal-Betrieb (mehrere Shops) könnte eine Trennung/Konfigurierbarkeit relevant werden.
+**How to apply:** Nicht von selbst angehen. Falls das Thema aufkommt: `dokument_nummern`-Tabelle als Basis für eine künftige "Nummernkreise verwalten"-Admin-Seite nutzen (existiert schon, nur UI fehlt). Für Kassenbons ggf. auf dasselbe atomare Muster umstellen statt COUNT(*).
+
 ## WooCommerce und Rechnungen
 
 **WC macht KEINE Rechnungen** (vanilla). WC-Bestellbestätigung ist keine gültige Rechnung nach UStG §11.

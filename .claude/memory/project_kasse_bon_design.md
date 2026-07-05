@@ -134,6 +134,7 @@ Kasse erkennt: `geladenerAuftragZahlungsstatus === 'bezahlt'` → andere Dialog-
 
 - [ ] Auftrag-Detail-Seite: Hinweis wenn Begleit-Auftrag (K1↔Web-Auftrag) vorhanden
 - [ ] Bon-Ausdruck: "AUFTRAG A-2026-xxx" Block-Header auf Print
+- [ ] Firmenlogo fehlt am Bon-Ausdruck (Jacky-Notiz 2026-07-05: wird aktuell nicht angezeigt, obwohl RKSV-Pflichtfelder + Layout sonst stehen)
 - [x] **Abholbereit+bezahlt Flow** ✅ FERTIG 2026-06-29
 - [ ] Gutschein-Erstattungsoption in Kasse wenn Gutschein-Modul fertig
 - [ ] Chargen-Bug (nächste Session — quer durch alle Module)

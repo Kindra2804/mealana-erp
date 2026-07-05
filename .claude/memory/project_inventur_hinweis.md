@@ -20,3 +20,15 @@ Beim Anlegen der **großen** Inventur-Zählliste (nicht Zwischeninventur) soll e
 **Why:** Doppelte Absicherung für den Jahresendbeleg — die große Inventur fällt bei Jacky ohnehin zwischen Weihnachten und Neujahr, ein Popup zu diesem Zeitpunkt ist ein zusätzlicher Reminder neben dem monatlich-automatischen Nullbon.
 
 **How to apply:** Beim Bau der Inventur-Zählliste-Erstellung diesen Datumscheck einbauen (15.12.–10.01.), reiner Hinweis-Popup, kein Blocker.
+
+## Warndreieck bei manueller Mengen-Korrekturbuchung (Jacky-Notiz 2026-07-05)
+
+Wenn ein Artikel bei Kasse oder sonstigen Abläufen manuell **mengenmäßig** korrekturgebucht wird (nicht Charge-Tausch, sondern echte Zu-/Abbuchung der Gesamtmenge) → Artikel bekommt ein Warndreieck-Flag:
+- In der Artikelliste beim betroffenen Artikel anzeigen
+- Im Dashboard (unterer Bereich, dort ist noch Platz laut Jacky) ebenfalls ein Dreieck-Widget
+- Klick/Dropdown darauf → Liste der betroffenen Artikel + Text "Zwischeninventur empfohlen"
+- Flag bleibt bestehen bis Zwischeninventur ODER große Inventur für den Artikel gemacht wurde
+
+**Why:** Manuelle Mengenkorrekturen sind eine typische Fehlerquelle (Tippfehler, falsche Menge) — sichtbares Signal statt stillem Vertrauen in die Korrektur, bis der Bestand durch eine echte Zählung bestätigt wurde.
+
+**How to apply:** Beim Bau des Inventur-Moduls einplanen. Braucht vermutlich ein Flag/Zeitstempel pro Artikel (z.B. `artikel.manuelle_korrektur_am` oder eigene Tabelle `artikel_inventur_hinweise`), das bei jeder manuellen Mengenkorrektur (nicht Charge-Wechsel) gesetzt und bei Inventur-Abschluss für den betroffenen Artikel wieder gelöscht wird. Siehe auch [[project_wawi_gaps]] (Blind-Inventur, Differenzliste) und `bewegungstyp='korrektur'` in `lager_bewegungen` als vermutlicher Trigger-Punkt.
