@@ -552,6 +552,111 @@ class LagerRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // -------------------------------------------------------------------------
+    // Lager-Stammdaten (Verwaltungs-UI)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Gibt alle Lager mit Partner-/Kundenname (falls verknüpft) zurück.
+     *
+     * @param array $filter Optionale Filter: ['aktiv' => 0|1]
+     */
+    public function findAlleMitDetails(array $filter = []): array
+    {
+        $conditions = ['1=1'];
+        $params     = [];
+
+        if (isset($filter['aktiv'])) {
+            $conditions[] = 'l.aktiv = :aktiv';
+            $params['aktiv'] = $filter['aktiv'];
+        }
+
+        $where = 'WHERE ' . implode(' AND ', $conditions);
+
+        $stmt = $this->db->prepare("
+            SELECT l.*,
+                   p.name AS partner_name,
+                   k.kundennummer AS kunde_kundennummer
+            FROM lager l
+            LEFT JOIN partner p ON p.id = l.partner_id
+            LEFT JOIN kunden  k ON k.id = l.kunde_id
+            $where
+            ORDER BY l.name
+        ");
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /** Gibt ein Lager anhand ID zurück, oder false wenn nicht gefunden. */
+    public function findLagerById(int $id): array|false
+    {
+        $stmt = $this->db->prepare('SELECT * FROM lager WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch();
+    }
+
+    /** Legt ein neues Lager an und gibt die neue ID zurück. */
+    public function insertLager(array $data): int
+    {
+        $stmt = $this->db->prepare('
+            INSERT INTO lager (
+                name, typ, aktiv, fuer_offline_kasse_waehlbar,
+                lager_beziehung, partner_id, kunde_id
+            ) VALUES (
+                :name, :typ, :aktiv, :fuer_offline_kasse_waehlbar,
+                :lager_beziehung, :partner_id, :kunde_id
+            )
+        ');
+        $stmt->execute($data);
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Aktualisiert Name/Typ/Beziehung/Aktiv/Offline-Flag eines Lagers.
+     * Partner-/Kunde-Zuweisung läuft separat, nicht hier.
+     *
+     * Bindet die Parameter explizit (statt $data direkt durchzureichen) — sonst wirft PDO
+     * bei zusätzlichen, nicht in der Query verwendeten Array-Keys (z.B. partner_id/kunde_id)
+     * "SQLSTATE[HY093]: Invalid parameter number" (gleiches Muster wie der Hersteller-Insert-Bug).
+     */
+    public function updateLager(array $data): bool
+    {
+        $stmt = $this->db->prepare('
+            UPDATE lager SET
+                name                        = :name,
+                typ                         = :typ,
+                aktiv                       = :aktiv,
+                fuer_offline_kasse_waehlbar = :fuer_offline_kasse_waehlbar,
+                lager_beziehung             = :lager_beziehung
+            WHERE id = :id
+        ');
+        $stmt->execute([
+            'name'                        => $data['name'],
+            'typ'                         => $data['typ'],
+            'aktiv'                       => $data['aktiv'],
+            'fuer_offline_kasse_waehlbar' => $data['fuer_offline_kasse_waehlbar'],
+            'lager_beziehung'             => $data['lager_beziehung'],
+            'id'                          => $data['id'],
+        ]);
+        return $stmt->rowCount() > 0;
+    }
+
+    /** Setzt den Aktiv-Status eines Lagers (1 = aktiv, 0 = inaktiv). */
+    public function setLagerAktiv(int $id, int $aktiv): bool
+    {
+        $stmt = $this->db->prepare('UPDATE lager SET aktiv = :aktiv WHERE id = :id');
+        $stmt->execute(['aktiv' => $aktiv, 'id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+
+    /** Summiert den Bestand eines Lagers über alle Artikel/Chargen (für die Deaktivieren-Sperre). */
+    public function getGesamtbestandFuerLager(int $lagerId): float
+    {
+        $stmt = $this->db->prepare('SELECT COALESCE(SUM(bestand), 0) FROM lagerbestand WHERE lager_id = :lager_id');
+        $stmt->execute(['lager_id' => $lagerId]);
+        return (float) $stmt->fetchColumn();
+    }
+
     /**
      * Gibt die Lagerbewegungen für einen Artikel zurück.
      * Enthält: Bewegungstyp, Menge, Bestand vorher/nachher, Charge, Referenz (Bestellnummer),

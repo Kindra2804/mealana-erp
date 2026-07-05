@@ -122,6 +122,7 @@ unset($_SESSION['fehler']);
 
             <button type="submit">Anmelden</button>
         </form>
+        <a href="<?= BASE_PATH ?>/passwort_vergessen.php" style="display:block;text-align:center;margin-top:16px;font-size:13px;color:#4a7cb5;text-decoration:none">Passwort vergessen?</a>
     </div>
 </body>
 </html>

@@ -421,6 +421,142 @@ class LagerService
         return $this->repo->findAlleLager();
     }
 
+    // -------------------------------------------------------------------------
+    // Lager-Stammdaten (Verwaltungs-UI)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Gibt alle Lager gruppiert nach Beziehungstyp zurück, für die 3-Card-Ansicht:
+     * 'eigen' | 'partner_bestand' | 'haendler_aussenlager'.
+     *
+     * @param array $filter Optionale Filter: ['aktiv' => 0|1]
+     */
+    public function getAlleGruppiert(array $filter = []): array
+    {
+        $alle = $this->repo->findAlleMitDetails($filter);
+
+        $gruppiert = ['eigen' => [], 'partner_bestand' => [], 'haendler_aussenlager' => []];
+        foreach ($alle as $lager) {
+            $gruppiert[$lager['lager_beziehung']][] = $lager;
+        }
+        return $gruppiert;
+    }
+
+    /** Gibt ein Lager anhand ID zurück, oder false wenn nicht gefunden. */
+    public function getLagerById(int $id): array|false
+    {
+        return $this->repo->findLagerById($id);
+    }
+
+    /**
+     * Legt ein neues Lager an.
+     * Validiert: Name Pflichtfeld, Typ + Beziehung müssen gültige Enum-Werte sein.
+     */
+    public function saveLager(array $data): array
+    {
+        $fehler = $this->validiereLager($data);
+        if (!empty($fehler)) {
+            return ['erfolg' => false, 'fehler' => $fehler];
+        }
+
+        $data = $this->bereinigeLager($data);
+        $id   = $this->repo->insertLager($data);
+        return ['erfolg' => true, 'id' => $id];
+    }
+
+    /**
+     * Aktualisiert ein bestehendes Lager. Validierung identisch zu saveLager().
+     * Die Bestands-Sperre greift auch hier, falls jemand über das Aktiv-Häkchen
+     * im Bearbeiten-Formular deaktiviert (nicht nur über den 🗑️-Button).
+     */
+    public function aktualisiereLager(array $data): array
+    {
+        if (empty($data['id'])) {
+            return ['erfolg' => false, 'fehler' => ['ID fehlt.']];
+        }
+
+        $fehler = $this->validiereLager($data);
+        if (!empty($fehler)) {
+            return ['erfolg' => false, 'fehler' => $fehler];
+        }
+
+        $data = $this->bereinigeLager($data);
+
+        if ($data['aktiv'] === 0) {
+            $sperrgrund = $this->pruefeDeaktivierungErlaubt((int)$data['id']);
+            if ($sperrgrund !== null) {
+                return ['erfolg' => false, 'fehler' => [$sperrgrund]];
+            }
+        }
+
+        $this->repo->updateLager($data);
+        return ['erfolg' => true];
+    }
+
+    /**
+     * Setzt den Aktiv-Status eines Lagers.
+     * Deaktivieren ist nur erlaubt, wenn das Lager keinen Bestand mehr hat
+     * (sonst könnten Artikel "unsichtbar" auf einem ausgeblendeten Lager liegen bleiben).
+     */
+    public function setLagerAktiv(int $id, int $aktiv): array
+    {
+        if ($aktiv === 0) {
+            $sperrgrund = $this->pruefeDeaktivierungErlaubt($id);
+            if ($sperrgrund !== null) {
+                return ['erfolg' => false, 'fehler' => [$sperrgrund]];
+            }
+        }
+
+        $this->repo->setLagerAktiv($id, $aktiv);
+        return ['erfolg' => true];
+    }
+
+    /** Gibt eine Fehlermeldung zurück wenn Deaktivieren nicht erlaubt ist (Bestand > 0), sonst null. */
+    private function pruefeDeaktivierungErlaubt(int $id): ?string
+    {
+        $bestand = $this->repo->getGesamtbestandFuerLager($id);
+        if ($bestand > 0) {
+            return "Lager hat noch Bestand ({$bestand}) — erst umlagern.";
+        }
+        return null;
+    }
+
+    /** Validiert Name, Typ und Beziehungstyp. */
+    private function validiereLager(array $data): array
+    {
+        $fehler = [];
+
+        if (empty($data['name'])) {
+            $fehler[] = 'Name ist Pflichtfeld.';
+        }
+
+        $gueltigeTypen = ['ladengeschaeft', 'messe', 'extern', 'lager'];
+        if (empty($data['typ']) || !in_array($data['typ'], $gueltigeTypen, true)) {
+            $fehler[] = 'Typ ist ungültig.';
+        }
+
+        $gueltigeBeziehungen = ['eigen', 'partner_bestand', 'haendler_aussenlager'];
+        if (empty($data['lager_beziehung']) || !in_array($data['lager_beziehung'], $gueltigeBeziehungen, true)) {
+            $fehler[] = 'Beziehung ist ungültig.';
+        }
+
+        return $fehler;
+    }
+
+    /**
+     * Normalisiert Formular-Daten: Checkbox → 0/1.
+     * partner_id/kunde_id werden hier nicht gesetzt (kein Feld im Lager-Formular) —
+     * die Zuweisung passiert später im Partner- bzw. Kunden-Formular.
+     */
+    private function bereinigeLager(array $data): array
+    {
+        $data['aktiv']                       = !empty($data['aktiv']) ? 1 : 0;
+        $data['fuer_offline_kasse_waehlbar'] = !empty($data['fuer_offline_kasse_waehlbar']) ? 1 : 0;
+        $data['partner_id']                  = $data['partner_id'] ?? null;
+        $data['kunde_id']                    = $data['kunde_id']   ?? null;
+        return $data;
+    }
+
     /**
      * Gibt den Bestand pro Lager + Charge für einen Artikel zurück.
      * Gruppiert nach Lager-ID mit Summe (gesamt) + Chargen-Liste.

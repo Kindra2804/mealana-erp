@@ -11,6 +11,8 @@ $moduleLabel = match ($activeModule ?? '') {
     'lieferanten' => 'Lieferanten',
     'hersteller'  => 'Hersteller',
     'partner'      => 'Partner',
+    'benutzer'     => 'Benutzer',
+    'rollen'       => 'Rollen & Rechte',
     'einstellungen' => 'Einstellungen',
     default       => '',
 };
@@ -29,6 +31,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📥', 'label' => 'Wareneingang',       'href' => BASE_PATH . '/lager/wareneingang.php'],
         ['icon' => '🔖', 'label' => 'Chargen-Nachtrag',  'href' => BASE_PATH . '/lager/nachtrag_liste.php'],
         ['icon' => '📋', 'label' => 'Picklisten',         'href' => BASE_PATH . '/lager/picklisten.php'],
+        ['icon' => '🗄️', 'label' => 'Lagerverwaltung',    'href' => BASE_PATH . '/lager/verwaltung.php'],
     ],
     'verkauf' => [
         ['icon' => '📋', 'label' => 'Aufträge',           'href' => BASE_PATH . '/auftraege/liste.php'],
@@ -123,8 +126,10 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                     <div class="erp-nav-more-menu" id="erp-nav-more-menu">
                         <a href="<?= BASE_PATH ?>/kasse/bon.php" class="erp-nav-more-item">🛒 Kasse</a>
                         <a href="<?= BASE_PATH ?>/packplatz/index.php" class="erp-nav-more-item">📦 Packplatz</a>
+                        <div class="erp-nav-more-sep"></div>
+                        <a href="<?= BASE_PATH ?>/benutzer/liste.php" class="erp-nav-more-item">👤 Benutzerverwaltung</a>
+                        <a href="<?= BASE_PATH ?>/rollen/matrix.php" class="erp-nav-more-item">🔐 Rollen & Rechte</a>
                         <?php if (Auth::kann('api.zugriff')): ?>
-                            <div class="erp-nav-more-sep"></div>
                             <a href="#" class="erp-nav-more-item erp-nav-more-item-disabled" title="Kommt bald">🔑 Lizenzverwaltung</a>
                         <?php endif; ?>
                     </div>
