@@ -559,6 +559,41 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-05, Session 25)
+
+### Benutzerverwaltung ✅ FERTIG
+- `public/benutzer/liste.php` (Liste + Neu/Bearbeiten-Modal), `BenutzerRepository`/`BenutzerService`/`PasswortResetService` (`src/modules/benutzer/`)
+- Passwort-Setzen-Link per Mail (Migration 108: `benutzer_passwort_tokens`, SHA-256-Hash, 24h gültig) ODER Admin setzt direkt — plus öffentliche "Passwort vergessen"-Seite (`passwort_vergessen.php` → `passwort_setzen.php`, verlinkt von `login.php`)
+- Reservierter Username `system` (Jarvis) abgelehnt, ein Benutzer = eine Rolle (bewusst vereinfacht)
+
+### Rollen & Rechte-Matrix ✅ FERTIG
+- Migration 109: `rollen.rang`, 6 neue Rollen (Assistent/Manager/Kassier/Lager/Packplatz/Praktikant/Readonly), 27 neue Berechtigungen (insgesamt 72)
+- `public/rollen/matrix.php` (`src/modules/rollen/`): Checkbox-Matrix, Rang-basierte Bearbeitungssperre (nur echt niedrigerer Rang), `lizenz.verwalten` für jede Rolle fix gesperrt
+- Superadmin (Rang ≥ 100) hat `Auth::kann()` immer `true` — Code-Invariante statt Datenabhängigkeit
+
+### Lagerverwaltung (Stammdaten-UI) ✅ FERTIG
+- Migration 107, `public/lager/verwaltung*.php`: 3 Karten (Eigen/Partner-Bestand/Händler-Außenlager), `LagerRepository`/`LagerService` erweitert
+
+### Rechteverwaltung: echte Durchsetzung ✅ FERTIG
+- **Zentrale Regeltabelle statt 230 Einzel-Checks**: `src/core/Zugriffsregeln.php` — Array `[Verzeichnis][Datei] => Berechtigung`. `Auth::pruefeSeite()` (in `Auth.php`) schlägt dort bei jedem Seitenaufruf nach (aus `auth_check.php` aufgerufen, direkt nach `Auth::check()`). Kein Eintrag → kein Block (nur Login-Pflicht wie bisher)
+- Zwei Antwortformen: normale Seiten → Redirect auf neue `zugriff_verweigert.php`; AJAX-Endpunkte (83 identifiziert) → `{erfolg:false, fehler:"..."}` passend zur bestehenden JS-Konvention
+- `dashboard.php` leitet bei fehlendem `dashboard.zugriff` über `Auth::startseiteFuerBenutzer()` aufs erste erlaubte Modul um statt eine Fehlerseite zu zeigen
+- Live getestet (curl gegen echten Apache): Fake-Superadmin kommt überall durch, eingeschränkte Testrolle nur dort wo erlaubt
+
+### Manager-Override per PIN ✅ FERTIG
+- Migration 110: `benutzer.manager_pin_hash` (bcrypt). `Auth::pruefeManagerPin()` sucht ohne Benutzername über alle Manager+ (Rang ≥ 70) mit gesetztem PIN
+- PIN wird self-service in `benutzer/profil.php` gesetzt (nur für Manager+ sichtbar)
+- **Kasse-Auszahlung** (`bon_speichern.php`, Retour eines bezahlten Web-Auftrags): Popup in `bon.php` (`ov-manager-pin`), Prüfung läuft vor jeder Buchung
+- **Packplatz-Gutschrift** (`packplatz/retoure/speichern.php`): PIN-Feld direkt im Formular (`detail.php`), nur sichtbar ohne `packplatz.gutschrift`-Recht
+- Beide loggen `manager_override` (Auslöser + freigebender Manager). Offline-Kasse bewusst nicht betroffen — hat keinen Kundenbezug/keine Retouren, der Pfad wird dort nie erreicht
+
+### 🔴 Kritischer Bugfix: cron/mahnwesen.php lief noch nie fehlerfrei durch
+- Drei Schema-Drift-Bugs seit dem Kundendatenbank-Verschlüsselungs-Umbau: `a.auftragsnummer` (richtig: `auftrag_nr`), `LEFT JOIN kunden k` auf inzwischen verschlüsselte `email`-Spalte, `INSERT INTO auftrag_status_log` (richtig: `auftrag_statuslog`, andere Spalten, jetzt über `AuftragRepository::logStatus()`)
+- Migration 111: `mahnungen.typ` ENUM um `'hinweis'` ergänzt (fehlte für den Rechnung-30-Tage-Zweig); `'teilbezahlt'` fehlte im WHERE-Filter
+- Getestet mit isoliertem, danach vollständig gelöschtem Test-Auftrag (künstlich 15 dann 31 Tage alt) — Erinnerungs- und Storno-Zweig laufen jetzt durch
+- **Separater Kasse-Bug**: `bon_speichern.php` verglich `$auftragAnteil` (nur die aktuelle Transaktion) statt der kumulierten `auftrag_zahlungen`-Summe gegen `bruttobetrag` → Aufträge blieben bei Rundungsdifferenzen dauerhaft auf 'teilbezahlt' stehen. Fix analog zu `AuftragService::bucheZahlung()`, ein betroffener Dev-Auftrag korrigiert
+- **Dashboard-Widget "Offene Kundenrechnungen"**: zeigte Tage-bis-Fälligkeit (bis zu 14 Tage lang `<1` bei jungen Vorkasse-Aufträgen) statt echtem Bestellalter — jetzt dieselbe Kennzahl wie im Cron, plus Filter gegen bereits ausgeglichene Salden
+
 ## What's Implemented (Stand 2026-07-04, Session 24)
 
 ### A4-Rechnungsdruck komplett ✅ (2026-07-04)
