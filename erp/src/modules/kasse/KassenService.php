@@ -210,11 +210,17 @@ class KassenService
         $kasseId = (int)($bonDaten['kasse_id'] ?? 1);
         $lagerId = (int)($bonDaten['lager_id'] ?? 1);
 
+        // RKSV-Gate: BFR muss erreichbar sein, BEVOR überhaupt etwas gebucht wird
+        // ("kein Dienst, keine Kasse") — kein Bon entsteht mehr ohne Signatur-Ergebnis.
+        $bfrSvc = new BfrService();
+        $gate = $bfrSvc->pruefeVorBuchung($kasseId);
+        if (!$gate['erreichbar']) {
+            return ['erfolg' => false, 'bfr_nicht_erreichbar' => true, 'fehler' => BfrService::grundText($gate['grund'] ?? 'bfr_nicht_erreichbar')];
+        }
+
         // Vor der ersten Buchung des Monats: Nullbeleg sicherstellen (RKSV-Absicherung).
-        // Läuft bewusst außerhalb der Verkaufs-Transaktion — ein BFR-Problem hier
-        // darf den Verkauf nicht verhindern.
         try {
-            (new BfrService())->sicherstelleMonatsNullbeleg($kasseId);
+            $bfrSvc->sicherstelleMonatsNullbeleg($kasseId);
         } catch (Throwable $e) {
             error_log('[BFR-Nullbeleg] ' . $e->getMessage());
         }
@@ -420,12 +426,23 @@ class KassenService
             return ['erfolg' => false, 'fehler' => 'Datenbankfehler: ' . $e->getMessage()];
         }
 
-        // BFR-Signatur nach dem Commit versuchen — ein Ausfall der Signiereinrichtung
+        // BFR-Signatur nach dem Commit — /state war gerade eben erfolgreich, das
+        // enge Zeitfenster für einen Fehlschlag hier ist der einzige Grund, warum
+        // dieser Aufruf noch außerhalb der Transaktion läuft: ein BFR-Problem hier
         // darf den bereits abgeschlossenen Verkauf nicht mehr rückgängig machen.
-        try {
-            (new BfrService())->signiereAusstehende($kasseId);
-        } catch (Throwable $e) {
-            error_log('[BFR] ' . $e->getMessage());
+        $kasseVoll = array_merge($this->getKasse($kasseId) ?? [], ['id' => $kasseId]);
+        if (!empty($kasseVoll['bfr_url'])) {
+            try {
+                $bfrSvc->signiereBeleg($bonId, [
+                    'bon_nr'       => $bonNr,
+                    'erstellt_am'  => date('Y-m-d H:i:s'),
+                    'bruttobetrag' => $bonDaten['bruttobetrag'] ?? 0,
+                    'steuer_a'     => $steuer['a'], 'steuer_b' => $steuer['b'],
+                    'steuer_c'     => $steuer['c'], 'steuer_d' => $steuer['d'], 'steuer_e' => $steuer['e'],
+                ], $kasseVoll);
+            } catch (Throwable $e) {
+                error_log('[BFR] ' . $e->getMessage());
+            }
         }
 
         return ['erfolg' => true, 'bon_id' => $bonId, 'bon_nr' => $bonNr];
@@ -442,12 +459,20 @@ class KassenService
         if ($bon['storniert']) return ['erfolg' => false, 'fehler' => 'Bon ist bereits storniert.'];
         if ($bon['typ'] !== 'verkauf') return ['erfolg' => false, 'fehler' => 'Nur Verkaufsbons können storniert werden.'];
 
+        $bfrSvc = new BfrService();
+
         // RKSV-Vorabcheck: der BFR selbst ist funktionsfähig, wir lehnen hier rein aus
         // eigener Business-Logik ab — deshalb den ganzen Storno verhindern statt einen
         // Beleg mit falschem "Sicherheitseinrichtung ausgefallen"-Aufdruck zu drucken.
         $stornoBetrag = -abs((float)$bon['bruttobetrag']);
-        if ((new BfrService())->wuerdeUmsatzzaehlerNegativWerden((int)$bon['kasse_id'], $stornoBetrag)) {
+        if ($bfrSvc->wuerdeUmsatzzaehlerNegativWerden((int)$bon['kasse_id'], $stornoBetrag)) {
             return ['erfolg' => false, 'fehler' => 'Storno nicht möglich: Der RKSV-Gesamtumsatzzähler würde dadurch negativ werden. Bitte administrativ prüfen.'];
+        }
+
+        // RKSV-Gate: BFR muss erreichbar sein, BEVOR überhaupt etwas gebucht wird.
+        $gate = $bfrSvc->pruefeVorBuchung((int)$bon['kasse_id']);
+        if (!$gate['erreichbar']) {
+            return ['erfolg' => false, 'bfr_nicht_erreichbar' => true, 'fehler' => BfrService::grundText($gate['grund'] ?? 'bfr_nicht_erreichbar')];
         }
 
         $kasse = $this->getKasse((int)$bon['kasse_id']);
@@ -539,10 +564,19 @@ class KassenService
         }
 
         // BFR-Signatur nach dem Commit, außerhalb der Transaktion — siehe erstelleBon().
-        try {
-            (new BfrService())->signiereAusstehende((int)$bon['kasse_id']);
-        } catch (Throwable $e) {
-            error_log('[BFR] ' . $e->getMessage());
+        $kasseVoll = array_merge($this->getKasse((int)$bon['kasse_id']) ?? [], ['id' => (int)$bon['kasse_id']]);
+        if (!empty($kasseVoll['bfr_url'])) {
+            try {
+                $bfrSvc->signiereBeleg($stornoBonId, [
+                    'bon_nr'       => $stornoBonNr,
+                    'erstellt_am'  => date('Y-m-d H:i:s'),
+                    'bruttobetrag' => -abs((float)$bon['bruttobetrag']),
+                    'steuer_a'     => $steuer['a'], 'steuer_b' => $steuer['b'],
+                    'steuer_c'     => $steuer['c'], 'steuer_d' => $steuer['d'], 'steuer_e' => $steuer['e'],
+                ], $kasseVoll);
+            } catch (Throwable $e) {
+                error_log('[BFR] ' . $e->getMessage());
+            }
         }
 
         return ['erfolg' => true, 'storno_bon_id' => $stornoBonId, 'bon_nr' => $stornoBonNr];

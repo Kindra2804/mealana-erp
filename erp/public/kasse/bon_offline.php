@@ -179,6 +179,31 @@ $pageTitle = 'Offline-Kasse';
   </div>
 </div>
 
+<!-- RKSV: BFR nicht erreichbar (2 Eskalationsstufen) -->
+<div class="ob-overlay" id="ob-bfr-overlay">
+  <div class="ob-overlay-box" style="text-align:center;max-width:420px">
+    <div style="font-size:32px;margin-bottom:6px">⚠</div>
+    <div id="ob-bfr-stufe1">
+      <div style="font-weight:800;font-size:18px;margin-bottom:10px">Dienst nicht erreichbar!</div>
+      <p style="color:#64748b;font-size:14px;margin-bottom:20px">
+        Die technische Sicherheitseinrichtung (BFR) antwortet nicht.
+      </p>
+    </div>
+    <div id="ob-bfr-stufe2" style="display:none">
+      <div style="font-weight:800;font-size:18px;margin-bottom:10px">Dienst immer noch nicht erreichbar</div>
+      <p style="color:#64748b;font-size:14px;margin-bottom:12px">
+        Die Kasse bleibt gesperrt, bis der BFR-Dienst wieder antwortet. Bitte am Gerät prüfen:
+      </p>
+      <ul style="text-align:left;color:#64748b;font-size:13px;margin:0 0 20px 20px;padding:0">
+        <li>Läuft "BFR" in der Taskleiste?</li>
+        <li>Signaturkarte im Kartenleser gesteckt?</li>
+        <li>Windows-Update / Firewall gerade aktiv?</li>
+      </ul>
+    </div>
+    <button class="ob-btn ob-btn-primary" id="ob-bfr-retry-btn" style="width:100%" onclick="obBfrErneutVersuchen()">Erneut versuchen</button>
+  </div>
+</div>
+
 <!-- Chargen-Auswahl-Overlay (nur bei charge_pflicht-Artikeln, echte mitgenommene Chargen) -->
 <div class="ob-overlay" id="ob-charge-overlay">
   <div class="ob-overlay-box">

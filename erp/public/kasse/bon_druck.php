@@ -277,16 +277,13 @@ if (!empty($restPositionen)):
   </div>
 <?php endif; ?>
 
-<?php if ($bon['bfr_status'] === 'signiert'): ?>
+<?php if (!empty($bon['rksv_signatur'])): ?>
 <div class="linie"></div>
 <div class="zentriert" style="font-size:10px">RKSV</div>
 <?php if ($bon['rksv_qr']): ?>
 <div class="zentriert" style="margin:4px 0"><img src="<?= QrCode::dataUri($bon['rksv_qr']) ?>" style="width:120px;height:120px"></div>
 <?php endif; ?>
 <div style="font-size:9px;word-break:break-all"><?= htmlspecialchars($bon['rksv_signatur']) ?></div>
-<?php else: ?>
-<div class="linie"></div>
-<div class="zentriert" style="font-size:9px;font-weight:bold">Sicherheitseinrichtung ausgefallen</div>
 <?php endif; ?>
 
 <div class="linie"></div>

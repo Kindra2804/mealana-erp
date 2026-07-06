@@ -6,19 +6,29 @@ require_once __DIR__ . '/../../core/Logger.php';
 /**
  * BfrService – RKSV-Signatur über den BFR BONit Fiscal Recorder
  *
- * Signiert Kassenbons in TN-Reihenfolge (aufsteigend, wie von RKSV gefordert).
- * Ist der BFR beim Bon-Erstellen nicht erreichbar, bleibt der Bon
- * bfr_status='ausstehend' und wird beim nächsten erreichbaren Versuch
- * zusammen mit allen anderen offenen Belegen derselben Kasse (älteste zuerst)
- * nachsigniert. Mehr als ein offener Beleg → das wird als eigener
- * "Nachsignierungslauf" protokolliert (bfr_nachsignierungs_laeufe).
+ * Modell (seit 2026-07-06, nach echtem Hardware-Test): VOR jeder Bon-/Storno-/
+ * Nullbeleg-Erstellung wird /state geprüft. Ist der Dienst nicht erreichbar,
+ * wird die Buchung gar nicht erst zugelassen ("kein Dienst, keine Kasse" —
+ * Empfehlung des BFR-Herstellers). Ist er erreichbar, kommt von /register laut
+ * Hersteller-API IMMER eine Antwort (RC ist immer "OK", nur <Link> unterscheidet
+ * "echte Signatur" von "Sicherheitseinrichtung ausgefallen") — ein Beleg bleibt
+ * also nie mehr unsigniert/unentschieden hängen. Die frühere Nachsignierungs-
+ * Warteschlange (mehrere offene Belege in einem "Lauf" nachholen) entfällt
+ * damit komplett.
+ *
+ * Störungen (Dienst nicht erreichbar ODER "Sicherheitseinrichtung ausgefallen")
+ * werden stattdessen episodenweise in bfr_ausfaelle/bfr_ausfall_ereignisse
+ * protokolliert — für die 24h/48h-FON-Meldepflicht-Warnung.
  */
 class BfrService
 {
     private PDO $db;
 
-    private const TIMEOUT_SEKUNDEN            = 5;
-    private const PAUSE_ZWISCHEN_SIGNATUREN_MS = 200;
+    private const TIMEOUT_SEKUNDEN        = 5;
+    private const CONNECT_TIMEOUT_MS      = 400;  // BFR ist immer lokal/LAN — Verbindungsaufbau muss schnell scheitern
+    private const KURZ_RETRY_ANZAHL       = 2;
+    private const KURZ_RETRY_PAUSE_MS     = 300;
+    private const AUSFALL_WARNUNG_STUNDEN = 24;
 
     public function __construct()
     {
@@ -27,10 +37,7 @@ class BfrService
 
     /**
      * Gibt die ID des System-Users "Jarvis" zurück, für Logger::log() wenn
-     * BfrService ohne Session läuft (Cronjob, Nachsignierung im Hintergrund).
-     * Gleiches Muster wie LagerService::getJarvisId() — bewusst per Username
-     * nachgeschlagen statt fixer ID, damit keine bestimmte benutzer.id bei der
-     * Installation erzwungen werden muss.
+     * BfrService ohne Session läuft (Cronjob, Kassenstart-Recovery).
      */
     private function getJarvisId(): int
     {
@@ -42,9 +49,7 @@ class BfrService
     /**
      * Ordnet die Positionen eines Bons den 5 BFR-Steuergruppen zu und
      * summiert den Brutto-Anteil je Gruppe. Wird von KassenService beim
-     * Anlegen eines Bons aufgerufen, damit steuer_a..e sofort feststehen —
-     * so kann auch Wochen später noch nachsigniert werden, ohne dass sich
-     * an den Positionen zwischenzeitlich etwas geändert haben könnte.
+     * Anlegen eines Bons aufgerufen, damit steuer_a..e sofort feststehen.
      */
     public static function steuerGruppenAusPositionen(array $positionen): array
     {
@@ -65,118 +70,276 @@ class BfrService
         return array_map(fn($v) => round($v, 2), $summen);
     }
 
+    // -------------------------------------------------------------------------
+    // State-Check-Gate — VOR jeder Buchung aufrufen
+    // -------------------------------------------------------------------------
+
     /**
-     * Haupt-Einstiegspunkt: nach jeder Bon-Erstellung für die jeweilige Kasse
-     * aufrufen. Signiert zuerst alle noch offenen Belege (älteste TN zuerst),
-     * dann folgt der gerade erstellte Bon automatisch als letzter in der Liste.
-     * Bricht bei der ersten fehlgeschlagenen Signatur ab — ein späterer Beleg
-     * darf nie vor einem gescheiterten/offenen früheren Beleg signiert werden.
+     * Vorab-Check mit stillen Kurz-Retries (für den ersten, automatischen Versuch
+     * beim Bezahlen-Klick bzw. Kassenstart — im Normalfall < 1 Sekunde, unsichtbar).
+     * Protokolliert bei endgültigem Fehlschlag eine Ausfall-Episode.
      */
-    public function signiereAusstehende(int $kasseId, string $ausgeloestDurch = 'automatisch'): array
+    public function pruefeVorBuchung(int $kasseId): array
+    {
+        return $this->pruefeVorBuchungIntern($kasseId, self::KURZ_RETRY_ANZAHL);
+    }
+
+    /**
+     * Einzel-Check ohne Kurz-Retries — für die beiden Popup-Buttons ("Erneut
+     * versuchen" / "Überprüft, Dienst sollte wieder laufen"). Der Klick selbst
+     * repräsentiert bereits verstrichene Zeit, ein weiterer Kurz-Retry-Burst
+     * ist dort nicht nötig.
+     */
+    public function pruefeVorBuchungEinzeln(int $kasseId): array
+    {
+        return $this->pruefeVorBuchungIntern($kasseId, 1);
+    }
+
+    private function pruefeVorBuchungIntern(int $kasseId, int $versuche): array
     {
         $kasse = $this->ladeKasse($kasseId);
         if (empty($kasse['bfr_url'])) {
-            return ['ausgefuehrt' => false, 'grund' => 'kein_bfr_konfiguriert'];
+            return ['erreichbar' => true, 'bfr_konfiguriert' => false];
         }
 
-        $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id']);
-        if (!$verbindung['erreichbar']) {
-            return ['ausgefuehrt' => false, 'grund' => $verbindung['grund']];
-        }
-
-        // erstellt_am >= bfr_aktiv_seit: nur Belege ab der aktuell gültigen Kassen-ID/Registrierung
-        // signieren. Historische Belege von vor der BFR-Einführung oder von einer alten Kassen-ID
-        // (Hardware-Wechsel) gehören zu einer anderen bzw. gar keiner Signaturkette und dürfen nie
-        // mit der jetzigen Registrierung nachsigniert werden.
-        $stmt = $this->db->prepare("
-            SELECT id, bon_nr, bruttobetrag, erstellt_am, steuer_a, steuer_b, steuer_c, steuer_d, steuer_e
-            FROM kassen_bons
-            WHERE kasse_id = :kid AND typ IN ('verkauf','storno') AND bfr_status = 'ausstehend'
-                  AND erstellt_am >= :aktiv_seit
-            ORDER BY id ASC
-        ");
-        $stmt->execute(['kid' => $kasseId, 'aktiv_seit' => $kasse['bfr_aktiv_seit']]);
-        $belege = $stmt->fetchAll();
-
-        if (empty($belege)) {
-            return ['ausgefuehrt' => true, 'signiert' => 0, 'fehlgeschlagen' => 0];
-        }
-
-        $laufId = count($belege) > 1
-            ? $this->starteNachsignierungslauf($kasseId, $ausgeloestDurch)
-            : null;
-
-        $zaehler        = (float)$kasse['bfr_umsatzzaehler'];
-        $signiert       = 0;
-        $fehlgeschlagen = 0;
-        foreach ($belege as $i => $beleg) {
-            $ergebnis = $this->signiereEinzelbeleg($beleg, $kasse['bfr_url'], $zaehler);
-            if ($ergebnis['erfolg']) {
-                $this->markiereSigniert((int)$beleg['id'], $ergebnis, $laufId);
-                $zaehler += (float)$beleg['bruttobetrag'];
-                $this->aktualisiereUmsatzzaehler($kasseId, $zaehler);
-                $signiert++;
-            } else {
-                $this->markiereFehler((int)$beleg['id'], $ergebnis);
-                $fehlgeschlagen++;
-                break; // Reihenfolge einhalten: nicht am gescheiterten Beleg vorbei weitermachen
+        $verbindung = null;
+        for ($i = 0; $i < $versuche; $i++) {
+            $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id']);
+            if ($verbindung['erreichbar']) {
+                return ['erreichbar' => true, 'bfr_konfiguriert' => true];
             }
-            if ($i < count($belege) - 1) {
-                usleep(self::PAUSE_ZWISCHEN_SIGNATUREN_MS * 1000);
+            if ($i < $versuche - 1) {
+                usleep(self::KURZ_RETRY_PAUSE_MS * 1000);
             }
         }
 
-        if ($laufId !== null) {
-            $this->beendeNachsignierungslauf($laufId, $signiert, $fehlgeschlagen);
+        $this->protokolliereAusfall($kasseId, 'dienst_nicht_erreichbar', null);
+        return ['erreichbar' => false, 'bfr_konfiguriert' => true, 'grund' => $verbindung['grund'] ?? 'bfr_nicht_erreichbar'];
+    }
+
+    /**
+     * Beim Öffnen der Kasse aufrufen (bon.php-Seitenaufruf). Zusätzlich zum
+     * normalen Erreichbarkeits-Check: ist eine Ausfall-Episode dieser Kasse noch
+     * offen, wird im Hintergrund ein Nullbeleg versucht — klappt er (echte
+     * Signatur), schließt das die Episode automatisch; kommt wieder "ausgefallen",
+     * läuft die Episode einfach weiter. Kein eigenes Popup dafür, die Kasse
+     * startet in beiden Fällen normal.
+     */
+    public function pruefeKassenstart(int $kasseId): array
+    {
+        $ergebnis = $this->pruefeVorBuchungEinzeln($kasseId);
+        if (!$ergebnis['erreichbar'] || !$ergebnis['bfr_konfiguriert']) {
+            return $ergebnis;
         }
 
-        return ['ausgefuehrt' => true, 'signiert' => $signiert, 'fehlgeschlagen' => $fehlgeschlagen];
+        if ($this->offeneEpisode($kasseId)) {
+            try {
+                $this->versucheRecoveryNullbeleg($kasseId);
+            } catch (Throwable $e) {
+                error_log('[BFR-Recovery] ' . $e->getMessage());
+            }
+        }
+
+        return $ergebnis;
+    }
+
+    private function versucheRecoveryNullbeleg(int $kasseId): void
+    {
+        $kasse   = $this->ladeKasse($kasseId);
+        $belegNr = 'Nullbeleg' . $kasse['kasse_nr'] . date('YmdHis');
+        $xml     = $this->baueNullbelegXml($belegNr, $kasse['rksv_kassen_id']);
+        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml);
+        $reg     = $this->parseRegisterAntwort($antwort);
+
+        $this->db->prepare("
+            INSERT INTO bfr_nullbelege (kasse_id, monat, beleg_nr, ausgeloest_durch, rksv_signatur, rksv_qr, signiert_am)
+            VALUES (:kid, :monat, :beleg_nr, 'automatisch', :sig, :qr, NOW())
+        ")->execute([
+            'kid'     => $kasseId,
+            'monat'   => date('Y-m'),
+            'beleg_nr'=> $belegNr,
+            'sig'     => $reg['link'],
+            'qr'      => $reg['code'],
+        ]);
+
+        $this->verarbeiteRegisterErgebnis($kasseId, $belegNr, $reg);
+    }
+
+    /** GET /state — prüft Erreichbarkeit und ob die Kassen-ID (RN) übereinstimmt. */
+    public function pruefeVerbindung(string $bfrUrl, ?string $erwarteteRn = null): array
+    {
+        $antwort = $this->httpGet(rtrim($bfrUrl, '/') . '/state');
+        if ($antwort === null) {
+            return ['erreichbar' => false, 'grund' => 'bfr_nicht_erreichbar'];
+        }
+
+        $state = @simplexml_load_string($antwort);
+        if ($state === false) {
+            return ['erreichbar' => false, 'grund' => 'antwort_ungueltig'];
+        }
+
+        $rn = (string)($state->RN ?? '');
+        if ($erwarteteRn && $rn !== $erwarteteRn) {
+            return ['erreichbar' => false, 'grund' => 'rn_stimmt_nicht', 'rn' => $rn];
+        }
+
+        return ['erreichbar' => true, 'rn' => $rn];
     }
 
     // -------------------------------------------------------------------------
-    // Nacherfassungs-Seite — Übersicht offener Belege + Sammelbeleg-Historie
+    // Beleg signieren — wird erst NACH erfolgreichem pruefeVorBuchung() gerufen
     // -------------------------------------------------------------------------
 
-    /** Alle Verkaufs-/Storno-Bons, die noch auf eine Signatur warten oder fehlgeschlagen sind. */
-    public function offeneBelege(): array
+    /**
+     * Signiert einen einzelnen Verkaufs-/Stornobeleg synchron und speichert das
+     * Ergebnis sofort am Bon. Da /state kurz zuvor erfolgreich war, kommt von
+     * /register laut Hersteller-API garantiert eine Antwort — bleibt sie
+     * trotzdem aus (das enge Zeitfenster zwischen State-Check und Register-Call),
+     * wird das wie "Sicherheitseinrichtung ausgefallen" behandelt: der bereits
+     * abgeschlossene Verkauf darf dadurch nie mehr rückgängig gemacht werden.
+     */
+    public function signiereBeleg(int $bonId, array $beleg, array $kasse): array
     {
-        // Nur Belege ab k.bfr_aktiv_seit — historische/Kassen-ID-fremde Belege werden hier
-        // bewusst nicht als "offen" gelistet, siehe Kommentar in signiereAusstehende().
-        $stmt = $this->db->query("
-            SELECT b.id, b.bon_nr, b.typ, b.bruttobetrag, b.erstellt_am,
-                   b.bfr_status, b.bfr_fehlergrund, k.name AS kasse_name
-            FROM kassen_bons b
-            JOIN kassen k ON k.id = b.kasse_id
-            WHERE b.bfr_status IN ('ausstehend','fehler')
-                  AND k.bfr_aktiv_seit IS NOT NULL AND b.erstellt_am >= k.bfr_aktiv_seit
-            ORDER BY b.id ASC
-        ");
-        return $stmt->fetchAll();
+        $betrag = (float)$beleg['bruttobetrag'];
+        $zaehler = (float)$kasse['bfr_umsatzzaehler'];
+        if ($betrag < 0 && ($zaehler + $betrag) < 0) {
+            // Sicherheitsnetz — der eigentliche Check läuft schon vorab in
+            // KassenService::storniereBon() über wuerdeUmsatzzaehlerNegativWerden().
+            return ['erfolg' => false, 'grund' => 'zaehler_negativ'];
+        }
+
+        $xml     = $this->baueSignierXml($beleg);
+        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml);
+        $reg     = $this->parseRegisterAntwort($antwort);
+
+        $this->db->prepare("
+            UPDATE kassen_bons SET rksv_signatur = :sig, rksv_qr = :qr, signiert_am = NOW() WHERE id = :id
+        ")->execute(['sig' => $reg['link'], 'qr' => $reg['code'], 'id' => $bonId]);
+
+        // Zähler zählt IMMER mit, auch bei "Sicherheitseinrichtung ausgefallen": der Umsatz
+        // wird trotzdem an den BFR übermittelt und dort für den späteren Sammelbeleg
+        // gespeichert/summiert — nur die eigentliche Signatur fehlt, der Betrag selbst ist
+        // beim BFR genauso angekommen wie bei einer normalen Signatur.
+        $this->aktualisiereUmsatzzaehler((int)$kasse['id'], $zaehler + $betrag);
+        $this->verarbeiteRegisterErgebnis((int)$kasse['id'], $beleg['bon_nr'], $reg);
+
+        return ['erfolg' => true, 'ausgefallen' => $reg['ausgefallen']];
     }
 
-    /** Alle Nullbelege, die noch auf eine Signatur warten oder fehlgeschlagen sind. */
-    public function offeneNullbelege(): array
+    /**
+     * Wertet die /register-Antwort aus. Laut Hersteller-API ist RC immer "OK" —
+     * das einzige Unterscheidungsmerkmal ist <Link>: entweder die Steuerkennung
+     * (echte Signatur) oder der Text "Sicherheitseinrichtung ausgefallen". Kommt
+     * trotz erfolgreichem State-Check keine/keine lesbare Antwort, wird das
+     * defensiv genauso behandelt wie "ausgefallen" — RKSV-seitig die sichere Wahl,
+     * da der Verkauf so oder so nicht mehr zurückgenommen werden kann.
+     */
+    private function parseRegisterAntwort(?string $antwort): array
     {
-        $stmt = $this->db->query("
-            SELECT n.id, n.beleg_nr, n.monat, n.ausgeloest_durch, n.erstellt_am,
-                   n.bfr_status, n.bfr_fehlergrund, k.name AS kasse_name
-            FROM bfr_nullbelege n
-            JOIN kassen k ON k.id = n.kasse_id
-            WHERE n.bfr_status IN ('ausstehend','fehler')
-            ORDER BY n.id ASC
-        ");
-        return $stmt->fetchAll();
+        if ($antwort !== null) {
+            $traC = @simplexml_load_string($antwort);
+            if ($traC !== false) {
+                $link = (string)($traC->Fis->Link ?? '');
+                $code = (string)($traC->Fis->Code ?? '');
+                if ($link !== '' && $link !== 'Sicherheitseinrichtung ausgefallen') {
+                    return ['ausgefallen' => false, 'link' => $link, 'code' => $code];
+                }
+                return ['ausgefallen' => true, 'link' => 'Sicherheitseinrichtung ausgefallen', 'code' => $code ?: null];
+            }
+        }
+        return ['ausgefallen' => true, 'link' => 'Sicherheitseinrichtung ausgefallen', 'code' => null];
     }
 
-    /** Die letzten Nachsignierungsläufe (Sammelbeleg-Liste) über alle Kassen. */
-    public function nachsignierungsLaeufe(int $limit = 50): array
+    /** Gemeinsame Nachbearbeitung für Bons und Nullbelege: Episode öffnen/schließen. */
+    private function verarbeiteRegisterErgebnis(int $kasseId, ?string $bonNr, array $reg): void
+    {
+        if ($reg['ausgefallen']) {
+            $this->protokolliereAusfall($kasseId, 'sicherheitseinrichtung_ausgefallen', $bonNr);
+        } else {
+            $this->schliesseOffeneAusfallEpisode($kasseId);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Ausfall-Episoden — Buchführung für die 24h/48h-FON-Meldepflicht
+    // -------------------------------------------------------------------------
+
+    private function protokolliereAusfall(int $kasseId, string $typ, ?string $bonNr): void
+    {
+        $episode = $this->offeneEpisode($kasseId);
+        if ($episode) {
+            $ausfallId = (int)$episode['id'];
+            $this->db->prepare("
+                UPDATE bfr_ausfaelle SET letzte_erkennung_am = NOW(), anzahl_ereignisse = anzahl_ereignisse + 1
+                WHERE id = :id
+            ")->execute(['id' => $ausfallId]);
+        } else {
+            $this->db->prepare("
+                INSERT INTO bfr_ausfaelle (kasse_id, erste_erkennung_am, letzte_erkennung_am)
+                VALUES (:kid, NOW(), NOW())
+            ")->execute(['kid' => $kasseId]);
+            $ausfallId = (int)$this->db->lastInsertId();
+
+            Logger::log('kasse.bfr.ausfall_begonnen', 'bfr_ausfaelle', $ausfallId, [
+                'kasse_id' => $kasseId, 'typ' => $typ,
+            ], $this->getJarvisId());
+        }
+
+        $this->db->prepare("
+            INSERT INTO bfr_ausfall_ereignisse (ausfall_id, typ, bon_nr)
+            VALUES (:aid, :typ, :bon_nr)
+        ")->execute(['aid' => $ausfallId, 'typ' => $typ, 'bon_nr' => $bonNr]);
+    }
+
+    private function schliesseOffeneAusfallEpisode(int $kasseId): void
+    {
+        $episode = $this->offeneEpisode($kasseId);
+        if (!$episode) return;
+
+        $this->db->prepare("UPDATE bfr_ausfaelle SET geloest_am = NOW() WHERE id = :id")
+            ->execute(['id' => $episode['id']]);
+
+        Logger::log('kasse.bfr.ausfall_geloest', 'bfr_ausfaelle', (int)$episode['id'], [
+            'kasse_id' => $kasseId,
+            'dauer_minuten' => round((strtotime('now') - strtotime($episode['erste_erkennung_am'])) / 60),
+        ], $this->getJarvisId());
+    }
+
+    public function offeneEpisode(int $kasseId): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT l.id, l.kasse_id, k.name AS kasse_name, l.ausgeloest_durch,
-                   l.gestartet_am, l.beendet_am, l.anzahl_signiert, l.anzahl_fehlgeschlagen
-            FROM bfr_nachsignierungs_laeufe l
-            JOIN kassen k ON k.id = l.kasse_id
-            ORDER BY l.id DESC
+            SELECT * FROM bfr_ausfaelle WHERE kasse_id = :kid AND geloest_am IS NULL LIMIT 1
+        ");
+        $stmt->execute(['kid' => $kasseId]);
+        return $stmt->fetch() ?: null;
+    }
+
+    /** Für Dashboard/Kassen-Header: alle offenen Episoden, mit "über 24h"-Flag. */
+    public function offeneEpisodenMitWarnung(): array
+    {
+        $stmt = $this->db->query("
+            SELECT a.*, k.name AS kasse_name,
+                   TIMESTAMPDIFF(HOUR, a.erste_erkennung_am, NOW()) AS dauer_stunden
+            FROM bfr_ausfaelle a
+            JOIN kassen k ON k.id = a.kasse_id
+            WHERE a.geloest_am IS NULL
+            ORDER BY a.erste_erkennung_am ASC
+        ");
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$r) {
+            $r['warnung_24h'] = (int)$r['dauer_stunden'] >= self::AUSFALL_WARNUNG_STUNDEN;
+        }
+        return $rows;
+    }
+
+    /** Ausfall-Historie (offen + gelöst) für die Übersichtsseite. */
+    public function ausfallHistorie(int $limit = 100): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT a.*, k.name AS kasse_name
+            FROM bfr_ausfaelle a
+            JOIN kassen k ON k.id = a.kasse_id
+            ORDER BY a.erste_erkennung_am DESC
             LIMIT :limit
         ");
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
@@ -184,63 +347,108 @@ class BfrService
         return $stmt->fetchAll();
     }
 
-    /** Welche Belege gehören zu einem bestimmten Nachsignierungslauf (Drill-down). */
-    public function laufBelege(int $laufId): array
+    /** Einzelvorfälle einer Episode (Drill-down). */
+    public function episodeEreignisse(int $ausfallId): array
     {
         $stmt = $this->db->prepare("
-            SELECT bon_nr, typ, bruttobetrag, bfr_status, signiert_am
-            FROM kassen_bons
-            WHERE nachsignierungs_lauf_id = :lauf_id
-            ORDER BY id ASC
+            SELECT * FROM bfr_ausfall_ereignisse WHERE ausfall_id = :aid ORDER BY id ASC
         ");
-        $stmt->execute(['lauf_id' => $laufId]);
+        $stmt->execute(['aid' => $ausfallId]);
         return $stmt->fetchAll();
     }
 
+    // -------------------------------------------------------------------------
+    // Nullbeleg
+    // -------------------------------------------------------------------------
+
     /**
-     * Setzt einen fehlgeschlagenen Beleg auf 'ausstehend' zurück und stößt die normale
-     * Signierlogik für seine Kasse erneut an — die Reihenfolge-Regel greift dabei ganz
-     * normal weiter (ältere offene Belege würden zuerst dran sein).
+     * Manueller Trigger (Klick auf "RKSV aktiv" in der Kassen-Kopfzeile).
+     * Prüft Erreichbarkeit selbst (Einzel-Check), damit der Aufrufer nur das
+     * Ergebnis behandeln muss.
      */
-    public function retryBeleg(int $bonId): array
+    public function erstelleNullbeleg(int $kasseId, string $ausgeloestDurch, ?int $benutzerId = null): array
     {
-        $stmt = $this->db->prepare("SELECT kasse_id FROM kassen_bons WHERE id = :id");
-        $stmt->execute(['id' => $bonId]);
-        $kasseId = (int)($stmt->fetchColumn() ?: 0);
-        if (!$kasseId) {
-            return ['erfolg' => false, 'fehler' => 'Beleg nicht gefunden.'];
+        $ergebnis = $this->pruefeVorBuchungEinzeln($kasseId);
+        if (!$ergebnis['bfr_konfiguriert']) {
+            return ['erfolg' => false, 'grund' => 'kein_bfr_konfiguriert'];
+        }
+        if (!$ergebnis['erreichbar']) {
+            return ['erfolg' => false, 'grund' => $ergebnis['grund'] ?? 'bfr_nicht_erreichbar'];
         }
 
-        $this->db->prepare("UPDATE kassen_bons SET bfr_status = 'ausstehend', bfr_fehlergrund = NULL WHERE id = :id")
-            ->execute(['id' => $bonId]);
+        $kasse   = $this->ladeKasse($kasseId);
+        $belegNr = 'Nullbeleg' . $kasse['kasse_nr'] . date('YmdHis');
+        $xml     = $this->baueNullbelegXml($belegNr, $kasse['rksv_kassen_id']);
+        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml);
+        $reg     = $this->parseRegisterAntwort($antwort);
 
-        $ergebnis = $this->signiereAusstehende($kasseId, 'manuell');
-        return ['erfolg' => true] + $ergebnis;
+        $this->db->prepare("
+            INSERT INTO bfr_nullbelege (kasse_id, monat, beleg_nr, ausgeloest_durch, rksv_signatur, rksv_qr, benutzer_id, signiert_am)
+            VALUES (:kid, :monat, :beleg_nr, :ausgeloest_durch, :sig, :qr, :benutzer_id, NOW())
+        ")->execute([
+            'kid'              => $kasseId,
+            'monat'            => date('Y-m'),
+            'beleg_nr'         => $belegNr,
+            'ausgeloest_durch' => $ausgeloestDurch,
+            'sig'              => $reg['link'],
+            'qr'               => $reg['code'],
+            'benutzer_id'      => $benutzerId,
+        ]);
+
+        $this->verarbeiteRegisterErgebnis($kasseId, $belegNr, $reg);
+
+        return ['erfolg' => true, 'ausgefallen' => $reg['ausgefallen'], 'beleg_nr' => $belegNr];
     }
 
-    /** Gegenstück zu retryBeleg() für Nullbelege. */
-    public function retryNullbeleg(int $nullbelegId): array
+    /**
+     * Sorgt dafür, dass diese Kasse in diesem Kalendermonat mindestens einen
+     * signierten Nullbeleg hat. Vor der ersten echten Buchung des Monats
+     * aufrufen. Ist BFR gerade nicht erreichbar, wird still übersprungen —
+     * der nächste Verkauf (der ja ohnehin sein eigenes State-Gate hat) oder
+     * der Cronjob holt das nach. Kein Platzhalter-Datensatz nötig: schlägt
+     * ein Versuch fehl, bleibt einfach nichts zurück, der nächste Versuch
+     * bekommt automatisch eine neue Belegnummer.
+     */
+    public function sicherstelleMonatsNullbeleg(int $kasseId): void
     {
-        $stmt = $this->db->prepare("SELECT kasse_id, beleg_nr FROM bfr_nullbelege WHERE id = :id");
-        $stmt->execute(['id' => $nullbelegId]);
-        $nullbeleg = $stmt->fetch();
-        if (!$nullbeleg) {
-            return ['erfolg' => false, 'fehler' => 'Nullbeleg nicht gefunden.'];
+        $monat = date('Y-m');
+        $stmt = $this->db->prepare("
+            SELECT 1 FROM bfr_nullbelege
+            WHERE kasse_id = :kid AND monat = :monat AND rksv_signatur IS NOT NULL
+            LIMIT 1
+        ");
+        $stmt->execute(['kid' => $kasseId, 'monat' => $monat]);
+        if ($stmt->fetchColumn()) {
+            return; // für diesen Monat schon erledigt
         }
 
-        $kasse = $this->ladeKasse((int)$nullbeleg['kasse_id']);
+        $kasse = $this->ladeKasse($kasseId);
         if (empty($kasse['bfr_url'])) {
-            return ['erfolg' => false, 'fehler' => 'Keine BFR-URL für diese Kasse konfiguriert.'];
+            return;
         }
 
-        return $this->versucheNullbelegSignatur($nullbelegId, $nullbeleg['beleg_nr'], $kasse);
+        $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id']);
+        if (!$verbindung['erreichbar']) {
+            return; // still überspringen, nächster Versuch holt's nach
+        }
+
+        $this->erstelleNullbeleg($kasseId, 'automatisch');
+    }
+
+    private function baueNullbelegXml(string $belegNr, ?string $rksvKassenId): string
+    {
+        $tra = new SimpleXMLElement('<Tra/>');
+        $esr = $tra->addChild('ESR');
+        $esr->addAttribute('D', date('Y-m-d\TH:i:s'));
+        $esr->addAttribute('TT', (string)$rksvKassenId);
+        $esr->addAttribute('TN', $belegNr);
+        return $tra->asXML();
     }
 
     // -------------------------------------------------------------------------
     // Kassen-Registrierung — Protokoll/Backup der FinanzOnline-Meldung
-    // (die eigentliche Meldung + der Startbeleg passieren im BFR-Admin-Tool
-    // selbst, nicht über unsere Software — das hier ist die zweite,
-    // unabhängige Aufzeichnung "wann wurde was bestätigt")
+    // (unverändert — die eigentliche Meldung + der Startbeleg passieren im
+    // BFR-Admin-Tool selbst, nicht über unsere Software)
     // -------------------------------------------------------------------------
 
     /** Liest /state und zerlegt das SC-Feld (z.B. "ATU65033000:AT1:5619064c") in seine Teile. */
@@ -388,9 +596,7 @@ class BfrService
      * Vorab-Check für Stornos: würde dieser (negative) Betrag den Gesamtumsatzzähler
      * unter Null drücken? Der BFR selbst ist dabei völlig funktionsfähig — wir lehnen
      * hier rein aus eigener Business-Logik ab. Deshalb VOR dem Anlegen des Storno-Belegs
-     * aufrufen (KassenService::storniereBon) und den Vorgang bei true ganz verhindern,
-     * statt einen Beleg mit dem irreführenden Hinweis "Sicherheitseinrichtung ausgefallen"
-     * drucken zu lassen — das Gerät ist ja gar nicht ausgefallen.
+     * aufrufen (KassenService::storniereBon) und den Vorgang bei true ganz verhindern.
      */
     public function wuerdeUmsatzzaehlerNegativWerden(int $kasseId, float $betrag): bool
     {
@@ -404,175 +610,10 @@ class BfrService
         return ((float)$kasse['bfr_umsatzzaehler'] + $betrag) < 0;
     }
 
-    /** GET /state — prüft Erreichbarkeit und ob die Kassen-ID (RN) übereinstimmt. */
-    public function pruefeVerbindung(string $bfrUrl, ?string $erwarteteRn = null): array
-    {
-        $antwort = $this->httpGet(rtrim($bfrUrl, '/') . '/state');
-        if ($antwort === null) {
-            return ['erreichbar' => false, 'grund' => 'bfr_nicht_erreichbar'];
-        }
-
-        $state = @simplexml_load_string($antwort);
-        if ($state === false) {
-            return ['erreichbar' => false, 'grund' => 'antwort_ungueltig'];
-        }
-
-        $rn = (string)($state->RN ?? '');
-        if ($erwarteteRn && $rn !== $erwarteteRn) {
-            return ['erreichbar' => false, 'grund' => 'rn_stimmt_nicht', 'rn' => $rn];
-        }
-
-        return ['erreichbar' => true, 'rn' => $rn];
-    }
-
-    /**
-     * POST /register für einen einzelnen Verkaufs- oder Stornobeleg.
-     * Vorgabe des BFR-Herstellers: der Gesamtumsatzzähler darf durch kein
-     * signiertes Storno negativ werden. Der Zähler steckt nur verschlüsselt
-     * in der Signatur (nicht auslesbar) — wir führen ihn deshalb selbst in
-     * kassen.bfr_umsatzzaehler mit und prüfen hier, BEVOR wir überhaupt an
-     * den BFR senden.
-     */
-    private function signiereEinzelbeleg(array $beleg, string $bfrUrl, float $aktuellerZaehler): array
-    {
-        $betrag = (float)$beleg['bruttobetrag'];
-        if ($betrag < 0 && ($aktuellerZaehler + $betrag) < 0) {
-            return ['erfolg' => false, 'grund' => 'zaehler_negativ', 'meldung' => 'Storno würde Gesamtumsatzzähler negativ machen'];
-        }
-
-        $xml = $this->baueSignierXml($beleg);
-        $antwort = $this->httpPost(rtrim($bfrUrl, '/') . '/register', $xml);
-        return $this->parseRegisterAntwort($antwort);
-    }
-
-    /** Wertet die /register-Antwort aus — gemeinsam für Verkaufsbeleg und Nullbeleg. */
-    private function parseRegisterAntwort(?string $antwort): array
-    {
-        if ($antwort === null) {
-            return ['erfolg' => false, 'grund' => 'verbindung'];
-        }
-
-        $traC = @simplexml_load_string($antwort);
-        if ($traC === false) {
-            return ['erfolg' => false, 'grund' => 'abgelehnt', 'meldung' => 'Antwort nicht lesbar'];
-        }
-
-        $rc = (string)($traC->Result['RC'] ?? '');
-        if ($rc !== 'OK') {
-            return ['erfolg' => false, 'grund' => 'abgelehnt', 'meldung' => $rc ?: 'Unbekannter Fehler'];
-        }
-
-        return [
-            'erfolg' => true,
-            'code'   => (string)($traC->Fis->Code ?? ''),
-            'link'   => (string)($traC->Fis->Link ?? ''),
-        ];
-    }
-
-    /**
-     * Erstellt einen Nullbeleg (kein Umsatz, keine Steuergruppen) — Pflicht am
-     * Jahresende (31.12.) und als monatliche Absicherung, kann aber jederzeit
-     * manuell ausgelöst werden. Eigener Belegnummernkreis ("NullbelegK1..."),
-     * überschneidet sich nie mit normalen Bon-Nummern.
-     */
-    public function erstelleNullbeleg(int $kasseId, string $ausgeloestDurch, ?int $benutzerId = null): array
-    {
-        $kasse = $this->ladeKasse($kasseId);
-        if (empty($kasse['bfr_url'])) {
-            return ['erfolg' => false, 'grund' => 'kein_bfr_konfiguriert'];
-        }
-
-        $belegNr = 'Nullbeleg' . $kasse['kasse_nr'] . date('YmdHis');
-        $this->db->prepare("
-            INSERT INTO bfr_nullbelege (kasse_id, monat, beleg_nr, ausgeloest_durch, benutzer_id)
-            VALUES (:kasse_id, :monat, :beleg_nr, :ausgeloest_durch, :benutzer_id)
-        ")->execute([
-            'kasse_id'         => $kasseId,
-            'monat'            => date('Y-m'),
-            'beleg_nr'         => $belegNr,
-            'ausgeloest_durch' => $ausgeloestDurch,
-            'benutzer_id'      => $benutzerId,
-        ]);
-        $nullbelegId = (int)$this->db->lastInsertId();
-
-        return $this->versucheNullbelegSignatur($nullbelegId, $belegNr, $kasse);
-    }
-
-    /**
-     * Sorgt dafür, dass diese Kasse in diesem Kalendermonat mindestens einen
-     * signierten Nullbeleg hat — vor der ersten echten Buchung des Monats
-     * aufrufen (siehe KassenService::erstelleBon). Gibt es für diesen Monat
-     * schon einen offenen/fehlgeschlagenen Versuch, wird der erneut versucht
-     * statt einen weiteren Datensatz anzulegen.
-     */
-    public function sicherstelleMonatsNullbeleg(int $kasseId): void
-    {
-        $monat = date('Y-m');
-        $stmt = $this->db->prepare("
-            SELECT id, beleg_nr, bfr_status FROM bfr_nullbelege
-            WHERE kasse_id = :kid AND monat = :monat
-            ORDER BY id DESC LIMIT 1
-        ");
-        $stmt->execute(['kid' => $kasseId, 'monat' => $monat]);
-        $vorhanden = $stmt->fetch();
-
-        if ($vorhanden && $vorhanden['bfr_status'] === 'signiert') {
-            return; // für diesen Monat schon erledigt
-        }
-
-        $kasse = $this->ladeKasse($kasseId);
-        if (empty($kasse['bfr_url'])) {
-            return;
-        }
-
-        if ($vorhanden) {
-            $this->versucheNullbelegSignatur((int)$vorhanden['id'], $vorhanden['beleg_nr'], $kasse);
-        } else {
-            $this->erstelleNullbeleg($kasseId, 'automatisch');
-        }
-    }
-
-    private function versucheNullbelegSignatur(int $nullbelegId, string $belegNr, array $kasse): array
-    {
-        $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id']);
-        if (!$verbindung['erreichbar']) {
-            return ['erfolg' => false, 'grund' => $verbindung['grund']];
-        }
-
-        $xml     = $this->baueNullbelegXml($belegNr, $kasse['rksv_kassen_id']);
-        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml);
-        $ergebnis = $this->parseRegisterAntwort($antwort);
-
-        if ($ergebnis['erfolg']) {
-            $this->db->prepare("
-                UPDATE bfr_nullbelege SET
-                    bfr_status = 'signiert', bfr_fehlergrund = NULL, signiert_am = NOW(),
-                    rksv_signatur = :link, rksv_qr = :code
-                WHERE id = :id
-            ")->execute(['link' => $ergebnis['link'], 'code' => $ergebnis['code'], 'id' => $nullbelegId]);
-            return ['erfolg' => true, 'beleg_nr' => $belegNr];
-        }
-
-        $status = $ergebnis['grund'] === 'verbindung' ? 'ausstehend' : 'fehler';
-        $this->db->prepare("UPDATE bfr_nullbelege SET bfr_status = :status, bfr_fehlergrund = :grund WHERE id = :id")
-            ->execute(['status' => $status, 'grund' => self::grundText($ergebnis['grund']), 'id' => $nullbelegId]);
-        return ['erfolg' => false, 'grund' => $ergebnis['grund']];
-    }
-
-    private function baueNullbelegXml(string $belegNr, ?string $rksvKassenId): string
-    {
-        $tra = new SimpleXMLElement('<Tra/>');
-        $esr = $tra->addChild('ESR');
-        $esr->addAttribute('D', date('Y-m-d\TH:i:s'));
-        $esr->addAttribute('TT', (string)$rksvKassenId);
-        $esr->addAttribute('TN', $belegNr);
-        return $tra->asXML();
-    }
-
     private function ladeKasse(int $kasseId): array
     {
         $stmt = $this->db->prepare("
-            SELECT bfr_url, rksv_kassen_id, kasse_nr, bfr_umsatzzaehler, bfr_aktiv_seit FROM kassen WHERE id = :id
+            SELECT id, bfr_url, rksv_kassen_id, kasse_nr, bfr_umsatzzaehler, bfr_aktiv_seit FROM kassen WHERE id = :id
         ");
         $stmt->execute(['id' => $kasseId]);
         return $stmt->fetch() ?: [];
@@ -604,85 +645,26 @@ class BfrService
         return $tra->asXML();
     }
 
-    /** Wandelt einen internen grund-Code in einen für die Nacherfassungs-Seite lesbaren Text. */
-    public static function grundText(string $grund, ?string $meldung = null): string
+    /** Wandelt einen internen grund-Code in einen für die UI lesbaren Text. */
+    public static function grundText(string $grund): string
     {
         $labels = [
-            'verbindung'            => 'BFR nicht erreichbar',
-            'abgelehnt'             => 'Vom BFR abgelehnt',
-            'zaehler_negativ'       => 'Gesamtumsatzzähler würde negativ werden',
-            'kein_bfr_konfiguriert' => 'Keine BFR-URL konfiguriert',
+            'bfr_nicht_erreichbar'  => 'BFR-Dienst nicht erreichbar',
             'antwort_ungueltig'     => 'Antwort vom BFR war nicht lesbar',
             'rn_stimmt_nicht'       => 'RKSV-Kassen-ID stimmt nicht überein',
+            'zaehler_negativ'       => 'Gesamtumsatzzähler würde negativ werden',
+            'kein_bfr_konfiguriert' => 'Keine BFR-URL konfiguriert',
         ];
-        $text = $labels[$grund] ?? $grund;
-        return $meldung ? $text . ' (' . $meldung . ')' : $text;
-    }
-
-    private function markiereSigniert(int $bonId, array $ergebnis, ?int $laufId): void
-    {
-        $this->db->prepare("
-            UPDATE kassen_bons SET
-                bfr_status              = 'signiert',
-                bfr_fehlergrund         = NULL,
-                signiert_am             = NOW(),
-                rksv_signatur           = :link,
-                rksv_qr                 = :code,
-                nachsignierungs_lauf_id = :lauf_id
-            WHERE id = :id
-        ")->execute([
-            'link'    => $ergebnis['link'],
-            'code'    => $ergebnis['code'],
-            'lauf_id' => $laufId,
-            'id'      => $bonId,
-        ]);
-    }
-
-    private function markiereFehler(int $bonId, array $ergebnis): void
-    {
-        // Nur reiner Verbindungsfehler bleibt 'ausstehend' (automatischer Retry beim
-        // nächsten Versuch). Alles andere (von BFR abgelehnt, Zähler würde negativ, ...)
-        // → 'fehler', braucht manuellen Blick — ein bloßer Retry würde daran nichts ändern.
-        $status = $ergebnis['grund'] === 'verbindung' ? 'ausstehend' : 'fehler';
-        $this->db->prepare("UPDATE kassen_bons SET bfr_status = :status, bfr_fehlergrund = :grund WHERE id = :id")
-            ->execute([
-                'status' => $status,
-                'grund'  => self::grundText($ergebnis['grund'], $ergebnis['meldung'] ?? null),
-                'id'     => $bonId,
-            ]);
-
-        Logger::log('kasse.bfr.fehler', 'kassen_bons', $bonId, [
-            'grund'   => $ergebnis['grund'],
-            'meldung' => $ergebnis['meldung'] ?? null,
-        ], $this->getJarvisId());
-    }
-
-    private function starteNachsignierungslauf(int $kasseId, string $ausgeloestDurch): int
-    {
-        $this->db->prepare("
-            INSERT INTO bfr_nachsignierungs_laeufe (kasse_id, ausgeloest_durch)
-            VALUES (:kasse_id, :ausgeloest_durch)
-        ")->execute(['kasse_id' => $kasseId, 'ausgeloest_durch' => $ausgeloestDurch]);
-        return (int)$this->db->lastInsertId();
-    }
-
-    private function beendeNachsignierungslauf(int $laufId, int $signiert, int $fehlgeschlagen): void
-    {
-        $this->db->prepare("
-            UPDATE bfr_nachsignierungs_laeufe SET
-                beendet_am            = NOW(),
-                anzahl_signiert       = :signiert,
-                anzahl_fehlgeschlagen = :fehlgeschlagen
-            WHERE id = :id
-        ")->execute(['signiert' => $signiert, 'fehlgeschlagen' => $fehlgeschlagen, 'id' => $laufId]);
+        return $labels[$grund] ?? $grund;
     }
 
     private function httpGet(string $url): ?string
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => self::TIMEOUT_SEKUNDEN,
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_TIMEOUT         => self::TIMEOUT_SEKUNDEN,
+            CURLOPT_CONNECTTIMEOUT_MS => self::CONNECT_TIMEOUT_MS,
         ]);
         $antwort = curl_exec($ch);
         $fehler  = curl_errno($ch);
@@ -694,8 +676,9 @@ class BfrService
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => self::TIMEOUT_SEKUNDEN,
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_TIMEOUT         => self::TIMEOUT_SEKUNDEN,
+            CURLOPT_CONNECTTIMEOUT_MS => self::CONNECT_TIMEOUT_MS,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $xmlBody,
             CURLOPT_HTTPHEADER     => ['Content-Type: text/xml'],

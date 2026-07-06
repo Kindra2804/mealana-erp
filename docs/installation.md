@@ -127,11 +127,11 @@ Es gibt jetzt ein Migrations-Tool: `erp\database\migrate.php`. Für eine **neue*
 
 **Deshalb der zuverlässige Weg — Baseline-Dump + Migrations-Tracker:**
 
-1. Struktur-Dump importieren (enthält alle 89 Tabellen im aktuellen Endstand, **keine** Daten):
+1. Struktur-Dump importieren (enthält alle 91 Tabellen im aktuellen Endstand, **keine** Daten):
    ```powershell
    C:\xampp\mysql\bin\mysql.exe -u root mealana_erp < "D:\ERP\mealana\erp\database\baseline_schema.sql"
    ```
-2. Den Migrations-Tracker "scharf schalten" (trägt alle 101 vorhandenen Migrationsdateien als *bereits enthalten* ein, ohne sie nochmal auszuführen — die Baseline hat ihren Inhalt ja schon):
+2. Den Migrations-Tracker "scharf schalten" (trägt alle 109 vorhandenen Migrationsdateien als *bereits enthalten* ein, ohne sie nochmal auszuführen — die Baseline hat ihren Inhalt ja schon):
    ```powershell
    cd D:\ERP\mealana\erp\database
    C:\xampp\php\php.exe migrate.php bootstrap
@@ -141,9 +141,9 @@ Es gibt jetzt ein Migrations-Tool: `erp\database\migrate.php`. Für eine **neue*
    ```powershell
    C:\xampp\php\php.exe migrate.php status
    ```
-   sollte `101 Migration(en) angewendet, 0 offen` zeigen.
+   sollte `109 Migration(en) angewendet, 0 offen` zeigen.
 
-**Ab jetzt, für jede künftige neue Migration (105, 106, ...):** einfach `php migrate.php` ohne Argumente aufrufen — es wendet automatisch nur die noch fehlenden Dateien an, egal ob auf Dev oder Live. Kein manuelles Zählen mehr nötig.
+**Ab jetzt, für jede künftige neue Migration (113, 114, ...):** einfach `php migrate.php` ohne Argumente aufrufen — es wendet automatisch nur die noch fehlenden Dateien an, egal ob auf Dev oder Live. Kein manuelles Zählen mehr nötig.
 
 ⚠️ **Nicht** `schema_current.sql` verwenden — das ist ein Snapshot der echten MeaLana-Produktivdaten (Kunden, Firmenname, Admin-Zugang). `baseline_schema.sql` ist reine Struktur ohne Daten und dafür extra angelegt.
 

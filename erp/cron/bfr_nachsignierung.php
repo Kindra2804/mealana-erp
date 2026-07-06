@@ -1,6 +1,6 @@
 <?php
 /**
- * BFR-Nachsignierungs-Cronjob
+ * BFR-Ausfall-Recovery-Cronjob
  *
  * Läuft alle paar Minuten (empfohlen: alle 5 Minuten).
  *
@@ -11,12 +11,14 @@
  * Linux crontab (crontab -e):
  *   (jede 5.) * * * * php /var/www/mealana/erp/cron/bfr_nachsignierung.php >> /var/log/mealana_cron.log 2>&1
  *
- * Logik:
- *   Für jede aktive Kasse mit konfigurierter BFR-URL: offene Belege nachsignieren
- *   (BfrService::signiereAusstehende), damit das nicht vom nächsten echten Verkauf
- *   abhängt. Zusätzlich Monats-Nullbeleg absichern, falls die Kasse länger nicht
- *   benutzt wurde. Beides läuft mit derselben Stichtag-/Reihenfolge-Logik wie beim
- *   normalen Verkauf — siehe BfrService.
+ * Logik (seit 2026-07-06 — State-Check-Gate ersetzt die alte Nachsignierungs-
+ * Warteschlange, siehe BfrService): jeder Verkauf/Storno prüft die Erreichbarkeit
+ * selbst VOR der Buchung, ein Beleg bleibt also nie unsigniert hängen. Was bleibt,
+ * ist die Kassenstart-Recovery (Nullbeleg, sobald eine offene Ausfall-Episode
+ * wieder abgeschlossen werden kann) — die soll aber nicht davon abhängen, dass
+ * jemand die Kasse manuell neu startet, falls eine Störung tagelang läuft.
+ * Deshalb hier: für jede Kasse mit offener Episode denselben Recovery-Versuch wie
+ * beim Kassenstart auslösen. Zusätzlich der normale Monats-Nullbeleg-Check.
  */
 
 define('CRON_RUN', true);
@@ -27,7 +29,7 @@ require_once __DIR__ . '/../src/modules/kasse/BfrService.php';
 $db  = Database::getInstance();
 $log = fn(string $msg) => print('[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL);
 
-$log('=== BFR-Nachsignierungs-Cronjob gestartet ===');
+$log('=== BFR-Ausfall-Recovery-Cronjob gestartet ===');
 
 $service = new BfrService();
 
@@ -47,17 +49,17 @@ foreach ($kassen as $kasse) {
     }
 
     try {
-        $ergebnis = $service->signiereAusstehende($kasseId, 'cronjob');
-        if (!$ergebnis['ausgefuehrt']) {
-            $log('  → nicht ausgeführt: ' . ($ergebnis['grund'] ?? 'unbekannt'));
-        } elseif ($ergebnis['signiert'] > 0 || $ergebnis['fehlgeschlagen'] > 0) {
-            $log("  → signiert: {$ergebnis['signiert']}, fehlgeschlagen: {$ergebnis['fehlgeschlagen']}");
+        $ergebnis = $service->pruefeKassenstart($kasseId);
+        if (!$ergebnis['erreichbar']) {
+            $log('  → weiterhin nicht erreichbar: ' . ($ergebnis['grund'] ?? 'unbekannt'));
+        } elseif ($service->offeneEpisode($kasseId)) {
+            $log('  → erreichbar, Störung läuft aber weiter (Sicherheitseinrichtung noch ausgefallen)');
         } else {
-            $log('  → nichts offen');
+            $log('  → erreichbar, keine offene Störung');
         }
     } catch (Throwable $e) {
-        $log('  → FEHLER bei Nachsignierung: ' . $e->getMessage());
+        $log('  → FEHLER bei Ausfall-Recovery: ' . $e->getMessage());
     }
 }
 
-$log('=== BFR-Nachsignierungs-Cronjob abgeschlossen ===');
+$log('=== BFR-Ausfall-Recovery-Cronjob abgeschlossen ===');

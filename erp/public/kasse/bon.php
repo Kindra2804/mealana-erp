@@ -1123,6 +1123,33 @@ body {
   </div>
 </div>
 
+<!-- RKSV: BFR nicht erreichbar (2 Eskalationsstufen) -->
+<div class="ov" id="ov-bfr-ausfall" style="z-index:900">
+  <div class="ov-box" style="max-width:460px;text-align:center">
+    <div style="font-size:32px;margin-bottom:6px">⚠</div>
+    <div id="bfr-popup-stufe1">
+      <div class="ov-title" style="text-align:center">Dienst nicht erreichbar!</div>
+      <p style="color:#64748b;font-size:14px;margin-bottom:22px">
+        Die technische Sicherheitseinrichtung (BFR) antwortet nicht.
+      </p>
+    </div>
+    <div id="bfr-popup-stufe2" style="display:none">
+      <div class="ov-title" style="text-align:center">Dienst immer noch nicht erreichbar</div>
+      <p style="color:#64748b;font-size:14px;margin-bottom:14px">
+        Die Kasse bleibt gesperrt, bis der BFR-Dienst wieder antwortet.
+        Bitte am Gerät prüfen:
+      </p>
+      <ul style="text-align:left;color:#64748b;font-size:13px;margin:0 0 22px 20px;padding:0">
+        <li>Läuft "BFR" in der Taskleiste?</li>
+        <li>Signaturkarte im Kartenleser gesteckt?</li>
+        <li>Windows-Update / Firewall gerade aktiv?</li>
+      </ul>
+    </div>
+    <div id="bfr-popup-kontext" style="font-size:12px;color:#94a3b8;margin-bottom:16px"></div>
+    <button class="ov-btn ov-btn-prim" id="btn-bfr-retry" onclick="bfrErneutVersuchen()">Erneut versuchen</button>
+  </div>
+</div>
+
 <div class="ov" id="ov-nullbestand">
   <div class="ov-box">
     <div class="ov-title" style="color:#92400e">⚠ Lagerbestand 0</div>
@@ -2360,6 +2387,7 @@ function bonSpeichern(zahlDaten) {
     .then(function(d) {
         document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
+            _bfrFehlschlagAnzahl = 0;
             _resetKasseState();
             if (d.bon_id) {
                 ausgabeNachZahlung(d.bon_id, d.bon_nr || '');
@@ -2372,6 +2400,9 @@ function bonSpeichern(zahlDaten) {
             document.getElementById('manager-pin-input').value = '';
             ov('ov-manager-pin');
             setTimeout(() => document.getElementById('manager-pin-input').focus(), 100);
+        } else if (d.bfr_nicht_erreichbar) {
+            zusatzPositionen = zp; // Rücksetzen, Retry übernimmt zp erneut
+            zeigeBfrPopup(zahlDaten, 'Beleg wartet: ' + warenkorb.length + ' Position(en), € ' + fmt(g));
         } else {
             zusatzPositionen = zp; // Rücksetzen bei Fehler
             feedback('❌ ' + (d.fehler || 'Unbekannter Fehler'), 'fehler');
@@ -2672,6 +2703,57 @@ function ovSchliessen(id) {
     scanInput.focus();
 }
 
+// ── RKSV: BFR-Erreichbarkeits-Popup (2 Eskalationsstufen) ────────────────────
+var _bfrPendingZahlDaten = null;
+var _bfrFehlschlagAnzahl = 0;
+
+function zeigeBfrPopup(zahlDaten, kontextText) {
+    _bfrPendingZahlDaten = zahlDaten || null;
+    _bfrFehlschlagAnzahl++;
+    var stufe2 = _bfrFehlschlagAnzahl >= 2;
+    document.getElementById('bfr-popup-stufe1').style.display = stufe2 ? 'none' : 'block';
+    document.getElementById('bfr-popup-stufe2').style.display = stufe2 ? 'block' : 'none';
+    document.getElementById('btn-bfr-retry').textContent = stufe2
+        ? 'Überprüft — Dienst sollte wieder laufen'
+        : 'Erneut versuchen';
+    document.getElementById('bfr-popup-kontext').textContent = kontextText || '';
+    ov('ov-bfr-ausfall');
+}
+
+function bfrErneutVersuchen() {
+    document.getElementById('ov-bfr-ausfall').classList.remove('offen');
+    if (_bfrPendingZahlDaten) {
+        var zd = _bfrPendingZahlDaten;
+        _bfrPendingZahlDaten = null;
+        bonSpeichern(zd);
+    } else {
+        // Kassenstart-Fall — kein Bon anhängig, nur State erneut prüfen
+        bfrKassenstartPruefen();
+    }
+}
+
+function bfrKassenstartPruefen() {
+    fetch('<?= BASE_PATH ?>/kasse/ajax_bfr_check.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'kasse_id=' + KASSE_ID + '&aktion=kassenstart',
+    })
+    .then(r => r.json())
+    .then(function(d) {
+        if (d.erreichbar || !d.bfr_konfiguriert) {
+            _bfrFehlschlagAnzahl = 0;
+            document.getElementById('ov-bfr-ausfall').classList.remove('offen');
+        } else {
+            zeigeBfrPopup(null, 'Kasse kann erst gestartet werden, sobald der Dienst wieder antwortet.');
+        }
+    })
+    .catch(function() {
+        zeigeBfrPopup(null, 'Kasse kann erst gestartet werden, sobald der Dienst wieder antwortet.');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bfrKassenstartPruefen);
+
 // ── Feedback Snackbar ─────────────────────────────────────────────────────────
 var feedbackTimer = null;
 function feedback(msg, typ) {
@@ -2780,7 +2862,9 @@ function nullbonBestaetigen() {
     })
         .then(r => r.json())
         .then(d => {
-            if (d.erfolg) {
+            if (d.erfolg && d.ausgefallen) {
+                feedback('⚠ Nullbon erstellt, aber Sicherheitseinrichtung meldet "ausgefallen" (' + d.beleg_nr + ')', 'info');
+            } else if (d.erfolg) {
                 feedback('✓ Nullbon erstellt (' + d.beleg_nr + ')', 'ok');
             } else {
                 feedback(d.fehler || 'Nullbon fehlgeschlagen', 'fehler');

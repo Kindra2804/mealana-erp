@@ -4,68 +4,46 @@ require_once __DIR__ . '/../../src/modules/kasse/BfrService.php';
 
 $service = new BfrService();
 
-$offeneBelege     = $service->offeneBelege();
-$offeneNullbelege = $service->offeneNullbelege();
-$laeufe           = $service->nachsignierungsLaeufe();
+$offen      = $service->offeneEpisodenMitWarnung();
+$historie   = $service->ausfallHistorie();
 
-$laufId      = isset($_GET['lauf_id']) ? (int)$_GET['lauf_id'] : 0;
-$laufBelege  = $laufId ? $service->laufBelege($laufId) : [];
+$ausfallId = isset($_GET['ausfall_id']) ? (int)$_GET['ausfall_id'] : 0;
+$ereignisse = $ausfallId ? $service->episodeEreignisse($ausfallId) : [];
 
-$erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
-$fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
-
-$statusBadge = [
-    'ausstehend' => '<span style="background:#92400e;color:#fbbf24;font-size:10px;padding:2px 6px;border-radius:3px">AUSSTEHEND</span>',
-    'fehler'     => '<span style="background:#7f1d1d;color:#fca5a5;font-size:10px;padding:2px 6px;border-radius:3px">FEHLER</span>',
+$typBadge = [
+    'dienst_nicht_erreichbar'          => '<span style="background:#7f1d1d;color:#fca5a5;font-size:10px;padding:2px 6px;border-radius:3px">DIENST WEG</span>',
+    'sicherheitseinrichtung_ausgefallen' => '<span style="background:#92400e;color:#fbbf24;font-size:10px;padding:2px 6px;border-radius:3px">AUSGEFALLEN</span>',
 ];
 
-$pageTitle      = 'RKSV Nacherfassung';
+$pageTitle      = 'RKSV Ausfall-Historie';
 $activeKasseNav = 'nacherfassung';
 require_once __DIR__ . '/shell_top.php';
 ?>
 
 <div style="max-width:1000px;margin:0 auto">
 
-  <?php if ($erfolg): ?>
-    <div class="ks-feedback ok"><?= htmlspecialchars($erfolg) ?></div>
-  <?php endif; ?>
-  <?php if ($fehler): ?>
-    <div class="ks-feedback fehler"><?= htmlspecialchars($fehler) ?></div>
-  <?php endif; ?>
-
   <div class="ks-card">
-    <div class="ks-card-title">Offene / fehlgeschlagene Belege (<?= count($offeneBelege) ?>)</div>
-    <?php if (empty($offeneBelege)): ?>
-      <p style="color:#888;margin:0">Nichts offen — alle Belege sind signiert.</p>
+    <div class="ks-card-title">Offene Störungen (<?= count($offen) ?>)</div>
+    <?php if (empty($offen)): ?>
+      <p style="color:#888;margin:0">Keine offene Störung — alle Kassen signieren normal.</p>
     <?php else: ?>
       <table class="ks-table">
         <thead>
-          <tr>
-            <th>Bon-Nr.</th><th>Kasse</th><th>Typ</th><th style="text-align:right">Betrag</th>
-            <th>Erstellt</th><th>Status</th><th>Grund</th><th></th>
-          </tr>
+          <tr><th>Kasse</th><th>Seit</th><th>Dauer</th><th>Ereignisse</th><th></th></tr>
         </thead>
         <tbody>
-        <?php foreach ($offeneBelege as $b): ?>
-          <tr>
-            <td style="font-family:monospace"><?= htmlspecialchars($b['bon_nr']) ?></td>
-            <td><?= htmlspecialchars($b['kasse_name']) ?></td>
-            <td><?= htmlspecialchars($b['typ']) ?></td>
-            <td style="text-align:right;color:<?= (float)$b['bruttobetrag'] < 0 ? '#ef5350' : 'inherit' ?>">
-              € <?= number_format((float)$b['bruttobetrag'], 2, ',', '.') ?>
-            </td>
-            <td style="color:#888"><?= date('d.m.Y H:i', strtotime($b['erstellt_am'])) ?></td>
-            <td><?= $statusBadge[$b['bfr_status']] ?? htmlspecialchars($b['bfr_status']) ?></td>
-            <td style="color:#888;font-size:12px"><?= htmlspecialchars($b['bfr_fehlergrund'] ?? '') ?></td>
+        <?php foreach ($offen as $a): ?>
+          <tr style="<?= $a['warnung_24h'] ? 'background:#450a0a' : '' ?>">
+            <td><?= htmlspecialchars($a['kasse_name']) ?></td>
+            <td style="color:#888"><?= date('d.m.Y H:i', strtotime($a['erste_erkennung_am'])) ?></td>
             <td>
-              <?php if ($b['bfr_status'] === 'fehler'): ?>
-                <form method="post" action="nacherfassung_retry.php" style="margin:0">
-                  <input type="hidden" name="typ" value="bon">
-                  <input type="hidden" name="id" value="<?= $b['id'] ?>">
-                  <button type="submit" class="ks-btn ks-btn-secondary" style="padding:4px 10px;font-size:12px">Nochmal versuchen</button>
-                </form>
+              <?= (int)$a['dauer_stunden'] ?> h
+              <?php if ($a['warnung_24h']): ?>
+                <span style="color:#f87171;font-weight:700;margin-left:6px">⚠ über 24h — FON-Meldepflicht (48h) im Blick behalten</span>
               <?php endif; ?>
             </td>
+            <td><?= (int)$a['anzahl_ereignisse'] ?></td>
+            <td><a href="?ausfall_id=<?= $a['id'] ?>" style="color:#60a5fa;font-size:12px">Ereignisse ansehen</a></td>
           </tr>
         <?php endforeach; ?>
         </tbody>
@@ -74,80 +52,44 @@ require_once __DIR__ . '/shell_top.php';
   </div>
 
   <div class="ks-card">
-    <div class="ks-card-title">Offene / fehlgeschlagene Nullbelege (<?= count($offeneNullbelege) ?>)</div>
-    <?php if (empty($offeneNullbelege)): ?>
-      <p style="color:#888;margin:0">Nichts offen.</p>
+    <div class="ks-card-title">Historie (offen + gelöst)</div>
+    <?php if (empty($historie)): ?>
+      <p style="color:#888;margin:0">Bisher keine Störung aufgetreten.</p>
     <?php else: ?>
       <table class="ks-table">
         <thead>
-          <tr><th>Beleg-Nr.</th><th>Kasse</th><th>Monat</th><th>Ausgelöst durch</th><th>Status</th><th>Grund</th><th></th></tr>
+          <tr><th>Kasse</th><th>Von</th><th>Bis</th><th>Dauer</th><th>Ereignisse</th><th></th></tr>
         </thead>
         <tbody>
-        <?php foreach ($offeneNullbelege as $n): ?>
-          <tr>
-            <td style="font-family:monospace"><?= htmlspecialchars($n['beleg_nr']) ?></td>
-            <td><?= htmlspecialchars($n['kasse_name']) ?></td>
-            <td><?= htmlspecialchars($n['monat']) ?></td>
-            <td><?= htmlspecialchars($n['ausgeloest_durch']) ?></td>
-            <td><?= $statusBadge[$n['bfr_status']] ?? htmlspecialchars($n['bfr_status']) ?></td>
-            <td style="color:#888;font-size:12px"><?= htmlspecialchars($n['bfr_fehlergrund'] ?? '') ?></td>
-            <td>
-              <?php if ($n['bfr_status'] === 'fehler'): ?>
-                <form method="post" action="nacherfassung_retry.php" style="margin:0">
-                  <input type="hidden" name="typ" value="nullbeleg">
-                  <input type="hidden" name="id" value="<?= $n['id'] ?>">
-                  <button type="submit" class="ks-btn ks-btn-secondary" style="padding:4px 10px;font-size:12px">Nochmal versuchen</button>
-                </form>
-              <?php endif; ?>
-            </td>
-          </tr>
-        <?php endforeach; ?>
-        </tbody>
-      </table>
-    <?php endif; ?>
-  </div>
-
-  <div class="ks-card">
-    <div class="ks-card-title">Nachsignierungsläufe (Sammelbelege)</div>
-    <?php if (empty($laeufe)): ?>
-      <p style="color:#888;margin:0">Bisher noch kein Nachsignierungslauf nötig gewesen.</p>
-    <?php else: ?>
-      <table class="ks-table">
-        <thead>
-          <tr><th>Kasse</th><th>Ausgelöst durch</th><th>Gestartet</th><th>Beendet</th><th>Signiert</th><th>Fehlgeschlagen</th><th></th></tr>
-        </thead>
-        <tbody>
-        <?php foreach ($laeufe as $l): ?>
-          <tr style="<?= $laufId === (int)$l['id'] ? 'background:#1e293b' : '' ?>">
-            <td><?= htmlspecialchars($l['kasse_name']) ?></td>
-            <td><?= htmlspecialchars($l['ausgeloest_durch']) ?></td>
-            <td style="color:#888"><?= date('d.m.Y H:i:s', strtotime($l['gestartet_am'])) ?></td>
-            <td style="color:#888"><?= $l['beendet_am'] ? date('d.m.Y H:i:s', strtotime($l['beendet_am'])) : '—' ?></td>
-            <td><?= (int)$l['anzahl_signiert'] ?></td>
-            <td style="color:<?= $l['anzahl_fehlgeschlagen'] > 0 ? '#ef5350' : 'inherit' ?>"><?= (int)$l['anzahl_fehlgeschlagen'] ?></td>
-            <td><a href="?lauf_id=<?= $l['id'] ?>" style="color:#60a5fa;font-size:12px">Belege ansehen</a></td>
+        <?php foreach ($historie as $h): ?>
+          <tr style="<?= $ausfallId === (int)$h['id'] ? 'background:#1e293b' : '' ?>">
+            <td><?= htmlspecialchars($h['kasse_name']) ?></td>
+            <td style="color:#888"><?= date('d.m.Y H:i:s', strtotime($h['erste_erkennung_am'])) ?></td>
+            <td style="color:#888"><?= $h['geloest_am'] ? date('d.m.Y H:i:s', strtotime($h['geloest_am'])) : '<span style="color:#f87171">läuft noch</span>' ?></td>
+            <td><?= $h['geloest_am'] ? round((strtotime($h['geloest_am']) - strtotime($h['erste_erkennung_am'])) / 60) . ' min' : '—' ?></td>
+            <td><?= (int)$h['anzahl_ereignisse'] ?></td>
+            <td><a href="?ausfall_id=<?= $h['id'] ?>" style="color:#60a5fa;font-size:12px">Ereignisse ansehen</a></td>
           </tr>
         <?php endforeach; ?>
         </tbody>
       </table>
     <?php endif; ?>
 
-    <?php if ($laufId): ?>
+    <?php if ($ausfallId): ?>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid #334155">
-        <div style="font-weight:700;margin-bottom:8px">Belege in Lauf #<?= $laufId ?></div>
-        <?php if (empty($laufBelege)): ?>
-          <p style="color:#888;margin:0">Keine Belege gefunden.</p>
+        <div style="font-weight:700;margin-bottom:8px">Ereignisse zu Störung #<?= $ausfallId ?></div>
+        <?php if (empty($ereignisse)): ?>
+          <p style="color:#888;margin:0">Keine Ereignisse gefunden.</p>
         <?php else: ?>
           <table class="ks-table">
-            <thead><tr><th>Bon-Nr.</th><th>Typ</th><th style="text-align:right">Betrag</th><th>Status</th><th>Signiert am</th></tr></thead>
+            <thead><tr><th>Zeitpunkt</th><th>Typ</th><th>Bon-Nr.</th><th>Versuche</th></tr></thead>
             <tbody>
-            <?php foreach ($laufBelege as $lb): ?>
+            <?php foreach ($ereignisse as $e): ?>
               <tr>
-                <td style="font-family:monospace"><?= htmlspecialchars($lb['bon_nr']) ?></td>
-                <td><?= htmlspecialchars($lb['typ']) ?></td>
-                <td style="text-align:right">€ <?= number_format((float)$lb['bruttobetrag'], 2, ',', '.') ?></td>
-                <td><?= $statusBadge[$lb['bfr_status']] ?? htmlspecialchars($lb['bfr_status']) ?></td>
-                <td style="color:#888"><?= $lb['signiert_am'] ? date('d.m.Y H:i:s', strtotime($lb['signiert_am'])) : '—' ?></td>
+                <td style="color:#888"><?= date('d.m.Y H:i:s', strtotime($e['aufgetreten_am'])) ?></td>
+                <td><?= $typBadge[$e['typ']] ?? htmlspecialchars($e['typ']) ?></td>
+                <td style="font-family:monospace"><?= htmlspecialchars($e['bon_nr'] ?? '—') ?></td>
+                <td><?= (int)$e['anzahl_versuche'] ?></td>
               </tr>
             <?php endforeach; ?>
             </tbody>

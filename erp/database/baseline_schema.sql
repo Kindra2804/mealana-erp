@@ -75,7 +75,7 @@ CREATE TABLE `aktivitaeten` (
   PRIMARY KEY (`id`),
   KEY `fk_aktivitaeten_benutzer` (`benutzer_id`),
   CONSTRAINT `fk_aktivitaeten_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3475 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3502 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `artikel`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -151,7 +151,7 @@ CREATE TABLE `artikel` (
   CONSTRAINT `fk_artikel_vater` FOREIGN KEY (`vaterartikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_artikel_versandklasse` FOREIGN KEY (`versandklasse_id`) REFERENCES `versandklassen` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_zustand_vater` FOREIGN KEY (`zustand_vater_id`) REFERENCES `artikel` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2921 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2922 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `artikel_achsen`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -189,7 +189,7 @@ CREATE TABLE `artikel_bilder` (
   PRIMARY KEY (`id`),
   KEY `fk_artbild_artikel` (`artikel_id`),
   CONSTRAINT `fk_artbild_artikel` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `artikel_bilder_shops`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -302,7 +302,7 @@ CREATE TABLE `artikel_merkmale` (
   CONSTRAINT `fk_am_wert` FOREIGN KEY (`merkmal_wert_id`) REFERENCES `merkmal_werte` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_artikel_id` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_merkmal_id` FOREIGN KEY (`merkmal_id`) REFERENCES `merkmale` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `artikel_preise`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -339,7 +339,7 @@ CREATE TABLE `artikel_staffelpreise` (
   KEY `fk_artStaff_kundengruppen_id` (`kundengruppen_id`),
   CONSTRAINT `fk_artStaff_artikel_id` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_artStaff_kundengruppen_id` FOREIGN KEY (`kundengruppen_id`) REFERENCES `kundengruppen` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `artikel_typen`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -409,7 +409,7 @@ CREATE TABLE `auftraege` (
   CONSTRAINT `fk_auftrag_benutzer` FOREIGN KEY (`erstellt_von`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_auftrag_kunde` FOREIGN KEY (`kunden_id`) REFERENCES `kunden` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_auftrag_zahlung` FOREIGN KEY (`zahlungsbedingung_id`) REFERENCES `zahlungsbedingungen` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `auftrag_dokumente`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -467,7 +467,7 @@ CREATE TABLE `auftrag_positionen` (
   KEY `fk_aufpos_artikel` (`artikel_id`),
   CONSTRAINT `fk_aufpos_artikel` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_aufpos_auftrag` FOREIGN KEY (`auftrag_id`) REFERENCES `auftraege` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=77 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=78 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `auftrag_statuslog`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -511,6 +511,7 @@ CREATE TABLE `benutzer` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `username` varchar(255) NOT NULL,
   `passwort` varchar(255) NOT NULL,
+  `manager_pin_hash` varchar(255) DEFAULT NULL,
   `vorname` varchar(255) DEFAULT NULL,
   `nachname` varchar(255) DEFAULT NULL,
   `formularname` varchar(255) NOT NULL,
@@ -537,6 +538,22 @@ CREATE TABLE `benutzer_einstellungen` (
   CONSTRAINT `fk_benutzereinst_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `benutzer_passwort_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `benutzer_passwort_tokens` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `benutzer_id` int(10) unsigned NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `ausgestellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
+  `laeuft_ab_am` timestamp NULL DEFAULT NULL,
+  `verwendet_am` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_token_hash` (`token_hash`),
+  KEY `fk_bpt_benutzer` (`benutzer_id`),
+  CONSTRAINT `fk_bpt_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `benutzer_rollen`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -560,7 +577,7 @@ CREATE TABLE `berechtigungen` (
   `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `bestellung_eingaenge`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -634,6 +651,36 @@ CREATE TABLE `bestellungen` (
   CONSTRAINT `fk_best_lieferant` FOREIGN KEY (`lieferant_id`) REFERENCES `lieferanten` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `bfr_ausfaelle`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `bfr_ausfaelle` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `kasse_id` int(10) unsigned NOT NULL,
+  `erste_erkennung_am` datetime NOT NULL,
+  `letzte_erkennung_am` datetime NOT NULL,
+  `geloest_am` datetime DEFAULT NULL,
+  `anzahl_ereignisse` int(10) unsigned NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `idx_bfrausfall_kasse` (`kasse_id`),
+  CONSTRAINT `fk_bfrausfall_kasse` FOREIGN KEY (`kasse_id`) REFERENCES `kassen` (`id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `bfr_ausfall_ereignisse`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `bfr_ausfall_ereignisse` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `ausfall_id` int(10) unsigned NOT NULL,
+  `typ` enum('dienst_nicht_erreichbar','sicherheitseinrichtung_ausgefallen') NOT NULL,
+  `bon_nr` varchar(50) DEFAULT NULL,
+  `anzahl_versuche` int(10) unsigned NOT NULL DEFAULT 1,
+  `aufgetreten_am` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_bfrausfallereignis_ausfall` (`ausfall_id`),
+  CONSTRAINT `fk_bfrausfallereignis_ausfall` FOREIGN KEY (`ausfall_id`) REFERENCES `bfr_ausfaelle` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `bfr_kassen_registrierungen`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -658,23 +705,7 @@ CREATE TABLE `bfr_kassen_registrierungen` (
   KEY `fk_bfrreg_benutzer` (`benutzer_id`),
   CONSTRAINT `fk_bfrreg_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_bfrreg_kasse` FOREIGN KEY (`kasse_id`) REFERENCES `kassen` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `bfr_nachsignierungs_laeufe`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `bfr_nachsignierungs_laeufe` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `kasse_id` int(10) unsigned NOT NULL,
-  `ausgeloest_durch` enum('automatisch','cronjob','manuell') NOT NULL,
-  `gestartet_am` datetime NOT NULL DEFAULT current_timestamp(),
-  `beendet_am` datetime DEFAULT NULL,
-  `anzahl_signiert` int(10) unsigned NOT NULL DEFAULT 0,
-  `anzahl_fehlgeschlagen` int(10) unsigned NOT NULL DEFAULT 0,
-  PRIMARY KEY (`id`),
-  KEY `idx_bfrlauf_kasse` (`kasse_id`),
-  CONSTRAINT `fk_bfrlauf_kasse` FOREIGN KEY (`kasse_id`) REFERENCES `kassen` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `bfr_nullbelege`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -685,8 +716,6 @@ CREATE TABLE `bfr_nullbelege` (
   `monat` char(7) NOT NULL,
   `beleg_nr` varchar(50) NOT NULL,
   `ausgeloest_durch` enum('manuell','automatisch') NOT NULL,
-  `bfr_status` enum('signiert','ausstehend','fehler') NOT NULL DEFAULT 'ausstehend',
-  `bfr_fehlergrund` varchar(255) DEFAULT NULL,
   `rksv_signatur` varchar(255) DEFAULT NULL,
   `rksv_qr` varchar(500) DEFAULT NULL,
   `benutzer_id` int(10) unsigned DEFAULT NULL,
@@ -697,7 +726,7 @@ CREATE TABLE `bfr_nullbelege` (
   KEY `fk_nullbeleg_benutzer` (`benutzer_id`),
   CONSTRAINT `fk_nullbeleg_benutzer` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_nullbeleg_kasse` FOREIGN KEY (`kasse_id`) REFERENCES `kassen` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `dokument_nummern`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -710,7 +739,7 @@ CREATE TABLE `dokument_nummern` (
   `letzt_nr` int(10) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dok_typ_jahr` (`typ`,`jahr`)
-) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `einheiten`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -771,7 +800,7 @@ CREATE TABLE `kassen` (
   UNIQUE KEY `kasse_nr` (`kasse_nr`),
   KEY `lager_id` (`lager_id`),
   CONSTRAINT `kassen_ibfk_1` FOREIGN KEY (`lager_id`) REFERENCES `lager` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `kassen_abschluesse`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -815,7 +844,7 @@ CREATE TABLE `kassen_bon_positionen` (
   PRIMARY KEY (`id`),
   KEY `bon_id` (`bon_id`),
   CONSTRAINT `kassen_bon_positionen_ibfk_1` FOREIGN KEY (`bon_id`) REFERENCES `kassen_bons` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `kassen_bons`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -842,10 +871,7 @@ CREATE TABLE `kassen_bons` (
   `steuer_c` decimal(10,2) DEFAULT NULL,
   `steuer_d` decimal(10,2) DEFAULT NULL,
   `steuer_e` decimal(10,2) DEFAULT NULL,
-  `bfr_status` enum('signiert','ausstehend','fehler') NOT NULL DEFAULT 'ausstehend',
-  `bfr_fehlergrund` varchar(255) DEFAULT NULL,
   `signiert_am` datetime DEFAULT NULL,
-  `nachsignierungs_lauf_id` int(10) unsigned DEFAULT NULL,
   `benutzer_id` int(10) unsigned NOT NULL,
   `erstellt_am` datetime NOT NULL DEFAULT current_timestamp(),
   `storniert` tinyint(1) NOT NULL DEFAULT 0,
@@ -859,13 +885,11 @@ CREATE TABLE `kassen_bons` (
   KEY `auftrag_id` (`auftrag_id`),
   KEY `kunden_id` (`kunden_id`),
   KEY `benutzer_id` (`benutzer_id`),
-  KEY `fk_bon_bfrlauf` (`nachsignierungs_lauf_id`),
-  CONSTRAINT `fk_bon_bfrlauf` FOREIGN KEY (`nachsignierungs_lauf_id`) REFERENCES `bfr_nachsignierungs_laeufe` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `kassen_bons_ibfk_1` FOREIGN KEY (`kasse_id`) REFERENCES `kassen` (`id`),
   CONSTRAINT `kassen_bons_ibfk_2` FOREIGN KEY (`auftrag_id`) REFERENCES `auftraege` (`id`),
   CONSTRAINT `kassen_bons_ibfk_3` FOREIGN KEY (`kunden_id`) REFERENCES `kunden` (`id`),
   CONSTRAINT `kassen_bons_ibfk_4` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `kassen_geparkte_bons`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -925,6 +949,7 @@ CREATE TABLE `kassen_messe_umbuchungen` (
   `artikel_id` int(10) unsigned NOT NULL,
   `bezeichnung` varchar(300) NOT NULL,
   `ean` varchar(50) DEFAULT NULL,
+  `charge` varchar(100) DEFAULT NULL,
   `menge_raus` decimal(10,3) NOT NULL,
   `menge_rueck` decimal(10,3) NOT NULL DEFAULT 0.000,
   `menge_verkauft` decimal(10,3) GENERATED ALWAYS AS (`menge_raus` - `menge_rueck`) STORED,
@@ -1182,8 +1207,16 @@ CREATE TABLE `lager` (
   `name` varchar(50) NOT NULL,
   `typ` enum('ladengeschaeft','messe','extern','lager') NOT NULL DEFAULT 'ladengeschaeft',
   `aktiv` tinyint(1) DEFAULT NULL,
+  `fuer_offline_kasse_waehlbar` tinyint(1) NOT NULL DEFAULT 0,
+  `lager_beziehung` enum('eigen','partner_bestand','haendler_aussenlager') NOT NULL DEFAULT 'eigen',
+  `partner_id` int(10) unsigned DEFAULT NULL,
+  `kunde_id` int(10) unsigned DEFAULT NULL,
   `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `fk_lager_partner` (`partner_id`),
+  KEY `fk_lager_kunde` (`kunde_id`),
+  CONSTRAINT `fk_lager_kunde` FOREIGN KEY (`kunde_id`) REFERENCES `kunden` (`id`),
+  CONSTRAINT `fk_lager_partner` FOREIGN KEY (`partner_id`) REFERENCES `partner` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lager_bewegungen`;
@@ -1213,7 +1246,7 @@ CREATE TABLE `lager_bewegungen` (
   CONSTRAINT `fk_lbew_artikel_id` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_lbew_benutzerId` FOREIGN KEY (`benutzer_id`) REFERENCES `benutzer` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_lbew_lieferantId` FOREIGN KEY (`lieferant_id`) REFERENCES `lieferanten` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=111 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=112 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lagerbestand`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1272,7 +1305,7 @@ CREATE TABLE `lieferanten` (
   PRIMARY KEY (`id`),
   KEY `fk_lieferant_land` (`land`),
   CONSTRAINT `fk_lieferant_land` FOREIGN KEY (`land`) REFERENCES `laender` (`iso_code`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lieferanten_vertreter`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1320,7 +1353,7 @@ DROP TABLE IF EXISTS `mahnungen`;
 CREATE TABLE `mahnungen` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `auftrag_id` int(11) NOT NULL,
-  `typ` enum('erinnerung','stornierung') NOT NULL,
+  `typ` enum('erinnerung','stornierung','hinweis') NOT NULL,
   `gesendet_am` datetime NOT NULL DEFAULT current_timestamp(),
   `mail_an` varchar(255) DEFAULT NULL,
   `erstellt_von` enum('cronjob','manuell') NOT NULL DEFAULT 'cronjob',
@@ -1540,7 +1573,7 @@ CREATE TABLE `preis_aktionen_positionen` (
   KEY `fk_prAktPos_kg_id` (`kundengruppen_id`),
   CONSTRAINT `fk_prAktPos_artikel_id` FOREIGN KEY (`artikel_id`) REFERENCES `artikel` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_prAktPos_kg_id` FOREIGN KEY (`kundengruppen_id`) REFERENCES `kundengruppen` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `rechnungen`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1595,11 +1628,12 @@ CREATE TABLE `rollen` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `beschreibung` text DEFAULT NULL,
+  `rang` int(10) unsigned NOT NULL DEFAULT 0,
   `aktiv` tinyint(1) NOT NULL DEFAULT 1,
   `erstellt_am` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `rollen_berechtigungen`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1622,7 +1656,7 @@ CREATE TABLE `schema_migrations` (
   `angewendet_am` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_dateiname` (`dateiname`)
-) ENGINE=InnoDB AUTO_INCREMENT=102 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=109 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

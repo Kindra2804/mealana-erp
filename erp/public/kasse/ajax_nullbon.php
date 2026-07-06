@@ -15,14 +15,17 @@ $ergebnis = (new BfrService())->erstelleNullbeleg($kasseId, 'manuell', $benutzer
 
 $fehlertexte = [
     'kein_bfr_konfiguriert' => 'Für diese Kasse ist keine BFR-URL konfiguriert.',
-    'bfr_nicht_erreichbar'  => 'BFR ist gerade nicht erreichbar — Nullbeleg bleibt ausstehend und wird beim nächsten Bon automatisch nachgeholt.',
+    'bfr_nicht_erreichbar'  => 'BFR ist gerade nicht erreichbar — bitte Dienst prüfen und erneut versuchen.',
     'antwort_ungueltig'     => 'Antwort vom BFR war nicht lesbar.',
     'rn_stimmt_nicht'       => 'Die konfigurierte RKSV-Kassen-ID stimmt nicht mit dem BFR überein.',
-    'abgelehnt'             => 'BFR hat die Signatur abgelehnt.',
 ];
 
 if ($ergebnis['erfolg']) {
-    echo json_encode(['erfolg' => true, 'beleg_nr' => $ergebnis['beleg_nr']]);
+    echo json_encode([
+        'erfolg'     => true,
+        'beleg_nr'   => $ergebnis['beleg_nr'],
+        'ausgefallen'=> $ergebnis['ausgefallen'],
+    ]);
 } else {
     echo json_encode([
         'erfolg' => false,

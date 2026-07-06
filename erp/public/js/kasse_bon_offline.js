@@ -489,6 +489,50 @@ function obBaueSignierXml(bon) {
     return xml;
 }
 
+// ── RKSV: BFR-Erreichbarkeit prüfen, BEVOR ein Bon entsteht ─────────────────
+// "Kein Dienst, keine Kasse" (Empfehlung des BFR-Herstellers) — verhindert das
+// alte Duplicate-/Reihenfolge-Risiko der früheren "später nachsignieren"-Logik.
+let obBfrFehlschlagAnzahl = 0;
+
+async function obPruefeBfrErreichbar(bfrUrl) {
+    try {
+        const resp = await fetch(bfrUrl.replace(/\/$/, '') + '/state', { method: 'GET' });
+        return resp.ok;
+    } catch (e) {
+        return false;
+    }
+}
+
+async function obPruefeBfrMitKurzRetry(bfrUrl) {
+    for (let i = 0; i < 3; i++) {
+        if (await obPruefeBfrErreichbar(bfrUrl)) return true;
+        if (i < 2) await new Promise(r => setTimeout(r, 500));
+    }
+    return false;
+}
+
+function obZeigeBfrPopup() {
+    obBfrFehlschlagAnzahl++;
+    const stufe2 = obBfrFehlschlagAnzahl >= 2;
+    document.getElementById('ob-bfr-stufe1').style.display = stufe2 ? 'none' : 'block';
+    document.getElementById('ob-bfr-stufe2').style.display = stufe2 ? 'block' : 'none';
+    document.getElementById('ob-bfr-retry-btn').textContent = stufe2
+        ? 'Überprüft — Dienst sollte wieder laufen'
+        : 'Erneut versuchen';
+    document.getElementById('ob-bfr-overlay').classList.add('aktiv');
+}
+
+async function obBfrErneutVersuchen() {
+    const bfrUrl = obKonfig.kasse.bfr_url;
+    if (await obPruefeBfrErreichbar(bfrUrl)) {
+        obBfrFehlschlagAnzahl = 0;
+        document.getElementById('ob-bfr-overlay').classList.remove('aktiv');
+        obVerkaufAbschliessen();
+    } else {
+        obZeigeBfrPopup();
+    }
+}
+
 async function obVerkaufAbschliessen() {
     if (obWarenkorb.length === 0) return;
 
@@ -500,6 +544,14 @@ async function obVerkaufAbschliessen() {
     }
 
     document.getElementById('ob-abschluss-btn').disabled = true;
+
+    const bfrUrl = obKonfig.kasse.bfr_url;
+    if (bfrUrl && !(await obPruefeBfrMitKurzRetry(bfrUrl))) {
+        document.getElementById('ob-abschluss-btn').disabled = false;
+        obZeigeBfrPopup();
+        return;
+    }
+    obBfrFehlschlagAnzahl = 0;
 
     obKonfig.bonNrZaehler++;
     const bonNr = obKonfig.kasse.kasse_nr + '-' + obKonfig.bonNrJahr + '-' + String(obKonfig.bonNrZaehler).padStart(6, '0');
@@ -531,11 +583,15 @@ async function obVerkaufAbschliessen() {
         })),
         rksv_signatur: null,
         rksv_qr: null,
-        bfr_status: 'ausstehend',
     };
 
     // ── Direkte RKSV-Signierung gegen den lokalen BFR ──────────────────────
-    const bfrUrl = obKonfig.kasse.bfr_url;
+    // /state war soeben erfolgreich — laut Hersteller-API kommt von /register
+    // garantiert eine Antwort (RC ist immer "OK", nur <Link> unterscheidet
+    // echte Signatur von "Sicherheitseinrichtung ausgefallen"). Bleibt sie
+    // trotzdem aus (das enge Zeitfenster dazwischen), wird das defensiv genauso
+    // behandelt — der Verkauf ist an dieser Stelle bereits nicht mehr rückgängig
+    // zu machen, siehe BfrService::parseRegisterAntwort() auf dem Server.
     if (bfrUrl) {
         try {
             const xml  = obBaueSignierXml(bon);
@@ -546,17 +602,16 @@ async function obVerkaufAbschliessen() {
             });
             const text = await resp.text();
             const doc  = new DOMParser().parseFromString(text, 'text/xml');
-            const rc   = doc.querySelector('Result')?.getAttribute('RC');
-            if (rc === 'OK') {
-                bon.rksv_qr        = doc.querySelector('Fis > Code')?.textContent || null;
-                bon.rksv_signatur  = doc.querySelector('Fis > Link')?.textContent || null;
-                bon.bfr_status     = 'signiert';
+            const link = doc.querySelector('Fis > Link')?.textContent || '';
+            if (link && link !== 'Sicherheitseinrichtung ausgefallen') {
+                bon.rksv_signatur = link;
+                bon.rksv_qr       = doc.querySelector('Fis > Code')?.textContent || null;
             } else {
-                bon.bfr_status = 'fehler';
+                bon.rksv_signatur = 'Sicherheitseinrichtung ausgefallen';
+                bon.rksv_qr       = doc.querySelector('Fis > Code')?.textContent || null;
             }
         } catch (e) {
-            // BFR nicht erreichbar — Verkauf trotzdem abschließen, später nachsignieren
-            bon.bfr_status = 'ausstehend';
+            bon.rksv_signatur = 'Sicherheitseinrichtung ausgefallen';
         }
     }
 
@@ -596,11 +651,11 @@ function obQuittungAnzeigen(bon) {
         h += '<div class="r"><span>Zahlungsart:</span><span>Karte</span></div>';
     }
     h += '<div class="l"></div>';
-    if (bon.bfr_status === 'signiert') {
+    if (bon.rksv_signatur) {
         h += '<div style="font-size:10px;word-break:break-all">RKSV: ' + obEsc(bon.rksv_signatur) + '</div>';
-        h += '<div style="font-size:9px;color:#666;word-break:break-all">' + obEsc(bon.rksv_qr) + '</div>';
-    } else {
-        h += '<div class="z b" style="font-size:11px">Sicherheitseinrichtung ausgefallen</div>';
+        if (bon.rksv_qr) {
+            h += '<div style="font-size:9px;color:#666;word-break:break-all">' + obEsc(bon.rksv_qr) + '</div>';
+        }
     }
     h += '<div class="z" style="margin-top:8px">Danke für Ihren Einkauf!</div>';
 
