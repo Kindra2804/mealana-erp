@@ -1,15 +1,22 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
+require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 $service = new KassenService();
+$apSvc   = new ArbeitsplatzService();
 $db      = Database::getInstance();
 
 // POST: Einstellung speichern
 $meldung = '';
 $fehler  = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kasse_id'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['arbeitsplatz_loesen_kasse_id'])) {
+    // Nur für nicht-BFR-gebundene Kassen gedacht — BFR-Kassen laufen über
+    // "Neue Kassen-ID anfordern" (kasse_registrierung.php), das löst automatisch mit.
+    $apSvc->loeseBindungFuerKasse((int)$_POST['arbeitsplatz_loesen_kasse_id']);
+    $meldung = 'Arbeitsplatz-Bindung gelöst — ein Gerät kann diese Kasse jetzt neu auswählen.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kasse_id'])) {
     $id     = (int)$_POST['kasse_id'];
     $format = in_array($_POST['ausgabe_format'] ?? '', ['fragen','80mm','a4']) ? $_POST['ausgabe_format'] : 'fragen';
     $modus  = in_array($_POST['modus'] ?? '', ['online','offline']) ? $_POST['modus'] : 'online';
@@ -39,6 +46,34 @@ require_once __DIR__ . '/shell_top.php';
     ⚙ Kasse <?= (int)$k['id'] ?>: <?= htmlspecialchars($k['name'] ?? '') ?>
     <span style="font-size:11px;font-weight:400;color:#64748b;margin-left:8px">(<?= htmlspecialchars($k['kasse_nr'] ?? '') ?>)</span>
   </div>
+
+  <?php
+    $bindung = $apSvc->findBindungFuerKasse((int)$k['id']);
+    $aktivInVerwendung = $bindung ? $apSvc->istAktivInVerwendung((int)$bindung['id']) : false;
+  ?>
+  <div style="margin-bottom:16px;padding:10px 14px;border-radius:8px;background:<?= $aktivInVerwendung ? '#fffbeb' : '#f8fafc' ?>;border:1px solid <?= $aktivInVerwendung ? '#fbbf24' : '#e2e8f0' ?>;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <?php if ($bindung): ?>
+      <span>
+        📍 Arbeitsplatz-Bindung: <strong><?= htmlspecialchars($bindung['name']) ?></strong> (seit <?= date('d.m.Y H:i', strtotime($bindung['erstellt_am'])) ?>)
+        <?php if ($aktivInVerwendung): ?>
+          <br><span style="color:#92400e;font-weight:600">⚠ Wird gerade aktiv verwendet — Lösen kann eine laufende Kassiererin-Session mitten in der Arbeit unbemerkt auf die falsche Kasse umleiten!</span>
+        <?php endif; ?>
+      </span>
+      <?php if ($k['bfr_aktiv_seit'] === null): ?>
+        <form method="post" onsubmit="return confirm(<?= $aktivInVerwendung
+              ? "'ACHTUNG: Diese Kasse wird gerade aktiv verwendet! Trotzdem lösen?'"
+              : "'Bindung wirklich lösen? Ein anderes Gerät kann diese Kasse danach neu auswählen.'" ?>);" style="margin:0">
+          <input type="hidden" name="arbeitsplatz_loesen_kasse_id" value="<?= (int)$k['id'] ?>">
+          <button type="submit" class="ks-btn <?= $aktivInVerwendung ? 'ks-btn-danger' : 'ks-btn-secondary' ?>" style="padding:4px 10px;font-size:12px">Bindung lösen</button>
+        </form>
+      <?php else: ?>
+        <span style="color:#64748b;font-size:11px">BFR-aktiv — Lösen nur über "Neue Kassen-ID anfordern"</span>
+      <?php endif; ?>
+    <?php else: ?>
+      <span style="color:#64748b">📍 Kein Gerät gebunden — nächstes Gerät kann diese Kasse frei auswählen</span>
+    <?php endif; ?>
+  </div>
+
   <form method="post">
     <input type="hidden" name="kasse_id" value="<?= (int)$k['id'] ?>">
 

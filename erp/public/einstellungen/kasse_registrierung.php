@@ -25,6 +25,7 @@ $abgeschlossen = $status['abgeschlossen'];
 
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
+$arbeitsplatzTokenSync = $_SESSION['arbeitsplatz_token_sync'] ?? null; unset($_SESSION['arbeitsplatz_token_sync']);
 
 $pageTitle        = 'RKSV-Registrierung: ' . htmlspecialchars($kasse['name']);
 $activeModule     = 'einstellungen';
@@ -87,8 +88,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
     Ergebnis zusätzlich als zweite, unabhängige Aufzeichnung festgehalten.
 </div>
 
-<form method="post" action="kasse_registrierung_speichern.php">
+<form method="post" action="kasse_registrierung_speichern.php" id="kasse-registrierung-form">
     <input type="hidden" name="kasse_id" value="<?= $id ?>">
+    <input type="hidden" name="geraete_token" id="ap-geraete-token" value="">
     <?php if ($entwurfId): ?><input type="hidden" name="entwurf_id" value="<?= $entwurfId ?>"><?php endif; ?>
 
     <div class="card" style="margin-bottom:16px">
@@ -159,4 +161,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </form>
 <?php endif; ?>
 
+<script>window.AP_TOKEN_SYNC = <?= json_encode($arbeitsplatzTokenSync) ?>;</script>
+<script src="<?= BASE_PATH ?>/js/kasse_registrierung.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

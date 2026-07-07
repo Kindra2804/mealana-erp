@@ -1,14 +1,37 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
+require_once __DIR__ . '/../../src/modules/kasse/MesseSyncService.php';
+require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
 
-$svc       = new KassenService();
-$kasseInfo = $svc->getKasse(1);
+$svc = new KassenService();
+
+$aktuelleKasseId = (new ArbeitsplatzService())->aktuelleKasseId();
+if ($aktuelleKasseId === null) {
+    // Unbekanntes Gerät, kein sicherer Fallback (Hauptkasse hat BFR aktiv) — erst über
+    // die Kasse-Startseite einen Arbeitsplatz zuweisen lassen, statt fälschlich als
+    // Kasse 1 aufzutreten (RKSV-Signatur-Risiko).
+    $_SESSION['fehler'] = 'Dieses Gerät ist keiner Kasse zugeordnet. Bitte zuerst einen Arbeitsplatz auswählen.';
+    header('Location: ' . BASE_PATH . '/kasse/index.php');
+    exit;
+}
+
+$kasseInfo = $svc->getKasse($aktuelleKasseId);
 $lagerId   = (int)($kasseInfo['lager_id']      ?? 1);
 $kasseId   = (int)($kasseInfo['id']            ?? 1);
 $lagerName = $kasseInfo['lager_name']          ?? 'Hauptlager';
 $rksvId    = $kasseInfo['rksv_kassen_id']      ?? null;
 $modus     = $kasseInfo['modus']               ?? 'online';
+
+// Resync-Sperre: verhindert Bon-Nr-Kollisionen, wenn diese Kasse noch unsynchronisierte
+// Messe-Daten hat (siehe MesseSyncService::hatOffenenResync). Die eigentliche, nicht
+// umgehbare Sperre sitzt zusätzlich in bon_speichern.php — das hier ist nur die UX,
+// damit man gar nicht erst in der leeren Kasse landet, sondern direkt bei den offenen Syncs.
+if ((new MesseSyncService())->hatOffenenResync($kasseId)) {
+    $_SESSION['fehler'] = 'Diese Kasse hat noch offene Messe-Daten (Sync ausstehend) — bitte zuerst synchronisieren, bevor hier online verkauft wird.';
+    header('Location: ' . BASE_PATH . '/kasse/messe_vorbereiten.php');
+    exit;
+}
 
 $schnellwahl = $svc->getSchnellwahl($kasseId);
 ?>

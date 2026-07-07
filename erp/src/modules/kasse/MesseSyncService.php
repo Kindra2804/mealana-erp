@@ -500,6 +500,18 @@ class MesseSyncService
         return $stmt->fetch() ?: null;
     }
 
+    /**
+     * True, solange für diese Kasse Messe-Daten unterwegs sind, die noch nicht
+     * per Post-Sync hochgeladen wurden (status='vorbereitet') — der eigentliche
+     * Auslöser für die Bon-Nr-Kollisionsgefahr, siehe project_kassen_verwaltung
+     * Notizen. Bewusst NICHT an kassen.modus geknüpft: der Admin-Schalter kann
+     * manuell falsch stehen, dieser Status ist die tatsächliche Quelle der Wahrheit.
+     */
+    public function hatOffenenResync(int $kasseId): bool
+    {
+        return count($this->getOffeneSyncs($kasseId)) > 0;
+    }
+
     public function getOffeneSyncs(int $kasseId): array
     {
         $stmt = $this->db->prepare("

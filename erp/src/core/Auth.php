@@ -95,6 +95,9 @@ class Auth
             $berechtigungen = array_column($result, 'berechtigung_name');
 
             $_SESSION['berechtigungen'] = $berechtigungen;
+
+            self::registriereSession($id);
+
             return true;
         }
 
@@ -104,11 +107,55 @@ class Auth
     }
 
     /**
+     * Legt beim Login eine Zeile in `sessions` an bzw. aktualisiert sie, falls die
+     * (durch session_regenerate_id() neu vergebene) Session-ID unerwartet schon
+     * existiert. Grundlage für Arbeitsplatz-Bindung und künftige Session-Limits
+     * (siehe project_kassen_verwaltung / project_rechte_rollen in den Notizen).
+     */
+    private static function registriereSession(int $benutzerId): void
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepare("
+            INSERT INTO sessions (id, benutzer_id, ip_adresse, user_agent, letzte_aktivitaet, erstellt_am)
+            VALUES (:id, :benutzer_id, :ip, :ua, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                benutzer_id = VALUES(benutzer_id),
+                ip_adresse = VALUES(ip_adresse),
+                user_agent = VALUES(user_agent),
+                letzte_aktivitaet = NOW()
+        ");
+        $stmt->execute([
+            'id'          => session_id(),
+            'benutzer_id' => $benutzerId,
+            'ip'          => $_SERVER['REMOTE_ADDR'] ?? null,
+            'ua'          => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
+        ]);
+    }
+
+    /**
+     * Aktualisiert `letzte_aktivitaet` der aktuellen Session — der Heartbeat, an dem
+     * spätere Kollisions-Checks (Arbeitsplatz bereits aktiv?) erkennen, ob eine
+     * andere Session noch wirklich lebt oder nur nie sauber abgemeldet wurde.
+     * Aufgerufen aus auth_check.php, direkt nach Auth::check().
+     */
+    public static function heartbeat(): void
+    {
+        if (empty($_SESSION['benutzer']['id'])) {
+            return;
+        }
+        $db = Database::getInstance();
+        $stmt = $db->prepare("UPDATE sessions SET letzte_aktivitaet = NOW() WHERE id = :id");
+        $stmt->execute(['id' => session_id()]);
+    }
+
+    /**
      * Beendet die Session und leitet auf die Login-Seite um.
      * session_destroy() löscht alle Session-Daten serverseitig.
      */
     public static function logout(): void
     {
+        Database::getInstance()->prepare("DELETE FROM sessions WHERE id = :id")->execute(['id' => session_id()]);
+
         $_SESSION = [];
         // Session-Cookie im Browser aktiv löschen (nicht nur serverseitig)
         if (ini_get('session.use_cookies')) {

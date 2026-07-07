@@ -2,10 +2,17 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
 
 $service   = new KassenService();
 $lagerSvc  = new LagerService();
-$kasseInfo = $service->getKasse(1);
+$aktuelleKasseId = (new ArbeitsplatzService())->aktuelleKasseId();
+if ($aktuelleKasseId === null) {
+    $_SESSION['fehler'] = 'Dieses Gerät ist keiner Kasse zugeordnet. Bitte zuerst einen Arbeitsplatz auswählen.';
+    header('Location: ' . BASE_PATH . '/kasse/index.php');
+    exit;
+}
+$kasseInfo = $service->getKasse($aktuelleKasseId);
 $lagerId   = (int)($kasseInfo['lager_id'] ?? 1);
 $kasseId   = (int)($kasseInfo['id'] ?? 1);
 $alleLager = $lagerSvc->getAlleLager();

@@ -1,9 +1,16 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
+require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
 
-$service   = new KassenService();
-$kasseInfo = $service->getKasse(1);
+$service = new KassenService();
+$aktuelleKasseId = (new ArbeitsplatzService())->aktuelleKasseId();
+if ($aktuelleKasseId === null) {
+    $_SESSION['fehler'] = 'Dieses Gerät ist keiner Kasse zugeordnet. Bitte zuerst einen Arbeitsplatz auswählen.';
+    header('Location: ' . BASE_PATH . '/kasse/index.php');
+    exit;
+}
+$kasseInfo = $service->getKasse($aktuelleKasseId);
 $kasseId   = (int)($kasseInfo['id'] ?? 1);
 
 $datum = $_GET['datum'] ?? date('Y-m-d');

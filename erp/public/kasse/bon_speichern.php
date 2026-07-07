@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
+require_once __DIR__ . '/../../src/modules/kasse/MesseSyncService.php';
+require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragRepository.php';
@@ -15,6 +17,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Ungültige Daten.']); exit;
+}
+
+// kasse_id wird bewusst NICHT aus dem Client-Payload genommen, sondern serverseitig
+// über die Arbeitsplatz-Bindung der Session ermittelt — sonst könnte ein direkter POST
+// (z.B. per Shortcut statt über bon.php) jede Sperre hier einfach umgehen.
+$aktuelleKasseId = (new ArbeitsplatzService())->aktuelleKasseId();
+if ($aktuelleKasseId === null) {
+    // Kein sicherer Arbeitsplatz-Bezug (unbekanntes Gerät, Fallback auf Kasse 1 verboten
+    // weil die BFR-aktiv ist) — auf keinen Fall verkaufen, sonst RKSV-Signatur-Risiko.
+    echo json_encode(['erfolg' => false, 'fehler' => 'Dieses Gerät ist keiner Kasse zugeordnet. Bitte zuerst über die Kasse-Startseite einen Arbeitsplatz auswählen.']);
+    exit;
+}
+if ((new MesseSyncService())->hatOffenenResync($aktuelleKasseId)) {
+    echo json_encode(['erfolg' => false, 'fehler' => 'Diese Kasse hat noch offene Messe-Daten (Sync ausstehend) — bitte zuerst synchronisieren, bevor hier online verkauft wird.']);
+    exit;
 }
 
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);

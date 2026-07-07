@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/BfrService.php';
+require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php?tab=kassen');
@@ -18,6 +19,9 @@ if ($kasseId < 1) {
 }
 
 if ($aktion === 'neu') {
+    // Hardware-Wechsel: alte Arbeitsplatz-Bindung lösen, damit sich das neue Gerät
+    // beim Abschluss der neuen Registrierung frisch binden kann (siehe ArbeitsplatzService).
+    (new ArbeitsplatzService())->loeseBindungFuerKasse($kasseId);
     $service->starteRegistrierung($kasseId, $benutzerId ?: null);
     $_SESSION['erfolg'] = 'Neue Registrierung gestartet.';
     header('Location: kasse_registrierung.php?id=' . $kasseId);
@@ -81,6 +85,20 @@ if ($aktion === 'speichern' || $aktion === 'abschliessen') {
     }
 
     $ergebnis = $service->schliesseRegistrierungAb($entwurfId);
+
+    if ($ergebnis['erfolg']) {
+        // Automatische Arbeitsplatz-Bindung: der Browser, der hier abschließt, IST das
+        // physische Kassen-Gerät (bfr_url ist immer 127.0.0.1) — keine freie Auswahl mehr.
+        // Falls der Browser noch nie zuvor auf kasse/index.php war, hat er noch keinen
+        // Token in localStorage -> serverseitig einen erzeugen (statt die Bindung zu
+        // überspringen und das Gerät dauerhaft ungebunden zu lassen).
+        $token = trim($_POST['geraete_token'] ?? '') ?: ArbeitsplatzService::generiereToken();
+        $gebundenerToken = (new ArbeitsplatzService())->bindeAnKasseBeiBfrAbschluss($kasseId, $token, session_id());
+        // Browser übernimmt den tatsächlich gültigen Token (weicht ab, wenn schon eine
+        // Bindung bestand, oder wenn er eben erst hier erzeugt wurde).
+        $_SESSION['arbeitsplatz_token_sync'] = $gebundenerToken;
+    }
+
     $_SESSION[$ergebnis['erfolg'] ? 'erfolg' : 'fehler'] = $ergebnis['erfolg']
         ? 'Registrierung abgeschlossen — Kassen-ID ist jetzt aktiv und gesperrt.'
         : ($ergebnis['fehler'] ?? 'Konnte nicht abgeschlossen werden.');
