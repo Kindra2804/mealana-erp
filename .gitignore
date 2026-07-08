@@ -22,6 +22,7 @@ import/*
 # Generierte Dokumente (PDFs)
 erp/storage/dokumente/
 erp/storage/picklisten/
+erp/storage/bons/
 
 # Hersteller-Logos (lokal hochgeladen, instanzspezifisch)
 erp/public/img/hersteller/

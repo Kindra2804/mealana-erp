@@ -27,7 +27,18 @@ $preisanzeige = $db->query("SELECT wert FROM system_einstellungen WHERE schluess
 
 $zahlungen   = $service->getZahlungen($id);
 $summeBezahlt = array_sum(array_column($zahlungen, 'betrag'));
-$offenBetrag  = (float)$auftrag['bruttobetrag'] - $summeBezahlt;
+
+// Über die Kasse retournierte Positionen verkleinern den Auftrag effektiv — ohne das würde
+// "Offen" nach einer Kasse-Retoure fälschlich einen Restbetrag zeigen, obwohl wirtschaftlich
+// nichts mehr offen ist (Rückerstattung ist schon in $summeBezahlt als negativer Posten drin).
+$retourGesamtbetrag = 0.0;
+foreach ($positionen as $pos) {
+    $retMenge = (int)($pos['menge_retourniert'] ?? 0);
+    if ($retMenge <= 0) continue;
+    $einzelBruttoR = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
+    $retourGesamtbetrag += $retMenge * $einzelBruttoR * (1 - ($pos['rabatt_prozent'] ?? 0) / 100);
+}
+$offenBetrag  = ((float)$auftrag['bruttobetrag'] - $retourGesamtbetrag) - $summeBezahlt;
 
 $lieferungen = $db->prepare("
     SELECT al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung,
@@ -93,6 +104,18 @@ if (!$kasseBon && $kassenBonId) {
     $istKasse  = true; // gleiche Sperr-Logik für Dokumente
 }
 $istGesperrt = in_array($auftrag['lieferstatus'], $sperrZustände);
+
+// Weitere Kassenbons, die diesen Auftrag nur ergänzend berühren (z.B. Retoure/Extra-Kauf
+// zu einem bereits anderweitig fakturierten Auftrag) — NICHT der Bon, der schon oben als
+// $kasseBon/primärer Beleg gilt (sonst doppelt gelistet).
+$stmtZusatzBons = $db->prepare("
+    SELECT id, bon_nr, bruttobetrag, erstellt_am
+    FROM kassen_bons
+    WHERE web_auftrag_id = :aid AND typ = 'verkauf' AND id != :ausgenommen
+    ORDER BY erstellt_am
+");
+$stmtZusatzBons->execute([':aid' => $id, ':ausgenommen' => $kassenBonId ?: 0]);
+$zusatzBons = $stmtZusatzBons->fetchAll();
 
 // Adress-Snapshots dekodieren
 $rgnAdr  = json_decode($auftrag['rechnungsadresse_snapshot'] ?? $auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
@@ -188,10 +211,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php if (!$istStorniert && !empty($zahlungen)): ?>
                 <div style="margin-top:10px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
                     <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Zahlungsverlauf</div>
-                    <?php foreach ($zahlungen as $z): ?>
+                    <?php foreach ($zahlungen as $z): $istErstattung = (float)$z['betrag'] < 0; ?>
                         <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid #e2e8f0">
                             <span style="color:var(--color-text-muted)"><?= date('d.m.Y', strtotime($z['buchungsdatum'])) ?><?= $z['notiz'] ? ' · ' . htmlspecialchars($z['notiz']) : '' ?></span>
-                            <span style="font-weight:600;color:#059669">+<?= number_format((float)$z['betrag'], 2, ',', '.') ?> €</span>
+                            <span style="font-weight:600;color:<?= $istErstattung ? '#dc2626' : '#059669' ?>"><?= $istErstattung ? '' : '+' ?><?= number_format((float)$z['betrag'], 2, ',', '.') ?> €</span>
                         </div>
                     <?php endforeach; ?>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
@@ -408,6 +431,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php if ($p['charge']): ?>
                             <span style="font-size:11px;color:var(--color-text-muted)"> · Charge: <?= htmlspecialchars($p['charge']) ?></span>
                         <?php endif; ?>
+                        <?php if ((int)($p['menge_retourniert'] ?? 0) > 0): ?>
+                            <div style="font-size:11px;color:var(--color-danger)">↩ <?= (int)$p['menge_retourniert'] ?> retourniert</div>
+                        <?php endif; ?>
                     </td>
                     <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($p['ean'] ?? '—') ?></td>
                     <td style="text-align:center"><?= (int)$p['menge'] ?></td>
@@ -525,6 +551,22 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <!-- Dokumente -->
 <div style="margin-top:24px;">
     <h3 style="margin-bottom:10px;">Dokumente</h3>
+
+    <?php if (!empty($zusatzBons)): ?>
+    <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">
+            Zusätzliche Kassenbons zu diesem Auftrag (Retoure/Zusatzkauf)
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <?php foreach ($zusatzBons as $zb): ?>
+                <a href="<?= BASE_PATH ?>/kasse/bon_druck.php?id=<?= $zb['id'] ?>" target="_blank"
+                   class="erp-btn erp-btn-secondary">
+                    Bon <?= htmlspecialchars($zb['bon_nr']) ?> (€ <?= number_format((float)$zb['bruttobetrag'], 2, ',', '.') ?>)
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if ($istKasse): ?>
     <!-- Kassen-Auftrag: Kassenbon ist der Beleg, keine zusätzlichen Dokumente erlaubt -->

@@ -23,13 +23,27 @@ if (!$auftragId || !$rechnungId || !$benutzerId) {
 }
 
 // Positionen aus POST aufbereiten (bei Teilgutschrift)
+// Server-seitige Obergrenze: menge - menge_retourniert (nicht nur der Client-max-Wert,
+// der sich per direktem POST umgehen ließe) — sonst könnte eine bereits über die Kasse
+// erstattete Menge hier ein zweites Mal gutgeschrieben werden.
 $positionen = [];
 if ($gsArt === 'teilgutschrift' && !empty($_POST['positionen'])) {
+    $db = Database::getInstance();
     foreach ($_POST['positionen'] as $item) {
         if (empty($item['aktiv'])) continue;
-        $menge = max(1, (int)($item['menge'] ?? 1));
+        $posId = (int)($item['pos_id'] ?? 0);
+
+        $maxStmt = $db->prepare("SELECT menge, menge_retourniert FROM auftrag_positionen WHERE id = ? AND auftrag_id = ?");
+        $maxStmt->execute([$posId, $auftragId]);
+        $origPos = $maxStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$origPos) continue; // Position gehört nicht zu diesem Auftrag — ignorieren
+
+        $maxMenge = max(0, (int)$origPos['menge'] - (int)$origPos['menge_retourniert']);
+        if ($maxMenge <= 0) continue; // bereits vollständig retourniert — nichts mehr gutzuschreiben
+
+        $menge = min($maxMenge, max(1, (int)($item['menge'] ?? 1)));
         $positionen[] = [
-            'pos_id'           => (int)($item['pos_id'] ?? 0),
+            'pos_id'           => $posId,
             'menge'            => $menge,
             'steuer_prozent'   => (float)($item['steuer_prozent'] ?? 20),
             'einzelpreis_netto'=> (float)($item['einzelpreis_netto'] ?? 0),

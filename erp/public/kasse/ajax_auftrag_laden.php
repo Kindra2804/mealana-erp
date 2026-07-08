@@ -8,16 +8,21 @@ $db   = Database::getInstance();
 $q    = trim($_GET['q'] ?? '');
 $alle = ($_GET['alle'] ?? '0') === '1';
 
-// Basis-Filter: nicht storniert, nicht abgeschlossen
-$basisFilter = "a.lieferstatus NOT IN ('abgeschlossen','storniert')";
+// Basis-Filter: nicht storniert. 'abgeschlossen' bleibt grundsätzlich erlaubt (siehe unten
+// gezielt eingeschränkt) — ein bezahlter, versendeter Auftrag springt durch die Auto-Logik
+// in packplatz/warenausgang/abschliessen.php sofort von 'versendet' auf 'abgeschlossen',
+// der 'versendet'-Zustand ist für diesen (häufigsten) Fall praktisch nicht beobachtbar.
+$basisFilter = "a.lieferstatus != 'storniert'";
 
 if ($alle) {
-    // Alle offenen Aufträge (nicht Kassen-Bons)
-    $where = $basisFilter . " AND a.kanal != 'kasse'";
+    // Alle offenen (nicht abgeschlossenen) Aufträge (nicht Kassen-Bons)
+    $where = $basisFilter . " AND a.kanal != 'kasse' AND a.lieferstatus != 'abgeschlossen'";
 } else {
-    // Nur Abholung-Aufträge die bereit sind (versandbereit = "Fertig zur Abholung" gemeldet)
-    // ODER noch offen/in_bearbeitung (für Aufträge die noch nicht am Packplatz waren)
-    $where = $basisFilter . " AND a.lieferart = 'abholung' AND a.kanal != 'kasse'";
+    // Abholung-Aufträge (jeder Status) ODER versendet/teilgeliefert/abgeschlossen
+    // (Retouren-Kandidaten) unabhängig von der Lieferart — sonst findet das Personal
+    // Rückgaben nicht ohne den "alle"-Umschalter.
+    $where = $basisFilter . " AND a.kanal != 'kasse'
+              AND (a.lieferart = 'abholung' OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen'))";
 }
 
 $params = [];
@@ -68,8 +73,8 @@ foreach ($auftraege as $a) {
 
     // Positionen
     $pStmt = $db->prepare("
-        SELECT p.id, p.artikel_id, p.bezeichnung, p.ean,
-               p.menge, p.menge_geliefert,
+        SELECT p.id, p.artikel_id, p.bezeichnung, p.ean, p.charge,
+               p.menge, p.menge_geliefert, p.menge_retourniert,
                p.einzelpreis_netto, p.steuer_prozent, p.rabatt_prozent
         FROM auftrag_positionen p
         WHERE p.auftrag_id = ?
@@ -83,8 +88,10 @@ foreach ($auftraege as $a) {
             'artikel_id'          => $p['artikel_id'] ? (int)$p['artikel_id'] : null,
             'bezeichnung'         => $p['bezeichnung'],
             'ean'                 => $p['ean'] ?? null,
+            'charge'              => $p['charge'] ?? null,
             'menge'               => (float)$p['menge'],
             'menge_geliefert'     => (float)($p['menge_geliefert'] ?? 0),
+            'menge_retourniert'   => (float)($p['menge_retourniert'] ?? 0),
             'einzelpreis_brutto'  => round((float)$p['einzelpreis_netto'] * (1 + (float)$p['steuer_prozent'] / 100), 4),
             'steuer_prozent'      => (float)$p['steuer_prozent'],
             'rabatt_prozent'      => (float)$p['rabatt_prozent'],

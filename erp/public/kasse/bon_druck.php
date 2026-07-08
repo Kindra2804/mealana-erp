@@ -17,6 +17,14 @@ $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE sc
 $firmenname = $konfig['firmenname'] ?? 'MeaLana';
 $firmaUid   = $konfig['firma_uid'] ?? '';
 
+// Logo — Kasse ist nicht shop-gebunden, nimmt bewusst Shop 1 (Ladengeschäft) als physische
+// Filiale, gleicher logo_pfad-Mechanismus wie bei den normalen Web-Auftrag-Dokumenten.
+$logoPfad = $db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn();
+// bon_druck.php liegt schon in erp/public/kasse/ (eine Ebene höher als BonA4Renderer.php),
+// daher nur ein "../" bis zur public-Wurzel nötig.
+$logoDateipfad = $logoPfad ? __DIR__ . '/../' . $logoPfad : null;
+$logoBase64 = ($logoDateipfad && file_exists($logoDateipfad)) ? base64_encode(file_get_contents($logoDateipfad)) : '';
+
 // Steuer-Totale berechnen (signed: Retour-Positionen reduzieren, Storno ignoriert Vorzeichen via $stSign)
 $steuerTotale = [];
 $nettoBetrag  = 0;
@@ -87,6 +95,9 @@ $zahlungsartLabel = [
 <?php endif; ?>
 
 <!-- Firmenkopf -->
+<?php if ($logoBase64): ?>
+<div class="zentriert" style="margin-bottom:4px"><img src="data:image/png;base64,<?= $logoBase64 ?>" style="max-height:50px;max-width:160px"></div>
+<?php endif; ?>
 <div class="zentriert fett" style="font-size:14px"><?= htmlspecialchars($firmenname) ?></div>
 <?php if (!empty($konfig['firma_strasse'])): ?>
 <div class="zentriert"><?= htmlspecialchars($konfig['firma_strasse']) ?></div>
@@ -164,7 +175,7 @@ $retourPositionen = $posBlocks['retour'] ?? [];
 if (!empty($retourPositionen)):
 ?>
 <div class="linie-doppelt"></div>
-<div class="fett" style="font-size:11px;margin:2px 0">↩ RÜCKGABE</div>
+<div class="fett" style="font-size:11px;margin:2px 0">↩ RÜCKGABE<?= !empty($bon['web_auftrag_nr']) ? ' aus Auftrag ' . htmlspecialchars($bon['web_auftrag_nr']) : '' ?></div>
 <?php foreach ($retourPositionen as $pos):
     $menge  = abs((float)$pos['menge']);
     $preis  = (float)$pos['einzelpreis_brutto'];

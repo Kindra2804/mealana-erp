@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
 require_once __DIR__ . '/../../src/modules/kasse/MesseSyncService.php';
+require_once __DIR__ . '/../../src/modules/kasse/BfrService.php';
 require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
@@ -38,7 +39,7 @@ $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 $service    = new KassenService();
 
 $bonDaten = [
-    'kasse_id'         => (int)($input['kasse_id']         ?? 1),
+    'kasse_id'         => $aktuelleKasseId, // server-geprüfte Arbeitsplatz-Bindung, NICHT aus dem Client-Payload (siehe Kommentar oben)
     'lager_id'         => (int)($input['lager_id']         ?? 1),
     'zahlungsart'      => $input['zahlungsart']             ?? 'bar',
     'bruttobetrag'     => (float)($input['bruttobetrag']   ?? 0),
@@ -73,6 +74,7 @@ foreach ($positionen as $p) {
         'nachzutragen_lagerbestand_id' => isset($p['nachzutragen_lagerbestand_id']) ? (int)$p['nachzutragen_lagerbestand_id'] : null,
         'block'               => !empty($p['vonAuftrag']) ? 'auftrag' : ($p['block'] ?? null),
         'auftrag_position_id' => isset($p['auftrag_position_id']) ? (int)$p['auftrag_position_id'] : null,
+        'retour_von_position_id' => isset($p['retour_von_position_id']) ? (int)$p['retour_von_position_id'] : null,
     ];
 }
 
@@ -235,6 +237,51 @@ if ($webAuftragBezahlt && $webAuftragId) {
     $bonDaten['bruttobetrag'] = round($bruttoBon, 2);
 }
 
+// RKSV-Vorabcheck: eine Netto-Rückgabe (z.B. Retour einer auf anderer Kasse bezahlten
+// Bestellung) darf den lokalen Umsatzzähler DIESER Kasse nie negativ machen — jede Kasse
+// hat ihren eigenen Zähler. Muss vor jeder Buchung laufen (analog storniereBon()), sonst
+// wäre Bargeld schon ausgezahlt und Lager schon korrigiert, bevor der BFR das ablehnt.
+if ($bonDaten['bruttobetrag'] < 0) {
+    $bfrCheck = new BfrService();
+    if ($bfrCheck->wuerdeUmsatzzaehlerNegativWerden($aktuelleKasseId, $bonDaten['bruttobetrag'])) {
+        echo json_encode([
+            'erfolg' => false,
+            'fehler' => 'Rückgabe nicht möglich: Der RKSV-Gesamtumsatzzähler dieser Kasse würde dadurch negativ werden. '
+                . 'Bitte administrativ prüfen — ggf. an der Kasse zurücknehmen, an der ursprünglich verkauft wurde.',
+        ]);
+        exit;
+    }
+}
+
+// Vorabcheck: keine Position darf mehr zurückgegeben werden, als nach Abzug bereits
+// früher über die Kasse retournierter Mengen noch übrig ist — sonst könnte derselbe
+// Auftrag bei einem zweiten Kasse-Besuch nochmal (zu viel) zurückgenommen werden. Das
+// Client-seitige Stepper-Limit allein ließe sich per direktem POST umgehen.
+$retourAnfrageProPosition = [];
+foreach ($sauberePositionen as $bp) {
+    if ($bp['block'] === 'retour' && !empty($bp['retour_von_position_id'])) {
+        $pid = (int)$bp['retour_von_position_id'];
+        $retourAnfrageProPosition[$pid] = ($retourAnfrageProPosition[$pid] ?? 0) + abs($bp['menge']);
+    }
+}
+if (!empty($retourAnfrageProPosition)) {
+    $chk = Database::getInstance()->prepare("SELECT menge, menge_retourniert, bezeichnung FROM auftrag_positionen WHERE id = ?");
+    foreach ($retourAnfrageProPosition as $pid => $angefragteMenge) {
+        $chk->execute([$pid]);
+        $origPos = $chk->fetch(PDO::FETCH_ASSOC);
+        if (!$origPos) continue;
+        $nochOffen = (int)$origPos['menge'] - (int)$origPos['menge_retourniert'];
+        if ($angefragteMenge > $nochOffen) {
+            echo json_encode([
+                'erfolg' => false,
+                'fehler' => 'Rückgabe nicht möglich: "' . $origPos['bezeichnung'] . '" hat nur noch ' . $nochOffen
+                    . ' Stück offen (Rest bereits früher retourniert) — bitte Menge korrigieren.',
+            ]);
+            exit;
+        }
+    }
+}
+
 $result = $service->erstelleBon($bonDaten, $bonErstellungPositionen, $benutzerId);
 echo json_encode($result);
 
@@ -340,6 +387,17 @@ if ($result['erfolg'] && $webAuftragId) {
                 }
             }
 
+            // Retour-Positionen (block='retour') je ursprünglicher Position summieren —
+            // für menge_retourniert, damit gutschrift_erstellen.php nicht nochmal dieselbe
+            // Menge gutschreiben kann, die hier schon über die Kasse erstattet wurde.
+            $retourProPosition = [];
+            foreach ($sauberePositionen as $bp) {
+                if ($bp['block'] === 'retour' && !empty($bp['retour_von_position_id'])) {
+                    $pid = (int)$bp['retour_von_position_id'];
+                    $retourProPosition[$pid] = ($retourProPosition[$pid] ?? 0) + abs($bp['menge']);
+                }
+            }
+
             // Alle Original-Positionen des Auftrags laden (inkl. artikel_id + charge für Rückbuchung)
             $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, menge_geliefert, charge FROM auftrag_positionen WHERE auftrag_id = ?");
             $origPosStmt->execute([$webAuftragId]);
@@ -353,6 +411,11 @@ if ($result['erfolg'] && $webAuftragId) {
             foreach ($origPositionen as $op) {
                 $imBon    = (float)($bonAuftragPos[$op['id']] ?? 0);
                 $gepackt  = (float)$op['menge'];
+
+                if (!empty($retourProPosition[$op['id']])) {
+                    $db->prepare("UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + ? WHERE id = ?")
+                       ->execute([$retourProPosition[$op['id']], $op['id']]);
+                }
 
                 if ($webAuftragStatus === 'abholbereit') {
                     // Packplatz hat menge_geliefert schon gesetzt — wir korrigieren nur die Differenz
@@ -412,8 +475,19 @@ if ($result['erfolg'] && $webAuftragId) {
                 $summeStmt->execute([$webAuftragId]);
                 $summeBezahltGesamt = (float)$summeStmt->fetchColumn();
             } else {
-                // Bereits bezahlt: nur Erstattung (negativen Betrag) buchen wenn Retour
-                $retourBetrag = round((float)$auftrag['bruttobetrag'] - $auftragAnteil, 2);
+                // Bereits bezahlt: nur Erstattung (negativen Betrag) buchen wenn Retour.
+                // Direkt aus den block='retour'-Positionen berechnen — NICHT über
+                // bruttobetrag-auftragAnteil, da Retour/Extra-Positionen bewusst keine
+                // auftrag_position_id tragen und $auftragAnteil sonst immer auf den vollen
+                // bruttobetrag zurückfällt (Retourbetrag würde immer 0 ergeben).
+                $retourBetrag = 0.0;
+                foreach ($sauberePositionen as $bp) {
+                    if (($bp['block'] ?? null) === 'retour') {
+                        $rab = 1 - ($bp['rabatt_prozent'] / 100);
+                        $retourBetrag += abs($bp['menge']) * $bp['einzelpreis_brutto'] * $rab;
+                    }
+                }
+                $retourBetrag = round($retourBetrag, 2);
                 if ($retourBetrag > 0.005) {
                     $db->prepare("
                         INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
@@ -444,25 +518,36 @@ if ($result['erfolg'] && $webAuftragId) {
                     $benutzerId
                 );
             } else {
-                // nur Zahlung — Lieferstatus unverändert
-                // Kumulierte Summe entscheidet (siehe Kommentar oben) — Fallback auf $auftragAnteil
-                // nur für den (praktisch nicht erreichbaren) Fall $webAuftragBezahlt=true in diesem Zweig.
-                $neuerZahlStatus = ($summeBezahltGesamt ?? $auftragAnteil) >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt' : 'teilbezahlt';
+                // nur Zahlung — Lieferstatus unverändert. War der Auftrag schon bezahlt
+                // (versendet/teilgeliefert/abgeschlossen-Retoure, siehe Redesign 2026-07-08),
+                // entscheidet der echte Retourbetrag statt der Kumulierten-Summe-Formel —
+                // die gilt nur für den "wird hier erstmals bezahlt"-Fall.
+                if ($webAuftragBezahlt) {
+                    $neuerZahlStatus = isset($retourBetrag) && $retourBetrag > 0.005 ? 'erstattet' : 'bezahlt';
+                } else {
+                    $neuerZahlStatus = $summeBezahltGesamt >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt' : 'teilbezahlt';
+                }
                 $db->prepare("
                     UPDATE auftraege SET zahlungsstatus = ?, aktualisiert_am = NOW() WHERE id = ?
                 ")->execute([$neuerZahlStatus, $webAuftragId]);
 
                 $repo->logStatus($webAuftragId,
                     ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerZahlStatus]],
-                    'Nur Zahlung an der Kasse — Bon ' . $bonNr . ' — Versand/Abholung folgt',
+                    ($webAuftragBezahlt ? 'Retoure an der Kasse' : 'Nur Zahlung an der Kasse — Versand/Abholung folgt') . ' — Bon ' . $bonNr,
                     $benutzerId
                 );
             }
 
             // ── kassen_bon_id auf Auftrag setzen (sperrt Rechnung-Erstellung) ─
+            // NUR wenn der Auftrag durch DIESE Transaktion überhaupt erst bezahlt/fakturiert
+            // wird ($webAuftragBezahlt war beim Laden false) — war er schon vorher bezahlt
+            // (z.B. eigene Rechnung, PayPal), darf ein späterer Retoure/Extra-Bon diese nicht
+            // verdrängen. web_auftrag_id wird trotzdem immer gesetzt (reine Referenz, keine Sperre).
             if ($bonId) {
-                $db->prepare("UPDATE auftraege SET kassen_bon_id = ? WHERE id = ?")
-                   ->execute([$bonId, $webAuftragId]);
+                if (!$webAuftragBezahlt) {
+                    $db->prepare("UPDATE auftraege SET kassen_bon_id = ? WHERE id = ?")
+                       ->execute([$bonId, $webAuftragId]);
+                }
                 $db->prepare("UPDATE kassen_bons SET web_auftrag_id = ? WHERE id = ?")
                    ->execute([$webAuftragId, $bonId]);
             }

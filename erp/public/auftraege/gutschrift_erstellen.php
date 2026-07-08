@@ -26,6 +26,17 @@ $fehler  = $_SESSION['fehler']  ?? [];
 $formdata = $_SESSION['formdata'] ?? [];
 unset($_SESSION['fehler'], $_SESSION['formdata']);
 
+// Vollstorno-Betrag: nur was noch NICHT über die Kasse retourniert wurde (siehe
+// DokumentService::erstelleGutschrift) — Label soll nicht den vollen Rechnungsbetrag
+// versprechen, wenn schon ein Teil zurückgegeben wurde.
+$vollstornoBetrag = 0.0;
+foreach ($positionen as $pos) {
+    $offen = (int)$pos['menge'] - (int)($pos['menge_retourniert'] ?? 0);
+    if ($offen <= 0) continue;
+    $einzelBruttoV = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
+    $vollstornoBetrag += $offen * $einzelBruttoV * (1 - ($pos['rabatt_prozent'] ?? 0) / 100);
+}
+
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
@@ -54,8 +65,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:pointer;">
             <input type="radio" name="gs_art" value="vollstorno"
                    <?= ($formdata['gs_art'] ?? '') === 'vollstorno' ? 'checked' : '' ?> id="gs_vollstorno">
-            <span>Vollstornierung — komplette Rechnung
-                (<?= number_format($rechnung['bruttobetrag'], 2, ',', '.') ?> EUR)</span>
+            <span>Vollstornierung — <?= abs($vollstornoBetrag - $rechnung['bruttobetrag']) > 0.005 ? 'restliche, noch nicht retournierte Menge' : 'komplette Rechnung' ?>
+                (<?= number_format($vollstornoBetrag, 2, ',', '.') ?> EUR)
+                <?php if (abs($vollstornoBetrag - $rechnung['bruttobetrag']) > 0.005): ?>
+                    <br><small style="color:#dc2626">Rechnung war <?= number_format($rechnung['bruttobetrag'], 2, ',', '.') ?> EUR — Differenz bereits über Kasse retourniert</small>
+                <?php endif; ?>
+            </span>
         </label>
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
             <input type="radio" name="gs_art" value="teilgutschrift"
@@ -82,14 +97,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php foreach ($positionen as $i => $pos):
                     $einzelBrutto = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
                     $gesamtBrutto = round($pos['gesamtpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-                    $savedMenge   = $formdata['positionen'][$i]['menge'] ?? $pos['menge'];
-                    $savedChecked = isset($formdata['positionen'][$i]) || empty($formdata);
+                    // Bereits über die Kasse retournierte Menge darf hier nicht nochmal
+                    // gutgeschrieben werden (sonst doppelte Erstattung).
+                    $bereitsRetourniert = (int)($pos['menge_retourniert'] ?? 0);
+                    $maxGutschrift      = max(0, (int)$pos['menge'] - $bereitsRetourniert);
+                    $savedMenge   = $formdata['positionen'][$i]['menge'] ?? $maxGutschrift;
+                    $savedChecked = (isset($formdata['positionen'][$i]) || empty($formdata)) && $maxGutschrift > 0;
                 ?>
                 <tr class="gs-pos-row">
                     <td>
                         <input type="checkbox" name="positionen[<?= $i ?>][aktiv]" value="1"
                                class="gs-checkbox" data-idx="<?= $i ?>"
-                               <?= $savedChecked ? 'checked' : '' ?>>
+                               <?= $savedChecked ? 'checked' : '' ?> <?= $maxGutschrift <= 0 ? 'disabled' : '' ?>>
                         <input type="hidden" name="positionen[<?= $i ?>][pos_id]"
                                value="<?= $pos['id'] ?>">
                         <input type="hidden" name="positionen[<?= $i ?>][steuer_prozent]"
@@ -103,6 +122,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php if ($pos['rabatt_prozent'] > 0): ?>
                             <br><small style="color:#888;">Rabatt: <?= $pos['rabatt_prozent'] ?> %</small>
                         <?php endif; ?>
+                        <?php if ($bereitsRetourniert > 0): ?>
+                            <br><small style="color:#dc2626;">bereits <?= $bereitsRetourniert ?>× über Kasse retourniert<?= $maxGutschrift <= 0 ? ' — nichts mehr gutzuschreiben' : '' ?></small>
+                        <?php endif; ?>
                     </td>
                     <td style="text-align:right;"><?= $pos['menge'] ?></td>
                     <td style="text-align:right;">
@@ -110,8 +132,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                class="erp-input gs-menge" data-idx="<?= $i ?>"
                                data-einzelbrutto="<?= $einzelBrutto ?>"
                                data-rabatt="<?= $pos['rabatt_prozent'] ?>"
-                               min="1" max="<?= $pos['menge'] ?>"
-                               value="<?= (int)$savedMenge ?>"
+                               min="<?= $maxGutschrift > 0 ? 1 : 0 ?>" max="<?= $maxGutschrift ?>"
+                               value="<?= (int)$savedMenge ?>" <?= $maxGutschrift <= 0 ? 'disabled' : '' ?>
                                style="width:55px; text-align:right; padding:2px 4px;">
                     </td>
                     <td style="text-align:right;"><?= number_format($einzelBrutto, 2, ',', '.') ?></td>

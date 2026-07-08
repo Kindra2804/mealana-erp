@@ -334,7 +334,7 @@ class KassenService
 
             // Auftrag-Eintrag anlegen (kanal='kasse') → erscheint in auftraege/liste.php
             $netto = 0.0;
-            $steuer = 0.0;
+            $steuerBetrag = 0.0;
             foreach ($positionen as $p) {
                 $zeileBrutto = (float)($p['menge'] ?? 1)
                     * (float)($p['einzelpreis_brutto'] ?? 0)
@@ -342,7 +342,7 @@ class KassenService
                 $faktor   = 1 + ((float)($p['steuer_prozent'] ?? 0) / 100);
                 $zeileNet = $faktor > 0 ? $zeileBrutto / $faktor : $zeileBrutto;
                 $netto   += $zeileNet;
-                $steuer  += $zeileBrutto - $zeileNet;
+                $steuerBetrag += $zeileBrutto - $zeileNet;
             }
             $aufZahlungsart = match($bonDaten['zahlungsart'] ?? 'bar') {
                 'bar'       => 'bar',
@@ -370,7 +370,7 @@ class KassenService
                 ':kunden_snapshot' => $kundenSnapshot,
                 ':zahlungsart'     => $aufZahlungsart,
                 ':netto'           => round($netto, 2),
-                ':steuer'          => round($steuer, 2),
+                ':steuer'          => round($steuerBetrag, 2),
                 ':brutto'          => $bonDaten['bruttobetrag'] ?? 0,
                 ':erstellt_von'    => $benutzerId,
             ]);

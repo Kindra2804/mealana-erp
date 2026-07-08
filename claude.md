@@ -559,6 +559,39 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-08, Session 26)
+
+### Echter BFR-Hardware-Test ✅ Startbeleg-Registrierung erfolgreich (2026-07-08)
+Erste echte Kasse (id=4) mit A-Trust-Demo-Signaturkarte durch den kompletten Ablauf laut `BFR_Installationsanleitung.pdf` registriert (BFR-Tool: Karte testen, Kassen-ID `DEMOvNahtlOS`, Startbeleg erstellt; danach bei uns `kasse_registrierung.php`: `/state` abgerufen, Registrierung abgeschlossen). Arbeitsplatz-Bindung (2026-07-07 gebaut) funktionierte beim ersten echten Durchlauf sofort automatisch.
+
+**Doku-Fund:** Läuft die ERP-Software auf einem anderen Rechner als BFR, muss im BFR-Tool "Zugriff für Netzwerkkassen erlauben" gesetzt sein, sonst nimmt BFR nur `127.0.0.1` an — `docs/installation.md` Abschnitt 13 braucht diesen Nachtrag.
+
+**Vier echte Bugs gefunden + gefixt** (erste `bfr_url` überhaupt live, vorher nie durchlaufene Codepfade):
+1. `KassenService::erstelleBon()`: `$steuer`-Array (Steuergruppen für BFR-Signatur) wurde von einer zweiten, gleichnamigen Akkumulator-Variable überschrieben → zwei echte signierte Testbelege gingen mit Steuergruppen=0,00 (nur Gesamtbetrag korrekt) an den BFR raus. Auf einer echten Karte wäre das ein Fall für eine Kassen-ID-Neuregistrierung gewesen. Fix: zweite Variable umbenannt (`$steuerBetrag`).
+2. `bon_speichern.php`: `kasse_id` kam trotz gegenteiligem Kommentar aus dem Client-Payload statt aus der server-geprüften Arbeitsplatz-Bindung (`$aktuelleKasseId`). Gefixt.
+3. Negativ-Zähler-Sperre (`wuerdeUmsatzzaehlerNegativWerden`) fehlte im Retour-Pfad (existierte nur in `storniereBon()`) — eine kassenübergreifende Retour (bezahlt auf Kasse A, zurückgegeben auf Kasse B) hätte den lokalen Zähler von Kasse B unter Null drücken können, NACH bereits erfolgter Barauszahlung. Fix: gleicher Vorab-Check jetzt auch in `bon_speichern.php`.
+4. `zeileMinus()` in `bon.php` löschte eine Auftrags-Warenkorbzeile komplett bei Menge 1→0, statt sie auf 0 zu belassen — verhinderte die vollständige Rückgabe eines Einzelpostens. Gefixt, `zeilePlus()` kann das jetzt bis `original_menge` rückgängig machen.
+5. Workflow: `auftragWaehlen()` zeigte bei `versendet`/`abgeschlossen`-Aufträgen den unpassenden "Mitnehmen/nur Zahlung"-Dialog — jetzt übersprungen zugunsten direkter Mengen-Anpassung (Retoure).
+
+Alle Bugs live gegen Kasse 4 verifiziert (3 Test-Bons, 2 sauber storniert, künstlich niedriger Zähler zum Testen der Retour-Sperre).
+
+### Redesign Auftrag-Lade-Flow ✅ FERTIG (gleicher Tag, 2026-07-08 Nachmittag)
+Modus (Retoure/Abholung) wird jetzt direkt aus `lieferstatus`+`zahlungsstatus` beim Laden abgeleitet statt hinterher aus der Mengen-Differenz erraten. `versendet`/`teilgeliefert`/`abgeschlossen` → neue "↩ Retoure zu A-xxx"-Sektion (parallel zum normalen Warenkorb, ein gemeinsamer Bon), mit Chargen-Anzeige aus dem Warenausgang. Details + fünf dabei gefundene Bugs (darunter ein **ENUM-Bug in `kassen_bon_positionen.block`, das 'retour' komplett fehlte** — seit Feature-Bau 2026-06-29, Migration 119 behoben) in Memory `project_kasse_bon_design`.
+
+### Extremtest + Doppel-Gutschrift-Sperre ✅ FERTIG (gleicher Tag, Abschluss 2026-07-08)
+Jackys eigener Extremtest (zwei Aufträge, Kasse-Retoure + Abholung + ERP-Artikel + Freitext-Artikel kombiniert, danach alle Tabellen kontrolliert) deckte auf: `versendet`+`bezahlt` springt durch eine Auto-Logik im Warenausgang sofort auf `abgeschlossen` (jetzt überall als Retoure-Kandidat mitgezählt), und eine Kasse-Retoure ohne Rückverfolgung zur Original-Position hätte an vier Stellen doppelt gutgeschrieben werden können (Zahlungsverlauf "Offen" trotz Retoure, Teilgutschrift + Vollstorno ignorierten bereits Retourniertes, die Kasse selbst hätte beim zweiten Laden erneut die volle Menge angeboten). Neue Spalte `auftrag_positionen.menge_retourniert` (Migration 120, bewusst getrennt von `menge_geliefert`) an allen vier Stellen durchgesetzt, jeweils mit serverseitiger Prüfung (nicht nur Client-Grenzen). Details in Memory `project_kasse_bon_design`.
+
+**Für nächste Session vorgemerkt** (siehe Memory `project_kasse_bon_design`, `project_kassen_verwaltung`):
+- Freitext-Retour für JTL-Altbestand (Rückgaben ohne Auftrag im ERP)
+- Packplatz-Benachrichtigung bei Kassen-Retour (offene Warteschlange statt automatischer oder gar keiner Lagerbuchung)
+- Mehrere Aufträge gleichzeitig in einem Bon — wartet auf Barbara-Feedback, nicht spekulativ bauen
+- Kasse-Name/-Nummer fehlt im Kasse-Header
+- `docs/installation.md` Netzwerkkassen-Häkchen nachtragen
+- Freitext-Artikel fehlen im K1-Auftrag-Spiegel (K1-Split-Filter verlangt artikel_id) — Bon selbst korrekt, nur interne Spiegelung unvollständig
+
+### Logo + QR-Code-Größe auf Kassen-Belegen ✅ FERTIG (ganz zum Schluss desselben Tages)
+QR-Code auf A4 war unscharf/zu klein (25mm bei 100px) → 30mm bei 300px. Firmenlogo fehlte auf beiden Vorlagen komplett — hing an einem nie befüllten, falschen Einstellungs-Schlüssel (`firmen_logo`); jetzt auf den echten, längst funktionierenden `shops.logo_pfad`-Mechanismus umgestellt (wie bei den normalen Web-Auftrags-Dokumenten). Details in Memory `project_kasse_bon_design`.
+
 ## What's Implemented (Stand 2026-07-05, Session 25)
 
 ### Benutzerverwaltung ✅ FERTIG

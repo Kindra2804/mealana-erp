@@ -3,6 +3,7 @@
 require_once __DIR__ . '/KassenService.php';
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/QrCode.php';
+require_once __DIR__ . '/../kunden/KundenRepository.php';
 
 /**
  * Baut die A4-Rechnungsansicht eines Kassenbons als HTML.
@@ -23,30 +24,36 @@ class BonA4Renderer
         $db = Database::getInstance();
 
         // Firmen-Stammdaten
-        $keys = ['firmenname','firma_email','firma_strasse','firma_plz','firma_ort','firma_tel','firma_uid','firma_web','firma_iban','firma_bic','firma_bank','firmen_logo'];
+        $keys = ['firmenname','firma_email','firma_strasse','firma_plz','firma_ort','firma_tel','firma_uid','firma_web','firma_iban','firma_bic','firma_bank'];
         $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE schluessel IN ('" . implode("','", $keys) . "')")->fetchAll(PDO::FETCH_KEY_PAIR);
         $firmenname = $konfig['firmenname'] ?? 'MeaLana';
 
-        // Kundendaten (wenn Stammkunde)
+        // Logo — Kasse ist nicht shop-gebunden, nimmt bewusst Shop 1 (Ladengeschäft) als
+        // physische Filiale. Gleicher logo_pfad-Mechanismus wie bei den normalen Web-Auftrag-
+        // Dokumenten (DokumentService::ladeDaten()), dort schon funktionierend.
+        $logoPfad = $db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn();
+        $logoDateipfad = $logoPfad ? __DIR__ . '/../../../public/' . $logoPfad : null;
+        $logoBase64 = ($logoDateipfad && file_exists($logoDateipfad)) ? base64_encode(file_get_contents($logoDateipfad)) : '';
+
+        // Kundendaten (wenn Stammkunde) — Name/Adresse sind AES-verschlüsselt,
+        // deshalb über KundenRepository (entschlüsselt), keine rohe SQL-Abfrage.
         $kundeZeilen = [];
         $kd = null;
         if ($bon['kunden_id']) {
-            $stmtK = $db->prepare("
-                SELECT k.vorname, k.nachname, k.firma, k.kundennummer,
-                       a.strasse, a.plz, a.ort, a.land_code
-                FROM kunden k
-                LEFT JOIN kunden_adressen a ON a.kunden_id = k.id AND a.ist_standard = 1
-                WHERE k.id = :id
-            ");
-            $stmtK->execute([':id' => $bon['kunden_id']]);
-            $kd = $stmtK->fetch();
+            $kundenRepo = new KundenRepository();
+            $kd = $kundenRepo->findById((int)$bon['kunden_id']);
             if ($kd) {
-                if ($kd['firma'])   $kundeZeilen[] = $kd['firma'];
+                $adresse = $kundenRepo->findAdressen((int)$bon['kunden_id'])[0] ?? null;
+
+                if ($kd['firmenname']) $kundeZeilen[] = $kd['firmenname'];
                 $name = trim(($kd['vorname'] ?? '') . ' ' . ($kd['nachname'] ?? ''));
-                if ($name)          $kundeZeilen[] = $name;
-                if ($kd['strasse']) $kundeZeilen[] = $kd['strasse'];
-                if ($kd['plz'] || $kd['ort']) $kundeZeilen[] = trim(($kd['plz'] ?? '') . ' ' . ($kd['ort'] ?? ''));
-                if ($kd['land_code'] && $kd['land_code'] !== 'AT') $kundeZeilen[] = $kd['land_code'];
+                if ($name) $kundeZeilen[] = $name;
+                if ($adresse) {
+                    $strasseZeile = trim(($adresse['strasse'] ?? '') . ' ' . ($adresse['hausnummer'] ?? ''));
+                    if ($strasseZeile) $kundeZeilen[] = $strasseZeile;
+                    if ($adresse['plz'] || $adresse['ort']) $kundeZeilen[] = trim(($adresse['plz'] ?? '') . ' ' . ($adresse['ort'] ?? ''));
+                    if ($adresse['land'] && $adresse['land'] !== 'AT') $kundeZeilen[] = $adresse['land'];
+                }
             }
         }
         if (empty($kundeZeilen)) $kundeZeilen = ['Laufkunde / Barzahler'];
@@ -207,6 +214,9 @@ class BonA4Renderer
 <!-- ── KOPF ── -->
 <div class="kopf">
   <div class="firma-block">
+    <?php if ($logoBase64): ?>
+    <img src="data:image/png;base64,<?= $logoBase64 ?>" style="max-height:16mm;max-width:50mm;margin-bottom:3mm">
+    <?php endif; ?>
     <div class="firma-name"><?= htmlspecialchars($firmenname) ?></div>
     <?php foreach (['firma_strasse','firma_plz firma_ort','firma_tel','firma_email','firma_uid','firma_web'] as $k): ?>
       <?php
@@ -308,7 +318,7 @@ $renderBlock = function(array $positionen, string $blockLabel = '') use (&$zeile
 <?php endforeach; };
 
 if (isset($posBlocks['auftrag']))  $renderBlock($posBlocks['auftrag'],  $bon['web_auftrag_nr'] ? 'Auftrag ' . $bon['web_auftrag_nr'] : 'Auftrag');
-if (isset($posBlocks['retour']))   $renderBlock($posBlocks['retour'],   '↩ Rückgabe');
+if (isset($posBlocks['retour']))   $renderBlock($posBlocks['retour'],   $bon['web_auftrag_nr'] ? '↩ Rückgabe aus Auftrag ' . $bon['web_auftrag_nr'] : '↩ Rückgabe');
 $rest = array_merge($posBlocks['normal'] ?? [], $posBlocks['addon'] ?? []);
 if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftrag']) || isset($posBlocks['retour'])) ? 'Weitere Positionen' : '');
 ?>
@@ -380,7 +390,7 @@ if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftra
 <?php if (!empty($bon['rksv_signatur'])): ?>
 <div style="margin-bottom:6mm;border-top:1px solid #e2e8f0;padding-top:4px;display:flex;align-items:center;gap:8px">
   <?php if ($bon['rksv_qr']): ?>
-  <img src="<?= QrCode::dataUri($bon['rksv_qr'], 100) ?>" style="width:25mm;height:25mm">
+  <img src="<?= QrCode::dataUri($bon['rksv_qr'], 300) ?>" style="width:30mm;height:30mm">
   <?php endif; ?>
   <div style="font-size:8pt;color:#94a3b8">RKSV: <?= htmlspecialchars($bon['rksv_signatur']) ?></div>
 </div>

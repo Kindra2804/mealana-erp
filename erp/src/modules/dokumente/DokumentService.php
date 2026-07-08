@@ -175,27 +175,39 @@ class DokumentService
 
         $gsNr = $this->repo->naechsteNummer('gutschrift', (int)date('Y'));
 
-        // GS-Positionen und Summen bestimmen
+        // GS-Positionen und Summen bestimmen. Vollstorno kreditiert nur das, was noch NICHT
+        // über die Kasse retourniert wurde (menge - menge_retourniert) — sonst würde eine
+        // bereits erstattete Menge hier ein zweites Mal gutgeschrieben. Läuft dafür über
+        // dieselbe Positions-Berechnung wie die Teilgutschrift, nur mit allen offenen Mengen
+        // statt einer manuellen Auswahl.
         if ($gsArt === 'vollstorno') {
-            $gsPosi   = $daten['positionen'];
-            $gsSummen = $daten['summen'];
-        } else {
-            // Nur gewählte Positionen mit angepassten Mengen
-            $gsPosi = [];
-            foreach ($positionen as $item) {
-                foreach ($daten['positionen'] as $orig) {
-                    if ((int)$orig['id'] === $item['pos_id']) {
-                        $p = $orig;
-                        $p['menge']              = $item['menge'];
-                        $p['gesamtpreis_netto']  = round($item['einzelpreis_netto'] * $item['menge'] * (1 - ($orig['rabatt_prozent'] ?? 0) / 100), 4);
-                        $p['gesamtpreis_brutto'] = round($p['gesamtpreis_netto'] * (1 + $item['steuer_prozent'] / 100), 2);
-                        $gsPosi[] = $p;
-                        break;
-                    }
+            $positionen = [];
+            foreach ($daten['positionen'] as $orig) {
+                $offen = (int)$orig['menge'] - (int)($orig['menge_retourniert'] ?? 0);
+                if ($offen <= 0) continue;
+                $positionen[] = [
+                    'pos_id'            => (int)$orig['id'],
+                    'menge'             => $offen,
+                    'steuer_prozent'    => $orig['steuer_prozent'],
+                    'einzelpreis_netto' => $orig['einzelpreis_netto'],
+                ];
+            }
+        }
+
+        $gsPosi = [];
+        foreach ($positionen as $item) {
+            foreach ($daten['positionen'] as $orig) {
+                if ((int)$orig['id'] === $item['pos_id']) {
+                    $p = $orig;
+                    $p['menge']              = $item['menge'];
+                    $p['gesamtpreis_netto']  = round($item['einzelpreis_netto'] * $item['menge'] * (1 - ($orig['rabatt_prozent'] ?? 0) / 100), 4);
+                    $p['gesamtpreis_brutto'] = round($p['gesamtpreis_netto'] * (1 + $item['steuer_prozent'] / 100), 2);
+                    $gsPosi[] = $p;
+                    break;
                 }
             }
-            $gsSummen = $this->berechneSummen($gsPosi);
         }
+        $gsSummen = $this->berechneSummen($gsPosi);
 
         // Daten für Template
         $daten['gutschrift'] = [

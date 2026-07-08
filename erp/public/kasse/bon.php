@@ -214,6 +214,18 @@ body {
 .bon-row-ep    { width: 74px; font-size: 12px; color: #475569; text-align: right; padding: 14px 0; }
 .bon-row-summe { width: 74px; font-size: 13px; font-weight: 600; color: #1e3a5f; text-align: right; padding: 14px 0; }
 
+/* Retoure-Sektion (versendet/teilgeliefert-Auftrag geladen) */
+.pos-retoure-sektion { background: #fef2f2; border-bottom: 2px solid #dc2626; flex-shrink: 0; max-height: 220px; overflow-y: auto; }
+.pos-retoure-kopf { font-size: 12px; font-weight: 700; color: #991b1b; padding: 8px 12px 4px; }
+.pos-retoure-zeile { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12px; border-top: 1px solid #fecaca; }
+.pos-retoure-name { flex: 1; color: #1e3a5f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-retoure-charge { font-size: 10px; color: #7c2d12; background: #fed7aa; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+.pos-retoure-stepper { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.pos-retoure-stepper button { width: 22px; height: 22px; border: 1px solid #dc2626; background: #fff; color: #dc2626; border-radius: 4px; cursor: pointer; font-size: 13px; line-height: 1; font-family: inherit; }
+.pos-retoure-stepper button:disabled { opacity: .3; cursor: default; }
+.pos-retoure-menge { width: 26px; text-align: center; font-weight: 700; color: #991b1b; }
+.pos-retoure-summe { padding: 6px 12px; font-size: 12px; font-weight: 700; color: #991b1b; text-align: right; border-top: 1px solid #fecaca; }
+
 /* Kontroll-Buttons (sichtbar wenn aktiv) */
 .bon-row-ctrl {
   display: none;
@@ -778,6 +790,13 @@ body {
       <button class="pos-kunde-btn" onclick="kundeDialog()">+ Kunde suchen</button>
     </div>
 
+    <!-- Retoure-Sektion (nur bei versendet/teilgeliefert-Auftrag geladen) -->
+    <div class="pos-retoure-sektion" id="retoure-sektion" style="display:none">
+      <div class="pos-retoure-kopf">↩ Retoure zu <span id="retoure-auftrag-nr"></span></div>
+      <div id="retoure-liste"></div>
+      <div class="pos-retoure-summe" id="retoure-summe"></div>
+    </div>
+
     <!-- Spaltenkopf -->
     <div class="pos-bonkopf">
       <span>#</span><span>ARTIKEL</span><span>MNG</span><span>E-PREIS</span><span>SUMME</span>
@@ -1268,41 +1287,41 @@ body {
 </div>
 
 <!-- Bereits bezahlt: kein Bon nötig -->
-<div id="ov-bezahlt-info" class="overlay">
-  <div class="overlay-box" style="max-width:440px">
-    <div class="overlay-header">✅ Auftrag bereits bezahlt</div>
+<div id="ov-bezahlt-info" class="ov">
+  <div class="ov-box" style="max-width:440px">
+    <div class="ov-title">✅ Auftrag bereits bezahlt</div>
     <div style="padding:20px;text-align:center">
       <div id="bezahlt-info-text" style="font-size:15px;margin-bottom:12px;color:#374151"></div>
       <p style="font-size:13px;color:#6b7280;margin-bottom:24px">
         Kein Bon — Status wird auf <strong>Abgeschlossen</strong> gesetzt und eine Bestätigungsmail gesendet.
       </p>
       <div style="display:flex;gap:12px;justify-content:center">
-        <button onclick="ovSchliessen('ov-bezahlt-info')" class="btn btn-secondary">Abbrechen</button>
-        <button onclick="abschliessenOhneBon()" class="btn btn-primary">✓ Abschließen</button>
+        <button onclick="ovSchliessen('ov-bezahlt-info')" class="ov-btn ov-btn-sec">Abbrechen</button>
+        <button onclick="abschliessenOhneBon()" class="ov-btn ov-btn-prim">✓ Abschließen</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Retour-Bon: Barauszahlung bestätigen -->
-<div id="ov-retour-bar" class="overlay">
-  <div class="overlay-box" style="max-width:440px">
-    <div class="overlay-header">↩ Rückgabe — Barauszahlung</div>
+<div id="ov-retour-bar" class="ov">
+  <div class="ov-box" style="max-width:440px">
+    <div class="ov-title">↩ Rückgabe — Barauszahlung</div>
     <div style="padding:20px;text-align:center">
       <div id="retour-betrag-anzeige" style="font-size:32px;font-weight:700;color:#dc2626;margin-bottom:8px"></div>
       <p id="retour-info-text" style="font-size:13px;color:#6b7280;margin-bottom:24px"></p>
       <div style="display:flex;gap:12px;justify-content:center">
-        <button onclick="ovSchliessen('ov-retour-bar')" class="btn btn-secondary">Abbrechen</button>
-        <button onclick="retourBestaetigen()" class="btn btn-danger">↩ Auszahlen + Bon</button>
+        <button onclick="ovSchliessen('ov-retour-bar')" class="ov-btn ov-btn-sec">Abbrechen</button>
+        <button onclick="retourBestaetigen()" class="ov-btn ov-btn-red">↩ Auszahlen + Bon</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Manager-Freigabe per PIN (Auszahlung ohne kasse.auszahlung-Recht) -->
-<div id="ov-manager-pin" class="overlay">
-  <div class="overlay-box" style="max-width:360px">
-    <div class="overlay-header">🔒 Manager-Freigabe nötig</div>
+<div id="ov-manager-pin" class="ov">
+  <div class="ov-box" style="max-width:360px">
+    <div class="ov-title">🔒 Manager-Freigabe nötig</div>
     <div style="padding:20px;text-align:center">
       <p id="manager-pin-info-text" style="font-size:13px;color:#6b7280;margin-bottom:16px"></p>
       <input type="password" id="manager-pin-input" inputmode="numeric" pattern="\d{4,6}" maxlength="6"
@@ -1310,8 +1329,8 @@ body {
              style="width:140px;text-align:center;font-size:22px;letter-spacing:6px;padding:10px;border:1px solid #d0d7e0;border-radius:6px;margin-bottom:8px">
       <p id="manager-pin-fehler" style="color:#dc2626;font-size:12px;min-height:16px;margin-bottom:12px"></p>
       <div style="display:flex;gap:12px;justify-content:center">
-        <button onclick="managerPinAbbrechen()" class="btn btn-secondary">Abbrechen</button>
-        <button onclick="managerPinBestaetigen()" class="btn btn-primary">Freigeben</button>
+        <button onclick="managerPinAbbrechen()" class="ov-btn ov-btn-sec">Abbrechen</button>
+        <button onclick="managerPinBestaetigen()" class="ov-btn ov-btn-prim">Freigeben</button>
       </div>
     </div>
   </div>
@@ -1364,6 +1383,7 @@ var geladenerAuftragMitnehmen     = null;
 var geladenerAuftragZahlungsstatus = null;
 var aktuellerZahlBetrag            = null;
 var zusatzPositionen               = [];
+var retourePositionen               = []; // {artikel_id, bezeichnung, ean, einzelpreis_brutto, steuer_prozent, rabatt_prozent, maxMenge, retourMenge, charge}
 
 // ── Schnellwahl befüllen (PHP → JS) ─────────────────────────────────────────
 (function() {
@@ -1626,7 +1646,8 @@ function renderBon() {
         leer.style.display = 'flex';
         // Entferne alle Zeilen außer dem Leer-Div
         Array.from(liste.querySelectorAll('.bon-row')).forEach(r => r.remove());
-        document.getElementById('btn-bezahlen').disabled = true;
+        // Bezahlen bleibt möglich, wenn eine reine Retoure (ohne normalen Warenkorb-Inhalt) aktiv ist
+        document.getElementById('btn-bezahlen').disabled = !retoureAktiv();
         aktualisiereFooter();
         return;
     }
@@ -1681,7 +1702,7 @@ function renderBon() {
             (istAktiv ?
                 '<div class="bon-row-ctrl">' +
                 '  <button class="bon-ctrl" onclick="event.stopPropagation();zeileMinus(' + i + ')">−</button>' +
-                (!p.vonAuftrag ? '  <button class="bon-ctrl" onclick="event.stopPropagation();zeilePlus(' + i + ')">+</button>' : '') +
+                '  <button class="bon-ctrl" onclick="event.stopPropagation();zeilePlus(' + i + ')">+</button>' +
                 '  <button class="bon-ctrl bon-ctrl-preis" onclick="event.stopPropagation();preisOverride(' + i + ')" title="Preis überschreiben (Zahl auf Numpad, dann hier drücken)">€ Preis</button>' +
                 '  <span class="bon-ctrl-hint">STORNO-Taste zum Entfernen</span>' +
                 '</div>'
@@ -1693,6 +1714,61 @@ function renderBon() {
 
     document.getElementById('btn-bezahlen').disabled = false;
     aktualisiereFooter();
+}
+
+// ── Retoure-Sektion (versendet/teilgeliefert-Auftrag geladen) ────────────────
+function retoureAktiv() {
+    return retourePositionen.some(function(p) { return p.retourMenge > 0; });
+}
+
+function renderRetoureSektion() {
+    var sektion = document.getElementById('retoure-sektion');
+    if (retourePositionen.length === 0) {
+        sektion.style.display = 'none';
+        return;
+    }
+    sektion.style.display = 'block';
+    document.getElementById('retoure-auftrag-nr').textContent = geladenerAuftragNr || '';
+
+    var liste = document.getElementById('retoure-liste');
+    liste.innerHTML = '';
+    var summe = 0;
+    retourePositionen.forEach(function(p, i) {
+        summe += p.retourMenge * p.einzelpreis_brutto * (1 - p.rabatt_prozent / 100);
+        var row = document.createElement('div');
+        row.className = 'pos-retoure-zeile';
+        var chargeHtml = p.charge ? '<span class="pos-retoure-charge">Charge ' + esc(p.charge) + '</span>' : '';
+        row.innerHTML =
+            '<div class="pos-retoure-name">' + esc(p.bezeichnung) + '</div>' +
+            chargeHtml +
+            '<div class="pos-retoure-stepper">' +
+            '  <button' + (p.retourMenge <= 0 ? ' disabled' : '') + ' onclick="retoureMinus(' + i + ')">−</button>' +
+            '  <span class="pos-retoure-menge">' + p.retourMenge + '</span>' +
+            '  <button' + (p.retourMenge >= p.maxMenge ? ' disabled' : '') + ' onclick="retourePlus(' + i + ')">+</button>' +
+            '</div>';
+        liste.appendChild(row);
+    });
+    document.getElementById('retoure-summe').textContent =
+        summe > 0.005 ? 'Rückgabe: € ' + fmt(summe) : '';
+
+    // Bezahlen-Button freischalten, auch wenn der normale Warenkorb (noch) leer ist
+    if (warenkorb.length === 0) {
+        document.getElementById('btn-bezahlen').disabled = !retoureAktiv();
+    }
+}
+
+function retoureMinus(i) {
+    if (retourePositionen[i].retourMenge > 0) {
+        retourePositionen[i].retourMenge--;
+        renderRetoureSektion();
+    }
+}
+function retourePlus(i) {
+    var p = retourePositionen[i];
+    if (p.retourMenge < p.maxMenge) {
+        p.retourMenge++;
+        renderRetoureSektion();
+    }
 }
 
 function zeilaKlick(i) {
@@ -1713,13 +1789,24 @@ function zeileMinus(i) {
     if (warenkorb[i].menge > 1) {
         warenkorb[i].menge--;
         renderBon();
+    } else if (warenkorb[i].vonAuftrag) {
+        // Vollständige Rückgabe dieser Position — Zeile bleibt sichtbar (menge=0),
+        // sonst sieht die Retour-Berechnung (original_menge - menge) sie nicht mehr.
+        warenkorb[i].menge = 0;
+        renderBon();
     } else {
         zeileEntfernen(i);
     }
 }
 function zeilePlus(i) {
-    if (warenkorb[i].vonAuftrag) return;
     var p = warenkorb[i];
+    if (p.vonAuftrag) {
+        // Rückgängig machen einer (Teil-)Rückgabe — nie über die ursprüngliche Menge hinaus,
+        // Mehrmenge gehört als eigener Scan (Extra-Position), nicht als erhöhte Auftrags-Menge.
+        var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
+        if (p.menge < orig) { p.menge++; renderBon(); }
+        return;
+    }
     if ((p.hat_chargen || p.charge_pflicht) && p.artikel_id) {
         var code = p.ean || p.artnr || String(p.artikel_id);
         fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
@@ -2203,6 +2290,11 @@ function berechneAbrechnungsModus() {
             extraBrutto += p.menge * p.einzelpreis_brutto * rab;
         }
     });
+    retourePositionen.forEach(function(p) {
+        if (p.retourMenge > 0) {
+            retourBrutto += p.retourMenge * p.einzelpreis_brutto * (1 - p.rabatt_prozent / 100);
+        }
+    });
     var netBrutto = extraBrutto - retourBrutto;
     var modus = (retourBrutto < 0.005 && extraBrutto < 0.005) ? 'exakt'
               : (netBrutto < -0.005)                          ? 'retour'
@@ -2227,14 +2319,34 @@ function berechneZusatzPositionen() {
             kein_lagerabzug: true, block: 'retour',
         });
     });
+    retourePositionen.forEach(function(p) {
+        if (p.retourMenge <= 0) return;
+        zusatzPositionen.push({
+            artikel_id: p.artikel_id, bezeichnung: p.bezeichnung, ean: p.ean || null,
+            menge: -p.retourMenge, einzelpreis_brutto: p.einzelpreis_brutto,
+            steuer_prozent: p.steuer_prozent, rabatt_prozent: p.rabatt_prozent,
+            charge: p.charge || null, istDivers: false,
+            // auftrag_position_id bewusst NICHT durchreichen (wie bei der bestehenden
+            // Retour-Logik oben) — bon_speichern.php filtert Positionen mit gesetzter
+            // auftrag_position_id sonst als "schon bezahlt, nicht Teil des Bons" heraus.
+            // retour_von_position_id ist ein separates Feld nur zur Rückverfolgung, damit
+            // menge_retourniert auf der Original-Position korrekt hochgezählt werden kann.
+            vonAuftrag: false, auftrag_position_id: null,
+            retour_von_position_id: p.auftrag_position_id || null,
+            kein_lagerabzug: true, block: 'retour',
+        });
+    });
 }
 
 function bezahlenDialog() {
-    if (warenkorb.length === 0) return;
+    if (warenkorb.length === 0 && !retoureAktiv()) return;
 
-    if (geladenerAuftragZahlungsstatus === 'bezahlt' && geladenerAuftragId) {
+    if ((geladenerAuftragZahlungsstatus === 'bezahlt' || retoureAktiv()) && geladenerAuftragId) {
         var m = berechneAbrechnungsModus();
         aktuellerZahlBetrag = m.netBrutto;
+        // Immer schon hier berechnen (nicht erst im Zahlungs-Popup) — sonst geht bei
+        // "extra, Netto ungleich 0" (eigenes ov-bezahlen-Popup) die Retour-Position verloren.
+        berechneZusatzPositionen();
 
         if (m.modus === 'exakt') {
             var origTotal = 0;
@@ -2373,11 +2485,13 @@ function _resetKasseState() {
     geladenerAuftragId = null; geladenerAuftragNr = null;
     geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
     geladenerAuftragZahlungsstatus = null; aktuellerZahlBetrag = null; zusatzPositionen = [];
+    retourePositionen = [];
     document.getElementById('btn-auftrag-laden').classList.remove('geladen');
     document.getElementById('ai-leer').style.display = 'block';
     document.getElementById('ai-inhalt').style.display = 'none';
     document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
     renderBon();
+    renderRetoureSektion();
 }
 
 function bonSpeichern(zahlDaten) {
@@ -2969,35 +3083,73 @@ function auftragWaehlen(id, nr, positionen, lieferstatus, kunden_id, kunden_name
     geladenerAuftragMitnehmen       = null;
     geladenerAuftragZahlungsstatus  = zahlungsstatus || null;
     aktuellerZahlBetrag             = null;
+    retourePositionen               = [];
     kundeId = kunden_id || null;
 
-    positionen.forEach(function(p) {
-        var menge = parseFloat(p.menge);
-        warenkorb.push({
-            artikel_id:           p.artikel_id,
-            bezeichnung:          p.bezeichnung,
-            ean:                  p.ean || null,
-            menge:                menge,
-            original_menge:       menge,
-            einzelpreis_brutto:   parseFloat(p.einzelpreis_brutto),
-            steuer_prozent:       parseFloat(p.steuer_prozent) || 20,
-            rabatt_prozent:       parseFloat(p.rabatt_prozent) || 0,
-            charge:               null,
-            istDivers:            false,
-            bestand_physisch:     0,
-            bestand_reserviert:   0,
-            bestand_verkaufbar:   0,
-            vonAuftrag:           true,
-            auftrag_position_id:  p.auftrag_position_id || null,
+    // versendet/teilgeliefert/abgeschlossen: Ware ist (teilweise) schon raus — es gibt nichts
+    // zu "behalten", einzig sinnvolle Aktion ist eine Rückgabe. Eigene Retoure-Sektion statt
+    // Warenkorb-Zeilen. 'abgeschlossen' zählt mit, weil ein bezahlter, versendeter Auftrag
+    // durch die Auto-Logik in packplatz/warenausgang/abschliessen.php sofort dorthin springt —
+    // der Praxisfall "bezahlt + versendet" landet also fast nie sichtbar bei 'versendet'.
+    var istRetoure = (lieferstatus === 'versendet' || lieferstatus === 'teilgeliefert' || lieferstatus === 'abgeschlossen');
+
+    if (istRetoure) {
+        positionen.forEach(function(p) {
+            // 'versendet'/'abgeschlossen' = der ganze Auftrag ist raus (auch wenn menge_geliefert
+            // aus einem einfacheren Status-Pfad, z.B. reiner Tracking-Nr.-Eingabe, nie gepflegt
+            // wurde) — nur bei echtem 'teilgeliefert' zählt die tatsächlich gelieferte Teilmenge.
+            var maxMenge = lieferstatus === 'teilgeliefert'
+                ? parseFloat(p.menge_geliefert || 0)
+                : parseFloat(p.menge);
+            // Schon früher über die Kasse retournierte Menge abziehen — sonst könnte
+            // dieselbe Position bei einem zweiten Kasse-Besuch nochmal zurückgenommen werden.
+            maxMenge -= parseFloat(p.menge_retourniert || 0);
+            if (maxMenge <= 0) return; // nichts mehr geliefert bzw. schon vollständig retourniert
+            retourePositionen.push({
+                artikel_id:          p.artikel_id,
+                auftrag_position_id: p.auftrag_position_id || null,
+                bezeichnung:         p.bezeichnung,
+                ean:                 p.ean || null,
+                einzelpreis_brutto:  parseFloat(p.einzelpreis_brutto),
+                steuer_prozent:      parseFloat(p.steuer_prozent) || 20,
+                rabatt_prozent:      parseFloat(p.rabatt_prozent) || 0,
+                charge:              p.charge || null,
+                maxMenge:            maxMenge,
+                retourMenge:         0,
+            });
         });
-    });
+    } else {
+        positionen.forEach(function(p) {
+            var menge = parseFloat(p.menge);
+            warenkorb.push({
+                artikel_id:           p.artikel_id,
+                bezeichnung:          p.bezeichnung,
+                ean:                  p.ean || null,
+                menge:                menge,
+                original_menge:       menge,
+                einzelpreis_brutto:   parseFloat(p.einzelpreis_brutto),
+                steuer_prozent:       parseFloat(p.steuer_prozent) || 20,
+                rabatt_prozent:       parseFloat(p.rabatt_prozent) || 0,
+                charge:               p.charge || null,
+                istDivers:            false,
+                bestand_physisch:     0,
+                bestand_reserviert:   0,
+                bestand_verkaufbar:   0,
+                vonAuftrag:           true,
+                auftrag_position_id:  p.auftrag_position_id || null,
+            });
+        });
+    }
+
     document.getElementById('kunden-anzeige').textContent = '📦 ' + nr + (kunden_name ? ' · ' + kunden_name : '');
     document.getElementById('btn-auftrag-laden').classList.add('geladen');
     renderBon();
+    renderRetoureSektion();
     ovSchliessen('ov-auftrag-laden');
 
-    if (lieferstatus === 'abholbereit') {
-        geladenerAuftragMitnehmen = null;
+    if (istRetoure) {
+        feedback('Auftrag ' + nr + ' geladen — bereits ausgeliefert. Menge zurück eintragen für die Rückgabe.', 'ok');
+    } else if (lieferstatus === 'abholbereit') {
         var msg = zahlungsstatus === 'bezahlt'
             ? 'Auftrag ' + nr + ' geladen — bereits bezahlt · Abholung'
             : 'Auftrag ' + nr + ' geladen — bereit zur Abholung';
@@ -3026,10 +3178,12 @@ function auftragMitnehmenAbbrechen() {
     geladenerAuftragId = null; geladenerAuftragNr = null;
     geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
     geladenerAuftragZahlungsstatus = null; aktuellerZahlBetrag = null; zusatzPositionen = [];
+    retourePositionen = [];
     kundeId = null;
     document.getElementById('kunden-anzeige').textContent = '';
     document.getElementById('btn-auftrag-laden').classList.remove('geladen');
     renderBon();
+    renderRetoureSektion();
     feedback('Auftrag entladen', 'info');
 }
 
