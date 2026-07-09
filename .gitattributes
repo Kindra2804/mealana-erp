@@ -6,3 +6,6 @@ erp/public/uploads/artikel/**    export-ignore
 erp/public/img/hersteller/**     export-ignore
 erp/public/img/logos/**          export-ignore
 erp/public/shell-test.php        export-ignore
+erp/storage/bons/**               export-ignore
+erp/storage/picklisten/**         export-ignore
+erp/storage/dokumente/**          export-ignore
