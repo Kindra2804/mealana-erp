@@ -35,7 +35,7 @@ if ($aktion === 'abrufen') {
     }
 
     $bfrUrl = trim($_POST['bfr_url'] ?? '');
-    $info   = $bfrUrl !== '' ? $service->leseZertifikatInfo($bfrUrl) : ['erfolg' => false];
+    $info   = $bfrUrl !== '' ? $service->leseZertifikatInfo($bfrUrl, $kasseId) : ['erfolg' => false];
 
     $daten = [
         'rksv_kassen_id'            => $info['erfolg'] ? $info['rksv_kassen_id'] : trim($_POST['rksv_kassen_id'] ?? ''),
@@ -93,10 +93,19 @@ if ($aktion === 'speichern' || $aktion === 'abschliessen') {
         // Token in localStorage -> serverseitig einen erzeugen (statt die Bindung zu
         // überspringen und das Gerät dauerhaft ungebunden zu lassen).
         $token = trim($_POST['geraete_token'] ?? '') ?: ArbeitsplatzService::generiereToken();
-        $gebundenerToken = (new ArbeitsplatzService())->bindeAnKasseBeiBfrAbschluss($kasseId, $token, session_id());
-        // Browser übernimmt den tatsächlich gültigen Token (weicht ab, wenn schon eine
-        // Bindung bestand, oder wenn er eben erst hier erzeugt wurde).
-        $_SESSION['arbeitsplatz_token_sync'] = $gebundenerToken;
+        try {
+            $gebundenerToken = (new ArbeitsplatzService())->bindeAnKasseBeiBfrAbschluss($kasseId, $token, session_id());
+            // Browser übernimmt den tatsächlich gültigen Token (weicht ab, wenn schon eine
+            // Bindung bestand, oder wenn er eben erst hier erzeugt wurde).
+            $_SESSION['arbeitsplatz_token_sync'] = $gebundenerToken;
+        } catch (RuntimeException $e) {
+            // Registrierung selbst ist bereits abgeschlossen (Kasse ist aktiv) — nur die
+            // Geräte-Bindung konnte nicht gesetzt werden. Kein Rollback der Registrierung,
+            // nur eine Warnung: die Kasse-Startseite bietet danach die Auswahl/Kollision an.
+            $_SESSION['fehler'] = 'Registrierung abgeschlossen, aber Geräte-Bindung fehlgeschlagen: ' . $e->getMessage();
+            header('Location: kasse_registrierung.php?id=' . $kasseId);
+            exit;
+        }
     }
 
     $_SESSION[$ergebnis['erfolg'] ? 'erfolg' : 'fehler'] = $ergebnis['erfolg']

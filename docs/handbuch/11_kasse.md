@@ -53,6 +53,21 @@ Für Positionen ohne Stammdatensatz (Sonderpositionen, Spenden, Verpackung):
 
 ---
 
+## Freitext-Retour (Rückgabe ohne Auftrag)
+
+Für Rückgaben von Artikeln, die **nicht** als Auftrag im ERP existieren (z.B. alte JTL-Verkäufe von vor der Umstellung).
+
+1. **⚙ Menü → ↩ Freitext-Retour**
+2. Artikel suchen (Name, Nummer oder EAN)
+3. Menge und Rückerstattungs-Preis pro Stück eintragen
+4. Bei chargenpflichtigen Artikeln (z.B. Garn): **Charge eintragen** oder **"Charge unbekannt"** anhaken — eine der beiden Optionen ist Pflicht
+5. **↩ Zurücknehmen** — Zeile erscheint rot mit ↩-Symbol im Warenkorb, Menge negativ
+6. Normal weiter zu **Bezahlen** — bei reiner Retoure wird der Betrag bar ausgezahlt
+
+> Die Ware muss danach am Packplatz unter **Rücklagerungen** wieder eingebucht werden (siehe [05 Packplatz](05_packplatz.md)) — die Kasse bucht nur den finanziellen Ausgleich, nicht den Lagerbestand.
+
+---
+
 ## Chargen-Dialog
 
 Bei Garnen und anderen Artikel mit Chargen-Pflicht öffnet sich nach dem Scannen automatisch ein Dialog:
@@ -135,6 +150,15 @@ Der 80mm Thermodrucker muss als **Windows-Standarddrucker** gesetzt sein.
 Der Bon öffnet dann automatisch den Druck-Dialog.
 
 > **Tipp:** Im Browser die Einstellung "Rand: Keine" setzen und "Kopf-/Fußzeile: Aus". Dann passt der Bon perfekt auf 80mm Papier.
+
+---
+
+## RKSV / Signaturprüfung bei Störungen
+
+Ist die Signatureinrichtung (BFR) kurz nicht erreichbar, verkauft die Kasse trotzdem weiter — der Bon zeigt dann "Sicherheitseinrichtung ausgefallen" statt der echten Signatur. Das ist gesetzlich erlaubt und kein Grund zur Sorge.
+
+- **Kasse → 🔏 RKSV** zeigt offene und vergangene Störungen (Ausfall-Historie)
+- Für Admins/Technik: dort verlinkt "Rohdaten-Protokoll" — zeigt exakt, was an BFR geschickt wurde und was zurückkam (für Fehlermeldungen an den BFR-Hersteller)
 
 ---
 

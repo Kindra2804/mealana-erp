@@ -213,6 +213,8 @@ Pro Kasse in **Einstellungen → Kassen** die BFR-Gerät-URL (`bfr_url`) und die
 
 Die eigentliche FinanzOnline-Anmeldung und der Startbeleg laufen **nicht** über diese Software, sondern über das BFR-eigene Admin-Tool (siehe `import\BFR_Installationsanleitung.pdf`).
 
+**Netzwerkkassen (ERP-Server und BFR auf unterschiedlichen Rechnern):** Läuft die ERP-Software auf einem anderen Rechner als BFR (Server/Client-Architektur, wie bei uns Standard), muss im BFR-Tool unter **Service** das Häkchen **"Zugriff für Netzwerkkassen erlauben"** gesetzt sein — sonst nimmt BFR nur Verbindungen von `127.0.0.1` an, auch wenn Firewall/Port offen sind. `bfr_url` muss dann die tatsächliche Netzwerk-IP des BFR-Rechners sein, nicht `127.0.0.1` (das würde sonst auf den Server selbst zeigen). Läuft BFR direkt auf demselben Rechner wie die ERP-Software (z.B. Offline-Messe-Kasse), bleibt `127.0.0.1` korrekt — dafür sorgt die Software inzwischen sogar selbst (siehe Kassen-Verwaltung → automatische bfr_url-Selbstheilung).
+
 ---
 
 ## 14. Sicherheits-Checkliste vor dem ersten "scharfen" Betrieb

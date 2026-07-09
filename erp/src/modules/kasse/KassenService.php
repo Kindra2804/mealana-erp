@@ -1269,7 +1269,7 @@ class KassenService
     }
 
     /** ID des Platzhalter-Artikels 99-9999 (Diverses) für auftrag_positionen. */
-    private function getDiversArtikelId(): int
+    public function getDiversArtikelId(): int
     {
         $stmt = $this->db->prepare("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1");
         $stmt->execute();
@@ -1353,6 +1353,7 @@ class KassenService
                 a.artikelnummer,
                 a.ist_vater,
                 a.ueberverkauf_erlaubt,
+                a.charge_pflicht,
                 sk.satz             AS steuer_prozent,
                 COALESCE(
                     (SELECT ap.brutto_vk

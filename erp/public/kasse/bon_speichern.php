@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../src/modules/packplatz/RuecklagerungRepository.php';
 require_once __DIR__ . '/../../src/core/Logger.php';
 header('Content-Type: application/json');
 
@@ -285,6 +286,28 @@ if (!empty($retourAnfrageProPosition)) {
 $result = $service->erstelleBon($bonDaten, $bonErstellungPositionen, $benutzerId);
 echo json_encode($result);
 
+// ─── Packplatz-Rücklagerung: Freitext-Retour (kein Auftrag) ─────────────────────
+// Auftrag-gebundene Retouren werden weiter unten behandelt (dort steht der Auftrag
+// für auftrag_nr schon bereit). Kein_lagerabzug gilt für JEDE block='retour'-Position
+// (siehe oben) — physisch liegt die Ware jetzt am Tresen und muss von Packplatz
+// eingelagert werden, siehe packplatz/ruecklagerungen.php.
+if ($result['erfolg'] && !$webAuftragId) {
+    $ruecklagerungRepo = new RuecklagerungRepository();
+    foreach ($sauberePositionen as $bp) {
+        if ($bp['block'] === 'retour' && empty($bp['retour_von_position_id']) && !empty($bp['artikel_id'])) {
+            $ruecklagerungRepo->insert([
+                'kassen_bon_id' => $result['bon_id'],
+                'bon_nr'        => $result['bon_nr'],
+                'artikel_id'    => $bp['artikel_id'],
+                'bezeichnung'   => $bp['bezeichnung'],
+                'menge'         => (int)round(abs($bp['menge'])),
+                'charge'        => $bp['charge'],
+                'kasse_id'      => $aktuelleKasseId,
+            ]);
+        }
+    }
+}
+
 // ─── Web-Auftrag abschließen ───────────────────────────────────────────────────
 if ($result['erfolg'] && $webAuftragId) {
     try {
@@ -299,6 +322,31 @@ if ($result['erfolg'] && $webAuftragId) {
 
         if ($auftrag) {
 
+            // ── Packplatz-Rücklagerung: Auftrag-gebundene Retoure ────────────
+            // Nur wenn NICHT abholbereit — der Fall "Kunde nimmt beim Abholen weniger
+            // mit" bucht weiter unten schon automatisch zurück ($rueck-Logik), weil die
+            // Ware nie das Haus verlassen hat. Eine physische Retoure einer bereits
+            // versendeten/abgeschlossenen Bestellung braucht dagegen echte manuelle
+            // Sichtprüfung + Einlagerung durch Packplatz.
+            if ($webAuftragStatus !== 'abholbereit') {
+                $ruecklagerungRepo = new RuecklagerungRepository();
+                foreach ($sauberePositionen as $bp) {
+                    if ($bp['block'] === 'retour' && !empty($bp['retour_von_position_id']) && !empty($bp['artikel_id'])) {
+                        $ruecklagerungRepo->insert([
+                            'kassen_bon_id' => $bonId,
+                            'bon_nr'        => $bonNr,
+                            'auftrag_id'    => $webAuftragId,
+                            'auftrag_nr'    => $auftrag['auftrag_nr'],
+                            'artikel_id'    => $bp['artikel_id'],
+                            'bezeichnung'   => $bp['bezeichnung'],
+                            'menge'         => (int)round(abs($bp['menge'])),
+                            'charge'        => $bp['charge'],
+                            'kasse_id'      => $aktuelleKasseId,
+                        ]);
+                    }
+                }
+            }
+
             // ── K1 Kassen-Auftrag aufteilen ──────────────────────────────────
             // erstelleBon() erstellt immer einen K1-Auftrag mit ALLEN Bon-Positionen.
             // Strategie:
@@ -312,9 +360,12 @@ if ($result['erfolg'] && $webAuftragId) {
                 $k1AuftragId = (int)$k1Row->fetchColumn() ?: null;
             }
 
-            // Extra-Positionen = Bon-Artikel ohne auftrag_position_id
+            // Extra-Positionen = Bon-Artikel ohne auftrag_position_id (inkl. Divers-Artikel
+            // ohne artikel_id — die bekommen beim Einfügen unten den Platzhalter 99-9999,
+            // genau wie erstelleBon() das bei der ursprünglichen K1-Erstellung schon macht;
+            // vorher fielen sie hier komplett raus, siehe project_kasse_bon_design Memory)
             $extraPositionen = array_values(array_filter($sauberePositionen, fn($bp) =>
-                !empty($bp['artikel_id']) && empty($bp['auftrag_position_id'])
+                empty($bp['auftrag_position_id'])
             ));
 
             if ($k1AuftragId && $k1AuftragId !== $webAuftragId) {
@@ -333,10 +384,13 @@ if ($result['erfolg'] && $webAuftragId) {
                     $db->prepare("DELETE FROM auftrag_positionen WHERE auftrag_id = ?")
                        ->execute([$k1AuftragId]);
 
+                    $diversArtikelId = $service->getDiversArtikelId();
                     $extraNetto  = 0.0;
                     $extraSteuer = 0.0;
                     $extraBrutto = 0.0;
                     foreach ($extraPositionen as $sortIdx => $ep) {
+                        $artIdPos = !empty($ep['artikel_id']) ? (int)$ep['artikel_id'] : $diversArtikelId;
+                        if (!$artIdPos) continue; // 99-9999 nicht angelegt? überspringen (wie erstelleBon())
                         $rab      = 1 - $ep['rabatt_prozent'] / 100;
                         $nettEP   = round($ep['einzelpreis_brutto'] / (1 + $ep['steuer_prozent'] / 100), 4);
                         $gesNetto = round($nettEP * $ep['menge'] * $rab, 4);
@@ -347,7 +401,7 @@ if ($result['erfolg'] && $webAuftragId) {
                                  einzelpreis_netto, steuer_prozent, rabatt_prozent, gesamtpreis_netto, sort_order)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ")->execute([
-                            $k1AuftragId, $ep['artikel_id'], $ep['bezeichnung'], $ep['ean'],
+                            $k1AuftragId, $artIdPos, $ep['bezeichnung'], $ep['ean'],
                             $ep['menge'], $ep['menge'],
                             $nettEP, $ep['steuer_prozent'], $ep['rabatt_prozent'], $gesNetto, $sortIdx,
                         ]);

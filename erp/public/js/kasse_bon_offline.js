@@ -494,10 +494,47 @@ function obBaueSignierXml(bon) {
 // alte Duplicate-/Reihenfolge-Risiko der früheren "später nachsignieren"-Logik.
 let obBfrFehlschlagAnzahl = 0;
 
+// Die in obKonfig.kasse.bfr_url gespeicherte Adresse ist die serverseitig
+// konfigurierte LAN-IP (für die Online-Signierung gedacht). Diese Offline-Kasse
+// und ihr BFR laufen aber immer auf demselben Gerät — bei echter Netztrennung
+// (Messe ohne Verbindung ins Heimnetz) wäre die LAN-IP unerreichbar, obwohl BFR
+// direkt daneben läuft. Deshalb hier IMMER 127.0.0.1 ansprechen, nur den Port
+// aus der konfigurierten URL übernehmen.
+function obBfrUrlLokal() {
+    const konfiguriert = obKonfig.kasse.bfr_url;
+    if (!konfiguriert) return konfiguriert;
+    try {
+        const port = new URL(konfiguriert).port || '8787';
+        return 'http://127.0.0.1:' + port;
+    } catch (e) {
+        return konfiguriert;
+    }
+}
+
+// Browser -> BFR DIREKT wird immer von CORS blockiert (BFR schickt keine
+// Access-Control-Allow-Origin-Header, bestätigt 2026-07-09). Deshalb läuft jeder
+// BFR-Zugriff über den lokalen Proxy (bfr_lokal_proxy.ps1, fester Port 8788,
+// muss vor dem Messe-Einsatz gestartet werden) — der macht den eigentlichen
+// Call serverseitig (PowerShell unterliegt keinem CORS) und reicht ihn mit
+// korrekten CORS-Headern zurück.
+const OB_PROXY_URL = 'http://127.0.0.1:8788';
+
+async function obBfrProxyFetch(method, zielUrl, body) {
+    const options = { method: method };
+    if (body) {
+        options.headers = { 'Content-Type': 'text/xml' };
+        options.body = body;
+    }
+    const resp = await fetch(OB_PROXY_URL + '/proxy?url=' + encodeURIComponent(zielUrl), options);
+    const daten = await resp.json();
+    if (!daten.ok) throw new Error(daten.fehler || 'BFR nicht erreichbar');
+    return daten.body;
+}
+
 async function obPruefeBfrErreichbar(bfrUrl) {
     try {
-        const resp = await fetch(bfrUrl.replace(/\/$/, '') + '/state', { method: 'GET' });
-        return resp.ok;
+        await obBfrProxyFetch('GET', bfrUrl.replace(/\/$/, '') + '/state', null);
+        return true;
     } catch (e) {
         return false;
     }
@@ -523,7 +560,7 @@ function obZeigeBfrPopup() {
 }
 
 async function obBfrErneutVersuchen() {
-    const bfrUrl = obKonfig.kasse.bfr_url;
+    const bfrUrl = obBfrUrlLokal();
     if (await obPruefeBfrErreichbar(bfrUrl)) {
         obBfrFehlschlagAnzahl = 0;
         document.getElementById('ob-bfr-overlay').classList.remove('aktiv');
@@ -545,7 +582,7 @@ async function obVerkaufAbschliessen() {
 
     document.getElementById('ob-abschluss-btn').disabled = true;
 
-    const bfrUrl = obKonfig.kasse.bfr_url;
+    const bfrUrl = obBfrUrlLokal();
     if (bfrUrl && !(await obPruefeBfrMitKurzRetry(bfrUrl))) {
         document.getElementById('ob-abschluss-btn').disabled = false;
         obZeigeBfrPopup();
@@ -595,12 +632,7 @@ async function obVerkaufAbschliessen() {
     if (bfrUrl) {
         try {
             const xml  = obBaueSignierXml(bon);
-            const resp = await fetch(bfrUrl.replace(/\/$/, '') + '/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/xml' },
-                body: xml,
-            });
-            const text = await resp.text();
+            const text = await obBfrProxyFetch('POST', bfrUrl.replace(/\/$/, '') + '/register', xml);
             const doc  = new DOMParser().parseFromString(text, 'text/xml');
             const link = doc.querySelector('Fis > Link')?.textContent || '';
             if (link && link !== 'Sicherheitseinrichtung ausgefallen') {

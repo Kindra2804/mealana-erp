@@ -22,6 +22,10 @@ require_once __DIR__ . '/shell_top.php';
 
 <div style="max-width:1000px;margin:0 auto">
 
+  <div style="text-align:right;margin-bottom:10px">
+    <a href="<?= BASE_PATH ?>/kasse/bfr_log.php" style="font-size:12px;color:#60a5fa">🔧 Rohdaten-Protokoll ansehen (für Hersteller-Fehlermeldung) →</a>
+  </div>
+
   <div class="ks-card">
     <div class="ks-card-title">Offene Störungen (<?= count($offen) ?>)</div>
     <?php if (empty($offen)): ?>

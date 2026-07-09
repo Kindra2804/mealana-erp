@@ -6,6 +6,7 @@ var AP_TOKEN_KEY = 'arbeitsplatz_token';
 
 document.addEventListener('DOMContentLoaded', function () {
     apPruefeZustand();
+    apHeileBfrUrl();
 });
 
 function apToken() {
@@ -98,6 +99,40 @@ function apAuswahlBestaetigen() {
         })
         .catch(function () {
             apZeigeFehler('ap-fehler', 'Netzwerkfehler — bitte erneut versuchen.');
+        });
+}
+
+// ── Selbstheilung bfr_url bei IP-Wechsel (DHCP/WLAN) ────────────────────────
+// Läuft nur wenn diese Kasse BFR-aktiv ist (window.KASSE_BFR_URL kommt server-
+// seitig nur dann mit, siehe kasse/index.php). Fragt lokal 127.0.0.1 ab — das
+// geht immer, unabhängig vom aktuellen Netz — und meldet nur die daraus
+// gelesene RN an den Server. Der Server prüft/aktualisiert selbst, siehe
+// ajax_bfr_heilung.php + BfrService::heileUrlFuerKasse(). Kein Popup, keine
+// Fehlerbehandlung nötig: klappt der lokale Check nicht, bleibt einfach alles
+// wie es ist — der normale State-Check vor jeder Buchung fängt das ab.
+function apHeileBfrUrl() {
+    if (!window.KASSE_BFR_URL) return;
+
+    var port;
+    try {
+        port = new URL(window.KASSE_BFR_URL).port || '8787';
+    } catch (e) {
+        return;
+    }
+
+    fetch('http://127.0.0.1:' + port + '/state')
+        .then(function (r) { return r.text(); })
+        .then(function (text) {
+            var doc = new DOMParser().parseFromString(text, 'text/xml');
+            var rn  = doc.querySelector('RN') ? doc.querySelector('RN').textContent : '';
+            if (!rn) return;
+
+            var form = new FormData();
+            form.append('rn', rn);
+            fetch(window.BASE_PATH + '/kasse/ajax_bfr_heilung.php', { method: 'POST', body: form });
+        })
+        .catch(function () {
+            // lokaler BFR gerade nicht erreichbar — kein Problem, siehe oben
         });
 }
 

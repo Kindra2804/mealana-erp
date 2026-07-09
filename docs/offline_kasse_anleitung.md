@@ -12,6 +12,7 @@ Stand: 2026-07-04 (überarbeitet nach Praxis-Feedback). Betrifft den Messe-Workf
    - `bfr_url`: die Adresse des BFR-Dienstes am Messe-Laptop (üblicherweise `http://127.0.0.1:8787`, wenn der BFR direkt am selben Rechner hängt)
    - RKSV-Kassen-ID: wie bei Kasse 1, über die Kassen-Registrierungsseite (Einstellungen → Kassen → Registrierung)
 3. Das BFR-Gerät (Signaturkarte + Kartenleser) muss am Messe-Laptop selbst angeschlossen sein, nicht am Hauptserver.
+4. **`bfr_lokal_proxy.ps1` bereithalten** (liegt neben `bon_offline.php`) — siehe Abschnitt "BFR-Lokal-Proxy" weiter unten. Muss vor jedem Messetag gestartet werden, sonst kann die Kasse nicht signieren.
 
 ## Ablauf am Messetag
 
@@ -24,6 +25,7 @@ Stand: 2026-07-04 (überarbeitet nach Praxis-Feedback). Betrifft den Messe-Workf
 6. Ab jetzt: Laptop darf vom Netz getrennt und heruntergefahren werden.
 
 **Am Messestand (ohne Netzverbindung zum Server, ggf. mehrere Tage):**
+- **`bfr_lokal_proxy.ps1` starten** (Doppelklick, Fenster den ganzen Tag offen lassen) — ohne das kann die Kasse nicht signieren, siehe Abschnitt unten.
 - Verkäufe wie gewohnt tätigen — Scannen **oder Artikelname eingeben zum Suchen** (ab 2 Zeichen), Zahlart wählen, abschließen
 - Chargenpflichtige Artikel: Dropdown zeigt nur die tatsächlich mitgenommenen Chargen mit noch verfügbarer Menge — kein Verkauf über den mitgenommenen Bestand hinaus möglich
 - Fehlt ein Artikel im Sortiment (vergessen zu scannen o.ä.): **"➕ Freier Artikel"** — Bezeichnung, Preis, Steuersatz frei eintragen
@@ -44,6 +46,33 @@ Ursprünglich musste der Browser-Tab durchgehend geöffnet bleiben (`bon_offline
 - IndexedDB-Daten lagen ohnehin schon unabhängig vom Tab auf der Festplatte — jetzt kommt man auch ohne Server wieder an die Seite selbst heran.
 - **Wichtig:** Das Sync-Daten-Laden (Schritt 4 oben) muss weiterhin **einmal online** passieren — danach ist alles lokal.
 - **Noch nicht live im Browser getestet** — nur die Logik verifiziert. Vor dem echten Einsatz einmal bewusst testen: Seite laden → Browser-DevTools → Netzwerk auf "Offline" stellen → Seite neu laden → sollte trotzdem funktionieren.
+
+## BFR-Lokal-Proxy — zwingend erforderlich (seit 2026-07-09)
+
+Ursprünglich rief der Browser BFR direkt per `fetch('http://127.0.0.1:8787/...')` auf — das
+war architektonisch immer schon so gedacht ("Browser spricht das Gerät direkt an"), wurde aber
+**nie in einem echten Browser gegen echte BFR-Hardware getestet**. Beim ersten echten Test
+(2026-07-09, im Rahmen eines Ausfalltests mit dem Hersteller) stellte sich heraus: **BFR schickt
+grundsätzlich keine `Access-Control-Allow-Origin`-Header** — ein direkter Browser-`fetch()` wird
+deshalb IMMER von der CORS-Sicherheitsregel des Browsers blockiert, unabhängig davon von welcher
+Seite/welchem Ursprung aus die Seite geladen wurde. Ohne Fix hätte die Offline-Kasse beim
+Signieren also nie funktioniert.
+
+**Fix:** `erp/public/kasse/bfr_lokal_proxy.ps1` — ein winziges PowerShell-Skript (kein Install
+nötig, läuft auf jeder Windows-Maschine), das auf demselben Messe-Laptop wie BFR und der Browser
+läuft. Es hört auf festem Port `8788`, macht den eigentlichen BFR-Aufruf serverseitig (PowerShell
+unterliegt keiner CORS-Prüfung) und schickt die Antwort mit korrekten CORS-Headern an den Browser
+zurück. `kasse_bon_offline.js` spricht seither nie mehr direkt mit BFR, sondern immer über
+`http://127.0.0.1:8788/proxy?url=...`.
+
+**Muss vor jedem Messetag einmal gestartet werden** (Doppelklick, den ganzen Tag im Hintergrund
+offen lassen) — genau wie BFR selbst auch gestartet werden muss. Läuft der Proxy nicht, zeigt die
+Kasse das normale "Dienst nicht erreichbar"-Popup (der Gate-Check schlägt einfach fehl, kein
+Absturz, aber auch kein Verkauf möglich).
+
+**Bewusst NICHT automatisch gestartet** (z.B. Windows-Autostart) — Entscheidung 2026-07-09:
+lieber ein Handgriff mehr am Messetag als ein unsichtbarer Hintergrundprozess, der bei Problemen
+schwerer nachzuvollziehen ist.
 
 ## On-/Offline-Umschaltung
 

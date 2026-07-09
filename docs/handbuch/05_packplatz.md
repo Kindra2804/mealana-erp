@@ -108,6 +108,23 @@ Wenn nicht alle Artikel lieferbar sind (z.B. einer ist gerade nicht auf Lager):
 
 ---
 
+## Rücklagerungen — Ware aus Kassen-Retoure einbuchen
+
+Wenn an der Kasse eine Retoure verarbeitet wird (egal ob zu einem Auftrag oder als Freitext-Retour ohne Auftrag), bucht die Kasse **nur den finanziellen Ausgleich** — die Ware liegt danach physisch am Tresen, ist aber noch nicht im Lagerbestand. Diese Liste zeigt genau das.
+
+**Packplatz → Rücklagerungen** (Badge zeigt die Anzahl offener Einträge)
+
+1. Zeile mit der zurückgenommenen Ware suchen — zeigt Artikel, Menge, Herkunfts-Bon (und Auftragsnummer, falls vorhanden)
+2. **Einbuchen** klicken
+3. Ziel-Lager wählen
+4. **Zustand der Ware** wählen (Neu / Gebraucht / Beschädigt / Defekt) — wichtig, da zurückgenommene Ware nicht automatisch wieder als "neu" gilt
+5. Bei chargenpflichtigen Artikeln (⚠ "fehlt (Pflicht)" in der Liste): **Charge eintragen**, sonst lässt sich nicht einbuchen
+6. **✓ Einbuchen** — Lagerbestand wird erhöht, Eintrag verschwindet aus der Liste
+
+> Anders als bei der normalen Retoure (unten) gibt es hier keine Gutschrift/Mail-Optionen mehr — das ist an der Kasse bereits erledigt, hier geht es nur noch um die physische Einlagerung.
+
+---
+
 ## Wareneingang am Packplatz
 
 Wenn eine Lieferung direkt am Packplatz eingebucht werden soll:

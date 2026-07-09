@@ -115,6 +115,9 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
   </div>
 </div>
 
+<?php if (!empty($kasseInfo['bfr_url'])): ?>
+<script>window.KASSE_BFR_URL = <?= json_encode($kasseInfo['bfr_url']) ?>;</script>
+<?php endif; ?>
 <script src="<?= BASE_PATH ?>/js/kasse_arbeitsplatz.js"></script>
 
 <?php require_once __DIR__ . '/shell_bottom.php'; ?>

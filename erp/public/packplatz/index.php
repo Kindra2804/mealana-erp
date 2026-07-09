@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../../src/modules/packplatz/RuecklagerungRepository.php';
+
+$offeneRuecklagerungen = (new RuecklagerungRepository())->zaehleOffene();
 
 $pageTitle = 'Packplatz';
 require_once __DIR__ . '/shell_top.php';
@@ -36,6 +39,17 @@ require_once __DIR__ . '/shell_top.php';
         <span class="pp-kachel-icon">↩️</span>
         <div class="pp-kachel-label">Retoure</div>
         <div class="pp-kachel-sub">Rückbuchen · GS · Ersatz</div>
+    </a>
+
+    <a href="<?= BASE_PATH ?>/packplatz/ruecklagerungen.php" class="pp-kachel" style="position:relative">
+        <?php if ($offeneRuecklagerungen > 0): ?>
+            <span style="position:absolute;top:10px;right:10px;background:#e94560;color:#fff;font-size:12px;font-weight:700;border-radius:10px;padding:2px 9px">
+                <?= $offeneRuecklagerungen ?>
+            </span>
+        <?php endif; ?>
+        <span class="pp-kachel-icon">📦↩</span>
+        <div class="pp-kachel-label">Rücklagerungen</div>
+        <div class="pp-kachel-sub">Kassen-Retouren einbuchen</div>
     </a>
 
 </div>

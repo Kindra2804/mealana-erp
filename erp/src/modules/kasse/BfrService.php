@@ -104,7 +104,7 @@ class BfrService
 
         $verbindung = null;
         for ($i = 0; $i < $versuche; $i++) {
-            $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id']);
+            $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id'], $kasseId);
             if ($verbindung['erreichbar']) {
                 return ['erreichbar' => true, 'bfr_konfiguriert' => true];
             }
@@ -148,7 +148,7 @@ class BfrService
         $kasse   = $this->ladeKasse($kasseId);
         $belegNr = 'Nullbeleg' . $kasse['kasse_nr'] . date('YmdHis');
         $xml     = $this->baueNullbelegXml($belegNr, $kasse['rksv_kassen_id']);
-        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml);
+        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml, $kasseId);
         $reg     = $this->parseRegisterAntwort($antwort);
 
         $this->db->prepare("
@@ -166,9 +166,9 @@ class BfrService
     }
 
     /** GET /state — prüft Erreichbarkeit und ob die Kassen-ID (RN) übereinstimmt. */
-    public function pruefeVerbindung(string $bfrUrl, ?string $erwarteteRn = null): array
+    public function pruefeVerbindung(string $bfrUrl, ?string $erwarteteRn = null, ?int $kasseId = null): array
     {
-        $antwort = $this->httpGet(rtrim($bfrUrl, '/') . '/state');
+        $antwort = $this->httpGet(rtrim($bfrUrl, '/') . '/state', $kasseId);
         if ($antwort === null) {
             return ['erreichbar' => false, 'grund' => 'bfr_nicht_erreichbar'];
         }
@@ -209,7 +209,7 @@ class BfrService
         }
 
         $xml     = $this->baueSignierXml($beleg);
-        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml);
+        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml, (int)$kasse['id']);
         $reg     = $this->parseRegisterAntwort($antwort);
 
         $this->db->prepare("
@@ -332,6 +332,32 @@ class BfrService
         return $rows;
     }
 
+    /**
+     * Rohdaten-Protokoll aller BFR-Aufrufe (siehe protokolliereKommunikation()) —
+     * für eine präzise Fehlermeldung an den BFR-Hersteller (exaktes Request-XML +
+     * exakte Antwort, nicht nur die geparste Signatur/Ausfall-Episode).
+     */
+    public function kommunikationsLog(?int $kasseId = null, int $limit = 200): array
+    {
+        $sql = "
+            SELECT l.*, k.name AS kasse_name
+            FROM bfr_kommunikation_log l
+            LEFT JOIN kassen k ON k.id = l.kasse_id
+        ";
+        if ($kasseId) {
+            $sql .= " WHERE l.kasse_id = :kasse_id";
+        }
+        $sql .= " ORDER BY l.erstellt_am DESC LIMIT :limit";
+
+        $stmt = $this->db->prepare($sql);
+        if ($kasseId) {
+            $stmt->bindValue('kasse_id', $kasseId, PDO::PARAM_INT);
+        }
+        $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     /** Ausfall-Historie (offen + gelöst) für die Übersichtsseite. */
     public function ausfallHistorie(int $limit = 100): array
     {
@@ -379,7 +405,7 @@ class BfrService
         $kasse   = $this->ladeKasse($kasseId);
         $belegNr = 'Nullbeleg' . $kasse['kasse_nr'] . date('YmdHis');
         $xml     = $this->baueNullbelegXml($belegNr, $kasse['rksv_kassen_id']);
-        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml);
+        $antwort = $this->httpPost(rtrim($kasse['bfr_url'], '/') . '/register', $xml, $kasseId);
         $reg     = $this->parseRegisterAntwort($antwort);
 
         $this->db->prepare("
@@ -427,7 +453,7 @@ class BfrService
             return;
         }
 
-        $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id']);
+        $verbindung = $this->pruefeVerbindung($kasse['bfr_url'], $kasse['rksv_kassen_id'], $kasseId);
         if (!$verbindung['erreichbar']) {
             return; // still überspringen, nächster Versuch holt's nach
         }
@@ -452,9 +478,9 @@ class BfrService
     // -------------------------------------------------------------------------
 
     /** Liest /state und zerlegt das SC-Feld (z.B. "ATU65033000:AT1:5619064c") in seine Teile. */
-    public function leseZertifikatInfo(string $bfrUrl): array
+    public function leseZertifikatInfo(string $bfrUrl, ?int $kasseId = null): array
     {
-        $antwort = $this->httpGet(rtrim($bfrUrl, '/') . '/state');
+        $antwort = $this->httpGet(rtrim($bfrUrl, '/') . '/state', $kasseId);
         if ($antwort === null) {
             return ['erfolg' => false, 'grund' => 'bfr_nicht_erreichbar'];
         }
@@ -610,6 +636,33 @@ class BfrService
         return ((float)$kasse['bfr_umsatzzaehler'] + $betrag) < 0;
     }
 
+    /**
+     * Selbstheilung der bfr_url bei IP-Wechsel (DHCP/WLAN-Neustart o.ä.): der
+     * Browser an der Kasse ruft lokal 127.0.0.1 ab (geht immer, unabhängig vom
+     * aktuellen Netz) und meldet nur die daraus gelesene RN. Passt sie zur
+     * schon gebundenen Kasse, wird bfr_url auf die server-seitig BEOBACHTETE
+     * Absender-IP aktualisiert — bewusst nicht auf eine vom Client behauptete
+     * IP, sonst könnte ein fremdes Gerät die URL einer anderen Kasse verbiegen.
+     * Der Vertrauensanker ist die RN-Übereinstimmung mit der über die
+     * Arbeitsplatz-Bindung bereits ermittelten Kasse (siehe aktuelleKasseId()).
+     */
+    public function heileUrlFuerKasse(int $kasseId, string $gemeldeteRn, string $beobachteteIp): void
+    {
+        $kasse = $this->ladeKasse($kasseId);
+        if (empty($kasse['bfr_url']) || $gemeldeteRn === '' || $kasse['rksv_kassen_id'] !== $gemeldeteRn) {
+            return;
+        }
+
+        $port    = parse_url($kasse['bfr_url'], PHP_URL_PORT) ?: 8787;
+        $neueUrl = 'http://' . $beobachteteIp . ':' . $port;
+        if ($neueUrl === $kasse['bfr_url']) {
+            return;
+        }
+
+        $this->db->prepare("UPDATE kassen SET bfr_url = :url WHERE id = :id")
+            ->execute(['url' => $neueUrl, 'id' => $kasseId]);
+    }
+
     private function ladeKasse(int $kasseId): array
     {
         $stmt = $this->db->prepare("
@@ -658,22 +711,27 @@ class BfrService
         return $labels[$grund] ?? $grund;
     }
 
-    private function httpGet(string $url): ?string
+    private function httpGet(string $url, ?int $kasseId = null): ?string
     {
+        $start = microtime(true);
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER  => true,
             CURLOPT_TIMEOUT         => self::TIMEOUT_SEKUNDEN,
             CURLOPT_CONNECTTIMEOUT_MS => self::CONNECT_TIMEOUT_MS,
         ]);
-        $antwort = curl_exec($ch);
-        $fehler  = curl_errno($ch);
+        $antwort    = curl_exec($ch);
+        $fehlerNr   = curl_errno($ch);
+        $fehlerText = $fehlerNr ? curl_error($ch) : null;
         curl_close($ch);
-        return ($fehler || $antwort === false) ? null : $antwort;
+        $ergebnis = ($fehlerNr || $antwort === false) ? null : $antwort;
+        $this->protokolliereKommunikation($kasseId, $url, null, $ergebnis, $fehlerText, $start);
+        return $ergebnis;
     }
 
-    private function httpPost(string $url, string $xmlBody): ?string
+    private function httpPost(string $url, string $xmlBody, ?int $kasseId = null): ?string
     {
+        $start = microtime(true);
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER  => true,
@@ -683,9 +741,40 @@ class BfrService
             CURLOPT_POSTFIELDS     => $xmlBody,
             CURLOPT_HTTPHEADER     => ['Content-Type: text/xml'],
         ]);
-        $antwort = curl_exec($ch);
-        $fehler  = curl_errno($ch);
+        $antwort    = curl_exec($ch);
+        $fehlerNr   = curl_errno($ch);
+        $fehlerText = $fehlerNr ? curl_error($ch) : null;
         curl_close($ch);
-        return ($fehler || $antwort === false) ? null : $antwort;
+        $ergebnis = ($fehlerNr || $antwort === false) ? null : $antwort;
+        $this->protokolliereKommunikation($kasseId, $url, $xmlBody, $ergebnis, $fehlerText, $start);
+        return $ergebnis;
+    }
+
+    /**
+     * Rohdaten-Protokoll JEDES BFR-Aufrufs (nicht nur Störungen) — exaktes Request-XML
+     * + exakte Antwort, für eine präzise Fehlermeldung an den Hersteller (siehe Jackys
+     * Ausfall-Tests 2026-07-09: bisher war nur die geparste Signatur bzw. die grobe
+     * Ausfall-Episode gespeichert, nie die tatsächlichen Bytes). Darf niemals eine echte
+     * Buchung zum Scheitern bringen — Protokollierungs-Fehler werden nur geloggt, nicht
+     * geworfen.
+     */
+    private function protokolliereKommunikation(?int $kasseId, string $url, ?string $requestBody, ?string $responseBody, ?string $curlFehler, float $start): void
+    {
+        $endpunkt = str_ends_with($url, '/register') ? 'register' : (str_ends_with($url, '/state') ? 'state' : 'unbekannt');
+        try {
+            $this->db->prepare("
+                INSERT INTO bfr_kommunikation_log (kasse_id, endpunkt, request_body, response_body, curl_fehler, dauer_ms)
+                VALUES (:kasse_id, :endpunkt, :request_body, :response_body, :curl_fehler, :dauer_ms)
+            ")->execute([
+                'kasse_id'      => $kasseId,
+                'endpunkt'      => $endpunkt,
+                'request_body'  => $requestBody,
+                'response_body' => $responseBody,
+                'curl_fehler'   => $curlFehler,
+                'dauer_ms'      => (int) round((microtime(true) - $start) * 1000),
+            ]);
+        } catch (Throwable $e) {
+            error_log('[BFR-Log] Protokollierung fehlgeschlagen: ' . $e->getMessage());
+        }
     }
 }

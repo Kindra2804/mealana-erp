@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>BFR Lokaler Ausfalltest</title>
+<style>
+  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#94a3b8; font-size:13px; margin-bottom:20px; }
+  .card { background:#1e293b; border:1px solid #334155; border-radius:10px; padding:18px 20px; margin-bottom:18px; }
+  label { display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; }
+  input { background:#0f172a; border:2px solid #334155; border-radius:6px; color:#e2e8f0; padding:8px 10px; font-size:14px; width:320px; margin-bottom:12px; font-family:monospace; }
+  input:focus { border-color:#2563eb; outline:none; }
+  button { background:#2563eb; color:#fff; border:none; border-radius:6px; padding:12px 20px; font-size:15px; font-weight:700; cursor:pointer; margin-right:10px; }
+  button:hover { background:#1d4ed8; }
+  button.sec { background:#334155; }
+  button.sec:hover { background:#475569; }
+  #log { display:flex; flex-direction:column-reverse; gap:10px; }
+  .entry { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px 14px; }
+  .entry.ok { border-left:4px solid #16a34a; }
+  .entry.fehler { border-left:4px solid #dc2626; }
+  .entry-head { display:flex; justify-content:space-between; font-size:12px; color:#94a3b8; margin-bottom:6px; }
+  .badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
+  .badge.ok { background:#052e16; color:#4ade80; }
+  .badge.fehler { background:#450a0a; color:#f87171; }
+  pre { background:#000; color:#e2e8f0; padding:10px 12px; border-radius:6px; overflow-x:auto; font-size:12px; margin:6px 0 0; white-space:pre-wrap; word-break:break-all; }
+  .hinweis { font-size:12px; color:#fbbf24; background:#451a03; border:1px solid #92400e; border-radius:8px; padding:10px 14px; margin-bottom:18px; }
+</style>
+</head>
+<body>
+
+<h1>🔧 BFR Lokaler Ausfalltest</h1>
+<div class="sub">Eigenständiges Testtool — kein Server, keine Datenbank, keine Verbindung zum ERP. Läuft direkt im Browser auf der BFR-Maschine.</div>
+
+<div class="hinweis">
+  ⚠ Diese Seite muss <strong>direkt auf der BFR-Maschine</strong> im Browser geöffnet werden (Datei kopieren, dann öffnen) —
+  sonst ist "127.0.0.1" nicht die BFR-Maschine, sondern der Rechner, auf dem der Browser läuft.
+</div>
+
+<div class="card">
+  <label>BFR-URL</label>
+  <input type="text" id="url" value="http://127.0.0.1:8787">
+  <label>RKSV-Kassen-ID (RN)</label>
+  <input type="text" id="rn" value="DEMOvNahtlOS">
+  <div>
+    <button onclick="testState()">1. /state prüfen (immer sicher, rein lesend)</button>
+    <button onclick="testNullbeleg()">2. Test-Nullbeleg senden (0,00 € — kollidiert nie mit echten Belegen)</button>
+    <button class="sec" onclick="document.getElementById('log').innerHTML=''">Log leeren</button>
+  </div>
+</div>
+
+<div id="log"></div>
+
+<script>
+function jetztIso() {
+  var d = new Date();
+  function p(n) { return String(n).padStart(2, '0'); }
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+function logEintrag(titel, requestXml, startZeit) {
+  var div = document.createElement('div');
+  div.className = 'entry';
+  div.innerHTML =
+    '<div class="entry-head"><strong>' + titel + '</strong><span>' + startZeit + '</span></div>' +
+    (requestXml ? '<div style="font-size:11px;color:#64748b">Request:</div><pre>' + esc(requestXml) + '</pre>' : '') +
+    '<div style="font-size:11px;color:#64748b;margin-top:6px">läuft…</div>';
+  document.getElementById('log').appendChild(div);
+  return div;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function abschliessen(div, erfolg, antwortText, fehlerText, dauerMs) {
+  div.classList.add(erfolg ? 'ok' : 'fehler');
+  var badge = '<span class="badge ' + (erfolg ? 'ok' : 'fehler') + '">' + (erfolg ? 'ANTWORT ERHALTEN' : 'FEHLGESCHLAGEN') + '</span>';
+  var status = div.querySelector('div:last-child');
+  status.innerHTML = badge + ' <span style="color:#94a3b8;margin-left:8px">' + dauerMs + ' ms</span>';
+  if (fehlerText) {
+    div.insertAdjacentHTML('beforeend', '<div style="font-size:11px;color:#64748b;margin-top:6px">Fehler:</div><pre>' + esc(fehlerText) + '</pre>');
+  }
+  if (antwortText !== null) {
+    div.insertAdjacentHTML('beforeend', '<div style="font-size:11px;color:#64748b;margin-top:6px">Antwort:</div><pre>' + esc(antwortText) + '</pre>');
+  }
+}
+
+// Läuft NIE direkt gegen BFR (Browser->BFR wird immer von CORS blockiert, siehe
+// Kommentar in mini_server.ps1) — sondern über den lokalen Proxy-Endpunkt /proxy,
+// der den eigentlichen Aufruf serverseitig (PowerShell) macht.
+function proxyAufruf(method, bfrUrl, body, div, start) {
+  var proxyUrl = '/proxy?url=' + encodeURIComponent(bfrUrl);
+  fetch(proxyUrl, {
+    method: method,
+    headers: body ? { 'Content-Type': 'text/xml' } : {},
+    body: body || undefined,
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var dauer = d.dauer_ms !== undefined ? d.dauer_ms : Math.round(performance.now() - start);
+      if (d.ok) {
+        abschliessen(div, true, d.body, null, dauer);
+      } else {
+        abschliessen(div, false, null, d.fehler, dauer);
+      }
+    })
+    .catch(function(e) {
+      abschliessen(div, false, null, 'Proxy nicht erreichbar: ' + String(e), Math.round(performance.now() - start));
+    });
+}
+
+function testState() {
+  var url = document.getElementById('url').value.replace(/\/$/, '') + '/state';
+  var start = performance.now();
+  var div = logEintrag('/state', null, jetztIso());
+  proxyAufruf('GET', url, null, div, start);
+}
+
+function testNullbeleg() {
+  var url = document.getElementById('url').value.replace(/\/$/, '') + '/register';
+  var rn  = document.getElementById('rn').value.trim();
+  var belegNr = 'NullbelegLOKALTEST' + jetztIso().replace(/[-:T]/g, '');
+  var xml = '<?xml version="1.0"?>\n<Tra><ESR D="' + jetztIso() + '" TT="' + esc(rn) + '" TN="' + belegNr + '"/></Tra>';
+
+  var start = performance.now();
+  var div = logEintrag('/register (Test-Nullbeleg ' + belegNr + ')', xml, jetztIso());
+  proxyAufruf('POST', url, xml, div, start);
+}
+</script>
+
+</body>
+</html>

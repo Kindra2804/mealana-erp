@@ -208,6 +208,9 @@ body {
 .bon-row-rabatt { font-size: 10px; color: #f59e0b; font-weight: 700; margin-left: 4px; }
 .bon-row-auftrag { border-left: 3px solid #3b82f6; padding-left: 6px; background: rgba(59,130,246,.04); }
 .bon-row-auftrag-badge { font-size: 11px; margin-right: 4px; opacity: .7; }
+.bon-row-retour { border-left: 3px solid #dc2626; padding-left: 6px; background: rgba(220,38,38,.04); }
+.bon-row-retour-badge { font-size: 11px; margin-right: 4px; opacity: .8; }
+.bon-row-retour .bon-row-menge, .bon-row-retour .bon-row-summe { color: #dc2626; }
 .bon-row-separator { font-size: 10px; color: #94a3b8; text-align: center; padding: 4px 0; letter-spacing: .05em; }
 .bon-row-auftrag-header { font-size: 11px; color: #3b82f6; padding: 6px 0 2px 6px; font-weight: 700; }
 .bon-row-menge { width: 50px; font-size: 13px; color: #1e3a5f; text-align: right; padding: 14px 0; }
@@ -743,7 +746,7 @@ body {
 <!-- ── HEADER ────────────────────────────────────────────────────────────── -->
 <div class="ph">
   <div class="ph-title">MeaLana · Kasse</div>
-  <div class="ph-sub">Lager: <?= htmlspecialchars($lagerName) ?></div>
+  <div class="ph-sub"><?= htmlspecialchars($kasseInfo['name'] ?? '') ?> (<?= htmlspecialchars($kasseInfo['kasse_nr'] ?? '') ?>) · Lager: <?= htmlspecialchars($lagerName) ?></div>
   <div style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;letter-spacing:.4px;white-space:nowrap;
               <?= $modus === 'offline'
                   ? 'background:#451a03;color:#f59e0b;'
@@ -766,6 +769,7 @@ body {
   <div class="ph-dropdown" id="ph-dropdown">
     <button class="ph-dd-item" onclick="kasseladeOeffnen()">⊟ Kassenlade öffnen</button>
     <button class="ph-dd-item" onclick="diversDialog()">+ Freier Artikel</button>
+    <button class="ph-dd-item" onclick="freitextRetourDialog()">↩ Freitext-Retour</button>
     <div class="ph-dd-sep"></div>
     <button class="ph-dd-item" onclick="bonAbrufen()">⏸ Geparkten Bon abrufen</button>
     <div class="ph-dd-sep"></div>
@@ -1131,6 +1135,40 @@ body {
            oninput="sucheLive(this.value)" style="margin-bottom:6px">
     <div class="such-liste" id="such-liste"></div>
     <button class="ov-btn ov-btn-sec" style="margin-top:14px" onclick="ovSchliessen('ov-suche')">Schließen</button>
+  </div>
+</div>
+
+<!-- Freitext-Retour: Artikel ohne Auftragsbezug zurücknehmen (JTL-Altbestand o.ä.) -->
+<div class="ov" id="ov-freitext-retour">
+  <div class="ov-box" style="max-width:560px">
+    <div class="ov-title">↩ Freitext-Retour</div>
+    <div id="fr-schritt-suche">
+      <div style="font-size:12px;color:#64748b;margin-bottom:10px">
+        Für Rückgaben ohne Auftrag im System (z.B. alter JTL-Verkauf). Artikel wählen, dann Menge und Preis der Rückgabe eintragen.
+      </div>
+      <input class="ov-input-sm" type="text" id="fr-such-input"
+             placeholder="Name, Artikelnummer oder EAN…"
+             oninput="freitextRetourSucheLive(this.value)" style="margin-bottom:6px">
+      <div class="such-liste" id="fr-such-liste"></div>
+    </div>
+    <div id="fr-schritt-menge" style="display:none">
+      <div style="font-size:15px;font-weight:700;color:#1e3a5f;margin-bottom:14px" id="fr-artikel-name"></div>
+      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Menge (zurückgenommen):</label>
+      <input class="ov-input-sm" type="number" id="fr-menge" value="1" min="1" step="1" style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Preis pro Stück (€, Rückerstattung):</label>
+      <input class="ov-input-sm" type="number" id="fr-preis" step="0.01" min="0" style="margin-bottom:16px">
+      <div id="fr-charge-block" style="display:none;margin-bottom:16px">
+        <label style="display:block;font-size:12px;color:#64748b;margin-bottom:4px">Charge/Los dieses Artikels (Chargenpflicht!):</label>
+        <input class="ov-input-sm" type="text" id="fr-charge" placeholder="z.B. LOT-2024-007" style="margin-bottom:6px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b;cursor:pointer">
+          <input type="checkbox" id="fr-charge-unbekannt" onchange="freitextRetourChargeUnbekanntToggle()">
+          Charge unbekannt — muss von Packplatz nachgetragen werden
+        </label>
+      </div>
+      <button class="ov-btn ov-btn-prim" onclick="freitextRetourUebernehmen()">↩ Zurücknehmen</button>
+      <button class="ov-btn ov-btn-sec" onclick="freitextRetourZurueckZurSuche()">◀ Anderer Artikel</button>
+    </div>
+    <button class="ov-btn ov-btn-sec" style="margin-top:14px" onclick="ovSchliessen('ov-freitext-retour')">Schließen</button>
   </div>
 </div>
 
@@ -1683,8 +1721,10 @@ function renderBon() {
         var summe = p.menge * p.einzelpreis_brutto * rabFaktor;
         var istAktiv = (i === aktiveZeile);
 
+        var istRetour = (p.block === 'retour' && !p.vonAuftrag);
+
         var div = document.createElement('div');
-        div.className = 'bon-row' + (istAktiv ? ' aktiv' : '') + (p.vonAuftrag ? ' bon-row-auftrag' : '');
+        div.className = 'bon-row' + (istAktiv ? ' aktiv' : '') + (p.vonAuftrag ? ' bon-row-auftrag' : '') + (istRetour ? ' bon-row-retour' : '');
         div.dataset.idx = i;
         div.onclick = function() { zeilaKlick(i); };
 
@@ -1692,10 +1732,11 @@ function renderBon() {
             ? '<span class="bon-row-rabatt">-' + Math.max(p.rabatt_prozent, globalRabatt) + '%</span>'
             : '';
         var auftragBadge = p.vonAuftrag ? '<span class="bon-row-auftrag-badge">📦</span>' : '';
+        var retourBadge  = istRetour ? '<span class="bon-row-retour-badge">↩</span>' : '';
 
         div.innerHTML =
             '<div class="bon-row-nr">' + (i + 1) + '</div>' +
-            '<div class="bon-row-name">' + auftragBadge + esc(p.bezeichnung) + rabHtml + '</div>' +
+            '<div class="bon-row-name">' + auftragBadge + retourBadge + esc(p.bezeichnung) + rabHtml + '</div>' +
             '<div class="bon-row-menge">' + p.menge + '</div>' +
             '<div class="bon-row-ep">€ ' + fmt(p.einzelpreis_brutto) + '</div>' +
             '<div class="bon-row-summe">€ ' + fmt(summe) + '</div>' +
@@ -1786,6 +1827,14 @@ function zeilaKlick(i) {
 }
 
 function zeileMinus(i) {
+    var pRetour = warenkorb[i];
+    if (pRetour.block === 'retour' && !pRetour.vonAuftrag) {
+        // Freitext-Retour: Menge ist negativ — '−' verringert die zurückgenommene
+        // Menge (Richtung 0), bei 1 wird die Zeile komplett entfernt.
+        if (pRetour.menge < -1) { pRetour.menge++; renderBon(); }
+        else { zeileEntfernen(i); }
+        return;
+    }
     if (warenkorb[i].menge > 1) {
         warenkorb[i].menge--;
         renderBon();
@@ -1800,6 +1849,12 @@ function zeileMinus(i) {
 }
 function zeilePlus(i) {
     var p = warenkorb[i];
+    if (p.block === 'retour' && !p.vonAuftrag) {
+        // Freitext-Retour: '+' erhöht die zurückgenommene Menge (weiter von 0 weg).
+        p.menge--;
+        renderBon();
+        return;
+    }
     if (p.vonAuftrag) {
         // Rückgängig machen einer (Teil-)Rückgabe — nie über die ursprüngliche Menge hinaus,
         // Mehrmenge gehört als eigener Scan (Extra-Position), nicht als erhöhte Auftrags-Menge.
@@ -2210,6 +2265,115 @@ function suchWaehlen(a) {
         a.bestand_verkaufbar = Math.max(0, (parseFloat(a.bestand_physisch) || 0));
         artikelHinzufuegen(a);
     }
+}
+
+// ── Freitext-Retour: Rückgabe ohne Auftragsbezug (z.B. alter JTL-Verkauf) ────
+// Eigener, schlanker Suche-Schritt (nicht die normale sucheLive/suchWaehlen-Kette,
+// die direkt einen Kauf hinzufügt) — hier folgt nach der Auswahl noch Menge+Preis,
+// bevor die Zeile mit negativer Menge/block='retour' in den Warenkorb kommt.
+var freitextRetourArtikel = null;
+var frSuchTimer = null;
+
+function freitextRetourDialog() {
+    document.getElementById('fr-such-input').value = '';
+    document.getElementById('fr-such-liste').innerHTML = '';
+    freitextRetourArtikel = null;
+    document.getElementById('fr-schritt-suche').style.display = 'block';
+    document.getElementById('fr-schritt-menge').style.display = 'none';
+    ov('ov-freitext-retour');
+    setTimeout(() => document.getElementById('fr-such-input').focus(), 100);
+}
+
+function freitextRetourSucheLive(val) {
+    clearTimeout(frSuchTimer);
+    var liste = document.getElementById('fr-such-liste');
+    if (val.length < 2) { liste.innerHTML = ''; return; }
+    frSuchTimer = setTimeout(function() {
+        fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?suche=' + encodeURIComponent(val) + '&lager_id=' + LAGER_ID)
+            .then(r => r.json())
+            .then(function(d) {
+                if (!d.erfolg || !d.ergebnisse.length) {
+                    liste.innerHTML = '<p style="color:#94a3b8;padding:12px;font-size:13px">Kein Treffer für „' + esc(val) + '"</p>';
+                    return;
+                }
+                var html = '';
+                d.ergebnisse.forEach(function(a) {
+                    html += '<div class="such-item" onclick=\'freitextRetourArtikelWaehlen(' + JSON.stringify(a) + ')\'>' +
+                        '<div>' +
+                        '<div class="such-item-name">' + esc(a.bezeichnung) + '</div>' +
+                        '<div class="such-item-sub">' + esc(a.artikelnummer || '—') + (a.ean ? ' · EAN: ' + esc(a.ean) : '') + '</div>' +
+                        '</div>' +
+                        '<div style="text-align:right"><div class="such-item-preis">€ ' + fmt(parseFloat(a.brutto_vk)) + '</div></div>' +
+                        '</div>';
+                });
+                liste.innerHTML = html;
+            });
+    }, 250);
+}
+
+function freitextRetourArtikelWaehlen(a) {
+    if (a.ist_vater) {
+        alert('Das ist ein Vater-Artikel mit Varianten — bitte die konkrete Variante (Farbe/Stärke) suchen, nicht den Vater.');
+        return;
+    }
+    freitextRetourArtikel = a;
+    document.getElementById('fr-artikel-name').textContent = a.bezeichnung;
+    document.getElementById('fr-menge').value = 1;
+    document.getElementById('fr-preis').value = (parseFloat(a.brutto_vk) || 0).toFixed(2);
+    document.getElementById('fr-charge').value = '';
+    document.getElementById('fr-charge-unbekannt').checked = false;
+    // Chargenpflicht (z.B. Garn — Farbkonsistenz!) muss auch bei einer Rückgabe ohne
+    // Auftrag beachtet werden, sonst landet Ware unkontrolliert im Bestand. Siehe
+    // packplatz/ruecklagerungen.php, das dieselbe Charge übernimmt bzw. bei Bedarf
+    // noch abfragt, falls hier "unbekannt" angehakt wird.
+    document.getElementById('fr-charge-block').style.display = a.charge_pflicht ? 'block' : 'none';
+    document.getElementById('fr-schritt-suche').style.display = 'none';
+    document.getElementById('fr-schritt-menge').style.display = 'block';
+}
+
+function freitextRetourZurueckZurSuche() {
+    freitextRetourArtikel = null;
+    document.getElementById('fr-schritt-suche').style.display = 'block';
+    document.getElementById('fr-schritt-menge').style.display = 'none';
+    setTimeout(() => document.getElementById('fr-such-input').focus(), 100);
+}
+
+function freitextRetourChargeUnbekanntToggle() {
+    var unbekannt = document.getElementById('fr-charge-unbekannt').checked;
+    var feld = document.getElementById('fr-charge');
+    feld.disabled = unbekannt;
+    if (unbekannt) feld.value = '';
+}
+
+function freitextRetourUebernehmen() {
+    if (!freitextRetourArtikel) return;
+    var a = freitextRetourArtikel;
+
+    var charge = null;
+    if (a.charge_pflicht) {
+        var unbekannt = document.getElementById('fr-charge-unbekannt').checked;
+        charge = document.getElementById('fr-charge').value.trim();
+        if (!unbekannt && charge === '') {
+            alert('Dieser Artikel ist chargenpflichtig — bitte Charge eintragen oder "Charge unbekannt" anhaken.');
+            return;
+        }
+        if (unbekannt) charge = null;
+    }
+
+    var menge = Math.max(1, parseInt(document.getElementById('fr-menge').value) || 1);
+    var preis = Math.max(0, parseFloat(document.getElementById('fr-preis').value) || 0);
+
+    warenkorb.push({
+        artikel_id: a.id, bezeichnung: a.bezeichnung, ean: a.ean || null,
+        menge: -menge, einzelpreis_brutto: preis,
+        steuer_prozent: a.steuer_prozent, rabatt_prozent: 0,
+        charge: charge || null, istDivers: false, vonAuftrag: false,
+        block: 'retour', kein_lagerabzug: true,
+    });
+
+    ovSchliessen('ov-freitext-retour');
+    renderBon();
+    feedback('↩ Freitext-Retour: ' + menge + '× ' + a.bezeichnung, 'ok');
 }
 
 // ── Kunde suchen ──────────────────────────────────────────────────────────────

@@ -196,6 +196,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#packplatz">Packplatz</a>
             <a href="#packplatz-scan" class="sub">↳ Artikel scannen</a>
             <a href="#packplatz-versenden" class="sub">↳ Versenden</a>
+            <a href="#packplatz-rueck" class="sub">↳ Rücklagerungen</a>
             <a href="#einkauf">Einkauf & Bestellungen</a>
             <a href="#verkauf">Aufträge & Verkauf</a>
             <a href="#mahnwesen" class="sub">↳ Mahnwesen</a>
@@ -209,6 +210,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#kasse">Kasse</a>
             <a href="#kasse-bon" class="sub">↳ Bon erstellen</a>
             <a href="#kasse-abholbereit" class="sub">↳ Abholbereit / Aufträge</a>
+            <a href="#kasse-freitext-retour" class="sub">↳ Freitext-Retour</a>
             <a href="#kasse-kassensturz" class="sub">↳ Kassensturz / Z-Bon</a>
             <a href="#inventur">Inventur</a>
         </nav>
@@ -327,7 +329,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <h2 id="packplatz">Packplatz <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Eigene Oberfläche, optimiert für Touchscreen und Barcode-Scanner. Dunkles Design.</p>
             <p>Adresse: <strong>http://localhost<?= BASE_PATH ?>/packplatz/</strong></p>
-            <p>Hauptmenü: Warenausgang (fertig) · Wareneingang (fertig) · Intern (geplant) · Retoure (geplant)</p>
+            <p>Hauptmenü: Warenausgang (fertig) · Wareneingang (fertig) · Intern (fertig) · Retoure (fertig) · Rücklagerungen (fertig)</p>
 
             <h3 id="packplatz-scan">Artikel scannen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Packplatz → Warenausgang</div></div>
@@ -341,6 +343,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">6</div><div><strong>Trackingnummer</strong> vom aufgedruckten Label abscannen</div></div>
             <div class="ba-step"><div class="ba-step-nr">7</div><div>→ Abschließen: Status wird auf "versendet" gesetzt, Versandmail an Kunden gesendet</div></div>
             <p>Für <strong>Teillieferung</strong> (nicht alle Artikel lieferbar): Button "Teillieferung" statt "Verpacken" → gleicher Overlay-Flow.</p>
+
+            <h3 id="packplatz-rueck">Rücklagerungen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Nach einer Kassen-Retoure (egal ob zu einem Auftrag oder als Freitext-Retour) liegt die Ware physisch am Tresen, ist aber noch nicht im Lagerbestand — die Kasse bucht nur das Geld, nicht das Lager.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Packplatz → <strong>Rücklagerungen</strong> (Badge zeigt Anzahl offener Einträge)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Zeile suchen → <strong>Einbuchen</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Ziel-Lager + <strong>Zustand</strong> wählen (Neu / Gebraucht / Beschädigt / Defekt)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Bei chargenpflichtigen Artikeln: Charge eintragen (Pflicht, sonst kein Einbuchen möglich)</div></div>
+            <div class="ba-hint">💡 Hier gibt's keine Gutschrift/Mail-Optionen mehr wie bei der normalen Retoure — das ist an der Kasse bereits erledigt.</div>
 
             <!-- EINKAUF -->
             <h2 id="einkauf">Einkauf & Bestellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
@@ -467,6 +477,14 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Mix</strong> — teils retour, teils extra</td><td>Retour-Bon + Extra-Bon werden erstellt</td></tr>
             </table>
 
+            <h3 id="kasse-freitext-retour">Freitext-Retour <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Für Rückgaben ohne Auftrag im ERP (z.B. alte JTL-Verkäufe von vor der Umstellung).</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>⚙ Menü → <strong>↩ Freitext-Retour</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Artikel suchen, Menge + Rückerstattungs-Preis eintragen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Bei chargenpflichtigen Artikeln: Charge eintragen <em>oder</em> "Charge unbekannt" anhaken (Pflicht)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>→ <strong>Zurücknehmen</strong> — rote Zeile mit ↩ im Warenkorb, dann normal bezahlen (Auszahlung bei reiner Retoure)</div></div>
+            <div class="ba-hint">💡 Ware danach am Packplatz unter "Rücklagerungen" einbuchen — die Kasse bucht nur das Geld, nicht das Lager.</div>
+
             <h3 id="kasse-kassensturz">Kassensturz / Tagesabschluss <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p><strong>X-Bon</strong> (Zwischenbericht): Zeigt den aktuellen Stand ohne Abschluss — gut für Zwischenkontrollen.</p>
             <p><strong>Z-Bon</strong> (Tagesabschluss):</p>
@@ -475,7 +493,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>→ <strong>Z-Bon erstellen</strong> — echter Tagesabschluss, Z-Bon wird gedruckt</div></div>
             <div class="ba-hint">💡 Bon stornieren: Kasse → Bon-Journal → Bon suchen → Stornieren. Lagerabgang wird automatisch rückgebucht.</div>
             <div class="ba-hint">💡 Druckerkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen. Im Browser: Rand "Keine", Kopfzeile "Aus".</div>
-            <div class="ba-warn">⚠ Phase 2 noch offen: RKSV-Signatur (BFR BONit) und Bon-Park (mehrere Bons gleichzeitig offen) sind noch in Planung.</div>
+            <p>RKSV-Signatur läuft über den BFR BONit Fiscal Recorder — jeder Bon wird automatisch signiert. Ist BFR kurz nicht erreichbar, verkauft die Kasse trotzdem weiter (Bon zeigt "Sicherheitseinrichtung ausgefallen"), Details unter Kasse → 🔏 RKSV.</p>
+            <div class="ba-hint">💡 Bon parken: ⏸ Parken-Button — mehrere Bons können gleichzeitig geparkt und später wieder abgerufen werden.</div>
 
             <!-- INVENTUR -->
             <h2 id="inventur">Inventur <span class="ba-badge ba-badge-geplant">Geplant</span></h2>

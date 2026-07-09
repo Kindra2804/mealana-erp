@@ -436,14 +436,26 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php endif; ?>
                     </td>
                     <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($p['ean'] ?? '—') ?></td>
-                    <td style="text-align:center"><?= (int)$p['menge'] ?></td>
+                    <td style="text-align:center">
+                        <?php if ((int)$p['menge'] < 0): ?>
+                            <span style="color:var(--color-danger);font-weight:600">↩ <?= abs((int)$p['menge']) ?></span>
+                        <?php else: ?>
+                            <?= (int)$p['menge'] ?>
+                        <?php endif; ?>
+                    </td>
                     <td style="text-align:center">
                         <?php
-                        $geliefert = (int)$p['menge_geliefert'];
-                        $gesamt    = (int)$p['menge'];
-                        $farbe     = $geliefert >= $gesamt ? 'var(--color-success)' : ($geliefert > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)');
+                        $gesamt = (int)$p['menge'];
+                        if ($gesamt < 0):
+                            // Kasse-Retour-Zeile (K1-Auftrag) — kein Liefer-Tracking, "geliefert" ergibt hier keinen Sinn
                         ?>
-                        <span style="color:<?= $farbe ?>;font-weight:600"><?= $geliefert ?> / <?= $gesamt ?></span>
+                            <span style="color:var(--color-text-muted)">—</span>
+                        <?php else:
+                            $geliefert = (int)$p['menge_geliefert'];
+                            $farbe     = $geliefert >= $gesamt ? 'var(--color-success)' : ($geliefert > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)');
+                        ?>
+                            <span style="color:<?= $farbe ?>;font-weight:600"><?= $geliefert ?> / <?= $gesamt ?></span>
+                        <?php endif; ?>
                     </td>
                     <?php if (in_array($preisanzeige, ['brutto', 'beides'])): ?>
                         <td style="text-align:right"><?= number_format((float)$p['einzelpreis_netto'] * (1 + $p['steuer_prozent'] / 100), 4, ',', '.') ?> €</td>

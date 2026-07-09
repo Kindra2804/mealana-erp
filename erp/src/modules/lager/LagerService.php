@@ -170,7 +170,7 @@ class LagerService
             'lager_id'       => $data['lager_id'],
             'menge'          => $data['menge'],
             'bestand_nachher' => $bestandNachher,
-        ]);
+        ], $data['benutzer_id'] ?? null);
 
         return ['erfolg' => true];
     }

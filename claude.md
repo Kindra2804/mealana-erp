@@ -213,6 +213,11 @@ lager_bewegungen    → Immutable audit log of all movements
                       - Movement type: eingang|ausgang|korrektur|inventur
                       - Always track: bestand_vorher, bestand_nachher
                       - referenz (invoice, order number) for traceability
+
+packplatz_ruecklagerungen → [NEU 2026-07-09] Warteschlange: Ware aus Kassen-Retoure, physisch da aber
+                      noch nicht im Lagerbestand — Kasse bucht bei block='retour' nur den finanziellen
+                      Ausgleich, packplatz/ruecklagerungen.php macht die tatsächliche Einlagerung
+                      (inkl. Chargen-Pflicht-Gate, Zustand neu/gebraucht/beschädigt/defekt)
 ```
 
 ### Attributes & Classification
@@ -233,13 +238,14 @@ artikel_lieferanten → Supplier-specific SKU, cost (netto_ek), MOQ, lead times
 lieferanten_vertreter → Contact persons per supplier (+ anrede)
 ```
 
-### RKSV / BFR (Kassen-Signatur, Migrations 097–104)
+### RKSV / BFR (Kassen-Signatur — Architektur seit 2026-07-06 neu, siehe Memory `project_rksv_bfr`)
 ```sql
 kassen              → + bfr_url, bfr_umsatzzaehler, bfr_aktiv_seit (Stichtag: Belege davor nie signieren)
-kassen_bons          → + steuer_a..e, bfr_status(signiert/ausstehend/fehler), bfr_fehlergrund, signiert_am, nachsignierungs_lauf_id
-bfr_nachsignierungs_laeufe → Sammelbeleg-Protokoll: wann wie viele Belege nachsigniert wurden
+kassen_bons          → + steuer_a..e, rksv_signatur, rksv_qr, signiert_am (kein bfr_status mehr — Migration 112)
+bfr_ausfaelle + bfr_ausfall_ereignisse → Ausfall-Episoden (State-Check-Gate-Modell, ersetzt die alte Nachsignierungs-Warteschlange)
 bfr_nullbelege       → Monats-/manuelle Nullbelege, eigener Belegnummernkreis
 bfr_kassen_registrierungen → Protokoll/Backup der FinanzOnline-Meldung (nicht die Quelle der Wahrheit — das BFR-Admin-Tool macht die echte Meldung)
+bfr_kommunikation_log → [NEU 2026-07-09] Rohdaten-Protokoll jedes /state+/register-Aufrufs (exaktes Request/Response-XML) für Hersteller-Fehlermeldungen
 ```
 
 ### Auth & Permissions (RBAC)
@@ -558,6 +564,50 @@ $result = $service->wareneingang([
 // lagerbestand: Updated stock + charge info
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
+
+## What's Implemented (Stand 2026-07-09, Session 27)
+
+Arbeitete die komplette "Für nächste Session vorgemerkt"-Liste von Session 26 ab, plus ein groß angelegter, gemeinsam mit dem BFR-Hersteller durchgeführter Ausfalltest, der einen fundamentalen Architektur-Bug in der Offline-Kasse aufdeckte.
+
+### `bfr_url` Offline-Fix + Selbstheilung ✅ FERTIG
+`kasse_bon_offline.js` nutzt jetzt `obBfrUrlLokal()` — liest nur den Port aus der konfigurierten (LAN-)`bfr_url` und spricht IMMER `127.0.0.1` an (Offline-Kasse und BFR laufen immer auf demselben Gerät). Für die Online-Kasse: neuer Endpunkt `kasse/ajax_bfr_heilung.php` + `BfrService::heileUrlFuerKasse()` — beim Kasse-Start (`kasse/index.php`) fragt der Browser lokal `127.0.0.1:<port>/state` ab und meldet nur die RN; der Server aktualisiert `bfr_url` bei Übereinstimmung auf die selbst beobachtete IP (`REMOTE_ADDR`, nie vom Client behauptet). Details in Memory `project_rksv_bfr`.
+
+### Drei kleine Kassen-Nachträge ✅ FERTIG
+- `docs/installation.md` Abschnitt 13: Netzwerkkassen-Häkchen im BFR-Tool dokumentiert
+- Kasse-Name/-Nummer fehlte in `bon.php`s eigenem Header (nicht in `shell_top.php`, das hatte es schon) — ergänzt
+- `ArbeitsplatzService::bindeAnKasseBeiBfrAbschluss()`: rohe PDOException bei doppelter Gerätebindung durch klare Fehlermeldung ersetzt
+
+### Freitext-Retour + Packplatz-Rücklagerung + Chargen-Pflicht-Gate ✅ FERTIG
+Show-Stopper fürs Live laut Jacky. Migration 121 (`packplatz_ruecklagerungen`) + Migration 122 (`bfr_kommunikation_log`, siehe unten).
+- **Kasse** (`bon.php`): neuer Menüpunkt "↩ Freitext-Retour" — Artikelsuche, Menge+Preis, landet als rote Zeile mit ↩-Badge im normalen Warenkorb (negative Menge, `block='retour'`). Bei chargenpflichtigen Artikeln: Charge eintragen ODER "Charge unbekannt" anhaken ist Pflicht (Jackys Nachbesserung: "Chargen finden wieder mal keine Beachtung").
+- **`bon_speichern.php`**: legt jetzt bei jeder `block='retour'`-Position (außer beim automatisch zurückbuchenden `abholbereit`-Fall) einen Eintrag in `packplatz_ruecklagerungen` an — mit oder ohne Auftragsbezug.
+- **`packplatz/ruecklagerungen.php`** (neu) + Badge auf der Packplatz-Startseite: Liste offener Rücklagerungen, Einbuchen mit Lager+Zustand (neu/gebraucht/beschädigt/defekt), bei chargenpflichtigen Artikeln serverseitig erzwungene Chargen-Eingabe (nicht nur Client-Check).
+- CLI-getestet (Transaktion+Rollback): Insert/Find/Einbuchen-Pfad inkl. Chargen-Gate, alles korrekt.
+- **Nebenbefund+Fix**: `LagerService::wareneingang()` reichte `benutzer_id` nie an `Logger::log()` durch — crashte beim ersten Aufruf ganz ohne Session (CLI-Test). Gefixt, analog zum alten `cron/mahnwesen.php`-Bug.
+
+### BFR-Rohdaten-Protokoll + gemeinsamer Ausfalltest mit Hersteller ✅ FERTIG
+Migration 122: `bfr_kommunikation_log` — `BfrService::httpGet()`/`httpPost()` protokollieren jetzt JEDEN `/state`+`/register`-Aufruf mit exaktem Request/Response/Fehler/Dauer. Neue Seite `kasse/bfr_log.php`. Grund: Jacky machte BFR-Ausfalltests (Karte während Betrieb gezogen), BFR crashte mehrfach, brauchte exakte Daten für den Hersteller.
+
+**Live-Test-Ergebnis:** `/state` antwortete normal (1ms) unmittelbar bevor `/register` komplett unbeantwortet blieb (Timeout, 0 Bytes) — widerspricht der Doku-Zusage "nach erfolgreichem State-Check kommt von /register garantiert eine Antwort". Fehlerbericht an Hersteller geschickt, wartet auf Antwort — der riet zu einem Test mit rein lokalem Zugriff (127.0.0.1, kein Netzwerk-Hop). Dafür `tools/bfr_lokaler_test.html` + `tools/mini_server.ps1` gebaut (eigenständiges PowerShell-Proxy-Tool, kein Server/DB nötig). Test **reproduzierte den Crash 1:1 komplett lokal** (sogar `/state` antwortete danach nicht mehr) — schließt Netzwerk/Hardware als Ursache aus, reiner BFR-Software-Bug beim Kartenverlust. Ergänzungsbericht an Hersteller geschickt, Antwort steht noch aus. Details in Memory `project_rksv_bfr`.
+
+### 🔴 Offline-Kasse CORS-Bug gefunden + gefixt ✅ FERTIG
+Beim Bau des lokalen Test-Tools nebenbei entdeckt: **BFR schickt grundsätzlich keine `Access-Control-Allow-Origin`-Header** — ein direkter Browser-`fetch()` (wie `kasse_bon_offline.js` es seit dem ursprünglichen Bau macht) wird deshalb IMMER von CORS blockiert, unabhängig vom Origin. Das war nie in einem echten Browser getestet worden (nur die Logik simuliert) — hätte die Messe-Kasse beim ersten echten Einsatz komplett lahmgelegt.
+
+**Fix:** `erp/public/kasse/bfr_lokal_proxy.ps1` (neu) — PowerShell-Proxy auf festem Port 8788, läuft auf dem Messe-Laptop neben BFR, macht den BFR-Call serverseitig (kein CORS) und reicht die Antwort mit korrekten CORS-Headern zurück. `kasse_bon_offline.js` spricht seither nie mehr direkt mit BFR, immer über `obBfrProxyFetch()` → `http://127.0.0.1:8788/proxy`. Muss vor jedem Messetag manuell gestartet werden (bewusste Entscheidung gegen Autostart — nachvollziehbarer als unsichtbarer Hintergrundprozess). `docs/offline_kasse_anleitung.md` aktualisiert.
+
+### K1-Auftrag-Spiegel: Freitext-Artikel + negative Mengen ✅ FERTIG
+`bon_speichern.php`s K1-Split-Filter verlangte bisher `artikel_id` — Divers-Artikel (Freitext-Verkauf ohne Stammdaten, `artikel_id=null`) fielen dadurch komplett aus dem K1-Auftrag-Spiegel raus, wenn sie zusammen mit einem Web-Auftrag-Extra in einem Bon landeten. Fix: gleicher Platzhalter-Mechanismus (Artikel 99-9999) wie in `erstelleBon()` jetzt auch hier angewendet (`KassenService::getDiversArtikelId()` public gemacht).
+
+**Dabei Nebenfund:** `auftrag_positionen.menge` war `INT UNSIGNED`, aber K1-Retour-Zeilen (Kombination Retoure+Extra in einem Bon) brauchen negative Werte. Migration 123: Spalte auf signed `INT` umgestellt (Audit ergab: keine andere Code-Stelle verlässt sich auf `menge > 0`, nur zwei kosmetische Anzeige-Stellen in `auftraege/detail.php` korrigiert, damit eine K1-Retour-Zeile nicht fälschlich grün als "geliefert" erscheint).
+
+### Doku aktualisiert
+`docs/handbuch/11_kasse.md` (Freitext-Retour, RKSV-Ausfallhinweis), `docs/handbuch/05_packplatz.md` (Rücklagerungen, veraltete "Intern/Retoure geplant"-Notiz korrigiert), `bedienungsanleitung.php` (beide Kapitel + veraltete RKSV-Phase-2-Warnung korrigiert), `docs/offline_kasse_anleitung.md` (BFR-Lokal-Proxy-Pflicht).
+
+**Für nächste Session vorgemerkt:**
+- Herstellerantwort zum BFR-Crash abwarten, ggf. Architektur-Anpassung ableiten
+- Offline-Kasse: kompletter Browser-Test mit dem neuen Proxy noch aus (nur Logik/Konzept verifiziert)
+- Mehrere Aufträge gleichzeitig in einem Bon — bewusst auf "nice to have" zurückgestuft, wartet weiter auf Barbara
+- `bfr_lokal_proxy.ps1` beim nächsten Messe-Einsatz einmal real durchspielen
 
 ## What's Implemented (Stand 2026-07-08, Session 26)
 

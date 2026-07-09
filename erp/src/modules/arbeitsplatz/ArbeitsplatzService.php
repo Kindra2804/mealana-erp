@@ -158,6 +158,18 @@ class ArbeitsplatzService
             return $bestehender['geraete_token'];
         }
 
+        // Der Token ist ans physische Gerät gebunden, nicht an eine Kasse. Würde man
+        // versehentlich auf demselben Gerät eine ANDERE Kasse registrieren, würde das
+        // spätere INSERT sonst roh am UNIQUE-Constraint auf geraete_token scheitern
+        // (ungefangene PDOException statt Fehlermeldung) — hier vorab freundlich abfangen.
+        $tokenBelegt = $this->repo->findByToken($token);
+        if ($tokenBelegt && (int)$tokenBelegt['kasse_id'] !== $kasseId) {
+            throw new RuntimeException(
+                'Dieses Gerät ist bereits an die Kasse "' . ($tokenBelegt['name'] ?? ('#' . $tokenBelegt['kasse_id'])) . '" gebunden. ' .
+                'Ein physisches Gerät kann nur einer RKSV-Kasse zugeordnet sein — bitte zuerst dort "Neue Kassen-ID anfordern" ausführen, um die alte Bindung zu lösen.'
+            );
+        }
+
         $kasse = $this->kassenService->getKasse($kasseId);
         $id    = $this->repo->insert([
             'name'     => $kasse['name'] ?? ('Kasse ' . $kasseId),
