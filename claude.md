@@ -565,6 +565,37 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-09, Session 28)
+
+Zwei große Themenblöcke: Baseline-Neuschnitt inkl. eines live auf 192.168.178.222 gefundenen Rollen-Bugs, danach eine Reihe kleinerer offener Baustellen aus dem Backlog abgearbeitet.
+
+### Baseline-Neuschnitt + Live-Rollen-Bug ✅ FERTIG
+`erp/database/baseline_schema.sql` neu geschnitten (Stand Migration 123): enthält jetzt neben der Struktur auch die universellen System-Stammdaten (Rollen/Rechte, Artikeltypen, Einheiten, Steuerklassen, Länder, Zahlungsbedingungen, Versandklassen) + fixe Seeds (Jarvis, Diverses-Artikel, Laufkunde, Hauptkanal-Shop) mit niedrigen IDs. 9 überholte Seed-Migrationen gelöscht. `erp/VERSION` → 0.2.0(beta). **Kernfund:** Der alte Baseline+Bootstrap-Weg übersprang bei echten Neuinstallationen sämtliche Stammdaten-Migrationen stillschweigend — das hatte auf der Live-Umgebung (Stand Migration 105) real zugeschlagen: Rollen/Berechtigungen waren nie geseedet, Jackys eigener Login hatte keine Rolle. Korrektur-Skript gebaut, getestet, auf Live eingespielt — Live jetzt auf Migrationsstand 123. Details in Memory `project_installationsanleitung`.
+
+### Nebenfunde beim Baseline-Update
+- `AuftragRepository`: Auftrags-/Rechnungsnummern hatten keine Selbstheilung wie die anderen Dokumenttypen — hätte beim Jahreswechsel 2027 auch live zugeschlagen. Gefixt.
+- Git-Historie enthielt 7 echte Kassenbon-/Picklisten-PDFs (vor der `.gitignore`-Regel committet) — mit Jackys OK per `git filter-branch` bereinigt + force-gepusht (Repo ist privat).
+
+### Kunden-Übersicht-Card ✅ FERTIG
+`kunden/detail.php`: neue Card zwischen Header und Tabs — Bestellanzahl, letzte Bestellung, Ø Warenkorb, Umsatz gesamt, Retouren (stornierte Aufträge fließen nicht ein).
+
+### Vier Kleinbaustellen abgearbeitet ✅ FERTIG
+- **Partner-Modul PDO-Bug** (präventiv, war nie aktiv ausgelöst): `insert()`/`update()` auf `array_intersect_key()` umgestellt, gleiches Muster wie Hersteller/Lager.
+- **Spalten-Picker**: `merkmale`-Platzhalter aktiviert (Merkmale-Modul war schon fertig, nur die Spalte nicht verdrahtet).
+- **Manueller Auftrags-Storno**: verschickt jetzt automatisch eine Kundenmail (neues Template `auftrag_storniert.html.twig`), E2E getestet.
+- **Packplatz EAN-Nacherfassen**: Doppelklick beim Picken öffnet Overlay, nutzt den bestehenden Wareneingang-Endpoint. **Dabei gefundener Bug:** `packplatz/shell_top.php` setzte nie `window.BASE_PATH` — hat vermutlich die Chargen-Auswahl beim Picken seit jeher lahmgelegt (stiller Fallback auf ungetrackte Buchung). Gefixt, Jacky testet beim nächsten chargenpflichtigen Artikel.
+- **Nummernkreise-Verwaltung**: neuer Tab in Einstellungen, Dokument-Nummernkreise editierbar, Kassenbon-Nummernkreise informativ.
+
+Dabei zwei veraltete Memory-Einträge korrigiert (Lager-Verwaltungs-UI und Picklisten-Manager waren beide längst fertig, standen aber noch als offen).
+
+### Kassenbon-PDF-Rand-Bug ✅ BEHOBEN
+A4-Kassenbon-PDF im Mail-Anhang hatte keine Ränder (Inhalt klebte an den Kanten) — `BonA4Renderer.php` nutzte `@page`-Margin statt Body-Padding, Dompdf wendet Ersteres beim PDF-Export unzuverlässig an. Auf Body-Padding umgestellt (wie im funktionierenden Rechnungs-Template), mit echtem PDF getestet und von Jacky bestätigt.
+
+**Für nächste Session vorgemerkt:**
+- Bestellungen an Lieferant (PDF/Mail) — eigenes Thema, noch zu besprechen
+- Chargen-Auswahl beim Packplatz-Picken real mit chargenpflichtigem Artikel testen (Fix noch nicht live verifiziert)
+- Ggf. History-Bereinigung nochmal prüfen falls irgendwo alte Commit-Hashes referenziert waren
+
 ## What's Implemented (Stand 2026-07-09, Session 27)
 
 Arbeitete die komplette "Für nächste Session vorgemerkt"-Liste von Session 26 ab, plus ein groß angelegter, gemeinsam mit dem BFR-Hersteller durchgeführter Ausfalltest, der einen fundamentalen Architektur-Bug in der Offline-Kasse aufdeckte.

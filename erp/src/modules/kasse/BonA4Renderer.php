@@ -105,19 +105,23 @@ class BonA4Renderer
   <meta charset="UTF-8">
   <title><?= $dokumentTitel ?> <?= htmlspecialchars($bon['bon_nr']) ?></title>
   <style>
-    @page { size: A4 portrait; margin: 15mm 18mm; }
+    @page { size: A4 portrait; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       font-size: 10pt;
       color: #1e293b;
       background: #fff;
+      /* Body-Padding statt @page-margin — Dompdf wendet @page-margin beim
+         PDF-Export (Mailanhang) unzuverlässig an, Body-Padding funktioniert
+         in beiden Fällen (Screen + Dompdf), siehe rechnung/standard.html.twig */
+      padding: 15mm 18mm;
     }
 
     <?php if (!$fuerPdf): ?>
-    /* Screen: Seitenrahmen */
+    /* Screen: zusätzlicher Seitenrahmen (Padding kommt schon von body oben) */
     @media screen {
-      body { max-width: 210mm; margin: 20px auto; padding: 18mm; background: #fff;
+      body { max-width: 210mm; margin: 20px auto; background: #fff;
              box-shadow: 0 2px 16px rgba(0,0,0,.12); min-height: 297mm; }
     }
     <?php endif; ?>

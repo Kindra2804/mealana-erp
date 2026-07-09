@@ -187,7 +187,12 @@ class ArtikelRepository
                 (SELECT GROUP_CONCAT(k2.name ORDER BY k2.name SEPARATOR ', ')
                  FROM artikel_kategorien ak2
                  JOIN kategorien k2 ON k2.id = ak2.kategorie_id
-                 WHERE ak2.artikel_id = a.id) AS kategorien
+                 WHERE ak2.artikel_id = a.id) AS kategorien,
+                (SELECT GROUP_CONCAT(mw2.wert ORDER BY m2.sort_order, mw2.sort_order SEPARATOR ', ')
+                 FROM artikel_merkmale am2
+                 JOIN merkmal_werte mw2 ON mw2.id = am2.merkmal_wert_id
+                 JOIN merkmale m2 ON m2.id = am2.merkmal_id
+                 WHERE am2.artikel_id = a.id) AS merkmale
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id

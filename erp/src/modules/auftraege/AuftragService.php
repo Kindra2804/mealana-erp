@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../core/Logger.php';
+require_once __DIR__ . '/../../core/Mailer.php';
 require_once __DIR__ . '/AuftragRepository.php';
 
 /**
@@ -211,7 +212,49 @@ class AuftragService
         $this->repo->schliesseReservierungen($id);
 
         Logger::log('auftraege.stornieren', 'auftraege', $id);
+        $this->sendeStornoMail($auftrag, $notiz);
         return ['erfolg' => true];
+    }
+
+    /**
+     * Informiert den Kunden per Mail über eine manuelle Stornierung.
+     * Nutzt den beim Auftrag eingefrorenen kunden_snapshot (keine erneute
+     * Entschlüsselung nötig). Scheitert der Mailversand, wird nur geloggt —
+     * die Stornierung selbst ist zu diesem Zeitpunkt bereits abgeschlossen.
+     */
+    private function sendeStornoMail(array $auftrag, ?string $notiz): void
+    {
+        $kd    = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
+        $email = $kd['email'] ?? '';
+        if (!$email) {
+            return;
+        }
+
+        $kdName = trim(($kd['vorname'] ?? '') . ' ' . ($kd['nachname'] ?? ''));
+        if (!empty($kd['firma'])) $kdName = $kd['firma'];
+        if (!$kdName) $kdName = 'Kunde';
+
+        try {
+            $db     = Database::getInstance();
+            $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE schluessel IN ('firma_email')")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+            $mailer = new Mailer();
+            $mailer->sendeTemplate(
+                $email,
+                'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde storniert',
+                'mails/auftrag_storniert.html.twig',
+                [
+                    'kunde_name'     => $kdName,
+                    'auftrag_nummer' => $auftrag['auftrag_nr'],
+                    'auftrag_datum'  => date('d.m.Y', strtotime($auftrag['erstellt_am'])),
+                    'betrag'         => number_format((float) $auftrag['bruttobetrag'], 2, ',', '.'),
+                    'grund'          => $notiz,
+                    'firma_email'    => $konfig['firma_email'] ?? '',
+                ]
+            );
+        } catch (Throwable $e) {
+            Logger::log('auftraege.storno_mail_fehler', 'auftraege', $auftrag['id'], ['fehler' => $e->getMessage()]);
+        }
     }
 
     /**

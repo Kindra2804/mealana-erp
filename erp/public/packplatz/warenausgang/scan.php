@@ -181,10 +181,11 @@ require_once __DIR__ . '/../shell_top.php';
                         <td>
                             <div style="font-weight:600"><?= htmlspecialchars($pos['name'] ?? $pos['bezeichnung_snapshot'] ?? '—') ?></div>
                             <?php if (empty($pos['ean'])): ?>
-                                <div style="font-size:11px;color:#e94560;margin-top:2px">⚠ Kein EAN</div>
+                                <div style="font-size:11px;color:#e94560;margin-top:2px;cursor:pointer" onclick="event.stopPropagation();eanNacherfassenOeffnen(<?= $i ?>)" title="Doppelklick oder hier klicken zum Nachtragen">⚠ Kein EAN — nachtragen</div>
                             <?php endif; ?>
                         </td>
-                        <td style="font-family:monospace;font-size:13px;color:#aaa">
+                        <td id="ean-zelle-<?= $i ?>" style="font-family:monospace;font-size:13px;color:#aaa;<?= empty($pos['ean']) ? 'cursor:pointer' : '' ?>"
+                            <?= empty($pos['ean']) ? 'ondblclick="eanNacherfassenOeffnen(' . $i . ')" title="Doppelklick zum EAN nachtragen"' : '' ?>>
                             <?= htmlspecialchars($pos['ean'] ?? '—') ?>
                         </td>
                         <td style="text-align:center">
@@ -356,6 +357,21 @@ require_once __DIR__ . '/../shell_top.php';
             <button class="pp-btn pp-btn-success" id="btn-charge-ok" onclick="chargeBestaetigen()" disabled>
                 ✓ Bestätigen
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- OVERLAY: EAN nacherfassen -->
+<div class="pp-overlay" id="overlay-ean">
+    <div class="pp-overlay-box" style="min-width:360px">
+        <div class="pp-overlay-titel">🏷 EAN nachtragen</div>
+        <div id="ean-overlay-artikelname" style="color:#aaa;font-size:13px;margin-bottom:14px"></div>
+        <input type="text" id="ean-overlay-input" class="pp-overlay-input" style="width:100%;font-size:20px;text-align:center;letter-spacing:2px"
+            placeholder="EAN scannen / eingeben" autocomplete="off">
+        <div id="ean-overlay-fehler" style="color:#ef5350;font-size:13px;margin-top:10px;display:none"></div>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:20px">
+            <button class="pp-btn pp-btn-secondary" onclick="eanNacherfassenSchliessen()">Abbrechen</button>
+            <button class="pp-btn pp-btn-success" onclick="eanNacherfassenSpeichern()">✓ Speichern</button>
         </div>
     </div>
 </div>

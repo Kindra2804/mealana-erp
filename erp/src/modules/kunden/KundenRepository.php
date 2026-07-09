@@ -309,6 +309,41 @@ class KundenRepository
     }
 
     // -------------------------------------------------------------------------
+    // Statistik
+    // -------------------------------------------------------------------------
+
+    /**
+     * Kennzahlen für die Kundenübersicht: Bestellanzahl, letzte Bestellung,
+     * durchschnittlicher Warenkorb, Umsatz gesamt, Anzahl Retouren.
+     * Stornierte Aufträge zählen nicht in Bestellanzahl/Umsatz/Warenkorb.
+     */
+    public function findStatistik(int $kundeId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                COUNT(*)          AS anzahl_bestellungen,
+                MAX(erstellt_am)  AS letzte_bestellung,
+                AVG(bruttobetrag) AS warenkorb_schnitt,
+                SUM(bruttobetrag) AS umsatz_gesamt
+            FROM auftraege
+            WHERE kunden_id = :kid AND lieferstatus != 'storniert'
+        ");
+        $stmt->execute(['kid' => $kundeId]);
+        $stats = $stmt->fetch();
+
+        $stmt = $this->db->prepare("
+            SELECT COUNT(DISTINCT ap.auftrag_id) AS anzahl_retouren
+            FROM auftrag_positionen ap
+            JOIN auftraege a ON a.id = ap.auftrag_id
+            WHERE a.kunden_id = :kid AND ap.menge_retourniert > 0
+        ");
+        $stmt->execute(['kid' => $kundeId]);
+        $stats['anzahl_retouren'] = (int) $stmt->fetchColumn();
+
+        return $stats;
+    }
+
+    // -------------------------------------------------------------------------
     // DSGVO Consent
     // -------------------------------------------------------------------------
 

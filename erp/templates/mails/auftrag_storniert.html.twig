@@ -1,0 +1,41 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  Ihre Bestellung <strong>{{ auftrag_nummer }}</strong> wurde storniert.
+</p>
+
+<div class="warn">
+  <strong>Die reservierten Artikel wurden wieder freigegeben.</strong>
+</div>
+
+<table class="table">
+  <tr>
+    <th>Auftragsnummer</th>
+    <th>Datum</th>
+    <th>Betrag</th>
+  </tr>
+  <tr>
+    <td>{{ auftrag_nummer }}</td>
+    <td>{{ auftrag_datum }}</td>
+    <td>{{ betrag }} €</td>
+  </tr>
+</table>
+
+{% if grund %}
+<p><strong>Grund:</strong> {{ grund }}</p>
+{% endif %}
+
+<p>
+  Falls Sie dazu Fragen haben oder die Stornierung nicht erwartet haben, wenden Sie sich bitte
+  gerne an uns: <a href="mailto:{{ firma_email }}">{{ firma_email }}</a>
+</p>
+
+<p>Mit freundlichen Grüßen,<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Auftrag {{ auftrag_nummer }} (storniert) &bull;
+{% endblock %}

@@ -43,7 +43,7 @@ $alleSpaltenDef = [
     'ek'              => ['label' => 'EK-Preis',        'default' => false, 'baubar' => true],
     'marge'           => ['label' => 'Marge %',         'default' => false, 'baubar' => true],
     'charge'          => ['label' => 'Charge-Pfl.',     'default' => false, 'baubar' => true],
-    'merkmale'        => ['label' => 'Merkmale',        'default' => false, 'baubar' => false],
+    'merkmale'        => ['label' => 'Merkmale',        'default' => false, 'baubar' => true],
     'lagerplatz'      => ['label' => 'Lagerplatz',      'default' => false, 'baubar' => false],
     'letzte_inventur' => ['label' => 'Letzte Inventur', 'default' => false, 'baubar' => false],
 ];
@@ -126,7 +126,9 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             return '<td style="text-align:right;font-size:12px">' . $m . '</td>';
         case 'charge':
             return '<td style="text-align:center">' . ($a['charge_pflicht'] ? '✓' : '') . '</td>';
-        case 'merkmale':      return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+        case 'merkmale':
+            $mrk = htmlspecialchars($a['merkmale'] ?? '');
+            return '<td style="font-size:12px;color:var(--color-text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $mrk . '">' . ($mrk ?: '–') . '</td>';
         case 'lagerplatz':    return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
         case 'letzte_inventur': return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
     }

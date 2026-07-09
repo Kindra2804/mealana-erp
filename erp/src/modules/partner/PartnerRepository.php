@@ -106,7 +106,13 @@ class PartnerRepository
             )
         ');
 
-        $stmt->execute($data);
+        $erlaubteKeys = [
+            'name', 'typ', 'email', 'telefon', 'iban',
+            'uid_nummer', 'zvr_nummer', 'kleinunternehmer',
+            'provisions_satz', 'abrechnungs_modus', 'abrechnungs_beleg_typ',
+            'notiz', 'aktiv',
+        ];
+        $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
         return (int) $this->db->lastInsertId();
     }
 
@@ -130,7 +136,13 @@ class PartnerRepository
             WHERE id = :id
         ');
 
-        $stmt->execute($data);
+        $erlaubteKeys = [
+            'id', 'name', 'typ', 'email', 'telefon', 'iban',
+            'uid_nummer', 'zvr_nummer', 'kleinunternehmer',
+            'provisions_satz', 'abrechnungs_modus', 'abrechnungs_beleg_typ',
+            'notiz',
+        ];
+        $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
         return $stmt->rowCount() > 0;
     }
 

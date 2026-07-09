@@ -39,6 +39,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             'mail'     => 'Mail / SMTP',
             'system'   => 'System',
             'kassen'   => 'Kassen',
+            'nummernkreise' => 'Nummernkreise',
         ] as $tabId => $tabLabel
     ): ?>
         <a href="?tab=<?= $tabId ?>"
@@ -546,6 +547,134 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             </tbody>
         </table>
     </div>
+
+<?php elseif ($aktTab === 'nummernkreise'): ?>
+    <!-- ═══════════ TAB: NUMMERNKREISE ═══════════ -->
+    <?php
+    $nummernTypLabels = [
+        'auftrag'      => 'Auftrag',
+        'rechnung'     => 'Rechnung',
+        'gutschrift'   => 'Gutschrift',
+        'lieferschein' => 'Lieferschein',
+        'mietrechnung' => 'Mietrechnung',
+        'abrechnung'   => 'Abrechnung (Partner)',
+        'pickliste'    => 'Pickliste',
+    ];
+    $dokNummern = $db->query("SELECT * FROM dokument_nummern ORDER BY typ, jahr DESC")->fetchAll(PDO::FETCH_ASSOC);
+
+    $kassenBonStand = $db->query("
+        SELECT k.id, k.kasse_nr, k.name,
+               COUNT(kb.id) AS anzahl_heuer
+        FROM kassen k
+        LEFT JOIN kassen_bons kb ON kb.kasse_id = k.id AND YEAR(kb.erstellt_am) = YEAR(CURDATE())
+        WHERE k.aktiv = 1
+        GROUP BY k.id, k.kasse_nr, k.name
+        ORDER BY k.kasse_nr
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+
+    <div class="card" style="margin-bottom:12px">
+        <div class="card-header">Dokument-Nummernkreise (Auftrag, Rechnung, Gutschrift, ...)</div>
+        <table class="erp-table" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Typ</th>
+                    <th style="width:80px">Jahr</th>
+                    <th style="width:100px">Präfix</th>
+                    <th style="width:120px">Letzte Nr.</th>
+                    <th style="width:200px">Nächste Nummer wäre</th>
+                    <th style="width:100px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($dokNummern as $dn): ?>
+                <tr>
+                    <td><?= htmlspecialchars($nummernTypLabels[$dn['typ']] ?? $dn['typ']) ?></td>
+                    <td><?= (int) $dn['jahr'] ?></td>
+                    <td><code><?= htmlspecialchars($dn['praefix']) ?></code></td>
+                    <td><?= (int) $dn['letzt_nr'] ?></td>
+                    <td style="font-family:monospace;color:var(--color-text-muted)">
+                        <?= htmlspecialchars($dn['praefix']) ?>-<?= (int) $dn['jahr'] ?>-<?= str_pad((string)($dn['letzt_nr'] + 1), 5, '0', STR_PAD_LEFT) ?>
+                    </td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm"
+                            onclick="nummernkreisBearbeiten(<?= $dn['id'] ?>, '<?= htmlspecialchars($nummernTypLabels[$dn['typ']] ?? $dn['typ'], ENT_QUOTES) ?>', <?= (int) $dn['jahr'] ?>, '<?= htmlspecialchars($dn['praefix'], ENT_QUOTES) ?>', <?= (int) $dn['letzt_nr'] ?>)">
+                            ✏ Bearbeiten
+                        </button>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            <?php if (empty($dokNummern)): ?>
+                <tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);padding:20px">Noch keine Nummernkreise angelegt — werden automatisch beim ersten Beleg des jeweiligen Jahres erstellt.</td></tr>
+            <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Kassenbon-Nummernkreise (nicht konfigurierbar)</div>
+        <div style="padding:12px 16px;font-size:12px;color:var(--color-text-muted)">
+            Kassenbons laufen über einen eigenen Mechanismus (Format <code>Kassennummer-Jahr-Laufnummer</code>,
+            pro Kasse und Jahr gezählt) — kein fester Nummernkreis-Datensatz, daher hier nur zur Übersicht:
+        </div>
+        <table class="erp-table" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Kasse</th>
+                    <th>Name</th>
+                    <th style="width:160px">Bons heuer</th>
+                    <th style="width:200px">Nächste Nummer wäre</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($kassenBonStand as $kb): ?>
+                <tr>
+                    <td><code><?= htmlspecialchars($kb['kasse_nr']) ?></code></td>
+                    <td><?= htmlspecialchars($kb['name']) ?></td>
+                    <td><?= (int) $kb['anzahl_heuer'] ?></td>
+                    <td style="font-family:monospace;color:var(--color-text-muted)">
+                        <?= htmlspecialchars($kb['kasse_nr']) ?>-<?= date('Y') ?>-<?= str_pad((string)($kb['anzahl_heuer'] + 1), 6, '0', STR_PAD_LEFT) ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal: Nummernkreis bearbeiten -->
+    <div id="nummernkreis-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:8px;padding:24px;width:360px;box-shadow:0 4px 24px rgba(0,0,0,.2)">
+            <div style="font-weight:700;font-size:14px;color:var(--color-nav);margin-bottom:16px" id="nk-modal-titel">Nummernkreis bearbeiten</div>
+            <form method="POST" action="nummernkreis_aktualisieren.php">
+                <input type="hidden" name="id" id="nk-id">
+
+                <label class="erp-label">Präfix</label>
+                <input type="text" name="praefix" id="nk-praefix" class="erp-input" style="width:100%;margin-bottom:12px" maxlength="10" required>
+
+                <label class="erp-label">Letzte vergebene Nummer</label>
+                <input type="number" name="letzt_nr" id="nk-letzt-nr" class="erp-input" style="width:100%;margin-bottom:4px" min="0" required>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:16px">
+                    ⚠ Vorsicht: Der nächste Beleg bekommt "Letzte Nummer + 1". Nur ändern wenn wirklich nötig
+                    (z.B. Korrektur nach einem Fehler) — nie eine Nummer vergeben, die schon mal existiert hat.
+                </div>
+
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" onclick="document.getElementById('nummernkreis-modal').style.display='none'" class="btn btn-secondary btn-sm">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function nummernkreisBearbeiten(id, typLabel, jahr, praefix, letztNr) {
+        document.getElementById('nk-id').value = id;
+        document.getElementById('nk-modal-titel').textContent = typLabel + ' ' + jahr + ' bearbeiten';
+        document.getElementById('nk-praefix').value = praefix;
+        document.getElementById('nk-letzt-nr').value = letztNr;
+        document.getElementById('nummernkreis-modal').style.display = 'flex';
+    }
+    </script>
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

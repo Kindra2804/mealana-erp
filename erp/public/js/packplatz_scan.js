@@ -416,3 +416,60 @@ function chargeAbbrechen() {
     chargeEingaben   = {};
     scanField.focus();
 }
+
+// ─── EAN nacherfassen (Artikel ohne EAN direkt beim Picken ergänzen) ──────────
+let eanNacherfassenIdx = -1;
+
+function eanNacherfassenOeffnen(idx) {
+    eanNacherfassenIdx = idx;
+    const pos = POSITIONEN[idx];
+    document.getElementById('ean-overlay-artikelname').textContent = pos.name;
+    document.getElementById('ean-overlay-input').value = '';
+    document.getElementById('ean-overlay-fehler').style.display = 'none';
+    document.getElementById('overlay-ean').classList.add('aktiv');
+    setTimeout(() => document.getElementById('ean-overlay-input').focus(), 50);
+}
+
+function eanNacherfassenSchliessen() {
+    document.getElementById('overlay-ean').classList.remove('aktiv');
+    eanNacherfassenIdx = -1;
+    scanField.focus();
+}
+
+async function eanNacherfassenSpeichern() {
+    const ean      = document.getElementById('ean-overlay-input').value.trim();
+    const fehlerEl = document.getElementById('ean-overlay-fehler');
+    if (!ean) {
+        fehlerEl.textContent = 'Bitte EAN eingeben.';
+        fehlerEl.style.display = 'block';
+        return;
+    }
+
+    const idx = eanNacherfassenIdx;
+    const pos = POSITIONEN[idx];
+    const body = new FormData();
+    body.append('artikel_id', pos.artikel_id);
+    body.append('ean', ean);
+
+    const res  = await fetch(window.BASE_PATH + '/packplatz/wareneingang/ean_nachtragen.php', { method: 'POST', body });
+    const data = await res.json();
+
+    if (!data.erfolg) {
+        fehlerEl.textContent = data.fehler || 'Fehler beim Speichern.';
+        fehlerEl.style.display = 'block';
+        return;
+    }
+
+    // In-Memory-Datensatz + DOM aktualisieren, damit sofort weitergescannt werden kann
+    pos.ean = ean;
+    const zelle = document.getElementById('ean-zelle-' + idx);
+    zelle.textContent = ean;
+    zelle.removeAttribute('ondblclick');
+    zelle.style.cursor = 'default';
+    const row = document.getElementById('pos-row-' + idx);
+    row.dataset.ean = ean;
+    const hinweis = row.querySelector('td:nth-child(2) div[onclick^="event.stopPropagation();eanNacherfassenOeffnen"]');
+    if (hinweis) hinweis.remove();
+
+    eanNacherfassenSchliessen();
+}

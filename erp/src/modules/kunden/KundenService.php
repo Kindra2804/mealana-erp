@@ -157,6 +157,16 @@ class KundenService
     }
 
     // -------------------------------------------------------------------------
+    // Statistik
+    // -------------------------------------------------------------------------
+
+    /** Kennzahlen für die Kundenübersicht (Bestellungen, Umsatz, Retouren). */
+    public function getStatistik(int $kundeId): array
+    {
+        return $this->repo->findStatistik($kundeId);
+    }
+
+    // -------------------------------------------------------------------------
     // Adressen
     // -------------------------------------------------------------------------
 

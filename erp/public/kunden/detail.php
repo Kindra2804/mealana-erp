@@ -11,8 +11,9 @@ if (!$kunde) {
     exit;
 }
 
-$adressen = $service->getAdressen($id);
-$consent  = $service->getConsent($id);
+$adressen  = $service->getAdressen($id);
+$consent   = $service->getConsent($id);
+$statistik = $service->getStatistik($id);
 
 $flashErfolg = $_SESSION['erfolg'] ?? null;
 $flashFehler = $_SESSION['fehler'] ?? null;
@@ -100,6 +101,36 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <div><div style="font-weight:600;color:var(--color-text)">Telefon</div><?= htmlspecialchars($kunde['telefon'] ?? $kunde['mobil'] ?? '') ?></div>
         <?php endif; ?>
         <div><div style="font-weight:600;color:var(--color-text)">Seit</div><?= date('d.m.Y', strtotime($kunde['erstellt_am'])) ?></div>
+    </div>
+</div>
+
+<!-- Kunden-Überblick -->
+<div class="card" style="margin-bottom:var(--space-md);display:grid;grid-template-columns:repeat(5,1fr);gap:var(--space-md)">
+    <div>
+        <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Bestellungen</div>
+        <div style="font-size:18px;font-weight:700;color:var(--color-nav)"><?= (int) $statistik['anzahl_bestellungen'] ?></div>
+    </div>
+    <div>
+        <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Letzte Bestellung</div>
+        <div style="font-size:18px;font-weight:700;color:var(--color-nav)">
+            <?= $statistik['letzte_bestellung'] ? date('d.m.Y', strtotime($statistik['letzte_bestellung'])) : '–' ?>
+        </div>
+    </div>
+    <div>
+        <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Ø Warenkorb</div>
+        <div style="font-size:18px;font-weight:700;color:var(--color-nav)">
+            <?= $statistik['warenkorb_schnitt'] !== null ? number_format((float) $statistik['warenkorb_schnitt'], 2, ',', '.') . ' €' : '–' ?>
+        </div>
+    </div>
+    <div>
+        <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Umsatz gesamt</div>
+        <div style="font-size:18px;font-weight:700;color:var(--color-nav)">
+            <?= $statistik['umsatz_gesamt'] !== null ? number_format((float) $statistik['umsatz_gesamt'], 2, ',', '.') . ' €' : '–' ?>
+        </div>
+    </div>
+    <div>
+        <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Retouren</div>
+        <div style="font-size:18px;font-weight:700;color:<?= $statistik['anzahl_retouren'] > 0 ? 'var(--color-danger)' : 'var(--color-nav)' ?>"><?= (int) $statistik['anzahl_retouren'] ?></div>
     </div>
 </div>
 
