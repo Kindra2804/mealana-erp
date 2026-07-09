@@ -1,7 +1,7 @@
 # MeaLana ERP — Installationsanleitung
 
 **Zielgruppe:** Wer eine neue Instanz aufsetzt — der Server-Admin bei einer Neuinstallation, aber auch ein Tester/Interessent, der die Software einmal ausprobieren will.
-**Stand:** 2026-07-03
+**Stand:** 2026-07-09
 **Umgebung:** Windows + XAMPP (Apache, MariaDB, PHP). Auf Linux läuft dasselbe Prinzip mit Apache/Nginx + PHP-FPM statt XAMPP — die Schritte 4–14 sind identisch.
 
 ---
@@ -127,11 +127,11 @@ Es gibt jetzt ein Migrations-Tool: `erp\database\migrate.php`. Für eine **neue*
 
 **Deshalb der zuverlässige Weg — Baseline-Dump + Migrations-Tracker:**
 
-1. Struktur-Dump importieren (enthält alle 91 Tabellen im aktuellen Endstand, **keine** Daten):
+1. Baseline importieren (enthält alle 94 Tabellen im aktuellen Endstand, **plus** die universellen System-Stammdaten, die keiner Installation fehlen dürfen — Rollen/Berechtigungen, Artikeltypen, Einheiten, Steuerklassen, Länder, Zahlungsbedingungen, Standard-Versandklassen sowie die fixen Seed-Datensätze Jarvis-Systembenutzer, Diverses-Artikel `99-9999`, Laufkunde und ein neutraler Standard-Shop-Kanal "Hauptkanal". **Keine** Geschäfts-/Testdaten wie echte Artikel, Kunden, Kategorien oder Hersteller):
    ```powershell
    C:\xampp\mysql\bin\mysql.exe -u root mealana_erp < "D:\ERP\mealana\erp\database\baseline_schema.sql"
    ```
-2. Den Migrations-Tracker "scharf schalten" (trägt alle 109 vorhandenen Migrationsdateien als *bereits enthalten* ein, ohne sie nochmal auszuführen — die Baseline hat ihren Inhalt ja schon):
+2. Den Migrations-Tracker "scharf schalten" (trägt alle vorhandenen Migrationsdateien als *bereits enthalten* ein, ohne sie nochmal auszuführen — die Baseline hat ihren Inhalt ja schon):
    ```powershell
    cd D:\ERP\mealana\erp\database
    C:\xampp\php\php.exe migrate.php bootstrap
@@ -141,11 +141,13 @@ Es gibt jetzt ein Migrations-Tool: `erp\database\migrate.php`. Für eine **neue*
    ```powershell
    C:\xampp\php\php.exe migrate.php status
    ```
-   sollte `109 Migration(en) angewendet, 0 offen` zeigen.
+   sollte `103 Migration(en) angewendet, 0 offen` zeigen.
 
-**Ab jetzt, für jede künftige neue Migration (113, 114, ...):** einfach `php migrate.php` ohne Argumente aufrufen — es wendet automatisch nur die noch fehlenden Dateien an, egal ob auf Dev oder Live. Kein manuelles Zählen mehr nötig.
+**Ab jetzt, für jede künftige neue Migration (124, 125, ...):** einfach `php migrate.php` ohne Argumente aufrufen — es wendet automatisch nur die noch fehlenden Dateien an, egal ob auf Dev oder Live. Kein manuelles Zählen mehr nötig.
 
-⚠️ **Nicht** `schema_current.sql` verwenden — das ist ein Snapshot der echten MeaLana-Produktivdaten (Kunden, Firmenname, Admin-Zugang). `baseline_schema.sql` ist reine Struktur ohne Daten und dafür extra angelegt.
+⚠️ **Nicht** `schema_current.sql` verwenden — das ist ein Snapshot der echten MeaLana-Produktivdaten (Kunden, Firmenname, Admin-Zugang). `baseline_schema.sql` enthält nur universelle System-Stammdaten, keine Geschäftsdaten, und ist dafür extra angelegt.
+
+**Update 2026-07-09:** Frischer Baseline-Schnitt (Stand nach Migration 123) samt Aufräumen — reine Seed-Migrationen, deren Effekt jetzt Teil der Baseline ist, wurden gelöscht: `005` (Rollen/Berechtigungen-Erstseed inkl. des alten fest verdrahteten Admin-Accounts, siehe Anhang B), `011`, `013`, `032`, `046`, `064`, `078`, `097`, `105`, `109`, `110`. Grund: Der alte Baseline+Bootstrap-Weg importierte zwar die Tabellenstruktur, aber `bootstrap` führt Migrationen 004+ nie wirklich aus — jede reine Stammdaten-Migration in diesem Bereich (Rollen, Artikeltypen, Einheiten, Steuerklassen, Länder, ...) wurde bei einer echten Neuinstallation stillschweigend übersprungen. Die neue Baseline enthält diese Stammdaten jetzt direkt.
 
 *Für Technik-Interessierte:* `migrate.php` unterstützt auch `php migrate.php status` (zeigt offene Migrationen ohne etwas zu tun) — nützlich um vor einem Live-Deploy kurz zu prüfen, was sich seit dem letzten Mal geändert hat.
 
@@ -153,7 +155,7 @@ Es gibt jetzt ein Migrations-Tool: `erp\database\migrate.php`. Für eine **neue*
 
 ## 8. Erste Benutzer anlegen
 
-**a) System-Benutzer "Jarvis"** — kommt automatisch mit Migration `105_jarvis_seed.sql` (Teil von Schritt 7, sobald `migrate.php` einmal gelaufen ist). Keine manuelle Aktion nötig. Wird von Cronjobs und automatischen Buchungen für Log-Einträge gebraucht, hat ein absichtlich ungültiges Passwort (`'!'`) und kann sich nie einloggen. Wichtig: es gibt bewusst **keine feste ID** dafür — überall im Code wird Jarvis per `username = 'system'` nachgeschlagen, damit keine bestimmte `benutzer.id` bei der Installation erzwungen werden muss.
+**a) System-Benutzer "Jarvis"** — kommt automatisch mit der Baseline (Teil von Schritt 7). Keine manuelle Aktion nötig. Wird von Cronjobs und automatischen Buchungen für Log-Einträge gebraucht, hat ein absichtlich ungültiges Passwort (`'!'`) und kann sich nie einloggen. Wichtig: es gibt bewusst **keine feste ID** dafür — überall im Code wird Jarvis per `username = 'system'` nachgeschlagen, damit keine bestimmte `benutzer.id` bei der Installation erzwungen werden muss.
 
 **b) Erster Admin-Benutzer** — interaktives Skript, kein manuelles Hash-Basteln mehr nötig:
 ```powershell
@@ -247,7 +249,7 @@ Die Software ist noch aktiv in Entwicklung. Vor einer Weitergabe an einen fremde
 - **Kein Lizenzsystem aktiv:** Die Software prüft aktuell keine Lizenz-/Instanzgrenzen (auch wenn das Datenmodell dafür schon vorbereitet ist).
 - **Fix auf "MeaLana" verdrahtet:** Der URL-Pfad `/mealana/` sowie einiges an Branding ist im Code hart hinterlegt, nicht pro Installation konfigurierbar. Für eine andere Firma müsste das noch generalisiert werden (kein Show-Stopper für eine reine Testinstallation, aber für eine "weiße" Weitergabe an andere Betriebe ein offener Punkt).
 - **Multi-Shop/WooCommerce-Sync:** teilweise vorbereitet, aber noch nicht fertig.
-- **Migration `005_seed_rollen_berechtigungen.sql` legt am Ende einen echten Admin-Account an** (fixer bcrypt-Hash + die private E-Mail-Adresse `indy1@gmx.at`) — historischer Rest, nicht generisch. Da der Baseline+Bootstrap-Weg (Schritt 7) diese INSERT-Anweisung ohnehin nie ausführt, betrifft es aktuelle Installationen nicht — aber der Block sollte bei Gelegenheit aus der Datei entfernt werden, bevor Migration 005 mal woanders per `migrate.php run` von Grund auf durchläuft.
+- ~~Migration `005_seed_rollen_berechtigungen.sql` legt am Ende einen echten Admin-Account an~~ — **erledigt (2026-07-09):** Die Datei wurde beim Baseline-Neuschnitt gelöscht, ihr generischer Teil (Rollen/Berechtigungen) ist jetzt Teil von `baseline_schema.sql`, der fest verdrahtete Admin-Account (fixer bcrypt-Hash + private E-Mail) ist damit komplett weg statt nur "nie ausgeführt".
 - **Empfehlung:** Testinstallationen bei Dritten klar als Testversion kommunizieren, nicht mit echten Kunden-/Zahlungsdaten produktiv laufen lassen, solange Rechteverwaltung und Lizenzsystem fehlen.
 
 ---

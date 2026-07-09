@@ -237,6 +237,11 @@ class AuftragRepository
 
         $jahr = date('Y');
         $this->db->prepare("
+            INSERT IGNORE INTO dokument_nummern (typ, praefix, jahr, letzt_nr)
+            VALUES ('auftrag', 'A', :jahr, 0)
+        ")->execute(['jahr' => $jahr]);
+
+        $this->db->prepare("
             UPDATE dokument_nummern SET letzt_nr = letzt_nr + 1
             WHERE typ = 'auftrag' AND jahr = :jahr
         ")->execute(['jahr' => $jahr]);
@@ -412,6 +417,11 @@ class AuftragRepository
         $this->db->beginTransaction();
 
         $jahr = date('Y');
+        $this->db->prepare("
+            INSERT IGNORE INTO dokument_nummern (typ, praefix, jahr, letzt_nr)
+            VALUES ('rechnung', 'R', :jahr, 0)
+        ")->execute(['jahr' => $jahr]);
+
         $this->db->prepare("
             UPDATE dokument_nummern SET letzt_nr = letzt_nr + 1
             WHERE typ = 'rechnung' AND jahr = :jahr
