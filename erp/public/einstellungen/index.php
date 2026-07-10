@@ -162,13 +162,9 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             <div class="card-header">Hauptlogo (erscheint auf Dokumenten oben links)</div>
             <div style="padding:16px;display:flex;align-items:center;gap:24px">
                 <?php
-                $logoShop = null;
-                foreach ($shops as $sh) {
-                    if ($sh['slug'] === 'mealana') {
-                        $logoShop = $sh;
-                        break;
-                    }
-                }
+                // Hauptlogo = erster angelegter Kanal (kleinste id), nicht an einen
+                // fixen Slug gebunden — $shops ist bereits "ORDER BY id" geladen.
+                $logoShop = $shops[0] ?? null;
                 $logoPfad = $logoShop['logo_pfad'] ?? '';
                 ?>
                 <?php if ($logoPfad && file_exists(__DIR__ . '/../' . $logoPfad)): ?>
