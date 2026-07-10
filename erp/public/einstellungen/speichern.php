@@ -94,7 +94,9 @@ if ($tab === 'firma') {
             $_SESSION['fehler'] = ['Logo nicht übernommen: ' . uploadFehlerText($_FILES['logo_datei']['error'])];
         } else {
             $shopRow = $db->query("SELECT id FROM shops WHERE slug = 'mealana' LIMIT 1")->fetch();
-            if ($shopRow) {
+            if (!$shopRow) {
+                $_SESSION['fehler'] = ['Logo nicht übernommen: Hauptshop (slug=\'mealana\') wurde in der Tabelle "shops" nicht gefunden.'];
+            } else {
                 try {
                     $pfad = speichereShopLogo($_FILES['logo_datei'], 'mealana');
                     $db->prepare("UPDATE shops SET logo_pfad = ? WHERE slug = 'mealana'")->execute([$pfad]);
