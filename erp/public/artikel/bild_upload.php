@@ -21,6 +21,18 @@ if (empty($_FILES['bild']) || $_FILES['bild']['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
+// Fehlende PHP-Erweiterungen sollen eine klare Fehlermeldung liefern statt eines
+// unbehandelten Fatal Errors ("Call to undefined function") mitten in der
+// JSON-Antwort — das Frontend zeigt sonst nur generisch "Netzwerkfehler".
+if (!extension_loaded('gd')) {
+    echo json_encode(['erfolg' => false, 'fehler' => 'PHP-GD-Erweiterung ist auf diesem Server nicht aktiviert.']);
+    exit;
+}
+if (!extension_loaded('fileinfo')) {
+    echo json_encode(['erfolg' => false, 'fehler' => 'PHP-Fileinfo-Erweiterung ist auf diesem Server nicht aktiviert.']);
+    exit;
+}
+
 $file     = $_FILES['bild'];
 $maxBytes = 10 * 1024 * 1024; // 10 MB
 
