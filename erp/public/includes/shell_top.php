@@ -30,6 +30,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📦', 'label' => 'Übersicht',          'href' => BASE_PATH . '/lager/uebersicht.php'],
         ['icon' => '📥', 'label' => 'Wareneingang',       'href' => BASE_PATH . '/lager/wareneingang.php'],
         ['icon' => '🔖', 'label' => 'Chargen-Nachtrag',  'href' => BASE_PATH . '/lager/nachtrag_liste.php'],
+        ['icon' => '🔍', 'label' => 'Chargen-Suche',      'href' => BASE_PATH . '/lager/chargen_nachverfolgung.php'],
         ['icon' => '📋', 'label' => 'Picklisten',         'href' => BASE_PATH . '/lager/picklisten.php'],
         ['icon' => '🗄️', 'label' => 'Lagerverwaltung',    'href' => BASE_PATH . '/lager/verwaltung.php'],
     ],

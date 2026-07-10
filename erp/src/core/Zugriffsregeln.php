@@ -121,6 +121,10 @@ final class Zugriffsregeln
             'variante_suche.php'               => 'bestand.anzeigen',
             'nachtrag_liste.php'               => 'bestand.anzeigen',
             'nachtrag_speichern.php'           => 'bestand.korrigieren',
+            'chargen_nachverfolgung.php'       => 'bestand.anzeigen',
+            'artikel_suche_ajax.php'           => 'bestand.anzeigen',
+            'chargen_fuer_artikel_ajax.php'    => 'bestand.anzeigen',
+            'bewegungen_ajax.php'              => 'bestand.anzeigen',
             'picklisten.php'                   => 'lager.anzeigen',
             'pickliste_erstellen.php'          => 'lager.bearbeiten',
             'pickliste_loeschen.php'           => 'lager.bearbeiten',
@@ -378,7 +382,7 @@ final class Zugriffsregeln
     private static array $jsonEndpunkte = [
         'rollen'      => ['berechtigung_setzen.php'],
         'benutzer'    => ['link_erneut_senden.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
-        'lager'       => ['verwaltung_status_setzen.php', 'verwaltung_aktualisieren.php', 'verwaltung_speichern.php', 'variante_suche.php'],
+        'lager'       => ['verwaltung_status_setzen.php', 'verwaltung_aktualisieren.php', 'verwaltung_speichern.php', 'variante_suche.php', 'artikel_suche_ajax.php', 'chargen_fuer_artikel_ajax.php'],
         'kasse'       => [
             'ajax_messe.php', 'bon_speichern.php', 'ajax_parken.php', 'ajax_nullbon.php',
             'abschluss_periode_mail.php', 'abschluss_mail.php', 'ajax_auftrag_laden.php',
