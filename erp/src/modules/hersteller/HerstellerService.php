@@ -89,8 +89,12 @@ class HerstellerService
 
         $id = $this->repo->insert($data);
 
-        if ($datei && ($datei['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $uploadCode = $datei ? ($datei['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+        if ($uploadCode !== UPLOAD_ERR_NO_FILE) {
             try {
+                if ($uploadCode !== UPLOAD_ERR_OK) {
+                    throw new RuntimeException(self::uploadFehlerText($uploadCode));
+                }
                 $this->repo->updateLogo($id, $this->speichereLogo($datei, $id));
             } catch (RuntimeException $e) {
                 Logger::log('hersteller.anlegen', 'hersteller', $id, ['name' => $data['name']]);
@@ -118,8 +122,12 @@ class HerstellerService
         $data['logo_pfad'] = $aktuell['logo_pfad'] ?? null;
 
         $logoFehler = null;
-        if ($datei && ($datei['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $uploadCode = $datei ? ($datei['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+        if ($uploadCode !== UPLOAD_ERR_NO_FILE) {
             try {
+                if ($uploadCode !== UPLOAD_ERR_OK) {
+                    throw new RuntimeException(self::uploadFehlerText($uploadCode));
+                }
                 $data['logo_pfad'] = $this->speichereLogo($datei, (int)$data['id']);
             } catch (RuntimeException $e) {
                 $logoFehler = 'Logo nicht übernommen: ' . $e->getMessage() . ' (bisheriges Logo bleibt erhalten)';
@@ -174,6 +182,19 @@ class HerstellerService
         if ($data['reo_land']) $data['reo_land'] = strtoupper($data['reo_land']);
         $data['aktiv'] = isset($data['aktiv']) && $data['aktiv'] ? 1 : 0;
         return $data;
+    }
+
+    /** Übersetzt einen PHP-Upload-Fehlercode in eine verständliche Meldung. */
+    private static function uploadFehlerText(int $code): string
+    {
+        return match ($code) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Datei zu groß.',
+            UPLOAD_ERR_PARTIAL      => 'Datei wurde nur teilweise hochgeladen (Verbindungsabbruch?).',
+            UPLOAD_ERR_NO_TMP_DIR   => 'Server-Konfigurationsfehler: kein temporäres Upload-Verzeichnis (upload_tmp_dir in php.ini prüfen).',
+            UPLOAD_ERR_CANT_WRITE   => 'Server konnte die Datei nicht auf die Festplatte schreiben (Schreibrechte prüfen).',
+            UPLOAD_ERR_EXTENSION    => 'Upload wurde durch eine PHP-Erweiterung blockiert.',
+            default                 => 'Unbekannter Upload-Fehler (Code ' . $code . ').',
+        };
     }
 
     /**

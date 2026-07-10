@@ -17,6 +17,19 @@ if (empty($_POST) && empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 
     exit;
 }
 
+/** Übersetzt einen PHP-Upload-Fehlercode in eine verständliche Meldung. */
+function uploadFehlerText(int $code): string
+{
+    return match ($code) {
+        UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Datei zu groß.',
+        UPLOAD_ERR_PARTIAL      => 'Datei wurde nur teilweise hochgeladen (Verbindungsabbruch?).',
+        UPLOAD_ERR_NO_TMP_DIR   => 'Server-Konfigurationsfehler: kein temporäres Upload-Verzeichnis (upload_tmp_dir in php.ini prüfen).',
+        UPLOAD_ERR_CANT_WRITE   => 'Server konnte die Datei nicht auf die Festplatte schreiben (Schreibrechte prüfen).',
+        UPLOAD_ERR_EXTENSION    => 'Upload wurde durch eine PHP-Erweiterung blockiert.',
+        default                 => 'Unbekannter Upload-Fehler (Code ' . $code . ').',
+    };
+}
+
 $db  = Database::getInstance();
 $tab = $_POST['tab'] ?? '';
 
@@ -74,16 +87,21 @@ if ($tab === 'firma') {
         setSetting($db, $feld, trim($_POST[$feld] ?? ''));
     }
 
-    // Logo für Hauptshop (slug='mealana')
-    if (!empty($_FILES['logo_datei']) && $_FILES['logo_datei']['error'] === UPLOAD_ERR_OK) {
-        $shopRow = $db->query("SELECT id FROM shops WHERE slug = 'mealana' LIMIT 1")->fetch();
-        if ($shopRow) {
-            try {
-                $pfad = speichereShopLogo($_FILES['logo_datei'], 'mealana');
-                $db->prepare("UPDATE shops SET logo_pfad = ? WHERE slug = 'mealana'")->execute([$pfad]);
-                setSetting($db, 'logo_pfad', $pfad);
-            } catch (RuntimeException $e) {
-                $_SESSION['fehler'] = ['Logo nicht übernommen: ' . $e->getMessage()];
+    // Logo für Hauptshop (slug='mealana') — jeder Fehlercode außer "keine Datei
+    // ausgewählt" muss gemeldet werden, sonst scheitert der Upload lautlos.
+    if (!empty($_FILES['logo_datei']) && $_FILES['logo_datei']['error'] !== UPLOAD_ERR_NO_FILE) {
+        if ($_FILES['logo_datei']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['fehler'] = ['Logo nicht übernommen: ' . uploadFehlerText($_FILES['logo_datei']['error'])];
+        } else {
+            $shopRow = $db->query("SELECT id FROM shops WHERE slug = 'mealana' LIMIT 1")->fetch();
+            if ($shopRow) {
+                try {
+                    $pfad = speichereShopLogo($_FILES['logo_datei'], 'mealana');
+                    $db->prepare("UPDATE shops SET logo_pfad = ? WHERE slug = 'mealana'")->execute([$pfad]);
+                    setSetting($db, 'logo_pfad', $pfad);
+                } catch (RuntimeException $e) {
+                    $_SESSION['fehler'] = ['Logo nicht übernommen: ' . $e->getMessage()];
+                }
             }
         }
     }
@@ -120,11 +138,15 @@ if ($tab === 'kanaele_update') {
 
     $logoPfad = null;
     $logoFehler = null;
-    if (!empty($_FILES['shop_logo']) && $_FILES['shop_logo']['error'] === UPLOAD_ERR_OK) {
-        try {
-            $logoPfad = speichereShopLogo($_FILES['shop_logo'], $shop['slug']);
-        } catch (RuntimeException $e) {
-            $logoFehler = 'Logo nicht übernommen: ' . $e->getMessage();
+    if (!empty($_FILES['shop_logo']) && $_FILES['shop_logo']['error'] !== UPLOAD_ERR_NO_FILE) {
+        if ($_FILES['shop_logo']['error'] !== UPLOAD_ERR_OK) {
+            $logoFehler = 'Logo nicht übernommen: ' . uploadFehlerText($_FILES['shop_logo']['error']);
+        } else {
+            try {
+                $logoPfad = speichereShopLogo($_FILES['shop_logo'], $shop['slug']);
+            } catch (RuntimeException $e) {
+                $logoFehler = 'Logo nicht übernommen: ' . $e->getMessage();
+            }
         }
     }
 
@@ -158,11 +180,15 @@ if ($tab === 'kanaele_neu') {
 
     $logoPfad = null;
     $logoFehler = null;
-    if (!empty($_FILES['neu_logo']) && $_FILES['neu_logo']['error'] === UPLOAD_ERR_OK) {
-        try {
-            $logoPfad = speichereShopLogo($_FILES['neu_logo'], $slug);
-        } catch (RuntimeException $e) {
-            $logoFehler = 'Kanal angelegt, aber Logo nicht übernommen: ' . $e->getMessage();
+    if (!empty($_FILES['neu_logo']) && $_FILES['neu_logo']['error'] !== UPLOAD_ERR_NO_FILE) {
+        if ($_FILES['neu_logo']['error'] !== UPLOAD_ERR_OK) {
+            $logoFehler = 'Kanal angelegt, aber Logo nicht übernommen: ' . uploadFehlerText($_FILES['neu_logo']['error']);
+        } else {
+            try {
+                $logoPfad = speichereShopLogo($_FILES['neu_logo'], $slug);
+            } catch (RuntimeException $e) {
+                $logoFehler = 'Kanal angelegt, aber Logo nicht übernommen: ' . $e->getMessage();
+            }
         }
     }
 
