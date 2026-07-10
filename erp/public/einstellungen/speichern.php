@@ -17,21 +17,37 @@ function setSetting(PDO $db, string $key, string $value): void
        ->execute([':k' => $key, ':v' => $value, ':v2' => $value]);
 }
 
-function speichereShopLogo(array $file, string $slug): ?string
+/**
+ * Speichert ein hochgeladenes Shop-Logo. Wirft RuntimeException mit einer für den
+ * Anwender verständlichen Meldung statt still null zurückzugeben — sonst zeigt die
+ * Seite "Firmenangaben gespeichert", obwohl das Logo gar nicht übernommen wurde,
+ * ohne jeden Hinweis warum.
+ */
+function speichereShopLogo(array $file, string $slug): string
 {
-    if (!$file || $file['error'] !== UPLOAD_ERR_OK) return null;
-    if ($file['size'] > 2 * 1024 * 1024) return null;
+    if ($file['size'] > 2 * 1024 * 1024) {
+        throw new RuntimeException('Datei zu groß (max. 2 MB).');
+    }
 
     $ext    = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $erlaubt = ['png', 'jpg', 'jpeg', 'webp'];
-    if (!in_array($ext, $erlaubt)) return null;
+    if (!in_array($ext, $erlaubt)) {
+        throw new RuntimeException('Nicht unterstütztes Dateiformat (' . $ext . ') — erlaubt: PNG, JPG, WEBP.');
+    }
 
     $zielDir = __DIR__ . '/../img/logos/';
-    if (!is_dir($zielDir)) mkdir($zielDir, 0755, true);
+    if (!is_dir($zielDir) && !mkdir($zielDir, 0755, true) && !is_dir($zielDir)) {
+        throw new RuntimeException('Zielordner für Logos konnte nicht angelegt werden (Schreibrechte prüfen).');
+    }
+    if (!is_writable($zielDir)) {
+        throw new RuntimeException('Zielordner für Logos ist nicht beschreibbar (Schreibrechte prüfen).');
+    }
 
     $dateiname = 'logo_' . preg_replace('/[^a-z0-9\-]/', '', $slug) . '.' . $ext;
     $zielPfad  = $zielDir . $dateiname;
-    if (!move_uploaded_file($file['tmp_name'], $zielPfad)) return null;
+    if (!move_uploaded_file($file['tmp_name'], $zielPfad)) {
+        throw new RuntimeException('Datei konnte nicht gespeichert werden (Schreibrechte prüfen).');
+    }
 
     return 'img/logos/' . $dateiname;
 }
@@ -52,15 +68,19 @@ if ($tab === 'firma') {
     if (!empty($_FILES['logo_datei']) && $_FILES['logo_datei']['error'] === UPLOAD_ERR_OK) {
         $shopRow = $db->query("SELECT id FROM shops WHERE slug = 'mealana' LIMIT 1")->fetch();
         if ($shopRow) {
-            $pfad = speichereShopLogo($_FILES['logo_datei'], 'mealana');
-            if ($pfad) {
+            try {
+                $pfad = speichereShopLogo($_FILES['logo_datei'], 'mealana');
                 $db->prepare("UPDATE shops SET logo_pfad = ? WHERE slug = 'mealana'")->execute([$pfad]);
                 setSetting($db, 'logo_pfad', $pfad);
+            } catch (RuntimeException $e) {
+                $_SESSION['fehler'] = ['Logo nicht übernommen: ' . $e->getMessage()];
             }
         }
     }
 
-    $_SESSION['erfolg'] = 'Firmenangaben gespeichert.';
+    if (empty($_SESSION['fehler'])) {
+        $_SESSION['erfolg'] = 'Firmenangaben gespeichert.';
+    }
     header('Location: index.php?tab=firma');
     exit;
 }
@@ -74,8 +94,6 @@ if ($tab === 'kanaele_update') {
         exit;
     }
 
-    $shopRow = $db->prepare("SELECT slug FROM shops WHERE id = ?")->execute([$shopId])
-        ? $db->prepare("SELECT slug FROM shops WHERE id = ?") : null;
     $stmt = $db->prepare("SELECT slug FROM shops WHERE id = ?");
     $stmt->execute([$shopId]);
     $shop = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -91,8 +109,13 @@ if ($tab === 'kanaele_update') {
     $istAktiv = isset($_POST['ist_aktiv']) && $_POST['ist_aktiv'] === '1' ? 1 : 0;
 
     $logoPfad = null;
+    $logoFehler = null;
     if (!empty($_FILES['shop_logo']) && $_FILES['shop_logo']['error'] === UPLOAD_ERR_OK) {
-        $logoPfad = speichereShopLogo($_FILES['shop_logo'], $shop['slug']);
+        try {
+            $logoPfad = speichereShopLogo($_FILES['shop_logo'], $shop['slug']);
+        } catch (RuntimeException $e) {
+            $logoFehler = 'Logo nicht übernommen: ' . $e->getMessage();
+        }
     }
 
     if ($logoPfad) {
@@ -103,7 +126,11 @@ if ($tab === 'kanaele_update') {
            ->execute([$name, $wcUrl ?: null, $subMarke, $istAktiv, $shopId]);
     }
 
-    $_SESSION['erfolg'] = 'Kanal gespeichert.';
+    if ($logoFehler) {
+        $_SESSION['fehler'] = [$logoFehler];
+    } else {
+        $_SESSION['erfolg'] = 'Kanal gespeichert.';
+    }
     header('Location: index.php?tab=kanaele');
     exit;
 }
@@ -120,14 +147,19 @@ if ($tab === 'kanaele_neu') {
     }
 
     $logoPfad = null;
+    $logoFehler = null;
     if (!empty($_FILES['neu_logo']) && $_FILES['neu_logo']['error'] === UPLOAD_ERR_OK) {
-        $logoPfad = speichereShopLogo($_FILES['neu_logo'], $slug);
+        try {
+            $logoPfad = speichereShopLogo($_FILES['neu_logo'], $slug);
+        } catch (RuntimeException $e) {
+            $logoFehler = 'Kanal angelegt, aber Logo nicht übernommen: ' . $e->getMessage();
+        }
     }
 
     try {
         $db->prepare("INSERT INTO shops (slug, name, logo_pfad, sub_marke, ist_aktiv) VALUES (?,?,?,0,1)")
            ->execute([$slug, $name, $logoPfad]);
-        $_SESSION['erfolg'] = 'Kanal angelegt.';
+        $_SESSION[$logoFehler ? 'fehler' : 'erfolg'] = $logoFehler ? [$logoFehler] : 'Kanal angelegt.';
     } catch (PDOException $e) {
         $_SESSION['fehler'] = 'Slug bereits vorhanden.';
     }
