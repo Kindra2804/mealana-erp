@@ -90,8 +90,12 @@ class HerstellerService
         $id = $this->repo->insert($data);
 
         if ($datei && ($datei['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-            $logo = $this->speichereLogo($datei, $id);
-            if ($logo) $this->repo->updateLogo($id, $logo);
+            try {
+                $this->repo->updateLogo($id, $this->speichereLogo($datei, $id));
+            } catch (RuntimeException $e) {
+                Logger::log('hersteller.anlegen', 'hersteller', $id, ['name' => $data['name']]);
+                return ['erfolg' => true, 'id' => $id, 'fehler' => ['Hersteller gespeichert, aber Logo: ' . $e->getMessage()]];
+            }
         }
 
         Logger::log('hersteller.anlegen', 'hersteller', $id, ['name' => $data['name']]);
@@ -113,14 +117,18 @@ class HerstellerService
         $aktuell = $this->repo->findById((int)$data['id']);
         $data['logo_pfad'] = $aktuell['logo_pfad'] ?? null;
 
+        $logoFehler = null;
         if ($datei && ($datei['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-            $logo = $this->speichereLogo($datei, (int)$data['id']);
-            if ($logo) $data['logo_pfad'] = $logo;
+            try {
+                $data['logo_pfad'] = $this->speichereLogo($datei, (int)$data['id']);
+            } catch (RuntimeException $e) {
+                $logoFehler = 'Logo nicht übernommen: ' . $e->getMessage() . ' (bisheriges Logo bleibt erhalten)';
+            }
         }
 
         $this->repo->update($data);
         Logger::log('hersteller.bearbeiten', 'hersteller', $data['id'], ['name' => $data['name']]);
-        return ['erfolg' => true];
+        return $logoFehler ? ['erfolg' => true, 'fehler' => [$logoFehler]] : ['erfolg' => true];
     }
 
     /**
@@ -173,17 +181,36 @@ class HerstellerService
      * speichert als JPEG (90% Qualität) unter public/img/hersteller/{id}.jpg.
      *
      * Unterstützte Formate: JPEG, PNG, GIF, WebP.
-     * Gibt null zurück wenn das Format nicht erlaubt oder das Bild nicht lesbar ist.
+     * Wirft RuntimeException mit einer für den Anwender verständlichen Meldung statt
+     * eines PHP-Fatal-Errors (fehlende GD-Erweiterung, kaputtes Bild, Schreibrechte) —
+     * ein unbehandelter Fatal Error hier bricht die JSON-Antwort komplett ab und zeigt
+     * dem Anwender nur "Netzwerkfehler" statt der eigentlichen Ursache.
      */
-    private function speichereLogo(array $datei, int $id): ?string
+    private function speichereLogo(array $datei, int $id): string
     {
+        if (!extension_loaded('gd')) {
+            throw new RuntimeException('PHP-GD-Erweiterung ist auf diesem Server nicht aktiviert.');
+        }
+
         $erlaubte = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($datei['type'], $erlaubte)) return null;
+        if (!in_array($datei['type'], $erlaubte)) {
+            throw new RuntimeException('Nicht unterstütztes Bildformat (' . $datei['type'] . ').');
+        }
 
         $zielOrdner = __DIR__ . '/../../../public/img/hersteller/';
-        if (!is_dir($zielOrdner)) mkdir($zielOrdner, 0755, true);
+        if (!is_dir($zielOrdner) && !mkdir($zielOrdner, 0755, true) && !is_dir($zielOrdner)) {
+            throw new RuntimeException('Zielordner für Logos konnte nicht angelegt werden (Schreibrechte prüfen).');
+        }
+        if (!is_writable($zielOrdner)) {
+            throw new RuntimeException('Zielordner für Logos ist nicht beschreibbar (Schreibrechte prüfen).');
+        }
 
-        [$breite, $hoehe, $typ] = getimagesize($datei['tmp_name']);
+        $bildinfo = @getimagesize($datei['tmp_name']);
+        if ($bildinfo === false) {
+            throw new RuntimeException('Bilddatei konnte nicht gelesen werden (beschädigt oder kein gültiges Bild).');
+        }
+        [$breite, $hoehe, $typ] = $bildinfo;
+
         $src = match($typ) {
             IMAGETYPE_JPEG => imagecreatefromjpeg($datei['tmp_name']),
             IMAGETYPE_PNG  => imagecreatefrompng($datei['tmp_name']),
@@ -191,7 +218,9 @@ class HerstellerService
             IMAGETYPE_WEBP => imagecreatefromwebp($datei['tmp_name']),
             default        => null,
         };
-        if (!$src) return null;
+        if (!$src) {
+            throw new RuntimeException('Bildformat konnte nicht verarbeitet werden.');
+        }
 
         // Skalierung: max. 200×200, niemals vergrößern (scale <= 1.0)
         $max   = 200;
@@ -204,7 +233,11 @@ class HerstellerService
 
         // Dateiname = Hersteller-ID + .jpg (Überschreibt vorheriges Logo automatisch)
         $dateiname = $id . '.jpg';
-        imagejpeg($dest, $zielOrdner . $dateiname, 90);
+        if (!imagejpeg($dest, $zielOrdner . $dateiname, 90)) {
+            imagedestroy($src);
+            imagedestroy($dest);
+            throw new RuntimeException('Logo konnte nicht gespeichert werden (Schreibrechte prüfen).');
+        }
         imagedestroy($src);
         imagedestroy($dest);
 

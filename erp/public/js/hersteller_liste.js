@@ -89,8 +89,12 @@ async function modalSpeichern() {
         var fd   = new FormData(document.getElementById('h-form'));
         var resp = await fetch(url, { method: 'POST', body: fd });
         var data = await resp.json();
-        if (data.erfolg) window.location.reload();
-        else document.getElementById('h-fehler').textContent = Array.isArray(data.fehler) ? data.fehler.join(' · ') : (data.fehler || 'Unbekannter Fehler');
+        if (data.erfolg) {
+            if (data.fehler) alert(Array.isArray(data.fehler) ? data.fehler.join(' · ') : data.fehler);
+            window.location.reload();
+        } else {
+            document.getElementById('h-fehler').textContent = Array.isArray(data.fehler) ? data.fehler.join(' · ') : (data.fehler || 'Unbekannter Fehler');
+        }
     } catch (e) {
         document.getElementById('h-fehler').textContent = 'Netzwerkfehler – bitte nochmal versuchen';
     }
