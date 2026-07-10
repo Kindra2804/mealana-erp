@@ -7,6 +7,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// PHP leert $_POST/$_FILES komplett und OHNE jeden Fehlercode, wenn die Gesamtgröße
+// des Requests post_max_size übersteigt — das erklärt "Formular tut einfach gar
+// nichts, keine Fehlermeldung, kein Feld wird gespeichert" bei größeren Uploads.
+// Ohne diesen Check würde $tab unten einfach leer sein und keiner der Blöcke greifen.
+if (empty($_POST) && empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    $_SESSION['fehler'] = 'Die hochgeladene Datei ist zu groß für die Server-Konfiguration (post_max_size in php.ini). Bitte eine kleinere Datei wählen oder den Administrator bitten, post_max_size/upload_max_filesize zu erhöhen.';
+    header('Location: index.php');
+    exit;
+}
+
 $db  = Database::getInstance();
 $tab = $_POST['tab'] ?? '';
 
