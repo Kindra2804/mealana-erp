@@ -265,12 +265,32 @@ if (!empty($posGescannt)) {
     }
 }
 
+// ─── Nachnahme-Betrag: nur der Wert der JETZT versendeten Positionen ─────────
+// Sonst würde bei jeder Teillieferung der volle ursprüngliche Bestellwert an die
+// Post gemeldet — bei der zweiten Teillieferung hätte der Kunde dann doppelt bezahlt.
+// Versandkosten werden bewusst nur bei der allerersten Lieferung dieses Auftrags
+// mitkassiert (Jackys Entscheidung 2026-07-10), spätere Teillieferungen nur Warenwert.
+$nachnahmeBetrag = null;
+if (($auftrag['zahlungsart'] ?? '') === 'nachnahme') {
+    $warenwertBrutto = 0.0;
+    foreach ($gelieferteFuerPdf as $gp) {
+        $warenwertBrutto += (float)$gp['gesamtpreis_netto'] * (1 + (float)$gp['steuer_prozent'] / 100);
+    }
+    $stmtAnzahl = $db->prepare("SELECT COUNT(*) FROM auftrag_lieferungen WHERE auftrag_id = ?");
+    $stmtAnzahl->execute([$auftragId]);
+    $istErsteLieferung = ((int)$stmtAnzahl->fetchColumn() <= 1); // diese Lieferung ist schon eingetragen
+    if ($istErsteLieferung) {
+        $warenwertBrutto += (float)($auftrag['versandkosten'] ?? 0);
+    }
+    $nachnahmeBetrag = round($warenwertBrutto, 2);
+}
+
 // ─── EasyPak XML → PLC-Ordner ────────────────────────────────────────────────
 $plcOrdner = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel='plc_polling_ordner'")->fetchColumn();
 if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand' && $versanddienstleister === 'post_at') {
     try {
         $exporter = new EasyPakExporter($db);
-        $exporter->exportiere($auftragId, $gewicht, $plcOrdner);
+        $exporter->exportiere($auftragId, $gewicht, $plcOrdner, $nachnahmeBetrag);
     } catch (Throwable $e) {
         error_log('[EasyPak] Fehler: ' . $e->getMessage());
     }

@@ -96,10 +96,8 @@ require_once __DIR__ . '/shell_top.php';
                  class="ks-btn ks-btn-secondary" style="padding:5px 10px;font-size:12px" title="Als A4-Rechnung anzeigen/drucken">A4</a>
             <?php endif; ?>
             <?php if ($bon['typ'] === 'verkauf' && !$bon['storniert']): ?>
-              <form method="post" action="bon_stornieren.php" style="display:inline" onsubmit="return confirm('Bon wirklich stornieren?')">
-                <input type="hidden" name="bon_id" value="<?= $bon['id'] ?>">
-                <button type="submit" class="ks-btn ks-btn-danger" style="padding:5px 10px;font-size:12px">Storno</button>
-              </form>
+              <button type="button" class="ks-btn ks-btn-danger" style="padding:5px 10px;font-size:12px"
+                      onclick="stornoStarten(<?= $bon['id'] ?>)">Storno</button>
             <?php endif; ?>
           </td>
         </tr>
@@ -110,5 +108,97 @@ require_once __DIR__ . '/shell_top.php';
   <?php endif; ?>
 
 </div>
+
+<!-- RKSV: BFR-Erreichbarkeits-Popup (2 Eskalationsstufen), gleiches Muster wie bon.php -->
+<style>
+.ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:900; align-items:center; justify-content:center; }
+.ov.offen { display:flex; }
+.ov-box { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:32px 36px; min-width:360px; max-width:460px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.25); text-align:center; }
+.ov-title { font-size:20px; font-weight:700; color:#1e3a5f; margin-bottom:20px; text-align:center; }
+.ov-btn { border:none; border-radius:8px; padding:13px 20px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; display:block; width:100%; text-align:center; }
+.ov-btn-prim { background:#2563eb; color:#fff; }
+.ov-btn-prim:hover { background:#1d4ed8; }
+</style>
+
+<div class="ov" id="ov-bfr-ausfall">
+  <div class="ov-box">
+    <div style="font-size:32px;margin-bottom:6px">⚠</div>
+    <div id="bfr-popup-stufe1">
+      <div class="ov-title">Dienst nicht erreichbar!</div>
+      <p style="color:#64748b;font-size:14px;margin-bottom:22px">
+        Die technische Sicherheitseinrichtung (BFR) antwortet nicht.
+      </p>
+    </div>
+    <div id="bfr-popup-stufe2" style="display:none">
+      <div class="ov-title">Dienst immer noch nicht erreichbar</div>
+      <p style="color:#64748b;font-size:14px;margin-bottom:14px">
+        Der Storno bleibt gesperrt, bis der BFR-Dienst wieder antwortet.
+        Bitte am Gerät prüfen:
+      </p>
+      <ul style="text-align:left;color:#64748b;font-size:13px;margin:0 0 22px 20px;padding:0">
+        <li>Läuft "BFR" in der Taskleiste?</li>
+        <li>Signaturkarte im Kartenleser gesteckt?</li>
+        <li>Windows-Update / Firewall gerade aktiv?</li>
+      </ul>
+    </div>
+    <div id="bfr-popup-kontext" style="font-size:12px;color:#94a3b8;margin-bottom:16px"></div>
+    <button class="ov-btn ov-btn-prim" id="btn-bfr-retry" onclick="bfrErneutVersuchen()">Erneut versuchen</button>
+  </div>
+</div>
+
+<script>
+var _bfrFehlschlagAnzahl  = 0;
+var _bfrPendingStornoId   = null;
+
+function ov(id) { document.getElementById(id).classList.add('offen'); }
+function ovSchliessen(id) { document.getElementById(id).classList.remove('offen'); }
+
+function zeigeBfrPopup(kontextText) {
+    _bfrFehlschlagAnzahl++;
+    var stufe2 = _bfrFehlschlagAnzahl >= 2;
+    document.getElementById('bfr-popup-stufe1').style.display = stufe2 ? 'none' : 'block';
+    document.getElementById('bfr-popup-stufe2').style.display = stufe2 ? 'block' : 'none';
+    document.getElementById('btn-bfr-retry').textContent = stufe2
+        ? 'Überprüft — Dienst sollte wieder laufen'
+        : 'Erneut versuchen';
+    document.getElementById('bfr-popup-kontext').textContent = kontextText || '';
+    ov('ov-bfr-ausfall');
+}
+
+function bfrErneutVersuchen() {
+    ovSchliessen('ov-bfr-ausfall');
+    if (_bfrPendingStornoId) {
+        var bid = _bfrPendingStornoId;
+        _bfrPendingStornoId = null;
+        stornoAusfuehren(bid);
+    }
+}
+
+function stornoStarten(bonId) {
+    if (!confirm('Bon wirklich stornieren?')) return;
+    stornoAusfuehren(bonId);
+}
+
+function stornoAusfuehren(bonId) {
+    var body = new FormData();
+    body.append('bon_id', bonId);
+    fetch('<?= BASE_PATH ?>/kasse/ajax_bon_stornieren.php', { method: 'POST', body: body })
+        .then(r => r.json())
+        .then(function(d) {
+            if (d.erfolg) {
+                _bfrFehlschlagAnzahl = 0;
+                location.reload();
+            } else if (d.bfr_nicht_erreichbar) {
+                _bfrPendingStornoId = bonId;
+                zeigeBfrPopup('Storno wartet auf den Dienst.');
+            } else {
+                alert(d.fehler || 'Fehler beim Stornieren.');
+            }
+        })
+        .catch(function() {
+            alert('Netzwerkfehler — bitte erneut versuchen.');
+        });
+}
+</script>
 
 <?php require_once __DIR__ . '/shell_bottom.php'; ?>

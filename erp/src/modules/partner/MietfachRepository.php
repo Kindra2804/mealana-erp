@@ -111,7 +111,13 @@ class MietfachRepository
         return $stmt->fetchAll();
     }
 
-    /** Legt ein neues Mietfach an und gibt die neue ID zurück. */
+    /**
+     * Legt ein neues Mietfach an und gibt die neue ID zurück.
+     * array_intersect_key() filtert überzählige Keys raus (z.B. falls Neu- und
+     * Bearbeiten-Formular jemals zu einem gemeinsamen Modal zusammengelegt werden
+     * und ein verstecktes id-Feld mitschicken) — sonst wirft PDO bei einem extra
+     * Key ohne passenden Platzhalter SQLSTATE[HY093], siehe [[bug_hersteller_modal_insert]].
+     */
     public function insert(array $data): int
     {
         $stmt = $this->db->prepare('
@@ -125,7 +131,12 @@ class MietfachRepository
                 :standard_preis, :notiz, :aktiv
             )
         ');
-        $stmt->execute($data);
+        $erlaubteKeys = [
+            'fach_bezeichnung', 'ort_beschreibung',
+            'laenge_cm', 'breite_cm', 'hoehe_cm',
+            'standard_preis', 'notiz', 'aktiv',
+        ];
+        $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
         return (int) $this->db->lastInsertId();
     }
 
@@ -144,7 +155,12 @@ class MietfachRepository
                 aktiv             = :aktiv
             WHERE id = :id
         ');
-        $stmt->execute($data);
+        $erlaubteKeys = [
+            'id', 'fach_bezeichnung', 'ort_beschreibung',
+            'laenge_cm', 'breite_cm', 'hoehe_cm',
+            'standard_preis', 'notiz', 'aktiv',
+        ];
+        $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
         return $stmt->rowCount() > 0;
     }
 

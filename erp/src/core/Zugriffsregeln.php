@@ -162,6 +162,10 @@ final class Zugriffsregeln
             'aktualisieren.php'     => 'bestellwesen.bearbeiten',
             'rechnung_speichern.php' => 'bestellwesen.bearbeiten',
             'stornieren.php'        => 'bestellwesen.bearbeiten',
+            'dokument_erstellen.php' => 'bestellwesen.bearbeiten',
+            'mail_vorschau.php'     => 'bestellwesen.bearbeiten',
+            'mail_senden.php'       => 'bestellwesen.bearbeiten',
+            'dokument_download.php' => 'bestellwesen.anzeigen',
         ],
 
         // === Lieferanten-Stammdaten ===
@@ -256,8 +260,9 @@ final class Zugriffsregeln
             'bon_speichern.php'          => 'kasse.starten',
             'bon_druck.php'              => 'kasse.starten',
             'bon_a4.php'                 => 'kasse.starten',
-            'bon_stornieren.php'         => 'kasse.starten',
+            'ajax_bon_stornieren.php'    => 'kasse.starten',
             'bon_journal.php'            => 'kasse.starten',
+            'ajax_kundenanzeige_sync.php' => 'kasse.starten',
             'ajax_artikel.php'           => 'kasse.starten',
             'ajax_auftrag_laden.php'     => 'kasse.starten',
             'ajax_kunden_suche.php'      => 'kasse.starten',
@@ -383,6 +388,7 @@ final class Zugriffsregeln
             'abschluss_periode_mail.php', 'abschluss_mail.php', 'ajax_auftrag_laden.php',
             'ajax_kunden_suche.php', 'ajax_kassenlade.php', 'ajax_schnellwahl.php',
             'ajax_artikel.php', 'offene_auswahl_speichern.php',
+            'ajax_bon_stornieren.php', 'ajax_kundenanzeige_sync.php',
         ],
         'artikel'     => [
             'bild_upload.php', 'bulk_kategorie_speichern.php', 'bild_ajax.php', 'bild_loeschen.php',
