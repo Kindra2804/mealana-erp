@@ -46,7 +46,11 @@ function positionHinzufuegen(artikel) {
             ${window.PREISANZEIGE === 'beides' ? '<div class="pos-netto-hint" style="font-size:11px;color:var(--color-text-muted);margin-top:2px">Netto: —</div>' : ''}
         </td>
         <td><input type="number" name="positionen[${idx}][steuer_prozent_anzeige]" class="erp-input" step="0.01" value="${a.steuer_prozent || 20}" style="width:60px" oninput="aktualisiereZeile(${idx})" readonly></td>
-        <td><input type="number" name="positionen[${idx}][rabatt_prozent]" class="erp-input pos-rabatt" step="0.01" min="0" max="100" value="${a.rabatt_prozent || 0}" style="width:60px" oninput="aktualisiereZeile(${idx})"></td>
+        <td style="white-space:nowrap">
+            <input type="number" name="positionen[${idx}][rabatt_prozent]" class="erp-input pos-rabatt" step="0.01" min="0" max="100" value="${a.rabatt_prozent || 0}" style="width:52px" oninput="aktualisiereZeile(${idx})">
+            <button type="button" onclick="rabattEurEingeben(${idx})" title="Rabatt als €-Betrag eingeben (wird in % umgerechnet)"
+                    style="padding:4px 6px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-bg-secondary);cursor:pointer;font-size:12px">€</button>
+        </td>
         <td class="pos-gesamt" style="text-align:right;font-weight:600">0,00 €</td>
         <td><button type="button" onclick="positionEntfernen(this)" style="background:none;border:none;color:var(--color-danger);cursor:pointer;font-size:16px">✕</button></td>
     `;
@@ -121,6 +125,27 @@ function aktualisiereZeile(idx) {
     const hint = tr.querySelector('.pos-netto-hint');
     if (hint) hint.textContent = 'Netto: ' + fmtEur(netto * (1 - rabatt / 100));
     aktualisiereAnzeige();
+}
+
+// Rabatt als €-Betrag eingeben — wird sofort in den äquivalenten %-Satz umgerechnet
+// und in rabatt_prozent gespeichert (gleiches Prinzip wie der "€ Neuer Gesamtpreis"-Tab
+// beim Bon-Rabatt in der Kasse: kein eigenes DB-Feld nötig, ein Wert bleibt die Quelle).
+function rabattEurEingeben(idx) {
+    const tr = document.querySelector(`tr[data-idx="${idx}"]`);
+    if (!tr) return;
+    const menge = parseFloat(tr.querySelector('.pos-menge').value) || 0;
+    const preis = parseFloat(tr.querySelector('.pos-preis').value) || 0;
+    const alt   = menge * preis;
+    if (alt <= 0) { alert('Bitte zuerst Menge und Preis eingeben.'); return; }
+
+    const eingabe = prompt('Rabatt in € für diese Position (Gesamt: ' + fmtEur(alt) + '):');
+    if (eingabe === null) return;
+    const eur = parseFloat(eingabe.replace(',', '.'));
+    if (!eur || eur <= 0 || eur >= alt) { alert('Ungültiger Betrag — muss zwischen 0 und ' + fmtEur(alt) + ' liegen.'); return; }
+
+    const pct = (eur / alt) * 100;
+    tr.querySelector('.pos-rabatt').value = pct.toFixed(2);
+    aktualisiereZeile(idx);
 }
 
 function aktualisiereAnzeige() {
