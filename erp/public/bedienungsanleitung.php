@@ -336,6 +336,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Auftrag wählen: Pickliste scannen/anklicken <em>oder</em> Auftragsnummer direkt eingeben</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Jeden Artikel scannen — Zeile wird <span style="color:#22c55e;font-weight:600">grün</span> wenn Menge vollständig, <span style="color:#ef4444;font-weight:600">rot</span> wenn zu viel</div></div>
             <div class="ba-hint">💡 Vorwahl: Zahl eingeben und dann einmal scannen → bucht mehrere auf einmal. Bild des Artikels erscheint rechts.</div>
+            <div class="ba-hint">💡 Artikel ohne EAN? Doppelklick auf die EAN-Zelle (oder "⚠ Kein EAN — nachtragen") öffnet ein Eingabefeld direkt auf dem Scan-Bildschirm — speichert sofort und kann direkt weitergescannt werden.</div>
 
             <h3 id="packplatz-versenden">Versenden <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">4</div><div>Wenn alle Zeilen grün: Button <strong>Verpacken</strong> wird aktiv</div></div>
@@ -354,11 +355,15 @@ require_once __DIR__ . '/includes/shell_top.php';
 
             <!-- EINKAUF -->
             <h2 id="einkauf">Einkauf & Bestellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <p>Hier werden Bestellungen bei Lieferanten verwaltet (Einkauf = wir bestellen bei Lieferanten, nicht: Kunden bestellen bei uns).</p>
+            <p>Hier werden Bestellungen bei Lieferanten verwaltet (Einkauf = wir bestellen bei Lieferanten, nicht: Kunden bestellen bei uns). Lieferanten selbst siehe <a href="#lieferanten">Lieferanten</a>.</p>
             <h3>Neue Bestellung anlegen</h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Bestellungen → Neue Bestellung → Lieferant auswählen</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Artikel + Menge + EK-Preis eintragen</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Speichern → Bestellnummer wird generiert</div></div>
+            <h3>Bestellung als PDF erstellen & an Lieferant senden</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Bestellung öffnen → Bereich "Bestellung an Lieferant" → <strong>PDF erstellen</strong> (öffnet automatisch zum Ansehen/Drucken)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Nur falls per Mail nötig: <strong>Per Mail senden</strong> → Vorschau mit Empfänger/Betreff/Text prüfen/anpassen → Mail senden</div></div>
+            <div class="ba-hint">💡 Kann mehrfach neu erstellt werden (z.B. nach Mengenänderung). Bei Lieferanten mit eigenem B2B-Bestellportal reicht meist das PDF ohne Mail-Versand.</div>
             <h3>Wareneingang zur Bestellung buchen</h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Bestellung öffnen → "Wareneingang buchen"</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Tatsächlich gelieferte Mengen + EK-Preis bestätigen</div></div>
@@ -433,7 +438,14 @@ require_once __DIR__ . '/includes/shell_top.php';
 
             <!-- LIEFERANTEN -->
             <h2 id="lieferanten">Lieferanten <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <p>Lieferanten werden bei den Artikel-Stammdaten verwaltet (Artikel → Tab Lieferanten). Dort: EK-Preis, Lieferanten-Artikelnummer, Lieferzeit und Mindestbestellmenge je Lieferant.</p>
+            <p>Lieferanten sind ein <strong>eigenständiges Modul</strong> unter Einkauf → Lieferanten (nicht mehr Teil der Artikel-Stammdaten).</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Stammdaten: Name/Firma, Land (Dropdown), UStID, Steuerregel, Adresse, Kontaktdaten</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Konditionen: Zahlungsziel, Skonto, Mindestbestellwert, Standard-Lieferzeit/-kosten</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Bankverbindung (IBAN/BIC) — nur bei Bedarf sichtbar</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Tab <strong>Vertreter</strong>: beliebig viele Ansprechpartner je Lieferant</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div>Tab <strong>Zugänge</strong>: Login-Daten für Händlerportale (Passwort per Klick einblendbar)</div></div>
+            <div class="ba-warn">⚠ Zugangs-Passwörter werden unverschlüsselt gespeichert — nur für unkritische Portal-Logins verwenden.</div>
+            <p>Tabs <strong>Artikel</strong> und <strong>Bestellungen</strong> zeigen alle Verknüpfungen zu diesem Lieferanten. Siehe auch <a href="#einkauf">Einkauf & Bestellungen</a>.</p>
 
             <!-- HERSTELLER -->
             <h2 id="hersteller">Hersteller <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

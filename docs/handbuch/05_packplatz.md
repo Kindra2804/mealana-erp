@@ -63,6 +63,9 @@ Die Tabelle zeigt alle Positionen des Auftrags.
 **Vorwahl (Menge vorwählen):**
 - Wenn z.B. 5 Stück des gleichen Artikels kommen: Zahl "5" eingeben, dann einmal scannen → 5 werden gutgeschrieben
 
+**EAN direkt beim Picken nachtragen:**
+Fehlt einem Artikel noch der Barcode, muss man dafür nicht extra ins Artikelmodul wechseln: Doppelklick auf die EAN-Zelle der Zeile (oder Klick auf "⚠ Kein EAN — nachtragen") öffnet ein Eingabefeld direkt auf dem Scan-Bildschirm. Neuen EAN eintippen/scannen → speichert sofort im Artikel und kann direkt weitergescannt werden, ohne die Seite neu zu laden.
+
 ---
 
 **Schritt 3: Verpacken**

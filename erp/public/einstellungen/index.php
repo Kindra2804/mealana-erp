@@ -418,6 +418,28 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             </div>
         </div>
 
+        <div class="card" style="margin-bottom:12px">
+            <div class="card-header">Kundenanzeige</div>
+            <div style="padding:16px">
+                <div class="form-group">
+                    <label class="form-label">Willkommenstext (Idle-Bildschirm)</label>
+                    <input type="text" name="kundenanzeige_willkommenstext" class="erp-input" style="width:100%;max-width:480px"
+                        value="<?= htmlspecialchars($rows['kundenanzeige_willkommenstext'] ?? '') ?>"
+                        placeholder="Herzlich willkommen bei MEALANA KG!">
+                </div>
+                <label style="font-size:13px;cursor:pointer;display:flex;align-items:flex-start;gap:10px;margin-top:10px">
+                    <input type="checkbox" name="kundenanzeige_qr_aktiv" value="1" style="margin-top:2px"
+                        <?= ($rows['kundenanzeige_qr_aktiv'] ?? '0') === '1' ? 'checked' : '' ?>>
+                    <div>
+                        <div style="font-weight:600">QR-Code beim Bezahlen anzeigen</div>
+                        <div style="color:var(--color-text-muted);font-size:12px;margin-top:2px">
+                            Platzhalter bis zum Paperless-Rechnung-Modul — zeigt schon jetzt das geteilte Layout (QR links, Betrag rechts) statt der zentrierten Ansicht.
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
         <div style="display:flex;justify-content:flex-end">
             <button type="submit" class="btn btn-primary">System-Einstellungen speichern</button>
         </div>

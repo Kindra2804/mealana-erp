@@ -1,12 +1,17 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/bestellungen/BestellungService.php';
+require_once __DIR__ . '/../../src/modules/bestellungen/BestellDokumentService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 $service    = new BestellungService();
 $id         = (int)($_GET['id'] ?? 0);
 $bestellung = $service->getById($id);
 if (!$bestellung) { header('Location: ' . BASE_PATH . '/bestellungen/liste.php'); exit; }
+
+$dokService = new BestellDokumentService();
+$dokumente  = $dokService->getDokumente($id);
+$neuesDokument = basename($_GET['neu'] ?? '');
 
 $positionen = $service->getPositionen($id);
 $nr         = BestellungService::bestellnummer($id, $bestellung['bestelldatum']);
@@ -119,6 +124,44 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
     </table>
 </div>
 
+<!-- Bestellung an Lieferant -->
+<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong style="font-size:13px">Bestellung an Lieferant</strong>
+        <form method="post" action="<?= BASE_PATH ?>/bestellungen/dokument_erstellen.php">
+            <input type="hidden" name="bestellung_id" value="<?= $id ?>">
+            <button type="submit" class="btn btn-primary btn-sm">PDF erstellen</button>
+        </form>
+    </div>
+    <?php if (empty($dokumente)): ?>
+        <div style="font-size:13px;color:var(--color-text-muted)">Noch kein PDF erstellt.</div>
+    <?php else: ?>
+        <table class="erp-table">
+            <thead><tr><th>Erstellt am</th><th>Datei</th><th>Mail-Status</th><th></th></tr></thead>
+            <tbody>
+                <?php foreach ($dokumente as $d): ?>
+                    <tr>
+                        <td><?= date('d.m.Y H:i', strtotime($d['erstellt_am'])) ?></td>
+                        <td>
+                            <a href="<?= BASE_PATH ?>/bestellungen/dokument_download.php?bestellung_id=<?= $id ?>&datei=<?= urlencode($d['dateiname']) ?>" target="_blank">
+                                <?= htmlspecialchars($d['dateiname']) ?> ↗
+                            </a>
+                        </td>
+                        <td>
+                            <?= $d['mail_gesendet_am']
+                                ? 'gesendet ' . date('d.m.Y H:i', strtotime($d['mail_gesendet_am']))
+                                : '<span style="color:var(--color-text-muted)">noch nicht gesendet</span>' ?>
+                        </td>
+                        <td style="text-align:right">
+                            <a href="<?= BASE_PATH ?>/bestellungen/mail_vorschau.php?dokument_id=<?= $d['id'] ?>" class="btn btn-secondary btn-sm">Per Mail senden</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+</div>
+
 <!-- Rechnung -->
 <div class="card" style="margin-bottom:12px">
     <strong style="font-size:13px;display:block;margin-bottom:10px">Rechnung / Lieferschein</strong>
@@ -165,6 +208,12 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
             </div>
         <?php endforeach; ?>
     </div>
+<?php endif; ?>
+
+<?php if ($neuesDokument): ?>
+<script>
+window.open('<?= BASE_PATH ?>/bestellungen/dokument_download.php?bestellung_id=<?= $id ?>&datei=<?= urlencode($neuesDokument) ?>', '_blank');
+</script>
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

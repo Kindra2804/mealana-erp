@@ -56,10 +56,50 @@ function positionHinzufuegen(artikel) {
     bezeichnungInput.addEventListener('input', () => startArtikelSuche(idx, bezeichnungInput));
     bezeichnungInput.addEventListener('blur', () => setTimeout(() => versteckeDropdown(idx), 200));
 
+    // Enter im Artikel-Feld darf NIE den ganzen Auftrag absenden (Formular hat einen
+    // Submit-Button) — bei genau einem Treffer oder exakter Artikelnummer/EAN-Übereinstimmung
+    // wird der stattdessen direkt übernommen, sonst passiert einfach nichts.
+    bezeichnungInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const drop = document.querySelector(`.pos-dropdown[data-idx="${idx}"]`);
+        const ergebnisse = (drop && drop.style.display === 'block' && drop._ergebnisse) || [];
+        if (ergebnisse.length === 1) { artikelWaehlen(idx, ergebnisse[0]); return; }
+        const wert = bezeichnungInput.value.trim().toLowerCase();
+        const exakt = ergebnisse.find(a =>
+            (a.artikelnummer || '').toLowerCase() === wert || (a.ean || '').toLowerCase() === wert
+        );
+        if (exakt) artikelWaehlen(idx, exakt);
+    });
+
+    // Telefon-Bestellungen: nach Eingabe der Menge direkt mit Enter zur nächsten Zeile
+    // springen, ohne Maus/Scrollen zurück zum "+ Position"-Button oben.
+    const mengeInput = tr.querySelector('.pos-menge');
+    mengeInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        springeZurNaechstenZeile(idx);
+    });
+
     if (!a.artikel_id && !a.id) bezeichnungInput.focus();
 
     aktualisiereZeile(idx);
     aktualisiereAnzeige();
+}
+
+// Springt von einer Zeile (nach Menge-Eingabe) zur nächsten — legt automatisch eine
+// neue leere Zeile an, falls es noch keine gibt (z.B. wenn die aktuelle die letzte war).
+function springeZurNaechstenZeile(idx) {
+    const body = document.getElementById('positionen-body');
+    const tr = document.querySelector(`tr[data-idx="${idx}"]`);
+    if (!tr) return;
+    if (tr === body.lastElementChild) {
+        positionHinzufuegen();
+        return;
+    }
+    const naechste = tr.nextElementSibling;
+    const naechstesFeld = naechste ? naechste.querySelector('.pos-bezeichnung') : null;
+    if (naechstesFeld) naechstesFeld.focus();
 }
 
 function positionEntfernen(btn) {
@@ -120,6 +160,7 @@ async function sucheArtikel(idx, suche) {
     const list = await res.json();
     const drop = document.querySelector(`.pos-dropdown[data-idx="${idx}"]`);
     if (!drop) return;
+    drop._ergebnisse = list; // für Enter-Auswahl im Bezeichnungsfeld gemerkt
     drop.innerHTML = '';
     if (!list.length) { drop.style.display = 'none'; return; }
     list.forEach(a => {
@@ -149,6 +190,15 @@ function artikelWaehlen(idx, a) {
     }
     versteckeDropdown(idx);
     aktualisiereZeile(idx);
+
+    // War das die letzte Zeile, gleich eine neue leere darunter anlegen (still, ohne
+    // Fokus zu stehlen) — Menge dieser Zeile bekommt jetzt den Fokus zum Weitertippen,
+    // Enter in der Menge springt dann in die bereits vorbereitete nächste Zeile.
+    const body = document.getElementById('positionen-body');
+    if (tr === body.lastElementChild) positionHinzufuegen();
+    const mengeInput = tr.querySelector('.pos-menge');
+    mengeInput.focus();
+    mengeInput.select();
 }
 
 function versteckeDropdown(idx) {

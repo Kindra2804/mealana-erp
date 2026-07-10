@@ -1405,6 +1405,18 @@ var LAGER_ID       = <?= $lagerId ?>;
 var AUSGABE_FORMAT = <?= json_encode($kasseInfo['ausgabe_format'] ?? 'fragen') ?>;
 var KASSE_MODUS    = <?= json_encode($modus) ?>;
 
+// ── Kundenanzeige-Sync ────────────────────────────────────────────────────────
+// Schreibt den aktuellen Anzeige-Zustand für das Kundenanzeige-Tablet (falls eins
+// angeschlossen ist). Fire-and-forget, kein Warten auf Antwort — darf den
+// Kassiervorgang nie verzögern oder blockieren.
+function kdSync(zustand, payload) {
+    var body = new FormData();
+    body.append('kasse_id', KASSE_ID);
+    body.append('zustand', zustand);
+    body.append('payload', JSON.stringify(payload || {}));
+    fetch('<?= BASE_PATH ?>/kasse/ajax_kundenanzeige_sync.php', { method: 'POST', body: body }).catch(function() {});
+}
+
 // ── Zustand ──────────────────────────────────────────────────────────────────
 var warenkorb          = [];
 var aktiveZeile        = -1;
@@ -1676,7 +1688,7 @@ function kindGewaehlt(kind) {
 }
 
 // ── Bon rendern ───────────────────────────────────────────────────────────────
-function renderBon() {
+function renderBon(skipKdSync) {
     var liste = document.getElementById('bon-liste');
     var leer  = document.getElementById('bon-leer');
 
@@ -1687,6 +1699,7 @@ function renderBon() {
         // Bezahlen bleibt möglich, wenn eine reine Retoure (ohne normalen Warenkorb-Inhalt) aktiv ist
         document.getElementById('btn-bezahlen').disabled = !retoureAktiv();
         aktualisiereFooter();
+        if (!skipKdSync) kdSync('idle', {});
         return;
     }
     leer.style.display = 'none';
@@ -1755,6 +1768,30 @@ function renderBon() {
 
     document.getElementById('btn-bezahlen').disabled = false;
     aktualisiereFooter();
+    if (!skipKdSync) kdSyncWarenkorb();
+}
+
+// ── Kundenanzeige-Sync: Warenkorb-Stand als Payload aufbereiten ──────────────
+function kdSyncWarenkorb() {
+    var aktiv = (aktiveZeile >= 0 ? warenkorb[aktiveZeile] : warenkorb[warenkorb.length - 1]);
+    var positionen = warenkorb.map(function(p) {
+        var rab = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
+        return {
+            bezeichnung: p.bezeichnung,
+            menge:       p.menge,
+            summe:       p.menge * p.einzelpreis_brutto * rab,
+            vonAuftrag:  !!p.vonAuftrag
+        };
+    });
+    kdSync('warenkorb', {
+        artikel_id:          aktiv.artikel_id || null,
+        artikel_name:        aktiv.bezeichnung,
+        artikel_variante:    null,
+        artikel_einzelpreis: aktiv.einzelpreis_brutto,
+        positionen:          positionen,
+        gesamt:              getGesamt(),
+        auftrag_nr:          geladenerAuftragNr || null
+    });
 }
 
 // ── Retoure-Sektion (versendet/teilgeliefert-Auftrag geladen) ────────────────
@@ -2541,6 +2578,7 @@ function bezahlenDialog() {
             return;
         }
         document.getElementById('bez-total').textContent = '€ ' + fmt(m.netBrutto);
+        kdSync('abrechnen', { betrag: m.netBrutto, gegeben: null, rueckgeld: null, abgeschlossen: false });
         ov('ov-bezahlen');
         return;
     }
@@ -2548,6 +2586,7 @@ function bezahlenDialog() {
     var g = getGesamt();
     aktuellerZahlBetrag = g;
     document.getElementById('bez-total').textContent = '€ ' + fmt(g);
+    kdSync('abrechnen', { betrag: g, gegeben: null, rueckgeld: null, abgeschlossen: false });
     ov('ov-bezahlen');
 }
 
@@ -2654,7 +2693,7 @@ function _resetKasseState() {
     document.getElementById('ai-leer').style.display = 'block';
     document.getElementById('ai-inhalt').style.display = 'none';
     document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
-    renderBon();
+    renderBon(true); // Sync übernimmt bonSpeichern()/abschliessenOhneBon() selbst (Danke-Screen soll stehen bleiben)
     renderRetoureSektion();
 }
 
@@ -2689,6 +2728,12 @@ function bonSpeichern(zahlDaten) {
         document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
             _bfrFehlschlagAnzahl = 0;
+            kdSync('abrechnen', {
+                betrag:       g,
+                gegeben:      (zahlDaten.gegeben !== undefined ? zahlDaten.gegeben : null),
+                rueckgeld:    (zahlDaten.rueckgeld !== undefined ? zahlDaten.rueckgeld : null),
+                abgeschlossen: true
+            });
             _resetKasseState();
             if (d.bon_id) {
                 ausgabeNachZahlung(d.bon_id, d.bon_nr || '');
@@ -2739,6 +2784,7 @@ function abschliessenOhneBon() {
         document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
             _resetKasseState();
+            kdSync('idle', {});
             feedback('✓ Auftrag ' + (d.auftrag_nr || '') + ' abgeschlossen — Bestätigung gesendet', 'ok');
         } else {
             feedback('❌ ' + (d.fehler || 'Fehler beim Abschließen'), 'fehler');
@@ -3237,8 +3283,14 @@ function auftragSucheAusfuehren() {
 }
 
 function auftragWaehlen(id, nr, positionen, lieferstatus, kunden_id, kunden_name, zahlungsstatus) {
-    if (warenkorb.length > 0) {
-        if (!confirm('Aktueller Bon hat ' + warenkorb.length + ' Position(en) — wirklich ersetzen?')) return;
+    // Bereits manuell gescannte Artikel (Laufkunde) bleiben erhalten und werden als
+    // "weitere Artikel" neben dem geladenen Auftrag geführt (gleiches Prinzip wie beim
+    // umgekehrten Weg: erst Auftrag laden, danach Extra-Artikel dazuscannen). Nur wenn
+    // schon EIN Auftrag geladen ist, wird beim Wechsel auf einen zweiten wirklich alles
+    // zurückgesetzt — zwei verschiedene Aufträge gemeinsam auf einem Bon ist (noch)
+    // nicht unterstützt (siehe Sammelabholung-Idee, kommt erst mit Online-Shop-Anbindung).
+    if (geladenerAuftragId !== null) {
+        if (!confirm('Es ist bereits Auftrag ' + geladenerAuftragNr + ' geladen — wirklich durch ' + nr + ' ersetzen?')) return;
         warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
     }
     geladenerAuftragId              = id;

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: DejaVu Sans, sans-serif;
+      font-size: 9pt;
+      color: #1a1a1a;
+      padding: 18mm 15mm 30mm 15mm;
+    }
+    .adressblock-absender { font-size:7pt; color:#555; border-bottom:0.5px solid #aaa; padding-bottom:2pt; margin-bottom:3pt; }
+    .info-raster td { padding:2pt 5pt; font-size:8.5pt; vertical-align:top; }
+    .info-raster td:first-child { color:#555; white-space:nowrap; }
+    .info-raster td:last-child { font-weight:bold; }
+    .doc-titel { font-size:16pt; font-weight:bold; margin:10pt 0 4pt; }
+    table.positionen { width:100%; border-collapse:collapse; margin-top:10pt; }
+    table.positionen th { background:#f5f5f5; text-align:left; padding:4pt 5pt; font-size:8pt; border-bottom:1px solid #999; }
+    table.positionen td { padding:4pt 5pt; font-size:8.5pt; border-bottom:0.5px solid #ddd; vertical-align:top; }
+    table.positionen td.zahl, table.positionen th.zahl { text-align:right; }
+    .summenzeile td { font-weight:bold; border-top:1px solid #999; padding-top:5pt; }
+    .notiz-box { border:1px solid #ccc; padding:4pt 6pt; font-size:8.5pt; margin-top:10pt; }
+  </style>
+</head>
+<body>
+
+  {% include '_partials/_header.html.twig' %}
+
+  <table style="width:100%; border-collapse:collapse; margin-top:10pt;">
+    <tr>
+      <td style="width:50%; vertical-align:top; padding-right:10pt;">
+        <div class="adressblock-absender">
+          {{ firma.firmenname ?? 'MEALANA KG' }} &middot;
+          {{ firma.strasse ?? '' }} &middot;
+          {{ firma.plz ?? '' }} {{ firma.ort ?? '' }}
+        </div>
+        {{ lieferant.firma ?? lieferant.name ?? '' }}<br>
+        {% if lieferant.firmenzusatz %}{{ lieferant.firmenzusatz }}<br>{% endif %}
+        {{ lieferant.strasse ?? '' }}<br>
+        {{ lieferant.plz ?? '' }} {{ lieferant.ort ?? '' }}<br>
+        {% if lieferant.land_name is defined and lieferant.land_name and lieferant.land != 'AT' %}{{ lieferant.land_name }}<br>{% endif %}
+      </td>
+
+      <td style="width:50%; vertical-align:top;">
+        <table class="info-raster" style="width:100%; border:1px solid #ccc; border-collapse:collapse;">
+          <tr style="background:#f5f5f5;">
+            <td style="border-bottom:1px solid #ccc;">Bestell-Nr.:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ bestellung.nummer }}</td>
+          </tr>
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Datum:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ datum_heute }}</td>
+          </tr>
+          {% if bestellung.erwartet_am %}
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Gewünschter Liefertermin:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ bestellung.erwartet_am|date('d.m.Y') }}</td>
+          </tr>
+          {% elseif bestellung.lieferzeit_text %}
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Lieferzeit:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ bestellung.lieferzeit_text }}</td>
+          </tr>
+          {% endif %}
+          {% if bestellung.zahlungsart %}
+          <tr>
+            <td style="border-bottom:1px solid #ccc;">Zahlungsart:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ bestellung.zahlungsart }}</td>
+          </tr>
+          {% endif %}
+          {% if lieferant.kundennummer %}
+          <tr>
+            <td>Unsere Kundennr. bei Ihnen:</td>
+            <td>{{ lieferant.kundennummer }}</td>
+          </tr>
+          {% endif %}
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="doc-titel">Bestellung</div>
+  <p style="margin-bottom:6pt;">Sehr geehrte Damen und Herren, wir bestellen hiermit folgende Artikel:</p>
+
+  <table class="positionen">
+    <thead>
+      <tr>
+        <th>Artikel</th>
+        <th>Artikelnr.</th>
+        <th class="zahl">Menge</th>
+        <th class="zahl">EK-Preis</th>
+        <th class="zahl">Gesamt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in positionen %}
+      <tr>
+        <td>{{ p.artikel_name }}</td>
+        <td>{{ p.artikel_nr ?? '' }}</td>
+        <td class="zahl">{{ p.menge_bestellt|number_format(0) }}</td>
+        <td class="zahl">{{ p.ek_preis is not null ? (p.ek_preis|euroformat ~ ' €') : '—' }}</td>
+        <td class="zahl">{{ p.ek_preis is not null ? (p.gesamt_ek|euroformat ~ ' €') : '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="summenzeile">
+        <td colspan="4" style="text-align:right;">Gesamt (netto):</td>
+        <td class="zahl">{{ gesamt_ek|euroformat }} €</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  {% if bestellung.notiz %}
+    <div class="notiz-box">
+      <strong>Notiz:</strong> {{ bestellung.notiz }}
+    </div>
+  {% endif %}
+
+  {% include '_partials/_footer.html.twig' %}
+
+</body>
+</html>
