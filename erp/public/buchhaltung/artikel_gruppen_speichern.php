@@ -38,14 +38,14 @@ if ($id > 0) {
         WHERE id = :id
     ");
     $stmt->execute([':k' => $kontoNr, ':n' => $name, ':s' => $sort, ':a' => $aktiv, ':id' => $id]);
-    $_SESSION['erfolg'] = "Artikelgruppe „{$name}" aktualisiert.";
+    $_SESSION['erfolg'] = "Artikelgruppe „{$name}“ aktualisiert.";
 } else {
     $stmt = $db->prepare("
         INSERT INTO artikel_gruppen (konto_nr, name, sortierung, aktiv)
         VALUES (:k, :n, :s, :a)
     ");
     $stmt->execute([':k' => $kontoNr, ':n' => $name, ':s' => $sort, ':a' => $aktiv]);
-    $_SESSION['erfolg'] = "Artikelgruppe „{$name}" angelegt.";
+    $_SESSION['erfolg'] = "Artikelgruppe „{$name}“ angelegt.";
 }
 
 header('Location: artikel_gruppen.php');
