@@ -31,7 +31,7 @@ $stmtName->execute([':id' => $id]);
 $name = $stmtName->fetchColumn();
 
 $db->prepare("DELETE FROM versandklassen WHERE id = :id")->execute([':id' => $id]);
-$_SESSION['erfolg'] = "Versandklasse „{$name}" gelöscht.";
+$_SESSION['erfolg'] = "Versandklasse „{$name}“ gelöscht.";
 
 header('Location: index.php');
 exit;

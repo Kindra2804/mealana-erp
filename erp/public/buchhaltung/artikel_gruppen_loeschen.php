@@ -16,9 +16,6 @@ if (!$id) {
 }
 
 // Verwendungscheck
-$artAnz = (int)$db->prepare("SELECT COUNT(*) FROM artikel WHERE artikel_gruppe_id = :id")
-    ->execute([':id' => $id]) ? $db->query("SELECT COUNT(*) FROM artikel WHERE artikel_gruppe_id = {$id}")->fetchColumn() : 0;
-
 $stmtArt = $db->prepare("SELECT COUNT(*) FROM artikel WHERE artikel_gruppe_id = :id");
 $stmtArt->execute([':id' => $id]);
 $artAnz = (int)$stmtArt->fetchColumn();
@@ -38,7 +35,7 @@ $stmtName->execute([':id' => $id]);
 $name = $stmtName->fetchColumn();
 
 $db->prepare("DELETE FROM artikel_gruppen WHERE id = :id")->execute([':id' => $id]);
-$_SESSION['erfolg'] = "Artikelgruppe „{$name}" gelöscht.";
+$_SESSION['erfolg'] = "Artikelgruppe „{$name}“ gelöscht.";
 
 header('Location: artikel_gruppen.php');
 exit;

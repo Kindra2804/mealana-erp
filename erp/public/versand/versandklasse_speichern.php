@@ -35,7 +35,7 @@ if ($id > 0) {
     ");
     $stmt->execute([':n' => $name, ':c' => $code, ':k' => $kuerzel, ':p' => $preis,
                     ':s' => $sort, ':ag' => $gruppeId, ':id' => $id]);
-    $_SESSION['erfolg'] = "Versandklasse „{$name}" aktualisiert.";
+    $_SESSION['erfolg'] = "Versandklasse „{$name}“ aktualisiert.";
 } else {
     $stmt = $db->prepare("
         INSERT INTO versandklassen (name, code, kuerzel, preis_brutto, sortierung, artikel_gruppe_id)
@@ -43,7 +43,7 @@ if ($id > 0) {
     ");
     $stmt->execute([':n' => $name, ':c' => $code, ':k' => $kuerzel, ':p' => $preis,
                     ':s' => $sort, ':ag' => $gruppeId]);
-    $_SESSION['erfolg'] = "Versandklasse „{$name}" angelegt.";
+    $_SESSION['erfolg'] = "Versandklasse „{$name}“ angelegt.";
 }
 
 header('Location: index.php');
