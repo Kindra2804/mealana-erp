@@ -83,13 +83,9 @@ final class Zugriffsregeln
         // === Achsen (Variantenachsen) — fachlich Teil von "Varianten" ===
         'achsen' => [
             'liste.php'                    => 'varianten.anzeigen',
-            'bearbeiten.php'                => 'varianten.bearbeiten',
-            'aktualisieren.php'             => 'varianten.bearbeiten',
             'achse_aktualisieren_ajax.php'  => 'varianten.bearbeiten',
             'sort_ajax.php'                 => 'varianten.bearbeiten',
             'achse_sort_tree_ajax.php'      => 'varianten.bearbeiten',
-            'neu.php'                       => 'varianten.anlegen',
-            'speichern.php'                 => 'varianten.anlegen',
             'achse_speichern_ajax.php'      => 'varianten.anlegen',
             'loeschen.php'                  => 'varianten.loeschen',
             'achse_loeschen_ajax.php'       => 'varianten.loeschen',
