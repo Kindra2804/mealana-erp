@@ -73,3 +73,18 @@ Kommt aus Firma-Einstellungen (Bankverbindung): IBAN, BIC, BLZ, Kontonummer, Kon
 ## Noch offen / zu klären
 - Hat Jacky noch weitere PLC-Einstellungen aus JTL (Kopfzeile der XML, Sender-Daten, sonstige Felder)?
 - Bankverbindung: ist die schon im Firma-Tab erfasst? (IBAN, BIC, BLZ, Kontonummer, Kontoinhaber)
+
+## ✅ Tatsächlich implementiert als `src/core/EasyPakExporter.php` — zwei echte Bugs gefunden+gefixt (2026-07-10)
+
+Ausgangspunkt war Jackys Hinweis (bei Punkt "Packplatz" auf der ToDo-Liste): bei einer Teillieferung mit Nachnahme darf nicht der volle ursprüngliche Bestellwert eingehoben werden, sonst zahlt der Kunde bei der zweiten Teillieferung doppelt.
+
+**Fix 1 — Nachnahme-Betrag bei Teillieferung (`packplatz/warenausgang/abschliessen.php`):** `EasyPakExporter::exportiere()` bekam schon vorher einen optionalen `$nachnahmeBetrag`-Parameter, wurde aber beim eigentlichen Aufruf nie befüllt (fiel immer auf `$auftrag['bruttobetrag']`, den vollen Original-Auftragswert, zurück). Jetzt wird vor dem Export aus `$gelieferteFuerPdf` (existierte schon für den Teillieferungs-Lieferschein, enthält nur die JETZT gescannten Positionen) der Brutto-Warenwert dieser einen Sendung berechnet und übergeben. **Versandkosten-Regel (Jacky, 2026-07-10):** nur bei der allerersten Lieferung eines Auftrags mitkassiert (Zählung über `auftrag_lieferungen`), jede weitere Teillieferung enthält nur noch den Warenwert.
+
+**Fix 2 — echter, unabhängiger Bug entdeckt beim Testen:** `$refNr = $auftrag['auftragsnummer'];` — diese Spalte existiert gar nicht (heißt `auftrag_nr`). Dadurch war `$refNr` bei JEDEM EasyPak-Export (nicht nur Teillieferungen) immer `null`, was einen `TypeError` in der privaten `x()`-Methode auslöste (verlangt `string`, kein Nullable). Der Aufrufer fängt das per `try/catch` ab und schreibt nur `error_log()` — der Verkauf/Versand lief also augenscheinlich unauffällig weiter, aber **es wurde vermutlich noch nie eine einzige echte EasyPak-XML-Datei erfolgreich erzeugt**, seit das Feature existiert (2026-06-25, "FERTIG" markiert). Erklärt rückwirkend die alte Notiz "Kein PLC-Response-Parsing (hat nie funktioniert)" — es kam wohl nie überhaupt eine Datei im Polling-Ordner an. Fix: `auftrag_nr` statt `auftragsnummer`. Nebenbei zwei `?:`-auf-undefined-key-Warnings bei `firma` (Adressfeld) behoben (`??` statt direktem Array-Zugriff), gleiche Fehlerklasse wie der `kundenanzeige_willkommenstext`-Bug vom selben Tag.
+
+**Getestet (2026-07-10):** `EasyPakExporter::exportiere()` direkt per CLI gegen einen isolierten Test-Auftrag (Nachnahme, Versandkosten 5€) aufgerufen — einmal mit explizitem Teil-Betrag (40€, korrekt im XML `<Amount>`), einmal ohne Override (korrekt voller `bruttobetrag`=120€ als Fallback). `SenderRefNo`/`ClientRefNo`/`ShipmentRefNo` zeigen jetzt korrekt die echte Auftragsnummer statt leer. Testdaten aufgeräumt.
+
+**Verwandter Check (Picklisten-Rest bei Teillieferung):** Jackys ursprüngliche Erinnerung ("kein neue Pickliste mehr für den Rest") separat nachgestellt (siehe [[project_packplatz]]) — funktioniert bereits korrekt, kein Bug mehr.
+
+**Why:** Nachnahme ist echtes Geld beim Kunden — ein doppelt kassierter Betrag bei der zweiten Teillieferung wäre ein handfester Kundenbeschwerde-Fall gewesen.
+**How to apply:** `plc_polling_ordner` muss in Einstellungen → System gesetzt sein, damit der Export überhaupt läuft (stiller No-Op sonst). Bei künftigen EasyPak-Änderungen: Spaltennamen aus `auftraege` direkt gegen `SHOW COLUMNS` prüfen, nicht raten — dieser Bug wäre bei jedem echten Testlauf mit gesetztem Polling-Ordner sofort im Post-eigenen PLC als leere/fehlende Datei aufgefallen, aber nie im ERP selbst (nur stiller error_log-Eintrag).

@@ -21,7 +21,7 @@ Jacky hat beim ersten echten Dateneintrag von Lieferanten Lücken im Formular ge
 - Kreditorennummer/DATEV-Konto-Zuordnung gehört ins [[project_buchhaltung]] (eigene Liste dort, wo man Lieferanten Kreditorenkonten zuweist) — nicht an den Lieferanten selbst.
 - bevorzugte Bestellart (E-Mail/Portal/Fax), Korrespondenz-Sprache (analog `kunden.sprache`) — noch unentschieden, für später.
 
-**Doku-Schuld entdeckt (noch offen):** `bedienungsanleitung.php` und `docs/handbuch/07_bestellungen.md` beschreiben Lieferanten noch nach altem Stand ("wird im Artikelmodul unter Tab Lieferanten verwaltet") — das eigenständige Modul (`public/lieferanten/`) kommt darin gar nicht vor. Auf Jackys Wunsch bewusst nicht am 2026-07-02 mitgezogen, extra Termin dafür vormerken.
+**✅ Doku-Schuld behoben 2026-07-10:** `bedienungsanleitung.php` und `docs/handbuch/07_bestellungen.md` (jetzt "07 — Einkauf: Lieferanten & Bestellungen") beschreiben das eigenständige Modul (`public/lieferanten/`) jetzt korrekt inkl. Stammdaten/Konditionen/Bankverbindung/Vertreter/Zugänge-Tab. War beim direkten Code-Check zusätzlich reichhaltiger als in Erinnerung — u.a. ein "Zugänge/Händlerportale"-Tab mit Login-Daten (Passwort per Klick einblendbar, bewusst unverschlüsselt, Warnhinweis in der Doku ergänzt), der vorher nirgends dokumentiert war.
 
 **Why:** Erste Praxis-Eingabe von echten Lieferanten hat gezeigt, dass Land/Firma/UStID/Bankdaten/Lieferkosten fehlen.
 

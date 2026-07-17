@@ -71,3 +71,11 @@ Wenn Auftrag `abholbereit + bezahlt` und Kd. nimmt **weniger** als bestellt:
 - Kein Design, kein Von/An-Feld, kein persönlicher Text im WC
 - Wird mit eigenem Shop gelöst (Zukunft)
 - Bis dahin: nackter Code per E-Mail reicht
+
+## Status 2026-07-10: bewusst zurückgestellt, nicht vergessen
+
+Beim Bestandsaufnahme-Gespräch bestätigt: Gutschein-Modul ist **absichtlich** noch nicht gebaut (0% Code, nur die vorsorglichen DB-Spalten `gutschein_id`/`gutschein_betrag`/`gutschein_code` auf `auftraege`/`kassen_bons`). Der Kasse-Zahlungsart-Knopf "Gutschein" existiert zwar schon in der UI, prüft aber aktuell nur `code.length >= 3` — keine echte Validierung, kein Restguthaben-Tracking.
+
+**Warum bewusst aufgeschoben (Jacky, 2026-07-10):** Soll gleich so gebaut werden, dass es sich sauber mit WooCommerce **und** dem künftigen eigenen Shop matchen lässt — nicht zuerst isoliert fürs ERP bauen und später nochmal für den Shop-Abgleich umbauen. Deckt sich mit dem oben skizzierten "ERP = Single Source of Truth, WC = Slave"-Konzept — sinnvoller Zeitpunkt dafür ist daher in der Nähe der Online-Shop-Anbindung, nicht davor.
+
+**How to apply:** Bleibt auf der Roadmap (siehe [[project_roadmap_reihenfolge]]) als offener Punkt — konzeptionell am sinnvollsten in der Nähe der Online-Shop-Anbindung, aber keine feste Terminbindung wie bei Paperless-Rechnung/Sammelabholung. Bei Bedarf nochmal explizit mit Jacky timen.

@@ -1,7 +1,8 @@
 # Memory Index
 
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Buchhaltung → Inventur → Online-Shop-Anbindung; Kleinkram zwischendurch aber nicht vergessen (2026-07-10, IMMER hier nachsehen bei "was als Nächstes")
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Frau Barbara schaut bei UI mit
-- [Chargen-Nachverfolgung (geplant)](project_chargen_nachverfolgung.md) — zentrale Seite: Artikelsuche→Chargen-Dropdown→Bewegungshistorie; Kandidat-Ort erp/public/lager/
+- [Chargen-Nachverfolgung](project_chargen_nachverfolgung.md) — FERTIG 2026-07-10: `lager/chargen_nachverfolgung.php`, bestehende LagerService-Methoden + Anzeige-Partial wiederverwendet, eigene lager-gegatete AJAX-Endpunkte
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
 - [Feedback: End-of-Day Updates](feedback_eod.md) — CLAUDE.md am Ende jedes Tages aktualisieren
 - [Projekt: MeaLana ERP Status](project_status.md) — Aktueller Implementierungsstand
@@ -12,11 +13,11 @@
 - [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale UND Bilder-Upload sind fertig (im Code verifiziert 2026-07-03, Datei war veraltet)
 - [Merkmale-Modul Design](project_merkmale.md) — 2-Ebenen (Merkmal/Wert), Single/Multi, Artikeltyp-Filter, WooCommerce slug, Modal wie Kategorie
 - [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Lücken-Vergleich (JTL/Shopware/Sage/LS-POS) + 99er-Freitext-Artikel-Idee (2026-07-05)
-- [Buchhaltungsmodul](project_buchhaltung.md) — DATEV-Schnittstelle (Export, nicht nachbauen), Kontenplan (AT), Mappings Steuerklassen→Konten, Odoo als Referenz
+- [Buchhaltungsmodul](project_buchhaltung.md) — FERTIG 2026-07-17: Kontenplan+Debitoren+Kreditoren+Mappings+Verwaltungsseiten+DATEV/CSV-Export; echter Kontenrahmen von Babsi eingearbeitet, Testimport mit Steuerberater vor Live-Einsatz nötig
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
 - [UI Redesign Plan](project_ui_redesign.md) — JTL-inspiriertes Layout nach Artikel-Modul: Top-Nav Module, Sidebar Untergruppen, 1280×1024 Basis, Barbara hat Mitspracherecht
-- [Verkauf Workflows](project_verkauf_workflows.md) — Mahnwesen-Cron war seit Kunden-Verschlüsselung nie lauffähig, BEHOBEN 2026-07-05 + Zahlstatus-Bugfix Kasse
-- [Lager Konzept](project_lager_konzept.md) — Altes K2-Umschaltmodell durch echten Messe-Workflow ersetzt (siehe Kassen-Verwaltung); Lager-Verwaltungs-UI fehlt komplett (nur SQL)
+- [Verkauf Workflows](project_verkauf_workflows.md) — Mahnwesen-Cron BEHOBEN 2026-07-05; Dashboard-Aktion-Spalte (Erinnerung/Storno-Buttons) FERTIG 2026-07-17, MahnwesenService teilt Logik mit Cron
+- [Lager Konzept](project_lager_konzept.md) — Altes K2-Umschaltmodell ersetzt; Lager-Verwaltungs-UI FERTIG 2026-07-05; Lagerplätze weiterhin 0% (bestätigt 2026-07-10, wichtig für Inventur)
 - [Feedback: Design-Workflow](feedback_design_workflow.md) — 3-Stufen: ASCII-Wireframe → SVG → HTML, nie direkt in HTML, SVG für Barbara
 - [Feedback: Banner Auto-Hide](feedback_banner_autohide.md) — Erfolgs/Fehler-Banner in detail.php sollen nach ~3s automatisch verschwinden
 - [Feedback: Barbara UI](feedback_barbara_ui.md) — Blaues "!" statt ⚠, konfigurierbarer Indikator, ⚠=kaputt für Barbara
@@ -25,11 +26,11 @@
 - [Feedback: Modul-Abschluss-Checkliste](feedback_js_auslagern.md) — JS auslagern + SQL-Kommentare bereinigen + Bedienungsanleitung besprechen (beim ersten Mal)
 - [Logger UI Konzept](project_logger_ui.md) — Logger-Zeile in Shell-Bottom (Mockup), Admin-Aktivitäten-Seite mit Filter/Suche
 - [Aktions-Modul](project_aktionen_modul.md) — Entscheidung: abhängige Achsen (nicht preis_gruppe); DROPS-Cronjob um 0:00; Blocker: Wert-Ebenen-Abhängigkeit + VarKombi-Update
-- [Feedback: Achsen Modal](feedback_achsen_modal.md) — achsen/bearbeiten.php → Modal werden (wie Kategorie), Design stimmig halten
-- [Spalten-Picker](project_spalten_picker.md) — Alle Spalten-Definitionen (baubar/Platzhalter), benutzer_einstellungen, Kanäle-Cleanup; Platzhalter aktivieren wenn Merkmale/Lagerplatz/Inventur fertig
+- [Feedback: Achsen Modal](feedback_achsen_modal.md) — ✅ war beim Nachsehen 2026-07-10 schon fertig (Notiz veraltet), 4 verwaiste Alt-Dateien aufgeräumt
+- [Spalten-Picker](project_spalten_picker.md) — merkmale-Spalte aktiviert 2026-07-09 (Merkmale-Modul ist fertig); lagerplatz/letzte_inventur bleiben Platzhalter (Module existieren noch nicht)
 - [🔴 BUG: Kategorie-Verschieben](bug_kategorie_verschieben.md) — BEHOBEN 2026-06-19: saveKategorien + erstelleKombinationen + propagiereZuKindern implementiert
 - [🟡 BUG: Aktions-Kategorie Zuweisung](bug_aktionskategorie_zuweisung.md) — BEHOBEN 2026-06-19: Modal für Preiseingabe direkt nach Zuweisung, ⏰ in Shell-Baum + Modal
-- [Bilder-Modul](project_bilder_modul.md) — FERTIG 2026-06-19 — Upload, GD-Resize, Hauptbild, Reihenfolge, Alt-Text
+- [Bilder-Modul](project_bilder_modul.md) — FERTIG 2026-06-19; 🟢 2026-07-11 Live-Logo-Upload-Bugkette komplett gelöst (GD/Silent-Fail/Fehlercodes/fehlender Kanal/hartcodierter Slug)
 - [Druck: Qualitätslisten](project_druck_listen.md) — EAN/Bilder-Qualitätslisten für Druckausgabe vormerken (kommt mit Druck-Modul)
 - [Statistik Konzept](project_statistik.md) — Kein eigener Sidebar-Link bis Verkauf steht; kommt aus Dashboard + Verkauf-Modul
 - [Kundendatenbank Design](project_kundendatenbank.md) — B2B gleich einbauen, Laufkunde, Shop-Sync/Merge, AES-256-GCM Verschlüsselung, DSGVO Crypto-Shredding (Stand 2026-06-19)
@@ -38,26 +39,32 @@
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
-- [Infrastruktur / Server-Setup](project_infrastruktur.md) — XAMPP+MariaDB UND WireGuard VPN live (2026-07-03); Messe-Kasse Variante B jetzt IndexedDB+direkter BFR-Call statt SQLite (korrigiert 2026-07-03)
+- [Infrastruktur / Server-Setup](project_infrastruktur.md) — Neuer Dev-PC-Umzug 2026-07-17 abgeschlossen (GD/Composer/Cron vergessen, doppelte Mojibake-Korruption + Kunden-BLOB-Korruption behoben); Messe-Kasse Variante B = IndexedDB+direkter BFR-Call
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
-- [Gutschein-Modul Design](project_gutscheine.md) — ERP=Single Source of Truth, WooCommerce als Slave (kein Design/Text in WC), on+offline, 3 DB-Tabellen
-- [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix, Twig+Dompdf Templates, WC-Sync umschaltbar, Packplatz eigene Seite
-- [Kassen-Bon Design](project_kasse_bon_design.md) — Blocks (auftrag/addon/storno), Rechnung erst am Bon, besser als JTL; Maximalfall: Auftrag+AddOn+Rückgabe+GS gleichzeitig machbar
-- [Kassen-Verwaltung](project_kassen_verwaltung.md) — Messe-Workflow fertig + browser-getestet 2026-07-04 (5 Bugs gefunden+behoben: BASE_PATH, Auth-Methoden, Sync-Duplikation, Quell-Lager, Chargen-Stepper) — bereit für BFR-Hardware-Test
-- [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen (Gruppe A/B/C/D), B2C=Brutto/B2B=Netto, Abholzettel+Barcode, Twig+Dompdf; Lücken 2026-07-04: Bestellungen an Lieferant ohne PDF/Mail, manueller Storno ohne Kundenmail, Nummernkreise nirgends konfigurierbar
-- [Installationsanleitung](project_installationsanleitung.md) — GESCHRIEBEN 2026-07-03 + migrate.php-Runner gebaut; Baseline-Dump statt 101-Dateien-Replay (Bug in Migration 005 gefunden+behoben)
+- [Gutschein-Modul Design](project_gutscheine.md) — 0% Code, bewusst zurückgestellt bis Nähe Online-Shop-Anbindung (WC/eigener Shop-Match), bestätigt 2026-07-10
+- [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; 🔴 Nummernkreis-Selbstheilung-Bug BEHOBEN 2026-07-09
+- [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign + Doppel-Gutschrift-Sperre fertig; 🟢 A4-Bon-PDF-Rand-Bug im Mailanhang BEHOBEN 2026-07-09 (Body-Padding statt @page-margin)
+- [Kassen-Verwaltung](project_kassen_verwaltung.md) — Echter BFR-Hardware-Test 2026-07-08 erfolgreich (Startbeleg, Kasse 4); 4 echte Bugs gefunden+gefixt, Netzwerkkassen-Doku-Lücke
+- [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen, Twig+Dompdf; Storno-Kundenmail + Nummernkreise-Verwaltung FERTIG 2026-07-09; Bestellung an Lieferant PDF/Mail FERTIG 2026-07-10 (eigenständiger BestellDokumentService, Mail-Vorschau vor Versand)
+- [Installationsanleitung](project_installationsanleitung.md) — Baseline-Neuschnitt FERTIG 2026-07-09 (Stammdaten in Baseline, VERSION 0.2.0); Live-Rollen-Bug gefunden+behoben, Live jetzt auf Migration 123
 - [Whitelabel/Branding](project_whitelabel_branding.md) — Root-Pfad FERTIG; NAHTLOS-Logo ersetzt Kunden-Logo im Header (entschieden, wartet auf Assets); Shop-Footer-Idee
 - [Update-Mechanismus](project_update_mechanismus.md) — ZURÜCKGESTELLT bis Lizenz-Thema: ZIP-Vollpaket + migrate.php statt Delta-Patches, kein Versions-Tracking pro Installation nötig
-- [Packplatz-Modul](project_packplatz.md) — Warenausgang/Intern/Retoure/Mail-Templates fertig; Picklisten-Teilliefer-Bug behoben 2026-07-03; offen: Picklisten-Manager-UI + EAN-Nacherfassen beim Picken
+- [Packplatz-Modul](project_packplatz.md) — Warenausgang/Intern/Retoure/Picklisten-Manager + EAN-Doppelklick-Nacherfassung alle fertig (verifiziert 2026-07-10); offen: Teillieferung-Split-Logik (Phase 2)
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
-- [Inventur: Schwund-Typ + Warndreieck-Idee](project_inventur_hinweis.md) — 'schwund' via LagerService::warenSchwund(); Warndreieck bei manueller Mengenkorrektur → "Zwischeninventur empfohlen" (2026-07-05)
+- [Inventur-Modul](project_inventur_hinweis.md) — ⚠️ komplett 0% Code (2026-07-10 entdeckt); direkt nach Buchhaltung geplant; braucht mehrere gleichzeitige Zähler + vermutlich Lagerplätze (auch 0%); Design-Absprache VOR Bau
 - [Rechte & Rollen Design](project_rechte_rollen.md) — Rollen/Matrix/Durchsetzung/Manager-Override-PIN KOMPLETT FERTIG (2026-07-05); nur Lizenzserver (2-Ebenen-Konzept besprochen) noch offen
-- [PLC / EasyPak Versand](project_plc_versand.md) — EasyPak XML-Format (Öst. Post), Item-IDs (430101/07/04/06), Ausgabepfad+Dateiname konfigurierbar, Bankdaten aus Firma-Tab
+- [PLC / EasyPak Versand](project_plc_versand.md) — 🟢 2 echte Bugs behoben 2026-07-10: Nachnahme-Betrag bei Teillieferung + `auftrag_nr`-Spaltenname (Export hat vermutlich seit je nie funktioniert)
 - [Chargen-Tracking](bug_charge_tracking.md) — BEHOBEN 2026-06-29: Kasse/Packplatz/Umlagerung alle mit Charge; Rest (Race Condition, warenSchwund) kommt mit Inventur-Modul
 - [Chargen-Konzept (vollständig)](project_chargen_konzept.md) — 3 Typen (keine/optional/Pflicht), alle Lagerbewegungsstellen, UX-Flows Kasse/Packplatz/Umlagerung/Auftrag
-- [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — FERTIG 2026-07-02: BfrService komplett (Verkauf+Storno, Nachsignierung, Nullbeleg, Umsatzzähler-Sperre, Nacherfassung, Kassen-Registrierung, Cronjob, echter QR-Code via endroid/qr-code); Logger/$_SESSION-Bugfund (mahnwesen.php betroffen)
-- [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede; Doku-Schuld offen
+- [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — State-Check-Gate fertig, Offline-Fix+Selbstheilung fertig (2026-07-09); Hardwaretest pausiert bis Herstellerantwort zum /register-Timeout da ist (2026-07-10), dann alles gebündelt testen
+- [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede, Zugänge/Händlerportale-Tab; Doku-Schuld behoben 2026-07-10
 - [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — Unicode-Flaggen rendern auf Jackys Windows-Browsern nicht, nur Buchstaben-Fallback — nicht verwenden
-- [🟢 BUG: PDO extra Array-Key bricht insert()/update()](bug_hersteller_modal_insert.md) — Hersteller (2026-07-02) + Lager (2026-07-05) behoben; Partner-Modul latent, noch nicht gefixt
+- [🟢 BUG: PDO extra Array-Key bricht insert()/update()](bug_hersteller_modal_insert.md) — Hersteller/Lager/PartnerRepository behoben; MietfachRepository am 2026-07-10 nachgezogen (war unentdeckt) — alle bekannten Fälle jetzt behoben
 - [Feedback: Test-Isolation](feedback_test_isolation.md) — Scratch-Testskripte nicht gegen echte Artikel/Kassen ohne Cleanup laufen lassen (Kontamination sah wie neuer Bug aus)
+- [🟢 BUG: Offline-Resync-Kollision](bug_offline_resync_kollision.md) — BEHOBEN 2026-07-07: Resync-Sperre in bon.php/bon_speichern.php, nur Backend getestet
+- [Paperless-Rechnung-Modul (geplant)](project_paperless_rechnung_modul.md) — QR-Code statt Papierbeleg; Timing korrigiert 2026-07-10: erst mit Start Online-Shop-Anbindung (gehört auf Hauptwebserver); "Keiner"-Option muss vor Live-Gang weg
+- [Kundenanzeige-Modul](project_kundenanzeige_modul.md) — V1 GEBAUT + läuft live 2026-07-10 auf Fully Kiosk Browser (`kundenanzeige/?kasse=K1`); Cache-Bug + Willkommenstext-Warning gefixt; Barbara-Feedback steht noch aus
+- [Sammelabholung mehrerer Aufträge (geplant)](project_sammelabholung_auftraege.md) — ein Bon/Abholung für mehrere Online-Bestellungen eines Kunden; kommt mit Start Online-Shop-Anbindung (Barbara-Bedarf bestätigt 2026-07-10)
+- [Feedback: Scope ohne validierten Bedarf](feedback_scope_ohne_bedarf.md) — Vor mehrtägigen Erweiterungen erst echten Bedarf checken (z.B. mit Barbara), nicht spekulativ bauen
+- [🟢 BUG: Kassenbons/Picklisten-PDFs in Git-Historie](bug_storage_pdfs_in_git.md) — BEHOBEN 2026-07-09: History-Rewrite (filter-branch) + Force-Push, Backup-Mirror vorhanden

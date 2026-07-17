@@ -65,16 +65,24 @@ Nachdem der Bug oben behoben war, meldete Jacky dass `lager/picklisten.php` (rec
 2. `packplatz/warenausgang/index.php`: die "Direktauswahl"-Liste ("für Artikel die nicht auf Picklisten kommen") schließt jetzt Aufträge aus, die bereits auf einer offenen Pickliste stehen — passend zum eigentlichen Zweck dieser Liste.
 3. **Einmalige Datenbereinigung** ausgeführt: 15 bereits betroffene Picklisten (IDs 7-15, 19-24) auf `abgeschlossen` gesetzt, nachdem verifiziert wurde dass alle zugehörigen Aufträge tatsächlich fertig waren. Danach: nur noch 1 echte offene Pickliste übrig (PL-2026-00016).
 
-### A — Picklisten-Manager (Babsi-Arbeitsplatz, nicht Packplatz-PC) — GENUINE STILL OPEN
-- Übersicht: welche Aufträge können mit aktuellem Lagerbestand komplett ausgeliefert werden
-- Reihung: Alter (ältester zuerst), Teillieferung-Aufträge eingeschlossen
-- Override: einzelne Aufträge deselektieren → neue Kombinationsberechnung
-- Picklisten drucken (PDF, Barcode der PL-Nummer drauf, zum Abscannen am Packplatz)
-- **Benötigt zuerst: Lagerstand ist/reserviert/verfügbar** (reservierungen-Tabelle existiert schon aus Migration, UI fehlt) — bestätigt weiterhin fehlend
+### ✅ A — Picklisten-Manager — WAR STALE, TATSÄCHLICH SCHON GEBAUT (verifiziert 2026-07-09)
+`erp/public/lager/picklisten.php` existiert bereits vollständig: Greedy-Zuteilung ältester-Auftrag-zuerst, Voll/Teilweise/Nicht-lieferbar-Badges, Checkbox-Override (Abwählen → beim nächsten Aufruf neu berechnet), aufklappbare Lagerstand-Übersicht (Ist/Reserviert/Verfügbar pro Artikel), PDF-Erstellung mit Barcode (`pickliste_pdf.php`), offene + abgeschlossene Picklisten-Liste. Diese Notiz war seit mindestens 2026-07-05 falsch als offen markiert.
+Jacky erinnert sich, dass noch eine konkrete Sache reinsollte, weiß aber nicht mehr genau was — **offen gelassen bis es ihm beim Benutzen wieder auffällt**, nicht spekulativ nachgebaut.
 
-### D — Scan-Interface Verbesserungen — GENUINE STILL OPEN
-- Doppelklick auf Artikel → EAN nacherfassen (für Artikel ohne EAN)
-- Teillieferung: Positions-Split-Logik (Phase 2 — aktuell bleibt Restmenge nur im Auftrag, kein echter Split)
+### ✅ D (Teil 1) — EAN nacherfassen beim Picken — FERTIG (2026-07-09)
+Doppelklick auf die EAN-Zelle bzw. Klick auf "⚠ Kein EAN — nachtragen" öffnet ein dunkles Overlay (`overlay-ean` in `warenausgang/scan.php`), speichert über den bestehenden `packplatz/wareneingang/ean_nachtragen.php`-Endpoint (wiederverwendet, artikel_id-basiert, kein Wareneingang-spezifischer State). Aktualisiert sofort `POSITIONEN[idx].ean` im Browser-Speicher, damit der frisch erfasste Code direkt weitergescannt werden kann, ohne die Seite neu zu laden.
+
+**🔴 Dabei gefundener, unabhängiger Bug (mitgefixt):** `packplatz/shell_top.php` setzte nie `window.BASE_PATH` (im Gegensatz zur normalen ERP-Shell). `packplatz_scan.js` nutzte das aber an zwei bestehenden Stellen bereits — die Chargen-Auswahl-Abfrage (`chargen_ajax.php`, Zeile ~249) ist `await`ed mit try/catch-Fallback auf "ohne Charge buchen bei jedem Fehler" → die Chargen-Auswahl beim Picken hat dadurch vermutlich **noch nie funktioniert**, fiel still auf ungetrackte Buchung zurück. Die zweite Stelle (Kommissioniert-Status vorab speichern) ist harmloses Fire-and-Forget, fiel nur lautlos durch. Fix: `window.BASE_PATH = <?= json_encode(BASE_PATH) ?>;` in `packplatz/shell_top.php` ergänzt (gleiche Zeile wie in der normalen Shell). Betrifft nur diese eine JS-Datei (verifiziert per Grep über alle Packplatz-JS-Dateien).
+**Noch zu verifizieren:** Jacky sollte beim nächsten echten Picking-Vorgang mit einem chargenpflichtigen Artikel testen, ob das Chargen-Popup jetzt tatsächlich erscheint.
+
+### ✅ D (Teil 1) Doku nachgezogen 2026-07-10
+War im Code fertig, fehlte aber komplett in `docs/handbuch/05_packplatz.md` und `bedienungsanleitung.php` — beide jetzt um die Doppelklick-EAN-Nacherfassung ergänzt.
+
+### ✅ Verifiziert 2026-07-10: "Kein neue Pickliste für den Rest bei Teillieferung" — bereits korrekt, kein Bug
+Jacky erinnerte sich vage an ein Problem (dieselbe Erinnerung, die am 2026-07-09 als "irgendwas fehlt noch, weiß nicht mehr was" offen gelassen wurde). Nachgestellt: isolierten Test-Auftrag mit Teillieferung (6 von 10 geliefert) auf einer Pickliste simuliert, geprüft ob `abschliessen.php`s Pickliste-Abschluss-Logik (`lieferstatus NOT IN (...,'teilgeliefert',...)`) die Pickliste korrekt schließt UND ob `lager/picklisten.php`s Hauptabfrage den Auftrag danach mit der korrekten Restmenge (4) neu anbietet — beides funktioniert wie vorgesehen. Gleiche Prüfung für `packplatz/warenausgang/index.php`s "Direktauswahl"-Liste — auch korrekt. Vermutlich bereits in einer früheren Session (2026-07-03 oder 2026-07-09) mitgefixt, ohne dass diese konkrete Alt-Notiz aktualisiert wurde. Bei diesem Anlass stattdessen einen echten, unabhängigen Bug bei der Nachnahme-Teillieferung gefunden — siehe [[project_plc_versand]].
+
+### D (Teil 2) — Teillieferung-Split-Logik — weiterhin offen (2026-07-10 nochmal bestätigt offen)
+Phase 2, aktuell bleibt Restmenge nur im Auftrag stehen, kein echter Positions-Split.
 
 ### ~~B — Packplatz: Intern~~ / ~~C — Packplatz: Retoure~~ / ~~E — Fehlende Mail-Templates~~ — STALE, bereits erledigt (verifiziert 2026-07-03)
 Diese drei Punkte waren schon durch die "✅ Neu fertig (2026-06-26)"-Sektion oben in dieser selben Datei widerlegt, standen aber trotzdem noch als offen weiter unten — Selbstwiderspruch in der Memory. Verifiziert per Audit-Agent 2026-07-03:

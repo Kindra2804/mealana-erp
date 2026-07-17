@@ -246,3 +246,77 @@ Nebenbefund beim Testen: `artikel/detail.php` (Tab Lager) zeigte "Gesamtbestand:
 ## ✅ Chargen-Filter im Bewegungslog (Artikel-Detailseite) — 2026-07-04
 
 `artikel/detail.php` (Tab Lager, "Letzte Lagerbewegungen") hat jetzt ein Dropdown mit allen historischen Chargen des Artikels. Auswahl lädt per AJAX (`artikel/bewegungslog_ajax.php`, HTML-Fragment via `artikel/bewegungslog_tabelle.php`) die **vollständige** Bewegungshistorie dieser einen Charge (EK bis letzter Verkauf) — ohne die sonst übliche 10er-Anzeigegrenze. Das ist die artikel-eigene Variante von Jackys Chargen-Nachverfolgbarkeit-Wunsch; die zentrale, artikelübergreifende Version ist separat vorgemerkt, siehe [[project_chargen_nachverfolgung]].
+
+## ✅ Arbeitsplätze-Thema komplett gebaut (2026-07-07)
+
+Ausgangspunkt war eigentlich nur die Resync-Sperre (siehe [[bug_offline_resync_kollision]]), aber die brauchte eine funktionierende "welche Kasse bin ich"-Erkennung, die es vorher gar nicht gab. Jacky entschied, gleich das ganze GEPLANT-Konzept aus der CLAUDE.md (`arbeitsplaetze`-Tabelle, Geräte-UUID-Token) mitzunehmen, um nicht später nochmal an dieselben Stellen zu müssen. Migration 118 dabei entdeckt: die alte Migration 112 (BFR-Ausfallerkennung-Umbau vom 6.7.) war durch einen zwischenzeitlich neu gezogenen `baseline_schema.sql`-Dump bereits überflüssig — gelöscht, siehe [[project_installationsanleitung]] (dort auch der Plan für einen kompletten Baseline-Neuschnitt nach Abschluss dieses Themas).
+
+**Session-Lifecycle** (`src/core/Auth.php`, existierte vorher gar nicht): `sessions`-Tabelle war zwar im Schema vorhanden, wurde aber von keiner Code-Stelle beschrieben. Jetzt: `Auth::login()` legt eine Zeile an, `Auth::heartbeat()` (aufgerufen aus `auth_check.php` bei jedem Request) hält `letzte_aktivitaet` aktuell, `Auth::logout()` löscht sie.
+
+**`src/modules/arbeitsplatz/`** (neu, `ArbeitsplatzRepository`/`ArbeitsplatzService`): Geräte-Token lebt im Browser-`localStorage`, serverseitig verknüpft über `arbeitsplaetze` + `sessions.arbeitsplatz_id`.
+- **Freie Auswahl** ("Welcher Arbeitsplatz bist du?", Overlay in `kasse/index.php`, `js/kasse_arbeitsplatz.js`, `kasse/ajax_arbeitsplatz.php`) — nur für Kassen OHNE aktives BFR (`bfr_aktiv_seit IS NULL`) sowie für typ lager/buero/mobil (Typen vorbereitet, aber keine eigene Auswahl-UI außerhalb dieses Screens gebaut).
+- **BFR-Sonderregel** (Jackys Verschärfung): Sobald `bfr_aktiv_seit` gesetzt ist, KEINE freie Auswahl mehr — die Bindung entsteht automatisch als Nebeneffekt von `BfrService::schliesseRegistrierungAb()` (Hook in `kasse_registrierung_speichern.php`), weil der Browser der die Registrierung abschließt zwangsläufig das physische Gerät ist (`bfr_url` ist immer `127.0.0.1`). Bei Hardware-Wechsel ("Neue Kassen-ID anfordern") wird die alte Bindung vorher gelöst (`ArbeitsplatzService::loeseBindungFuerKasse()` — deaktiviert statt löscht, wegen FK-Sperre von `sessions.arbeitsplatz_id` und für Nachvollziehbarkeit).
+- **Kollisions-Sperre** (Jackys Verschärfung, Hybrid-Variante gewählt): Ist ein Arbeitsplatz schon durch eine andere Session belegt UND deren `letzte_aktivitaet` jünger als 10 Minuten → Sperr-Overlay mit Manager-PIN (`Auth::pruefeManagerPin()`, gleiches Muster wie die Kasse-Auszahlung). Kein automatisches Kicken, keine harte Sperre ohne Ausweg — nach 10 Min gilt die alte Session als tot und der neue Login geht ohne Nachfrage durch.
+- **`getKasse(1)`-Hardcodes ersetzt**: alle 7 Stellen (`bon.php`, `index.php`, `kassenbuch.php`, `kassensturz.php`, `bon_journal.php`, `offene_auswahl.php`, `abschluss_liste.php`) nutzen jetzt `ArbeitsplatzService::aktuelleKasseId()` (Fallback auf 1, wenn kein Arbeitsplatz gebunden — kein Fehler, das eigentliche Gate ist die Resync-Sperre).
+
+**Getestet:** alle Backend-Teile isoliert gegen die echte Dev-DB (Auswahl/Bindung/Kollision-beidseitig/PIN-Ablehnung/BFR-Bindung/Hardware-Wechsel/Fallback-Kasse-1, siehe [[bug_offline_resync_kollision]] für die Resync-Sperre selbst) — jeweils mit künstlichen Test-Sessions, vollständig aufgeräumt. **Nicht getestet:** echter Browser-Durchlauf (Overlay-Anzeige, `localStorage`-Verhalten, kompletter Login→Auswahl→Kollision-Flow).
+
+**Noch offen / bewusst nicht gebaut:** eigene Auswahl-UI für Lager/Büro/Mobil-Arbeitsplätze außerhalb des Kasse-Moduls; Session-Limits/`max_sessions` (Spalte existiert, bewusst für später/Lizenzthema reserviert, siehe [[project_rechte_rollen]]).
+
+## ✅ Nachbesserungen beim Browser-Testen gefunden + behoben (2026-07-07, noch am selben Tag)
+
+Drei echte Lücken, die reine Backend-Tests nicht gefangen hätten — alle von Jacky selbst beim ersten Klick-Durchlauf entdeckt:
+
+1. **`findAuswaehlbareKassen()` blendete bereits gebundene Kassen nicht aus der freien Auswahl aus** — ein zweites Gerät bekam eine schon vergebene Kasse trotzdem angeboten, lief dann aber in `waehle()`s Schutz vor Doppel-Bindung (Fehlermeldung statt Kollisions-PIN-Dialog, weil das ein anderer Sperrmechanismus ist: "fremdes Gerät will Kasse erobern" vs. "gleiches Gerät, andere Session"). Fix: Query filtert jetzt `NOT EXISTS (... arbeitsplaetze ... aktiv=1)`.
+2. **Overlay ohne Ausweg**: Das Auswahl-/Kollisions-Overlay auf `kasse/index.php` blockierte die komplette Seite inkl. alle Navigation — kein Weg zu den Kassen-Einstellungen, um z.B. eine Bindung zu lösen. Fix: beide Overlays haben jetzt einen "⚙ Zu den Kassen-Einstellungen"-Link.
+3. **"Bindung lösen" in `kassen_einstellungen.php` warnte nicht vor aktiver Nutzung** — Jackys eigene Nachfrage: ein Admin könnte damit eine gerade arbeitende Kassiererin unbemerkt auf die Fallback-Kasse umleiten. Fix: `ArbeitsplatzService::istAktivInVerwendung()` (neu) zeigt jetzt eine gelb/rote Warnung + schärferen Bestätigungstext, wenn dort noch eine "lebendige" Session (< 10 Min Heartbeat) hängt.
+
+**Vierte, gravierendere Lücke — von Jacky selbst durchdacht, nicht beim Klicken gefunden:** `aktuelleKasseId()` fiel bei fehlender Arbeitsplatz-Bindung blind auf `?? 1` (Hauptkasse) zurück — Jackys Einwand: wenn Kasse 1 BFR-aktiv ist, dürfte ein komplett unbekanntes Gerät NICHT unter deren Identität/Signaturkarte Belege erzeugen (RKSV-Risiko, falsche Hardware signiert). **Fix:** `aktuelleKasseId(): ?int` gibt jetzt `NULL` zurück, wenn kein Arbeitsplatz gebunden ist UND die Fallback-Kasse (1) BFR-aktiv ist — kein automatischer Fallback mehr in diesem Fall. Alle 8 betroffenen Kasse-Seiten behandeln `NULL` jetzt explizit: `bon_speichern.php` blockt den Verkauf hart (JSON-Fehler), die übrigen 6 Seiten leiten auf `kasse/index.php` um, nur `kasse/index.php` selbst degradiert graceful (kein Redirect auf sich selbst) und lässt den JS-Overlay-Flow die Bindung herstellen.
+
+**Getestet:** alle vier Punkte isoliert gegen die echte Dev-DB (inkl. Kasse 1 testweise mit `bfr_aktiv_seit` versehen, `aktuelleKasseId()` lieferte korrekt NULL, danach exakt auf den Originalwert NULL zurückgesetzt). **Weiterhin nicht getestet:** kompletter Redirect-Flow im echten Browser für die neuen NULL-Fälle.
+
+**Commit `71e91dd`** (2026-07-07), gepusht nach `origin/master`.
+
+## Geplant: Echter BFR-Hardware-Test "morgen" (voraussichtlich 2026-07-08)
+
+Jacky bekommt eine Dummy-BFR-Kassenhardware ans Dev-System angeschlossen — dann volltest: BFR-Aktivierung/Kassen-ID-Vergabe, Buchungen, alle Übernahme-Versuche (Auswahl/Kollision/Hardware-Wechsel) live durchspielen, nicht nur isoliert gegen die DB wie bisher.
+
+**Jackys Kern-Anforderung nochmal bestätigt (2026-07-07), code-seitig gegengeprüft, nicht nur behauptet:**
+- `kasse_nr` (Nummernkreis) ist nach dem Anlegen nie mehr änderbar — `kasse_speichern.php` lässt die Spalte im Update-Zweig komplett weg.
+- `rksv_kassen_id` ist nach `schliesseRegistrierungAb()` gesperrt, einzige Änderung über "Neue Kassen-ID anfordern" — löst automatisch die Arbeitsplatz-Bindung (unser Hook).
+- Verschiedene Kassierer dürfen sich am selben gebundenen Gerät abwechseln (Geräte-Bindung und Benutzer-Session sind komplett getrennte Konzepte) — Timeout+PIN nur für die Session-Kollision, nie für die Geräte-Kasse-Zuordnung selbst.
+
+**Kleine bekannte Unschönheit (kein Sicherheitsproblem):** ✅ behoben 2026-07-09 — `ArbeitsplatzService::bindeAnKasseBeiBfrAbschluss()` prüft jetzt vorab per `findByToken()`, ob der Geräte-Token schon an eine ANDERE Kasse gebunden ist, und wirft eine `RuntimeException` mit Klartext-Meldung statt die rohe PDOException (UNIQUE-Constraint auf `geraete_token`) durchfallen zu lassen. `kasse_registrierung_speichern.php` fängt das ab, Registrierung selbst bleibt abgeschlossen (nur die Geräte-Bindung schlägt fehl), Fehlermeldung landet in `$_SESSION['fehler']`.
+
+**How to apply:** Nach dem Hardware-Test die heute erarbeitete BFR/Nicht-BFR-Ablauf-Erklärung (siehe Chat-Verlauf 2026-07-07) in `docs/handbuch/` UND `bedienungsanleitung.php` übernehmen (siehe [[feedback_beide_handbuecher]]) — bewusst erst danach, damit die Erklärung an den echten Tests noch geschärft werden kann.
+
+## ✅ Echter BFR-Hardware-Test durchgeführt (2026-07-08) — Startbeleg-Registrierung erfolgreich, mehrere echte Bugs gefunden+gefixt
+
+Laptop mit A-Trust-Signaturkarte (Demo-UID, Belege gehen NIE an echtes FinanzOnline — bewusst isolierte Testumgebung) + BFR installiert. Kompletter Ablauf laut `BFR_Installationsanleitung.pdf` (Schritt 1-9) durchgespielt: Karte getestet, Kassen-ID `DEMOvNahtlOS` vergeben, Startbeleg im BFR-Tool erstellt, danach bei uns in `kasse_registrierung.php` (Kasse id=4, neu angelegt) `/state` abgerufen und Registrierung abgeschlossen.
+
+**Doku-Fund:** Läuft die ERP-Software auf einem anderen Rechner als BFR (Server/Client-Architektur, wie bei uns Standard), MUSS im BFR-Tool unter "Service" das Häkchen **"Zugriff für Netzwerkkassen erlauben"** gesetzt sein — sonst nimmt BFR nur Verbindungen von echtem `127.0.0.1` an, auch wenn Firewall/Port offen sind. `bfr_url` muss dann die tatsächliche Netzwerk-IP des BFR-Rechners sein (nicht `127.0.0.1`, das zeigt sonst auf den Server selbst). **TODO:** in `docs/installation.md` Abschnitt 13 nachtragen.
+
+**Arbeitsplatz-Bindung zum ersten Mal live getestet** (siehe oben, 2026-07-07 nur Backend getestet): funktionierte beim ersten echten Durchlauf sofort — Browser der die Registrierung abschließt wird automatisch an Kasse 4 gebunden (Token-Sync via `window.AP_TOKEN_SYNC` → localStorage), kein manueller Auswahl-Dialog nötig.
+
+**UI-Lücke notiert:** Kasse-Name/-Nummer wird im Kasse-Header nirgends angezeigt — auf welcher Kasse man gerade ist, ist nicht erkennbar. Für später vorgemerkt.
+
+### Vier echte Bugs gefunden und gefixt (alle erst durch die allererste echte `bfr_url` sichtbar geworden — vorher lief kein Kasse-Datensatz je durch den entsprechenden Codepfad)
+
+1. **`KassenService::erstelleBon()` — `$steuer`-Variable doppelt verwendet:** Zeile 231 füllt `$steuer` als Array (Steuergruppen a-e für die BFR-Signatur), Zeile 337 überschreibt dieselbe Variable für den Auftrag-Spiegel-Eintrag als reine Zahl (Akkumulator). Die spätere BFR-Signierung (Zeile 440f) griff dadurch auf `null` statt der echten Steuergruppen zu. **Folge real beobachtet:** zwei echte, signierte Belege gingen mit korrektem Gesamtbetrag (`T`, unbetroffen) aber Steuergruppen=0,00 an den BFR raus — auf einer echten (nicht Demo-)Karte wäre das ein Fall für eine komplette Neu-Registrierung der Kassen-ID gewesen (DEP mit falscher Steueraufteilung ist nicht nachträglich reparierbar). **Fix:** zweite Variable in `$steuerBetrag` umbenannt.
+2. **`bon_speichern.php` — `kasse_id` kam trotz gegenteiligem Kommentar aus dem Client-Payload**, nicht aus der server-geprüften `$aktuelleKasseId` (Arbeitsplatz-Bindung). Fix: `$bonDaten['kasse_id'] = $aktuelleKasseId`.
+3. **Negativ-Zähler-Sperre (`wuerdeUmsatzzaehlerNegativWerden`) fehlte im Retour-Pfad** — existierte bisher nur in `storniereBon()`. Jackys Einwand: eine Bestellung kann auf Kasse A bezahlt und auf Kasse B zurückgegeben werden, jede Kasse hat aber ihren eigenen Umsatzzähler — ein Retour-Betrag über dem lokalen Zähler dieser Kasse hätte bisher unsigniert/mit falschem "ausgefallen"-Status durchgebucht, NACH bereits erfolgter Barauszahlung und Lagerkorrektur. Fix: gleicher Vorab-Check jetzt auch in `bon_speichern.php` vor `erstelleBon()`, bei negativem `bruttobetrag`.
+4. **`zeileMinus()` in `bon.php` löschte die Zeile komplett, sobald Menge 1 erreicht war** (auch bei Auftrags-Positionen) — dadurch war eine **vollständige** Rückgabe eines Postens mit ursprünglicher Menge 1 unmöglich (Zeile verschwand aus dem Warenkorb, `berechneAbrechnungsModus()` sah sie dann gar nicht mehr, Klick auf "Bezahlen" tat scheinbar nichts). Fix: bei `vonAuftrag`-Zeilen bleibt die Zeile mit `menge=0` sichtbar; `zeilePlus()` kann das jetzt bis `original_menge` rückgängig machen (vorher für Auftrags-Zeilen komplett gesperrt).
+
+**Zusätzlicher Workflow-Fix:** `auftragWaehlen()` zeigte bei JEDEM Lieferstatus außer `abholbereit` den "Ware wird mitgenommen / nur Zahlung"-Dialog — bei bereits `versendet`/`abgeschlossen` Aufträgen (Kunde bringt eine verschickte Bestellung persönlich zur Kasse zurück) passt keine der beiden Optionen. Jetzt: bei `versendet`/`abgeschlossen` wird der Dialog übersprungen, Feedback-Hinweis "Menge reduzieren um Rückgabe zu erfassen" stattdessen.
+
+**Alles live verifiziert:** 3 Test-Bons auf Kasse 4 (davon 2 mit dem Steuergruppen-Bug), beide sauber über den normalen Storno-Weg korrigiert (Lagerbestand, Auftragsstatus, Umsatzzähler stimmen danach wieder), künstlich niedrig gesetzter Zähler (5,00€) zum Testen der Retour-Sperre verwendet.
+
+**Update 2026-07-08, gleicher Tag:** Redesign Auftrag-Lade-Flow wurde noch am selben Tag umgesetzt — siehe [[project_kasse_bon_design]], Abschnitt "✅ Redesign Auftrag-Lade-Flow FERTIG". Dabei den bisher größten Einzelfund des Tages gemacht: `kassen_bon_positionen.block` ENUM fehlte 'retour' komplett (seit 2026-06-29), jede Retour-Zeile landete lautlos mit leerem block-Wert in der DB — Migration 119 behoben.
+
+**Korrektur:** die vermutete Lücke "Dokumente-System protokolliert Rechnungen nicht zuverlässig" (aus `auftrag_dokumente` ohne 'rechnung'-Zeile geschlossen) war ein Fehlschluss — echte Rechnungen laufen über eine eigene `rechnungen`-Tabelle (`DokumentService`), `auftrag_dokumente` ist nur für Auftragsbestätigung/Lieferschein/Gutschrift. Kein offener Punkt.
+
+**Weiterhin offen:** Freitext-Retour + Packplatz-Benachrichtigung + Mehrere-Aufträge-pro-Bon (wartet auf Barbara) (siehe [[project_kasse_bon_design]]).
+
+**✅ Erledigt 2026-07-09 (alle drei kleinen Nachträge):** Doku-Nachtrag in `docs/installation.md` Abschnitt 13 (Netzwerkkassen-Häkchen + Hinweis auf die neue bfr_url-Selbstheilung); Kasse-Name/-Nummer fehlte tatsächlich nur in `bon.php`s eigenem Header (`shell_top.php` zeigte `kasse_nr` schon seit 2026-07-04 — die Lücke betraf nur den POS-Bildschirm selbst, wo Kassiererinnen die meiste Zeit verbringen), jetzt in der bestehenden `ph-sub`-Zeile ergänzt (`Name (Nr.) · Lager: X`), keine neue UI-Komponente, passt zu Barbaras "keine großen Design-Änderungen"-Vorgabe.
+
+**2026-07-08, Abschluss:** Jackys Extremtest (2 Aufträge kombiniert an der Kasse mit ERP+Freitext-Artikeln) plus vollständige Doppel-Gutschrift-Sperre (Migration 120, `menge_retourniert`) — siehe [[project_kasse_bon_design]], Abschnitt "✅ Extremtest + Doppel-Gutschrift-Sperre FERTIG".

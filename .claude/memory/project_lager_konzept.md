@@ -12,6 +12,10 @@ metadata:
 - **Standardlager** (Wien) — Hauptlager, alle Kanäle außer Messe können darauf zugreifen
 - **Lager Messe** — Sonderlager für Messebetrieb, eigene Regeln
 
+## Lagerplätze — bestätigt 0% gebaut (2026-07-10)
+
+Kein Code, keine `lagerplaetze`-Tabelle, keine `lagerplatz_id`-Spalte irgendwo im Schema — Jacky erinnerte sich richtig, dass das mal vorgemerkt war (siehe [[project_wawi_gaps]]), aber es wurde nie umgesetzt. Wichtig geworden im Kontext des geplanten Inventur-Moduls (siehe [[project_inventur_hinweis]] + [[project_roadmap_reihenfolge]]): bei mehreren gleichzeitigen Zählern braucht es vermutlich eine Orts-Struktur, damit nicht dasselbe Fach doppelt gezählt wird. Ob Lagerplätze dafür wirklich Voraussetzung sind oder eine einfachere Lösung reicht, wird bei der Inventur-Design-Session geklärt.
+
 ## Kassa-Modi
 
 **K1 (Kassa Wollboutique):**

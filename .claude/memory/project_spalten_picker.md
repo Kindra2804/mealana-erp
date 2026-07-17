@@ -41,7 +41,7 @@ User-spezifische Spalten-Konfiguration in der Artikelliste (liste.php). Jeder Us
 | `ek` | EK-Preis | ❌ aus | ✅ baubar (JOIN artikel_lieferanten WHERE ist_standard=1) |
 | `marge` | Marge % | ❌ aus | ✅ baubar (berechnet aus EK/VK) |
 | `charge` | Charge-Pfl. | ❌ aus | ✅ baubar (a.charge_pflicht) |
-| `merkmale` | Merkmale | ❌ aus | ⏳ Platzhalter — zeigt "–" bis Merkmale-UI gebaut |
+| `merkmale` | Merkmale | ❌ aus | ✅ baubar (aktiviert 2026-07-09, GROUP_CONCAT über artikel_merkmale/merkmal_werte/merkmale) |
 | `lagerplatz` | Lagerplatz | ❌ aus | ⏳ Platzhalter — zeigt "–" bis Lagerplätze gebaut (lagerplaetze-Tabelle fehlt noch) |
 | `letzte_inventur` | Letzte Inventur | ❌ aus | ⏳ Platzhalter — zeigt "–" bis Inventur-Modul gebaut |
 

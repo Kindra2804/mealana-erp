@@ -36,5 +36,7 @@ Barbara hat ein eigenes Software-Logo designt: **NAHTLOS** — "ERP für Handarb
 Analog "Powered by JTL-Shop": NAHTLOS-Hinweis im Footer der WooCommerce-Shops, mit einer **brandfreien Option als kaufbares Modulpaket** (passt zum bestehenden Lizenz-Pakete-Modell, siehe [[project_rechte_rollen]]).
 Jacky war unsicher ob das mit WooCommerce vereinbar ist — ist es: reine Theme-Anpassung im eigenen Shop, keine WooCommerce/WordPress-Lizenzeinschränkung (GPL erlaubt beliebige Footer-Anpassungen). Muss also nicht auf ein eigenes Shopsystem warten.
 
+**🟢 Verwandter Bug behoben (2026-07-11):** `einstellungen/speichern.php`/`index.php` hatten das Hauptlogo hart an `shops.slug = 'mealana'` gebunden — bei einer Weitergabe an einen anderen Betrieb wäre das Hauptlogo dort nie funktionsfähig gewesen (deren Kanal heißt ja nicht "mealana"). Umgestellt auf "erster angelegter Kanal" (`ORDER BY id LIMIT 1`), siehe [[project_bilder_modul]]. Lehre für künftige Weitergabe-Vorbereitung: gezielt nach weiteren `'mealana'`-Literalen im Code suchen, die eigentlich generisch sein sollten.
+
 **Why:** NAHTLOS wird zunehmend als eigenständige Produktmarke behandelt (nicht nur MeaLana-intern) — relevant für die geplante Weitergabe an andere Betriebe.
 **How to apply:** Sobald Barbaras Logo-Dateien da sind: Header-Tausch + Vollversion-Platzierungen umsetzen. "Powered by"-Footer + Brandfree-Paket erst wenn Shop-Sync/eigener Shop ansteht, dann als neues Paket in der Lizenz-Pakete-Tabelle ergänzen.

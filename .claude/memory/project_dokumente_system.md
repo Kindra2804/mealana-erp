@@ -107,11 +107,11 @@ Eigene Tabelle oder Erweiterung partner_dokumente wenn gebaut.
 
 Alle bestehenden Dokumente/Mails geprüft (17 Templates unter `erp/templates/`) — jedes wird tatsächlich irgendwo im Code ausgelöst, keine toten Vorlagen. Zwei echte Lücken aber gefunden:
 
-1. **Einkaufsseite hat gar kein Dokument/Mail**: `public/bestellungen/` (Lieferanten-Bestellungen) hat weder PDF-Erzeugung noch Mailversand — nirgends im Code (`grep` auf mail/Mailer/pdf: 0 Treffer). Die eigentliche Bestellung an den Lieferanten läuft komplett am System vorbei. Bei einem vollständigen WAWI wäre "Bestellung als PDF/Mail an Lieferant senden" Standard — fehlt hier komplett als Konzept, nicht nur als Umsetzung.
+1. ✅ **BEHOBEN 2026-07-10** — Einkaufsseite hatte gar kein Dokument/Mail: `public/bestellungen/` (Lieferanten-Bestellungen) hatte weder PDF-Erzeugung noch Mailversand. Jetzt gebaut: `BestellDokumentService` (eigenständig, nicht über `DokumentService` — dort ist die Richtung fest auf "Kunde empfängt" ausgelegt) erzeugt eine Bestellungs-PDF (`templates/dokumente/bestellung/standard.html.twig`), neue Tabelle `bestellung_dokumente` (Migration 124). Zwei bewusst getrennte Aktionen in `bestellungen/detail.php`: "PDF erstellen" (öffnet nur zum Ansehen/Drucken, kein Mail-Zwang — wichtig für Lieferanten, bei denen über deren B2B-Portal bestellt wird) und pro Dokument "Per Mail senden" (eigene Vorschau-Seite mit editierbarem Empfänger/Betreff/Text vor dem tatsächlichen Versand, nicht automatisch wie bei Auftragsbestätigung/Rechnung). Mehrfach-Erstellung bewusst erlaubt (Bestellung ändert sich oft noch vor Wareneingang). Getestet: PDF-Erzeugung end-to-end gegen echte Bestellung mit Positionen (Twig-Rendering, Summen), Testartefakte aufgeräumt; tatsächlicher Mail-Versand bewusst nicht ausgelöst.
 2. **Manueller Storno ohne Kundenmail**: `auftraege/stornieren.php` (Mitarbeiter storniert von Hand) sendet keine Mail an den Kunden. Nur die automatische Mahnwesen-Stornierung (30+ Tage unbezahlt, `mahnwesen/stornierung.html.twig`) hat eine Vorlage — ein Auftrag der aus anderen Gründen (Lagerausfall, Kundenwunsch) manuell storniert wird, bekommt keine Benachrichtigung.
 
 **Why:** Beim Rundum-Check der A4-Rechnung/Mailversand-Themen (2026-07-04) aufgefallen, auf Jackys Bitte hin systematisch alle Vorlagen durchgeschaut.
-**How to apply:** Nicht von selbst angehen — vorgemerkt bis Jacky eins davon aktiv anspricht. Punkt 1 ist der größere/wichtigere der beiden (fehlendes Konzept, nicht nur fehlende Umsetzung).
+**How to apply:** Punkt 2 weiterhin nicht von selbst angehen — vorgemerkt bis Jacky es aktiv anspricht.
 
 ## Lücke gefunden 2026-07-04: Nummernkreise nirgends konfigurierbar/einsehbar
 
@@ -120,7 +120,15 @@ Beim Testen der Offline-Kasse aufgefallen (Jacky fragte nach den Kassenbon-Numme
 - **Dokumente** (Rechnung/AB/Gutschrift, `R-2026-XXXXX` etc.): `DokumentRepository::naechsteNummer()` nutzt eine echte atomare Zählertabelle `dokument_nummern` (typ+jahr+praefix+letzt_nr) — sicherer als die Kassenbon-Variante, aber **komplett global pro Dokumenttyp**, nicht pro Shop/Kanal, und ebenfalls nirgends einsehbar oder konfigurierbar.
 
 **Why:** Für Buchhaltung/DATEV und Mehr-Kanal-Betrieb (mehrere Shops) könnte eine Trennung/Konfigurierbarkeit relevant werden.
-**How to apply:** Nicht von selbst angehen. Falls das Thema aufkommt: `dokument_nummern`-Tabelle als Basis für eine künftige "Nummernkreise verwalten"-Admin-Seite nutzen (existiert schon, nur UI fehlt). Für Kassenbons ggf. auf dasselbe atomare Muster umstellen statt COUNT(*).
+**How to apply:** Kassenbons ggf. später auf dasselbe atomare Muster umstellen statt COUNT(*) — noch offen.
+
+## ✅ Nummernkreise-Verwaltungsseite FERTIG (2026-07-09)
+
+Neuer Tab "Nummernkreise" in `einstellungen/index.php` (gleicher Stil wie der bestehende Kassen-Tab, keine eigene Repository-Schicht — reine SQL-Queries direkt im Tab, passend zur Einfachheit der Tabelle):
+- **Dokument-Nummernkreise**: Liste aller `dokument_nummern`-Zeilen (Typ, Jahr, Präfix, letzte Nr., berechnete nächste Nummer), Bearbeiten-Modal für Präfix + letzte Nr. mit Warnhinweis. Handler: `nummernkreis_aktualisieren.php`.
+- **Kassenbon-Nummernkreise**: nur informativ (nicht editierbar), da COUNT(*)-basiert statt Tabellen-gestützt — zeigt aktuellen Jahres-Stand pro Kasse.
+
+Getestet: Update-Logik per CLI gegen echte Dev-DB (Zeile temporär geändert, verifiziert, zurückgesetzt).
 
 ## WooCommerce und Rechnungen
 

@@ -1,6 +1,6 @@
 ---
 name: project-installationsanleitung
-description: "Geplante Installationsanleitung: Server-Setup von 0, Composer, Migrations, Cronjobs — für Jacky + Weitergabe"
+description: "Installationsanleitung + Baseline-Neuschnitt (2026-07-09 fertig): Server-Setup, Composer, Migrations, Cronjobs, Live-Upgrade-Weg"
 metadata: 
   node_type: memory
   type: project
@@ -28,6 +28,31 @@ Recherchierte Fakten (Stand 2026-07-03, per Code-Grep verifiziert, nicht nur aus
 - **Nebenbei gefundener Bug (behoben):** `005_seed_rollen_berechtigungen.sql` hatte ein fehlendes Semikolon nach der ersten INSERT-Anweisung (Zeile 1) — dadurch verschmolzen zwei Statements beim Multi-Statement-Ausführen zu ungültigem SQL. Ergänzt.
 - **Nebenbei gefunden, NICHT behoben (Absicht mit Jacky nicht abgestimmt):** Dieselbe Datei (`005_...sql`, letzter Block) legt einen echten Admin-Benutzer mit fixem bcrypt-Hash + Jackys privater E-Mail (`indy1@gmx.at`) an — historischer Rest, kein generischer Seed. Betrifft aktuelle Installationen nicht (Bootstrap führt das INSERT nie aus), sollte aber irgendwann rausgenommen werden, bevor diese Migration je wieder per `migrate.php run` von Grund auf durchläuft. Vermerkt in `docs/installation.md` Anhang B.
 - Jackys lokale Dev-DB wurde bereits erfolgreich gebootstrapped (`schema_migrations` mit allen 101 Einträgen).
+
+## Neuer Baseline-Schnitt geplant — NACH Abschluss des Kassenthemas (2026-07-07)
+
+Jacky will, sobald das aktuelle Kassenthema (Arbeitsplätze/Geräte-Erkennung, Kollisions-Sperre, Resync-Gate, siehe [[project_kassen_verwaltung]]) fertig ist, einen kompletten Baseline-Neuschnitt machen: `baseline_schema.sql` frisch dumpen, die dann fast 120 Migrationsdateien aufräumen (Seed-Migrationen wie Jarvis-Systembenutzer und der 99-9999-Freitext-Artikel — siehe Abschnitt oben — direkt in die Baseline/Seed-Daten wandern lassen statt als eigene Migration), und dabei die App-Versionsnummer (`erp/VERSION`, aktuell 0.1.0) anheben.
+
+**Warum jetzt vormerken:** Migration 112 wurde am 2026-07-07 gelöscht, weil sie durch einen zwischenzeitlich neu gezogenen Baseline-Dump (nach dem BFR-Ausfallerkennung-Umbau vom 2026-07-06) bereits überflüssig war — genau das Muster, das bei einem allgemeinen Aufräumschnitt systematisch für alle inzwischen überholten Migrationen passieren sollte, statt einzeln bei jedem Stolpern entdeckt zu werden.
+
+**How to apply:** Nicht von selbst anfangen — erst wenn Jacky das Kassen/Arbeitsplätze-Thema als abgeschlossen markiert. Dann: neuer `mysqldump --no-data`-Baseline-Dump, Seed-Daten (Jarvis, Freitext-Artikel, ggf. weitere reine Stammdaten-Migrationen) in die Baseline integrieren, alte Migrationsdateien die dadurch überholt sind entfernen (wie bei 112 vorexerziert — nicht nur als "angewendet" markieren, sondern löschen, wenn ihr Effekt schon Teil der neuen Baseline ist), `erp/VERSION` hochzählen, `docs/installation.md` entsprechend aktualisieren.
+
+## ✅ Baseline-Neuschnitt ERLEDIGT (2026-07-09) — beide Spuren durch
+
+**Track 1 — leere DB / Neuinstallationen:** `baseline_schema.sql` neu geschnitten (Stand Migration 123). Enthält jetzt nicht mehr nur Struktur, sondern auch Volldaten für echte System-Stammdaten (Rollen/Berechtigungen, Artikeltypen, Einheiten, Steuerklassen, Länder, Zahlungsbedingungen, Versandklassen) plus fixe Seed-Zeilen (Jarvis, Diverses-Artikel `99-9999`, Laufkunde, neutraler "Hauptkanal"-Shop) — alle mit niedriger/vorhersagbarer ID (1), da `mysqldump`s AUTO_INCREMENT-Startwerte aus der Dev-DB rausgestrippt wurden (sonst hätte z.B. der Diverses-Artikel wieder eine zufällige hohe ID wie früher bekommen). Dadurch überholte Seed-Migrationen gelöscht: 005 (inkl. des alten, fest verdrahteten Jacky-Admin-Accounts — jetzt komplett weg statt nur "nie ausgeführt"), 011, 013, 032, 046, 064, 078, 097, 105. `erp/VERSION` → 0.2.0(beta).
+
+**🔴 Dabei entdeckter Kernfund:** Der alte Baseline+Bootstrap-Weg importierte zwar die Tabellenstruktur, aber `migrate.php bootstrap` führt Migrationen 004+ nie wirklich aus — jede reine Stammdaten-Migration in dem Bereich (Rollen, Artikeltypen, Einheiten, Steuerklassen, Länder, Zahlungsbedingungen, Versandklassen) wurde bei einer echten Neuinstallation stillschweigend übersprungen. Betraf nicht nur künftige Neuinstallationen, sondern **schlug auf der eigenen Live-Umgebung real zu** (siehe unten).
+
+**Track 2 — Live-Umgebung (192.168.178.222):** Barbara hatte zum Zeitpunkt der Session noch keinen WireGuard-Zugriff, auf Live war "noch so gut wie nix" — die ursprüngliche Sorge um bereits-korrekte/abweichende Live-Daten (eigene Kassen-Registrierung, eigene Artikel-IDs) war zu diesem Zeitpunkt hinfällig. Tatsächlicher Bedarf: Kategorien (86) + Hersteller (73) von Dev nach Live exportieren, damit Barbara mit Artikel-Anlage starten kann (`erp/database/export_kategorien_hersteller_dev_2026-07-09.sql`, im Repo). Bilder (Hersteller-Logos) hat Jacky separat per Ordner-Kopie rübergespielt (die sind bewusst `.gitattributes export-ignore`, nicht Teil von `git archive`).
+
+**Update-Mechanismus live erstmals getestet** (siehe [[project_update_mechanismus]]): `git archive HEAD` als ZIP, drüberkopieren auf Live (config/vendor/storage/uploads/logos bleiben automatisch unberührt), `composer install`, `php migrate.php`. Funktioniert grundsätzlich.
+
+**🔴 Live-Vorfall beim Nachziehen:** Live stand auf Migration 105 — genau der oben beschriebene Bootstrap-Bug hatte dort real zugeschlagen: `rollen`/`berechtigungen` waren nie geseedet, `benutzer_rollen` komplett leer (Jackys eigener `admin`-Login hatte gar keine Rolle zugewiesen!). Migration 109 brach deshalb mittendrin mit FK-Fehler ab (`rolle_id` wurde durch NULL→0-Koerzierung bei non-strict SQL-Mode ungültig). Da `migrate.php` pro Datei ohne Transaktion arbeitet, blieb der Teilzustand stehen. Korrektur-Skript `live_fix_109.sql` gebaut (lokal gegen simulierten Live-Zustand getestet, idempotent), auf Live eingespielt — Ergebnis danach 1:1 identisch mit Devs Rollen/Rechte-Matrix (72/71/71/69/24/7/5/6/17). Migration 109 manuell in `schema_migrations` vermerkt, Rest (110–123) lief danach über `php migrate.php` sauber durch. Live ist jetzt auf Stand 123, Rollensystem inkl. `admin`-Login-Zuweisung repariert.
+
+**Wichtige Lektion für künftige Migrations-Aufräumaktionen:** Beim ersten Cleanup-Versuch wurden 109+110 fälschlich mitgelöscht (weil ihr Effekt in der neuen Baseline steckt) — das gilt aber nur für den Fresh-Install-Pfad. Für eine bestehende Installation, die noch nicht so weit migriert ist (wie Live bei 105), müssen diese Dateien als echte inkrementelle Migrationen erhalten bleiben. Vor dem Löschen einer Migration also immer prüfen: ist sie auf **jeder** relevanten Umgebung (nicht nur Dev) schon real gelaufen?
+
+**Why:** Ohne dieses Zusammenspiel (Baseline-Fix + Live-Nachziehen) wäre Barbara auf einer Live-Instanz gelandet, in der praktisch niemand irgendeine Berechtigung hat.
+**How to apply:** Bei künftigen Baseline-Neuschnitten dieselbe Prüfung: welche Migrationen sind auf JEDER environment (nicht nur Dev) schon real durchgelaufen, bevor Dateien gelöscht werden. `live_fix_109.sql` liegt in `D:\ERP\live_fix_109.sql` als Referenz falls nochmal eine Umgebung denselben Bootstrap-Bug zeigt.
 
 ## Was rein muss
 

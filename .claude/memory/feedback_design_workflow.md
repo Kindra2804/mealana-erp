@@ -17,4 +17,6 @@ Beim UI/Layout-Design immer diesen 3-Stufen-Workflow einhalten:
 
 **How to apply:** Bei jeder neuen Seite/Komponente immer mit ASCII starten, nie sofort HTML schreiben. SVG-Schritt nicht überspringen wenn Karls Frau involviert ist.
 
+**Ausnahme (Jacky, 2026-07-10, bei [[project_kundenanzeige_modul]]):** Wenn Jacky das ASCII-Konzept selbst schon für gut/klar genug hält, zeigt er es Barbara lieber live (z.B. am Bildschirm/mündlich erklärt) statt eine SVG-Datei zu bauen — dann reicht ASCII als freigegebene Stufe, SVG entfällt. Kein genereller Rückzug vom SVG-Schritt, nur eine Fall-zu-Fall-Abkürzung wenn Jacky sie explizit anbietet ("kann ich so freigeben"). Im Zweifel weiterhin SVG anbieten, nicht von selbst überspringen.
+
 Verwandte Memories: [[project-ui-redesign]], [[user-karl]]

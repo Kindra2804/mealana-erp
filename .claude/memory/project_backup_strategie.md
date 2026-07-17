@@ -34,3 +34,10 @@ Nicht zwingend zusätzlich nötig — die AES-256-GCM-verschlüsselten Kundenfel
 
 **Why:** Erstes Live-System steht (siehe [[project_installationsanleitung]]), damit wird Backup vom theoretischen Punkt zur echten Notwendigkeit — aber Jacky wollte die Infrastruktur-Entscheidung (Proxmox) nicht überstürzen.
 **How to apply:** Nicht von selbst umsetzen. Erst wieder aufgreifen, wenn Jacky von sich aus die Proxmox-Recherche abgeschlossen hat und "Backup jetzt bauen" sagt.
+
+## Beinahe-Datenverlust 2026-07-06
+
+XAMPP/MariaDB (10.4.32, lokale Dev-Maschine) startete nicht mehr: InnoDB-Redo-Log korrupt ("Missing MLOG_CHECKPOINT", Checkpoint-LSN lag hinter Log-Ende — mehr als ein normaler unsauberer Shutdown). Kein Backup vorhanden, da Strategie oben noch nicht gebaut ist. Rettung gelang über `innodb_force_recovery=6` (Redo-Log-Rollforward komplett übersprungen) → vollständiger `mysqldump` möglich → Datenverzeichnis frisch initialisiert → Dump zurückgespielt. Kein Datenverlust, aber knapp (nur weil die Tabellendateien selbst noch intakt waren).
+
+**Why:** Zeigt, dass "manuelle Sicherung bei Bedarf" in der Praxis nicht passiert — es gab schlicht keine, als sie gebraucht wurde.
+**How to apply:** Falls Jacky das Thema nochmal aufschiebt, diesen Vorfall als konkretes Beispiel nennen dürfen, warum wenigstens ein simples tägliches `mysqldump`-Script (auch ohne fertige Proxmox-Lösung) schon jetzt Sinn hätte — ersetzt nicht die spätere 3-2-1-Lösung, wäre aber besser als nichts.

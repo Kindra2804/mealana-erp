@@ -1,137 +1,128 @@
 ---
 name: project-rksv-bfr
-description: "RKSV/BFR-Integration — FERTIG 2026-07-02: BfrService, Verkauf+Storno-Signierung, Nachsignierung, Nullbeleg, Umsatzzähler-Sperre, Nacherfassungs-Seite, Kassen-Registrierung mit Aktiv-seit-Stichtag, Cronjob, echter QR-Code; X/Z-Bon nicht signaturpflichtig"
-metadata: 
+description: "RKSV/BFR-Integration — 2026-07-06 komplett umgebaut: State-Check-Gate ('kein Dienst, keine Kasse') ersetzt die alte Nachsignierungs-Warteschlange; Ausfall-Episoden statt Nachsignierungsläufe; Kassen-Registrierung/QR-Code/X-Z-Bon-Regeln unverändert"
+metadata:
   node_type: memory
   type: project
   originSessionId: eefd559b-9c02-443d-a0cb-164e3dadf876
 ---
 
-## Status: Kernstück fertig 2026-07-02
+## Status: Grundarchitektur am 2026-07-06 komplett neu gebaut (nach echtem Hardware-Test)
 
-Hersteller-Feedback zum Fallback-Verhalten ist eingetroffen und bestätigt: "BFR nicht erreichbar" = "Sicherheitseinrichtung ausgefallen" ist RKSV-konform, Beleg wird trotzdem gespeichert und muss nachsigniert werden sobald der BFR wieder da ist.
+Der reale BFR-Hardware-Test deckte ein Reihenfolge-Risiko der ursprünglichen Logik auf (siehe [[bug_charge_tracking]]-ähnliche Kategorie, aber RKSV-spezifisch): Sobald ein Beleg beim alten Nachsignierungs-Modell in den Zustand `fehler` geriet, fiel er aus der automatischen Retry-Abfrage (`WHERE bfr_status='ausstehend'`) raus — spätere Belege konnten dadurch am gescheiterten vorbeigezogen werden und dem BFR eine kleinere Belegnummer NACH einer größeren schicken. RKSV verlangt aber eine strikt aufsteigende Belegfolge. Komplette Historie der alten Architektur (Nachsignierungsläufe, `bfr_status`, Migrationen 100-104) ist nicht mehr relevant — siehe git-History der Migrationen 100-103 falls das Archäologie-Interesse besteht.
 
-**Bewusst zuerst begrenzter Umfang** (Jackys Wahl): `BfrService` + Verkaufsbon (`typ='verkauf'`), Storno kam später am selben Tag dazu (siehe unten). X-Bon/Z-Bon sind bestätigt NICHT signaturpflichtig (siehe unten) — bleiben also für immer außen vor, nicht nur aufgeschoben. Noch offen: eigene Nacherfassungs-Seite (manueller Trigger/Übersicht), Cronjob für Nachsignierung in Ruhephasen.
+## Neues Modell: State-Check-Gate ("kein Dienst, keine Kasse")
 
-## Nachsignier-Logik (gemeinsam entworfen, von Jackys Vorschlag ausgehend)
+Empfehlung des BFR-Herstellers, von Jacky übernommen: VOR jeder Bon-/Storno-/Nullbeleg-Erstellung wird `/state` geprüft. Ist der Dienst nicht erreichbar, wird die Buchung **gar nicht erst zugelassen** — kein unsignierter Beleg entsteht mehr, keine Warteschlange nötig.
 
-Kernidee: Kein Unterschied zwischen "aktueller Beleg" und "Nachsignierung" — `signiereAusstehende($kasseId)` holt sich bei jedem Aufruf einfach ALLE `bfr_status='ausstehend'` Verkaufsbons der Kasse (`ORDER BY id ASC`), der gerade erstellte Bon ist automatisch der letzte Eintrag in der Liste. Ablauf:
+**Warum das reicht:** Laut echter Hersteller-API-Doku (`BFR_API.html`, von Jacky nachgeliefert) ist `RC` bei `/register` **immer** `"OK"` — das einzige Unterscheidungsmerkmal ist `<Link>`: entweder die Steuerkennung (echte Signatur) oder der Text `"Sicherheitseinrichtung ausgefallen"`. Ist der Dienst also erreichbar (State-Check bestanden), kommt von `/register` **garantiert** eine der beiden Antworten — nie ein drittes "unentschieden". Und: fällt nur die Signaturkarte aus (Dienst läuft, Karte kaputt), kümmert sich der BFR laut Installationsanleitung selbst vollständig um den späteren Sammelbeleg — das ist explizit NICHT unser Problem, wir müssen so einen Beleg nie erneut senden.
 
-1. `pruefeVerbindung()` (GET `/state`) zuerst — nicht erreichbar → sofortiger Abbruch, kein einziger Signierversuch, nichts wird als "Lauf" protokolliert.
-2. Erreichbar → offene Liste laden. Nur bei **mehr als einem** offenen Beleg wird ein `bfr_nachsignierungs_laeufe`-Eintrag angelegt (normale Einzelsignierung braucht kein Sammelprotokoll).
-3. Sequenziell signieren, `usleep(200ms)` zwischen den Aufrufen. Bei Fehlschlag: sofort `break` — kein Vorbeispringen an einem gescheiterten/offenen früheren Beleg (Reihenfolge ist RKSV-Pflicht, nicht nur Kosmetik).
-4. Zwei Fehlerarten: reiner Verbindungsabbruch → bleibt `ausstehend` (Auto-Retry beim nächsten Bon); von BFR abgelehnt (falsche Daten etc.) → `fehler` (braucht manuellen Blick, würde bei Retry nicht von selbst besser werden).
+**Zwei-Stufen-Popup an der Kasse** (ASCII-Wireframe gemeinsam entworfen, dann direkt umgesetzt — SVG-Zwischenschritt bewusst übersprungen, da reine Diagnose-/Sperr-Anzeige, keine Merchandising-Fläche):
+1. Stiller Kurz-Retry (2× mit 300ms Pause, Connect-Timeout 400ms) — im Normalfall unsichtbar.
+2. Scheitert das: Vollbild-Overlay "Dienst nicht erreichbar!" mit Button "Erneut versuchen".
+3. Scheitert der erneute Versuch auch: eskalierte Ansicht "Dienst immer noch nicht erreichbar" mit Diagnose-Hinweisen (Taskleiste/Kartenleser/Windows-Update), Kasse bleibt gesperrt bis erfolgreich (Schleife).
+4. Kassenstart bekommt denselben Gate-Check; ist dabei eine Ausfall-Episode offen, wird still ein Recovery-Nullbeleg versucht (kein eigenes Popup dafür).
 
-**Datenmodell-Entscheidung:** Ursprünglich war eine separate `kassen_bfr_log`-Tabelle geplant — stattdessen wurden die Felder direkt an `kassen_bons` gehängt (`steuer_a..e`, `bfr_status`, `signiert_am`, `nachsignierungs_lauf_id`), weil `bon_nr`/`erstellt_am`/`bruttobetrag` dort schon existieren und `rksv_signatur`/`rksv_qr` (aus einer früheren Session, nie wirklich angebunden) schon als Platzhalter vorhanden waren. `steuer_a..e` wird beim Bon-Anlegen fix gespeichert (nicht erst beim Signieren berechnet), damit auch Wochen später noch korrekt nachsigniert werden kann.
+**Wichtiger Timing-Fund beim Testen:** Ein toter lokaler Port antwortet auf diesem Windows-Dev-Rechner NICHT sofort mit "connection refused", sondern erst nach ~2 Sekunden (vermutlich Windows-Sicherheitssoftware) — ohne explizites `CURLOPT_CONNECTTIMEOUT_MS` hätte der stille Kurz-Retry-Burst ~7s statt der geplanten <1s gedauert. Fix: `CONNECT_TIMEOUT_MS=400` separat vom normalen Request-Timeout (`TIMEOUT_SEKUNDEN=5`) gesetzt. **Ob das auf der echten Live-Maschine mit BFR genauso auftritt, ist nicht getestet** — falls das Popup dort spürbar langsamer reagiert als erwartet, ist das der erste Verdächtige.
 
-**Migration 100:** `bfr_nachsignierungs_laeufe` (id, kasse_id, ausgeloest_durch, gestartet_am, beendet_am, anzahl_signiert, anzahl_fehlgeschlagen), `kassen.bfr_url`, `kassen_bons` ALTER (steuer_a-e, bfr_status, signiert_am, nachsignierungs_lauf_id FK).
+## Ausfall-Episoden statt Nachsignierungsläufe
 
-**`BfrService.php`** (`src/modules/kasse/`): `signiereAusstehende()`, `pruefeVerbindung()`, `steuerGruppenAusPositionen()` (statisch, TaxG-Mapping 20%→A/10%→B/13%→C/0%→D/Rest→E), Rest privat (XML bauen, curl GET/POST, Status-Updates).
+**Migration 112:** `bfr_nachsignierungs_laeufe` gedroppt, `kassen_bons.bfr_status`/`bfr_fehlergrund`/`nachsignierungs_lauf_id` und `bfr_nullbelege.bfr_status`/`bfr_fehlergrund` entfernt (waren unter dem neuen Modell nur noch Konstanten — jeder existierende Bon hat zwangsläufig ein Signatur-Ergebnis). Ersatz: **`bfr_ausfaelle`** (eine Zeile pro durchgehender Störung, `geloest_am IS NULL` = noch aktiv) + **`bfr_ausfall_ereignisse`** (Einzelvorfälle: Typ `dienst_nicht_erreichbar`/`sicherheitseinrichtung_ausgefallen`, betroffene `bon_nr`, Zeitstempel).
 
-**`KassenService::erstelleBon()`:** Steuergruppen vor dem Insert berechnet und mitgespeichert; `BfrService::signiereAusstehende()` wird NACH dem `commit()` aufgerufen, außerhalb des Transaktions-Try/Catch — ein BFR-Ausfall darf einen bereits abgeschlossenen Verkauf nie mehr rückgängig machen (try/catch schluckt jeden Fehler, nur `error_log`).
+**Wie erkannt wird, ob ein Bon "signiert" oder "ausgefallen" ist:** kein Status-Feld mehr nötig — `rksv_signatur` ist entweder die echte Steuerkennung, der Text "Sicherheitseinrichtung ausgefallen", oder (nur wenn `bfr_url` für die Kasse leer ist) NULL. Druckvorlagen (`bon_druck.php`, `BonA4Renderer.php`) prüfen jetzt nur noch `!empty($bon['rksv_signatur'])` — **dabei nebenbei einen echten Vorab-Bug gefunden und gefixt**: die alten Vorlagen zeigten "Sicherheitseinrichtung ausgefallen" sogar bei Kassen OHNE jede BFR-Anbindung (Dev/Test-Kassen), weil nie geprüft wurde ob überhaupt eine `bfr_url` konfiguriert ist.
 
-**Druckvorlagen** (`bon_druck.php`, `bon_a4.php`): zeigten vorher nur einen Debug-Platzhalter "[RKSV-Signatur: ausstehend]" und einen toten HTML-Kommentar für den QR-Code (nie gerendert). Jetzt: bei `bfr_status='signiert'` echter Link-Text + Code als Klartext; sonst der RKSV-Pflichttext "Sicherheitseinrichtung ausgefallen". QR als **Bild** (z.B. via endroid/qr-code) ist bewusst noch nicht gebaut — Klartext-Pflicht ist erfüllt, RKSV erlaubt das.
+**24h/48h-FON-Meldepflicht (von Jacky als sicher bestätigt, aus Erfahrung, nicht extra nachgeprüft):** Läuft eine Episode länger als 24h, zeigt `nacherfassung.php` (jetzt "Ausfall-Historie" statt "Nacherfassung") eine Warnung — ein Tag Puffer bevor mit 48h durchgehendem Ausfall die FinanzOnline-Meldepflicht greift. Die 48h-Uhr läuft schon ab dem ersten fehlgeschlagenen `/state`-Check, nicht erst ab dem ersten betroffenen Bon (Jacky bestätigt: "ab Kenntnis des Ausfalls").
 
-**Kassen-Einstellungen** (`einstellungen/kasse_edit.php` + `kasse_speichern.php`): neues Feld `bfr_url` pro Kasse. Leer = keine RKSV-Signatur für diese Kasse (z.B. Test/Dev-Kassen).
+**`cron/bfr_nachsignierung.php`** (Name beibehalten, Inhalt komplett neu): läuft weiterhin alle 5 Min, macht aber nur noch zwei Dinge — Monats-Nullbeleg absichern (`sicherstelleMonatsNullbeleg()`) und für jede Kasse mit offener Episode denselben Kassenstart-Recovery-Versuch auslösen (`pruefeKassenstart()`), falls eine Störung tagelang läuft ohne dass jemand die Kasse neu startet.
 
-**Getestet mit Mock-BFR-Server** (PHP built-in server, `/state` + `/register` XML-Antworten simuliert): Normalfall, Verbindungsausfall-Fallback, und durch bereits vorhandene Alt-Testdaten sogar ein echter Nachsignierungslauf über 23 offene Verkaufsbons in korrekter aufsteigender Reihenfolge — sauber im Lauf-Protokoll erfasst. Ein vorhandener X-Bon-Datensatz wurde vom `typ='verkauf'`-Filter korrekt übersprungen.
+**Nullbeleg-Fehlschläge hinterlassen keinen Datensatz mehr** (anders als vorher): schlägt `sicherstelleMonatsNullbeleg()` fehl (State-Check negativ), wird einfach nichts angelegt — der nächste Versuch bekommt automatisch eine neue Belegnummer. Sicher, weil Nullbeleg-Nummern nie mit echten Bon-Nummern kollidieren und mehrere Nullbelege pro Monat unproblematisch sind (RKSV verbietet keine Extras).
 
-## Nullbeleg (2026-07-02, gleicher Tag ergänzt)
+## Was UNVERÄNDERT geblieben ist
 
-Ursprünglicher Plan sah täglichen Nullbon bei Kassenöffnung + Jahresbeleg 31.12. vor — Jacky hat das bewusst durch **nur monatlich** ersetzt (kein RKSV-Pflichtfall täglich), plus ein jederzeit verfügbarer manueller Trigger. Idee dahinter: wenn vor der ersten Buchung jeden Monats ein Nullbeleg sichergestellt ist, ist auch der Jahresendbeleg automatisch abgedeckt.
+- **Kassen-Registrierung + Aktiv-seit-Stichtag** (Migration 104): komplett unangetastet, `bfr_aktiv_seit`-Filter, Hardware-Wechsel-Flow, `bfr_kassen_registrierungen`-Protokoll — siehe unten im Detail.
+- **Umsatzzähler-Sperre bei Storno**: `wuerdeUmsatzzaehlerNegativWerden()` als Vorabcheck vor `beginTransaction()` unverändert übernommen (bewährtes Muster, jetzt auch Vorbild für den neuen State-Check-Vorabcheck).
+- **QR-Code als echtes Bild** (`endroid/qr-code`, `QrCode::dataUri()`): unverändert.
+- **X-Bon/Z-Bon nicht signaturpflichtig**: unverändert, bleiben außen vor.
+- **Monatlicher statt täglicher Nullbeleg**: Jackys ursprüngliche Entscheidung unverändert, nur der technische Unterbau (kein `bfr_status` mehr) ist neu.
+- **Offline-Messe-Kasse** (`kasse_bon_offline.js`, direkter Browser→BFR-Call ohne Server-Umweg): bekam dieselbe State-Check-Gate-Logik nachgezogen (JS-seitig repliziert, da eigener Codepfad ohne PHP-Backend-Aufruf zur Verkaufszeit).
 
-**Eigene Tabelle `bfr_nullbelege`** (Migration 101) statt Integration in `kassen_bons` — ein Nullbeleg ist kein echter Verkaufsbeleg (kein Kunde, kein Betrag, keine Positionen), hätte in `kassen_bons` nur sinnlose NULL-Spalten erzeugt. Felder: kasse_id, monat (CHAR7 'YYYY-MM'), beleg_nr, ausgeloest_durch (manuell/automatisch), bfr_status, rksv_signatur/rksv_qr, benutzer_id (nur bei manuell), erstellt_am/signiert_am. Bewusst **kein UNIQUE** auf (kasse_id, monat) — der manuelle Trigger darf jederzeit einen weiteren anlegen, nur die automatische Seite ist auf "einen pro Monat" begrenzt (per Query-Check, nicht per Constraint).
+## Umsatzzähler zählt IMMER mit — auch bei "ausgefallen" (von Jacky korrigiert, 2026-07-06)
 
-**`BfrService::erstelleNullbeleg()`** — legt Datensatz an + versucht sofort zu signieren (eigener Belegnummernkreis `NullbelegK1<Timestamp>`, TT-Attribut statt TaxA im XML, kein Betrag). Wird von der manuellen Route und intern von der automatischen aufgerufen.
+Erste Version hatte das falsch: Zähler wurde nur bei echter Signatur erhöht. Jackys Korrektur: Der Betrag wird auch bei "Sicherheitseinrichtung ausgefallen" an den BFR übermittelt und dort gespeichert — genau das ist ja die Grundlage für den späteren Sammelbeleg (der laut Installationsanleitung inhaltlich einem Nullbeleg mit dem dann aktuellen Umsatzzähler-Stand entspricht). Es fehlt nur die eigentliche kryptografische Signatur, nicht die Erfassung des Umsatzes selbst. `BfrService::signiereBeleg()` erhöht `bfr_umsatzzaehler` deshalb jetzt unabhängig vom `ausgefallen`-Flag, direkt nach jedem `/register`-Aufruf.
 
-**`BfrService::sicherstelleMonatsNullbeleg()`** — von `KassenService::erstelleBon()` ganz am Anfang aufgerufen (vor der Verkaufs-Transaktion, eigenes try/catch). Prüft: gibt's für (kasse_id, aktueller Monat) schon einen `signiert`-Datensatz? Wenn ja, nichts tun. Wenn ein `ausstehend`/`fehler`-Datensatz existiert, den erneut versuchen (gleiche beleg_nr, kein neuer Datensatz — wichtig, sonst hätte jeder Verkauf während eines BFR-Ausfalls einen weiteren Nullbeleg-Versuch angelegt). Nur wenn gar keiner existiert, wird neu angelegt.
+## ✅ Rohdaten-Kommunikationsprotokoll für Hersteller-Fehlermeldungen (2026-07-09)
 
-**Manueller Trigger:** Klick auf die "RKSV aktiv"-Anzeige in der Kassen-Kopfzeile (`bon.php`) öffnet ein Bestätigungs-Popup ("Nullbon erstellen?"), das `ajax_nullbon.php` aufruft (POST, `kasse_id` + eingeloggter Benutzer als `ausgeloest_durch='manuell'`).
+Jacky machte gezielte Ausfall-Tests mit BFR (mehrfacher Absturz, zwei Episoden 09:12-09:16 und 09:51-10:01) und wollte danach das exakte Request-/Response-XML für eine präzise Fehlermeldung an den Hersteller — gab es bisher NICHT: `BfrService::httpGet()`/`httpPost()` gaben nur die geparste Antwort zurück, nirgends wurden die rohen Bytes gespeichert (nur `bfr_ausfaelle`/`bfr_ausfall_ereignisse` mit Typ/Zeitstempel/Bon-Nr, kein XML).
 
-**Getestet:** manueller Trigger, automatischer Skip wenn Monat schon erledigt, Fehlschlag+Retry-Fall (BFR down → bleibt ausstehend, kein Duplikat; BFR wieder da → derselbe Datensatz wird nachsigniert) — alles über den Mock-BFR-Server verifiziert.
+**Migration 122**: neue Tabelle `bfr_kommunikation_log` (kasse_id, endpunkt state/register, request_body, response_body, curl_fehler, dauer_ms, erstellt_am). `BfrService::httpGet()`/`httpPost()` protokollieren jetzt JEDEN Aufruf automatisch (neue private Methode `protokolliereKommunikation()`, fängt eigene Fehler ab — darf nie eine echte Buchung zum Scheitern bringen). `kasse_id` wird durch alle 6 Aufrufer-Methoden durchgereicht (`pruefeVorBuchungIntern`, `versucheRecoveryNullbeleg`, `signiereBeleg`, `erstelleNullbeleg`, `sicherstelleMonatsNullbeleg`, `leseZertifikatInfo` — letztere auch von `kasse_registrierung_speichern.php` aus mit `$kasseId` versorgt).
 
-**Jahresendbeleg-Timing — GEKLÄRT 2026-07-02:** Jacky bestätigt: Der Jahresendbeleg darf bis 15.02. erstellt werden, ist also unbedenklich, dass unsere Monats-Logik ihn erst Anfang Jänner (beim ersten Verkauf) erzeugt. Zusätzliche Absicherung: in diesem Zeitraum (zwischen Weihnachten und Neujahr) wird ohnehin die große Inventur gemacht, und Jacky macht dabei explizit selbst einen manuellen Nullbon — siehe [[project_inventur_hinweis]] für die geplante Erinnerung im künftigen Inventur-Modul ("Jahresendbeleg nicht vergessen" zwischen 15.12. und 10.01.).
+**Neue Ansichtsseite `kasse/bfr_log.php`** (verlinkt von `nacherfassung.php`): Filter nach Kasse + Anzahl, pro Aufruf Zeitstempel/Dauer/Erfolg-Badge + vollständiges Request- und Response-XML in kopierbaren `<pre>`-Blöcken.
 
-## Storno-Bons + Gesamtumsatzzähler (2026-07-02, gleicher Tag ergänzt)
+**Wichtig — nicht rückwirkend:** Die beiden Ausfälle von heute Vormittag sind nur noch als grobe Episode rekonstruierbar (Zeitstempel, Typ, Bon-Nr aus `bfr_ausfall_ereignisse`), nicht mit exaktem XML. Für die Hersteller-Meldung müsste Jacky den Ausfall-Test mit dem jetzt aktiven Logging wiederholen.
 
-Hersteller-Antwort: Storno läuft ganz normal über negative Werte (kein eigenes Flag nötig) — einzige Vorgabe: der **Gesamtumsatzzähler darf nie negativ werden** (mehr signierte Stornos als Verkäufe). Der Zähler steckt nur verschlüsselt in der Signatur, ist nicht auslesbar — wir führen ihn deshalb selbst mit.
+**CLI-getestet** (Transaktion mit Rollback): simulierter Verbindungsfehler zu totem Port protokolliert korrekt (`curl_fehler` gesetzt, `response_body` NULL, `dauer_ms` erfasst).
 
-- **Migration 102:** `kassen.bfr_umsatzzaehler` DECIMAL(12,2), beim Anlegen aus bereits signierten Belegen zurückgerechnet (Backfill).
-- `BfrService::signiereAusstehende()` verarbeitet jetzt `typ IN ('verkauf','storno')`, führt den Zähler beim Durchlaufen der Liste lokal mit (`$zaehler`) und persistiert ihn nach jeder erfolgreichen Signatur.
-- `signiereEinzelbeleg()` prüft VOR dem Senden zusätzlich als Sicherheitsnetz: würde ein negativer Betrag den Zähler unter Null drücken? Wenn ja → `grund='zaehler_negativ'`, gar kein Request an den BFR geschickt.
-- `KassenService::storniereBon()` bekommt dieselbe Steuergruppen-Berechnung wie `erstelleBon()` (negative Menge → negative Beträge je Steuergruppe, läuft automatisch durch `steuerGruppenAusPositionen()`) und ruft nach dem Commit ebenfalls `signiereAusstehende()` auf.
-- `markiereFehler()` umgestellt: nur noch reiner Verbindungsfehler (`grund='verbindung'`) bleibt `ausstehend` (Auto-Retry); alles andere (abgelehnt, Zähler-Sperre) → `fehler`.
+**Why:** Ohne die exakten Bytes kann der Hersteller einen Absturz nicht nachvollziehen — die bisherige Ausfall-Episode ist für die interne FON-Meldepflicht gedacht, nicht für technischen Support.
+**How to apply:** Bei jedem künftigen BFR-Problem zuerst `kasse/bfr_log.php` prüfen, bevor man den Hersteller kontaktiert — die letzten N Aufrufe sind dort immer vollständig einsehbar.
 
-**Nebenbefund/Bugfix:** `Logger::log()` fiel in `markiereFehler()` auf `$_SESSION` zurück, das in Hintergrund-Kontexten (Nachsignierung, künftiger Cronjob) nicht gesetzt ist → Warnung + fehlgeschlagener Insert (durch try/catch abgefangen, hat aber den Log-Eintrag verschluckt). Gefixt: `BfrService::SYSTEM_BENUTZER_ID` (= 2, "Jarvis") wird jetzt immer explizit an `Logger::log()` übergeben. **Gleicher Bug existiert unbehoben in `cron/mahnwesen.php`** (dort ruft `Logger::log()` auch ohne benutzerId und ohne Session-Setup) — nicht heute gefixt, nur entdeckt.
+## ✅ Gemeinsam durchgeführter Ausfalltest (2026-07-09, direkt nach dem Logging-Bau) — Bericht an Hersteller raus, wartet auf Antwort
 
-### Korrektur nach Rückfrage: Zähler-Sperre VOR statt NACH der Belegerstellung
+Kontrollierter Test (Karte während Betrieb gezogen), live von mir per DB-Query mitverfolgt, Ergebnis siehe unten. **Kernbefund, an den Hersteller gemeldet:** `/state` antwortete normal (1 ms, gültiges XML) unmittelbar bevor `/register` für denselben Vorgang komplett unbeantwortet blieb (Timeout nach 5003 ms, 0 Bytes) — widerspricht der Doku-Zusage "nach erfolgreichem State-Check kommt von /register garantiert eine Antwort". Genau das Szenario, vor dem das State-Check-Gate-Modell eigentlich schützen sollte, trat also in abgeschwächter Form trotzdem auf (nicht dass unsigniert verkauft wurde — das lief korrekt als "ausgefallen" — sondern dass der Zustandscheck selbst kein zuverlässiger Vorbote für den Absturz von `/register` war).
 
-Jacky hat zurecht eingewendet: würde ein Storno "erfolgreich" angelegt, aber die Signatur schlägt an der Zähler-Sperre fehl, hätte der gedruckte Beleg trotzdem den Text "Sicherheitseinrichtung ausgefallen" bekommen — obwohl der BFR dabei völlig funktionsfähig war und wir selbst aus eigener Business-Logik abgelehnt haben. Das wäre inhaltlich falsch und vermutlich nicht zulässig.
+**Ablauf (Kasse 4, RN DEMOvNahtlOS):**
+1. Normalverkauf 10€ (Bon K3-2026-000019) — echte Signatur, Zähler 302,85→312,85
+2. Karte gezogen → nächster Verkauf 10€ (Bon K3-2026-000020): `/state` OK, `/register` Timeout/0 Bytes, Bon korrekt als "ausgefallen" gebucht, Zähler trotzdem 312,85→322,85 (zählt wie vorgesehen mit), neue Ausfall-Episode eröffnet
+3. BFR neu gestartet, Karte wieder rein → beim nächsten Kassenstart lief automatisch ein Recovery-Nullbeleg (echte Signatur), Episode dadurch automatisch geschlossen
+4. Normalverkauf 10€ (Bon K3-2026-000021) — echte Signatur, Zähler 322,85→332,85
 
-**Fix:** `BfrService::wuerdeUmsatzzaehlerNegativWerden(kasseId, betrag): bool` — neue öffentliche Methode, die denselben Zähler-Check VORAB durchführt (ohne DB-Schreibzugriff). `KassenService::storniereBon()` ruft das ganz am Anfang auf, noch vor `beginTransaction()`: wenn true, wird der Storno komplett abgelehnt (wie "Bon bereits storniert" — kein Datensatz, kein Druck, klare Fehlermeldung an der Kasse). Der Check in `signiereEinzelbeleg()` bleibt zusätzlich als Sicherheitsnetz bestehen (z.B. gegen seltene Wettlaufsituationen), sollte aber durch den Vorabcheck praktisch nie mehr greifen.
+**Alles funktionierte wie vorgesehen** (Umsatzzähler korrekt bei jedem Schritt, Episode korrekt eröffnet/automatisch geschlossen, kein Beleg verloren oder doppelt gezählt) — der einzige offene Punkt ist rein herstellerseitig (warum crasht `/register` trotz gesundem `/state`).
 
-**Der zweite `fehler`-Fall bleibt vorerst unverändert:** Lehnt der BFR eine Anfrage aktiv ab (`Result RC != 'OK'`, Gerät erreichbar), lässt sich das nicht vorab prüfen — Beleg wird wie bei einem Ausfall mit "Sicherheitseinrichtung ausgefallen" gedruckt, `bfr_status='fehler'` für die Nacherfassungs-Seite. Pragmatische Übergangslösung bis geklärt ist, ob das rechtlich korrekt ist oder anders behandelt werden muss.
+**Fehlerbericht** (vollständiges Zeitprotokoll + exaktes XML für den kritischen Moment) an Jacky übergeben, der ihn an den BFR-Hersteller weiterleitet. Datei lag nur im Session-Scratchpad (nicht dauerhaft im Projekt abgelegt) — falls die Herstellerantwort wichtige neue Erkenntnisse bringt, hier nachtragen.
 
-Live getestet: normaler Storno (Zähler korrekt reduziert, signiert), Vorabcheck mit künstlich niedrigem Zähler (Storno komplett abgelehnt — kein Beleg, kein Druck, Original-Bon bleibt unstorniert, Zähler unverändert).
+**How to apply:** Bei der nächsten Session nachfragen, ob vom Hersteller schon eine Antwort kam — falls ja, hier ergänzen und ggf. Architektur-Anpassungen ableiten (z.B. falls der Hersteller einen anderen Timeout/Retry-Wert empfiehlt).
 
-**X-Bon/Z-Bon — GEKLÄRT 2026-07-02: NICHT signaturpflichtig.** Bestätigt von Jacky: nach österreichischer RKSV sind X-Bon/Z-Bon reine interne Berichte, keine eigenen Belege. Manche Kassenhersteller drucken beim Z-Bon zusätzlich einen Nullbeleg mit ab — bewusst NICHT übernommen, da die monatliche + manuelle Nullbeleg-Abdeckung schon ausreicht. Zusätzlich hängt der BFR ohnehin am Registrierkassen-FinanzOnline-Webservice mit Online-Backup — X-Bon/Z-Bon-Anbindung ist damit endgültig von der Liste, nicht nur aufgeschoben.
+## Offene Punkte / nicht heute geklärt
 
-## Nacherfassungs-Seite (2026-07-02, gleicher Tag ergänzt) — FERTIG
+- Timing-Fund (siehe oben, ~2s Verbindungsverzögerung zu totem Port) nicht auf der echten BFR-Maschine verifiziert.
+- Storno läuft weiterhin über eine simple Redirect-Seite (`bon_stornieren.php`), bekam nur den Gate-Check + generische Fehlermeldung — NICHT das volle Zwei-Stufen-Popup wie beim Verkauf (das würde eine Umstellung auf AJAX brauchen, aus Zeitgründen nicht gemacht).
 
-`public/kasse/nacherfassung.php` (+ `nacherfassung_retry.php`), Link "🔏 RKSV" in der Kasse-Kopfnavigation (`shell_top.php`). Drei Abschnitte:
+**Why:** RKSV verlangt lückenlose, aufsteigend signierte Belege; bei Geräteausfall muss trotzdem weiterverkauft werden dürfen (§8), aber die Reihenfolge darf dabei nie durchbrochen werden — genau das hat die alte Nachsignierungs-Warteschlange nicht zuverlässig genug garantiert.
 
-1. **Offene/fehlgeschlagene Belege** (`bfr_status IN ('ausstehend','fehler')`) — Bon-Nr, Kasse, Typ, Betrag, Status, Grund, "Nochmal versuchen"-Button bei `fehler`.
-2. **Offene/fehlgeschlagene Nullbelege** — gleiche Struktur.
-3. **Nachsignierungsläufe** (die Sammelbeleg-Liste) — Kasse, ausgelöst durch, gestartet/beendet, Anzahl signiert/fehlgeschlagen, mit Drill-down (`?lauf_id=X`) auf die einzelnen Belege dieses Laufs.
+**How to apply:** Bei jeder künftigen BFR-Änderung von diesem (neuen) Modell ausgehen, nicht von den alten Konzepten `bfr_status`/Nachsignierungslauf/Nacherfassung — die sind mit Migration 112 vollständig entfernt.
 
-**Migration 103:** `bfr_fehlergrund` VARCHAR an `kassen_bons` und `bfr_nullbelege` — vorher stand der Fehlgrund nur verschachtelt im `aktivitaeten`-Log (JSON), nicht direkt am Beleg abfragbar. `BfrService::grundText()` wandelt den internen `grund`-Code in lesbaren Text, wird beim Fehlschlag gespeichert und bei erfolgreicher (Nach-)Signatur wieder auf NULL gesetzt.
+## ✅ Echter Hardware-Test durchgeführt (2026-07-08)
 
-**`BfrService::retryBeleg()`/`retryNullbeleg()`** — setzen den Datensatz zurück auf `ausstehend` und stoßen die ganz normale `signiereAusstehende()`-Logik erneut an (Reihenfolge-Regel bleibt automatisch gewahrt, kein Sonderpfad für den manuellen Retry).
+Erste echte Kasse mit `bfr_url` je live registriert (Demo-A-Trust-Karte, Kassen-ID `DEMOvNahtlOS`) — deckte vier reale Bugs auf, die dieses Architektur-Dokument nicht vorhersehen konnte, weil vorher nie ein Kasse-Datensatz durch diese Codepfade lief (u.a. `$steuer`-Variable in `erstelleBon()` überschrieben → falsche Steuergruppen im DEP; Negativ-Zähler-Sperre fehlte im Retour-Pfad). Volle Details in [[project_kassen_verwaltung]].
 
-**Nebenbei gefixt:** Nullbeleg-Fehlerstatus-Logik hatte noch den alten (inkonsistenten) `grund === 'abgelehnt'`-Vergleich wie ursprünglich bei Verkaufsbons — jetzt auf dieselbe Regel umgestellt wie bei `markiereFehler()` (nur `'verbindung'` bleibt `ausstehend`, alles andere `fehler`).
+## ✅ `bfr_url` — Offline-Fix + Selbstheilung FERTIG (2026-07-09, am Folgetag umgesetzt wie entworfen)
 
-Live getestet: Seite zeigt offene Fehler-Belege + Nachsignierungslauf korrekt an, Retry-Button setzt zurück und signiert erfolgreich neu, Drill-down auf einen Lauf zeigt die zugehörigen Belege.
+Beide am 2026-07-08 entworfenen Fixe gebaut, noch nicht live auf echter Hardware getestet (kein BFR-Gerät in der Dev-Umgebung verfügbar — muss auf Jackys Testrechner verifiziert werden):
 
-## Kassen-Registrierung + Aktiv-seit-Stichtag (2026-07-02, gleicher Tag ergänzt) — FERTIG
+1. **Offline-Fix**: `kasse_bon_offline.js` hat jetzt `obBfrUrlLokal()` — liest nur den Port aus der (LAN-)`obKonfig.kasse.bfr_url` und baut daraus immer `http://127.0.0.1:<port>`. Ersetzt die beiden direkten `obKonfig.kasse.bfr_url`-Zugriffe in `obBfrErneutVersuchen()` und `obVerkaufAbschliessen()`.
+2. **Selbstheilung**: `BfrService::heileUrlFuerKasse(kasseId, gemeldeteRn, beobachteteIp)` (neu) — vergleicht die gemeldete RN gegen `kassen.rksv_kassen_id`, aktualisiert bei Übereinstimmung `bfr_url` auf `http://<beobachteteIp>:<bisheriger Port>`. Neuer Endpunkt `kasse/ajax_bfr_heilung.php` (POST `rn`, ermittelt Kasse über `ArbeitsplatzService::aktuelleKasseId()`, IP kommt aus `$_SERVER['REMOTE_ADDR']` — nie vom Client behauptet). JS-seitig: `kasse_arbeitsplatz.js` → neue Funktion `apHeileBfrUrl()`, läuft beim Laden von `kasse/index.php` (= Kasse-Start), fragt lokal `127.0.0.1:<port aus window.KASSE_BFR_URL>/state` ab, meldet nur die RN. `window.KASSE_BFR_URL` wird von `kasse/index.php` nur gesetzt wenn `$kasseInfo['bfr_url']` nicht leer ist. Kein Popup, keine Fehlerbehandlung nötig — schlägt der lokale Check fehl, bleibt einfach alles wie es ist.
 
-**Der eigentliche Auslöser:** Jacky ist beim Testen aufgefallen, dass `signiereAusstehende()` bei jedem Aufruf ALLE `bfr_status='ausstehend'` Belege einer Kasse aufgreift — unabhängig davon, ob zum Zeitpunkt der Beleg-Erstellung überhaupt schon die aktuelle BFR-Registrierung (Kassen-ID) aktiv war. Zwei problematische Fälle: (1) historische Belege von vor der BFR-Einführung, (2) Belege einer alten Kassen-ID nach einem Hardware-Wechsel (BFR/Kassen-ID ist immer hardwaregebunden — bei Tausch wird die alte bei der Finanz abgemeldet, eine neue vergeben, **der Umsatzzähler beginnt für die neue Kassen-ID wieder bei 0**).
+**Noch zu tun:** echter Test auf Hardware mit laufendem BFR (lokalen State-Check + Heilung live beobachten, v.a. dass die IP nach einem simulierten Netzwechsel wirklich aktualisiert wird).
 
-**Wichtige Korrektur unterwegs — reale BFR-Installationsanleitung gelesen** (`D:\ERP\mealana\import\BFR_Installationsanleitung.pdf`, bonit.at Software BFR, für andere Kassensoftware aber technisch fast sicher übertragbar): Der **Startbeleg wird vom BFR selbst erstellt** (im BFR-Admin-Tool durch den Techniker, Schritt 7 der Anleitung) — **nicht** von unserer Kassensoftware über `/register`. Genauso erstellt BFR **Monats-/Jahres-Nullbelege automatisch selbst intern**, sobald der erste Beleg eines neuen Monats zur Signatur ankommt, und auch den "Sammelbeleg nach Ausfall" erstellt BFR eigenständig. Unsere eigene Nullbeleg-Logik (weiter oben) macht also etwas, das der BFR ohnehin schon selbst erledigt — laut Jacky bewusst als Redundanz akzeptiert ("besser doppelt als vergessen"), nicht rückgebaut.
+**Entscheidung 2026-07-10:** Hardwaretest bewusst pausiert, bis die Herstellerantwort zum `/register`-Timeout-Bug (siehe oben, Bericht vom 2026-07-09) da ist — dann Offline-Fix/Selbstheilung + der gemeldete Bug in einem Durchgang gemeinsam testen, statt zweimal auf echte Hardware zu müssen.
 
-**Datenmodell — Migration 104:**
-- `kassen.bfr_aktiv_seit` DATETIME — der Stichtag. Alle Signier-/Auflistungs-Abfragen filtern zusätzlich `erstellt_am >= bfr_aktiv_seit` (in `signiereAusstehende()` und `offeneBelege()`). Ist `bfr_aktiv_seit` NULL, matcht die Bedingung nichts — sicherer Default.
-- `bfr_kassen_registrierungen` — eigene Tabelle, **kein Workflow den unsere Software selbst ausführt**, sondern ein reines Protokoll/Backup-Formular: Jacky macht die eigentliche FinanzOnline-Meldung + Startbeleg-Prüfung im echten BFR-Admin-Tool, und hakt das bei uns zusätzlich ab (3 Checkboxen mit Zeitstempel: Zertifikat gemeldet, Kasse gemeldet, Startbeleg geprüft) — zweite unabhängige Aufzeichnung, nicht die Quelle der Wahrheit.
+## (Ursprünglicher Entwurf, 2026-07-08, zur Referenz)
 
-**`BfrService::leseZertifikatInfo()`** — liest `/state`, zerlegt das `SC`-Feld (z.B. `ATU65033000:AT1:5619064c`) automatisch in UID-Nummer/Vertrauensdiensteanbieter/Zertifikat-Seriennummer (Hex + daraus berechnet Dez) — spart manuelle Abtipperei, mit echten Beispielwerten aus der Anleitung gegengetestet (Dez 1444480588 / Hex 5619064c stimmen exakt).
+Beim heutigen Test musste `bfr_url` für Kasse 4 auf eine 10er-LAN-IP gesetzt werden (nicht `127.0.0.1`), weil die Online-Signierung server-seitig läuft (`BfrService::signiereBeleg()` aus `KassenService::erstelleBon()`, PHP läuft auf dem Server, nicht auf der Kasse). Das widerlegt die alte Annahme in den Arbeitsplätze-Notizen ("bfr_url ist immer 127.0.0.1") — und deckt zwei echte, noch offene Probleme auf, die Jacky beide sofort erkannt hat:
 
-**Ablauf auf `public/einstellungen/kasse_registrierung.php`** (+ `kasse_registrierung_speichern.php`): Kassen-ID/BFR-URL eintragen → "Von /state abrufen" befüllt UID/Zertifikat automatisch → 3 Checkboxen abhaken → "Speichern" (Zeitstempel bleiben beim erneuten Speichern erhalten, nicht auf "jetzt" zurückgesetzt) → "Abschließen" (nur wenn alle 3 gesetzt) überträgt Kassen-ID/BFR-URL auf `kassen`, setzt `bfr_aktiv_seit=NOW()` und **`bfr_umsatzzaehler=0.00`** zurück, sperrt die Registrierung. Ist eine Registrierung abgeschlossen, zeigt die Seite nur noch eine schreibgeschützte Zusammenfassung + Button "Neue Kassen-ID anfordern (Hardware-Wechsel)" — startet einen neuen Entwurf, die alte Registrierung bleibt unangetastet als Historie, die Kasse arbeitet bis zum Abschluss der neuen Registrierung mit der alten Kassen-ID weiter.
+**Problem A — Offline/Messe-Kasse würde bei echter Netztrennung scheitern.** `MesseSyncService::preSyncExportieren()` gibt die komplette `kassen`-Zeile inkl. `bfr_url` unverändert an den Offline-Client weiter; `kasse_bon_offline.js` (Zeilen ~499, ~526, ~548, ~598) ruft diese URL direkt per Browser-`fetch()` auf — **keine Sonderbehandlung, kein `127.0.0.1`-Override irgendwo im Offline-Pfad** (geprüft: 0 Treffer für `127.0.0.1`/`localhost` in `MesseSyncService.php`, `bon_offline.php`, `kasse_bon_offline.js`, `messe_vorbereiten.php`, `ajax_messe.php`). Bei einer echten Messe ohne Netzverbindung zum Heimnetz wäre die dort eingetragene LAN-IP unerreichbar, obwohl BFR direkt daneben auf demselben Gerät läuft. **Fix:** Offline-Client soll für seine eigenen BFR-Aufrufe immer `127.0.0.1` verwenden (Host fix, Port aus der konfigurierten `bfr_url` übernehmen) — architektonisch immer richtig, weil Browser und BFR bei Offline-Nutzung per Definition auf demselben Gerät laufen.
 
-**`kasse_edit.php`/`kasse_speichern.php`:** `rksv_kassen_id`/`bfr_url` sind dort jetzt nur noch schreibgeschützte Anzeige + Link zur Registrierungs-Seite — nicht mehr über das normale Kassen-Speichern editierbar (hätte sonst bei jedem Speichern versehentlich überschrieben werden können).
+**Problem B — Online-`bfr_url` als feste IP ist brüchig bei DHCP/WLAN-Wechsel.** Jede IP-Änderung der Kasse (Router-Neustart, WLAN statt LAN, o.ä.) würde BFR fälschlich als "nicht erreichbar" erscheinen lassen, obwohl es lokal einwandfrei läuft. MAC-basierte DHCP-Reservierung wurde erwogen, aber verworfen: WLAN- und LAN-Interface derselben Kasse haben unterschiedliche MACs, beide auf dieselbe IP zu reservieren riskiert Kollisionen falls versehentlich beide Interfaces gleichzeitig aktiv sind.
 
-**Live getestet (kompletter Durchlauf über die echten Web-Routen):** Registrierung anlegen → `/state` abrufen (Zertifikatsdaten korrekt geparst) → Abschließen ohne Checkboxen korrekt abgelehnt → mit allen 3 Checkboxen erfolgreich abgeschlossen, Kasse aktiviert, Zähler auf 0 → **Kernfix bestätigt:** zwei "historische" Test-Belege (einer 1 Monat alt, einer nur *4 Minuten* vor `bfr_aktiv_seit` erstellt) blieben beide korrekt `ausstehend` und tauchten auch auf der Nacherfassungs-Seite nicht auf, während ein Beleg nach dem Stichtag korrekt signiert wurde → Hardware-Wechsel-Flow ("Neue Kassen-ID anfordern") legt sauber einen neuen Entwurf an, alte Registrierung bleibt als Historie, Kasse läuft bis zum Abschluss unverändert weiter.
+**Lösung (Jackys Idee, gemeinsam verfeinert) — Selbstheilender `bfr_url` per lokalem State-Check + server-beobachteter IP:**
+1. Browser (an der Kasse, sobald ein Arbeitsplatz gebunden ist) ruft lokal `http://127.0.0.1:8787/state` auf — das geht immer, unabhängig vom aktuellen Netzwerk.
+2. Browser schickt nur die daraus gelesene RN (Kassen-ID) an einen neuen kleinen Endpunkt (POST).
+3. Server prüft: passt die gemeldete RN zur `rksv_kassen_id`, die für die über `ArbeitsplatzService::aktuelleKasseId()` bereits gebundene Kasse hinterlegt ist? (Kein `IP`-Vergleich nötig — die Arbeitsplatz-Bindung + RN-Übereinstimmung ist der Vertrauensanker, dieselbe Hürde wie die bestehende Kollisions-Sperre.)
+4. Bei Übereinstimmung: `kassen.bfr_url` automatisch auf `http://<REMOTE_ADDR>:<Port aus bisheriger URL>` aktualisieren, falls abweichend. Server braucht den Client dafür nichts über seine eigene IP sagen zu lassen — `$_SERVER['REMOTE_ADDR']` liefert das server-seitig beobachtet, nicht client-behauptet.
+5. Auslöse-Zeitpunkt: beim Kasse-Start (sobald Arbeitsplatz gebunden), evtl. huckepack auf den bestehenden Heartbeat.
 
-## Cronjob (2026-07-02, gleicher Tag ergänzt) — FERTIG
+**Sicherheitsüberlegung:** Ein Fremdgerät könnte das nicht missbrauchen, weil es zusätzlich schon über den Arbeitsplatz-Token an genau diese Kasse gebunden sein müsste — dieselbe Hürde wie bei der Kollisions-Sperre (Manager-PIN nötig, um eine aktiv gebundene Kasse zu übernehmen).
 
-`cron/bfr_nachsignierung.php`, empfohlen alle 5 Minuten (Windows Task Scheduler / crontab, Doku-Header wie bei `cron/mahnwesen.php`). Pro aktiver Kasse mit gesetzter `bfr_url`: erst `sicherstelleMonatsNullbeleg()`, dann `signiereAusstehende($kasseId, 'cronjob')` — dieselbe Logik wie beim normalen Verkauf, nur eben proaktiv statt an einen Verkauf gekoppelt. Live getestet: Kasse ohne `bfr_url` wird korrekt übersprungen, mit BFR konfiguriert holt der Cron offene Belege + fehlenden Monats-Nullbeleg korrekt nach.
+**Verwandte Frage, mitbeantwortet:** Gibt es sonst noch eine Schwachstelle, die eine Kasse dazu bringen könnte sich als andere KassenID auszugeben, unabhängig von IP? Ja, in engem Rahmen — die gesamte "welche Kasse bin ich"-Logik hängt ausschließlich am UUID-Token in `localStorage`, keine Stelle vergleicht zusätzlich die anfragende IP. Wer den Token kopiert (z.B. Browser-Konsole an der echten Kasse, kompromittiertes Gerät) UND die echte Kasse gerade inaktiv ist (>10 Min. kein Heartbeat, sonst greift die Kollisions-Sperre+Manager-PIN), könnte sich als diese Kasse ausgeben. Token ist 128-Bit-Zufall (praktisch nicht erratbar) — Risiko besteht nur bei physischem/Software-Zugriff aufs Gerät selbst. Ein IP-Abgleich als zusätzliche Absicherung wäre wegen Problem B (DHCP-Wechsel) kontraproduktiv/brüchig — für eine Einzelstandort-Kasse mit physischer Zugriffskontrolle als akzeptables Restrisiko eingestuft, nicht gehärtet.
 
-## QR-Code als echtes Bild (2026-07-02, gleicher Tag ergänzt) — FERTIG
-
-Composer-Paket `endroid/qr-code` (^6.0, PHP-8.1-kompatible Version — die neueste 6.1.x braucht PHP 8.4) installiert. Neuer Helfer `src/core/QrCode.php`: `QrCode::dataUri($inhalt, $groesse)` erzeugt bei jedem Druck live einen PNG-Data-URI aus dem schon gespeicherten `rksv_qr`-Inhalt.
-
-**Bewusst keine Bilddatei gespeichert** — Jacky hatte gefragt ob das "overdone" wäre: Erzeugung dauert nur Millisekunden, eigenes Datei-Handling (Pfade, Aufräumen, Speicherplatz) hätte keinen echten Vorteil gebracht. Live neu rendern aus dem gespeicherten Inhalt ist die einfachere Lösung.
-
-`bon_druck.php` (80mm) zeigt jetzt ein eingebettetes `<img>` mit dem QR-Code statt der reinen Textzeile; `bon_a4.php` genauso (Dompdf rendert `data:`-URIs problemlos, auch mit `isRemoteEnabled=false`, da kein externer Fetch nötig ist). Getestet: beide Druckansichten liefern ein valides PNG (Magic-Bytes geprüft) korrekter Größe.
-
-**Damit ist die komplette ursprüngliche RKSV/BFR-Liste durch:** BfrService-Kern, Verkauf+Storno-Signierung, Nachsignierung mit Sammelbeleg-Protokoll, Nullbeleg (monatlich+manuell), Umsatzzähler-Sperre, Nacherfassungs-Seite, Kassen-Registrierung mit Aktiv-seit-Stichtag, Cronjob, echter QR-Code auf beiden Druckvorlagen.
-
-## Noch offen (kleinere Restpunkte, kein Blocker)
-
-(keine — `cron/mahnwesen.php`-Logger-Bug war laut Commit f284050 bereits gefixt, beim Prüfen 2026-07-03 verifiziert)
-
-## GEKLÄRT (2026-07-03): Hersteller-Rückmeldung zu RC != 'OK'
-
-Frage war offen: ist "Sicherheitseinrichtung ausgefallen" korrekt, wenn der BFR erreichbar ist aber eine Anfrage aktiv ablehnt (`Result RC != 'OK'`)? Hersteller-Antwort: **die BFR-Antwort ist immer entweder `RC='OK'` oder gar keine Antwort** — ein "erreichbar, aber aktiv abgelehnt"-Fall existiert in der Praxis nicht. Der bestehende `fehler`-Zweig für `RC != 'OK'` bleibt als Sicherheitsnetz im Code, wird aber laut dieser Auskunft nie greifen. **Kein Code-Änderungsbedarf** — reine Bestätigung, dass die bisherige pragmatische Übergangslösung so bleiben kann.
-
-**Why:** RKSV verlangt lückenlose, aufsteigend signierte Belege; bei Geräteausfall muss trotzdem weiterverkauft werden dürfen (§8), aber die Nachsignierung muss korrekt und nachvollziehbar ablaufen.
-
-**How to apply:** Bei Fortsetzung (Storno/X-Z-Bon/Cronjob/Nacherfassungs-Seite) dieses Dokument als Grundlage nehmen — die Kernlogik in `BfrService` ist bereits vollständig wiederverwendbar, es fehlen nur weitere Aufrufer.
+**Why:** Jacky bemerkte selbst: "ich glaube das gibt weniger Probleme, auch im Offline-Betrieb, wenn lokal immer auf 127.0.0.1 geschaut wird und der Server sich seine Abfragen quasi selbst anhand der Anfrage bauen kann" — ein einziger, konsistenter Mechanismus statt Spezialfall-Flickwerk.
+**How to apply:** Nächste Session gemeinsam durchgehen und bauen: (1) Offline-JS-Fix (127.0.0.1-Override), (2) neuer Melde-Endpunkt + kleiner JS-Aufruf beim Kasse-Start für die Selbstheilung.

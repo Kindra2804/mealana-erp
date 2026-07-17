@@ -7,11 +7,79 @@ metadata:
   originSessionId: 2201806f-a656-4f8c-9f4f-9cf04a3cdd71
 ---
 
-Stand: 2026-07-01
+Stand: 2026-07-01, Bestandsaufnahme aktualisiert 2026-07-10, Umsetzung begonnen 2026-07-17
+
+## 🟢 FERTIG 2026-07-17: Kontenplan + Debitoren + Kreditoren
+
+- **Migration 126** (`kontenplan`-Tabelle): kontonummer/name/typ(erloes|aufwand|steuer|bank|kasse)/aktiv. Befüllt mit den 11 bestehenden Artikelgruppen-Konten (4000-4900, typ=erloes) + 4 Platzhalter-Kernkonten. **Achtung:** die 4 Kernkonten (1500/1600/2500/2700) waren nur meine generische Annahme (Österreichischer Einheitskontenrahmen) — Babsis echte Antwort (siehe unten) widerspricht dem teilweise (Kassa ist bei ihr 2700, nicht 1500!). Diese 4 Zeilen in `kontenplan` müssen noch korrigiert werden, sobald die echten Nummern feststehen.
+- **Migration 127**: `kunden.debitorennummer` (automatisch generiert, Formel `'2' + 5-stellige Kundennummer`, z.B. KD-00001 → 200001; `KundenService::anlegen()` generiert es live mit, `KundenRepository::insert()`/`findById()` angepasst; sichtbar in `kunden/detail.php` neben Kundennummer). `lieferanten.kreditorennummer` (manuell, kein Auto-Generate — bewusste Design-Entscheidung, siehe unten).
+- **Neue Seite** `buchhaltung/kreditoren.php` + `kreditoren_speichern.php`: Liste aller Lieferanten mit editierbarem Kreditorennummer-Feld, ein Speichern-Button für alle Zeilen. Nav-Link in `shell_top.php` ergänzt.
+- **Kontenplan-Verwaltungsseite (Liste/CRUD wie Artikelgruppen) ist noch NICHT gebaut** — Jacky hat explizit gesagt, die brauchen wir aber auf jeden Fall noch.
+
+**Warum Debitoren automatisch, Kreditoren manuell:** JTL berechnet Debitorennummern schon automatisch aus der Kundennummer (Jacky hat Screenshot gezeigt: Kd-1837 → Debitorennummer 200837) — bei potenziell hunderten Kunden ist eine feste Formel praktisch. Bei Lieferanten sind es wenige, und der Steuerberater hat oft schon bestehende Kreditorennummern aus der bisherigen Buchhaltung, die 1:1 übernommen werden sollen statt neu berechnet — passt auch zur bereits am 2026-07-02 getroffenen Entscheidung (Kreditoren-Zuordnung über eigene Liste, nicht automatisch).
+
+## 🟡 Offen: Babsis Antwort zu Steuer-/Zahlungsart-Mapping (Stand 2026-07-17)
+
+Babsi hat auf die erste Nachfrage geantwortet, aber 3 Detailfragen sind noch offen:
+1. **USt-Konten pro Steuersatz** — sie will "aufgeschlüsselt" (eigenes Konto je Satz 20%/10%/0%, nicht ein generisches), aber die konkreten Kontonummern fehlen noch.
+2. **Gutschein-Anzahlungskonto** — sie bucht Gutscheine auf ein "3er-Konto für Anzahlung ohne Steuer", genaue Nummer fehlt.
+3. Braucht das ERP überhaupt ein Vorsteuer-Konto (das wäre eher Einkaufs-/Lieferantenrechnungsseite, die noch 0% Code ist) — noch nicht geklärt ob das für den aktuellen Verkaufs-Export überhaupt relevant ist.
+
+**Bereits bestätigt von Babsi (Zahlungsart→Konto):**
+- Kassa (bar) → **2700**
+- Bank / Bankomat (EC-Karte) → **2800**
+- PayPal → aktuell auch 2800 mit Kennung "PP", soll aber eigenes Konto **2801** werden
+- Rechnung → KEIN eigenes Zahlungskonto, sondern Kombi: Erlös (4er-Warengruppenkonto) + individuelles Kundenkonto (Debitorenkonto), bei Zahlungseingang dann Bank gegen Kundenkonto ausgeglichen
+- Gutschein → Sonderfall, bucht auf das noch offene 3er-Anzahlungskonto (siehe Punkt 2 oben)
+
+**Zwei unterschiedliche Zahlungsart-Wertemengen im Code, beide müssen im Mapping abgedeckt werden:**
+- `auftraege.zahlungsart`: vorkasse, paypal, rechnung, bar, nachnahme, gutschein, gemischt
+- `kassen_bons.zahlungsart`: bar, karte_extern, gutschein, kombi
+
+## ✅ Geklärt 2026-07-17: 99er-Freitext-Artikel (siehe [[project_wawi_gaps]]) braucht KEINE Sonder-Kontenzuordnung
+
+Jacky fragte sich beim Kreditoren-Zuweisen, wie der 99-9999-"Diverses"-Artikel (kann theoretisch jeden Steuersatz haben) kontiert wird. Im Code bestätigt: `steuer_prozent` wird pro Position (`kassen_bon_positionen`/`auftrag_positionen`) gespeichert, unabhängig vom fixen `steuerklasse_id` im Artikel-Stammsatz — der Kassierer wählt den Satz beim "Freier Artikel"-Eintrag manuell (`kasse_bon_offline.js`, `KassenService::getDiversArtikelId()`). Erlöskonto bleibt fix bei artikel_gruppe_id=7 (Sonstiges Zubehör, Konto 4400), USt-Konto wird ganz normal pro Zeile aus dem tatsächlichen `steuer_prozent` abgeleitet — DATEV hat dafür einen eigenen Steuerschlüssel (BU-Kennziffer) pro Buchungszeile, unabhängig vom Erlöskonto. Kein Sonderfall, keine Code-Änderung nötig.
+
+## 🟢 FERTIG 2026-07-17: Verwaltungsoberflächen + DATEV/CSV-Export
+
+- **Buchhaltung → Kontenplan**: volles CRUD (neu/bearbeiten), kein Löschen (nur `aktiv=0`, wegen möglicher FK-Referenzen aus zahlungsart_konten/steuerklassen_konten)
+- **Buchhaltung → Zahlungsart-Konten / Steuer-Konten**: Zeilen kommen LIVE aus den echten ENUM-Werten (`auftraege.zahlungsart`/`kassen_bons.zahlungsart`) bzw. aus der `steuerklassen`-Tabelle — neue Zahlungsarten/Steuersätze im Code tauchen automatisch als offene Zeile auf, keine hartcodierte Liste
+- **`BuchhaltungExportService`** (`src/modules/buchhaltung/`) sammelt Buchungszeilen aus Kassenbons + Auftrag-Positionen, aggregiert pro Tag×Warengruppe×Steuersatz×Zahlungsart; Rechnung separat pro Auftrag (individuelles Debitorenkonto), Zahlungseingänge auf Rechnung als dritter Block. Negative Beträge (Retouren/Gutschriften) werden auf positiv+Soll/Haben-Tausch normalisiert (DATEV erwartet nie negative Beträge).
+- **`DatevFormatter`**: generisches CSV (immer nutzbar) + DATEV-EXTF-Buchungsstapel (Kernspalten, BU-Schlüssel bewusst leer — Steuer wird als eigene Buchungszeile gebucht statt DATEV-Steuerautomatik zu nutzen, weil unser Kontenrahmen ohnehin pro Satz eigene Konten hat)
+- **DATEV-Einstellungen** (Berater-/Mandanten-Nr., WJ-Beginn) als leere Platzhalter in `system_einstellungen`, editierbar auf der Export-Seite — Jacky/Babsi tragen die später selbst ein
+- **Zwei echte Bugs beim Testen gefunden+behoben:** (1) 99-9999-Freitext-Artikel bekommt bei DIREKTEN Kassenbuchungen keine `artikel_id` (nur beim Spiegeln nach `auftrag_positionen`) → Export ist jetzt mit Fallback auf die Diverses-Gruppe abgesichert; (2) `||` in einer SQL-Query ist in MySQL standardmäßig logisches ODER, nicht String-Verkettung (Bug vor dem ersten Testlauf selbst gefunden, war eh unbenutzter Code)
+- **Nicht validiert**: das exakte DATEV-EXTF-Spaltenlayout ist öffentlich dokumentiert, aber es gibt viele optionale Spalten je DATEV-Programmversion — vor dem ersten echten Import mit dem Steuerberater eine Testdatei abstimmen, im Handbuch (`docs/handbuch/12_buchhaltung.md`) + `bedienungsanleitung.php` entsprechend vermerkt
+- Handbuch-Kapitel 12 + Bedienungsanleitung synchron ergänzt
+
+## 🔮 Für später vormerken: Soll- vs. Ist-Versteuerung konfigurierbar machen
+
+`BuchhaltungExportService::auftragUmsaetzeRechnung()` bucht Rechnungs-Erlöse aktuell hart nach **Soll-Versteuerung** (Erlös+USt bei Auftragsdatum, unabhängig vom Zahlungseingang). Das passt für MEALANA KG, ist aber laut Jacky (2026-07-17) nicht für jede Rechtsform/jeden Betrieb korrekt — Soll- vs. Ist-Besteuerung hängt in Österreich von Rechtsform/Umsatzgrenze/Berufsgruppe ab (z.B. bei Weitergabe an andere Betriebe könnte Ist-Versteuerung nötig sein: Erlös+USt erst bei tatsächlichem Zahlungseingang, nicht bei Rechnungsstellung).
+**How to apply:** Beim Weitergabe-/Whitelabel-Thema (siehe [[project_whitelabel_branding]]) einen Schalter `system_einstellungen` (z.B. `versteuerung_art` = 'soll'|'ist') einplanen, der in `auftragUmsaetzeRechnung()` entscheidet ob nach Auftragsdatum oder nach `auftrag_zahlungen.buchungsdatum` gebucht wird. Nicht dringend für MeaLana selbst.
+
+## How to apply beim Wiedereinstieg: Sobald die 3 fehlenden Nummern da sind: (1) die 4 Kernkonten in `kontenplan` korrigieren (2700/2800/2801 + USt-Konten pro Satz + Gutschein-Konto), (2) `zahlungsart_konten`-Tabelle bauen die BEIDE Zahlungsart-Wertemengen abdeckt, (3) `steuerklassen_konten`-Tabelle (nur Steuer-Konto pro Satz, kein Erlös-Konto — das kommt ja schon aus artikel_gruppen).
+
+## ✅ Code-verifizierte Bestandsaufnahme (2026-07-10) — eigene Session geplant, heute nicht weitergebaut
+
+Auf Jackys Wunsch den kompletten Modul-Stand gegen den echten Code geprüft (nicht nur Notizen) + Referenz-Check gegen JTL/Shopware/Sage/Odoo.
+
+**Fertig:** Artikelgruppen mit Kontonummer (`buchhaltung/artikel_gruppen.php`, aber Kontonummern hängen noch in der Luft — nichts konsumiert sie weiter), Steuerklassen (AT 20/10/0%), Kleinunternehmer-Modus (global, korrekt in Dokumenten verdrahtet), Nummernkreise-Verwaltung, Kassenbuch (reine Bargeld-Lade-Buchführung, keine Fibu).
+
+**Nur rudimentär:** Mahnwesen — weiterhin nur einstufig (14 Tage Erinnerung, 30 Tage Auto-Storno bei Vorkasse / nur Hinweis bei Rechnung). Die für echte Mahnstufen vorgesehene Spalte `auftraege.mahnung_stufe` liegt **tot** im Code (wird nirgends mehr erhöht, nur noch aus einer nicht aufgerufenen Repository-Methode referenziert). Lieferantenrechnungen: nur Rechnungsnummer/Betrag/Datum-Freitextfelder pro einzelner Bestellung, keine zentrale Kreditoren-Übersicht.
+
+**Komplett fehlend (0% Code, nur Konzept):** `kontenplan`-Tabelle existiert nicht, `steuerklassen_konten`/`zahlungsart_konten`-Mapping existiert nicht, DATEV-Export ist buchstäblich 0 Zeilen Code (kompletter Repo-Grep nach "datev" ergab nur Zufallstreffer in `updateVertreter`), Kreditoren-Konto-Zuordnung am Lieferanten existiert nicht (auch keine Spalte dafür), Dashboard-Karte "Offene Lieferantenrechnungen" ist ein toter grauer Platzhalter (`lieferanten_rechnungen`-Tabelle existiert nicht).
+
+**Referenz-Check-Ergebnis:** Der "kein eigenes Buchhaltungssystem, nur DATEV-Export"-Grundsatz ist weiterhin richtig und branchenüblich — JTL macht es genauso (Sachkonten-Zuordnung + Export, keine eigene Fibu), Shopware hat gar keine eigene Buchhaltung. Odoo hat volle Fibu (Journal/Bankabgleich/Bilanz), das war aber laut Jackys eigenem Grundsatz nie das Ziel, nur als Referenz fürs Strickauftragsmodul relevant — hier nicht nachzubauen.
+
+**How to apply beim Wiedereinstieg (eigene Session):** Von den drei Kern-Bausteinen für einen funktionierenden Export — Kontenplan, Kontierungsregeln, DATEV-CSV-Export selbst — ist buchstäblich keiner gebaut. Reihenfolge: Kontenplan zuerst (Basis für alles Weitere), dann Mappings (Steuerklasse/Zahlungsart→Konto), dann der eigentliche Export. Kreditoren-Übersicht könnte günstig aus den bereits vorhandenen `bestellungen.rechnung_*`-Feldern gebaut werden (Liste/Filter statt neuer Tabelle) statt gleich eine neue `lieferanten_rechnungen`-Tabelle wie ursprünglich geplant — Kosten/Nutzen beim Wiedereinstieg abwägen.
+
+---
 
 ## ✅ Artikelgruppen-Modul (Migration 096) — FERTIG 2026-07-01
 
 Warengruppen mit Kontozuordnung für Buchhaltungsberichte.
+
+**🟢 BUG behoben (2026-07-11), am Ende insgesamt 4 Stellen:** `artikel_gruppen_speichern.php`/`_loeschen.php` UND `versand/versandklasse_speichern.php`/`_loeschen.php` hatten denselben Copy-Paste-Bug — falsch gesetztes schließendes `"` vor `{$name}` (statt nach dem schließenden „…“-Zeichen) beendete den PHP-String vorzeitig → Parse Error. Anlegen/Bearbeiten/Löschen war dadurch in beiden Modulen komplett kaputt (500er). Alle vier Stellen gefunden über systemweite Suche nach dem exakten Muster, gefixt + end-to-end getestet (Anlegen+Löschen für beide Module durchgespielt). Nebenbei eine wirkungslose Doppel-Abfrage in `artikel_gruppen_loeschen.php` entfernt.
+**Lehre:** Bash-`grep` hat das Unicode-Anführungszeichen „ beim ersten Suchversuch nicht zuverlässig gematcht (0 Treffer trotz bekanntem Vorkommen) — beim zweiten Anlauf das robustere `Grep`-Tool (ripgrep-basiert) verwendet, das alle vier Stellen sofort fand. Bei Suchen nach Sonderzeichen/Unicode-Mustern künftig gleich das Grep-Tool statt Bash-grep nehmen.
 
 **DB:** `artikel_gruppen` (id, konto_nr, name, aktiv, sortierung) + FK `artikel_gruppe_id` an `artikel` + `versandklassen`.
 **Startwerte:** 4000 Wolle … 4900 Versandkosten (11 Gruppen).

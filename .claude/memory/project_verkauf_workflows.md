@@ -19,13 +19,14 @@ Nur wenige **Stammkunden** zahlen auf Rechnung (Rechnungszahler).
 - **14 Tage+** ohne Zahlung → automatisches Erinnerungsmail an Kunden
 - **30 Tage+** ohne Zahlung → Auftrag stornieren, Artikel wieder freigeben (Lagerbestand zurückbuchen)
 
-**Status-Flags im UI:**
+**Status-Flags im UI (FERTIG, 2026-07-17):**
 - Unter 14 Tage: kein Flag
-- 14+ Tage, Mail noch nicht gesendet: "→ Erinnerung senden"
+- 14+ Tage, Mail noch nicht gesendet: "→ Erinnerung senden" (klickbarer Button)
 - 14+ Tage, Mail bereits gesendet: "✓ Mail gesendet"
-- 30+ Tage: "⚠ Stornieren?" mit Option Auftrag stornieren + Artikel freigeben
+- 30+ Tage: "⚠ Stornieren?" (klickbarer Button, mit Bestätigungsdialog)
 
-**How to apply:** Diese Logik muss in den Auftrag-Workflow eingebaut werden. Dashboard-Widget zeigt Zusammenfassung mit Links. Stornierung + Artikelfreigabe müssen als Aktion im System verfügbar sein.
+**Umsetzung:** `dashboard.php` "Offene Kundenrechnungen"-Karte hat jetzt eine Aktion-Spalte + zwei Zähler-Chips ("14+ Tage: X Stk.", "30+ Tage: X Stk."). Die eigentliche Sende-/Stornierungslogik liegt in `MahnwesenService` (`src/modules/auftraege/`) — sowohl `cron/mahnwesen.php` als auch der manuelle Button (`public/auftraege/mahnung_manuell_ajax.php`, JS in `public/js/dashboard.js`) rufen dieselben Methoden auf (`sendeErinnerung()`, `storniere()`), keine doppelte Logik mehr. Manueller Storno-Button funktioniert bewusst auch bei Rechnungszahlern (der Cron storniert die nie automatisch — das ist genau der Fall, für den der manuelle Button gedacht ist). `mahnungen.erstellt_von` ENUM('cronjob','manuell') war schon vorher im Schema angelegt, genau für diesen Zweck.
+**How to apply:** Bei künftigen Änderungen an Mahnwesen-Logik immer `MahnwesenService` anfassen, nie wieder direkt in `cron/mahnwesen.php` oder im AJAX-Endpunkt duplizieren.
 
 ## 🔴 BUG (BEHOBEN 2026-07-05): cron/mahnwesen.php lief seit jeher NIE erfolgreich durch
 
