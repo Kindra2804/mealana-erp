@@ -5,6 +5,7 @@
 - [Chargen-Nachverfolgung](project_chargen_nachverfolgung.md) — FERTIG 2026-07-10: `lager/chargen_nachverfolgung.php`, bestehende LagerService-Methoden + Anzeige-Partial wiederverwendet, eigene lager-gegatete AJAX-Endpunkte
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
 - [Feedback: End-of-Day Updates](feedback_eod.md) — CLAUDE.md am Ende jedes Tages aktualisieren
+- [Feedback: Memory-Backup bei Commit](feedback_memory_backup_bei_commit.md) — IMMER Memory nach .claude/memory/ im Repo syncen bei commit/push, nicht nur Code (2026-07-17)
 - [Projekt: MeaLana ERP Status](project_status.md) — Aktueller Implementierungsstand
 - [DB Design Entscheidungen](db_design_entscheidungen.md) — Tabellen, Multi-Shop, Varianten, Lizenzmodell, Features Barbara (aktualisiert 2026-06-12)
 - [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Jedes neue Modul startet mit Referenz-Check (große WAWIs) + MeaLana-Extras
