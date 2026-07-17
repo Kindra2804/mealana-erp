@@ -88,7 +88,7 @@ class KundenRepository
     {
         $stmt = $this->db->prepare("
             SELECT
-                k.id, k.kundennummer, k.status, k.ist_firma, k.ist_laufkunde,
+                k.id, k.kundennummer, k.debitorennummer, k.status, k.ist_firma, k.ist_laufkunde,
                 k.kundenherkunft, k.kreditlimit, k.sprache,
                 k.standardzahlungsart, k.kundengruppe_id, k.zahlungsbedingung_id,
                 k.erstellt_am, k.aktualisiert_am,
@@ -113,6 +113,27 @@ class KundenRepository
      * O(1)-Lookup via Index auf email_hash — wird für Duplikat-Erkennung verwendet.
      * Normalisierung (lowercase + trim) passiert in Encryption::hash().
      */
+    /** Setzt nur die Debitorennummer (Einzelfeld-Update, für die Klick-zum-Bearbeiten-Aktion auf detail.php). */
+    public function updateDebitorennummer(int $id, string $debitorennummer): void
+    {
+        $this->db->prepare("UPDATE kunden SET debitorennummer = ? WHERE id = ?")
+            ->execute([$debitorennummer, $id]);
+    }
+
+    /** Prüft ob eine Debitorennummer schon einem ANDEREN Kunden gehört ($ausserId beim Bearbeiten die eigene ID). */
+    public function debitorennummerVergeben(string $debitorennummer, ?int $ausserId = null): bool
+    {
+        $sql    = "SELECT COUNT(*) FROM kunden WHERE debitorennummer = :nr";
+        $params = ['nr' => $debitorennummer];
+        if ($ausserId !== null) {
+            $sql .= " AND id != :id";
+            $params['id'] = $ausserId;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
     public function findByEmailHash(string $email): array|false
     {
         $hash = Encryption::hash($email);
@@ -159,7 +180,7 @@ class KundenRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO kunden (
-                kundennummer, status, ist_firma, kundengruppe_id,
+                kundennummer, debitorennummer, status, ist_firma, kundengruppe_id,
                 zahlungsbedingung_id, standardzahlungsart, kreditlimit,
                 sprache, kundenherkunft,
                 vorname_enc, nachname_enc, firmenname_enc,
@@ -167,7 +188,7 @@ class KundenRepository
                 telefon_enc, mobil_enc, geburtsdatum_enc,
                 uid_nummer_enc, notiz_enc
             ) VALUES (
-                :kundennummer, :status, :ist_firma, :kundengruppe_id,
+                :kundennummer, :debitorennummer, :status, :ist_firma, :kundengruppe_id,
                 :zahlungsbedingung_id, :standardzahlungsart, :kreditlimit,
                 :sprache, :kundenherkunft,
                 :vorname_enc, :nachname_enc, :firmenname_enc,
@@ -186,6 +207,7 @@ class KundenRepository
     {
         $stmt = $this->db->prepare("
             UPDATE kunden SET
+                debitorennummer      = :debitorennummer,
                 status               = :status,
                 ist_firma            = :ist_firma,
                 kundengruppe_id      = :kundengruppe_id,
@@ -208,6 +230,7 @@ class KundenRepository
         ");
 
         $params = $this->verschluesseln($data);
+        unset($params['kundennummer']); // unveraenderlich, kein Platzhalter im UPDATE (siehe bug_hersteller_modal_insert Musterfix)
         $params['id'] = $data['id'];
         return $stmt->execute($params) && $stmt->rowCount() > 0;
     }
@@ -397,6 +420,7 @@ class KundenRepository
     {
         return [
             'kundennummer'        => $data['kundennummer'],
+            'debitorennummer'     => $data['debitorennummer'] ?? null,
             'status'              => $data['status'] ?? 'aktiv',
             'ist_firma'           => (int) ($data['ist_firma'] ?? 0),
             'kundengruppe_id'     => $data['kundengruppe_id'] ?: null,

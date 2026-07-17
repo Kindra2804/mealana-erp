@@ -202,6 +202,7 @@ final class Zugriffsregeln
             'consent_speichern.php'    => 'kunden.bearbeiten',
             'status_setzen.php'        => 'kunden.bearbeiten',
             'adresse_loeschen.php'     => 'kunden.loeschen',
+            'debitorennummer_ajax.php' => 'kunden.bearbeiten',
         ],
 
         // === Partner (Mietfach/Kommission) ===
@@ -235,6 +236,7 @@ final class Zugriffsregeln
             'gutschrift_erstellen.php'  => 'auftraege.bearbeiten',
             'gutschrift_speichern.php'  => 'auftraege.bearbeiten',
             'stornieren.php'            => 'auftraege.stornieren',
+            'mahnung_manuell_ajax.php'  => 'auftraege.bearbeiten',
         ],
 
         // === Dokumentenarchiv (nur Lesen, reine Übersicht) ===
@@ -357,6 +359,8 @@ final class Zugriffsregeln
             'artikel_gruppen.php'          => 'buchhaltung.anzeigen',
             'artikel_gruppen_speichern.php' => 'buchhaltung.anzeigen',
             'artikel_gruppen_loeschen.php'  => 'buchhaltung.anzeigen',
+            'kreditoren.php'                => 'buchhaltung.anzeigen',
+            'kreditoren_speichern.php'      => 'buchhaltung.anzeigen',
         ],
     ];
 
@@ -406,7 +410,8 @@ final class Zugriffsregeln
         'achsen'      => ['achse_sort_tree_ajax.php', 'achse_loeschen_ajax.php', 'achse_aktualisieren_ajax.php', 'achse_speichern_ajax.php', 'sort_ajax.php'],
         'hersteller'  => ['schnell_speichern.php', 'aktualisieren.php', 'speichern.php'],
         'partner'     => ['vertrag_beenden.php', 'vertrag_speichern.php', 'fach_aktualisieren.php', 'fach_speichern.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
-        'auftraege'   => ['zahlung_buchen.php', 'status_ajax.php', 'kunden_ajax.php', 'artikel_ajax.php'],
+        'auftraege'   => ['zahlung_buchen.php', 'status_ajax.php', 'kunden_ajax.php', 'artikel_ajax.php', 'mahnung_manuell_ajax.php'],
+        'kunden'      => ['debitorennummer_ajax.php'],
         'einstellungen' => ['test_mail.php'],
         'bestellungen'  => ['artikel_ajax.php', 'reserviert_ajax.php'],
         'wareneingang'  => ['durchlauf_clear.php', 'durchlauf_add.php', 'chargen_ajax.php', 'artikel_suche.php'],

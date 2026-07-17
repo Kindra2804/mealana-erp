@@ -86,6 +86,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php endif; ?>
         <div style="margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span style="font-family:monospace;font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($kunde['kundennummer']) ?></span>
+            <?php if ($kunde['debitorennummer']): ?>
+                <span id="debitorennummer-chip" data-kunde-id="<?= $kunde['id'] ?>" data-nummer="<?= htmlspecialchars($kunde['debitorennummer']) ?>"
+                      style="font-family:monospace;font-size:12px;color:var(--color-text-muted);cursor:pointer;border-bottom:1px dotted var(--color-text-muted)"
+                      title="Klicken zum Ändern (z.B. bei Übernahme aus bestehender Buchhaltung)">Deb: <?= htmlspecialchars($kunde['debitorennummer']) ?></span>
+            <?php endif; ?>
             <?= $statusChip ?>
             <?php if ($kunde['kundengruppe']): ?>
                 <span class="chip"><?= htmlspecialchars($kunde['kundengruppe']) ?></span>

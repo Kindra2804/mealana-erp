@@ -19,3 +19,27 @@ function adresseNeuOeffnen()     { document.getElementById('adresse-neu-modal').
 function adresseNeuSchliessen()  { document.getElementById('adresse-neu-modal').style.display  = 'none'; }
 
 setTimeout(function () { var b = document.getElementById('flash-banner'); if (b) b.style.display = 'none'; }, 3000);
+
+// Debitorennummer: Klick-zum-Ändern (z.B. Bestandskunden mit vorhandener Nummer aus der bisherigen Buchhaltung)
+var debChip = document.getElementById('debitorennummer-chip');
+if (debChip) {
+    debChip.addEventListener('click', function () {
+        var neu = prompt('Debitorennummer ändern:', debChip.dataset.nummer);
+        if (neu === null || neu.trim() === '' || neu.trim() === debChip.dataset.nummer) return;
+
+        fetch(window.BASE_PATH + '/kunden/debitorennummer_ajax.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'id=' + encodeURIComponent(debChip.dataset.kundeId) + '&debitorennummer=' + encodeURIComponent(neu.trim())
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (ergebnis) {
+                if (ergebnis.erfolg) {
+                    window.location.reload();
+                } else {
+                    alert('Fehler: ' + (ergebnis.fehler || 'Unbekannter Fehler'));
+                }
+            })
+            .catch(function () { alert('Netzwerkfehler — bitte nochmal versuchen.'); });
+    });
+}

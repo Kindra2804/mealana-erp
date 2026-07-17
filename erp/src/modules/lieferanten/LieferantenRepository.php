@@ -20,6 +20,13 @@ class LieferantenRepository
         $this->db = Database::getInstance();
     }
 
+    /** Setzt/ändert nur das manuell zugewiesene Kreditorenkonto (Buchhaltung → Kreditoren). */
+    public function updateKreditorennummer(int $id, ?string $kreditorennummer): void
+    {
+        $this->db->prepare("UPDATE lieferanten SET kreditorennummer = ? WHERE id = ?")
+            ->execute([$kreditorennummer ?: null, $id]);
+    }
+
     public function findAll(bool $mitInaktiven = false): array
     {
         $where = $mitInaktiven ? '' : 'WHERE l.aktiv = 1';
@@ -27,6 +34,7 @@ class LieferantenRepository
             SELECT l.id, l.name, l.firma, l.land, ln.name_de AS land_name,
                    l.website, l.email, l.telefon,
                    l.waehrung, l.zahlungsziel_tage, l.lieferzeit_tage,
+                   l.kreditorennummer,
                    l.aktiv, l.erstellt_am
             FROM lieferanten l
             LEFT JOIN laender ln ON ln.iso_code = l.land

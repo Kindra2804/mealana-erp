@@ -159,7 +159,8 @@ $forderungenRows = $db->query("
            COALESCE(SUM(z.betrag), 0) AS bezahlt,
            r.faellig_am,
            DATEDIFF(CURDATE(), COALESCE(r.faellig_am, DATE_ADD(a.erstellt_am, INTERVAL 14 DAY))) AS tage_ueberfaellig,
-           DATEDIFF(CURDATE(), a.erstellt_am) AS alter_tage
+           DATEDIFF(CURDATE(), a.erstellt_am) AS alter_tage,
+           (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'erinnerung') AS erinnerung_gesendet
     FROM auftraege a
     LEFT JOIN auftrag_zahlungen z ON z.auftrag_id = a.id
     LEFT JOIN rechnungen r ON r.auftrag_id = a.id AND r.storniert = 0
@@ -198,6 +199,16 @@ $forderungenUeberfaellig30 = (int)$db->query("
       AND a.lieferstatus != 'storniert'
       AND (a.bruttobetrag - COALESCE(z.bezahlt,0)) > 0.01
       AND DATEDIFF(CURDATE(), a.erstellt_am) >= 30
+")->fetchColumn();
+
+$forderungen14bis29 = (int)$db->query("
+    SELECT COUNT(*) FROM auftraege a
+    LEFT JOIN (SELECT auftrag_id, SUM(betrag) AS bezahlt FROM auftrag_zahlungen GROUP BY auftrag_id) z
+           ON z.auftrag_id = a.id
+    WHERE a.zahlungsstatus IN ('ausstehend','teilbezahlt')
+      AND a.lieferstatus != 'storniert'
+      AND (a.bruttobetrag - COALESCE(z.bezahlt,0)) > 0.01
+      AND DATEDIFF(CURDATE(), a.erstellt_am) BETWEEN 14 AND 29
 ")->fetchColumn();
 
 $mahnungenAktiv = (int)$db->query("
@@ -326,6 +337,14 @@ require_once __DIR__ . '/includes/shell_top.php';
 .db-table td { padding:8px 8px; border-bottom:1px solid #f1f5f9; color:#1e3a5f; vertical-align:middle; }
 .db-table tr:last-child td { border-bottom:none; }
 .db-table tr:hover td { background:#f8fafc; }
+/* Mahnwesen-Aktionen */
+.db-aktion-btn { border:none; border-radius:4px; padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.db-aktion-rot { background:#fee2e2; color:#dc2626; }
+.db-aktion-rot:hover { background:#fecaca; }
+.db-aktion-orange { background:#ffedd5; color:#c2410c; }
+.db-aktion-orange:hover { background:#fed7aa; }
+.db-aktion-erledigt { color:#16a34a; font-size:11px; font-weight:600; white-space:nowrap; }
+.db-aktion-btn:disabled { opacity:.5; cursor:default; }
 /* Aging-Balken */
 .db-aging-track { display:inline-block; width:120px; height:8px; background:#e2e8f0; border-radius:4px; vertical-align:middle; overflow:hidden; }
 .db-aging-fill  { height:100%; border-radius:4px; display:block; }
@@ -596,9 +615,12 @@ require_once __DIR__ . '/includes/shell_top.php';
     <div class="db-card" style="padding:0">
         <div style="padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
             <div style="font-weight:700;font-size:13px;color:#1e3a5f">Offene Kundenrechnungen</div>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <?php if ($forderungen14bis29 > 0): ?>
+                <a href="<?= BASE_PATH ?>/auftraege/liste.php?zahlung=ausstehend" class="db-chip db-chip-amber" style="text-decoration:none">14+ Tage: <?= $forderungen14bis29 ?> Stk.</a>
+                <?php endif; ?>
                 <?php if ($forderungenUeberfaellig30 > 0): ?>
-                <span class="db-chip db-chip-red">&gt;30 Tage: <?= $forderungenUeberfaellig30 ?></span>
+                <a href="<?= BASE_PATH ?>/auftraege/liste.php?zahlung=ausstehend" class="db-chip db-chip-red" style="text-decoration:none">30+ Tage: <?= $forderungenUeberfaellig30 ?> Stk.</a>
                 <?php endif; ?>
                 <a href="<?= BASE_PATH ?>/auftraege/liste.php?zahlung=ausstehend" style="font-size:11px;color:#2563eb;line-height:20px">alle (<?= $forderungenAnzahl ?>) →</a>
             </div>
@@ -610,6 +632,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                     <th style="text-align:right">Betrag</th>
                     <th style="text-align:center">Tage</th>
                     <th>Aging</th>
+                    <th>Aktion</th>
                 </tr>
             </thead>
             <tbody>
@@ -644,10 +667,19 @@ require_once __DIR__ . '/includes/shell_top.php';
                         <span class="db-aging-fill" style="width:<?= min(100,$agingPct) ?>%;background:<?= $agingFarbe ?>"></span>
                     </span>
                 </td>
+                <td>
+                    <?php if ($tage >= 30): ?>
+                        <button type="button" class="db-aktion-btn db-aktion-rot" data-auftrag-id="<?= $f['id'] ?>" data-aktion="stornierung">⚠ Stornieren?</button>
+                    <?php elseif ($tage >= 14 && $f['erinnerung_gesendet'] > 0): ?>
+                        <span class="db-aktion-erledigt">✓ Mail gesendet</span>
+                    <?php elseif ($tage >= 14): ?>
+                        <button type="button" class="db-aktion-btn db-aktion-orange" data-auftrag-id="<?= $f['id'] ?>" data-aktion="erinnerung">→ Erinnerung senden</button>
+                    <?php endif; ?>
+                </td>
             </tr>
             <?php endforeach; ?>
             <?php if (empty($forderungenRows)): ?>
-            <tr><td colspan="4" style="text-align:center;color:#16a34a;padding:20px">✓ Alle Rechnungen beglichen</td></tr>
+            <tr><td colspan="5" style="text-align:center;color:#16a34a;padding:20px">✓ Alle Rechnungen beglichen</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
@@ -674,5 +706,7 @@ require_once __DIR__ . '/includes/shell_top.php';
     <span style="color:#4a5568">Keine Aktivitäten</span>
     <?php endif; ?>
 </div>
+
+<script src="<?= BASE_PATH ?>/js/dashboard.js"></script>
 
 <?php require_once __DIR__ . '/includes/shell_bottom.php'; ?>

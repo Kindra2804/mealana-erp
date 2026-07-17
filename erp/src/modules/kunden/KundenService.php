@@ -75,6 +75,16 @@ class KundenService
         }
 
         $data['kundennummer'] = $this->repo->nextKundennummer();
+
+        // Debitorennummer: Vorschlag aus Kundennummer ('2' + 5-stellig, z.B. KD-00042 -> 200042),
+        // aber überschreibbar (z.B. für Bestandskunden mit vorhandener Nummer aus der bisherigen
+        // Buchhaltung, oder bei Weitergabe an einen anderen Betrieb mit eigenem Schema).
+        if (empty($data['debitorennummer'])) {
+            $data['debitorennummer'] = '2' . str_pad((string)(int) substr($data['kundennummer'], 3), 5, '0', STR_PAD_LEFT);
+        } elseif ($this->repo->debitorennummerVergeben($data['debitorennummer'])) {
+            return ['erfolg' => false, 'fehler' => ['Debitorennummer ' . $data['debitorennummer'] . ' ist bereits einem anderen Kunden zugeordnet']];
+        }
+
         $id = $this->repo->insert($data);
 
         // Adresse direkt mitanlegen wenn Pflichtfelder vorhanden
@@ -129,12 +139,39 @@ class KundenService
         }
         $data['kundennummer'] = $kunde['kundennummer'];
 
+        // Debitorennummer ist bewusst überschreibbar (siehe anlegen()) — leer gelassen behält die bestehende.
+        if (empty($data['debitorennummer'])) {
+            $data['debitorennummer'] = $kunde['debitorennummer'];
+        } elseif ($data['debitorennummer'] !== $kunde['debitorennummer']
+                && $this->repo->debitorennummerVergeben($data['debitorennummer'], (int)$data['id'])) {
+            return ['erfolg' => false, 'fehler' => ['Debitorennummer ' . $data['debitorennummer'] . ' ist bereits einem anderen Kunden zugeordnet']];
+        }
+
         $this->repo->update($data);
 
         Logger::log('kunden.bearbeiten', 'kunden', (int)$data['id'], [
             'kundennummer' => $kunde['kundennummer'],
         ]);
 
+        return ['erfolg' => true];
+    }
+
+    /**
+     * Ändert nur die Debitorennummer (Klick-zum-Bearbeiten auf detail.php) — z.B. für
+     * Bestandskunden mit vorhandener Nummer aus der bisherigen Buchhaltung, oder bei
+     * Weitergabe an einen anderen Betrieb mit eigenem Nummernschema.
+     */
+    public function debitorennummerAendern(int $id, string $neueNummer): array
+    {
+        $neueNummer = trim($neueNummer);
+        if ($neueNummer === '') {
+            return ['erfolg' => false, 'fehler' => 'Debitorennummer darf nicht leer sein'];
+        }
+        if ($this->repo->debitorennummerVergeben($neueNummer, $id)) {
+            return ['erfolg' => false, 'fehler' => 'Debitorennummer ' . $neueNummer . ' ist bereits einem anderen Kunden zugeordnet'];
+        }
+        $this->repo->updateDebitorennummer($id, $neueNummer);
+        Logger::log('kunden.debitorennummer_geaendert', 'kunden', $id, ['neue_nummer' => $neueNummer]);
         return ['erfolg' => true];
     }
 
