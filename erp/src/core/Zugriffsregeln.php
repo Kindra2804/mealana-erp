@@ -361,6 +361,15 @@ final class Zugriffsregeln
             'artikel_gruppen_loeschen.php'  => 'buchhaltung.anzeigen',
             'kreditoren.php'                => 'buchhaltung.anzeigen',
             'kreditoren_speichern.php'      => 'buchhaltung.anzeigen',
+            'kontenplan.php'                => 'buchhaltung.anzeigen',
+            'kontenplan_speichern.php'      => 'buchhaltung.anzeigen',
+            'zahlungsart_konten.php'        => 'buchhaltung.anzeigen',
+            'zahlungsart_konten_speichern.php' => 'buchhaltung.anzeigen',
+            'steuerklassen_konten.php'      => 'buchhaltung.anzeigen',
+            'steuerklassen_konten_speichern.php' => 'buchhaltung.anzeigen',
+            'export.php'                    => 'buchhaltung.anzeigen',
+            'export_datei.php'              => 'buchhaltung.anzeigen',
+            'export_einstellungen_speichern.php' => 'buchhaltung.anzeigen',
         ],
     ];
 

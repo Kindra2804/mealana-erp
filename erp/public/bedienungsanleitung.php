@@ -202,6 +202,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#mahnwesen" class="sub">↳ Mahnwesen</a>
             <a href="#kunden">Kunden</a>
             <a href="#partner">Partner & Mietfächer</a>
+            <a href="#buchhaltung">Buchhaltung</a>
+            <a href="#buchhaltung-export" class="sub">↳ DATEV/CSV-Export</a>
             <a href="#einstellungen">Einstellungen</a>
             <a href="#einstellungen-mail" class="sub">↳ Mail / SMTP</a>
             <a href="#lieferanten">Lieferanten</a>
@@ -416,6 +418,25 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Spende</strong></td><td>Überschussware gespendet, Gegenwert protokolliert</td></tr>
             </table>
             <p><strong>Mietfach zuweisen:</strong> Partner öffnen → Tab Mietfächer → "Mietfach zuweisen" → Nummer, Mietbeginn, Monatsbetrag → Speichern. Vertragshistorie bleibt immer erhalten.</p>
+
+            <!-- BUCHHALTUNG -->
+            <h2 id="buchhaltung">Buchhaltung <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>MeaLana führt keine eigene Fibu — nur Kontenzuordnung + Export für den Steuerberater.</p>
+            <table class="ba-table">
+                <tr><th>Seite</th><th>Wofür?</th></tr>
+                <tr><td><strong>Artikelgruppen</strong></td><td>Erlöskonto je Warengruppe (Wolle, Nadeln, ...)</td></tr>
+                <tr><td><strong>Kontenplan</strong></td><td>Zentrale Kontenliste — neu anlegen/bearbeiten, nie löschen (nur deaktivieren)</td></tr>
+                <tr><td><strong>Kreditoren</strong></td><td>Kreditorenkonto je Lieferant, manuell zugewiesen</td></tr>
+                <tr><td><strong>Zahlungsart-/Steuer-Konten</strong></td><td>Welches Konto für bar/Bank/PayPal/... bzw. 20%/10%/13%/0%</td></tr>
+            </table>
+            <p><strong>Debitorennummer (Kunde):</strong> wird bei Neuanlage automatisch vorgeschlagen, ist aber überschreibbar — auf der Kunde-Detailseite draufklicken zum Ändern (wichtig bei Bestandskunden mit vorhandener Nummer aus der bisherigen Buchhaltung).</p>
+
+            <h3 id="buchhaltung-export">DATEV/CSV-Export</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Einmalig <strong>DATEV-Einstellungen</strong> eintragen (Berater-Nr., Mandanten-Nr. — vom Steuerberater erfragen)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Zeitraum</strong> wählen (Von/Bis oder Schnellwahl Monat/Quartal/Jahr)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Gelbe <strong>Hinweise</strong> prüfen — diese Positionen wurden NICHT automatisch gebucht und müssen von Hand nachgetragen werden</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div><strong>CSV</strong> (funktioniert überall) oder <strong>DATEV</strong> herunterladen und an den Steuerberater übergeben</div></div>
+            <p style="color:#c2410c"><strong>Wichtig:</strong> Vor dem ersten echten DATEV-Import unbedingt eine Testdatei mit dem Steuerberater abstimmen.</p>
 
             <!-- EINSTELLUNGEN -->
             <h2 id="einstellungen">Einstellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
