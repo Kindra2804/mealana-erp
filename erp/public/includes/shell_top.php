@@ -34,6 +34,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📋', 'label' => 'Picklisten',         'href' => BASE_PATH . '/lager/picklisten.php'],
         ['icon' => '🗄️', 'label' => 'Lagerverwaltung',    'href' => BASE_PATH . '/lager/verwaltung.php'],
         ['icon' => '📍', 'label' => 'Lagerplätze',         'href' => BASE_PATH . '/lager/lagerplaetze.php'],
+        ['icon' => '🔢', 'label' => 'Inventur',            'href' => BASE_PATH . '/inventur/liste.php'],
     ],
     'verkauf' => [
         ['icon' => '📋', 'label' => 'Aufträge',           'href' => BASE_PATH . '/auftraege/liste.php'],

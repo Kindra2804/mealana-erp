@@ -204,6 +204,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#partner">Partner & Mietfächer</a>
             <a href="#buchhaltung">Buchhaltung</a>
             <a href="#buchhaltung-export" class="sub">↳ DATEV/CSV-Export</a>
+            <a href="#inventur">Inventur</a>
             <a href="#einstellungen">Einstellungen</a>
             <a href="#einstellungen-mail" class="sub">↳ Mail / SMTP</a>
             <a href="#lieferanten">Lieferanten</a>
@@ -441,6 +442,13 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Gelbe <strong>Hinweise</strong> prüfen — diese Positionen wurden NICHT automatisch gebucht und müssen von Hand nachgetragen werden</div></div>
             <div class="ba-step"><div class="ba-step-nr">4</div><div><strong>CSV</strong> (funktioniert überall) oder <strong>DATEV</strong> herunterladen und an den Steuerberater übergeben</div></div>
             <p style="color:#c2410c"><strong>Wichtig:</strong> Vor dem ersten echten DATEV-Import unbedingt eine Testdatei mit dem Steuerberater abstimmen.</p>
+
+            <!-- INVENTUR -->
+            <h2 id="inventur">Inventur <span class="ba-badge ba-badge-arbeit">In Arbeit</span></h2>
+            <p>Ein Inventur-Lauf mit frei wählbarem Scope: ganzes Lager, ein Lagerplatz, eine Kategorie, ein einzelner Artikel oder ein Mietfach — statt getrennter Module für große und kleine Zählungen.</p>
+            <p><strong>Lagerplätze</strong> (Lager → Lagerplätze): Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur.</p>
+            <p><strong>Inventur starten</strong> (Lager → Inventur): Scope wählen, "Blind zählen" (Soll-Bestand für den Zähler ausblenden) ist standardmäßig aktiv. Ein laufender Lauf kann pausiert und später fortgesetzt werden (Zwischenstand bleibt erhalten) oder endgültig abgebrochen werden.</p>
+            <p style="color:#64748b"><strong>Noch nicht fertig:</strong> die eigentliche Zählliste (Mengen erfassen), Buchungssperren, Differenzabgleich — folgt in weiteren Schritten.</p>
 
             <!-- EINSTELLUNGEN -->
             <h2 id="einstellungen">Einstellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

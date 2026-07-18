@@ -21,6 +21,8 @@
 | [09 Einstellungen](09_einstellungen.md) | Firmenadresse, E-Mail/SMTP, Kanäle |
 | [10 Häufige Fragen (FAQ)](10_faq.md) | Problemlösung für den Alltag |
 | [11 Kasse (POS)](11_kasse.md) | Bon-Erstellung, Zahlarten, Kassensturz, Abholbereit-Flow |
+| [12 Buchhaltung](12_buchhaltung.md) | Kontenplan, Kreditoren/Lieferantenrechnungen, DATEV/CSV-Export |
+| [13 Inventur](13_inventur.md) *(in Arbeit)* | Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen |
 
 ---
 

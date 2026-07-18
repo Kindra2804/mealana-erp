@@ -1,11 +1,11 @@
 ---
 name: project-inventur-konzept
-description: "Vollständiges Design für das Inventur-Modul (Lagerplätze, Zähl-Läufe, Sperren, Chargen-Abgleich) — Design-Session 2026-07-18, noch nicht gebaut"
+description: "Vollständiges Design für das Inventur-Modul (Lagerplätze, Zähl-Läufe, Sperren, Chargen-Abgleich) — Design 2026-07-18; Lagerplätze + Inventur-Lauf-Kern Slice 1 (Kopf+Scope+Lebenszyklus) FERTIG, Zählliste als Nächstes"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 1208232f-9b1f-41ae-ae93-bb91abe26d76
-  modified: 2026-07-18T11:07:09.493Z
+  modified: 2026-07-18T11:45:43.876Z
 ---
 
 Stand: 2026-07-18, komplette Design-Absprache mit Jacky vor Baubeginn (wie von ihm gewünscht, siehe [[feedback_modul_vorgehen]]). Ersetzt/ergänzt die verstreuten Einzelnotizen in [[project_inventur_hinweis]] und den Lagerplätze-Abschnitt in [[project_lager_konzept]] — dies hier ist das verbindliche Konzept.
@@ -103,6 +103,24 @@ JTL/Shopware/Sage/LS-POS bieten typischerweise: Blind-Inventur (HOCH), permanent
 - End-to-end getestet: CLI (Anlegen/Lesen/Bearbeiten/Deaktivieren/Validierungsfehler, danach aufgeräumt) + simuliertes Seiten-Rendering (Nav, Filter, leerer Zustand) — beides sauber.
 - Handbuch Kapitel 03 + Bedienungsanleitung ergänzt.
 
+## 🟢 FERTIG 2026-07-18: Inventur-Lauf-Kern Slice 1 (Kopf + Scope-Auswahl + Lebenszyklus)
+
+**Architektur-Entscheidung dabei:** Statt `lagerbestand.lagerplatz_id` direkt einzubauen (siehe Alternative unten) — eine **separate** Tabelle `lagerbestand_lagerplaetze` (Lagerbestand-Zeile ↔ Lagerplatz ↔ Menge) ist der bessere Weg: Kasse/Wareneingang/Umlagerung bleiben komplett unberührt, nur die Inventur liest/schreibt zusätzlich diese Tabelle, Summe über alle Lagerplätze = weiterhin der bekannte Gesamtbestand. **Diese Tabelle ist noch nicht gebaut** — kommt mit Slice 2 (Zählliste), wenn tatsächlich pro Lagerplatz gezählt wird.
+
+- **Migration 135**: `inventur_laeufe` (Kopftabelle) — `scope_tabelle`/`scope_id` polymorph (wie `aktivitaeten.referenz_tabelle`/`referenz_id`), `scope_bezeichnung` als Namens-Snapshot (wie `kunden_snapshot`), `blind_modus`, `status` ENUM(laufend/pausiert/abgeschlossen/abgebrochen), `vorgaenger_lauf_id` (self-FK für Fortsetzungen).
+- **Berechtigungen bereits vorhanden** (Überraschungsfund): `inventur.anzeigen/anlegen/bearbeiten/loeschen` + `inventurpositionen.*` waren schon beim Rollen/Rechte-Modul-Bau (2026-07-05) mit-geseedet und den richtigen Rollen zugewiesen (superadmin/admin/assistent/manager/lager = voll, readonly = nur anzeigen) — obwohl das Inventur-Modul selbst 0% Code war. Einfach wiederverwendet, keine neue Berechtigung nötig.
+- `InventurRepository`/`InventurService` (neu, `src/modules/inventur/`): Scope-Auflösung (Name des Ziels je nach scope_tabelle), `starten()`/`pausieren()`/`abbrechen()`/`fortsetzen()`. "Abgeschlossen" gibt es in Slice 1 bewusst noch nicht — ohne echte Zählpositionen gäbe es nichts sinnvoll abzuschließen.
+- **UI**: `inventur/liste.php` (Übersicht + Status-Aktionen) + `inventur/neu.php` (Scope-Auswahl: 4 einfache Dropdowns + Artikel-Typeahead-Suche, analog Bestellmodul-Muster) + Handler (`starten.php`/`pausieren.php`/`abbrechen.php`/`fortsetzen.php`/`artikel_suche_ajax.php`).
+- Nav-Link "🔢 Inventur" im Lager-Sidebar (eigenes Modul, aber unter `activeModule='lager'` eingehängt wie Lagerplätze).
+- **Nebenfund beim Bauen**: Die JSON-Endpunkt-Whitelist (`Zugriffsregeln::$jsonEndpunkte`) für die Lagerplätze-Handler vom Vortag war unvollständig — nachgetragen (`lagerplaetze_speichern.php` etc. fehlten, hätten bei fehlender Berechtigung ein HTML-Redirect statt JSON zurückgegeben und den Fetch-Handler im JS kaputt gemacht).
+- End-to-end getestet: kompletter Lebenszyklus per CLI (Start mit gültigem/ungültigem/nicht-existierendem Scope, Pausieren, Doppel-Pausieren-Ablehnung, Fortsetzen mit korrektem `vorgaenger_lauf_id`, Abbrechen), danach aufgeräumt. Seiten-Rendering simuliert geprüft (Scope-Dropdowns korrekt befüllt, Nav-Link da, leerer Listen-Zustand).
+- Handbuch: neues Kapitel `13_inventur.md` (als "In Arbeit" markiert) + README-Inhaltsverzeichnis ergänzt (dabei auch das fehlende Kapitel 12 Buchhaltung nachgetragen, war nie eingetragen worden). Bedienungsanleitung ergänzt.
+- **Bewusst noch nicht gemacht**: JS-Auslagerung (`neu.php` hat noch Inline-`<script>`) — laut [[feedback_js_auslagern]] gehört das zur Modul-Abschluss-Checkliste, aber das Modul ist noch mitten im Bau (mehr JS kommt mit der Zählliste in Slice 2) — wird gebündelt beim tatsächlichen Modul-Abschluss gemacht, nicht schon jetzt für ein einzelnes Inline-Script.
+
 ## How to apply beim Weiterbauen
 
-Nächster Schritt: **Inventur-Lauf-Kern** (Kopftabelle + Scope-Auswahl + Zählliste). Dabei gleich mit erledigen: `lagerbestand.lagerplatz_id` + UNIQUE-Index-Erweiterung + Anpassung der bestehenden `LagerRepository`-Buchungsmethoden (siehe Hinweis oben) — sorgfältig testen, weil das in die produktiven Kasse/Wareneingang/Umlagerung-Pfade eingreift. Danach Live-Sperre/Buchungssperre, dann Abschluss-Logik (Chargen-Summenabgleich + Lagerplatz-Reallokation + Differenzbuchung), zuletzt Druckversion + Manager-Auslauf-Shortcut + Fortschritts-%-Anzeige + "Letzte Inventur"-Datum am Artikel (aktiviert den vorhandenen Spalten-Picker-Platzhalter). Referenz-Check ist mit diesem Dokument erledigt — nicht nochmal wiederholen, direkt in die Design-Detailarbeit je Baustein gehen.
+**Nächster Schritt: Slice 2 — Zählliste.** Braucht: neue Tabelle `lagerbestand_lagerplaetze` (Lagerbestand-Zeile ↔ Lagerplatz ↔ Menge, additiv — siehe Architektur-Entscheidung oben, KEIN Eingriff in `lagerbestand` selbst), `inventur_positionen` (Zeile pro Artikel/Charge/Lagerplatz innerhalb eines Laufs, mit Soll/Ist/Status/gezählt-von), die eigentliche Tablet-taugliche Zähl-UI (Mobile-First wie Kasse/Packplatz), Live-Sperre pro Lagerplatz (first-come + Warnung bei Kollision).
+
+Danach: Slice 3 (Buchungssperre in Kasse/Wareneingang/Shop-Sync bei Voll-Lager-Scope), Slice 4 (Abschluss-Logik: Chargen-Summenabgleich + Lagerplatz-Reallokation + Differenzbuchung + rollenabhängige Begründungspflicht), Slice 5 (Druckversion, Manager-Auslauf-Shortcut, Fortschritts-%-Anzeige, "Letzte Inventur"-Datum am Artikel — aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]]).
+
+Referenz-Check ist mit diesem Dokument erledigt — nicht nochmal wiederholen, direkt in die Design-Detailarbeit je Baustein gehen.

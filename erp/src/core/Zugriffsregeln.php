@@ -139,6 +139,16 @@ final class Zugriffsregeln
             'lagerplaetze_status_setzen.php'   => 'lager.bearbeiten',
         ],
 
+        'inventur' => [
+            'liste.php'              => 'inventur.anzeigen',
+            'neu.php'                => 'inventur.anlegen',
+            'starten.php'            => 'inventur.anlegen',
+            'pausieren.php'          => 'inventur.bearbeiten',
+            'abbrechen.php'          => 'inventur.bearbeiten',
+            'fortsetzen.php'         => 'inventur.anlegen',
+            'artikel_suche_ajax.php' => 'inventur.anzeigen',
+        ],
+
         // === Wareneingang (Einkauf → Lager) ===
         'wareneingang' => [
             'index.php'                        => 'wareneingang.buchen',
@@ -401,7 +411,12 @@ final class Zugriffsregeln
     private static array $jsonEndpunkte = [
         'rollen'      => ['berechtigung_setzen.php'],
         'benutzer'    => ['link_erneut_senden.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
-        'lager'       => ['verwaltung_status_setzen.php', 'verwaltung_aktualisieren.php', 'verwaltung_speichern.php', 'variante_suche.php', 'artikel_suche_ajax.php', 'chargen_fuer_artikel_ajax.php'],
+        'lager'       => [
+            'verwaltung_status_setzen.php', 'verwaltung_aktualisieren.php', 'verwaltung_speichern.php',
+            'variante_suche.php', 'artikel_suche_ajax.php', 'chargen_fuer_artikel_ajax.php',
+            'lagerplaetze_speichern.php', 'lagerplaetze_aktualisieren.php', 'lagerplaetze_status_setzen.php',
+        ],
+        'inventur'    => ['artikel_suche_ajax.php'],
         'kasse'       => [
             'ajax_messe.php', 'bon_speichern.php', 'ajax_parken.php', 'ajax_nullbon.php',
             'abschluss_periode_mail.php', 'abschluss_mail.php', 'ajax_auftrag_laden.php',
