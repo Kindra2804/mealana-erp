@@ -53,7 +53,8 @@
 - [Packplatz-Modul](project_packplatz.md) — Warenausgang/Intern/Retoure/Picklisten-Manager + EAN-Doppelklick-Nacherfassung alle fertig (verifiziert 2026-07-10); offen: Teillieferung-Split-Logik (Phase 2)
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
-- [Inventur-Modul](project_inventur_hinweis.md) — ⚠️ komplett 0% Code (2026-07-10 entdeckt); direkt nach Buchhaltung geplant; braucht mehrere gleichzeitige Zähler + vermutlich Lagerplätze (auch 0%); Design-Absprache VOR Bau
+- [Inventur-Modul: Konzept + Baufortschritt](project_inventur_konzept.md) — Design 2026-07-18 komplett (Scope-flexibler Zähl-Lauf, Live-Sperren, Chargen-Summenabgleich, Mietfächer als Scope); Lagerplätze-Grundlage FERTIG, Inventur-Lauf-Kern als Nächstes
+- [Inventur-Modul: Einzelnotizen](project_inventur_hinweis.md) — RKSV-Popup, Warndreieck-Flag; Details jetzt in project_inventur_konzept.md eingeordnet
 - [Rechte & Rollen Design](project_rechte_rollen.md) — Rollen/Matrix/Durchsetzung/Manager-Override-PIN KOMPLETT FERTIG (2026-07-05); nur Lizenzserver (2-Ebenen-Konzept besprochen) noch offen
 - [PLC / EasyPak Versand](project_plc_versand.md) — 🟢 2 echte Bugs behoben 2026-07-10: Nachnahme-Betrag bei Teillieferung + `auftrag_nr`-Spaltenname (Export hat vermutlich seit je nie funktioniert)
 - [Chargen-Tracking](bug_charge_tracking.md) — BEHOBEN 2026-06-29: Kasse/Packplatz/Umlagerung alle mit Charge; Rest (Race Condition, warenSchwund) kommt mit Inventur-Modul

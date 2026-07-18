@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: c55c1aca-b514-4e20-98fa-732e6e1149b3
+  modified: 2026-07-18T11:07:34.684Z
 ---
 
 ## Lagerstruktur
@@ -12,9 +13,9 @@ metadata:
 - **Standardlager** (Wien) — Hauptlager, alle Kanäle außer Messe können darauf zugreifen
 - **Lager Messe** — Sonderlager für Messebetrieb, eigene Regeln
 
-## Lagerplätze — bestätigt 0% gebaut (2026-07-10)
+## Lagerplätze — 🟢 Stammdaten-Grundlage FERTIG (2026-07-18)
 
-Kein Code, keine `lagerplaetze`-Tabelle, keine `lagerplatz_id`-Spalte irgendwo im Schema — Jacky erinnerte sich richtig, dass das mal vorgemerkt war (siehe [[project_wawi_gaps]]), aber es wurde nie umgesetzt. Wichtig geworden im Kontext des geplanten Inventur-Moduls (siehe [[project_inventur_hinweis]] + [[project_roadmap_reihenfolge]]): bei mehreren gleichzeitigen Zählern braucht es vermutlich eine Orts-Struktur, damit nicht dasselbe Fach doppelt gezählt wird. Ob Lagerplätze dafür wirklich Voraussetzung sind oder eine einfachere Lösung reicht, wird bei der Inventur-Design-Session geklärt.
+Design-Session hat Lagerplätze als Voraussetzung fürs Inventur-Modul bestätigt (siehe [[project_inventur_konzept]]). Migration 134: `lagerplaetze (id, lager_id, bezeichnung, aktiv)` + Verwaltungs-UI (`lager/lagerplaetze.php`, gleiches Muster wie `lager/verwaltung.php`). **Bewusst noch OHNE** `lagerbestand.lagerplatz_id` — das würde die bestehende `UNIQUE(artikel_id, lager_id, charge)`-Regel berühren und gehört gezielt in den nächsten Baustein (Inventur-Lauf-Kern), nicht "nebenbei" hier mit rein. Details siehe [[project_inventur_konzept]].
 
 ## Kassa-Modi
 

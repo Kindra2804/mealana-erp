@@ -653,4 +653,75 @@ class LagerService
 
         return ['erfolg' => true];
     }
+
+    // -------------------------------------------------------------------------
+    // Lagerplätze (Regal/Fach-Struktur, Voraussetzung fürs Inventur-Modul)
+    // -------------------------------------------------------------------------
+
+    public function getAlleLagerplaetze(int $lagerId = 0, ?int $aktiv = null): array
+    {
+        return $this->repo->findAlleLagerplaetze($lagerId, $aktiv);
+    }
+
+    public function getLagerplatzById(int $id): array|false
+    {
+        return $this->repo->findLagerplatzById($id);
+    }
+
+    /** Legt einen neuen Lagerplatz an. Validiert: Lager + Bezeichnung Pflichtfeld. */
+    public function saveLagerplatz(array $data): array
+    {
+        $fehler = $this->validiereLagerplatz($data);
+        if (!empty($fehler)) {
+            return ['erfolg' => false, 'fehler' => $fehler];
+        }
+
+        $id = $this->repo->insertLagerplatz([
+            'lager_id'    => (int)$data['lager_id'],
+            'bezeichnung' => trim($data['bezeichnung']),
+            'aktiv'       => !empty($data['aktiv']) ? 1 : 0,
+        ]);
+        Logger::log('lagerplatz.anlegen', 'lagerplaetze', $id, ['bezeichnung' => trim($data['bezeichnung'])]);
+
+        return ['erfolg' => true, 'id' => $id];
+    }
+
+    public function aktualisiereLagerplatz(array $data): array
+    {
+        if (empty($data['id'])) {
+            return ['erfolg' => false, 'fehler' => ['ID fehlt.']];
+        }
+        $fehler = $this->validiereLagerplatz($data);
+        if (!empty($fehler)) {
+            return ['erfolg' => false, 'fehler' => $fehler];
+        }
+
+        $this->repo->updateLagerplatz([
+            'id'          => (int)$data['id'],
+            'lager_id'    => (int)$data['lager_id'],
+            'bezeichnung' => trim($data['bezeichnung']),
+            'aktiv'       => !empty($data['aktiv']) ? 1 : 0,
+        ]);
+        Logger::log('lagerplatz.bearbeiten', 'lagerplaetze', (int)$data['id']);
+
+        return ['erfolg' => true];
+    }
+
+    public function setLagerplatzAktiv(int $id, int $aktiv): array
+    {
+        $this->repo->setLagerplatzAktiv($id, $aktiv);
+        return ['erfolg' => true];
+    }
+
+    private function validiereLagerplatz(array $data): array
+    {
+        $fehler = [];
+        if (empty($data['lager_id'])) {
+            $fehler[] = 'Lager ist Pflichtfeld.';
+        }
+        if (empty(trim($data['bezeichnung'] ?? ''))) {
+            $fehler[] = 'Bezeichnung ist Pflichtfeld.';
+        }
+        return $fehler;
+    }
 }

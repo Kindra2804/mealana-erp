@@ -133,6 +133,10 @@ final class Zugriffsregeln
             'verwaltung_speichern.php'         => 'lager.anlegen',
             'verwaltung_aktualisieren.php'     => 'lager.bearbeiten',
             'verwaltung_status_setzen.php'     => 'lager.bearbeiten',
+            'lagerplaetze.php'                 => 'lager.anzeigen',
+            'lagerplaetze_speichern.php'       => 'lager.anlegen',
+            'lagerplaetze_aktualisieren.php'   => 'lager.bearbeiten',
+            'lagerplaetze_status_setzen.php'   => 'lager.bearbeiten',
         ],
 
         // === Wareneingang (Einkauf → Lager) ===

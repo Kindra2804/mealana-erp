@@ -717,4 +717,76 @@ class LagerRepository
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+    // -------------------------------------------------------------------------
+    // Lagerplätze (Regal/Fach-Struktur, Voraussetzung fürs Inventur-Modul)
+    // -------------------------------------------------------------------------
+
+    /** Gibt alle Lagerplätze mit Lagername zurück, optional nach Lager oder Aktiv-Status gefiltert. */
+    public function findAlleLagerplaetze(int $lagerId = 0, ?int $aktiv = null): array
+    {
+        $where  = ['1=1'];
+        $params = [];
+        if ($lagerId > 0) {
+            $where[] = 'lp.lager_id = :lager_id';
+            $params['lager_id'] = $lagerId;
+        }
+        if ($aktiv !== null) {
+            $where[] = 'lp.aktiv = :aktiv';
+            $params['aktiv'] = $aktiv;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT lp.*, l.name AS lager_name
+            FROM lagerplaetze lp
+            JOIN lager l ON l.id = lp.lager_id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY l.name, lp.bezeichnung
+        ");
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function findLagerplatzById(int $id): array|false
+    {
+        $stmt = $this->db->prepare('SELECT * FROM lagerplaetze WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch();
+    }
+
+    public function insertLagerplatz(array $data): int
+    {
+        $stmt = $this->db->prepare('
+            INSERT INTO lagerplaetze (lager_id, bezeichnung, aktiv)
+            VALUES (:lager_id, :bezeichnung, :aktiv)
+        ');
+        $stmt->execute([
+            'lager_id'    => $data['lager_id'],
+            'bezeichnung' => $data['bezeichnung'],
+            'aktiv'       => $data['aktiv'],
+        ]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function updateLagerplatz(array $data): bool
+    {
+        $stmt = $this->db->prepare('
+            UPDATE lagerplaetze SET lager_id = :lager_id, bezeichnung = :bezeichnung, aktiv = :aktiv
+            WHERE id = :id
+        ');
+        $stmt->execute([
+            'lager_id'    => $data['lager_id'],
+            'bezeichnung' => $data['bezeichnung'],
+            'aktiv'       => $data['aktiv'],
+            'id'          => $data['id'],
+        ]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function setLagerplatzAktiv(int $id, int $aktiv): bool
+    {
+        $stmt = $this->db->prepare('UPDATE lagerplaetze SET aktiv = :aktiv WHERE id = :id');
+        $stmt->execute(['aktiv' => $aktiv, 'id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
 }

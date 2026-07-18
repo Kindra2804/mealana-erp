@@ -318,6 +318,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p>Das Lager-Modul verwaltet Bestände und Bewegungen. Zwei Lager: <strong>Standardlager</strong> und <strong>Lager Messe</strong>.</p>
             <p>Bestand = <strong>Ist</strong> (physisch vorhanden) − <strong>Reserviert</strong> (für offene Aufträge) = <strong>Verfügbar</strong> (kann noch verkauft werden).</p>
             <div class="ba-warn">⚠ Bestände nie direkt in der Datenbank ändern! Immer über Wareneingang oder Storno. Direkte Änderungen zerstören das Bewegungsprotokoll.</div>
+            <p><strong>Lagerplätze</strong> (Lager → Lagerplätze): Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für das kommende Inventur-Modul. Aktuell rein informativ, noch nicht mit dem Lagerbestand verknüpft.</p>
 
             <h3 id="lager-wareneingang">Wareneingang <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Lager → Wareneingang</div></div>

@@ -64,6 +64,16 @@ Zu sehen:
 
 ---
 
+## Lagerplätze
+
+**Navigation:** Lager → Lagerplätze
+
+Regal/Fach-Struktur unterhalb eines Lagers (z.B. "Regal 8 / Fach 3"). Grundlage für das kommende Inventur-Modul (mehrere gleichzeitige Zähler brauchen eine Orts-Aufteilung, damit niemand versehentlich denselben Bereich doppelt zählt). Verwaltung wie bei Herstellern/Lagern: Liste + Modal, Filter nach Lager und Aktiv-Status, Deaktivieren statt Löschen.
+
+**Aktuell rein informativ** — die eigentliche Verknüpfung mit dem Lagerbestand (welcher Artikel liegt auf welchem Platz) kommt erst mit dem Inventur-Modul selbst.
+
+---
+
 ## Umlagerung (geplant)
 
 Ware zwischen Lagern verschieben — z.B. Standardlager → Messe-Lager.
