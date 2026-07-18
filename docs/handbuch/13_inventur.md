@@ -1,6 +1,6 @@
 # 13 — Inventur
 
-> **In Arbeit.** Aktuell gebaut: Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen/abbrechen, Zählliste (Mengen erfassen), Live-Sperre bei mehreren Zählern, Buchungssperre für Kasse/Wareneingang. Es fehlt noch: Abschluss mit echter Differenzbuchung.
+> **Kernfunktionen fertig.** Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen/abbrechen, Zählliste, Live-Sperre bei mehreren Zählern, Buchungssperre für Kasse/Wareneingang, Abschluss mit echter Bestandskorrektur. Es fehlt noch: Fortschritts-Anzeige, Druckversion der Zählliste, "Letzte Inventur"-Datum am Artikel.
 
 ## Konzept
 
@@ -67,8 +67,30 @@ Läuft für ein Lager eine Inventur mit Scope "Ganzes Lager", werden für dieses
 
 Andere Lager (z.B. Messelager) sind davon nicht betroffen. Bei Teil-Scopes (Lagerplatz/Kategorie/Artikel/Mietfach) gibt es keine Buchungssperre — der Betrieb läuft normal weiter.
 
+## Abschluss (Prüfen & Buchen)
+
+**Navigation:** "Prüfen …"-Link bei einem laufenden oder pausierten Lauf
+
+Vor jeder echten Bestandsänderung steht immer eine **Vorschau-Seite** — sie bucht noch nichts:
+
+- **Abweichungen-Tabelle**: jede gezählte Position, bei der Soll ≠ Ist ist (egal ob mehr oder weniger gefunden wurde), mit Artikel, Lager, Lagerplatz, Charge, Soll/Ist/Differenz und Notiz.
+- **Unvollständig-Liste**: Artikel/Lager-Kombinationen, bei denen noch mindestens eine Soll-Position nicht gezählt wurde — diese werden beim Abschluss **komplett unangetastet gelassen** (kein Teilbuchen). Link direkt zurück zur Zählliste, um das Fehlende nachzutragen.
+- Drei Aktionen zur Wahl:
+  - **✅ Jetzt buchen & abschließen** — führt die Korrektur durch (siehe unten) und schließt den Lauf ab.
+  - **⏸ Ohne Buchung pausieren** — nur bei laufenden Läufen, bucht nichts, Zwischenstand bleibt für später erhalten.
+  - **✕ Verwerfen ohne Buchung** — Lauf wird abgebrochen, alle bisher gezählten Mengen bleiben unverbucht.
+
+**Was beim Buchen passiert** (nur für vollständige Artikel/Lager-Gruppen):
+
+1. **Fehlbestand ohne Notiz wird komplett verweigert** — sinkt die gezählte Summe unter den vorherigen Bestand und keine der betroffenen Positionen hat eine Notiz, bricht der gesamte Abschluss mit einer Fehlermeldung ab (welcher Artikel betroffen ist). Erst auf der Zählliste die Notiz nachtragen, dann erneut versuchen.
+2. Für jede gezählte Charge wird der Lagerbestand auf die gezählte Menge gesetzt und die Differenz als Lagerbewegung gebucht (Zugang → Typ "inventur", Fehlbestand → Typ "schwund").
+3. Wurde beim Zählen ein Lagerplatz mit angegeben ("Ich zähle gerade an"), wird diese Zuordnung in der Lagerplatz-Verteilung gespeichert.
+4. Der Lauf wird auf "Abgeschlossen" gesetzt.
+
+**Rollenabhängige Notizpflicht** (bereits beim Zählen selbst, nicht erst beim Abschluss): weicht die eingegebene Menge vom Soll ab, ist die Notiz für alle unterhalb Manager-Rang Pflicht — ab Manager-Rang optional.
+
 ## Was noch fehlt (geplant)
 
-- Abschluss-Logik: Chargen-Summenabgleich, Lagerplatz-Reallokation, Differenzbuchung (echte Bestandskorrektur)
-- Fortschritts-Anzeige, Druckversion der Zählliste
+- Fortschritts-Anzeige (wie viel % einer Zählung schon erfasst ist)
+- Druckversion der Zählliste
 - "Letzte Inventur"-Datum auf der Artikel-Detailseite

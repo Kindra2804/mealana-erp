@@ -451,7 +451,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Zählen</strong> (Button bei einem laufenden Lauf): zeigt die Soll-Liste passend zum Scope, pro Zeile Ist-Menge + Notiz eintragen und speichern (kein Seiten-Neuladen nötig). Oben kann jederzeit ein Artikel frei erfasst werden, der nicht auf der Liste steht (neue Charge, unerwarteter Fund).</p>
             <p><strong>Mehrere Zähler:</strong> bei Scope "Ganzes Lager" oben einen Lagerplatz als aktuellen Arbeitsbereich wählen — informativ, warnt nur wenn eine andere Person denselben Platz schon zählt.</p>
             <p><strong>Buchungssperre:</strong> läuft für ein Lager eine Voll-Lager-Inventur, sind Kasse und Wareneingang für genau dieses Lager gesperrt, bis die Inventur abgeschlossen/abgebrochen wird.</p>
-            <p style="color:#64748b"><strong>Noch nicht fertig:</strong> Abschluss mit echter Differenzbuchung — folgt in einem weiteren Schritt.</p>
+            <p><strong>Abschluss</strong> ("Prüfen …"-Link): zeigt zuerst eine Vorschau — alle Abweichungen (egal ob mehr oder weniger gezählt) sowie eine Liste noch unvollständig gezählter Artikel, die beim Abschluss unangetastet bleiben. Erst nach "Jetzt buchen &amp; abschließen" wird der Lagerbestand wirklich korrigiert (inkl. Lagerbewegung Typ "inventur"/"schwund"). Fehlbestand ohne Notiz wird komplett verweigert. Alternativ: "Ohne Buchung pausieren" oder "Verwerfen ohne Buchung".</p>
+            <p style="color:#64748b"><strong>Noch nicht fertig:</strong> Fortschritts-Anzeige, Druckversion der Zählliste, "Letzte Inventur"-Datum am Artikel.</p>
 
             <!-- EINSTELLUNGEN -->
             <h2 id="einstellungen">Einstellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 1208232f-9b1f-41ae-ae93-bb91abe26d76
-  modified: 2026-07-18T15:48:13.996Z
+  modified: 2026-07-18T16:29:04.605Z
 ---
 
 Stand: 2026-07-18, komplette Design-Absprache mit Jacky vor Baubeginn (wie von ihm gewünscht, siehe [[feedback_modul_vorgehen]]). Ersetzt/ergänzt die verstreuten Einzelnotizen in [[project_inventur_hinweis]] und den Lagerplätze-Abschnitt in [[project_lager_konzept]] — dies hier ist das verbindliche Konzept.
@@ -146,10 +146,26 @@ JTL/Shopware/Sage/LS-POS bieten typischerweise: Blind-Inventur (HOCH), permanent
 - End-to-end getestet: Live-Sperre (kein Warnung bei gleichem Benutzer, korrekte Warnung mit Namen+Zeit bei anderem Benutzer), Vollinventur-Gate (true für das inventierte Lager, false für andere), Kassen-Gate + Wareneingang-Gate lehnen korrekt ab — die beiden riskanten Buchungsaufrufe dabei bewusst in einer Transaktion gekapselt und zurückgerollt, damit selbst ein hypothetischer Gate-Bug keine echten Daten anfasst. Seiten-Rendering der neuen Lagerplatz-Auswahl geprüft. Alles aufgeräumt.
 - Handbuch Kapitel 13 + Bedienungsanleitung ergänzt.
 
+## 🟢 FERTIG 2026-07-18: Inventur-Lauf-Kern Slice 4 (Abschluss — echte Bestandskorrektur)
+
+**Workflow-Erweiterung während des Baus** (Jacky, 2026-07-18): keine stille Buchung — vor jeder echten Änderung steht immer eine **Vorschau-Seite** (`inventur/abschluss_vorschau.php`), erreichbar über einen einzigen "Prüfen …"-Link sowohl bei laufenden als auch pausierten Läufen (ersetzt die früheren direkten Pausieren-/Abbrechen-Buttons in der Liste). Zeigt: Abweichungs-Tabelle (Soll≠Ist, egal ob mehr oder weniger) + Unvollständig-Liste, mit drei Aktionen: **Jetzt buchen & abschließen**, **Ohne Buchung pausieren**, **Verwerfen ohne Buchung** — nur die erste bucht tatsächlich.
+
+- **`InventurService::berechneAbgleich()`** (privat, gemeinsame Basis für Vorschau UND Abschluss): gruppiert gezählte Positionen nach Artikel+Lager, prüft Vollständigkeit gegen die aktuelle Soll-Liste.
+- **`vorschauAbschluss()`**: reine Lesefunktion, bucht nichts.
+- **`abschliessen()`**: validiert zuerst ALLE Gruppen (Schwund ohne Notiz → kompletter Abbruch, nicht nur die eine Gruppe übersprungen), bucht dann pro Charge (`LagerRepository::upsertBestand()` + `insertBewegung()` Typ `inventur`/`schwund`), reallokiert Lagerplätze (`lagerbestand_lagerplaetze`), setzt Lauf-Status auf `abgeschlossen`.
+- **Begründungspflicht** direkt in `bucheZaehlung()` eingebaut (nicht erst beim Abschluss): Abweichung + leere Notiz + `rolle_rang < 70` → Fehler. Ab Manager-Rang optional.
+- Neue Helper in `LagerRepository`: `findLagerbestandIdByKey()`, `upsertLagerbestandLagerplatz()`.
+
+**Zwei echte Bugs beim Testen gefunden + behoben** (siehe auch [[feedback_test_isolation]] — Testartikel 174 ohne bestehenden Lagerbestand in Lager 1 verwendet, komplett isoliert):
+1. **Komplett unberührte Soll-Zeilen fehlten in der Gruppierung**: `berechneAbgleich()` baute Gruppen ursprünglich nur aus gezählten Positionen — eine Soll-Zeile, die NIE angefasst wurde, tauchte dadurch gar nicht als "unvollständig" auf (sie hätte schlicht gefehlt). Fix: Gruppen werden jetzt aus der Vereinigung von Soll-Liste UND gezählten Positionen gebildet.
+2. **Lagerplatz-Tag verhinderte Vollständigkeits-Erkennung**: der Vergleichsschlüssel enthielt ursprünglich `lagerplatz_id` — aber die Soll-Liste (aus `lagerbestand`) kennt bei Scope=Lager/Kategorie/Artikel gar keinen Lagerplatz, der wird erst beim Zählen als Zusatzinfo angehängt ("Ich zähle gerade an"). Eine mit Lagerplatz-Tag gezählte Position passte dadurch nie zur lagerplatzlosen Soll-Zeile → Gruppe fälschlich als unvollständig markiert, keine Buchung. Fix: `lagerplatz_id` aus dem Vergleichsschlüssel entfernt (nur artikel|lager|charge); zusätzlich `summeVorher` jetzt direkt aus der Soll-Liste berechnet statt aus den Positionen-Snapshots, um Doppelzählung zu vermeiden falls dieselbe Charge auf zwei Lagerplätze aufgeteilt gezählt wird.
+- End-to-end getestet (isolierter Test-Artikel 174, kein Risiko für echte Daten): vollständige Gruppe mit Zugang+Schwund+Notiz-Pflicht (inkl. korrekter Ablehnung ohne Notiz und Bestands-Unveränderheit danach), unvollständige Gruppe bleibt komplett unangetastet, Lagerplatz-Reallokation korrekt, Begründungspflicht nach Rang (Praktikant/Manager) — alle 4 Testszenarien grün, vollständig aufgeräumt.
+- Handbuch Kapitel 13 + Bedienungsanleitung ergänzt.
+
 ## How to apply beim Weiterbauen
 
-**Nächster Schritt: Slice 4 — Abschluss-Logik.** Chargen-Summenabgleich (Regel: gezählte Summe ≥ vorherige Gesamtsumme inkl. unklarer "nachzutragen"-Anteile → aufgelöst; Unterschreitung → auffällig markieren), Lagerplatz-Reallokation (Ist an anderem Platz gefunden als Soll → `lagerbestand_lagerplaetze` entsprechend umbuchen), echte Differenzbuchung (`lager_bewegungen` Typ `inventur`/`schwund`, wie in [[project_inventur_hinweis]] vorgemerkt), rollenabhängige Begründungspflicht (Rang-Schwellwert wie Manager-PIN). Hier werden `inventur_positionen` erstmals gegen `lagerbestand` verrechnet — das macht diese Slice zur bisher heikelsten (echte Bestandskorrektur), sorgfältig einzeln testen.
+**Nächster Schritt: Slice 5 (letzte geplante Slice)** — Druckversion der Zählliste (PDF, Dompdf, Filter alles/Lagerplätze/Artikel), Manager-Auslauf-Shortcut (Artikel direkt aus der Zählung als `ist_auslaufartikel` markierbar, Rang-Schwelle wie Begründungspflicht), Fortschritts-%-Anzeige (gezählte/gesamt Positionen im Scope), "Letzte Inventur"-Datum am Artikel (aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]] — Datum lässt sich aus `MAX(inventur_positionen.gezaehlt_am)` pro Artikel ableiten, keine neue Spalte nötig).
 
-Danach: Slice 5 (Druckversion, Manager-Auslauf-Shortcut, Fortschritts-%-Anzeige, "Letzte Inventur"-Datum am Artikel — aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]]).
+Kern-Workflow (Lagerplätze → Lauf-Kopf/Scope → Zählliste → Live-/Buchungssperre → Abschluss) ist damit komplett und produktiv nutzbar — Slice 5 sind nur noch Komfort-Ergänzungen, kein Blocker mehr.
 
 Referenz-Check ist mit diesem Dokument erledigt — nicht nochmal wiederholen, direkt in die Design-Detailarbeit je Baustein gehen.

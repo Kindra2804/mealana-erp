@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/InventurRepository.php';
+require_once __DIR__ . '/../lager/LagerRepository.php';
 
 /**
  * InventurService – Lebenszyklus der Inventur-Läufe (Slice 1: nur Kopf + Scope)
@@ -200,6 +201,16 @@ class InventurService
         $charge     = $charge !== null && $charge !== '' ? $charge : null;
 
         $bestehend = $this->repo->findPosition($laufId, $artikelId, $lagerId, $lagerplatzId, $charge);
+
+        // Begründungspflicht bei Abweichung: unterhalb Manager-Rang (70, gleicher
+        // Schwellwert wie beim Manager-Override-PIN) ist die Notiz Pflicht, ab
+        // Manager optional (Jacky-Entscheidung 2026-07-18).
+        $sollMengeEffektiv = $bestehend ? $bestehend['soll_menge'] : $sollMenge;
+        $rang = (int)($_SESSION['benutzer']['rolle_rang'] ?? 0);
+        if ($sollMengeEffektiv !== null && abs($istMenge - (float)$sollMengeEffektiv) > 0.01 && empty($notiz) && $rang < 70) {
+            return ['erfolg' => false, 'fehler' => ['Bei Abweichung vom Soll-Bestand ist eine Notiz Pflicht']];
+        }
+
         if ($bestehend) {
             $this->repo->updatePosition((int)$bestehend['id'], $istMenge, $notiz, $benutzerId);
             $id = (int)$bestehend['id'];
@@ -262,5 +273,239 @@ class InventurService
     public function gibtEsLaufendeVollinventur(int $lagerId): bool
     {
         return $this->repo->findLaufendeVollinventur($lagerId) !== false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Abschluss (Slice 4) — echte Bestandskorrektur, siehe project_inventur_konzept
+    // -------------------------------------------------------------------------
+
+    /**
+     * Berechnet die Abgleich-Gruppen (Artikel × Lager) für einen Lauf, ohne irgendetwas
+     * zu buchen. Gemeinsame Grundlage für Vorschau UND tatsächlichen Abschluss —
+     * beide müssen exakt dieselbe Aufteilung "vollständig"/"unvollständig" sehen.
+     *
+     * Vollständigkeitsregel (Jacky, 2026-07-18): eine Artikel/Lager-Gruppe wird nur dann
+     * gebucht, wenn JEDE zum Abschlusszeitpunkt sichtbare Soll-Position entweder gezählt
+     * oder auf der Check-Liste explizit auf 0 gesetzt wurde. Fehlt auch nur eine offene
+     * Position, bleibt die GANZE Gruppe unangetastet (kein Teilbuchen).
+     *
+     * Rückgabe: ['gruppen' => [artikel_id, lager_id, artikel_name, vollstaendig,
+     *            summe_vorher, summe_nachher, positionen[]], ...]
+     */
+    private function berechneAbgleich(array $lauf): array
+    {
+        $sollListe  = $this->getSollListe($lauf);
+        $alle       = $this->repo->findPositionenFuerLauf((int)$lauf['id']);
+        $gezaehlt   = array_filter($alle, fn($p) => $p['status'] === 'gezaehlt');
+
+        // Vergleichsschlüssel bewusst OHNE lagerplatz_id: die Soll-Liste (aus lagerbestand)
+        // kennt bei Scope=Lager/Kategorie/Artikel gar keinen Lagerplatz — der wird erst
+        // beim Zählen als Zusatzinfo ("Ich zähle gerade an") angehängt. Würde man ihn hier
+        // mitvergleichen, würde eine mit Lagerplatz-Tag gezählte Position nie zur
+        // ursprünglichen (lagerplatzlosen) Soll-Zeile passen und die Gruppe fälschlich als
+        // unvollständig gelten. Bei Scope=Lagerplatz ist der Lagerplatz ohnehin für alle
+        // Zeilen gleich (der Scope selbst), Weglassen ändert dort nichts am Ergebnis.
+        $gezaehltIndex = [];
+        foreach ($gezaehlt as $p) {
+            $key = $p['artikel_id'] . '|' . $p['lager_id'] . '|' . ($p['charge'] ?? '');
+            $gezaehltIndex[$key] = true;
+        }
+
+        // Welche Artikel/Lager-Gruppen haben noch offene (nicht gezählte) Soll-Positionen?
+        // WICHTIG: eine Gruppe mit GAR KEINER gezählten Position (Soll-Zeile nie angefasst)
+        // muss genauso als unvollständig gelten wie eine mit nur teilweise gezählten Chargen —
+        // beides ergibt sich hier automatisch, weil jede offene Soll-Zeile die Gruppe markiert.
+        $unvollstaendigeGruppen = [];
+        foreach ($sollListe as $s) {
+            $key = $s['artikel_id'] . '|' . $s['lager_id'] . '|' . ($s['charge'] ?? '');
+            if (!isset($gezaehltIndex[$key])) {
+                $unvollstaendigeGruppen[$s['artikel_id'] . '|' . $s['lager_id']] = true;
+            }
+        }
+
+        // Alle Artikel/Lager-Gruppen sammeln: aus der Soll-Liste (auch komplett unberührte
+        // Zeilen) UND aus den gezählten Positionen (neue Funde ohne vorherige Soll-Zeile).
+        $alleGruppenKeys = [];
+        foreach ($sollListe as $s) {
+            $alleGruppenKeys[$s['artikel_id'] . '|' . $s['lager_id']] = true;
+        }
+        $gezaehltNachGruppe = [];
+        foreach ($gezaehlt as $p) {
+            $gruppenKey = $p['artikel_id'] . '|' . $p['lager_id'];
+            $alleGruppenKeys[$gruppenKey] = true;
+            $gezaehltNachGruppe[$gruppenKey][] = $p;
+        }
+
+        $gruppen = [];
+        foreach (array_keys($alleGruppenKeys) as $key) {
+            [$artikelId, $lagerId] = array_map('intval', explode('|', $key));
+            $positionen = $gezaehltNachGruppe[$key] ?? [];
+
+            $beispiel = $positionen[0] ?? null;
+            if (!$beispiel) {
+                foreach ($sollListe as $s) {
+                    if ((int)$s['artikel_id'] === $artikelId && (int)$s['lager_id'] === $lagerId) { $beispiel = $s; break; }
+                }
+            }
+
+            // summeVorher kommt aus der Soll-Liste selbst (ein Wert je Charge, garantiert
+            // dupliktatsfrei durch die UNIQUE-Regel auf lagerbestand) — NICHT aus den
+            // gezählten Positionen, sonst würde eine über mehrere Lagerplätze aufgeteilte
+            // Charge (mehrere Positionen, gleiche ursprüngliche Soll-Menge) doppelt gezählt.
+            $summeVorher = 0.0;
+            foreach ($sollListe as $s) {
+                if ((int)$s['artikel_id'] === $artikelId && (int)$s['lager_id'] === $lagerId) {
+                    $summeVorher += (float)($s['soll_menge'] ?? 0);
+                }
+            }
+            $summeNachher = array_sum(array_map(fn($p) => (float)$p['ist_menge'], $positionen));
+
+            $gruppen[] = [
+                'artikel_id'      => $artikelId,
+                'lager_id'        => $lagerId,
+                'artikel_name'    => $beispiel['artikel_name'] ?? '',
+                'artikelnummer'   => $beispiel['artikelnummer'] ?? '',
+                'lager_name'      => $beispiel['lager_name'] ?? '',
+                'vollstaendig'    => !isset($unvollstaendigeGruppen[$key]),
+                'summe_vorher'    => $summeVorher,
+                'summe_nachher'   => $summeNachher,
+                'positionen'      => $positionen,
+            ];
+        }
+
+        return $gruppen;
+    }
+
+    /**
+     * Vorschau vor dem eigentlichen Abschluss: zeigt für jede vollständige Gruppe alle
+     * Positionen wo Ist ≠ Soll (egal ob mehr oder weniger), plus die Liste unvollständiger
+     * Gruppen, die beim Abschluss unangetastet bleiben würden. Bucht nichts.
+     */
+    public function vorschauAbschluss(int $laufId): array
+    {
+        $lauf = $this->getById($laufId);
+        if (!$lauf) {
+            return ['erfolg' => false, 'fehler' => ['Lauf nicht gefunden']];
+        }
+
+        $gruppen = $this->berechneAbgleich($lauf);
+
+        $abweichungen    = [];
+        $unvollstaendig  = [];
+        foreach ($gruppen as $g) {
+            if (!$g['vollstaendig']) {
+                $unvollstaendig[] = $g;
+                continue;
+            }
+            foreach ($g['positionen'] as $p) {
+                $soll = (float)($p['soll_menge'] ?? 0);
+                $ist  = (float)$p['ist_menge'];
+                if (abs($ist - $soll) > 0.01) {
+                    $abweichungen[] = [
+                        'artikel_name'  => $g['artikel_name'],
+                        'artikelnummer' => $g['artikelnummer'],
+                        'lager_name'    => $g['lager_name'],
+                        'lagerplatz_bezeichnung' => $p['lagerplatz_bezeichnung'] ?? null,
+                        'charge'        => $p['charge'],
+                        'soll'          => $soll,
+                        'ist'           => $ist,
+                        'notiz'         => $p['notiz'],
+                    ];
+                }
+            }
+        }
+
+        return [
+            'erfolg'         => true,
+            'lauf'           => $lauf,
+            'abweichungen'   => $abweichungen,
+            'unvollstaendig' => $unvollstaendig,
+        ];
+    }
+
+    /**
+     * Führt den Abschluss tatsächlich durch: bucht jede vollständige Gruppe (Bestand neu
+     * setzen, Differenz als lager_bewegungen Typ 'inventur'/'schwund', Lagerplatz-Reallokation),
+     * lässt unvollständige Gruppen unangetastet. Schwund ohne Notiz wird komplett verweigert
+     * (nicht nur die eine Gruppe übersprungen), damit man das vor dem Abschluss nachträgt.
+     */
+    public function abschliessen(int $laufId): array
+    {
+        $lauf = $this->getById($laufId);
+        if (!$lauf || !in_array($lauf['status'], ['laufend', 'pausiert'], true)) {
+            return ['erfolg' => false, 'fehler' => ['Inventur kann nicht abgeschlossen werden']];
+        }
+
+        $gruppen = $this->berechneAbgleich($lauf);
+        $lagerRepo = new LagerRepository();
+
+        // Erst validieren (Schwund braucht Notiz), bevor überhaupt etwas gebucht wird.
+        foreach ($gruppen as $g) {
+            if (!$g['vollstaendig'] || $g['summe_nachher'] >= $g['summe_vorher'] - 0.01) {
+                continue;
+            }
+            $hatNotiz = false;
+            foreach ($g['positionen'] as $p) {
+                if (!empty($p['notiz'])) { $hatNotiz = true; break; }
+            }
+            if (!$hatNotiz) {
+                return ['erfolg' => false, 'fehler' => [
+                    "Fehlbestand bei {$g['artikel_name']} ({$g['artikelnummer']}) — bitte auf der Zählliste eine Notiz nachtragen, bevor abgeschlossen werden kann."
+                ]];
+            }
+        }
+
+        $korrigiert = [];
+        foreach ($gruppen as $g) {
+            if (!$g['vollstaendig']) continue;
+
+            foreach ($g['positionen'] as $p) {
+                $vorherCharge  = (float)($p['soll_menge'] ?? 0);
+                $nachherCharge = (float)$p['ist_menge'];
+                $diff          = $nachherCharge - $vorherCharge;
+
+                $lagerRepo->upsertBestand([
+                    'artikel_id'     => $g['artikel_id'],
+                    'lager_id'       => $g['lager_id'],
+                    'charge'         => $p['charge'],
+                    'charge_status'  => $p['charge'] !== null ? 'erfasst' : null,
+                    'bestand'        => $nachherCharge,
+                    'mindestbestand' => 0,
+                ]);
+
+                if (abs($diff) > 0.001) {
+                    $lagerRepo->insertBewegung([
+                        'artikel_id'      => $g['artikel_id'],
+                        'lager_id'        => $g['lager_id'],
+                        'lieferant_id'    => null,
+                        'ek_preis'        => null,
+                        'charge'          => $p['charge'],
+                        'bewegungstyp'    => $diff > 0 ? 'inventur' : 'schwund',
+                        'menge'           => abs($diff),
+                        'bestand_vorher'  => $vorherCharge,
+                        'bestand_nachher' => $nachherCharge,
+                        'referenz'        => 'Inventur #' . $laufId,
+                        'notiz'           => $p['notiz'],
+                        'benutzer_id'     => $p['gezaehlt_von'],
+                    ]);
+                }
+
+                if ($p['lagerplatz_id']) {
+                    $lagerbestandId = $lagerRepo->findLagerbestandIdByKey($g['artikel_id'], $g['lager_id'], $p['charge']);
+                    if ($lagerbestandId) {
+                        $lagerRepo->upsertLagerbestandLagerplatz($lagerbestandId, (int)$p['lagerplatz_id'], $nachherCharge);
+                    }
+                }
+            }
+
+            $korrigiert[] = ['artikel_name' => $g['artikel_name'], 'vorher' => $g['summe_vorher'], 'nachher' => $g['summe_nachher']];
+        }
+
+        $this->repo->setStatus($laufId, 'abgeschlossen', true);
+        Logger::log('inventur.abgeschlossen', 'inventur_laeufe', $laufId, [
+            'korrigierte_artikel' => count($korrigiert),
+        ]);
+
+        return ['erfolg' => true, 'korrigiert' => $korrigiert];
     }
 }

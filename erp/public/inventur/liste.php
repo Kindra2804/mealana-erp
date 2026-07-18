@@ -69,23 +69,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <td style="white-space:nowrap">
                     <?php if ($l['status'] === 'laufend'): ?>
                         <a href="<?= BASE_PATH ?>/inventur/zaehlen.php?lauf_id=<?= $l['id'] ?>" class="btn btn-primary btn-sm">Zählen</a>
-                        <form method="post" action="<?= BASE_PATH ?>/inventur/pausieren.php" style="display:inline">
-                            <input type="hidden" name="id" value="<?= $l['id'] ?>">
-                            <button type="submit" class="btn btn-secondary btn-sm">Pausieren</button>
-                        </form>
-                        <form method="post" action="<?= BASE_PATH ?>/inventur/abbrechen.php" style="display:inline" onsubmit="return confirm('Inventur #<?= $l['id'] ?> wirklich abbrechen?')">
-                            <input type="hidden" name="id" value="<?= $l['id'] ?>">
-                            <button type="submit" class="btn btn-danger btn-sm">Abbrechen</button>
-                        </form>
+                        <a href="<?= BASE_PATH ?>/inventur/abschluss_vorschau.php?lauf_id=<?= $l['id'] ?>" class="btn btn-secondary btn-sm">Prüfen …</a>
                     <?php elseif ($l['status'] === 'pausiert'): ?>
                         <form method="post" action="<?= BASE_PATH ?>/inventur/fortsetzen.php" style="display:inline">
                             <input type="hidden" name="id" value="<?= $l['id'] ?>">
                             <button type="submit" class="btn btn-primary btn-sm">Fortsetzen</button>
                         </form>
-                        <form method="post" action="<?= BASE_PATH ?>/inventur/abbrechen.php" style="display:inline" onsubmit="return confirm('Inventur #<?= $l['id'] ?> wirklich abbrechen?')">
-                            <input type="hidden" name="id" value="<?= $l['id'] ?>">
-                            <button type="submit" class="btn btn-danger btn-sm">Abbrechen</button>
-                        </form>
+                        <a href="<?= BASE_PATH ?>/inventur/abschluss_vorschau.php?lauf_id=<?= $l['id'] ?>" class="btn btn-secondary btn-sm">Prüfen …</a>
                     <?php elseif ($l['status'] === 'abgebrochen'): ?>
                         <form method="post" action="<?= BASE_PATH ?>/inventur/fortsetzen.php" style="display:inline">
                             <input type="hidden" name="id" value="<?= $l['id'] ?>">

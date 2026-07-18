@@ -487,6 +487,42 @@ class LagerRepository
         return (bool) ($result['charge_pflicht'] ?? false);
     }
 
+    /**
+     * Gibt die ID eines Lagerbestand-Eintrags anhand Artikel/Lager/Charge zurück (nach einem
+     * vorherigen upsertBestand(), um die Zeile z.B. für lagerbestand_lagerplaetze zu referenzieren).
+     */
+    public function findLagerbestandIdByKey(int $artikelId, int $lagerId, ?string $charge): ?int
+    {
+        if ($charge !== null) {
+            $stmt = $this->db->prepare("
+                SELECT id FROM lagerbestand WHERE artikel_id = :artikel_id AND lager_id = :lager_id AND charge = :charge
+            ");
+            $stmt->execute(['artikel_id' => $artikelId, 'lager_id' => $lagerId, 'charge' => $charge]);
+        } else {
+            $stmt = $this->db->prepare("
+                SELECT id FROM lagerbestand WHERE artikel_id = :artikel_id AND lager_id = :lager_id AND charge IS NULL
+            ");
+            $stmt->execute(['artikel_id' => $artikelId, 'lager_id' => $lagerId]);
+        }
+        $id = $stmt->fetchColumn();
+        return $id !== false ? (int)$id : null;
+    }
+
+    /**
+     * Trägt die gezählte Menge eines Lagerbestands an einem Lagerplatz ein (Inventur-Abschluss).
+     * Additiv zur bestehenden Buchungslogik — betrifft nur die Lagerplatz-Zuordnung,
+     * nicht den Gesamtbestand selbst (siehe Migration 136).
+     */
+    public function upsertLagerbestandLagerplatz(int $lagerbestandId, int $lagerplatzId, float $menge): void
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO lagerbestand_lagerplaetze (lagerbestand_id, lagerplatz_id, menge)
+            VALUES (:lagerbestand_id, :lagerplatz_id, :menge)
+            ON DUPLICATE KEY UPDATE menge = VALUES(menge)
+        ");
+        $stmt->execute(['lagerbestand_id' => $lagerbestandId, 'lagerplatz_id' => $lagerplatzId, 'menge' => $menge]);
+    }
+
     /** Gibt einen Lagerbestand-Eintrag anhand seiner ID zurück (für Charge-Nachtrag). */
     public function findLagerbestandById(int $id): array|false
     {

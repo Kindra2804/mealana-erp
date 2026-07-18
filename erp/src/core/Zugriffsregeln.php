@@ -150,6 +150,8 @@ final class Zugriffsregeln
             'zaehlen.php'            => 'inventurpositionen.anzeigen',
             'zaehlung_speichern.php' => 'inventurpositionen.anlegen',
             'lagerplatz_waehlen_ajax.php' => 'inventurpositionen.anzeigen',
+            'abschluss_vorschau.php'     => 'inventur.bearbeiten',
+            'abschluss_bestaetigen.php'  => 'inventur.bearbeiten',
         ],
 
         // === Wareneingang (Einkauf → Lager) ===
