@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 1208232f-9b1f-41ae-ae93-bb91abe26d76
-  modified: 2026-07-18T11:45:43.876Z
+  modified: 2026-07-18T15:30:56.546Z
 ---
 
 Stand: 2026-07-18, komplette Design-Absprache mit Jacky vor Baubeginn (wie von ihm gewünscht, siehe [[feedback_modul_vorgehen]]). Ersetzt/ergänzt die verstreuten Einzelnotizen in [[project_inventur_hinweis]] und den Lagerplätze-Abschnitt in [[project_lager_konzept]] — dies hier ist das verbindliche Konzept.
@@ -117,10 +117,25 @@ JTL/Shopware/Sage/LS-POS bieten typischerweise: Blind-Inventur (HOCH), permanent
 - Handbuch: neues Kapitel `13_inventur.md` (als "In Arbeit" markiert) + README-Inhaltsverzeichnis ergänzt (dabei auch das fehlende Kapitel 12 Buchhaltung nachgetragen, war nie eingetragen worden). Bedienungsanleitung ergänzt.
 - **Bewusst noch nicht gemacht**: JS-Auslagerung (`neu.php` hat noch Inline-`<script>`) — laut [[feedback_js_auslagern]] gehört das zur Modul-Abschluss-Checkliste, aber das Modul ist noch mitten im Bau (mehr JS kommt mit der Zählliste in Slice 2) — wird gebündelt beim tatsächlichen Modul-Abschluss gemacht, nicht schon jetzt für ein einzelnes Inline-Script.
 
+## 🟢 FERTIG 2026-07-18: Inventur-Lauf-Kern Slice 2 (Zählliste)
+
+- **Migration 136**: `lagerbestand_lagerplaetze` (Lagerbestand-Zeile ↔ Lagerplatz ↔ Menge, additiv, siehe Architektur-Entscheidung oben).
+- **Migration 137**: `inventur_positionen` (Zeile pro Artikel/Charge/Lager/Lagerplatz innerhalb eines Laufs). Bewusst **kein** DB-UNIQUE-Constraint auf den Schlüssel (lagerplatz_id + charge sind beide nullable, NULL≠NULL-Problem wie bei `lagerbestand`) — stattdessen prüft `InventurRepository::findPosition()` per SELECT vor jedem Insert, ob die Position schon existiert (sauberer als ein fragiler Index, da neue Tabelle ohne Legacy-Zwang).
+- **Soll-Liste-Auflösung je Scope** (`InventurRepository::findSollListe*()`):
+  - `lager` → alle `lagerbestand`-Zeilen dieses Lagers (Soll = `bestand`).
+  - `lagerplaetze` → nur bereits zugeordnete Mengen aus `lagerbestand_lagerplaetze` — **bewusst leer beim ersten Zählgang eines Platzes** (Jacky-Entscheidung 2026-07-18), freies Erfassen per Scan/Suche statt Vorschlagsliste.
+  - `kategorien`/`artikel` → **über alle Lager** (Scope legt kein Lager fest, Jacky-Entscheidung 2026-07-18), Lager-Spalte zur Orientierung.
+  - `mietfaecher` → noch keine Auflösung (Semantik weiterhin offen), leere Liste.
+- **`InventurService::bucheZaehlung()`**: Upsert-Logik (findPosition → update, sonst insert), löst `lager_id` automatisch aus `lagerplatz_id` auf wenn nötig, lehnt fehlendes Lager ab (relevant bei Kategorie-/Artikel-Scope, wo das UI dafür ein Lager-Dropdown einblendet).
+- **UI** `inventur/zaehlen.php` + `js/inventur_zaehlen.js` (diesmal von Anfang an ausgelagert, nicht inline) + `zaehlung_speichern.php` (AJAX/JSON, kein Seiten-Reload beim Speichern einer Zeile). Freie Artikel-Erfassung per Typeahead oben, mit bedingtem Lager-Dropdown je nach Scope.
+- End-to-end getestet: alle drei relevanten Scope-Pfade (Lager/Kategorie/Lagerplatz) mit echten Lagerbestand-Daten, Upsert-Verhalten (zweimal buchen → gleiche ID, kein Duplikat), Validierungsfehler (Kategorie-Scope ohne Lager), automatische Lager-Auflösung aus Lagerplatz, Seiten-Rendering — alles grün, Testdaten vollständig aufgeräumt.
+- **Bewusst noch nicht Teil dieser Slice**: Live-Sperre (Info-Warnung bei Kollision zweier Zähler am selben Lagerplatz), Buchungssperre für Kasse/Wareneingang, Abschluss-Logik (Chargen-Summenabgleich, Lagerplatz-Reallokation, echte Differenzbuchung in `lagerbestand`/`lager_bewegungen`) — kommt mit Slice 3/4.
+- Handbuch Kapitel 13 + Bedienungsanleitung ergänzt.
+
 ## How to apply beim Weiterbauen
 
-**Nächster Schritt: Slice 2 — Zählliste.** Braucht: neue Tabelle `lagerbestand_lagerplaetze` (Lagerbestand-Zeile ↔ Lagerplatz ↔ Menge, additiv — siehe Architektur-Entscheidung oben, KEIN Eingriff in `lagerbestand` selbst), `inventur_positionen` (Zeile pro Artikel/Charge/Lagerplatz innerhalb eines Laufs, mit Soll/Ist/Status/gezählt-von), die eigentliche Tablet-taugliche Zähl-UI (Mobile-First wie Kasse/Packplatz), Live-Sperre pro Lagerplatz (first-come + Warnung bei Kollision).
+**Nächster Schritt: Slice 3 — Live-Sperre + Buchungssperre.** Live-Sperre: kleine neue Tabelle (z.B. `inventur_zaehl_sperren`: inventur_lauf_id, lagerplatz_id, benutzer_id, benutzer_name-Snapshot, seit) — beim Öffnen eines Lagerplatzes zum Zählen einen Claim anlegen/anzeigen, informativ (first-come, kein Hard-Block, siehe Design-Entscheidung oben). Buchungssperre: bei Voll-Scope (scope_tabelle='lager') alle Kassen mit passender `lager_id` stoppen + Shop-Abgleich pausieren (Vorgriff, Shop-Sync existiert noch nicht) — braucht einen Check-Punkt in `KassenService`/`bon.php` der prüft ob ein `inventur_laeufe`-Eintrag mit `status='laufend'`, `scope_tabelle='lager'`, `scope_id=<diese Kasse's Lager>` existiert.
 
-Danach: Slice 3 (Buchungssperre in Kasse/Wareneingang/Shop-Sync bei Voll-Lager-Scope), Slice 4 (Abschluss-Logik: Chargen-Summenabgleich + Lagerplatz-Reallokation + Differenzbuchung + rollenabhängige Begründungspflicht), Slice 5 (Druckversion, Manager-Auslauf-Shortcut, Fortschritts-%-Anzeige, "Letzte Inventur"-Datum am Artikel — aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]]).
+Danach: Slice 4 (Abschluss-Logik: Chargen-Summenabgleich + Lagerplatz-Reallokation + Differenzbuchung + rollenabhängige Begründungspflicht — hier werden `inventur_positionen` erstmals gegen `lagerbestand`/`lager_bewegungen` verrechnet), Slice 5 (Druckversion, Manager-Auslauf-Shortcut, Fortschritts-%-Anzeige, "Letzte Inventur"-Datum am Artikel — aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]]).
 
 Referenz-Check ist mit diesem Dokument erledigt — nicht nochmal wiederholen, direkt in die Design-Detailarbeit je Baustein gehen.

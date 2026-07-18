@@ -1,6 +1,6 @@
 # 13 — Inventur
 
-> **In Arbeit.** Aktuell gebaut: Lagerplätze + Inventur-Lauf starten/pausieren/fortsetzen/abbrechen. Die eigentliche Zählliste (Erfassen der gezählten Mengen) folgt in einem späteren Schritt.
+> **In Arbeit.** Aktuell gebaut: Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen/abbrechen, Zählliste (Mengen erfassen). Es fehlen noch: Live-Sperre bei mehreren Zählern, Buchungssperre für Kasse/Wareneingang, Abschluss mit Differenzbuchung.
 
 ## Konzept
 
@@ -38,10 +38,26 @@ Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur (mehrere
 - **Fortsetzen** startet einen neuen Lauf mit demselben Scope, referenziert den ursprünglichen Lauf (sichtbar als "Fortsetzung von #X" in der Liste).
 - **Abgebrochen** → endgültig, kein Fortsetzen aus diesem einen Lauf mehr möglich (aber ein neuer Lauf mit gleichem Scope kann jederzeit gestartet werden).
 
+## Zählliste
+
+**Navigation:** Inventur-Liste → "Zählen" bei einem laufenden Lauf
+
+Zeigt die **Soll-Liste** passend zum Scope des Laufs:
+
+- **Ganzes Lager**: alle Artikel/Chargen, die aktuell in diesem Lager geführt werden.
+- **Lagerplatz**: nur was diesem Platz bereits zugeordnet ist — beim allerersten Zählgang eines Platzes bewusst **leer**, da es noch keine Zuordnung gibt. Einfach über "Artikel erfassen" oben frei eintragen, was tatsächlich dort liegt.
+- **Kategorie / Einzelner Artikel**: über **alle Lager** hinweg (der Scope legt kein einzelnes Lager fest), mit Lager-Spalte zur Orientierung.
+
+Pro Zeile: Ist-Menge eintragen, optional Notiz, 💾 speichern — läuft per AJAX ohne Seiten-Neuladen. Ein zweites Speichern derselben Zeile **aktualisiert** die Erfassung, statt eine doppelte Position anzulegen.
+
+**Artikel erfassen** (oberer Bereich): für alles, was nicht auf der Soll-Liste steht — neue Chargen, unerwartete Funde. Bei Kategorie-/Artikel-/Mietfach-Scope muss dabei zusätzlich das Lager gewählt werden (ergibt sich sonst automatisch aus dem Scope).
+
+**Blind-Modus:** Ist die Inventur blind gestartet, wird die Soll-Spalte komplett ausgeblendet.
+
 ## Was noch fehlt (geplant)
 
-- Die eigentliche Zählliste (Artikel/Chargen erfassen, Soll/Ist-Abgleich)
-- Live-Sperre pro Lagerplatz während der Zählung
+- Live-Sperre pro Lagerplatz während der Zählung (Info-Warnung bei mehreren gleichzeitigen Zählern)
 - Buchungssperre für Kasse/Wareneingang bei Voll-Lager-Inventur
+- Abschluss-Logik: Chargen-Summenabgleich, Lagerplatz-Reallokation, Differenzbuchung (echte Bestandskorrektur)
 - Fortschritts-Anzeige, Druckversion der Zählliste
 - "Letzte Inventur"-Datum auf der Artikel-Detailseite

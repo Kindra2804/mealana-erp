@@ -136,4 +136,188 @@ class InventurRepository
         $stmt->execute(['suche' => '%' . $suche . '%']);
         return $stmt->fetchAll();
     }
+
+    // -------------------------------------------------------------------------
+    // Zählliste (Slice 2): Soll-Liste je Scope + Positionen-CRUD
+    // -------------------------------------------------------------------------
+
+    /**
+     * Soll-Liste für "Ganzes Lager": alle lagerbestand-Zeilen dieses Lagers,
+     * Soll = lb.bestand (Gesamtmenge, unabhängig von Lagerplatz-Zuordnung).
+     */
+    public function findSollListeLager(int $lagerId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                lb.artikel_id, lb.lager_id, l.name AS lager_name,
+                lb.charge, lb.bestand AS soll_menge,
+                COALESCE(vater.name, a.name) AS artikel_name,
+                COALESCE(vater.artikelnummer, a.artikelnummer) AS artikelnummer
+            FROM lagerbestand lb
+            JOIN lager l ON l.id = lb.lager_id
+            JOIN artikel a ON a.id = lb.artikel_id
+            LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
+            WHERE lb.lager_id = :lager_id
+            ORDER BY artikel_name
+        ");
+        $stmt->execute(['lager_id' => $lagerId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Soll-Liste für "Ein Lagerplatz": bereits zugeordnete Mengen aus
+     * lagerbestand_lagerplaetze. Beim allerersten Zählgang eines Platzes
+     * bewusst LEER (siehe project_inventur_konzept) — der Zähler erfasst frei
+     * per Scan/Suche, es gibt ja noch keine Zuordnung zu vergleichen.
+     */
+    public function findSollListeLagerplatz(int $lagerplatzId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                lb.artikel_id, lb.lager_id, l.name AS lager_name,
+                llp.lagerplatz_id, lb.charge, llp.menge AS soll_menge,
+                COALESCE(vater.name, a.name) AS artikel_name,
+                COALESCE(vater.artikelnummer, a.artikelnummer) AS artikelnummer
+            FROM lagerbestand_lagerplaetze llp
+            JOIN lagerbestand lb ON lb.id = llp.lagerbestand_id
+            JOIN lager l ON l.id = lb.lager_id
+            JOIN artikel a ON a.id = lb.artikel_id
+            LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
+            WHERE llp.lagerplatz_id = :lagerplatz_id
+            ORDER BY artikel_name
+        ");
+        $stmt->execute(['lagerplatz_id' => $lagerplatzId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Soll-Liste für "Eine Kategorie": alle Artikel dieser Kategorie, mit ihrem
+     * Lagerbestand über ALLE Lager (Scope legt kein Lager fest — Jacky-Entscheidung
+     * 2026-07-18: über alle Lager, mit Lager-Spalte in der Anzeige).
+     */
+    public function findSollListeKategorie(int $kategorieId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                lb.artikel_id, lb.lager_id, l.name AS lager_name,
+                lb.charge, lb.bestand AS soll_menge,
+                COALESCE(vater.name, a.name) AS artikel_name,
+                COALESCE(vater.artikelnummer, a.artikelnummer) AS artikelnummer
+            FROM artikel_kategorien ak
+            JOIN artikel a ON a.id = ak.artikel_id
+            JOIN lagerbestand lb ON lb.artikel_id = a.id
+            JOIN lager l ON l.id = lb.lager_id
+            LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
+            WHERE ak.kategorie_id = :kategorie_id
+            ORDER BY artikel_name, lager_name
+        ");
+        $stmt->execute(['kategorie_id' => $kategorieId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Soll-Liste für "Ein einzelner Artikel": über alle Lager (gleiche Begründung wie Kategorie). */
+    public function findSollListeArtikel(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                lb.artikel_id, lb.lager_id, l.name AS lager_name,
+                lb.charge, lb.bestand AS soll_menge,
+                COALESCE(vater.name, a.name) AS artikel_name,
+                COALESCE(vater.artikelnummer, a.artikelnummer) AS artikelnummer
+            FROM lagerbestand lb
+            JOIN artikel a ON a.id = lb.artikel_id
+            JOIN lager l ON l.id = lb.lager_id
+            LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
+            WHERE lb.artikel_id = :artikel_id
+            ORDER BY lager_name
+        ");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Gibt zurück, welches Lager zu einem Lagerplatz gehört (für die Positionserfassung,
+     * wo lager_id gebraucht wird auch wenn der Scope nur den Lagerplatz nennt).
+     */
+    public function findLagerIdFuerLagerplatz(int $lagerplatzId): ?int
+    {
+        $stmt = $this->db->prepare("SELECT lager_id FROM lagerplaetze WHERE id = :id");
+        $stmt->execute(['id' => $lagerplatzId]);
+        $lagerId = $stmt->fetchColumn();
+        return $lagerId !== false ? (int)$lagerId : null;
+    }
+
+    /** Alle bereits erfassten Positionen eines Laufs (für die "schon gezählt"-Anzeige). */
+    public function findPositionenFuerLauf(int $laufId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT ip.*, COALESCE(vater.name, a.name) AS artikel_name,
+                   COALESCE(vater.artikelnummer, a.artikelnummer) AS artikelnummer,
+                   l.name AS lager_name, lp.bezeichnung AS lagerplatz_bezeichnung,
+                   b.formularname AS gezaehlt_von_name
+            FROM inventur_positionen ip
+            JOIN artikel a ON a.id = ip.artikel_id
+            LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
+            JOIN lager l ON l.id = ip.lager_id
+            LEFT JOIN lagerplaetze lp ON lp.id = ip.lagerplatz_id
+            LEFT JOIN benutzer b ON b.id = ip.gezaehlt_von
+            WHERE ip.inventur_lauf_id = :lauf_id
+            ORDER BY ip.gezaehlt_am DESC
+        ");
+        $stmt->execute(['lauf_id' => $laufId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Sucht eine bestehende Position exakt nach Schlüssel (Lauf/Artikel/Lager/Lagerplatz/Charge).
+     * Manueller Match statt DB-UNIQUE-Constraint, weil lagerplatz_id und charge
+     * beide NULL sein können (NULL != NULL in SQL-Vergleichen, siehe Migration 137).
+     */
+    public function findPosition(int $laufId, int $artikelId, int $lagerId, ?int $lagerplatzId, ?string $charge): array|false
+    {
+        $where = ['inventur_lauf_id = :lauf_id', 'artikel_id = :artikel_id', 'lager_id = :lager_id'];
+        $params = ['lauf_id' => $laufId, 'artikel_id' => $artikelId, 'lager_id' => $lagerId];
+
+        $where[] = $lagerplatzId !== null ? 'lagerplatz_id = :lagerplatz_id' : 'lagerplatz_id IS NULL';
+        if ($lagerplatzId !== null) $params['lagerplatz_id'] = $lagerplatzId;
+
+        $where[] = $charge !== null ? 'charge = :charge' : 'charge IS NULL';
+        if ($charge !== null) $params['charge'] = $charge;
+
+        $stmt = $this->db->prepare("SELECT * FROM inventur_positionen WHERE " . implode(' AND ', $where));
+        $stmt->execute($params);
+        return $stmt->fetch();
+    }
+
+    public function insertPosition(array $data): int
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO inventur_positionen (
+                inventur_lauf_id, artikel_id, lager_id, lagerplatz_id, charge,
+                soll_menge, ist_menge, status, notiz, gezaehlt_von, gezaehlt_am
+            ) VALUES (
+                :inventur_lauf_id, :artikel_id, :lager_id, :lagerplatz_id, :charge,
+                :soll_menge, :ist_menge, :status, :notiz, :gezaehlt_von, NOW()
+            )
+        ");
+        $stmt->execute($data);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function updatePosition(int $id, float $istMenge, ?string $notiz, int $benutzerId): bool
+    {
+        $stmt = $this->db->prepare("
+            UPDATE inventur_positionen
+            SET ist_menge = :ist_menge, status = 'gezaehlt', notiz = :notiz,
+                gezaehlt_von = :gezaehlt_von, gezaehlt_am = NOW()
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'ist_menge'    => $istMenge,
+            'notiz'        => $notiz,
+            'gezaehlt_von' => $benutzerId,
+            'id'           => $id,
+        ]);
+        return $stmt->rowCount() > 0;
+    }
 }

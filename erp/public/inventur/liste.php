@@ -68,6 +68,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <td><?= htmlspecialchars($l['benutzer_name'] ?? '—') ?></td>
                 <td style="white-space:nowrap">
                     <?php if ($l['status'] === 'laufend'): ?>
+                        <a href="<?= BASE_PATH ?>/inventur/zaehlen.php?lauf_id=<?= $l['id'] ?>" class="btn btn-primary btn-sm">Zählen</a>
                         <form method="post" action="<?= BASE_PATH ?>/inventur/pausieren.php" style="display:inline">
                             <input type="hidden" name="id" value="<?= $l['id'] ?>">
                             <button type="submit" class="btn btn-secondary btn-sm">Pausieren</button>

@@ -144,4 +144,86 @@ class InventurService
     {
         return $this->repo->findArtikelFuerSuche($suche);
     }
+
+    // -------------------------------------------------------------------------
+    // Zählliste (Slice 2)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Gibt die Soll-Liste für einen Lauf zurück — Auflösung hängt vom Scope ab.
+     * 'mietfaecher' hat noch keine Soll-Vergleichslogik (siehe project_inventur_konzept,
+     * Semantik dafür ist noch offen) — leere Liste, reine Freitext-Erfassung.
+     */
+    public function getSollListe(array $lauf): array
+    {
+        return match ($lauf['scope_tabelle']) {
+            'lager'        => $this->repo->findSollListeLager((int)$lauf['scope_id']),
+            'lagerplaetze' => $this->repo->findSollListeLagerplatz((int)$lauf['scope_id']),
+            'kategorien'   => $this->repo->findSollListeKategorie((int)$lauf['scope_id']),
+            'artikel'      => $this->repo->findSollListeArtikel((int)$lauf['scope_id']),
+            default        => [],
+        };
+    }
+
+    public function getPositionenFuerLauf(int $laufId): array
+    {
+        return $this->repo->findPositionenFuerLauf($laufId);
+    }
+
+    /**
+     * Bucht eine Zählung: legt die Position an falls neu, sonst wird die bestehende
+     * aktualisiert (z.B. wenn ein zweiter Zähler denselben Artikel nochmal erfasst).
+     * lagerId wird bei Lagerplatz-Scope automatisch aus dem Lagerplatz aufgelöst,
+     * falls nicht explizit übergeben.
+     */
+    public function bucheZaehlung(
+        int $laufId,
+        int $artikelId,
+        ?int $lagerId,
+        ?int $lagerplatzId,
+        ?string $charge,
+        float $istMenge,
+        ?string $notiz,
+        ?float $sollMenge = null
+    ): array {
+        if (!$lagerId && $lagerplatzId) {
+            $lagerId = $this->repo->findLagerIdFuerLagerplatz($lagerplatzId);
+        }
+        if (!$lagerId) {
+            return ['erfolg' => false, 'fehler' => ['Lager konnte nicht bestimmt werden']];
+        }
+        if ($istMenge < 0) {
+            return ['erfolg' => false, 'fehler' => ['Menge darf nicht negativ sein']];
+        }
+
+        $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+        $charge     = $charge !== null && $charge !== '' ? $charge : null;
+
+        $bestehend = $this->repo->findPosition($laufId, $artikelId, $lagerId, $lagerplatzId, $charge);
+        if ($bestehend) {
+            $this->repo->updatePosition((int)$bestehend['id'], $istMenge, $notiz, $benutzerId);
+            $id = (int)$bestehend['id'];
+        } else {
+            $id = $this->repo->insertPosition([
+                'inventur_lauf_id' => $laufId,
+                'artikel_id'       => $artikelId,
+                'lager_id'         => $lagerId,
+                'lagerplatz_id'    => $lagerplatzId,
+                'charge'           => $charge,
+                'soll_menge'       => $sollMenge,
+                'ist_menge'        => $istMenge,
+                'status'           => 'gezaehlt',
+                'notiz'            => $notiz,
+                'gezaehlt_von'     => $benutzerId,
+            ]);
+        }
+
+        Logger::log('inventur.gezaehlt', 'inventur_positionen', $id, [
+            'inventur_lauf_id' => $laufId,
+            'artikel_id'       => $artikelId,
+            'ist_menge'        => $istMenge,
+        ]);
+
+        return ['erfolg' => true, 'id' => $id];
+    }
 }
