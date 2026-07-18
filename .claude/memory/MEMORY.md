@@ -26,7 +26,7 @@
 - [JTL-Import Wissen](project_jtl_import.md) — CSV-Struktur, ProduktTyp VATER/NORMAL/KIND, Kategorie-Mapping, Gen-Skript für Demo-Artikel
 - [Feedback: Modul-Abschluss-Checkliste](feedback_js_auslagern.md) — JS auslagern + SQL-Kommentare bereinigen + Bedienungsanleitung besprechen (beim ersten Mal)
 - [Logger UI Konzept](project_logger_ui.md) — Logger-Zeile in Shell-Bottom (Mockup), Admin-Aktivitäten-Seite mit Filter/Suche
-- [Aktions-Modul](project_aktionen_modul.md) — Entscheidung: abhängige Achsen (nicht preis_gruppe); DROPS-Cronjob um 0:00; Blocker: Wert-Ebenen-Abhängigkeit + VarKombi-Update
+- [Aktions-Modul](project_aktionen_modul.md) — ✅ FERTIG, im Code verifiziert 2026-07-18; vermuteter Blocker war bereits behobener Bug
 - [Feedback: Achsen Modal](feedback_achsen_modal.md) — ✅ war beim Nachsehen 2026-07-10 schon fertig (Notiz veraltet), 4 verwaiste Alt-Dateien aufgeräumt
 - [Spalten-Picker](project_spalten_picker.md) — merkmale-Spalte aktiviert 2026-07-09 (Merkmale-Modul ist fertig); lagerplatz/letzte_inventur bleiben Platzhalter (Module existieren noch nicht)
 - [🔴 BUG: Kategorie-Verschieben](bug_kategorie_verschieben.md) — BEHOBEN 2026-06-19: saveKategorien + erstelleKombinationen + propagiereZuKindern implementiert

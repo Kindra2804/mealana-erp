@@ -1,10 +1,11 @@
 ---
 name: project-aktionen-modul
-description: "Aktions-Modul: globales Modul, kategorie-basierte Auto-Preissetzung, SALE-Override — finales Design 2026-06-18"
+description: "Aktions-Modul: globales Modul, kategorie-basierte Auto-Preissetzung, SALE-Override — ✅ FERTIG (im Code verifiziert 2026-07-18, der vermutete Blocker war bereits behoben)"
 metadata: 
   node_type: memory
   type: project
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
+  modified: 2026-07-18T18:00:35.859Z
 ---
 
 ## Warum
@@ -142,3 +143,13 @@ Kommen automatisch aus `varianten_achsen` (Sub-Achsen des Vater-Artikels).
 ## Status (2026-06-18)
 - ✅ Achsen-System fertig (Voraussetzung erfüllt)
 - ⏳ Aktions-Modul: Design abgeschlossen, Bau steht aus
+
+## ✅ Status-Korrektur 2026-07-18: komplett fertig, im Code verifiziert
+
+Auf der Roadmap stand fälschlich "Blocker: Wert-Ebenen-Abhängigkeit + VarKombi-Update" — Jacky erinnerte sich an keinen offenen Punkt außer einem Bug (nur aktive, nicht geplante Aktionen lösten die Preisabfrage beim Kategorie-Zuweisen aus), von dem er annahm dass er behoben ist. Im Code verifiziert: **stimmt, ist behoben.**
+
+`KategorieRepository::updateArtikelKategoriezuweisungen()` holt für das Preiseingabe-Modal explizit "Aktive + geplante (nicht abgelaufene) Aktionen" — der SQL-Filter ist nur `ak.gueltig_bis >= CURDATE()`, keine Einschränkung auf `gestartet`/heute-aktiv. Alle Bauplan-Schritte von oben (DB-Migrationen, Kategorien-Checkbox+⏰-Anzeige, `public/aktionen/` Liste+Bearbeiten+Preiseingabe, Artikel-Detail-Sektion, Artikel-Liste-Chips, `PreisService`-Prioritätskette) existieren im Code, keine TODO/Platzhalter-Reste gefunden.
+
+**Der ursprüngliche "Wert-Ebenen-Abhängigkeit + VarKombi-Update"-Blocker-Vermerk hatte offenbar nie eine dokumentierte technische Begründung** (nur das Label wurde je in Roadmap/Index gespeichert) — vermutlich veraltet oder mit dem oben genannten, längst behobenen Bug verwechselt. Kein Hinweis im Code auf einen noch bestehenden Zusammenhang mit abhängigen Achsen oder dem VarKombi-Generator.
+
+**How to apply:** Aktions-Modul gilt als fertig, kein aktiver Blocker mehr. Von der "zwischendurch"-Liste in [[project_roadmap_reihenfolge]] gestrichen.
