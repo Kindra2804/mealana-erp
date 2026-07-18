@@ -364,6 +364,44 @@ class InventurRepository
     // Buchungssperre (Slice 3): Voll-Lager-Inventur blockiert Kasse/Wareneingang
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // Abschluss (Slice 4, überarbeitet 2026-07-18): Live-Vergleich statt Chargen-Abdeckung
+    // -------------------------------------------------------------------------
+
+    /**
+     * Aktuelle (Live-)Chargenverteilung eines Artikels in einem Lager — die "Wahrheit"
+     * gegen die beim Abschluss verglichen wird. Bewusst live statt aus einem Snapshot,
+     * weil der Abgleich laut Jacky (2026-07-18) nur auf Gesamtbestand alt vs. neu
+     * basiert, nicht auf einzelnen Chargen-Zeilen zum Zählzeitpunkt.
+     */
+    public function findAktuelleChargen(int $artikelId, int $lagerId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, charge, bestand FROM lagerbestand WHERE artikel_id = :artikel_id AND lager_id = :lager_id
+        ");
+        $stmt->execute(['artikel_id' => $artikelId, 'lager_id' => $lagerId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Bisher an EINEM bestimmten Lagerplatz hinterlegte Menge je Charge (aus
+     * lagerbestand_lagerplaetze) — die "Vorher"-Wahrheit für einen Lagerplatz-Scope-
+     * Abgleich. Bewusst NICHT der Gesamtbestand des ganzen Lagers, weil derselbe Artikel
+     * an anderen, in diesem Lauf gar nicht gezählten Lagerplätzen unverändert weiterliegen
+     * kann (siehe project_inventur_konzept, Notizpflicht-Kontrollfrage 2026-07-18).
+     */
+    public function findChargenAmLagerplatz(int $artikelId, int $lagerId, int $lagerplatzId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT lb.charge, llp.menge
+            FROM lagerbestand_lagerplaetze llp
+            JOIN lagerbestand lb ON lb.id = llp.lagerbestand_id
+            WHERE lb.artikel_id = :artikel_id AND lb.lager_id = :lager_id AND llp.lagerplatz_id = :lagerplatz_id
+        ");
+        $stmt->execute(['artikel_id' => $artikelId, 'lager_id' => $lagerId, 'lagerplatz_id' => $lagerplatzId]);
+        return $stmt->fetchAll();
+    }
+
     /** Prüft ob für ein Lager gerade eine laufende Voll-Scope-Inventur existiert. */
     public function findLaufendeVollinventur(int $lagerId): array|false
     {

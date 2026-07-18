@@ -11,7 +11,8 @@ $id     = (int)($_POST['id'] ?? 0);
 $result = (new InventurService())->abschliessen($id);
 
 if ($result['erfolg']) {
-    $_SESSION['erfolg'] = 'Inventur abgeschlossen — ' . count($result['korrigiert']) . ' Artikel korrigiert.';
+    $_SESSION['erfolg'] = 'Inventur abgeschlossen — ' . count($result['korrigiert']) . ' Artikel korrigiert, '
+        . count($result['unveraendert']) . ' ohne Abweichung (nur Inventurdatum gesetzt).';
     header('Location: ' . BASE_PATH . '/inventur/liste.php');
     exit;
 }

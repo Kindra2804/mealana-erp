@@ -35,65 +35,60 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <div class="card" style="margin-bottom:12px">
     <strong style="font-size:13px;display:block;margin-bottom:10px">
-        Abweichungen (Soll ≠ Ist) — <?= count($vorschau['abweichungen']) ?> Zeile(n)
+        Abweichungen (Gesamtbestand alt ≠ neu, oder Chargen-/Lagerplatzverteilung geändert) — <?= count($vorschau['abweichungen']) ?> Artikel
     </strong>
     <?php if (empty($vorschau['abweichungen'])): ?>
-        <p style="color:var(--color-text-muted);margin:0">Keine Abweichungen in den bisher gezählten (vollständigen) Positionen.</p>
+        <p style="color:var(--color-text-muted);margin:0">Keine Abweichungen in den bisher gezählten Artikeln.</p>
     <?php else: ?>
         <table class="erp-table">
             <thead>
                 <tr>
                     <th>Artikel</th>
                     <th>Lager</th>
-                    <th>Lagerplatz</th>
-                    <th>Charge</th>
-                    <th style="text-align:right">Soll</th>
-                    <th style="text-align:right">Ist</th>
+                    <th style="text-align:right">Vorher</th>
+                    <th style="text-align:right">Nachher</th>
                     <th style="text-align:right">Differenz</th>
-                    <th>Notiz</th>
+                    <th>Details</th>
                 </tr>
             </thead>
             <tbody>
-            <?php foreach ($vorschau['abweichungen'] as $a): $diff = $a['ist'] - $a['soll']; ?>
+            <?php foreach ($vorschau['abweichungen'] as $a): ?>
                 <tr>
                     <td><?= htmlspecialchars($a['artikel_name']) ?> <span style="color:var(--color-text-muted);font-size:11px">(<?= htmlspecialchars($a['artikelnummer']) ?>)</span></td>
                     <td><?= htmlspecialchars($a['lager_name']) ?></td>
-                    <td><?= htmlspecialchars($a['lagerplatz_bezeichnung'] ?? '—') ?></td>
-                    <td><?= htmlspecialchars($a['charge'] ?? '—') ?></td>
-                    <td style="text-align:right"><?= number_format($a['soll'], 0) ?></td>
-                    <td style="text-align:right"><?= number_format($a['ist'], 0) ?></td>
-                    <td style="text-align:right;font-weight:600;color:<?= $diff < 0 ? 'var(--color-danger)' : 'var(--color-success)' ?>">
-                        <?= $diff > 0 ? '+' : '' ?><?= number_format($diff, 0) ?>
+                    <td style="text-align:right"><?= number_format($a['summe_vorher'], 0) ?></td>
+                    <td style="text-align:right"><?= number_format($a['summe_nachher'], 0) ?></td>
+                    <td style="text-align:right;font-weight:600;color:<?= $a['differenz'] < 0 ? 'var(--color-danger)' : 'var(--color-success)' ?>">
+                        <?php if (abs($a['differenz']) > 0.01): ?>
+                            <?= $a['differenz'] > 0 ? '+' : '' ?><?= number_format($a['differenz'], 0) ?>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?>
                     </td>
-                    <td style="color:var(--color-text-muted)"><?= htmlspecialchars($a['notiz'] ?? '') ?></td>
+                    <td style="color:var(--color-text-muted);font-size:12px">
+                        <?php if ($a['verteilung_geaendert']): ?>Chargen-/Lagerplatzverteilung geändert<?php endif; ?>
+                        <?php foreach ($a['positionen'] as $p): if (empty($p['notiz'])) continue; ?>
+                            <div>„<?= htmlspecialchars($p['notiz']) ?>"</div>
+                        <?php endforeach; ?>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table>
     <?php endif; ?>
+    <?php if ($vorschau['unveraendert_anzahl'] > 0): ?>
+        <p style="color:var(--color-text-muted);font-size:12px;margin-top:10px">
+            + <?= $vorschau['unveraendert_anzahl'] ?> weitere(r) gezählte(r) Artikel ohne Abweichung (bekommt beim Abschluss nur das Inventurdatum).
+        </p>
+    <?php endif; ?>
 </div>
 
-<?php if (!empty($vorschau['unvollstaendig'])): ?>
 <div class="card" style="margin-bottom:12px">
-    <strong style="font-size:13px;display:block;margin-bottom:10px">
-        ⚠ Noch nicht vollständig gezählt — wird beim Abschluss NICHT gebucht
-    </strong>
-    <table class="erp-table">
-        <thead><tr><th>Artikel</th><th>Lager</th></tr></thead>
-        <tbody>
-        <?php foreach ($vorschau['unvollstaendig'] as $g): ?>
-            <tr>
-                <td><?= htmlspecialchars($g['artikel_name']) ?> <span style="color:var(--color-text-muted);font-size:11px">(<?= htmlspecialchars($g['artikelnummer']) ?>)</span></td>
-                <td><?= htmlspecialchars($g['lager_name']) ?></td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-    <div style="margin-top:8px">
-        <a href="<?= BASE_PATH ?>/inventur/zaehlen.php?lauf_id=<?= $laufId ?>" style="font-size:12px;color:var(--color-nav)">→ Noch fehlende Positionen zählen</a>
-    </div>
+    <p style="font-size:12px;color:var(--color-text-muted);margin:0">
+        Nicht gezählte Artikel dieses Laufs werden beim Abschluss einfach übersprungen (bleiben unverändert) — kein Blocker.
+        <a href="<?= BASE_PATH ?>/inventur/zaehlen.php?lauf_id=<?= $laufId ?>" style="color:var(--color-nav)">→ Weiterzählen</a>
+    </p>
 </div>
-<?php endif; ?>
 
 <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap">

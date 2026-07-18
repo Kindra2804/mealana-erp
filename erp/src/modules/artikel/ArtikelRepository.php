@@ -935,6 +935,13 @@ class ArtikelRepository
         $stmt->execute(['id' => $id, 'aktiv' => $aktiv]);
     }
 
+    /** Setzt das "Letzte Inventur"-Datum (Inventur-Abschluss). */
+    public function setLetzteInventur(int $id, string $datum): void
+    {
+        $stmt = $this->db->prepare("UPDATE artikel SET letzte_inventur_am = :datum WHERE id = :id");
+        $stmt->execute(['id' => $id, 'datum' => $datum]);
+    }
+
     public function setAuslaufartikelAktiv(int $id, int $ist_auslaufartikel): void
     {
         $stmt = $this->db->prepare("UPDATE artikel SET ist_auslaufartikel = :ist_auslaufartikel WHERE id = :id");

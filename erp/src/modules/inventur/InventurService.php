@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/InventurRepository.php';
 require_once __DIR__ . '/../lager/LagerRepository.php';
+require_once __DIR__ . '/../artikel/ArtikelRepository.php';
 
 /**
  * InventurService – Lebenszyklus der Inventur-Läufe (Slice 1: nur Kopf + Scope)
@@ -276,100 +277,99 @@ class InventurService
     }
 
     // -------------------------------------------------------------------------
-    // Abschluss (Slice 4) — echte Bestandskorrektur, siehe project_inventur_konzept
+    // Abschluss (Slice 4, überarbeitet 2026-07-18) — echte Bestandskorrektur
     // -------------------------------------------------------------------------
+    //
+    // Modell nach Jackys Klarstellung (2026-07-18, entspricht dem realen JTL-Workflow):
+    // Chargen und Lagerplätze spielen für die Differenzliste KEINE Rolle — nur der
+    // Gesamtbestand alt vs. neu pro Artikel+Lager zählt (Inventur+ oder Schwund).
+    // Ein früherer Ansatz (Vollständigkeits-Gate pro Charge-Zeichenkette) wurde wieder
+    // verworfen: bei mehreren Zählern in unterschiedlichen Bereichen kann niemand wissen,
+    // ob eine "fehlende" Charge nicht einfach woanders liegt — ein knallharter Chargen-
+    // Abgleich hätte ständig fälschlich "unvollständig" gemeldet.
+    //
+    // Komplett ungezählte Artikel werden schlicht übersprungen (keine Fehlermeldung, kein
+    // Blocker für andere Artikel — wie bei JTL). Nur Artikel mit mindestens einer gezählten
+    // Position werden überhaupt betrachtet.
 
     /**
-     * Berechnet die Abgleich-Gruppen (Artikel × Lager) für einen Lauf, ohne irgendetwas
-     * zu buchen. Gemeinsame Grundlage für Vorschau UND tatsächlichen Abschluss —
-     * beide müssen exakt dieselbe Aufteilung "vollständig"/"unvollständig" sehen.
+     * Berechnet die Abgleich-Gruppen (Artikel × Lager) für einen Lauf, ohne zu buchen.
+     * Gemeinsame Grundlage für Vorschau UND tatsächlichen Abschluss.
      *
-     * Vollständigkeitsregel (Jacky, 2026-07-18): eine Artikel/Lager-Gruppe wird nur dann
-     * gebucht, wenn JEDE zum Abschlusszeitpunkt sichtbare Soll-Position entweder gezählt
-     * oder auf der Check-Liste explizit auf 0 gesetzt wurde. Fehlt auch nur eine offene
-     * Position, bleibt die GANZE Gruppe unangetastet (kein Teilbuchen).
-     *
-     * Rückgabe: ['gruppen' => [artikel_id, lager_id, artikel_name, vollstaendig,
-     *            summe_vorher, summe_nachher, positionen[]], ...]
+     * Scope-Sonderfall "Lagerplatz" (Jacky-Kontrollfrage 2026-07-18): hier darf "Vorher"
+     * NICHT der Gesamtbestand des ganzen Lagers sein, sondern nur das, was bisher an
+     * GENAU DIESEM Lagerplatz hinterlegt war — sonst würde ein Artikel, der an einem
+     * anderen (in diesem Lauf gar nicht gezählten) Platz weiterhin unangetastet liegt,
+     * fälschlich als riesiger Schwund erscheinen. Bei den anderen Scopes (ganzes Lager,
+     * Kategorie, Artikel) bleibt der Gesamtbestand-Vergleich richtig, weil dort der
+     * komplette Bestand des Artikels im Lager Gegenstand der Zählung ist.
      */
     private function berechneAbgleich(array $lauf): array
     {
-        $sollListe  = $this->getSollListe($lauf);
-        $alle       = $this->repo->findPositionenFuerLauf((int)$lauf['id']);
-        $gezaehlt   = array_filter($alle, fn($p) => $p['status'] === 'gezaehlt');
+        $alle     = $this->repo->findPositionenFuerLauf((int)$lauf['id']);
+        $gezaehlt = array_filter($alle, fn($p) => $p['status'] === 'gezaehlt');
 
-        // Vergleichsschlüssel bewusst OHNE lagerplatz_id: die Soll-Liste (aus lagerbestand)
-        // kennt bei Scope=Lager/Kategorie/Artikel gar keinen Lagerplatz — der wird erst
-        // beim Zählen als Zusatzinfo ("Ich zähle gerade an") angehängt. Würde man ihn hier
-        // mitvergleichen, würde eine mit Lagerplatz-Tag gezählte Position nie zur
-        // ursprünglichen (lagerplatzlosen) Soll-Zeile passen und die Gruppe fälschlich als
-        // unvollständig gelten. Bei Scope=Lagerplatz ist der Lagerplatz ohnehin für alle
-        // Zeilen gleich (der Scope selbst), Weglassen ändert dort nichts am Ergebnis.
-        $gezaehltIndex = [];
-        foreach ($gezaehlt as $p) {
-            $key = $p['artikel_id'] . '|' . $p['lager_id'] . '|' . ($p['charge'] ?? '');
-            $gezaehltIndex[$key] = true;
-        }
-
-        // Welche Artikel/Lager-Gruppen haben noch offene (nicht gezählte) Soll-Positionen?
-        // WICHTIG: eine Gruppe mit GAR KEINER gezählten Position (Soll-Zeile nie angefasst)
-        // muss genauso als unvollständig gelten wie eine mit nur teilweise gezählten Chargen —
-        // beides ergibt sich hier automatisch, weil jede offene Soll-Zeile die Gruppe markiert.
-        $unvollstaendigeGruppen = [];
-        foreach ($sollListe as $s) {
-            $key = $s['artikel_id'] . '|' . $s['lager_id'] . '|' . ($s['charge'] ?? '');
-            if (!isset($gezaehltIndex[$key])) {
-                $unvollstaendigeGruppen[$s['artikel_id'] . '|' . $s['lager_id']] = true;
-            }
-        }
-
-        // Alle Artikel/Lager-Gruppen sammeln: aus der Soll-Liste (auch komplett unberührte
-        // Zeilen) UND aus den gezählten Positionen (neue Funde ohne vorherige Soll-Zeile).
-        $alleGruppenKeys = [];
-        foreach ($sollListe as $s) {
-            $alleGruppenKeys[$s['artikel_id'] . '|' . $s['lager_id']] = true;
-        }
         $gezaehltNachGruppe = [];
         foreach ($gezaehlt as $p) {
-            $gruppenKey = $p['artikel_id'] . '|' . $p['lager_id'];
-            $alleGruppenKeys[$gruppenKey] = true;
-            $gezaehltNachGruppe[$gruppenKey][] = $p;
+            $gezaehltNachGruppe[$p['artikel_id'] . '|' . $p['lager_id']][] = $p;
         }
 
+        $istLagerplatzScope = $lauf['scope_tabelle'] === 'lagerplaetze';
+        $scopeLagerplatzId  = $istLagerplatzScope ? (int)$lauf['scope_id'] : null;
+
         $gruppen = [];
-        foreach (array_keys($alleGruppenKeys) as $key) {
+        foreach ($gezaehltNachGruppe as $key => $positionen) {
             [$artikelId, $lagerId] = array_map('intval', explode('|', $key));
-            $positionen = $gezaehltNachGruppe[$key] ?? [];
 
-            $beispiel = $positionen[0] ?? null;
-            if (!$beispiel) {
-                foreach ($sollListe as $s) {
-                    if ((int)$s['artikel_id'] === $artikelId && (int)$s['lager_id'] === $lagerId) { $beispiel = $s; break; }
+            if ($istLagerplatzScope) {
+                // "Vorher" = nur der bisher an DIESEM Platz hinterlegte Anteil.
+                $alteAmPlatz = $this->repo->findChargenAmLagerplatz($artikelId, $lagerId, $scopeLagerplatzId);
+                $alteVerteilung = [];
+                foreach ($alteAmPlatz as $c) {
+                    $alteVerteilung[$c['charge'] ?? ''] = (float)$c['menge'];
+                }
+            } else {
+                // "Vorher" = Gesamtbestand jetzt (nicht der Soll-Snapshot vom Zählzeitpunkt) —
+                // passt zur Buchungssperre bei Voll-Scope; bei Teil-Scope ein akzeptiertes
+                // Restrisiko, falls zwischen Zählen und Abschluss noch etwas verkauft wurde.
+                $alteChargen = $this->repo->findAktuelleChargen($artikelId, $lagerId);
+                $alteVerteilung = [];
+                foreach ($alteChargen as $c) {
+                    $alteVerteilung[$c['charge'] ?? ''] = (float)$c['bestand'];
                 }
             }
 
-            // summeVorher kommt aus der Soll-Liste selbst (ein Wert je Charge, garantiert
-            // dupliktatsfrei durch die UNIQUE-Regel auf lagerbestand) — NICHT aus den
-            // gezählten Positionen, sonst würde eine über mehrere Lagerplätze aufgeteilte
-            // Charge (mehrere Positionen, gleiche ursprüngliche Soll-Menge) doppelt gezählt.
-            $summeVorher = 0.0;
-            foreach ($sollListe as $s) {
-                if ((int)$s['artikel_id'] === $artikelId && (int)$s['lager_id'] === $lagerId) {
-                    $summeVorher += (float)($s['soll_menge'] ?? 0);
-                }
-            }
+            $summeVorher  = array_sum($alteVerteilung);
             $summeNachher = array_sum(array_map(fn($p) => (float)$p['ist_menge'], $positionen));
 
+            // Verteilung (Menge je Charge) alt vs. neu vergleichen — auch bei gleicher
+            // Gesamtsumme kann sich die Aufteilung geändert haben (Chargen zusammengelegt).
+            $neueVerteilung = [];
+            foreach ($positionen as $p) {
+                $ck = $p['charge'] ?? '';
+                $neueVerteilung[$ck] = ($neueVerteilung[$ck] ?? 0) + (float)$p['ist_menge'];
+            }
+            $verteilungGeaendert = false;
+            foreach (array_unique(array_merge(array_keys($alteVerteilung), array_keys($neueVerteilung))) as $ck) {
+                if (abs(($alteVerteilung[$ck] ?? 0) - ($neueVerteilung[$ck] ?? 0)) > 0.01) {
+                    $verteilungGeaendert = true;
+                    break;
+                }
+            }
+
             $gruppen[] = [
-                'artikel_id'      => $artikelId,
-                'lager_id'        => $lagerId,
-                'artikel_name'    => $beispiel['artikel_name'] ?? '',
-                'artikelnummer'   => $beispiel['artikelnummer'] ?? '',
-                'lager_name'      => $beispiel['lager_name'] ?? '',
-                'vollstaendig'    => !isset($unvollstaendigeGruppen[$key]),
-                'summe_vorher'    => $summeVorher,
-                'summe_nachher'   => $summeNachher,
-                'positionen'      => $positionen,
+                'artikel_id'           => $artikelId,
+                'lager_id'             => $lagerId,
+                'artikel_name'         => $positionen[0]['artikel_name'],
+                'artikelnummer'        => $positionen[0]['artikelnummer'],
+                'lager_name'           => $positionen[0]['lager_name'],
+                'summe_vorher'         => $summeVorher,
+                'summe_nachher'        => $summeNachher,
+                'verteilung_geaendert' => $verteilungGeaendert,
+                'positionen'           => $positionen,
+                'ist_lagerplatz_scope' => $istLagerplatzScope,
+                'scope_lagerplatz_id'  => $scopeLagerplatzId,
+                'alte_verteilung'      => $alteVerteilung,
             ];
         }
 
@@ -377,9 +377,8 @@ class InventurService
     }
 
     /**
-     * Vorschau vor dem eigentlichen Abschluss: zeigt für jede vollständige Gruppe alle
-     * Positionen wo Ist ≠ Soll (egal ob mehr oder weniger), plus die Liste unvollständiger
-     * Gruppen, die beim Abschluss unangetastet bleiben würden. Bucht nichts.
+     * Vorschau vor dem eigentlichen Abschluss: zeigt jede Artikel/Lager-Gruppe mit
+     * Mengenabweichung ODER geänderter Chargen-/Lagerplatzverteilung. Bucht nichts.
      */
     public function vorschauAbschluss(int $laufId): array
     {
@@ -390,44 +389,42 @@ class InventurService
 
         $gruppen = $this->berechneAbgleich($lauf);
 
-        $abweichungen    = [];
-        $unvollstaendig  = [];
+        $abweichungen = [];
+        $unveraendertAnzahl = 0;
         foreach ($gruppen as $g) {
-            if (!$g['vollstaendig']) {
-                $unvollstaendig[] = $g;
-                continue;
-            }
-            foreach ($g['positionen'] as $p) {
-                $soll = (float)($p['soll_menge'] ?? 0);
-                $ist  = (float)$p['ist_menge'];
-                if (abs($ist - $soll) > 0.01) {
-                    $abweichungen[] = [
-                        'artikel_name'  => $g['artikel_name'],
-                        'artikelnummer' => $g['artikelnummer'],
-                        'lager_name'    => $g['lager_name'],
-                        'lagerplatz_bezeichnung' => $p['lagerplatz_bezeichnung'] ?? null,
-                        'charge'        => $p['charge'],
-                        'soll'          => $soll,
-                        'ist'           => $ist,
-                        'notiz'         => $p['notiz'],
-                    ];
-                }
+            $diff = $g['summe_nachher'] - $g['summe_vorher'];
+            if (abs($diff) > 0.01 || $g['verteilung_geaendert']) {
+                $abweichungen[] = [
+                    'artikel_name'         => $g['artikel_name'],
+                    'artikelnummer'        => $g['artikelnummer'],
+                    'lager_name'           => $g['lager_name'],
+                    'summe_vorher'         => $g['summe_vorher'],
+                    'summe_nachher'        => $g['summe_nachher'],
+                    'differenz'            => $diff,
+                    'verteilung_geaendert' => $g['verteilung_geaendert'],
+                    'positionen'           => $g['positionen'],
+                ];
+            } else {
+                $unveraendertAnzahl++;
             }
         }
 
         return [
-            'erfolg'         => true,
-            'lauf'           => $lauf,
-            'abweichungen'   => $abweichungen,
-            'unvollstaendig' => $unvollstaendig,
+            'erfolg'              => true,
+            'lauf'                => $lauf,
+            'abweichungen'        => $abweichungen,
+            'unveraendert_anzahl' => $unveraendertAnzahl,
         ];
     }
 
     /**
-     * Führt den Abschluss tatsächlich durch: bucht jede vollständige Gruppe (Bestand neu
-     * setzen, Differenz als lager_bewegungen Typ 'inventur'/'schwund', Lagerplatz-Reallokation),
-     * lässt unvollständige Gruppen unangetastet. Schwund ohne Notiz wird komplett verweigert
-     * (nicht nur die eine Gruppe übersprungen), damit man das vor dem Abschluss nachträgt.
+     * Führt den Abschluss tatsächlich durch:
+     *  - Gruppe unverändert (Summe gleich + Verteilung gleich) → nur letzte_inventur_am setzen.
+     *  - Verteilung geändert (auch bei gleicher Summe) → Chargen-Zeilen aktualisieren.
+     *  - Echte Mengenabweichung → zusätzlich EINE lager_bewegungen-Zeile (Typ inventur/
+     *    schwund) für die Netto-Differenz — pro Charge gebucht ergäbe bei freier
+     *    Chargen-Umverteilung keine sinnvolle 1:1-Zuordnung mehr.
+     * Fehlbestand ohne Notiz verweigert den GESAMTEN Abschluss (nicht nur die eine Gruppe).
      */
     public function abschliessen(int $laufId): array
     {
@@ -437,13 +434,9 @@ class InventurService
         }
 
         $gruppen = $this->berechneAbgleich($lauf);
-        $lagerRepo = new LagerRepository();
 
-        // Erst validieren (Schwund braucht Notiz), bevor überhaupt etwas gebucht wird.
         foreach ($gruppen as $g) {
-            if (!$g['vollstaendig'] || $g['summe_nachher'] >= $g['summe_vorher'] - 0.01) {
-                continue;
-            }
+            if ($g['summe_nachher'] >= $g['summe_vorher'] - 0.01) continue;
             $hatNotiz = false;
             foreach ($g['positionen'] as $p) {
                 if (!empty($p['notiz'])) { $hatNotiz = true; break; }
@@ -455,57 +448,140 @@ class InventurService
             }
         }
 
-        $korrigiert = [];
+        $lagerRepo   = new LagerRepository();
+        $artikelRepo = new ArtikelRepository();
+        $heute       = date('Y-m-d');
+
+        $korrigiert   = [];
+        $unveraendert = [];
+
         foreach ($gruppen as $g) {
-            if (!$g['vollstaendig']) continue;
+            $diffGesamt = $g['summe_nachher'] - $g['summe_vorher'];
 
+            if (abs($diffGesamt) <= 0.01 && !$g['verteilung_geaendert']) {
+                $artikelRepo->setLetzteInventur($g['artikel_id'], $heute);
+                $unveraendert[] = ['artikel_name' => $g['artikel_name']];
+                continue;
+            }
+
+            // Menge je Charge aggregieren (dieselbe Charge kann mehrfach gezählt worden
+            // sein — dann fließen mehrere Positionen in eine Bestandszeile).
+            $mengeJeCharge = [];
             foreach ($g['positionen'] as $p) {
-                $vorherCharge  = (float)($p['soll_menge'] ?? 0);
-                $nachherCharge = (float)$p['ist_menge'];
-                $diff          = $nachherCharge - $vorherCharge;
+                $ck = $p['charge'] ?? '';
+                $mengeJeCharge[$ck] = ($mengeJeCharge[$ck] ?? 0) + (float)$p['ist_menge'];
+            }
 
-                $lagerRepo->upsertBestand([
-                    'artikel_id'     => $g['artikel_id'],
-                    'lager_id'       => $g['lager_id'],
-                    'charge'         => $p['charge'],
-                    'charge_status'  => $p['charge'] !== null ? 'erfasst' : null,
-                    'bestand'        => $nachherCharge,
-                    'mindestbestand' => 0,
-                ]);
+            if ($g['ist_lagerplatz_scope']) {
+                // Lagerplatz-Scope: NIE den Gesamtbestand überschreiben — nur um die
+                // lokale Differenz (an diesem Platz) anpassen, weil derselbe Artikel an
+                // anderen Plätzen unangetastet weiterliegen kann. Chargen, die vorher an
+                // diesem Platz lagen aber jetzt nicht mehr gezählt wurden, bleiben bewusst
+                // unangetastet (nicht auf 0 gesetzt) — könnte schlicht übersehen worden sein.
+                foreach ($mengeJeCharge as $ck => $mengeNeuLokal) {
+                    $charge = $ck === '' ? null : $ck;
+                    $mengeAltLokal = $g['alte_verteilung'][$ck] ?? 0.0;
+                    $diffLokal = $mengeNeuLokal - $mengeAltLokal;
 
-                if (abs($diff) > 0.001) {
-                    $lagerRepo->insertBewegung([
-                        'artikel_id'      => $g['artikel_id'],
-                        'lager_id'        => $g['lager_id'],
-                        'lieferant_id'    => null,
-                        'ek_preis'        => null,
-                        'charge'          => $p['charge'],
-                        'bewegungstyp'    => $diff > 0 ? 'inventur' : 'schwund',
-                        'menge'           => abs($diff),
-                        'bestand_vorher'  => $vorherCharge,
-                        'bestand_nachher' => $nachherCharge,
-                        'referenz'        => 'Inventur #' . $laufId,
-                        'notiz'           => $p['notiz'],
-                        'benutzer_id'     => $p['gezaehlt_von'],
+                    $aktuellerGesamt = $lagerRepo->getBestand($g['artikel_id'], $g['lager_id'], $charge);
+                    $lagerRepo->upsertBestand([
+                        'artikel_id'     => $g['artikel_id'],
+                        'lager_id'       => $g['lager_id'],
+                        'charge'         => $charge,
+                        'charge_status'  => $charge !== null ? 'erfasst' : null,
+                        'bestand'        => $aktuellerGesamt + $diffLokal,
+                        'mindestbestand' => 0,
+                    ]);
+
+                    $lagerbestandId = $lagerRepo->findLagerbestandIdByKey($g['artikel_id'], $g['lager_id'], $charge);
+                    if ($lagerbestandId) {
+                        $lagerRepo->upsertLagerbestandLagerplatz($lagerbestandId, $g['scope_lagerplatz_id'], $mengeNeuLokal);
+                    }
+                }
+            } else {
+                foreach ($mengeJeCharge as $ck => $menge) {
+                    $charge = $ck === '' ? null : $ck;
+                    $lagerRepo->upsertBestand([
+                        'artikel_id'     => $g['artikel_id'],
+                        'lager_id'       => $g['lager_id'],
+                        'charge'         => $charge,
+                        'charge_status'  => $charge !== null ? 'erfasst' : null,
+                        'bestand'        => $menge,
+                        'mindestbestand' => 0,
                     ]);
                 }
-
-                if ($p['lagerplatz_id']) {
-                    $lagerbestandId = $lagerRepo->findLagerbestandIdByKey($g['artikel_id'], $g['lager_id'], $p['charge']);
-                    if ($lagerbestandId) {
-                        $lagerRepo->upsertLagerbestandLagerplatz($lagerbestandId, (int)$p['lagerplatz_id'], $nachherCharge);
+                // Alte Chargen, die jetzt in keiner gezählten Position mehr auftauchen
+                // (zusammengelegt/umbenannt), auf 0 setzen statt als Karteileiche stehen
+                // zu lassen — nur hier sinnvoll, weil bei diesen Scopes der KOMPLETTE
+                // Bestand des Artikels im Lager Gegenstand der Zählung ist.
+                foreach ($g['alte_verteilung'] as $ck => $menge) {
+                    if (!isset($mengeJeCharge[$ck])) {
+                        $lagerRepo->upsertBestand([
+                            'artikel_id'     => $g['artikel_id'],
+                            'lager_id'       => $g['lager_id'],
+                            'charge'         => $ck === '' ? null : $ck,
+                            'charge_status'  => $ck !== '' ? 'erfasst' : null,
+                            'bestand'        => 0,
+                            'mindestbestand' => 0,
+                        ]);
                     }
                 }
             }
 
+            if (abs($diffGesamt) > 0.01) {
+                $notiz = null;
+                foreach ($g['positionen'] as $p) { if (!empty($p['notiz'])) { $notiz = $p['notiz']; break; } }
+
+                // Für die Bewegungs-Historie den ECHTEN Gesamtbestand zeigen (nicht die
+                // lokale Platz-Menge) — bei Lagerplatz-Scope wäre "vorher/nachher" sonst
+                // irreführend, weil an anderen Plätzen unangetastet weiterhin Ware liegt.
+                if ($g['ist_lagerplatz_scope']) {
+                    $echtVorher  = array_sum(array_map(fn($c) => (float)$c['bestand'], $this->repo->findAktuelleChargen($g['artikel_id'], $g['lager_id']))) - $diffGesamt;
+                    $echtNachher = $echtVorher + $diffGesamt;
+                } else {
+                    $echtVorher  = $g['summe_vorher'];
+                    $echtNachher = $g['summe_nachher'];
+                }
+
+                $lagerRepo->insertBewegung([
+                    'artikel_id'      => $g['artikel_id'],
+                    'lager_id'        => $g['lager_id'],
+                    'lieferant_id'    => null,
+                    'ek_preis'        => null,
+                    'charge'          => null,
+                    'bewegungstyp'    => $diffGesamt > 0 ? 'inventur' : 'schwund',
+                    'menge'           => abs($diffGesamt),
+                    'bestand_vorher'  => $echtVorher,
+                    'bestand_nachher' => $echtNachher,
+                    'referenz'        => 'Inventur #' . $laufId,
+                    'notiz'           => $notiz,
+                    'benutzer_id'     => $g['positionen'][0]['gezaehlt_von'],
+                ]);
+            }
+
+            // Lagerplatz-Reallokation für Nicht-Lagerplatz-Scopes (z.B. Scope=Lager mit
+            // "Ich zähle gerade an"-Tag) — bei Lagerplatz-Scope bereits oben erledigt.
+            if (!$g['ist_lagerplatz_scope']) {
+                foreach ($g['positionen'] as $p) {
+                    if ($p['lagerplatz_id']) {
+                        $lagerbestandId = $lagerRepo->findLagerbestandIdByKey($g['artikel_id'], $g['lager_id'], $p['charge']);
+                        if ($lagerbestandId) {
+                            $lagerRepo->upsertLagerbestandLagerplatz($lagerbestandId, (int)$p['lagerplatz_id'], (float)$p['ist_menge']);
+                        }
+                    }
+                }
+            }
+
+            $artikelRepo->setLetzteInventur($g['artikel_id'], $heute);
             $korrigiert[] = ['artikel_name' => $g['artikel_name'], 'vorher' => $g['summe_vorher'], 'nachher' => $g['summe_nachher']];
         }
 
         $this->repo->setStatus($laufId, 'abgeschlossen', true);
         Logger::log('inventur.abgeschlossen', 'inventur_laeufe', $laufId, [
             'korrigierte_artikel' => count($korrigiert),
+            'unveraendert'        => count($unveraendert),
         ]);
 
-        return ['erfolg' => true, 'korrigiert' => $korrigiert];
+        return ['erfolg' => true, 'korrigiert' => $korrigiert, 'unveraendert' => $unveraendert];
     }
 }

@@ -1,11 +1,11 @@
 ---
 name: project-inventur-konzept
-description: "Vollständiges Design für das Inventur-Modul (Lagerplätze, Zähl-Läufe, Sperren, Chargen-Abgleich) — Design 2026-07-18; Lagerplätze + Inventur-Lauf-Kern Slice 1 (Kopf+Scope+Lebenszyklus) FERTIG, Zählliste als Nächstes"
+description: "Inventur-Modul: Kern-Workflow FERTIG (Lagerplätze→Lauf/Scope→Zählliste→Sperren→Abschluss mit echter Bestandskorrektur, Gesamtbestand-Vergleich statt Chargen-Abgleich); nur Slice 5 (Komfort) offen"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 1208232f-9b1f-41ae-ae93-bb91abe26d76
-  modified: 2026-07-18T16:29:04.605Z
+  modified: 2026-07-18T17:08:03.353Z
 ---
 
 Stand: 2026-07-18, komplette Design-Absprache mit Jacky vor Baubeginn (wie von ihm gewünscht, siehe [[feedback_modul_vorgehen]]). Ersetzt/ergänzt die verstreuten Einzelnotizen in [[project_inventur_hinweis]] und den Lagerplätze-Abschnitt in [[project_lager_konzept]] — dies hier ist das verbindliche Konzept.
@@ -148,23 +148,51 @@ JTL/Shopware/Sage/LS-POS bieten typischerweise: Blind-Inventur (HOCH), permanent
 
 ## 🟢 FERTIG 2026-07-18: Inventur-Lauf-Kern Slice 4 (Abschluss — echte Bestandskorrektur)
 
-**Workflow-Erweiterung während des Baus** (Jacky, 2026-07-18): keine stille Buchung — vor jeder echten Änderung steht immer eine **Vorschau-Seite** (`inventur/abschluss_vorschau.php`), erreichbar über einen einzigen "Prüfen …"-Link sowohl bei laufenden als auch pausierten Läufen (ersetzt die früheren direkten Pausieren-/Abbrechen-Buttons in der Liste). Zeigt: Abweichungs-Tabelle (Soll≠Ist, egal ob mehr oder weniger) + Unvollständig-Liste, mit drei Aktionen: **Jetzt buchen & abschließen**, **Ohne Buchung pausieren**, **Verwerfen ohne Buchung** — nur die erste bucht tatsächlich.
+**Workflow-Erweiterung während des Baus** (Jacky, 2026-07-18): keine stille Buchung — vor jeder echten Änderung steht immer eine **Vorschau-Seite** (`inventur/abschluss_vorschau.php`), erreichbar über einen einzigen "Prüfen …"-Link sowohl bei laufenden als auch pausierten Läufen. Drei Aktionen: **Jetzt buchen & abschließen**, **Ohne Buchung pausieren**, **Verwerfen ohne Buchung** — nur die erste bucht tatsächlich.
 
-- **`InventurService::berechneAbgleich()`** (privat, gemeinsame Basis für Vorschau UND Abschluss): gruppiert gezählte Positionen nach Artikel+Lager, prüft Vollständigkeit gegen die aktuelle Soll-Liste.
-- **`vorschauAbschluss()`**: reine Lesefunktion, bucht nichts.
-- **`abschliessen()`**: validiert zuerst ALLE Gruppen (Schwund ohne Notiz → kompletter Abbruch, nicht nur die eine Gruppe übersprungen), bucht dann pro Charge (`LagerRepository::upsertBestand()` + `insertBewegung()` Typ `inventur`/`schwund`), reallokiert Lagerplätze (`lagerbestand_lagerplaetze`), setzt Lauf-Status auf `abgeschlossen`.
-- **Begründungspflicht** direkt in `bucheZaehlung()` eingebaut (nicht erst beim Abschluss): Abweichung + leere Notiz + `rolle_rang < 70` → Fehler. Ab Manager-Rang optional.
-- Neue Helper in `LagerRepository`: `findLagerbestandIdByKey()`, `upsertLagerbestandLagerplatz()`.
+**⚠️ Modell-Korrektur NOCH AM SELBEN TAG** (wichtig — die erste Implementierung unten war falsch, siehe Konflikt-Beispiel): Ein erster Ansatz prüfte "Vollständigkeit" darüber, ob jede ALTE Chargen-Zeichenkette (z.B. "C1", "C2", "C3") beim Zählen wieder exakt auftaucht — sonst wurde die GANZE Artikel/Lager-Gruppe als unvollständig zurückgestellt, keine Buchung. Jacky stellte per Kontrollfrage ein konkretes Szenario: Artikel mit 3 Chargen/13 Stk. gesamt, bei Gesamtinventur auf 3 KOMPLETT ANDEREN Lagerplätzen mit nur 2 Chargen wiedergefunden (Summe weiterhin 13). Getestet: der erste Ansatz hätte das fälschlich als "unvollständig" abgelehnt und gar nichts gebucht.
 
-**Zwei echte Bugs beim Testen gefunden + behoben** (siehe auch [[feedback_test_isolation]] — Testartikel 174 ohne bestehenden Lagerbestand in Lager 1 verwendet, komplett isoliert):
-1. **Komplett unberührte Soll-Zeilen fehlten in der Gruppierung**: `berechneAbgleich()` baute Gruppen ursprünglich nur aus gezählten Positionen — eine Soll-Zeile, die NIE angefasst wurde, tauchte dadurch gar nicht als "unvollständig" auf (sie hätte schlicht gefehlt). Fix: Gruppen werden jetzt aus der Vereinigung von Soll-Liste UND gezählten Positionen gebildet.
-2. **Lagerplatz-Tag verhinderte Vollständigkeits-Erkennung**: der Vergleichsschlüssel enthielt ursprünglich `lagerplatz_id` — aber die Soll-Liste (aus `lagerbestand`) kennt bei Scope=Lager/Kategorie/Artikel gar keinen Lagerplatz, der wird erst beim Zählen als Zusatzinfo angehängt ("Ich zähle gerade an"). Eine mit Lagerplatz-Tag gezählte Position passte dadurch nie zur lagerplatzlosen Soll-Zeile → Gruppe fälschlich als unvollständig markiert, keine Buchung. Fix: `lagerplatz_id` aus dem Vergleichsschlüssel entfernt (nur artikel|lager|charge); zusätzlich `summeVorher` jetzt direkt aus der Soll-Liste berechnet statt aus den Positionen-Snapshots, um Doppelzählung zu vermeiden falls dieselbe Charge auf zwei Lagerplätze aufgeteilt gezählt wird.
-- End-to-end getestet (isolierter Test-Artikel 174, kein Risiko für echte Daten): vollständige Gruppe mit Zugang+Schwund+Notiz-Pflicht (inkl. korrekter Ablehnung ohne Notiz und Bestands-Unveränderheit danach), unvollständige Gruppe bleibt komplett unangetastet, Lagerplatz-Reallokation korrekt, Begründungspflicht nach Rang (Praktikant/Manager) — alle 4 Testszenarien grün, vollständig aufgeräumt.
-- Handbuch Kapitel 13 + Bedienungsanleitung ergänzt.
+**Jackys Klarstellung, wie es im echten (JTL-)Workflow funktioniert — jetzt so umgesetzt:**
+- Chargen/Lagerplätze spielen für die Differenzliste **keine Rolle** — nur Gesamtbestand alt vs. neu pro Artikel+Lager zählt (Summe über alle Chargen).
+- **Komplett ungezählte Artikel werden einfach übersprungen** (kein Blocker, keine Fehlermeldung) — bei mehreren Zählern in unterschiedlichen Bereichen kann niemand wissen, ob eine "fehlende" Charge nicht einfach woanders liegt.
+- **Passt die Summe exakt** → nur das Inventurdatum wird gesetzt, keine Buchung.
+- **Verteilung geändert, Summe gleich** (Chargen zusammengelegt/umbenannt, Lagerplatz gewechselt) → Chargen-Zeilen werden aktualisiert, aber KEINE Lagerbewegung (kein Zugang/Schwund-Ereignis, reine Umverteilung).
+- **Echte Mengenabweichung** → zusätzlich EINE Netto-Lagerbewegung pro Artikel+Lager (Typ `inventur`/`schwund`) — nicht mehr pro Charge, weil bei freier Chargen-Umverteilung keine sinnvolle 1:1-Zuordnung mehr besteht.
+
+**Aktuelle Implementierung** (`InventurService`):
+- `berechneAbgleich()` (privat): gruppiert NUR gezählte Positionen nach Artikel+Lager (keine Soll-Liste-Abhängigkeit mehr). `summe_vorher` = LIVE-Summe aus `lagerbestand` (nicht der Soll-Snapshot vom Zählzeitpunkt). `verteilung_geaendert` vergleicht Menge je Charge alt vs. neu (Toleranz 0,01) unabhängig von der Gesamtsumme.
+- `vorschauAbschluss()`: zeigt jede Gruppe mit Summenabweichung ODER geänderter Verteilung; zählt separat wie viele gezählte Artikel unverändert sind.
+- `abschliessen()`: validiert zuerst Schwund-Notizpflicht für ALLE Gruppen (kompletter Abbruch bei Fehlen, nicht nur die eine Gruppe), bucht dann pro Gruppe: Chargen aktualisieren (alte nicht mehr vorkommende auf 0), ggf. EINE Netto-Bewegung, Lagerplatz-Reallokation (`lagerbestand_lagerplaetze`, pro Position einzeln — dieselbe Charge kann an mehreren Plätzen liegen), `artikel.letzte_inventur_am` setzen (neue Migration 139, aktiviert den Spalten-Picker-Platzhalter aus [[project_spalten_picker]] — Anzeige selbst noch nicht gebaut, siehe Slice 5).
+- **Begründungspflicht** bleibt unverändert direkt in `bucheZaehlung()`: Abweichung + leere Notiz + `rolle_rang < 70` → Fehler.
+- Neue Helper: `ArtikelRepository::setLetzteInventur()`, `LagerRepository::findLagerbestandIdByKey()`/`upsertLagerbestandLagerplatz()`, `InventurRepository::findAktuelleChargen()`.
+
+**End-to-end getestet** (isolierter Test-Artikel 174, kein Risiko für echte Daten): Jackys genaues Kontroll-Szenario (3 Chargen/13 Stk. → 2 Chargen/13 Stk. auf 3 neuen Lagerplätzen — korrekt als Verteilungsänderung ohne Lagerbewegung erkannt, Chargen/Lagerplätze korrekt umgebucht), Zugang+Schwund+Notizpflicht (inkl. Ablehnung ohne Notiz), komplett ungezählter Artikel bleibt unangetastet, exakte Übereinstimmung → nur Datum gesetzt keine Buchung, Begründungspflicht nach Rang — alle Szenarien grün, vollständig aufgeräumt.
+
+Handbuch Kapitel 13 + Bedienungsanleitung entsprechend korrigiert.
+
+**Lehre:** Bei einer Abschluss-Logik, die reale Bestandskorrekturen bucht, lohnt sich eine explizite Kontrollfrage mit konkretem Zahlenbeispiel VOR dem Weiterbauen — genau das hat hier einen Bug aufgedeckt, der mit synthetischen Tests allein nicht aufgefallen wäre (die ursprünglichen Tests bildeten zufällig immer den Fall ab, wo Chargen-Namen erhalten blieben).
+
+## 🟢 FERTIG 2026-07-18 (noch am selben Tag): Zweiter Korrektur-Durchgang — Lagerplatz-Scope braucht LOKALEN Abgleich
+
+Zweite Kontrollfrage von Jacky (nach Bestätigung des Summenvergleich-Modells oben) deckte einen weiteren echten Bug auf: "Wenn Artikel wirklich umgelagert wurden und nun auf anderen Plätzen liegen, wäre das für den Zähler am alten Lagerplatz ja eine Unterschreitung."
+
+**Bug bestätigt per Test:** Artikel mit 8 Stk. gesamt (5 an Platz X, 3 an Platz Y, über `lagerbestand_lagerplaetze` korrekt verteilt). Inventur nur für Platz X — Zähler findet dort nichts mehr (Artikel komplett nach Y umgezogen), bucht 0. Die bisherige `berechneAbgleich()`-Logik verglich **immer** gegen den Gesamtbestand des ganzen Lagers (`findAktuelleChargen()`, Summe über ALLE Lagerplätze) — zeigte fälschlich "Vorher 8, Nachher 0, Differenz −8", statt "Vorher 5 (nur Platz X), Nachher 0, Differenz −5". Bei Abschluss hätte das den GESAMTEN Bestand auf 0 gesetzt und die 3 unangetastet an Platz Y liegenden Stück mitgelöscht.
+
+**Fix:** `berechneAbgleich()` ist jetzt scope-abhängig:
+- Scope **Lager/Kategorie/Artikel**: "Vorher" bleibt der Gesamtbestand im Lager (unverändert, dort wird ja der komplette Artikelbestand betrachtet).
+- Scope **Lagerplatz**: "Vorher" = nur die bisher an DIESEM einen Platz hinterlegte Menge (`InventurRepository::findChargenAmLagerplatz()`, neu). Notizpflicht bei Unterschreitung bezieht sich dadurch automatisch auf die lokale Differenz.
+
+**`abschliessen()`** bucht bei Lagerplatz-Scope entsprechend anders: statt `lagerbestand.bestand` mit der neu gezählten lokalen Menge zu ÜBERSCHREIBEN, wird nur die lokale Differenz auf den aktuellen Gesamtbestand ADDIERT (`getBestand()` + Diff), nur DIESER Platz in `lagerbestand_lagerplaetze` aktualisiert, andere Plätze bleiben unangetastet. Alte, an diesem Platz nicht mehr gezählte Chargen werden NICHT auf 0 gesetzt (anders als bei Lager/Kategorie/Artikel-Scope) — könnten schlicht übersehen worden sein. Die Bewegungs-Historie (`lager_bewegungen.bestand_vorher/_nachher`) zeigt trotzdem den ECHTEN Gesamtbestand (nicht die lokale Platz-Menge), damit das Audit-Log nicht irreführend wird.
+
+Zweiter Teil der Kontrollfrage bestätigt (kein Bug): findet der Zähler an diesem Platz einen ANDEREN Artikel, lässt sich der ganz normal als neuer Fund zählen/buchen — unabhängiger Vorgang, funktionierte bereits korrekt.
+
+End-to-end erneut getestet (isolierter Artikel 174 + echter Bestandsartikel 234 für den "anderer Artikel gefunden"-Fall): Notizpflicht bei lokaler Unterschreitung, Gesamtbestand bleibt korrekt bei 3 (nicht 0), Verteilung an Platz Y unverändert, Bewegungs-Log zeigt echte 8→3, neuer Fund eines anderen Artikels korrekt gebucht — alle vorherigen Szenarien (Scope=Lager) nochmal gegengetestet, weiterhin grün.
+
+**Lehre (siehe auch oben):** Zwei Kontrollfragen mit konkreten Zahlenbeispielen haben zwei unabhängige, reale Bugs in derselben Abschluss-Logik aufgedeckt — beide wären mit rein synthetischen Tests ohne Jackys Praxiswissen (mehrere Zähler, echte Umlagerungen) nicht aufgefallen. Bei jeder weiteren Änderung an dieser Logik: Scope-Unterschiede (ganzes Lager vs. einzelner Lagerplatz) explizit mitdenken, nicht nur den Hauptfall testen.
 
 ## How to apply beim Weiterbauen
 
-**Nächster Schritt: Slice 5 (letzte geplante Slice)** — Druckversion der Zählliste (PDF, Dompdf, Filter alles/Lagerplätze/Artikel), Manager-Auslauf-Shortcut (Artikel direkt aus der Zählung als `ist_auslaufartikel` markierbar, Rang-Schwelle wie Begründungspflicht), Fortschritts-%-Anzeige (gezählte/gesamt Positionen im Scope), "Letzte Inventur"-Datum am Artikel (aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]] — Datum lässt sich aus `MAX(inventur_positionen.gezaehlt_am)` pro Artikel ableiten, keine neue Spalte nötig).
+**Nächster Schritt: Slice 5 (letzte geplante Slice)** — Druckversion der Zählliste (PDF, Dompdf, Filter alles/Lagerplätze/Artikel), Manager-Auslauf-Shortcut (Artikel direkt aus der Zählung als `ist_auslaufartikel` markierbar, Rang-Schwelle wie Begründungspflicht), Fortschritts-%-Anzeige (gezählte/gesamt Positionen im Scope), Anzeige des "Letzte Inventur"-Datums (Feld + Logik existieren bereits seit Migration 139, nur die UI-Anzeige auf Artikel-Detailseite + Spalten-Picker-Aktivierung fehlt noch).
 
 Kern-Workflow (Lagerplätze → Lauf-Kopf/Scope → Zählliste → Live-/Buchungssperre → Abschluss) ist damit komplett und produktiv nutzbar — Slice 5 sind nur noch Komfort-Ergänzungen, kein Blocker mehr.
 
