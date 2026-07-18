@@ -1262,6 +1262,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php if ($lagerAnzahlChargen > 0): ?>
                         &nbsp;·&nbsp; <strong style="color:var(--color-text)"><?= $lagerAnzahlChargen ?></strong> verschiedene <?= $lagerAnzahlChargen === 1 ? 'Charge' : 'Chargen' ?>
                     <?php endif; ?>
+                    &nbsp;·&nbsp; Letzte Inventur:
+                    <strong style="color:var(--color-text)"><?= $artikel['letzte_inventur_am'] ? date('d.m.Y', strtotime($artikel['letzte_inventur_am'])) : '–' ?></strong>
                 </div>
             <?php endif; ?>
 

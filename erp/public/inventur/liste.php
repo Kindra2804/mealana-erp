@@ -48,6 +48,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <th>Scope</th>
                 <th>Ziel</th>
                 <th>Status</th>
+                <th>Fortschritt</th>
                 <th>Gestartet</th>
                 <th>Von</th>
                 <th style="width:220px"></th>
@@ -64,6 +65,24 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php endif; ?>
                 </td>
                 <td><span class="chip <?= $sl['class'] ?>"><?= $sl['label'] ?></span></td>
+                <td>
+                    <?php if (in_array($l['status'], ['laufend', 'pausiert'], true)):
+                        $fs = $service->getFortschritt($l);
+                    ?>
+                        <?php if ($fs['prozent'] === null): ?>
+                            <span style="font-size:12px;color:var(--color-text-muted)"><?= $fs['gezaehlt'] ?> erfasst</span>
+                        <?php else: ?>
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <div style="width:60px;height:6px;background:var(--color-border);border-radius:3px;overflow:hidden">
+                                    <div style="width:<?= $fs['prozent'] ?>%;height:100%;background:var(--color-nav)"></div>
+                                </div>
+                                <span style="font-size:12px;color:var(--color-text-muted)"><?= $fs['prozent'] ?>% (<?= $fs['gezaehlt'] ?>/<?= $fs['gesamt'] ?>)</span>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <span style="font-size:12px;color:var(--color-text-muted)">–</span>
+                    <?php endif; ?>
+                </td>
                 <td><?= date('d.m.Y H:i', strtotime($l['gestartet_am'])) ?></td>
                 <td><?= htmlspecialchars($l['benutzer_name'] ?? '—') ?></td>
                 <td style="white-space:nowrap">
@@ -86,7 +105,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </tr>
         <?php endforeach; ?>
         <?php if (empty($laeufe)): ?>
-            <tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);padding:24px">Noch keine Inventur durchgeführt.</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:var(--color-text-muted);padding:24px">Noch keine Inventur durchgeführt.</td></tr>
         <?php endif; ?>
         </tbody>
     </table>

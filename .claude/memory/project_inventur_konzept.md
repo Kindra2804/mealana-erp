@@ -1,11 +1,11 @@
 ---
 name: project-inventur-konzept
-description: "Inventur-Modul: Kern-Workflow FERTIG (Lagerplätze→Lauf/Scope→Zählliste→Sperren→Abschluss mit echter Bestandskorrektur, Gesamtbestand-Vergleich statt Chargen-Abgleich); nur Slice 5 (Komfort) offen"
+description: "Inventur-Modul: KOMPLETT FERTIG inkl. Slice 5 (Fortschritts-%, Manager-Auslauf-Shortcut, Druckversion, Letzte-Inventur-Datum). Live-Akzeptanztest steht noch aus (Jackys erste echte Voll-Inventur, alle Lagerplätze leer→Echtbestand)"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 1208232f-9b1f-41ae-ae93-bb91abe26d76
-  modified: 2026-07-18T17:08:03.353Z
+  modified: 2026-07-18T17:32:47.285Z
 ---
 
 Stand: 2026-07-18, komplette Design-Absprache mit Jacky vor Baubeginn (wie von ihm gewünscht, siehe [[feedback_modul_vorgehen]]). Ersetzt/ergänzt die verstreuten Einzelnotizen in [[project_inventur_hinweis]] und den Lagerplätze-Abschnitt in [[project_lager_konzept]] — dies hier ist das verbindliche Konzept.
@@ -190,10 +190,17 @@ End-to-end erneut getestet (isolierter Artikel 174 + echter Bestandsartikel 234 
 
 **Lehre (siehe auch oben):** Zwei Kontrollfragen mit konkreten Zahlenbeispielen haben zwei unabhängige, reale Bugs in derselben Abschluss-Logik aufgedeckt — beide wären mit rein synthetischen Tests ohne Jackys Praxiswissen (mehrere Zähler, echte Umlagerungen) nicht aufgefallen. Bei jeder weiteren Änderung an dieser Logik: Scope-Unterschiede (ganzes Lager vs. einzelner Lagerplatz) explizit mitdenken, nicht nur den Hauptfall testen.
 
-## How to apply beim Weiterbauen
+## 🟢 FERTIG 2026-07-18 (noch am selben Tag): Slice 5 (Komfort-Ergänzungen, letzte Slice)
 
-**Nächster Schritt: Slice 5 (letzte geplante Slice)** — Druckversion der Zählliste (PDF, Dompdf, Filter alles/Lagerplätze/Artikel), Manager-Auslauf-Shortcut (Artikel direkt aus der Zählung als `ist_auslaufartikel` markierbar, Rang-Schwelle wie Begründungspflicht), Fortschritts-%-Anzeige (gezählte/gesamt Positionen im Scope), Anzeige des "Letzte Inventur"-Datums (Feld + Logik existieren bereits seit Migration 139, nur die UI-Anzeige auf Artikel-Detailseite + Spalten-Picker-Aktivierung fehlt noch).
+- **"Letzte Inventur"-Datum**: `a.letzte_inventur_am` in `ArtikelRepository::findAll()` + `findById()` SELECT ergänzt (Feld existierte bereits seit Migration 139, wurde von `abschliessen()` schon korrekt gesetzt — nur die Anzeige fehlte). Spalten-Picker-Platzhalter in `artikel/liste.php` aktiviert (`baubar => true`, echtes Datum statt `–`), Anzeige zusätzlich in der Bestandsübersicht-Card auf `artikel/detail.php` (Tab Lager).
+- **Fortschritts-Anzeige**: neue `InventurService::getFortschritt(array $lauf)` — vergleicht Soll-Liste gegen bereits gezählte Positionen über einen Identitäts-Schlüssel (`artikel_id|lager_id|charge`, bei Scope Lagerplatz zusätzlich `lagerplatz_id`). **Wichtiger Kniff:** bei Scope "Lager" trägt eine Position oft einen `lagerplatz_id`-Wert (informativer "aktueller Arbeitsbereich" aus der Live-Sperre), der aber NICHT Teil der Soll-Identität ist (die Soll-Liste für Scope=Lager kennt gar keinen Lagerplatz) — der Schlüssel lässt `lagerplatz_id` deshalb bewusst weg außer bei Scope=Lagerplatz selbst, sonst würde der Abgleich fälschlich nie treffen. Bei leerer Soll-Liste (erster Zählgang eines Lagerplatzes) gibt es keinen Prozentwert, nur eine Anzahl erfasster Funde. Balken+Prozent in `inventur/liste.php` pro laufendem/pausiertem Lauf.
+- **Manager-Auslauf-Shortcut**: `ArtikelService::markiereAuslaufartikel()` (neu, nutzt bestehende `ArtikelRepository::setAuslauf()`/`setAuslaufKinder()` — letztere ist ein No-Op falls kein Vater-Artikel). Neuer Endpunkt `inventur/artikel_auslauf_markieren.php`, Rang-Gate (≥70) direkt im Endpunkt (gleicher Schwellwert wie die Begründungspflicht), nicht über eine Berechtigung — analog zum bestehenden Manager-PIN-Muster. 🏁-Button pro Soll-Zeile in `zaehlen.php`, nur sichtbar wenn `rolle_rang >= 70`.
+- **Druckversion der Zählliste**: bewusst **kein** Dompdf-Export (ursprünglicher Plan), sondern druckoptimierte HTML-Seite nach dem bereits etablierten Muster von `kasse/abschluss_druck.php` (X-/Z-Bon) — `window.print()` + `@media print`-CSS, Browser-eigener "Als PDF speichern"-Dialog deckt den PDF-Bedarf ab, ohne eine zweite Rendering-Pipeline für ein rein internes Arbeitsdokument zu pflegen. Neue Seite `inventur/zaehlliste_druck.php`, verlinkt als Button auf `zaehlen.php`. Bei Scope "Lager" drei Ansichten: gesamte Liste, Textsuche nach Artikel (reiner PHP-`array_filter` auf die schon geladene Soll-Liste, keine neue SQL nötig), oder eine **Blanko-Liste** (30 leere Zeilen) für einen gewählten Lagerplatz — der eigentliche Papier-Anwendungsfall, weil die digitale Soll-Liste bei einem frisch angelegten Lagerplatz ja bewusst leer ist (siehe Slice 2). "Bestimmte Lagerplätze"-Filter auf die normale Soll-Liste selbst wurde NICHT gebaut (`findSollListeLager()` trägt gar keine Lagerplatz-Zuordnung, ein LEFT JOIN hätte Zeilen dupliziert bei auf mehrere Plätze verteilten Chargen) — die Blanko-Variante deckt den echten Bedarf (Papier-Zettel pro Regal zum Anschreiben) sauberer ab.
+- Alle vier Punkte end-to-end getestet mit isoliertem Artikel 174 bzw. temporären Test-Lagerbestand-Zeilen/Lagerplätzen (jeweils vollständig aufgeräumt danach, inkl. eines versehentlich erzeugten Log-Eintrags in `aktivitaeten`).
+- Handbuch Kapitel 13 (jetzt "Fertig" statt "In Arbeit") + Bedienungsanleitung durchgängig nachgezogen.
 
-Kern-Workflow (Lagerplätze → Lauf-Kopf/Scope → Zählliste → Live-/Buchungssperre → Abschluss) ist damit komplett und produktiv nutzbar — Slice 5 sind nur noch Komfort-Ergänzungen, kein Blocker mehr.
+## Modul-Status: komplett fertig, Live-Test steht noch aus
+
+Kern-Workflow + alle Slice-5-Komfort-Punkte sind fertig und getestet (isolierte Testdaten). **Noch nicht verifiziert: echter Produktiv-Einsatz.** Jacky plant den ultimativen Test direkt bei seiner ersten echten Voll-Inventur — alle Lagerplätze sind aktuell leer und werden erstmals gegen den tatsächlichen Bestand bebucht (Scope=Lager, viele neue Lagerplatz-Zuordnungen auf einmal). Bei Problemen dort zuerst hier nachsehen (Abschluss-Logik, Lagerplatz-Scope-Sonderfälle) bevor neu debuggt wird.
 
 Referenz-Check ist mit diesem Dokument erledigt — nicht nochmal wiederholen, direkt in die Design-Detailarbeit je Baustein gehen.

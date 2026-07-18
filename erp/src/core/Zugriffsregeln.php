@@ -152,6 +152,8 @@ final class Zugriffsregeln
             'lagerplatz_waehlen_ajax.php' => 'inventurpositionen.anzeigen',
             'abschluss_vorschau.php'     => 'inventur.bearbeiten',
             'abschluss_bestaetigen.php'  => 'inventur.bearbeiten',
+            'artikel_auslauf_markieren.php' => 'inventurpositionen.anlegen',
+            'zaehlliste_druck.php'          => 'inventurpositionen.anzeigen',
         ],
 
         // === Wareneingang (Einkauf → Lager) ===
@@ -421,7 +423,7 @@ final class Zugriffsregeln
             'variante_suche.php', 'artikel_suche_ajax.php', 'chargen_fuer_artikel_ajax.php',
             'lagerplaetze_speichern.php', 'lagerplaetze_aktualisieren.php', 'lagerplaetze_status_setzen.php',
         ],
-        'inventur'    => ['artikel_suche_ajax.php', 'zaehlung_speichern.php', 'lagerplatz_waehlen_ajax.php'],
+        'inventur'    => ['artikel_suche_ajax.php', 'zaehlung_speichern.php', 'lagerplatz_waehlen_ajax.php', 'artikel_auslauf_markieren.php'],
         'kasse'       => [
             'ajax_messe.php', 'bon_speichern.php', 'ajax_parken.php', 'ajax_nullbon.php',
             'abschluss_periode_mail.php', 'abschluss_mail.php', 'ajax_auftrag_laden.php',

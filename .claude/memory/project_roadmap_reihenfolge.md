@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-18T10:55:47.359Z
+  modified: 2026-07-18T17:32:57.035Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -13,7 +13,7 @@ metadata:
 Ausgangspunkt war die Frage "was kommt nach diesem Modul, ist das ERP dann fast fertig" — Antwort: nein, zwei ganze Module fehlen noch komplett (Gutscheine, Inventur), dazu Buchhaltung ist erst zu ~10% da. Jacky hat daraufhin die Reihenfolge festgelegt:
 
 1. **Buchhaltung** — ✅ FERTIG 2026-07-17: Kontenplan, Debitoren/Kreditoren, Zahlungsart-/Steuerklasse-Mappings, Verwaltungsseiten, DATEV+CSV-Export. Siehe [[project_buchhaltung]]. Restpunkt: Mahnstufen-Ausbau für Rechnungszahler (Mahngebühr/Verzugszinsen) war als "noch zu bauen" vermerkt, aber nicht blockierend — kann später nachgezogen werden.
-2. **Inventur-Modul** (eigene Session, jetzt dran) — Design-Absprache am 2026-07-18 komplett abgeschlossen, siehe [[project_inventur_konzept]]. Baubeginn mit Lagerplätze-Tabelle (Voraussetzung), danach Inventur-Lauf-Kern, Sperren, Abschluss-Logik.
+2. **Inventur-Modul** — ✅ KOMPLETT FERTIG 2026-07-18 (inkl. Slice 5 Komfort-Ergänzungen), siehe [[project_inventur_konzept]]. Live-Akzeptanztest steht noch aus — Jacky testet bei seiner ersten echten Voll-Inventur (alle Lagerplätze leer → Echtbestand).
 3. **Online-Shop-Anbindung** — daran gekoppelt bzw. kurz davor: [[project_paperless_rechnung_modul]] (QR-Rechnung), [[project_sammelabholung_auftraege]] (mehrere Aufträge ein Bon), lose auch [[project_gutscheine]] (bewusst so gebaut werden soll, dass es mit WooCommerce/eigenem Shop matcht).
 
 ## Kleinere Punkte — "zwischendurch, je nach Lust und Laune", aber NICHT verlieren

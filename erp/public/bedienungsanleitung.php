@@ -444,7 +444,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p style="color:#c2410c"><strong>Wichtig:</strong> Vor dem ersten echten DATEV-Import unbedingt eine Testdatei mit dem Steuerberater abstimmen.</p>
 
             <!-- INVENTUR -->
-            <h2 id="inventur">Inventur <span class="ba-badge ba-badge-arbeit">In Arbeit</span></h2>
+            <h2 id="inventur">Inventur <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Ein Inventur-Lauf mit frei wählbarem Scope: ganzes Lager, ein Lagerplatz, eine Kategorie, ein einzelner Artikel oder ein Mietfach — statt getrennter Module für große und kleine Zählungen.</p>
             <p><strong>Lagerplätze</strong> (Lager → Lagerplätze): Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur.</p>
             <p><strong>Inventur starten</strong> (Lager → Inventur): Scope wählen, "Blind zählen" (Soll-Bestand für den Zähler ausblenden) ist standardmäßig aktiv. Ein laufender Lauf kann pausiert und später fortgesetzt werden (Zwischenstand bleibt erhalten) oder endgültig abgebrochen werden.</p>
@@ -453,7 +453,10 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Buchungssperre:</strong> läuft für ein Lager eine Voll-Lager-Inventur, sind Kasse und Wareneingang für genau dieses Lager gesperrt, bis die Inventur abgeschlossen/abgebrochen wird.</p>
             <p><strong>Abschluss</strong> ("Prüfen …"-Link): zeigt zuerst eine Vorschau — die Differenzliste stützt sich auf den Gesamtbestand pro Artikel/Lager (Summe alt vs. neu). Nicht gezählte Artikel werden einfach übersprungen (kein Blocker). Erst nach "Jetzt buchen &amp; abschließen" wird wirklich korrigiert: passt alles genau, wird nur das Inventurdatum gesetzt; hat sich nur die Chargen-/Lagerplatzverteilung geändert, wird umgebucht ohne Lagerbewegung; bei echter Mengenabweichung zusätzlich eine Lagerbewegung (Typ "inventur"/"schwund"). Fehlbestand ohne Notiz wird komplett verweigert. Alternativ: "Ohne Buchung pausieren" oder "Verwerfen ohne Buchung".</p>
             <p><strong>Scope "Lagerplatz":</strong> Vorher/Nachher bezieht sich hier nur auf diesen einen Platz, nicht den Gesamtbestand des Lagers — ein an einen anderen Platz umgelagerter Artikel ist am alten Platz eine lokale Unterschreitung (Notiz Pflicht), der Rest an anderen Plätzen bleibt unangetastet. Ein anderer, dort neu gefundener Artikel lässt sich ganz normal buchen.</p>
-            <p style="color:#64748b"><strong>Noch nicht fertig:</strong> Fortschritts-Anzeige, Druckversion der Zählliste, Anzeige des "Letzte Inventur"-Datums am Artikel (wird schon gesetzt, nur noch nicht angezeigt).</p>
+            <p><strong>Letzte Inventur:</strong> wird beim Abschluss für jeden gezählten Artikel gesetzt, sichtbar im Tab "Lager" der Artikel-Detailseite und als optionale Spalte in der Artikelliste.</p>
+            <p><strong>Fortschritts-Anzeige:</strong> in der Inventur-Übersicht zeigt jeder laufende/pausierte Lauf einen Balken + Prozent, wie viele Soll-Positionen schon gezählt sind. Bei Scope "Lagerplatz" ohne bisherige Zuordnung gibt es stattdessen nur eine Anzahl erfasster Funde (kein Prozentwert möglich).</p>
+            <p><strong>Manager-Auslauf-Shortcut:</strong> ab Manager-Rang gibt es in der Zählliste pro Zeile einen 🏁-Button, um den Artikel direkt (mit Sicherheitsabfrage) als Auslaufartikel zu markieren.</p>
+            <p><strong>Druckversion:</strong> "🖨 Druckversion"-Button auf der Zählseite — druckoptimierte Seite (Browser-Druck/PDF-Export). Bei Scope "Ganzes Lager" wählbar: gesamte Liste, Suche nach bestimmtem Artikel, oder eine Blanko-Liste für einen einzelnen Lagerplatz zum handschriftlichen Ausfüllen.</p>
 
             <!-- EINSTELLUNGEN -->
             <h2 id="einstellungen">Einstellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

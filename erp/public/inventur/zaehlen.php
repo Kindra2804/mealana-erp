@@ -9,6 +9,7 @@ $lauf    = $service->getById($laufId);
 if (!$lauf) { header('Location: ' . BASE_PATH . '/inventur/liste.php'); exit; }
 
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+$rang       = (int)($_SESSION['benutzer']['rolle_rang'] ?? 0);
 
 // Live-Sperre: bei Scope=Lagerplatz wird der Platz automatisch beansprucht.
 // Bei Scope=Lager wählt der Zähler unten selbst einen Arbeitsbereich.
@@ -42,7 +43,8 @@ $scopeLabels = [
 
 $pageTitle        = 'Zählen: ' . $lauf['scope_bezeichnung'];
 $activeModule     = 'lager';
-$actionBarContent = '<a href="' . BASE_PATH . '/inventur/liste.php" class="btn btn-secondary btn-sm">← Zur Liste</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/inventur/liste.php" class="btn btn-secondary btn-sm">← Zur Liste</a>'
+    . '<a href="' . BASE_PATH . '/inventur/zaehlliste_druck.php?lauf_id=' . $laufId . '" target="_blank" class="btn btn-secondary btn-sm">🖨 Druckversion</a>';
 
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
@@ -158,7 +160,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php endif; ?>
                 <td><input type="number" step="0.001" class="erp-input ist-eingabe" style="width:100%" value="<?= $bestehend ? $bestehend['ist_menge'] : '' ?>"></td>
                 <td><input type="text" class="erp-input notiz-eingabe" style="width:100%" value="<?= htmlspecialchars($bestehend['notiz'] ?? '') ?>"></td>
-                <td><button type="button" class="btn btn-secondary btn-sm zeile-speichern">💾</button></td>
+                <td style="white-space:nowrap">
+                    <button type="button" class="btn btn-secondary btn-sm zeile-speichern">💾</button>
+                    <?php if ($rang >= 70): ?>
+                        <button type="button" class="btn btn-secondary btn-sm auslauf-markieren" data-artikel="<?= $s['artikel_id'] ?>" title="Als Auslaufartikel markieren">🏁</button>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endforeach; ?>
         <?php if (empty($sollListe)): ?>

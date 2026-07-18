@@ -1,6 +1,6 @@
 # 13 — Inventur
 
-> **Kernfunktionen fertig.** Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen/abbrechen, Zählliste, Live-Sperre bei mehreren Zählern, Buchungssperre für Kasse/Wareneingang, Abschluss mit echter Bestandskorrektur. Es fehlt noch: Fortschritts-Anzeige, Druckversion der Zählliste, "Letzte Inventur"-Datum am Artikel.
+> **Fertig.** Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen/abbrechen, Zählliste, Live-Sperre bei mehreren Zählern, Buchungssperre für Kasse/Wareneingang, Abschluss mit echter Bestandskorrektur, "Letzte Inventur"-Datum am Artikel, Fortschritts-Anzeige, Manager-Auslauf-Shortcut, Druckversion der Zählliste.
 
 ## Konzept
 
@@ -92,8 +92,26 @@ Vor jeder echten Bestandsänderung steht immer eine **Vorschau-Seite** — sie b
 
 **Rollenabhängige Notizpflicht** (bereits beim Zählen selbst, nicht erst beim Abschluss): weicht die eingegebene Menge vom Soll ab, ist die Notiz für alle unterhalb Manager-Rang Pflicht — ab Manager-Rang optional.
 
-## Was noch fehlt (geplant)
+## Letzte Inventur
 
-- Fortschritts-Anzeige (wie viel % einer Zählung schon erfasst ist)
-- Druckversion der Zählliste
-- Anzeige des "Letzte Inventur"-Datums auf der Artikel-Detailseite (Feld existiert und wird schon gesetzt, nur noch nicht angezeigt)
+Jeder Artikel merkt sich das Datum seiner letzten Inventur (gesetzt beim Abschluss eines Laufs, für alle dabei gezählten Artikel). Sichtbar auf der Artikel-Detailseite (Tab Lager, in der Bestandsübersicht) sowie als optionale Spalte in der Artikellliste (Spalten-Picker → "Letzte Inventur").
+
+## Fortschritts-Anzeige
+
+In der Inventur-Übersicht zeigt jeder laufende/pausierte Lauf, wie viele der Soll-Positionen schon gezählt wurden (Balken + Prozent). Bei Scope "Lagerplatz" ist die Soll-Liste beim allerersten Zählgang bewusst leer (siehe oben) — dort gibt es keinen sinnvollen Prozentwert, stattdessen nur die Anzahl bereits frei erfasster Funde ("X erfasst").
+
+## Manager-Auslauf-Shortcut
+
+Ab Manager-Rang gibt es in der Zählliste bei jeder Soll-Zeile einen 🏁-Button, um den Artikel direkt (mit Sicherheitsabfrage) als Auslaufartikel zu markieren — nützlich, wenn beim Zählen auffällt, dass ein Artikel nicht mehr nachbestellt werden soll. Wirkt wie das Auslauf-Häkchen im Artikel-Formular (inkl. Vererbung auf Kinder bei Vater-Artikeln).
+
+## Druckversion der Zählliste
+
+**Navigation:** "🖨 Druckversion"-Button auf der Zählseite (öffnet in neuem Tab)
+
+Druckoptimierte HTML-Seite (Browser-Druck bzw. "Als PDF speichern" im Druckdialog — kein separater Dompdf-Export nötig, gleiches Prinzip wie X-/Z-Bon-Druck). Bei Scope "Ganzes Lager" gibt es drei Ansichten:
+
+- **Gesamte Zählliste**: alle Soll-Positionen wie in der digitalen Erfassung, bereits erfasste Ist-Mengen/Notizen vorbefüllt.
+- **Bestimmter Artikel**: Textsuche (Name/Nummer) filtert die gedruckte Liste auf Treffer.
+- **Ein Lagerplatz (Blanko-Liste)**: reine Vorlage mit 30 leeren Zeilen zum handschriftlichen Ausfüllen — für die allererste Zählung eines Platzes, wo es (siehe oben) noch keine digitale Soll-Vorbelegung gibt.
+
+Bei den anderen Scopes (Lagerplatz/Kategorie/Artikel/Mietfach) gibt es keine Filterleiste — die Soll-Liste ist dort durch den Scope selbst schon klein genug.

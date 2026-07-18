@@ -68,6 +68,27 @@ document.querySelectorAll('#zaehl-tabelle .zeile-speichern').forEach(function (b
     });
 });
 
+// --- Manager-Kurzweg: Artikel direkt als Auslaufartikel markieren ---
+document.querySelectorAll('#zaehl-tabelle .auslauf-markieren').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+        if (!confirm('Diesen Artikel wirklich als Auslaufartikel markieren?')) return;
+        var artikelId = parseInt(btn.dataset.artikel, 10);
+        var res = await fetch(window.BASE_PATH + '/inventur/artikel_auslauf_markieren.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ artikel_id: artikelId }),
+        });
+        var data = await res.json();
+        if (data.erfolg) {
+            zeigeBanner((data.name || 'Artikel') + ' als Auslaufartikel markiert.');
+            btn.disabled = true;
+            btn.textContent = '✓';
+        } else {
+            zeigeBanner(data.fehler.join(' | '), false);
+        }
+    });
+});
+
 // --- Neue Position (Artikel-Suche) ---
 (function () {
     var suchfeld = document.getElementById('neu_artikel_suche');

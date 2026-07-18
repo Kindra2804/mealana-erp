@@ -45,7 +45,7 @@ $alleSpaltenDef = [
     'charge'          => ['label' => 'Charge-Pfl.',     'default' => false, 'baubar' => true],
     'merkmale'        => ['label' => 'Merkmale',        'default' => false, 'baubar' => true],
     'lagerplatz'      => ['label' => 'Lagerplatz',      'default' => false, 'baubar' => false],
-    'letzte_inventur' => ['label' => 'Letzte Inventur', 'default' => false, 'baubar' => false],
+    'letzte_inventur' => ['label' => 'Letzte Inventur', 'default' => false, 'baubar' => true],
 ];
 $defaultSpalten = array_keys(array_filter($alleSpaltenDef, fn($s) => $s['default']));
 
@@ -130,7 +130,10 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             $mrk = htmlspecialchars($a['merkmale'] ?? '');
             return '<td style="font-size:12px;color:var(--color-text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $mrk . '">' . ($mrk ?: '–') . '</td>';
         case 'lagerplatz':    return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
-        case 'letzte_inventur': return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+        case 'letzte_inventur':
+            $datum = $a['letzte_inventur_am'] ?? null;
+            return '<td style="font-size:12px;color:var(--color-text-muted)">'
+                . ($datum ? date('d.m.Y', strtotime($datum)) : '–') . '</td>';
     }
     return '<td></td>';
 }

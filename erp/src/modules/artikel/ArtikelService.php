@@ -102,6 +102,24 @@ class ArtikelService
     }
 
     /**
+     * Kurzweg um einen Artikel direkt als Auslaufartikel zu markieren (z.B. beim
+     * Zählen während der Inventur, wenn auffällt dass ein Artikel nicht mehr
+     * nachbestellt werden soll). setAuslaufKinder() ist ein No-Op falls der
+     * Artikel gar kein Vater ist (WHERE vaterartikel_id = :id trifft dann 0 Zeilen).
+     */
+    public function markiereAuslaufartikel(int $id): array
+    {
+        $artikel = $this->repo->findById($id);
+        if (!$artikel) {
+            return ['erfolg' => false, 'fehler' => ['Artikel nicht gefunden']];
+        }
+        $this->repo->setAuslauf($id);
+        $this->repo->setAuslaufKinder($id);
+        Logger::log('artikel.auslauf_markiert', 'artikel', $id, ['name' => $artikel['name'], 'quelle' => 'inventur']);
+        return ['erfolg' => true, 'name' => $artikel['name']];
+    }
+
+    /**
      * Speichert ein neues Kind (Variante) eines Vater-Artikels.
      * Das Kind erbt ~20 Felder direkt vom Vater (nicht aus dem POST-Array).
      * Der Netto-VK wird aus dem Brutto-VK und dem Steuersatz des Vaters berechnet.

@@ -173,6 +173,56 @@ class InventurService
     }
 
     /**
+     * Fortschritt eines Laufs: wie viele Soll-Positionen sind schon gezählt.
+     * Bei Scope "Lagerplatz" ist die Soll-Liste beim allerersten Zählgang bewusst
+     * leer (siehe findSollListeLagerplatz) — dort gibt es keinen sinnvollen
+     * Prozentwert, nur die Anzahl bereits frei erfasster Funde.
+     */
+    public function getFortschritt(array $lauf): array
+    {
+        $soll = $this->getSollListe($lauf);
+        $positionen = $this->getPositionenFuerLauf((int)$lauf['id']);
+
+        if (empty($soll)) {
+            return ['gesamt' => 0, 'gezaehlt' => count($positionen), 'prozent' => null];
+        }
+
+        $mitLagerplatz = $lauf['scope_tabelle'] === 'lagerplaetze';
+        $sollKeys = [];
+        foreach ($soll as $s) {
+            $sollKeys[$this->fortschrittSchluessel($s, $mitLagerplatz)] = true;
+        }
+
+        $treffer = 0;
+        foreach ($positionen as $p) {
+            $key = $this->fortschrittSchluessel($p, $mitLagerplatz);
+            if (isset($sollKeys[$key])) {
+                unset($sollKeys[$key]);
+                $treffer++;
+            }
+        }
+
+        $gesamt = count($soll);
+        return ['gesamt' => $gesamt, 'gezaehlt' => $treffer, 'prozent' => (int)round($treffer / $gesamt * 100)];
+    }
+
+    /**
+     * Identitäts-Schlüssel für den Soll/Ist-Abgleich beim Fortschritt. lagerplatz_id
+     * fließt nur bei Scope "Lagerplatz" ein — bei Scope "Lager" trägt eine Position
+     * zwar oft einen lagerplatz_id-Wert (informativer "aktueller Arbeitsbereich"),
+     * das ist aber kein Teil der Soll-Identität (die Soll-Liste kennt dort gar
+     * keinen Lagerplatz) und würde den Abgleich sonst fälschlich verfehlen lassen.
+     */
+    private function fortschrittSchluessel(array $row, bool $mitLagerplatz): string
+    {
+        $key = ($row['artikel_id'] ?? '') . '|' . ($row['lager_id'] ?? '') . '|' . ($row['charge'] ?? '');
+        if ($mitLagerplatz) {
+            $key .= '|' . ($row['lagerplatz_id'] ?? '');
+        }
+        return $key;
+    }
+
+    /**
      * Bucht eine Zählung: legt die Position an falls neu, sonst wird die bestehende
      * aktualisiert (z.B. wenn ein zweiter Zähler denselben Artikel nochmal erfasst).
      * lagerId wird bei Lagerplatz-Scope automatisch aus dem Lagerplatz aufgelöst,
