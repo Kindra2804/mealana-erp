@@ -1,6 +1,6 @@
 # 13 — Inventur
 
-> **In Arbeit.** Aktuell gebaut: Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen/abbrechen, Zählliste (Mengen erfassen). Es fehlen noch: Live-Sperre bei mehreren Zählern, Buchungssperre für Kasse/Wareneingang, Abschluss mit Differenzbuchung.
+> **In Arbeit.** Aktuell gebaut: Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen/abbrechen, Zählliste (Mengen erfassen), Live-Sperre bei mehreren Zählern, Buchungssperre für Kasse/Wareneingang. Es fehlt noch: Abschluss mit echter Differenzbuchung.
 
 ## Konzept
 
@@ -54,10 +54,21 @@ Pro Zeile: Ist-Menge eintragen, optional Notiz, 💾 speichern — läuft per AJ
 
 **Blind-Modus:** Ist die Inventur blind gestartet, wird die Soll-Spalte komplett ausgeblendet.
 
+## Mehrere Zähler gleichzeitig
+
+Bei Scope "Ganzes Lager" kann oben auf der Zählseite ein Lagerplatz als "Ich zähle gerade an" gewählt werden — informativ, kein Zwang. Wählt eine zweite Person denselben Platz, erscheint eine Warnung ("wird gerade gezählt von ... seit ..."), die Zählung ist aber trotzdem möglich (z.B. falls die erste Person abgebrochen hat). Bei Scope "Lagerplatz" wird der Platz automatisch beim Öffnen der Zählseite beansprucht.
+
+## Buchungssperre während einer Voll-Lager-Inventur
+
+Läuft für ein Lager eine Inventur mit Scope "Ganzes Lager", werden für dieses Lager automatisch gesperrt:
+
+- **Kasse**: Kassen mit diesem Lager hinterlegt können keine Verkäufe mehr buchen (Meldung "Kasse ist bis zum Abschluss gesperrt").
+- **Wareneingang**: Buchungen in dieses Lager werden abgelehnt, bis die Inventur abgeschlossen/abgebrochen ist.
+
+Andere Lager (z.B. Messelager) sind davon nicht betroffen. Bei Teil-Scopes (Lagerplatz/Kategorie/Artikel/Mietfach) gibt es keine Buchungssperre — der Betrieb läuft normal weiter.
+
 ## Was noch fehlt (geplant)
 
-- Live-Sperre pro Lagerplatz während der Zählung (Info-Warnung bei mehreren gleichzeitigen Zählern)
-- Buchungssperre für Kasse/Wareneingang bei Voll-Lager-Inventur
 - Abschluss-Logik: Chargen-Summenabgleich, Lagerplatz-Reallokation, Differenzbuchung (echte Bestandskorrektur)
 - Fortschritts-Anzeige, Druckversion der Zählliste
 - "Letzte Inventur"-Datum auf der Artikel-Detailseite

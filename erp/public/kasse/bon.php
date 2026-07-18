@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
 require_once __DIR__ . '/../../src/modules/kasse/MesseSyncService.php';
 require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
+require_once __DIR__ . '/../../src/modules/inventur/InventurService.php';
 
 $svc = new KassenService();
 
@@ -30,6 +31,15 @@ $modus     = $kasseInfo['modus']               ?? 'online';
 if ((new MesseSyncService())->hatOffenenResync($kasseId)) {
     $_SESSION['fehler'] = 'Diese Kasse hat noch offene Messe-Daten (Sync ausstehend) — bitte zuerst synchronisieren, bevor hier online verkauft wird.';
     header('Location: ' . BASE_PATH . '/kasse/messe_vorbereiten.php');
+    exit;
+}
+
+// Inventur-Sperre: UX-Vorabprüfung, damit man gar nicht erst in der leeren Kasse
+// landet. Die eigentliche, nicht umgehbare Sperre sitzt zusätzlich in
+// KassenService::erstelleBon() (gleiches Muster wie die Resync-Sperre oben).
+if ((new InventurService())->gibtEsLaufendeVollinventur($lagerId)) {
+    $_SESSION['fehler'] = 'Für dieses Lager läuft gerade eine Inventur — Kasse ist bis zum Abschluss gesperrt.';
+    header('Location: ' . BASE_PATH . '/kasse/index.php');
     exit;
 }
 

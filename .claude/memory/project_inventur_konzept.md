@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 1208232f-9b1f-41ae-ae93-bb91abe26d76
-  modified: 2026-07-18T15:30:56.546Z
+  modified: 2026-07-18T15:48:13.996Z
 ---
 
 Stand: 2026-07-18, komplette Design-Absprache mit Jacky vor Baubeginn (wie von ihm gewünscht, siehe [[feedback_modul_vorgehen]]). Ersetzt/ergänzt die verstreuten Einzelnotizen in [[project_inventur_hinweis]] und den Lagerplätze-Abschnitt in [[project_lager_konzept]] — dies hier ist das verbindliche Konzept.
@@ -132,10 +132,24 @@ JTL/Shopware/Sage/LS-POS bieten typischerweise: Blind-Inventur (HOCH), permanent
 - **Bewusst noch nicht Teil dieser Slice**: Live-Sperre (Info-Warnung bei Kollision zweier Zähler am selben Lagerplatz), Buchungssperre für Kasse/Wareneingang, Abschluss-Logik (Chargen-Summenabgleich, Lagerplatz-Reallokation, echte Differenzbuchung in `lagerbestand`/`lager_bewegungen`) — kommt mit Slice 3/4.
 - Handbuch Kapitel 13 + Bedienungsanleitung ergänzt.
 
+## 🟢 FERTIG 2026-07-18: Inventur-Lauf-Kern Slice 3 (Live-Sperre + Buchungssperre)
+
+- **Migration 138**: `inventur_zaehl_sperren` — Claim pro (Lauf, Lagerplatz), `UNIQUE(inventur_lauf_id, lagerplatz_id)`, informativ (first-come, kein Hard-Block). `aktiv_seit` bleibt erhalten wenn derselbe Benutzer erneut beansprucht, wird zurückgesetzt bei Benutzerwechsel; Claims gelten als abgelaufen nach 10 Minuten Inaktivität.
+- **`InventurService::lagerplatzWaehlen()`**: claimt + gibt eine Warnung zurück wenn kurz zuvor ein anderer Benutzer aktiv war. Bei Scope='lagerplaetze' automatisch beim Öffnen der Zählseite ausgelöst; bei Scope='lager' über ein neues Dropdown "Ich zähle gerade an" (nur dort sichtbar, da nur dort mehrere Lagerplätze zur Wahl stehen). Der gewählte Lagerplatz wird clientseitig gemerkt und taggt anschließend alle Zählungen dieser Session (`window.AKTUELLER_LAGERPLATZ_ID` in `inventur_zaehlen.js`) — genau so entsteht die Lagerplatz-Zuordnung in `lagerbestand_lagerplaetze` beim ersten Durchzählen.
+- **`InventurService::gibtEsLaufendeVollinventur(lagerId)`**: zentrale Prüfung, ob für ein Lager gerade eine `scope_tabelle='lager'`-Inventur mit `status='laufend'` existiert.
+- **Buchungssperre eingebaut an drei Stellen** (Jacky-Entscheidung 2026-07-18: auch Wareneingang sperren, nicht nur Kasse+Shop):
+  - `KassenService::erstelleBon()` — Gate ganz am Anfang, vor dem RKSV/BFR-Gate (gleiches Muster wie die bestehenden Gates dort).
+  - `kasse/bon.php` — zusätzliche UX-Vorabprüfung (Redirect mit Fehlermeldung), damit man gar nicht erst in der leeren Kasse landet; die eigentliche Sperre sitzt in `erstelleBon()`.
+  - `WareneingangService::bucheMenge()` — Gate direkt nach Ermittlung von `$lagerId`.
+  - Sperre ist **pro Lager**, nicht systemweit — eine Messelager-Inventur blockiert z.B. nicht die Hauptladen-Kasse (Jacky-Bestätigung vom Design-Gespräch).
+  - Shop-Abgleich-Pause bleibt weiterhin nur Vorgriff im Datenmodell (Shop-Sync existiert noch nicht).
+- End-to-end getestet: Live-Sperre (kein Warnung bei gleichem Benutzer, korrekte Warnung mit Namen+Zeit bei anderem Benutzer), Vollinventur-Gate (true für das inventierte Lager, false für andere), Kassen-Gate + Wareneingang-Gate lehnen korrekt ab — die beiden riskanten Buchungsaufrufe dabei bewusst in einer Transaktion gekapselt und zurückgerollt, damit selbst ein hypothetischer Gate-Bug keine echten Daten anfasst. Seiten-Rendering der neuen Lagerplatz-Auswahl geprüft. Alles aufgeräumt.
+- Handbuch Kapitel 13 + Bedienungsanleitung ergänzt.
+
 ## How to apply beim Weiterbauen
 
-**Nächster Schritt: Slice 3 — Live-Sperre + Buchungssperre.** Live-Sperre: kleine neue Tabelle (z.B. `inventur_zaehl_sperren`: inventur_lauf_id, lagerplatz_id, benutzer_id, benutzer_name-Snapshot, seit) — beim Öffnen eines Lagerplatzes zum Zählen einen Claim anlegen/anzeigen, informativ (first-come, kein Hard-Block, siehe Design-Entscheidung oben). Buchungssperre: bei Voll-Scope (scope_tabelle='lager') alle Kassen mit passender `lager_id` stoppen + Shop-Abgleich pausieren (Vorgriff, Shop-Sync existiert noch nicht) — braucht einen Check-Punkt in `KassenService`/`bon.php` der prüft ob ein `inventur_laeufe`-Eintrag mit `status='laufend'`, `scope_tabelle='lager'`, `scope_id=<diese Kasse's Lager>` existiert.
+**Nächster Schritt: Slice 4 — Abschluss-Logik.** Chargen-Summenabgleich (Regel: gezählte Summe ≥ vorherige Gesamtsumme inkl. unklarer "nachzutragen"-Anteile → aufgelöst; Unterschreitung → auffällig markieren), Lagerplatz-Reallokation (Ist an anderem Platz gefunden als Soll → `lagerbestand_lagerplaetze` entsprechend umbuchen), echte Differenzbuchung (`lager_bewegungen` Typ `inventur`/`schwund`, wie in [[project_inventur_hinweis]] vorgemerkt), rollenabhängige Begründungspflicht (Rang-Schwellwert wie Manager-PIN). Hier werden `inventur_positionen` erstmals gegen `lagerbestand` verrechnet — das macht diese Slice zur bisher heikelsten (echte Bestandskorrektur), sorgfältig einzeln testen.
 
-Danach: Slice 4 (Abschluss-Logik: Chargen-Summenabgleich + Lagerplatz-Reallokation + Differenzbuchung + rollenabhängige Begründungspflicht — hier werden `inventur_positionen` erstmals gegen `lagerbestand`/`lager_bewegungen` verrechnet), Slice 5 (Druckversion, Manager-Auslauf-Shortcut, Fortschritts-%-Anzeige, "Letzte Inventur"-Datum am Artikel — aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]]).
+Danach: Slice 5 (Druckversion, Manager-Auslauf-Shortcut, Fortschritts-%-Anzeige, "Letzte Inventur"-Datum am Artikel — aktiviert den vorhandenen Spalten-Picker-Platzhalter, siehe [[project_spalten_picker]]).
 
 Referenz-Check ist mit diesem Dokument erledigt — nicht nochmal wiederholen, direkt in die Design-Detailarbeit je Baustein gehen.

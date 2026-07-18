@@ -53,7 +53,7 @@
 - [Packplatz-Modul](project_packplatz.md) — Warenausgang/Intern/Retoure/Picklisten-Manager + EAN-Doppelklick-Nacherfassung alle fertig (verifiziert 2026-07-10); offen: Teillieferung-Split-Logik (Phase 2)
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
-- [Inventur-Modul: Konzept + Baufortschritt](project_inventur_konzept.md) — Lagerplätze + Lauf-Kopf/Scope + Zählliste (Slice 1+2) FERTIG; Slice 3 (Live-Sperre + Buchungssperre) als Nächstes
+- [Inventur-Modul: Konzept + Baufortschritt](project_inventur_konzept.md) — Slice 1-3 FERTIG (Lagerplätze, Lauf-Kopf/Scope, Zählliste, Live-Sperre, Kassen/Wareneingang-Buchungssperre); Slice 4 (Abschluss/Differenzbuchung) als Nächstes
 - [Inventur-Modul: Einzelnotizen](project_inventur_hinweis.md) — RKSV-Popup, Warndreieck-Flag; Details jetzt in project_inventur_konzept.md eingeordnet
 - [Rechte & Rollen Design](project_rechte_rollen.md) — Rollen/Matrix/Durchsetzung/Manager-Override-PIN KOMPLETT FERTIG (2026-07-05); nur Lizenzserver (2-Ebenen-Konzept besprochen) noch offen
 - [PLC / EasyPak Versand](project_plc_versand.md) — 🟢 2 echte Bugs behoben 2026-07-10: Nachnahme-Betrag bei Teillieferung + `auftrag_nr`-Spaltenname (Export hat vermutlich seit je nie funktioniert)

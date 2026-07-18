@@ -226,4 +226,41 @@ class InventurService
 
         return ['erfolg' => true, 'id' => $id];
     }
+
+    // -------------------------------------------------------------------------
+    // Live-Sperre (Slice 3)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Beansprucht einen Lagerplatz zum Zählen. Informativ, first-come — blockt nicht,
+     * gibt aber eine Warnung zurück wenn kurz zuvor schon jemand anderer dort aktiv war.
+     */
+    public function lagerplatzWaehlen(int $laufId, int $lagerplatzId, int $benutzerId): array
+    {
+        $bestehend = $this->repo->findAktiveSperre($laufId, $lagerplatzId);
+        $warnung   = null;
+
+        if ($bestehend && (int)$bestehend['benutzer_id'] !== $benutzerId) {
+            $warnung = 'Wird gerade gezählt von ' . $bestehend['benutzer_name'] . ' (seit ' . date('H:i', strtotime($bestehend['aktiv_seit'])) . ') — bitte kurz abstimmen.';
+        }
+
+        $this->repo->upsertSperre($laufId, $lagerplatzId, $benutzerId);
+
+        return ['erfolg' => true, 'warnung' => $warnung];
+    }
+
+    // -------------------------------------------------------------------------
+    // Buchungssperre (Slice 3): Voll-Lager-Inventur blockiert Kasse/Wareneingang
+    // -------------------------------------------------------------------------
+
+    /**
+     * Prüft ob für ein Lager gerade eine laufende Voll-Scope-Inventur existiert.
+     * Wird von KassenService::erstelleBon() und WareneingangService::bucheMenge()
+     * als Gate genutzt — beide Buchungswege müssen während einer Voll-Lager-Zählung
+     * pausiert sein, sonst verfälscht sich der Soll-Bestand während gezählt wird.
+     */
+    public function gibtEsLaufendeVollinventur(int $lagerId): bool
+    {
+        return $this->repo->findLaufendeVollinventur($lagerId) !== false;
+    }
 }

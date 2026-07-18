@@ -17,6 +17,25 @@ async function buchePosition(payload) {
     return res.json();
 }
 
+// --- Live-Sperre: Lagerplatz als aktuellen Arbeitsbereich beanspruchen (nur Scope=Lager) ---
+async function lagerplatzWaehlen() {
+    var select = document.getElementById('aktueller_lagerplatz');
+    var warnungDiv = document.getElementById('lagerplatz_warnung');
+    var id = select.value;
+    warnungDiv.textContent = '';
+
+    if (!id) { window.AKTUELLER_LAGERPLATZ_ID = null; return; }
+
+    var res = await fetch(window.BASE_PATH + '/inventur/lagerplatz_waehlen_ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lauf_id: window.INVENTUR_LAUF_ID, lagerplatz_id: parseInt(id, 10) }),
+    });
+    var data = await res.json();
+    window.AKTUELLER_LAGERPLATZ_ID = parseInt(id, 10);
+    if (data.warnung) { warnungDiv.textContent = '⚠ ' + data.warnung; }
+}
+
 // --- Zeilen aus der Soll-Liste speichern ---
 document.querySelectorAll('#zaehl-tabelle .zeile-speichern').forEach(function (btn) {
     btn.addEventListener('click', async function () {
@@ -25,11 +44,15 @@ document.querySelectorAll('#zaehl-tabelle .zeile-speichern').forEach(function (b
         var notizInput = tr.querySelector('.notiz-eingabe');
         if (istInput.value === '') { zeigeBanner('Bitte eine Menge eingeben.', false); return; }
 
+        // Aktuell gewählter Arbeitsbereich (falls gesetzt) geht vor der Soll-Listen-Zuordnung —
+        // so wird beim Zählen live erfasst, WO der Artikel tatsächlich gefunden wurde.
+        var lagerplatzId = window.AKTUELLER_LAGERPLATZ_ID || (tr.dataset.lagerplatz ? parseInt(tr.dataset.lagerplatz, 10) : null);
+
         var data = await buchePosition({
             lauf_id:       window.INVENTUR_LAUF_ID,
             artikel_id:    parseInt(tr.dataset.artikel, 10),
             lager_id:      parseInt(tr.dataset.lager, 10),
-            lagerplatz_id: tr.dataset.lagerplatz ? parseInt(tr.dataset.lagerplatz, 10) : null,
+            lagerplatz_id: lagerplatzId,
             charge:        tr.dataset.charge || null,
             soll_menge:    tr.dataset.soll !== '' ? parseFloat(tr.dataset.soll) : null,
             ist_menge:     parseFloat(istInput.value),
@@ -94,6 +117,7 @@ async function neuePositionSpeichern() {
     var lagerplatzId = null;
     if (window.INVENTUR_SCOPE_TABELLE === 'lager') {
         lagerId = window.INVENTUR_SCOPE_ID;
+        lagerplatzId = window.AKTUELLER_LAGERPLATZ_ID || null;
     } else if (window.INVENTUR_SCOPE_TABELLE === 'lagerplaetze') {
         lagerplatzId = window.INVENTUR_SCOPE_ID;
     } else {

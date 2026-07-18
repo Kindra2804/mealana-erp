@@ -1,11 +1,26 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/inventur/InventurService.php';
+require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 
 $service = new InventurService();
 $laufId  = (int)($_GET['lauf_id'] ?? 0);
 $lauf    = $service->getById($laufId);
 if (!$lauf) { header('Location: ' . BASE_PATH . '/inventur/liste.php'); exit; }
+
+$benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+
+// Live-Sperre: bei Scope=Lagerplatz wird der Platz automatisch beansprucht.
+// Bei Scope=Lager wählt der Zähler unten selbst einen Arbeitsbereich.
+$sperrWarnung = null;
+if ($lauf['scope_tabelle'] === 'lagerplaetze') {
+    $claim = $service->lagerplatzWaehlen($laufId, (int)$lauf['scope_id'], $benutzerId);
+    $sperrWarnung = $claim['warnung'];
+}
+
+$lagerplaetzeFuerAuswahl = $lauf['scope_tabelle'] === 'lager'
+    ? (new LagerService())->getAlleLagerplaetze((int)$lauf['scope_id'], 1)
+    : [];
 
 $sollListe  = $service->getSollListe($lauf);
 $positionen = $service->getPositionenFuerLauf($laufId);
@@ -46,6 +61,25 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <span class="chip chip-aktiv">👁 Soll sichtbar</span>
         <?php endif; ?>
     </div>
+
+    <?php if ($sperrWarnung): ?>
+        <div style="margin-top:10px;padding:8px;background:#fff8e6;border-radius:4px;font-size:13px;color:#c0820a">
+            ⚠ <?= htmlspecialchars($sperrWarnung) ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($lauf['scope_tabelle'] === 'lager'): ?>
+        <div style="margin-top:12px;max-width:320px">
+            <label class="erp-label">Ich zähle gerade an (Lagerplatz, optional)</label>
+            <select id="aktueller_lagerplatz" class="erp-select" style="width:100%" onchange="lagerplatzWaehlen()">
+                <option value="">— kein bestimmter Platz —</option>
+                <?php foreach ($lagerplaetzeFuerAuswahl as $lp): ?>
+                <option value="<?= $lp['id'] ?>"><?= htmlspecialchars($lp['bezeichnung']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <div id="lagerplatz_warnung" style="margin-top:6px;font-size:13px;color:#c0820a"></div>
+        </div>
+    <?php endif; ?>
 </div>
 
 <div id="banner" style="display:none;position:fixed;top:16px;right:16px;z-index:2000;padding:10px 18px;border-radius:6px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.2)"></div>
@@ -138,6 +172,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     window.INVENTUR_LAUF_ID = <?= $laufId ?>;
     window.INVENTUR_SCOPE_TABELLE = <?= json_encode($lauf['scope_tabelle']) ?>;
     window.INVENTUR_SCOPE_ID = <?= (int)$lauf['scope_id'] ?>;
+    window.AKTUELLER_LAGERPLATZ_ID = null;
 </script>
 <script src="<?= BASE_PATH ?>/js/inventur_zaehlen.js"></script>
 

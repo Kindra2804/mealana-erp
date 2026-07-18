@@ -320,4 +320,59 @@ class InventurRepository
         ]);
         return $stmt->rowCount() > 0;
     }
+
+    // -------------------------------------------------------------------------
+    // Live-Sperre (Slice 3): informativ, first-come, siehe Migration 138
+    // -------------------------------------------------------------------------
+
+    /**
+     * Gibt die aktuelle Sperre eines Lagerplatzes innerhalb eines Laufs zurück
+     * (mit Benutzername), oder false wenn keine oder abgelaufen (> 10 Min. inaktiv).
+     */
+    public function findAktiveSperre(int $laufId, int $lagerplatzId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT s.*, b.formularname AS benutzer_name
+            FROM inventur_zaehl_sperren s
+            JOIN benutzer b ON b.id = s.benutzer_id
+            WHERE s.inventur_lauf_id = :lauf_id AND s.lagerplatz_id = :lagerplatz_id
+              AND s.zuletzt_aktiv_am > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+        ");
+        $stmt->execute(['lauf_id' => $laufId, 'lagerplatz_id' => $lagerplatzId]);
+        return $stmt->fetch();
+    }
+
+    /**
+     * Beansprucht einen Lagerplatz für einen Benutzer (Claim), überschreibt eine bestehende
+     * Sperre. aktiv_seit bleibt erhalten wenn derselbe Benutzer erneut beansprucht (nur
+     * Heartbeat), wird zurückgesetzt wenn ein anderer Benutzer übernimmt.
+     */
+    public function upsertSperre(int $laufId, int $lagerplatzId, int $benutzerId): void
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO inventur_zaehl_sperren (inventur_lauf_id, lagerplatz_id, benutzer_id)
+            VALUES (:lauf_id, :lagerplatz_id, :benutzer_id)
+            ON DUPLICATE KEY UPDATE
+                aktiv_seit       = IF(benutzer_id = VALUES(benutzer_id), aktiv_seit, NOW()),
+                benutzer_id      = VALUES(benutzer_id),
+                zuletzt_aktiv_am = NOW()
+        ");
+        $stmt->execute(['lauf_id' => $laufId, 'lagerplatz_id' => $lagerplatzId, 'benutzer_id' => $benutzerId]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Buchungssperre (Slice 3): Voll-Lager-Inventur blockiert Kasse/Wareneingang
+    // -------------------------------------------------------------------------
+
+    /** Prüft ob für ein Lager gerade eine laufende Voll-Scope-Inventur existiert. */
+    public function findLaufendeVollinventur(int $lagerId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT * FROM inventur_laeufe
+            WHERE scope_tabelle = 'lager' AND scope_id = :lager_id AND status = 'laufend'
+            LIMIT 1
+        ");
+        $stmt->execute(['lager_id' => $lagerId]);
+        return $stmt->fetch();
+    }
 }

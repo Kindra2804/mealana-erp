@@ -6,6 +6,7 @@ require_once __DIR__ . '/../lager/LagerRepository.php';
 require_once __DIR__ . '/../bestellungen/BestellungService.php';
 require_once __DIR__ . '/../lager/LagerService.php';
 require_once __DIR__ . '/../lieferanten/LieferantenGuthabenRepository.php';
+require_once __DIR__ . '/../inventur/InventurService.php';
 
 /**
  * WareneingangService – Geschäftslogik für den Wareneingangs-Workflow
@@ -112,6 +113,12 @@ class WareneingangService
         $artikelId    = (int)$data['artikel_id'];
         $lagerId      = (int)$data['lager_id'];
         $menge        = (float)$data['menge'];
+
+        // Inventur-Gate: läuft für dieses Lager gerade eine Voll-Inventur, wird
+        // kein Wareneingang gebucht — sonst verfälscht sich der Soll-Bestand während gezählt wird.
+        if ((new InventurService())->gibtEsLaufendeVollinventur($lagerId)) {
+            return ['erfolg' => false, 'fehler' => ['Für dieses Lager läuft gerade eine Inventur — Wareneingang ist bis zum Abschluss gesperrt.']];
+        }
         $charge       = !empty($data['charge']) ? trim($data['charge']) : null;
         // charge_status: "nachzutragen" wenn keine Charge — erscheint in der Nachtragsliste
         $chargeStatus = ($charge === null) ? 'nachzutragen' : 'erfasst';

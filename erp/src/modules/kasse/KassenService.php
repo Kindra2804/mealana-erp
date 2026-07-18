@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
 require_once __DIR__ . '/BfrService.php';
+require_once __DIR__ . '/../inventur/InventurService.php';
 
 class KassenService
 {
@@ -209,6 +210,12 @@ class KassenService
 
         $kasseId = (int)($bonDaten['kasse_id'] ?? 1);
         $lagerId = (int)($bonDaten['lager_id'] ?? 1);
+
+        // Inventur-Gate: läuft für dieses Lager gerade eine Voll-Inventur, wird
+        // kein Verkauf gebucht — sonst verfälscht sich der Soll-Bestand während gezählt wird.
+        if ((new InventurService())->gibtEsLaufendeVollinventur($lagerId)) {
+            return ['erfolg' => false, 'fehler' => 'Für dieses Lager läuft gerade eine Inventur — Kasse ist bis zum Abschluss gesperrt.'];
+        }
 
         // RKSV-Gate: BFR muss erreichbar sein, BEVOR überhaupt etwas gebucht wird
         // ("kein Dienst, keine Kasse") — kein Bon entsteht mehr ohne Signatur-Ergebnis.

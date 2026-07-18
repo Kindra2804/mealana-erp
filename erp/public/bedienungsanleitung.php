@@ -449,7 +449,9 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Lagerplätze</strong> (Lager → Lagerplätze): Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur.</p>
             <p><strong>Inventur starten</strong> (Lager → Inventur): Scope wählen, "Blind zählen" (Soll-Bestand für den Zähler ausblenden) ist standardmäßig aktiv. Ein laufender Lauf kann pausiert und später fortgesetzt werden (Zwischenstand bleibt erhalten) oder endgültig abgebrochen werden.</p>
             <p><strong>Zählen</strong> (Button bei einem laufenden Lauf): zeigt die Soll-Liste passend zum Scope, pro Zeile Ist-Menge + Notiz eintragen und speichern (kein Seiten-Neuladen nötig). Oben kann jederzeit ein Artikel frei erfasst werden, der nicht auf der Liste steht (neue Charge, unerwarteter Fund).</p>
-            <p style="color:#64748b"><strong>Noch nicht fertig:</strong> Live-Sperre bei mehreren gleichzeitigen Zählern, Buchungssperren für Kasse/Wareneingang, Abschluss mit Differenzbuchung — folgt in weiteren Schritten.</p>
+            <p><strong>Mehrere Zähler:</strong> bei Scope "Ganzes Lager" oben einen Lagerplatz als aktuellen Arbeitsbereich wählen — informativ, warnt nur wenn eine andere Person denselben Platz schon zählt.</p>
+            <p><strong>Buchungssperre:</strong> läuft für ein Lager eine Voll-Lager-Inventur, sind Kasse und Wareneingang für genau dieses Lager gesperrt, bis die Inventur abgeschlossen/abgebrochen wird.</p>
+            <p style="color:#64748b"><strong>Noch nicht fertig:</strong> Abschluss mit echter Differenzbuchung — folgt in einem weiteren Schritt.</p>
 
             <!-- EINSTELLUNGEN -->
             <h2 id="einstellungen">Einstellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
