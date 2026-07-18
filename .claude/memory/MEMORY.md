@@ -59,7 +59,7 @@
 - [PLC / EasyPak Versand](project_plc_versand.md) — 🟢 2 echte Bugs behoben 2026-07-10: Nachnahme-Betrag bei Teillieferung + `auftrag_nr`-Spaltenname (Export hat vermutlich seit je nie funktioniert)
 - [Chargen-Tracking](bug_charge_tracking.md) — BEHOBEN 2026-06-29: Kasse/Packplatz/Umlagerung alle mit Charge; Rest (Race Condition, warenSchwund) kommt mit Inventur-Modul
 - [Chargen-Konzept (vollständig)](project_chargen_konzept.md) — 3 Typen (keine/optional/Pflicht), alle Lagerbewegungsstellen, UX-Flows Kasse/Packplatz/Umlagerung/Auftrag
-- [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — State-Check-Gate fertig, Offline-Fix+Selbstheilung fertig (2026-07-09); Hardwaretest pausiert bis Herstellerantwort zum /register-Timeout da ist (2026-07-10), dann alles gebündelt testen
+- [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — State-Check-Gate + Offline-Fix+Selbstheilung fertig; /register-Crash-Ursache 2026-07-18 geklärt (A-Trust-Tool, nicht unser Code) — Hardwaretest kann jetzt weitergehen
 - [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede, Zugänge/Händlerportale-Tab; Doku-Schuld behoben 2026-07-10
 - [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — Unicode-Flaggen rendern auf Jackys Windows-Browsern nicht, nur Buchstaben-Fallback — nicht verwenden
 - [🟢 BUG: PDO extra Array-Key bricht insert()/update()](bug_hersteller_modal_insert.md) — Hersteller/Lager/PartnerRepository behoben; MietfachRepository am 2026-07-10 nachgezogen (war unentdeckt) — alle bekannten Fälle jetzt behoben

@@ -1,10 +1,11 @@
 ---
 name: project-rksv-bfr
-description: "RKSV/BFR-Integration — 2026-07-06 komplett umgebaut: State-Check-Gate ('kein Dienst, keine Kasse') ersetzt die alte Nachsignierungs-Warteschlange; Ausfall-Episoden statt Nachsignierungsläufe; Kassen-Registrierung/QR-Code/X-Z-Bon-Regeln unverändert"
+description: "RKSV/BFR-Integration — Architektur seit 2026-07-06 fertig (State-Check-Gate). ✅ /register-Crash-Rätsel 2026-07-18 GEKLÄRT: A-Trust-Tool war Ursache, nicht unser Code/BFR — Downgrade auf ältere A-Sign-Client-Version löst es. Hardwaretest kann jetzt fortgesetzt werden."
 metadata:
   node_type: memory
   type: project
   originSessionId: eefd559b-9c02-443d-a0cb-164e3dadf876
+  modified: 2026-07-18T17:47:14.706Z
 ---
 
 ## Status: Grundarchitektur am 2026-07-06 komplett neu gebaut (nach echtem Hardware-Test)
@@ -81,6 +82,18 @@ Kontrollierter Test (Karte während Betrieb gezogen), live von mir per DB-Query 
 
 **How to apply:** Bei der nächsten Session nachfragen, ob vom Hersteller schon eine Antwort kam — falls ja, hier ergänzen und ggf. Architektur-Anpassungen ableiten (z.B. falls der Hersteller einen anderen Timeout/Retry-Wert empfiehlt).
 
+## ✅ GEKLÄRT 2026-07-18: Ursache war weder unser Code noch der BFR selbst — das A-Trust-Tool
+
+Auflösung des oben offenen `/register`-Crash-Rätsels vom 2026-07-09: **Verursacher war die aktuellste Version des A-Trust-Tools** (A-Sign-Client, dessen Kommunikationsmodule der BFR intern nutzt). Beim Ausstecken der Signaturkarte stürzte diese aktuellste A-Trust-Version ab und gab keine Antwort mehr — das riss in Folge auch den BFR mit in den Absturz (daher `/register` unbeantwortet trotz gesundem vorherigem `/state`).
+
+**Fix (kein Code bei uns, Konfiguration extern):** A-Sign-Client **2.7.0 funktioniert**, die aktuelle Version **3.4.0.0 verursacht den Absturz**. Mit 2.7.0 läuft alles wie vorgesehen — einzige Einschränkung: beim allerersten Ausstecken der Karte muss einmalig eine Fehlermeldung des A-Sign-Clients manuell bestätigt werden, danach läuft jeder weitere Fehlerfall (State-Check-Gate, Ausfall-Episode, Recovery-Nullbeleg) automatisch nach Plan.
+
+**Bug-Report läuft:** BFR-Hersteller hat den Fehler an A-Trust gemeldet (3.4.0.0-Regression). Bei zukünftigen Neuinstallationen/Updates: A-Sign-Client bewusst auf 2.7.0 halten, nicht auf die neueste Version aktualisieren, bis A-Trust den Bug bestätigt behoben hat.
+
+**Bedeutung für uns:** Das State-Check-Gate-Modell (siehe oben) war die ganze Zeit korrekt konzipiert — der beobachtete Crash lag außerhalb unseres Verantwortungsbereichs (Drittsoftware-Bug beim Hersteller-Zulieferer, nicht im BFR-eigenen Code und nicht in `BfrService`). Keine Architektur-Anpassung nötig.
+
+**How to apply:** Hardwaretest (siehe unten, war seit 2026-07-10 bewusst pausiert bis zur Herstellerantwort) kann jetzt fortgesetzt werden — vorausgesetzt die Testmaschine nutzt die ältere A-Sign-Client-Version. Bei künftigen ähnlichen "BFR antwortet nicht"-Symptomen zuerst die installierte A-Trust-Tool-Version prüfen, bevor in `BfrService`/State-Check-Logik gesucht wird.
+
 ## Offene Punkte / nicht heute geklärt
 
 - Timing-Fund (siehe oben, ~2s Verbindungsverzögerung zu totem Port) nicht auf der echten BFR-Maschine verifiziert.
@@ -104,6 +117,8 @@ Beide am 2026-07-08 entworfenen Fixe gebaut, noch nicht live auf echter Hardware
 **Noch zu tun:** echter Test auf Hardware mit laufendem BFR (lokalen State-Check + Heilung live beobachten, v.a. dass die IP nach einem simulierten Netzwechsel wirklich aktualisiert wird).
 
 **Entscheidung 2026-07-10:** Hardwaretest bewusst pausiert, bis die Herstellerantwort zum `/register`-Timeout-Bug (siehe oben, Bericht vom 2026-07-09) da ist — dann Offline-Fix/Selbstheilung + der gemeldete Bug in einem Durchgang gemeinsam testen, statt zweimal auf echte Hardware zu müssen.
+
+**✅ 2026-07-18: Ursache geklärt** (siehe Abschnitt oben) — A-Trust-Tool-Version war der Verursacher, nicht unser Code. Pausierung kann jetzt aufgehoben werden, Hardwaretest (Offline-Fix + Selbstheilung gemeinsam) steht als Nächstes an.
 
 ## (Ursprünglicher Entwurf, 2026-07-08, zur Referenz)
 

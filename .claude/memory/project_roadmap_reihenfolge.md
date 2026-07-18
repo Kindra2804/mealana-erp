@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-18T17:32:57.035Z
+  modified: 2026-07-18T17:40:05.034Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -25,7 +25,7 @@ Jackys ausdrücklicher Wunsch: diese dürfen zwischen den großen Themen oben op
 - **Logger UI / Admin-Aktivitäten-Seite** — bisher nur Mockup, siehe [[project_logger_ui]].
 - **Statistik/Auswertungen** — aktuell nur das Dashboard, keine eigene Reporting-Seite, siehe [[project_statistik]].
 - **Packplatz Teillieferung-Split-Logik (Phase 2)** — Restmenge bleibt aktuell nur im Auftrag "hängen" statt echtem Positions-Split, siehe [[project_kasse_bon_design]].
-- **RKSV/BFR Hardwaretest** — pausiert, wartet auf Herstellerantwort zum `/register`-Timeout-Bug, siehe [[project_rksv_bfr]]. Kein aktiver Arbeitspunkt, nur Wartestatus — bei jedem Session-Start kurz nachfragen ob Antwort da ist.
+- **RKSV/BFR Hardwaretest** — ✅ Ursache des `/register`-Crashs am 2026-07-18 geklärt (A-Trust-Tool-Version, nicht unser Code), Pausierung aufgehoben, siehe [[project_rksv_bfr]]. Nächster Schritt: Hardwaretest (Offline-Fix + Selbstheilung) mit der älteren A-Sign-Client-Version durchführen.
 - **Kundenanzeige-Feedback** — V1 läuft live, wartet auf Barbaras Rückmeldung zum Praxistest, siehe [[project_kundenanzeige_modul]].
 
 ## Bewusst pausiert, keine Baustelle (nicht vergessen, aber auch nicht aktiv verfolgen)
