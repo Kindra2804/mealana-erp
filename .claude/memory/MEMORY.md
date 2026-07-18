@@ -14,7 +14,7 @@
 - [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale UND Bilder-Upload sind fertig (im Code verifiziert 2026-07-03, Datei war veraltet)
 - [Merkmale-Modul Design](project_merkmale.md) — 2-Ebenen (Merkmal/Wert), Single/Multi, Artikeltyp-Filter, WooCommerce slug, Modal wie Kategorie
 - [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Lücken-Vergleich (JTL/Shopware/Sage/LS-POS) + 99er-Freitext-Artikel-Idee (2026-07-05)
-- [Buchhaltungsmodul](project_buchhaltung.md) — FERTIG 2026-07-17: Kontenplan+Debitoren+Kreditoren+Mappings+Verwaltungsseiten+DATEV/CSV-Export; echter Kontenrahmen von Babsi eingearbeitet, Testimport mit Steuerberater vor Live-Einsatz nötig
+- [Buchhaltungsmodul](project_buchhaltung.md) — FERTIG 2026-07-18: + Lieferantenrechnungen/Kreditoren-Übersicht + Lieferanten-Guthaben-Konto (DROPS Teilzahlungen); Testimport mit Steuerberater vor Live-Einsatz nötig
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
 - [UI Redesign Plan](project_ui_redesign.md) — JTL-inspiriertes Layout nach Artikel-Modul: Top-Nav Module, Sidebar Untergruppen, 1280×1024 Basis, Barbara hat Mitspracherecht
 - [Verkauf Workflows](project_verkauf_workflows.md) — Mahnwesen-Cron BEHOBEN 2026-07-05; Dashboard-Aktion-Spalte (Erinnerung/Storno-Buttons) FERTIG 2026-07-17, MahnwesenService teilt Logik mit Cron

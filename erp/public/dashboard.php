@@ -218,6 +218,27 @@ $mahnungenAktiv = (int)$db->query("
       AND a.zahlungsstatus IN ('ausstehend','teilbezahlt')
 ")->fetchColumn();
 
+// ── Offene Lieferantenrechnungen (Kreditoren) ───────────────────────────────
+// offener_betrag = Rechnungsbetrag minus Summe aller Zahlungen (Überweisung + Guthaben-
+// Verrechnung, siehe bestellung_zahlungen) — analog zu den offenen Kunden-Forderungen oben.
+$lieferRow = $db->query("
+    SELECT COUNT(*) AS anzahl, COALESCE(SUM(offener_betrag), 0) AS summe,
+           SUM(CASE WHEN faellig_am < CURDATE() THEN 1 ELSE 0 END) AS ueberfaellig
+    FROM (
+        SELECT
+            b.rechnung_betrag - COALESCE((SELECT SUM(bz.betrag) FROM bestellung_zahlungen bz WHERE bz.bestellung_id = b.id), 0) AS offener_betrag,
+            DATE_ADD(b.rechnung_datum, INTERVAL COALESCE(l.zahlungsziel_tage, 0) DAY) AS faellig_am
+        FROM bestellungen b
+        JOIN lieferanten l ON l.id = b.lieferant_id
+        WHERE b.rechnung_nummer IS NOT NULL
+    ) x
+    WHERE offener_betrag > 0.01
+")->fetch(PDO::FETCH_ASSOC);
+
+$lieferRechnungenAnzahl     = (int)$lieferRow['anzahl'];
+$lieferRechnungenSumme      = (float)$lieferRow['summe'];
+$lieferRechnungenUeberfaellig = (int)$lieferRow['ueberfaellig'];
+
 // ── Letzte offene Aufträge ───────────────────────────────────────────────────
 $letzteAuftraege = $db->query("
     SELECT a.id, a.auftrag_nr, a.kanal, a.zahlungsstatus, a.lieferstatus,
@@ -488,12 +509,20 @@ require_once __DIR__ . '/includes/shell_top.php';
         </div>
     </div>
 
-    <!-- Card 5: Lieferantenrechnungen — PLATZHALTER (aktivieren mit Buchhaltungsmodul) -->
-    <!-- TODO BUCHHALTUNG: lieferanten_rechnungen Tabelle anlegen, diesen Block aktivieren -->
-    <div class="db-card-placeholder">
-        <div style="font-size:24px;color:#cbd5e1">📊</div>
-        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-align:center">LIEFERANTEN-RECHNUNGEN</div>
-        <div style="font-size:12px;color:#94a3b8;text-align:center">kommt mit dem<br>Buchhaltungs-Modul</div>
+    <!-- Card 5: Offene Lieferantenrechnungen -->
+    <div class="db-card">
+        <div class="db-card-label">Lieferanten-Rechnungen</div>
+        <div class="db-card-value"><?= eur($lieferRechnungenSumme) ?></div>
+        <div class="db-card-sub"><?= $lieferRechnungenAnzahl ?> offene Rechnungen</div>
+        <hr class="db-sep">
+        <?php if ($lieferRechnungenUeberfaellig > 0): ?>
+        <div style="margin-bottom:4px">
+            <span class="db-chip db-chip-red">⚠ <?= $lieferRechnungenUeberfaellig ?> überfällig</span>
+        </div>
+        <?php endif; ?>
+        <div style="margin-top:8px">
+            <a href="<?= BASE_PATH ?>/buchhaltung/lieferantenrechnungen.php" style="font-size:11px;color:#2563eb">→ Kreditoren-Übersicht</a>
+        </div>
     </div>
 
 </div><!-- /db-grid-kpi -->

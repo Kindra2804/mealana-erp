@@ -11,8 +11,8 @@ metadata:
 
 Ausgangspunkt war die Frage "was kommt nach diesem Modul, ist das ERP dann fast fertig" — Antwort: nein, zwei ganze Module fehlen noch komplett (Gutscheine, Inventur), dazu Buchhaltung ist erst zu ~10% da. Jacky hat daraufhin die Reihenfolge festgelegt:
 
-1. **Buchhaltung** (eigene Session) — siehe [[project_buchhaltung]] für die code-verifizierte Bestandsaufnahme vom 2026-07-10 (Kontenplan, Kontierungsregeln, DATEV-Export — alle drei 0% Code). Nächster Einstiegspunkt.
-2. **Inventur-Modul** (eigene Session, direkt danach) — siehe [[project_inventur_hinweis]]. Komplett neu zu bauen (0% Code), Anforderung: mehrere gleichzeitige Zähler (Tablet/Notebook), vermutlich Lagerplätze als Voraussetzung (ebenfalls 0% gebaut). **Wichtig: vor dem Bau erst eine richtige Design-Absprache**, nicht direkt loslegen.
+1. **Buchhaltung** — ✅ FERTIG 2026-07-17: Kontenplan, Debitoren/Kreditoren, Zahlungsart-/Steuerklasse-Mappings, Verwaltungsseiten, DATEV+CSV-Export. Siehe [[project_buchhaltung]]. Restpunkt: Mahnstufen-Ausbau für Rechnungszahler (Mahngebühr/Verzugszinsen) war als "noch zu bauen" vermerkt, aber nicht blockierend — kann später nachgezogen werden.
+2. **Inventur-Modul** (eigene Session, jetzt dran) — siehe [[project_inventur_hinweis]]. Komplett neu zu bauen (0% Code), Anforderung: mehrere gleichzeitige Zähler (Tablet/Notebook), vermutlich Lagerplätze als Voraussetzung (ebenfalls 0% gebaut). **Wichtig: vor dem Bau erst eine richtige Design-Absprache**, nicht direkt loslegen.
 3. **Online-Shop-Anbindung** — daran gekoppelt bzw. kurz davor: [[project_paperless_rechnung_modul]] (QR-Rechnung), [[project_sammelabholung_auftraege]] (mehrere Aufträge ein Bon), lose auch [[project_gutscheine]] (bewusst so gebaut werden soll, dass es mit WooCommerce/eigenem Shop matcht).
 
 ## Kleinere Punkte — "zwischendurch, je nach Lust und Laune", aber NICHT verlieren

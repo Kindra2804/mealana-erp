@@ -2,12 +2,18 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/bestellungen/BestellungService.php';
 require_once __DIR__ . '/../../src/modules/bestellungen/BestellDokumentService.php';
+require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenGuthabenRepository.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 $service    = new BestellungService();
 $id         = (int)($_GET['id'] ?? 0);
 $bestellung = $service->getById($id);
 if (!$bestellung) { header('Location: ' . BASE_PATH . '/bestellungen/liste.php'); exit; }
+
+$zahlungen      = $service->getZahlungen($id);
+$summeZahlungen = array_sum(array_column($zahlungen, 'betrag'));
+$guthabenRepo   = new LieferantenGuthabenRepository();
+$guthabenSaldo  = $guthabenRepo->getSaldo((int)$bestellung['lieferant_id']);
 
 $dokService = new BestellDokumentService();
 $dokumente  = $dokService->getDokumente($id);
@@ -61,6 +67,11 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
 <?php if ($erfolg): ?>
     <div class="card" style="border-left:3px solid var(--color-success);margin-bottom:12px;padding:10px 16px;color:var(--color-success)"><?= htmlspecialchars($erfolg) ?></div>
 <?php endif; ?>
+<?php if (!empty($fehler)): ?>
+    <div class="card" style="border-left:3px solid var(--color-danger);margin-bottom:12px;padding:10px 16px;color:var(--color-danger)">
+        <?= htmlspecialchars(is_array($fehler) ? implode(', ', $fehler) : $fehler) ?>
+    </div>
+<?php endif; ?>
 
 <!-- Kopfdaten -->
 <div class="card" style="margin-bottom:12px">
@@ -80,10 +91,10 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
     <?php if ($bestellung['notiz']): ?>
         <div style="margin-top:10px;font-size:13px;color:var(--color-text-muted)">Notiz: <?= htmlspecialchars($bestellung['notiz']) ?></div>
     <?php endif; ?>
-    <?php if ($bestellung['gutschrift_betrag']): ?>
-        <div style="margin-top:10px;padding:8px;background:#fff8e6;border-radius:4px;font-size:13px;color:#c0820a">
-            Offene Gutschrift: <strong><?= number_format((float)$bestellung['gutschrift_betrag'], 2, ',', '.') ?> €</strong>
-            <?= $bestellung['gutschrift_notiz'] ? ' — ' . htmlspecialchars($bestellung['gutschrift_notiz']) : '' ?>
+    <?php if ($guthabenSaldo > 0.01): ?>
+        <div style="margin-top:10px;padding:8px;background:#e6f7ee;border-radius:4px;font-size:13px;color:#1a7a4c">
+            Guthaben bei diesem Lieferanten: <strong><?= number_format($guthabenSaldo, 2, ',', '.') ?> €</strong>
+            — kann bei der Zahlung unten verrechnet werden.
         </div>
     <?php endif; ?>
 </div>
@@ -190,6 +201,75 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
         </div>
     </form>
 </div>
+
+<?php if ($bestellung['rechnung_betrag']): ?>
+<!-- Zahlungsverlauf -->
+<div class="card" style="margin-bottom:12px">
+    <strong style="font-size:13px;display:block;margin-bottom:10px">Zahlungsverlauf</strong>
+
+    <?php if (!empty($zahlungen)): ?>
+        <table class="erp-table" style="margin-bottom:12px">
+            <thead>
+                <tr><th>Datum</th><th>Betrag</th><th>Art</th><th>Notiz</th></tr>
+            </thead>
+            <tbody>
+                <?php foreach ($zahlungen as $z): ?>
+                <tr>
+                    <td><?= date('d.m.Y', strtotime($z['buchungsdatum'])) ?></td>
+                    <td><?= number_format((float)$z['betrag'], 2, ',', '.') ?> €</td>
+                    <td><?= $z['art'] === 'guthaben_verrechnung' ? 'Guthaben-Verrechnung' : 'Überweisung' ?></td>
+                    <td style="color:var(--color-text-muted)"><?= htmlspecialchars($z['notiz'] ?? '') ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+
+    <?php
+        $rechnungBetrag = (float)$bestellung['rechnung_betrag'];
+        $restBetrag     = max(0, round($rechnungBetrag - $summeZahlungen, 2));
+    ?>
+    <div style="display:flex;gap:24px;font-size:13px;margin-bottom:12px">
+        <div>Rechnung: <strong><?= number_format($rechnungBetrag, 2, ',', '.') ?> €</strong></div>
+        <div>Bezahlt: <strong><?= number_format($summeZahlungen, 2, ',', '.') ?> €</strong></div>
+        <div style="<?= $restBetrag > 0.01 ? 'color:var(--color-danger)' : 'color:var(--color-success)' ?>">
+            Offen: <strong><?= number_format($restBetrag, 2, ',', '.') ?> €</strong>
+        </div>
+    </div>
+
+    <?php if ($restBetrag > 0.01): ?>
+    <form method="post" action="<?= BASE_PATH ?>/bestellungen/zahlung_speichern.php">
+        <input type="hidden" name="id" value="<?= $id ?>">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end">
+            <div>
+                <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Betrag (€)</label>
+                <input type="number" name="betrag" step="0.01" class="erp-input" style="width:100%" value="<?= number_format($restBetrag, 2, '.', '') ?>">
+            </div>
+            <div>
+                <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Art</label>
+                <select name="art" class="erp-select" style="width:100%">
+                    <option value="ueberweisung">Überweisung</option>
+                    <option value="guthaben_verrechnung" <?= $guthabenSaldo <= 0.01 ? 'disabled' : '' ?>>
+                        Guthaben-Verrechnung (verfügbar: <?= number_format($guthabenSaldo, 2, ',', '.') ?> €)
+                    </option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Datum</label>
+                <input type="date" name="buchungsdatum" class="erp-input" style="width:100%" value="<?= date('Y-m-d') ?>">
+            </div>
+            <div>
+                <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Notiz</label>
+                <input type="text" name="notiz" class="erp-input" style="width:100%">
+            </div>
+        </div>
+        <div style="margin-top:10px;text-align:right">
+            <button type="submit" class="btn btn-primary btn-sm">Zahlung buchen</button>
+        </div>
+    </form>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <!-- Aktivitäten -->
 <?php if (!empty($aktivitaeten)): ?>

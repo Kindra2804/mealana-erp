@@ -5,6 +5,7 @@ require_once __DIR__ . '/WareneingangRepository.php';
 require_once __DIR__ . '/../lager/LagerRepository.php';
 require_once __DIR__ . '/../bestellungen/BestellungService.php';
 require_once __DIR__ . '/../lager/LagerService.php';
+require_once __DIR__ . '/../lieferanten/LieferantenGuthabenRepository.php';
 
 /**
  * WareneingangService – Geschäftslogik für den Wareneingangs-Workflow
@@ -185,15 +186,34 @@ class WareneingangService
 
     /**
      * Schließt eine Bestellung mit Restmengen ab.
-     * Aktion "streichen": alle offenen Positionen werden als gestrichen markiert,
-     * optionale Gutschrift-Daten werden gespeichert.
+     * Aktion "streichen": alle offenen Positionen werden als gestrichen markiert.
+     * Ein optionaler Gutschriftbetrag landet nicht mehr als Freitext-Notiz auf der
+     * Bestellung, sondern als echte Zugangsbuchung im Lieferanten-Guthaben-Konto
+     * (DROPS-Modell: Vorkasse, Teillieferung — der Rest bleibt als Gutschrift beim
+     * Lieferanten stehen und kann bei der nächsten Bestellung verrechnet werden,
+     * siehe BestellungService::bucheZahlung()).
      * (Weitere Aktionen wie "warten" werden im Frontend abgefangen — hier nur "streichen".)
      */
     public function abschliessenMitRest(int $bestellungId, string $aktion, ?string $gutschriftNotiz, ?float $gutschriftBetrag): array
     {
         if ($aktion === 'streichen') {
-            $this->repo->streicheRestPositionen($bestellungId, $gutschriftNotiz, $gutschriftBetrag);
+            $this->repo->streicheRestPositionen($bestellungId);
             $this->repo->updateBestellungStatus($bestellungId, 'erledigt');
+
+            if ($gutschriftBetrag) {
+                $bestellung = (new BestellungService())->getById($bestellungId);
+                $guthabenRepo = new LieferantenGuthabenRepository();
+                $guthabenRepo->insertBewegung(
+                    (int)$bestellung['lieferant_id'],
+                    $gutschriftBetrag,
+                    'gutschrift_erhalten',
+                    $bestellungId,
+                    $gutschriftNotiz,
+                    date('Y-m-d'),
+                    (int)($_SESSION['benutzer']['id'] ?? 0)
+                );
+            }
+
             Logger::log('bestellungen.rest_gestrichen', 'bestellungen', $bestellungId, [
                 'gutschrift_betrag' => $gutschriftBetrag,
                 'notiz'             => $gutschriftNotiz,

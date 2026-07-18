@@ -29,6 +29,35 @@ Zentrale Liste aller Konten (Erlös, Steuer, Bank, Kasse, Aufwand). Neue Konten 
 
 ---
 
+## Lieferantenrechnungen (Kreditoren-Übersicht)
+
+**Navigation:** Buchhaltung → Lieferantenrechnungen
+
+Zeigt alle Einkaufsbestellungen, bei denen im Bestellungsmodul eine Rechnungsnummer erfasst wurde — als zentrale Liste statt "jede Bestellung einzeln aufmachen". Die Rechnungsdaten selbst (Rechnungs-Nr., Betrag, Datum) werden weiterhin auf der jeweiligen Bestellung eingetragen (Bestellungen → Detail).
+
+- **Fällig am**: automatisch berechnet aus Rechnungsdatum + Zahlungsziel des Lieferanten (Lieferanten-Detailseite). Überfällige Rechnungen sind rot markiert.
+- **Skonto**: falls beim Lieferanten ein Skonto-Prozentsatz + Skonto-Tage hinterlegt sind, zeigt die Spalte die verbleibende Frist an.
+- **Status** (offen/teilbezahlt/bezahlt) wird aus den tatsächlich gebuchten Zahlungen berechnet, nicht aus einem einzelnen Flag — siehe Zahlungsverlauf unten.
+- **"Zahlung buchen"** führt direkt zur Bestellung, wo die eigentliche Buchung passiert.
+- Filter oben: Offen / Teilbezahlt / Bezahlt / Alle.
+
+Das Dashboard zeigt in der Karte "Lieferanten-Rechnungen" die Summe und Anzahl aller offenen Rechnungen (offener Restbetrag, nicht der volle Rechnungsbetrag), inkl. Warnung bei überfälligen.
+
+### Zahlungsverlauf + Lieferanten-Guthaben (DROPS-Modell)
+
+**Navigation:** Bestellungen → Detail (Card "Zahlungsverlauf", erscheint sobald eine Rechnung erfasst ist)
+
+Für Lieferanten wie DROPS (Vorkasse, Teillieferung, Rest bleibt als Gutschrift stehen statt Rückzahlung) reicht ein einzelnes "bezahlt"-Datum nicht — der tatsächlich überwiesene Betrag kann kleiner sein als die Rechnungssumme, wenn ein Teil aus bestehendem Guthaben verrechnet wird.
+
+- **Jede Zahlung** wird einzeln gebucht: Betrag, Art (**Überweisung** oder **Guthaben-Verrechnung**), Datum, Notiz. Der Status ergibt sich aus der Summe aller Zahlungen gegen den Rechnungsbetrag — genau wie bei Teilzahlungen auf Kundenaufträgen.
+- **Guthaben entsteht automatisch**, wenn eine Bestellung im Wareneingang mit "Rest streichen" abgeschlossen wird und dabei ein Gutschriftbetrag eingetragen wird — das landet als Zugang auf dem Lieferanten-Guthaben-Konto (nicht mehr nur als Freitext-Notiz).
+- **Guthaben-Verrechnung ist gedeckelt**: es kann nie mehr verrechnet werden als tatsächlich als Guthaben zur Verfügung steht — das System weist das sonst ab.
+- Der aktuelle **Guthaben-Saldo** eines Lieferanten steht auf der Lieferanten-Detailseite (Karte "Konditionen").
+
+**Beispiel:** Bestellung 1 (500 €, Vorkasse) wird nur zu 400 € geliefert, die restlichen 100 € werden beim Abschließen als Gutschrift erfasst → Guthaben-Saldo steigt auf 100 €. Bestellung 2 (300 € Wert) wird mit 200 € neuer Überweisung + 100 € Guthaben-Verrechnung beglichen → Saldo wieder bei 0 €, beide Rechnungen korrekt als "bezahlt" verbucht.
+
+---
+
 ## Zahlungsart-Konten und Steuerklassen-Konten
 
 **Navigation:** Buchhaltung → Zahlungsart-Konten / Steuer-Konten

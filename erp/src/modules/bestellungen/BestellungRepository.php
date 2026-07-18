@@ -171,6 +171,45 @@ class BestellungRepository
     }
 
     /**
+     * Kreditoren-Übersicht: alle Bestellungen mit erfasster Lieferantenrechnung.
+     * Zahlungsstatus wird — wie bei auftraege/auftrag_zahlungen — aus der Summe der
+     * gebuchten bestellung_zahlungen berechnet, nicht aus einem einzelnen Flag:
+     * eine Rechnung kann teils per Überweisung, teils per Guthaben-Verrechnung
+     * beglichen sein (DROPS-Modell, siehe lieferanten_guthaben_bewegungen).
+     * Fälligkeit (rechnung_datum + zahlungsziel_tage) und Skonto-Frist
+     * (rechnung_datum + skonto_tage) kommen direkt aus den Lieferanten-Stammdaten
+     * (Migration 085).
+     *
+     * @param string $filter 'offen' | 'teilbezahlt' | 'bezahlt' | '' (alle)
+     */
+    public function findLieferantenrechnungen(string $filter = 'offen'): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                b.id, b.rechnung_nummer, b.rechnung_betrag, b.rechnung_datum,
+                l.name AS lieferant_name,
+                l.zahlungsziel_tage, l.skonto_prozent, l.skonto_tage,
+                DATE_ADD(b.rechnung_datum, INTERVAL COALESCE(l.zahlungsziel_tage, 0) DAY) AS faellig_am,
+                CASE WHEN l.skonto_tage IS NOT NULL
+                     THEN DATE_ADD(b.rechnung_datum, INTERVAL l.skonto_tage DAY)
+                     ELSE NULL END AS skonto_frist_am,
+                COALESCE((SELECT SUM(bz.betrag) FROM bestellung_zahlungen bz WHERE bz.bestellung_id = b.id), 0) AS bezahlt,
+                CASE
+                    WHEN COALESCE((SELECT SUM(bz.betrag) FROM bestellung_zahlungen bz WHERE bz.bestellung_id = b.id), 0) <= 0 THEN 'offen'
+                    WHEN COALESCE((SELECT SUM(bz.betrag) FROM bestellung_zahlungen bz WHERE bz.bestellung_id = b.id), 0) >= b.rechnung_betrag - 0.01 THEN 'bezahlt'
+                    ELSE 'teilbezahlt'
+                END AS zahlungsstatus
+            FROM bestellungen b
+            JOIN lieferanten l ON l.id = b.lieferant_id
+            WHERE b.rechnung_nummer IS NOT NULL
+            HAVING (:filter = '' OR zahlungsstatus = :filter)
+            ORDER BY faellig_am ASC
+        ");
+        $stmt->execute(['filter' => $filter]);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Gibt alle Positionen einer Bestellung zurück mit Artikel-Details.
      * Enthält: COALESCE Vater/Kind-Name, Varianten-Name, Lieferzeit aus artikel_lieferanten,
      * und das Hauptbild per Subquery (für Packplatz-Ansicht, Fehlerreduktion beim Scan).
@@ -203,6 +242,44 @@ class BestellungRepository
         ");
         $stmt->execute(['bestellung_id' => $bestellungId, 'best_id2' => $bestellungId]);
         return $stmt->fetchAll();
+    }
+
+    /** Gibt alle Zahlungen (Überweisung + Guthaben-Verrechnung) einer Bestellung zurück. */
+    public function findZahlungen(int $bestellungId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT bz.*, b.formularname AS erfasst_von_name
+            FROM bestellung_zahlungen bz
+            LEFT JOIN benutzer b ON b.id = bz.erfasst_von
+            WHERE bz.bestellung_id = :id
+            ORDER BY bz.buchungsdatum, bz.erfasst_am
+        ");
+        $stmt->execute(['id' => $bestellungId]);
+        return $stmt->fetchAll();
+    }
+
+    public function insertZahlung(int $bestellungId, float $betrag, string $art, string $buchungsdatum, ?string $notiz, int $benutzerId): int
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO bestellung_zahlungen (bestellung_id, betrag, art, buchungsdatum, notiz, erfasst_von)
+            VALUES (:bestellung_id, :betrag, :art, :buchungsdatum, :notiz, :erfasst_von)
+        ");
+        $stmt->execute([
+            'bestellung_id' => $bestellungId,
+            'betrag'        => $betrag,
+            'art'           => $art,
+            'buchungsdatum' => $buchungsdatum,
+            'notiz'         => $notiz,
+            'erfasst_von'   => $benutzerId,
+        ]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function getSummeZahlungen(int $bestellungId): float
+    {
+        $stmt = $this->db->prepare("SELECT COALESCE(SUM(betrag), 0) FROM bestellung_zahlungen WHERE bestellung_id = :id");
+        $stmt->execute(['id' => $bestellungId]);
+        return (float)$stmt->fetchColumn();
     }
 
     /** Löscht eine Bestellposition dauerhaft. */

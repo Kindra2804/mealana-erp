@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 2201806f-a656-4f8c-9f4f-9cf04a3cdd71
+  modified: 2026-07-18T10:24:07.629Z
 ---
 
 Stand: 2026-07-01, Bestandsaufnahme aktualisiert 2026-07-10, Umsetzung begonnen 2026-07-17
@@ -92,9 +93,41 @@ Warengruppen mit Kontozuordnung für Buchhaltungsberichte.
 
 **Wichtig — Warnung:** Zählt NUR Väter/Standalone (nicht Kinder, weil die beim nächsten Vater-Speichern erben). `vaterartikel_id IS NULL AND zustand_vater_id IS NULL`.
 
-## ⚡ Beim Buchhaltungs-Start erledigen
-- Dashboard Card 5 "Offene Lieferantenrechnungen" aktivieren (TODO BUCHHALTUNG in dashboard.php)
-- Mahnwesen für Rechnungszahler ausbauen (siehe unten)
+## 🟢 FERTIG 2026-07-18: Lieferantenrechnungen / Kreditoren-Übersicht + Dashboard Card 5
+
+Jacky fragte morgens nach, ob das nicht eigentlich zur Buchhaltung gehört hätte — zurecht: war beim 17.07.-Sprint übersehen worden (Fokus lag auf Kontenplan/Mappings/Export), stand aber schon vorher als Lücke in diesem Dokument.
+
+- **Migration 131**: `bestellungen.rechnung_bezahlt_am DATE NULL` — bewusst KEINE neue `lieferanten_rechnungen`-Tabelle, sondern die schon bestehenden `bestellungen.rechnung_nummer/_betrag/_datum` (Migration 056) weiterverwendet. **Achtung, noch am selben Tag überholt:** dieses simple Flag wurde direkt danach durch echte Teilzahlungen ersetzt (siehe nächster Abschnitt) — Migration 132 entfernt die Spalte wieder, `lieferantenrechnung_status.php` existiert nicht mehr.
+- **Neue Seite** `buchhaltung/lieferantenrechnungen.php`: Liste aller Bestellungen mit erfasster Rechnungsnummer, Filter offen/bezahlt/alle.
+- **Fälligkeit + Skonto direkt berechnet** aus `lieferanten.zahlungsziel_tage`/`skonto_prozent`/`skonto_tage` (Migration 085 — waren schon in der DB, aber bis dahin nirgends im Code verwendet!). Überfällige Rechnungen rot markiert, Skonto-Frist grün solange noch gültig.
+- **Dashboard Card 5** aktiviert: Summe + Anzahl offener Lieferantenrechnungen, ⚠-Chip bei Überfälligkeit, Link zur Übersicht.
+- Handbuch Kapitel 12 + `bedienungsanleitung.php` synchron ergänzt (siehe [[feedback_beide_handbuecher]]).
+- End-to-end mit isoliertem Test-Datensatz getestet (Bestellung angelegt, alle Filter/Status-Übergänge durchgespielt, danach vollständig gelöscht + Lieferanten-Skonto-Felder zurückgesetzt — kein Rückstand in echten Daten, siehe [[feedback_test_isolation]]).
+
+## 🟢 FERTIG 2026-07-18 (gleicher Tag, direkt danach): Lieferanten-Guthaben-Konto + Teilzahlungen (DROPS-Modell korrekt abgebildet)
+
+Jacky erkannte selbst den Denkfehler im Vormittags-Feature: bei DROPS (Vorkasse, Teillieferung, Rest bleibt als Gutschrift stehen) ist der Bestellwert einer neuen Bestellung NICHT gleich dem tatsächlich zu zahlenden Betrag, weil ein Teil aus bestehendem Guthaben verrechnet wird. Ein einzelnes "bezahlt"-Flag hätte das verfälscht.
+
+- **Migration 132**: `bestellung_zahlungen` — exakter Spiegel von `auftrag_zahlungen` (Migration 076), zusätzlich `art` ENUM('ueberweisung','guthaben_verrechnung'). `bestellungen.rechnung_bezahlt_am` (der Vormittags-Flag) wieder entfernt.
+- **Migration 133**: `lieferanten_guthaben_bewegungen` — echtes Bewegungskonto pro Lieferant (positiv=Gutschrift erhalten, negativ=verrechnet), Saldo = SUM(betrag). Ersetzt `bestellungen.gutschrift_betrag`/`gutschrift_notiz` (bewusste Entscheidung: keine Doppelpflege, siehe Nutzerentscheidung).
+- **`LieferantenGuthabenRepository`** (neu, `src/modules/lieferanten/`): `getSaldo()`, `insertBewegung()`, `findBewegungen()`.
+- **`BestellungService::bucheZahlung()`**: bucht Zahlung, bei `art=guthaben_verrechnung` zusätzlich eine negative Guthaben-Bewegung — **gedeckelt auf den tatsächlich verfügbaren Saldo** (sonst Fehler).
+- **`WareneingangService::abschliessenMitRest()`**: "Rest streichen" mit Gutschriftbetrag bucht jetzt automatisch eine `+Betrag`-Guthaben-Bewegung statt nur einer Freitext-Notiz auf der Bestellung.
+- **`bestellungen/detail.php`**: neue Card "Zahlungsverlauf" (Tabelle der Zahlungen, Rechnung/Bezahlt/Offen-Summary, Formular Betrag+Art+Datum+Notiz) — analog zum Zahlung-buchen-Formular bei Aufträgen. Guthaben-Hinweis in der Kopfzeile wenn Saldo > 0. **Nebenfund:** `$fehler` wurde in dieser Seite eingelesen aber nie angezeigt — Anzeige-Block ergänzt.
+- **`lieferanten/detail.php`**: Guthaben-Saldo in der Konditionen-Card.
+- **`buchhaltung/lieferantenrechnungen.php`**: Status (offen/teilbezahlt/bezahlt) jetzt aus Zahlungssumme berechnet, "Zahlung buchen"-Link führt zur Bestellung statt eigenem Toggle-Button. Altes `lieferantenrechnung_status.php` gelöscht.
+- Dashboard Card 5: Summe zeigt jetzt den offenen Restbetrag (Rechnung minus Zahlungen), nicht mehr den vollen Rechnungsbetrag.
+- End-to-end mit realistischem DROPS-Szenario getestet (Bestellung 1: 400€ Vorkasse + 100€ Gutschrift beim Reststreichen → Saldo 100€; Bestellung 2: 300€ Wert, 200€ Überweisung + 100€ Guthaben-Verrechnung → Saldo 0€, beide Rechnungen korrekt "bezahlt"; dritter Versuch mit leerem Guthaben schlägt korrekt fehl) — danach vollständig aufgeräumt, keine Testspuren in echten Daten.
+- Handbuch Kapitel 12 (neuer Abschnitt "Zahlungsverlauf + Lieferanten-Guthaben") + Bedienungsanleitung synchron ergänzt.
+
+**Wichtig für später:** Das ist reine interne Nachverfolgung — der DATEV-Export bucht weiterhin nur die Verkaufsseite. Eine buchhalterisch sauberere Variante (Anzahlungskonto als echtes Aktivkonto im Kontenplan, damit auch der Einkauf irgendwann exportierbar wird) wurde mit Jacky besprochen, aber bewusst zurückgestellt — der Kontenplan kennt aktuell nur `erloes|aufwand|steuer|bank|kasse` als Kontotyp, kein Aktivkonto/Anzahlung (`database/migrations/126_kontenplan.sql`). Käme frühestens mit dem Einkaufs-Anteil am DATEV-Export.
+
+## ⚡ Restpunkte (nicht dringend, wie Mahnwesen behandeln)
+- Mahnwesen für Rechnungszahler ausbauen (siehe unten — eigenes, größeres Thema mit Mahnstufen/-gebühren, nicht Teil des 18.07.-Nachziehens)
+- **Anzahlungskonto/Aktivkonto im Kontenplan** (für den DROPS-Guthaben-Mechanismus oben, damit auch der Einkauf sauber DATEV-buchbar wird): Jacky hat 2026-07-18 explizit entschieden, das wie Mahnwesen zu behandeln — kein Blocker, kommt entweder wenn Babsi den Kontenrahmen dafür umgestellt hat, oder früher falls akut gebraucht. Bis dahin bleibt das Guthaben-Konto ([[project_buchhaltung]] oben) rein interne Nachverfolgung ohne DATEV-Anbindung.
+
+## ✅ Bestätigt 2026-07-18: Wareneingang-Rückstand-Workflow unverändert
+Jacky fragte nach, ob "normale" Lieferanten weiterhin Teillieferungen als Rückstand offen stehen lassen können (Ware kommt später nach) statt wie DROPS sofort abzuschließen. Im Code bestätigt: `wareneingang_detail.js`/`abschliessen.php` — "Auf Nachlieferung warten" ist die Standardauswahl im Abschluss-Dialog, schließt die Bestellung NICHT ab (bleibt `teilgeliefert`, weitere Wareneingänge später möglich). "Rest streichen" (+ Gutschrift → Guthaben-Konto) ist die bewusste Ausnahme nur für DROPS-artige Lieferanten. Keine Code-Änderung nötig, war schon immer so.
 
 ## Mahnwesen — zwei Ebenen
 

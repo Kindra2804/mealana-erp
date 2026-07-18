@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
+require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenGuthabenRepository.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
@@ -10,6 +11,7 @@ if ($id <= 0) {
 
 $service   = new LieferantenService();
 $lieferant = $service->findByIdMitVertretern($id);
+$guthabenSaldo = (new LieferantenGuthabenRepository())->getSaldo($id);
 
 if ($lieferant === false) {
     header('Location: liste.php');
@@ -209,6 +211,12 @@ foreach ($tabs as $key => $label):
         <div>
             <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Standard-Lieferkosten</div>
             <div><?= $lieferant['standard_lieferkosten'] !== null ? '€ ' . number_format((float)$lieferant['standard_lieferkosten'], 2, ',', '.') : '–' ?></div>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Guthaben (DROPS-Modell)</div>
+            <div style="<?= $guthabenSaldo > 0.01 ? 'color:var(--color-success);font-weight:600' : '' ?>">
+                € <?= number_format($guthabenSaldo, 2, ',', '.') ?>
+            </div>
         </div>
     </div>
 </div>

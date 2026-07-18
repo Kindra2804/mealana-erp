@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/BestellungRepository.php';
+require_once __DIR__ . '/../lieferanten/LieferantenGuthabenRepository.php';
 
 /**
  * BestellungService – Geschäftslogik für Einkaufsbestellungen
@@ -200,6 +201,67 @@ class BestellungService
         Logger::log('bestellungen.rechnung', 'bestellungen', (int)$data['id'], [
             'rechnung_nummer' => $update['rechnung_nummer'],
             'betrag'          => $update['rechnung_betrag'],
+        ]);
+
+        return ['erfolg' => true];
+    }
+
+    /** Kreditoren-Übersicht: Bestellungen mit erfasster Lieferantenrechnung, inkl. Fälligkeit/Skonto. */
+    public function getLieferantenrechnungen(string $filter = 'offen'): array
+    {
+        return $this->repo->findLieferantenrechnungen($filter);
+    }
+
+    /** Zahlungsverlauf einer Bestellung (Überweisungen + Guthaben-Verrechnungen). */
+    public function getZahlungen(int $bestellungId): array
+    {
+        return $this->repo->findZahlungen($bestellungId);
+    }
+
+    /**
+     * Bucht eine Zahlung zu einer Lieferantenrechnung — entweder als normale Überweisung
+     * oder als Verrechnung mit bestehendem Lieferanten-Guthaben (DROPS-Modell: Vorkasse,
+     * Teillieferung lässt einen Rest als Gutschrift beim Lieferanten stehen, siehe
+     * LieferantenGuthabenRepository). Bei Guthaben-Verrechnung wird zusätzlich eine
+     * negative Bewegung im Guthaben-Konto gebucht — der Saldo darf dabei nicht unterschritten werden.
+     */
+    public function bucheZahlung(int $bestellungId, float $betrag, string $art, string $buchungsdatum, ?string $notiz): array
+    {
+        if ($betrag <= 0) {
+            return ['erfolg' => false, 'fehler' => ['Betrag muss größer als 0 sein']];
+        }
+        if (!in_array($art, ['ueberweisung', 'guthaben_verrechnung'], true)) {
+            return ['erfolg' => false, 'fehler' => ['Ungültige Zahlungsart']];
+        }
+
+        $bestellung = $this->repo->findById($bestellungId);
+        if (!$bestellung || empty($bestellung['rechnung_nummer'])) {
+            return ['erfolg' => false, 'fehler' => ['Keine Lieferantenrechnung zu dieser Bestellung erfasst']];
+        }
+
+        $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+
+        if ($art === 'guthaben_verrechnung') {
+            $guthabenRepo = new LieferantenGuthabenRepository();
+            $saldo = $guthabenRepo->getSaldo((int)$bestellung['lieferant_id']);
+            if ($betrag > $saldo + 0.01) {
+                return ['erfolg' => false, 'fehler' => ['Nur ' . number_format($saldo, 2, ',', '.') . ' € Guthaben bei diesem Lieferanten verfügbar']];
+            }
+            $guthabenRepo->insertBewegung(
+                (int)$bestellung['lieferant_id'],
+                -$betrag,
+                'verrechnet',
+                $bestellungId,
+                $notiz,
+                $buchungsdatum,
+                $benutzerId
+            );
+        }
+
+        $this->repo->insertZahlung($bestellungId, $betrag, $art, $buchungsdatum, $notiz, $benutzerId);
+        Logger::log('bestellungen.zahlung_gebucht', 'bestellungen', $bestellungId, [
+            'betrag' => $betrag,
+            'art'    => $art,
         ]);
 
         return ['erfolg' => true];

@@ -221,10 +221,10 @@ class WareneingangRepository
     /**
      * Streicht alle Positionen mit noch offener Menge als "gestrichen".
      * DROPS-Modell: Lieferant liefert was er hat, Rest wird nicht nachgeliefert.
-     * Optional: Gutschrift-Notiz und -Betrag werden an der Bestellung gespeichert,
-     * wenn der Lieferant einen Preisnachlass für die fehlende Ware gewährt.
+     * Ein eventueller Gutschriftbetrag wird vom aufrufenden Service als Bewegung
+     * im Lieferanten-Guthaben-Konto gebucht (nicht mehr hier, siehe WareneingangService).
      */
-    public function streicheRestPositionen(int $bestellungId, ?string $gutschriftNotiz, ?float $gutschriftBetrag): void
+    public function streicheRestPositionen(int $bestellungId): void
     {
         $stmt = $this->db->prepare("
             UPDATE bestellung_positionen
@@ -232,13 +232,6 @@ class WareneingangRepository
             WHERE bestellung_id = :id AND menge_eingegangen < menge_bestellt
         ");
         $stmt->execute(['id' => $bestellungId]);
-
-        if ($gutschriftNotiz || $gutschriftBetrag) {
-            $stmt = $this->db->prepare("
-                UPDATE bestellungen SET gutschrift_betrag = :betrag, gutschrift_notiz = :notiz WHERE id = :id
-            ");
-            $stmt->execute(['betrag' => $gutschriftBetrag, 'notiz' => $gutschriftNotiz, 'id' => $bestellungId]);
-        }
     }
 
     /**

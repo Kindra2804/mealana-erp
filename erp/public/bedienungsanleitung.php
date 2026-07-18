@@ -427,9 +427,12 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Artikelgruppen</strong></td><td>Erlöskonto je Warengruppe (Wolle, Nadeln, ...)</td></tr>
                 <tr><td><strong>Kontenplan</strong></td><td>Zentrale Kontenliste — neu anlegen/bearbeiten, nie löschen (nur deaktivieren)</td></tr>
                 <tr><td><strong>Kreditoren</strong></td><td>Kreditorenkonto je Lieferant, manuell zugewiesen</td></tr>
+                <tr><td><strong>Lieferantenrechnungen</strong></td><td>Kreditoren-Übersicht: offene/bezahlte Einkaufsrechnungen, Fälligkeit + Skonto-Frist aus den Lieferanten-Stammdaten berechnet</td></tr>
                 <tr><td><strong>Zahlungsart-/Steuer-Konten</strong></td><td>Welches Konto für bar/Bank/PayPal/... bzw. 20%/10%/13%/0%</td></tr>
             </table>
             <p><strong>Debitorennummer (Kunde):</strong> wird bei Neuanlage automatisch vorgeschlagen, ist aber überschreibbar — auf der Kunde-Detailseite draufklicken zum Ändern (wichtig bei Bestandskunden mit vorhandener Nummer aus der bisherigen Buchhaltung).</p>
+            <p><strong>Lieferantenrechnungen:</strong> Rechnungsdaten (Nummer/Betrag/Datum) werden weiterhin auf der Bestellung selbst erfasst (Bestellungen → Detail) — die neue Übersicht sammelt sie nur zentral und rechnet Fälligkeit/Skonto aus. Zahlungen (Überweisung oder Guthaben-Verrechnung) werden im Zahlungsverlauf auf der Bestellung gebucht; der Status (offen/teilbezahlt/bezahlt) ergibt sich automatisch aus der Summe.</p>
+            <p><strong>Lieferanten-Guthaben (DROPS-Modell):</strong> Wird eine Bestellung im Wareneingang mit "Rest streichen" abgeschlossen und dabei ein Gutschriftbetrag eingetragen, landet der als Guthaben-Zugang auf dem Lieferanten-Konto (sichtbar auf der Lieferanten-Detailseite). Bei der nächsten Bestellung kann dieses Guthaben als eigene Zahlungsart "Guthaben-Verrechnung" genutzt werden — begrenzt auf den tatsächlich verfügbaren Saldo.</p>
 
             <h3 id="buchhaltung-export">DATEV/CSV-Export</h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Einmalig <strong>DATEV-Einstellungen</strong> eintragen (Berater-Nr., Mandanten-Nr. — vom Steuerberater erfragen)</div></div>

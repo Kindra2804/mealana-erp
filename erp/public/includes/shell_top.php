@@ -70,6 +70,7 @@ $sidebarItems = match ($activeModule ?? '') {
     'buchhaltung' => [
         ['icon' => '🏷', 'label' => 'Artikelgruppen',   'href' => BASE_PATH . '/buchhaltung/artikel_gruppen.php'],
         ['icon' => '📇', 'label' => 'Kreditoren',       'href' => BASE_PATH . '/buchhaltung/kreditoren.php'],
+        ['icon' => '🧮', 'label' => 'Lieferantenrechnungen', 'href' => BASE_PATH . '/buchhaltung/lieferantenrechnungen.php'],
         ['icon' => '📒', 'label' => 'Kontenplan',       'href' => BASE_PATH . '/buchhaltung/kontenplan.php'],
         ['icon' => '💳', 'label' => 'Zahlungsart-Konten', 'href' => BASE_PATH . '/buchhaltung/zahlungsart_konten.php'],
         ['icon' => '🧾', 'label' => 'Steuer-Konten',    'href' => BASE_PATH . '/buchhaltung/steuerklassen_konten.php'],
