@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
+  modified: 2026-07-19T16:52:45.799Z
 ---
 
 ## Status: FERTIG (2026-06-19)
@@ -95,8 +96,16 @@ Deploy war aktuell (Composer + migrate.php bestätigten "nichts Neues"). Die ech
 
 **Lehre (bestätigt sich zum vierten Mal am selben Tag):** "Stiller Fehlschlag ohne jede Meldung, egal welche Ursache" zieht sich durch praktisch den kompletten Datei-Upload-Code dieses Projekts — GD-Fehler, Silent-Null-Return, Upload-Fehlercodes, fehlende Fremdschlüssel-Zeile. Jede Stelle, an der ein Wert `null`/`false` zurückgeben oder eine Bedingung einfach nicht zutreffen kann, MUSS explizit dem Anwender gemeldet werden — "if (erfolgsfall) { ... }" ohne einen expliziten else-Zweig für den Fehlerfall ist der wiederkehrende Fehler-Archetyp.
 
+## ✅ Listen-/Detail-Kopf-Thumbnails FERTIG (2026-07-19)
+
+Jacky bemerkte beim ersten echten Bilder-Test (Vater+Kinder mit Bildern befüllt): Artikelliste und Detail-Kopf zeigten weiter nur graue Platzhalter-Boxen. **Kein Bug** — Upload/Speicher/`BilderRepository` waren die ganze Zeit korrekt (per direktem HTTP-Abruf einer Datei verifiziert), aber zwei Anzeige-Stellen aus dem alten Mockup waren nie an die echte `artikel_bilder`-Tabelle angeschlossen (nur leere `<div class="artikel-thumb">`-Platzhalter im HTML+CSS vorhanden).
+
+- **`BilderRepository::findHauptbilderByArtikelIds()`** (neu): eine Sammel-Query für beliebig viele Artikel-IDs statt einer Query pro Zeile
+- **`artikel/liste.php`**: Thumbnail-Spalte (Väter/Kinder/Zustandsartikel) zeigt jetzt das Hauptbild, mit reiner CSS-Hover-Vorschau (größeres Bild + Name + Preis, wie im ursprünglichen Mockup)
+- **`artikel/detail.php`**: Kopfbereich zeigt jetzt das Hauptbild statt der leeren Box
+- **CSS-Stolperstein unterwegs**: `.artikel-thumb-kind { opacity: .6 }` dunkelte nicht nur die kleine Kind-Thumbnail ab, sondern auch die darin verschachtelte Hover-Vorschau-Karte (CSS-`opacity` wirkt auf den ganzen Teilbaum, lässt sich nicht pro Kind-Element zurücksetzen) — auf gezielte Selektoren umgestellt (`.artikel-thumb-kind.thumb-hat-bild > img` statt der ganzen Box)
+
 ## Noch offen
-- WooCommerce API-Sync implementieren (braucht echten WC-Server zum Testen)
+- **WooCommerce API-Sync** — Phase 1 (Artikel-Metadaten, nicht Bilder) ist FERTIG und live getestet, siehe [[project_shop_sync]]. Bilder-Sync selbst (Bild-Upload zu WooCommerce, `artikel_bilder_shops.external_id`) noch nicht Teil davon.
 - Wasserzeichen-Upload im Admin-Menü
-- "Keine Bilder" Warn-Chip in Artikelliste (gemerkt für später)
 - Komplettabgleich im Admin-Menü (Bilder/Artikel/Kategorien pro Shop) — gemerkt für später
