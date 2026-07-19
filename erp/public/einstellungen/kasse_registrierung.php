@@ -62,6 +62,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php endif; ?>
 </div>
 
+<div class="card" style="padding:16px;margin-bottom:16px">
+    <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px">
+        Nur die Erreichbarkeit (IP/Port) hat sich geändert, z.B. durch DHCP/WLAN-Neustart?
+        Das kann hier korrigiert werden, ohne eine neue Registrierung zu starten — Kassen-ID,
+        Umsatzzähler und Aktiv-seit-Stichtag bleiben dabei unverändert.
+    </p>
+    <form method="post" action="kasse_registrierung_speichern.php" style="display:flex;gap:8px;align-items:flex-end">
+        <input type="hidden" name="kasse_id" value="<?= $id ?>">
+        <input type="hidden" name="aktion" value="bfr_url_aendern">
+        <div class="form-group" style="flex:1;margin:0">
+            <label class="form-label">BFR-URL</label>
+            <input type="text" name="bfr_url" class="erp-input" value="<?= htmlspecialchars($abgeschlossen['bfr_url']) ?>" placeholder="z.B. http://10.0.0.40:8787">
+        </div>
+        <button type="submit" class="btn btn-secondary">BFR-URL aktualisieren</button>
+    </form>
+</div>
+
 <div class="card" style="padding:16px">
     <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px">
         Die Kassen-ID ist gesperrt und kann im laufenden Betrieb nicht mehr geändert werden.

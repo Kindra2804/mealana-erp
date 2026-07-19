@@ -1236,6 +1236,12 @@ body {
       </ul>
     </div>
     <div id="bfr-popup-kontext" style="font-size:12px;color:#94a3b8;margin-bottom:16px"></div>
+    <?php if (!empty($kasseInfo['bfr_url'])): ?>
+    <p style="font-size:12px;color:#94a3b8;margin:0 0 16px">
+        Gemeldete BFR-Adresse: <strong><?= htmlspecialchars($kasseInfo['bfr_url']) ?></strong> — korrekt?
+        Sonst in den <a href="<?= BASE_PATH ?>/einstellungen/kasse_registrierung.php?id=<?= $kasseId ?>" target="_blank">Kassen-Einstellungen ändern</a>.
+    </p>
+    <?php endif; ?>
     <button class="ov-btn ov-btn-prim" id="btn-bfr-retry" onclick="bfrErneutVersuchen()">Erneut versuchen</button>
   </div>
 </div>

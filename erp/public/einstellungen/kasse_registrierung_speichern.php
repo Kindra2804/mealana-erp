@@ -18,6 +18,18 @@ if ($kasseId < 1) {
     exit;
 }
 
+if ($aktion === 'bfr_url_aendern') {
+    // Leichtgewichtige Korrektur bei bereits aktiver Registrierung (z.B. IP-Wechsel
+    // durch DHCP/WLAN) — bewusst getrennt vom Hardware-Wechsel-Flow unten, der
+    // bfr_aktiv_seit und den Umsatzzähler zurücksetzen würde.
+    $ergebnis = $service->aendereBfrUrl($kasseId, $_POST['bfr_url'] ?? '', $benutzerId ?: null);
+    $_SESSION[$ergebnis['erfolg'] ? 'erfolg' : 'fehler'] = $ergebnis['erfolg']
+        ? 'BFR-URL aktualisiert.'
+        : ($ergebnis['fehler'] ?? 'Konnte nicht gespeichert werden.');
+    header('Location: kasse_registrierung.php?id=' . $kasseId);
+    exit;
+}
+
 if ($aktion === 'neu') {
     // Hardware-Wechsel: alte Arbeitsplatz-Bindung lösen, damit sich das neue Gerät
     // beim Abschluss der neuen Registrierung frisch binden kann (siehe ArbeitsplatzService).
@@ -34,7 +46,7 @@ if ($aktion === 'abrufen') {
         $entwurfId = $service->starteRegistrierung($kasseId, $benutzerId ?: null);
     }
 
-    $bfrUrl = trim($_POST['bfr_url'] ?? '');
+    $bfrUrl = BfrService::normalisiereBfrUrl($_POST['bfr_url'] ?? '');
     $info   = $bfrUrl !== '' ? $service->leseZertifikatInfo($bfrUrl, $kasseId) : ['erfolg' => false];
 
     $daten = [
@@ -66,7 +78,7 @@ if ($aktion === 'speichern' || $aktion === 'abschliessen') {
 
     $daten = [
         'rksv_kassen_id'            => trim($_POST['rksv_kassen_id'] ?? ''),
-        'bfr_url'                   => trim($_POST['bfr_url'] ?? ''),
+        'bfr_url'                   => BfrService::normalisiereBfrUrl($_POST['bfr_url'] ?? ''),
         'uid_nummer'                => trim($_POST['uid_nummer'] ?? ''),
         'vertrauensdiensteanbieter' => trim($_POST['vertrauensdiensteanbieter'] ?? ''),
         'zertifikat_seriennr_dez'   => trim($_POST['zertifikat_seriennr_dez'] ?? ''),

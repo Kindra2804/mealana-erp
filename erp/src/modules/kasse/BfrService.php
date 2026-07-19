@@ -157,7 +157,7 @@ class BfrService
         ")->execute([
             'kid'     => $kasseId,
             'monat'   => date('Y-m'),
-            'beleg_nr'=> $belegNr,
+            'beleg_nr' => $belegNr,
             'sig'     => $reg['link'],
             'qr'      => $reg['code'],
         ]);
@@ -241,7 +241,7 @@ class BfrService
             if ($traC !== false) {
                 $link = (string)($traC->Fis->Link ?? '');
                 $code = (string)($traC->Fis->Code ?? '');
-                if ($link !== '' && $link !== 'Sicherheitseinrichtung ausgefallen') {
+                if ($link !== '' &&  (!str_contains($link, 'Sicherheitseinrichtung ausgefallen'))) {
                     return ['ausgefallen' => false, 'link' => $link, 'code' => $code];
                 }
                 return ['ausgefallen' => true, 'link' => 'Sicherheitseinrichtung ausgefallen', 'code' => $code ?: null];
@@ -281,7 +281,8 @@ class BfrService
             $ausfallId = (int)$this->db->lastInsertId();
 
             Logger::log('kasse.bfr.ausfall_begonnen', 'bfr_ausfaelle', $ausfallId, [
-                'kasse_id' => $kasseId, 'typ' => $typ,
+                'kasse_id' => $kasseId,
+                'typ' => $typ,
             ], $this->getJarvisId());
         }
 
@@ -619,6 +620,48 @@ class BfrService
     }
 
     /**
+     * bfr_url ohne erzwungenes Schema eingetippt (z.B. "10.0.0.40:8787") funktioniert
+     * mit PHP/curl, aber nicht mit dem Browser-eigenen URL-Parser — deshalb überall
+     * dort normalisieren, wo bfr_url aus einem Formular entgegengenommen wird.
+     */
+    public static function normalisiereBfrUrl(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') return $url;
+        return preg_match('#^https?://#i', $url) ? $url : 'http://' . $url;
+    }
+
+    /**
+     * Leichtgewichtige Korrektur der bfr_url bei bereits aktiver Registrierung
+     * (z.B. DHCP/WLAN-IP-Wechsel) — bewusst getrennt vom Hardware-Wechsel-Flow
+     * (kasse_registrierung.php "Neue Kassen-ID anfordern"), der bfr_aktiv_seit
+     * und den Umsatzzähler zurücksetzt. Hier ändert sich nur die Erreichbarkeit,
+     * nicht die Identität der Kasse/Signaturkarte.
+     */
+    public function aendereBfrUrl(int $kasseId, string $neueUrl, ?int $benutzerId = null): array
+    {
+        $kasse = $this->ladeKasse($kasseId);
+        if (empty($kasse['rksv_kassen_id'])) {
+            return ['erfolg' => false, 'fehler' => 'Kasse hat noch keine aktive RKSV-Registrierung.'];
+        }
+
+        $neueUrl = self::normalisiereBfrUrl($neueUrl);
+        if ($neueUrl === '') {
+            return ['erfolg' => false, 'fehler' => 'BFR-URL darf nicht leer sein.'];
+        }
+
+        $alteUrl = $kasse['bfr_url'];
+        $this->db->prepare("UPDATE kassen SET bfr_url = :url WHERE id = :id")
+            ->execute(['url' => $neueUrl, 'id' => $kasseId]);
+
+        Logger::log('kasse.bfr.url_geaendert', 'kassen', $kasseId, [
+            'alte_url' => $alteUrl, 'neue_url' => $neueUrl,
+        ], $benutzerId ?? $this->getJarvisId());
+
+        return ['erfolg' => true];
+    }
+
+    /**
      * Vorab-Check für Stornos: würde dieser (negative) Betrag den Gesamtumsatzzähler
      * unter Null drücken? Der BFR selbst ist dabei völlig funktionsfähig — wir lehnen
      * hier rein aus eigener Business-Logik ab. Deshalb VOR dem Anlegen des Storno-Belegs
@@ -634,33 +677,6 @@ class BfrService
             return false; // keine BFR-Anbindung für diese Kasse, keine Sperre nötig
         }
         return ((float)$kasse['bfr_umsatzzaehler'] + $betrag) < 0;
-    }
-
-    /**
-     * Selbstheilung der bfr_url bei IP-Wechsel (DHCP/WLAN-Neustart o.ä.): der
-     * Browser an der Kasse ruft lokal 127.0.0.1 ab (geht immer, unabhängig vom
-     * aktuellen Netz) und meldet nur die daraus gelesene RN. Passt sie zur
-     * schon gebundenen Kasse, wird bfr_url auf die server-seitig BEOBACHTETE
-     * Absender-IP aktualisiert — bewusst nicht auf eine vom Client behauptete
-     * IP, sonst könnte ein fremdes Gerät die URL einer anderen Kasse verbiegen.
-     * Der Vertrauensanker ist die RN-Übereinstimmung mit der über die
-     * Arbeitsplatz-Bindung bereits ermittelten Kasse (siehe aktuelleKasseId()).
-     */
-    public function heileUrlFuerKasse(int $kasseId, string $gemeldeteRn, string $beobachteteIp): void
-    {
-        $kasse = $this->ladeKasse($kasseId);
-        if (empty($kasse['bfr_url']) || $gemeldeteRn === '' || $kasse['rksv_kassen_id'] !== $gemeldeteRn) {
-            return;
-        }
-
-        $port    = parse_url($kasse['bfr_url'], PHP_URL_PORT) ?: 8787;
-        $neueUrl = 'http://' . $beobachteteIp . ':' . $port;
-        if ($neueUrl === $kasse['bfr_url']) {
-            return;
-        }
-
-        $this->db->prepare("UPDATE kassen SET bfr_url = :url WHERE id = :id")
-            ->execute(['url' => $neueUrl, 'id' => $kasseId]);
     }
 
     private function ladeKasse(int $kasseId): array
