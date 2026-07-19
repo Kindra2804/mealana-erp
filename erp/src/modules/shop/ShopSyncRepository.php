@@ -1,0 +1,118 @@
+<?php
+
+require_once __DIR__ . '/../../core/Database.php';
+
+/**
+ * ShopSyncRepository – DB-Zugriff für den Artikel/Kategorien-Sync zu WooCommerce.
+ *
+ * `artikel_shops` ist die zentrale Zuweisungs-/Status-Tabelle (siehe Migration 142):
+ * eine Zeile pro Artikel+Shop. "Fällig" heißt: der Chip ist aktiv UND entweder
+ * noch nie synced (`sync_status='pending'`), zuletzt fehlgeschlagen, oder der
+ * Artikel wurde seit dem letzten Sync geändert (`artikel.aktualisiert_am`).
+ */
+class ShopSyncRepository
+{
+    private PDO $db;
+
+    public function __construct()
+    {
+        $this->db = Database::getInstance();
+    }
+
+    /** Alle Shops mit konfigurierter WooCommerce-Anbindung. */
+    public function findAktiveShops(): array
+    {
+        $stmt = $this->db->query("
+            SELECT id, slug, name, wc_url, wc_key, wc_secret
+            FROM shops
+            WHERE ist_aktiv = 1 AND wc_url IS NOT NULL AND wc_key IS NOT NULL AND wc_secret IS NOT NULL
+        ");
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Fällige Standard-Artikel (Typ ohne Varianten, kein Vater/Kind) für einen Shop.
+     * Vater/Kind-Mapping auf WooCommerce Variable Products kommt in einer späteren Phase.
+     */
+    public function findFaelligeArtikel(int $shopId, int $limit = 20): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
+                   a.artikelnummer, a.name, a.kurzbeschreibung, a.beschreibung, a.aktiv
+            FROM artikel_shops ash
+            JOIN artikel a ON a.id = ash.artikel_id
+            WHERE ash.shop_id = :shop_id
+              AND ash.aktiv = 1
+              AND a.vaterartikel_id IS NULL
+              AND (
+                  ash.sync_status IN ('pending', 'error')
+                  OR a.aktualisiert_am > ash.synced_at
+              )
+            ORDER BY ash.id
+            LIMIT :limit
+        ");
+        $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /** Endkunden-Bruttopreis (kundengruppen.ist_standard=1), da Shops immer B2C sind. */
+    public function findEndkundenPreis(int $artikelId): ?float
+    {
+        $stmt = $this->db->prepare("
+            SELECT ap.brutto_vk
+            FROM artikel_preise ap
+            JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id
+            WHERE ap.artikel_id = :artikel_id AND kg.ist_standard = 1
+              AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= NOW())
+              AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= NOW())
+            ORDER BY ap.gueltig_ab DESC
+            LIMIT 1
+        ");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        $wert = $stmt->fetchColumn();
+        return $wert !== false ? (float)$wert : null;
+    }
+
+    /** Kategorie-Namen des Artikels, die schon eine WooCommerce-Zuordnung für diesen Shop haben. */
+    public function findWcKategorieIds(int $artikelId, int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT ks.externe_kategorie_id
+            FROM artikel_kategorien ak
+            JOIN kategorie_shops ks ON ks.kategorie_id = ak.kategorie_id AND ks.shop_id = :shop_id
+            WHERE ak.artikel_id = :artikel_id AND ks.externe_kategorie_id IS NOT NULL
+        ");
+        $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function markiereSynced(int $artikelShopId, string $externalId): void
+    {
+        $this->db->prepare("
+            UPDATE artikel_shops
+            SET external_id = :external_id, sync_status = 'synced', synced_at = NOW(), fehler_meldung = NULL
+            WHERE id = :id
+        ")->execute(['external_id' => $externalId, 'id' => $artikelShopId]);
+    }
+
+    public function markiereFehler(int $artikelShopId, string $fehlermeldung): void
+    {
+        $this->db->prepare("
+            UPDATE artikel_shops
+            SET sync_status = 'error', fehler_meldung = :fehler
+            WHERE id = :id
+        ")->execute(['fehler' => $fehlermeldung, 'id' => $artikelShopId]);
+    }
+
+    /** Kanal-Chip im Artikel-Formular: Zuweisung anlegen/aktualisieren. */
+    public function upsertZuweisung(int $artikelId, int $shopId, bool $aktiv): void
+    {
+        $this->db->prepare("
+            INSERT INTO artikel_shops (artikel_id, shop_id, aktiv, sync_status)
+            VALUES (:artikel_id, :shop_id, :aktiv, 'pending')
+            ON DUPLICATE KEY UPDATE aktiv = VALUES(aktiv), sync_status = 'pending'
+        ")->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId, 'aktiv' => $aktiv ? 1 : 0]);
+    }
+}
