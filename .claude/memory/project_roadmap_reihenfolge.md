@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-19T11:03:26.742Z
+  modified: 2026-07-19T16:28:16.362Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -14,7 +14,8 @@ Ausgangspunkt war die Frage "was kommt nach diesem Modul, ist das ERP dann fast 
 
 1. **Buchhaltung** — ✅ FERTIG 2026-07-17: Kontenplan, Debitoren/Kreditoren, Zahlungsart-/Steuerklasse-Mappings, Verwaltungsseiten, DATEV+CSV-Export. Siehe [[project_buchhaltung]]. Restpunkt: Mahnstufen-Ausbau für Rechnungszahler (Mahngebühr/Verzugszinsen) war als "noch zu bauen" vermerkt, aber nicht blockierend — kann später nachgezogen werden.
 2. **Inventur-Modul** — ✅ KOMPLETT FERTIG 2026-07-18 (inkl. Slice 5 Komfort-Ergänzungen), siehe [[project_inventur_konzept]]. Live-Akzeptanztest steht noch aus — Jacky testet bei seiner ersten echten Voll-Inventur (alle Lagerplätze leer → Echtbestand).
-3. **Online-Shop-Anbindung** — daran gekoppelt bzw. kurz davor: [[project_paperless_rechnung_modul]] (QR-Rechnung), [[project_sammelabholung_auftraege]] (mehrere Aufträge ein Bon), lose auch [[project_gutscheine]] (bewusst so gebaut werden soll, dass es mit WooCommerce/eigenem Shop matcht).
+3. **Online-Shop-Anbindung** — Live-Anbindung muss noch warten (zu wenig Daten auf Live). ✅ Phase 1 Grundgerüst FERTIG 2026-07-19 (Migration 142, WooCommerceClient live gegen Testshop verifiziert), Sync-Logik selbst noch offen — siehe [[project_shop_sync]] für vollen Stand + Phasenplan. Daran gekoppelt bzw. kurz davor: [[project_paperless_rechnung_modul]] (QR-Rechnung), [[project_sammelabholung_auftraege]] (mehrere Aufträge ein Bon), lose auch [[project_gutscheine]] (bewusst so gebaut werden soll, dass es mit WooCommerce/eigenem Shop matcht).
+   - **Auch vorgemerkt (2026-07-19): JTL-Anreicherungs-Import.** Nicht voller Produktimport, sondern gezielt Beschreibungen/Bilder/etc. per Artikelnummer-Match aus JTL-Export-Listen in bereits von Hand angelegte Vater-Artikel nachziehen — spart Jacky das Abtippen, er macht nur noch Vater-Artikel+Achsenzuweisung selbst. JTL-CSV-Struktur/Spaltenindizes/Encoding-Fallstricke schon dokumentiert in [[project_jtl_import]]. Offene Frage vor der Detailplanung: enthält Jackys JTL-Export Bild-Referenzen (Dateinamen/URLs), oder nur Text — entscheidet ob Bilder gleich in Phase 1 reinkönnen.
 
 ## Geplant für 2026-07-19 — Stand nach der Session
 
@@ -33,8 +34,6 @@ Jackys ausdrücklicher Wunsch: diese dürfen zwischen den großen Themen oben op
 
 - **Lizenzserver / 2-Ebenen-Konzept** — Jacky selbst: "glaub ich nicht so klein" — trotzdem in diese Kategorie einsortiert, aber mit dem Hinweis dass es vermutlich mehr Aufwand ist als die anderen Punkte hier. Siehe [[project_rechte_rollen]].
 - **Statistik/Auswertungen** — aktuell nur das Dashboard, keine eigene Reporting-Seite, siehe [[project_statistik]].
-- **Packplatz Teillieferung-Split-Logik (Phase 2)** — Restmenge bleibt aktuell nur im Auftrag "hängen" statt echtem Positions-Split, siehe [[project_kasse_bon_design]].
-- **RKSV/BFR Hardwaretest** — ✅ Ursache des `/register`-Crashs am 2026-07-18 geklärt (A-Trust-Tool-Version, nicht unser Code), Pausierung aufgehoben, siehe [[project_rksv_bfr]]. Nächster Schritt: Hardwaretest (Offline-Fix + Selbstheilung) mit der älteren A-Sign-Client-Version durchführen.
 - **Kundenanzeige-Feedback** — V1 läuft live, wartet auf Barbaras Rückmeldung zum Praxistest, siehe [[project_kundenanzeige_modul]].
 
 ## Bewusst pausiert, keine Baustelle (nicht vergessen, aber auch nicht aktiv verfolgen)
