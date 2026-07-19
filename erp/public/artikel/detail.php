@@ -373,7 +373,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
 <div class="article-header">
-    <div class="article-header-thumb" style="background: #e8eef7;"></div>
+    <?php if (!empty($bilder)): ?>
+        <img class="article-header-thumb" style="object-fit:cover"
+            src="<?= BASE_PATH ?>/uploads/artikel/<?= $id ?>/<?= htmlspecialchars($bilder[0]['dateiname']) ?>"
+            alt="<?= htmlspecialchars($bilder[0]['alt_text']) ?>">
+    <?php else: ?>
+        <div class="article-header-thumb" style="background: #e8eef7;"></div>
+    <?php endif; ?>
     <div>
         <div class="article-header-name"><?= htmlspecialchars($artikel['name']) ?></div>
         <div class="article-header-meta">

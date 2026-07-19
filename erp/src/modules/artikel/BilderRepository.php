@@ -35,6 +35,36 @@ class BilderRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Hauptbild (Position 0) für mehrere Artikel auf einmal -- für Listen-Thumbnails,
+     * eine Query statt einer pro Zeile.
+     * @param int[] $artikelIds
+     * @return array<int,array{dateiname:string,alt_text:string}> artikel_id => Bild
+     */
+    public function findHauptbilderByArtikelIds(array $artikelIds): array
+    {
+        $artikelIds = array_values(array_unique(array_filter($artikelIds)));
+        if (empty($artikelIds)) return [];
+
+        $platzhalter = implode(',', array_fill(0, count($artikelIds), '?'));
+        $stmt = $this->db->prepare("
+            SELECT artikel_id, dateiname, alt_text
+            FROM artikel_bilder
+            WHERE artikel_id IN ($platzhalter)
+            ORDER BY position ASC, id ASC
+        ");
+        $stmt->execute($artikelIds);
+
+        $ergebnis = [];
+        foreach ($stmt->fetchAll() as $row) {
+            // Erste Zeile pro artikel_id (kleinste position) gewinnt, weitere ignorieren
+            if (!isset($ergebnis[$row['artikel_id']])) {
+                $ergebnis[$row['artikel_id']] = $row;
+            }
+        }
+        return $ergebnis;
+    }
+
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("SELECT * FROM artikel_bilder WHERE id = :id");

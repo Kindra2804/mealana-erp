@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/modules/artikel/BilderRepository.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 // === LISTEN-ZUSTAND PERSISTENZ ===
@@ -249,6 +250,41 @@ if (!empty($kindIds)) {
             }
         }
     }
+}
+
+// Hauptbilder für alle sichtbaren Zeilen (Väter+Kinder+Zustandsartikel) auf einmal holen
+$alleThumbIds = $vaterIds;
+foreach ($alleKinder as $k) {
+    $alleThumbIds[] = $k['id'];
+}
+foreach ($zustandsNachVater as $zsListe) {
+    foreach ($zsListe as $za) {
+        $alleThumbIds[] = $za['id'];
+    }
+}
+$hauptbilder = (new BilderRepository())->findHauptbilderByArtikelIds($alleThumbIds);
+
+// Rendert die Thumbnail-Zelle: Hauptbild wenn vorhanden, sonst der graue Platzhalter.
+// $kind = true → kleinere Variante der Box (Kind-/Zustandsartikel-Zeilen).
+// Bei Hover zeigt reines CSS (siehe .thumb-preview) eine größere Vorschau mit Name+Preis.
+function renderThumbCell(int $artikelId, array $hauptbilder, string $name, ?float $preis, bool $kind = false): string
+{
+    $klasse = $kind ? 'artikel-thumb artikel-thumb-kind' : 'artikel-thumb';
+    if (!isset($hauptbilder[$artikelId])) {
+        return "<div class=\"$klasse\"></div>";
+    }
+    $bild = $hauptbilder[$artikelId];
+    $url  = BASE_PATH . '/uploads/artikel/' . $artikelId . '/' . htmlspecialchars($bild['dateiname']);
+    $alt  = htmlspecialchars($bild['alt_text']);
+    $preisText = $preis !== null ? number_format($preis, 2, ',', '.') . ' €' : '–';
+
+    return "<div class=\"$klasse thumb-hat-bild\">"
+         . "<img src=\"$url\" alt=\"$alt\" loading=\"lazy\">"
+         . "<div class=\"thumb-preview\">"
+         .   "<img src=\"$url\" alt=\"$alt\">"
+         .   "<div class=\"thumb-preview-name\">" . htmlspecialchars($name) . "</div>"
+         .   "<div class=\"thumb-preview-preis\">$preisText</div>"
+         . "</div></div>";
 }
 
 $gesamt = $controller->count($filter);
@@ -574,7 +610,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php endif; ?>
                     </td>
                     <td class="thumb-cell">
-                        <div class="artikel-thumb"></div>
+                        <?= renderThumbCell((int)$a['id'], $hauptbilder, $a['name'], $a['brutto_vk'] !== null ? (float)$a['brutto_vk'] : null) ?>
                     </td>
                     <td class="artnr-cell">
                         <a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a>
@@ -626,7 +662,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$k['aktiv'] ? ' row-inaktiv' : '' ?>">
                         <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $k['id'] ?>"></td>
                         <td class="thumb-cell">
-                            <div class="artikel-thumb artikel-thumb-kind"></div>
+                            <?= renderThumbCell((int)$k['id'], $hauptbilder, $k['name'], $k['brutto_vk'] !== null ? (float)$k['brutto_vk'] : null, true) ?>
                         </td>
                         <td class="artnr-cell" style="padding-left:20px; color:var(--color-text-muted); font-size:12px">
                             ↳ <a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a>
@@ -667,7 +703,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
                         <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $za['id'] ?>"></td>
                         <td class="thumb-cell">
-                            <div class="artikel-thumb artikel-thumb-kind"></div>
+                            <?= renderThumbCell((int)$za['id'], $hauptbilder, $za['name'], null, true) ?>
                         </td>
                         <td class="artnr-cell" style="padding-left:20px; font-size:12px">
                             ↳ <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
