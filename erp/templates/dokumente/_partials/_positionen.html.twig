@@ -8,9 +8,12 @@
     kleinuntern – Boolean: Kleinunternehmer-Modus (kein MwSt-Ausweis)
     mit_mwst    – Boolean: MwSt-Spalte anzeigen (false bei Lieferschein)
     mit_preis   – Boolean: Preis-Spalten anzeigen (false bei Pickliste)
+    mit_charge  – Boolean: Charge-Hinweis unter der Bezeichnung anzeigen (Einstellung
+                  lieferschein_charge_anzeigen, siehe DokumentService::ladeDaten())
 #}
-{% set mit_mwst  = mit_mwst  ?? true %}
-{% set mit_preis = mit_preis ?? true %}
+{% set mit_mwst   = mit_mwst   ?? true %}
+{% set mit_preis  = mit_preis  ?? true %}
+{% set mit_charge = mit_charge ?? false %}
 
 <table style="width:100%; border-collapse:collapse; font-size:8.5pt; margin-top:6pt;">
   <thead>
@@ -54,6 +57,11 @@
           {% if pos.lagerbestand is defined and pos.lagerbestand == 0 and pos.lieferzeit_text %}
             <br><span style="font-size:7.5pt; color:#888;">
               Lieferzeit: {{ pos.lieferzeit_text }}
+            </span>
+          {% endif %}
+          {% if mit_charge and pos.charge %}
+            <br><span style="font-size:7.5pt; color:#555;">
+              Charge: {{ pos.charge }}
             </span>
           {% endif %}
         </td>

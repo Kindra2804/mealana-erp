@@ -107,6 +107,7 @@ class DokumentService
     {
         $daten = $this->ladeDaten($auftragId);
         if (!$daten) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden.'];
+        $daten['mit_charge'] = $this->zeigeChargeAufLieferschein();
 
         $dateiname = 'LS-' . $daten['auftrag']['auftrag_nr'] . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
@@ -290,6 +291,7 @@ class DokumentService
         if (!$daten) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden.'];
 
         $daten['positionen'] = $positionen;
+        $daten['mit_charge'] = $this->zeigeChargeAufLieferschein();
 
         $dateiname = 'LS-' . $daten['auftrag']['auftrag_nr'] . '-' . date('His') . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
@@ -353,6 +355,12 @@ class DokumentService
     /**
      * Lädt alle Daten die Templates brauchen: Auftrag, Positionen, Firma, Kunde, Summen.
      */
+    /** Einstellung lieferschein_charge_anzeigen (System-Tab), Default aus (Migration 141). */
+    private function zeigeChargeAufLieferschein(): bool
+    {
+        return ($this->repo->ladeFirmaDaten()['lieferschein_charge_anzeigen'] ?? '0') === '1';
+    }
+
     private function ladeDaten(int $auftragId): ?array
     {
         $auftrag = $this->ladeAuftrag($auftragId);

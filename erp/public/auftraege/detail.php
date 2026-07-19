@@ -41,7 +41,7 @@ foreach ($positionen as $pos) {
 $offenBetrag  = ((float)$auftrag['bruttobetrag'] - $retourGesamtbetrag) - $summeBezahlt;
 
 $lieferungen = $db->prepare("
-    SELECT al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung,
+    SELECT al.id, al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung,
            b.formularname AS benutzer
     FROM auftrag_lieferungen al
     LEFT JOIN benutzer b ON b.id = al.benutzer_id
@@ -50,6 +50,22 @@ $lieferungen = $db->prepare("
 ");
 $lieferungen->execute([$id]);
 $lieferungen = $lieferungen->fetchAll(PDO::FETCH_ASSOC);
+
+// Positions-Split je Lieferung (Migration 141) — welche Menge/Charge ging in welche Teillieferung.
+$lieferungPositionenNachLieferung = [];
+if (!empty($lieferungen)) {
+    $lpStmt = $db->prepare("
+        SELECT alp.lieferung_id, alp.menge, alp.charge, p.bezeichnung
+        FROM auftrag_lieferung_positionen alp
+        JOIN auftrag_positionen p ON p.id = alp.auftrag_position_id
+        WHERE alp.lieferung_id IN (" . implode(',', array_fill(0, count($lieferungen), '?')) . ")
+        ORDER BY alp.id
+    ");
+    $lpStmt->execute(array_column($lieferungen, 'id'));
+    foreach ($lpStmt->fetchAll(PDO::FETCH_ASSOC) as $lp) {
+        $lieferungPositionenNachLieferung[$lp['lieferung_id']][] = $lp;
+    }
+}
 
 $erfolg = $_SESSION['erfolg'] ?? null;
 $fehler = $_SESSION['fehler'] ?? [];
@@ -303,7 +319,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">Datum</th>
                         <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">Dienstleister</th>
                         <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">Tracking-Nr.</th>
-                        <th style="text-align:left;padding:4px 0 6px 0;font-weight:600">Typ</th>
+                        <th style="text-align:left;padding:4px 8px 6px 0;font-weight:600">Typ</th>
+                        <th style="text-align:left;padding:4px 0 6px 0;font-weight:600">Positionen</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -323,12 +340,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <?= htmlspecialchars($lf['tracking_nr']) ?>
                             <?php endif; ?>
                         </td>
-                        <td style="padding:5px 0">
+                        <td style="padding:5px 8px 5px 0">
                             <?php if ($lf['ist_teillieferung']): ?>
                                 <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:10px">Teillieferung</span>
                             <?php else: ?>
                                 <span style="font-size:10px;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:10px">Vollständig</span>
                             <?php endif; ?>
+                        </td>
+                        <td style="padding:5px 0;font-size:11px;color:var(--color-text-muted)">
+                            <?php foreach (($lieferungPositionenNachLieferung[$lf['id']] ?? []) as $lp): ?>
+                                <div><?= (float)$lp['menge'] == (int)$lp['menge'] ? (int)$lp['menge'] : $lp['menge'] ?>× <?= htmlspecialchars($lp['bezeichnung']) ?><?= $lp['charge'] ? ' — Charge ' . htmlspecialchars($lp['charge']) : '' ?></div>
+                            <?php endforeach; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

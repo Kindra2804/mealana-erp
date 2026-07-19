@@ -65,6 +65,12 @@ $posMap = array_values($stmtPos->fetchAll(PDO::FETCH_ASSOC)); // 0-indexed = JS 
 // ─── Lagerabbuchung + Status-Update in einer Transaktion ─────────────────────
 $db->beginTransaction();
 try {
+    // Sammelt pro Position, welche Menge/Charge in DIESE Lieferung ging (Positions-Split,
+    // siehe auftrag_lieferung_positionen weiter unten) + die Charge-String-Summe für die
+    // Lieferschein-PDF-Erzeugung weiter unten im Skript.
+    $lieferungPositionen = [];
+    $chargeProPosition   = [];
+
     // Nur tatsächlich gescannte Mengen abbuchen + menge_geliefert + charge setzen
     foreach ($posGescannt as $ps) {
         $idx      = (int)$ps['idx'];
@@ -98,8 +104,10 @@ try {
                     'benutzer_id' => $benutzerId,
                 ]);
                 $chargeNummern[] = $charge;
+                $lieferungPositionen[] = ['position_id' => $pos['id'], 'menge' => $cmenge, 'charge' => $charge];
             }
             $chargeStr = implode(', ', array_unique($chargeNummern));
+            $chargeProPosition[$pos['id']] = $chargeStr ?: null;
             $db->prepare("
                 UPDATE auftrag_positionen
                 SET menge_geliefert = COALESCE(menge_geliefert, 0) + ?, charge = ?
@@ -115,6 +123,7 @@ try {
                 'notiz'       => $notiz,
                 'benutzer_id' => $benutzerId,
             ]);
+            $lieferungPositionen[] = ['position_id' => $pos['id'], 'menge' => $gescannt, 'charge' => null];
             $db->prepare("
                 UPDATE auftrag_positionen
                 SET menge_geliefert = COALESCE(menge_geliefert, 0) + ?
@@ -167,6 +176,19 @@ try {
                 (auftrag_id, tracking_nr, versanddienstleister, ist_teillieferung, benutzer_id)
             VALUES (?, ?, ?, ?, ?)
         ")->execute([$auftragId, $tracking, $versanddienstleister ?: null, $istTeillieferung ? 1 : 0, $benutzerId]);
+        $lieferungId = (int)$db->lastInsertId();
+
+        // Positions-Split: welche Menge/Charge ging in GENAU diese Lieferung
+        // (auftrag_positionen.charge selbst bleibt nur die kumulative Gesamt-Charge-Liste).
+        if (!empty($lieferungPositionen)) {
+            $stmtLp = $db->prepare("
+                INSERT INTO auftrag_lieferung_positionen (lieferung_id, auftrag_position_id, menge, charge)
+                VALUES (?, ?, ?, ?)
+            ");
+            foreach ($lieferungPositionen as $lp) {
+                $stmtLp->execute([$lieferungId, $lp['position_id'], $lp['menge'], $lp['charge']]);
+            }
+        }
     }
 
     // Reservierungen schließen
@@ -257,6 +279,7 @@ if (!empty($posGescannt)) {
             'bezeichnung'       => $det['bezeichnung'] ?? ('Pos. ' . ($idx + 1)),
             'artikelnummer'     => $det['artikelnummer'] ?? '',
             'menge'             => $gescannt,
+            'charge'            => $chargeProPosition[$pos['id']] ?? null,
             'einzelpreis_netto' => (float)($det['einzelpreis_netto'] ?? 0),
             'gesamtpreis_netto' => round((float)($det['einzelpreis_netto'] ?? 0) * $gescannt * (1 - (float)($det['rabatt_prozent'] ?? 0) / 100), 4),
             'steuer_prozent'    => (float)($det['steuer_prozent'] ?? 0),

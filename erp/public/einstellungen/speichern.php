@@ -237,11 +237,13 @@ if ($tab === 'system') {
     $kleinunternehmer = isset($_POST['kleinunternehmer']) ? '1' : '0';
     $kdWillkommen     = trim($_POST['kundenanzeige_willkommenstext'] ?? '');
     $kdQrAktiv        = isset($_POST['kundenanzeige_qr_aktiv']) ? '1' : '0';
+    $lsChargeAnzeigen = isset($_POST['lieferschein_charge_anzeigen']) ? '1' : '0';
 
     setSetting($db, 'preisanzeige_auftrag', $preisanzeige);
     setSetting($db, 'kleinunternehmer',     $kleinunternehmer);
     setSetting($db, 'kundenanzeige_willkommenstext', $kdWillkommen);
     setSetting($db, 'kundenanzeige_qr_aktiv',        $kdQrAktiv);
+    setSetting($db, 'lieferschein_charge_anzeigen',  $lsChargeAnzeigen);
 
     $_SESSION['erfolg'] = 'System-Einstellungen gespeichert.';
     header('Location: index.php?tab=system');

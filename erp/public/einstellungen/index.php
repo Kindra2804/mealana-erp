@@ -415,6 +415,22 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         </div>
 
         <div class="card" style="margin-bottom:12px">
+            <div class="card-header">Versand / Lieferschein</div>
+            <div style="padding:16px">
+                <label style="font-size:13px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
+                    <input type="checkbox" name="lieferschein_charge_anzeigen" value="1" style="margin-top:2px"
+                        <?= ($rows['lieferschein_charge_anzeigen'] ?? '0') === '1' ? 'checked' : '' ?>>
+                    <div>
+                        <div style="font-weight:600">Charge auf Lieferschein anzeigen</div>
+                        <div style="color:var(--color-text-muted);font-size:12px;margin-top:2px">
+                            Zeigt bei chargenpflichtigen Artikeln die Chargennummer unter der Positionsbezeichnung — z.B. damit Kunden bei Nachbestellung gezielt dieselbe Färbung verlangen können. Intern (Auftrags-Detailseite) ist die Charge immer sichtbar, unabhängig von dieser Einstellung.
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
             <div class="card-header">Kundenanzeige</div>
             <div style="padding:16px">
                 <div class="form-group">
