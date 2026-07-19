@@ -26,3 +26,6 @@ erp/storage/bons/
 
 # Hersteller-Logos (lokal hochgeladen, instanzspezifisch)
 erp/public/img/hersteller/
+
+# Artikel-Bilder (lokal hochgeladen, instanzspezifisch)
+erp/public/uploads/artikel/
