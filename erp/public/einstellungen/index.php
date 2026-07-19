@@ -215,6 +215,21 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('shop-neu-form').style.display='none';document.querySelector('[onclick*=shop-neu-form]').style.display=''">Abbrechen</button>
                     </div>
                 </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;margin-top:10px">
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">WooCommerce URL</label>
+                        <input type="text" name="neu_wc_url" class="erp-input" placeholder="https://shop-test.deinedomain.at">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">REST-API Consumer Key</label>
+                        <input type="password" name="neu_wc_key" class="erp-input" placeholder="ck_..." autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">REST-API Consumer Secret</label>
+                        <input type="password" name="neu_wc_secret" class="erp-input" placeholder="cs_..." autocomplete="off">
+                    </div>
+                    <div></div>
+                </div>
             </form>
         </div>
 
@@ -255,6 +270,19 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     <div style="display:flex;gap:8px;align-items:center">
                         <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
                     </div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr 1fr 120px auto;gap:12px;align-items:end;margin-top:10px">
+                    <div></div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">REST-API Consumer Key</label>
+                        <input type="password" name="wc_key" class="erp-input" placeholder="ck_..." value="<?= htmlspecialchars($shop['wc_key'] ?? '') ?>" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">REST-API Consumer Secret</label>
+                        <input type="password" name="wc_secret" class="erp-input" placeholder="cs_..." value="<?= htmlspecialchars($shop['wc_secret'] ?? '') ?>" autocomplete="off">
+                    </div>
+                    <div></div>
+                    <div></div>
                 </div>
             </form>
         <?php endforeach; ?>
