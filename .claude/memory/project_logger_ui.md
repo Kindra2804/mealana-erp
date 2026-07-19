@@ -1,30 +1,24 @@
 ---
 name: project-logger-ui
-description: "Geplantes Logger-UI: Zeile in Shell-Bottom + Admin-Seite für Aktivitäten-Log"
+description: "Logger-UI FERTIG 2026-07-19: Shell-Bottom-Zeile + Admin-Aktivitäten-Seite mit Stufen (info/warn/error)"
 metadata: 
   node_type: memory
   type: project
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
+  modified: 2026-07-19T09:47:52.929Z
 ---
 
-## Logger-Zeile in Shell-Bottom (aus dashboard_mockup.svg)
+## ✅ FERTIG 2026-07-19
 
-Das Mockup zeigt unten im Shell-Layout eine **Logger-Zeile** — eine kompakte Status-Zeile die die letzte(n) Systemaktivität(en) anzeigt.
+Beide Teile gebaut und per CLI durchgetestet (kein Login verfügbar für echten Browser-Test, Jacky prüft visuell):
 
-**Anforderungen noch zu klären:**
-- Sortierung/Filterung: warn / kritisch / ok — oder nach Typ (Artikel, Lager, Preis, ...)?
-- Nur letzte 1 Zeile? Oder mini-Liste (3-5 Einträge)?
-- Klickbar → führt zur Admin-Logger-Seite?
+- **Migration 140**: `aktivitaeten.stufe` ENUM('info','warn','error') DEFAULT 'info' + Index auf `erstellt_am`, neue Berechtigung `system.log` (auto an superadmin/admin/assistent)
+- **`Logger::log()`** (src/core/logger.php): neuer optionaler 6. Parameter `$stufe = 'info'` — bestehende ~100 Aufrufe unverändert lauffähig
+- **`src/modules/admin/AktivitaetenRepository.php` + `AktivitaetenService.php`**: Filter Benutzer/Modul(aus aktion-Prefix)/Tabelle/Stufe/Datum/Freitext, Pagination
+- **`public/admin/aktivitaeten.php`**: Admin-Seite, verlinkt im "···"-Mehr-Menü (shell_top.php) hinter `system.log`-Recht, Details aufklappbar (JSON pretty-print)
+- **`shell_bottom.php`**: Logger-Zeile zeigt jetzt live die letzten 5 Aktivitäten mit farbigem Stufen-Punkt (grün/gelb/rot), ersetzt die alte "System bereit"-Mockup-Zeile — bewusst NICHT klickbar (Jackys Entscheidung)
+- **`Auth::pruefeSeite()`**: loggt verweigerten Seitenzugriff jetzt automatisch mit `stufe='warn'` (aktion `system.zugriff_verweigert`, Details: welche Seite/welche Berechtigung fehlte)
 
-**How to apply:** Beim Bau der Shell-Bottom-Erweiterung: `aktivitaeten`-Tabelle abfragen (letzte N Einträge), kompakt darstellen. Admins sehen mehr Details als normale User.
+**Bewusst NICHT gebaut** (Jackys Entscheidung 2026-07-19): der ursprüngliche Mockup zeigte einen oberen Alert-Balken der Live-Zustände (z.B. Mindestbestand-Warnung, existiert schon separat live in dashboard.php) mit dem Ereignis-Log vermischt hätte — das wurde bewusst getrennt gehalten, nur die reine Log-Seite (Stufe info/warn/error) wurde gebaut.
 
-## Admin-Logger-Seite (geplant)
-
-Eigene Seite `public/admin/aktivitaeten.php` für Admins:
-- Vollständige Aktivitätsliste
-- Filter: nach Benutzer, Aktion, Tabelle, Datum
-- Suche in `aktion` und `details` (JSON)
-- Sortierung nach Datum (Standard: neueste zuerst)
-- Spalten: Datum/Zeit | Benutzer | Aktion | Referenz | Details
-
-**Why:** Nachvollziehbarkeit — wer hat wann was geändert. Wichtig für Fehlersuche und Compliance. Kommt nach dem ersten vollständigen Modul (Artikel) wenn genug Log-Einträge da sind um es sinnvoll zu testen.
+**Offen für später:** warn/error wird aktuell nur beim Zugriff-verweigert-Fall gesetzt — alle anderen Fehlerpfade (Import, künftiger Shop-Abgleich) sind noch 'info' bzw. loggen teils noch gar nicht. Soll zusammen mit dem Shop-Abgleich-Modul nachgezogen werden (Jackys ausdrücklicher Wunsch, nicht vorher spekulativ bauen).

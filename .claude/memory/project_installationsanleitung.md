@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3bbaa246-5729-4e26-8fb8-4785822652ed
+  modified: 2026-07-19T11:03:18.988Z
 ---
 
 ## Status: GESCHRIEBEN 2026-07-03
@@ -83,6 +84,25 @@ Analog zu **Jarvis** (Benutzer id=2, username='system') gibt es System-Stammdate
 
 **Korrektur Jacky 2026-07-05:** Ursprünglich per Migration 078 nachträglich in die Dev-DB eingefügt — dort dadurch mit einer hohen, zufälligen ID (2957) gelandet, weil zu diesem Zeitpunkt schon tausende Demo-Artikel existierten. Für zukünftige Auslieferungen soll das **nicht mehr über eine Migration** laufen, sondern der Artikel soll direkt Teil der Baseline-/Seed-Daten sein, die bei einer Neuinstallation als Erstes eingespielt werden (analog Jarvis-Systembenutzer id=2, siehe oben) — dadurch bekommt er auf einer frischen Installation eine niedrige, vorhersagbare ID (idealerweise `1`) statt einer zufälligen hohen wie in der Dev-DB.
 **How to apply:** Beim nächsten Überarbeiten von `baseline_schema.sql`/dem Neuinstallations-Ablauf ([[project_installationsanleitung]] oben) diesen Artikel als festen Seed-Datensatz mit fixer ID mit aufnehmen, nicht mehr über eine der 004–104-Migrationen laufen lassen.
+
+## ✅ Live-Update auf 0.3.0 (2026-07-19) — Bootstrap-Skip-Bug betraf VIEL mehr Tabellen als bekannt
+
+Ausgangspunkt: Live (Stand Migration 125) auf aktuellen Dev-Stand bringen (Migrationen 126–141: Buchhaltung, Inventur, Lagerplätze, Logger-UI, Packplatz-Teillieferung). Ablauf: `git archive HEAD` (committeter Stand, 3 saubere Commits vorher nachgeholt) → per AnyDesk auf Live kopieren → entpacken → `composer install` (no-op) → `php migrate.php run` (alle 16 sauber durchgelaufen) → Version auf 0.3.0(beta).
+
+**Dabei Kernfund, deutlich größer als der Rollen/Berechtigungen-Vorfall vom 09.07.:** Live wurde am 03.07. aus einem **struktur-only** `baseline_schema.sql` + `migrate.php bootstrap` aufgesetzt (markiert alte Migrationen als "erledigt" OHNE sie auszuführen). Jede reine Seed-Migration im Bereich 004–104 wurde dadurch stillschweigend übersprungen — betraf nicht nur Rollen (schon 09.07. gefixt), sondern auch:
+- `steuerklassen` (nur 2 von 5 Zeilen — die 2 stammten von Migration 128, die heute lief; 20%/10%/0% fehlten komplett)
+- `artikel_typen`, `einheiten`, `laender`, `zahlungsbedingungen` — **komplett leer**, hätte Artikel-Anlage/Lieferanten-Formular auf Live sofort blockiert
+- `kundengruppen`, `dokument_nummern` — komplett leer
+- Diverses-Artikel (`99-9999`, Kasse-Freitext-Platzhalter) fehlte
+- `bfr_ausfaelle` + `bfr_ausfall_ereignisse` (RKSV-Ausfallerkennung, neue Architektur seit 06.07.) **existierten als TABELLEN gar nicht** — nur in `baseline_schema.sql`, nie als eigene Migrationsdatei (beim Baseline-Neuschnitt 09.07. gelöscht, weil "schon in der neuen Baseline"). Live hatte stattdessen noch die alte, abgelöste `bfr_nachsignierungs_laeufe`-Tabelle — heutiger Code-Deploy hätte die Kassen-Ausfallerkennung ohne diesen Fix live gebrochen.
+
+**Methodik, die den Fund ermöglicht hat:** systematischer Zeilenzahl-Vergleich ALLER 107 Tabellen (Dev vs. Live per generierter UNION-ALL-Query), nicht nur der vermuteten Kandidaten — reines Stichproben-Prüfen hätte das nicht gefunden. Query liegt als Vorlage unter `D:\ERP\tabellen_counts_query.sql` für künftige Live-Syncs.
+
+**Fix-Dateien** (alle ohne `USE`/`CREATE DATABASE`, sicher für Direktimport): `D:\ERP\live_fix_bfr_tabellen_20260719.sql` (2 CREATE TABLE, keine Dev-Testdaten), `D:\ERP\live_fix_stammdaten_20260719.sql` (artikel_typen/einheiten/laender/zahlungsbedingungen + Diverses-Artikel), `D:\ERP\live_fix_kundengruppen_nummern_20260719.sql` (kundengruppen + dokument_nummern mit `letzt_nr=0`, NICHT Devs Testzähler).
+
+**Bewusst NICHT kopiert:** `kassen`/`lager` (auf Live noch nicht angelegt — kein Bug, Jacky richtet die mit echten Live-Daten selbst ein, nicht mit Devs Testeinträgen). `system_einstellungen` (17 fehlende Schlüssel, u.a. SMTP-Passwort/PLC-Vorlagen/Bankdaten) — bewusst NICHT automatisch kopiert, da sensible/Live-spezifische Werte; Code hat überall sichere Fallbacks (`?? '0'`/`?? 'default'`), nichts bricht dadurch. Jacky trägt die bei Bedarf selbst über die Einstellungsseiten ein. `shops` (Live bewusst bei 1, die 2 Zusatz-Shops sind Platzhalter für die noch nicht gestartete Online-Shop-Anbindung). `bfr_nachsignierungs_laeufe` (alte, verwaiste Tabelle) bewusst nicht gelöscht — Live-Kasse hatte laut Jacky noch nie BFR aktiviert, also sicher leer, aber Löschen war nicht eilig genug um es unter Zeitdruck zu riskieren.
+
+**How to apply:** Bei JEDEM künftigen Live-Sync (nicht nur beim nächsten) den vollständigen Tabellen-Zeilenvergleich fahren, nicht nur die Migrationen laufen lassen und "fertig" annehmen — der Bootstrap-Skip-Bug kann noch an weiteren, bisher unentdeckten Stellen stecken (alles was ursprünglich in 004–104 seedete UND vor dem 09.07.-Baseline-Recut lag). `live_fix_109.sql`, die drei neuen Fix-Dateien und `tabellen_counts_query.sql` liegen alle unter `D:\ERP\` als Referenz.
 
 ## Zielgruppe
 

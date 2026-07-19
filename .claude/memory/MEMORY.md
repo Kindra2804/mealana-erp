@@ -1,6 +1,6 @@
 # Memory Index
 
-- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Buchhaltung → Inventur → Online-Shop-Anbindung; Kleinkram zwischendurch aber nicht vergessen (2026-07-10, IMMER hier nachsehen bei "was als Nächstes")
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Frau Barbara schaut bei UI mit
 - [Chargen-Nachverfolgung](project_chargen_nachverfolgung.md) — FERTIG 2026-07-10: `lager/chargen_nachverfolgung.php`, bestehende LagerService-Methoden + Anzeige-Partial wiederverwendet, eigene lager-gegatete AJAX-Endpunkte
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
@@ -25,7 +25,7 @@
 - [Kleinunternehmer-Modus](project_kleinunternehmer.md) — Major-Feature: globaler Schalter, EK brutto, kein Steuerausweis, Lagerbewertung brutto
 - [JTL-Import Wissen](project_jtl_import.md) — CSV-Struktur, ProduktTyp VATER/NORMAL/KIND, Kategorie-Mapping, Gen-Skript für Demo-Artikel
 - [Feedback: Modul-Abschluss-Checkliste](feedback_js_auslagern.md) — JS auslagern + SQL-Kommentare bereinigen + Bedienungsanleitung besprechen (beim ersten Mal)
-- [Logger UI Konzept](project_logger_ui.md) — Logger-Zeile in Shell-Bottom (Mockup), Admin-Aktivitäten-Seite mit Filter/Suche
+- [Logger UI](project_logger_ui.md) — ✅ FERTIG 2026-07-19: Shell-Zeile + Admin-Aktivitäten-Seite, Stufen info/warn/error, Zugriff-verweigert loggt als warn
 - [Aktions-Modul](project_aktionen_modul.md) — ✅ FERTIG, im Code verifiziert 2026-07-18; vermuteter Blocker war bereits behobener Bug
 - [Feedback: Achsen Modal](feedback_achsen_modal.md) — ✅ war beim Nachsehen 2026-07-10 schon fertig (Notiz veraltet), 4 verwaiste Alt-Dateien aufgeräumt
 - [Spalten-Picker](project_spalten_picker.md) — merkmale-Spalte aktiviert 2026-07-09 (Merkmale-Modul ist fertig); lagerplatz/letzte_inventur bleiben Platzhalter (Module existieren noch nicht)
@@ -50,7 +50,7 @@
 - [Installationsanleitung](project_installationsanleitung.md) — Baseline-Neuschnitt FERTIG 2026-07-09 (Stammdaten in Baseline, VERSION 0.2.0); Live-Rollen-Bug gefunden+behoben, Live jetzt auf Migration 123
 - [Whitelabel/Branding](project_whitelabel_branding.md) — Root-Pfad FERTIG; NAHTLOS-Logo ersetzt Kunden-Logo im Header (entschieden, wartet auf Assets); Shop-Footer-Idee
 - [Update-Mechanismus](project_update_mechanismus.md) — ZURÜCKGESTELLT bis Lizenz-Thema: ZIP-Vollpaket + migrate.php statt Delta-Patches, kein Versions-Tracking pro Installation nötig
-- [Packplatz-Modul](project_packplatz.md) — Warenausgang/Intern/Retoure/Picklisten-Manager + EAN-Doppelklick-Nacherfassung alle fertig (verifiziert 2026-07-10); offen: Teillieferung-Split-Logik (Phase 2)
+- [Packplatz-Modul](project_packplatz.md) — komplett fertig inkl. Teillieferung-Positions-Split (✅ 2026-07-19, `auftrag_lieferung_positionen`, Charge auf Lieferschein optional)
 - [Zahlung buchen Umbau](project_zahlung_buchen.md) — Betrag-Eingabe + Datepicker statt Status-Knopf; Teilzahlung/Überzahlung; Buchungsdatum ≠ Erfassungsdatum
 - [Feedback: Beide Handbücher](feedback_beide_handbuecher.md) — docs/handbuch/*.md UND bedienungsanleitung.php immer synchron halten bei neuen Modulen
 - [Inventur-Modul: Konzept + Baufortschritt](project_inventur_konzept.md) — KOMPLETT FERTIG 2026-07-18 inkl. Slice 5; Live-Akzeptanztest bei Jackys erster echter Voll-Inventur steht noch aus
@@ -59,7 +59,7 @@
 - [PLC / EasyPak Versand](project_plc_versand.md) — 🟢 2 echte Bugs behoben 2026-07-10: Nachnahme-Betrag bei Teillieferung + `auftrag_nr`-Spaltenname (Export hat vermutlich seit je nie funktioniert)
 - [Chargen-Tracking](bug_charge_tracking.md) — BEHOBEN 2026-06-29: Kasse/Packplatz/Umlagerung alle mit Charge; Rest (Race Condition, warenSchwund) kommt mit Inventur-Modul
 - [Chargen-Konzept (vollständig)](project_chargen_konzept.md) — 3 Typen (keine/optional/Pflicht), alle Lagerbewegungsstellen, UX-Flows Kasse/Packplatz/Umlagerung/Auftrag
-- [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — State-Check-Gate + Offline-Fix+Selbstheilung fertig; /register-Crash-Ursache 2026-07-18 geklärt (A-Trust-Tool, nicht unser Code) — Hardwaretest kann jetzt weitergehen
+- [RKSV/BFR Implementierungsplan](project_rksv_bfr.md) — ✅ Hardwaretest 2026-07-19 erfolgreich; 2 Bugs gefunden+gefixt (Ausfall-Erkennung, bfr_url-Selbstheilung war nie funktionsfähig — Feature entfernt)
 - [Lieferanten-Erweiterung](project_lieferanten_erweiterung.md) — FERTIG 2026-07-02: Länder-Tabelle, Firma/UStID/Steuerregel-Enum, Bankverbindung, Vertreter-Anrede, Zugänge/Händlerportale-Tab; Doku-Schuld behoben 2026-07-10
 - [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — Unicode-Flaggen rendern auf Jackys Windows-Browsern nicht, nur Buchstaben-Fallback — nicht verwenden
 - [🟢 BUG: PDO extra Array-Key bricht insert()/update()](bug_hersteller_modal_insert.md) — Hersteller/Lager/PartnerRepository behoben; MietfachRepository am 2026-07-10 nachgezogen (war unentdeckt) — alle bekannten Fälle jetzt behoben

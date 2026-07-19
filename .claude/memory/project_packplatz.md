@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3bbaa246-5729-4e26-8fb8-4785822652ed
+  modified: 2026-07-19T10:01:31.755Z
 ---
 
 ## ✅ Fertig (2026-06-25)
@@ -81,8 +82,17 @@ War im Code fertig, fehlte aber komplett in `docs/handbuch/05_packplatz.md` und 
 ### ✅ Verifiziert 2026-07-10: "Kein neue Pickliste für den Rest bei Teillieferung" — bereits korrekt, kein Bug
 Jacky erinnerte sich vage an ein Problem (dieselbe Erinnerung, die am 2026-07-09 als "irgendwas fehlt noch, weiß nicht mehr was" offen gelassen wurde). Nachgestellt: isolierten Test-Auftrag mit Teillieferung (6 von 10 geliefert) auf einer Pickliste simuliert, geprüft ob `abschliessen.php`s Pickliste-Abschluss-Logik (`lieferstatus NOT IN (...,'teilgeliefert',...)`) die Pickliste korrekt schließt UND ob `lager/picklisten.php`s Hauptabfrage den Auftrag danach mit der korrekten Restmenge (4) neu anbietet — beides funktioniert wie vorgesehen. Gleiche Prüfung für `packplatz/warenausgang/index.php`s "Direktauswahl"-Liste — auch korrekt. Vermutlich bereits in einer früheren Session (2026-07-03 oder 2026-07-09) mitgefixt, ohne dass diese konkrete Alt-Notiz aktualisiert wurde. Bei diesem Anlass stattdessen einen echten, unabhängigen Bug bei der Nachnahme-Teillieferung gefunden — siehe [[project_plc_versand]].
 
-### D (Teil 2) — Teillieferung-Split-Logik — weiterhin offen (2026-07-10 nochmal bestätigt offen)
-Phase 2, aktuell bleibt Restmenge nur im Auftrag stehen, kein echter Positions-Split.
+### ✅ D (Teil 2) — Teillieferung-Split-Logik FERTIG (2026-07-19)
+
+Neue Tabelle `auftrag_lieferung_positionen` (Migration 141): pro Teillieferung wird jetzt persistiert, welche Menge/Charge tatsächlich in DIESE Sendung ging (vorher stand auf `auftrag_positionen.charge` nur eine kumulative, überschriebene Comma-Liste aller je gelieferten Chargen — nicht mehr nachvollziehbar welche Menge aus welcher Charge in welcher Lieferung war).
+
+- `packplatz/warenausgang/abschliessen.php`: sammelt beim Abbuchen `$lieferungPositionen` (Position+Menge+Charge), schreibt sie nach dem `auftrag_lieferungen`-Insert (mit `lastInsertId()`) in die neue Tabelle — nur für den Versand-Pfad (Abholung hat wie bisher keinen `auftrag_lieferungen`-Eintrag).
+- `auftraege/detail.php`: neue Spalte "Positionen" in der bestehenden "Lieferungen/Tracking"-Tabelle zeigt pro Teillieferung die genauen Positionen+Chargen — **immer sichtbar intern**, unabhängig von der PDF-Einstellung.
+- **Charge auf Lieferschein**: neue Einstellung `lieferschein_charge_anzeigen` (Einstellungen → System → "Versand/Lieferschein"-Karte), Default AUS (Jackys Entscheidung 2026-07-19). Wenn aktiv, zeigt `_positionen.html.twig` die Charge als Sub-Zeile unter der Positionsbezeichnung — gezielt nur bei `DokumentService::erstelleLieferschein()`/`erstelleLieferscheinFuerLieferung()` gesetzt (`mit_charge`-Flag), NICHT bei Rechnung/AB, die dieselbe `ladeDaten()`/`_positionen.html.twig` nutzen.
+- CLI-getestet (echte Transaktion mit Rollback gegen Dev-DB): Insert Lieferung+Split-Positionen, exakt dieselbe Query wie in `auftraege/detail.php` gegengeprüft, keine Testdaten zurückgeblieben.
+- Version danach auf 0.3.0(beta) gehoben (`erp/VERSION`).
+
+**Noch nicht im echten Browser getestet** — Jacky sollte bei der nächsten echten Teillieferung einmal durchklicken (Packplatz-Abschluss mit Charge-Dialog → auftraege/detail.php prüfen → optional Einstellung aktivieren und Lieferschein-PDF ansehen).
 
 ### ~~B — Packplatz: Intern~~ / ~~C — Packplatz: Retoure~~ / ~~E — Fehlende Mail-Templates~~ — STALE, bereits erledigt (verifiziert 2026-07-03)
 Diese drei Punkte waren schon durch die "✅ Neu fertig (2026-06-26)"-Sektion oben in dieser selben Datei widerlegt, standen aber trotzdem noch als offen weiter unten — Selbstwiderspruch in der Memory. Verifiziert per Audit-Agent 2026-07-03:

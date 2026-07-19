@@ -1,11 +1,11 @@
 ---
 name: project-rksv-bfr
-description: "RKSV/BFR-Integration — Architektur seit 2026-07-06 fertig (State-Check-Gate). ✅ /register-Crash-Rätsel 2026-07-18 GEKLÄRT: A-Trust-Tool war Ursache, nicht unser Code/BFR — Downgrade auf ältere A-Sign-Client-Version löst es. Hardwaretest kann jetzt fortgesetzt werden."
+description: "RKSV/BFR-Integration — Architektur seit 2026-07-06 fertig (State-Check-Gate). ✅ 2026-07-19: kompletter Hardware-Test (Hardware-Wechsel/Normalverkauf/Ausfall) erfolgreich, zwei echte Bugs gefunden+gefixt (Ausfall-Erkennung, bfr_url-Selbstheilung war nie funktionsfähig)."
 metadata:
   node_type: memory
   type: project
   originSessionId: eefd559b-9c02-443d-a0cb-164e3dadf876
-  modified: 2026-07-18T17:47:14.706Z
+  modified: 2026-07-19T08:41:39.648Z
 ---
 
 ## Status: Grundarchitektur am 2026-07-06 komplett neu gebaut (nach echtem Hardware-Test)
@@ -93,6 +93,34 @@ Auflösung des oben offenen `/register`-Crash-Rätsels vom 2026-07-09: **Verursa
 **Bedeutung für uns:** Das State-Check-Gate-Modell (siehe oben) war die ganze Zeit korrekt konzipiert — der beobachtete Crash lag außerhalb unseres Verantwortungsbereichs (Drittsoftware-Bug beim Hersteller-Zulieferer, nicht im BFR-eigenen Code und nicht in `BfrService`). Keine Architektur-Anpassung nötig.
 
 **How to apply:** Hardwaretest (siehe unten, war seit 2026-07-10 bewusst pausiert bis zur Herstellerantwort) kann jetzt fortgesetzt werden — vorausgesetzt die Testmaschine nutzt die ältere A-Sign-Client-Version. Bei künftigen ähnlichen "BFR antwortet nicht"-Symptomen zuerst die installierte A-Trust-Tool-Version prüfen, bevor in `BfrService`/State-Check-Logik gesucht wird.
+
+## ✅ Kompletter Hardware-Test durchgeführt (2026-07-19) — zwei echte Bugs gefunden+gefixt
+
+Jacky hat auf dem Test-Laptop (Kasse 4, A-Sign-Client jetzt korrekt auf 2.7.0) den kompletten Hardware-Wechsel-Flow durchgespielt: alte Bindung gelöst ("Neue Kassen-ID anfordern"), im BFR-Tool neue Kassen-ID `Test02` + Startbeleg erzeugt, in `kasse_registrierung.php` Registrierung abgeschlossen. Danach drei Testrunden (Normalverkauf/Ausfall/Normalverkauf, jeweils 5€) plus ein simulierter IP-Wechsel (WLAN statt LAN).
+
+### 🔴 Bug 1 (behoben): `parseRegisterAntwort()` erkannte reale Ausfälle nicht
+
+Die Doku sagt zu, `<Link>` sei entweder die Steuerkennung ODER exakt der Text "Sicherheitseinrichtung ausgefallen". Reale Hardware antwortet beim Ausfall aber mit **beidem zusammen**, per Newline getrennt: `<Link>ATU12345672\nSicherheitseinrichtung ausgefallen</Link>` (verifiziert im rohen XML aus `bfr_kommunikation_log`). Der exakte String-Vergleich (`$link !== 'Sicherheitseinrichtung ausgefallen'`) erkannte das nicht als Ausfall, sondern als **erfolgreiche Signatur** — Folge: keine Ausfall-Episode wurde angelegt, die 24h/48h-FON-Meldepflicht-Uhr lief nie los, obwohl der Bon sichtbar "ausgefallen" zeigte.
+
+**Fix:** `BfrService.php:244` — Vergleich auf `str_contains()` umgestellt (negiert: `!str_contains($link, 'Sicherheitseinrichtung ausgefallen')` für den Erfolgsfall). Mit echtem Nachtest verifiziert: Episode wird jetzt korrekt angelegt (bei Ausfall) und automatisch wieder geschlossen (beim nächsten erfolgreichen Verkauf). Umsatzzähler zählte in allen Fällen korrekt weiter. BFR-eigener Belegexplorer bestätigte: BFR-Seite selbst lief immer korrekt (inkl. automatischem Sammelbeleg), der Bug lag rein in unserer Auswertung.
+
+### 🔴 Bug 2 (behoben, Feature dafür abgebaut): `bfr_url`-Selbstheilung war nie funktionsfähig
+
+Erster echter Live-Test der Selbstheilung (gebaut 2026-07-09, nie im Browser getestet) — Ergebnis: **funktioniert grundsätzlich nicht**, zwei übereinanderliegende Bugs:
+
+1. `bfr_url` wurde ohne `http://`-Schema gespeichert (z.B. `10.0.0.40:8787`) — PHP/curl tolerant, aber der Browser-eigene `new URL(...)`-Parser wirft dabei eine Exception (da "10.0.0.40" kein gültiges URL-Schema ist), von `apHeileBfrUrl()`s try/catch lautlos verschluckt. Live im Browser bestätigt: `new URL('10.0.0.40:8787')` → `Uncaught TypeError: Failed to construct 'URL': Invalid URL`.
+2. Nach Behebung von (1): der direkte Browser-`fetch('http://127.0.0.1:8787/state')` wird von **CORS blockiert** — BFR schickt grundsätzlich keinen `Access-Control-Allow-Origin`-Header (dieselbe Einschränkung, die am 9.7. bei der Offline-Kasse gefunden und dort mit `bfr_lokal_proxy.ps1` gelöst wurde). Live im Browser bestätigt: `Access to fetch at 'http://127.0.0.1:8787/state' from origin '...' has been blocked by CORS policy`.
+
+**Entscheidung (Jacky):** Für stationäre Kassen keinen dauerhaft laufenden Proxy einrichten (Option A verworfen) — stattdessen Selbstheilung als Konzept aufgegeben (Option B). Kompletter Code entfernt: `apHeileBfrUrl()` + Aufruf in `kasse_arbeitsplatz.js`, `window.KASSE_BFR_URL` in `kasse/index.php`, `ajax_bfr_heilung.php`, `BfrService::heileUrlFuerKasse()`.
+
+**Ersatz gebaut:** leichtgewichtiges manuelles `bfr_url`-Bearbeiten bei bereits aktiver Registrierung — neue Karte in `kasse_registrierung.php` + Aktion `bfr_url_aendern` in `kasse_registrierung_speichern.php` + `BfrService::aendereBfrUrl()`. Bewusst getrennt vom "Neue Kassen-ID anfordern"-Hardware-Wechsel-Flow, da nur die Erreichbarkeit sich ändert (DHCP/WLAN), nicht die Identität der Kasse — `bfr_aktiv_seit`/Umsatzzähler bleiben unangetastet. `BfrService::normalisiereBfrUrl()` (statisch) sorgt jetzt an beiden Speicherstellen (Registrierung + neue Aktion) dafür, dass `bfr_url` immer mit Schema gespeichert wird.
+
+**Zusatz auf Jackys Vorschlag:** Das "Dienst nicht erreichbar"-Popup in `bon.php` zeigt jetzt die konfigurierte BFR-Adresse direkt an ("Gemeldete BFR-Adresse: X — korrekt? Sonst in den Kassen-Einstellungen ändern") mit Link zu `kasse_registrierung.php` — hilft beim schnellen Eingrenzen, ob ein Ausfall an der Adresse oder wirklich am BFR-Dienst liegt.
+
+**Alles live verifiziert** nach dem Fix: WLAN-IP manuell über die neue Karte eingetragen, `bon.php` startete danach wieder normal.
+
+**Why:** Genau die Art Bugs, die nur ein echter Hardware-/Browser-Test findet — beide waren seit ihrem jeweiligen Bau (9.7. bzw. Feature-Alter unbekannt) nie in einer echten Browser-Umgebung gelaufen.
+**How to apply:** Bei künftigen BFR-bezogenen Netzwerk-/URL-Themen zuerst prüfen ob der Code-Pfad browser-seitig (`fetch()`, `new URL()`) oder PHP-seitig (`curl`, `parse_url()`) läuft — die beiden tolerieren unterschiedliche Dinge, ein Test nur in einer der beiden Welten reicht nicht.
 
 ## Offene Punkte / nicht heute geklärt
 
