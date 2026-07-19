@@ -365,6 +365,11 @@ final class Zugriffsregeln
             'berechtigung_setzen.php'  => 'benutzer.bearbeiten',
         ],
 
+        // === Admin (System-Aktivitäten-Log) ===
+        'admin' => [
+            'aktivitaeten.php' => 'system.log',
+        ],
+
         // === Einstellungen ===
         'einstellungen' => [
             'index.php'                       => 'einstellungen.anzeigen',

@@ -26,13 +26,17 @@ class Logger
      * @param array       $details          Optionale Zusatzinfos (werden als JSON gespeichert)
      * @param int|null    $benutzerId       Überschreibt $_SESSION wenn angegeben
      *                                      (z.B. für Jarvis/System-Aktionen ohne echte Session)
+     * @param string      $stufe            'info' (Standard) | 'warn' | 'error' -- für die
+     *                                      Logger-UI (Shell-Zeile + Admin-Aktivitätenseite).
+     *                                      Nur an Fehlerpfaden bewusst 'warn'/'error' setzen.
      */
     public static function log(
         string $aktion,
         ?string $referenzTabelle = null,
         ?int    $referenzId      = null,
         array $details = [],
-        ?int $benutzerId = null
+        ?int $benutzerId = null,
+        string $stufe = 'info'
     ): void {
 
         // Jarvis (system-Benutzer) hat keine Session — benutzerId wird direkt übergeben
@@ -40,10 +44,14 @@ class Logger
             $benutzerId = $_SESSION['benutzer']['id'];
         };
 
+        if (!in_array($stufe, ['info', 'warn', 'error'], true)) {
+            $stufe = 'info';
+        }
+
         $db = Database::getInstance();
         $stmt = $db->prepare("
-            INSERT INTO aktivitaeten (benutzer_id, aktion, referenz_tabelle, referenz_id, details)
-            VALUES (:benutzer_id, :aktion, :referenz_tabelle, :referenz_id, :details)
+            INSERT INTO aktivitaeten (benutzer_id, aktion, referenz_tabelle, referenz_id, details, stufe)
+            VALUES (:benutzer_id, :aktion, :referenz_tabelle, :referenz_id, :details, :stufe)
         ");
         $stmt->execute([
             'benutzer_id'      => $benutzerId,
@@ -52,7 +60,8 @@ class Logger
             'referenz_id'      => $referenzId,
             // details als JSON; JSON_INVALID_UTF8_SUBSTITUTE verhindert false-Rückgabe bei
             // kaputten UTF-8-Sequenzen (z.B. Windows-1252-Umlaute aus Excel-CSV-Uploads)
-            'details' => empty($details) ? null : (json_encode($details, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: null)
+            'details' => empty($details) ? null : (json_encode($details, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: null),
+            'stufe' => $stufe,
         ]);
     }
 }

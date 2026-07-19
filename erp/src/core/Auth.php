@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Zugriffsregeln.php';
+require_once __DIR__ . '/logger.php';
 
 /**
  * Auth – Session-basierte Authentifizierung und Berechtigungsprüfung
@@ -233,6 +234,11 @@ class Auth
         if ($benoetigt === null || self::kann($benoetigt)) {
             return;
         }
+
+        Logger::log('system.zugriff_verweigert', null, null, [
+            'seite'     => $verzeichnis . '/' . $datei,
+            'benoetigt' => $benoetigt,
+        ], null, 'warn');
 
         if (Zugriffsregeln::istJsonEndpunkt($verzeichnis, $datei)) {
             http_response_code(403);

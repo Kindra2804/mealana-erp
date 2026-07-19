@@ -138,6 +138,9 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                         <div class="erp-nav-more-sep"></div>
                         <a href="<?= BASE_PATH ?>/benutzer/liste.php" class="erp-nav-more-item">👤 Benutzerverwaltung</a>
                         <a href="<?= BASE_PATH ?>/rollen/matrix.php" class="erp-nav-more-item">🔐 Rollen & Rechte</a>
+                        <?php if (Auth::kann('system.log')): ?>
+                            <a href="<?= BASE_PATH ?>/admin/aktivitaeten.php" class="erp-nav-more-item">📜 Aktivitäten-Log</a>
+                        <?php endif; ?>
                         <?php if (Auth::kann('api.zugriff')): ?>
                             <a href="#" class="erp-nav-more-item erp-nav-more-item-disabled" title="Kommt bald">🔑 Lizenzverwaltung</a>
                         <?php endif; ?>

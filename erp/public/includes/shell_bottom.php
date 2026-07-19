@@ -1,6 +1,23 @@
 </main>
+<?php
+require_once __DIR__ . '/../../src/modules/admin/AktivitaetenService.php';
+$erpLogEintraege = (new AktivitaetenService())->getLetzte(5);
+$erpStufeFarben = ['info' => 'var(--color-success)', 'warn' => 'var(--color-warning)', 'error' => 'var(--color-danger)'];
+?>
 <div class="erp-logbar">
-    <span>ℹ️ 14:23:01 — System bereit</span>
+    <?php if (empty($erpLogEintraege)): ?>
+        <span>ℹ️ System bereit</span>
+    <?php else: ?>
+        <?php foreach ($erpLogEintraege as $i => $log): ?>
+            <?php if ($i > 0): ?><span style="color:#555">•</span><?php endif ?>
+            <span>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<?= $erpStufeFarben[$log['stufe']] ?? $erpStufeFarben['info'] ?>;margin-right:4px"></span>
+                <?= date('H:i:s', strtotime($log['erstellt_am'])) ?>
+                <?= htmlspecialchars($log['benutzer_name'] ?? 'Jarvis') ?>:
+                <?= htmlspecialchars($log['aktion']) ?>
+            </span>
+        <?php endforeach ?>
+    <?php endif ?>
 </div>
 <div class="erp-statusbar">
     <span>👤 Karl</span>

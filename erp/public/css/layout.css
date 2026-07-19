@@ -105,6 +105,9 @@ html, body {
   padding: 0 var(--space-md);
   display: flex;
   align-items: center;
+  gap: var(--space-md);
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 .erp-statusbar {
