@@ -161,6 +161,14 @@ class ArtikelRepository
             $conditions[] = "a.artikel_gruppe_id IS NULL";
         }
 
+        // Kanal-Filter: Vater/Standalone muss selbst im gewählten Shop aktiv sein. Ein Kind kann
+        // dort nie effektiv aktiv sein, wenn der Vater es nicht ist (siehe ShopSyncRepository-Gating),
+        // daher reicht die Prüfung auf die eigene Zuweisung des Vaters/Standalone-Artikels.
+        if (!empty($filter['kanal_shop_id'])) {
+            $conditions[] = "EXISTS (SELECT 1 FROM artikel_shops ash_f WHERE ash_f.artikel_id = a.id AND ash_f.shop_id = :kanal_shop_id AND ash_f.aktiv = 1)";
+            $params['kanal_shop_id'] = (int)$filter['kanal_shop_id'];
+        }
+
         $where = "WHERE " . implode(" AND ", $conditions);
         $stmt = $this->db->prepare("
             SELECT
@@ -193,7 +201,11 @@ class ArtikelRepository
                  FROM artikel_merkmale am2
                  JOIN merkmal_werte mw2 ON mw2.id = am2.merkmal_wert_id
                  JOIN merkmale m2 ON m2.id = am2.merkmal_id
-                 WHERE am2.artikel_id = a.id) AS merkmale
+                 WHERE am2.artikel_id = a.id) AS merkmale,
+                (SELECT GROUP_CONCAT(CONCAT('S', s2.id) ORDER BY s2.id SEPARATOR ',')
+                 FROM artikel_shops ash2
+                 JOIN shops s2 ON s2.id = ash2.shop_id
+                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1) AS shop_kanaele
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
@@ -317,6 +329,11 @@ class ArtikelRepository
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
         } elseif ($qf === 'keine_gruppe') {
             $conditions[] = "a.artikel_gruppe_id IS NULL";
+        }
+
+        if (!empty($filter['kanal_shop_id'])) {
+            $conditions[] = "EXISTS (SELECT 1 FROM artikel_shops ash_f WHERE ash_f.artikel_id = a.id AND ash_f.shop_id = :kanal_shop_id AND ash_f.aktiv = 1)";
+            $params['kanal_shop_id'] = (int)$filter['kanal_shop_id'];
         }
 
         $where = "WHERE " . implode(" AND ", $conditions);
@@ -484,7 +501,12 @@ class ArtikelRepository
                 h.name AS hersteller,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
-                (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean
+                (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
+                (SELECT GROUP_CONCAT(CONCAT('S', s2.id) ORDER BY s2.id SEPARATOR ',')
+                 FROM artikel_shops ash2
+                 JOIN shops s2 ON s2.id = ash2.shop_id
+                 LEFT JOIN artikel_shops ash2v ON ash2v.artikel_id = a.vaterartikel_id AND ash2v.shop_id = ash2.shop_id
+                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND COALESCE(ash2v.aktiv, 0) = 1) AS shop_kanaele
             FROM artikel a
             LEFT JOIN artikel_preise ap ON ap.id = (
                 SELECT id FROM artikel_preise

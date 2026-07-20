@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../src/modules/preise/PreisService.php';
 require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
 require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
+require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
 
 $id       = (int) ($_GET['id'] ?? 0);
 $vonVater = (int) ($_GET['von_vater'] ?? 0);
@@ -77,6 +78,42 @@ $zustandsArtikelListe = ($artikel && empty($artikel['zustand_vater_id']))
     : [];
 
 $istKind = !empty($artikel['vaterartikel_id']);
+
+$shopSyncRepo = new ShopSyncRepository();
+$kanaeleFuerArtikel = $id ? $shopSyncRepo->findKanalStatusFuerArtikel($id) : [];
+
+/**
+ * Zeilen fürs Kanal-Dropdown im Actionbar-Button "Im Shop ▼".
+ * Drei Zustände: effektiv an (grün), eigener Wunsch an aber Vater aus (orange,
+ * "wartet auf Vater"), aus (grau). Klick toggelt immer den eigenen Wunsch-Status.
+ */
+function renderKanalPanelZeilen(array $kanaele): string
+{
+    if (empty($kanaele)) {
+        return '<div style="padding:8px;color:var(--color-text-muted);font-size:12px">Keine Shops konfiguriert</div>';
+    }
+    $html = '';
+    foreach ($kanaele as $k) {
+        $eigener  = (int)$k['eigener_status'];
+        $vaterOk  = (int)$k['vater_status'];
+        $effektiv = $eigener && $vaterOk;
+        if ($effektiv) {
+            [$stateClass, $stateLabel] = ['chip-aktiv', 'An'];
+        } elseif ($eigener && !$vaterOk) {
+            [$stateClass, $stateLabel] = ['chip-auslauf', 'wartet auf Vater'];
+        } else {
+            [$stateClass, $stateLabel] = ['chip-inaktiv', 'Aus'];
+        }
+        $fehlerIcon = $k['sync_status'] === 'error'
+            ? ' <span title="' . htmlspecialchars($k['fehler_meldung'] ?? 'Sync-Fehler') . '" style="color:var(--color-danger)">⚠</span>'
+            : '';
+        $html .= '<div class="kanal-panel-zeile" onclick="kanalToggle(' . (int)$k['shop_id'] . ', ' . ($eigener ? 'false' : 'true') . ')">'
+            . '<span>' . htmlspecialchars($k['name']) . $fehlerIcon . '</span>'
+            . '<span class="chip ' . $stateClass . '">' . $stateLabel . '</span>'
+            . '</div>';
+    }
+    return $html;
+}
 
 $merkmaleRepo        = new MerkmaleRepository();
 $artikeltypId        = $artikel ? (int)$artikel['artikeltyp_id'] : null;
@@ -334,6 +371,8 @@ $weRueckkehrInput = $vonVater > 0
     ? '<input type="hidden" name="we_rueckkehr" form="stammdaten-form" value="' . BASE_PATH . '/artikel/detail.php?id=' . $vonVater . '&tab=varianten">'
     : '';
 
+$kanalPanelHtml = renderKanalPanelZeilen($kanaeleFuerArtikel);
+
 $actionBarContent = <<<HTML
 <div class="actionbar-left">
     <button form="stammdaten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
@@ -341,7 +380,13 @@ $actionBarContent = <<<HTML
     {$weRueckkehrInput}
     <div class="actionbar-sep"></div>
     <button class="btn btn-secondary btn-sm" style="color:var(--color-warning)">Deaktivieren</button>
-    <button class="btn btn-secondary btn-sm" style="color:#0a6ebd">Im Shop ▼</button>
+    <div class="spalten-picker-wrap" style="display:inline-block">
+        <button type="button" id="kanal-btn" class="btn btn-secondary btn-sm" style="color:#0a6ebd">Im Shop ▼</button>
+        <div class="spalten-panel" id="kanal-panel" style="min-width:220px">
+            <div class="spalten-panel-titel">Verkaufskanäle</div>
+            <div id="kanal-panel-inhalt">{$kanalPanelHtml}</div>
+        </div>
+    </div>
 </div>
 <span id="unsaved-banner" class="unsaved-indicator">ungespeicherte Änderungen</span>
 <div class="actionbar-right">

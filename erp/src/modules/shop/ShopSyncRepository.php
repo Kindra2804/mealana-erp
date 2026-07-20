@@ -115,4 +115,31 @@ class ShopSyncRepository
             ON DUPLICATE KEY UPDATE aktiv = VALUES(aktiv), sync_status = 'pending'
         ")->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId, 'aktiv' => $aktiv ? 1 : 0]);
     }
+
+    /**
+     * Kanal-Status je aktivem Shop für einen Artikel (für den Kanal-Dropdown im Formular).
+     *
+     * Kein Vater/Kind-Feld wird kaskadierend überschrieben — ein Kind behält immer
+     * seinen eigenen "Wunsch"-Status (`eigener_status`). Effektiv sichtbar im Shop ist
+     * ein Kind nur, wenn ZUSÄTZLICH der Vater dort aktiv ist (`vater_status`), sonst
+     * bleibt der Wunsch gespeichert und greift automatisch, sobald der Vater wieder an ist.
+     * Bei Vater-/Standalone-Artikeln ist `vater_status` immer 1 (kein Elternteil, keine Sperre).
+     */
+    public function findKanalStatusFuerArtikel(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT s.id AS shop_id, s.slug, s.name,
+                   COALESCE(ash.aktiv, 0) AS eigener_status,
+                   ash.sync_status, ash.fehler_meldung,
+                   IF(a.vaterartikel_id IS NULL, 1, COALESCE(ash_vater.aktiv, 0)) AS vater_status
+            FROM shops s
+            LEFT JOIN artikel_shops ash ON ash.shop_id = s.id AND ash.artikel_id = :artikel_id
+            JOIN artikel a ON a.id = :artikel_id2
+            LEFT JOIN artikel_shops ash_vater ON ash_vater.shop_id = s.id AND ash_vater.artikel_id = a.vaterartikel_id
+            WHERE s.ist_aktiv = 1
+            ORDER BY s.id
+        ");
+        $stmt->execute(['artikel_id' => $artikelId, 'artikel_id2' => $artikelId]);
+        return $stmt->fetchAll();
+    }
 }

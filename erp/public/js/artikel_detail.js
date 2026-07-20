@@ -591,3 +591,66 @@ function bewegungslogChargeFilterAendern(charge) {
         });
 }
 
+// ── Kanal-Dropdown (Verkaufskanäle) ──────────────────────────────────────────
+
+function escHtmlKanal(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('kanal-btn');
+    const panel = document.getElementById('kanal-panel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        panel.classList.toggle('offen');
+    });
+    document.addEventListener('click', function (e) {
+        if (!panel.contains(e.target) && e.target !== btn) {
+            panel.classList.remove('offen');
+        }
+    });
+});
+
+// Rendert die Kanal-Zeilen neu, nachdem der Server nach einem Toggle den aktuellen
+// Status aller Shops zurückgegeben hat (eigener Wunsch + Vater-Gating, siehe PHP-Pendant
+// renderKanalPanelZeilen() in detail.php).
+function renderKanalPanel(kanaele) {
+    const inhalt = document.getElementById('kanal-panel-inhalt');
+    if (!kanaele.length) {
+        inhalt.innerHTML = '<div style="padding:8px;color:var(--color-text-muted);font-size:12px">Keine Shops konfiguriert</div>';
+        return;
+    }
+    inhalt.innerHTML = kanaele.map(function (k) {
+        const eigener = +k.eigener_status;
+        const vaterOk = +k.vater_status;
+        const effektiv = eigener && vaterOk;
+        let stateClass = 'chip-inaktiv', stateLabel = 'Aus';
+        if (effektiv) { stateClass = 'chip-aktiv'; stateLabel = 'An'; }
+        else if (eigener && !vaterOk) { stateClass = 'chip-auslauf'; stateLabel = 'wartet auf Vater'; }
+        const fehler = k.sync_status === 'error'
+            ? ' <span title="' + escHtmlKanal(k.fehler_meldung || 'Sync-Fehler') + '" style="color:var(--color-danger)">⚠</span>'
+            : '';
+        return '<div class="kanal-panel-zeile" onclick="kanalToggle(' + k.shop_id + ', ' + (eigener ? 'false' : 'true') + ')">'
+            + '<span>' + escHtmlKanal(k.name) + fehler + '</span>'
+            + '<span class="chip ' + stateClass + '">' + stateLabel + '</span>'
+            + '</div>';
+    }).join('');
+}
+
+function kanalToggle(shopId, neuerWert) {
+    fetch(window.BASE_PATH + '/artikel/kanal_ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', artikel_id: window.MEALANA_ARTIKEL_ID, shop_id: shopId, aktiv: neuerWert })
+    })
+        .then(r => r.json())
+        .then(d => {
+            if (d.erfolg) {
+                renderKanalPanel(d.kanaele);
+            } else {
+                showFlash(d.fehler ?? 'Unbekannter Fehler', 'fehler');
+            }
+        });
+}
+

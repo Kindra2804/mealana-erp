@@ -963,6 +963,22 @@
 .kc-s2 { background: #7EC8E3; color: #1B3A6B; }
 .kc-s3 { background: #A8D4F0; color: #1B3A6B; }
 
+/* Kanal-Panel (Kanal-Dropdown im Artikel-Formular) */
+.kanal-panel-zeile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.kanal-panel-zeile:hover {
+    background: var(--color-bg);
+}
+
 .bst-null { color: #C53030; font-weight: 600; }
 
 .preis-cell { white-space: nowrap; font-size: 13px; }

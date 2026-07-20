@@ -28,6 +28,8 @@ $service = new ArtikelService();
 $db = Database::getInstance();
 $alleHersteller   = $db->query("SELECT id, name FROM hersteller WHERE aktiv = 1 ORDER BY name")->fetchAll();
 $alleArtikeltypen = $db->query("SELECT id, name FROM artikel_typen ORDER BY name")->fetchAll();
+$alleShops        = $db->query("SELECT id, name FROM shops WHERE ist_aktiv = 1 ORDER BY id")->fetchAll();
+$shopNamenById     = array_column($alleShops, 'name', 'id');
 
 // === SPALTEN-KONFIGURATION ===
 $alleSpaltenDef = [
@@ -82,12 +84,12 @@ function spalteHeader(string $key, string $aktSort, string $aktDir, array $getPa
 }
 
 // Renderer für Vater-Zeilen-Zellen (TD)
-function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitle, string $statusChips, bool $hatTeureresKind): string {
+function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitle, string $statusChips, bool $hatTeureresKind, array $shopNamenById): string {
     switch ($key) {
         case 'status':
             return '<td class="status-cell">' . $statusChips . '</td>';
         case 'shops':
-            return '<td class="kanal-cell">' . renderShopChips($a) . '</td>';
+            return '<td class="kanal-cell">' . renderShopChips($a, $shopNamenById) . '</td>';
         case 'bestand':
             $ist  = (float)$a['gesamtbestand'];
             $res  = (float)($a['reserviert'] ?? 0);
@@ -140,9 +142,10 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
 }
 
 // Renderer für Kind-Zeilen (meistens leer außer bestand/preis/ean/status)
-function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kindBstTitle, string $kindStatusChips): string {
+function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kindBstTitle, string $kindStatusChips, array $shopNamenById): string {
     switch ($key) {
         case 'status':   return '<td class="status-cell">' . $kindStatusChips . '</td>';
+        case 'shops':    return '<td class="kanal-cell">' . renderShopChips($k, $shopNamenById) . '</td>';
         case 'bestand':
             $kist  = (float)$k['gesamtbestand'];
             $kres  = (float)($k['reserviert'] ?? 0);
@@ -213,6 +216,7 @@ $filter = [
     'kategorie_ids'   => $alleKatIds,
     'nurKategorielos' => $statusFilter === 'ohnekat',
     'qualitaet'       => $qualitaetFilter,
+    'kanal_shop_id'   => (int)($_GET['kanal_filter'] ?? 0) ?: null,
     'sort'            => $aktSort,
     'dir'             => $aktDir,
 ];
@@ -325,17 +329,17 @@ function sortKopf(string $spalte, string $label, string $aktSort, string $aktDir
 }
 
 
-function renderShopChips(array $artikel): string
+function renderShopChips(array $artikel, array $shopNamenById): string
 {
-    // K-Kanäle (Kassen) werden nicht mehr angezeigt — sie gelten immer für alle Artikel
-    // Nur S-Kanäle (Shops) sobald artikel_shops existiert und GROUP_CONCAT-Feld "shop_kanaele" befüllt ist
+    // K-Kanäle (Kassen) werden nicht angezeigt — sie gelten immer für alle Artikel.
+    // S-Kanäle (Shops) kommen aus artikel_shops, Code "S{shop_id}" (siehe ArtikelRepository::findAll()/findKinderFuerListe()).
     if (empty($artikel['shop_kanaele'])) return '–';
     $html = '';
-    $shopCssMap = ['S1' => 'kc-s1', 'S2' => 'kc-s2', 'S3' => 'kc-s3'];
     foreach (explode(',', $artikel['shop_kanaele']) as $code) {
         $code = trim($code);
-        $css  = $shopCssMap[$code] ?? 'kc-s1';
-        $html .= '<span class="kc ' . $css . '">' . htmlspecialchars($code) . '</span>';
+        $shopId = (int) substr($code, 1);
+        $name = $shopNamenById[$shopId] ?? $code;
+        $html .= '<span class="kc kc-s' . $shopId . '" title="' . htmlspecialchars($name) . '">' . htmlspecialchars($code) . '</span>';
     }
     return $html;
 }
@@ -410,6 +414,7 @@ $actionBarContent = <<<HTML
         <option value="ist_auslaufartikel">ist Auslaufartikel</option>
         <option value="kein_auslaufartikel">kein Auslaufartikel</option>
         <option value="kategorie_zuweisen">Kategorie zuweisen</option>
+        <option value="kanal_zuweisen">Kanal zuweisen</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
     <div class="actionbar-sep"></div>
@@ -468,13 +473,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <option value="keine_gruppe" <?= $statusFilter === 'keine_gruppe' ? 'selected' : '' ?>>Keine Artikelgruppe</option>
             </optgroup>
         </select>
-        <select name="kanal_filter" class="erp-select" disabled title="Kanäle-Modul noch nicht aktiv">
+        <select name="kanal_filter" class="erp-select" onchange="this.form.requestSubmit()">
             <option value="">– Kanal –</option>
-            <option>K1 Kassa Boutique</option>
-            <option>K2 Kassa Messe</option>
-            <option>S1 Shop MeaLana</option>
-            <option>S2 Sockenwolle</option>
-            <option>S3 Bio-Wolle</option>
+            <option disabled title="Kassen gelten immer für alle Artikel, kein eigenes Flag">K1 Kassa Boutique</option>
+            <option disabled title="Kassen gelten immer für alle Artikel, kein eigenes Flag">K2 Kassa Messe</option>
+            <?php foreach ($alleShops as $s): ?>
+                <option value="<?= $s['id'] ?>" <?= (int)($_GET['kanal_filter'] ?? 0) === (int)$s['id'] ? 'selected' : '' ?>>
+                    S<?= $s['id'] ?> <?= htmlspecialchars($s['name']) ?>
+                </option>
+            <?php endforeach; ?>
         </select>
         <label>
             <input onchange="this.form.requestSubmit()" type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand
@@ -627,7 +634,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
                         <?php endif; ?>
                     </td>
-                    <?php foreach ($aktiveSpalten as $sp_key): echo spalteVaterTd($sp_key, $a, $bstKlasse, $bstTitle, $statusChips, $hatTeureresKind); endforeach; ?>
+                    <?php foreach ($aktiveSpalten as $sp_key): echo spalteVaterTd($sp_key, $a, $bstKlasse, $bstTitle, $statusChips, $hatTeureresKind, $shopNamenById); endforeach; ?>
                     <td class="aktion-cell">
                         <span class="row-aktionen">
                             <a href="detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
@@ -676,7 +683,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
                             <?php endif; ?>
                         </td>
-                        <?php foreach ($aktiveSpalten as $sp_key): echo spalteKindTd($sp_key, $k, $kindBstKlasse, $kindBstTitle, $kindStatusChips); endforeach; ?>
+                        <?php foreach ($aktiveSpalten as $sp_key): echo spalteKindTd($sp_key, $k, $kindBstKlasse, $kindBstTitle, $kindStatusChips, $shopNamenById); endforeach; ?>
                         <td class="aktion-cell">
                             <span class="row-aktionen">
                                 <a href="detail.php?id=<?= $k['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
@@ -765,11 +772,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="kanal-legende" id="kanal-legende-bar">
     <span class="kanal-legende-label">Shops:</span>
     <span id="kanal-legende-inhalt">
-        <span class="kc kc-s1">S1</span> <span class="kanal-legende-text">Shop MeaLana</span>
-        <span class="kanal-legende-sep">·</span>
-        <span class="kc kc-s2">S2</span> <span class="kanal-legende-text">Sockenwolle</span>
-        <span class="kanal-legende-sep">·</span>
-        <span class="kc kc-s3">S3</span> <span class="kanal-legende-text">Bio-Wolle</span>
+        <?php foreach ($alleShops as $i => $s): ?>
+            <?php if ($i > 0): ?><span class="kanal-legende-sep">·</span><?php endif; ?>
+            <span class="kc kc-s<?= $s['id'] ?>">S<?= $s['id'] ?></span> <span class="kanal-legende-text"><?= htmlspecialchars($s['name']) ?></span>
+        <?php endforeach; ?>
         <span class="kanal-legende-note">(K1/K2 Kassen = immer alle Artikel, kein eigenes Flag)</span>
     </span>
     <button onclick="legendeToggle()" id="legende-toggle-btn"
@@ -877,6 +883,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         if (aktion === 'kategorie_zuweisen') {
             bulkKatOeffnen(ids);
+            return;
+        }
+
+        if (aktion === 'kanal_zuweisen') {
+            bulkKanalOeffnen(ids);
             return;
         }
 
@@ -1046,6 +1057,82 @@ function bulkKatSpeichern() {
 
 document.getElementById('bulk-kat-backdrop').addEventListener('click', function(e) {
     if (e.target === this) bulkKatSchliessen();
+});
+</script>
+
+<!-- Bulk-Kanal Modal -->
+<div id="bulk-kanal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:8px;padding:20px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.2)">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:var(--color-nav)">Kanal zuweisen</div>
+        <div id="bulk-kanal-info" style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px"></div>
+        <div style="border:1px solid #e2e8f0;border-radius:6px;padding:6px 0;margin-bottom:12px">
+            <?php foreach ($alleShops as $s): ?>
+                <div style="padding:5px 10px;cursor:pointer;border-radius:4px;margin:1px 4px"
+                     class="bulk-kanal-zeile" data-id="<?= $s['id'] ?>" data-name="<?= htmlspecialchars($s['name'], ENT_QUOTES) ?>"
+                     onclick="bulkKanalWaehlen(this)">
+                    <?= htmlspecialchars($s['name']) ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <div id="bulk-kanal-auswahl" style="font-size:12px;color:#1e40af;font-weight:600;min-height:18px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:14px;margin-bottom:14px">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="bulk-kanal-status" value="1" checked> Aktivieren</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="bulk-kanal-status" value="0"> Deaktivieren</label>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button onclick="bulkKanalSchliessen()" class="btn btn-secondary btn-sm">Abbrechen</button>
+            <button id="bulk-kanal-speichern" onclick="bulkKanalSpeichern()" class="btn btn-primary btn-sm" disabled>Zuweisen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var _bulkKanalSelectedId  = null;
+var _bulkKanalSelectedIds = [];
+
+function bulkKanalOeffnen(ids) {
+    _bulkKanalSelectedId  = null;
+    _bulkKanalSelectedIds = ids;
+    document.getElementById('bulk-kanal-info').textContent = ids.length + ' Artikel ausgewählt';
+    document.getElementById('bulk-kanal-auswahl').textContent = '';
+    document.getElementById('bulk-kanal-speichern').disabled = true;
+    document.querySelectorAll('.bulk-kanal-zeile').forEach(z => z.style.background = '');
+    document.getElementById('bulk-kanal-backdrop').style.display = 'flex';
+}
+
+function bulkKanalSchliessen() {
+    document.getElementById('bulk-kanal-backdrop').style.display = 'none';
+}
+
+function bulkKanalWaehlen(el) {
+    document.querySelectorAll('.bulk-kanal-zeile').forEach(z => z.style.background = '');
+    el.style.background = '#dbeafe';
+    _bulkKanalSelectedId = parseInt(el.dataset.id);
+    document.getElementById('bulk-kanal-auswahl').textContent = '▶ ' + el.dataset.name;
+    document.getElementById('bulk-kanal-speichern').disabled = false;
+}
+
+function bulkKanalSpeichern() {
+    if (!_bulkKanalSelectedId) return;
+    var aktiv = document.querySelector('input[name="bulk-kanal-status"]:checked').value;
+    var btn = document.getElementById('bulk-kanal-speichern');
+    btn.disabled = true;
+    btn.textContent = '...';
+    fetch('bulk_shop_speichern.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: _bulkKanalSelectedIds, shop_id: _bulkKanalSelectedId, aktiv: aktiv === '1'})
+    })
+    .then(r => r.json())
+    .then(data => {
+        bulkKanalSchliessen();
+        if (data.fehler) { alert(data.fehler); return; }
+        location.reload();
+    });
+}
+
+document.getElementById('bulk-kanal-backdrop').addEventListener('click', function(e) {
+    if (e.target === this) bulkKanalSchliessen();
 });
 </script>
 
