@@ -1,11 +1,11 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1 Artikel/Kategorien-Sync im Bau, Testshop live verbunden"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1 Sync-Logik + Kanal-Chips/Vater-Kind-Gating/Kanal-Filter fertig, Testshop live verbunden"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-19T16:35:40.871Z
+  modified: 2026-07-20T16:28:19.863Z
 ---
 
 ## Referenz-Check (2026-07-19)
@@ -48,14 +48,23 @@ WordPress+WooCommerce auf `https://indra-design.at` installiert (Haupt-, nicht S
 
 **🔴 Echter Bug gefunden + gefixt:** `ShopSyncService` rief `Logger::log(..., stufe: 'error')` ohne explizite `benutzerId` auf — funktioniert nur mit aktiver Session, crasht aber (`aktivitaeten.benutzer_id NOT NULL`) in jedem Cron-/CLI-Kontext, also GENAU dem Kontext in dem der Sync später laufen soll. Gleiches Bug-Muster wie schon bei `cron/mahnwesen.php` und `LagerService::wareneingang()` (siehe [[project_installationsanleitung]]). Fix: Jarvis-ID im Konstruktor per `username='system'` auflösen, explizit an jeden `Logger::log()`-Aufruf durchreichen. **Lehre bestätigt sich zum dritten Mal:** jede neue Service-Klasse die potenziell aus einem Cron laufen könnte, braucht das von Anfang an, nicht erst wenn's das erste Mal ohne Session crasht.
 
+## ✅ Kanal-Chips + Vater/Kind-Gating + Kanal-Filter FERTIG (2026-07-20)
+
+Kompletter Bau + End-to-End-Test gegen echte Dev-DB (Artikel #150/#172/#251), danach aufgeräumt (Test-Isolation).
+
+- **Einzelartikel** (`public/artikel/detail.php`): der bisher tote Actionbar-Button "Im Shop ▼" ist jetzt ein Dropdown mit einem Chip pro Shop (grün=an, grau=aus, orange="wartet auf Vater"). Klick toggelt sofort per neuem `public/artikel/kanal_ajax.php` (JSON-Body, `action=toggle`) → `ShopSyncRepository::upsertZuweisung()`. JS-Rendering in `public/js/artikel_detail.js` (`kanalToggle()`/`renderKanalPanel()`), CSS `.kanal-panel-zeile` in `components.css`.
+- **Vater/Kind-Regel (Jackys Vorgabe):** Kind kann nur effektiv aktiv sein, wenn der Vater es im selben Shop auch ist; Vater aktiv erzwingt aber NICHT alle Kinder aktiv. Gelöst ganz ohne neue Spalte/kaskadierendes Überschreiben: jede Zeile (auch Kind) behält ihren eigenen `artikel_shops.aktiv`-"Wunsch", der effektive Status wird zur Laufzeit als `eigener_status AND vater_status` berechnet — neue Methode `ShopSyncRepository::findKanalStatusFuerArtikel()`. Kind-Wunsch bleibt beim kurzzeitigen Vater-Deaktivieren erhalten und greift automatisch wieder, sobald der Vater erneut an ist (verifiziert per Testskript).
+- **Artikelliste** (`public/artikel/liste.php`): der schon vorhandene Platzhalter `renderShopChips()`/`.kc`-CSS ist jetzt mit echten Daten befüllt — `ArtikelRepository::findAll()` (Vater/Standalone, eigene Zuweisung) und `::findKinderFuerListe()` (Kind, mit Vater-Gating via LEFT JOIN) liefern beide ein `shop_kanaele`-Feld (`S{shop_id}`-Codes, comma-separiert). Shop-Legende unten ist jetzt dynamisch aus der `shops`-Tabelle gerendert (vorher hartcodiert S1/S2/S3 mit falscher Zuordnung zu den echten Shop-IDs).
+- **Massenaktion "Kanal zuweisen"**: neuer Punkt im Aktion-Dropdown, Modal analog zum Bulk-Kategorie-Modal (ein Shop pro Durchlauf + Aktivieren/Deaktivieren-Radio, Jackys Entscheidung gegen Mehrfach-Shop-Modal). Neuer Endpunkt `public/artikel/bulk_shop_speichern.php`. Kein Propagations-Write nötig (siehe Gating-Logik oben) — Umschalten am Vater wirkt automatisch auf alle Kinder, ohne dass deren Zeilen angefasst werden.
+- **Kanal-Filter in der Suchzeile**: war bisher `disabled` mit hartcodierten/falschen S1-S3-Labels — jetzt aktiv, dynamisch aus `shops`-Tabelle, filtert `ArtikelRepository::findAll()`/`::countAll()` über `EXISTS`-Check auf die eigene Vater/Standalone-Zuweisung (Kind-Prüfung nicht nötig, da ein Kind laut Gating-Regel nie effektiv aktiv sein kann wenn der Vater es nicht ist). K1/K2 (Kassen) bleiben als Optionen sichtbar aber disabled, da sie immer für alle Artikel gelten.
+
 ## Offen für die nächste Session
 
-1. **Kanal-Chips im Artikel-Formular** — UI zum Ein-/Ausschalten pro Shop (befüllt `artikel_shops` über `ShopSyncRepository::upsertZuweisung()`, existiert schon) — aktuell nur per SQL testbar, keine Oberfläche
-2. **`cron/shop_sync.php`** — dünner Wrapper der `ShopSyncService::syncAlleShops()` per Windows Task Scheduler aufruft (analog `cron/mahnwesen.php`)
-3. **`kategorie_shops` befüllen** — aktuell leer, Kategorie-Sync selbst (Kategorie im Shop anlegen + `externe_kategorie_id` speichern) ist noch nicht gebaut, nur die Zuordnungstabelle
-4. **Vater/Kind-Artikel (Variable Products)** — `findFaelligeArtikel()` filtert aktuell bewusst nur Standard-Artikel ohne `vaterartikel_id`. Kind-Artikel→WooCommerce-Variations-Mapping ist deutlich komplexer (Achsen→Attribute, siehe `db_design_entscheidungen.md`) und bewusst auf eine eigene Session verschoben
-5. **Phase 2 (Bestand)**, **Phase 3 (Bestellungen-Webhook + Polling-Sicherheitsnetz)**, **Phase 4 (Kunden-Merge)** — noch nicht begonnen, siehe Phasenplan oben in dieser Session besprochen
-6. **JTL-Anreicherungs-Import** — eigenständige, kleinere Idee (siehe [[project_roadmap_reihenfolge]]), nicht Teil dieser Sync-Arbeit, aber gleichzeitig vorgemerkt
+1. **`cron/shop_sync.php`** — dünner Wrapper der `ShopSyncService::syncAlleShops()` per Windows Task Scheduler aufruft (analog `cron/mahnwesen.php`)
+2. **`kategorie_shops` befüllen** — aktuell leer, Kategorie-Sync selbst (Kategorie im Shop anlegen + `externe_kategorie_id` speichern) ist noch nicht gebaut, nur die Zuordnungstabelle
+3. **Vater/Kind-Artikel (Variable Products) — eigentlicher WooCommerce-Sync**: `findFaelligeArtikel()` filtert weiterhin bewusst nur Standard-Artikel ohne `vaterartikel_id`. Die Kanal-ZUWEISUNG (an/aus, Gating) ist jetzt startklar für Kinder, aber das Kind-Artikel→WooCommerce-Variations-Mapping selbst (Achsen→Attribute, siehe `db_design_entscheidungen.md`) ist noch nicht gebaut und weiterhin auf eine eigene Session verschoben
+4. **Phase 2 (Bestand)**, **Phase 3 (Bestellungen-Webhook + Polling-Sicherheitsnetz)**, **Phase 4 (Kunden-Merge)** — noch nicht begonnen, siehe Phasenplan oben in dieser Session besprochen
+5. **JTL-Anreicherungs-Import** — eigenständige, kleinere Idee (siehe [[project_roadmap_reihenfolge]]), nicht Teil dieser Sync-Arbeit, aber gleichzeitig vorgemerkt
 
 ## Test-Rückstände (Dev-DB, harmlos aber zur Kenntnis)
 `artikel_shops` hat eine echte Zeile für Artikel #150 (DROPS Baby Merino) → Shop 1, `sync_status='synced'`, `external_id=15`. Auf dem echten Testshop (`indra-design.at`) liegen dadurch zwei echte Produkte: #14 (Entwurf, reiner REST-Client-Test) und #15 (veröffentlicht, aus dem Sync-Testlauf, mit echten MeaLana-Artikeldaten). Beide können gelöscht werden, sobald nicht mehr als Referenz gebraucht.
