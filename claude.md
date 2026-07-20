@@ -565,6 +565,27 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-20, Session 29)
+
+**Hinweis:** Zwischen Session 28 (2026-07-09) und dieser Session lagen mehrere weitere Arbeitstage (u.a. RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update, Buchhaltung/Inventur/Rechte&Rollen fertiggestellt) — dort nicht in CLAUDE.md nachgetragen, voller Stand im Memory-System (`.claude/memory/`, Start immer bei `MEMORY.md`).
+
+### Online-Shop-Anbindung Phase 1 ✅ KOMPLETT FERTIG
+Sync-Logik (Artikel + Kategorien) live gegen echten WooCommerce-Testshop (`indra-design.at`) verifiziert. Details siehe `.claude/memory/project_shop_sync.md`.
+- **Kanal-Chips im Artikel-Formular** (`artikel/detail.php`): "Im Shop ▼"-Dropdown, Toggle per `artikel/kanal_ajax.php` → `ShopSyncRepository::upsertZuweisung()`
+- **Vater/Kind-Gating**: Kind kann nur effektiv aktiv sein wenn der Vater es im selben Shop auch ist — berechnet zur Laufzeit (`eigener_status AND vater_status`), kein kaskadierendes Überschreiben. `ShopSyncRepository::findKanalStatusFuerArtikel()`
+- **Artikelliste**: Kanal-Chips-Spalte + Massenaktion "Kanal zuweisen" + aktivierter Kanal-Filter (waren vorher Platzhalter/disabled)
+- **Kategorie-Sync**: `ShopSyncService` legt vor jedem Artikel-Push den vollen Kategorie-Pfad (Wurzel→Blatt) in WooCommerce an (`kategorie_shops.externe_kategorie_id`), idempotent
+- **Kanal-Chips im Sidebar-Kategoriebaum**: rekursiv berechnet (nicht manuell gepflegt) — Elternkategorien erben Chips von Kindkategorien, `shell_top.php`
+
+### Design-Entscheidungen (noch nicht umgesetzt)
+- **Hersteller-Filter im Shop**: soll als WooCommerce-Produktattribut umgesetzt werden (nicht über den bestehenden Hersteller-Kategorie-Ast), weil ein Hersteller mehrere Produktkategorien bedienen kann. Siehe `.claude/memory/project_hersteller_shop_filter.md`
+- **GPSR-Herstellerangaben-Pflicht** (Name+Adresse auf Produktseite) erkannt — `hersteller`-Tabelle hat die nötigen Felder inkl. `reo_*` (Responsible Economic Operator) bereits, aber noch nicht in den Sync verdrahtet. Umsetzung bewusst zurückgestellt bis Jacky Rechts-Detailantworten hat
+- **Shop-Theme/UX**: WooCommerce-Theme an mealana.at-Look anpassen — bewusst zurückgestellt bis der komplette technische Sync-Teil fertig ist, siehe `.claude/memory/project_shop_theme.md`
+
+**Für nächste Session vorgemerkt (Jacky, 2026-07-20):**
+- Vater/Kind-Artikel Variable-Products-Sync (Achsen→WooCommerce-Attribute/Variations-Mapping)
+- Kategorie/Merkmal/Hersteller-Sync weiterbauen (Merkmal→WC-Attribut ist unabhängig von Vater/Kind machbar, siehe Notiz oben)
+
 ## What's Implemented (Stand 2026-07-09, Session 28)
 
 Zwei große Themenblöcke: Baseline-Neuschnitt inkl. eines live auf 192.168.178.222 gefundenen Rollen-Bugs, danach eine Reihe kleinerer offener Baustellen aus dem Backlog abgearbeitet.

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: f42de806-6c53-4c08-b255-b4829200b8a1
-  modified: 2026-07-20T17:43:37.976Z
+  modified: 2026-07-20T18:07:48.583Z
 ---
 
 ## UI/UX-Entscheidungen (Session 2026-06-06)
@@ -453,7 +453,7 @@ Eigene Shops werden direkt vom ERP versorgt (ERP = Headless-Backend, eigenes Fro
 
 **How to apply:** Beim Bauen des Shop-Moduls und der REST-API diese Entscheidungen als Basis verwenden. WooCommerce-Adapter als erstes externes Ziel implementieren.
 
-**WooCommerce Kategorie-Sync (Entscheidung 2026-06-21):** ✅ implementiert 2026-07-20, siehe [[project_shop_sync]]
+**WooCommerce Kategorie-Sync (Entscheidung 2026-06-21):** ✅ implementiert 2026-07-20, siehe [[project_shop_sync]]. **Update 2026-07-20:** Der Hersteller-Ast unter dieser Kategorie-Struktur ist NICHT mehr die geplante Lösung für den Hersteller-Filter im Shop — siehe [[project_hersteller_shop_filter]] (WC-Produktattribut statt Kategorie, weil Hersteller mehrere Produktkategorien bedienen können).
 - Beim Sync den **vollen Pfad** in WooCommerce anlegen (WolleundGarne → Hersteller → DROPS via `parent` field)
 - Dem Artikel wird nur die **Blatt-Kategorie** zugewiesen (nicht alle Vorfahren)
 - WooCommerce-Einstellung "Show products from subcategories" steuert Sichtbarkeit in Elternkategorien

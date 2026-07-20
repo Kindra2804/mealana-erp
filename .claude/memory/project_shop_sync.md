@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-20T17:43:49.724Z
+  modified: 2026-07-20T18:19:28.191Z
 ---
 
 ## Referenz-Check (2026-07-19)
@@ -77,6 +77,8 @@ Letzter offener Punkt aus der alten "Kanal-Chips an Kategorien"-Entscheidung (`d
 
 ## Offen für die nächste Session
 
+0. **Hersteller-Filter (WC-Produktattribut) + GPSR-Herstellerangaben** — neue Design-Entscheidung 2026-07-20, siehe [[project_hersteller_shop_filter]] für Details. Beides noch nicht umgesetzt, GPSR-Teil bewusst zurückgestellt bis Jacky Detailantworten hat.
+0b. **Shop-Theme/UX (Look & Feel)** — bewusst NICHT anfangen bis der komplette technische Sync-Teil fertig ist, siehe [[project_shop_theme]]. Erst danach Theme-Kandidaten (Premium vs. frei+Child) recherchieren.
 1. **`cron/shop_sync.php` + Kategorie-Umbenennung-Sync** — beide bewusst zusammen zurückgestellt bis zum Live-Rollout (siehe oben), nicht einzeln vorziehen
 2. **Vater/Kind-Artikel (Variable Products) — eigentlicher WooCommerce-Sync**: `findFaelligeArtikel()` filtert weiterhin bewusst nur Standard-Artikel ohne `vaterartikel_id`. Die Kanal-ZUWEISUNG (an/aus, Gating) ist jetzt startklar für Kinder, aber das Kind-Artikel→WooCommerce-Variations-Mapping selbst (Achsen→Attribute, siehe `db_design_entscheidungen.md`) ist noch nicht gebaut und weiterhin auf eine eigene Session verschoben
 3. **Phase 2 (Bestand)**, **Phase 3 (Bestellungen-Webhook + Polling-Sicherheitsnetz)**, **Phase 4 (Kunden-Merge)** — noch nicht begonnen, siehe Phasenplan oben in dieser Session besprochen
