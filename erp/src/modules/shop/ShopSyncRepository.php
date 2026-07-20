@@ -88,6 +88,53 @@ class ShopSyncRepository
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    /** Kategorie-IDs, die direkt am Artikel hängen (nur Blatt-Kategorien, siehe artikel_kategorien). */
+    public function findKategorieIdsFuerArtikel(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("SELECT kategorie_id FROM artikel_kategorien WHERE artikel_id = :artikel_id");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Eine Kategorie + all ihre Vorfahren, Wurzel zuerst — für den vollen Pfad beim
+     * WooCommerce-Sync (Entscheidung: kompletter Pfad wird über `parent` angelegt,
+     * dem Artikel wird aber nur die Blatt-Kategorie zugewiesen).
+     */
+    public function findKategorieMitVorfahren(int $kategorieId): array
+    {
+        $pfad = [];
+        $stmt = $this->db->prepare("SELECT id, name, parent_id FROM kategorien WHERE id = :id");
+        $aktuelleId = $kategorieId;
+        while ($aktuelleId !== null) {
+            $stmt->execute(['id' => $aktuelleId]);
+            $row = $stmt->fetch();
+            if (!$row) break;
+            array_unshift($pfad, $row);
+            $aktuelleId = $row['parent_id'] !== null ? (int)$row['parent_id'] : null;
+        }
+        return $pfad;
+    }
+
+    /** Bestehende Shop-Zuordnung einer Kategorie (für Idempotenz: schon angelegt = nicht nochmal). */
+    public function findKategorieShopZuweisung(int $kategorieId, int $shopId): array|false
+    {
+        $stmt = $this->db->prepare("SELECT * FROM kategorie_shops WHERE kategorie_id = :kategorie_id AND shop_id = :shop_id");
+        $stmt->execute(['kategorie_id' => $kategorieId, 'shop_id' => $shopId]);
+        $row = $stmt->fetch();
+        return $row ?: false;
+    }
+
+    /** Kategorie-Zuweisung nach erfolgreichem WooCommerce-Anlegen speichern. */
+    public function upsertKategorieZuweisung(int $kategorieId, int $shopId, string $externeKategorieId): void
+    {
+        $this->db->prepare("
+            INSERT INTO kategorie_shops (kategorie_id, shop_id, externe_kategorie_id)
+            VALUES (:kategorie_id, :shop_id, :externe_kategorie_id)
+            ON DUPLICATE KEY UPDATE externe_kategorie_id = VALUES(externe_kategorie_id)
+        ")->execute(['kategorie_id' => $kategorieId, 'shop_id' => $shopId, 'externe_kategorie_id' => $externeKategorieId]);
+    }
+
     public function markiereSynced(int $artikelShopId, string $externalId): void
     {
         $this->db->prepare("

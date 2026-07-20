@@ -47,6 +47,11 @@ class WooCommerceClient
         return $this->request('PUT', '/products/' . $externalId, [], $daten);
     }
 
+    public function erstelleKategorie(array $daten): array
+    {
+        return $this->request('POST', '/products/categories', [], $daten);
+    }
+
     /** @throws RuntimeException bei HTTP-Fehler oder Verbindungsproblem */
     private function request(string $methode, string $pfad, array $query = [], ?array $body = null): array
     {
