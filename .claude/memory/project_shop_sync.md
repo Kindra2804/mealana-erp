@@ -1,11 +1,11 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1 Sync-Logik + Kanal-Chips/Vater-Kind-Gating/Kanal-Filter fertig, Testshop live verbunden"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1 komplett fertig (Sync-Logik, Kanal-Chips/Gating/Filter, Kategorie-Sync); offen nur noch cron + Live-Rollout-Themen"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-20T16:28:19.863Z
+  modified: 2026-07-20T17:36:00.954Z
 ---
 
 ## Referenz-Check (2026-07-19)
@@ -58,13 +58,20 @@ Kompletter Bau + End-to-End-Test gegen echte Dev-DB (Artikel #150/#172/#251), da
 - **Massenaktion "Kanal zuweisen"**: neuer Punkt im Aktion-Dropdown, Modal analog zum Bulk-Kategorie-Modal (ein Shop pro Durchlauf + Aktivieren/Deaktivieren-Radio, Jackys Entscheidung gegen Mehrfach-Shop-Modal). Neuer Endpunkt `public/artikel/bulk_shop_speichern.php`. Kein Propagations-Write nötig (siehe Gating-Logik oben) — Umschalten am Vater wirkt automatisch auf alle Kinder, ohne dass deren Zeilen angefasst werden.
 - **Kanal-Filter in der Suchzeile**: war bisher `disabled` mit hartcodierten/falschen S1-S3-Labels — jetzt aktiv, dynamisch aus `shops`-Tabelle, filtert `ArtikelRepository::findAll()`/`::countAll()` über `EXISTS`-Check auf die eigene Vater/Standalone-Zuweisung (Kind-Prüfung nicht nötig, da ein Kind laut Gating-Regel nie effektiv aktiv sein kann wenn der Vater es nicht ist). K1/K2 (Kassen) bleiben als Optionen sichtbar aber disabled, da sie immer für alle Artikel gelten.
 
+## ✅ `kategorie_shops` befüllen FERTIG (2026-07-20, gleicher Tag)
+
+`ShopSyncService::syncShop()` synct jetzt vor jedem Artikel-Push dessen Kategorie(n) + alle Vorfahren nach WooCommerce (voller Pfad über `parent`, siehe `db_design_entscheidungen.md`). Neue Methoden: `WooCommerceClient::erstelleKategorie()`, `ShopSyncRepository::findKategorieIdsFuerArtikel()`/`findKategorieMitVorfahren()`/`findKategorieShopZuweisung()`/`upsertKategorieZuweisung()`.
+
+**Live getestet** gegen `indra-design.at` mit Artikel #150s echtem 3-Ebenen-Pfad (Wolle und Garne → Hersteller → Garnstudio DROPS): alle drei Ebenen korrekt mit richtiger Eltern-Verkettung angelegt (per GET gegengeprüft), zweiter Lauf hat nichts doppelt angelegt (Idempotenz bestätigt über gespeicherte `externe_kategorie_id`), danach aufgeräumt (WC-Kategorien gelöscht, `kategorie_shops` geleert, Testshop unverändert).
+
+**Bewusst NICHT gebaut (Jacky, 2026-07-20): Umbenennung/Update-Sync.** Aktuell reines Erstanlegen — wenn eine Kategorie im ERP umbenannt wird, zieht das NICHT automatisch in WooCommerce nach (keine `aktualisiereKategorie()`-Methode, `kategorie_shops` hat auch keine Status/Fehler-Spalten wie `artikel_shops` für Change-Detection). **Zusammen mit `cron/shop_sync.php` zurückgestellt, bis das System auf Live gespielt wird** — dann beides in einem Rutsch nachziehen, nicht vorher isoliert bauen.
+
 ## Offen für die nächste Session
 
-1. **`cron/shop_sync.php`** — dünner Wrapper der `ShopSyncService::syncAlleShops()` per Windows Task Scheduler aufruft (analog `cron/mahnwesen.php`)
-2. **`kategorie_shops` befüllen** — aktuell leer, Kategorie-Sync selbst (Kategorie im Shop anlegen + `externe_kategorie_id` speichern) ist noch nicht gebaut, nur die Zuordnungstabelle
-3. **Vater/Kind-Artikel (Variable Products) — eigentlicher WooCommerce-Sync**: `findFaelligeArtikel()` filtert weiterhin bewusst nur Standard-Artikel ohne `vaterartikel_id`. Die Kanal-ZUWEISUNG (an/aus, Gating) ist jetzt startklar für Kinder, aber das Kind-Artikel→WooCommerce-Variations-Mapping selbst (Achsen→Attribute, siehe `db_design_entscheidungen.md`) ist noch nicht gebaut und weiterhin auf eine eigene Session verschoben
-4. **Phase 2 (Bestand)**, **Phase 3 (Bestellungen-Webhook + Polling-Sicherheitsnetz)**, **Phase 4 (Kunden-Merge)** — noch nicht begonnen, siehe Phasenplan oben in dieser Session besprochen
-5. **JTL-Anreicherungs-Import** — eigenständige, kleinere Idee (siehe [[project_roadmap_reihenfolge]]), nicht Teil dieser Sync-Arbeit, aber gleichzeitig vorgemerkt
+1. **`cron/shop_sync.php` + Kategorie-Umbenennung-Sync** — beide bewusst zusammen zurückgestellt bis zum Live-Rollout (siehe oben), nicht einzeln vorziehen
+2. **Vater/Kind-Artikel (Variable Products) — eigentlicher WooCommerce-Sync**: `findFaelligeArtikel()` filtert weiterhin bewusst nur Standard-Artikel ohne `vaterartikel_id`. Die Kanal-ZUWEISUNG (an/aus, Gating) ist jetzt startklar für Kinder, aber das Kind-Artikel→WooCommerce-Variations-Mapping selbst (Achsen→Attribute, siehe `db_design_entscheidungen.md`) ist noch nicht gebaut und weiterhin auf eine eigene Session verschoben
+3. **Phase 2 (Bestand)**, **Phase 3 (Bestellungen-Webhook + Polling-Sicherheitsnetz)**, **Phase 4 (Kunden-Merge)** — noch nicht begonnen, siehe Phasenplan oben in dieser Session besprochen
+4. **JTL-Anreicherungs-Import** — eigenständige, kleinere Idee (siehe [[project_roadmap_reihenfolge]]), nicht Teil dieser Sync-Arbeit, aber gleichzeitig vorgemerkt
 
 ## Test-Rückstände (Dev-DB, harmlos aber zur Kenntnis)
 `artikel_shops` hat eine echte Zeile für Artikel #150 (DROPS Baby Merino) → Shop 1, `sync_status='synced'`, `external_id=15`. Auf dem echten Testshop (`indra-design.at`) liegen dadurch zwei echte Produkte: #14 (Entwurf, reiner REST-Client-Test) und #15 (veröffentlicht, aus dem Sync-Testlauf, mit echten MeaLana-Artikeldaten). Beide können gelöscht werden, sobald nicht mehr als Referenz gebraucht.
