@@ -307,7 +307,29 @@ class ArtikelService
         }
         unset($knoten);
 
+        // Kanal-Chips: berechnet, nicht manuell gepflegt (Entscheidung 2026-06-21, siehe
+        // db_design_entscheidungen.md). Eine Kategorie gilt als "in Shop X" wenn sie selbst
+        // einen Artikel mit aktivem Shop X hat ODER mindestens eine Kindkategorie es tut —
+        // leere Elternkategorien erben die Chips rekursiv von ihren Kindern.
+        foreach ($wurzeln as &$wurzel) {
+            $this->berechneShopChips($wurzel);
+        }
+        unset($wurzel);
+
         return $wurzeln;
+    }
+
+    private function berechneShopChips(array &$knoten): array
+    {
+        $codes = !empty($knoten['eigene_shop_codes']) ? explode(',', $knoten['eigene_shop_codes']) : [];
+        foreach ($knoten['kinder'] as &$kind) {
+            $codes = array_merge($codes, $this->berechneShopChips($kind));
+        }
+        unset($kind);
+        $codes = array_values(array_unique($codes));
+        sort($codes);
+        $knoten['shop_codes'] = $codes;
+        return $codes;
     }
 
     /**

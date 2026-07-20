@@ -56,7 +56,13 @@ class KategorieRepository
                     DISTINCT CONCAT(akt2.name, ': ', DATE_FORMAT(ak2.gueltig_ab, '%d.%m.%Y'), ' – ', DATE_FORMAT(ak2.gueltig_bis, '%d.%m.%Y'))
                     ORDER BY ak2.gueltig_ab ASC
                     SEPARATOR ' | '
-                ) AS aktion_info
+                ) AS aktion_info,
+                (SELECT GROUP_CONCAT(DISTINCT CONCAT('S', s3.id) ORDER BY s3.id SEPARATOR ',')
+                 FROM artikel_kategorien ak3
+                 JOIN artikel a3 ON a3.id = ak3.artikel_id AND a3.aktiv = 1
+                 JOIN artikel_shops ash3 ON ash3.artikel_id = a3.id AND ash3.aktiv = 1
+                 JOIN shops s3 ON s3.id = ash3.shop_id
+                 WHERE ak3.kategorie_id = k.id) AS eigene_shop_codes
             FROM kategorien k
             LEFT JOIN artikel_kategorien ak ON ak.kategorie_id = k.id
             LEFT JOIN artikel vater ON vater.id = ak.artikel_id AND vater.aktiv = 1

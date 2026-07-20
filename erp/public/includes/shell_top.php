@@ -193,6 +193,10 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
             </nav>
 
             <?php if (!empty($kategorienBaum)): ?>
+                <?php
+                require_once __DIR__ . '/../../src/core/Database.php';
+                $alleShopsFuerLegende = Database::getInstance()->query("SELECT id, name FROM shops WHERE ist_aktiv = 1 ORDER BY id")->fetchAll();
+                ?>
                 <div class="sidebar-kat-wrapper">
                     <div class="sidebar-kat-header">
                         <span>Kategorien</span>
@@ -248,6 +252,13 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                                         <span class="kat-anzahl"><?= $anzahl ?></span>
                                     <?php endif; ?>
                                 </a>
+                                <?php if (!empty($knoten['shop_codes'])): ?>
+                                    <div class="kat-chips" style="padding-left:<?= $einzug + 16 ?>px">
+                                        <?php foreach ($knoten['shop_codes'] as $code): ?>
+                                            <span class="kc kc-<?= strtolower($code) ?>"><?= htmlspecialchars($code) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                                 <?php if ($hatKinder): ?>
                                     <div id="<?= $nodeId ?>" class="kat-kinder versteckt">
                                         <?php foreach ($knoten['kinder'] as $kind): ?>
@@ -267,6 +278,17 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                             <a href="liste.php" class="kat-filter-aufheben">✕ Filter aufheben</a>
                         <?php endif; ?>
                     </nav>
+                    <?php if (!empty($alleShopsFuerLegende)): ?>
+                        <div class="sidebar-kanal-legende">
+                            <div class="sidebar-kanal-legende-titel">Kanal-Legende</div>
+                            <?php foreach ($alleShopsFuerLegende as $s): ?>
+                                <div class="sidebar-kanal-legende-zeile">
+                                    <span class="kc kc-s<?= $s['id'] ?>">S<?= $s['id'] ?></span>
+                                    <span><?= htmlspecialchars($s['name']) ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <script>
                     window.MEALANA_AKTIV_KAT = <?= (int)($aktivKatId ?? 0) ?>;
