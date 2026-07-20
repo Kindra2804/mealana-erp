@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-20T17:36:00.954Z
+  modified: 2026-07-20T17:43:49.724Z
 ---
 
 ## Referenz-Check (2026-07-19)
@@ -65,6 +65,15 @@ Kompletter Bau + End-to-End-Test gegen echte Dev-DB (Artikel #150/#172/#251), da
 **Live getestet** gegen `indra-design.at` mit Artikel #150s echtem 3-Ebenen-Pfad (Wolle und Garne → Hersteller → Garnstudio DROPS): alle drei Ebenen korrekt mit richtiger Eltern-Verkettung angelegt (per GET gegengeprüft), zweiter Lauf hat nichts doppelt angelegt (Idempotenz bestätigt über gespeicherte `externe_kategorie_id`), danach aufgeräumt (WC-Kategorien gelöscht, `kategorie_shops` geleert, Testshop unverändert).
 
 **Bewusst NICHT gebaut (Jacky, 2026-07-20): Umbenennung/Update-Sync.** Aktuell reines Erstanlegen — wenn eine Kategorie im ERP umbenannt wird, zieht das NICHT automatisch in WooCommerce nach (keine `aktualisiereKategorie()`-Methode, `kategorie_shops` hat auch keine Status/Fehler-Spalten wie `artikel_shops` für Change-Detection). **Zusammen mit `cron/shop_sync.php` zurückgestellt, bis das System auf Live gespielt wird** — dann beides in einem Rutsch nachziehen, nicht vorher isoliert bauen.
+
+## ✅ Kanal-Chips im Kategoriebaum (Sidebar) FERTIG (2026-07-20, gleicher Tag)
+
+Letzter offener Punkt aus der alten "Kanal-Chips an Kategorien"-Entscheidung (`db_design_entscheidungen.md`, 2026-06-21) — Jacky hatte ein Mockup mit Chips im Sidebar-Kategoriebaum + kompakter Kanal-Legende darunter (nur Shops, keine Kassen, analog zur bereits bereinigten Legende in `liste.php`).
+
+- `KategorieRepository::findAllMitEltern()`: neue Subquery liefert `eigene_shop_codes` pro Kategorie (welche Shops haben dort direkt zugewiesene, aktive Artikel)
+- `ArtikelService::getKategorienBaum()` + neue private `berechneShopChips()`: rekursive Bottom-up-Vererbung — leere Elternkategorien erben von Kindkategorien, exakt wie in der alten Design-Entscheidung festgelegt, ganz ohne manuelle Pflege
+- `shell_top.php` (`renderKatKnoten()`): rendert `.kc`-Chips unter jedem Kategorienamen + neue `.sidebar-kanal-legende` unterhalb des Baums (nur S1/S2/S3, dynamisch aus `shops`-Tabelle)
+- Rein lesend gegen Dev-DB getestet (Artikel #150 → Garnstudio DROPS → Shop 1 aktiv): S1-Chip erscheint korrekt bei der Blatt-Kategorie und vererbt sich nach oben zu "Hersteller" und "Wolle und Garne", Geschwister-Kategorien ohne aktive Artikel bleiben leer. Von Jacky im Browser bestätigt.
 
 ## Offen für die nächste Session
 
