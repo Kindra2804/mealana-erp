@@ -1,10 +1,11 @@
 ---
 name: project-kundendatenbank
-description: "Kundendatenbank Design — B2B/B2C, DSGVO, Verschlüsselung, Shop-Sync, Laufkunde, Merge (Stand 2026-06-19)"
+description: "Kundendatenbank Design — B2B/B2C, DSGVO, Verschlüsselung, Laufkunde; Shop-Sync-Szenario 1 (Bestellung→Kunde matchen/anlegen) FERTIG 2026-07-21, Rest bewusst zurückgestellt"
 metadata: 
   node_type: memory
   type: project
   originSessionId: b4bbae66-fc1a-4aeb-b217-8ae73d4fe662
+  modified: 2026-07-21T18:06:36.290Z
 ---
 
 ## Entscheidungen (2026-06-19)
@@ -152,3 +153,17 @@ sind aber nicht mehr dem Menschen zuordenbar.
 - Ansprechpartner bei Firmenkunden (kunden_ansprechpartner, analog lieferanten_vertreter)
 - Kreditlimit-Prüfung: wo greift sie? (Auftragsanlage + Kasse)
 - Treuepunkte / Stammkunden-Badge: erst wenn Verkaufshistorie steht
+
+## ✅ Shop-Sync-Szenario 1 (Kunde registriert sich im Shop) eingegrenzt umgesetzt (2026-07-21)
+
+Siehe [[project_shop_sync]] für Details. `ShopBestellungSyncService::ermittleOderErstelleKunde()`
+deckt genau die erste Zeile der obigen "Shop-Sync-Szenarien"-Tabelle ab
+(Neuanlegen ODER Matchen via email_hash), ausgelöst beim Bestellungs-Import,
+nicht als eigener Kunden-Webhook. DSGVO-Consent wird dabei NICHT gespeichert
+(keine Consent-Daten in der WC-Order verfügbar).
+
+**Bewusst NICHT umgesetzt (Jacky, 2026-07-21):** Zeilen 2-4 der
+Shop-Sync-Szenarien-Tabelle (Adress-Update aus Shop, ERP→Shop
+Account-Anlegen bei Messe-Neukunden, DSGVO-Löschung Richtung WooCommerce)
+sowie automatische Fuzzy-Merge-Erkennung in `kunden_merge_queue` — bleiben
+manuelles Admin-Thema bzw. zurückgestellt bis konkreter Bedarf.

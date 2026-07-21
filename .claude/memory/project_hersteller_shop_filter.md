@@ -1,12 +1,45 @@
 ---
 name: project-hersteller-shop-filter
-description: "Hersteller-Filter im Shop: Entscheidung fuer WC-Produktattribut statt Kategorie-Ast (Hersteller bedienen oft mehrere Produktkategorien); GPSR-Herstellerangaben-Pflicht erkannt, Umsetzung bewusst zurueckgestellt"
+description: "Hersteller-Filter im Shop: ALS WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben-Pflicht weiterhin bewusst zurueckgestellt"
 metadata: 
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-07-20T18:07:26.268Z
+  modified: 2026-07-21T16:03:41.351Z
 ---
+
+## ✅ Hersteller-Filter (WC-Produktattribut) FERTIG (2026-07-21)
+
+**Entscheidung zum Kategorie-Ast geklärt (Jacky, 2026-07-21):** Der bestehende
+Kategorie-Ast "Hersteller" ist ein reiner Vor-Filter/Gruppierung für Kunden
+(wie Zubehör/Amigurumi/...), kein "echter" auf den Hersteller fokussierter
+Eintrag. Bleibt darum **komplett unangetastet und unabhängig** vom neuen
+Attribut bestehen -- kein Aufräumen, keine Änderung am bestehenden
+Kategorie-Sync-Code.
+
+**Umsetzung:** EIN globales WC-Attribut "Hersteller" mit `has_archives: true`
+(WooCommerce baut daraus automatisch Übersichts-/Einzelseiten je Hersteller).
+Neue Tabelle `hersteller_shops` (Migration 144+145: hersteller_id, shop_id,
+externe_attribut_id, externe_term_id) -- die Attribut-ID ist pro Shop überall
+gleich (nur EIN Attribut, anders als bei den Achsen mit mehreren
+unterschiedlichen Attributen), wird darum bewusst redundant pro Zeile
+mitgespeichert statt einer eigenen Ein-Zeilen-Tabelle nur dafür.
+
+Nur am Vater/Standalone-Payload angehängt (`variation => false`, ändert
+`type` nicht), NICHT an Kind-Variationen -- WooCommerce-Variationen kennen
+nur die eigenen Variations-Attribute des Elternprodukts, keine zusätzlichen
+Nicht-Variations-Attribute. Gespeist aus dem längst vorhandenen
+`artikel.hersteller_id`-Dropdown, keine doppelte Pflege.
+
+**End-to-End getestet** gegen `indra-design.at` (gleiches Vater/Kind-Paar
+#2852/#2853/#2854 wie beim Variations-Test): Vater korrekt mit ZWEI
+Attributen (Farbe variation=true, Hersteller variation=false + has_archives),
+Idempotenz über 3 Durchläufe bestätigt. Aufgeräumt (WC-Produkt+beide
+Attribute gelöscht, alle Test-Zeilen aus den Zuweisungstabellen entfernt).
+
+**GPSR-Herstellerangaben bleiben wie gehabt zurückgestellt** (siehe Abschnitt
+unten) -- unabhängig von diesem Attribut-Feature, betrifft nur die
+Herstellerkontaktdaten auf der Produktseite selbst.
 
 ## Business-Entscheidung (Jacky, 2026-07-20)
 

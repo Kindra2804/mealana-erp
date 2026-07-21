@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-20T17:36:16.175Z
+  modified: 2026-07-21T19:21:40.628Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -14,7 +14,14 @@ Ausgangspunkt war die Frage "was kommt nach diesem Modul, ist das ERP dann fast 
 
 1. **Buchhaltung** — ✅ FERTIG 2026-07-17: Kontenplan, Debitoren/Kreditoren, Zahlungsart-/Steuerklasse-Mappings, Verwaltungsseiten, DATEV+CSV-Export. Siehe [[project_buchhaltung]]. Restpunkt: Mahnstufen-Ausbau für Rechnungszahler (Mahngebühr/Verzugszinsen) war als "noch zu bauen" vermerkt, aber nicht blockierend — kann später nachgezogen werden.
 2. **Inventur-Modul** — ✅ KOMPLETT FERTIG 2026-07-18 (inkl. Slice 5 Komfort-Ergänzungen), siehe [[project_inventur_konzept]]. Live-Akzeptanztest steht noch aus — Jacky testet bei seiner ersten echten Voll-Inventur (alle Lagerplätze leer → Echtbestand).
-3. **Online-Shop-Anbindung** — Live-Anbindung muss noch warten (zu wenig Daten auf Live). ✅ Phase 1 komplett FERTIG 2026-07-20 (Migration 142, WooCommerceClient live gegen Testshop verifiziert, Sync-Logik, Kanal-Chips im Formular + Artikelliste + Massenaktion + Filter mit Vater/Kind-Gating, Kategorie-Sync mit vollem Pfad) — siehe [[project_shop_sync]] für vollen Stand + Phasenplan. Offen: cron-Wrapper + Kategorie-Umbenennung-Sync (bewusst zusammen zurückgestellt bis zum Live-Rollout), Variable-Products-Sync (Vater/Kind→WooCommerce), Phase 2-4 (Bestand/Bestellungen/Kunden-Merge). Daran gekoppelt bzw. kurz davor: [[project_paperless_rechnung_modul]] (QR-Rechnung), [[project_sammelabholung_auftraege]] (mehrere Aufträge ein Bon), lose auch [[project_gutscheine]] (bewusst so gebaut werden soll, dass es mit WooCommerce/eigenem Shop matcht).
+3. **Online-Shop-Anbindung** — Live-Anbindung muss noch warten (zu wenig Daten auf Live). ✅ Phase 1 komplett FERTIG 2026-07-20, ✅ Vater/Kind-Variationssync (Variable Products) FERTIG 2026-07-21 (Migration 143, Achsen→globale WC-Attribute, Achsenwerte→Terms, Kind-Artikel→Variationen, End-to-End gegen Testshop verifiziert) — siehe [[project_shop_sync]] für vollen Stand + Phasenplan. Daran gekoppelt bzw. kurz davor: [[project_paperless_rechnung_modul]] (QR-Rechnung), [[project_sammelabholung_auftraege]] (mehrere Aufträge ein Bon), lose auch [[project_gutscheine]] (bewusst so gebaut werden soll, dass es mit WooCommerce/eigenem Shop matcht).
+
+   **Konkrete Sub-Reihenfolge festgelegt (Jacky, 2026-07-21):**
+   1. ~~Hersteller-Filter~~ ✅ FERTIG 2026-07-21 (siehe [[project_hersteller_shop_filter]]) + ~~Bilder pro Vater/Kind~~ ✅ FERTIG 2026-07-21 (siehe [[project_shop_sync]] — neue WordPress-Application-Password-Zugangsdaten nötig, echter Fälligkeits-Bug bei nachträglich hochgeladenen Bildern gefunden+gefixt)
+   2. ~~Phase 2 (Bestand/Lagerstand)~~ ✅ FERTIG 2026-07-21 (siehe [[project_shop_sync]] — echter Fälligkeits-Bug analog zum Bilder-Fund gefunden+gefixt). ~~Phase 3 (Bestellungen, reines Polling statt Webhook — ERP hat keinen öffentlichen Endpunkt)~~ ✅ FERTIG 2026-07-21 (vierter Fund desselben Session-Cron-Bugs in `AuftragService`, gefixt). ~~Phase 4 (eingegrenzt: Bestellungen mit echten Kunden verknüpfen statt nur Snapshot)~~ ✅ FERTIG 2026-07-21 (fünfter Fund desselben Bugs, diesmal in `KundenService`) — volles Kunden-Merge-Szenario (ERP→Shop-Account-Push, DSGVO-Löschsync, Fuzzy-Merge-Queue) bewusst zurückgestellt, siehe [[project_kundendatenbank]]
+   3. ~~Theme-Gespräch~~ ✅ Recherche FERTIG 2026-07-21 (WoodMart vs. Blocksy Pro, siehe [[project_shop_theme]] — wichtige Lizenz-Falle gefunden: ThemeForest-Lizenzen gelten pro Live-Domain, bei 3 Shops also 3× Kosten). **Kaufentscheidung selbst pausiert** — Jacky bespricht das Budget zuerst mit Barbara, angedachter Plan: erst eine WoodMart-Lizenz testen, dann über Rest/Umstieg auf Blocksy entscheiden. Nicht von selbst weitermachen.
+   4. Wenn das steht: Versionierungs-Sprung + Live wieder auf aktuellen Stand heben (wie zuletzt 2026-07-19 auf 0.3.0) — **das ist auch der geplante Zeitpunkt für Punkt 3** (`cron/shop_sync.php` + Kategorie-Umbenennung-Sync), passend zur bereits am 2026-07-20 getroffenen Entscheidung, beide zusammen mit dem Live-Rollout zu bauen
+   - GPSR-Herstellerangaben (Punkt 2 der letzten Session) bewusst **außerhalb** dieser Reihenfolge — hängt an rechtlicher Klärung, nicht am Zeitplan, kann jederzeit dazwischengeschoben werden sobald Jacky Klarheit hat (siehe [[project_hersteller_shop_filter]])
    - **Auch vorgemerkt (2026-07-19): JTL-Anreicherungs-Import.** Nicht voller Produktimport, sondern gezielt Beschreibungen/Bilder/etc. per Artikelnummer-Match aus JTL-Export-Listen in bereits von Hand angelegte Vater-Artikel nachziehen — spart Jacky das Abtippen, er macht nur noch Vater-Artikel+Achsenzuweisung selbst. JTL-CSV-Struktur/Spaltenindizes/Encoding-Fallstricke schon dokumentiert in [[project_jtl_import]]. Offene Frage vor der Detailplanung: enthält Jackys JTL-Export Bild-Referenzen (Dateinamen/URLs), oder nur Text — entscheidet ob Bilder gleich in Phase 1 reinkönnen.
 
 ## Geplant für 2026-07-19 — Stand nach der Session
@@ -35,6 +42,7 @@ Jackys ausdrücklicher Wunsch: diese dürfen zwischen den großen Themen oben op
 - **Lizenzserver / 2-Ebenen-Konzept** — Jacky selbst: "glaub ich nicht so klein" — trotzdem in diese Kategorie einsortiert, aber mit dem Hinweis dass es vermutlich mehr Aufwand ist als die anderen Punkte hier. Siehe [[project_rechte_rollen]].
 - **Statistik/Auswertungen** — aktuell nur das Dashboard, keine eigene Reporting-Seite, siehe [[project_statistik]].
 - **Kundenanzeige-Feedback** — V1 läuft live, wartet auf Barbaras Rückmeldung zum Praxistest, siehe [[project_kundenanzeige_modul]].
+- **Laden-/Telefon-Auftrag im Online-Kundenkonto sichtbar** — Jackys Frage 2026-07-21 nach dem Bestellungs-Sync: Phase 3 synct nur Shop→ERP (lesend), NICHT umgekehrt. Ein Kasse/Telefon-Auftrag würde aktuell NICHT im WooCommerce-Kundenkonto des Kunden auftauchen — bräuchte aktives Anlegen einer Bestellung in WooCommerce (Gegenrichtung, nicht gebaut) UND eine WC-Kundenaccount-Zuordnung (Phase 4 Kunden-Merge als Voraussetzung). Aktuell kein Bedarf, nur als Idee vorgemerkt.
 
 ## Bewusst pausiert, keine Baustelle (nicht vergessen, aber auch nicht aktiv verfolgen)
 

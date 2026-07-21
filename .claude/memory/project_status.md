@@ -5,9 +5,12 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
+  modified: 2026-07-21T19:38:01.095Z
 ---
 
 Stand: 2026-07-03 (Session 23)
+
+**Hinweis:** Diese Datei wird seit Session 23 nicht mehr laufend nachgeführt — der aktuelle Stand steht in `project_roadmap_reihenfolge.md` (immer zuerst dort nachsehen bei "was ist der Stand/was kommt als Nächstes") + den themenspezifischen Memory-Dateien (Buchhaltung, Inventur, Rechte&Rollen, RKSV, Shop-Sync etc., alle in `MEMORY.md` verlinkt). Sessions 24-30 (u.a. Buchhaltung, Inventur, Rechte&Rollen, RKSV-Hardwaretest, komplette Online-Shop-Anbindung Phase 1-4) sind dort dokumentiert, nicht hier nachgetragen.
 
 ## Git Repository
 `D:/ERP/mealana/` — nicht in `D:/ERP` suchen!
@@ -129,7 +132,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 | ~~Dashboard~~ | ✅ FERTIG 2026-06-28 | dashboard.php: 5 KPI-Cards (Card 5 Platzhalter bis Buchhaltung), Kanal-Balken, Fehlbestand-Greedy-Logik aus picklisten.php, Lieferhistory, Log-Bar |
 | Log-Aufbereitung + Shell-Footer | MITTEL | info/warn/error Klassifizierung; Zeile in Shell-Bottom (siehe project_logger_ui.md) |
 | Inventur | MITTEL | inkl. Inventurliste (Druck) + mobile App |
-| Shop-Export / WooCommerce Sync | MITTEL | Design: db_design_entscheidungen.md |
+| ~~Shop-Export / WooCommerce Sync~~ | ✅ Phasen 1-4 FERTIG 2026-07-21 | Artikel/Varianten/Hersteller/Bilder/Bestand/Bestellungen/Kunden-Verknüpfung — siehe [[project_shop_sync]]. Offen: cron-Wrapper, Live-Rollout, Theme (Kauf pausiert, siehe [[project_shop_theme]]) |
 | Gutschein-Modul | MITTEL | Design: project_gutscheine.md |
 | Buchhaltung/DATEV | MITTEL | Design: project_buchhaltung.md |
 | Etiketten-Modul | MITTEL | ZPL vs. Dompdf — Entscheidung offen |

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 34c5df69-81a4-4021-b25c-95e8cb12005b
-  modified: 2026-07-19T16:52:45.799Z
+  modified: 2026-07-21T16:21:57.413Z
 ---
 
 ## Status: FERTIG (2026-06-19)
@@ -106,6 +106,6 @@ Jacky bemerkte beim ersten echten Bilder-Test (Vater+Kinder mit Bildern befüllt
 - **CSS-Stolperstein unterwegs**: `.artikel-thumb-kind { opacity: .6 }` dunkelte nicht nur die kleine Kind-Thumbnail ab, sondern auch die darin verschachtelte Hover-Vorschau-Karte (CSS-`opacity` wirkt auf den ganzen Teilbaum, lässt sich nicht pro Kind-Element zurücksetzen) — auf gezielte Selektoren umgestellt (`.artikel-thumb-kind.thumb-hat-bild > img` statt der ganzen Box)
 
 ## Noch offen
-- **WooCommerce API-Sync** — Phase 1 (Artikel-Metadaten, nicht Bilder) ist FERTIG und live getestet, siehe [[project_shop_sync]]. Bilder-Sync selbst (Bild-Upload zu WooCommerce, `artikel_bilder_shops.external_id`) noch nicht Teil davon.
-- Wasserzeichen-Upload im Admin-Menü
+- ~~WooCommerce API-Sync (Bilder)~~ ✅ FERTIG 2026-07-21, siehe [[project_shop_sync]] — `artikel_bilder_shops` (existierte schon seit dieser Migration 045, war nur ungenutzt) wird jetzt tatsächlich befüllt, braucht dafür ein WordPress-Application-Password zusätzlich zum WC-Key/Secret
+- Wasserzeichen-Upload im Admin-Menü — weiterhin offen, Bilder gehen im Sync vorerst unmarkiert raus
 - Komplettabgleich im Admin-Menü (Bilder/Artikel/Kategorien pro Shop) — gemerkt für später

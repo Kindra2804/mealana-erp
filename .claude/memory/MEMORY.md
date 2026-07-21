@@ -34,14 +34,14 @@
 - [Bilder-Modul](project_bilder_modul.md) — FERTIG 2026-06-19; 🟢 2026-07-11 Live-Logo-Upload-Bugkette komplett gelöst (GD/Silent-Fail/Fehlercodes/fehlender Kanal/hartcodierter Slug)
 - [Druck: Qualitätslisten](project_druck_listen.md) — EAN/Bilder-Qualitätslisten für Druckausgabe vormerken (kommt mit Druck-Modul)
 - [Statistik Konzept](project_statistik.md) — Kein eigener Sidebar-Link bis Verkauf steht; kommt aus Dashboard + Verkauf-Modul
-- [Kundendatenbank Design](project_kundendatenbank.md) — B2B gleich einbauen, Laufkunde, Shop-Sync/Merge, AES-256-GCM Verschlüsselung, DSGVO Crypto-Shredding (Stand 2026-06-19)
+- [Kundendatenbank Design](project_kundendatenbank.md) — B2B, Laufkunde, AES-256-GCM, DSGVO Crypto-Shredding; Shop-Sync-Szenario 1 FERTIG 2026-07-21, Rest zurückgestellt
 - [Feedback: Emoji CSS](feedback_emoji_css.md) — color: hat keine Wirkung auf Emojis → filter:grayscale(1) verwenden
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1 KOMPLETT FERTIG 2026-07-20 (Sync-Logik, Kanal-Chips+Gating+Massenaktion+Filter, Kategorie-Sync); cron+Umbenennung-Sync bewusst bis Live-Rollout zurückgestellt
-- [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — Entscheidung: WC-Produktattribut statt Kategorie-Ast (Hersteller können mehrere Kategorien bedienen); GPSR-Herstellerangaben-Pflicht erkannt (hersteller-Tabelle hat reo_*-Felder schon!), Umsetzung zurückgestellt
-- [Shop-Theme/UX](project_shop_theme.md) — WooCommerce-Theme-Anpassung an mealana.at-Look bewusst zurückgestellt bis technischer Sync-Teil komplett fertig ist; NICHT von selbst starten
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 (Artikel/Varianten/Hersteller/Bilder/Bestand/Bestellungen/Kunden-Verknüpfung) FERTIG (2026-07-21); als Nächstes Theme-Gespräch, dann cron+Umbenennung-Sync
+- [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
+- [Shop-Theme/UX](project_shop_theme.md) — Recherche fertig (WoodMart vs. Blocksy Pro, Lizenz-Falle: pro Live-Domain!); Kauf pausiert bis Budget-Gespräch Jacky/Barbara; NICHT von selbst weitermachen
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — Neuer Dev-PC-Umzug 2026-07-17 abgeschlossen (GD/Composer/Cron vergessen, doppelte Mojibake-Korruption + Kunden-BLOB-Korruption behoben); Messe-Kasse Variante B = IndexedDB+direkter BFR-Call
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
