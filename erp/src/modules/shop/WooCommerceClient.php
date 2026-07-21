@@ -10,15 +10,26 @@
  */
 class WooCommerceClient
 {
+    private string $siteUrl;
     private string $baseUrl;
     private string $key;
     private string $secret;
+    private ?string $wpUsername;
+    private ?string $wpAppPassword;
 
-    public function __construct(string $url, string $key, string $secret)
-    {
-        $this->baseUrl = rtrim($url, '/') . '/wp-json/wc/v3';
+    public function __construct(
+        string $url,
+        string $key,
+        string $secret,
+        ?string $wpUsername = null,
+        ?string $wpAppPassword = null
+    ) {
+        $this->siteUrl = rtrim($url, '/');
+        $this->baseUrl = $this->siteUrl . '/wp-json/wc/v3';
         $this->key = $key;
         $this->secret = $secret;
+        $this->wpUsername = $wpUsername;
+        $this->wpAppPassword = $wpAppPassword;
     }
 
     /** Einfachster Verbindungstest: liefert die Systemstatus-Daten des Shops. */
@@ -30,6 +41,22 @@ class WooCommerceClient
     public function getProdukt(string $externalId): array
     {
         return $this->request('GET', '/products/' . $externalId);
+    }
+
+    /**
+     * Bestellungen seit einem Zeitpunkt (Polling-Cursor, kein Webhook --
+     * unser ERP hat keinen öffentlichen Endpunkt, siehe project_shop_sync.md).
+     * `modified_after` ist ein offiziell dokumentierter Parameter der
+     * aktuellen WC-REST-API v3 (nicht zu verwechseln mit der alten
+     * Legacy-API, die stattdessen `filter[updated_at_min]` verwendet).
+     */
+    public function listeBestellungen(?string $modifiedAfter, int $proSeite = 50): array
+    {
+        $query = ['status' => 'any', 'per_page' => $proSeite, 'orderby' => 'modified', 'order' => 'asc'];
+        if ($modifiedAfter !== null) {
+            $query['modified_after'] = $modifiedAfter;
+        }
+        return $this->request('GET', '/orders', $query);
     }
 
     public function listeProdukte(int $proSeite = 10): array
@@ -50,6 +77,104 @@ class WooCommerceClient
     public function erstelleKategorie(array $daten): array
     {
         return $this->request('POST', '/products/categories', [], $daten);
+    }
+
+    /**
+     * Alle globalen Attribute des Shops (z.B. "Farbe", "Nadelstärke").
+     * Wird VOR erstelleAttribut() abgefragt, um Duplikate zu vermeiden --
+     * WooCommerce liefert bei doppeltem Namen zwar einen Fehler
+     * (`woocommerce_rest_invalid_product_attribute_slug_already_exists`),
+     * aber (anders als bei Terms) KEINE ID des bestehenden Attributs im
+     * Fehler-Body zurück, ein Catch-and-reuse wie bei Terms geht hier also
+     * nicht -- deshalb hier "erst nachsehen, dann anlegen".
+     */
+    public function listeAttribute(): array
+    {
+        return $this->request('GET', '/products/attributes', ['per_page' => 100]);
+    }
+
+    /** Globales Attribut (z.B. "Farbe") -- Basis für Achsen, die als Variation dienen. */
+    public function erstelleAttribut(array $daten): array
+    {
+        return $this->request('POST', '/products/attributes', [], $daten);
+    }
+
+    /** Alle Terms (Werte) eines Attributs, z.B. "Rot"/"Blau" unter "Farbe". */
+    public function listeAttributTerms(int $attributId): array
+    {
+        return $this->request('GET', "/products/attributes/$attributId/terms", ['per_page' => 100]);
+    }
+
+    /** Attribut-Term (z.B. "Rot" unter "Farbe") anlegen. */
+    public function erstelleAttributTerm(int $attributId, array $daten): array
+    {
+        return $this->request('POST', "/products/attributes/$attributId/terms", [], $daten);
+    }
+
+    public function erstelleVariation(string $parentId, array $daten): array
+    {
+        return $this->request('POST', "/products/$parentId/variations", [], $daten);
+    }
+
+    public function aktualisiereVariation(string $parentId, string $variationId, array $daten): array
+    {
+        return $this->request('PUT', "/products/$parentId/variations/$variationId", [], $daten);
+    }
+
+    /**
+     * Lädt eine Bild-Datei in die WordPress-Mediathek hoch.
+     *
+     * Läuft über die WordPress-KERN-REST-API (`/wp-json/wp/v2/media`), NICHT
+     * über WooCommerce (`/wc/v3/...`) -- Consumer-Key/Secret gilt nur für
+     * WC-Routen. Braucht ein WordPress-Application-Password, weil unser ERP
+     * keinen öffentlichen Endpunkt hat und WordPress Bild-URLs bei uns darum
+     * nicht selbst abholen kann ("sideload") -- nur direkter Byte-Upload geht.
+     *
+     * @throws RuntimeException wenn kein Application-Password hinterlegt ist,
+     *         die Datei nicht lesbar ist, oder der Upload fehlschlägt
+     */
+    public function ladeBildHoch(string $dateiPfad, string $dateiname, string $altText = ''): array
+    {
+        if (!$this->wpUsername || !$this->wpAppPassword) {
+            throw new RuntimeException('Kein WordPress-Application-Password für diesen Shop hinterlegt');
+        }
+        if (!is_readable($dateiPfad)) {
+            throw new RuntimeException("Bilddatei nicht lesbar: $dateiPfad");
+        }
+        $mime = mime_content_type($dateiPfad) ?: 'application/octet-stream';
+
+        $url = $this->siteUrl . '/wp-json/wp/v2/media';
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST  => 'POST',
+            // multipart/form-data (nicht raw binary + Content-Disposition) --
+            // so kann alt_text im selben Request mitgeschickt werden statt
+            // eines zusätzlichen PATCH danach.
+            CURLOPT_POSTFIELDS     => [
+                'file'     => new CURLFile($dateiPfad, $mime, $dateiname),
+                'alt_text' => $altText,
+            ],
+            CURLOPT_USERPWD => $this->wpUsername . ':' . $this->wpAppPassword,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $antwort = curl_exec($ch);
+        $fehler = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($antwort === false) {
+            throw new RuntimeException("WordPress-Medien-Upload fehlgeschlagen: $fehler");
+        }
+
+        $daten = json_decode($antwort, true);
+        if ($httpCode >= 400) {
+            $msg = $daten['message'] ?? $antwort;
+            throw new RuntimeException("WordPress-Medien-API-Fehler ($httpCode): $msg");
+        }
+
+        return $daten ?? [];
     }
 
     /** @throws RuntimeException bei HTTP-Fehler oder Verbindungsproblem */
@@ -81,8 +206,9 @@ class WooCommerceClient
 
         $daten = json_decode($antwort, true);
         if ($httpCode >= 400) {
+            $code = $daten['code'] ?? '';
             $msg = $daten['message'] ?? $antwort;
-            throw new RuntimeException("WooCommerce-API-Fehler ($httpCode): $msg");
+            throw new RuntimeException("WooCommerce-API-Fehler ($httpCode, $code): $msg");
         }
 
         return $daten ?? [];

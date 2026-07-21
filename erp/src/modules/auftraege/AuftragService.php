@@ -71,9 +71,13 @@ class AuftragService
      * Berechnet Netto, Steuer, Brutto aus den Positionen.
      * Friert Kunden-Adresse als JSON-Snapshot ein.
      * Mindestens eine Position ist Pflicht.
+     *
+     * $erstelltVon überschreibt $_SESSION['benutzer']['id'] -- nötig für
+     * Aufrufe ohne aktive Session (Cron/CLI, z.B. ShopBestellungSyncService).
      */
-    public function anlegen(array $data, array $positionen): array
+    public function anlegen(array $data, array $positionen, ?int $erstelltVon = null): array
     {
+        $erstelltVon ??= $_SESSION['benutzer']['id'];
         $fehler = $this->validiere($data);
         if (!empty($fehler)) {
             return ['erfolg' => false, 'fehler' => $fehler];
@@ -98,6 +102,7 @@ class AuftragService
             'rechnungsadresse_snapshot' => !empty($data['rechnungsadresse_snapshot']) ? json_encode($data['rechnungsadresse_snapshot'], JSON_UNESCAPED_UNICODE) : null,
             'kanal'                     => $data['kanal'] ?? 'manuell',
             'kanal_auftrag_id'          => !empty($data['kanal_auftrag_id']) ? (int)$data['kanal_auftrag_id'] : null,
+            'shop_id'                   => !empty($data['shop_id']) ? (int)$data['shop_id'] : null,
             'zahlungsstatus'            => 'ausstehend',
             'lieferstatus'              => 'neu',
             'zahlungsart'               => $data['zahlungsart'] ?? 'vorkasse',
@@ -114,7 +119,7 @@ class AuftragService
             'notiz_intern'              => !empty($data['notiz_intern'])     ? $data['notiz_intern']     : null,
             'notiz_versand'             => !empty($data['notiz_versand'])   ? $data['notiz_versand']   : null,
             'kontakt_notiz'             => !empty($data['kontakt_notiz'])   ? $data['kontakt_notiz']   : null,
-            'erstellt_von'              => $_SESSION['benutzer']['id'],
+            'erstellt_von'              => $erstelltVon,
         ];
 
         $id = $this->repo->insert($auftragData);
@@ -130,12 +135,12 @@ class AuftragService
         // Lagerreservierungen anlegen (für Bestand-Anzeige und Picklisten-Allocation)
         $this->repo->legeReservierungenAn($id, $berechnetePos, $auftragData['kanal'] ?? 'manuell');
 
-        $this->repo->logStatus($id, ['lieferstatus' => [null, 'neu'], 'zahlungsstatus' => [null, 'ausstehend']], 'Auftrag angelegt', $_SESSION['benutzer']['id']);
+        $this->repo->logStatus($id, ['lieferstatus' => [null, 'neu'], 'zahlungsstatus' => [null, 'ausstehend']], 'Auftrag angelegt', $erstelltVon);
         Logger::log('auftraege.anlegen', 'auftraege', $id, [
             'kanal'       => $auftragData['kanal'],
             'positionen'  => count($berechnetePos),
             'brutto'      => $summen['brutto'],
-        ]);
+        ], $erstelltVon);
 
         return ['erfolg' => true, 'id' => $id];
     }
@@ -146,9 +151,12 @@ class AuftragService
      *
      * @param array $felder  Nur die zu ändernden Felder (z.B. ['zahlungsstatus' => 'bezahlt'])
      * @param string|null $notiz  Optionaler Kommentar für den Statuslog
+     * @param int|null $benutzerId  Überschreibt $_SESSION['benutzer']['id'] -- nötig für
+     *        Aufrufe ohne aktive Session (Cron/CLI, z.B. ShopBestellungSyncService).
      */
-    public function statusAktualisieren(int $id, array $felder, ?string $notiz = null): array
+    public function statusAktualisieren(int $id, array $felder, ?string $notiz = null, ?int $benutzerId = null): array
     {
+        $benutzerId ??= $_SESSION['benutzer']['id'];
         $auftrag = $this->repo->findById($id);
         if (!$auftrag) {
             return ['erfolg' => false, 'fehler' => ['Auftrag nicht gefunden']];
@@ -171,8 +179,8 @@ class AuftragService
 
         if (!empty($update)) {
             $this->repo->updateStatus($id, $update);
-            $this->repo->logStatus($id, $changes, $notiz, $_SESSION['benutzer']['id']);
-            Logger::log('auftraege.status', 'auftraege', $id, $changes);
+            $this->repo->logStatus($id, $changes, $notiz, $benutzerId);
+            Logger::log('auftraege.status', 'auftraege', $id, $changes, $benutzerId);
 
             // Reservierungen schließen wenn Auftrag versendet oder abgeschlossen
             if (isset($changes['lieferstatus']) && in_array($changes['lieferstatus'][1], ['versendet', 'abgeschlossen'])) {

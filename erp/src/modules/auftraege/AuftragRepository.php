@@ -55,8 +55,15 @@ class AuftragRepository
             $params['lieferstatus'] = $lieferstatus;
         }
         if ($kanal !== '') {
-            $where[]        = 'a.kanal = :kanal';
-            $params['kanal'] = $kanal;
+            // "shop:<id>" filtert auf einen konkreten WooCommerce-Kanal
+            // (Mealana/Bio-Wolle/Sockenwolle), sonst normaler kanal-Filter.
+            if (str_starts_with($kanal, 'shop:')) {
+                $where[]           = 'a.shop_id = :shop_id';
+                $params['shop_id'] = (int)substr($kanal, 5);
+            } else {
+                $where[]        = 'a.kanal = :kanal';
+                $params['kanal'] = $kanal;
+            }
         }
         if ($suche !== '') {
             $where[]        = '(a.auftrag_nr LIKE :suche OR a.kunden_snapshot LIKE :suche OR a.notiz_intern LIKE :suche)';
@@ -79,17 +86,20 @@ class AuftragRepository
                 a.erstellt_am,
                 a.kunden_id,
                 a.kunden_snapshot,
+                a.shop_id,
+                s.name AS shop_name,
                 k.kundennummer,
                 COUNT(p.id) AS positionen_anzahl,
                 (SELECT COALESCE(SUM(az.betrag),0) FROM auftrag_zahlungen az WHERE az.auftrag_id = a.id) AS summe_zahlungen
             FROM auftraege a
             LEFT JOIN kunden k ON k.id = a.kunden_id
+            LEFT JOIN shops s ON s.id = a.shop_id
             LEFT JOIN auftrag_positionen p ON p.auftrag_id = a.id
             WHERE " . implode(' AND ', $where) . "
             GROUP BY a.id, a.auftrag_nr, a.kanal, a.zahlungsstatus, a.lieferstatus,
                      a.zahlungsart, a.bruttobetrag, a.versandkosten, a.tracking_nr,
                      a.mahnung_stufe, a.bezahlt_am, a.erstellt_am, a.kunden_id,
-                     a.kunden_snapshot, k.kundennummer
+                     a.kunden_snapshot, a.shop_id, s.name, k.kundennummer
             ORDER BY a.erstellt_am DESC
         ");
         $stmt->execute($params);
@@ -104,14 +114,26 @@ class AuftragRepository
     /**
      * Gibt einen Auftrag anhand ID zurück, inklusive Kundenname.
      */
+    /** Idempotenz-Schlüssel für den Shop-Bestellungs-Sync: existiert dieser Auftrag schon? */
+    public function findByShopUndKanalAuftragId(int $shopId, int $kanalAuftragId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT * FROM auftraege WHERE shop_id = :shop_id AND kanal_auftrag_id = :kanal_auftrag_id
+        ");
+        $stmt->execute(['shop_id' => $shopId, 'kanal_auftrag_id' => $kanalAuftragId]);
+        return $stmt->fetch();
+    }
+
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
             SELECT
                 a.*,
-                k.kundennummer
+                k.kundennummer,
+                s.name AS shop_name
             FROM auftraege a
             LEFT JOIN kunden k ON k.id = a.kunden_id
+            LEFT JOIN shops s ON s.id = a.shop_id
             WHERE a.id = :id
         ");
         $stmt->execute(['id' => $id]);
@@ -257,7 +279,7 @@ class AuftragRepository
             INSERT INTO auftraege (
                 auftrag_nr, kunden_id, kunden_snapshot,
                 lieferadresse_snapshot, rechnungsadresse_snapshot,
-                kanal, kanal_auftrag_id,
+                kanal, kanal_auftrag_id, shop_id,
                 zahlungsstatus, lieferstatus,
                 zahlungsart, zahlungsbedingung_id, lieferart,
                 gutschein_id, gutschein_betrag,
@@ -267,7 +289,7 @@ class AuftragRepository
             ) VALUES (
                 :auftrag_nr, :kunden_id, :kunden_snapshot,
                 :lieferadresse_snapshot, :rechnungsadresse_snapshot,
-                :kanal, :kanal_auftrag_id,
+                :kanal, :kanal_auftrag_id, :shop_id,
                 :zahlungsstatus, :lieferstatus,
                 :zahlungsart, :zahlungsbedingung_id, :lieferart,
                 :gutschein_id, :gutschein_betrag,

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 
 $service = new AuftragService();
+$alleShops = Database::getInstance()->query("SELECT id, name FROM shops WHERE ist_aktiv = 1 ORDER BY id")->fetchAll();
 
 $filterZahlung        = $_GET['zahlung']  ?? '';
 $filterLieferung      = $_GET['lieferung'] ?? '';
@@ -78,7 +79,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </select>
     <select class="erp-select" style="font-size:13px" id="filter-kanal">
         <option value="">Alle Kanäle</option>
-        <option value="woocommerce" <?= $filterKanal === 'woocommerce' ? 'selected' : '' ?>>WooCommerce</option>
+        <option value="woocommerce" <?= $filterKanal === 'woocommerce' ? 'selected' : '' ?>>WooCommerce (alle Shops)</option>
+        <?php foreach ($alleShops as $shop): ?>
+            <option value="shop:<?= $shop['id'] ?>" <?= $filterKanal === 'shop:' . $shop['id'] ? 'selected' : '' ?>>
+                &nbsp;&nbsp;– <?= htmlspecialchars($shop['name']) ?>
+            </option>
+        <?php endforeach; ?>
         <option value="manuell" <?= $filterKanal === 'manuell'     ? 'selected' : '' ?>>Manuell</option>
         <option value="kasse" <?= $filterKanal === 'kasse'       ? 'selected' : '' ?>>Kasse</option>
     </select>
@@ -137,6 +143,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $zl = $zahlungsLabels[$zStatus] ?? ['label' => $zStatus, 'class' => ''];
                     $ll = $lieferLabels[$a['lieferstatus']]     ?? ['label' => $a['lieferstatus'],   'class' => ''];
                     $kl = $kanalLabels[$a['kanal']]             ?? ['label' => $a['kanal'],          'class' => ''];
+                    // WooCommerce: echten Shop-Namen zeigen (Mealana/Bio-Wolle/Sockenwolle)
+                    // statt des generischen "WooCommerce"-Labels -- wie in Einstellungen → Kanäle.
+                    if ($a['kanal'] === 'woocommerce' && !empty($a['shop_name'])) {
+                        $kl = ['label' => $a['shop_name'], 'class' => $kl['class']];
+                    }
                     $istErledigt = $a['lieferstatus'] === 'abgeschlossen' && $a['zahlungsstatus'] === 'bezahlt';
                 ?>
                     <tr<?= $istErledigt ? ' style="opacity:0.55;background:var(--color-bg-secondary)"' : '' ?>>

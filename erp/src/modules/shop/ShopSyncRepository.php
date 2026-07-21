@@ -23,7 +23,7 @@ class ShopSyncRepository
     public function findAktiveShops(): array
     {
         $stmt = $this->db->query("
-            SELECT id, slug, name, wc_url, wc_key, wc_secret
+            SELECT id, slug, name, wc_url, wc_key, wc_secret, wp_username, wp_app_password, bestellungen_letzter_sync
             FROM shops
             WHERE ist_aktiv = 1 AND wc_url IS NOT NULL AND wc_key IS NOT NULL AND wc_secret IS NOT NULL
         ");
@@ -31,30 +31,244 @@ class ShopSyncRepository
     }
 
     /**
-     * Fällige Standard-Artikel (Typ ohne Varianten, kein Vater/Kind) für einen Shop.
-     * Vater/Kind-Mapping auf WooCommerce Variable Products kommt in einer späteren Phase.
+     * Fällige Artikel für einen Shop -- Standalone/Vater UND Kind-Artikel.
+     * `vater_external_id` ist bei Standalone/Vater immer NULL, bei Kindern die
+     * WooCommerce-Produkt-ID des Vaters (falls der schon synced ist -- wenn
+     * nicht, überspringt ShopSyncService die Kind-Zeile für diesen Durchlauf).
+     * ORDER BY stellt sicher, dass ein Vater IMMER vor seinen eigenen Kindern
+     * kommt (Gruppierung nach vaterartikel_id/eigener id, dann Kind nach Vater).
      */
     public function findFaelligeArtikel(int $shopId, int $limit = 20): array
     {
         $stmt = $this->db->prepare("
             SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
-                   a.artikelnummer, a.name, a.kurzbeschreibung, a.beschreibung, a.aktiv
+                   a.vaterartikel_id, a.artikelnummer, a.name, a.kurzbeschreibung,
+                   a.beschreibung, a.aktiv, a.hersteller_id, ash_vater.external_id AS vater_external_id
             FROM artikel_shops ash
             JOIN artikel a ON a.id = ash.artikel_id
+            LEFT JOIN artikel_shops ash_vater
+                   ON ash_vater.shop_id = ash.shop_id AND ash_vater.artikel_id = a.vaterartikel_id
             WHERE ash.shop_id = :shop_id
               AND ash.aktiv = 1
-              AND a.vaterartikel_id IS NULL
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at
+                  -- Artikel selbst ist längst synced, aber eines seiner Bilder
+                  -- noch nicht (z.B. nachträglich hochgeladen) -- artikel_bilder_shops
+                  -- hat einen eigenen Status, unabhängig von artikel_shops.
+                  OR EXISTS (
+                      SELECT 1 FROM artikel_bilder ab
+                      LEFT JOIN artikel_bilder_shops abs
+                             ON abs.bild_id = ab.id AND abs.shop_id = ash.shop_id
+                      WHERE ab.artikel_id = a.id
+                        AND (abs.id IS NULL OR abs.sync_status IN ('pending', 'error'))
+                  )
+                  -- Gleiches Muster wie bei Bildern: eine Lagerbuchung/Reservierung
+                  -- ändert `lagerbestand.geaendert_am`/`reservierungen.geaendert_am`,
+                  -- NICHT `artikel.aktualisiert_am` -- ohne diese Prüfung würde ein
+                  -- längst synced Artikel bei reiner Bestandsänderung nie nachziehen.
+                  -- Nur Bestand aus Lagern zählt, die auch tatsächlich in den Shop
+                  -- einfließen (eigen, nicht Messe -- siehe findBestandInfo()).
+                  OR EXISTS (
+                      SELECT 1 FROM lagerbestand lb
+                      JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ != 'messe'
+                      WHERE lb.artikel_id = a.id AND lb.geaendert_am > ash.synced_at
+                  )
+                  OR EXISTS (
+                      SELECT 1 FROM reservierungen r
+                      WHERE r.artikel_id = a.id AND r.geaendert_am > ash.synced_at
+                  )
               )
-            ORDER BY ash.id
+            ORDER BY COALESCE(a.vaterartikel_id, a.id), (a.vaterartikel_id IS NOT NULL)
             LIMIT :limit
         ");
         $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Achsen eines Vater-Artikels, die als WooCommerce-Variations-Attribut taugen.
+     * freitext/pflichtfreitext bewusst ausgeschlossen -- WooCommerce-Variationen
+     * brauchen feste, abzählbare Werte, keinen offenen Text (siehe Plan/Memory).
+     */
+    public function findAchsenFuerArtikel(int $vaterId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT va.id AS achse_id, va.name, va.code
+            FROM artikel_achsen aa
+            JOIN varianten_achsen va ON va.id = aa.achse_id
+            WHERE aa.artikel_id = :vater_id
+              AND va.darstellungsform IN ('swatches', 'dropdown', 'radiobutton')
+            ORDER BY aa.sort_order
+        ");
+        $stmt->execute(['vater_id' => $vaterId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Werte einer Achse am Vater-Artikel (= die "options" für das WC-Attribut). */
+    public function findWerteFuerAchse(int $vaterId, int $achseId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id AS wert_id, wert
+            FROM varianten_achse_werte
+            WHERE artikel_id = :vater_id AND achse_id = :achse_id
+            ORDER BY sort_order
+        ");
+        $stmt->execute(['vater_id' => $vaterId, 'achse_id' => $achseId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Bestehende Shop-Zuordnung einer Achse (Idempotenz, wie kategorie_shops). */
+    public function findAchseShopZuweisung(int $achseId, int $shopId): array|false
+    {
+        $stmt = $this->db->prepare("SELECT * FROM varianten_achsen_shops WHERE achse_id = :achse_id AND shop_id = :shop_id");
+        $stmt->execute(['achse_id' => $achseId, 'shop_id' => $shopId]);
+        return $stmt->fetch() ?: false;
+    }
+
+    public function upsertAchseZuweisung(int $achseId, int $shopId, string $externeAttributId): void
+    {
+        $this->db->prepare("
+            INSERT INTO varianten_achsen_shops (achse_id, shop_id, externe_attribut_id)
+            VALUES (:achse_id, :shop_id, :externe_attribut_id)
+            ON DUPLICATE KEY UPDATE externe_attribut_id = VALUES(externe_attribut_id)
+        ")->execute(['achse_id' => $achseId, 'shop_id' => $shopId, 'externe_attribut_id' => $externeAttributId]);
+    }
+
+    /** Bestehende Shop-Zuordnung eines Achsenwerts (Idempotenz, wie kategorie_shops). */
+    public function findWertShopZuweisung(int $wertId, int $shopId): array|false
+    {
+        $stmt = $this->db->prepare("SELECT * FROM varianten_achse_werte_shops WHERE wert_id = :wert_id AND shop_id = :shop_id");
+        $stmt->execute(['wert_id' => $wertId, 'shop_id' => $shopId]);
+        return $stmt->fetch() ?: false;
+    }
+
+    public function upsertWertZuweisung(int $wertId, int $shopId, string $externeTermId): void
+    {
+        $this->db->prepare("
+            INSERT INTO varianten_achse_werte_shops (wert_id, shop_id, externe_term_id)
+            VALUES (:wert_id, :shop_id, :externe_term_id)
+            ON DUPLICATE KEY UPDATE externe_term_id = VALUES(externe_term_id)
+        ")->execute(['wert_id' => $wertId, 'shop_id' => $shopId, 'externe_term_id' => $externeTermId]);
+    }
+
+    /** Welche Achse+Wert-Kombination genau dieses Kind hat (für den Variation-Payload). */
+    public function findKombinationFuerKind(int $kindArtikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT vaw.achse_id, vaw.id AS wert_id, vaw.wert
+            FROM varianten_kombination_werte vkw
+            JOIN varianten_achse_werte vaw ON vaw.id = vkw.wert_id
+            WHERE vkw.kombination_id = :kind_id
+        ");
+        $stmt->execute(['kind_id' => $kindArtikelId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Name des Herstellers (für den WC-Attribut-Term). */
+    public function findHerstellerName(int $herstellerId): ?string
+    {
+        $stmt = $this->db->prepare("SELECT name FROM hersteller WHERE id = :id");
+        $stmt->execute(['id' => $herstellerId]);
+        $name = $stmt->fetchColumn();
+        return $name !== false ? $name : null;
+    }
+
+    /** Bestehende Shop-Zuordnung eines Herstellers (Idempotenz, wie kategorie_shops). */
+    public function findHerstellerShopZuweisung(int $herstellerId, int $shopId): array|false
+    {
+        $stmt = $this->db->prepare("SELECT * FROM hersteller_shops WHERE hersteller_id = :hersteller_id AND shop_id = :shop_id");
+        $stmt->execute(['hersteller_id' => $herstellerId, 'shop_id' => $shopId]);
+        return $stmt->fetch() ?: false;
+    }
+
+    /**
+     * Die "Hersteller"-Attribut-ID ist für einen Shop immer dieselbe (ein
+     * einziges globales Attribut) -- irgendeine schon befüllte Zeile dieses
+     * Shops reicht, um sie wiederzuverwenden statt erneut per WC-API nachzusehen.
+     */
+    public function findHerstellerAttributIdFuerShop(int $shopId): ?string
+    {
+        $stmt = $this->db->prepare("
+            SELECT externe_attribut_id FROM hersteller_shops
+            WHERE shop_id = :shop_id AND externe_attribut_id IS NOT NULL
+            LIMIT 1
+        ");
+        $stmt->execute(['shop_id' => $shopId]);
+        $id = $stmt->fetchColumn();
+        return $id !== false ? $id : null;
+    }
+
+    public function upsertHerstellerZuweisung(int $herstellerId, int $shopId, string $externeAttributId, string $externeTermId): void
+    {
+        $this->db->prepare("
+            INSERT INTO hersteller_shops (hersteller_id, shop_id, externe_attribut_id, externe_term_id)
+            VALUES (:hersteller_id, :shop_id, :externe_attribut_id, :externe_term_id)
+            ON DUPLICATE KEY UPDATE externe_attribut_id = VALUES(externe_attribut_id), externe_term_id = VALUES(externe_term_id)
+        ")->execute([
+            'hersteller_id' => $herstellerId,
+            'shop_id' => $shopId,
+            'externe_attribut_id' => $externeAttributId,
+            'externe_term_id' => $externeTermId,
+        ]);
+    }
+
+    /** Bestehende Shop-Zuordnung eines Bildes (Idempotenz, artikel_bilder_shops existierte schon vor diesem Feature). */
+    public function findBildShopZuweisung(int $bildId, int $shopId): array|false
+    {
+        $stmt = $this->db->prepare("SELECT * FROM artikel_bilder_shops WHERE bild_id = :bild_id AND shop_id = :shop_id");
+        $stmt->execute(['bild_id' => $bildId, 'shop_id' => $shopId]);
+        return $stmt->fetch() ?: false;
+    }
+
+    public function markiereBildSynced(int $bildId, int $shopId, string $externalId): void
+    {
+        $this->db->prepare("
+            INSERT INTO artikel_bilder_shops (bild_id, shop_id, external_id, sync_status, synced_at)
+            VALUES (:bild_id, :shop_id, :external_id, 'synced', NOW())
+            ON DUPLICATE KEY UPDATE external_id = VALUES(external_id), sync_status = 'synced', synced_at = NOW(), fehler_meldung = NULL
+        ")->execute(['bild_id' => $bildId, 'shop_id' => $shopId, 'external_id' => $externalId]);
+    }
+
+    public function markiereBildFehler(int $bildId, int $shopId, string $fehlermeldung): void
+    {
+        $this->db->prepare("
+            INSERT INTO artikel_bilder_shops (bild_id, shop_id, sync_status, fehler_meldung)
+            VALUES (:bild_id, :shop_id, 'error', :fehler)
+            ON DUPLICATE KEY UPDATE sync_status = 'error', fehler_meldung = VALUES(fehler_meldung)
+        ")->execute(['bild_id' => $bildId, 'shop_id' => $shopId, 'fehler' => $fehlermeldung]);
+    }
+
+    /**
+     * Bestandsdaten für den Shop-Sync: `gesamtbestand` zählt NUR eigene,
+     * nicht-Messe-Lager (`lager_beziehung='eigen' AND typ != 'messe'`,
+     * Jackys Entscheidung 2026-07-21 -- Messe-Bestand ist laut
+     * project_lager_konzept.md ohnehin für keinen Verkaufskanal außer der
+     * Messekasse selbst verfügbar, Partner-/Händler-Außenlager sind nicht
+     * ohne Weiteres aus dem Shop heraus versandfähig). `reserviert` ist
+     * dasselbe Muster wie überall sonst im Code (offene Reservierungen,
+     * unabhängig vom Lager). `hat_lagerstand=false` (z.B. Download-Artikel)
+     * bedeutet: kein Bestandsfeld im Payload, Artikel bleibt immer kaufbar.
+     */
+    public function findBestandInfo(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                at.hat_lagerstand,
+                a.ueberverkauf_erlaubt,
+                COALESCE(SUM(CASE WHEN l.id IS NOT NULL THEN lb.bestand ELSE 0 END), 0) AS gesamtbestand,
+                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
+            FROM artikel a
+            JOIN artikel_typen at ON at.id = a.artikeltyp_id
+            LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
+            LEFT JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ != 'messe'
+            WHERE a.id = :artikel_id
+            GROUP BY a.id, at.hat_lagerstand, a.ueberverkauf_erlaubt
+        ");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetch() ?: ['hat_lagerstand' => 0, 'ueberverkauf_erlaubt' => 0, 'gesamtbestand' => 0, 'reserviert' => 0];
     }
 
     /** Endkunden-Bruttopreis (kundengruppen.ist_standard=1), da Shops immer B2C sind. */
@@ -188,5 +402,52 @@ class ShopSyncRepository
         ");
         $stmt->execute(['artikel_id' => $artikelId, 'artikel_id2' => $artikelId]);
         return $stmt->fetchAll();
+    }
+
+    /** Polling-Cursor nach erfolgreichem Bestellungs-Sync-Durchlauf setzen. */
+    public function setzeBestellungenLetzterSync(int $shopId, string $zeitpunkt): void
+    {
+        $this->db->prepare("UPDATE shops SET bestellungen_letzter_sync = :zeitpunkt WHERE id = :shop_id")
+            ->execute(['zeitpunkt' => $zeitpunkt, 'shop_id' => $shopId]);
+    }
+
+    /** Artikel-ID zu einer WooCommerce-Bestellpositions-SKU (= unsere artikelnummer). */
+    public function findArtikelIdFuerSku(string $sku): ?int
+    {
+        $stmt = $this->db->prepare("SELECT id FROM artikel WHERE artikelnummer = :sku LIMIT 1");
+        $stmt->execute(['sku' => $sku]);
+        $id = $stmt->fetchColumn();
+        return $id !== false ? (int)$id : null;
+    }
+
+    /**
+     * ID des Divers-Platzhalter-Artikels (99-9999), Fallback für
+     * Bestellpositionen ohne SKU-Treffer -- gleicher Mechanismus wie
+     * KassenService::getDiversArtikelId()/MesseSyncService.
+     */
+    public function findDiversArtikelId(): ?int
+    {
+        $stmt = $this->db->query("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1");
+        $id = $stmt->fetchColumn();
+        return $id !== false ? (int)$id : null;
+    }
+
+    /** Phase 4: bereits verknüpfter Kunde über die WooCommerce-Kunden-ID (schnellster Pfad). */
+    public function findKundeIdFuerShopExternalId(int $shopId, string $externalId): ?int
+    {
+        $stmt = $this->db->prepare("SELECT kunde_id FROM kunden_shops WHERE shop_id = :shop_id AND external_id = :external_id");
+        $stmt->execute(['shop_id' => $shopId, 'external_id' => $externalId]);
+        $id = $stmt->fetchColumn();
+        return $id !== false ? (int)$id : null;
+    }
+
+    /** Verknüpfung Kunde↔Shop anlegen/aktualisieren (kunden_shops existiert schon seit Migration 047). */
+    public function upsertKundenShopZuweisung(int $kundeId, int $shopId, ?string $externalId): void
+    {
+        $this->db->prepare("
+            INSERT INTO kunden_shops (kunde_id, shop_id, external_id, sync_status, synced_at)
+            VALUES (:kunde_id, :shop_id, :external_id, 'synced', NOW())
+            ON DUPLICATE KEY UPDATE external_id = VALUES(external_id), sync_status = 'synced', synced_at = NOW()
+        ")->execute(['kunde_id' => $kundeId, 'shop_id' => $shopId, 'external_id' => $externalId]);
     }
 }

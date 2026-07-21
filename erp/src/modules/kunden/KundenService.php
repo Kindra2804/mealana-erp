@@ -59,7 +59,7 @@ class KundenService
      * 4. Kunden anlegen
      * 5. Optional: Adresse direkt mitanlegen wenn Straße + Ort vorhanden
      */
-    public function anlegen(array $data): array
+    public function anlegen(array $data, ?int $erstelltVon = null): array
     {
         $fehler = $this->validiere($data);
         if (!empty($fehler)) {
@@ -99,7 +99,7 @@ class KundenService
         Logger::log('kunden.anlegen', 'kunden', $id, [
             'kundennummer' => $data['kundennummer'],
             'name'         => trim(($data['vorname'] ?? '') . ' ' . ($data['nachname'] ?? $data['firmenname'] ?? '')),
-        ]);
+        ], $erstelltVon);
 
         return ['erfolg' => true, 'id' => $id, 'kundennummer' => $data['kundennummer']];
     }

@@ -565,6 +565,37 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-21, Session 30)
+
+Komplette Kern-Kette der Online-Shop-Anbindung (Phasen 1-4) fertiggestellt, dazu ein Kanal-Anzeige-Fix und die Theme-Recherche. Volle Details siehe `.claude/memory/project_shop_sync.md`.
+
+### Vater/Kind-Variationssync (Variable Products) ✅ FERTIG
+Migration 143 (`varianten_achsen_shops`, `varianten_achse_werte_shops`). Achsen → globale WC-Attribute, Achsenwerte → Terms, Vater → `type=variable`, Kind → Variation (eigener Endpoint, `option` statt `options`, `image` statt `images`). `freitext`/`pflichtfreitext`-Achsen bewusst nicht als Variations-Attribut gesynct (WC braucht abzählbare Werte).
+
+### Hersteller-Filter als WC-Produktattribut ✅ FERTIG
+Ein globales "Hersteller"-Attribut (`has_archives=true`), unabhängig vom bestehenden Hersteller-Kategorie-Ast (bleibt als reine Vor-Filter-Gruppierung bestehen). Migration 144+145 (`hersteller_shops`).
+
+### Bilder-Sync (Vater + Kind) ✅ FERTIG
+`artikel_bilder_shops` (existierte seit Migration 045, war ungenutzt) jetzt befüllt. Direkter Byte-Upload in die WP-Mediathek (`/wp/v2/media`, NICHT `/wc/v3`) über ein WordPress-Application-Password (Migration 146, `shops.wp_username`/`wp_app_password`) — unser ERP hat keinen öffentlichen Endpunkt, WooCommerce kann Bild-URLs bei uns nicht selbst abholen.
+
+### Phase 2: Bestand/Lagerstand ✅ FERTIG
+Verfügbar = Summe `lagerbestand` aus eigenen, nicht-Messe-Lagern minus offene Reservierungen. `ueberverkauf_erlaubt` → WC `backorders`. Kein Bestandsfeld bei `artikel_typen.hat_lagerstand=0` (Downloads).
+
+### Phase 3: Bestellungen aus WooCommerce (Polling) ✅ FERTIG
+Migration 147 (`shops.bestellungen_letzter_sync`). **Bewusst kein Webhook** — ERP hat keinen öffentlichen Endpunkt (VPN-only), WooCommerce könnte uns nicht per Push erreichen. Reines Polling (`modified_after`), wie JTLs eigener Connector-Worker. Neue Klasse `ShopBestellungSyncService`. Preise 1:1 aus WC-Line-Items übernommen (nicht neu berechnet — Bestellzeitpunkt-Preis muss eingefroren bleiben). Idempotent über `auftraege.shop_id`+`kanal_auftrag_id`.
+
+### Phase 4 (eingegrenzt): Bestellungen mit echten Kunden verknüpfen ✅ FERTIG
+`ermittleOderErstelleKunde()`: 1) `kunden_shops.external_id` 2) `email_hash`-Match 3) neu anlegen (`KundenService::anlegen()`, bereits vorhandener Duplikat-Check). Volles Kunden-Merge-Szenario (ERP→Shop-Account-Push, DSGVO-Löschsync, Fuzzy-Merge-Queue) bewusst zurückgestellt.
+
+### 🔴 Wiederkehrender Bug fünfmal gefunden (Cron/CLI ohne Session)
+`$_SESSION['benutzer']['id']` direkt gelesen, crasht ohne aktive Session — diesmal in `AuftragService::anlegen()`/`statusAktualisieren()` (inkl. eines dritten, versteckten `Logger::log()`-Aufrufs, der erst beim echten End-to-End-Test auffiel) und `KundenService::anlegen()`. Alle bekommen jetzt einen optionalen `erstelltVon`/`benutzerId`-Parameter, Default bleibt `$_SESSION` für bestehende Aufrufer unverändert.
+
+### Kanal-Anzeige in Auftragsliste ✅ FERTIG
+WooCommerce-Bestellungen zeigen jetzt den echten Shop-Namen (z.B. "MEALANA KG") statt generisch "WooCommerce" — `AuftragRepository::findAll()`/`findById()` joinen `shops`. Kanal-Filter hat jetzt einen Eintrag pro Shop (`shop:<id>`-Syntax).
+
+### Theme-Recherche (WoodMart vs. Blocksy Pro) — Kauf pausiert
+Wichtiger Fund: ThemeForest-Lizenzen (WoodMart/Flatsome) gelten pro Live-Domain — bei 3 MeaLana-Shops also 3 Lizenzen, nicht eine. Blocksy Pro Lifetime deckt 10 Seiten für 299€ netto ab. Jacky bespricht das Budget zuerst mit Barbara, kein Kauf/Code bis dahin. Details: `.claude/memory/project_shop_theme.md`.
+
 ## What's Implemented (Stand 2026-07-20, Session 29)
 
 **Hinweis:** Zwischen Session 28 (2026-07-09) und dieser Session lagen mehrere weitere Arbeitstage (u.a. RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update, Buchhaltung/Inventur/Rechte&Rollen fertiggestellt) — dort nicht in CLAUDE.md nachgetragen, voller Stand im Memory-System (`.claude/memory/`, Start immer bei `MEMORY.md`).

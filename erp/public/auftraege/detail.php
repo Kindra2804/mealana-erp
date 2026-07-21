@@ -99,6 +99,9 @@ $kanalLabels = [
 $zl  = $zahlungsLabels[$auftrag['zahlungsstatus']] ?? ['label' => $auftrag['zahlungsstatus'], 'class' => ''];
 $ll  = $lieferLabels[$auftrag['lieferstatus']]     ?? ['label' => $auftrag['lieferstatus'],   'class' => ''];
 $kl  = $kanalLabels[$auftrag['kanal']]             ?? ['label' => $auftrag['kanal'],          'class' => ''];
+if ($auftrag['kanal'] === 'woocommerce' && !empty($auftrag['shop_name'])) {
+    $kl = ['label' => $auftrag['shop_name'], 'class' => $kl['class']];
+}
 
 $istStorniert = in_array($auftrag['lieferstatus'], ['storniert']);
 $sperrZustände = ['versendet', 'abgeschlossen', 'storniert'];
