@@ -136,10 +136,12 @@ if ($tab === 'kanaele_update') {
         exit;
     }
 
-    $name     = trim($_POST['shop_name'] ?? '');
-    $wcUrl    = trim($_POST['wc_url'] ?? '');
-    $wcKey    = trim($_POST['wc_key'] ?? '');
-    $wcSecret = trim($_POST['wc_secret'] ?? '');
+    $name        = trim($_POST['shop_name'] ?? '');
+    $wcUrl       = trim($_POST['wc_url'] ?? '');
+    $wcKey       = trim($_POST['wc_key'] ?? '');
+    $wcSecret    = trim($_POST['wc_secret'] ?? '');
+    $wpUsername  = trim($_POST['wp_username'] ?? '');
+    $wpAppPasswd = trim($_POST['wp_app_password'] ?? '');
     $subMarke = isset($_POST['sub_marke']) && $_POST['sub_marke'] === '1' ? 1 : 0;
     $istAktiv = isset($_POST['ist_aktiv']) && $_POST['ist_aktiv'] === '1' ? 1 : 0;
 
@@ -158,11 +160,11 @@ if ($tab === 'kanaele_update') {
     }
 
     if ($logoPfad) {
-        $db->prepare("UPDATE shops SET name=?, wc_url=?, wc_key=?, wc_secret=?, sub_marke=?, ist_aktiv=?, logo_pfad=? WHERE id=?")
-           ->execute([$name, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $subMarke, $istAktiv, $logoPfad, $shopId]);
+        $db->prepare("UPDATE shops SET name=?, wc_url=?, wc_key=?, wc_secret=?, wp_username=?, wp_app_password=?, sub_marke=?, ist_aktiv=?, logo_pfad=? WHERE id=?")
+           ->execute([$name, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null, $subMarke, $istAktiv, $logoPfad, $shopId]);
     } else {
-        $db->prepare("UPDATE shops SET name=?, wc_url=?, wc_key=?, wc_secret=?, sub_marke=?, ist_aktiv=? WHERE id=?")
-           ->execute([$name, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $subMarke, $istAktiv, $shopId]);
+        $db->prepare("UPDATE shops SET name=?, wc_url=?, wc_key=?, wc_secret=?, wp_username=?, wp_app_password=?, sub_marke=?, ist_aktiv=? WHERE id=?")
+           ->execute([$name, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null, $subMarke, $istAktiv, $shopId]);
     }
 
     if ($logoFehler) {
@@ -178,9 +180,11 @@ if ($tab === 'kanaele_update') {
 if ($tab === 'kanaele_neu') {
     $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim($_POST['neu_slug'] ?? '')));
     $name = trim($_POST['neu_name'] ?? '');
-    $wcUrl    = trim($_POST['neu_wc_url'] ?? '');
-    $wcKey    = trim($_POST['neu_wc_key'] ?? '');
-    $wcSecret = trim($_POST['neu_wc_secret'] ?? '');
+    $wcUrl       = trim($_POST['neu_wc_url'] ?? '');
+    $wcKey       = trim($_POST['neu_wc_key'] ?? '');
+    $wcSecret    = trim($_POST['neu_wc_secret'] ?? '');
+    $wpUsername  = trim($_POST['neu_wp_username'] ?? '');
+    $wpAppPasswd = trim($_POST['neu_wp_app_password'] ?? '');
 
     if (!$slug || !$name) {
         $_SESSION['fehler'] = 'Slug und Name sind Pflichtfelder.';
@@ -203,8 +207,8 @@ if ($tab === 'kanaele_neu') {
     }
 
     try {
-        $db->prepare("INSERT INTO shops (slug, name, logo_pfad, wc_url, wc_key, wc_secret, sub_marke, ist_aktiv) VALUES (?,?,?,?,?,?,0,1)")
-           ->execute([$slug, $name, $logoPfad, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null]);
+        $db->prepare("INSERT INTO shops (slug, name, logo_pfad, wc_url, wc_key, wc_secret, wp_username, wp_app_password, sub_marke, ist_aktiv) VALUES (?,?,?,?,?,?,?,?,0,1)")
+           ->execute([$slug, $name, $logoPfad, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null]);
         $_SESSION[$logoFehler ? 'fehler' : 'erfolg'] = $logoFehler ? [$logoFehler] : 'Kanal angelegt.';
     } catch (PDOException $e) {
         $_SESSION['fehler'] = 'Slug bereits vorhanden.';

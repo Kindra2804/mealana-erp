@@ -230,6 +230,18 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     </div>
                     <div></div>
                 </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;margin-top:10px">
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">WordPress-Benutzername (für Bilder-Upload)</label>
+                        <input type="text" name="neu_wp_username" class="erp-input" placeholder="tatsächlicher Login-Name, NICHT das App-Passwort-Label" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">WordPress Application-Passwort</label>
+                        <input type="password" name="neu_wp_app_password" class="erp-input" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" autocomplete="off">
+                    </div>
+                    <div></div>
+                    <div></div>
+                </div>
             </form>
         </div>
 
@@ -280,6 +292,19 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     <div class="form-group" style="margin:0">
                         <label class="form-label">REST-API Consumer Secret</label>
                         <input type="password" name="wc_secret" class="erp-input" placeholder="cs_..." value="<?= htmlspecialchars($shop['wc_secret'] ?? '') ?>" autocomplete="off">
+                    </div>
+                    <div></div>
+                    <div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr 1fr 120px auto;gap:12px;align-items:end;margin-top:10px">
+                    <div></div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">WordPress-Benutzername (für Bilder-Upload)</label>
+                        <input type="text" name="wp_username" class="erp-input" placeholder="tatsächlicher Login-Name, NICHT das App-Passwort-Label" value="<?= htmlspecialchars($shop['wp_username'] ?? '') ?>" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">WordPress Application-Passwort</label>
+                        <input type="password" name="wp_app_password" class="erp-input" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" value="<?= htmlspecialchars($shop['wp_app_password'] ?? '') ?>" autocomplete="off">
                     </div>
                     <div></div>
                     <div></div>
