@@ -117,6 +117,12 @@ class WooCommerceClient
         return $this->request('POST', "/products/attributes/$attributId/terms", [], $daten);
     }
 
+    /** Attribut-Term nachträglich ändern (z.B. Hersteller-Beschreibung für GPSR-Kontaktdaten). */
+    public function aktualisiereAttributTerm(int $attributId, string $termId, array $daten): array
+    {
+        return $this->request('PUT', "/products/attributes/$attributId/terms/$termId", [], $daten);
+    }
+
     public function erstelleVariation(string $parentId, array $daten): array
     {
         return $this->request('POST', "/products/$parentId/variations", [], $daten);

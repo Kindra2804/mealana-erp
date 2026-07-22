@@ -226,6 +226,49 @@ class ShopSyncRepository
         return $name !== false ? $name : null;
     }
 
+    /**
+     * Vollständige Herstellerdaten für die GPSR-Kontaktbeschreibung (Art. 19
+     * EU GPSR) -- liefert nur die ausgeschriebenen Ländernamen für den
+     * Anzeigetext (per LEFT JOIN). Die EU-Mitgliedschaft selbst wird bewusst
+     * NICHT hier berechnet, sondern über HerstellerService::istEuLand()
+     * abgefragt (schon bestehende, einzige Quelle für diese Prüfung -- siehe
+     * ShopSyncService::baueHerstellerBeschreibung()).
+     */
+    public function findHerstellerDetails(int $herstellerId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT h.*, l1.name_de AS land_name, l2.name_de AS reo_land_name
+            FROM hersteller h
+            LEFT JOIN laender l1 ON l1.iso_code = h.land
+            LEFT JOIN laender l2 ON l2.iso_code = h.reo_land
+            WHERE h.id = :id
+        ");
+        $stmt->execute(['id' => $herstellerId]);
+        return $stmt->fetch();
+    }
+
+    /**
+     * Hersteller, die für diesen Shop schon angelegt sind, sich seit dem
+     * letzten Sync aber geändert haben -- unabhängig von Artikel-Fälligkeit,
+     * gleiches Muster wie findFaelligeKategorien() (siehe dort für die
+     * Begründung, warum das eine eigenständige Prüfung braucht).
+     *
+     * @return int[] hersteller_id
+     */
+    public function findFaelligeHersteller(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT hs.hersteller_id
+            FROM hersteller_shops hs
+            JOIN hersteller h ON h.id = hs.hersteller_id
+            WHERE hs.shop_id = :shop_id
+              AND hs.externe_term_id IS NOT NULL
+              AND (hs.synced_at IS NULL OR h.aktualisiert_am > hs.synced_at)
+        ");
+        $stmt->execute(['shop_id' => $shopId]);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
     /** Bestehende Shop-Zuordnung eines Herstellers (Idempotenz, wie kategorie_shops). */
     public function findHerstellerShopZuweisung(int $herstellerId, int $shopId): array|false
     {
@@ -254,9 +297,9 @@ class ShopSyncRepository
     public function upsertHerstellerZuweisung(int $herstellerId, int $shopId, string $externeAttributId, string $externeTermId): void
     {
         $this->db->prepare("
-            INSERT INTO hersteller_shops (hersteller_id, shop_id, externe_attribut_id, externe_term_id)
-            VALUES (:hersteller_id, :shop_id, :externe_attribut_id, :externe_term_id)
-            ON DUPLICATE KEY UPDATE externe_attribut_id = VALUES(externe_attribut_id), externe_term_id = VALUES(externe_term_id)
+            INSERT INTO hersteller_shops (hersteller_id, shop_id, externe_attribut_id, externe_term_id, synced_at)
+            VALUES (:hersteller_id, :shop_id, :externe_attribut_id, :externe_term_id, NOW())
+            ON DUPLICATE KEY UPDATE externe_attribut_id = VALUES(externe_attribut_id), externe_term_id = VALUES(externe_term_id), synced_at = NOW()
         ")->execute([
             'hersteller_id' => $herstellerId,
             'shop_id' => $shopId,

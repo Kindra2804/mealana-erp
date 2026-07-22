@@ -4,6 +4,7 @@ require_once __DIR__ . '/ShopSyncRepository.php';
 require_once __DIR__ . '/WooCommerceClient.php';
 require_once __DIR__ . '/../../core/logger.php';
 require_once __DIR__ . '/../artikel/BilderRepository.php';
+require_once __DIR__ . '/../hersteller/HerstellerService.php';
 
 /**
  * ShopSyncService – synct Standard-Artikel UND Vater/Kind-Artikel nach WooCommerce.
@@ -23,12 +24,14 @@ class ShopSyncService
 {
     private ShopSyncRepository $repo;
     private BilderRepository $bilderRepo;
+    private HerstellerService $herstellerService;
     private int $jarvisId;
 
     public function __construct()
     {
         $this->repo = new ShopSyncRepository();
         $this->bilderRepo = new BilderRepository();
+        $this->herstellerService = new HerstellerService();
         // Läuft als Cron ohne Session -- Logger::log() braucht dann eine explizite
         // benutzer_id, sonst crasht der INSERT an aktivitaeten.benutzer_id NOT NULL
         // (gleiches Bug-Muster wie schon bei cron/mahnwesen.php und LagerService).
@@ -103,6 +106,22 @@ class ShopSyncService
             }
         }
 
+        // Gleiches Muster nochmal für Hersteller (GPSR-Kontaktbeschreibung) --
+        // bereits angelegte Hersteller-Terms, deren Adress-/REO-Daten sich seit
+        // dem letzten Sync geändert haben, unabhängig von Artikel-Fälligkeit.
+        $bereitsVersuchtHersteller = [];
+        foreach ($this->repo->findFaelligeHersteller((int)$shop['id']) as $herstellerId) {
+            $bereitsVersuchtHersteller[$herstellerId] = true;
+            try {
+                $this->syncHerstellerFuerArtikel($client, $herstellerId, (int)$shop['id']);
+            } catch (Throwable $e) {
+                Logger::log('shop.hersteller_sync_fehler', 'hersteller', $herstellerId, [
+                    'shop'  => $shop['slug'],
+                    'fehler' => $e->getMessage(),
+                ], $this->jarvisId, 'error');
+            }
+        }
+
         foreach ($faelligeArtikel as $row) {
             try {
                 $istKind = $row['vaterartikel_id'] !== null;
@@ -131,7 +150,8 @@ class ShopSyncService
                         $wcObjekt = $client->erstelleVariation($row['vater_external_id'], $payload);
                     }
                 } else {
-                    if (!empty($row['hersteller_id'])) {
+                    if (!empty($row['hersteller_id']) && !isset($bereitsVersuchtHersteller[(int)$row['hersteller_id']])) {
+                        $bereitsVersuchtHersteller[(int)$row['hersteller_id']] = true;
                         $this->syncHerstellerFuerArtikel($client, (int)$row['hersteller_id'], (int)$shop['id']);
                     }
                     $payload = $this->baueProduktPayload($row, (int)$shop['id']);
@@ -395,15 +415,32 @@ class ShopSyncService
      */
     private function syncHerstellerFuerArtikel(WooCommerceClient $client, int $herstellerId, int $shopId): void
     {
+        $hersteller = $this->repo->findHerstellerDetails($herstellerId);
+        if (!$hersteller) {
+            return;
+        }
+        $beschreibung = $this->baueHerstellerBeschreibung($hersteller);
+
         $zuweisung = $this->repo->findHerstellerShopZuweisung($herstellerId, $shopId);
         if ($zuweisung && $zuweisung['externe_attribut_id'] && $zuweisung['externe_term_id']) {
+            // Nachziehen nur wenn seit dem letzten Sync tatsächlich etwas an
+            // Adress-/REO-Daten geändert wurde (Change-Detection analog zu
+            // Kategorien) -- sonst bei jedem Cron-Lauf unnötig aktualisieren.
+            $mussAktualisieren = $zuweisung['synced_at'] === null
+                || strtotime($hersteller['aktualisiert_am']) > strtotime($zuweisung['synced_at']);
+            if ($mussAktualisieren) {
+                $client->aktualisiereAttributTerm((int)$zuweisung['externe_attribut_id'], $zuweisung['externe_term_id'], [
+                    'description' => $beschreibung,
+                ]);
+                $this->repo->upsertHerstellerZuweisung($herstellerId, $shopId, $zuweisung['externe_attribut_id'], $zuweisung['externe_term_id']);
+            }
             return;
         }
 
         $attributId = $this->repo->findHerstellerAttributIdFuerShop($shopId)
             ?? (string)$this->findeOderErstelleAttribut($client, 'Hersteller', ['has_archives' => true]);
 
-        $herstellerName = $this->repo->findHerstellerName($herstellerId);
+        $herstellerName = $hersteller['name'];
         $termId = null;
         foreach ($client->listeAttributTerms((int)$attributId) as $wcTerm) {
             if (mb_strtolower($wcTerm['name']) === mb_strtolower($herstellerName)) {
@@ -411,9 +448,105 @@ class ShopSyncService
                 break;
             }
         }
-        $termId ??= (int)$client->erstelleAttributTerm((int)$attributId, ['name' => $herstellerName])['id'];
+        if ($termId === null) {
+            $termId = (int)$client->erstelleAttributTerm((int)$attributId, [
+                'name'        => $herstellerName,
+                'description' => $beschreibung,
+            ])['id'];
+        } else {
+            // Term existierte schon in WooCommerce (z.B. durch einen anderen
+            // Vater-Artikel angelegt, noch ohne Beschreibung) -- lokal aber noch
+            // keine Zuweisung vorhanden, Beschreibung darum jetzt nachziehen.
+            $client->aktualisiereAttributTerm((int)$attributId, (string)$termId, ['description' => $beschreibung]);
+        }
 
         $this->repo->upsertHerstellerZuweisung($herstellerId, $shopId, $attributId, (string)$termId);
+    }
+
+    /**
+     * GPSR-Kontaktbeschreibung (Art. 19 EU GPSR) für einen Hersteller-Term --
+     * wird auf der Marken-Archivseite angezeigt (has_archives=true beim
+     * Hersteller-Attribut), analog zur Kategorie-Beschreibung. "Verantwortliche
+     * Person"-Block (REO) nur, wenn der Hersteller selbst NICHT in der EU sitzt
+     * UND tatsächlich REO-Daten hinterlegt sind (Jackys Entscheidung 2026-07-22).
+     * EU-Prüfung läuft über HerstellerService::istEuLand() -- die schon
+     * bestehende, einzige Quelle für diese Liste (nicht hier nochmal über
+     * laender.ist_eu_mitglied prüfen, sonst zwei Quellen die auseinanderlaufen
+     * können). Unbekanntes/leeres Herstellerland wird von istEuLand() bereits
+     * korrekt als "nicht EU" behandelt (leerer String matcht keinen EU-Code).
+     */
+    private function baueHerstellerBeschreibung(array $hersteller): string
+    {
+        $html = $this->formatiereGpsrBlock(
+            'Kontaktinformation gem. Art. 19 EU GPSR',
+            $hersteller['name'],
+            $hersteller['strasse'] ?? null,
+            $hersteller['plz'] ?? null,
+            $hersteller['ort'] ?? null,
+            $hersteller['land_name'] ?? null,
+            $hersteller['webseite'] ?? null,
+            $hersteller['email'] ?? null
+        );
+
+        $istNichtEu = !$this->herstellerService->istEuLand($hersteller['land'] ?? '');
+        if ($istNichtEu && !empty($hersteller['reo_name'])) {
+            $html .= "\n\n" . $this->formatiereGpsrBlock(
+                'Verantwortliche Person gem. Art. 19 EU GPSR',
+                $hersteller['reo_name'],
+                $hersteller['reo_strasse'] ?? null,
+                $hersteller['reo_plz'] ?? null,
+                $hersteller['reo_ort'] ?? null,
+                $hersteller['reo_land_name'] ?? null,
+                null,
+                $hersteller['reo_email'] ?? null
+            );
+        }
+
+        return $html;
+    }
+
+    /**
+     * Ein GPSR-Kontaktblock (Titel + Postanschrift + elektronische Adresse).
+     * Bewusst Zeilenumbrüche statt <p>/<br> -- echter Test gegen WooCommerce
+     * hat gezeigt, dass die Term-Beschreibung <p>/<br> beim Speichern
+     * herausfiltert (nur <strong> übersteht es), \n dagegen bleibt erhalten.
+     * Das Theme wandelt \n\n/\n beim Anzeigen normalerweise selbst in
+     * Absätze/Zeilenumbrüche um (wpautop-artiges Verhalten).
+     */
+    private function formatiereGpsrBlock(
+        string $titel,
+        string $name,
+        ?string $strasse,
+        ?string $plz,
+        ?string $ort,
+        ?string $land,
+        ?string $webseite,
+        ?string $email
+    ): string {
+        $zeilen = ["<strong>{$titel}</strong>", '', '<strong>Postanschrift</strong>', htmlspecialchars($name)];
+        if ($strasse) {
+            $zeilen[] = htmlspecialchars($strasse);
+        }
+        $plzOrt = trim(($plz ?? '') . ' ' . ($ort ?? ''));
+        if ($plzOrt !== '') {
+            $zeilen[] = htmlspecialchars($plzOrt);
+        }
+        if ($land) {
+            $zeilen[] = htmlspecialchars($land);
+        }
+
+        if ($webseite || $email) {
+            $zeilen[] = '';
+            $zeilen[] = '<strong>Elektronische Adresse</strong>';
+            if ($webseite) {
+                $zeilen[] = 'Website: ' . htmlspecialchars($webseite);
+            }
+            if ($email) {
+                $zeilen[] = htmlspecialchars($email);
+            }
+        }
+
+        return implode("\n", $zeilen);
     }
 
     private function syncWerteFuerAchse(WooCommerceClient $client, int $vaterId, int $achseId, int $attributId, int $shopId): void
