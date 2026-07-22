@@ -587,8 +587,13 @@ Für den späteren Erstimport (tausende Artikel, Byte-Upload über die VPN-Leitu
 ### Bulk-Import-Sperre ✅ FERTIG
 Migration 150 (`shops.bulk_import_aktiv`) — analog zu JTLs "Komplettabgleich nur bei ausgeschaltetem Standard-Worker". Verhindert Race Condition zwischen dem laufenden 15-Minuten-Cron und einem manuellen Bulk-Import. Sperre wird vom Bulk-Skript selbst gesetzt/freigegeben (try/finally), Cron überspringt gesperrte Shops komplett.
 
-### Versionssprung + Live-Deploy — bewusst NICHT heute gemacht
-Braucht echten AnyDesk-Zugriff auf den Live-Server (192.168.178.222), den ich nicht habe — Ausführung nur mit Jacky gemeinsam möglich, vorgemerkt für die nächste Session. Migrationen 142-150 + kompletter Shop-Sync-Code müssen dann auf Live nachgezogen werden (git archive-Weg wie beim letzten Mal), plus der übliche Tabellen-Zeilenvergleich.
+### Versionssprung + Live-Deploy ✅ FERTIG (noch am selben Tag nachgeholt)
+Jacky war schon per AnyDesk am Live-Server. `erp/VERSION` → 0.4.0(beta), Migrationen 142-150 + kompletter Shop-Sync-Code deployed. **Echter Lücken-Fund:** WordPress-Zugangsdaten (`wp_username`/`wp_app_password`) hatten nie ein Formularfeld in Einstellungen → Kanäle — nachgezogen (`public/einstellungen/index.php`+`speichern.php`). Verbindung von Live aus bestätigt (eigenes Test-Skript, da `0/0` beim Cron-Lauf nicht automatisch "Verbindung ok" bedeutet — `findFaelligeArtikel()` liefert leer, solange kein Artikel zugewiesen ist).
+
+### Hersteller-GPSR-Kontaktbeschreibung ✅ FERTIG
+Migration 151 (`hersteller_shops.synced_at`), `WooCommerceClient::aktualisiereAttributTerm()`. Hersteller-Attribut-Term bekommt jetzt eine GPSR-Kontaktbeschreibung (Art. 19 EU GPSR) aus den bestehenden Hersteller-Feldern, "Verantwortliche Person"-Block nur bei Nicht-EU-Herstellern mit REO-Daten (über die schon bestehende `HerstellerService::istEuLand()`, keine zweite EU-Prüfung eingeführt). Eigenständige `findFaelligeHersteller()`-Prüfung wie bei Kategorien. **Echter Fund:** `<p>`/`<br>` überleben nicht in der Term-Beschreibung, nur `<strong>` + echte Zeilenumbrüche.
+
+**🔍 Wichtig für nächste Session, ALS ERSTES:** Separater WP-Menüpunkt "Produkte → Hersteller" entdeckt (nicht das Attribut!) mit eigenen Feldern "Herstelleradresse"/"Verantwortliche Person (EU)", vermutlich von Germanized selbst — könnte die eigentlich vorgesehene, strukturierte GPSR-Lösung sein. Noch nicht geprüft. Siehe `.claude/memory/project_hersteller_shop_filter.md`.
 
 ## What's Implemented (Stand 2026-07-21, Session 30)
 

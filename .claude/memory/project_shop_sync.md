@@ -1,11 +1,11 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre + Versionssprung/Live-Deploy alle fertig (2026-07-22, Live auf 0.4.0beta); offen: echter Artikel-Test-Sync von Live, ERP→Shop-Kunden-Push (Nice-to-have)"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); ALS ERSTES morgen prüfen: separate Germanized-Hersteller-Funktion (evtl. bessere GPSR-Lösung)"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-22T15:54:55.499Z
+  modified: 2026-07-22T16:34:23.149Z
 ---
 
 ## ✅ cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre FERTIG (2026-07-22)
@@ -24,6 +24,28 @@ Vier Bau-Punkte in einer Session, ausgelöst durch den Aufbau der Gratis-Theme-B
 - Neues `erp/scripts/`-Verzeichnis (bisher nur `cron/` für Wiederkehrendes) — `scripts/erstbefuellung_bilder.php` als CLI-Tool: `php scripts/erstbefuellung_bilder.php <shop-slug> <bilder-basis-url>`
 
 **Bulk-Import-Sperre** (Migration 150, `shops.bulk_import_aktiv`) — Jackys Vergleich zum JTL-Komplettabgleich ("funktioniert nur wenn der Standard-Worker aus ist, sonst grätscht der alle 15 Min. rein"): gleiches Prinzip nachgebaut. `scripts/erstbefuellung_bilder.php` setzt die Sperre selbst (try/finally, wird auch bei Fehlern wieder freigegeben), `cron/shop_sync.php` überspringt einen gesperrten Shop komplett. Bei hartem Abbruch (Strg+C) bleibt die Sperre hängen — manueller Reset per SQL im Skript-Kommentar dokumentiert. Live getestet: Cron übersprang den Shop korrekt während die Sperre aktiv war, lief danach normal weiter.
+
+## ✅ Hersteller-GPSR-Kontaktbeschreibung FERTIG (2026-07-22, gleicher Tag)
+
+Jacky fand bei einem Mitbewerber (Screenshot: "ChiaoGoo"-Markenseite) ein funktionierendes GPSR-Muster: Kontaktinformation (Hersteller-Adresse) + "Verantwortliche Person"-Block direkt auf der Hersteller-Archivseite. Idee: dasselbe Muster wie die heutige Kategorie-Beschreibung, nur für Hersteller-Attribut-Terms.
+
+**Umsetzung:** Migration 151 (`hersteller_shops.synced_at`), `WooCommerceClient::aktualisiereAttributTerm()` neu. `syncHerstellerFuerArtikel()` baut jetzt eine GPSR-Kontaktbeschreibung aus den bestehenden Hersteller-Feldern (`strasse`/`plz`/`ort`/`webseite`/`email` + `reo_*`) und schickt sie als `description` mit. Eigenständige `findFaelligeHersteller()`-Prüfung (gleiches Muster wie bei Kategorien) — Hersteller-Sync war vorher genau wie der alte Kategorie-Sync nur an Artikel-Fälligkeit gekoppelt.
+
+**Entscheidung (Jacky, 2026-07-22):** Rechtsfrage bewusst pragmatisch als "für uns erledigt" behandelt (Mitbewerber-Vergleich zeigt entweder dieses Muster oder gar nichts). **"Verantwortliche Person"-Block nur bei Nicht-EU-Herstellern** mit ausgefüllten REO-Daten.
+
+**Wichtiger Fund beim Bauen:** Es gab schon eine EU-Länder-Prüfung (`HerstellerService::istEuLand()`, hartcodierte 27-Länder-Konstante, inkl. desselben DROPS/Lang-Yarns-Beispiel-Kommentars wie im neuen Code!) — ursprünglich hätte ich eine zweite, eigene Prüfung über `laender.ist_eu_mitglied` gebaut. Korrigiert: nur noch die bestehende Quelle verwendet, keine zwei divergierenden EU-Listen.
+
+**🔴 Echter Fund beim End-to-End-Test:** `<p>`/`<br>`-Tags überleben das Speichern der Attribut-Term-Beschreibung NICHT (WordPress filtert sie beim Term-Update heraus) — nur `<strong>` bleibt erhalten. Echte Zeilenumbrüche (`\n`) überleben dagegen problemlos. Format entsprechend umgebaut (Titel/Adresse mit `<strong>` + `\n`, kein HTML-Grundgerüst). Komplett gegen `indra-design.at` verifiziert: Neuanlage, Update-Sync bei Adressänderung, EU-Fall (Schachenmayr/DE) unterdrückt REO-Block korrekt, Nicht-EU-Fall (DROPS Design/NO) zeigt ihn korrekt. Alle Testdaten danach bereinigt.
+
+## 🔍 Offen für morgen, ALS ERSTES: Separate Germanized-"Hersteller"-Funktion prüfen
+
+**Wichtiger Fund ganz am Ende der Session (2026-07-22):** In WordPress gibt es unter "Produkte" **zwei unterschiedliche, unabhängige** Dinge, die beide "Hersteller" heißen:
+1. **Produkte → Attribute → "Hersteller"** — unser eigenes, heute gebautes WC-Produktattribut (technisch identisch zu Farbe/Nadelstärke, siehe oben) — reine Filter-Facette
+2. **Produkte → "Hersteller"** (eigener Sidebar-Punkt, unterhalb von "Attribute") — ein **separates Formular** mit Feldern **"Herstelleradresse"** und **"Verantwortliche Person (EU)"**, sehr wahrscheinlich von Germanized selbst bereitgestellt (passt zum gestern gefundenen "Hersteller"-Dropdown im Produkt-Editor unter "Produktsicherheit"). Liste war beim Entdecken noch komplett leer (kein Eintrag angelegt).
+
+**Verdacht:** Das ist vermutlich die eigentlich "richtige", strukturierte GPSR-Lösung dieses Plugin-Stacks (Germanized), auf die unser heute gebauter Attribut-Beschreibungs-Hack eigentlich hätte zielen sollen. Muss geprüft werden: welche Datenstruktur/Taxonomie steckt dahinter, gibt es eine REST-API dafür (WooCommerce `/wc/v3/...` oder WordPress-Kern `/wp/v2/...`), lohnt sich ein Umstieg oder bleibt der heutige Attribut-Weg als Ergänzung bestehen.
+
+**Jackys Entscheidung:** "Schlimmstenfalls haben wir das an 2 Stellen — kann auch nicht schaden" — kein Zwang, den heutigen Weg wieder rückgängig zu machen, falls sich die Germanized-Lösung als der bessere/zusätzliche Weg herausstellt. Als **ersten** Punkt für die nächste Session vorgemerkt, vor Grundpreis-Sync/Dashboard/Statistik/Anreicherungs-Import.
 
 ## ✅ Versionssprung + Live-Deploy FERTIG (2026-07-22, gleicher Tag)
 

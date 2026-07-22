@@ -1,11 +1,11 @@
 ---
 name: project-hersteller-shop-filter
-description: "Hersteller-Filter im Shop: ALS WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben-Pflicht weiterhin bewusst zurueckgestellt"
+description: "Hersteller-Filter im Shop: ALS WC-Produktattribut FERTIG 2026-07-21; GPSR-Kontaktbeschreibung übers Attribut FERTIG 2026-07-22 (pragmatisch akzeptiert); ALS ERSTES nächste Session: separate Germanized-Hersteller-Funktion mit eigenen GPSR-Feldern prüfen, evtl. bessere Lösung"
 metadata: 
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-07-21T16:03:41.351Z
+  modified: 2026-07-22T16:34:46.260Z
 ---
 
 ## ✅ Hersteller-Filter (WC-Produktattribut) FERTIG (2026-07-21)
@@ -50,6 +50,12 @@ Herstellerkontaktdaten auf der Produktseite selbst.
 **Wichtiger Vorteil ggü. der Kategorie-Lösung:** Ein Attribut-Sync könnte direkt aus dem bereits vorhandenen `artikel.hersteller_id`-Feld gespeist werden (Dropdown existiert schon am Artikel-Formular, jeder Artikel hat das längst gesetzt) — keine doppelte manuelle Pflege wie aktuell bei der Kategorie-Zuweisung (Hersteller-Kategorie muss bisher separat von Hand zugewiesen werden, unabhängig vom `hersteller_id`-Dropdown).
 
 **Noch offen / nicht am 2026-07-20 entschieden:** Ob/wie der bestehende "Hersteller"-Kategorie-Ast danach aufgeräumt, ersetzt oder einfach parallel weitergeführt wird. Auch die technische Sync-Umsetzung selbst (WC-Attribut anlegen, Terms pro Hersteller, Zuweisung beim Artikel-Sync) ist noch nicht gebaut — reine Richtungsentscheidung bisher.
+
+## ✅ GPSR-Kontaktbeschreibung FERTIG (2026-07-22) — pragmatisch akzeptiert, aber siehe Fund unten
+
+Jacky hat die Rechtsfrage bewusst pragmatisch als "für uns erledigt" behandelt (Mitbewerber-Vergleich: entweder dieses Muster oder gar keine Angaben). Umsetzung + End-to-End-Test siehe [[project_shop_sync]] — GPSR-Kontaktinfo wird jetzt als Beschreibung an den Hersteller-Attribut-Term (aus diesem Abschnitt) gehängt. "Verantwortliche Person"-Block nur bei Nicht-EU-Herstellern mit ausgefüllten REO-Daten, über die schon bestehende `HerstellerService::istEuLand()`.
+
+**🔍 WICHTIG, als ERSTES für die nächste Session:** Ganz am Ende der Session entdeckt — es gibt in WordPress einen SEPARATEN Menüpunkt "Produkte → Hersteller" (nicht das Attribut aus diesem Dokument!) mit eigenen Feldern "Herstelleradresse" + "Verantwortliche Person (EU)", vermutlich von Germanized selbst bereitgestellt. Das könnte die eigentlich vorgesehene, strukturierte GPSR-Lösung dieses Plugin-Stacks sein, auf die der heutige Attribut-Beschreibungs-Weg eigentlich hätte zielen sollen. Muss geprüft werden (Datenstruktur, REST-API-Zugriff, lohnt Umstieg). Jackys Haltung: "schlimmstenfalls an 2 Stellen, schadet nicht" — kein Zwang zum Rückbau des heutigen Wegs.
 
 ## GPSR-Herstellerangaben-Pflicht — Umsetzung zurückgestellt (Jacky, 2026-07-20)
 

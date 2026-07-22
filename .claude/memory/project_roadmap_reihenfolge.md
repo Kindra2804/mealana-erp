@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-22T15:55:07.730Z
+  modified: 2026-07-22T16:35:03.463Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -36,6 +36,14 @@ Jacky hatte vier Punkte festgelegt:
 
 **Why:** Direkte Ansage von Jacky nach Abschluss von Buchhaltung+Inventur, bevor das nächste große Thema (Online-Shop-Anbindung) angegangen wird.
 **How to apply:** Bei der nächsten Session mit Punkt 2, 3 oder 4 weitermachen (Jackys Wahl), nicht neu improvisieren.
+
+## Geplant für nächste Session (Jacky, 2026-07-22 festgelegt) — in dieser Reihenfolge
+
+1. **ALS ERSTES: Separate Germanized-"Hersteller"-Funktion prüfen** — eigener WP-Menüpunkt mit "Herstelleradresse"/"Verantwortliche Person (EU)"-Feldern, vermutlich die eigentlich vorgesehene GPSR-Lösung dieses Plugin-Stacks. Siehe [[project_hersteller_shop_filter]]/[[project_shop_sync]] für den vollen Fund.
+2. **Grundpreis-Sync-Automatisierung** — ERP-Grundpreis direkt in Germanized' Feld pushen (Nice-to-have, siehe [[project_shop_theme]]).
+3. **Dashboard** — Online-Kanäle mit einbinden.
+4. **Statistik/Auswertungen** — siehe [[project_statistik]].
+5. **JTL-Anreicherungs-Import** — siehe Beschreibung oben, [[project_jtl_import]].
 
 ## Kleinere Punkte — "zwischendurch, je nach Lust und Laune", aber NICHT verlieren
 
