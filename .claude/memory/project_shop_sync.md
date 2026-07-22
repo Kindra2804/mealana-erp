@@ -1,11 +1,11 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre fertig (2026-07-22); offen: Versionssprung+Live-Deploy, ERP→Shop-Kunden-Push (Nice-to-have)"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre + Versionssprung/Live-Deploy alle fertig (2026-07-22, Live auf 0.4.0beta); offen: echter Artikel-Test-Sync von Live, ERP→Shop-Kunden-Push (Nice-to-have)"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-22T15:12:41.225Z
+  modified: 2026-07-22T15:54:55.499Z
 ---
 
 ## ✅ cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre FERTIG (2026-07-22)
@@ -25,7 +25,17 @@ Vier Bau-Punkte in einer Session, ausgelöst durch den Aufbau der Gratis-Theme-B
 
 **Bulk-Import-Sperre** (Migration 150, `shops.bulk_import_aktiv`) — Jackys Vergleich zum JTL-Komplettabgleich ("funktioniert nur wenn der Standard-Worker aus ist, sonst grätscht der alle 15 Min. rein"): gleiches Prinzip nachgebaut. `scripts/erstbefuellung_bilder.php` setzt die Sperre selbst (try/finally, wird auch bei Fehlern wieder freigegeben), `cron/shop_sync.php` überspringt einen gesperrten Shop komplett. Bei hartem Abbruch (Strg+C) bleibt die Sperre hängen — manueller Reset per SQL im Skript-Kommentar dokumentiert. Live getestet: Cron übersprang den Shop korrekt während die Sperre aktiv war, lief danach normal weiter.
 
-**Bewusst NICHT heute gemacht: Versionssprung + Live-Deploy.** Braucht echten AnyDesk-Zugriff auf den Live-Server, den Claude nicht hat — nur gemeinsam mit Jacky machbar, exakt wie beim WordPress-Theme-Aufbau Schritt-für-Schritt. Migrationen 142-150 + kompletter Shop-Sync-Code (`WooCommerceClient`/`ShopSyncService`/`ShopSyncRepository`/`ShopBestellungSyncService`/alle `public/artikel/*shop*`-Endpunkte/`cron/shop_sync.php`/`scripts/erstbefuellung_bilder.php`) existieren auf Live noch gar nicht. Vorgemerkt für die nächste Session, wenn Jacky wirklich am/mit dem Live-Server arbeitet. Alles committed + gepusht als Vorbereitung.
+## ✅ Versionssprung + Live-Deploy FERTIG (2026-07-22, gleicher Tag)
+
+Direkt im Anschluss doch noch gemacht — Jacky war schon per AnyDesk am Live-Server. `erp/VERSION` → 0.4.0(beta), `git archive HEAD`-Paket gebaut (geprüft: `config`/`vendor`/Uploads/Storage-Geheimnisse korrekt ausgeschlossen), auf Live entpackt, `composer install` (no-op), `php database/migrate.php` — alle 9 offenen Migrationen (142–150) sauber durchgelaufen. `migrate.php status` zeigt auf Dev UND Live identisch "141 angewendet" (150 Dateien minus 9 beim Baseline-Neuschnitt gelöschte — reine Rechnerei, kein Fehler).
+
+**🔴 Echter Lücken-Fund beim Einrichten:** Jacky wollte in Einstellungen → Kanäle die WordPress-Zugangsdaten (`wp_username`/`wp_app_password`, für den Bilder-Upload) eintragen — es gab dafür **gar kein Formularfeld**. Migration 146 hatte die Spalten schon seit 2026-07-21, aber auf Dev wurden die Werte damals nur direkt per SQL eingetragen, nie über die UI. Ohne diesen Fix hätte Jacky auf Live gar nicht weiterkommen können. Nachgezogen in `public/einstellungen/index.php`+`speichern.php` (beide Formulare: Kanal anlegen + bestehenden Kanal bearbeiten), analog zu Consumer-Key/-Secret. Kleines Nachreich-Deploy-Paket (nur diese 2 Dateien) gebaut und übertragen.
+
+**Verbindungstest von Live aus bestätigt** (eigenes kleines Test-Skript, da `0 erfolgreich/0 Fehler` beim ersten Cron-Lauf NICHT beweist, dass die Verbindung funktioniert — `findFaelligeArtikel()` liefert leer, solange kein Artikel diesem Shop zugewiesen ist, die WooCommerce-API wird dann gar nicht erst angefragt): sowohl WooCommerce-Consumer-Key/Secret (`systemStatus()`) als auch WordPress-Application-Passwort (`/wp-json/wp/v2/users/me`) funktionieren von Live aus einwandfrei gegen `indra-design.at`. Live-Shop hat dort zufällig `id=4` (Dev: `id=1`) — eigene Auto-Increment-Historie, unkritisch, Code arbeitet überall mit `slug`, nicht mit fixer ID.
+
+**Entscheidung (Jacky, 2026-07-22):** Damit ist der Punkt für heute abgeschlossen. Barbara arbeitet auf Live normal weiter (Artikel/Kategorien einspielen). Ein echter Artikel-Zuweisung-Test (Kanal-Chips + kompletter Cron-Durchlauf mit echtem Sync) steht noch aus, aber nicht heute nötig.
+
+**How to apply:** Bei Wiedereinstieg: Live ist jetzt technisch voll auf Dev-Stand (Code+DB+Zugangsdaten), nur noch kein Artikel dem Testshop zugewiesen. Nächster sinnvoller Schritt wäre ein echter Test-Sync mit einem Live-Artikel, dann irgendwann der "echte" Go-Live (wartet laut Jacky auf die Basisinventur + Kundenkommunikation, siehe [[project_roadmap_reihenfolge]]).
 
 ## ✅ Phase 4 (eingegrenzt): Bestellungen mit echten Kunden verknüpfen FERTIG (2026-07-21)
 
@@ -373,7 +383,7 @@ Letzter offener Punkt aus der alten "Kanal-Chips an Kategorien"-Entscheidung (`d
 
 ## Offen für die nächste Session
 
-1. **Versionssprung + Live-Deploy** — einziger verbliebener Punkt aus der 2026-07-21-Reihenfolge, siehe Abschnitt oben (2026-07-22). Braucht Jacky live am/mit dem Server, nicht von selbst anfangen.
+1. **Echter Artikel-Test-Sync von Live** — Live ist technisch komplett bereit (Code+DB+Zugangsdaten, Verbindung bestätigt), aber noch kein Artikel dem Testshop zugewiesen. Kein aktiver Bedarf laut Jacky, kann jederzeit nachgeholt werden.
 2. **Hersteller-Filter (WC-Produktattribut)** ✅ FERTIG 2026-07-21. **GPSR-Herstellerangaben** — vielversprechender Fund 2026-07-22 (Germanized-"Produktsicherheit"-Felder, siehe [[project_shop_theme]]), aber weiterhin bewusst zurückgestellt bis Jacky Rechts-Detailantworten hat, siehe [[project_hersteller_shop_filter]].
 3. **Grundpreis-Sync-Automatisierung** (Nice-to-have, 2026-07-22 vorgemerkt) — ERP-Grundpreis direkt in Germanized' `Regulärer Grundpreis (€)`-Feld pushen, spart die PRO-Version. Nicht blockierend, siehe [[project_shop_theme]].
 4. **JTL-Anreicherungs-Import** — eigenständige, kleinere Idee (siehe [[project_roadmap_reihenfolge]]), nicht Teil dieser Sync-Arbeit, aber gleichzeitig vorgemerkt
