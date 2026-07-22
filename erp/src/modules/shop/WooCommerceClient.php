@@ -79,6 +79,12 @@ class WooCommerceClient
         return $this->request('POST', '/products/categories', [], $daten);
     }
 
+    /** Name/Beschreibung/Oberkategorie einer bereits angelegten Kategorie nachziehen. */
+    public function aktualisiereKategorie(string $externeId, array $daten): array
+    {
+        return $this->request('PUT', '/products/categories/' . $externeId, [], $daten);
+    }
+
     /**
      * Alle globalen Attribute des Shops (z.B. "Farbe", "Nadelstärke").
      * Wird VOR erstelleAttribut() abgefragt, um Duplikate zu vermeiden --

@@ -23,11 +23,24 @@ class ShopSyncRepository
     public function findAktiveShops(): array
     {
         $stmt = $this->db->query("
-            SELECT id, slug, name, wc_url, wc_key, wc_secret, wp_username, wp_app_password, bestellungen_letzter_sync
+            SELECT id, slug, name, wc_url, wc_key, wc_secret, wp_username, wp_app_password,
+                   bestellungen_letzter_sync, bulk_import_aktiv
             FROM shops
             WHERE ist_aktiv = 1 AND wc_url IS NOT NULL AND wc_key IS NOT NULL AND wc_secret IS NOT NULL
         ");
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Sperre analog zum JTL-Komplettabgleich: solange ein manueller Bulk-Import
+     * (scripts/erstbefuellung_bilder.php) für einen Shop läuft, überspringt der
+     * laufende Cron (cron/shop_sync.php) diesen Shop komplett -- sonst Race
+     * Condition zwischen beiden (doppelter Bild-Upload, veralteter Bilderstand).
+     */
+    public function setBulkImportAktiv(int $shopId, bool $aktiv): void
+    {
+        $this->db->prepare("UPDATE shops SET bulk_import_aktiv = :aktiv WHERE id = :id")
+            ->execute(['aktiv' => $aktiv ? 1 : 0, 'id' => $shopId]);
     }
 
     /**
@@ -83,6 +96,43 @@ class ShopSyncRepository
             LIMIT :limit
         ");
         $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Für die Erstbefüllungs-Bulk-Bildverknüpfung (siehe ShopSyncService::
+     * erstbefuellungBilderPerUrl()): nur Artikel, die in WooCommerce schon
+     * existieren (external_id gesetzt) UND mindestens ein noch nicht synctes
+     * Bild haben. Echte ID-Cursor-Pagination (WHERE a.id > :letzte_id, ORDER
+     * BY a.id) statt LIMIT/OFFSET -- garantiert Fortschritt auch wenn einzelne
+     * Artikel dauerhaft überspringen/fehlschlagen (kein "Stecken bleiben" wie
+     * bei findFaelligeArtikel(), das für den normalen Cron mit kleinem Limit
+     * gedacht ist, nicht für einen einmaligen Gesamtdurchlauf).
+     */
+    public function findArtikelMitOffenenBildernUndExternalId(int $shopId, int $letzteArtikelId, int $limit): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT a.id AS artikel_id, ash.external_id, a.vaterartikel_id,
+                   ash_vater.external_id AS vater_external_id
+            FROM artikel a
+            JOIN artikel_shops ash
+                 ON ash.artikel_id = a.id AND ash.shop_id = :shop_id AND ash.aktiv = 1
+            LEFT JOIN artikel_shops ash_vater
+                   ON ash_vater.shop_id = ash.shop_id AND ash_vater.artikel_id = a.vaterartikel_id
+            JOIN artikel_bilder ab ON ab.artikel_id = a.id
+            LEFT JOIN artikel_bilder_shops abs
+                   ON abs.bild_id = ab.id AND abs.shop_id = :shop_id2
+            WHERE ash.external_id IS NOT NULL
+              AND a.id > :letzte_id
+              AND (abs.id IS NULL OR abs.sync_status IN ('pending', 'error'))
+            ORDER BY a.id
+            LIMIT :limit
+        ");
+        $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $stmt->bindValue('shop_id2', $shopId, PDO::PARAM_INT);
+        $stmt->bindValue('letzte_id', $letzteArtikelId, PDO::PARAM_INT);
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
@@ -318,7 +368,7 @@ class ShopSyncRepository
     public function findKategorieMitVorfahren(int $kategorieId): array
     {
         $pfad = [];
-        $stmt = $this->db->prepare("SELECT id, name, parent_id FROM kategorien WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT id, name, beschreibung, parent_id, aktualisiert_am FROM kategorien WHERE id = :id");
         $aktuelleId = $kategorieId;
         while ($aktuelleId !== null) {
             $stmt->execute(['id' => $aktuelleId]);
@@ -328,6 +378,28 @@ class ShopSyncRepository
             $aktuelleId = $row['parent_id'] !== null ? (int)$row['parent_id'] : null;
         }
         return $pfad;
+    }
+
+    /**
+     * Kategorien, die für diesen Shop bereits angelegt sind, sich seit dem
+     * letzten Sync aber geändert haben (Change-Detection unabhängig von
+     * Artikel-Fälligkeit -- eine reine Beschreibungs-/Namensänderung an einer
+     * Kategorie ohne gerade fälligen Artikel würde sonst nie nachgezogen).
+     *
+     * @return int[] kategorie_id
+     */
+    public function findFaelligeKategorien(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT ks.kategorie_id
+            FROM kategorie_shops ks
+            JOIN kategorien k ON k.id = ks.kategorie_id
+            WHERE ks.shop_id = :shop_id
+              AND ks.externe_kategorie_id IS NOT NULL
+              AND (ks.synced_at IS NULL OR k.aktualisiert_am > ks.synced_at)
+        ");
+        $stmt->execute(['shop_id' => $shopId]);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
     }
 
     /** Bestehende Shop-Zuordnung einer Kategorie (für Idempotenz: schon angelegt = nicht nochmal). */
@@ -343,9 +415,9 @@ class ShopSyncRepository
     public function upsertKategorieZuweisung(int $kategorieId, int $shopId, string $externeKategorieId): void
     {
         $this->db->prepare("
-            INSERT INTO kategorie_shops (kategorie_id, shop_id, externe_kategorie_id)
-            VALUES (:kategorie_id, :shop_id, :externe_kategorie_id)
-            ON DUPLICATE KEY UPDATE externe_kategorie_id = VALUES(externe_kategorie_id)
+            INSERT INTO kategorie_shops (kategorie_id, shop_id, externe_kategorie_id, synced_at)
+            VALUES (:kategorie_id, :shop_id, :externe_kategorie_id, NOW())
+            ON DUPLICATE KEY UPDATE externe_kategorie_id = VALUES(externe_kategorie_id), synced_at = NOW()
         ")->execute(['kategorie_id' => $kategorieId, 'shop_id' => $shopId, 'externe_kategorie_id' => $externeKategorieId]);
     }
 

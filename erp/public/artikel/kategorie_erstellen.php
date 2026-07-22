@@ -12,8 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $name                = trim($_POST['name'] ?? '');
 $parentId            = (int)($_POST['parent_id'] ?? 0) ?: null;
 $istAktionsKategorie = !empty($_POST['ist_aktions_kategorie']);
+$beschreibung        = trim($_POST['beschreibung'] ?? '') ?: null;
 
 $service  = new ArtikelService();
-$result   = $service->createKategorie($name, $parentId, $istAktionsKategorie);
+$result   = $service->createKategorie($name, $parentId, $istAktionsKategorie, $beschreibung);
 
 echo json_encode($result);

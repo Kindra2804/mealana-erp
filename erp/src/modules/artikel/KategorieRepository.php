@@ -47,7 +47,7 @@ class KategorieRepository
     public function findAllMitEltern(): array
     {
         $stmt = $this->db->query("
-            SELECT k.id, k.parent_id, k.name, k.sortierung,
+            SELECT k.id, k.parent_id, k.name, k.beschreibung, k.sortierung,
                 k.ist_aktions_kategorie,
                 COUNT(DISTINCT a.id) AS artikel_anzahl,
                 MAX(CASE WHEN akt2.gestartet = 1 AND CURDATE() BETWEEN ak2.gueltig_ab AND ak2.gueltig_bis THEN 1 ELSE 0 END) AS aktion_aktiv,
@@ -231,16 +231,16 @@ class KategorieRepository
         }
     }
 
-    public function insert(string $name, ?int $parentId = null, bool $istAktionsKategorie = false): int
+    public function insert(string $name, ?int $parentId = null, bool $istAktionsKategorie = false, ?string $beschreibung = null): int
     {
-        $stmt = $this->db->prepare("INSERT INTO kategorien (name, parent_id, ist_aktions_kategorie) VALUES (:name, :parent_id, :iak)");
-        $stmt->execute(['name' => $name, 'parent_id' => $parentId, 'iak' => $istAktionsKategorie ? 1 : 0]);
+        $stmt = $this->db->prepare("INSERT INTO kategorien (name, beschreibung, parent_id, ist_aktions_kategorie) VALUES (:name, :beschreibung, :parent_id, :iak)");
+        $stmt->execute(['name' => $name, 'beschreibung' => $beschreibung, 'parent_id' => $parentId, 'iak' => $istAktionsKategorie ? 1 : 0]);
         return (int) $this->db->lastInsertId();
     }
 
     public function findById(int $id): array|false
     {
-        $stmt = $this->db->prepare("SELECT id, parent_id, name, sortierung, ist_aktions_kategorie FROM kategorien WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT id, parent_id, name, beschreibung, sortierung, ist_aktions_kategorie FROM kategorien WHERE id = :id");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
     }
@@ -270,10 +270,10 @@ class KategorieRepository
         $stmt->execute(['sort' => $sort, 'id' => $id]);
     }
 
-    public function update(int $id, string $name, ?int $parentId, bool $istAktionsKategorie = false): bool
+    public function update(int $id, string $name, ?int $parentId, bool $istAktionsKategorie = false, ?string $beschreibung = null): bool
     {
-        $stmt = $this->db->prepare("UPDATE kategorien SET name = :name, parent_id = :parent_id, ist_aktions_kategorie = :iak WHERE id = :id");
-        return $stmt->execute(['name' => $name, 'parent_id' => $parentId, 'iak' => $istAktionsKategorie ? 1 : 0, 'id' => $id]);
+        $stmt = $this->db->prepare("UPDATE kategorien SET name = :name, beschreibung = :beschreibung, parent_id = :parent_id, ist_aktions_kategorie = :iak WHERE id = :id");
+        return $stmt->execute(['name' => $name, 'beschreibung' => $beschreibung, 'parent_id' => $parentId, 'iak' => $istAktionsKategorie ? 1 : 0, 'id' => $id]);
     }
 
     /**

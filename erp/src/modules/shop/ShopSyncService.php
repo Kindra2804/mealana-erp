@@ -84,6 +84,25 @@ class ShopSyncService
             }
         }
 
+        // Zweiter, unabhängiger Kategorie-Durchlauf: bereits angelegte Kategorien,
+        // die sich seit dem letzten Sync geändert haben (Name/Beschreibung/
+        // Oberkategorie), MÜSSEN auch dann nachgezogen werden, wenn gerade kein
+        // Artikel dieser Kategorie fällig ist -- die Schleife oben deckt nur
+        // "neu anlegen über einen fälligen Artikel" ab, nicht "bereits vorhanden,
+        // aber geändert".
+        foreach ($this->repo->findFaelligeKategorien((int)$shop['id']) as $kategorieId) {
+            if (isset($bereitsVersucht[$kategorieId])) continue;
+            $bereitsVersucht[$kategorieId] = true;
+            try {
+                $this->syncKategorieMitVorfahren($client, $kategorieId, (int)$shop['id']);
+            } catch (Throwable $e) {
+                Logger::log('shop.kategorie_sync_fehler', 'kategorien', $kategorieId, [
+                    'shop'  => $shop['slug'],
+                    'fehler' => $e->getMessage(),
+                ], $this->jarvisId, 'error');
+            }
+        }
+
         foreach ($faelligeArtikel as $row) {
             try {
                 $istKind = $row['vaterartikel_id'] !== null;
@@ -150,10 +169,32 @@ class ShopSyncService
         foreach ($this->repo->findKategorieMitVorfahren($kategorieId) as $kategorie) {
             $vorhandeneZuweisung = $this->repo->findKategorieShopZuweisung((int)$kategorie['id'], $shopId);
             if ($vorhandeneZuweisung && $vorhandeneZuweisung['externe_kategorie_id']) {
-                $wcParentId = (int)$vorhandeneZuweisung['externe_kategorie_id'];
+                $wcKategorieId = (int)$vorhandeneZuweisung['externe_kategorie_id'];
+
+                // Nachziehen nur wenn seit dem letzten Sync tatsächlich etwas an
+                // Name/Beschreibung/Oberkategorie geändert wurde (Change-Detection
+                // analog zu artikel/artikel_shops) -- sonst bei jedem Cron-Lauf
+                // unnötig dieselbe Kategorie erneut per API aktualisieren.
+                $mussAktualisieren = $vorhandeneZuweisung['synced_at'] === null
+                    || strtotime($kategorie['aktualisiert_am']) > strtotime($vorhandeneZuweisung['synced_at']);
+
+                if ($mussAktualisieren) {
+                    $client->aktualisiereKategorie((string)$wcKategorieId, [
+                        'name'        => $kategorie['name'],
+                        'description' => $kategorie['beschreibung'] ?? '',
+                        'parent'      => $wcParentId,
+                    ]);
+                    $this->repo->upsertKategorieZuweisung((int)$kategorie['id'], $shopId, (string)$wcKategorieId);
+                }
+
+                $wcParentId = $wcKategorieId;
                 continue;
             }
-            $wcKategorie = $client->erstelleKategorie(['name' => $kategorie['name'], 'parent' => $wcParentId]);
+            $wcKategorie = $client->erstelleKategorie([
+                'name'        => $kategorie['name'],
+                'description' => $kategorie['beschreibung'] ?? '',
+                'parent'      => $wcParentId,
+            ]);
             $this->repo->upsertKategorieZuweisung((int)$kategorie['id'], $shopId, (string)$wcKategorie['id']);
             $wcParentId = (int)$wcKategorie['id'];
         }
@@ -433,5 +474,106 @@ class ShopSyncService
                 ], $this->jarvisId, 'error');
             }
         }
+    }
+
+    /**
+     * Einmaliger Bulk-Modus für die Erstbefüllung (siehe project_shop_sync.md):
+     * statt jedes Bild einzeln per Byte-Upload hochzuladen (viel zu langsam bei
+     * tausenden Artikeln über die VPN-Leitung), hat Jacky die Bilder VORHER per
+     * FTP direkt auf den WordPress-Server kopiert -- gleiche Ordnerstruktur wie
+     * public/uploads/artikel/{artikel_id}/{dateiname}, nur unter $bilderBasisUrl.
+     * WooCommerce sideloaded das Bild dann von der EIGENEN Domain (schnell,
+     * kein Byte-Transfer über unsere Leitung).
+     *
+     * Voraussetzung: der Artikel muss in WooCommerce schon existieren (der
+     * normale Text-Sync über syncShop() muss also vorher gelaufen sein) --
+     * findArtikelMitOffenenBildernUndExternalId() liefert von vornherein nur
+     * Artikel mit gesetzter external_id, nichts weiter zu prüfen hier.
+     *
+     * Nicht Teil des normalen Crons -- läuft in einer eigenen Schleife mit
+     * echter ID-Cursor-Pagination (kein LIMIT/OFFSET-"Stecken bleiben" wie bei
+     * findFaelligeArtikel(), das für den laufenden 15-Minuten-Cron mit
+     * kleinem Batch gedacht ist, nicht für einen einmaligen Gesamtdurchlauf
+     * über tausende Artikel).
+     *
+     * @return array{erfolg:int,fehler:int}
+     */
+    public function erstbefuellungBilderPerUrl(array $shop, string $bilderBasisUrl, int $batchGroesse = 200): array
+    {
+        $client = new WooCommerceClient(
+            $shop['wc_url'],
+            $shop['wc_key'],
+            $shop['wc_secret'],
+            $shop['wp_username'],
+            $shop['wp_app_password']
+        );
+        $erfolg = 0;
+        $fehler = 0;
+        $letzteArtikelId = 0;
+
+        while (true) {
+            $rows = $this->repo->findArtikelMitOffenenBildernUndExternalId((int)$shop['id'], $letzteArtikelId, $batchGroesse);
+            if (empty($rows)) {
+                break;
+            }
+
+            foreach ($rows as $row) {
+                $letzteArtikelId = max($letzteArtikelId, (int)$row['artikel_id']);
+
+                $offeneBilder = array_values(array_filter(
+                    $this->bilderRepo->findByArtikelId((int)$row['artikel_id']),
+                    function (array $bild) use ($shop) {
+                        $zuweisung = $this->repo->findBildShopZuweisung((int)$bild['id'], (int)$shop['id']);
+                        return !($zuweisung && $zuweisung['sync_status'] === 'synced' && $zuweisung['external_id']);
+                    }
+                ));
+                if (empty($offeneBilder)) {
+                    continue;
+                }
+
+                $istKind = $row['vaterartikel_id'] !== null;
+                // Variation zeigt nur EIN Bild (Position 0, gleiche Konvention wie
+                // baueVariationPayload()) -- bei einem Kind reicht das erste offene Bild.
+                $zuVerarbeiten = $istKind ? [$offeneBilder[0]] : $offeneBilder;
+
+                try {
+                    $bildUrls = array_map(function (array $bild) use ($row, $bilderBasisUrl) {
+                        return [
+                            'src' => rtrim($bilderBasisUrl, '/') . '/artikel/' . $row['artikel_id'] . '/' . $bild['dateiname'],
+                            'alt' => $bild['alt_text'] ?? '',
+                        ];
+                    }, $zuVerarbeiten);
+
+                    if ($istKind) {
+                        $wcObjekt = $client->aktualisiereVariation((string)$row['vater_external_id'], (string)$row['external_id'], ['image' => $bildUrls[0]]);
+                        $zurueckgegeben = [$wcObjekt['image']];
+                    } else {
+                        $wcObjekt = $client->aktualisiereProdukt((string)$row['external_id'], ['images' => $bildUrls]);
+                        $zurueckgegeben = $wcObjekt['images'];
+                    }
+
+                    // WooCommerce liefert die Bilder in derselben Reihenfolge zurück,
+                    // in der sie geschickt wurden -- Zuordnung per Index zurück zu
+                    // unseren artikel_bilder-Zeilen möglich.
+                    foreach ($zuVerarbeiten as $i => $bild) {
+                        if (isset($zurueckgegeben[$i]['id'])) {
+                            $this->repo->markiereBildSynced((int)$bild['id'], (int)$shop['id'], (string)$zurueckgegeben[$i]['id']);
+                            $erfolg++;
+                        }
+                    }
+                } catch (Throwable $e) {
+                    foreach ($zuVerarbeiten as $bild) {
+                        $this->repo->markiereBildFehler((int)$bild['id'], (int)$shop['id'], $e->getMessage());
+                    }
+                    Logger::log('shop.bild_erstbefuellung_fehler', 'artikel', (int)$row['artikel_id'], [
+                        'shop'   => $shop['slug'],
+                        'fehler' => $e->getMessage(),
+                    ], $this->jarvisId, 'error');
+                    $fehler++;
+                }
+            }
+        }
+
+        return ['erfolg' => $erfolg, 'fehler' => $fehler];
     }
 }

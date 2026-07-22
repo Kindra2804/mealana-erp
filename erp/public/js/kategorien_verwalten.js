@@ -6,6 +6,7 @@ function katNeuOeffnen(parentId, parentName) {
     document.getElementById('katv-modal-titel').textContent = titel;
     document.getElementById('katv-edit-id').value  = '';
     document.getElementById('katv-name').value     = '';
+    document.getElementById('katv-beschreibung').value = '';
     document.getElementById('katv-parent').value   = parentId != null ? parentId : '';
     document.getElementById('katv-ist-aktions-kat').checked = false;
     document.getElementById('katv-fehler').textContent = '';
@@ -19,6 +20,7 @@ function katBearbeiten(id, name, parentId) {
     document.getElementById('katv-modal-titel').textContent = 'Kategorie bearbeiten';
     document.getElementById('katv-edit-id').value  = id;
     document.getElementById('katv-name').value     = name;
+    document.getElementById('katv-beschreibung').value = zeile ? (zeile.dataset.beschreibung || '') : '';
     document.getElementById('katv-parent').value   = parentId != null ? parentId : '';
     document.getElementById('katv-ist-aktions-kat').checked = !!iak;
     document.getElementById('katv-fehler').textContent = '';
@@ -39,9 +41,11 @@ function katvSpeichern() {
     var fehler   = document.getElementById('katv-fehler');
     if (!name) { fehler.textContent = 'Name ist Pflichtfeld'; return; }
     fehler.textContent = '';
-    var iak  = document.getElementById('katv-ist-aktions-kat').checked ? '1' : '0';
+    var iak          = document.getElementById('katv-ist-aktions-kat').checked ? '1' : '0';
+    var beschreibung = document.getElementById('katv-beschreibung').value.trim();
     var url  = editId ? window.BASE_PATH + '/artikel/kategorie_bearbeiten_ajax.php' : window.BASE_PATH + '/artikel/kategorie_erstellen.php';
-    var body = 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parentId) + '&ist_aktions_kategorie=' + iak;
+    var body = 'name=' + encodeURIComponent(name) + '&parent_id=' + encodeURIComponent(parentId) + '&ist_aktions_kategorie=' + iak
+        + '&beschreibung=' + encodeURIComponent(beschreibung);
     if (editId) body += '&id=' + encodeURIComponent(editId);
     fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
         .then(function (r) { return r.json(); })

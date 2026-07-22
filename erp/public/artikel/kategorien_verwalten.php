@@ -44,6 +44,7 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe, int $pos, int $total
     ?>
     <div class="katv-zeile" data-id="<?= $knoten['id'] ?>"
          data-name="<?= htmlspecialchars($knoten['name']) ?>"
+         data-beschreibung="<?= htmlspecialchars($knoten['beschreibung'] ?? '') ?>"
          data-parent="<?= $knoten['parent_id'] ?? '' ?>"
          data-iak="<?= $istAktionKat ?>"
          style="padding-left:<?= 16 + $einzug ?>px<?= $zeileDimmed ? ';opacity:.45' : '' ?>">
@@ -154,6 +155,13 @@ $flacheListe = flattenBaum($kategorienBaum);
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+            <div class="form-row">
+                <label class="form-label">Beschreibung</label>
+                <textarea id="katv-beschreibung" class="erp-input" style="width:100%;min-height:70px;resize:vertical"></textarea>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                    Wird nur im Online-Shop auf der Kategorieseite angezeigt, im ERP selbst nirgends
+                </div>
             </div>
             <div class="form-row" style="margin-top:4px">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
