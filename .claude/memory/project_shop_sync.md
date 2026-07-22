@@ -1,12 +1,31 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1+Vater/Kind+Hersteller+Bilder+Bestand+Bestellungen+Phase 4 Kunden-Verknüpfung fertig; offen: cron, Live-Rollout-Themen, ERP→Shop-Kunden-Push (Nice-to-have)"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre fertig (2026-07-22); offen: Versionssprung+Live-Deploy, ERP→Shop-Kunden-Push (Nice-to-have)"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-21T18:05:52.963Z
+  modified: 2026-07-22T15:12:41.225Z
 ---
+
+## ✅ cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre FERTIG (2026-07-22)
+
+Vier Bau-Punkte in einer Session, ausgelöst durch den Aufbau der Gratis-Theme-Basis (siehe [[project_shop_theme]]) — beim Testen des Grundpreis-Felds kam die Frage nach der Kategorie-Beschreibung auf, danach ergab sich die ganze restliche Liste.
+
+**Kategorie-Beschreibung** (Migration 148, `kategorien.beschreibung`) — neues Feld nur für die WC-Kategorieseite, Modal-Hinweis "wird nur im Shop angezeigt". Einziger Nutzen: Sync-Payload (`erstelleKategorie()`) schickt es als `description` mit.
+
+**`cron/shop_sync.php`** — erster echter Auslöser (bisher nur manuelle Testskripte). Läuft beide Richtungen (`ShopSyncService::syncShop()` + `ShopBestellungSyncService::syncBestellungen()`) pro aktivem Shop, je eigenes try/catch (ein kaputter Shop blockiert nicht die anderen). Lauf-Zusammenfassung (`erfolg`/`fehler`) landet jetzt als `shop.sync_lauf`-Eintrag im Logger (`info` bei 0 Fehlern, `warn` sonst) — aber NUR bei tatsächlicher Aktivität, sonst würde die Aktivitäten-Seite beim 15-Minuten-Takt zumüllen. Empfohlenes Intervall: alle 15 Minuten.
+
+**Kategorie-Umbenennung/Update-Sync** (Migration 149, `kategorien.aktualisiert_am` + `kategorie_shops.synced_at`) — `WooCommerceClient::aktualisiereKategorie()` neu. **🔴 Echter Fund beim End-to-End-Test:** der bestehende Kategorie-Sync lief nur "mitgeschleppt" innerhalb der Artikel-Fälligkeits-Schleife (`syncKategorieMitVorfahren()` wurde nur für Kategorien fälliger Artikel aufgerufen) — eine reine Beschreibungs-/Namensänderung ohne gerade fälligen Artikel wäre NIE nachgezogen worden, obwohl die Change-Detection selbst korrekt war. Fix: neue eigenständige `ShopSyncRepository::findFaelligeKategorien()` + zweiter, unabhängiger Durchlauf in `syncShop()`. Ohne den echten Testlauf (Cron zeigte 0/0 trotz geänderter Kategorie) wäre das unbemerkt geblieben.
+
+**FTP-Bulk-Bild-Erstbefüllung** — Jackys Sorge: bei ~20.000 Artikeln mit je min. 1 Bild wäre der bestehende Byte-Upload-Weg (`ladeBildHoch()`, CURLFile über die VPN-Leitung) beim Erstimport eine Challenge (schon 2 Testbilder brauchten spürbar lang). Lösung: Jacky kopiert `uploads/artikel/{artikel_id}/{dateiname}` 1:1 per FTP direkt auf den WordPress-Server; `ShopSyncService::erstbefuellungBilderPerUrl()` verknüpft die Bilder dann per `images:[{src:URL, alt:...}]`-Payload an bereits existierende Produkte — WooCommerce sideloaded von der EIGENEN Domain (schnell, kein Byte-Transfer über unsere Leitung mehr). Kern-Mechanismus live verifiziert: `aktualisiereProdukt()` mit `images:[{src:url}]` liefert tatsächlich eine neue Medien-ID in der Antwort zurück.
+- Voraussetzung: Artikel muss schon eine `external_id` haben (normaler Text-Sync läuft zuerst, legt alle Artikel OHNE Bilder an)
+- Neue Repository-Abfrage `findArtikelMitOffenenBildernUndExternalId()` mit echter ID-Cursor-Pagination (`WHERE a.id > :letzte_id ORDER BY a.id`, nicht LIMIT/OFFSET) — wichtig, weil die wiederverwendete `findFaelligeArtikel()` (Standard-Limit 20, fürs 15-Minuten-Cron gedacht) bei tausenden Artikeln in derselben "vorderen" Auswahl hängen bleiben könnte, wenn dort dauerhaft übersprungene/fehlerhafte Zeilen sitzen
+- Neues `erp/scripts/`-Verzeichnis (bisher nur `cron/` für Wiederkehrendes) — `scripts/erstbefuellung_bilder.php` als CLI-Tool: `php scripts/erstbefuellung_bilder.php <shop-slug> <bilder-basis-url>`
+
+**Bulk-Import-Sperre** (Migration 150, `shops.bulk_import_aktiv`) — Jackys Vergleich zum JTL-Komplettabgleich ("funktioniert nur wenn der Standard-Worker aus ist, sonst grätscht der alle 15 Min. rein"): gleiches Prinzip nachgebaut. `scripts/erstbefuellung_bilder.php` setzt die Sperre selbst (try/finally, wird auch bei Fehlern wieder freigegeben), `cron/shop_sync.php` überspringt einen gesperrten Shop komplett. Bei hartem Abbruch (Strg+C) bleibt die Sperre hängen — manueller Reset per SQL im Skript-Kommentar dokumentiert. Live getestet: Cron übersprang den Shop korrekt während die Sperre aktiv war, lief danach normal weiter.
+
+**Bewusst NICHT heute gemacht: Versionssprung + Live-Deploy.** Braucht echten AnyDesk-Zugriff auf den Live-Server, den Claude nicht hat — nur gemeinsam mit Jacky machbar, exakt wie beim WordPress-Theme-Aufbau Schritt-für-Schritt. Migrationen 142-150 + kompletter Shop-Sync-Code (`WooCommerceClient`/`ShopSyncService`/`ShopSyncRepository`/`ShopBestellungSyncService`/alle `public/artikel/*shop*`-Endpunkte/`cron/shop_sync.php`/`scripts/erstbefuellung_bilder.php`) existieren auf Live noch gar nicht. Vorgemerkt für die nächste Session, wenn Jacky wirklich am/mit dem Live-Server arbeitet. Alles committed + gepusht als Vorbereitung.
 
 ## ✅ Phase 4 (eingegrenzt): Bestellungen mit echten Kunden verknüpfen FERTIG (2026-07-21)
 
@@ -354,11 +373,9 @@ Letzter offener Punkt aus der alten "Kanal-Chips an Kategorien"-Entscheidung (`d
 
 ## Offen für die nächste Session
 
-0. **Hersteller-Filter (WC-Produktattribut) + GPSR-Herstellerangaben** — neue Design-Entscheidung 2026-07-20, siehe [[project_hersteller_shop_filter]] für Details. Beides noch nicht umgesetzt, GPSR-Teil bewusst zurückgestellt bis Jacky Detailantworten hat.
-0b. **Shop-Theme/UX (Look & Feel)** — bewusst NICHT anfangen bis der komplette technische Sync-Teil fertig ist, siehe [[project_shop_theme]]. Erst danach Theme-Kandidaten (Premium vs. frei+Child) recherchieren.
-1. **`cron/shop_sync.php` + Kategorie-Umbenennung-Sync** — beide bewusst zusammen zurückgestellt bis zum Live-Rollout (siehe oben), nicht einzeln vorziehen
-2. ~~Vater/Kind-Artikel (Variable Products) — eigentlicher WooCommerce-Sync~~ ✅ FERTIG 2026-07-21, siehe Abschnitt oben. Bilder pro Kind/Vater sind dabei bewusst noch ausgeklammert geblieben (eigenes Thema).
-3. **Phase 2 (Bestand)**, **Phase 3 (Bestellungen-Webhook + Polling-Sicherheitsnetz)**, **Phase 4 (Kunden-Merge)** — noch nicht begonnen, siehe Phasenplan oben in dieser Session besprochen
+1. **Versionssprung + Live-Deploy** — einziger verbliebener Punkt aus der 2026-07-21-Reihenfolge, siehe Abschnitt oben (2026-07-22). Braucht Jacky live am/mit dem Server, nicht von selbst anfangen.
+2. **Hersteller-Filter (WC-Produktattribut)** ✅ FERTIG 2026-07-21. **GPSR-Herstellerangaben** — vielversprechender Fund 2026-07-22 (Germanized-"Produktsicherheit"-Felder, siehe [[project_shop_theme]]), aber weiterhin bewusst zurückgestellt bis Jacky Rechts-Detailantworten hat, siehe [[project_hersteller_shop_filter]].
+3. **Grundpreis-Sync-Automatisierung** (Nice-to-have, 2026-07-22 vorgemerkt) — ERP-Grundpreis direkt in Germanized' `Regulärer Grundpreis (€)`-Feld pushen, spart die PRO-Version. Nicht blockierend, siehe [[project_shop_theme]].
 4. **JTL-Anreicherungs-Import** — eigenständige, kleinere Idee (siehe [[project_roadmap_reihenfolge]]), nicht Teil dieser Sync-Arbeit, aber gleichzeitig vorgemerkt
 
 ## Test-Rückstände (Dev-DB, harmlos aber zur Kenntnis)

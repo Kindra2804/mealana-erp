@@ -565,6 +565,31 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## What's Implemented (Stand 2026-07-22, Session 31)
+
+Gratis-Shop-Theme-Basis (WordPress-Konfiguration, kein ERP-Code) + vier Ausbaustufen des Shop-Sync-Moduls. Details siehe `.claude/memory/project_shop_theme.md` und `.claude/memory/project_shop_sync.md`.
+
+### Gratis-Theme-Basis für Barbara ✅ FERTIG
+Blocksy (kostenlose Basis) + Elementor Free + Max Mega Menu + WooCommerce Germanized, gegen `indra-design.at` gebaut und verifiziert: Grundpreis-Anzeige läuft (Germanized-PRO würde nur die Auto-Berechnung sparen — ERP kennt den Grundpreis eh schon, Sync-Automatisierung als Nice-to-have vorgemerkt), Mega-Menü mit echten synced Kategorien, Startseite mit Bild-Karussell + drei Produkt-Rastern (Neuheiten/Sonderangebote/Bestseller via native WC-Shortcodes), Footer mit Rechtstexten. Nebenbei gefunden: Germanized-"Produktsicherheit"-Felder (Hersteller/Sicherheitshinweise/Dokumente) könnten das offene GPSR-Thema lösen — noch nicht verdrahtet, eigenes Thema.
+
+### Kategorie-Beschreibung ✅ FERTIG
+Migration 148 (`kategorien.beschreibung`) — neues Feld nur für die WooCommerce-Kategorieseite, taucht im ERP selbst nirgends auf (Modal-Hinweis "Wird nur im Online-Shop angezeigt").
+
+### `cron/shop_sync.php` ✅ FERTIG
+Erster echter Auslöser (bisher nur manuell per Testskript). Beide Richtungen pro Shop, je eigenes try/catch. Lauf-Zusammenfassung landet jetzt als `info`/`warn`-Eintrag im Logger (nur bei tatsächlicher Aktivität, kein Leerlauf-Spam alle 15 Min).
+
+### Kategorie-Umbenennung/Update-Sync ✅ FERTIG
+Migration 149 (`kategorien.aktualisiert_am`, `kategorie_shops.synced_at`). **Echter Fund beim Testen:** der Kategorie-Sync lief bisher nur "mitgeschleppt" innerhalb der Artikel-Fälligkeits-Schleife — eine reine Beschreibungsänderung ohne gerade fälligen Artikel wäre nie nachgezogen worden. Neue eigenständige `findFaelligeKategorien()`-Prüfung behebt das.
+
+### FTP-Bulk-Bild-Erstbefüllung ✅ FERTIG
+Für den späteren Erstimport (tausende Artikel, Byte-Upload über die VPN-Leitung wäre viel zu langsam): Jacky kopiert `uploads/artikel/` per FTP direkt auf den WordPress-Server, `ShopSyncService::erstbefuellungBilderPerUrl()` verknüpft die Bilder dann per `images:[{src:URL}]` — WooCommerce sideloaded von der eigenen Domain, kein Byte-Transfer über unsere Leitung. Echte ID-Cursor-Pagination (kein LIMIT/OFFSET-Hängenbleiben bei tausenden Artikeln). Neues `scripts/`-Verzeichnis, CLI-Tool `erstbefuellung_bilder.php`.
+
+### Bulk-Import-Sperre ✅ FERTIG
+Migration 150 (`shops.bulk_import_aktiv`) — analog zu JTLs "Komplettabgleich nur bei ausgeschaltetem Standard-Worker". Verhindert Race Condition zwischen dem laufenden 15-Minuten-Cron und einem manuellen Bulk-Import. Sperre wird vom Bulk-Skript selbst gesetzt/freigegeben (try/finally), Cron überspringt gesperrte Shops komplett.
+
+### Versionssprung + Live-Deploy — bewusst NICHT heute gemacht
+Braucht echten AnyDesk-Zugriff auf den Live-Server (192.168.178.222), den ich nicht habe — Ausführung nur mit Jacky gemeinsam möglich, vorgemerkt für die nächste Session. Migrationen 142-150 + kompletter Shop-Sync-Code müssen dann auf Live nachgezogen werden (git archive-Weg wie beim letzten Mal), plus der übliche Tabellen-Zeilenvergleich.
+
 ## What's Implemented (Stand 2026-07-21, Session 30)
 
 Komplette Kern-Kette der Online-Shop-Anbindung (Phasen 1-4) fertiggestellt, dazu ein Kanal-Anzeige-Fix und die Theme-Recherche. Volle Details siehe `.claude/memory/project_shop_sync.md`.

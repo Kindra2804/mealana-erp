@@ -1,11 +1,11 @@
 ---
 name: project-shop-theme
-description: "WooCommerce-Theme/UX-Anpassung: technischer Sync-Teil fertig, Theme-Recherche abgeschlossen (WoodMart vs. Blocksy Pro), Kaufentscheidung pausiert (Budget-Gespräch mit Barbara)"
+description: "WooCommerce-Theme/UX-Anpassung: Gratis-Basis (Blocksy+Elementor+Max Mega Menu+Germanized) 2026-07-22 fertig gebaut als Barbara-Testbasis; WoodMart/Blocksy-Pro-Kaufentscheidung weiterhin pausiert (Budget-Gespräch mit Barbara)"
 metadata: 
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-07-21T19:21:28.523Z
+  modified: 2026-07-22T15:11:42.945Z
 ---
 
 ## Ausgangslage (Jacky, 2026-07-20)
@@ -54,3 +54,21 @@ Technischer Sync-Teil (Phase 1-4) war zu diesem Zeitpunkt komplett fertig, siehe
 Es geht um echtes Geld (~180-300€), das wird zuerst mit Barbara besprochen. **Angedachter Plan, falls sie zustimmen:** erstmal NUR eine WoodMart-Lizenz kaufen (ein Shop), ausprobieren wie gut das Ergebnis wird und wie leicht/schwer Barbara mit dem Page-Builder (Slider erstellen usw.) zurechtkommt — erst danach entscheiden, ob weitere WoodMart-Lizenzen für die anderen 2 Shops dazukommen, ganz auf Blocksy umgestiegen wird, oder eine andere Richtung gewählt wird.
 
 **How to apply:** NICHT von selbst weitermachen (kein Lizenzkauf, keine Installation) bis Jacky sich nach dem Barbara-Gespräch zurückmeldet. Bei Wiedereinstieg diesen Abschnitt + die Lizenz-Falle oben als Ausgangspunkt nehmen, nicht neu recherchieren.
+
+## Gratis-Basis gebaut, während das Budget-Gespräch noch aussteht (2026-07-22)
+
+Jackys Idee: bis das Theme-Budget-Gespräch durch ist, mit reinen Gratis-Boardmitteln eine Basis bauen, auf der Barbara sich schon ausprobieren kann — Upgrade auf Blocksy Pro oder Umstieg auf WoodMart bleibt jederzeit möglich (Blocksy free→Pro ist nahtlos nachrüstbar).
+
+**Stack:** Blocksy (kostenlose Basis, nicht Pro) + Elementor Free + Max Mega Menu (Plugin) + WooCommerce Germanized (Plugin) + native WooCommerce-Shortcodes für Produkt-Raster.
+
+**Gebaut + live gegen `indra-design.at` verifiziert:**
+- **Grundpreis** (Germanized): funktioniert korrekt (7,50€/100g aus 3,75€/50g). Wichtiger Fund: "Grundpreis automatisch berechnen" ist in der Gratis-Version mit [PRO] gesperrt — man müsste den Grundpreis sonst manuell pro Produkt eintragen. Da unser ERP den Grundpreis aber schon selbst berechnet (siehe [[project_preise]]), ist die Lösung: den Wert per Sync direkt ins Feld pushen statt für die PRO-Version zu zahlen — als Nice-to-have vorgemerkt, nicht blockierend, siehe [[project_shop_sync]].
+- **GPSR-Fund:** Germanized hat unter "Produktsicherheit" bereits Felder für Hersteller/Sicherheitshinweise/Produktsicherheitsdokumente — könnte das seit Wochen offene GPSR-Herstellerangaben-Thema (siehe [[project_hersteller_shop_filter]]) lösen. Bewusst NICHT vertieft (eigenes, größeres rechtliches Thema), nur als vielversprechender Ansatzpunkt vermerkt.
+- **Mega-Menü** (Max Mega Menu): WordPress-natives verschachteltes Dropdown reicht bereits (Hersteller als Flyout unter der Top-Kategorie) — Jacky fand keine Spalten-Option im Flyout, aktuelle Optik akzeptiert, Feinschliff kann warten.
+- **Startseite** (Elementor): Bild-Karussell mit echtem MeaLana-Branding (aus mealana.at-Assets übernommen) + drei Produkt-Raster über native WC-Shortcodes (`[products]`/`[sale_products]`/`[best_selling_products]`) — kein Zusatz-Plugin nötig.
+- **Footer** (Blocksy Footer-Builder): vier Spalten (Informationen/Unsere Shops/Unsere Veranstaltungen/Ladenlokal), Inhalte 1:1 von mealana.at übernommen. Rechtstexte (AGB/Datenschutz/Widerruf) bestehen laut Jacky schon, Germanized-Legaltexte-Generator wollte er sich noch selbst ansehen (nicht abschließend geklärt, ob genutzt).
+- Einzelner externer Footer-Link braucht kein WP-Menü — reicht als normaler Hyperlink im Text-Widget.
+
+**Bewusst nicht Teil dieser Basis:** Wasserzeichen (Feature existiert noch nicht), Bild-Sync-Performance bei großem Erstimport (siehe [[project_shop_sync]] — FTP-Bulk-Lösung dafür separat gebaut).
+
+**How to apply:** Diese Gratis-Basis ist eigenständig nutzbar und unabhängig von der oben beschriebenen Kaufentscheidung — Barbara kann jetzt schon damit arbeiten. Bei Wiedereinstieg ins Theme-Thema (Kaufentscheidung oder Feinschliff) diesen Abschnitt als aktuellen Ist-Stand nehmen.
