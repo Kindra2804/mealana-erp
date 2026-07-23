@@ -1,11 +1,11 @@
 ---
 name: project-hersteller-shop-filter
-description: "Hersteller-Filter im Shop: ALS WC-Produktattribut FERTIG 2026-07-21; GPSR-Kontaktbeschreibung übers Attribut FERTIG 2026-07-22 (pragmatisch akzeptiert); ALS ERSTES nächste Session: separate Germanized-Hersteller-Funktion mit eigenen GPSR-Feldern prüfen, evtl. bessere Lösung"
+description: "Hersteller-Filter im Shop: ALS WC-Produktattribut FERTIG 2026-07-21; GPSR-Kontaktbeschreibung übers Attribut FERTIG 2026-07-22; natives WC-Hersteller-Objekt (Produktsicherheit-Panel, eigene Archivseite) FERTIG 2026-07-23, läuft PARALLEL zum Attribut"
 metadata: 
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-07-22T16:34:46.260Z
+  modified: 2026-07-23T11:14:01.697Z
 ---
 
 ## ✅ Hersteller-Filter (WC-Produktattribut) FERTIG (2026-07-21)
@@ -56,6 +56,20 @@ Herstellerkontaktdaten auf der Produktseite selbst.
 Jacky hat die Rechtsfrage bewusst pragmatisch als "für uns erledigt" behandelt (Mitbewerber-Vergleich: entweder dieses Muster oder gar keine Angaben). Umsetzung + End-to-End-Test siehe [[project_shop_sync]] — GPSR-Kontaktinfo wird jetzt als Beschreibung an den Hersteller-Attribut-Term (aus diesem Abschnitt) gehängt. "Verantwortliche Person"-Block nur bei Nicht-EU-Herstellern mit ausgefüllten REO-Daten, über die schon bestehende `HerstellerService::istEuLand()`.
 
 **🔍 WICHTIG, als ERSTES für die nächste Session:** Ganz am Ende der Session entdeckt — es gibt in WordPress einen SEPARATEN Menüpunkt "Produkte → Hersteller" (nicht das Attribut aus diesem Dokument!) mit eigenen Feldern "Herstelleradresse" + "Verantwortliche Person (EU)", vermutlich von Germanized selbst bereitgestellt. Das könnte die eigentlich vorgesehene, strukturierte GPSR-Lösung dieses Plugin-Stacks sein, auf die der heutige Attribut-Beschreibungs-Weg eigentlich hätte zielen sollen. Muss geprüft werden (Datenstruktur, REST-API-Zugriff, lohnt Umstieg). Jackys Haltung: "schlimmstenfalls an 2 Stellen, schadet nicht" — kein Zwang zum Rückbau des heutigen Wegs.
+
+## ✅ Natives WC-"Hersteller" (Produktsicherheit-Panel) FERTIG (2026-07-23)
+
+Die am 2026-07-22 vermutete separate Germanized-Funktion ist tatsächlich **natives WooCommerce-Core** (Produktsicherheit/GPSR-Feature, kein Germanized-Zusatz) — eigener REST-Endpunkt `/wc/v3/products/manufacturers`, unabhängig vom bereits gebauten "Hersteller"-Produktattribut. Per Live-API-Introspection gefunden (Schema-Discovery über OPTIONS-Request, nicht geraten): Felder `name`, `description`, `formatted_address`, `formatted_eu_address` — alle direkt beschreibbar. Ein Produkt bekommt über `manufacturer.id` GENAU EINEN Hersteller zugewiesen (eigenes Feld im Produkt-Schema, getrennt von den Achsen/Filter-Attributen) — das erzeugt automatisch eine Archivseite `/hersteller/{slug}/` mit allen zugewiesenen Produkten (von Jacky live bestätigt: `indra-design.at/hersteller/adriafil/` zeigt Beschreibung + Produktliste).
+
+**Jackys Entscheidung (2026-07-23): BEIDE Wege parallel befüllen**, nicht den Attribut-Weg ablösen ("schadet nicht").
+
+**Umsetzung:** Migration 152 (`hersteller_shops.externe_manufacturer_id`, dritte externe ID neben `externe_attribut_id`/`externe_term_id` — gleiche Zeile, kein neues Tabellenkonzept). `WooCommerceClient::listeHersteller()`/`erstelleHersteller()`/`aktualisiereHersteller()`. `ShopSyncService::syncHerstellerFuerArtikel()` in zwei unabhängige Teilmethoden aufgeteilt (`syncHerstellerAttributTerm()` = alter Code unverändert, `syncHerstellerManufacturer()` = neu) — beide laufen bei jedem fälligen Hersteller-Sync, unabhängig voneinander idempotent. `formatted_address`/`formatted_eu_address` sind reiner Text (keine HTML-Tags wie bei der Attribut-Beschreibung), eigener kleiner Formatter `formatiereAdresse()`. `baueProduktPayload()` hängt `manufacturer.id` ans Produkt an, sobald eine Zuweisung existiert.
+
+**End-to-End gegen `indra-design.at` verifiziert:** Adriafil (hersteller_id=8, bereits mit Attribut-Term aus einer früheren Session) lief durch `syncHerstellerFuerArtikel()` — fand Jackys manuell angelegtes WC-Objekt (id=186, count=2 Produkte) korrekt per Namens-Match wieder (kein Duplikat!), aktualisierte `description`/`formatted_address`. `manufacturer.id`-Feld im Produkt-Payload für einen echten Adriafil-Artikel (Carosello, AD-CS) im Trockenlauf verifiziert.
+
+**Echter Fund + Korrektur (2026-07-23, gleicher Tag):** Jacky hat live geprüft, wo `formatted_address`/`formatted_eu_address` tatsächlich angezeigt werden -- der "Produktsicherheit"-Tab des Produkts zeigt NUR diese beiden Felder, NICHT die `description` (die nur auf der Archivseite erscheint). Erste Version schrieb nur die nackte Adresse ohne Titel/E-Mail-Block in `formatted_address` -- korrigiert: `formatiereGpsrBlock()` bekam einen `$html`-Schalter (Standard `true` für die Attribut-Beschreibung, `false` liefert reinen Text für die beiden neuen Felder) statt einer zweiten Formatierfunktion. Zusätzlich: bei EU-Herstellern wird `formatted_eu_address` jetzt aktiv geleert (nicht nur ausgelassen) -- sonst bleibt eine Alt-Eingabe (Jackys "testperson"-Testwert) unbemerkt stehen und sieht auf der echten Produktseite wie eine rechtlich relevante Angabe aus. Beides live gegen Adriafil nachverifiziert (voller GPSR-Text jetzt in `formatted_address`, `formatted_eu_address` korrekt leer).
+
+**Nicht committed/gepusht** bis Jacky bestätigt — siehe Konversation.
 
 ## GPSR-Herstellerangaben-Pflicht — Umsetzung zurückgestellt (Jacky, 2026-07-20)
 

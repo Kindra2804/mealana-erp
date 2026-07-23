@@ -271,6 +271,12 @@ class ShopSyncService
                 'visible'   => true,
                 'options'   => [$this->repo->findHerstellerName((int)$artikel['hersteller_id'])],
             ];
+            // Natives WooCommerce-"Hersteller" (Produktsicherheit-Panel) -- separat vom
+            // Attribut oben. Erst DIESE Zuweisung lässt WooCommerce die automatische
+            // Hersteller-Archivseite (/hersteller/{slug}/) mit dem Produkt befüllen.
+            if (!empty($herstellerZuweisung['externe_manufacturer_id'])) {
+                $payload['manufacturer'] = ['id' => (int)$herstellerZuweisung['externe_manufacturer_id']];
+            }
         }
 
         if (!empty($attribute)) {
@@ -420,36 +426,60 @@ class ShopSyncService
             return;
         }
         $beschreibung = $this->baueHerstellerBeschreibung($hersteller);
-
         $zuweisung = $this->repo->findHerstellerShopZuweisung($herstellerId, $shopId);
-        if ($zuweisung && $zuweisung['externe_attribut_id'] && $zuweisung['externe_term_id']) {
-            // Nachziehen nur wenn seit dem letzten Sync tatsächlich etwas an
-            // Adress-/REO-Daten geändert wurde (Change-Detection analog zu
-            // Kategorien) -- sonst bei jedem Cron-Lauf unnötig aktualisieren.
-            $mussAktualisieren = $zuweisung['synced_at'] === null
-                || strtotime($hersteller['aktualisiert_am']) > strtotime($zuweisung['synced_at']);
-            if ($mussAktualisieren) {
-                $client->aktualisiereAttributTerm((int)$zuweisung['externe_attribut_id'], $zuweisung['externe_term_id'], [
-                    'description' => $beschreibung,
-                ]);
-                $this->repo->upsertHerstellerZuweisung($herstellerId, $shopId, $zuweisung['externe_attribut_id'], $zuweisung['externe_term_id']);
-            }
-            return;
+
+        // Nachziehen nur wenn seit dem letzten Sync tatsächlich etwas an
+        // Adress-/REO-Daten geändert wurde (Change-Detection analog zu
+        // Kategorien) -- sonst bei jedem Cron-Lauf unnötig aktualisieren.
+        $mussAktualisieren = !$zuweisung
+            || $zuweisung['synced_at'] === null
+            || strtotime($hersteller['aktualisiert_am']) > strtotime($zuweisung['synced_at']);
+
+        $attributId = $zuweisung['externe_attribut_id'] ?? null;
+        $termId     = $zuweisung['externe_term_id'] ?? null;
+        if (!$termId || $mussAktualisieren) {
+            [$attributId, $termId] = $this->syncHerstellerAttributTerm($client, $hersteller, $beschreibung, $shopId, $attributId, $termId);
         }
 
-        $attributId = $this->repo->findHerstellerAttributIdFuerShop($shopId)
+        // Natives WooCommerce-"Hersteller" (Produktsicherheit-Panel) -- eigene, von
+        // obigem Attribut unabhängige Entität mit eigener Archivseite, siehe
+        // syncHerstellerManufacturer(). Jackys Entscheidung 2026-07-23: beide
+        // parallel befüllen, nicht den Attribut-Weg ablösen.
+        $manufacturerId = $zuweisung['externe_manufacturer_id'] ?? null;
+        if (!$manufacturerId || $mussAktualisieren) {
+            $manufacturerId = $this->syncHerstellerManufacturer($client, $hersteller, $beschreibung, $manufacturerId);
+        }
+
+        $this->repo->upsertHerstellerZuweisung($herstellerId, $shopId, (string)$attributId, (string)$termId, $manufacturerId !== null ? (string)$manufacturerId : null);
+    }
+
+    /**
+     * WC-Attribut-Term-Teil von syncHerstellerFuerArtikel() (Filter/Archiv über
+     * has_archives -- siehe project_hersteller_shop_filter.md). Legt bei Bedarf
+     * das globale "Hersteller"-Attribut + den Term an, sonst wird nur die
+     * Beschreibung aktualisiert.
+     *
+     * @return array{0:string,1:string} [attributId, termId]
+     */
+    private function syncHerstellerAttributTerm(WooCommerceClient $client, array $hersteller, string $beschreibung, int $shopId, ?string $attributId, ?string $termId): array
+    {
+        $attributId ??= $this->repo->findHerstellerAttributIdFuerShop($shopId)
             ?? (string)$this->findeOderErstelleAttribut($client, 'Hersteller', ['has_archives' => true]);
 
+        if ($termId) {
+            $client->aktualisiereAttributTerm((int)$attributId, $termId, ['description' => $beschreibung]);
+            return [$attributId, $termId];
+        }
+
         $herstellerName = $hersteller['name'];
-        $termId = null;
         foreach ($client->listeAttributTerms((int)$attributId) as $wcTerm) {
             if (mb_strtolower($wcTerm['name']) === mb_strtolower($herstellerName)) {
-                $termId = (int)$wcTerm['id'];
+                $termId = (string)$wcTerm['id'];
                 break;
             }
         }
         if ($termId === null) {
-            $termId = (int)$client->erstelleAttributTerm((int)$attributId, [
+            $termId = (string)$client->erstelleAttributTerm((int)$attributId, [
                 'name'        => $herstellerName,
                 'description' => $beschreibung,
             ])['id'];
@@ -457,10 +487,81 @@ class ShopSyncService
             // Term existierte schon in WooCommerce (z.B. durch einen anderen
             // Vater-Artikel angelegt, noch ohne Beschreibung) -- lokal aber noch
             // keine Zuweisung vorhanden, Beschreibung darum jetzt nachziehen.
-            $client->aktualisiereAttributTerm((int)$attributId, (string)$termId, ['description' => $beschreibung]);
+            $client->aktualisiereAttributTerm((int)$attributId, $termId, ['description' => $beschreibung]);
         }
 
-        $this->repo->upsertHerstellerZuweisung($herstellerId, $shopId, $attributId, (string)$termId);
+        return [$attributId, $termId];
+    }
+
+    /**
+     * Natives WooCommerce-"Hersteller" (Produktsicherheit-Panel, /wc/v3/products/manufacturers) --
+     * eigene Entität mit eigenen Adress-/EU-Vertreter-Feldern, erzeugt automatisch eine
+     * Archivseite je Hersteller (/hersteller/{slug}/, verifiziert gegen indra-design.at) sobald
+     * ein Produkt per manufacturer.id zugewiesen wird (siehe baueProduktPayload()).
+     */
+    private function syncHerstellerManufacturer(WooCommerceClient $client, array $hersteller, string $beschreibung, ?string $manufacturerId): string
+    {
+        $payload = [
+            'name'              => $hersteller['name'],
+            'description'       => $beschreibung,
+            // Gleicher Inhalt wie $beschreibung, aber als Klartext (kein HTML) --
+            // WooCommerce zeigt auf dem "Produktsicherheit"-Tab des Produkts NUR
+            // dieses Feld an, nicht die Beschreibung (echter Fund 2026-07-23).
+            'formatted_address' => $this->formatiereGpsrBlock(
+                'Kontaktinformation gem. Art. 19 EU GPSR',
+                $hersteller['name'],
+                $hersteller['strasse'] ?? null,
+                $hersteller['plz'] ?? null,
+                $hersteller['ort'] ?? null,
+                $hersteller['land_name'] ?? null,
+                $hersteller['webseite'] ?? null,
+                $hersteller['email'] ?? null,
+                html: false
+            ),
+        ];
+
+        // Gleiche EU/REO-Gating-Logik wie baueHerstellerBeschreibung() -- eine
+        // einzige Quelle (HerstellerService::istEuLand()) für "sitzt der
+        // Hersteller in der EU", nicht zweimal unabhängig geprüft.
+        // Bei EU-Herstellern wird das Feld aktiv geleert (nicht nur ausgelassen) --
+        // sonst bleibt dort ggf. eine Alt-Eingabe (z.B. ein manueller Testwert)
+        // unbemerkt stehen und sieht auf der echten Produktseite wie eine
+        // rechtlich relevante Angabe aus (echter Fund 2026-07-23, Jackys Entscheidung).
+        $istNichtEu = !$this->herstellerService->istEuLand($hersteller['land'] ?? '');
+        if ($istNichtEu && !empty($hersteller['reo_name'])) {
+            $payload['formatted_eu_address'] = $this->formatiereGpsrBlock(
+                'Verantwortliche Person gem. Art. 19 EU GPSR',
+                $hersteller['reo_name'],
+                $hersteller['reo_strasse'] ?? null,
+                $hersteller['reo_plz'] ?? null,
+                $hersteller['reo_ort'] ?? null,
+                $hersteller['reo_land_name'] ?? null,
+                null,
+                $hersteller['reo_email'] ?? null,
+                html: false
+            );
+        } else {
+            $payload['formatted_eu_address'] = '';
+        }
+
+        if ($manufacturerId) {
+            $client->aktualisiereHersteller($manufacturerId, $payload);
+            return $manufacturerId;
+        }
+
+        $herstellerName = $hersteller['name'];
+        foreach ($client->listeHersteller() as $wcHersteller) {
+            if (mb_strtolower($wcHersteller['name']) === mb_strtolower($herstellerName)) {
+                $manufacturerId = (string)$wcHersteller['id'];
+                break;
+            }
+        }
+        if ($manufacturerId === null) {
+            return (string)$client->erstelleHersteller($payload)['id'];
+        }
+        // Existierte schon in WooCommerce, lokal aber noch keine Zuweisung -- Felder nachziehen.
+        $client->aktualisiereHersteller($manufacturerId, $payload);
+        return $manufacturerId;
     }
 
     /**
@@ -512,6 +613,13 @@ class ShopSyncService
      * herausfiltert (nur <strong> übersteht es), \n dagegen bleibt erhalten.
      * Das Theme wandelt \n\n/\n beim Anzeigen normalerweise selbst in
      * Absätze/Zeilenumbrüche um (wpautop-artiges Verhalten).
+     *
+     * $html=false liefert reinen Text ohne <strong>/htmlspecialchars -- für die
+     * formatted_address/formatted_eu_address-Felder des nativen Hersteller-Objekts
+     * (Freitext-Feld, keine HTML-Wiedergabe, siehe syncHerstellerManufacturer()).
+     * Echter Fund 2026-07-23: WooCommerce zeigt auf dem "Produktsicherheit"-Tab
+     * des Produkts NUR diese beiden Felder an, NICHT die Beschreibung -- der
+     * volle GPSR-Text muss also in beiden Varianten stehen, nicht nur im HTML.
      */
     private function formatiereGpsrBlock(
         string $titel,
@@ -521,28 +629,32 @@ class ShopSyncService
         ?string $ort,
         ?string $land,
         ?string $webseite,
-        ?string $email
+        ?string $email,
+        bool $html = true
     ): string {
-        $zeilen = ["<strong>{$titel}</strong>", '', '<strong>Postanschrift</strong>', htmlspecialchars($name)];
+        $fett = fn(string $s) => $html ? "<strong>{$s}</strong>" : $s;
+        $esc  = fn(string $s) => $html ? htmlspecialchars($s) : $s;
+
+        $zeilen = [$fett($titel), '', $fett('Postanschrift'), $esc($name)];
         if ($strasse) {
-            $zeilen[] = htmlspecialchars($strasse);
+            $zeilen[] = $esc($strasse);
         }
         $plzOrt = trim(($plz ?? '') . ' ' . ($ort ?? ''));
         if ($plzOrt !== '') {
-            $zeilen[] = htmlspecialchars($plzOrt);
+            $zeilen[] = $esc($plzOrt);
         }
         if ($land) {
-            $zeilen[] = htmlspecialchars($land);
+            $zeilen[] = $esc($land);
         }
 
         if ($webseite || $email) {
             $zeilen[] = '';
-            $zeilen[] = '<strong>Elektronische Adresse</strong>';
+            $zeilen[] = $fett('Elektronische Adresse');
             if ($webseite) {
-                $zeilen[] = 'Website: ' . htmlspecialchars($webseite);
+                $zeilen[] = 'Website: ' . $esc($webseite);
             }
             if ($email) {
-                $zeilen[] = htmlspecialchars($email);
+                $zeilen[] = $esc($email);
             }
         }
 

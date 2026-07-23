@@ -294,17 +294,18 @@ class ShopSyncRepository
         return $id !== false ? $id : null;
     }
 
-    public function upsertHerstellerZuweisung(int $herstellerId, int $shopId, string $externeAttributId, string $externeTermId): void
+    public function upsertHerstellerZuweisung(int $herstellerId, int $shopId, string $externeAttributId, string $externeTermId, ?string $externeManufacturerId = null): void
     {
         $this->db->prepare("
-            INSERT INTO hersteller_shops (hersteller_id, shop_id, externe_attribut_id, externe_term_id, synced_at)
-            VALUES (:hersteller_id, :shop_id, :externe_attribut_id, :externe_term_id, NOW())
-            ON DUPLICATE KEY UPDATE externe_attribut_id = VALUES(externe_attribut_id), externe_term_id = VALUES(externe_term_id), synced_at = NOW()
+            INSERT INTO hersteller_shops (hersteller_id, shop_id, externe_attribut_id, externe_term_id, externe_manufacturer_id, synced_at)
+            VALUES (:hersteller_id, :shop_id, :externe_attribut_id, :externe_term_id, :externe_manufacturer_id, NOW())
+            ON DUPLICATE KEY UPDATE externe_attribut_id = VALUES(externe_attribut_id), externe_term_id = VALUES(externe_term_id), externe_manufacturer_id = VALUES(externe_manufacturer_id), synced_at = NOW()
         ")->execute([
             'hersteller_id' => $herstellerId,
             'shop_id' => $shopId,
             'externe_attribut_id' => $externeAttributId,
             'externe_term_id' => $externeTermId,
+            'externe_manufacturer_id' => $externeManufacturerId,
         ]);
     }
 

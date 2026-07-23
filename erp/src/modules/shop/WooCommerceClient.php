@@ -123,6 +123,28 @@ class WooCommerceClient
         return $this->request('PUT', "/products/attributes/$attributId/terms/$termId", [], $daten);
     }
 
+    /**
+     * Natives WooCommerce-"Hersteller" (Produktsicherheit-Panel) -- eine eigene
+     * Entität, unabhängig vom "Hersteller"-Produktattribut. Hat eigene
+     * Adress-/EU-Vertreter-Felder (formatted_address/formatted_eu_address) und
+     * erzeugt automatisch eine Archivseite (/hersteller/{slug}/) sobald ein
+     * Produkt per manufacturer.id zugewiesen wird.
+     */
+    public function listeHersteller(): array
+    {
+        return $this->request('GET', '/products/manufacturers', ['per_page' => 100]);
+    }
+
+    public function erstelleHersteller(array $daten): array
+    {
+        return $this->request('POST', '/products/manufacturers', [], $daten);
+    }
+
+    public function aktualisiereHersteller(string $externeId, array $daten): array
+    {
+        return $this->request('PUT', '/products/manufacturers/' . $externeId, [], $daten);
+    }
+
     public function erstelleVariation(string $parentId, array $daten): array
     {
         return $this->request('POST', "/products/$parentId/variations", [], $daten);
