@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-23T12:54:13.581Z
+  modified: 2026-07-23T13:09:36.795Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -43,7 +43,7 @@ Jacky hatte vier Punkte festgelegt:
 2. ~~Grundpreis-Sync-Automatisierung~~ ✅ FERTIG 2026-07-23 — siehe [[project_shop_sync]].
 3. ~~Dashboard~~ ✅ FERTIG 2026-07-23 — Online-Kanäle eingebunden, siehe [[project_shop_sync]].
 4. ~~Statistik/Auswertungen~~ ✅ FERTIG 2026-07-23 (Topseller/Umsatz-Zeitverlauf/Marge/Jahresvergleich) — Lagerwert-Snapshot + Umsatz-Vorhersage bewusst zurückgestellt, siehe [[project_statistik]].
-5. **ALS NÄCHSTES: JTL-Anreicherungs-Import** — siehe Beschreibung oben, [[project_jtl_import]].
+5. **JTL-Anreicherungs-Import** — Scope am 2026-07-23 mit Jacky durchgesprochen (siehe [[project_jtl_import]]), Bau noch nicht gestartet. Wartet auf: Jackys Re-Export mit Bildern, Lieferanten-Dedup-Strategie. Merkmale bewusst separat/zurückgestellt (Duplikat-Risiko in Live). **ALS NÄCHSTES** wenn Jacky bereit ist.
 
 ## Kleinere Punkte — "zwischendurch, je nach Lust und Laune", aber NICHT verlieren
 
