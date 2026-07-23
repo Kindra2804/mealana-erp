@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: e92b8de5-2100-45b7-b6b1-0eeacfcb09d5
-  modified: 2026-07-23T13:09:25.269Z
+  modified: 2026-07-23T13:11:06.466Z
 ---
 
 ## JTL-Export CSV-Datei
@@ -128,4 +128,6 @@ Preise: Endkunden (kundengruppen_id=1) aus JTL VK_Brutto/VK_Netto.
 
 **Wichtig — fast alle gewünschten Felder existieren schon im Schema.** Das ist überwiegend ein Import-Matching-Skript (Artikelnummer → bestehenden Artikel finden → Felder befüllen falls leer/gewünscht), keine neue Migration nötig — außer für die Lieferanten- und Merkmale-Dedup-Logik, die eigene Sorgfalt braucht.
 
-**Noch nicht gebaut, nur Scope abgestimmt.** Bei Wiedereinstieg: 1) Jacky hat hoffentlich neu mit Bildern exportiert — Datei-Stand in `import/` prüfen. 2) Lieferanten-Dedup-Strategie festlegen (Name-Fuzzy-Match? Interner-Schlüssel-Match?). 3) Merkmale weiterhin separat/zurückgestellt behandeln, nicht ungefragt mit reinziehen.
+**Noch nicht gebaut, nur Scope abgestimmt.** Bei Wiedereinstieg: 1) Jacky hat hoffentlich neu mit Bildern exportiert — Datei-Stand in `import/` prüfen. 2) Lieferanten-Dedup-Strategie festlegen (Name-Fuzzy-Match? Interner-Schlüssel-Match?). 3) Merkmale weiterhin separat/zurückgestellt behandeln, nicht ungefragt mit reinziehen. 4) Beschreibungstext-HTML-Bereinigung (nächster Punkt).
+
+**Nachtrag (2026-07-23): HTML-Qualität der Beschreibungstexte.** Jackys Einschätzung: die `Artikelbeschreibung`-Werte im JTL-Export sind teils "grottig" mit HTML versehen (vermutlich Word-Copy-Paste-Reste, alte Shop-Editor-Altlasten o.ä.). Unsere `artikel.beschreibung`/`kurzbeschreibung`-Felder laufen bereits durch einen self-hosted TinyMCE (`erp/public/js/tinymce/`, eingebunden in `artikel/detail.php`/`bearbeiten.php`) — Ziel ist, dass importierter Text dort sauber/wie im Shop aussieht, nicht nur roh übernommen wird. Jacky sieht das selbst als **eigenes Thema, das sauber gelöst werden muss** (HTML-Sanitizing/Normalisierung vor dem Import), nicht nebenbei mitgebaut. Bei der Detailplanung mit einplanen: eigener Bereinigungsschritt (z.B. HTML-Purifier-artiger Ansatz oder gezieltes Whitelisting von Tags) zwischen JTL-Rohtext und dem, was tatsächlich in `artikel.beschreibung` landet.
