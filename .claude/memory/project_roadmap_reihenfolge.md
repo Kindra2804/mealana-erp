@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-23T12:33:01.623Z
+  modified: 2026-07-23T12:54:13.581Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -42,8 +42,8 @@ Jacky hatte vier Punkte festgelegt:
 1. ~~Separate Germanized-"Hersteller"-Funktion prüfen~~ ✅ FERTIG 2026-07-23 — war natives WooCommerce-Core (Produktsicherheit/GPSR), kein Germanized-Zusatz. Eigener `/wc/v3/products/manufacturers`-Endpunkt jetzt gesynct, läuft parallel zum bestehenden Attribut-Weg, erzeugt automatisch Hersteller-Archivseiten. Siehe [[project_hersteller_shop_filter]] für vollen Stand.
 2. ~~Grundpreis-Sync-Automatisierung~~ ✅ FERTIG 2026-07-23 — siehe [[project_shop_sync]].
 3. ~~Dashboard~~ ✅ FERTIG 2026-07-23 — Online-Kanäle eingebunden, siehe [[project_shop_sync]].
-4. **ALS NÄCHSTES: Statistik/Auswertungen** — siehe [[project_statistik]].
-5. **JTL-Anreicherungs-Import** — siehe Beschreibung oben, [[project_jtl_import]].
+4. ~~Statistik/Auswertungen~~ ✅ FERTIG 2026-07-23 (Topseller/Umsatz-Zeitverlauf/Marge/Jahresvergleich) — Lagerwert-Snapshot + Umsatz-Vorhersage bewusst zurückgestellt, siehe [[project_statistik]].
+5. **ALS NÄCHSTES: JTL-Anreicherungs-Import** — siehe Beschreibung oben, [[project_jtl_import]].
 
 ## Kleinere Punkte — "zwischendurch, je nach Lust und Laune", aber NICHT verlieren
 

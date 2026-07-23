@@ -40,6 +40,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📋', 'label' => 'Aufträge',           'href' => BASE_PATH . '/auftraege/liste.php'],
         ['icon' => '➕', 'label' => 'Neuer Auftrag',      'href' => BASE_PATH . '/auftraege/neu.php'],
         ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => BASE_PATH . '/dokumente/index.php'],
+        ['icon' => '📊', 'label' => 'Statistik',          'href' => BASE_PATH . '/auftraege/statistik.php'],
     ],
     'einkauf' => [
         ['icon' => '📋', 'label' => 'Bestellungen',    'href' => BASE_PATH . '/bestellungen/liste.php'],

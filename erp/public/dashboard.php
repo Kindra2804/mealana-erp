@@ -145,8 +145,24 @@ $onlineUmsatzGestern = (float)$db->query("
       AND DATE(erstellt_am) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
 ")->fetchColumn();
 
-$umsatzHeuteGesamt = $kasseUmsatzHeuteGesamt + $onlineUmsatzHeuteGesamt;
-$umsatzGestern      = $kasseUmsatzGestern + $onlineUmsatzGestern;
+// ── Umsatz Manuell HEUTE (Telefon-/Laden-Bestellungen ohne Kassenbon) ───────
+// Dritter auftraege.kanal-Wert neben 'kasse'/'woocommerce' -- echter Fund beim
+// Bau der Statistik-Seite (project_statistik.md): ohne diesen Kanal fehlte ein
+// Teil des tatsächlichen Umsatzes in den Dashboard-Kacheln. Kein Pro-Shop-Bezug
+// (anders als Online), darum eine einzelne Summe statt einer Zeile pro Shop.
+$manuellUmsatzHeute = (float)$db->query("
+    SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert' AND DATE(erstellt_am) = CURDATE()
+")->fetchColumn();
+
+$manuellUmsatzGestern = (float)$db->query("
+    SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert'
+      AND DATE(erstellt_am) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+")->fetchColumn();
+
+$umsatzHeuteGesamt = $kasseUmsatzHeuteGesamt + $onlineUmsatzHeuteGesamt + $manuellUmsatzHeute;
+$umsatzGestern      = $kasseUmsatzGestern + $onlineUmsatzGestern + $manuellUmsatzGestern;
 $trendHeute = $umsatzGestern > 0
     ? round(($umsatzHeuteGesamt - $umsatzGestern) / $umsatzGestern * 100, 1)
     : null;
@@ -179,8 +195,22 @@ $onlineUmsatzVormonat = (float)$db->query("
       AND MONTH(erstellt_am)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
 ")->fetchColumn();
 
-$umsatzMonatGesamt    = $kasseUmsatzMonat + $onlineUmsatzMonat;
-$umsatzVormonatGesamt = $kasseUmsatzVormonat + $onlineUmsatzVormonat;
+// ── Umsatz Manuell MONAT ──────────────────────────────────────────────────────
+$manuellUmsatzMonat = (float)$db->query("
+    SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert'
+      AND YEAR(erstellt_am)=YEAR(CURDATE()) AND MONTH(erstellt_am)=MONTH(CURDATE())
+")->fetchColumn();
+
+$manuellUmsatzVormonat = (float)$db->query("
+    SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert'
+      AND YEAR(erstellt_am)=YEAR(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
+      AND MONTH(erstellt_am)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
+")->fetchColumn();
+
+$umsatzMonatGesamt    = $kasseUmsatzMonat + $onlineUmsatzMonat + $manuellUmsatzMonat;
+$umsatzVormonatGesamt = $kasseUmsatzVormonat + $onlineUmsatzVormonat + $manuellUmsatzVormonat;
 $trendMonat = $umsatzVormonatGesamt > 0
     ? round(($umsatzMonatGesamt - $umsatzVormonatGesamt) / $umsatzVormonatGesamt * 100, 1)
     : null;
@@ -341,11 +371,12 @@ $monatsNamenDE = ['Januar','Februar','März','April','Mai','Juni',
 $aktuellerMonat = $monatsNamenDE[(int)date('n') - 1] . ' ' . date('Y');
 $vormonatName   = $monatsNamenDE[(int)date('n', strtotime('-1 month')) - 1];
 
-// ── Kanal-Balken: max über Kasse UND Online für relative Breiten ────────────
+// ── Kanal-Balken: max über Kasse, Online UND Manuell für relative Breiten ───
 $maxKasseUmsatz = max([
     1,
     ...array_column($kassenumsatzHeuteRows, 'umsatz_heute'),
     ...array_column($onlineUmsatzHeuteRows, 'umsatz_heute'),
+    $manuellUmsatzHeute,
 ]);
 
 // ── Seite aufbauen ───────────────────────────────────────────────────────────
@@ -507,6 +538,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="db-bar-amt"><?= eur((float)$row['umsatz_heute']) ?></div>
         </div>
         <?php endforeach; ?>
+        <?php $pctManuell = $maxKasseUmsatz > 0 ? round($manuellUmsatzHeute / $maxKasseUmsatz * 100) : 0; ?>
+        <div class="db-bar-row">
+            <div class="db-bar-label">📞 Manuell</div>
+            <div class="db-bar-track">
+                <div class="db-bar-fill" style="width:<?= $pctManuell ?>%;background:#f59e0b"></div>
+            </div>
+            <div class="db-bar-amt"><?= eur($manuellUmsatzHeute) ?></div>
+        </div>
     </div>
 
     <!-- Card 3: Umsatz Monat -->
@@ -537,7 +576,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             </div>
             <div class="db-mbar-val"><?= eur($umsatzMonatGesamt) ?></div>
         </div>
-        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Basis: Kassenbons + Aufträge (Kasse + Online)</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Basis: Kassenbons + Aufträge (Kasse + Online + Manuell)</div>
     </div>
 
     <!-- Card 4: Offene Forderungen -->
@@ -615,6 +654,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="db-bar-amt" style="font-size:13px"><?= eur((float)$row['umsatz_heute']) ?></div>
         </div>
         <?php endforeach; ?>
+        <?php $pctManuellDetail = $maxKasseUmsatz > 0 ? round($manuellUmsatzHeute / $maxKasseUmsatz * 100) : 0; ?>
+        <div class="db-bar-row" style="margin-bottom:12px">
+            <div class="db-bar-label" style="width:160px;font-size:13px">📞 Manuell</div>
+            <div class="db-bar-track" style="height:16px">
+                <div class="db-bar-fill" style="width:<?= $pctManuellDetail ?>%;background:#f59e0b"></div>
+            </div>
+            <div class="db-bar-amt" style="font-size:13px"><?= eur($manuellUmsatzHeute) ?></div>
+        </div>
     </div>
 
     <!-- Monatsvergleich -->
@@ -643,7 +690,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             </div>
         </div>
         <div style="font-size:11px;color:#94a3b8;margin-top:6px">
-            Basis: Kassenbons + Aufträge (Kasse + Online)
+            Basis: Kassenbons + Aufträge (Kasse + Online + Manuell)
         </div>
     </div>
 
