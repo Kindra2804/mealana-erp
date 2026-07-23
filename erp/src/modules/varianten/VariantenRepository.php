@@ -216,6 +216,17 @@ class VariantenRepository
     }
 
     /**
+     * Aktualisiert nur den Text eines bestehenden Werts (z.B. Tippfehler-Korrektur).
+     * Wird für "in use"-Werte gebraucht, die wegen bestehender Kombinationen nicht gelöscht/neu
+     * angelegt werden dürfen — siehe VariantenService::speichereAchsenUndWerte().
+     */
+    public function updateWertText(int $id, string $wert): void
+    {
+        $stmt = $this->db->prepare("UPDATE varianten_achse_werte SET wert = :wert WHERE id = :id");
+        $stmt->execute(['wert' => $wert, 'id' => $id]);
+    }
+
+    /**
      * Gibt alle Wert-IDs zurück die in mindestens einer Kombination (varianten_kombination_werte) verwendet werden.
      * Diese Werte sind "geschützt" und dürfen nicht gelöscht werden.
      * Wird in VariantenService::speichereAchsenUndWerte() genutzt um die Lösch-Whitelist zu bauen.

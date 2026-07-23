@@ -58,10 +58,11 @@ $actionBarContent = '<a href="detail.php?id=' . $artikelId . '" class="btn btn-s
 
 // ── Hilfsfunktionen ───────────────────────────────────────────────────────────
 
-function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = false): string
+function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = false, int $wertId = 0): string
 {
-    $esc  = htmlspecialchars($wert, ENT_QUOTES);
-    $name = "werte[{$achseId}][{$idx}][wert]";
+    $esc    = htmlspecialchars($wert, ENT_QUOTES);
+    $name   = "werte[{$achseId}][{$idx}][wert]";
+    $idName = "werte[{$achseId}][{$idx}][id]";
 
     if ($isLocked) {
         return <<<HTML
@@ -72,6 +73,7 @@ function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = 
   <span style="font-size:9px;opacity:.7">🔒</span>
   <span class="chip-text">{$esc}</span>
   <input type="hidden" name="{$name}" value="{$esc}">
+  <input type="hidden" name="{$idName}" value="{$wertId}">
   <button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten"
           style="background:none;border:none;cursor:pointer;padding:0 0 0 3px;color:#94a3b8;font-size:11px;line-height:1">✎</button>
 </span>
@@ -86,6 +88,7 @@ HTML;
           style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">◀</button>
   <span class="chip-text">{$esc}</span>
   <input type="hidden" name="{$name}" value="{$esc}">
+  <input type="hidden" name="{$idName}" value="{$wertId}">
   <button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten"
           style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">✎</button>
   <button type="button" onclick="chipSortieren(this,'rechts')" title="Nach rechts"
@@ -217,7 +220,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
             <div class="chip-cont" id="chips-<?= $id ?>"
                  style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:28px">
                 <?php foreach ($wertListe as $idx => $v): ?>
-                    <?= chipHtml($id, $idx, $v['wert'], isset($wertIdsInUseSet[(int)$v['id']])) ?>
+                    <?= chipHtml($id, $idx, $v['wert'], isset($wertIdsInUseSet[(int)$v['id']]), (int)$v['id']) ?>
                 <?php endforeach; ?>
             </div>
             <div style="display:flex;gap:6px;align-items:center">

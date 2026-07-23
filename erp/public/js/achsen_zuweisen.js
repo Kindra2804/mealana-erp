@@ -16,8 +16,9 @@ function wertHinzufuegen(achseId) {
 }
 
 function chipHtmlJs(achseId, idx, text) {
-    var esc  = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    var name = 'werte[' + achseId + '][' + idx + '][wert]';
+    var esc    = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    var name   = 'werte[' + achseId + '][' + idx + '][wert]';
+    var idName = 'werte[' + achseId + '][' + idx + '][id]';
     return '<span class="wert-chip" data-achse-id="' + achseId + '" '
          + 'style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;'
          + 'border-radius:16px;padding:3px 10px 3px 8px;font-size:12px;line-height:1.5">'
@@ -25,6 +26,7 @@ function chipHtmlJs(achseId, idx, text) {
          + 'style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">&#9664;</button>'
          + '<span class="chip-text">' + esc + '</span>'
          + '<input type="hidden" name="' + name + '" value="' + esc + '">'
+         + '<input type="hidden" name="' + idName + '" value="0">'
          + '<button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten" '
          + 'style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">&#x270E;</button>'
          + '<button type="button" onclick="chipSortieren(this,\'rechts\')" title="Nach rechts" '
@@ -41,7 +43,7 @@ function chipHtmlJs(achseId, idx, text) {
 function chipBearbeiten(btn) {
     var chip   = btn.closest('.wert-chip');
     var textEl = chip.querySelector('.chip-text');
-    var hidden = chip.querySelector('input[type="hidden"]');
+    var hidden = chip.querySelector('input[type="hidden"][name$="[wert]"]');
     if (chip.querySelector('.chip-edit-inp')) return;
 
     var inp = document.createElement('input');
@@ -110,8 +112,11 @@ function renummerieren(achseId) {
     var cont = document.getElementById('chips-' + achseId);
     if (!cont) return;
     cont.querySelectorAll('.wert-chip').forEach(function (chip, i) {
-        var hidden = chip.querySelector('input[type="hidden"]');
-        if (hidden) hidden.name = 'werte[' + achseId + '][' + i + '][wert]';
+        chip.querySelectorAll('input[type="hidden"]').forEach(function (hidden) {
+            var m = hidden.name.match(/\[(\w+)\]$/);
+            var feld = m ? m[1] : 'wert';
+            hidden.name = 'werte[' + achseId + '][' + i + '][' + feld + ']';
+        });
     });
 }
 
@@ -139,8 +144,11 @@ function moveAusfuehren(sel) {
     var chip   = sel.closest('.wert-chip');
     var oldId  = chip.dataset.achseId;
     var idx    = ++chipCounter;
-    var hidden = chip.querySelector('input[type="hidden"]');
-    hidden.name          = 'werte[' + newId + '][' + idx + '][wert]';
+    chip.querySelectorAll('input[type="hidden"]').forEach(function (hidden) {
+        var m = hidden.name.match(/\[(\w+)\]$/);
+        var feld = m ? m[1] : 'wert';
+        hidden.name = 'werte[' + newId + '][' + idx + '][' + feld + ']';
+    });
     chip.dataset.achseId = newId;
     var newCont = document.getElementById('chips-' + newId);
     if (newCont) newCont.appendChild(chip);

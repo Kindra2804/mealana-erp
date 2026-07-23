@@ -34,17 +34,23 @@ class VariantenService
      * Lösung: In-use Werte bleiben erhalten, freie Werte werden durch die neuen Submission-Werte ersetzt.
      * Duplikat-Schutz: Wenn ein in-use Wert denselben (achse_id|wert) hat wie ein neuer Wert,
      * wird der neue Wert übersprungen (würde sonst einen Duplicate-Key-Error erzeugen).
+     * Text-Korrektur bei in-use Werten: jeder Wert bringt seine wert_id mit (0 = neu angelegt).
+     * Gehört die id zu einem geschützten Wert und hat sich der Text geändert (z.B. Tippfehler-Fix),
+     * wird der bestehende Datensatz per UPDATE korrigiert statt einen zweiten, unbenutzten Wert anzulegen.
      */
     public function speichereAchsenUndWerte(int $artikelId, array $achsenIds, array $werte): array
     {
-        $inUseIds = array_map('intval', $this->repo->findWertIdsInUse($artikelId));
+        $inUseIds   = array_map('intval', $this->repo->findWertIdsInUse($artikelId));
+        $inUseIdSet = array_flip($inUseIds);
 
-        // In-use Werte aus DB holen – Lookup (achse_id|wert) → id für Duplikat-Check
+        // In-use Werte aus DB holen – Lookup (achse_id|wert) → id für Duplikat-Check, id → wert für Text-Update
         $currentWerte  = $this->repo->findWerteByArtikelId($artikelId);
         $inUseWerte    = array_filter($currentWerte, fn($w) => in_array((int)$w['id'], $inUseIds));
         $inUseLookup   = [];
+        $inUseTextById = [];
         foreach ($inUseWerte as $w) {
             $inUseLookup[(int)$w['achse_id'] . '|' . $w['wert']] = (int)$w['id'];
+            $inUseTextById[(int)$w['id']] = $w['wert'];
         }
 
         // Achse-IDs mit in-use Werten (können nicht entfernt werden)
@@ -74,7 +80,16 @@ class VariantenService
         }
 
         // Werte einfügen: nur wenn nicht bereits als in-use vorhanden (Duplikat vermeiden)
+        // Ausnahme: bringt der Wert die id eines geschützten Werts mit, wird stattdessen dessen Text korrigiert
         foreach ($werte as $wert) {
+            $wertId = (int)($wert['id'] ?? 0);
+            if ($wertId > 0 && isset($inUseIdSet[$wertId])) {
+                if (($inUseTextById[$wertId] ?? null) !== $wert['wert']) {
+                    $this->repo->updateWertText($wertId, $wert['wert']);
+                }
+                continue;
+            }
+
             $key = (int)$wert['achse_id'] . '|' . $wert['wert'];
             if (!isset($inUseLookup[$key])) {
                 $wert['artikel_id'] = $artikelId;

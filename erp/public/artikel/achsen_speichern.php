@@ -19,7 +19,12 @@ foreach ($_POST['werte'] ?? [] as $achseId => $reihen) {
     foreach ($reihen as $idx => $felder) {
         $text = trim($felder['wert'] ?? '');
         if ($text !== '') {
-            $werte[] = ['achse_id' => $achseId, 'wert' => $text, 'sort_order' => (int)$idx];
+            $werte[] = [
+                'achse_id'   => $achseId,
+                'wert'       => $text,
+                'sort_order' => (int)$idx,
+                'id'         => (int)($felder['id'] ?? 0),
+            ];
         }
     }
 }
