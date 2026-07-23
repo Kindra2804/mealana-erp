@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-07-23T11:14:01.697Z
+  modified: 2026-07-23T11:17:20.280Z
 ---
 
 ## ✅ Hersteller-Filter (WC-Produktattribut) FERTIG (2026-07-21)
@@ -69,7 +69,7 @@ Die am 2026-07-22 vermutete separate Germanized-Funktion ist tatsächlich **nati
 
 **Echter Fund + Korrektur (2026-07-23, gleicher Tag):** Jacky hat live geprüft, wo `formatted_address`/`formatted_eu_address` tatsächlich angezeigt werden -- der "Produktsicherheit"-Tab des Produkts zeigt NUR diese beiden Felder, NICHT die `description` (die nur auf der Archivseite erscheint). Erste Version schrieb nur die nackte Adresse ohne Titel/E-Mail-Block in `formatted_address` -- korrigiert: `formatiereGpsrBlock()` bekam einen `$html`-Schalter (Standard `true` für die Attribut-Beschreibung, `false` liefert reinen Text für die beiden neuen Felder) statt einer zweiten Formatierfunktion. Zusätzlich: bei EU-Herstellern wird `formatted_eu_address` jetzt aktiv geleert (nicht nur ausgelassen) -- sonst bleibt eine Alt-Eingabe (Jackys "testperson"-Testwert) unbemerkt stehen und sieht auf der echten Produktseite wie eine rechtlich relevante Angabe aus. Beides live gegen Adriafil nachverifiziert (voller GPSR-Text jetzt in `formatted_address`, `formatted_eu_address` korrekt leer).
 
-**Nicht committed/gepusht** bis Jacky bestätigt — siehe Konversation.
+Committed + gepusht 2026-07-23.
 
 ## GPSR-Herstellerangaben-Pflicht — Umsetzung zurückgestellt (Jacky, 2026-07-20)
 

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-22T16:35:03.463Z
+  modified: 2026-07-23T11:17:13.167Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -39,8 +39,8 @@ Jacky hatte vier Punkte festgelegt:
 
 ## Geplant für nächste Session (Jacky, 2026-07-22 festgelegt) — in dieser Reihenfolge
 
-1. **ALS ERSTES: Separate Germanized-"Hersteller"-Funktion prüfen** — eigener WP-Menüpunkt mit "Herstelleradresse"/"Verantwortliche Person (EU)"-Feldern, vermutlich die eigentlich vorgesehene GPSR-Lösung dieses Plugin-Stacks. Siehe [[project_hersteller_shop_filter]]/[[project_shop_sync]] für den vollen Fund.
-2. **Grundpreis-Sync-Automatisierung** — ERP-Grundpreis direkt in Germanized' Feld pushen (Nice-to-have, siehe [[project_shop_theme]]).
+1. ~~Separate Germanized-"Hersteller"-Funktion prüfen~~ ✅ FERTIG 2026-07-23 — war natives WooCommerce-Core (Produktsicherheit/GPSR), kein Germanized-Zusatz. Eigener `/wc/v3/products/manufacturers`-Endpunkt jetzt gesynct, läuft parallel zum bestehenden Attribut-Weg, erzeugt automatisch Hersteller-Archivseiten. Siehe [[project_hersteller_shop_filter]] für vollen Stand.
+2. **ALS NÄCHSTES: Grundpreis-Sync-Automatisierung** — ERP-Grundpreis direkt in Germanized' Feld pushen (Nice-to-have, siehe [[project_shop_theme]]).
 3. **Dashboard** — Online-Kanäle mit einbinden.
 4. **Statistik/Auswertungen** — siehe [[project_statistik]].
 5. **JTL-Anreicherungs-Import** — siehe Beschreibung oben, [[project_jtl_import]].
