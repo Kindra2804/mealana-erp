@@ -122,9 +122,33 @@ $kasseUmsatzGestern = (float)$db->query("
     WHERE typ='verkauf' AND storniert=0 AND DATE(erstellt_am)=DATE_SUB(CURDATE(),INTERVAL 1 DAY)
 ")->fetchColumn();
 
-$umsatzHeuteGesamt = $kasseUmsatzHeuteGesamt; // Online-Kanäle kommen mit Shop-Sync
-$trendHeute = $kasseUmsatzGestern > 0
-    ? round(($umsatzHeuteGesamt - $kasseUmsatzGestern) / $kasseUmsatzGestern * 100, 1)
+// ── Umsatz Online-Shops HEUTE pro Shop ──────────────────────────────────────
+// auftraege.kanal='woocommerce' für JEDEN Shop (Unterscheidung über shop_id,
+// siehe Migration 067) -- storniert zählt nicht als Umsatz, analog zu Kasse.
+$onlineUmsatzHeuteRows = $db->query("
+    SELECT s.id AS shop_id, s.name,
+           COALESCE(SUM(CASE WHEN a.zahlungsstatus != 'storniert'
+                             AND DATE(a.erstellt_am) = CURDATE()
+                        THEN a.bruttobetrag ELSE 0 END), 0) AS umsatz_heute
+    FROM shops s
+    LEFT JOIN auftraege a ON a.shop_id = s.id AND a.kanal = 'woocommerce'
+    WHERE s.ist_aktiv = 1
+    GROUP BY s.id, s.name
+    ORDER BY s.name
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$onlineUmsatzHeuteGesamt = array_sum(array_column($onlineUmsatzHeuteRows, 'umsatz_heute'));
+
+$onlineUmsatzGestern = (float)$db->query("
+    SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
+    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert'
+      AND DATE(erstellt_am) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+")->fetchColumn();
+
+$umsatzHeuteGesamt = $kasseUmsatzHeuteGesamt + $onlineUmsatzHeuteGesamt;
+$umsatzGestern      = $kasseUmsatzGestern + $onlineUmsatzGestern;
+$trendHeute = $umsatzGestern > 0
+    ? round(($umsatzHeuteGesamt - $umsatzGestern) / $umsatzGestern * 100, 1)
     : null;
 
 // ── Umsatz Kasse MONAT ───────────────────────────────────────────────────────
@@ -141,8 +165,24 @@ $kasseUmsatzVormonat = (float)$db->query("
       AND MONTH(erstellt_am)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
 ")->fetchColumn();
 
-$trendMonat = $kasseUmsatzVormonat > 0
-    ? round(($kasseUmsatzMonat - $kasseUmsatzVormonat) / $kasseUmsatzVormonat * 100, 1)
+// ── Umsatz Online-Shops MONAT ────────────────────────────────────────────────
+$onlineUmsatzMonat = (float)$db->query("
+    SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
+    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert'
+      AND YEAR(erstellt_am)=YEAR(CURDATE()) AND MONTH(erstellt_am)=MONTH(CURDATE())
+")->fetchColumn();
+
+$onlineUmsatzVormonat = (float)$db->query("
+    SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
+    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert'
+      AND YEAR(erstellt_am)=YEAR(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
+      AND MONTH(erstellt_am)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
+")->fetchColumn();
+
+$umsatzMonatGesamt    = $kasseUmsatzMonat + $onlineUmsatzMonat;
+$umsatzVormonatGesamt = $kasseUmsatzVormonat + $onlineUmsatzVormonat;
+$trendMonat = $umsatzVormonatGesamt > 0
+    ? round(($umsatzMonatGesamt - $umsatzVormonatGesamt) / $umsatzVormonatGesamt * 100, 1)
     : null;
 
 $monatsName = date('F Y'); // z.B. "June 2026" → wir formatieren auf Deutsch unten
@@ -301,8 +341,12 @@ $monatsNamenDE = ['Januar','Februar','März','April','Mai','Juni',
 $aktuellerMonat = $monatsNamenDE[(int)date('n') - 1] . ' ' . date('Y');
 $vormonatName   = $monatsNamenDE[(int)date('n', strtotime('-1 month')) - 1];
 
-// ── Kanal-Balken: max für relative Breiten ───────────────────────────────────
-$maxKasseUmsatz = max([1, ...array_column($kassenumsatzHeuteRows, 'umsatz_heute')]);
+// ── Kanal-Balken: max über Kasse UND Online für relative Breiten ────────────
+$maxKasseUmsatz = max([
+    1,
+    ...array_column($kassenumsatzHeuteRows, 'umsatz_heute'),
+    ...array_column($onlineUmsatzHeuteRows, 'umsatz_heute'),
+]);
 
 // ── Seite aufbauen ───────────────────────────────────────────────────────────
 $pageTitle    = 'Dashboard';
@@ -434,7 +478,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <?= trendChip($trendHeute) ?>
         </div>
         <div class="db-card-sub" style="margin-bottom:6px">
-            Gestern: <?= eur($kasseUmsatzGestern) ?>
+            Gestern: <?= eur($umsatzGestern) ?>
         </div>
         <div style="font-size:10px;color:#94a3b8;font-weight:700;margin-bottom:4px">KANAL</div>
         <?php foreach ($kassenumsatzHeuteRows as $row):
@@ -450,42 +494,50 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="db-bar-amt"><?= eur((float)$row['umsatz_heute']) ?></div>
         </div>
         <?php endforeach; ?>
-        <div class="db-bar-row" style="opacity:.5">
-            <div class="db-bar-label">🌐 Online</div>
-            <div class="db-bar-track" style="background:repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 4px,#e2e8f0 4px,#e2e8f0 8px)"></div>
-            <div class="db-bar-amt" style="color:#94a3b8;font-size:10px">Shop-Sync</div>
+        <?php foreach ($onlineUmsatzHeuteRows as $row):
+            $pct = $maxKasseUmsatz > 0 ? round($row['umsatz_heute'] / $maxKasseUmsatz * 100) : 0;
+        ?>
+        <div class="db-bar-row">
+            <div class="db-bar-label" title="<?= htmlspecialchars($row['name']) ?>">
+                🌐 <?= htmlspecialchars($row['name']) ?>
+            </div>
+            <div class="db-bar-track">
+                <div class="db-bar-fill" style="width:<?= $pct ?>%;background:#16a34a"></div>
+            </div>
+            <div class="db-bar-amt"><?= eur((float)$row['umsatz_heute']) ?></div>
         </div>
+        <?php endforeach; ?>
     </div>
 
     <!-- Card 3: Umsatz Monat -->
     <div class="db-card">
         <div class="db-card-label">Umsatz <?= $aktuellerMonat ?></div>
         <div style="display:flex;align-items:baseline;gap:8px">
-            <div class="db-card-value"><?= eur($kasseUmsatzMonat) ?></div>
+            <div class="db-card-value"><?= eur($umsatzMonatGesamt) ?></div>
             <?= trendChip($trendMonat) ?>
         </div>
-        <div class="db-card-sub"><?= $vormonatName ?>: <?= eur($kasseUmsatzVormonat) ?></div>
+        <div class="db-card-sub"><?= $vormonatName ?>: <?= eur($umsatzVormonatGesamt) ?></div>
         <hr class="db-sep">
         <?php
-        $maxMon = max(1, $kasseUmsatzMonat, $kasseUmsatzVormonat);
-        $pctAkt  = round($kasseUmsatzMonat  / $maxMon * 100);
-        $pctVor  = round($kasseUmsatzVormonat / $maxMon * 100);
+        $maxMon = max(1, $umsatzMonatGesamt, $umsatzVormonatGesamt);
+        $pctAkt  = round($umsatzMonatGesamt  / $maxMon * 100);
+        $pctVor  = round($umsatzVormonatGesamt / $maxMon * 100);
         ?>
         <div class="db-mbar-row">
             <div class="db-mbar-name"><?= $vormonatName ?></div>
             <div class="db-mbar-track" style="background:#e2e8f0;border-radius:4px;height:18px;overflow:hidden">
                 <div class="db-mbar-fill" style="width:<?= $pctVor ?>%;background:#7ec8e3"></div>
             </div>
-            <div class="db-mbar-val"><?= eur($kasseUmsatzVormonat) ?></div>
+            <div class="db-mbar-val"><?= eur($umsatzVormonatGesamt) ?></div>
         </div>
         <div class="db-mbar-row">
             <div class="db-mbar-name" style="font-weight:700;color:#1e3a5f"><?= date('F') ?></div>
             <div class="db-mbar-track" style="background:#e2e8f0;border-radius:4px;height:18px;overflow:hidden">
                 <div class="db-mbar-fill" style="width:<?= $pctAkt ?>%;background:#1e3a5f"></div>
             </div>
-            <div class="db-mbar-val"><?= eur($kasseUmsatzMonat) ?></div>
+            <div class="db-mbar-val"><?= eur($umsatzMonatGesamt) ?></div>
         </div>
-        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Basis: Kassenbons + erfasste Aufträge</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Basis: Kassenbons + Aufträge (Kasse + Online)</div>
     </div>
 
     <!-- Card 4: Offene Forderungen -->
@@ -550,12 +602,19 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="db-bar-amt" style="font-size:13px"><?= eur((float)$row['umsatz_heute']) ?></div>
         </div>
         <?php endforeach; ?>
-        <!-- Online-Kanäle: erscheinen automatisch wenn Shop-Sync aktiv -->
-        <div class="db-bar-row" style="margin-bottom:12px;opacity:.45">
-            <div class="db-bar-label" style="width:160px;font-size:13px">🌐 Online-Kanäle</div>
-            <div class="db-bar-track" style="height:16px;background:repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 4px,#e2e8f0 4px,#e2e8f0 8px)"></div>
-            <div class="db-bar-amt" style="font-size:11px;color:#94a3b8;width:120px">kommt mit Shop-Sync</div>
+        <?php foreach ($onlineUmsatzHeuteRows as $row):
+            $pct = $maxKasseUmsatz > 0 ? round((float)$row['umsatz_heute'] / $maxKasseUmsatz * 100) : 0;
+        ?>
+        <div class="db-bar-row" style="margin-bottom:12px">
+            <div class="db-bar-label" style="width:160px;font-size:13px">
+                🌐 <?= htmlspecialchars($row['name']) ?>
+            </div>
+            <div class="db-bar-track" style="height:16px">
+                <div class="db-bar-fill" style="width:<?= $pct ?>%;background:#16a34a"></div>
+            </div>
+            <div class="db-bar-amt" style="font-size:13px"><?= eur((float)$row['umsatz_heute']) ?></div>
         </div>
+        <?php endforeach; ?>
     </div>
 
     <!-- Monatsvergleich -->
@@ -566,25 +625,25 @@ require_once __DIR__ . '/includes/shell_top.php';
             </div>
             <?= trendChip($trendMonat) ?>
         </div>
-        <?php $maxMon2 = max(1, $kasseUmsatzMonat, $kasseUmsatzVormonat); ?>
+        <?php $maxMon2 = max(1, $umsatzMonatGesamt, $umsatzVormonatGesamt); ?>
         <div style="margin-bottom:14px">
             <div class="db-mbar-row" style="grid-template-columns:90px 1fr 110px;margin-bottom:8px">
                 <div class="db-mbar-name"><?= $vormonatName ?></div>
                 <div style="background:#e2e8f0;border-radius:4px;height:22px;overflow:hidden">
-                    <div style="width:<?= round($kasseUmsatzVormonat/$maxMon2*100) ?>%;height:100%;background:#7ec8e3;border-radius:4px"></div>
+                    <div style="width:<?= round($umsatzVormonatGesamt/$maxMon2*100) ?>%;height:100%;background:#7ec8e3;border-radius:4px"></div>
                 </div>
-                <div class="db-mbar-val"><?= eur($kasseUmsatzVormonat) ?></div>
+                <div class="db-mbar-val"><?= eur($umsatzVormonatGesamt) ?></div>
             </div>
             <div class="db-mbar-row" style="grid-template-columns:90px 1fr 110px">
                 <div class="db-mbar-name" style="font-weight:700;color:#1e3a5f"><?= date('F') ?></div>
                 <div style="background:#e2e8f0;border-radius:4px;height:22px;overflow:hidden">
-                    <div style="width:<?= round($kasseUmsatzMonat/$maxMon2*100) ?>%;height:100%;background:#1e3a5f;border-radius:4px"></div>
+                    <div style="width:<?= round($umsatzMonatGesamt/$maxMon2*100) ?>%;height:100%;background:#1e3a5f;border-radius:4px"></div>
                 </div>
-                <div class="db-mbar-val"><?= eur($kasseUmsatzMonat) ?></div>
+                <div class="db-mbar-val"><?= eur($umsatzMonatGesamt) ?></div>
             </div>
         </div>
         <div style="font-size:11px;color:#94a3b8;margin-top:6px">
-            Basis: Kassenbons + erfasste Aufträge &nbsp;·&nbsp; Online-Kanäle kommen mit Shop-Sync
+            Basis: Kassenbons + Aufträge (Kasse + Online)
         </div>
     </div>
 

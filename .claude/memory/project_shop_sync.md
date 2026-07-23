@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-23T11:37:08.720Z
+  modified: 2026-07-23T12:32:52.531Z
 ---
 
 ## ✅ cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre FERTIG (2026-07-22)
@@ -34,6 +34,14 @@ War als Nice-to-have seit 2026-07-22 vorgemerkt (siehe [[project_shop_theme]]): 
 **Umsetzung:** `WooCommerceClient::listeEinheiten()`. `ShopSyncRepository::findGrundpreisFelder()` (inhalt_menge/inhalt_einheit/grundpreis_bezugsmenge/grundpreis_anzeigen — nicht Teil von `findFaelligeArtikel()`, gleiches Muster wie `findEndkundenPreis()`). `ShopSyncService::baueGrundpreisFelder()` + `findeEinheitId()` — gleiche Formel wie `artikel/detail.php` (effektiver VK ÷ inhalt_menge × grundpreis_bezugsmenge), nutzt bewusst denselben `$preis` wie `regular_price` (nicht `artikel.brutto_vk` direkt), damit Grundpreis und angezeigter VK im Shop nie auseinanderlaufen. Nur bei Standalone-Artikeln/Variationen gesetzt (gleiches `empty($achsen)`-Gating wie Bestandsfelder) — ein Vater mit Achsen bekommt seinen Grundpreis nicht selbst, jede Variation ihren eigenen.
 
 **End-to-End gegen `indra-design.at` verifiziert** (Artikel D-1059/WC-Produkt 15, das Jacky selbst schon als Grundpreis-Test angelegt hatte): errechnete Werte (100/50/7,50€ aus 3,75€ ÷ 50g × 100g) stimmten exakt mit dem manuell gesetzten Live-Wert überein. Schreibpfad zusätzlich mit einem bewusst abweichenden Testwert (base=99) verifiziert, dann korrekt zurückgesetzt — echter Rundlauf bestätigt, nicht nur zufällige Wertegleichheit.
+
+## ✅ Dashboard: Online-Kanäle eingebunden (2026-07-23)
+
+`dashboard.php` hatte seit dem Kasse-Umbau zwei bewusste Platzhalter ("🌐 Online — kommt mit Shop-Sync", gestreift/ausgegraut) — jetzt mit echten Daten befüllt, da Phase 3 (Bestellungen-Sync) längst steht (`auftraege.kanal='woocommerce'` + `shop_id`, Migration 067).
+
+Neue Queries (Umsatz Heute + Monat, je pro Shop via `shop_id`-Join, storniert zählt nicht): analog zu den bestehenden Kasse-Queries. Die drei Karten "Umsatz Heute"/"Umsatz Monat" + die "Umsatz Heute nach Kanal"/"Monatsvergleich"-Detailkarten zeigen jetzt Kasse+Online kombiniert (Trend-% entsprechend auch auf Basis der kombinierten Summe), die einzelnen Kanal-Balken bleiben pro Kasse UND pro Online-Shop aufgeschlüsselt sichtbar.
+
+Getestet mit einem temporären Test-Auftrag (`kanal='woocommerce', shop_id=1`, danach wieder gelöscht) — Query ordnet den Umsatz korrekt dem richtigen Shop zu, andere Shops bleiben bei 0.
 
 ## ✅ Hersteller-GPSR-Kontaktbeschreibung FERTIG (2026-07-22, gleicher Tag)
 
