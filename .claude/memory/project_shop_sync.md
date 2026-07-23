@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-22T16:34:23.149Z
+  modified: 2026-07-23T11:37:08.720Z
 ---
 
 ## ✅ cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre FERTIG (2026-07-22)
@@ -24,6 +24,16 @@ Vier Bau-Punkte in einer Session, ausgelöst durch den Aufbau der Gratis-Theme-B
 - Neues `erp/scripts/`-Verzeichnis (bisher nur `cron/` für Wiederkehrendes) — `scripts/erstbefuellung_bilder.php` als CLI-Tool: `php scripts/erstbefuellung_bilder.php <shop-slug> <bilder-basis-url>`
 
 **Bulk-Import-Sperre** (Migration 150, `shops.bulk_import_aktiv`) — Jackys Vergleich zum JTL-Komplettabgleich ("funktioniert nur wenn der Standard-Worker aus ist, sonst grätscht der alle 15 Min. rein"): gleiches Prinzip nachgebaut. `scripts/erstbefuellung_bilder.php` setzt die Sperre selbst (try/finally, wird auch bei Fehlern wieder freigegeben), `cron/shop_sync.php` überspringt einen gesperrten Shop komplett. Bei hartem Abbruch (Strg+C) bleibt die Sperre hängen — manueller Reset per SQL im Skript-Kommentar dokumentiert. Live getestet: Cron übersprang den Shop korrekt während die Sperre aktiv war, lief danach normal weiter.
+
+## ✅ Grundpreis-Sync-Automatisierung FERTIG (2026-07-23)
+
+War als Nice-to-have seit 2026-07-22 vorgemerkt (siehe [[project_shop_theme]]): Germanized-Gratisversion hat "Grundpreis automatisch berechnen" mit [PRO] gesperrt, ERP berechnet den Grundpreis aber längst selbst (siehe [[project_preise]]). Lösung: fertigen Wert direkt pushen statt für PRO zu zahlen.
+
+**Gefundene Felder** (Live-API-Introspection, OPTIONS-Request auf `/wc/v3/products`): `unit` (Einheit, `{id,name,slug}`) + `unit_price` (`{base, product, price_auto, price, price_regular, price_sale, price_html}`) — beide auch auf dem Variations-Endpunkt vorhanden. Passendes WP-Admin-Panel heißt "Preisauszeichnung" mit Feldern Einheit/Produkteinheiten/Grundpreiseinheiten (von Jacky per Screenshot bestätigt). Extra-Endpunkt `/wc/v3/products/units` liefert eine feste, vorinstallierte Einheitenliste (g/kg/m/l/... — kein "erst nachsehen dann anlegen" wie bei Attributen nötig, nur ein Name→ID-Lookup, gecacht pro Shop-Durchlauf).
+
+**Umsetzung:** `WooCommerceClient::listeEinheiten()`. `ShopSyncRepository::findGrundpreisFelder()` (inhalt_menge/inhalt_einheit/grundpreis_bezugsmenge/grundpreis_anzeigen — nicht Teil von `findFaelligeArtikel()`, gleiches Muster wie `findEndkundenPreis()`). `ShopSyncService::baueGrundpreisFelder()` + `findeEinheitId()` — gleiche Formel wie `artikel/detail.php` (effektiver VK ÷ inhalt_menge × grundpreis_bezugsmenge), nutzt bewusst denselben `$preis` wie `regular_price` (nicht `artikel.brutto_vk` direkt), damit Grundpreis und angezeigter VK im Shop nie auseinanderlaufen. Nur bei Standalone-Artikeln/Variationen gesetzt (gleiches `empty($achsen)`-Gating wie Bestandsfelder) — ein Vater mit Achsen bekommt seinen Grundpreis nicht selbst, jede Variation ihren eigenen.
+
+**End-to-End gegen `indra-design.at` verifiziert** (Artikel D-1059/WC-Produkt 15, das Jacky selbst schon als Grundpreis-Test angelegt hatte): errechnete Werte (100/50/7,50€ aus 3,75€ ÷ 50g × 100g) stimmten exakt mit dem manuell gesetzten Live-Wert überein. Schreibpfad zusätzlich mit einem bewusst abweichenden Testwert (base=99) verifiziert, dann korrekt zurückgesetzt — echter Rundlauf bestätigt, nicht nur zufällige Wertegleichheit.
 
 ## ✅ Hersteller-GPSR-Kontaktbeschreibung FERTIG (2026-07-22, gleicher Tag)
 

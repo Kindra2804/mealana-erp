@@ -145,6 +145,16 @@ class WooCommerceClient
         return $this->request('PUT', '/products/manufacturers/' . $externeId, [], $daten);
     }
 
+    /**
+     * Feste, vorinstallierte Liste von Maßeinheiten (g, kg, m, l, ...) für das
+     * Grundpreis-Feature -- anders als Attribute/Hersteller nichts, das wir
+     * selbst anlegen, nur ein Lookup name→id.
+     */
+    public function listeEinheiten(): array
+    {
+        return $this->request('GET', '/products/units', ['per_page' => 100]);
+    }
+
     public function erstelleVariation(string $parentId, array $daten): array
     {
         return $this->request('POST', "/products/$parentId/variations", [], $daten);

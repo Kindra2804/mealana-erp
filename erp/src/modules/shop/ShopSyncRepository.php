@@ -383,6 +383,22 @@ class ShopSyncRepository
         return $wert !== false ? (float)$wert : null;
     }
 
+    /**
+     * Rohdaten für die Grundpreis-Berechnung (siehe ShopSyncService::baueGrundpreisFelder()) --
+     * nicht Teil von findFaelligeArtikel(), weil dort nur die für JEDEN Artikel nötigen
+     * Kernfelder stehen (gleiches Muster wie findEndkundenPreis()/findBestandInfo()).
+     */
+    public function findGrundpreisFelder(int $artikelId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT inhalt_menge, inhalt_einheit, grundpreis_bezugsmenge, grundpreis_anzeigen
+            FROM artikel
+            WHERE id = :id
+        ");
+        $stmt->execute(['id' => $artikelId]);
+        return $stmt->fetch();
+    }
+
     /** Kategorie-Namen des Artikels, die schon eine WooCommerce-Zuordnung für diesen Shop haben. */
     public function findWcKategorieIds(int $artikelId, int $shopId): array
     {

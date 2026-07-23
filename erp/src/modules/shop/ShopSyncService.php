@@ -27,6 +27,9 @@ class ShopSyncService
     private HerstellerService $herstellerService;
     private int $jarvisId;
 
+    /** @var array<int,array<string,int>> shopId => [einheit_slug => wc_unit_id], siehe findeEinheitId() */
+    private array $einheitenCache = [];
+
     public function __construct()
     {
         $this->repo = new ShopSyncRepository();
@@ -143,7 +146,7 @@ class ShopSyncService
                         // sobald der Vater dann eine external_id hat.
                         continue;
                     }
-                    $payload = $this->baueVariationPayload($row, (int)$shop['id']);
+                    $payload = $this->baueVariationPayload($client, $row, (int)$shop['id']);
                     if ($row['external_id']) {
                         $wcObjekt = $client->aktualisiereVariation($row['vater_external_id'], $row['external_id'], $payload);
                     } else {
@@ -154,7 +157,7 @@ class ShopSyncService
                         $bereitsVersuchtHersteller[(int)$row['hersteller_id']] = true;
                         $this->syncHerstellerFuerArtikel($client, (int)$row['hersteller_id'], (int)$shop['id']);
                     }
-                    $payload = $this->baueProduktPayload($row, (int)$shop['id']);
+                    $payload = $this->baueProduktPayload($client, $row, (int)$shop['id']);
                     if ($row['external_id']) {
                         $wcObjekt = $client->aktualisiereProdukt($row['external_id'], $payload);
                     } else {
@@ -220,7 +223,7 @@ class ShopSyncService
         }
     }
 
-    private function baueProduktPayload(array $artikel, int $shopId): array
+    private function baueProduktPayload(WooCommerceClient $client, array $artikel, int $shopId): array
     {
         $preis = $this->repo->findEndkundenPreis((int)$artikel['artikel_id']);
         $wcKategorieIds = $this->repo->findWcKategorieIds((int)$artikel['artikel_id'], $shopId);
@@ -288,6 +291,7 @@ class ShopSyncService
         // Variation, nicht am Elternprodukt (siehe baueVariationPayload).
         if (empty($achsen)) {
             $payload += $this->baueBestandsFelder((int)$artikel['artikel_id']);
+            $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$artikel['artikel_id'], $preis);
         }
 
         // Bilder: ALLE Bilder des Artikels als 'images'-Array (Plural!), in
@@ -315,7 +319,7 @@ class ShopSyncService
     }
 
     /** Payload für eine WooCommerce-Variation (= unser Kind-Artikel). */
-    private function baueVariationPayload(array $kind, int $shopId): array
+    private function baueVariationPayload(WooCommerceClient $client, array $kind, int $shopId): array
     {
         $preis = $this->repo->findEndkundenPreis((int)$kind['artikel_id']);
 
@@ -349,6 +353,7 @@ class ShopSyncService
         // der DB vorgesehen, aber nirgends im System tatsächlich verdrahtet
         // (siehe project_shop_sync.md), darum hier bewusst nicht extra beachtet.
         $payload += $this->baueBestandsFelder((int)$kind['artikel_id']);
+        $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$kind['artikel_id'], $preis);
 
         return $payload;
     }
@@ -372,6 +377,73 @@ class ShopSyncService
             'stock_quantity' => $verfuegbar,
             'backorders' => $info['ueberverkauf_erlaubt'] ? 'notify' : 'no',
         ];
+    }
+
+    /**
+     * Grundpreis-Felder für das native WooCommerce/Germanized-"Grundpreis"-Feature
+     * ("Preisauszeichnung"-Panel: Einheit/Produkteinheiten/Grundpreiseinheiten).
+     * ERP berechnet den Grundpreis längst selbst (siehe project_preise.md) --
+     * statt für Germanized PRO ("automatische Berechnung") zu zahlen, wird der
+     * fertige Wert direkt gepusht (`price_auto` bleibt false).
+     *
+     * Gleiche Formel wie die Anzeige in artikel/detail.php: effektiver VK ÷
+     * inhalt_menge × grundpreis_bezugsmenge. Nutzt bewusst denselben $preis, der
+     * auch für regular_price verwendet wird (nicht artikel.brutto_vk direkt) --
+     * Grundpreis und tatsächlich angezeigter VK müssen im Shop immer
+     * zueinander passen (gesetzliche Pflicht AT/DE).
+     *
+     * Leeres Array wenn `grundpreis_anzeigen` aus ist, kein Preis vorhanden ist,
+     * Inhalt/Bezugsmenge fehlen, oder die Einheit auf dem Shop nicht bekannt ist
+     * (WooCommerce hat eine feste, vorinstallierte Einheitenliste -- g/kg/m/l/...
+     * decken den yarn/Zubehör-Fall ab, ein exotischer freier Text würde einfach
+     * nichts finden statt einen Fehler zu werfen).
+     */
+    private function baueGrundpreisFelder(WooCommerceClient $client, int $shopId, int $artikelId, ?float $preis): array
+    {
+        $g = $this->repo->findGrundpreisFelder($artikelId);
+        if (
+            !$g || !$g['grundpreis_anzeigen'] || $preis === null
+            || (float)$g['inhalt_menge'] <= 0 || (float)$g['grundpreis_bezugsmenge'] <= 0
+            || empty($g['inhalt_einheit'])
+        ) {
+            return [];
+        }
+
+        $einheitId = $this->findeEinheitId($client, $shopId, $g['inhalt_einheit']);
+        if ($einheitId === null) {
+            return [];
+        }
+
+        $grundpreis = round($preis / (float)$g['inhalt_menge'] * (float)$g['grundpreis_bezugsmenge'], 2);
+        $formatMenge = fn(float $n) => rtrim(rtrim(number_format($n, 3, '.', ''), '0'), '.');
+
+        return [
+            'unit' => ['id' => $einheitId],
+            'unit_price' => [
+                'base'          => $formatMenge((float)$g['grundpreis_bezugsmenge']),
+                'product'       => $formatMenge((float)$g['inhalt_menge']),
+                'price_auto'    => false,
+                'price'         => number_format($grundpreis, 2, '.', ''),
+                'price_regular' => number_format($grundpreis, 2, '.', ''),
+            ],
+        ];
+    }
+
+    /**
+     * WC-Einheiten-ID (g/kg/m/l/...) per Slug -- feste, vorinstallierte Liste,
+     * kein "erst nachsehen, dann anlegen" wie bei Attributen nötig. Pro
+     * Shop-Durchlauf nur einmal abgefragt (siehe $einheitenCache), nicht pro Artikel.
+     */
+    private function findeEinheitId(WooCommerceClient $client, int $shopId, string $einheit): ?int
+    {
+        if (!isset($this->einheitenCache[$shopId])) {
+            $map = [];
+            foreach ($client->listeEinheiten() as $u) {
+                $map[mb_strtolower($u['slug'])] = (int)$u['id'];
+            }
+            $this->einheitenCache[$shopId] = $map;
+        }
+        return $this->einheitenCache[$shopId][mb_strtolower($einheit)] ?? null;
     }
 
     /**
