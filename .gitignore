@@ -29,3 +29,6 @@ erp/public/img/hersteller/
 
 # Artikel-Bilder (lokal hochgeladen, instanzspezifisch)
 erp/public/uploads/artikel/
+
+# Kategorie-Bilder (lokal hochgeladen, instanzspezifisch)
+erp/public/uploads/kategorien/

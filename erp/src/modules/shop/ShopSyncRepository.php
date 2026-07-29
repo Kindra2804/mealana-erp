@@ -146,12 +146,29 @@ class ShopSyncRepository
     public function findAchsenFuerArtikel(int $vaterId): array
     {
         $stmt = $this->db->prepare("
-            SELECT va.id AS achse_id, va.name, va.code
+            SELECT va.id AS achse_id, va.name, va.code, va.abhaengig_von_achse_id
             FROM artikel_achsen aa
             JOIN varianten_achsen va ON va.id = aa.achse_id
             WHERE aa.artikel_id = :vater_id
               AND va.darstellungsform IN ('swatches', 'dropdown', 'radiobutton')
             ORDER BY aa.sort_order
+        ");
+        $stmt->execute(['vater_id' => $vaterId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * ALLE Achsen-Werte eines Vater-Artikels, nicht nach einzelner Achse gefiltert --
+     * Grundlage für VariantenService::baueAchsenDimensionen() (Sub-Achsen-Union,
+     * siehe syncAchsenFuerVater() in ShopSyncService).
+     */
+    public function findAlleWerteFuerVater(int $vaterId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, achse_id, wert
+            FROM varianten_achse_werte
+            WHERE artikel_id = :vater_id
+            ORDER BY achse_id, sort_order, wert
         ");
         $stmt->execute(['vater_id' => $vaterId]);
         return $stmt->fetchAll();
@@ -428,7 +445,7 @@ class ShopSyncRepository
     public function findKategorieMitVorfahren(int $kategorieId): array
     {
         $pfad = [];
-        $stmt = $this->db->prepare("SELECT id, name, beschreibung, parent_id, aktualisiert_am FROM kategorien WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT id, name, beschreibung, bild_pfad, parent_id, aktualisiert_am FROM kategorien WHERE id = :id");
         $aktuelleId = $kategorieId;
         while ($aktuelleId !== null) {
             $stmt->execute(['id' => $aktuelleId]);
@@ -479,6 +496,25 @@ class ShopSyncRepository
             VALUES (:kategorie_id, :shop_id, :externe_kategorie_id, NOW())
             ON DUPLICATE KEY UPDATE externe_kategorie_id = VALUES(externe_kategorie_id), synced_at = NOW()
         ")->execute(['kategorie_id' => $kategorieId, 'shop_id' => $shopId, 'externe_kategorie_id' => $externeKategorieId]);
+    }
+
+    /**
+     * Merkt sich, welcher Bild-Dateiname zuletzt zu diesem Shop hochgeladen wurde
+     * (Change-Detection -- kein Re-Upload bei jedem Cron-Lauf) + die dabei
+     * vergebene WordPress-Medien-ID. $bildPfad = null heißt: Bild wurde entfernt.
+     */
+    public function markiereKategorieBildSynced(int $kategorieId, int $shopId, ?string $bildPfad, ?string $externalId): void
+    {
+        $this->db->prepare("
+            UPDATE kategorie_shops
+            SET bild_pfad_synced = :bild_pfad, bild_external_id = :external_id
+            WHERE kategorie_id = :kategorie_id AND shop_id = :shop_id
+        ")->execute([
+            'bild_pfad'    => $bildPfad,
+            'external_id'  => $externalId,
+            'kategorie_id' => $kategorieId,
+            'shop_id'      => $shopId,
+        ]);
     }
 
     public function markiereSynced(int $artikelShopId, string $externalId): void

@@ -396,7 +396,7 @@ class ArtikelService
         return $this->repo->findCodesByArtikelId($artikelId);
     }
 
-    public function createKategorie(string $name, ?int $parentId = null, bool $istAktionsKategorie = false, ?string $beschreibung = null): array
+    public function createKategorie(string $name, ?int $parentId = null, bool $istAktionsKategorie = false, ?string $beschreibung = null, ?int $nachId = null): array
     {
         $trimmed = trim($name);
         if (empty($trimmed)) {
@@ -404,13 +404,14 @@ class ArtikelService
         }
         $id = $this->kategorieRepo->insert($trimmed, $parentId, $istAktionsKategorie, $beschreibung);
         if ($id) {
+            $this->kategorieRepo->positioniereNach($id, $nachId, $parentId);
             Logger::log('kategorie.anlegen', 'kategorien', $id, ['name' => $trimmed, 'parent_id' => $parentId]);
             return ['erfolg' => true, 'id' => $id, 'name' => $trimmed];
         }
         return ['erfolg' => false, 'fehler' => 'Fehler beim Speichern'];
     }
 
-    public function updateKategorie(int $id, string $name, ?int $parentId, bool $istAktionsKategorie = false, ?string $beschreibung = null): array
+    public function updateKategorie(int $id, string $name, ?int $parentId, bool $istAktionsKategorie = false, ?string $beschreibung = null, ?int $nachId = null): array
     {
         $trimmed = trim($name);
         if (empty($trimmed)) {
@@ -426,6 +427,7 @@ class ArtikelService
             return ['erfolg' => false, 'fehler' => 'Ziel ist ein Nachkomme dieser Kategorie'];
         }
         $this->kategorieRepo->update($id, $trimmed, $parentId, $istAktionsKategorie, $beschreibung);
+        $this->kategorieRepo->positioniereNach($id, $nachId, $parentId);
         Logger::log('kategorie.bearbeiten', 'kategorien', $id, ['name' => $trimmed, 'parent_id' => $parentId]);
         return ['erfolg' => true];
     }

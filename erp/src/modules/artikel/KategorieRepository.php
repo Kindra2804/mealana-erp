@@ -47,7 +47,7 @@ class KategorieRepository
     public function findAllMitEltern(): array
     {
         $stmt = $this->db->query("
-            SELECT k.id, k.parent_id, k.name, k.beschreibung, k.sortierung,
+            SELECT k.id, k.parent_id, k.name, k.beschreibung, k.bild_pfad, k.sortierung,
                 k.ist_aktions_kategorie,
                 COUNT(DISTINCT a.id) AS artikel_anzahl,
                 MAX(CASE WHEN akt2.gestartet = 1 AND CURDATE() BETWEEN ak2.gueltig_ab AND ak2.gueltig_bis THEN 1 ELSE 0 END) AS aktion_aktiv,
@@ -240,9 +240,23 @@ class KategorieRepository
 
     public function findById(int $id): array|false
     {
-        $stmt = $this->db->prepare("SELECT id, parent_id, name, beschreibung, sortierung, ist_aktions_kategorie FROM kategorien WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT id, parent_id, name, beschreibung, bild_pfad, sortierung, ist_aktions_kategorie FROM kategorien WHERE id = :id");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
+    }
+
+    public function findBildPfad(int $id): ?string
+    {
+        $stmt = $this->db->prepare("SELECT bild_pfad FROM kategorien WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $wert = $stmt->fetchColumn();
+        return $wert !== false ? $wert : null;
+    }
+
+    public function updateBild(int $id, ?string $dateiname): void
+    {
+        $this->db->prepare("UPDATE kategorien SET bild_pfad = :bild WHERE id = :id")
+            ->execute(['bild' => $dateiname, 'id' => $id]);
     }
 
     public function getSiblingsWithSort(?int $parentId): array
@@ -268,6 +282,42 @@ class KategorieRepository
     {
         $stmt = $this->db->prepare("UPDATE kategorien SET sortierung = :sort WHERE id = :id");
         $stmt->execute(['sort' => $sort, 'id' => $id]);
+    }
+
+    /**
+     * Setzt eine Kategorie an eine bestimmte Stelle innerhalb ihrer Geschwister
+     * (gleiche Oberkategorie), statt sie nur um eine Position zu verschieben.
+     * $nachId = null → ganz an den Anfang. $nachId nicht gefunden (z.B. nach
+     * einem Wechsel der Oberkategorie) → ebenfalls Anfang, als sicherer Fallback.
+     * Nummeriert danach alle Geschwister neu durch (10, 20, 30, ...) — gleiches
+     * Muster wie beim Verschieben per ▲▼-Pfeil in kategorie_sort_ajax.php.
+     */
+    public function positioniereNach(int $id, ?int $nachId, ?int $parentId): void
+    {
+        $geschwister = $this->getSiblingsWithSort($parentId);
+
+        // Eigene Zeile zuerst raus (falls schon vorhanden, z.B. beim Bearbeiten)
+        $geschwister = array_values(array_filter(
+            $geschwister,
+            fn(array $g): bool => (int)$g['id'] !== $id
+        ));
+
+        $index = null;
+        if ($nachId !== null) {
+            foreach ($geschwister as $i => $g) {
+                if ((int)$g['id'] === $nachId) {
+                    $index = $i + 1;
+                    break;
+                }
+            }
+        }
+        $index ??= 0;
+
+        array_splice($geschwister, $index, 0, [['id' => $id]]);
+
+        foreach ($geschwister as $i => $g) {
+            $this->updateSortierung((int)$g['id'], ($i + 1) * 10);
+        }
     }
 
     public function update(int $id, string $name, ?int $parentId, bool $istAktionsKategorie = false, ?string $beschreibung = null): bool

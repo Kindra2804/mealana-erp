@@ -252,82 +252,14 @@ $zugewieseneAchsenIds = array_column($achsen, 'achse_id');
 $wertIdsInUse         = $variantenService->findWertIdsInUse($id);
 $wertIdsInUseSet      = array_flip($wertIdsInUse);
 
-// Achsenhierarchie für Generator aufbauen
-$achseInfoMap = array_column($alleGlobalenAchsen, null, 'id');
-
-// Lookup: welche achse_ids sind diesem Artikel zugewiesen?
-$assignedAchseIdSet = array_flip(array_map('intval', array_column($achsen, 'achse_id')));
-
-// Sub-Achsen nach Parent-Id gruppieren (nur die dem Artikel zugewiesenen)
-$subAchsenByParent = [];
-foreach ($achsen as $a) {
-    $aId = (int)$a['achse_id'];
-    $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
-    if ($pid > 0) {
-        $subAchsenByParent[$pid][] = $aId;
-    }
-}
-
-// Dimensionen aufbauen:
-// Sub-Achsen-Werte kommen IMMER in die Parent-Dimension (UNION), nie als eigene Dimension.
-// Grund: Sub-Achsen sind Unterkategorien der Parent-Achse, nicht separate Produkt-Dimensionen.
-// Suffix = Sub-Achsen-Name (z.B. "gelb MIX" statt nur "gelb")
-$dimensionen = [];
-$verarbeitet = [];
-
-foreach ($achsen as $a) {
-    $aId = (int)$a['achse_id'];
-    if (isset($verarbeitet[$aId])) continue;
-
-    $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
-
-    if ($pid > 0 && isset($assignedAchseIdSet[$pid])) {
-        // Sub-Achse, Parent zugewiesen → wird beim Parent-Durchlauf eingebaut
-        $verarbeitet[$aId] = true;
-        continue;
-    }
-
-    if ($pid > 0 && !isset($assignedAchseIdSet[$pid])) {
-        // Sub-Achse, Parent NICHT zugewiesen → UNION aller Geschwister = eine Dimension
-        $gruppe = [];
-        foreach ($subAchsenByParent[$pid] ?? [] as $sibId) {
-            if (isset($verarbeitet[$sibId])) continue;
-            $sibSuffix = $achseInfoMap[$sibId]['name'] ?? '';
-            foreach ($werteProAchse[$sibId] ?? [] as $w) {
-                $w['achse_suffix'] = $sibSuffix;
-                $gruppe[] = $w;
-            }
-            $verarbeitet[$sibId] = true;
-        }
-        if (!empty($gruppe)) {
-            $dimensionen[] = $gruppe;
-        }
-        continue;
-    }
-
-    // Root-Achse (pid=0): eigene Werte + ALLE Sub-Achsen-Werte (UNION, mit Suffix)
-    $gruppe = [];
-    $verarbeitet[$aId] = true;
-
-    foreach ($werteProAchse[$aId] ?? [] as $w) {
-        $gruppe[] = $w;
-    }
-
-    foreach ($subAchsenByParent[$aId] ?? [] as $subId) {
-        if (isset($verarbeitet[$subId])) continue;
-        $subSuffix = $achseInfoMap[$subId]['name'] ?? '';
-        foreach ($werteProAchse[$subId] ?? [] as $w) {
-            $w['achse_suffix'] = $subSuffix;
-            $gruppe[] = $w;
-        }
-        $verarbeitet[$subId] = true;
-    }
-
-    if (!empty($gruppe)) {
-        $dimensionen[] = $gruppe;
-    }
-}
-$alleKombis = !empty($dimensionen) ? kartesischesProdukt($dimensionen) : [];
+// Achsenhierarchie für Generator aufbauen -- geteilte Logik mit dem
+// Shop-Sync (VariantenService::baueAchsenDimensionen(), siehe dort für die
+// Begründung der Union-Regel bei Sub-Achsen). Name-Lookup MUSS aus ALLEN
+// globalen Achsen kommen (nicht nur den zugewiesenen), falls eine Parent-Achse
+// selbst nicht direkt zugewiesen ist.
+$alleAchsenNamenMap = array_column($alleGlobalenAchsen, 'name', 'id');
+$dimensionen        = $variantenService->baueAchsenDimensionen($achsen, $werte, $alleAchsenNamenMap);
+$alleKombis         = !empty($dimensionen) ? kartesischesProdukt(array_column($dimensionen, 'werte')) : [];
 
 // var_dump($alleKombis);
 
@@ -801,6 +733,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php
                         // Baum aufbauen: Root-Achsen + ihre Sub-Achsen gruppiert
                         // $a['abhaengig_von_achse_id'] kommt direkt aus findAchsenByArtikelId SQL
+                        $assignedAchseIdSet = array_flip(array_map('intval', array_column($achsen, 'achse_id')));
                         $dispRoots = [];
                         $dispSubs  = []; // parent achse_id → [achsen]
                         foreach ($achsen as $a) {

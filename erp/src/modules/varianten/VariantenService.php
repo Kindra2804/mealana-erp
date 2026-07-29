@@ -235,4 +235,103 @@ class VariantenService
 
         return ['erfolg' => true, 'anzahl' => count($kombis), 'ids' => $neuErstellteIds, 'preisAnpassungen' => $preisAnpassungen, 'eanMap' => $eanMap];
     }
+
+    /**
+     * Baut aus einer flachen Achsen+Werte-Zuweisung eines Artikels die
+     * "Dimensionen" für Variantenkombinationen: Sub-Achsen, deren Parent NICHT
+     * direkt zugewiesen ist, werden mit allen Geschwistern zu EINER Dimension
+     * unioniert statt als eigene Dimension behandelt zu werden -- Sub-Achsen
+     * (z.B. "Mix"/"Uni" unter Gruppenachse "Farbe") sind fachliche
+     * Unterkategorien der Parent-Achse, keine eigenständige Produkt-Eigenschaft.
+     *
+     * Gemeinsame Logik für den VarKombi-Generator (artikel/detail.php) UND den
+     * WooCommerce-Shop-Sync (ShopSyncService) -- beide MÜSSEN dieselbe Regel
+     * verwenden, sonst entstehen im Shop Kombinationen, die es nie geben kann
+     * (z.B. gleichzeitig "Mix Rot" + "Uni Blau" wählbar). Genau das war ein
+     * echter Bug (2026-07-29, siehe project_shop_sync.md): der Shop-Sync hatte
+     * diese Union-Regel nicht und behandelte jede Sub-Achse als eigenes
+     * WooCommerce-Attribut.
+     *
+     * @param array $achsen  wie findAchsenByArtikelId() liefert (braucht mind.
+     *                       achse_id, name, abhaengig_von_achse_id)
+     * @param array $werte   wie findWerteByArtikelId() liefert (braucht mind. achse_id)
+     * @param array<int,string> $achseNamenById Name-Lookup, MUSS auch nicht
+     *                       zugewiesene Eltern-Achsen enthalten (z.B. AchsenRepository::findAll())
+     * @return array<int, array{name:string, achse_id:int, werte:array}>
+     */
+    public function baueAchsenDimensionen(array $achsen, array $werte, array $achseNamenById): array
+    {
+        $werteProAchse = [];
+        foreach ($werte as $w) {
+            $werteProAchse[$w['achse_id']][] = $w;
+        }
+
+        $assignedAchseIdSet = array_flip(array_map('intval', array_column($achsen, 'achse_id')));
+
+        $subAchsenByParent = [];
+        foreach ($achsen as $a) {
+            $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
+            if ($pid > 0) {
+                $subAchsenByParent[$pid][] = (int)$a['achse_id'];
+            }
+        }
+
+        $dimensionen = [];
+        $verarbeitet = [];
+
+        foreach ($achsen as $a) {
+            $aId = (int)$a['achse_id'];
+            if (isset($verarbeitet[$aId])) continue;
+
+            $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
+
+            if ($pid > 0 && isset($assignedAchseIdSet[$pid])) {
+                // Sub-Achse, Parent zugewiesen -> wird beim Parent-Durchlauf eingebaut
+                $verarbeitet[$aId] = true;
+                continue;
+            }
+
+            if ($pid > 0 && !isset($assignedAchseIdSet[$pid])) {
+                // Sub-Achse, Parent NICHT zugewiesen -> UNION aller Geschwister = eine Dimension
+                $gruppe = [];
+                foreach ($subAchsenByParent[$pid] ?? [] as $sibId) {
+                    if (isset($verarbeitet[$sibId])) continue;
+                    $sibSuffix = $achseNamenById[$sibId] ?? '';
+                    foreach ($werteProAchse[$sibId] ?? [] as $w) {
+                        $w['achse_suffix'] = $sibSuffix;
+                        $gruppe[] = $w;
+                    }
+                    $verarbeitet[$sibId] = true;
+                }
+                if (!empty($gruppe)) {
+                    $dimensionen[] = ['name' => $achseNamenById[$pid] ?? '?', 'achse_id' => $pid, 'werte' => $gruppe];
+                }
+                continue;
+            }
+
+            // Root-Achse (pid=0): eigene Werte + ALLE Sub-Achsen-Werte (UNION, mit Suffix)
+            $gruppe = [];
+            $verarbeitet[$aId] = true;
+
+            foreach ($werteProAchse[$aId] ?? [] as $w) {
+                $gruppe[] = $w;
+            }
+
+            foreach ($subAchsenByParent[$aId] ?? [] as $subId) {
+                if (isset($verarbeitet[$subId])) continue;
+                $subSuffix = $achseNamenById[$subId] ?? '';
+                foreach ($werteProAchse[$subId] ?? [] as $w) {
+                    $w['achse_suffix'] = $subSuffix;
+                    $gruppe[] = $w;
+                }
+                $verarbeitet[$subId] = true;
+            }
+
+            if (!empty($gruppe)) {
+                $dimensionen[] = ['name' => $a['name'], 'achse_id' => $aId, 'werte' => $gruppe];
+            }
+        }
+
+        return $dimensionen;
+    }
 }

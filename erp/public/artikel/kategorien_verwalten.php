@@ -45,6 +45,7 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe, int $pos, int $total
     <div class="katv-zeile" data-id="<?= $knoten['id'] ?>"
          data-name="<?= htmlspecialchars($knoten['name']) ?>"
          data-beschreibung="<?= htmlspecialchars($knoten['beschreibung'] ?? '') ?>"
+         data-bild="<?= htmlspecialchars($knoten['bild_pfad'] ?? '') ?>"
          data-parent="<?= $knoten['parent_id'] ?? '' ?>"
          data-iak="<?= $istAktionKat ?>"
          style="padding-left:<?= 16 + $einzug ?>px<?= $zeileDimmed ? ';opacity:.45' : '' ?>">
@@ -102,7 +103,7 @@ function flattenBaum(array $baum, int $tiefe = 0): array
 {
     $result = [];
     foreach ($baum as $k) {
-        $result[] = ['id' => $k['id'], 'name' => $k['name'], 'tiefe' => $tiefe];
+        $result[] = ['id' => $k['id'], 'name' => $k['name'], 'tiefe' => $tiefe, 'parent_id' => $k['parent_id']];
         if (!empty($k['kinder'])) {
             $result = array_merge($result, flattenBaum($k['kinder'], $tiefe + 1));
         }
@@ -111,6 +112,14 @@ function flattenBaum(array $baum, int $tiefe = 0): array
 }
 $flacheListe = flattenBaum($kategorienBaum);
 ?>
+<script>
+// Für die "Einordnen nach"-Dropdown im Modal: pro Oberkategorie die Geschwister
+// in der aktuellen Sortierreihenfolge (kategorien_verwalten.js baut daraus die Optionen).
+window.KATEGORIEN_FLACH = <?= json_encode(array_map(
+    fn($k) => ['id' => (int)$k['id'], 'parent_id' => $k['parent_id'] !== null ? (int)$k['parent_id'] : null, 'name' => $k['name']],
+    $flacheListe
+)) ?>;
+</script>
 
 <div class="card">
     <?php if (empty($kategorienBaum)): ?>
@@ -147,7 +156,7 @@ $flacheListe = flattenBaum($kategorienBaum);
             </div>
             <div class="form-row">
                 <label class="form-label">Oberkategorie</label>
-                <select id="katv-parent" class="erp-select" style="width:100%">
+                <select id="katv-parent" class="erp-select" style="width:100%" onchange="katvAktualisierePositionsDropdown()">
                     <option value="">– Keine (Hauptkategorie) –</option>
                     <?php foreach ($flacheListe as $f): ?>
                         <option value="<?= $f['id'] ?>">
@@ -157,10 +166,30 @@ $flacheListe = flattenBaum($kategorienBaum);
                 </select>
             </div>
             <div class="form-row">
+                <label class="form-label">Einordnen</label>
+                <select id="katv-nach" class="erp-select" style="width:100%"></select>
+            </div>
+            <div class="form-row">
                 <label class="form-label">Beschreibung</label>
                 <textarea id="katv-beschreibung" class="erp-input" style="width:100%;min-height:70px;resize:vertical"></textarea>
                 <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
                     Wird nur im Online-Shop auf der Kategorieseite angezeigt, im ERP selbst nirgends
+                </div>
+            </div>
+            <div class="form-row" id="katv-bild-bereich" style="display:none">
+                <label class="form-label">Kategoriebild</label>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <img id="katv-bild-preview" src="" alt=""
+                         style="display:none;width:64px;height:64px;object-fit:cover;border-radius:4px;border:1px solid var(--color-border)">
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <input type="file" id="katv-bild-datei" accept="image/jpeg,image/png,image/webp" style="font-size:12px" onchange="katvBildHochladen(this)">
+                        <button type="button" id="katv-bild-entfernen-btn" onclick="katvBildEntfernen()"
+                                class="btn btn-secondary btn-xs" style="display:none;width:fit-content">Bild entfernen</button>
+                    </div>
+                </div>
+                <div id="katv-bild-fehler" style="color:var(--color-danger);font-size:12px;margin-top:4px"></div>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                    Wird im Online-Shop angezeigt (z.B. Mega-Menü/Kategorieseite). Erst nach dem ersten Speichern verfügbar.
                 </div>
             </div>
             <div class="form-row" style="margin-top:4px">

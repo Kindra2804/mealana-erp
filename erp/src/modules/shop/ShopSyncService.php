@@ -5,6 +5,8 @@ require_once __DIR__ . '/WooCommerceClient.php';
 require_once __DIR__ . '/../../core/logger.php';
 require_once __DIR__ . '/../artikel/BilderRepository.php';
 require_once __DIR__ . '/../hersteller/HerstellerService.php';
+require_once __DIR__ . '/../varianten/VariantenService.php';
+require_once __DIR__ . '/../achsen/AchsenRepository.php';
 
 /**
  * ShopSyncService – synct Standard-Artikel UND Vater/Kind-Artikel nach WooCommerce.
@@ -25,16 +27,23 @@ class ShopSyncService
     private ShopSyncRepository $repo;
     private BilderRepository $bilderRepo;
     private HerstellerService $herstellerService;
+    private VariantenService $variantenService;
+    private AchsenRepository $achsenRepo;
     private int $jarvisId;
 
     /** @var array<int,array<string,int>> shopId => [einheit_slug => wc_unit_id], siehe findeEinheitId() */
     private array $einheitenCache = [];
+
+    /** @var array<int,array> vaterId => Dimensionen (siehe holeDimensionenFuerVater()), Cache pro Sync-Lauf */
+    private array $dimensionenCache = [];
 
     public function __construct()
     {
         $this->repo = new ShopSyncRepository();
         $this->bilderRepo = new BilderRepository();
         $this->herstellerService = new HerstellerService();
+        $this->variantenService = new VariantenService();
+        $this->achsenRepo = new AchsenRepository();
         // Läuft als Cron ohne Session -- Logger::log() braucht dann eine explizite
         // benutzer_id, sonst crasht der INSERT an aktivitaeten.benutzer_id NOT NULL
         // (gleiches Bug-Muster wie schon bei cron/mahnwesen.php und LagerService).
@@ -66,6 +75,16 @@ class ShopSyncService
         $erfolg = 0;
         $fehler = 0;
 
+        // Sobald der Server mit einer Rate-Limit-Sperre antwortet (siehe
+        // RateLimitException in WooCommerceClient), betrifft das die ganze
+        // Verbindung zum Shop -- nicht nur den einen Artikel/das eine Bild.
+        // Weiterzumachen würde bei jedem der u.U. hunderten fälligen Artikel
+        // erneut dagegen rennen (Fund 2026-07-29: nginx sperrte die IP für
+        // eine volle Stunde). Sobald erkannt: restlichen Durchlauf für diesen
+        // Shop komplett abbrechen, einmalig loggen, nächster Cron-Lauf
+        // versucht es automatisch wieder.
+        $rateLimitiert = false;
+
         $faelligeArtikel = $this->repo->findFaelligeArtikel((int)$shop['id']);
 
         // Kategorien MÜSSEN vor den Artikeln in WooCommerce existieren, sonst kann der
@@ -75,12 +94,17 @@ class ShopSyncService
         // Kategorie synct (findWcKategorieIds liefert einfach eine ID weniger).
         $bereitsVersucht = [];
         foreach ($faelligeArtikel as $row) {
+            if ($rateLimitiert) break;
             foreach ($this->repo->findKategorieIdsFuerArtikel((int)$row['artikel_id']) as $kategorieId) {
                 $kategorieId = (int)$kategorieId;
                 if (isset($bereitsVersucht[$kategorieId])) continue;
                 $bereitsVersucht[$kategorieId] = true;
                 try {
                     $this->syncKategorieMitVorfahren($client, $kategorieId, (int)$shop['id']);
+                } catch (RateLimitException $e) {
+                    $rateLimitiert = true;
+                    $this->protokolliereRateLimit($shop, $e);
+                    break 2;
                 } catch (Throwable $e) {
                     Logger::log('shop.kategorie_sync_fehler', 'kategorien', $kategorieId, [
                         'shop'  => $shop['slug'],
@@ -97,10 +121,15 @@ class ShopSyncService
         // "neu anlegen über einen fälligen Artikel" ab, nicht "bereits vorhanden,
         // aber geändert".
         foreach ($this->repo->findFaelligeKategorien((int)$shop['id']) as $kategorieId) {
+            if ($rateLimitiert) break;
             if (isset($bereitsVersucht[$kategorieId])) continue;
             $bereitsVersucht[$kategorieId] = true;
             try {
                 $this->syncKategorieMitVorfahren($client, $kategorieId, (int)$shop['id']);
+            } catch (RateLimitException $e) {
+                $rateLimitiert = true;
+                $this->protokolliereRateLimit($shop, $e);
+                break;
             } catch (Throwable $e) {
                 Logger::log('shop.kategorie_sync_fehler', 'kategorien', $kategorieId, [
                     'shop'  => $shop['slug'],
@@ -114,9 +143,14 @@ class ShopSyncService
         // dem letzten Sync geändert haben, unabhängig von Artikel-Fälligkeit.
         $bereitsVersuchtHersteller = [];
         foreach ($this->repo->findFaelligeHersteller((int)$shop['id']) as $herstellerId) {
+            if ($rateLimitiert) break;
             $bereitsVersuchtHersteller[$herstellerId] = true;
             try {
                 $this->syncHerstellerFuerArtikel($client, $herstellerId, (int)$shop['id']);
+            } catch (RateLimitException $e) {
+                $rateLimitiert = true;
+                $this->protokolliereRateLimit($shop, $e);
+                break;
             } catch (Throwable $e) {
                 Logger::log('shop.hersteller_sync_fehler', 'hersteller', $herstellerId, [
                     'shop'  => $shop['slug'],
@@ -126,6 +160,7 @@ class ShopSyncService
         }
 
         foreach ($faelligeArtikel as $row) {
+            if ($rateLimitiert) break;
             try {
                 $istKind = $row['vaterartikel_id'] !== null;
                 $vaterId = $istKind ? (int)$row['vaterartikel_id'] : (int)$row['artikel_id'];
@@ -146,7 +181,7 @@ class ShopSyncService
                         // sobald der Vater dann eine external_id hat.
                         continue;
                     }
-                    $payload = $this->baueVariationPayload($client, $row, (int)$shop['id']);
+                    $payload = $this->baueVariationPayload($client, $row, (int)$shop['id'], $vaterId);
                     if ($row['external_id']) {
                         $wcObjekt = $client->aktualisiereVariation($row['vater_external_id'], $row['external_id'], $payload);
                     } else {
@@ -167,6 +202,10 @@ class ShopSyncService
 
                 $this->repo->markiereSynced((int)$row['artikel_shop_id'], (string)$wcObjekt['id']);
                 $erfolg++;
+            } catch (RateLimitException $e) {
+                $rateLimitiert = true;
+                $this->protokolliereRateLimit($shop, $e);
+                break;
             } catch (Throwable $e) {
                 $this->repo->markiereFehler((int)$row['artikel_shop_id'], $e->getMessage());
                 Logger::log('shop.sync_fehler', 'artikel', (int)$row['artikel_id'], [
@@ -178,6 +217,23 @@ class ShopSyncService
         }
 
         return ['erfolg' => $erfolg, 'fehler' => $fehler];
+    }
+
+    /**
+     * Einmaliger, klarer Log-Eintrag statt hunderter identischer Fehler --
+     * eine Rate-Limit-Sperre betrifft die ganze Verbindung, nicht den
+     * einzelnen Artikel/das einzelne Bild, das sie gerade zufällig ausgelöst
+     * hat.
+     */
+    private function protokolliereRateLimit(array $shop, RateLimitException $e): void
+    {
+        $wartehinweis = $e->retryAfterSekunden !== null
+            ? sprintf(' (Server nennt Retry-After: %d Sekunden = %.1f Minuten)', $e->retryAfterSekunden, $e->retryAfterSekunden / 60)
+            : '';
+        Logger::log('shop.rate_limit', 'shops', (int)$shop['id'], [
+            'shop'   => $shop['slug'],
+            'fehler' => $e->getMessage() . $wartehinweis,
+        ], $this->jarvisId, 'warn');
     }
 
     /**
@@ -210,6 +266,8 @@ class ShopSyncService
                     $this->repo->upsertKategorieZuweisung((int)$kategorie['id'], $shopId, (string)$wcKategorieId);
                 }
 
+                $this->syncKategorieBild($client, $kategorie, $shopId, $wcKategorieId, $vorhandeneZuweisung);
+
                 $wcParentId = $wcKategorieId;
                 continue;
             }
@@ -219,8 +277,38 @@ class ShopSyncService
                 'parent'      => $wcParentId,
             ]);
             $this->repo->upsertKategorieZuweisung((int)$kategorie['id'], $shopId, (string)$wcKategorie['id']);
+            $this->syncKategorieBild($client, $kategorie, $shopId, (int)$wcKategorie['id'], false);
             $wcParentId = (int)$wcKategorie['id'];
         }
+    }
+
+    /**
+     * Kategoriebild unabhängig von Name/Beschreibung syncen -- eigene
+     * Change-Detection über den zuletzt hochgeladenen Dateinamen
+     * (kategorie_shops.bild_pfad_synced), damit nicht bei jeder Textänderung
+     * unnötig neu hochgeladen wird. Gleicher Byte-Upload-Weg wie Artikelbilder
+     * (ERP hat keinen öffentlichen Endpunkt, WooCommerce kann die Datei nicht
+     * selbst abholen).
+     */
+    private function syncKategorieBild(WooCommerceClient $client, array $kategorie, int $shopId, int $wcKategorieId, array|false $vorhandeneZuweisung): void
+    {
+        $bildPfad      = $kategorie['bild_pfad'] ?? null;
+        $bereitsSynced = $vorhandeneZuweisung ? ($vorhandeneZuweisung['bild_pfad_synced'] ?? null) : null;
+
+        if ($bildPfad === $bereitsSynced) {
+            return;
+        }
+
+        if ($bildPfad === null) {
+            $client->aktualisiereKategorie((string)$wcKategorieId, ['image' => null]);
+            $this->repo->markiereKategorieBildSynced((int)$kategorie['id'], $shopId, null, null);
+            return;
+        }
+
+        $pfad    = __DIR__ . '/../../../public/uploads/kategorien/' . $kategorie['id'] . '/' . $bildPfad;
+        $wcMedia = $client->ladeBildHoch($pfad, $bildPfad);
+        $client->aktualisiereKategorie((string)$wcKategorieId, ['image' => ['id' => (int)$wcMedia['id']]]);
+        $this->repo->markiereKategorieBildSynced((int)$kategorie['id'], $shopId, $bildPfad, (string)$wcMedia['id']);
     }
 
     private function baueProduktPayload(WooCommerceClient $client, array $artikel, int $shopId): array
@@ -319,7 +407,7 @@ class ShopSyncService
     }
 
     /** Payload für eine WooCommerce-Variation (= unser Kind-Artikel). */
-    private function baueVariationPayload(WooCommerceClient $client, array $kind, int $shopId): array
+    private function baueVariationPayload(WooCommerceClient $client, array $kind, int $shopId, int $vaterId): array
     {
         $preis = $this->repo->findEndkundenPreis((int)$kind['artikel_id']);
 
@@ -330,11 +418,23 @@ class ShopSyncService
 
         // Bei Variationen heißt das Feld 'option' (Singular, ein fester Wert) --
         // beim Eltern-Payload oben ist es 'options' (Plural, alle möglichen Werte).
-        $payload['attributes'] = array_map(function (array $wert) use ($shopId) {
-            $achseZuweisung = $this->repo->findAchseShopZuweisung((int)$wert['achse_id'], $shopId);
+        //
+        // Ein Kind referenziert seine Werte immer über die ROHE Achse (z.B.
+        // "Mix"), das WooCommerce-Attribut läuft aber ggf. unter der
+        // DIMENSIONS-achse_id (z.B. der gemeinsamen Gruppenachse "Farbe") --
+        // achseZuDimensionMap() löst das auf. Ohne diese Auflösung würde für
+        // "Mix"/"Uni" je ein eigenes (nicht existierendes) Attribut gesucht,
+        // und der 'option'-Text hätte nicht den Suffix, den der zugehörige
+        // Term beim Anlegen (syncWerteFuerDimension()) bekommen hat.
+        $achseZuDimension = $this->baueAchseZuDimensionMap($this->holeDimensionenFuerVater($vaterId));
+        $payload['attributes'] = array_map(function (array $wert) use ($shopId, $achseZuDimension) {
+            $achseId = (int)$wert['achse_id'];
+            $info = $achseZuDimension[$achseId] ?? ['dimension_achse_id' => $achseId, 'suffix' => null];
+            $achseZuweisung = $this->repo->findAchseShopZuweisung($info['dimension_achse_id'], $shopId);
+            $option = $wert['wert'] . (!empty($info['suffix']) ? ' ' . $info['suffix'] : '');
             return [
                 'id'     => (int)$achseZuweisung['externe_attribut_id'],
-                'option' => $wert['wert'],
+                'option' => $option,
             ];
         }, $this->repo->findKombinationFuerKind((int)$kind['artikel_id']));
 
@@ -455,22 +555,69 @@ class ShopSyncService
      * Läuft für JEDEN fälligen Artikel (Vater wie Kind), ist aber pro Achse/Wert
      * durch die lokale Zuweisungstabelle idempotent -- nur beim allerersten Mal
      * wird tatsächlich mit der WooCommerce-API gesprochen.
+     *
+     * Arbeitet auf "Dimensionen" statt rohen Achsen (siehe holeDimensionenFuerVater()):
+     * Sub-Achsen wie "Mix"/"Uni" unter einer nicht zugewiesenen Gruppenachse
+     * "Farbe" werden zu EINEM WooCommerce-Attribut zusammengefasst statt zwei
+     * unabhängige daraus zu machen -- sonst könnte der Shop Kombinationen aus
+     * beiden anbieten, die es nie geben kann (echter Bug, 2026-07-29, siehe
+     * project_shop_sync.md).
      */
     private function syncAchsenFuerVater(WooCommerceClient $client, int $vaterId, int $shopId): void
     {
-        foreach ($this->repo->findAchsenFuerArtikel($vaterId) as $achse) {
-            $achseId = (int)$achse['achse_id'];
+        foreach ($this->holeDimensionenFuerVater($vaterId) as $dimension) {
+            $achseId = (int)$dimension['achse_id'];
             $zuweisung = $this->repo->findAchseShopZuweisung($achseId, $shopId);
 
             if ($zuweisung && $zuweisung['externe_attribut_id']) {
                 $attributId = (int)$zuweisung['externe_attribut_id'];
             } else {
-                $attributId = $this->findeOderErstelleAttribut($client, $achse['name']);
+                $attributId = $this->findeOderErstelleAttribut($client, $dimension['name']);
                 $this->repo->upsertAchseZuweisung($achseId, $shopId, (string)$attributId);
             }
 
-            $this->syncWerteFuerAchse($client, $vaterId, $achseId, $attributId, $shopId);
+            $this->syncWerteFuerDimension($client, $dimension, $attributId, $shopId);
         }
+    }
+
+    /**
+     * Achsen-Dimensionen eines Vater-Artikels, gecacht pro Sync-Lauf (mehrfach
+     * gebraucht: einmal hier, einmal pro Kind in baueVariationPayload()).
+     * Nutzt VariantenService::baueAchsenDimensionen() -- dieselbe Regel wie im
+     * VarKombi-Generator (artikel/detail.php), damit beide niemals auseinanderlaufen.
+     */
+    private function holeDimensionenFuerVater(int $vaterId): array
+    {
+        if (!isset($this->dimensionenCache[$vaterId])) {
+            $achsen = $this->repo->findAchsenFuerArtikel($vaterId);
+            $werte  = $this->repo->findAlleWerteFuerVater($vaterId);
+            $achseNamenById = array_column($this->achsenRepo->findAll(), 'name', 'id');
+            $this->dimensionenCache[$vaterId] = $this->variantenService->baueAchsenDimensionen($achsen, $werte, $achseNamenById);
+        }
+        return $this->dimensionenCache[$vaterId];
+    }
+
+    /**
+     * Flacher Lookup rohe achse_id -> [dimension_achse_id, suffix], abgeleitet
+     * aus den Dimensionen. Wird gebraucht, weil ein Kind seine eigenen Werte
+     * immer über die ROHE achse_id referenziert (z.B. "Mix"), das WooCommerce-
+     * Attribut aber unter der DIMENSIONS-achse_id läuft (z.B. "Farbe" bzw. bei
+     * nicht zugewiesenem Parent dessen id) -- siehe baueVariationPayload().
+     *
+     * @return array<int,array{dimension_achse_id:int,suffix:?string}>
+     */
+    private function baueAchseZuDimensionMap(array $dimensionen): array
+    {
+        $map = [];
+        foreach ($dimensionen as $dimension) {
+            foreach ($dimension['werte'] as $wert) {
+                $map[(int)$wert['achse_id']] = [
+                    'dimension_achse_id' => (int)$dimension['achse_id'],
+                    'suffix' => $wert['achse_suffix'] ?? null,
+                ];
+            }
+        }
+        return $map;
     }
 
     private function findeOderErstelleAttribut(WooCommerceClient $client, string $name, array $extraFelder = []): int
@@ -733,11 +880,18 @@ class ShopSyncService
         return implode("\n", $zeilen);
     }
 
-    private function syncWerteFuerAchse(WooCommerceClient $client, int $vaterId, int $achseId, int $attributId, int $shopId): void
+    /**
+     * Werte EINER Dimension als Terms unter dem gemeinsamen WC-Attribut anlegen.
+     * Bei einer unionierten Dimension (Sub-Achsen wie "Mix"/"Uni") trägt jeder
+     * Wert einen 'achse_suffix' -- der Term-Name wird dann "Wert SUFFIX"
+     * (z.B. "gelb MIX"), damit z.B. "Rot" aus Mix und "Rot" aus Uni nicht auf
+     * denselben Term kollabieren (wären sonst fälschlich ein einziger Wert).
+     */
+    private function syncWerteFuerDimension(WooCommerceClient $client, array $dimension, int $attributId, int $shopId): void
     {
         $offeneWerte = [];
-        foreach ($this->repo->findWerteFuerAchse($vaterId, $achseId) as $wert) {
-            $zuweisung = $this->repo->findWertShopZuweisung((int)$wert['wert_id'], $shopId);
+        foreach ($dimension['werte'] as $wert) {
+            $zuweisung = $this->repo->findWertShopZuweisung((int)$wert['id'], $shopId);
             if (!$zuweisung || !$zuweisung['externe_term_id']) {
                 $offeneWerte[] = $wert;
             }
@@ -755,10 +909,11 @@ class ShopSyncService
         }
 
         foreach ($offeneWerte as $wert) {
-            $key = mb_strtolower($wert['wert']);
+            $anzeigeName = $wert['wert'] . (!empty($wert['achse_suffix']) ? ' ' . $wert['achse_suffix'] : '');
+            $key = mb_strtolower($anzeigeName);
             $termId = $vorhandeneTerms[$key]
-                ?? (int)$client->erstelleAttributTerm($attributId, ['name' => $wert['wert']])['id'];
-            $this->repo->upsertWertZuweisung((int)$wert['wert_id'], $shopId, (string)$termId);
+                ?? (int)$client->erstelleAttributTerm($attributId, ['name' => $anzeigeName])['id'];
+            $this->repo->upsertWertZuweisung((int)$wert['id'], $shopId, (string)$termId);
         }
     }
 
@@ -783,6 +938,12 @@ class ShopSyncService
                 $pfad = __DIR__ . '/../../../public/uploads/artikel/' . $artikelId . '/' . $bild['dateiname'];
                 $wcMedia = $client->ladeBildHoch($pfad, $bild['dateiname'], $bild['alt_text'] ?? '');
                 $this->repo->markiereBildSynced($bildId, $shopId, (string)$wcMedia['id']);
+            } catch (RateLimitException $e) {
+                // NICHT wie unten abfangen-und-weitermachen -- eine Rate-Limit-Sperre
+                // betrifft die ganze Verbindung, nicht nur dieses eine Bild. Muss bis
+                // zu syncShop() durchgereicht werden, sonst würde diese Schleife hier
+                // stur bei jedem weiteren Bild erneut dagegen rennen (siehe Fund 2026-07-29).
+                throw $e;
             } catch (Throwable $e) {
                 $this->repo->markiereBildFehler($bildId, $shopId, $e->getMessage());
                 Logger::log('shop.bild_sync_fehler', 'artikel_bilder', $bildId, [
@@ -827,14 +988,16 @@ class ShopSyncService
         $erfolg = 0;
         $fehler = 0;
         $letzteArtikelId = 0;
+        $rateLimitiert = false; // siehe syncShop() -- betrifft die ganze Verbindung, nicht ein einzelnes Bild
 
-        while (true) {
+        while (!$rateLimitiert) {
             $rows = $this->repo->findArtikelMitOffenenBildernUndExternalId((int)$shop['id'], $letzteArtikelId, $batchGroesse);
             if (empty($rows)) {
                 break;
             }
 
             foreach ($rows as $row) {
+                if ($rateLimitiert) break;
                 $letzteArtikelId = max($letzteArtikelId, (int)$row['artikel_id']);
 
                 $offeneBilder = array_values(array_filter(
@@ -878,6 +1041,9 @@ class ShopSyncService
                             $erfolg++;
                         }
                     }
+                } catch (RateLimitException $e) {
+                    $rateLimitiert = true;
+                    $this->protokolliereRateLimit($shop, $e);
                 } catch (Throwable $e) {
                     foreach ($zuVerarbeiten as $bild) {
                         $this->repo->markiereBildFehler((int)$bild['id'], (int)$shop['id'], $e->getMessage());

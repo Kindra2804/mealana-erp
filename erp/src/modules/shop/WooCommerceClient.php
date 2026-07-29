@@ -1,6 +1,21 @@
 <?php
 
 /**
+ * Erkennt eine Hosting-/Server-seitige Sperre (HTTP 429, z.B. nginx-Rate-Limit
+ * VOR WordPress) getrennt von normalen WooCommerce/WordPress-API-Fehlern.
+ * Betrifft die ganze Verbindung zum Shop, nicht nur den einen Artikel/das eine
+ * Bild -- ein Sync-Lauf soll dagegen nicht bei jedem weiteren fälligen Artikel
+ * erneut anrennen (siehe ShopSyncService::syncShop()).
+ */
+class RateLimitException extends RuntimeException
+{
+    public function __construct(string $message, public readonly ?int $retryAfterSekunden = null)
+    {
+        parent::__construct($message);
+    }
+}
+
+/**
  * WooCommerceClient – dünner Wrapper um die WooCommerce REST API v3.
  *
  * Ein Client pro Shop (URL+Key+Secret aus `shops`). Auth läuft über HTTP
@@ -10,12 +25,21 @@
  */
 class WooCommerceClient
 {
+    // Kleine Pause zwischen Medien-Uploads (siehe ladeBildHoch()) -- ohne die
+    // kann WordPress bei vielen Bildern kurz hintereinander (z.B. ein
+    // Vater-Artikel mit 50 Kind-Varianten, Fotos gleich mit hochgeladen) mit
+    // "429 Rate limit exceeded" ablehnen. Wert ist ein grober Erfahrungswert
+    // (2026-07-29 auf indra-design.at reproduziert) -- bei Bedarf erhöhen,
+    // falls trotzdem noch 429 auftaucht.
+    private const MEDIEN_UPLOAD_PAUSE_SEKUNDEN = 0.4;
+
     private string $siteUrl;
     private string $baseUrl;
     private string $key;
     private string $secret;
     private ?string $wpUsername;
     private ?string $wpAppPassword;
+    private ?float $letzterMedienUpload = null;
 
     public function __construct(
         string $url,
@@ -185,6 +209,15 @@ class WooCommerceClient
         if (!is_readable($dateiPfad)) {
             throw new RuntimeException("Bilddatei nicht lesbar: $dateiPfad");
         }
+
+        if ($this->letzterMedienUpload !== null) {
+            $wartezeit = self::MEDIEN_UPLOAD_PAUSE_SEKUNDEN - (microtime(true) - $this->letzterMedienUpload);
+            if ($wartezeit > 0) {
+                usleep((int)round($wartezeit * 1_000_000));
+            }
+        }
+        $this->letzterMedienUpload = microtime(true);
+
         $mime = mime_content_type($dateiPfad) ?: 'application/octet-stream';
 
         $url = $this->siteUrl . '/wp-json/wp/v2/media';
@@ -201,15 +234,27 @@ class WooCommerceClient
             ],
             CURLOPT_USERPWD => $this->wpUsername . ':' . $this->wpAppPassword,
             CURLOPT_TIMEOUT => 30,
+            CURLOPT_HEADER => true,
         ]);
 
-        $antwort = curl_exec($ch);
+        $rohantwort = curl_exec($ch);
         $fehler = curl_error($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerGroesse = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
-        if ($antwort === false) {
+        if ($rohantwort === false) {
             throw new RuntimeException("WordPress-Medien-Upload fehlgeschlagen: $fehler");
+        }
+
+        $header  = substr($rohantwort, 0, $headerGroesse);
+        $antwort = substr($rohantwort, $headerGroesse);
+
+        if ($httpCode === 429) {
+            throw new RateLimitException(
+                'Rate-Limit vom Hosting/Server erreicht (nicht WordPress selbst): ' . trim($antwort),
+                $this->leseRetryAfterSekunden($header)
+            );
         }
 
         $daten = json_decode($antwort, true);
@@ -234,18 +279,30 @@ class WooCommerceClient
             CURLOPT_CUSTOMREQUEST => $methode,
             CURLOPT_TIMEOUT => 20,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HEADER => true,
         ]);
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
         }
 
-        $antwort = curl_exec($ch);
+        $rohantwort = curl_exec($ch);
         $fehler = curl_error($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerGroesse = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
-        if ($antwort === false) {
+        if ($rohantwort === false) {
             throw new RuntimeException("WooCommerce-Verbindung fehlgeschlagen: $fehler");
+        }
+
+        $header  = substr($rohantwort, 0, $headerGroesse);
+        $antwort = substr($rohantwort, $headerGroesse);
+
+        if ($httpCode === 429) {
+            throw new RateLimitException(
+                'Rate-Limit vom Hosting/Server erreicht (nicht WooCommerce selbst): ' . trim($antwort),
+                $this->leseRetryAfterSekunden($header)
+            );
         }
 
         $daten = json_decode($antwort, true);
@@ -256,5 +313,18 @@ class WooCommerceClient
         }
 
         return $daten ?? [];
+    }
+
+    /**
+     * Liest den `Retry-After`-Header (Sekunden), falls der Server einen mitschickt --
+     * z.B. nginx' "429 Rate limit exceeded" schickt hier oft die Sperrdauer mit
+     * (in einem Fund vom 2026-07-29 gegen indra-design.at: 3600 = 1 Stunde).
+     */
+    private function leseRetryAfterSekunden(string $rohHeader): ?int
+    {
+        if (preg_match('/^retry-after:\s*(\d+)/mi', $rohHeader, $treffer)) {
+            return (int)$treffer[1];
+        }
+        return null;
     }
 }

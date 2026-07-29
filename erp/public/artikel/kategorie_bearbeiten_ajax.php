@@ -14,6 +14,7 @@ $name                = trim($_POST['name'] ?? '');
 $parentId            = (int)($_POST['parent_id'] ?? 0) ?: null;
 $istAktionsKategorie = !empty($_POST['ist_aktions_kategorie']);
 $beschreibung        = trim($_POST['beschreibung'] ?? '') ?: null;
+$nachId              = (int)($_POST['nach_id'] ?? 0) ?: null;
 
 if (!$id) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Ungültige ID']);
@@ -21,4 +22,4 @@ if (!$id) {
 }
 
 $service = new ArtikelService();
-echo json_encode($service->updateKategorie($id, $name, $parentId, $istAktionsKategorie, $beschreibung));
+echo json_encode($service->updateKategorie($id, $name, $parentId, $istAktionsKategorie, $beschreibung, $nachId));
