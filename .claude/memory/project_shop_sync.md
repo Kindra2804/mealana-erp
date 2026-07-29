@@ -1,12 +1,62 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); ALS ERSTES morgen prüfen: separate Germanized-Hersteller-Funktion (evtl. bessere GPSR-Lösung)"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix (Sub-Achsen-Bug) FERTIG (2026-07-29); 429-Ursache auf indra-design.at noch offen (Hosting-Support kontaktiert, Antwort ausständig); Karisma-Resync lokal vorbereitet, wartet auf sicheren Sync-Test"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-23T12:32:52.531Z
+  modified: 2026-07-29T19:05:29.201Z
 ---
+
+## 🔴 Achsen-Dimensionen-Bug (Sub-Achsen als eigene WC-Attribute) BEHOBEN (2026-07-29)
+
+**Von Jacky gemeldet:** Artikel "Karisma" hat 2 Achsen "Mix" und "Uni" — wählt man im Shop erst eine Mix-Farbe, dann eine Uni-Farbe, versucht WooCommerce eine Kombination aus beiden zu bilden, die es nie geben kann.
+
+**Root Cause:** "Mix" und "Uni" sind fachlich Sub-Achsen einer gemeinsamen (bei Karisma selbst nicht direkt zugewiesenen) Gruppenachse "Farbe" (`varianten_achsen.abhaengig_von_achse_id`). Der VarKombi-Generator (`artikel/detail.php`) kennt diese Regel schon lange ("Sub-Achsen-Werte immer UNION in eine Dimension") — der Shop-Sync-Code (`ShopSyncService::syncAchsenFuerVater()`) kannte sie NICHT und hat für jede rohe Achse ein eigenes WooCommerce-Attribut angelegt. Ergebnis: zwei unabhängige wählbare Attribute im Shop statt einem gemeinsamen "Farbe"-Dropdown.
+
+**Fix:** Die Union-Logik aus `detail.php` in `VariantenService::baueAchsenDimensionen()` ausgelagert (reine Grouping-Funktion, kein DB-Zugriff) — jetzt EINZIGE Quelle für beide Stellen:
+- `detail.php` ruft die Methode jetzt auf statt die Logik zu duplizieren (Downstream-Anpassung: `kartesischesProdukt(array_column($dimensionen,'werte'))`; ein `$assignedAchseIdSet` für die reine Baum-ANZEIGE musste lokal nachgebaut werden, da es aus dem entfernten Block kam).
+- `ShopSyncService`: neue `holeDimensionenFuerVater()` (gecacht pro Sync-Lauf) + `baueAchseZuDimensionMap()` (flacher Lookup rohe achse_id → [dimension_achse_id, suffix], gebraucht weil ein Kind seine Werte immer über die ROHE Achse referenziert, das WC-Attribut aber unter der Dimensions-Achse läuft). `syncAchsenFuerVater()`/`syncWerteFuerDimension()` (vormals `syncWerteFuerAchse`) arbeiten jetzt auf Dimensionen. `baueVariationPayload()` bekam einen neuen `$vaterId`-Parameter für die Auflösung. Term-Namen bei unionierten Werten bekommen den Sub-Achsen-Namen als Suffix (z.B. "anthrazit [Mix]"), damit z.B. "Rot" aus Mix und "Rot" aus Uni nicht auf denselben Term kollabieren.
+- Neue Repository-Methoden: `ShopSyncRepository::findAlleWerteFuerVater()` (alle Werte eines Vaters, nicht nach Achse gefiltert), `findAchsenFuerArtikel()` liefert jetzt zusätzlich `abhaengig_von_achse_id`.
+
+**Verifiziert gegen echte Karisma-Daten** (Artikel #178, Achsen "[Mix]"=9 und "[Uni]"=8, beide `abhaengig_von_achse_id`=7="Farbe"): Vorher hätte der Sync 2 Attribute erzeugt, jetzt korrekt 1 Dimension "Farbe" mit allen 51 Werten (je mit [Mix]/[Uni]-Suffix).
+
+**🔍 Wichtiger Nebenfund beim Verifizieren:** Karisma war mit dem alten Code bereits synct — `varianten_achsen_shops` hatte für achse 8/9 bereits EIGENE (falsche) `externe_attribut_id`s (8 und 9), UNABHÄNGIG von der schon existierenden korrekten "Farbe"-Zuordnung (achse 7 → externe_attribut_id 10, von anderen Artikeln, die "Farbe" direkt nutzen, ohne Mix/Uni-Split). Das heißt: Karismas Varianten zeigen auf `indra-design.at` aktuell noch auf die falschen, jetzt verwaisten Attribute — der Code-Fix behebt das nicht rückwirkend von selbst, ein echter Resync ist nötig.
+
+**Karisma-Resync lokal vorbereitet (2026-07-29, noch NICHT live getestet wegen der offenen Rate-Limit-Sperre, siehe unten):**
+- `varianten_achse_werte_shops` für alle 51 Karisma-Werte (shop 1) gelöscht (sonst würden beim Resync die ALTEN falschen Term-IDs wiederverwendet statt frische unter dem korrekten "Farbe"-Attribut anzulegen)
+- `varianten_achsen_shops` für achse 8/9 (shop 1) gelöscht (verwaist, wird nach dem Fix nie mehr direkt referenziert -- nur noch achse 7 "Farbe")
+- `artikel.aktualisiert_am` für Karisma Vater+alle 50 Kinder auf NOW() gesetzt (51 Zeilen) -- macht sie beim nächsten Sync-Lauf wieder "fällig"
+- **Bewusst NICHT gemacht:** die alten verwaisten "Mix"/"Uni"-Attribute selbst in WooCommerce löschen -- das ist ein Live-Schreibzugriff, sollte Jacky selbst im wp-admin machen oder gemeinsam erledigen, sobald der nächste Sync bestätigt hat dass alles korrekt ankommt (unbenutzte Attribute schaden fürs Erste nicht).
+
+**How to apply:** Sobald die Rate-Limit-Sperre (siehe unten) bestätigt behoben ist: `cron/shop_sync.php` einmal laufen lassen, Karisma sollte automatisch mit der korrekten "Farbe"-Dimension nachgezogen werden (kein manueller Extra-Schritt mehr nötig, alles ist schon vorbereitet). Danach bei WooCommerce gegenprüfen (Produkt/Variationen ansehen), und erst dann die alten verwaisten Attribute aufräumen.
+
+## ✅ Kategoriebild-Sync FERTIG (2026-07-29)
+
+WooCommerce kann pro Produktkategorie ein Thumbnail anzeigen (Mega-Menü, Kategorie-Grid, Kategorieseite) — Jacky fragte danach, war vorher nicht vorgesehen. Migration 153: `kategorien.bild_pfad` + `kategorie_shops.bild_pfad_synced`/`bild_external_id` (Change-Detection wie beim bestehenden Kategorie-Text-Sync). Upload direkt im Neu/Bearbeiten-Modal (`kategorien_verwalten.php`), sofort per AJAX wie beim Artikel-Bilder-Modul (kein Extra-Klick auf Speichern), aber erst nach dem ersten Anlegen einer Kategorie verfügbar (Ordner `uploads/kategorien/{id}/` braucht eine existierende ID). `.gitignore`/`.gitattributes` um `uploads/kategorien/` ergänzt (gleiche Regel wie Artikelbilder).
+
+**Nebenbei gefundener Bug (beim Nachbauen des Artikel-Bild-Uploads entdeckt):** `bild_upload.php` (Artikel) speichert PNG-Bilder intern mit `.png`-Endung, aber der in der DB gespeicherte Dateiname endet immer auf `.jpg` (Umbenennung passierte nur in einer lokalen Variable innerhalb der Hilfsfunktion, nie im zurückgegebenen Dateinamen) — bei jedem PNG-Upload zeigt der gespeicherte Pfad auf eine nicht existierende Datei. Bei der neuen Kategoriebild-Version von Anfang an richtig gemacht (Endung schon vor dem Verkleinern bestimmt). **Der alte Bug in `bild_upload.php` ist noch nicht gefixt** — Jacky wollte das noch entscheiden, stand zuletzt offen.
+
+**End-to-End gegen `indra-design.at` verifiziert:** 4 Testkategorien mit Bild versehen, `cron/shop_sync.php` gelaufen, direkt bei WooCommerce nachgeprüft (nicht nur eigene DB) — alle 4 Bilder inkl. des PNG korrekt angekommen.
+
+**Kategorie-Sortier-Bugfix dabei gefunden (siehe auch [[project_kategorie_verwaltung]]):** Beim Testen fiel auf, dass Bild-Zuweisen+Speichern eine Kategorie ans Ende der Geschwister-Liste verschob, wenn sie vorher an erster Stelle stand — Verwechslung zwischen "kein Vorgänger, weil ganz vorne" und "kein Vorgänger, weil unbekannt" in der Positions-Dropdown-Vorbelegung. Behoben.
+
+## 🔴 Rate-Limit-Erkennung FERTIG (2026-07-29) — Ursache auf indra-design.at noch offen
+
+Beim Testen des Kategoriebild-Syncs kam wiederholt `429 Rate limit exceeded` beim Bild-Hochladen (`/wp-json/wp/v2/media`). Erste Vermutung (zu viele Uploads zu schnell hintereinander) als Hauptursache verworfen, nachdem auch mit 0,4s-Pause zwischen Uploads (`WooCommerceClient::MEDIEN_UPLOAD_PAUSE_SEKUNDEN`, bleibt drin, schadet nicht) die Sperre weiter auftrat.
+
+**Neue `RateLimitException`** (in `WooCommerceClient.php`, gemeinsam mit `WooCommerceClient` in einer Datei, da kein Autoloader für `src/` existiert): erkennt HTTP 429 getrennt von normalen API-Fehlern, liest `Retry-After`-Header aus. `ShopSyncService::syncShop()` bricht bei einer erkannten Sperre den kompletten Durchlauf für den Shop sofort ab (`$rateLimitiert`-Guard in allen 4 Schleifen: Kategorie-über-Artikel, Kategorie-eigenständig, Hersteller, Haupt-Artikel-Schleife) statt bei jedem weiteren fälligen Artikel erneut dagegen zu rennen — ein Eintrag `shop.rate_limit` (warn) statt hunderter `shop.bild_sync_fehler`. Gleiche Behandlung in `erstbefuellungBilderPerUrl()` (FTP-Bulk-Skript) ergänzt.
+
+**Eigener Bug beim ersten Testlauf:** `syncBilderFuerArtikel()` hatte ihr eigenes inneres try/catch (Throwable) pro Bild (damit ein kaputtes Bild nicht die anderen blockiert) — das hat die RateLimitException mit abgefangen, bevor sie `syncShop()` erreichen konnte (Lauf dauerte weiter 2m38s statt sofort abzubrechen). Fix: `catch (RateLimitException $e) { throw $e; }` VOR dem generischen `catch (Throwable)`, damit sie gezielt durchgereicht statt geschluckt wird. Nach dem Fix: Abbruch nach 4 Sekunden statt 2m38s, sauberer Log-Eintrag mit Retry-After-Angabe.
+
+**Diagnose-Verlauf zur eigentlichen 429-Ursache (noch nicht abgeschlossen):**
+1. Erste Vermutung: komplette IP-Sperre (nginx-Header, Retry-After:3600, reiner Text statt JSON) — **widerlegt**: `/wp-json/wc/v3/...`-Aufrufe (Produkte/Varianten/Bestellungen) liefen die ganze Zeit über normal durch, exakt zeitgleich mit den 429ern auf `/wp-json/wp/v2/media`. Bestätigt über Jackys rohe Hosting-Zugriffslogs (Plesk).
+2. Auffälliges Muster: **nur** `/wp-json/wp/v2/*`-Aufrufe (Media-Upload, `users/me`-Verbindungstest) scheitern, **nie** `/wp-json/wc/v3/*`. Beide betroffenen Aufrufe nutzen HTTP Basic Auth mit dem WordPress-Application-Password — `/wc/v3/` läuft dagegen über Consumer-Key/Secret im Query-String.
+3. Jackys Hosting hat eine Plesk-WAF (ModSecurity 2.9, Modus war "Ein"). Test: Modus auf "Nur Erkennung" (blockiert nichts mehr, nur Logging) → **429 kam trotzdem** → ModSecurity/Plesk-WAF als Ursache **widerlegt**.
+4. Aktuelle Arbeitshypothese: Rate-Limit auf **nginx-Ebene**, vermutlich vom Hosting-Provider serverseitig konfiguriert (nicht über Plesk-UI einstellbar) — evtl. eine generische Schutzregel gegen Basic-Auth-Zugriffe auf `/wp/v2/*` (Username-Enumeration-Härtung ist dafür ein bekanntes Muster, hier aber offenbar zu breit gefasst und trifft auch den Media-Upload).
+5. **Jacky hat den Hosting-Support kontaktiert** (2026-07-29, konkrete Anfrage mit den beobachteten Pfaden/Codes) — **Antwort steht aus**.
+
+**How to apply:** Bei Wiedereinstieg: zuerst nachsehen, ob vom Hosting-Support eine Antwort da ist, dann von hier weitermachen (nicht neu diagnostizieren). Die Erkennung/der saubere Abbruch im Code ist unabhängig von der eigentlichen Ursache bereits fertig und bleibt so, egal wie die Support-Antwort ausfällt.
 
 ## ✅ cron/shop_sync.php + Kategorie-Update-Sync + FTP-Bulk-Bild-Erstbefüllung + Bulk-Import-Sperre FERTIG (2026-07-22)
 
@@ -420,6 +470,24 @@ Letzter offener Punkt aus der alten "Kanal-Chips an Kategorien"-Entscheidung (`d
 - `ArtikelService::getKategorienBaum()` + neue private `berechneShopChips()`: rekursive Bottom-up-Vererbung — leere Elternkategorien erben von Kindkategorien, exakt wie in der alten Design-Entscheidung festgelegt, ganz ohne manuelle Pflege
 - `shell_top.php` (`renderKatKnoten()`): rendert `.kc`-Chips unter jedem Kategorienamen + neue `.sidebar-kanal-legende` unterhalb des Baums (nur S1/S2/S3, dynamisch aus `shops`-Tabelle)
 - Rein lesend gegen Dev-DB getestet (Artikel #150 → Garnstudio DROPS → Shop 1 aktiv): S1-Chip erscheint korrekt bei der Blatt-Kategorie und vererbt sich nach oben zu "Hersteller" und "Wolle und Garne", Geschwister-Kategorien ohne aktive Artikel bleiben leer. Von Jacky im Browser bestätigt.
+
+## Wichtig für den Umstieg Testshop → echte Domain (geklärt 2026-07-29, noch nicht gebaut)
+
+Jackys Frage: Dev UND Live hängen aktuell beide am selben Testshop (`indra-design.at`, Dev=shop id 1, Live=shop id 4). Wenn Dev irgendwann für den ersten echten Shop komplett fertig ist — reicht es, den Kanal/die URL auf die endgültige Domain zu "korrigieren", bleiben Bild-Verknüpfung etc. dabei korrekt?
+
+**Antwort: Nein, nicht durch bloßes Ändern der URL auf derselben `shops`-Zeile.** Im Code bestätigt (`ShopSyncService::syncShop()`): ist `artikel_shops.external_id` bereits gesetzt, wird immer `aktualisiereProdukt($external_id, ...)` (PUT) aufgerufen, nie neu angelegt. Diese IDs (Produkt/Variation/Kategorie/Attribut-Term/Medien) sind aber fest an die konkrete WooCommerce-Installation (Testshop) gebunden — auf einer frischen/leeren finalen Domain existieren diese IDs nicht (404) oder gehören dort zu etwas komplett anderem.
+
+**Richtiger Weg beim Go-Live auf die echte Domain:**
+1. NEUE Zeile in `shops` für die echte Domain anlegen (eigene wc_url/wc_key/wc_secret/wp_username/wp_app_password) — NICHT die bestehende Testshop-Zeile umbiegen.
+2. Kanal für die gewünschten Artikel auf diesen neuen Shop zuweisen (Einzeln oder Massenaktion "Kanal zuweisen") — da für diesen neuen shop_id noch keine `artikel_shops`-Zeilen existieren, ist automatisch alles "pending" → sauberer Erst-Sync (POST, frische IDs), kein Update-Konflikt.
+3. Bereits vorhandene Werkzeuge für den großen Erstimport wiederverwenden: FTP-Bulk-Bild-Erstbefüllung (`scripts/erstbefuellung_bilder.php`) + Bulk-Import-Sperre (`shops.bulk_import_aktiv`) — beide wurden genau für dieses Szenario (großer Erstabgleich zu einer neuen/leeren Seite) gebaut.
+4. Alte Testshop-Zeile danach deaktivieren (`ist_aktiv=0`) statt löschen, falls weiter als Testumgebung gebraucht.
+
+**Nebenpunkt, im Hinterkopf behalten:** Solange Dev UND Live beide aktiv gegen denselben Testshop syncen, sollte auf Live kein echter Kanal für dieselben Artikel zugewiesen werden wie in Dev — sonst entstehen doppelte WooCommerce-Produkte für dieselbe Ware (unabhängige `artikel_shops`-Zeilen in getrennten DBs). Aktuell unkritisch, da laut Stand 2026-07-22 auf Live noch kein Artikel einem Kanal zugewiesen ist.
+
+**How to apply:** Bei Wiedereinstieg in den Domain-Umstieg diesen Abschnitt zuerst lesen, nicht neu herleiten. Noch nicht gebaut/entschieden: ob das ein manueller Schritt bleibt oder ein kleines Hilfsskript/UI-Flow dafür gebaut wird.
+
+**Entscheidung (Jacky, 2026-07-29):** Statt eines Merge-Skripts (Artikelnummer-Abgleich Dev↔Live) reicht Jacky die bisherigen Live-Änderungen von Hand in Dev nach, danach werden Artikel + Bilder nur noch in Dev nach und nach eingegeben. Dev wird damit zur alleinigen Quelle für Artikel/Kategorien/Bilder — kein automatischer Zwei-Wege-Abgleich nötig, die spätere Übertragung Richtung Live/finale Domain vereinfacht sich dadurch (kein Konflikt mit eigenständigen Live-Artikeln mehr).
 
 ## Offen für die nächste Session
 

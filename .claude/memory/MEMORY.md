@@ -39,9 +39,10 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 (Artikel/Varianten/Hersteller/Bilder/Bestand/Bestellungen/Kunden-Verknüpfung) FERTIG (2026-07-21); als Nächstes Theme-Gespräch, dann cron+Umbenennung-Sync
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Bugfix (Sub-Achsen) FERTIG; Karisma-Resync vorbereitet; 429-Ursache offen, Hosting-Antwort ausständig
+- [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — "Einordnen nach"-Positionierung FERTIG (2026-07-29), Vorbelegungs-Bug behoben
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
-- [Shop-Theme/UX](project_shop_theme.md) — Recherche fertig (WoodMart vs. Blocksy Pro, Lizenz-Falle: pro Live-Domain!); Kauf pausiert bis Budget-Gespräch Jacky/Barbara; NICHT von selbst weitermachen
+- [Shop-Theme/UX](project_shop_theme.md) — Recherche fertig (WoodMart vs. Blocksy Pro, Lizenz-Falle: pro Live-Domain!); Kauf pausiert bis Budget-Gespräch Jacky/Barbara; NICHT von selbst weitermachen. Performance-Fund 2026-07-29 (kalter Cache/TTFB) zurückgestellt bis Shop voll ist
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — Neuer Dev-PC-Umzug 2026-07-17 abgeschlossen (GD/Composer/Cron vergessen, doppelte Mojibake-Korruption + Kunden-BLOB-Korruption behoben); Messe-Kasse Variante B = IndexedDB+direkter BFR-Call
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
