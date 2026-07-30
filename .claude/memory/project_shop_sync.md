@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-30T04:42:47.194Z
+  modified: 2026-07-30T07:15:04.479Z
 ---
 
 ## 🔴 Achsen-Dimensionen-Bug (Sub-Achsen als eigene WC-Attribute) BEHOBEN (2026-07-29)
@@ -48,6 +48,16 @@ metadata:
 **Wahrscheinlichere Erklärung:** 60 Sekunden ist die Basis-Sperrzeit; wird sie innerhalb dieses Fensters durch weitere Versuche erneut ausgelöst, eskaliert die Sperrdauer (klassisches Verhalten vieler Rate-Limiter/Fail2ban-artiger Systeme). Der vorabendliche 1-Stunden-Fund kam vermutlich daher, dass mehrere Testläufe kurz hintereinander (beim Debuggen des Codes) die Sperre wiederholt neu ausgelöst und dadurch eskaliert haben. An diesem Tag (30.07.) waren die Testläufe zeitlich weiter auseinander -- blieb bei der Basis-Sperre.
 
 **How to apply:** Nach einem erkannten `shop.rate_limit`-Log-Eintrag NICHT sofort wieder testen -- ein paar Minuten Abstand lassen, sonst droht wieder eine Eskalation auf eine lange Sperre. Gilt sowohl für Jacky als auch für mich (Claude) beim Debuggen. Der normale 15-Minuten-Cron ist davon nicht betroffen (Abstand ohnehin groß genug). Ob überhaupt noch eine echte "Ursache" beim Hosting-Support zu finden ist, ist damit unklar -- 60s Basis-Sperre ist für den Produktivbetrieb ohnehin unkritisch, muss also nicht zwingend weiterverfolgt werden.
+
+### 🔍 Echter, fixbarer Mit-Auslöser gefunden: fehlender User-Agent (2026-07-30)
+
+Jacky hat das rohe `access_ssl_log` seines Hostings geteilt (Plesk/Apache Combined Log Format). Auffällig: WordPress' eigener `wp-cron.php`-Aufruf identifiziert sich brav mit `User-Agent: WordPress/7.0.2; https://indra-design.at` -- **alle unsere eigenen Anfragen (sowohl die funktionierenden `/wc/v3/`- als auch die blockierten `/wp/v2/`-Aufrufe) hatten GAR KEINEN User-Agent** (`"-"` im Log). Grund: `WooCommerceClient.php` setzte nirgends `CURLOPT_USERAGENT` -- PHP/curl schickt dann standardmäßig gar keinen mit (anders als ein Browser).
+
+Fehlender User-Agent ist ein sehr verbreitetes Bot-/Missbrauchs-Erkennungsmerkmal bei Security-Systemen/Rate-Limitern -- plausibler Mit-Auslöser der 429-Sperre, unabhängig vom Ausgang der Hosting-Abklärung ohnehin guter REST-API-Stil (Client identifiziert sich selbst).
+
+**Fix:** `WooCommerceClient::USER_AGENT = 'MealanaERP-ShopSync/1.0'`, gesetzt via `CURLOPT_USERAGENT` in `request()` UND `ladeBildHoch()` (beide curl-Aufrufe der Klasse).
+
+**How to apply:** Noch nicht live gegen den blockierten `/wp/v2/media`-Pfad verifiziert (bewusst kein Test, um die Sperre nicht erneut zu triggern) -- beim nächsten ohnehin fälligen Sync-Lauf mit-beobachten, ob die 429-Häufigkeit spürbar sinkt. Kein Grund, das separat zu testen.
 
 ## ✅ Kategoriebild-Sync FERTIG (2026-07-29)
 

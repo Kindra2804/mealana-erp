@@ -33,6 +33,16 @@ class WooCommerceClient
     // falls trotzdem noch 429 auftaucht.
     private const MEDIEN_UPLOAD_PAUSE_SEKUNDEN = 0.4;
 
+    // Ohne expliziten User-Agent schickt PHP/curl standardmäßig GAR KEINEN mit
+    // (anders als ein Browser) -- im Access-Log von indra-design.at fiel auf
+    // (2026-07-30), dass ausgerechnet unsere Anfragen leer sind ("-"), während
+    // WordPress' eigener wp-cron-Aufruf sich brav als "WordPress/7.0.2..."
+    // identifiziert. Manche Security-/Rate-Limit-Systeme behandeln Anfragen
+    // ohne User-Agent grundsätzlich misstrauischer -- ein plausibler
+    // Mit-Auslöser der 429-Sperre, unabhängig vom Ausgang der Hosting-Abklärung
+    // ist ein selbst-identifizierender Client ohnehin guter REST-API-Stil.
+    private const USER_AGENT = 'MealanaERP-ShopSync/1.0';
+
     private string $siteUrl;
     private string $baseUrl;
     private string $key;
@@ -224,6 +234,7 @@ class WooCommerceClient
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_USERAGENT      => self::USER_AGENT,
             CURLOPT_CUSTOMREQUEST  => 'POST',
             // multipart/form-data (nicht raw binary + Content-Disposition) --
             // so kann alt_text im selben Request mitgeschickt werden statt
@@ -276,6 +287,7 @@ class WooCommerceClient
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_USERAGENT => self::USER_AGENT,
             CURLOPT_CUSTOMREQUEST => $methode,
             CURLOPT_TIMEOUT => 20,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
