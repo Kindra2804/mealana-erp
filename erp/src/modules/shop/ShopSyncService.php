@@ -335,20 +335,28 @@ class ShopSyncService
         // Vater mit Achsen -> WooCommerce "Variable Product". syncAchsenFuerVater()
         // lief bereits weiter oben in der Aufrufkette, die Zuweisungen existieren
         // also schon (sonst wäre dort bereits eine Exception geflogen).
+        //
+        // Arbeitet auf Dimensionen statt rohen Achsen (siehe holeDimensionenFuerVater()) --
+        // sonst würde hier für unionierte Sub-Achsen (z.B. "Mix"/"Uni" unter
+        // "Farbe") wieder je ein eigenes falsches Attribut gesucht, das seit dem
+        // Achsen-Dimensionen-Fix (2026-07-29) gar nicht mehr existiert.
         $attribute = [];
-        $achsen = $this->repo->findAchsenFuerArtikel((int)$artikel['artikel_id']);
-        if (!empty($achsen)) {
+        $dimensionen = $this->holeDimensionenFuerVater((int)$artikel['artikel_id']);
+        if (!empty($dimensionen)) {
             $payload['type'] = 'variable';
-            $attribute = array_map(function (array $achse) use ($artikel, $shopId) {
-                $zuweisung = $this->repo->findAchseShopZuweisung((int)$achse['achse_id'], $shopId);
-                $werte = $this->repo->findWerteFuerAchse((int)$artikel['artikel_id'], (int)$achse['achse_id']);
+            $attribute = array_map(function (array $dimension) use ($shopId) {
+                $zuweisung = $this->repo->findAchseShopZuweisung((int)$dimension['achse_id'], $shopId);
+                $optionen = array_map(
+                    fn(array $wert) => $wert['wert'] . (!empty($wert['achse_suffix']) ? ' ' . $wert['achse_suffix'] : ''),
+                    $dimension['werte']
+                );
                 return [
                     'id'        => (int)$zuweisung['externe_attribut_id'],
                     'variation' => true,
                     'visible'   => true,
-                    'options'   => array_column($werte, 'wert'),
+                    'options'   => $optionen,
                 ];
-            }, $achsen);
+            }, $dimensionen);
         }
 
         // Hersteller-Filter (kein Variations-Attribut, `variation => false`) --

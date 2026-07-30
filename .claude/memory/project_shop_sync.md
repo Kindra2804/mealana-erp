@@ -1,11 +1,11 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix (Sub-Achsen-Bug) FERTIG (2026-07-29); 429-Ursache auf indra-design.at noch offen (Hosting-Support kontaktiert, Antwort ausständig); Karisma-Resync lokal vorbereitet, wartet auf sicheren Sync-Test"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); 429-Ursache weiterhin unklar, aber mit WAF aus nur noch 60s statt 3600s Sperrzeit -- für normalen Cron unkritisch"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-29T19:05:29.201Z
+  modified: 2026-07-30T04:39:39.400Z
 ---
 
 ## 🔴 Achsen-Dimensionen-Bug (Sub-Achsen als eigene WC-Attribute) BEHOBEN (2026-07-29)
@@ -30,6 +30,26 @@ metadata:
 - **Bewusst NICHT gemacht:** die alten verwaisten "Mix"/"Uni"-Attribute selbst in WooCommerce löschen -- das ist ein Live-Schreibzugriff, sollte Jacky selbst im wp-admin machen oder gemeinsam erledigen, sobald der nächste Sync bestätigt hat dass alles korrekt ankommt (unbenutzte Attribute schaden fürs Erste nicht).
 
 **How to apply:** Sobald die Rate-Limit-Sperre (siehe unten) bestätigt behoben ist: `cron/shop_sync.php` einmal laufen lassen, Karisma sollte automatisch mit der korrekten "Farbe"-Dimension nachgezogen werden (kein manueller Extra-Schritt mehr nötig, alles ist schon vorbereitet). Danach bei WooCommerce gegenprüfen (Produkt/Variationen ansehen), und erst dann die alten verwaisten Attribute aufräumen.
+
+### ✅ Karisma End-to-End verifiziert + zweiter Bugfix (2026-07-30)
+
+**🔴 Dritte Stelle mit derselben rohen Achsen-Logik übersehen:** Jacky bekam beim eigenen Testlauf `PHP Warning: Trying to access array offset on value of type bool` in `ShopSyncService.php:346` — `baueProduktPayload()` (baut den PAYLOAD DES VATERS selbst, das `attributes[].options`-Array für WooCommerce) war beim ersten Fix übersehen worden und griff noch direkt auf `findAchseShopZuweisung(rohe achse_id)` zu, die für Mix/Uni (8/9) nach der Bereinigung nicht mehr existiert (nur noch achse 7 "Farbe"). Fix: gleiche Umstellung auf `holeDimensionenFuerVater()` wie in `syncAchsenFuerVater()`/`baueVariationPayload()`.
+
+**Lehre:** Der isolierte Test von `baueAchsenDimensionen()` allein (Vortag) hat den Bug nicht aufgedeckt, weil er nur die reine Grouping-Funktion prüfte, nicht den kompletten Payload-Aufbau. Nächstes Mal beim Ändern von Sync-Code: alle drei Stellen (`syncAchsenFuerVater`, `baueProduktPayload`, `baueVariationPayload`) explizit gegenchecken, nicht nur eine.
+
+**Nach dem Fix real gegen `indra-design.at` verifiziert** (Karisma musste dafür ein zweites Mal als "fällig" markiert werden -- Jackys eigener Testlauf mit dem alten Bug hatte `synced_at` bereits auf "heute" gesetzt, dadurch war `aktualisiert_am` von gestern nicht mehr "neuer" und die Fälligkeits-Prüfung hatte Karisma übersprungen):
+- WC-Produkt #66 hat jetzt genau EIN "Farbe"-Attribut (id=10) mit 51 Optionen (vorher wäre das zwei getrennte "Mix"/"Uni"-Attribute gewesen)
+- Stichprobe von 3 Variationen bestätigt: jede hat genau eine Farbe-Zuordnung mit korrektem Suffix (z.B. "natur (01) [Uni]"), keine unmöglichen Kombinationen mehr wählbar
+
+### 🔍 Rate-Limit: neuer Datenpunkt -- WAF komplett aus ändert Sperrdauer drastisch (2026-07-30)
+
+Hosting-Support konnte keine Sperre/Regel finden. Jacky hat daraufhin die Plesk-WAF komplett auf "Aus" gestellt (nicht nur "Nur Erkennung" wie beim ersten Test) und erneut probiert:
+- Mit WAF "Ein" bzw. "Nur Erkennung": Retry-After = 3600 Sekunden (1 Stunde)
+- Mit WAF komplett "Aus": Retry-After = **60 Sekunden** (1 Minute) -- deutlich kürzer, kommt aber immer noch vor (nach diesmal 4 erfolgreichen Artikeln)
+
+**Bedeutet:** Die Sperre existiert weiterhin, ist aber offenbar NICHT (nur) die von Jacky einstellbare ModSecurity-WAF -- irgendeine andere Komponente (vermutlich nginx-seitig, hosting-intern) ändert ihr Verhalten aber messbar, je nachdem ob die WAF an/aus ist. Mit nur noch 60 Sekunden Sperrzeit ist das für den normalen 15-Minuten-Cron praktisch unkritisch (nächster Lauf holt automatisch nach) -- nur bei einem großen einmaligen Nachholbedarf (viele hundert pending) würde es die Sache verlangsamen, aber nicht blockieren.
+
+**How to apply:** Dieser neue Befund (60s statt 3600s je nach WAF-Zustand) ist ein konkreter Ansatzpunkt für eine Rückfrage an den Hosting-Support. Ob Jacky die WAF dauerhaft aus lässt oder wieder einschaltet, ist seine Sicherheits-Abwägung -- nicht von uns vorentschieden. Mit 60s Sperrzeit ist der Sync-Code selbst (Rate-Limit-Erkennung, siehe oben) bereits ausreichend robust, weitere Handlung nur nötig falls Jacky die Ursache noch vollständig eliminieren will.
 
 ## ✅ Kategoriebild-Sync FERTIG (2026-07-29)
 
