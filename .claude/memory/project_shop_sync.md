@@ -1,11 +1,11 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); 429-Sperre ist 60s Basis (eskaliert vermutlich bei zu schnellen Wiederholungsversuchen, NICHT WAF-abhängig) -- für normalen Cron unkritisch"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST (fehlender User-Agent war Ursache), Hosting-Support-Anfrage zurückgezogen"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-30T07:15:04.479Z
+  modified: 2026-07-30T07:30:56.797Z
 ---
 
 ## 🔴 Achsen-Dimensionen-Bug (Sub-Achsen als eigene WC-Attribute) BEHOBEN (2026-07-29)
@@ -57,7 +57,9 @@ Fehlender User-Agent ist ein sehr verbreitetes Bot-/Missbrauchs-Erkennungsmerkma
 
 **Fix:** `WooCommerceClient::USER_AGENT = 'MealanaERP-ShopSync/1.0'`, gesetzt via `CURLOPT_USERAGENT` in `request()` UND `ladeBildHoch()` (beide curl-Aufrufe der Klasse).
 
-**How to apply:** Noch nicht live gegen den blockierten `/wp/v2/media`-Pfad verifiziert (bewusst kein Test, um die Sperre nicht erneut zu triggern) -- beim nächsten ohnehin fälligen Sync-Lauf mit-beobachten, ob die 429-Häufigkeit spürbar sinkt. Kein Grund, das separat zu testen.
+**✅ Bestätigt gelöst (2026-07-30, gleicher Tag):** Zwei echte Sync-Läufe danach durchgeführt, einer mit wieder eingeschalteter WAF -- beide komplett ohne `shop.rate_limit`/`shop.bild_sync_fehler`. Carosello (7 Artikel) und Doremi (bis auf 1 Bild, war knapp außerhalb des 20er-Batches) vollständig nachgezogen, bei WooCommerce gegengeprüft. Jacky hat dem Hosting-Support Bescheid gegeben, dass nicht weiter gesucht werden muss.
+
+**Fazit der ganzen 429-Geschichte:** Der fehlende User-Agent war der eigentliche Auslöser (oder zumindest der entscheidende Faktor) -- nicht die WAF (die Escalating-Ban-Theorie von vorhin war vermutlich auch nur ein Nebeneffekt der häufigen Testläufe, nicht die Kernursache). Rate-Limit-Erkennung + saubere Abbruch-Logik im Code (siehe oben) bleiben trotzdem drin -- gute Absicherung für den Fall, dass es doch nochmal auftritt.
 
 ## ✅ Kategoriebild-Sync FERTIG (2026-07-29)
 
