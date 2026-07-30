@@ -1,11 +1,11 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); 429-Ursache weiterhin unklar, aber mit WAF aus nur noch 60s statt 3600s Sperrzeit -- für normalen Cron unkritisch"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); 429-Sperre ist 60s Basis (eskaliert vermutlich bei zu schnellen Wiederholungsversuchen, NICHT WAF-abhängig) -- für normalen Cron unkritisch"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-30T04:39:39.400Z
+  modified: 2026-07-30T04:42:47.194Z
 ---
 
 ## 🔴 Achsen-Dimensionen-Bug (Sub-Achsen als eigene WC-Attribute) BEHOBEN (2026-07-29)
@@ -41,15 +41,13 @@ metadata:
 - WC-Produkt #66 hat jetzt genau EIN "Farbe"-Attribut (id=10) mit 51 Optionen (vorher wäre das zwei getrennte "Mix"/"Uni"-Attribute gewesen)
 - Stichprobe von 3 Variationen bestätigt: jede hat genau eine Farbe-Zuordnung mit korrektem Suffix (z.B. "natur (01) [Uni]"), keine unmöglichen Kombinationen mehr wählbar
 
-### 🔍 Rate-Limit: neuer Datenpunkt -- WAF komplett aus ändert Sperrdauer drastisch (2026-07-30)
+### 🔍 Rate-Limit: Basis-Sperre ist 60s, eskaliert vermutlich bei wiederholten Verstößen (korrigiert 2026-07-30)
 
-Hosting-Support konnte keine Sperre/Regel finden. Jacky hat daraufhin die Plesk-WAF komplett auf "Aus" gestellt (nicht nur "Nur Erkennung" wie beim ersten Test) und erneut probiert:
-- Mit WAF "Ein" bzw. "Nur Erkennung": Retry-After = 3600 Sekunden (1 Stunde)
-- Mit WAF komplett "Aus": Retry-After = **60 Sekunden** (1 Minute) -- deutlich kürzer, kommt aber immer noch vor (nach diesmal 4 erfolgreichen Artikeln)
+**Erste Theorie (falsch, siehe oben):** WAF an/aus würde die Sperrdauer von 3600s auf 60s ändern. **Von Jacky korrigiert:** Die 60-Sekunden-Sperre trat schon AM VORABEND bei noch eingeschalteter WAF auf -- die WAF-Theorie war also ein Zufallstreffer, kein echter Zusammenhang.
 
-**Bedeutet:** Die Sperre existiert weiterhin, ist aber offenbar NICHT (nur) die von Jacky einstellbare ModSecurity-WAF -- irgendeine andere Komponente (vermutlich nginx-seitig, hosting-intern) ändert ihr Verhalten aber messbar, je nachdem ob die WAF an/aus ist. Mit nur noch 60 Sekunden Sperrzeit ist das für den normalen 15-Minuten-Cron praktisch unkritisch (nächster Lauf holt automatisch nach) -- nur bei einem großen einmaligen Nachholbedarf (viele hundert pending) würde es die Sache verlangsamen, aber nicht blockieren.
+**Wahrscheinlichere Erklärung:** 60 Sekunden ist die Basis-Sperrzeit; wird sie innerhalb dieses Fensters durch weitere Versuche erneut ausgelöst, eskaliert die Sperrdauer (klassisches Verhalten vieler Rate-Limiter/Fail2ban-artiger Systeme). Der vorabendliche 1-Stunden-Fund kam vermutlich daher, dass mehrere Testläufe kurz hintereinander (beim Debuggen des Codes) die Sperre wiederholt neu ausgelöst und dadurch eskaliert haben. An diesem Tag (30.07.) waren die Testläufe zeitlich weiter auseinander -- blieb bei der Basis-Sperre.
 
-**How to apply:** Dieser neue Befund (60s statt 3600s je nach WAF-Zustand) ist ein konkreter Ansatzpunkt für eine Rückfrage an den Hosting-Support. Ob Jacky die WAF dauerhaft aus lässt oder wieder einschaltet, ist seine Sicherheits-Abwägung -- nicht von uns vorentschieden. Mit 60s Sperrzeit ist der Sync-Code selbst (Rate-Limit-Erkennung, siehe oben) bereits ausreichend robust, weitere Handlung nur nötig falls Jacky die Ursache noch vollständig eliminieren will.
+**How to apply:** Nach einem erkannten `shop.rate_limit`-Log-Eintrag NICHT sofort wieder testen -- ein paar Minuten Abstand lassen, sonst droht wieder eine Eskalation auf eine lange Sperre. Gilt sowohl für Jacky als auch für mich (Claude) beim Debuggen. Der normale 15-Minuten-Cron ist davon nicht betroffen (Abstand ohnehin groß genug). Ob überhaupt noch eine echte "Ursache" beim Hosting-Support zu finden ist, ist damit unklar -- 60s Basis-Sperre ist für den Produktivbetrieb ohnehin unkritisch, muss also nicht zwingend weiterverfolgt werden.
 
 ## ✅ Kategoriebild-Sync FERTIG (2026-07-29)
 
