@@ -1,11 +1,11 @@
 ---
 name: project-jtl-vater-kind-import
-description: "JTL Vater+Kind-CSV-Import mit Achsenerkennung — FERTIG gebaut + getestet 2026-07-31, noch nicht committed"
+description: "JTL Vater+Kind-CSV-Import mit Achsenerkennung — LIVE GETESTET 2026-07-31 (83/87 Väter erfolgreich), Resume-Fähigkeit + Kategorie-Baum-Dropdown nachgezogen"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 85efc9a3-c1f8-4d31-89d2-a10e99128244
-  modified: 2026-07-31T17:06:40.078Z
+  modified: 2026-07-31T20:07:58.295Z
 ---
 
 ## Status 2026-07-31: Implementiert + verifiziert
@@ -26,7 +26,19 @@ Gebaut: `src/modules/import/JtlVaterKindImportService.php` (Parsing/Vorschau/Com
 
 **Nebenbefund (nicht Teil dieses Imports, separat vorgemerkt):** `artikel.herkunftsland` ist bei 371/525 Live-Artikeln leer, bei den restlichen 154 (nur DROPS Design) hart "NO" aus dem alten Demo-Import-Skript — kein laufender Service befüllt das. Siehe [[project_roadmap_reihenfolge]] "Kleinere Punkte".
 
-**Noch offen / nächster Schritt:** Echter Testlauf über die Web-UI mit den tatsächlichen Jacky-Dateien im Browser (bisher nur Service-Ebene direkt getestet, nicht durch das Formular/die Kontrollliste). Code ist NICHT committed (nur der Sicherheits-Commit für den Plan vom Sitzungsbeginn ist gepusht).
+## Live-Test durch Jacky (2026-07-31, Browser, echte Dateien)
+
+**Ergebnis:** 83 von 87 KnitPro-Vätern erfolgreich importiert. 4 Väter (u.a. `KP-SES`) initial abgebrochen wegen leerer Verkaufseinheit, die im Einheiten-Mapping nicht zugeordnet wurde — Vater bricht bewusst VOR jedem DB-Write ab (kein Halb-Datensatz), das ist beabsichtigtes Verhalten.
+
+**Zwei echte Funde beim Live-Test, beide behoben:**
+1. **Kategorie-Dropdown zeigte keine Hierarchie** — nutzte `getAlleKategorien()` (flache Liste), dadurch bei gleichnamigen Unterkategorien keine Auswahl möglich. Fix: `getKategorienBaum()` mit Einrückung (`renderKategorieOptionen()` in `jtl_import.php`), z.B. "— — Rundnadeln" unter "Nadeln → Nadelart".
+2. **Kein Resume bei abgebrochenen Vätern** — ein Re-Lauf mit denselben Dateien hätte bereits erfolgreiche Väter als "Artikelnummer existiert bereits"-Fehler angezeigt (harmlos, aber verwirrend) und nicht geprüft ob bei ihnen Kinder fehlen. Fix in `JtlVaterKindImportService::fuehreImportDurch()`: prüft jetzt zuerst `findByArtikelnummer()` — existiert der Vater schon, wird er übernommen (keine Neuanlage) und Kategorie/Achsen/Kinder trotzdem durchlaufen (alles idempotent) statt als Fehler zu erscheinen. Per Testlauf (Anlage → identischer Re-Lauf) verifiziert: keine Duplikate, `erfolg=true` beim zweiten Durchlauf.
+
+**Wichtige Lehre beim Testen (siehe [[feedback_test_isolation]] Nachtrag):** Globale Stammdaten wie Achsen werden NICHT pro Testlauf isoliert — ein synthetischer Test-Achsen-Code ("staerke") wurde nach Jackys echtem Import automatisch wiederverwendet (`findByCode()`). Ein routinemäßiges `DELETE FROM varianten_achsen WHERE code=...` im Cleanup-Skript hätte fast eine von 83 echten Vater-Artikeln genutzte Achse gelöscht — nur eine FK-Constraint-Sperre hat das verhindert. Nie wieder pauschal nach Code/Name auf globalen Stammdaten löschen, immer erst per LEFT JOIN auf Verwaisung prüfen.
+
+**Achsenwerte-Format-Frage vertagt (2026-07-31):** Jacky hat für Garne (Mix/Uni/Farbe) ein etabliertes Format "Nummer Name" (z.B. "34 kräftig rosa"), Mix/Uni wird per Schlüsselwort im JTL-Rohtext erkannt. Braucht eine echte Garn-Export-Datei um die genaue Transformationsregel abzuleiten — bewusst NICHT blind in den generischen Import eingebaut (würde eine Garn-spezifische Regel in ein kategorie-übergreifendes Tool verdrahten). **Bei Wiedereinstieg:** Jacky bringt "morgen" (Bezug: 2026-08-01) den ersten Garn-Export mit, dann gemeinsam entscheiden zwischen (a) automatischem Korrektur-Skript nach dem Import oder (b) editierbaren Achsenwert-Feldern in der Kontrollliste.
+
+Code committed 2026-07-31 zusammen mit [[project_jtl_bilder_import]] und dem Shop-Sync-Fix ([[bug_shop_sync_term_pagination]]).
 
 ## Ausgangslage (2026-07-31)
 

@@ -151,10 +151,24 @@ class WooCommerceClient
         return $this->request('POST', '/products/attributes', [], $daten);
     }
 
-    /** Alle Terms (Werte) eines Attributs, z.B. "Rot"/"Blau" unter "Farbe". */
+    /**
+     * Alle Terms (Werte) eines Attributs, z.B. "Rot"/"Blau" unter "Farbe" -- mit
+     * Pagination über alle Seiten (Fund 2026-07-31: bei 100+ Terms unter einem
+     * Attribut lieferte nur Seite 1 zurück, wodurch der Find-or-create-Abgleich in
+     * ShopSyncService::syncWerteFuerDimension() längst existierende Terms jenseits
+     * der ersten 100 nicht fand und sie erneut anzulegen versuchte -> 400 term_exists
+     * bei JEDEM Sync-Lauf für dieselben Werte).
+     */
     public function listeAttributTerms(int $attributId): array
     {
-        return $this->request('GET', "/products/attributes/$attributId/terms", ['per_page' => 100]);
+        $alle  = [];
+        $seite = 1;
+        do {
+            $seitenErgebnis = $this->request('GET', "/products/attributes/$attributId/terms", ['per_page' => 100, 'page' => $seite]);
+            $alle = array_merge($alle, $seitenErgebnis);
+            $seite++;
+        } while (count($seitenErgebnis) === 100);
+        return $alle;
     }
 
     /** Attribut-Term (z.B. "Rot" unter "Farbe") anlegen. */

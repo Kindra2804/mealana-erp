@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: db02ffa8-aab5-44a1-a954-8cc195e7d369
+  modified: 2026-07-31T20:03:29.771Z
 ---
 
 Beim Debuggen von Backend-Logik (z.B. `MesseSyncService`) wurden Scratch-Testskripte direkt gegen echte Artikel (z.B. Artikel 245 "DROPS Karisma silberrosa") und Jackys reale Test-Kasse ("Messe-Laptop (Test)", id=2) ausgeführt — inklusive echter Lagerbuchungen (`umbuchungZurMesse`, `rueckkehrVerarbeiten`), ohne die Test-Daten danach zurückzusetzen.
@@ -19,3 +20,11 @@ Jacky bemerkte die Kontamination selbst beim nächsten Test ("Lagerstand beim Ar
 - Bei Unsicherheit, ob eine bestehende DB-Zeile (Kasse, Lager, Artikel) "echt" oder für den Test angelegt ist: nachfragen statt löschen (siehe generelle Vorsicht bei destruktiven Aktionen).
 
 Siehe [[project_kassen_verwaltung]] für den konkreten Vorfall und die Bereinigung.
+
+## Nachtrag 2026-07-31: geteilte globale Stammdaten (z.B. Achsen) sind noch gefährlicher als eigene Testzeilen
+
+Beim JTL-Import-Testen wiederholt `DELETE FROM varianten_achsen WHERE code='staerke'` als letzten Cleanup-Schritt verwendet — anfangs sicher, weil die Achse rein synthetisch war. Nachdem Jacky zwischendurch den echten KnitPro-Import gefahren hatte, nutzten test-eigene Kind-Artikel dieselbe **globale** Achse (`findByCode()`-Wiederverwendung), da der Code schon existierte. Der pauschale `DELETE FROM varianten_achsen WHERE code=...` hätte damit eine von 83 echten Vater-Artikeln verwendete Achse gelöscht — nur eine FK-Constraint-Sperre (artikel_achsen referenziert die Achse noch) hat das verhindert, kein eigenes Verschulden.
+
+**Why:** Anders als bei rein artikel-gescopten Testzeilen (`artikelnummer LIKE 'ZZTEST%'`) sind Achsen (und vermutlich Kategorien, Hersteller, Einheiten, Steuerklassen — alles globale Stammdaten) NICHT pro Testlauf isoliert. Ein Cleanup-Skript, das zu Sessionbeginn sicher war, wird unsicher, sobald reale Daten in derselben Session denselben globalen Datensatz zu nutzen beginnen.
+
+**How to apply:** Bei Cleanup nach CLI-Testläufen NIE pauschal nach `code`/`name` auf globalen Stammdaten-Tabellen löschen. Stattdessen vor dem Löschen einer globalen Zeile (Achse, Kategorie, Hersteller, Einheit...) per LEFT JOIN prüfen, ob noch andere (nicht-Test-)Artikel-IDs darauf verweisen — nur löschen wenn wirklich verwaist. Bei jedem DB-Cleanup-Statement kurz gedanklich prüfen: "Ist das WIRKLICH nur meine Testzeile, oder könnte das inzwischen von echten Daten mitbenutzt werden?"

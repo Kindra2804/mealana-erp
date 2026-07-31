@@ -7,8 +7,21 @@ require_once __DIR__ . '/../../src/core/Database.php';
 $service = new ArtikelService();
 $db      = Database::getInstance();
 
-$alleKategorien = $service->getAlleKategorien();
+$kategorienBaum = $service->getKategorienBaum();
 $alleArtikeltypen = $service->getAllArtikelTypen();
+
+/** Rendert die Kategorien als eingerückte <option>-Liste, damit gleichnamige Unterkategorien
+ *  (z.B. mehrere "Zubehör" unter verschiedenen Hauptkategorien) unterscheidbar bleiben. */
+function renderKategorieOptionen(array $knoten, int $tiefe = 0): void
+{
+    foreach ($knoten as $k) {
+        $praefix = str_repeat('— ', $tiefe);
+        echo '<option value="' . $k['id'] . '">' . htmlspecialchars($praefix . $k['name']) . '</option>';
+        if (!empty($k['kinder'])) {
+            renderKategorieOptionen($k['kinder'], $tiefe + 1);
+        }
+    }
+}
 $alleArtikelgruppen = $db->query("
     SELECT id, konto_nr, name FROM artikel_gruppen WHERE aktiv = 1 ORDER BY sortierung, konto_nr
 ")->fetchAll();
@@ -102,9 +115,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <label class="erp-label">Kategorie *</label>
                 <select name="kategorie_id" class="erp-select" style="width:100%" required>
                     <option value="">– wählen –</option>
-                    <?php foreach ($alleKategorien as $k): ?>
-                        <option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option>
-                    <?php endforeach; ?>
+                    <?php renderKategorieOptionen($kategorienBaum); ?>
                 </select>
             </div>
             <div>

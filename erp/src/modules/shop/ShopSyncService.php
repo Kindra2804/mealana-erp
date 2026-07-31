@@ -963,9 +963,26 @@ class ShopSyncService
         foreach ($offeneWerte as $wert) {
             $anzeigeName = $wert['wert'] . (!empty($wert['achse_suffix']) ? ' ' . $wert['achse_suffix'] : '');
             $key = mb_strtolower($anzeigeName);
-            $termId = $vorhandeneTerms[$key]
-                ?? (int)$client->erstelleAttributTerm($attributId, ['name' => $anzeigeName])['id'];
-            $this->repo->upsertWertZuweisung((int)$wert['id'], $shopId, (string)$termId);
+            try {
+                $termId = $vorhandeneTerms[$key]
+                    ?? (int)$client->erstelleAttributTerm($attributId, ['name' => $anzeigeName])['id'];
+                $this->repo->upsertWertZuweisung((int)$wert['id'], $shopId, (string)$termId);
+            } catch (RateLimitException $e) {
+                // Eine Rate-Limit-Sperre betrifft die ganze Verbindung, nicht nur
+                // diesen einen Wert -- muss bis zu syncShop() durchgereicht werden
+                // (gleiches Prinzip wie in syncBilderFuerArtikel()).
+                throw $e;
+            } catch (Throwable $e) {
+                // Ein fehlerhafter Wert (z.B. Name-Kollision, die der Vorab-Abgleich
+                // nicht auflösen konnte) darf nicht die restlichen Werte UND alle
+                // Kind-Artikel dieses Vaters bei jedem Lauf mit sich reißen (Fund
+                // 2026-07-31 -- genau das ist vorher passiert, siehe Pagination-Fix
+                // in WooCommerceClient::listeAttributTerms()).
+                Logger::log('shop.achsenwerte_sync_fehler', 'varianten_achse_werte', (int)$wert['id'], [
+                    'wert'   => $anzeigeName,
+                    'fehler' => $e->getMessage(),
+                ], $this->jarvisId, 'error');
+            }
         }
     }
 

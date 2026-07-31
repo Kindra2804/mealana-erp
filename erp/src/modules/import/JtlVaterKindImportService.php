@@ -258,64 +258,76 @@ class JtlVaterKindImportService
             $vaterNr   = trim($korr['artikelnummer'] ?? $vater['artikelnummer']);
             $vaterName = trim($korr['name'] ?? $vater['name']);
 
-            $steuerSatzStr  = (string) (int) $vater['steuersatz'];
-            $steuerklasseId = $lookups['steuer'][$steuerSatzStr]['id'] ?? null;
-            if ($steuerklasseId === null) {
-                $ergebnisse[] = [
-                    'artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false,
-                    'fehler' => ["Steuersatz \"{$vater['steuersatz']}%\" nicht gefunden"],
+            // Resume-Fähigkeit: existiert die Artikelnummer schon (z.B. weil ein früherer
+            // Lauf für andere Väter abgebrochen ist), wird NICHT neu angelegt, sondern der
+            // bestehende Vater übernommen -- Kategorie/Achsen/Kinder darunter laufen trotzdem
+            // durch (alles idempotent), damit ein erneuter Import-Durchlauf mit denselben
+            // Dateien den Batch einfach zu Ende bringt statt bei jedem bereits vorhandenen
+            // Vater als "Fehler" (Artikelnummer existiert bereits) aufzuschlagen.
+            $vorhandenerVater = $this->artikelRepo->findByArtikelnummer($vaterNr);
+
+            if ($vorhandenerVater) {
+                $vaterId = (int) $vorhandenerVater['id'];
+            } else {
+                $steuerSatzStr  = (string) (int) $vater['steuersatz'];
+                $steuerklasseId = $lookups['steuer'][$steuerSatzStr]['id'] ?? null;
+                if ($steuerklasseId === null) {
+                    $ergebnisse[] = [
+                        'artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false,
+                        'fehler' => ["Steuersatz \"{$vater['steuersatz']}%\" nicht gefunden"],
+                    ];
+                    continue;
+                }
+
+                $einheitId = $this->loeseEinheitAuf($vater['verkaufseinheit_roh'], $lookups['einheit'], $einheitMapping);
+                if ($einheitId === null) {
+                    $ergebnisse[] = [
+                        'artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false,
+                        'fehler' => ["Verkaufseinheit \"{$vater['verkaufseinheit_roh']}\" konnte nicht zugeordnet werden"],
+                    ];
+                    continue;
+                }
+
+                $herstellerName = mb_strtolower(trim($vater['hersteller_name']));
+                $herstellerId   = $lookups['hersteller'][$herstellerName] ?? null;
+
+                $vaterData = [
+                    'artikelnummer'          => $vaterNr,
+                    'name'                   => $vaterName,
+                    'artikeltyp'             => $artikeltypCode,
+                    'steuerklasse_id'        => $steuerklasseId,
+                    'artikel_gruppe_id'      => $artikelGruppeId,
+                    'einheit_id'             => $einheitId,
+                    'hersteller_id'          => $herstellerId,
+                    'kurzbeschreibung'       => $vater['kurzbeschreibung'] ?: null,
+                    'beschreibung'           => $vater['beschreibung'] ?: null,
+                    'inhalt_menge'           => $vater['inhalt_menge'],
+                    'inhalt_einheit'         => null,
+                    'herkunftsland'          => null,
+                    'gewicht_artikel'        => $vater['gewicht_artikel'],
+                    'breite'                 => $vater['breite'],
+                    'hoehe'                  => $vater['hoehe'],
+                    'laenge'                 => $vater['laenge'],
+                    'grundpreis_bezugsmenge' => $vater['grundpreis_bezugsmenge'],
+                    'grundpreis_anzeigen'    => $vater['grundpreis_anzeigen'],
+                    'charge_pflicht'         => $vater['charge_pflicht'],
+                    'aktiv'                  => 1,
+                    'brutto_vk'              => $vater['brutto_vk'],
+                    'netto_vk'               => $vater['netto_vk'],
                 ];
-                continue;
-            }
 
-            $einheitId = $this->loeseEinheitAuf($vater['verkaufseinheit_roh'], $lookups['einheit'], $einheitMapping);
-            if ($einheitId === null) {
-                $ergebnisse[] = [
-                    'artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false,
-                    'fehler' => ["Verkaufseinheit \"{$vater['verkaufseinheit_roh']}\" konnte nicht zugeordnet werden"],
-                ];
-                continue;
-            }
+                $result = $this->artikelService->save($vaterData);
+                if (!$result['erfolg']) {
+                    $ergebnisse[] = ['artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false, 'fehler' => $result['fehler']];
+                    continue;
+                }
+                $vaterId = $result['id'];
 
-            $herstellerName = mb_strtolower(trim($vater['hersteller_name']));
-            $herstellerId   = $lookups['hersteller'][$herstellerName] ?? null;
-
-            $vaterData = [
-                'artikelnummer'          => $vaterNr,
-                'name'                   => $vaterName,
-                'artikeltyp'             => $artikeltypCode,
-                'steuerklasse_id'        => $steuerklasseId,
-                'artikel_gruppe_id'      => $artikelGruppeId,
-                'einheit_id'             => $einheitId,
-                'hersteller_id'          => $herstellerId,
-                'kurzbeschreibung'       => $vater['kurzbeschreibung'] ?: null,
-                'beschreibung'           => $vater['beschreibung'] ?: null,
-                'inhalt_menge'           => $vater['inhalt_menge'],
-                'inhalt_einheit'         => null,
-                'herkunftsland'          => null,
-                'gewicht_artikel'        => $vater['gewicht_artikel'],
-                'breite'                 => $vater['breite'],
-                'hoehe'                  => $vater['hoehe'],
-                'laenge'                 => $vater['laenge'],
-                'grundpreis_bezugsmenge' => $vater['grundpreis_bezugsmenge'],
-                'grundpreis_anzeigen'    => $vater['grundpreis_anzeigen'],
-                'charge_pflicht'         => $vater['charge_pflicht'],
-                'aktiv'                  => 1,
-                'brutto_vk'              => $vater['brutto_vk'],
-                'netto_vk'               => $vater['netto_vk'],
-            ];
-
-            $result = $this->artikelService->save($vaterData);
-            if (!$result['erfolg']) {
-                $ergebnisse[] = ['artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false, 'fehler' => $result['fehler']];
-                continue;
-            }
-            $vaterId = $result['id'];
-
-            $this->db->prepare("UPDATE artikel SET ist_vater = 1 WHERE id = :id")->execute(['id' => $vaterId]);
-            if ($vater['uvp'] !== null) {
-                $this->db->prepare("UPDATE artikel SET uvp = :uvp WHERE id = :id")
-                    ->execute(['uvp' => $vater['uvp'], 'id' => $vaterId]);
+                $this->db->prepare("UPDATE artikel SET ist_vater = 1 WHERE id = :id")->execute(['id' => $vaterId]);
+                if ($vater['uvp'] !== null) {
+                    $this->db->prepare("UPDATE artikel SET uvp = :uvp WHERE id = :id")
+                        ->execute(['uvp' => $vater['uvp'], 'id' => $vaterId]);
+                }
             }
 
             $this->artikelService->saveKategorien($vaterId, [$kategorieId]);
