@@ -4,6 +4,7 @@
 - [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — LIVE GETESTET 2026-07-31 (83/87 Väter), Resume-Fähigkeit + Kategorie-Baum-Dropdown nachgezogen; Garn-Achsenwerte-Format vertagt bis Garn-Export (ca. 01.08.)
 - [JTL Bilder-Import](project_jtl_bilder_import.md) — FERTIG gebaut + End-to-End getestet 2026-07-31, eigenständiges Tool, GIF bewusst nicht unterstützt
 - [🟢 BUG: Shop-Sync Achsenwerte-Pagination](bug_shop_sync_term_pagination.md) — BEHOBEN 2026-07-31, live bestätigt
+- [🔴 BUG: getKategorienBaum() Performance](bug_kategorienbaum_performance.md) — 9,5s Ladezeit identifiziert (2661 Artikel), noch NICHT behoben, betrifft Artikelliste + JTL-Import-Dropdown
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Frau Barbara schaut bei UI mit
 - [Chargen-Nachverfolgung](project_chargen_nachverfolgung.md) — FERTIG 2026-07-10: `lager/chargen_nachverfolgung.php`, bestehende LagerService-Methoden + Anzeige-Partial wiederverwendet, eigene lager-gegatete AJAX-Endpunkte
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
