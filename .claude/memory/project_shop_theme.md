@@ -1,11 +1,11 @@
 ---
 name: project-shop-theme
-description: "WooCommerce-Theme/UX-Anpassung: Gratis-Basis (Blocksy+Elementor+Max Mega Menu+Germanized) 2026-07-22 fertig gebaut als Barbara-Testbasis; WoodMart/Blocksy-Pro-Kaufentscheidung weiterhin pausiert (Budget-Gespräch mit Barbara)"
+description: "WooCommerce-Theme/UX-Anpassung: Gratis-Basis (Blocksy+Elementor+Max Mega Menu+Germanized) 2026-07-22 fertig gebaut als Barbara-Testbasis; WoodMart/Blocksy-Pro-Kaufentscheidung weiterhin pausiert (Budget-Gespräch mit Barbara); Performance-Fund 2026-07-29 (kalter Seiten-Cache, TTFB-dominiert) zurückgestellt bis Shop voll befüllt"
 metadata: 
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-07-22T15:11:42.945Z
+  modified: 2026-07-29T07:49:10.851Z
 ---
 
 ## Ausgangslage (Jacky, 2026-07-20)
@@ -72,3 +72,23 @@ Jackys Idee: bis das Theme-Budget-Gespräch durch ist, mit reinen Gratis-Boardmi
 **Bewusst nicht Teil dieser Basis:** Wasserzeichen (Feature existiert noch nicht), Bild-Sync-Performance bei großem Erstimport (siehe [[project_shop_sync]] — FTP-Bulk-Lösung dafür separat gebaut).
 
 **How to apply:** Diese Gratis-Basis ist eigenständig nutzbar und unabhängig von der oben beschriebenen Kaufentscheidung — Barbara kann jetzt schon damit arbeiten. Bei Wiedereinstieg ins Theme-Thema (Kaufentscheidung oder Feinschliff) diesen Abschnitt als aktuellen Ist-Stand nehmen.
+
+## Performance-Fund: langsamer Seitenaufbau (2026-07-29) — zurückgestellt bis Shop voll befüllt
+
+Jacky bemerkte ~10s Ladezeit auf `indra-design.at`, davon laut F12 ca. 6s "nichts sichtbar". Chrome-Lighthouse-Analyse gemeinsam durchgeführt:
+
+**Diagnose:** Fast 100% Time-to-First-Byte (TTFB), nicht Assets/JS/CSS (die brauchten nur ~300ms zusammen). Drei-Stufen-Test bestätigte die Ursache eindeutig:
+- Wartungsseite aktiv: LCP 1,73s (kleine statische Seite, kein Problem)
+- Shop freigeschaltet, 1. Aufruf einer Seite: LCP 5,41s (TTFB 6.933ms) — kompletter PHP-Neuaufbau, Cache leer
+- Dieselbe Seite nochmal aufgerufen: LCP 0,29s — Cache-Treffer, sehr schnell
+
+Jacky bestätigte: **jede neu angeklickte Seite (nicht nur die Startseite) zeigt dieses Muster** — erster Aufruf pro URL langsam (kalter Cache), danach schnell. Klassisches Page-Cache-Verhalten (Plugin oder Hosting-seitig), aber es wurde noch nicht geprüft, welcher Cache-Mechanismus genau läuft.
+
+**Risiko:** Der jeweils erste Besucher einer noch nie aufgerufenen Seite (z.B. nach Cache-Leerung oder bei selten besuchten Produktseiten) bekäme 5+ Sekunden Ladezeit ab.
+
+**Entscheidung (Jacky, 2026-07-29):** Vorerst zurückgestellt, Wartungsseite bleibt wieder aktiv. Wird erneut angeschaut, wenn der Shop mal "voll" ist (mehr Inhalt/Traffic, näher am echten Go-Live).
+
+**How to apply:** Bei Wiedereinstieg hier ansetzen, nicht neu diagnostizieren:
+1. Prüfen, welcher Cache aktiv ist (Hosting-Panel oder Plugin-Liste durchsehen)
+2. Cache-Vorwärmen einrichten (Skript das nach Veröffentlichung/Cache-Leerung die wichtigsten URLs einmal selbst aufruft, bevor echte Kunden reinkommen)
+3. Separat testen: verhalten sich echte WooCommerce-Produkt-/Warenkorbseiten gleich, oder werden die (wegen Sitzungs-/Warenkorb-Fragmenten) bewusst vom vollen Seiten-Cache ausgenommen? — noch nicht getestet, nur Startseite/allgemeine Seiten bisher geprüft.

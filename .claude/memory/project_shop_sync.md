@@ -1,12 +1,30 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST (fehlender User-Agent war Ursache), Hosting-Support-Anfrage zurückgezogen"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST (fehlender User-Agent war Ursache); ✅ Achsenwerte-Umbenennung-Sync BEHOBEN + 404-Altlast-Fallback (2026-07-31)"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-30T07:30:56.797Z
+  modified: 2026-07-31T11:27:41.781Z
 ---
+
+## 🔴 Achsenwerte-Umbenennung wurde im Shop nie nachgezogen — BEHOBEN (2026-07-31)
+
+**Auslöser:** Babsis "Nummer Name"-Sortierumstellung (siehe [[project_farbwerte_migration]] falls vorhanden, sonst: 518 `varianten_achse_werte.wert` + 377 Kindartikel-Namen von "Name (Nr.)" auf "Nr. Name" umgestellt). Jacky fragte danach nach, warum das Sync-Log seit Stunden still war UND ob die Uni/Mix-unter-Farbe-Zusammenführung noch funktioniert.
+
+**Fund 1 (Log-Stille war harmlos):** Der komplette Migrations-Rückstau (122 Artikel) war schon in den ersten 7 Cron-Läufen (09:48–11:16 Uhr, `findFaelligeArtikel()`-Limit 20/Lauf) durchsynct — Stille danach war das erwartete "kein Leerlauf-Spam"-Verhalten, kein Bug.
+
+**Fund 2 (echter Bug, selbst eingebaut):** Ein separat am selben Tag gebauter Fix für Achsenwert-Umbenennungen (`aktualisiereAttributTerm` bei geänderten Werten, Migration 155: `varianten_achse_werte.aktualisiert_am` + `varianten_achse_werte_shops.synced_at`) wurde erst NACH dem obigen Rückstau scharf geschaltet. Der Rename-Aufruf hing komplett am Artikel-Fälligkeits-Loop (`syncAchsenFuerVater()` wurde nur innerhalb `foreach ($faelligeArtikel...)` aufgerufen) — exakt dasselbe Bug-Muster wie schon bei Kategorien (2026-07-22) und Herstellern (2026-07-22): eine reine Werte-Umbenennung OHNE gerade fälligen Artikel wird nie nachgezogen. Weil der Artikel-Rückstau schon VOR dem Fix leergeräumt war, griff der neue Code seither nie.
+
+**Fix:** `ShopSyncRepository::findFaelligeVaterFuerAchsenwerte()` (eigenständige Query: Vater-Artikel mit `varianten_achse_werte_shops.synced_at IS NULL ODER wert.aktualisiert_am > synced_at`) + eigener, unabhängiger Durchlauf in `syncShop()` (gleiches Muster wie `findFaelligeKategorien()`/`findFaelligeHersteller()`).
+
+**Fund 3 (beim Testen des Fixes, weitere Altlast):** "DROPS Alaska" (Vater #172, 20 Farbwerte) hatte `externe_term_id`s aus einem niedrigen ID-Bereich (71–108), die in WooCommerce gar nicht mehr existierten (404 `woocommerce_rest_term_invalid`) — vermutlich Reste aus der Zeit VOR dem Achsen-Dimensionen-Fix vom 2026-07-29 (siehe unten), nie nachträglich bereinigt (nur Karisma wurde damals end-to-end verifiziert/repariert, andere Altbestände nicht). Fix: neue `WooCommerceNotFoundException` (analog `RateLimitException`, in `WooCommerceClient.php`) bei HTTP 404 — `syncWerteFuerDimension()` fängt sie beim Umbenennen ab und behandelt den Wert dann wie "noch nie synct" (neuen Term anlegen statt den ganzen Vater-Durchlauf abzubrechen).
+
+**End-to-End gegen `indra-design.at` verifiziert:** Nach zwei manuellen Cron-Läufen `varianten_achse_werte_shops` komplett clean (0 von 165 mit `synced_at IS NULL`). Stichproben direkt aus der WC-API bestätigt: `#188 "53 anthrazit [Mix]"` (Rename-Pfad), `#299 "37 graublau [Uni]"` (404-Fallback-Neuanlage-Pfad).
+
+**Offen, bewusst nicht angefasst:** Zwei leere, ungenutzte WC-Attribute "[Uni]"/"[Mix]" existieren noch im Shop (Reste aus der Zeit vor der Farbe-Zusammenführung) — reine Kosmetik, keine Funktionsauswirkung. Jacky wollte noch entscheiden ob/wann aufräumen.
+
+**Lehre für künftigen Sync-Code:** Jede neue Change-Detection, die NICHT direkt an `artikel.aktualisiert_am` hängt (Kategorien, Hersteller, jetzt Achsenwerte), braucht einen EIGENEN unabhängigen Durchlauf in `syncShop()` — Piggybacking auf den Artikel-Fälligkeits-Loop reicht nicht, weil der jederzeit leer sein kann während trotzdem was anderes fällig ist.
 
 ## 🔴 Achsen-Dimensionen-Bug (Sub-Achsen als eigene WC-Attribute) BEHOBEN (2026-07-29)
 

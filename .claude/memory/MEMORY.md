@@ -39,7 +39,7 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; Achsen-Dimensionen-Bugfix + Karisma End-to-End verifiziert; ✅ 429-Sperre gelöst (fehlender User-Agent), Hosting-Anfrage zurückgezogen (2026-07-30)
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; 429-Sperre gelöst (2026-07-30); ✅ Achsenwerte-Umbenennung-Sync + 404-Altlast-Fallback behoben (2026-07-31)
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — "Einordnen nach"-Positionierung FERTIG (2026-07-29), Vorbelegungs-Bug behoben
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
 - [Shop-Theme/UX](project_shop_theme.md) — Recherche fertig (WoodMart vs. Blocksy Pro, Lizenz-Falle: pro Live-Domain!); Kauf pausiert bis Budget-Gespräch Jacky/Barbara; NICHT von selbst weitermachen. Performance-Fund 2026-07-29 (kalter Cache/TTFB) zurückgestellt bis Shop voll ist
