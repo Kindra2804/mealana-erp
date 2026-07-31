@@ -403,6 +403,8 @@ $actionBarContent = <<<HTML
 <button class="btn btn-secondary btn-sm">Kopieren</button>
 <div class="actionbar-sep"></div>
 <a href="import.php" class="btn btn-secondary btn-sm">⬇ Import</a>
+<a href="jtl_import.php" class="btn btn-secondary btn-sm">⬇ JTL Vater+Kind-Import</a>
+<a href="jtl_bilder_import.php" class="btn btn-secondary btn-sm">⬇ JTL Bilder-Import</a>
 <button class="btn btn-secondary btn-sm" disabled title="Export kommt später">⬆ Export</button>
 <div class="actionbar-right">
     <span style="color:var(--color-text-muted);font-size:13px">Ausgewählt:</span>

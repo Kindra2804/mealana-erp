@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-23T13:09:36.795Z
+  modified: 2026-07-31T17:06:24.870Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -53,6 +53,7 @@ Jackys ausdrücklicher Wunsch: diese dürfen zwischen den großen Themen oben op
 - **Statistik/Auswertungen** — aktuell nur das Dashboard, keine eigene Reporting-Seite, siehe [[project_statistik]].
 - **Kundenanzeige-Feedback** — V1 läuft live, wartet auf Barbaras Rückmeldung zum Praxistest, siehe [[project_kundenanzeige_modul]].
 - **Laden-/Telefon-Auftrag im Online-Kundenkonto sichtbar** — Jackys Frage 2026-07-21 nach dem Bestellungs-Sync: Phase 3 synct nur Shop→ERP (lesend), NICHT umgekehrt. Ein Kasse/Telefon-Auftrag würde aktuell NICHT im WooCommerce-Kundenkonto des Kunden auftauchen — bräuchte aktives Anlegen einer Bestellung in WooCommerce (Gegenrichtung, nicht gebaut) UND eine WC-Kundenaccount-Zuordnung (Phase 4 Kunden-Merge als Voraussetzung). Aktuell kein Bedarf, nur als Idee vorgemerkt.
+- **Herkunftsland-Datenqualität** — Jacky überrascht 2026-07-31 beim JTL-Import-Bau: `artikel.herkunftsland` (Zoll-Ursprungsland, ISO-2) ist bei 371 von 525 Artikeln leer, bei den restlichen 154 (ausschließlich DROPS Design) steht hart "NO" (Norwegen) — Herkunft aus dem alten Demo-Import-Skript (`gen_demo_artikel.ps1`, Juni), kein laufender Service befüllt das Feld automatisch. Jacky will sich das **getrennt** anschauen (Datenqualität + evtl. Pflege-Workflow), noch nicht konkretisiert. Nicht mit `hersteller.land` verwechseln/gleichsetzen — das ist Firmensitz (Freitext, oft leer), nicht Fertigungsland; können bei gleichem Hersteller unterschiedlich sein (Beispiel KnitPro: Herstelleradresse Indien, Verantwortliche-Person-Adresse Deutschland).
 
 ## Bewusst pausiert, keine Baustelle (nicht vergessen, aber auch nicht aktiv verfolgen)
 

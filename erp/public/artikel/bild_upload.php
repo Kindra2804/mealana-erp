@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/BilderRepository.php';
+require_once __DIR__ . '/../../src/modules/artikel/BildVerarbeitung.php';
 
 header('Content-Type: application/json');
 
@@ -50,9 +51,8 @@ if ($file['size'] > $maxBytes) {
 }
 
 // MIME-Typ prüfen (nicht nur Dateiendung)
-$erlaubteMimes = ['image/jpeg', 'image/png', 'image/webp'];
 $mimeTyp = mime_content_type($file['tmp_name']);
-if (!in_array($mimeTyp, $erlaubteMimes)) {
+if (!in_array($mimeTyp, BildVerarbeitung::ERLAUBTE_MIMES)) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Nur JPG, PNG und WEBP erlaubt']);
     exit;
 }
@@ -69,7 +69,7 @@ $dateiname = 'bild_' . time() . '_' . random_int(1000, 9999) . '.' . $endung;
 $zielpfad  = $uploadDir . $dateiname;
 
 // Bild verkleinern und als JPEG speichern (PHP GD)
-$verkleinert = verkleinereUndSpeichere($file['tmp_name'], $mimeTyp, $zielpfad);
+$verkleinert = BildVerarbeitung::verkleinereUndSpeichere($file['tmp_name'], $mimeTyp, $zielpfad);
 if (!$verkleinert) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Bild konnte nicht verarbeitet werden']);
     exit;
@@ -86,57 +86,3 @@ echo json_encode([
     'url'       => BASE_PATH . '/uploads/artikel/' . $artikelId . '/' . $dateiname,
 ]);
 
-// ─── Hilfsfunktion ───────────────────────────────────────────────────────────
-
-function verkleinereUndSpeichere(string $tmpPfad, string $mimeTyp, string $zielpfad): bool
-{
-    $maxDimension = 1920;
-    $jpegQualitaet = 85;
-
-    // Quelldatei laden
-    $quelle = match ($mimeTyp) {
-        'image/jpeg' => imagecreatefromjpeg($tmpPfad),
-        'image/png'  => imagecreatefrompng($tmpPfad),
-        'image/webp' => imagecreatefromwebp($tmpPfad),
-        default      => false,
-    };
-
-    if ($quelle === false) return false;
-
-    $breite = imagesx($quelle);
-    $hoehe  = imagesy($quelle);
-
-    // Nur verkleinern wenn nötig
-    if ($breite > $maxDimension || $hoehe > $maxDimension) {
-        if ($breite >= $hoehe) {
-            $neueBreite = $maxDimension;
-            $neueHoehe  = (int)round($hoehe * $maxDimension / $breite);
-        } else {
-            $neueHoehe  = $maxDimension;
-            $neueBreite = (int)round($breite * $maxDimension / $hoehe);
-        }
-
-        $ziel = imagecreatetruecolor($neueBreite, $neueHoehe);
-
-        // Transparenz erhalten (PNG)
-        if ($mimeTyp === 'image/png') {
-            imagealphablending($ziel, false);
-            imagesavealpha($ziel, true);
-        }
-
-        imagecopyresampled($ziel, $quelle, 0, 0, 0, 0, $neueBreite, $neueHoehe, $breite, $hoehe);
-        imagedestroy($quelle);
-        $quelle = $ziel;
-    }
-
-    // PNG mit Transparenz als PNG speichern, sonst JPEG
-    if ($mimeTyp === 'image/png') {
-        $zielpfad = preg_replace('/\.jpg$/', '.png', $zielpfad);
-        $ergebnis = imagepng($quelle, $zielpfad, 8);
-    } else {
-        $ergebnis = imagejpeg($quelle, $zielpfad, $jpegQualitaet);
-    }
-
-    imagedestroy($quelle);
-    return $ergebnis;
-}
