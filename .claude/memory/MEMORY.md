@@ -1,6 +1,7 @@
 # Memory Index
 
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
+- [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — Plan bestätigt 2026-07-31 (`sequential-hatching-papert.md`), Bau noch nicht gestartet; Achsen aus Testdaten strukturiert auslesbar
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Frau Barbara schaut bei UI mit
 - [Chargen-Nachverfolgung](project_chargen_nachverfolgung.md) — FERTIG 2026-07-10: `lager/chargen_nachverfolgung.php`, bestehende LagerService-Methoden + Anzeige-Partial wiederverwendet, eigene lager-gegatete AJAX-Endpunkte
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
