@@ -72,6 +72,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php if ($a['ist_gruppe']): ?>
                             <span style="background:#fef3c7;color:#92400e;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:4px">Gruppe</span>
                         <?php endif; ?>
+                        <?php if (!$a['im_kindnamen_anzeigen']): ?>
+                            <span title="Achsenname wird beim VarKombi-Generator NICHT vor den Wert gestellt" style="background:#f1f5f9;color:#64748b;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:4px">nicht im Kindname</span>
+                        <?php endif; ?>
                     </td>
                     <td style="text-align:center;white-space:nowrap">
                         <?php if ($i > 0): ?>
@@ -85,7 +88,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </td>
                     <td>
                         <div class="row-aktionen">
-                            <button onclick="achseBearbeitenOeffnen(<?= $a['id'] ?>, <?= htmlspecialchars(json_encode($a['name'])) ?>, <?= htmlspecialchars(json_encode($a['code'])) ?>, <?= htmlspecialchars(json_encode($a['darstellungsform'])) ?>, <?= (int)$a['ist_gruppe'] ?>, <?= (int)$a['sort_order'] ?>, <?= $a['abhaengig_von_achse_id'] ?? 'null' ?>)"
+                            <button onclick="achseBearbeitenOeffnen(<?= $a['id'] ?>, <?= htmlspecialchars(json_encode($a['name'])) ?>, <?= htmlspecialchars(json_encode($a['code'])) ?>, <?= htmlspecialchars(json_encode($a['darstellungsform'])) ?>, <?= (int)$a['ist_gruppe'] ?>, <?= (int)$a['sort_order'] ?>, <?= $a['abhaengig_von_achse_id'] ?? 'null' ?>, <?= (int)$a['im_kindnamen_anzeigen'] ?>)"
                                     class="btn btn-secondary btn-xs">Bearb.</button>
                             <?php if ($a['in_use']): ?>
                                 <span title="Achse ist Artikeln zugewiesen – kann nicht gelöscht werden"
@@ -146,6 +149,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 </label>
                 <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px;margin-left:24px">
                     Kann Unterachsen enthalten (und trotzdem eigene Werte haben)
+                </div>
+            </div>
+
+            <div style="margin-bottom:var(--space-md)">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" id="edit-im-kindnamen" style="width:16px;height:16px" checked>
+                    <span style="font-size:13px;font-weight:600">Achsenname im Kinder-Namen anzeigen</span>
+                </label>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px;margin-left:24px">
+                    Steuert den Namensvorschlag im VarKombi-Generator, z.B. "[Uni] 18 rot" statt nur "18 rot". Bei "Farbe" selbst meist aus (der Wert spricht für sich), bei Sub-Achsen wie [Uni]/[Mix] meist an.
                 </div>
             </div>
 

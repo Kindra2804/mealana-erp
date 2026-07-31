@@ -271,10 +271,11 @@ foreach ($existing as $e) {
     $existingKeys[$e['wert_ids']] = $e;  // key: "1,3" → artikel-daten
 }
 
-// Achse-ID → Name Lookup für Namens-Vorschlag
+// Achse-ID → Name Lookup für Namens-Vorschlag (nur Achsen mit im_kindnamen_anzeigen=1,
+// z.B. Sub-Achsen wie [Uni]/[Mix] -- die reine "Farbe"-Achse selbst i.d.R. ausgeblendet)
 $achseNamenMap = [];
 foreach ($achsen as $a) {
-    $achseNamenMap[(int)$a['achse_id']] = $a['name'];
+    $achseNamenMap[(int)$a['achse_id']] = $a['im_kindnamen_anzeigen'] ? $a['name'] : '';
 }
 
 // Kombis aufteilen
@@ -841,10 +842,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                         <?php
                                         $wertNamen     = array_column($k['kombi'], 'wert');
                                         $vorschlagNr   = $artikel['artikelnummer'] . '-' . implode('-', $wertNamen);
-                                        $vorschlagName = $artikel['name'] . ' ' . implode(' ', array_map(
-                                            fn($w) => ($achseNamenMap[(int)$w['achse_id']] ?? '') . ' ' . $w['wert'],
+                                        $vorschlagTeile = array_map(
+                                            fn($w) => trim(($achseNamenMap[(int)$w['achse_id']] ?? '') . ' ' . $w['wert']),
                                             $k['kombi']
-                                        ));
+                                        );
+                                        $vorschlagName = trim($artikel['name'] . ' ' . implode(' ', $vorschlagTeile));
                                         $aufpreis      = array_sum(array_column($k['kombi'], 'aufpreis'));
                                         ?>
                                         <tr style="background:#EBF8FF">

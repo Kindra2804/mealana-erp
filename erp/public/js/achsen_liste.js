@@ -18,6 +18,7 @@ function achseNeuOeffnen() {
     document.getElementById('edit-code').value      = '';
     document.getElementById('edit-darstellung').value = 'swatches';
     document.getElementById('edit-ist-gruppe').checked = false;
+    document.getElementById('edit-im-kindnamen').checked = true;
     document.getElementById('edit-abhaengig').value = '';
     document.getElementById('edit-sort').value      = '0';
     document.getElementById('edit-fehler').textContent = '';
@@ -27,13 +28,14 @@ function achseNeuOeffnen() {
     document.getElementById('edit-name').focus();
 }
 
-function achseBearbeitenOeffnen(id, name, code, darstellung, istGruppe, sort, abhaengigId) {
+function achseBearbeitenOeffnen(id, name, code, darstellung, istGruppe, sort, abhaengigId, imKindnamen) {
     document.getElementById('edit-modal-titel').textContent = 'Achse bearbeiten';
     document.getElementById('edit-id').value        = id;
     document.getElementById('edit-name').value      = name;
     document.getElementById('edit-code').value      = code;
     document.getElementById('edit-darstellung').value = darstellung;
     document.getElementById('edit-ist-gruppe').checked = istGruppe == 1;
+    document.getElementById('edit-im-kindnamen').checked = imKindnamen == 1;
     document.getElementById('edit-abhaengig').value = abhaengigId || '';
     document.getElementById('edit-sort').value      = sort;
     document.getElementById('edit-fehler').textContent = '';
@@ -59,12 +61,14 @@ function editAbsenden() {
     if (!code) { document.getElementById('edit-fehler').textContent = 'Code ist Pflichtfeld'; document.getElementById('edit-code').focus(); return; }
     var url       = id > 0 ? window.BASE_PATH + '/achsen/achse_aktualisieren_ajax.php' : window.BASE_PATH + '/achsen/achse_speichern_ajax.php';
     var istGruppe = document.getElementById('edit-ist-gruppe').checked ? '1' : '0';
+    var imKindnamen = document.getElementById('edit-im-kindnamen').checked ? '1' : '0';
     var body = new FormData();
     if (id > 0) body.append('id', id);
     body.append('name', name);
     body.append('code', code);
     body.append('darstellungsform', darstl);
     body.append('ist_gruppe', istGruppe);
+    body.append('im_kindnamen_anzeigen', imKindnamen);
     body.append('abhaengig_von_achse_id', abhaengig);
     body.append('sort_order', sort);
     document.getElementById('edit-btn').disabled = true;

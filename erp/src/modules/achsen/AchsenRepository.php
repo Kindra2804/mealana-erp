@@ -39,6 +39,7 @@ class AchsenRepository
                 va.code,
                 va.darstellungsform,
                 va.ist_gruppe,
+                va.im_kindnamen_anzeigen,
                 va.abhaengig_von_achse_id,
                 va2.name        AS abhaengig_von_name,
                 va.sort_order,
@@ -61,6 +62,8 @@ class AchsenRepository
                 va.name,
                 va.code,
                 va.darstellungsform,
+                va.ist_gruppe,
+                va.im_kindnamen_anzeigen,
                 va.abhaengig_von_achse_id,
                 va.sort_order
             FROM varianten_achsen va
@@ -89,8 +92,8 @@ class AchsenRepository
     public function insert(array $data): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO varianten_achsen (name, code, darstellungsform, ist_gruppe, abhaengig_von_achse_id, sort_order)
-            VALUES (:name, :code, :darstellungsform, :ist_gruppe, :abhaengig_von_achse_id, :sort_order)
+            INSERT INTO varianten_achsen (name, code, darstellungsform, ist_gruppe, im_kindnamen_anzeigen, abhaengig_von_achse_id, sort_order)
+            VALUES (:name, :code, :darstellungsform, :ist_gruppe, :im_kindnamen_anzeigen, :abhaengig_von_achse_id, :sort_order)
         ");
 
         $stmt->execute([
@@ -98,6 +101,7 @@ class AchsenRepository
             'code'                  => $data['code'],
             'darstellungsform'      => $data['darstellungsform'],
             'ist_gruppe'            => $data['ist_gruppe'] ?? 0,
+            'im_kindnamen_anzeigen' => $data['im_kindnamen_anzeigen'] ?? 1,
             'abhaengig_von_achse_id'=> $data['abhaengig_von_achse_id'] ?? null,
             'sort_order'            => $data['sort_order'],
         ]);
@@ -113,6 +117,7 @@ class AchsenRepository
                 code                   = :code,
                 darstellungsform       = :darstellungsform,
                 ist_gruppe             = :ist_gruppe,
+                im_kindnamen_anzeigen  = :im_kindnamen_anzeigen,
                 abhaengig_von_achse_id = :abhaengig_von_achse_id,
                 sort_order             = :sort_order
             WHERE id = :id
@@ -124,6 +129,7 @@ class AchsenRepository
             'code'                  => $data['code'],
             'darstellungsform'      => $data['darstellungsform'],
             'ist_gruppe'            => $data['ist_gruppe'] ?? 0,
+            'im_kindnamen_anzeigen' => $data['im_kindnamen_anzeigen'] ?? 1,
             'abhaengig_von_achse_id'=> $data['abhaengig_von_achse_id'] ?? null,
             'sort_order'            => $data['sort_order'],
         ]);

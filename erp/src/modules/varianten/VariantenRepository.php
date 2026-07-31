@@ -45,6 +45,7 @@ class VariantenRepository
             va.code,
             va.darstellungsform,
             va.ist_gruppe,
+            va.im_kindnamen_anzeigen,
             va.abhaengig_von_achse_id
         FROM artikel_achsen aa
         JOIN varianten_achsen va ON aa.achse_id = va.id
@@ -123,7 +124,8 @@ class VariantenRepository
                 vaw.wert_zusatz,
                 vaw.bedingungs_wert_id,
                 vaw.aufpreis,
-                vaw.sort_order
+                vaw.sort_order,
+                vaw.aktualisiert_am
             FROM varianten_achse_werte vaw
             WHERE vaw.artikel_id = :artikel_id
             ORDER BY vaw.achse_id, vaw.sort_order, vaw.wert
