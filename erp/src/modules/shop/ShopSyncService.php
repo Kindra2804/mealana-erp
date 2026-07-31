@@ -159,6 +159,26 @@ class ShopSyncService
             }
         }
 
+        // Gleiches Muster nochmal für Achsenwerte (Fund 2026-07-31, siehe
+        // ShopSyncRepository::findFaelligeVaterFuerAchsenwerte()): bereits
+        // synchte Farbwert-Terms, die sich seither umbenannt haben, unabhängig
+        // von Artikel-Fälligkeit nachziehen.
+        foreach ($this->repo->findFaelligeVaterFuerAchsenwerte((int)$shop['id']) as $vaterId) {
+            if ($rateLimitiert) break;
+            try {
+                $this->syncAchsenFuerVater($client, $vaterId, (int)$shop['id']);
+            } catch (RateLimitException $e) {
+                $rateLimitiert = true;
+                $this->protokolliereRateLimit($shop, $e);
+                break;
+            } catch (Throwable $e) {
+                Logger::log('shop.achsenwerte_sync_fehler', 'artikel', $vaterId, [
+                    'shop'  => $shop['slug'],
+                    'fehler' => $e->getMessage(),
+                ], $this->jarvisId, 'error');
+            }
+        }
+
         foreach ($faelligeArtikel as $row) {
             if ($rateLimitiert) break;
             try {
@@ -894,16 +914,40 @@ class ShopSyncService
      * Wert einen 'achse_suffix' -- der Term-Name wird dann "Wert SUFFIX"
      * (z.B. "gelb MIX"), damit z.B. "Rot" aus Mix und "Rot" aus Uni nicht auf
      * denselben Term kollabieren (wären sonst fälschlich ein einziger Wert).
+     *
+     * Zwei Fälle, analog zu findFaelligeKategorien()/findFaelligeHersteller():
+     * noch nie synct (anlegen) vs. bereits synct aber seither umbenannt
+     * (Term nachträglich per PUT umbenennen -- Fund 2026-07-31, Babsis
+     * "Nummer Name"-Sortierumstellung deckte auf, dass Wert-Umbenennungen
+     * bis dahin im Shop nie nachgezogen wurden).
      */
     private function syncWerteFuerDimension(WooCommerceClient $client, array $dimension, int $attributId, int $shopId): void
     {
         $offeneWerte = [];
+        $geaenderteWerte = [];
         foreach ($dimension['werte'] as $wert) {
             $zuweisung = $this->repo->findWertShopZuweisung((int)$wert['id'], $shopId);
             if (!$zuweisung || !$zuweisung['externe_term_id']) {
                 $offeneWerte[] = $wert;
+            } elseif ($zuweisung['synced_at'] === null || strtotime($wert['aktualisiert_am']) > strtotime($zuweisung['synced_at'])) {
+                $geaenderteWerte[] = ['wert' => $wert, 'termId' => $zuweisung['externe_term_id']];
             }
         }
+
+        foreach ($geaenderteWerte as $g) {
+            $anzeigeName = $g['wert']['wert'] . (!empty($g['wert']['achse_suffix']) ? ' ' . $g['wert']['achse_suffix'] : '');
+            try {
+                $client->aktualisiereAttributTerm($attributId, $g['termId'], ['name' => $anzeigeName]);
+                $this->repo->upsertWertZuweisung((int)$g['wert']['id'], $shopId, $g['termId']);
+            } catch (WooCommerceNotFoundException) {
+                // externe_term_id zeigt auf ein nicht mehr existierendes WC-Objekt
+                // (z.B. Altlast aus der Zeit vor der Uni/Mix-unter-Farbe-
+                // Zusammenführung) -- wie einen noch nie synchten Wert behandeln,
+                // statt den ganzen Vater-Durchlauf daran scheitern zu lassen.
+                $offeneWerte[] = $g['wert'];
+            }
+        }
+
         if (empty($offeneWerte)) {
             return;
         }

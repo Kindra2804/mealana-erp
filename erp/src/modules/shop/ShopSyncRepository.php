@@ -165,7 +165,7 @@ class ShopSyncRepository
     public function findAlleWerteFuerVater(int $vaterId): array
     {
         $stmt = $this->db->prepare("
-            SELECT id, achse_id, wert
+            SELECT id, achse_id, wert, aktualisiert_am
             FROM varianten_achse_werte
             WHERE artikel_id = :vater_id
             ORDER BY achse_id, sort_order, wert
@@ -212,12 +212,38 @@ class ShopSyncRepository
         return $stmt->fetch() ?: false;
     }
 
+    /**
+     * Vater-Artikel, deren Achsenwerte für diesen Shop bereits als Terms angelegt
+     * sind, sich seit dem letzten Sync aber geändert haben (Change-Detection
+     * unabhängig von Artikel-Fälligkeit -- gleiches Muster wie
+     * findFaelligeKategorien()/findFaelligeHersteller()). Eine reine
+     * Wert-Umbenennung ohne gerade fälligen Kind-Artikel würde sonst nie
+     * nachgezogen -- genau das ist am 2026-07-31 real passiert: der komplette
+     * Artikel-Rückstau war schon durchsynct, bevor die Wert-Umbenennung selbst
+     * scharf geschaltet wurde, danach griff syncAchsenFuerVater() (nur im
+     * Artikel-Fälligkeits-Loop aufgerufen) nie wieder.
+     *
+     * @return int[] vaterartikel_id
+     */
+    public function findFaelligeVaterFuerAchsenwerte(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT v.artikel_id
+            FROM varianten_achse_werte v
+            JOIN varianten_achse_werte_shops vws ON vws.wert_id = v.id AND vws.shop_id = :shop_id
+            WHERE vws.externe_term_id IS NOT NULL
+              AND (vws.synced_at IS NULL OR v.aktualisiert_am > vws.synced_at)
+        ");
+        $stmt->execute(['shop_id' => $shopId]);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
     public function upsertWertZuweisung(int $wertId, int $shopId, string $externeTermId): void
     {
         $this->db->prepare("
-            INSERT INTO varianten_achse_werte_shops (wert_id, shop_id, externe_term_id)
-            VALUES (:wert_id, :shop_id, :externe_term_id)
-            ON DUPLICATE KEY UPDATE externe_term_id = VALUES(externe_term_id)
+            INSERT INTO varianten_achse_werte_shops (wert_id, shop_id, externe_term_id, synced_at)
+            VALUES (:wert_id, :shop_id, :externe_term_id, NOW())
+            ON DUPLICATE KEY UPDATE externe_term_id = VALUES(externe_term_id), synced_at = NOW()
         ")->execute(['wert_id' => $wertId, 'shop_id' => $shopId, 'externe_term_id' => $externeTermId]);
     }
 

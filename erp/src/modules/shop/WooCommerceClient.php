@@ -16,6 +16,18 @@ class RateLimitException extends RuntimeException
 }
 
 /**
+ * HTTP 404 auf ein bekanntes WC-Objekt (z.B. ein Achsenwert-Term, dessen
+ * externe_term_id in der ERP-DB noch auf ein längst gelöschtes/verschobenes
+ * WooCommerce-Objekt zeigt -- Fund 2026-07-31, siehe
+ * ShopSyncService::syncWerteFuerDimension()). Eigene Klasse, damit der
+ * Aufrufer "Objekt existiert nicht mehr, neu anlegen" von echten Fehlern
+ * unterscheiden kann statt den Sync-Durchlauf für diesen Artikel abzubrechen.
+ */
+class WooCommerceNotFoundException extends RuntimeException
+{
+}
+
+/**
  * WooCommerceClient – dünner Wrapper um die WooCommerce REST API v3.
  *
  * Ein Client pro Shop (URL+Key+Secret aus `shops`). Auth läuft über HTTP
@@ -321,6 +333,9 @@ class WooCommerceClient
         if ($httpCode >= 400) {
             $code = $daten['code'] ?? '';
             $msg = $daten['message'] ?? $antwort;
+            if ($httpCode === 404) {
+                throw new WooCommerceNotFoundException("WooCommerce-API-Fehler ($httpCode, $code): $msg");
+            }
             throw new RuntimeException("WooCommerce-API-Fehler ($httpCode, $code): $msg");
         }
 
