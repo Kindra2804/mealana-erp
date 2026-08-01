@@ -405,9 +405,23 @@ class ShopSyncService
         // Bestand NUR bei Standalone-Artikeln setzen -- bei einem Variable
         // Product (Achsen vorhanden) verwaltet WooCommerce Bestand pro
         // Variation, nicht am Elternprodukt (siehe baueVariationPayload).
-        if (empty($achsen)) {
+        // 🔴 Bug bis 2026-08-01: hier stand `empty($achsen)` -- diese Variable
+        // existiert in dieser Methode gar nicht (Tippfehler, gemeint war
+        // $dimensionen), `empty()` auf eine undefinierte Variable ist immer
+        // true. Dadurch bekam JEDER Vater zusätzlich seinen eigenen (nie
+        // befüllten) Lagerbestand aufgedrückt: manage_stock=true,
+        // stock_quantity=0 am Elternprodukt selbst -> WooCommerce zeigte den
+        // gesamten Vater als "ausverkauft", unabhängig vom Bestand der Kinder.
+        if (empty($dimensionen)) {
             $payload += $this->baueBestandsFelder((int)$artikel['artikel_id']);
             $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$artikel['artikel_id'], $preis);
+        } else {
+            // Explizit korrigieren statt nur weglassen: WooCommerce übernimmt bei
+            // PUT-Updates weggelassene Felder unverändert -- ein Vater, der durch
+            // den Bug oben schon fälschlich manage_stock=true/stock_quantity=0
+            // hat, bliebe sonst dauerhaft "ausverkauft". Mit manage_stock=false
+            // leitet WooCommerce die Verfügbarkeit korrekt aus den Variationen ab.
+            $payload['manage_stock'] = false;
         }
 
         // Bilder: ALLE Bilder des Artikels als 'images'-Array (Plural!), in

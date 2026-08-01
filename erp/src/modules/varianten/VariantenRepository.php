@@ -420,6 +420,12 @@ class VariantenRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /** Markiert einen Artikel als Vater (ist_vater=1) — muss bei jeder Kind-Erstellung gesetzt werden. */
+    public function setIstVater(int $artikelId): void
+    {
+        $this->db->prepare("UPDATE artikel SET ist_vater = 1 WHERE id = :id")->execute(['id' => $artikelId]);
+    }
+
     public function insertKombinationWert(array $wert): bool
     {
         $stmt = $this->db->prepare("

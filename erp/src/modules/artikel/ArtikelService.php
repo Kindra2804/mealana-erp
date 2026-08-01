@@ -173,6 +173,10 @@ class ArtikelService
 
         $id = $this->repo->insert($kindData);
 
+        // Vater bekommt sein ist_vater-Flag erst hier, sobald wirklich ein Kind existiert
+        // (schützt LagerService::wareneingang() davor, dass der Vater selbst Bestand bekommt).
+        $this->repo->setIstVater((int) $data['vaterartikel_id']);
+
         if ($bruttoVk) {
             $nettoVk = round((float) $bruttoVk / (1 + $vater['steuersatz'] / 100), 4);
             $this->repo->insertPreis($id, (float) $bruttoVk, $nettoVk);

@@ -1,32 +1,24 @@
 ---
 name: bug-kategorienbaum-performance
-description: "getKategorienBaum() braucht 9,5s (bei 2661 Artikeln) — identifizierter Engpass, noch nicht behoben, betrifft Artikel-Liste UND JTL-Import-Dropdown"
-metadata: 
+description: "getKategorienBaum() brauchte 9,66s (bei 2661 Artikeln) — BEHOBEN 2026-08-01, jetzt 0,015s (~640x)"
+metadata:
   node_type: memory
   type: project
   originSessionId: 85efc9a3-c1f8-4d31-89d2-a10e99128244
-  modified: 2026-07-31T20:15:39.503Z
+  modified: 2026-08-01T08:53:33.853Z
 ---
 
-## Befund (2026-07-31, Ende der JTL-Import-Session)
+## ✅ BEHOBEN 2026-08-01
 
-Jacky meldete: Artikelliste braucht bei ~2500 Artikeln ca. 10 Sekunden zum Laden, Sorge wegen Skalierung auf geplante ~25.000 Artikel.
+**Präzise Root Cause (per EXPLAIN gefunden, genauer als die ursprüngliche Vermutung):** `KategorieRepository::findAllMitEltern()` jointe `kategorien → artikel_kategorien → artikel(Vater) → artikel(Kind)` in einem Statement. Die JOIN-Bedingung auf die zweite `artikel`-Kopie (`a`) enthielt ein OR über zwei verschiedene Spalten: `(a.id=vater.id AND vater.ist_vater=0) OR (a.vaterartikel_id=vater.id)`. EXPLAIN zeigte dafür `type: ALL, key: NULL, Extra: Range checked for each record` — die OR-Bedingung verhinderte JEDE Index-Nutzung. MySQL scannte dadurch bei JEDER der ~224 Kategorie-Zuweisungen die komplette Artikeltabelle (~2327 Zeilen) neu = ~521.000 geprüfte Zeilen. Das allein erklärt die 9,66s vollständig (bestätigt per `SET profiling=1`).
 
-**Per PHP-CLI-Profiling präzise lokalisiert** (`ArtikelController::index()`, `count()`, `getPreisStatusFuerListe()`, `getKinderFuerListe()`, `getZustandsArtikelFuerListe()`, `findHauptbilderByArtikelIds()`, `getKategorienBaum()` einzeln getimt, bei pro_seite=12 und pro_seite=100):
+**Fix:** `artikel_anzahl` wird jetzt direkt über die eigene `artikel_kategorien`-Zeile des Artikels gezählt (`a.ist_vater=0`, kein Vater-Umweg mehr). Verifiziert per Query, dass **jedes** Kind durch `syncKategorienZuKindern()` ohnehin immer eine eigene direkte Zuweisungs-Zeile bekommt (0 Kinder ohne eigene Zeile gefunden) — der Vater-JOIN war für die Zählung komplett redundant. Alle vier Werte (`artikel_anzahl`, `aktion_aktiv`, `aktion_zukunft`, `aktion_info`) plus der bereits vorher als Subquery vorhandene `eigene_shop_codes`-Wert laufen jetzt als unabhängige korrelierte Subqueries statt eines gemeinsamen JOINs mit GROUP BY — jede nutzt den bestehenden Index auf `kategorie_id`.
 
-- Alle Artikelliste-eigenen Queries zusammen: **< 100ms** (Haupt-Query 15-20ms, selbst mit 1509 Kind-Zeilen bei 100 Hauptartikeln).
-- **`ArtikelService::getKategorienBaum()` → `KategorieRepository::findAllMitEltern()`: 9,5 Sekunden.** Unabhängig von pro_seite (läuft ja nur einmal pro Seitenaufruf) — das ist praktisch die gesamte Ladezeit.
+**Wichtige Zwischenfalle beim Umbau:** Ein erster Versuch (zwei unabhängige `COUNT(DISTINCT)`-Subqueries summiert, eine für Standalone-Artikel + eine für über-Vater-erreichte Kinder) lieferte fast doppelte Zahlen — weil Kinder durch die Sync-Propagierung IMMER beide Pfade gleichzeitig erfüllen (eigene Zeile UND Vater hat auch eine Zeile), was zu Doppelzählung führte. Erst die empirische Prüfung (0 Kinder ohne eigene Zeile) zeigte, dass der Vater-Pfad komplett weggelassen werden kann.
 
-**Root Cause:** `findAllMitEltern()` (`src/modules/artikel/KategorieRepository.php:47ff`) joint `kategorien → artikel_kategorien → artikel (Vater) → artikel (Kind, via a.vaterartikel_id = vater.id)` in einem einzigen JOIN, um `COUNT(DISTINCT a.id)` pro Kategorie zu berechnen (Vater ODER dessen Kinder zählen als "in der Kategorie"). Bei Artikeln mit vielen Varianten (z.B. manche KnitPro-Nadeln mit 50+ Kindern) multipliziert sich das JOIN-Ergebnis vor dem `GROUP BY k.id` massiv. Zusätzlich zwei korrelierte Subqueries/GROUP_CONCATs pro Kategorie-Zeile (Aktion-Status, Shop-Kanal-Chips).
+**Verifiziert:**
+- Ergebnis byte-identisch zur alten Query (Diff über alle 194 aktiven Kategorien, sortiert nach `k.id`)
+- Laufzeit: 9,66s → 0,015s auf reiner SQL-Ebene (`SET profiling=1`), End-to-End über `ArtikelService::getKategorienBaum()` (PHP-CLI): 0,0085s
+- Alle 12 Aufrufer (`artikel/liste.php`, `kategorien_verwalten.php`, `jtl_import.php`, `aktionen/*`, `achsen/*`, etc.) brauchen keine Anpassung, da Spaltenstruktur/Reihenfolge unverändert
 
-**Skaliert mit der GESAMTEN Artikelmenge in der DB, nicht mit der angezeigten Seite** — bei 25.000 Artikeln (Jackys Zielgröße) wird das voraussichtlich deutlich schlimmer, nicht nur linear. Kein Naturgesetz, klar isolierter und behebbarer Engpass — nicht "damit leben müssen".
-
-**Relevant auch für heute gebauten Code:** `public/artikel/jtl_import.php` nutzt seit dem heutigen Kategorie-Hierarchie-Fix ebenfalls `getKategorienBaum()` für den Kategorie-Dropdown — hat also denselben ~9,5s-Ladeverzug geerbt.
-
-## Noch nicht behoben (bewusst — späte Uhrzeit, Query ist heikel)
-
-`findAllMitEltern()` wird auch von `kategorien_verwalten.php` und vermutlich weiteren Stellen genutzt (Aktions-Status, Shop-Kanal-Chips-Anzeige) — ein Umbau braucht sorgfältiges Testen über mehrere Seiten hinweg, nicht spät abends im Vorbeigehen.
-
-**Ansatzpunkt für den Fix (nächste Session):** `artikel_anzahl` (und ggf. `eigene_shop_codes`) statt über den JOIN-Fan-out per korrelierter Scalar-Subquery pro Kategorie berechnen (`SELECT COUNT(DISTINCT ...) FROM ... WHERE ak.kategorie_id = k.id`) statt eines einzigen großen JOINs über die komplette Tabelle — vermeidet die kombinatorische Explosion vor dem GROUP BY. Vor dem Umbau: alle Aufrufer von `getKategorienBaum()`/`findAllMitEltern()` auflisten (u.a. `artikel/liste.php`, `artikel/kategorien_verwalten.php`, `artikel/jtl_import.php`, evtl. `aktionen/*`) und nach dem Fix durchtesten, dass Aktion-Status und Shop-Chips weiterhin korrekt sind.
-
-**How to apply:** Bei Wiedereinstieg diese Query zuerst profilen/EXPLAINen bevor Änderungen gemacht werden (Zahlen hier sind Stand 2026-07-31, 2661 Artikel in der DB) — dann gezielt umbauen und mit echten Seitenaufrufen (nicht nur CLI-Timing) verifizieren.
+**Nicht angefasst:** Ob bei 25.000 Artikeln (Jackys Zielgröße) noch weitere Engpässe auftreten — die jetzige Lösung skaliert linear mit Anzahl Kategorien × durchschnittlicher Artikel-pro-Kategorie (kein Cross-Join-Fan-Out mehr), sollte aber bei Bedarf erneut profiliert werden. Noch nicht von Jacky im Browser bestätigt (nur CLI/SQL-seitig verifiziert).

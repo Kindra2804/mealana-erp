@@ -66,29 +66,144 @@ class JtlVaterKindImportService
         return $byNr;
     }
 
+    /**
+     * Normalisiert einen rohen Achsenwert der Farbe-Achse auf die etablierte
+     * DROPS-Konvention "Nummer Name" (z.B. "18 braun"). Die JTL/Barbara-Rohdaten
+     * schreiben Nummer und [Uni]/[Mix]-Kennzeichnung uneinheitlich:
+     *   - "braun [Uni] (18)"      -- Name, Tag, Nummer in Klammern am Ende
+     *   - "[Uni] helloliv (115)"  -- Tag schon vorne, Nummer trotzdem in Klammern hinten
+     *   - "UNI 01 natur"          -- Tag als Wort (nicht geklammert), Nummer schon vorne
+     *   - "101 - weiß"            -- Nummer schon vorne, kein Tag, Bindestrich statt Leerzeichen
+     *
+     * [Uni]/[Mix] sind in diesem System KEINE Text-Bestandteile des Werts, sondern eigene
+     * Achsen (siehe varianten_achsen id 8/9, abhängig von der Gruppenachse "Farbe", id 7)
+     * -- ein erkanntes Tag steuert daher, auf welche Achse der Wert gebucht wird
+     * (Rückgabe 'achse_name'), nicht den Wert-Text selbst.
+     *
+     * Barbaras Auslauf-Markierung "#" (Position uneinheitlich: in der Nummer, direkt
+     * danach, oder in der Kind-Artikelnummer) wird erkannt und separat als 'ist_auslauf'
+     * zurückgegeben -- wird auf artikel.ist_auslaufartikel gemappt (siehe fuehreImportDurch()).
+     *
+     * Andere Achsen (z.B. "Größe" bei Nadeln/Socken) werden NICHT angefasst -- die
+     * Nummer-Name-Konvention gilt nur für Farbwerte, alles andere bleibt Rohtext.
+     */
+    private function normalisiereFarbwert(string $achsenName, string $wertRoh): array
+    {
+        if ($achsenName !== 'Farbe') {
+            return ['achse_name' => $achsenName, 'wert' => $wertRoh, 'ist_auslauf' => false];
+        }
+
+        $istAuslauf = str_contains($wertRoh, '#');
+        $w = str_replace('#', '', $wertRoh);
+
+        // Geklammerter Tag -- BELIEBIGER Inhalt zählt (Barbara setzt jeden Sonderfall in
+        // eckige Klammern, siehe [Uni]/[Mix]/[Print]/[Long Print]/[Recycled Denim] u.v.m.).
+        // Bereits bekannte Sub-Achsen (siehe ladeFarbAchsenTags()) werden mit ihrem exakten
+        // bestehenden Namen wiederverwendet, ein bisher unbekannter Tag wird 1:1 als neuer
+        // Achsenname übernommen (Achse wird bei Bedarf in findeOderErstelleAchse() angelegt) --
+        // deckt automatisch auch künftig neu erfundene Tags ab, ohne Codeänderung.
+        $bekannteTags = $this->ladeFarbAchsenTags();
+        $achseNeu     = $achsenName;
+
+        if (preg_match('/\[([^\]]+)\]/', $w, $m)) {
+            $tagRoh   = trim($m[1]);
+            $achseNeu = $bekannteTags[mb_strtolower($tagRoh)] ?? ('[' . mb_convert_case($tagRoh, MB_CASE_TITLE) . ']');
+            $w = str_replace($m[0], '', $w);
+        } elseif (!empty($bekannteTags)) {
+            // Kein Klammer-Tag -- gegen bereits bekannte Sub-Achsen als bloßes Wort prüfen
+            // (z.B. "UNI 01 natur"). Bewusst NUR gegen bekannte Namen, nicht gegen beliebige
+            // Wörter, damit ein echter Farbname nie versehentlich als Tag missverstanden wird.
+            foreach ($bekannteTags as $tagLower => $tagName) {
+                if (preg_match('/\b' . preg_quote($tagLower, '/') . '\b/i', $w)) {
+                    $achseNeu = $tagName;
+                    $w = preg_replace('/\b' . preg_quote($tagLower, '/') . '\b/i', '', $w);
+                    break;
+                }
+            }
+        }
+
+        $nr = null;
+        if (preg_match('/\((\d+)\)/', $w, $m)) {
+            $nr = $m[1];
+            $w = str_replace($m[0], '', $w);
+        } elseif (preg_match('/^\s*(\d+)\s*-?\s*/', $w, $m)) {
+            $nr = $m[1];
+            $w = substr($w, strlen($m[0]));
+        } elseif (preg_match('/\s+(\d+)\s*$/', $w, $m)) {
+            // Nummer am Ende OHNE Klammern (z.B. "Weiß 1", "Creme 2" -- BorgoDePazzi Giza)
+            $nr = $m[1];
+            $w = substr($w, 0, -strlen($m[0]));
+        }
+
+        $name = trim(preg_replace('/\s+/', ' ', $w));
+        $name = trim($name, " -,");
+        // Barbaras Rohdaten schreiben Farbnamen uneinheitlich groß/klein (z.B. "Weiß" vs
+        // "weiß") -- einheitlich klein, damit die Achsenwerte-Liste nicht wild gemischt aussieht.
+        $name = mb_strtolower($name);
+
+        $wertNeu = $nr !== null ? trim($nr . ' ' . $name) : $name;
+
+        return ['achse_name' => $achseNeu, 'wert' => $wertNeu, 'ist_auslauf' => $istAuslauf];
+    }
+
+    private ?array $farbAchsenTagsCache = null;
+
+    /**
+     * Bereits bestehende Sub-Achsen der Farbe-Achse (z.B. "[Uni]", "[Mix]") als
+     * Lowercase-Tag-ohne-Klammern => exakter Achsenname-Lookup. Wird für die
+     * bare-Wort-Erkennung (kein Klammer-Tag im Rohtext) gebraucht UND um bei
+     * geklammerten Tags den bestehenden Achsennamen exakt wiederzuverwenden statt
+     * versehentlich eine zweite, leicht anders geschriebene Achse anzulegen.
+     * Pro Import-Lauf einmal geladen (gecacht), da für jeden der oft tausenden
+     * Werte aufgerufen.
+     */
+    private function ladeFarbAchsenTags(): array
+    {
+        if ($this->farbAchsenTagsCache !== null) {
+            return $this->farbAchsenTagsCache;
+        }
+        $tags = [];
+        $farbeAchse = $this->achsenRepo->findByCode('farbe');
+        if ($farbeAchse) {
+            foreach ($this->achsenRepo->findByParentId((int) $farbeAchse['id']) as $sub) {
+                $tags[mb_strtolower(trim($sub['name'], '[] '))] = $sub['name'];
+            }
+        }
+        return $this->farbAchsenTagsCache = $tags;
+    }
+
     /** Variationskombinationen-CSV gruppiert nach Vater-Artikelnummer, je Kind die erkannten Achsen. */
     public function parseVariationskombinationen(string $pfad): array
     {
         $proVater = [];
         foreach (JtlCsvReader::lese($pfad) as $row) {
-            $vaterNr = $row['Artikelnummer'] ?? '';
-            $kindNr  = $row['Kind Artikelnummer'] ?? '';
-            if ($vaterNr === '' || $kindNr === '') continue;
+            $vaterNr   = $row['Artikelnummer'] ?? '';
+            $kindNrRoh = $row['Kind Artikelnummer'] ?? '';
+            if ($vaterNr === '' || $kindNrRoh === '') continue;
+
+            $kindNameRoh = $row['Kind Artikelname'] ?? '';
+            $istAuslauf  = str_contains($kindNrRoh, '#') || str_contains($kindNameRoh, '#');
+            $kindNr      = str_replace('#', '', $kindNrRoh);
 
             $achsen = [];
             for ($i = 1; $i <= 6; $i++) {
-                $achsenName = rtrim(trim($row["Variationsname $i"] ?? ''), ':');
-                $achsenWert = trim($row["Variationswertname $i"] ?? '');
-                if ($achsenName === '' || $achsenWert === '') continue;
-                $achsen[] = ['name' => $achsenName, 'wert' => $achsenWert];
+                $achsenName    = rtrim(trim($row["Variationsname $i"] ?? ''), ':');
+                $achsenWertRoh = trim($row["Variationswertname $i"] ?? '');
+                if ($achsenName === '' || $achsenWertRoh === '') continue;
+
+                $normalisiert = $this->normalisiereFarbwert($achsenName, $achsenWertRoh);
+                if ($normalisiert['ist_auslauf']) $istAuslauf = true;
+
+                $achsen[] = ['name' => $normalisiert['achse_name'], 'wert' => $normalisiert['wert']];
             }
 
             $proVater[$vaterNr][] = [
                 'kind_artikelnummer' => $kindNr,
-                'kind_name'          => $row['Kind Artikelname'] ?? '',
+                'kind_name_roh'      => $kindNameRoh, // Fallback falls keine Achse erkannt wurde
                 'kind_netto'         => $this->komma($row['Kind VK Netto'] ?? ''),
                 'kind_brutto'        => $this->komma($row['Kind VK Brutto'] ?? ''),
                 'achsen'             => $achsen,
+                'ist_auslauf'        => $istAuslauf,
             ];
         }
         return $proVater;
@@ -112,6 +227,21 @@ class JtlVaterKindImportService
         }
 
         return ['steuer' => $steuerMap, 'einheit' => $einheitMap, 'hersteller' => $herstellerMap];
+    }
+
+    /**
+     * Kürzt den DROPS-Markennamen am Anfang des Artikelnamens weg (Barbaras Wunsch:
+     * "DROPS " macht Vater- UND Kind-Namen unnötig lang) -- AUSSER bei der
+     * "DROPS loves You"-Serie, dort ist der Markenname Teil des eigentlichen
+     * Produktnamens und bleibt bewusst stehen. Groß-/Kleinschreibung im Rohtext ist
+     * uneinheitlich ("DROPS loves You" vs. "DROPS Loves You"), daher case-insensitive.
+     */
+    private function kuerzeDropsName(string $name): string
+    {
+        if (preg_match('/^DROPS\s+loves\s+you/i', $name)) {
+            return $name;
+        }
+        return preg_replace('/^DROPS\s+/i', '', $name);
     }
 
     /**
@@ -154,9 +284,25 @@ class JtlVaterKindImportService
                     $einheitenUnbekannt[$kindVerkaufseinheitRoh] = true;
                 }
 
+                // Kind-Name aus Vatername + Achse(n) + Wert neu zusammensetzen statt den
+                // rohen (oft uneinheitlich formatierten) CSV-Namen zu übernehmen -- gleiche
+                // Konvention wie der manuelle VarKombi-Generator: die Achse "Farbe" selbst
+                // wird NICHT in den Namen geschrieben (redundant), [Uni]/[Mix] hingegen schon
+                // (siehe normalisiereFarbwert()). Ohne erkannte Achsen (z.B. Stammdatenzeile
+                // fehlt) bleibt der rohe CSV-Name als Fallback.
+                $vaterNameTrim = $this->kuerzeDropsName(trim($vaterRow['Artikelname'] ?? ''));
+                $kindNameNeu   = $kombi['kind_name_roh'];
+                if (!empty($kombi['achsen'])) {
+                    $teile = array_map(
+                        fn($a) => trim(($a['name'] !== 'Farbe' ? $a['name'] . ' ' : '') . $a['wert']),
+                        $kombi['achsen']
+                    );
+                    $kindNameNeu = trim($vaterNameTrim . ' ' . implode(' ', $teile));
+                }
+
                 $kinder[] = [
                     'artikelnummer'       => $kombi['kind_artikelnummer'],
-                    'name'                => $kombi['kind_name'],
+                    'name'                => $kindNameNeu,
                     'achsen'              => $kombi['achsen'],
                     'brutto_vk'           => $kombi['kind_brutto'],
                     'netto_vk'            => $kombi['kind_netto'],
@@ -168,12 +314,13 @@ class JtlVaterKindImportService
                     'uvp'                 => $kindRow ? $this->komma($kindRow['UVP'] ?? '') : null,
                     'verkaufseinheit_roh' => $kindVerkaufseinheitRoh,
                     'stammdaten_fehlen'   => $kindRow === null,
+                    'ist_auslauf'         => $kombi['ist_auslauf'],
                 ];
             }
 
             $vaeter[] = [
                 'artikelnummer'          => $vaterNr,
-                'name'                   => $vaterRow['Artikelname'] ?? '',
+                'name'                   => $this->kuerzeDropsName(trim($vaterRow['Artikelname'] ?? '')),
                 'kurzbeschreibung'       => $vaterRow['Kurzbeschreibung'] ?? '',
                 'beschreibung'           => $vaterRow['Beschreibung'] ?? '',
                 'brutto_vk'              => $this->komma($vaterRow['Brutto-VK'] ?? ''),
@@ -218,7 +365,14 @@ class JtlVaterKindImportService
         return trim($text, '_');
     }
 
-    /** Findet eine globale Achse per Code oder legt sie neu an (Darstellungsform-Default: dropdown). */
+    /**
+     * Findet eine globale Achse per Code oder legt sie neu an (Darstellungsform-Default:
+     * dropdown). Ein noch unbekannter geklammerter Farb-Tag (z.B. erstmalig auftauchendes
+     * "[Recycled Denim]", siehe normalisiereFarbwert()) wird dabei automatisch als abhängig
+     * von der bestehenden Farbe-Achse angelegt -- sonst fehlt die Sub-Achsen-Union-Logik
+     * (VariantenService::baueAchsenDimensionen()) im VarKombi-Generator UND im Shop-Sync
+     * die Verknüpfung zur Gruppenachse.
+     */
     private function findeOderErstelleAchse(string $name): int
     {
         $code      = $this->slugify($name);
@@ -227,11 +381,18 @@ class JtlVaterKindImportService
             return (int) $bestehend['id'];
         }
 
+        $abhaengigVonId = null;
+        if (preg_match('/^\[.+\]$/', $name)) {
+            $farbeAchse = $this->achsenRepo->findByCode('farbe');
+            $abhaengigVonId = $farbeAchse ? (int) $farbeAchse['id'] : null;
+        }
+
         return $this->achsenRepo->insert([
-            'name'             => $name,
-            'code'             => $code,
-            'darstellungsform' => 'dropdown',
-            'sort_order'       => 0,
+            'name'                   => $name,
+            'code'                   => $code,
+            'darstellungsform'       => 'dropdown',
+            'abhaengig_von_achse_id' => $abhaengigVonId,
+            'sort_order'             => 0,
         ]);
     }
 
@@ -268,6 +429,15 @@ class JtlVaterKindImportService
 
             if ($vorhandenerVater) {
                 $vaterId = (int) $vorhandenerVater['id'];
+
+                // 🔴 Bug bis 2026-08-01: $einheitId/$herstellerId wurden nur im "neu anlegen"-Zweig
+                // unten gesetzt, aber weiter unten in der Kinder-Anreicherung UNBEDINGT gelesen --
+                // bei einem bereits bestehenden Vater (Resume-Fall) blieben sie komplett undefiniert
+                // und krachten beim ersten Kind mit einem FK-Fehler auf einheit_id. Fix: bei einem
+                // bestehenden Vater dessen EIGENE aktuelle Werte als Fallback für die Kinder laden.
+                $vorhandenerVaterVoll = $this->artikelRepo->findById($vaterId);
+                $einheitId    = $vorhandenerVaterVoll['einheit_id'] ?? null;
+                $herstellerId = $vorhandenerVaterVoll['hersteller_id'] ?? null;
             } else {
                 $steuerSatzStr  = (string) (int) $vater['steuersatz'];
                 $steuerklasseId = $lookups['steuer'][$steuerSatzStr]['id'] ?? null;
@@ -409,11 +579,14 @@ class JtlVaterKindImportService
 
                     $kindEinheitId = $this->loeseEinheitAuf($orig['verkaufseinheit_roh'], $lookups['einheit'], $einheitMapping) ?? $einheitId;
 
+                    // ist_auslaufartikel: Barbaras "#"-Markierung aus normalisiereFarbwert()
+                    // (siehe parseVariationskombinationen()) -- Auslauffarbe wird beim Import
+                    // direkt korrekt geflaggt statt manuell nachgetragen werden zu müssen.
                     $this->db->prepare("
                         UPDATE artikel SET
                             gewicht_artikel = :gewicht, breite = :breite, hoehe = :hoehe, laenge = :laenge,
                             uvp = :uvp, einheit_id = :einheit_id, charge_pflicht = :charge_pflicht,
-                            hersteller_id = :hersteller_id
+                            hersteller_id = :hersteller_id, ist_auslaufartikel = :ist_auslauf
                         WHERE id = :id
                     ")->execute([
                         'gewicht'        => $orig['gewicht_artikel'],
@@ -424,6 +597,7 @@ class JtlVaterKindImportService
                         'einheit_id'     => $kindEinheitId,
                         'charge_pflicht' => $vater['charge_pflicht'],
                         'hersteller_id'  => $herstellerId,
+                        'ist_auslauf'    => !empty($orig['ist_auslauf']) ? 1 : 0,
                         'id'             => $kindId,
                     ]);
 

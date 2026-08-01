@@ -24,8 +24,9 @@ function sucheVariante() {
                 var label = v.kind_name
                     ? v.artikel_name + ' <span style="color:var(--color-text-muted)">— ' + v.kind_name + '</span>'
                     : v.artikel_name;
+                var nr = v.varianten_artikelnummer || v.artikelnummer;
                 return '<div style="border:1px solid var(--color-border);padding:8px 12px;margin-bottom:4px;border-radius:4px;cursor:pointer" onclick="waehleVariante(' + JSON.stringify(v).replace(/"/g, '&quot;') + ')">'
-                    + '<strong>' + v.varianten_artikelnummer || v.artikelnummer + '</strong> – ' + label + '</div>';
+                    + '<strong>' + nr + '</strong> – ' + label + '</div>';
             }).join('');
         });
 }

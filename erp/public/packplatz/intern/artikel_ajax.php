@@ -10,8 +10,11 @@ if (!$q) { echo json_encode(['gefunden' => false]); exit; }
 $db = Database::getInstance();
 
 // Suche per EAN oder Artikelnummer
+// hat_kinder zusaetzlich zu ist_vater pruefen: bei Artikeln aus dem alten VarKombi-Generator
+// (vor dem JTL-Vater-Kind-Import) wurde das ist_vater-Flag nie gesetzt.
 $stmt = $db->prepare("
-    SELECT a.id, a.name, a.artikelnummer, a.zustand, a.zustand_vater_id,
+    SELECT a.id, a.name, a.artikelnummer, a.zustand, a.zustand_vater_id, a.ist_vater,
+           EXISTS(SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id) AS hat_kinder,
            COALESCE(a.charge_pflicht, 0) AS charge_pflicht,
            (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
            (SELECT dateiname FROM artikel_bilder WHERE artikel_id = COALESCE(a.vaterartikel_id, a.id) AND position = 0 LIMIT 1) AS hauptbild
@@ -26,6 +29,24 @@ $artikel = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$artikel) { echo json_encode(['gefunden' => false]); exit; }
 
 $artikelId = (int)$artikel['id'];
+
+// Vater-Artikel darf nie selbst gebucht werden — stattdessen Kinder zur Auswahl anbieten
+if ((int)$artikel['ist_vater'] === 1 || (int)$artikel['hat_kinder'] === 1) {
+    $kStmt = $db->prepare("
+        SELECT id, name, artikelnummer
+        FROM artikel
+        WHERE vaterartikel_id = :vid AND aktiv = 1
+        ORDER BY artikelnummer
+    ");
+    $kStmt->execute([':vid' => $artikelId]);
+    echo json_encode([
+        'gefunden'  => false,
+        'ist_vater' => true,
+        'vater_name'=> $artikel['name'],
+        'kinder'    => $kStmt->fetchAll(PDO::FETCH_ASSOC),
+    ]);
+    exit;
+}
 
 // Lagerstand pro Lager
 $bestand = $db->prepare("

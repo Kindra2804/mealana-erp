@@ -4,7 +4,9 @@
 - [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — LIVE GETESTET 2026-07-31 (83/87 Väter), Resume-Fähigkeit + Kategorie-Baum-Dropdown nachgezogen; Garn-Achsenwerte-Format vertagt bis Garn-Export (ca. 01.08.)
 - [JTL Bilder-Import](project_jtl_bilder_import.md) — FERTIG gebaut + End-to-End getestet 2026-07-31, eigenständiges Tool, GIF bewusst nicht unterstützt
 - [🟢 BUG: Shop-Sync Achsenwerte-Pagination](bug_shop_sync_term_pagination.md) — BEHOBEN 2026-07-31, live bestätigt
-- [🔴 BUG: getKategorienBaum() Performance](bug_kategorienbaum_performance.md) — 9,5s Ladezeit identifiziert (2661 Artikel), noch NICHT behoben, betrifft Artikelliste + JTL-Import-Dropdown
+- [🟢 BUG: getKategorienBaum() Performance](bug_kategorienbaum_performance.md) — BEHOBEN 2026-08-01: OR-Join verhinderte Index-Nutzung, 9,66s→0,015s (~640x); Browser-Test von Jacky steht noch aus
+- [🟢 BUG: Vater-Artikel bekommt Bestand bei Wareneingang](bug_vater_artikel_bestand_wareneingang.md) — BEHOBEN 2026-08-01: Guard in LagerService + ist_vater-Flag bei 16 Altvätern nachgezogen (Flag war unzuverlässig!) + AD-CS-Bestand korrigiert; Browser-Test von Jacky steht noch aus
+- [Google Shopping + Search Console](project_google_shopping_search_console.md) — Barbaras Wunsch 2026-08-01, gehört zu Online-Shop-Anbindung, 0% Konzept
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Frau Barbara schaut bei UI mit
 - [Chargen-Nachverfolgung](project_chargen_nachverfolgung.md) — FERTIG 2026-07-10: `lager/chargen_nachverfolgung.php`, bestehende LagerService-Methoden + Anzeige-Partial wiederverwendet, eigene lager-gegatete AJAX-Endpunkte
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — Nicht einfach Code liefern, erklären und selbst schreiben lassen
@@ -43,7 +45,7 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; 429-Sperre gelöst (2026-07-30); ✅ Achsenwerte-Umbenennung-Sync + 404-Altlast-Fallback behoben (2026-07-31)
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; 429-Sperre gelöst (2026-07-30); ✅ Achsenwerte-Umbenennung-Sync behoben (2026-07-31); ✅ Väter immer "ausverkauft"-Bug behoben + 18 Väter live repariert (2026-08-01); ✅ Einzelfall verwaister Sync-Erfolg (Artikel 3092) repariert (2026-08-01)
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — "Einordnen nach"-Positionierung FERTIG (2026-07-29), Vorbelegungs-Bug behoben
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
 - [Shop-Theme/UX](project_shop_theme.md) — Recherche fertig (WoodMart vs. Blocksy Pro, Lizenz-Falle: pro Live-Domain!); Kauf pausiert bis Budget-Gespräch Jacky/Barbara; NICHT von selbst weitermachen. Performance-Fund 2026-07-29 (kalter Cache/TTFB) zurückgestellt bis Shop voll ist

@@ -5,8 +5,32 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-07-31T11:27:41.781Z
+  modified: 2026-08-01T15:24:04.579Z
 ---
+
+## ✅ BEHOBEN 2026-08-01: Vater-Artikel im Shop immer "ausverkauft" trotz Kinderbestand
+
+Jacky meldete: Vater-Artikel (Variable Products) zeigen im Shop immer "ausverkauft", auch wenn Kinder Bestand haben — erinnerte sich an eine frühere Diskussion, wie man das "überlisten" wollte, aber es war nirgends in Memory dokumentiert.
+
+**Root Cause (echter Tippfehler, kein Konzeptfehler):** `ShopSyncService::baueProduktPayload()` Zeile 408 hatte `if (empty($achsen))` — diese Variable existiert in dieser Methode gar nicht (nur `$dimensionen` wird dort berechnet, der Kommentar direkt darüber beschreibt korrekt die Absicht). `empty()` auf eine undefinierte Variable ist in PHP immer `true` (keine Warnung), die Bedingung war also PERMANENT wahr. Dadurch bekam JEDER Vater (auch Variable Products mit Achsen) zusätzlich `baueBestandsFelder($vaterId)` aufgedrückt — und weil ein Vater seit dem [[bug_vater_artikel_bestand_wareneingang]]-Fix (und auch schon vorher der Absicht nach) NIE eigenen Lagerbestand hat, lieferte das immer `manage_stock=true, stock_quantity=0` direkt am Elternprodukt → WooCommerce zeigte den gesamten Vater als ausverkauft, unabhängig vom tatsächlichen Bestand der Kinder/Variationen.
+
+**Fix:** Bedingung korrigiert zu `if (empty($dimensionen))`. Für Variable Products (Achsen vorhanden) wird jetzt im `else`-Zweig explizit `manage_stock=false` gesetzt — bewusst nicht nur weggelassen, weil WooCommerce bei PUT-Updates weggelassene Felder unverändert lässt (ein bereits falsch gesetzter Vater wäre sonst dauerhaft kaputt geblieben, das reine Weglassen hätte den Bestandsfehler nicht rückwirkend korrigiert).
+
+**Wichtiger Befund beim Live-Testen:** Nur `manage_stock=false` zu setzen reicht — WooCommerce leitet `stock_status` dann korrekt aus den Variationen ab. Explizites Setzen von `stock_status=instock` von unserer Seite war NICHT nötig und wurde von der API sogar ignoriert (WooCommerce berechnet das selbst aus den Variationen, sobald `manage_stock=false` am Parent steht).
+
+**Alle 18 bereits gesyncten Väter live repariert** (einmaliger manueller API-Call `manage_stock=false` pro Vater, kein Full-Resync nötig): Ergebnis passt exakt zum tatsächlichen Kinderbestand — AD-CS (30 gesamt) und D-1010 (60 gesamt) korrekt `instock`, alle 16 anderen (Kinderbestand tatsächlich 0, u.a. Bio Shetland GOTS/BC-011010119 — bestätigt beim Debuggen des [[project_google_shopping_search_console]]-unabhängigen 3092-Sync-Fehlers am selben Tag) korrekt `outofstock`. Gegen echte DB-Summen verifiziert, keine Annahme.
+
+**Wie lange bestand der Bug:** Vermutlich seit Phase 2 (Bestand/Lagerstand-Sync, 2026-07-21) — seitdem hätte JEDER neu gesyncte Vater denselben Fehler bekommen. Zukünftige Väter werden ab jetzt beim ersten Sync bereits korrekt behandelt.
+
+## ✅ Einzelfall: Artikel 3092 dauerhaft "invalid_sku"-Fehler — verwaister Sync-Erfolg (2026-08-01)
+
+Jacky meldete: Artikel 3092 (BC-011010119-45, Kind von Bio Shetland GOTS/3047) bekam bei jedem Cron-Lauf seit heute morgen 07:16 den Fehler "WooCommerce-API-Fehler (400, product_invalid_sku): Ungültige oder doppelte Artikelnummer."
+
+**Root Cause:** Direkte Live-Abfrage bei WooCommerce (`GET /products?sku=BC-011010119-45`) zeigte: die Variation existiert dort bereits (id 760, parent_id 670 = korrekter Vater, Status publish, `date_created` 2026-07-31 20:17). Unsere `artikel_shops`-Zeile für 3092 hatte aber `external_id=NULL` — die Variation wurde also serverseitig erfolgreich angelegt, aber die Erfolgsantwort kam bei uns nie an oder wurde nicht verarbeitet (klassisches "Server hat's gemacht, Client denkt nein"-Szenario, vermutlich Timeout/Verbindungsabbruch am Vorabend). Jeder Cron-Lauf seither rief `erstelleVariation()` erneut auf (da `external_id` bei uns leer war), WooCommerce lehnt das korrekt als Duplikat ab — Endlosschleife.
+
+**Fix:** Vor der Reparatur Inhalte gegengeprüft (WC-Variation: Preis 6,90€, Attribut "45 schwarzgrau" — beides exakt identisch zu ERP-Daten). Dann nur die lokale Verknüpfung nachgetragen (`ShopSyncRepository::markiereSynced(263, '760')`), kein Schreibzugriff auf WooCommerce nötig. Geprüft: kein systemisches Problem — keine weiteren `artikel_shops`-Zeilen mit `external_id IS NULL AND fehler_meldung LIKE '%invalid_sku%'` gefunden, war ein Einzelfall.
+
+**Nicht behoben (bewusst, da nur 1 Einzelfall):** Der zugrundeliegende Robustheits-Fall ("Create-Request schlägt bei uns fehl, ist aber remote schon passiert") ist strukturell nicht abgesichert — bei einem erneuten Vorkommen würde derselbe Loop wieder auftreten. Ein genereller Fix wäre z.B. bei `product_invalid_sku`-Fehlern automatisch per SKU-Suche nachzuschauen, ob das Objekt schon existiert, und dann die Verknüpfung selbst zu reparieren statt nur zu loggen. Nicht umgesetzt, da bisher nur dieser eine Fall aufgetreten ist — bei Wiederholung würde sich eine generische Lösung lohnen.
 
 ## 🔴 Achsenwerte-Umbenennung wurde im Shop nie nachgezogen — BEHOBEN (2026-07-31)
 

@@ -181,6 +181,9 @@ class LagerService
         $fehler = [];
         if (empty($data['artikel_id'])) {
             $fehler[] = 'Artikel muss ausgewählt sein';
+        } elseif ($this->artikelRepo->istVater((int) $data['artikel_id'])) {
+            // Vater-Artikel darf nie eigenen Bestand bekommen — Bestand ist die Summe seiner Kinder.
+            $fehler[] = 'Ein Vater-Artikel kann keinen eigenen Lagerbestand bekommen — bitte die konkrete Variante (Kind-Artikel) auswählen';
         }
         if (empty($data['lager_id'])) {
             $fehler[] = 'Lager ist Pflichtfeld';

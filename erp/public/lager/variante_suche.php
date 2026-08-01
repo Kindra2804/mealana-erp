@@ -60,6 +60,7 @@ $sql = "
     FROM artikel a
     LEFT JOIN artikel_codes ac ON ac.artikel_id = a.id AND ac.typ = 'GTIN13'
     WHERE a.vaterartikel_id IS NULL AND a.ist_vater = 0
+    AND NOT EXISTS (SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id)
     AND ($standaloneWhere)
 
     ORDER BY artikel_name, typ, varianten_artikelnummer

@@ -226,6 +226,9 @@ $anzahlKinder       = array_sum(array_map(fn($v) => count($v['kinder']), $vaeter
                                 <?php if ($k['stammdaten_fehlen']): ?>
                                     <span style="background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:11px">Stammdaten fehlen</span>
                                 <?php endif; ?>
+                                <?php if (!empty($k['ist_auslauf'])): ?>
+                                    <span style="background:#fff7ed;color:#c2410c;padding:2px 6px;border-radius:4px;font-size:11px" title="Barbaras &quot;#&quot;-Markierung erkannt">🔶 Auslauf</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>

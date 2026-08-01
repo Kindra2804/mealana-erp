@@ -98,9 +98,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <tbody>
                 <?php foreach ($ergebnis['items'] as $i => $a):
                     $stufe = $stufeLabels[$a['stufe']] ?? $stufeLabels['info'];
-                    $referenz = $a['referenz_tabelle']
+                    $referenzText = $a['referenz_tabelle']
                         ? htmlspecialchars($a['referenz_tabelle']) . ' #' . (int)$a['referenz_id']
                         : '—';
+                    $referenz = ($a['referenz_tabelle'] === 'artikel' && $a['referenz_id'])
+                        ? '<a href="' . BASE_PATH . '/artikel/detail.php?id=' . (int)$a['referenz_id'] . '">' . $referenzText . '</a>'
+                        : $referenzText;
                     $details = $a['details'] ? json_decode($a['details'], true) : null;
                     $rowId = 'af-row-' . $i;
                 ?>

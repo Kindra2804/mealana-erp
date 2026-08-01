@@ -231,6 +231,12 @@ class VariantenService
             }
         }
 
+        // Vater bekommt sein ist_vater-Flag erst hier, sobald wirklich Kinder existieren
+        // (schützt LagerService::wareneingang() davor, dass der Vater selbst Bestand bekommt).
+        if (!empty($neuErstellteIds)) {
+            $this->repo->setIstVater((int) $vater['id']);
+        }
+
         Logger::log('varkombi.erstellen', 'artikel', $vater['id'], ['varKombi_anzahl' => count($kombis)]);
 
         return ['erfolg' => true, 'anzahl' => count($kombis), 'ids' => $neuErstellteIds, 'preisAnpassungen' => $preisAnpassungen, 'eanMap' => $eanMap];

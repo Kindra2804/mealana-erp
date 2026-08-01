@@ -48,6 +48,12 @@ require_once __DIR__ . '/../shell_top.php';
         <div id="suche-fehler" style="color:#ef5350;font-size:13px;margin-top:8px;display:none"></div>
     </div>
 
+    <!-- Kinder-Auswahl (wenn ein Vater-Artikel gescannt wurde) -->
+    <div id="kinder-auswahl-bereich" class="fwe-card" style="display:none">
+        <div class="fwe-label" id="kinder-hinweis"></div>
+        <select id="kinder-select" class="fwe-select"></select>
+    </div>
+
     <!-- Buchungs-Form (nach Scan) -->
     <div id="buchungs-bereich" style="display:none">
         <div class="fwe-card">
@@ -117,10 +123,28 @@ async function artikelSuchen() {
     var q = document.getElementById('scan-input').value.trim();
     var fehlerEl = document.getElementById('suche-fehler');
     fehlerEl.style.display = 'none';
+    document.getElementById('kinder-auswahl-bereich').style.display = 'none';
     if (!q) return;
 
     var r    = await fetch('<?= BASE_PATH ?>/packplatz/intern/artikel_ajax.php?q=' + encodeURIComponent(q));
     var data = await r.json();
+
+    if (data.ist_vater) {
+        document.getElementById('buchungs-bereich').style.display = 'none';
+        if (!data.kinder.length) {
+            fehlerEl.textContent = '"' + data.vater_name + '" ist ein Vater-Artikel ohne aktive Varianten.';
+            fehlerEl.style.display = 'block';
+            return;
+        }
+        var select = document.getElementById('kinder-select');
+        document.getElementById('kinder-hinweis').textContent =
+            '"' + data.vater_name + '" ist ein Vater-Artikel — bitte die konkrete Variante wählen:';
+        select.innerHTML = '<option value="">– Variante wählen –</option>' + data.kinder.map(function (k) {
+            return '<option value="' + k.artikelnummer + '">' + k.artikelnummer + ' – ' + k.name + '</option>';
+        }).join('');
+        document.getElementById('kinder-auswahl-bereich').style.display = 'block';
+        return;
+    }
 
     if (!data.gefunden) {
         fehlerEl.textContent = 'Artikel nicht gefunden: ' + q;
@@ -152,6 +176,13 @@ async function artikelSuchen() {
     document.getElementById('buchungs-bereich').style.display = 'block';
     document.getElementById('f-menge').focus();
 }
+
+document.getElementById('kinder-select').addEventListener('change', function () {
+    if (!this.value) return;
+    document.getElementById('scan-input').value = this.value;
+    document.getElementById('kinder-auswahl-bereich').style.display = 'none';
+    artikelSuchen();
+});
 </script>
 
 <?php require_once __DIR__ . '/../shell_bottom.php'; ?>

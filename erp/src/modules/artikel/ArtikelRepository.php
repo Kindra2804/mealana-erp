@@ -972,6 +972,12 @@ class ArtikelRepository
         $stmt->execute(['id' => $id, 'ist_auslaufartikel' => $ist_auslaufartikel]);
     }
 
+    /** Markiert einen Artikel als Vater (ist_vater=1) — muss bei jeder Kind-Erstellung gesetzt werden. */
+    public function setIstVater(int $id): void
+    {
+        $this->db->prepare("UPDATE artikel SET ist_vater = 1 WHERE id = :id")->execute(['id' => $id]);
+    }
+
     public function propagateAuslaufZuKindern(int $vaterId, int $istAuslauf): void
     {
         $stmt = $this->db->prepare("
@@ -1278,6 +1284,22 @@ class ArtikelRepository
         $stmt = $this->db->prepare("SELECT id, artikelnummer, name FROM artikel WHERE id = :id");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
+    }
+
+    /**
+     * Prüft ob ein Artikel ein Vater-Artikel ist (darf nie eigenen Lagerbestand bekommen).
+     * Prüft NICHT nur das ist_vater-Flag: Bei Artikeln, deren Kinder über den alten
+     * VarKombi-Generator entstanden sind (vor dem JTL-Vater-Kind-Import), wurde das Flag
+     * nie gesetzt — daher zusätzlich EXISTS-Check auf tatsächlich vorhandene Kinder.
+     */
+    public function istVater(int $id): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT (a.ist_vater = 1 OR EXISTS (SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id)) AS ist_vater
+            FROM artikel a WHERE a.id = :id
+        ");
+        $stmt->execute(['id' => $id]);
+        return (bool) $stmt->fetchColumn();
     }
 
     /**
