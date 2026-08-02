@@ -442,17 +442,128 @@ class ShopSyncRepository
         return $stmt->fetch();
     }
 
-    /** Kategorie-Namen des Artikels, die schon eine WooCommerce-Zuordnung für diesen Shop haben. */
+    /**
+     * Externe WooCommerce-Kategorie-IDs des Artikels für diesen Shop. Kategorien, die für DIESEN
+     * Shop ausgeschlossen sind (kategorie_shops.ausgeschlossen) -- egal ob die Blatt-Kategorie
+     * selbst oder eine ihrer Oberkategorien ("Wurzel gesperrt") -- werden bewusst nicht mitgeliefert.
+     * Die Pfad-Prüfung (istKategoriePfadAusgeschlossen) kann nicht in der SQL-JOIN-Bedingung
+     * passieren (Vorfahren-Kette, kein rekursives SQL), daher zweistufig: erst alle Blatt-
+     * Kategorien des Artikels mit ihrer externen ID laden, dann pro Kategorie den Pfad prüfen.
+     */
     public function findWcKategorieIds(int $artikelId, int $shopId): array
     {
         $stmt = $this->db->prepare("
-            SELECT ks.externe_kategorie_id
+            SELECT ak.kategorie_id, ks.externe_kategorie_id
             FROM artikel_kategorien ak
             JOIN kategorie_shops ks ON ks.kategorie_id = ak.kategorie_id AND ks.shop_id = :shop_id
             WHERE ak.artikel_id = :artikel_id AND ks.externe_kategorie_id IS NOT NULL
         ");
         $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $ergebnis = [];
+        foreach ($stmt->fetchAll() as $row) {
+            if (!$this->istKategoriePfadAusgeschlossen((int)$row['kategorie_id'], $shopId)) {
+                $ergebnis[] = $row['externe_kategorie_id'];
+            }
+        }
+        return $ergebnis;
+    }
+
+    /** Ist EXAKT diese Kategorie (ohne Vorfahren) für diesen Shop ausgeschlossen? Für die
+     *  Ausschluss-Prüfung eines Artikels IMMER istKategoriePfadAusgeschlossen() verwenden --
+     *  diese Methode nur für die reine Statusabfrage einer einzelnen Kategorie (UI). */
+    public function istKategorieAusgeschlossen(int $kategorieId, int $shopId): bool
+    {
+        $stmt = $this->db->prepare("SELECT ausgeschlossen FROM kategorie_shops WHERE kategorie_id = :kid AND shop_id = :sid");
+        $stmt->execute(['kid' => $kategorieId, 'sid' => $shopId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Ist diese Kategorie ODER einer ihrer Vorfahren für diesen Shop ausgeschlossen? Ein
+     * Ausschluss auf einer Oberkategorie ("Wurzel gesperrt") muss auf alle Blatt-Kategorien
+     * darunter durchschlagen -- Artikel hängen ja nur an der Blatt-Kategorie (artikel_kategorien),
+     * eine reine Prüfung der Blatt-Kategorie selbst hätte einen Wurzel-Ausschluss schlicht ignoriert
+     * (echter Bug bis 2026-08-02: Jacky sperrte eine Wurzelkategorie, es passierte nichts).
+     */
+    public function istKategoriePfadAusgeschlossen(int $kategorieId, int $shopId): bool
+    {
+        foreach ($this->findKategorieMitVorfahren($kategorieId) as $kat) {
+            if ($this->istKategorieAusgeschlossen((int)$kat['id'], $shopId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Diese Kategorie-ID + alle Unterkategorien (rekursiv), für die Fällig-Markierung beim
+     * Ausschluss/Freigeben -- siehe setKategorieAusschluss(). Reine PHP-Traversierung statt
+     * rekursivem SQL (Tiefe ist mit ~4 Ebenen klein, und nicht jede MariaDB-Version hier
+     * unterstützt WITH RECURSIVE zuverlässig).
+     */
+    private function findKategorieIdsMitUnterkategorien(int $kategorieId): array
+    {
+        $alle = $this->db->query("SELECT id, parent_id FROM kategorien")->fetchAll();
+        $kinderVonId = [];
+        foreach ($alle as $k) {
+            $kinderVonId[(int)($k['parent_id'] ?? 0)][] = (int)$k['id'];
+        }
+
+        $ids   = [$kategorieId];
+        $queue = [$kategorieId];
+        while ($queue) {
+            $aktuelleId = array_shift($queue);
+            foreach ($kinderVonId[$aktuelleId] ?? [] as $kindId) {
+                $ids[]   = $kindId;
+                $queue[] = $kindId;
+            }
+        }
+        return $ids;
+    }
+
+    /**
+     * Schließt eine Kategorie für einen bestimmten Shop aus (oder hebt den Ausschluss wieder auf).
+     * Legt bei Bedarf die kategorie_shops-Zeile neu an (kann VOR dem ersten Sync gesetzt werden,
+     * die Zeile existiert sonst erst nach der ersten erfolgreichen WooCommerce-Anlage).
+     * Markiert danach alle betroffenen Artikel als fällig, damit ihr Kategorie-Payload beim
+     * nächsten Sync-Lauf tatsächlich aktualisiert wird -- reines Setzen des Flags allein würde
+     * sonst erst beim nächsten OHNEHIN fälligen Sync des Artikels wirksam (gleiche Lehre wie bei
+     * Kategorie-Umbenennungen: Change-Detection die nicht an artikel.aktualisiert_am hängt,
+     * braucht einen eigenen Auslöser). WICHTIG: betrifft die Kategorie SELBST + alle
+     * Unterkategorien -- ein Ausschluss auf einer Wurzelkategorie muss auch die Artikel treffen,
+     * die an einer Blatt-Kategorie weiter unten hängen (Artikel sind nie direkt an der Wurzel).
+     */
+    public function setKategorieAusschluss(int $kategorieId, int $shopId, bool $ausgeschlossen): void
+    {
+        $this->db->prepare("
+            INSERT INTO kategorie_shops (kategorie_id, shop_id, ausgeschlossen)
+            VALUES (:kid, :sid, :aus)
+            ON DUPLICATE KEY UPDATE ausgeschlossen = VALUES(ausgeschlossen)
+        ")->execute(['kid' => $kategorieId, 'sid' => $shopId, 'aus' => $ausgeschlossen ? 1 : 0]);
+
+        $betroffeneIds = $this->findKategorieIdsMitUnterkategorien($kategorieId);
+        $platzhalter   = implode(',', array_fill(0, count($betroffeneIds), '?'));
+        $this->db->prepare("
+            UPDATE artikel a
+            JOIN artikel_kategorien ak ON ak.artikel_id = a.id
+            SET a.aktualisiert_am = NOW()
+            WHERE ak.kategorie_id IN ($platzhalter)
+        ")->execute($betroffeneIds);
+    }
+
+    /** Alle Shops mit Ausschluss-Status für eine Kategorie (für die Verwaltungs-UI). */
+    public function findAusschluesseFuerKategorie(int $kategorieId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT s.id AS shop_id, s.name, ks.ausgeschlossen
+            FROM shops s
+            LEFT JOIN kategorie_shops ks ON ks.shop_id = s.id AND ks.kategorie_id = :kid
+            WHERE s.ist_aktiv = 1
+            ORDER BY s.id
+        ");
+        $stmt->execute(['kid' => $kategorieId]);
+        return $stmt->fetchAll();
     }
 
     /** Kategorie-IDs, die direkt am Artikel hängen (nur Blatt-Kategorien, siehe artikel_kategorien). */
@@ -499,6 +610,7 @@ class ShopSyncRepository
             JOIN kategorien k ON k.id = ks.kategorie_id
             WHERE ks.shop_id = :shop_id
               AND ks.externe_kategorie_id IS NOT NULL
+              AND ks.ausgeschlossen = 0
               AND (ks.synced_at IS NULL OR k.aktualisiert_am > ks.synced_at)
         ");
         $stmt->execute(['shop_id' => $shopId]);

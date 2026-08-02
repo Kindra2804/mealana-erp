@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/artikel/EinheitenRepository.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
@@ -256,6 +257,58 @@ if ($tab === 'system') {
 
     $_SESSION['erfolg'] = 'System-Einstellungen gespeichert.';
     header('Location: index.php?tab=system');
+    exit;
+}
+
+// ─── TAB: EINHEITEN NEU ─────────────────────────────────────────────────────
+if ($tab === 'einheiten_neu') {
+    $name       = trim($_POST['name'] ?? '');
+    $kuerzel    = trim($_POST['kuerzel'] ?? '');
+    $sortierung = (int) ($_POST['sortierung'] ?? 0);
+
+    if ($name === '') {
+        $_SESSION['fehler'] = 'Name ist ein Pflichtfeld.';
+    } else {
+        (new EinheitenRepository())->insert($name, $kuerzel ?: null, $sortierung);
+        $_SESSION['erfolg'] = 'Einheit angelegt.';
+    }
+    header('Location: index.php?tab=einheiten');
+    exit;
+}
+
+// ─── TAB: EINHEITEN UPDATE ──────────────────────────────────────────────────
+if ($tab === 'einheiten_update') {
+    $id         = (int) ($_POST['id'] ?? 0);
+    $name       = trim($_POST['name'] ?? '');
+    $kuerzel    = trim($_POST['kuerzel'] ?? '');
+    $sortierung = (int) ($_POST['sortierung'] ?? 0);
+
+    if ($id <= 0 || $name === '') {
+        $_SESSION['fehler'] = 'Ungültige Eingabe.';
+    } else {
+        (new EinheitenRepository())->update($id, $name, $kuerzel ?: null, $sortierung);
+        $_SESSION['erfolg'] = 'Einheit gespeichert.';
+    }
+    header('Location: index.php?tab=einheiten');
+    exit;
+}
+
+// ─── TAB: EINHEITEN LÖSCHEN ─────────────────────────────────────────────────
+if ($tab === 'einheiten_loeschen') {
+    $id   = (int) ($_POST['id'] ?? 0);
+    $repo = new EinheitenRepository();
+
+    // Serverseitig nachprüfen statt nur auf die UI zu vertrauen -- die "Löschen"-Aktion
+    // ist in der UI zwar nur bei artikel_anzahl=0 sichtbar, ein zwischenzeitlich neu
+    // zugewiesener Artikel (paralleler Import) darf trotzdem nicht durch eine FK-Verletzung
+    // als kryptischer Fehler enden.
+    if ($id > 0 && $repo->zaehleVerwendung($id) === 0) {
+        $repo->delete($id);
+        $_SESSION['erfolg'] = 'Einheit gelöscht.';
+    } else {
+        $_SESSION['fehler'] = 'Einheit wird noch von Artikeln verwendet und kann nicht gelöscht werden.';
+    }
+    header('Location: index.php?tab=einheiten');
     exit;
 }
 

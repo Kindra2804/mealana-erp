@@ -197,6 +197,12 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <?php
                 require_once __DIR__ . '/../../src/core/Database.php';
                 $alleShopsFuerLegende = Database::getInstance()->query("SELECT id, name FROM shops WHERE ist_aktiv = 1 ORDER BY id")->fetchAll();
+                // Für den Tooltip der Kanal-Chips im Baum (voller Shop-Name statt nur "S1") --
+                // Legende selbst bleibt unverändert bei "S1"/"S2"/"S3".
+                $shopNameByCode = [];
+                foreach ($alleShopsFuerLegende as $s) {
+                    $shopNameByCode['S' . $s['id']] = $s['name'];
+                }
                 ?>
                 <div class="sidebar-kat-wrapper">
                     <div class="sidebar-kat-header">
@@ -209,7 +215,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                         <?php
                         $aktivKatId = $aktivKategorieId ?? null;
 
-                        function renderKatKnoten(array $knoten, int $tiefe, ?int $aktivKatId): void
+                        function renderKatKnoten(array $knoten, int $tiefe, ?int $aktivKatId, array $shopNameByCode): void
                         {
                             $hatKinder    = !empty($knoten['kinder']);
                             $istAktiv     = ($aktivKatId !== null && $knoten['id'] === $aktivKatId);
@@ -241,6 +247,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                             <div class="kat-knoten">
                                 <a href="liste.php?kategorie_id=<?= $knoten['id'] ?>"
                                     class="kat-zeile <?= $istAktiv ? 'aktiv' : '' ?>"
+                                    title="<?= htmlspecialchars($knoten['name']) ?>"
                                     style="padding-left:<?= $einzug ?>px;<?= $katOpacity ?>">
                                     <?php if ($hatKinder): ?>
                                         <span class="kat-toggle" id="<?= $toggleId ?>"
@@ -248,22 +255,23 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                                     <?php else: ?>
                                         <span class="kat-toggle-leer"></span>
                                     <?php endif; ?>
+                                    <?php if (!empty($knoten['shop_codes'])): ?>
+                                        <span class="kat-chips-inline">
+                                            <?php foreach ($knoten['shop_codes'] as $code): ?>
+                                                <span class="kc kc-inline kc-<?= strtolower($code) ?>"
+                                                    title="<?= htmlspecialchars($shopNameByCode[$code] ?? $code) ?>"><?= (int) substr($code, 1) ?></span>
+                                            <?php endforeach; ?>
+                                        </span>
+                                    <?php endif; ?>
                                     <span class="kat-zeile-name"><?= $aktionSymbol ?><?= htmlspecialchars($knoten['name']) ?></span>
                                     <?php if ($anzahl > 0): ?>
                                         <span class="kat-anzahl"><?= $anzahl ?></span>
                                     <?php endif; ?>
                                 </a>
-                                <?php if (!empty($knoten['shop_codes'])): ?>
-                                    <div class="kat-chips" style="padding-left:<?= $einzug + 16 ?>px">
-                                        <?php foreach ($knoten['shop_codes'] as $code): ?>
-                                            <span class="kc kc-<?= strtolower($code) ?>"><?= htmlspecialchars($code) ?></span>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
                                 <?php if ($hatKinder): ?>
                                     <div id="<?= $nodeId ?>" class="kat-kinder versteckt">
                                         <?php foreach ($knoten['kinder'] as $kind): ?>
-                                            <?php renderKatKnoten($kind, $tiefe + 1, $aktivKatId); ?>
+                                            <?php renderKatKnoten($kind, $tiefe + 1, $aktivKatId, $shopNameByCode); ?>
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
@@ -272,7 +280,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                         }
 
                         foreach ($kategorienBaum as $wurzel) {
-                            renderKatKnoten($wurzel, 0, $aktivKatId);
+                            renderKatKnoten($wurzel, 0, $aktivKatId, $shopNameByCode);
                         }
                         ?>
                         <?php if ($aktivKatId): ?>

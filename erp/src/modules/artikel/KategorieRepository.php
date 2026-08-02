@@ -108,6 +108,28 @@ class KategorieRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Alle explizit für einen Shop gesperrten Kategorien, als kategorie_id => ['S1','S2',...].
+     * Für die Kanal-Chip-Berechnung (ArtikelService::berechneShopChips()) -- eine Sperre auf
+     * einer Kategorie muss ihren Chip in JEDER Unterkategorie desselben Zweigs unterdrücken,
+     * nicht nur an der gesperrten Kategorie selbst (Artikel hängen ja nur an Blatt-Kategorien).
+     * Eine einzige Query statt einer Sub-Query pro Baumknoten (siehe Performance-Lehre bei
+     * findAllMitEltern() oben -- 640x-Regression durch N+1 wurde hier bewusst vermieden).
+     */
+    public function findAusschluesseAlsShopCodes(): array
+    {
+        $stmt = $this->db->query("
+            SELECT kategorie_id, CONCAT('S', shop_id) AS code
+            FROM kategorie_shops
+            WHERE ausgeschlossen = 1
+        ");
+        $ergebnis = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $ergebnis[(int)$row['kategorie_id']][] = $row['code'];
+        }
+        return $ergebnis;
+    }
+
     public function countByKategorie(int $kategorieId): int
     {
         $stmt = $this->db->prepare("

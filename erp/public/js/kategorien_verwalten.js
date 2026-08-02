@@ -11,9 +11,11 @@ function katNeuOeffnen(parentId, parentName) {
     document.getElementById('katv-ist-aktions-kat').checked = false;
     document.getElementById('katv-fehler').textContent = '';
     katvAktualisierePositionsDropdown();
-    // Bild-Upload braucht eine existierende Kategorie-ID (Ordner uploads/kategorien/{id}/) --
-    // bei einer neuen Kategorie also erst nach dem ersten Speichern verfügbar.
+    // Bild-Upload UND Shop-Sichtbarkeit brauchen eine existierende Kategorie-ID
+    // (uploads/kategorien/{id}/ bzw. kategorie_shops-Zeile) -- bei einer neuen
+    // Kategorie also erst nach dem ersten Speichern verfügbar.
     document.getElementById('katv-bild-bereich').style.display = 'none';
+    document.getElementById('katv-shop-bereich').style.display = 'none';
     document.getElementById('katv-modal').style.display = 'flex';
     setTimeout(function () { document.getElementById('katv-name').focus(); }, 50);
 }
@@ -32,8 +34,41 @@ function katBearbeiten(id, name, parentId) {
     katvAktualisierePositionsDropdown();
     document.getElementById('katv-bild-bereich').style.display = '';
     katvBildAnzeigen(id, zeile ? (zeile.dataset.bild || '') : '');
+    document.getElementById('katv-shop-bereich').style.display = '';
+    katvShopCheckboxenRendern(id);
     document.getElementById('katv-modal').style.display = 'flex';
     setTimeout(function () { document.getElementById('katv-name').focus(); }, 50);
+}
+
+// Baut pro aktivem Shop eine Checkbox (angehakt = Kategorie erscheint in diesem
+// Shop, abgewählt = ausgeschlossen). Toggle speichert sofort per AJAX, wie beim
+// Kategoriebild-Upload -- kein Extra-Klick auf "Speichern" nötig.
+function katvShopCheckboxenRendern(kategorieId) {
+    var container = document.getElementById('katv-shop-checkboxen');
+    var ausschluesse = window.KATEGORIE_AUSSCHLUESSE[kategorieId] || {};
+    var html = '';
+    (window.SHOPS || []).forEach(function (shop) {
+        var ausgeschlossen = !!ausschluesse[shop.id];
+        html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">'
+            + '<input type="checkbox" ' + (ausgeschlossen ? '' : 'checked') + ' style="width:15px;height:15px" '
+            + 'onchange="katvShopAusschlussUmschalten(' + kategorieId + ',' + shop.id + ',!this.checked)">'
+            + '<span>' + katvEscapeHtml(shop.name) + '</span></label>';
+    });
+    container.innerHTML = html || '<span style="font-size:12px;color:var(--color-text-muted)">Keine aktiven Shops vorhanden</span>';
+}
+
+function katvShopAusschlussUmschalten(kategorieId, shopId, ausgeschlossen) {
+    if (!window.KATEGORIE_AUSSCHLUESSE[kategorieId]) window.KATEGORIE_AUSSCHLUESSE[kategorieId] = {};
+    window.KATEGORIE_AUSSCHLUESSE[kategorieId][shopId] = ausgeschlossen;
+    fetch(window.BASE_PATH + '/artikel/kategorie_shop_ausschluss_ajax.php', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    'kategorie_id=' + kategorieId + '&shop_id=' + shopId + '&ausgeschlossen=' + (ausgeschlossen ? '1' : '0')
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+        if (!d.erfolg) alert(d.fehler || 'Fehler beim Speichern der Shop-Sichtbarkeit');
+    });
 }
 
 // Zeigt das aktuelle Kategoriebild (falls vorhanden) im Modal an, oder blendet

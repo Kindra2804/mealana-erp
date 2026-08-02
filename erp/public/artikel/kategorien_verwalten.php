@@ -1,9 +1,17 @@
 ﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/core/Database.php';
 
 $service        = new ArtikelService();
 $kategorienBaum = $service->getKategorienBaum();
+
+// Shop-Sichtbarkeit-Bereich im Bearbeiten-Modal: Liste aktiver Shops +
+// bereits gesetzte Ausschlüsse (kategorie_shops.ausgeschlossen), als JS-Map
+// mitgeliefert statt für jede Kategorie einzeln nachzuladen.
+$db             = Database::getInstance();
+$alleShops      = $db->query("SELECT id, name FROM shops WHERE ist_aktiv = 1 ORDER BY id")->fetchAll();
+$ausschluesse   = $db->query("SELECT kategorie_id, shop_id, ausgeschlossen FROM kategorie_shops WHERE ausgeschlossen = 1")->fetchAll();
 
 $pageTitle    = 'Kategorien verwalten';
 $activeModule = 'artikel';
@@ -119,6 +127,15 @@ window.KATEGORIEN_FLACH = <?= json_encode(array_map(
     fn($k) => ['id' => (int)$k['id'], 'parent_id' => $k['parent_id'] !== null ? (int)$k['parent_id'] : null, 'name' => $k['name']],
     $flacheListe
 )) ?>;
+
+// Shop-Sichtbarkeit im Bearbeiten-Modal: Liste aktiver Shops + bereits gesetzte
+// Ausschlüsse (fehlender Eintrag = nicht ausgeschlossen, das ist der Normalfall).
+window.SHOPS = <?= json_encode(array_map(fn($s) => ['id' => (int)$s['id'], 'name' => $s['name']], $alleShops)) ?>;
+window.KATEGORIE_AUSSCHLUESSE = {};
+<?php foreach ($ausschluesse as $a): ?>
+if (!window.KATEGORIE_AUSSCHLUESSE[<?= (int)$a['kategorie_id'] ?>]) window.KATEGORIE_AUSSCHLUESSE[<?= (int)$a['kategorie_id'] ?>] = {};
+window.KATEGORIE_AUSSCHLUESSE[<?= (int)$a['kategorie_id'] ?>][<?= (int)$a['shop_id'] ?>] = true;
+<?php endforeach; ?>
 </script>
 
 <div class="card">
@@ -199,6 +216,15 @@ window.KATEGORIEN_FLACH = <?= json_encode(array_map(
                 </label>
                 <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px;margin-left:23px">
                     Zeitlich begrenzte Sonderpreise können für diese Kategorie geplant werden
+                </div>
+            </div>
+            <div class="form-row" id="katv-shop-bereich" style="display:none">
+                <label class="form-label">Shop-Sichtbarkeit</label>
+                <div id="katv-shop-checkboxen" style="display:flex;flex-direction:column;gap:6px"></div>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                    Abgewählte Shops bekommen diese Kategorie NIE zugewiesen, auch wenn ein Artikel
+                    hier UND in einer anderen (für diesen Shop erlaubten) Kategorie steht. Erst nach
+                    dem ersten Speichern verfügbar. Änderung wirkt beim nächsten Sync-Lauf.
                 </div>
             </div>
             <div id="katv-fehler" style="color:var(--color-danger);font-size:12px;min-height:16px"></div>

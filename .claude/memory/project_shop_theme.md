@@ -1,11 +1,11 @@
 ---
 name: project-shop-theme
-description: "WooCommerce-Theme/UX-Anpassung: Gratis-Basis (Blocksy+Elementor+Max Mega Menu+Germanized) 2026-07-22 fertig gebaut als Barbara-Testbasis; WoodMart/Blocksy-Pro-Kaufentscheidung weiterhin pausiert (Budget-Gespräch mit Barbara); Performance-Fund 2026-07-29 (kalter Seiten-Cache, TTFB-dominiert) zurückgestellt bis Shop voll befüllt"
+description: "WooCommerce-Theme/UX-Anpassung: Gratis-Basis (Blocksy+Elementor+Max Mega Menu+Germanized) 2026-07-22 fertig gebaut als Barbara-Testbasis; WoodMart/Blocksy-Pro-Kaufentscheidung weiterhin pausiert (Budget-Gespräch mit Barbara); Performance-Fund 2026-07-29 (kalter Seiten-Cache, TTFB-dominiert) zurückgestellt bis Shop voll befüllt; 2026-08-02: Mega-Menü aktualisiert sich nicht automatisch + Breadcrumbs-Anleitung"
 metadata: 
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-07-29T07:49:10.851Z
+  modified: 2026-08-02T20:24:04.842Z
 ---
 
 ## Ausgangslage (Jacky, 2026-07-20)
@@ -92,3 +92,47 @@ Jacky bestätigte: **jede neu angeklickte Seite (nicht nur die Startseite) zeigt
 1. Prüfen, welcher Cache aktiv ist (Hosting-Panel oder Plugin-Liste durchsehen)
 2. Cache-Vorwärmen einrichten (Skript das nach Veröffentlichung/Cache-Leerung die wichtigsten URLs einmal selbst aufruft, bevor echte Kunden reinkommen)
 3. Separat testen: verhalten sich echte WooCommerce-Produkt-/Warenkorbseiten gleich, oder werden die (wegen Sitzungs-/Warenkorb-Fragmenten) bewusst vom vollen Seiten-Cache ausgenommen? — noch nicht getestet, nur Startseite/allgemeine Seiten bisher geprüft.
+
+## Mega-Menü aktualisiert sich nicht automatisch mit neuen Kategorien (2026-08-02)
+
+Jacky bemerkte: neu angelegte/gesynct Kategorien tauchen im Max-Mega-Menu nie automatisch auf, es
+zeigt seit Tagen dieselben 3 Menüpunkte. **Kein ERP-Bug** — WordPress-Menüs (auch mit Max Mega Menu)
+sind grundsätzlich eine manuell gepflegte Liste, unser API-Sync legt Kategorien zwar in WooCommerce
+an, trägt sie aber nie in ein bestehendes Menü ein (das ist bei jedem WAWI/Shop-System so, nicht
+MeaLana-spezifisch).
+
+**Zwei Ansatzpunkte besprochen:**
+1. **"Neue Kategorien automatisch hinzufügen"-Checkbox** unter Design → Menüs im Kategorien-Meta-Box
+   (WordPress-Bordmittel) — fügt aber vermutlich nur neue TOP-LEVEL-Kategorien hinzu, keine tieferen
+   Ebenen (z.B. neue Hersteller unter "Hersteller"). Nicht abschließend getestet.
+2. **Dynamische Anzeige statt statischer Menüpunkte** (letztlich umgesetzt): im Max-Mega-Menu-Editor
+   (Zahnrad-Symbol am Menüpunkt) ein Feld vom Typ **"Block"** wählen (NICHT "Individuelles HTML" --
+   das führt Shortcodes bewusst nicht aus, reiner Klammertext als Ergebnis), darin einen
+   **"Shortcode"-Block** einfügen mit:
+   ```
+   [product_categories parent="87" hierarchical="1" hide_empty="1"]
+   ```
+   (`87` = echte Kategorie-ID, z.B. von "Hersteller" -- sichtbar beim Hovern über "Bearbeiten" in
+   Produkte → Kategorien, `tag_ID=` in der Link-Vorschau). `parent` legt den Startpunkt fest,
+   `hierarchical="1"` zeigt darunter ALLE Ebenen verschachtelt (nicht nur die nächste) -- damit
+   bleibt die Anzeige automatisch aktuell, ohne jemals manuell nachgepflegt zu werden.
+
+**Bestätigt funktionierend** (Jacky, 2026-08-02): "mit Block funktioniert es" -- Feinschliff bei der
+Optik (Spalten/Styling) macht Jacky selbst weiter, kein Blocker mehr.
+
+**Offener Nebenpunkt (nicht abgeschlossen):** Alternative "Produktkategorien"-Widget (natives
+WooCommerce-Widget, kein Shortcode) wäre auch eine Option gewesen, hat aber vermutlich keine
+"Start bei Kategorie X"-Einschränkung (zeigt dann vermutlich den kompletten Kategoriebaum) --
+deshalb nicht weiterverfolgt, Shortcode-Lösung war zielführender.
+
+## Breadcrumbs (Pfadanzeige) in Blocksy aktivieren (2026-08-02)
+
+Jacky wollte eine Pfadansicht wie im alten JTL-Shop ("Startseite / Wolle und Garne / ... / Produktname").
+Blocksy hat das als Theme-Feature eingebaut (kein Plugin nötig): Design → Anpassen (Customizer) →
+"Breadcrumbs"-Bereich im Seitenmenü. **Wichtig:** allgemeines Aktivieren reicht oft nicht -- Blocksy
+hat meist einen SEPARATEN Schalter extra für Shop-/Produktseiten (eigene WooCommerce-Integration),
+der zusätzlich angehakt werden muss. Noch nicht rückgemeldet ob es bei Jacky sichtbar wurde.
+
+**Nebenbefund (nicht vertieft):** Wenn ein Artikel in mehreren Kategorien steht, zeigt die Breadcrumb
+vermutlich nur EINEN Pfad (den Navigationskontext oder einen Standard-Pfad) -- lässt sich normalerweise
+nicht direkt beeinflussen, für später vormerken falls es doch mal störend auffällt.

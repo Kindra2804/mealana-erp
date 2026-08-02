@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/artikel/EinheitenRepository.php';
 
 $db = Database::getInstance();
 
@@ -40,6 +41,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             'system'   => 'System',
             'kassen'   => 'Kassen',
             'nummernkreise' => 'Nummernkreise',
+            'einheiten' => 'Einheiten',
         ] as $tabId => $tabLabel
     ): ?>
         <a href="?tab=<?= $tabId ?>"
@@ -762,6 +764,66 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         document.getElementById('nummernkreis-modal').style.display = 'flex';
     }
     </script>
+
+<?php elseif ($aktTab === 'einheiten'): ?>
+    <!-- ═══════════ TAB: EINHEITEN ═══════════ -->
+    <?php $einheitenListe = (new EinheitenRepository())->findAllMitVerwendung(); ?>
+
+    <div class="card" style="margin-bottom:12px">
+        <div class="card-header">Neue Einheit anlegen</div>
+        <form method="post" action="speichern.php">
+            <input type="hidden" name="tab" value="einheiten_neu">
+            <div style="padding:16px;display:grid;grid-template-columns:2fr 1fr 100px auto;gap:12px;align-items:end">
+                <div class="form-group" style="margin:0">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="erp-input" placeholder="z.B. Strang" required>
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label class="form-label">Kürzel</label>
+                    <input type="text" name="kuerzel" class="erp-input" placeholder="z.B. Str" maxlength="10">
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label class="form-label">Sortierung</label>
+                    <input type="number" name="sortierung" class="erp-input" value="0">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Anlegen</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Bestehende Einheiten</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 100px 80px auto;gap:12px;padding:10px 16px;font-size:12px;color:var(--color-text-muted);border-bottom:1px solid var(--color-border)">
+            <div>Name</div><div>Kürzel</div><div>Sortierung</div><div>Artikel</div><div></div>
+        </div>
+        <?php foreach ($einheitenListe as $eh): ?>
+            <form method="post" action="speichern.php" style="display:grid;grid-template-columns:2fr 1fr 100px 80px auto;gap:12px;padding:10px 16px;border-bottom:1px solid var(--color-border);align-items:center">
+                <input type="hidden" name="tab" value="einheiten_update">
+                <input type="hidden" name="id" value="<?= $eh['id'] ?>">
+                <input type="text" name="name" class="erp-input" value="<?= htmlspecialchars($eh['name']) ?>" required>
+                <input type="text" name="kuerzel" class="erp-input" value="<?= htmlspecialchars($eh['kuerzel'] ?? '') ?>" maxlength="10">
+                <input type="number" name="sortierung" class="erp-input" value="<?= (int) $eh['sortierung'] ?>">
+                <span style="color:var(--color-text-muted)"><?= (int) $eh['artikel_anzahl'] ?></span>
+                <div style="display:flex;gap:6px">
+                    <button type="submit" class="btn btn-secondary btn-sm">Speichern</button>
+                </div>
+            </form>
+            <?php if ((int) $eh['artikel_anzahl'] === 0): ?>
+            <form method="post" action="speichern.php" onsubmit="return confirm('Einheit &quot;<?= htmlspecialchars($eh['name'], ENT_QUOTES) ?>&quot; wirklich löschen?')" style="padding:0 16px 10px;margin-top:-6px;border-bottom:1px solid var(--color-border)">
+                <input type="hidden" name="tab" value="einheiten_loeschen">
+                <input type="hidden" name="id" value="<?= $eh['id'] ?>">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--color-danger);font-size:11px">Löschen</button>
+            </form>
+            <?php else: ?>
+            <div style="padding:0 16px 10px;margin-top:-6px;border-bottom:1px solid var(--color-border);font-size:11px;color:var(--color-text-muted)">
+                🔒 Wird von <?= (int) $eh['artikel_anzahl'] ?> Artikel(n) verwendet — kann nicht gelöscht werden
+            </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
+        <?php if (empty($einheitenListe)): ?>
+            <div style="text-align:center;color:var(--color-text-muted);padding:20px">Noch keine Einheiten angelegt.</div>
+        <?php endif; ?>
+    </div>
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

@@ -1,7 +1,7 @@
 # Memory Index
 
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
-- [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — LIVE GETESTET 2026-07-31 (83/87 Väter), Resume-Fähigkeit + Kategorie-Baum-Dropdown nachgezogen; Garn-Achsenwerte-Format vertagt bis Garn-Export (ca. 01.08.)
+- [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — 2026-08-02: gemischte Kategorien (normale Artikel + additive Kategoriezuweisung statt Ersetzen) gebaut+getestet; Live-Test mit Sale-Dateien steht aus
 - [JTL Bilder-Import](project_jtl_bilder_import.md) — FERTIG gebaut + End-to-End getestet 2026-07-31, eigenständiges Tool, GIF bewusst nicht unterstützt
 - [🟢 BUG: Shop-Sync Achsenwerte-Pagination](bug_shop_sync_term_pagination.md) — BEHOBEN 2026-07-31, live bestätigt
 - [🟢 BUG: getKategorienBaum() Performance](bug_kategorienbaum_performance.md) — BEHOBEN 2026-08-01: OR-Join verhinderte Index-Nutzung, 9,66s→0,015s (~640x); Browser-Test von Jacky steht noch aus
@@ -45,10 +45,10 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; 429-Sperre gelöst (2026-07-30); ✅ Achsenwerte-Umbenennung-Sync behoben (2026-07-31); ✅ Väter immer "ausverkauft"-Bug behoben + 18 Väter live repariert (2026-08-01); ✅ Einzelfall verwaister Sync-Erfolg (Artikel 3092) repariert (2026-08-01)
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; ✅ 2026-08-02: Kategorie-Ausschluss pro Shop inkl. Vorfahren-Pfad-Fix + Kanal-Chip-Vererbung gebaut+getestet+bestätigt; Chip-UI kompakter (inline, Tooltip)
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — "Einordnen nach"-Positionierung FERTIG (2026-07-29), Vorbelegungs-Bug behoben
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
-- [Shop-Theme/UX](project_shop_theme.md) — Recherche fertig (WoodMart vs. Blocksy Pro, Lizenz-Falle: pro Live-Domain!); Kauf pausiert bis Budget-Gespräch Jacky/Barbara; NICHT von selbst weitermachen. Performance-Fund 2026-07-29 (kalter Cache/TTFB) zurückgestellt bis Shop voll ist
+- [Shop-Theme/UX](project_shop_theme.md) — Kaufentscheidung weiter pausiert; ✅ 2026-08-02: Mega-Menü-Autoupdate-Grenzen geklärt + Shortcode-Workaround (Block statt Custom HTML) bestätigt funktionierend, Breadcrumbs-Anleitung (Blocksy)
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — Neuer Dev-PC-Umzug 2026-07-17 abgeschlossen (GD/Composer/Cron vergessen, doppelte Mojibake-Korruption + Kunden-BLOB-Korruption behoben); Messe-Kasse Variante B = IndexedDB+direkter BFR-Call
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen

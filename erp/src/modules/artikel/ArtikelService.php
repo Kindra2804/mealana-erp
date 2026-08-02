@@ -314,23 +314,36 @@ class ArtikelService
         // Kanal-Chips: berechnet, nicht manuell gepflegt (Entscheidung 2026-06-21, siehe
         // db_design_entscheidungen.md). Eine Kategorie gilt als "in Shop X" wenn sie selbst
         // einen Artikel mit aktivem Shop X hat ODER mindestens eine Kindkategorie es tut —
-        // leere Elternkategorien erben die Chips rekursiv von ihren Kindern.
+        // leere Elternkategorien erben die Chips rekursiv von ihren Kindern. Ein manueller
+        // Shop-Ausschluss (kategorie_shops.ausgeschlossen, siehe project_shop_sync) unterdrückt
+        // den Chip zusätzlich -- sowohl an der gesperrten Kategorie selbst als auch an ALLEN
+        // Unterkategorien darunter (eine Sperre an der Wurzel muss auch die Blatt-Chips treffen,
+        // Artikel hängen ja nur an Blatt-Kategorien).
+        $ausschluesse = $this->kategorieRepo->findAusschluesseAlsShopCodes();
         foreach ($wurzeln as &$wurzel) {
-            $this->berechneShopChips($wurzel);
+            $this->berechneShopChips($wurzel, $ausschluesse, []);
         }
         unset($wurzel);
 
         return $wurzeln;
     }
 
-    private function berechneShopChips(array &$knoten): array
+    /**
+     * @param array $ausschluesseProKategorie kategorie_id => ['S1',...], siehe findAusschluesseAlsShopCodes()
+     * @param array $geerbteAusschluesse Shop-Codes, die schon auf dem Pfad von der Wurzel bis
+     *              hierher gesperrt wurden -- wird beim Abstieg immer weiter ergänzt, nie entfernt.
+     */
+    private function berechneShopChips(array &$knoten, array $ausschluesseProKategorie, array $geerbteAusschluesse): array
     {
+        $eigeneAusschluesse = $ausschluesseProKategorie[(int)$knoten['id']] ?? [];
+        $ausschluesseAufDemPfad = array_values(array_unique(array_merge($geerbteAusschluesse, $eigeneAusschluesse)));
+
         $codes = !empty($knoten['eigene_shop_codes']) ? explode(',', $knoten['eigene_shop_codes']) : [];
         foreach ($knoten['kinder'] as &$kind) {
-            $codes = array_merge($codes, $this->berechneShopChips($kind));
+            $codes = array_merge($codes, $this->berechneShopChips($kind, $ausschluesseProKategorie, $ausschluesseAufDemPfad));
         }
         unset($kind);
-        $codes = array_values(array_unique($codes));
+        $codes = array_values(array_diff(array_unique($codes), $ausschluesseAufDemPfad));
         sort($codes);
         $knoten['shop_codes'] = $codes;
         return $codes;

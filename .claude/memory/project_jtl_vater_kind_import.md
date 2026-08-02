@@ -1,12 +1,95 @@
 ---
 name: project-jtl-vater-kind-import
-description: "JTL Vater+Kind-CSV-Import mit Achsenerkennung — LIVE GETESTET 2026-07-31 (83/87 Väter erfolgreich), Resume-Fähigkeit + Kategorie-Baum-Dropdown nachgezogen"
+description: "JTL Vater+Kind-CSV-Import mit Achsenerkennung — LIVE GETESTET 2026-07-31 (83/87 Väter erfolgreich); 2026-08-02 um 'gemischte Kategorien' erweitert (normale Artikel + additive Kategoriezuweisung für bereits existierende Artikel)"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 85efc9a3-c1f8-4d31-89d2-a10e99128244
-  modified: 2026-08-01T18:13:48.931Z
+  modified: 2026-08-02T12:18:01.020Z
 ---
+
+## ✅ Erweiterung 2026-08-02: Gemischte Kategorien (Vater+Kind + normale Artikel + bereits existierend)
+
+Jacky brachte einen neuen Fall: Kategorien, die sowohl Vater+Kind-Artikel als auch "normale"
+Einzelartikel enthalten, wobei viele der Artikel bereits (unter einer ANDEREN Kategorie)
+in der DB existieren (Testdaten: `Sale-Artikelstammdaten-02082026.csv` + `sale-Variationskombinationen-02082026.csv`).
+
+**Kritischer Fund (bestehender Code, nicht Teil des ursprünglichen Imports getestet):**
+`saveKategorien($vaterId, [$kategorieId])` in `fuehreImportDurch()` hat die Kategorie
+IMMER ERSETZT statt ergänzt (`updateArtikelKategoriezuweisungen()` löscht erst alle
+bestehenden Zuweisungen). Live-Stichprobe bestätigt: F-LaDoro (id=11633) hatte bereits
+Kategorie "Ferner Wolle" — ein Lauf hätte diese durch die neue Kategorie ERSETZT (via
+`syncKategorienZuKindern` auch bei allen 18 Kindern). Bisher nie aufgefallen, weil frühere
+Imports (DROPS, BorgoDePazzi etc.) immer komplett neue Artikel ohne Vorkategorien waren.
+
+**Zweiter Fund:** Bei Kindern, die in der jeweiligen Sale-CSV keine eigene Stammdatenzeile
+hatten (in den Testdaten 221 von 465, davon 196 bereits in der DB vorhanden), hätte der
+Code Gewicht/Maße/UVP/Einheit/Hersteller/Auslauf-Flag unbedingt mit NULL überschrieben.
+
+**Jackys Entscheidung (bewusst, nicht spekulativ):** Bereits existierende Artikel (Vater,
+Kind, normal) bekommen beim erneuten Import-Lauf NUR die zusätzliche Kategorie — Preis
+bleibt IMMER unangetastet, auch wenn es fachlich ein "Sale"-Preis wäre ("das müssen wir
+über die Aktions-Schleife manuell machen, beim Import wäre die Laufzeit nicht abbildbar").
+Wichtig: der Fall ist NICHT auf "Sale" beschränkt — jede gemischte Kategorie (auch z.B.
+Amigurumi) kann betroffen sein.
+
+**Gebaut in `JtlVaterKindImportService.php`:**
+- `fuegeKategorieHinzu()`: lädt bestehende Kategorien, merged mit der neuen, ruft
+  `saveKategorien()` mit der VOLLEN Liste auf (additiv statt ersetzend) — ersetzt den
+  direkten `saveKategorien($vaterId, [$kategorieId])`-Aufruf.
+- Kind-Verarbeitung: `_war_vorhanden` wird VOR `erstelleKombinationen()` per
+  `findByArtikelnummer()` geprüft. War das Kind schon da, werden Preis-Update
+  (`updatePreis`), das rohe Attribut-UPDATE (Gewicht/Maße/UVP/Einheit/Hersteller/Auslauf)
+  UND `passeKindPreiseAn()` (Achsen-Aufpreis) übersprungen — nur Kategorie via
+  `kopiereVaterRelationenZuKindern()`s additive `copyKategorien()` (INSERT IGNORE) läuft.
+- `baueVorschauNormaleArtikel()` (neu): erkennt Stammdaten-Zeilen ohne Vater-Flag UND ohne
+  Kind-Zuordnung (`Identifizierungsspalte Vaterartikel` leer) als eigenständige Artikel.
+  Zeilen mit gesetzter Vater-Kennung, aber ohne passende Kombi-Zeile (Achsen unbekannt,
+  JTL-Exportlücke), werden bewusst NICHT als normal behandelt, sondern gezählt
+  (`verwaiste_kinder_anzahl`) und in der UI als Warnung angezeigt, aber übersprungen.
+- `fuehreNormaleImportDurch()` (neu): existiert die Artikelnummer schon → nur
+  `fuegeKategorieHinzu()`; sonst Neuanlage über `ArtikelService::save()` (gleiche Felder
+  wie der bestehende Vater-Neuanlage-Zweig, ohne Achsen/Kinder).
+- UI (`jtl_import.php`/`jtl_import_commit.php`): neue Sektion "Normale Artikel" in der
+  Kontrollliste + "bereits vorhanden → nur Kategorie"-Badges bei Vater/Kind/normal +
+  Ergebnisseite zeigt "nur Kategorie zugewiesen" statt "importiert".
+
+**Verifiziert (echter DB-Test mit Cleanup, siehe [[feedback_test_isolation]]):** F-LaDoro
+(Vater, bereits vorhanden) + alle 18 echten Kinder + ein neuer normaler Artikel
+(ZPA-MI-0004) gegen eine temporäre Test-Kategorie importiert: alte Kategorie "Ferner
+Wolle" blieb erhalten, neue Kategorie kam dazu, Preis/Gewicht/Einheit/Hersteller von
+F-LaDoro-001 blieben exakt unverändert, neuer Artikel korrekt angelegt + kategorisiert.
+Danach vollständig zurückgebaut (Test-Kategorie + Test-Artikel gelöscht) — keine Reste.
+
+**Trockenlauf-Zahlen der echten Sale-Testdaten:** 43 Väter (32 bereits vorhanden), 465
+Kinder (356 bereits vorhanden), 20 normale Artikel (alle neu), 0 verwaiste Kind-Zeilen.
+
+**Noch offen:** Live-Test durch Jacky im Browser mit den echten Sale-Dateien steht aus.
+
+## ✅ Nachtrag 2026-08-02: Variationskombinationen-CSV optional + Einheiten-Verwaltung
+
+Zwei Jacky-Fragen direkt danach:
+1. **Kategorie NUR mit normalen Artikeln (keine Vater/Kind überhaupt)** — vorher war die
+   Kombi-CSV im Formular `required`, das Formular ließ sich ohne sie gar nicht absenden.
+   Jetzt optional: `csv_kombinationen` kein Pflichtfeld mehr, `parseVariationskombinationen()`
+   wird nur aufgerufen wenn eine Datei hochgeladen wurde (sonst leeres Array). Vater-Zeilen
+   (Flag "Ist Vaterartikel"), für die dann keine Kombi-Daten vorliegen, werden NICHT
+   fälschlich als normaler Artikel behandelt, sondern gezählt (`vater_ohne_kombidatei_anzahl`)
+   und als Warnung in der Kontrollliste angezeigt, aber übersprungen. Getestet: Trockenlauf
+   ohne Kombi-Datei gegen die echten Sale-Daten → 0 Väter erkannt, 43 korrekt als
+   "übersprungen" gemeldet, die 20 normalen Artikel unverändert korrekt erkannt.
+2. **Einheiten-Verwaltung fehlte komplett** (Tabelle `einheiten` nur lesbar über
+   `EinheitenRepository::findAll()`, keine UI) — Jacky bemerkte fehlende Werte (Strang,
+   Bollen, Paar) beim Einheiten-Mapping im Import. Neu: `EinheitenRepository` um
+   `insert()`/`update()`/`delete()`/`zaehleVerwendung()`/`findAllMitVerwendung()` erweitert,
+   neuer Tab "Einheiten" in `einstellungen/index.php` (Liste + Neu-Anlegen-Form + inline
+   Bearbeiten/Löschen pro Zeile), Handler in `einstellungen/speichern.php`. Löschen ist
+   gesperrt (🔒 + serverseitige Prüfung), solange mind. 1 Artikel die Einheit verwendet
+   (FK `artikel.einheit_id → einheiten.id`). UI bewusst als div/grid-Zeilen wie der
+   bestehende "Kanäle"-Tab gebaut, NICHT als `<table><tr>` mit eingebettetem `<form>`
+   (wäre ungültiges HTML — `<form>` darf laut Spec kein Kind von `<tr>` sein und Browser
+   foster-parenten es unvorhersehbar). Getestet: Insert/Update/Delete-Zyklus per CLI
+   gegen die echte DB, sauber aufgeräumt.
 
 ## Status 2026-07-31: Implementiert + verifiziert
 
@@ -107,3 +190,61 @@ Frage war: kann daraus automatisch ein Vater+Kind-Import mit Achsenerkennung geb
 **Bewusst nicht Teil dieses Imports:** HTML-Bereinigung der Beschreibungstexte (eigenes zurückgestelltes Thema, siehe [[project_jtl_import]]), Merkmale-Import (eigenes Thema, Dedup nötig).
 
 **Bei Wiedereinstieg:** Plan-Datei lesen, dann mit Schritt 0 (falls noch nicht erledigt) bzw. direkt mit der Implementierung (Service + UI) weitermachen.
+
+## ✅ Nachtrag 2026-08-02 (später): Artikeltyp/Artikelgruppe pro Zeile statt global
+
+Jacky bemerkte beim Durchschauen des echten Sale-Exports: gemischte Kategorien können auch
+gemischten Artikeltyp UND gemischte Artikelgruppe enthalten (z.B. Garn/4000-Wolle UND
+Standard/4040-Sonstiges-Zubehör in derselben Kategorie). Die ursprüngliche Batch-weite
+Vorab-Auswahl (siehe Plan oben, "gilt für alle Väter+Kinder des Imports") war dafür zu grob.
+
+**Umgebaut:** Artikeltyp + Artikelgruppe im Upload-Formular sind jetzt nur noch eine
+**Vorauswahl zum Vorbefüllen** (nicht mehr Pflichtfeld, nicht mehr global bindend). In der
+Kontrollliste bekommt JEDER neu anzulegende Vater UND jeder neu anzulegende normale Artikel
+sein eigenes Artikeltyp-/Artikelgruppe-Dropdown (vorbefüllt mit der Vorauswahl, änderbar).
+Bereits existierende Artikel (Vater/normal) zeigen die Dropdowns gar nicht, da bei ihnen
+ohnehin nichts außer der Kategorie angefasst wird.
+
+`JtlVaterKindImportService::fuehreImportDurch()`/`fuehreNormaleImportDurch()`: Parameter
+`$artikeltypCode`/`$artikelGruppeId` entfernt, kommen jetzt aus `$korrekturen[...]['artikeltyp_code']`
+bzw. `['artikel_gruppe_id']` (nur im "neu anlegen"-Zweig gelesen, mit Fehlermeldung
+"Artikeltyp und/oder Artikelgruppe nicht ausgewählt" falls leer). Kinder brauchen keine eigene
+Auswahl — sie erben `artikeltyp_id`/`einheit_id` etc. weiterhin vom (jetzt korrekt befüllten)
+Vater über die bestehende Vererbungslogik in `VariantenService::erstelleKombinationen()`.
+
+## Nachtrag 2026-08-02: "Keine Artikel erkannt" bei alpacaparty-Dateien — Datenproblem, kein Bug
+
+Jacky meldete "Keine Artikel erkannt" bei `alpacaparty-Artikelstammdaten-02082026.csv` +
+`alpacaparty-Variationskombinationen-02082026.csv`, obwohl beide Dateien befüllt waren.
+Analyse: Stammdaten enthält 17 echte Väter (D-1076, D-1098, D-1028 usw., alles DROPS-Alpaca),
+die Kombinationen-Datei enthält aber 23 KOMPLETT ANDERE Vater-Artikelnummern (Pl-278041,
+F-Lung-Sowo-4f, F-LaceV-D, F-Mer420 usw. — Seile/Zubehör/andere Marken, teils dieselben wie
+in der Sale-Kombi-Datei). **0 Überschneidung.** Die beiden Dateien gehören nicht zusammen —
+vermutlich falsche/veraltete Kombinationen-CSV hochgeladen (Export einer anderen Kategorie).
+Jacky muss die Variationskombinationen-CSV gezielt für alpacaparty neu aus JTL exportieren.
+
+**UI-Verbesserung dabei:** Die generische "Keine Artikel erkannt"-Meldung unterschied bisher
+nicht zwischen "wirklich leer/falsches Dateipaar vertauscht" und "Väter erkannt, aber keine
+einzige Kombi-Zeile passt dazu" — beides zeigte denselben Text, ohne dass die eigentlich schon
+vorhandene `vater_ohne_kombidatei_anzahl`-Zahl in der Fehlermeldung selbst auftauchte (die Warnbox
+in der Kontrollliste erscheint ja nur, wenn überhaupt eine Kontrollliste gerendert wird — bei 0
+Vätern UND 0 normalen Artikeln bricht der Code aber schon vorher mit der generischen Fehlermeldung
+ab, die Warnbox kam also nie zur Anzeige). Fix in `jtl_import.php`: bei `vater_ohne_kombidatei_anzahl > 0`
+jetzt eine spezifische Meldung mit Zahl + Hinweis auf falsches/altes Dateipaar.
+
+## 🟢 BUG behoben 2026-08-02: Leere Verkaufseinheit-Mapping wurde ignoriert
+
+Jacky meldete: Mapping für "(leer)" im Formular ausgefüllt, trotzdem "Verkaufseinheit ... konnte
+nicht zugeordnet werden". Ursache: `loeseEinheitAuf()` hatte `if ($roh === '') return null;` als
+ALLERERSTE Zeile — brach also ab, bevor die User-Mapping-Auswahl überhaupt geprüft wurde. Fix:
+früher Return entfernt, Auto-Match-Zweig nur noch für nicht-leere Rohwerte (Reihenfolge sonst
+unverändert). Mit 4 Fällen per Reflection getestet (leer ohne/mit Mapping, unbekannt mit Mapping,
+bekannt per Auto-Match) — alle korrekt.
+
+**Getestet** (echter DB-Test mit vollständigem Cleanup): Vater `P-Nat.-S` (2 Kinder, echt neu)
+ohne Typ/Gruppe → korrekt abgelehnt; mit Typ=GARN/Gruppe=1 → Vater+beide Kinder korrekt angelegt
+mit den richtigen IDs. Normaler Artikel `ZPA-MI-0004` ebenso ohne/mit Auswahl getestet. Beim
+Cleanup einen bereits bekannten Stolperstein aus [[feedback_test_isolation]] nochmal bestätigt:
+`varianten_achse_werte`-Zeilen sind PRO VATER-ARTIKEL eigene Zeilen (kein geteiltes globales
+Wörterbuch wie zunächst angenommen) — vor dem Löschen einzelner Werte-IDs erst per
+`varianten_kombination_werte`-Join auf Verwaisung geprüft, nicht pauschal nach Werttext gelöscht.

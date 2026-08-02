@@ -5,7 +5,107 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-01T15:24:04.579Z
+  modified: 2026-08-02T20:23:22.137Z
+---
+
+## ✅ NEU 2026-08-02: Kategorie-Ausschluss pro Shop (fehlende Möglichkeit, Blatt-Kategorie im Shop zu unterdrücken)
+
+Jacky bemerkte einen Denkfehler im "Blatt-Kategorie geht in den Shop"-Konzept: ein Artikel kann
+in mehreren Kategorien stehen (auch rein internen, die NICHT im Shop erscheinen sollen) — bisher
+wurden ALLE Kategorien eines Artikels ungefiltert gepusht, ohne Möglichkeit eine Kategorie gezielt
+für einen Shop auszuschließen. Bestätigt im Code: `ShopSyncRepository::findKategorieIdsFuerArtikel()`
+lieferte alle `artikel_kategorien`-Einträge ungefiltert, `findWcKategorieIds()` (für den Produkt-
+Payload) genauso. Die vorher dokumentierten "Kanal-Chips an Kategorien" (Design-Entscheidung
+2026-06-21) sind rein berechnet/lesend — kein manueller Schalter existierte dafür in der UI.
+
+**Entscheidung (Jacky):** Ausschluss **pro Kategorie UND pro Shop einzeln** (nicht global) —
+es gibt 3 echte Shops (MEALANA/bio-wolle.at/sockenwolle-online.at), eine Kategorie kann je nach
+Shop unterschiedlich passend sein.
+
+**Gebaut:**
+- Migration 156: `kategorie_shops.ausgeschlossen TINYINT(1) DEFAULT 0`.
+- `ShopSyncRepository`: `istKategorieAusgeschlossen()`, `setKategorieAusschluss()` (Upsert, legt die
+  Zeile bei Bedarf neu an — Ausschluss kann VOR dem ersten Sync gesetzt werden), `findAusschluesseFuerKategorie()`
+  (für die UI). `findWcKategorieIds()` UND `findFaelligeKategorien()` filtern jetzt `ausgeschlossen = 0`.
+- `ShopSyncService::syncShop()`: die "Kategorie vor Artikel anlegen"-Schleife überspringt für diesen
+  Shop ausgeschlossene Kategorien jetzt komplett (kein unnötiger WC-Term).
+- **Wichtig (gleiche Lehre wie bei Kategorie-/Achsenwert-Umbenennungen):** reines Setzen des Flags
+  reicht nicht — `setKategorieAusschluss()` bumpt zusätzlich `artikel.aktualisiert_am` für ALLE
+  Artikel dieser Kategorie, sonst würde der (Aus-)Schluss erst beim ohnehin nächsten fälligen Sync
+  des Artikels wirksam.
+- UI: neuer Bereich "Shop-Sichtbarkeit" im Bearbeiten-Modal (`kategorien_verwalten.php`/`.js`,
+  analog zum bestehenden Kategoriebild-Bereich) — Checkbox pro aktivem Shop, sofort per AJAX
+  (`kategorie_shop_ausschluss_ajax.php`) gespeichert, kein Extra-Klick auf "Speichern". Nur bei
+  bereits existierenden Kategorien sichtbar (braucht eine echte kategorie_id).
+- **Bewusst NICHT gemacht:** Ausschluss wirkt nur auf die exakte (Blatt-)Kategorie am Artikel,
+  nicht rekursiv auf Unterkategorien eines ausgeschlossenen Astes — passt zum gemeldeten
+  Anwendungsfall (einzelne gemischte Kategorien), eine "ganzen Ast ausschließen"-Funktion wäre
+  eine spätere Erweiterung falls gebraucht. Ein bereits in WooCommerce angelegter Kategorie-Term
+  wird beim Ausschließen NICHT selbst gelöscht (nur die Produkt-Zuordnung entfällt beim nächsten
+  Sync) — unbenutzte Terms schaden nicht, gleiche Haltung wie bei den verwaisten Uni/Mix-Attributen.
+
+**Getestet:** Isolierter DB-Test (synthetische Test-Kategorie + Test-Artikel, kein echter Shop-Call)
+— `findWcKategorieIds()` liefert die simulierte externe ID vor Ausschluss, leer nach Ausschluss,
+wieder befüllt nach Aufheben; `aktualisiert_am` des betroffenen Artikels wurde korrekt auf "jetzt"
+gebumpt (vorher künstlich auf 2020 gesetzt). Vollständig aufgeräumt. **Ein echter Cron-Lauf gegen
+einen echten Shop steht noch aus** (nächster sinnvoller Schritt: eine Kategorie für einen Shop
+ausschließen, die einen bereits gesyncten Artikel betrifft, dann Cron laufen lassen und bei
+WooCommerce prüfen, dass die Kategorie-Zuordnung dort tatsächlich verschwindet).
+
+### 🔴 Nachtrag gleicher Tag: Zwei echte Folgebugs beim ersten Live-Test durch Jacky gefunden + behoben
+
+Jacky sperrte testweise ein paar WURZEL-Kategorien für einzelne Shops — **es passierte gar nichts**,
+und der bestehende (aus 2026-06-21 stammende, rein berechnete) Kanal-Chip in der Sidebar
+(`includes/shell_top.php`, `ArtikelService::berechneShopChips()`) blieb unverändert stehen.
+
+**Bug 1 (der eigentliche Kern):** Sowohl die Ausschluss-PRÜFUNG (`istKategorieAusgeschlossen`) als
+auch die Fällig-MARKIERUNG (`setKategorieAusschluss()`s `UPDATE artikel ... WHERE ak.kategorie_id = :kid`)
+prüften nur die EXAKTE Kategorie-ID. Da Artikel aber nie direkt an einer Wurzel hängen (nur an
+Blatt-Kategorien, siehe `artikel_kategorien`), hatte das Sperren einer Wurzel dadurch buchstäblich
+NULL Wirkung: kein Artikel hatte je exakt diese ID, also wurde auch keiner als fällig markiert.
+
+**Fix:**
+- Neue `ShopSyncRepository::istKategoriePfadAusgeschlossen()`: prüft die Kategorie UND alle ihre
+  Vorfahren (nutzt bestehende `findKategorieMitVorfahren()`). Ersetzt die reine Selbst-Prüfung an
+  beiden Sync-Stellen (`ShopSyncService::syncShop()`-Loop, `findWcKategorieIds()`).
+- Neue private `findKategorieIdsMitUnterkategorien()`: liefert eine Kategorie-ID + ALLE
+  Unterkategorien (PHP-Traversierung, Baum ist klein genug -- bewusst kein rekursives SQL, um
+  MariaDB-Versionskompatibilität nicht vorauszusetzen, obwohl `KategorieRepository::findAlleKinderIds()`
+  an anderer Stelle bereits `WITH RECURSIVE` verwendet). `setKategorieAusschluss()` markiert damit
+  jetzt Artikel der GESAMTEN betroffenen Unterkategorien als fällig, nicht nur exakte ID-Treffer.
+
+**Bug 2 (unabhängiger zweiter Fund, gleiche Ursache "nur exakte ID geprüft"):** Der Kanal-Chip
+(`ArtikelService::berechneShopChips()`, komplett unabhängiger Code von obigem) kannte
+`kategorie_shops.ausgeschlossen` überhaupt nicht -- weder an der gesperrten Kategorie noch
+vererbt auf Unterkategorien. Fix: neue `KategorieRepository::findAusschluesseAlsShopCodes()`
+(EINE Query für den ganzen Baum, kategorie_id => ['S1',...] -- bewusst keine Sub-Query pro
+Baumknoten, siehe die dokumentierte 640x-Performance-Lehre bei `findAllMitEltern()` in
+derselben Datei). `berechneShopChips()` bekommt jetzt einen "geerbte Ausschlüsse"-Akkumulator
+beim Abstieg von der Wurzel mit (Shop-Code einmal auf dem Pfad gesperrt = bleibt für den ganzen
+Unterbaum gesperrt, auch wenn eine tiefere Kategorie selbst nicht explizit gesperrt ist).
+
+**Beide Fixes mit isolierten Testdaten verifiziert** (Wurzel+Blatt+Test-Artikel mit echter
+`artikel_shops`-Zuweisung): Chip zeigt "S1" vor Sperre an Wurzel UND Blatt, verschwindet an BEIDEN
+nach Sperre der Wurzel, kommt an beiden zurück nach Aufheben. Vollständig aufgeräumt.
+
+### UI-Nachschliff gleicher Tag: Kanal-Chips im Sidebar-Kategoriebaum kompakter
+
+Jacky bemerkte: bei vielen Herstellern (Screenshot) macht das Chip-unter-jeder-Zeile-Layout die
+Kategorieliste unübersichtlich lang. Umgebaut in `includes/shell_top.php` + `css/components.css`:
+Chips jetzt INLINE zwischen Pfeil und Kategoriename (statt eigene Zeile darunter), verkleinert auf
+reine Shop-Nummer ("1"/"2"/"3" statt "S1"/"S2"/"S3", Farbe bleibt Haupt-Unterscheidungsmerkmal, Legende
+unten erklärt die Zahlen), mit `title`-Tooltip pro Chip (voller Shop-Name) UND einem Tooltip auf der
+ganzen Zeile (voller Kategoriename, für lange abgeschnittene Namen). Neue CSS-Klassen `.kat-chips-inline`
++ `.kc-inline` (kompaktere Variante von `.kc`, die Legende unten behält die größere Standard-`.kc`-Größe).
+Reine CSS/HTML-Änderung, von Jacky selbst im Browser bestätigt ("perfekt").
+
+**Bewusst nicht behoben:** `findFaelligeKategorien()` (Change-Detection für Text-Updates bereits
+synchter Kategorien) prüft weiterhin nur die exakte Kategorie, nicht den Vorfahren-Pfad -- eine
+über einen Vorfahren ausgeschlossene, aber selbst nicht direkt gesperrte Kategorie würde also
+weiterhin (unnötig, aber harmlos) auf reine Text-/Namensänderungen hin geprüft. Reine
+Effizienzfrage, keine Korrektheitsfrage (die Kategorie wird ja über `findWcKategorieIds()` trotzdem
+nicht mehr einem Artikel zugewiesen) -- nicht angefasst, um den Fix-Umfang klein zu halten.
+
 ---
 
 ## ✅ BEHOBEN 2026-08-01: Vater-Artikel im Shop immer "ausverkauft" trotz Kinderbestand

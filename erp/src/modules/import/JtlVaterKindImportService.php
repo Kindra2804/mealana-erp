@@ -315,6 +315,7 @@ class JtlVaterKindImportService
                     'verkaufseinheit_roh' => $kindVerkaufseinheitRoh,
                     'stammdaten_fehlen'   => $kindRow === null,
                     'ist_auslauf'         => $kombi['ist_auslauf'],
+                    'bereits_vorhanden'   => $this->artikelRepo->findByArtikelnummer($kombi['kind_artikelnummer']) !== false,
                 ];
             }
 
@@ -340,21 +341,127 @@ class JtlVaterKindImportService
                 'hersteller_treffer'     => $herstellerTreffer,
                 'kinder'                 => $kinder,
                 'achsen'                 => array_values($achsenDistinkt),
+                'bereits_vorhanden'      => $this->artikelRepo->findByArtikelnummer($vaterNr) !== false,
             ];
         }
 
+        [$normale, $verwaisteKinderAnzahl] = $this->baueVorschauNormaleArtikel($mitKindern, $kombisProVater, $lookups, $einheitenUnbekannt);
+
+        // Vater-Zeilen (Flag "Ist Vaterartikel"), für die keine Kombinationsdaten vorliegen --
+        // z.B. weil gar keine Variationskombinationen-CSV hochgeladen wurde (die Datei ist
+        // optional, manche Kategorien enthalten NUR normale Artikel). Werden bewusst nicht als
+        // normaler Artikel behandelt (sie sind ja fachlich ein Vater, nur ohne bekannte Kinder),
+        // sondern in der Vorschau als Warnung ausgewiesen und übersprungen.
+        $vaterOhneKombidatei = 0;
+        foreach ($mitKindern as $nr => $row) {
+            if (($row['Ist Vaterartikel'] ?? '0') === '1' && !isset($kombisProVater[$nr])) {
+                $vaterOhneKombidatei++;
+            }
+        }
+
         return [
-            'vaeter'              => $vaeter,
-            'einheiten_unbekannt' => array_keys($einheitenUnbekannt),
+            'vaeter'                       => $vaeter,
+            'normale'                      => $normale,
+            'einheiten_unbekannt'          => array_keys($einheitenUnbekannt),
+            'verwaiste_kinder_anzahl'      => $verwaisteKinderAnzahl,
+            'vater_ohne_kombidatei_anzahl' => $vaterOhneKombidatei,
         ];
+    }
+
+    /**
+     * "Normale" Artikel: Zeilen aus der Stammdaten-CSV, die weder Vater (Flag "Ist Vaterartikel")
+     * noch Kind eines Vaters sind (Spalte "Identifizierungsspalte Vaterartikel" leer). Kommen in
+     * gemischten Kategorie-Exporten vor (z.B. "Sale" oder "Amigurumi"), wo Variationskombi-Artikel
+     * UND einfache Einzelartikel gemeinsam in einer Kategorie stehen. $einheitenUnbekannt wird per
+     * Referenz mitbefüllt (gleiche Sammelliste wie bei Väter/Kinder).
+     *
+     * Kind-Zeilen, deren Vater-Kennung gesetzt ist, für die aber KEINE Kombinationszeile existiert
+     * (Achsen unbekannt, JTL-Exportlücke), werden bewusst NICHT als normale Artikel behandelt --
+     * sie würden sonst fälschlich als eigenständiges Produkt statt als Variante angelegt. Sie
+     * werden gezählt und der Vorschau als Warnung mitgegeben, aber übersprungen.
+     */
+    private function baueVorschauNormaleArtikel(array $mitKindern, array $kombisProVater, array $lookups, array &$einheitenUnbekannt): array
+    {
+        $kindNummern = [];
+        foreach ($kombisProVater as $kombis) {
+            foreach ($kombis as $kombi) {
+                $kindNummern[$kombi['kind_artikelnummer']] = true;
+            }
+        }
+
+        $normale = [];
+        $verwaisteKinderAnzahl = 0;
+
+        foreach ($mitKindern as $nr => $row) {
+            if (($row['Ist Vaterartikel'] ?? '0') === '1') continue;
+            if (isset($kindNummern[$nr])) continue;
+
+            if (trim($row['Identifizierungsspalte Vaterartikel'] ?? '') !== '') {
+                $verwaisteKinderAnzahl++;
+                continue;
+            }
+
+            $herstellerName    = mb_strtolower(trim($row['Hersteller'] ?? ''));
+            $herstellerTreffer = $herstellerName !== '' && isset($lookups['hersteller'][$herstellerName]);
+
+            $verkaufseinheitRoh = trim($row['Verkaufseinheit'] ?? '');
+            if (!isset($lookups['einheit'][mb_strtolower($verkaufseinheitRoh)])) {
+                $einheitenUnbekannt[$verkaufseinheitRoh] = true;
+            }
+
+            $normale[] = [
+                'artikelnummer'          => $nr,
+                'name'                   => $this->kuerzeDropsName(trim($row['Artikelname'] ?? '')),
+                'kurzbeschreibung'       => $row['Kurzbeschreibung'] ?? '',
+                'beschreibung'           => $row['Beschreibung'] ?? '',
+                'brutto_vk'              => $this->komma($row['Brutto-VK'] ?? ''),
+                'netto_vk'               => $this->komma($row['Netto-VK'] ?? ''),
+                'uvp'                    => $this->komma($row['UVP'] ?? ''),
+                'steuersatz'             => $row['Steuersatz in %'] ?? '',
+                'charge_pflicht'         => ($row['Artikel mit Charge'] ?? '0') === '1' ? 1 : 0,
+                'gewicht_artikel'        => $this->komma($row['Artikelgewicht'] ?? ''),
+                'breite'                 => $this->komma($row['Breite'] ?? ''),
+                'hoehe'                  => $this->komma($row['Höhe'] ?? ''),
+                'laenge'                 => $this->komma($row['Länge'] ?? ''),
+                'verkaufseinheit_roh'    => $verkaufseinheitRoh,
+                'inhalt_menge'           => $this->komma($row['Inhalt/Menge'] ?? ''),
+                'grundpreis_anzeigen'    => ($row['Grundpreis ausweisen'] ?? '0') === '1' ? 1 : 0,
+                'grundpreis_bezugsmenge' => $this->komma($row['GP-Bezugsmenge'] ?? ''),
+                'hersteller_name'        => $row['Hersteller'] ?? '',
+                'hersteller_treffer'     => $herstellerTreffer,
+                'ean'                    => $row['GTIN'] ?? '',
+                'bereits_vorhanden'      => $this->artikelRepo->findByArtikelnummer($nr) !== false,
+            ];
+        }
+
+        return [$normale, $verwaisteKinderAnzahl];
     }
 
     private function loeseEinheitAuf(string $roh, array $einheitMap, array $userMapping): ?int
     {
-        if ($roh === '') return null;
+        // Kein früher return bei leerem $roh -- eine leere Verkaufseinheit ist einer der
+        // Werte, die der User im Mapping-Formular auf "(leer)" explizit zuordnen kann
+        // (siehe jtl_import.php), ein früher Abbruch hier würde diese Auswahl ignorieren.
         $key = mb_strtolower($roh);
-        if (isset($einheitMap[$key])) return $einheitMap[$key];
+        if (isset($einheitMap[$key]) && $roh !== '') return $einheitMap[$key];
         return isset($userMapping[$roh]) && $userMapping[$roh] !== '' ? (int) $userMapping[$roh] : null;
+    }
+
+    /**
+     * Weist eine Kategorie ZUSÄTZLICH zu bestehenden Kategorien zu, statt sie zu ersetzen.
+     * ArtikelService::saveKategorien() erwartet die komplette Ziel-Kategorienliste und LÖSCHT
+     * alles was nicht mehr enthalten ist (korrektes Verhalten für den manuellen Kategorie-Editor,
+     * wo der User immer die volle Liste absendet) -- für diesen Import ist das aber gefährlich:
+     * viele Artikel hier sind bereits vorhanden und stehen schon in einer ANDEREN Kategorie
+     * (z.B. "Ferner Wolle"), dieser Import soll eine WEITERE Kategorie ergänzen (z.B. "Sale"
+     * oder "Amigurumi"), nicht die bestehende ersetzen. Kinder werden durch saveKategorien()
+     * automatisch mit der vollen (jetzt korrekt zusammengeführten) Liste des Vaters synchronisiert.
+     */
+    private function fuegeKategorieHinzu(int $artikelId, int $kategorieId): void
+    {
+        $bestehendeIds = array_column($this->artikelService->getKategorienFuerArtikel($artikelId), 'id');
+        $neueIds       = array_values(array_unique(array_merge($bestehendeIds, [$kategorieId])));
+        $this->artikelService->saveKategorien($artikelId, $neueIds);
     }
 
     private function slugify(string $text): string
@@ -399,15 +506,19 @@ class JtlVaterKindImportService
     /**
      * Führt den eigentlichen Import durch. $vorschauVaeter kommt aus baueVorschau()['vaeter'].
      * $korrekturen: [ursprüngliche Vater-Artikelnummer => ['artikelnummer'=>, 'name'=>,
+     *                'artikeltyp_code'=>, 'artikel_gruppe_id'=>,
      *                'kinder' => [ursprüngliche Kind-Artikelnummer => ['artikelnummer'=>, 'name'=>]]]]
+     * Artikeltyp + Artikelgruppe kommen bewusst PRO VATER aus $korrekturen statt als ein
+     * globaler Parameter -- gemischte Kategorien (z.B. "Sale") können Väter mit
+     * unterschiedlichem Artikeltyp/Artikelgruppe enthalten (Garn + Zubehör in derselben
+     * Kategorie). Nur relevant für neu angelegte Väter, bei bereits bestehenden wird nichts
+     * davon angefasst (siehe unten).
      * $einheitMapping: [roher Verkaufseinheit-Text => einheiten.id] für die in der Vorschau
      *                  als unbekannt markierten Werte.
      */
     public function fuehreImportDurch(
         array $vorschauVaeter,
         int $kategorieId,
-        string $artikeltypCode,
-        int $artikelGruppeId,
         array $einheitMapping,
         array $korrekturen
     ): array {
@@ -439,6 +550,16 @@ class JtlVaterKindImportService
                 $einheitId    = $vorhandenerVaterVoll['einheit_id'] ?? null;
                 $herstellerId = $vorhandenerVaterVoll['hersteller_id'] ?? null;
             } else {
+                $artikeltypCode  = trim($korr['artikeltyp_code'] ?? '');
+                $artikelGruppeId = (int) ($korr['artikel_gruppe_id'] ?? 0);
+                if ($artikeltypCode === '' || $artikelGruppeId <= 0) {
+                    $ergebnisse[] = [
+                        'artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false,
+                        'fehler' => ['Artikeltyp und/oder Artikelgruppe nicht ausgewählt'],
+                    ];
+                    continue;
+                }
+
                 $steuerSatzStr  = (string) (int) $vater['steuersatz'];
                 $steuerklasseId = $lookups['steuer'][$steuerSatzStr]['id'] ?? null;
                 if ($steuerklasseId === null) {
@@ -500,7 +621,7 @@ class JtlVaterKindImportService
                 }
             }
 
-            $this->artikelService->saveKategorien($vaterId, [$kategorieId]);
+            $this->fuegeKategorieHinzu($vaterId, $kategorieId);
 
             // Achsen: distinct (Name, Wert)-Paare aus allen Kind-Kombis sammeln, Achse per Code finden/anlegen
             $achsenIdByName     = [];
@@ -548,12 +669,17 @@ class JtlVaterKindImportService
                     continue;
                 }
 
+                // War das Kind VOR diesem Lauf schon vorhanden? (z.B. Farbvariante eines
+                // Garns, die schon unter einer anderen Kategorie importiert wurde). Muss
+                // VOR erstelleKombinationen() geprüft werden, weil dessen interne
+                // findIdByArtikelnummer()-Wiederverwendung sonst nicht mehr unterscheidbar ist.
                 $kombis[] = [
-                    'artikelnummer' => $kindNr,
-                    'name'          => $kindName,
-                    'ean'           => $kind['ean'],
-                    'key'           => implode(',', $wertIds),
-                    '_orig'         => $kind,
+                    'artikelnummer'  => $kindNr,
+                    'name'           => $kindName,
+                    'ean'            => $kind['ean'],
+                    'key'            => implode(',', $wertIds),
+                    '_orig'          => $kind,
+                    '_war_vorhanden' => $this->artikelRepo->findByArtikelnummer($kindNr) !== false,
                 ];
             }
 
@@ -561,16 +687,44 @@ class JtlVaterKindImportService
                 $vaterArray = $this->artikelService->findById($vaterId);
                 $kombiResult = $this->variantenService->erstelleKombinationen($vaterArray, true, $kombis);
 
-                $this->artikelService->kopiereVaterRelationenZuKindern($vaterId, $kombiResult['ids'], $kombiResult['preisAnpassungen'] ?? []);
-
-                foreach ($kombiResult['eanMap'] ?? [] as $kindId => $ean) {
-                    $this->artikelService->speichereCode((int) $kindId, 'GTIN13', $ean);
+                // Achsen-Aufpreis-Anpassungen (passeKindPreiseAn() -- echtes UPDATE, keine
+                // INSERT-IGNORE-Kopie wie die übrigen Vater-Relationen) dürfen bereits
+                // bestehende Kinder nicht treffen, gleiche Begründung wie unten.
+                $warVorhandenByKindId = [];
+                foreach ($kombis as $idx => $kombi) {
+                    if (isset($kombiResult['ids'][$idx])) {
+                        $warVorhandenByKindId[$kombiResult['ids'][$idx]] = $kombi['_war_vorhanden'];
+                    }
                 }
+                $preisAnpassungenNeu = array_filter(
+                    $kombiResult['preisAnpassungen'] ?? [],
+                    fn($kindId) => empty($warVorhandenByKindId[$kindId]),
+                    ARRAY_FILTER_USE_KEY
+                );
 
-                // Pro Kind die echten JTL-Werte (Preis/Maße/UVP/Einheit) statt der Vater-Vererbung setzen
+                $this->artikelService->kopiereVaterRelationenZuKindern($vaterId, $kombiResult['ids'], $preisAnpassungenNeu);
+
+                // Pro Kind die echten JTL-Werte (Preis/Maße/UVP/Einheit) statt der Vater-Vererbung setzen --
+                // ABER NUR bei Kindern, die in diesem Lauf wirklich neu angelegt wurden. Ein bereits
+                // bestehendes Kind (z.B. Farbvariante, die schon unter einer anderen Kategorie
+                // importiert war) bekommt NUR die Kategorie (oben via kopiereVaterRelationenZuKindern
+                // additiv über copyKategorien) -- Preis/Gewicht/Maße/Hersteller/Auslauf-Flag bleiben
+                // unangetastet. Sonst würde z.B. dieser Sale-Export (der für 196 von 465 Kindern gar
+                // keine eigene Stammdatenzeile mitliefert) echte Bestandsdaten mit NULL überschreiben.
                 foreach ($kombis as $idx => $kombi) {
                     $kindId = $kombiResult['ids'][$idx] ?? null;
                     if (!$kindId) continue;
+
+                    if ($kombi['_war_vorhanden']) {
+                        $kindErgebnisse[] = ['artikelnummer' => $kombi['artikelnummer'], 'name' => $kombi['name'], 'erfolg' => true, 'id' => $kindId, 'nur_kategorie' => true];
+                        continue;
+                    }
+
+                    $ean = trim($kombi['ean'] ?? '');
+                    if ($ean !== '') {
+                        $this->artikelService->speichereCode((int) $kindId, 'GTIN13', $ean);
+                    }
+
                     $orig = $kombi['_orig'];
 
                     if ($orig['brutto_vk'] !== null && $orig['netto_vk'] !== null) {
@@ -611,8 +765,120 @@ class JtlVaterKindImportService
 
             $ergebnisse[] = [
                 'artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => true, 'id' => $vaterId,
-                'kinder'        => $kindErgebnisse,
+                'kinder'        => $kindErgebnisse, 'nur_kategorie' => (bool) $vorhandenerVater,
             ];
+        }
+
+        return $ergebnisse;
+    }
+
+    /**
+     * Führt den Import für "normale" (Standalone-)Artikel durch -- Zeilen aus der Stammdaten-CSV
+     * ohne Vater/Kind-Beziehung, siehe baueVorschauNormaleArtikel(). Existiert die Artikelnummer
+     * bereits (z.B. weil der Artikel schon unter einer anderen Kategorie importiert wurde),
+     * wird NICHTS an den Stammdaten verändert -- nur die neue Kategorie wird ergänzt. Sonst
+     * exakt dieselbe Anlage-Logik wie im "neu anlegen"-Zweig von fuehreImportDurch(), nur ohne
+     * Achsen/Kinder. $korrekturen: [ursprüngliche Artikelnummer => ['artikelnummer'=>, 'name'=>,
+     * 'artikeltyp_code'=>, 'artikel_gruppe_id'=>]] -- Artikeltyp/Artikelgruppe kommen bewusst
+     * PRO ARTIKEL statt global, gleiche Begründung wie in fuehreImportDurch().
+     */
+    public function fuehreNormaleImportDurch(
+        array $vorschauNormale,
+        int $kategorieId,
+        array $einheitMapping,
+        array $korrekturen
+    ): array {
+        $lookups    = $this->ladeLookups();
+        $ergebnisse = [];
+
+        foreach ($vorschauNormale as $artikel) {
+            $korr = $korrekturen[$artikel['artikelnummer']] ?? [];
+            $nr   = trim($korr['artikelnummer'] ?? $artikel['artikelnummer']);
+            $name = trim($korr['name'] ?? $artikel['name']);
+
+            $vorhandener = $this->artikelRepo->findByArtikelnummer($nr);
+            if ($vorhandener) {
+                $artikelId = (int) $vorhandener['id'];
+                $this->fuegeKategorieHinzu($artikelId, $kategorieId);
+                $ergebnisse[] = ['artikelnummer' => $nr, 'name' => $name, 'erfolg' => true, 'id' => $artikelId, 'nur_kategorie' => true];
+                continue;
+            }
+
+            $artikeltypCode  = trim($korr['artikeltyp_code'] ?? '');
+            $artikelGruppeId = (int) ($korr['artikel_gruppe_id'] ?? 0);
+            if ($artikeltypCode === '' || $artikelGruppeId <= 0) {
+                $ergebnisse[] = [
+                    'artikelnummer' => $nr, 'name' => $name, 'erfolg' => false,
+                    'fehler' => ['Artikeltyp und/oder Artikelgruppe nicht ausgewählt'],
+                ];
+                continue;
+            }
+
+            $steuerSatzStr  = (string) (int) $artikel['steuersatz'];
+            $steuerklasseId = $lookups['steuer'][$steuerSatzStr]['id'] ?? null;
+            if ($steuerklasseId === null) {
+                $ergebnisse[] = [
+                    'artikelnummer' => $nr, 'name' => $name, 'erfolg' => false,
+                    'fehler' => ["Steuersatz \"{$artikel['steuersatz']}%\" nicht gefunden"],
+                ];
+                continue;
+            }
+
+            $einheitId = $this->loeseEinheitAuf($artikel['verkaufseinheit_roh'], $lookups['einheit'], $einheitMapping);
+            if ($einheitId === null) {
+                $ergebnisse[] = [
+                    'artikelnummer' => $nr, 'name' => $name, 'erfolg' => false,
+                    'fehler' => ["Verkaufseinheit \"{$artikel['verkaufseinheit_roh']}\" konnte nicht zugeordnet werden"],
+                ];
+                continue;
+            }
+
+            $herstellerName = mb_strtolower(trim($artikel['hersteller_name']));
+            $herstellerId   = $lookups['hersteller'][$herstellerName] ?? null;
+
+            $data = [
+                'artikelnummer'          => $nr,
+                'name'                   => $name,
+                'artikeltyp'             => $artikeltypCode,
+                'steuerklasse_id'        => $steuerklasseId,
+                'artikel_gruppe_id'      => $artikelGruppeId,
+                'einheit_id'             => $einheitId,
+                'hersteller_id'          => $herstellerId,
+                'kurzbeschreibung'       => $artikel['kurzbeschreibung'] ?: null,
+                'beschreibung'           => $artikel['beschreibung'] ?: null,
+                'inhalt_menge'           => $artikel['inhalt_menge'],
+                'inhalt_einheit'         => null,
+                'herkunftsland'          => null,
+                'gewicht_artikel'        => $artikel['gewicht_artikel'],
+                'breite'                 => $artikel['breite'],
+                'hoehe'                  => $artikel['hoehe'],
+                'laenge'                 => $artikel['laenge'],
+                'grundpreis_bezugsmenge' => $artikel['grundpreis_bezugsmenge'],
+                'grundpreis_anzeigen'    => $artikel['grundpreis_anzeigen'],
+                'charge_pflicht'         => $artikel['charge_pflicht'],
+                'aktiv'                  => 1,
+                'brutto_vk'              => $artikel['brutto_vk'],
+                'netto_vk'               => $artikel['netto_vk'],
+                'ean_gtin13'             => $artikel['ean'] ?: null,
+            ];
+
+            $result = $this->artikelService->save($data);
+            if (!$result['erfolg']) {
+                $ergebnisse[] = ['artikelnummer' => $nr, 'name' => $name, 'erfolg' => false, 'fehler' => $result['fehler']];
+                continue;
+            }
+            $artikelId = $result['id'];
+
+            if ($artikel['uvp'] !== null) {
+                $this->db->prepare("UPDATE artikel SET uvp = :uvp WHERE id = :id")
+                    ->execute(['uvp' => $artikel['uvp'], 'id' => $artikelId]);
+            }
+
+            $this->fuegeKategorieHinzu($artikelId, $kategorieId);
+
+            Logger::log('jtl_import.normal_anlegen', 'artikel', $artikelId, ['artikelnummer' => $nr]);
+
+            $ergebnisse[] = ['artikelnummer' => $nr, 'name' => $name, 'erfolg' => true, 'id' => $artikelId];
         }
 
         return $ergebnisse;

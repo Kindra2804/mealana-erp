@@ -492,11 +492,12 @@
     display: block;
 }
 
-.kat-chips {
-    display: flex;
-    flex-wrap: wrap;
+.kat-chips-inline {
+    display: inline-flex;
+    align-items: center;
     gap: 2px;
-    padding-bottom: 3px;
+    flex-shrink: 0;
+    margin-right: 3px;
 }
 
 .sidebar-kanal-legende {
@@ -985,6 +986,20 @@
     white-space: nowrap;
     margin-right: 2px;
     line-height: 16px;
+}
+
+/* Kompakte Variante für den Kategoriebaum (inline vor dem Namen statt als eigene Zeile
+   darunter) -- nur noch die Shop-Nummer statt "S1", Größe an die Zeilenschrift angepasst. */
+.kc-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 13px;
+    height: 13px;
+    padding: 0 2px;
+    border-radius: 3px;
+    font-size: 9px;
+    line-height: 1;
 }
 
 .kc-k1 { background: #1B3A6B; color: #fff; }

@@ -99,6 +99,11 @@ class ShopSyncService
                 $kategorieId = (int)$kategorieId;
                 if (isset($bereitsVersucht[$kategorieId])) continue;
                 $bereitsVersucht[$kategorieId] = true;
+                // Für DIESEN Shop ausgeschlossene Kategorie (Blatt selbst ODER eine ihrer
+                // Oberkategorien, siehe setKategorieAusschluss()) -- gar nicht erst in
+                // WooCommerce anlegen, findWcKategorieIds() lässt sie beim Produkt-Payload
+                // ohnehin schon weg.
+                if ($this->repo->istKategoriePfadAusgeschlossen($kategorieId, (int)$shop['id'])) continue;
                 try {
                     $this->syncKategorieMitVorfahren($client, $kategorieId, (int)$shop['id']);
                 } catch (RateLimitException $e) {
