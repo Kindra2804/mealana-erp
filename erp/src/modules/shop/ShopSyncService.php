@@ -465,6 +465,11 @@ class ShopSyncService
             // hat, bliebe sonst dauerhaft "ausverkauft". Mit manage_stock=false
             // leitet WooCommerce die Verfügbarkeit korrekt aus den Variationen ab.
             $payload['manage_stock'] = false;
+            // Grundpreis-Einheit + Bezugsmenge gehören bei Variable Products an
+            // den Vater, siehe baueGrundpreisVaterFelder() -- die variationseigenen
+            // Zahlen (Inhaltsmenge/Preis) kommen weiterhin pro Kind aus
+            // baueGrundpreisFelder() (baueVariationPayload()).
+            $payload += $this->baueGrundpreisVaterFelder($client, $shopId, (int)$artikel['artikel_id']);
         }
 
         // Bilder: ALLE Bilder des Artikels als 'images'-Array (Plural!), in
@@ -597,33 +602,102 @@ class ShopSyncService
      */
     private function baueGrundpreisFelder(WooCommerceClient $client, int $shopId, int $artikelId, ?float $preis): array
     {
-        $g = $this->repo->findGrundpreisFelder($artikelId);
-        if (
-            !$g || !$g['grundpreis_anzeigen'] || $preis === null
-            || (float)$g['inhalt_menge'] <= 0 || (float)$g['grundpreis_bezugsmenge'] <= 0
-            || empty($g['inhalt_einheit'])
-        ) {
+        if ($preis === null) {
             return [];
         }
-
-        $einheitId = $this->findeEinheitId($client, $shopId, $g['inhalt_einheit']);
-        if ($einheitId === null) {
+        $basis = $this->ermittleGrundpreisBasis($client, $shopId, $artikelId);
+        if ($basis === null) {
             return [];
         }
+        [$g, $einheitId] = $basis;
 
         $grundpreis = round($preis / (float)$g['inhalt_menge'] * (float)$g['grundpreis_bezugsmenge'], 2);
-        $formatMenge = fn(float $n) => rtrim(rtrim(number_format($n, 3, '.', ''), '0'), '.');
 
         return [
             'unit' => ['id' => $einheitId],
             'unit_price' => [
-                'base'          => $formatMenge((float)$g['grundpreis_bezugsmenge']),
-                'product'       => $formatMenge((float)$g['inhalt_menge']),
+                'base'          => $this->formatGrundpreisMenge((float)$g['grundpreis_bezugsmenge']),
+                'product'       => $this->formatGrundpreisMenge((float)$g['inhalt_menge']),
                 'price_auto'    => false,
                 'price'         => number_format($grundpreis, 2, '.', ''),
                 'price_regular' => number_format($grundpreis, 2, '.', ''),
             ],
         ];
+    }
+
+    private function formatGrundpreisMenge(float $n): string
+    {
+        return rtrim(rtrim(number_format($n, 3, '.', ''), '0'), '.');
+    }
+
+    /**
+     * Grundpreis-Felder am ELTERNPRODUKT eines Variable Products: `unit`
+     * (welche Einheit, z.B. Gramm) UND `unit_price.base` (die Bezugsmenge,
+     * z.B. 100) -- NICHT `product`/`price` (die sind pro Variation
+     * unterschiedlich, kommen weiterhin aus baueGrundpreisFelder() pro Kind).
+     *
+     * Zwei per Live-Test entdeckte, nirgends dokumentierte Eigenheiten von
+     * WooCommerce/Germanized (2026-08-04, Auslöser: SCHEEPJES UNITY zeigte
+     * trotz augenscheinlich korrekter Daten keinen Grundpreis):
+     * 1. `unit` wird nur am Elternprodukt akzeptiert -- ein PUT direkt an eine
+     *    Variation liefert 200 OK, ein GET danach zeigt aber `unit: null`,
+     *    komplett stillschweigend verworfen, kein Fehler.
+     * 2. `unit_price.base` (die Bezugsmenge) verhält sich GENAUSO -- auch das
+     *    wird an einer Variation über die REST-API stillschweigend verworfen,
+     *    obwohl `unit_price.product`/`price`/`price_regular` an derselben
+     *    Variation ganz normal funktionieren. Erst beim Vergleich mit Carosello
+     *    (einem NIE über unseren Sync gelaufenen, manuell in WordPress
+     *    eingetragenen Artikel, der korrekt anzeigt) fiel auf, dass dort auch
+     *    am Vater `unit_price.base` gesetzt ist -- der erste Fix (nur `unit`)
+     *    war deshalb unvollständig, `base` fehlte an beiden Stellen (weder
+     *    Vater noch Variation hatten einen Wert).
+     *
+     * `baueProduktPayload()` hat den Vater bei Variable Products bisher
+     * komplett übersprungen (gleiches `empty($dimensionen)`-Gate wie beim
+     * Bestand) -- dadurch bekamen beide Felder nie eine Chance, gesetzt zu
+     * werden, egal wie oft synct wurde. Live verifiziert: beide Felder sitzen
+     * am Vater sofort nach dem PUT korrekt, an der Variation bleiben sie
+     * dagegen dauerhaft leer/`null`.
+     */
+    private function baueGrundpreisVaterFelder(WooCommerceClient $client, int $shopId, int $artikelId): array
+    {
+        $basis = $this->ermittleGrundpreisBasis($client, $shopId, $artikelId);
+        if ($basis === null) {
+            return [];
+        }
+        [$g, $einheitId] = $basis;
+
+        return [
+            'unit' => ['id' => $einheitId],
+            'unit_price' => ['base' => $this->formatGrundpreisMenge((float)$g['grundpreis_bezugsmenge'])],
+        ];
+    }
+
+    /**
+     * Gemeinsame Eligibilitäts-Prüfung für baueGrundpreisFelder() (Standalone-
+     * Artikel + jede Kind-Variation) UND baueGrundpreisEinheitFeld() (Vater bei
+     * Variable Products) -- ein Ort für die Regeln, wann überhaupt ein
+     * Grundpreis gezeigt werden soll/kann.
+     *
+     * @return null|array{0:array,1:int} [Grundpreis-Felder-Zeile, WC-Einheiten-ID] oder null
+     */
+    private function ermittleGrundpreisBasis(WooCommerceClient $client, int $shopId, int $artikelId): ?array
+    {
+        $g = $this->repo->findGrundpreisFelder($artikelId);
+        if (
+            !$g || !$g['grundpreis_anzeigen']
+            || (float)$g['inhalt_menge'] <= 0 || (float)$g['grundpreis_bezugsmenge'] <= 0
+            || empty($g['inhalt_einheit'])
+        ) {
+            return null;
+        }
+
+        $einheitId = $this->findeEinheitId($client, $shopId, $g['inhalt_einheit']);
+        if ($einheitId === null) {
+            return null;
+        }
+
+        return [$g, $einheitId];
     }
 
     /**
