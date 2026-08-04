@@ -1,12 +1,24 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST; ✅ Achsenwerte-Umbenennung-Sync BEHOBEN (2026-07-31); ✅ scripts/komplettabgleich.php gebaut+getestet; 🔴 sort_order-Bug in baueAchsenDimensionen() BEHOBEN (2026-08-03); 🔴 2026-08-04 Grundpreis bei Variable Products: ZWEI WC/Germanized-API-Eigenheiten gefunden (unit + unit_price.base beide nur am Vater akzeptiert, nicht an Variationen) — beide behoben, live end-to-end verifiziert (price_html rendert korrekt), 480 Väter zum Resync markiert"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST; ✅ Achsenwerte-Umbenennung-Sync BEHOBEN (2026-07-31); ✅ scripts/komplettabgleich.php gebaut+getestet; 🔴 sort_order-Bug in baueAchsenDimensionen() BEHOBEN (2026-08-03); 🔴 2026-08-04 Grundpreis bei Variable Products: unit + unit_price.base gehören an den Vater (2 WC/Germanized-API-Eigenheiten) BEHOBEN; 🔴 2026-08-04 111 Väter fehlten die eigene Kanal-Zuweisung (Kinder hatten sie) + komplettabgleich.php brach dadurch fälschlich vorzeitig mit 'fertig' ab — BEIDES BEHOBEN"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-04T08:38:35.537Z
+  modified: 2026-08-04T11:16:28.906Z
 ---
+
+## 🔴 BEHOBEN 2026-08-04: `komplettabgleich.php` meldete fälschlich "fertig" + 111 Väter fehlte die eigene Shop-Kanal-Zuweisung
+
+**Auslöser:** Jackys Lauf beendete sich nach 6 Durchläufen ("Fertig nach 6 Durchläufen: 431 erfolgreich") -- er vermutete zu Recht, dass das nicht stimmen kann. Gleichzeitig meldete er: im Shop sind unter "Hersteller" nur 8 von geschätzt ~20 auswählbar.
+
+**Root Cause (ein Datenproblem, zwei Symptome):** 111 Väter hatten **keine eigene** `artikel_shops`-Zeile für den Shop "mealana", obwohl ihre Kind-Artikel (Farbvarianten) korrekt zugewiesen waren -- eine Inkonsistenz, vermutlich durch eine Massenaktion oder einen Import-Pfad entstanden, der Kinder einzeln zuwies ohne den Vater mitzunehmen (Ursache nicht abschließend geklärt, nur die Daten repariert). `findFaelligeArtikel()` braucht zwingend eine eigene `artikel_shops`-Zeile, um einen Artikel überhaupt zu finden -- diese 111 Väter tauchten in der Fälligkeitsliste also NIE auf, konnten nie eine `external_id` bekommen, und ihre Kinder blieben deshalb für immer im `if (!$row['vater_external_id']) { continue; }`-Zweig hängen (kein Fehler, aber auch kein Fortschritt). Betraf mindestens 16 Hersteller (Lang Yarns, Durable, Katia, Scheepjes, ProLana, Rosy Green Wool, Sesia, Vivchari, Elisa, Erika Knight, Hoooked, Kremke Soul Wool, Laines du Nord, Rellana Garne, Sonstige, Venne Colcoton Unikat) -- deren Attribut-Term in WooCommerce nie angelegt wurde, weil `syncHerstellerFuerArtikel()` nie für einen ihrer Artikel lief. Erklärt direkt Jackys "nur 8 von ~20 Herstellern im Shop-Filter".
+
+**Datenfix:** `ShopSyncRepository::upsertZuweisung()` (dieselbe Methode, die auch der normale "Im Shop"-Kanal-Chip im Artikel-Formular nutzt) für alle 111 Väter aufgerufen, `aktualisiert_am` gebumpt.
+
+**Zweiter, unabhängiger Bug in `komplettabgleich.php` selbst:** Die `while(true)`-Abbruchbedingung war `if ($ergebnis['erfolg'] === 0) break;` -- bricht sofort ab, sobald EIN Batch komplett aus solchen (dauerhaft oder vorübergehend) blockierten Kindern besteht, unabhängig davon ob wirklich nichts mehr zu tun ist. Fix: neuer Zähler `$leerDurchlaeufeInFolge` -- ein einzelner Leer-Batch (0 erfolgreich, 0 Fehler) wird jetzt einmal wiederholt (normaler Fall: Kinder, deren Vater im SELBEN Batch gerade erst seine `external_id` bekommen hat -- die SQL-Momentaufnahme des Batches kennt das noch nicht, erst der NÄCHSTE Batch greift sie wieder auf), erst zwei Leer-Durchläufe IN FOLGE gelten als "wirklich fertig". Ein Batch mit `fehler > 0` bricht weiterhin sofort ab (dauerhaft fehlerhafte Reste, kein Sinn in Wiederholung).
+
+**Noch offen:** Warum genau die 111 Väter ihre eigene Kanal-Zuweisung verloren/nie bekommen haben, ist nicht abschließend geklärt (nur die Symptome repariert) -- falls das Muster nochmal auftritt (neue Väter ohne eigene Kanal-Zuweisung trotz zugewiesener Kinder), lohnt sich ein genauerer Blick auf den Massenaktions-/Import-Pfad, der das verursacht haben könnte.
 
 ## 🔴 BEHOBEN 2026-08-04: Grundpreis bei Variable Products -- ZWEI Felder (`unit` UND `unit_price.base`) werden von WooCommerce/Germanized nur am Eltern-Produkt akzeptiert, nie an einer Variation
 

@@ -79,6 +79,19 @@ try {
         }
     };
 
+    // Zählt aufeinanderfolgende Batches OHNE jeden Fortschritt (weder erfolg
+    // noch fehler). Ein einzelner solcher Batch ist normal -- z.B. wenn ein
+    // Batch nur aus Kind-Artikeln besteht, deren Vater im SELBEN Batch gerade
+    // erst seine external_id bekommen hat: die SQL-Momentaufnahme, mit der der
+    // Batch gestartet wurde, kennt diese neue external_id noch nicht, die
+    // Kinder bleiben also 'pending' und werden erst im NÄCHSTEN Batch wieder
+    // aufgegriffen. Erst ZWEI Leer-Durchläufe IN FOLGE bedeuten "wirklich
+    // nichts mehr zu tun" (bug 2026-08-04: vorher brach das Skript nach einem
+    // einzigen Leer-Batch ab und meldete "fertig", obwohl noch tausende
+    // Artikel offen waren -- betroffen war eine Gruppe Väter, die dem
+    // Shop-Kanal gar nicht zugewiesen waren, ihre Kinder aber schon).
+    $leerDurchlaeufeInFolge = 0;
+
     while (true) {
         $durchlauf++;
         $ergebnis = $service->syncShop($shop, $limit, $fortschritt);
@@ -95,13 +108,23 @@ try {
             continue; // weiter, unabhängig davon ob dieser Durchlauf noch was geschafft hat
         }
 
-        if ($ergebnis['erfolg'] === 0) {
-            // Entweder nichts mehr fällig (fertig), oder es bleiben nur noch
-            // dauerhaft fehlerhafte Artikel übrig (die würden bei jedem
-            // weiteren Durchlauf wieder denselben Fehler produzieren, ohne
-            // Fortschritt -- Abbruch statt Endlosschleife).
+        if ($ergebnis['erfolg'] > 0) {
+            $leerDurchlaeufeInFolge = 0;
+            continue;
+        }
+
+        if ($ergebnis['fehler'] > 0) {
+            // Kein einziger Erfolg, aber Fehler -- vermutlich nur noch
+            // dauerhaft fehlerhafte Artikel übrig (würden bei jedem weiteren
+            // Durchlauf denselben Fehler produzieren, ohne Fortschritt).
             break;
         }
+
+        $leerDurchlaeufeInFolge++;
+        if ($leerDurchlaeufeInFolge >= 2) {
+            break;
+        }
+        echo "  Batch komplett ohne Fortschritt (0 erfolgreich, 0 Fehler) -- versuche nochmal, bevor ich abbreche...\n";
     }
 
     echo "\nFertig nach $durchlauf Durchläufen: $gesamtErfolg erfolgreich, $gesamtFehler Fehler insgesamt.\n";
