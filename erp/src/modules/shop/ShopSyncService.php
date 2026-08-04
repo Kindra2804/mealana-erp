@@ -62,8 +62,22 @@ class ShopSyncService
         return $ergebnis;
     }
 
-    /** @return array{erfolg:int,fehler:int} */
-    public function syncShop(array $shop): array
+    /**
+     * @param int $limit Wie viele fällige Artikel dieser eine Durchlauf maximal
+     *                    verarbeitet. Default 20 passt zum 15-Minuten-Cron (kleine
+     *                    Häppchen, damit ein Lauf nie lang blockiert). Der
+     *                    Komplettabgleich (`scripts/komplettabgleich.php`) ruft
+     *                    mit einem viel größeren Limit in einer eigenen Schleife
+     *                    auf, um einen großen Rückstau zügig aufzuholen.
+     * @param ?callable(int,int):void $fortschritt Wird nach jedem verarbeiteten
+     *                    Artikel der Haupt-Schleife aufgerufen (erledigt, gesamt
+     *                    in diesem Batch) -- rein optional, für CLI-Tools wie
+     *                    komplettabgleich.php, die sonst minutenlang keine
+     *                    Rückmeldung geben würden (ein Batch kann bei vielen
+     *                    Bildern/Achsen pro Artikel durchaus lange dauern).
+     * @return array{erfolg:int,fehler:int,rate_limitiert:bool,retry_after:?int}
+     */
+    public function syncShop(array $shop, int $limit = 20, ?callable $fortschritt = null): array
     {
         $client = new WooCommerceClient(
             $shop['wc_url'],
@@ -81,11 +95,15 @@ class ShopSyncService
         // Weiterzumachen würde bei jedem der u.U. hunderten fälligen Artikel
         // erneut dagegen rennen (Fund 2026-07-29: nginx sperrte die IP für
         // eine volle Stunde). Sobald erkannt: restlichen Durchlauf für diesen
-        // Shop komplett abbrechen, einmalig loggen, nächster Cron-Lauf
-        // versucht es automatisch wieder.
+        // Shop komplett abbrechen, einmalig loggen. Der reguläre 15-Minuten-Cron
+        // versucht es beim nächsten Tick automatisch wieder; `retryAfterSekunden`
+        // wird zusätzlich zurückgegeben, damit der Komplettabgleich (der schneller
+        // als alle 15 Minuten weitermachen will) gezielt genau so lange wartet,
+        // wie der Server selbst verlangt, statt blind zu raten.
         $rateLimitiert = false;
+        $retryAfterSekunden = null;
 
-        $faelligeArtikel = $this->repo->findFaelligeArtikel((int)$shop['id']);
+        $faelligeArtikel = $this->repo->findFaelligeArtikel((int)$shop['id'], $limit);
 
         // Kategorien MÜSSEN vor den Artikeln in WooCommerce existieren, sonst kann der
         // Artikel-Payload weiter unten (baueProduktPayload → findWcKategorieIds) keine
@@ -108,6 +126,7 @@ class ShopSyncService
                     $this->syncKategorieMitVorfahren($client, $kategorieId, (int)$shop['id']);
                 } catch (RateLimitException $e) {
                     $rateLimitiert = true;
+                    $retryAfterSekunden = $e->retryAfterSekunden;
                     $this->protokolliereRateLimit($shop, $e);
                     break 2;
                 } catch (Throwable $e) {
@@ -133,6 +152,7 @@ class ShopSyncService
                 $this->syncKategorieMitVorfahren($client, $kategorieId, (int)$shop['id']);
             } catch (RateLimitException $e) {
                 $rateLimitiert = true;
+                $retryAfterSekunden = $e->retryAfterSekunden;
                 $this->protokolliereRateLimit($shop, $e);
                 break;
             } catch (Throwable $e) {
@@ -154,6 +174,7 @@ class ShopSyncService
                 $this->syncHerstellerFuerArtikel($client, $herstellerId, (int)$shop['id']);
             } catch (RateLimitException $e) {
                 $rateLimitiert = true;
+                $retryAfterSekunden = $e->retryAfterSekunden;
                 $this->protokolliereRateLimit($shop, $e);
                 break;
             } catch (Throwable $e) {
@@ -174,6 +195,7 @@ class ShopSyncService
                 $this->syncAchsenFuerVater($client, $vaterId, (int)$shop['id']);
             } catch (RateLimitException $e) {
                 $rateLimitiert = true;
+                $retryAfterSekunden = $e->retryAfterSekunden;
                 $this->protokolliereRateLimit($shop, $e);
                 break;
             } catch (Throwable $e) {
@@ -184,6 +206,7 @@ class ShopSyncService
             }
         }
 
+        $verarbeiteteAnzahl = 0;
         foreach ($faelligeArtikel as $row) {
             if ($rateLimitiert) break;
             try {
@@ -229,6 +252,7 @@ class ShopSyncService
                 $erfolg++;
             } catch (RateLimitException $e) {
                 $rateLimitiert = true;
+                $retryAfterSekunden = $e->retryAfterSekunden;
                 $this->protokolliereRateLimit($shop, $e);
                 break;
             } catch (Throwable $e) {
@@ -238,10 +262,24 @@ class ShopSyncService
                     'fehler' => $e->getMessage(),
                 ], $this->jarvisId, 'error');
                 $fehler++;
+            } finally {
+                // finally läuft auch beim `continue` weiter oben (Kind ohne fertigen
+                // Vater) UND beim `break` im RateLimitException-Zweig -- Fortschritt
+                // spiegelt also immer "wie weit durch den Batch", unabhängig vom
+                // Ausgang des einzelnen Artikels.
+                $verarbeiteteAnzahl++;
+                if ($fortschritt) {
+                    $fortschritt($verarbeiteteAnzahl, count($faelligeArtikel));
+                }
             }
         }
 
-        return ['erfolg' => $erfolg, 'fehler' => $fehler];
+        return [
+            'erfolg'         => $erfolg,
+            'fehler'         => $fehler,
+            'rate_limitiert' => $rateLimitiert,
+            'retry_after'    => $retryAfterSekunden,
+        ];
     }
 
     /**
@@ -473,17 +511,29 @@ class ShopSyncService
         // "Mix"/"Uni" je ein eigenes (nicht existierendes) Attribut gesucht,
         // und der 'option'-Text hätte nicht den Suffix, den der zugehörige
         // Term beim Anlegen (syncWerteFuerDimension()) bekommen hat.
+        //
+        // findKombinationFuerKind() liefert ALLE Achse-Werte des Kindes, auch
+        // Freitext-Achsen (z.B. "Wunschtext") -- die sind aber laut Design
+        // bewusst NIE ein WooCommerce-Attribut (findAchsenFuerArtikel() filtert
+        // sie schon vorher raus, siehe holeDimensionenFuerVater()/$achseZuDimension).
+        // Ohne diesen Filter hier würde für eine Freitext-Achse eine nie
+        // synchte achse_id nachgeschlagen (findAchseShopZuweisung() liefert
+        // dann `false`) -- ein kaputtes {id:0}-Attribut ginge an WooCommerce
+        // raus, plus eine PHP-Warnung beim Array-Zugriff auf `false`.
         $achseZuDimension = $this->baueAchseZuDimensionMap($this->holeDimensionenFuerVater($vaterId));
+        $kombination = array_filter(
+            $this->repo->findKombinationFuerKind((int)$kind['artikel_id']),
+            fn(array $wert) => isset($achseZuDimension[(int)$wert['achse_id']])
+        );
         $payload['attributes'] = array_map(function (array $wert) use ($shopId, $achseZuDimension) {
-            $achseId = (int)$wert['achse_id'];
-            $info = $achseZuDimension[$achseId] ?? ['dimension_achse_id' => $achseId, 'suffix' => null];
+            $info = $achseZuDimension[(int)$wert['achse_id']];
             $achseZuweisung = $this->repo->findAchseShopZuweisung($info['dimension_achse_id'], $shopId);
             $option = $wert['wert'] . (!empty($info['suffix']) ? ' ' . $info['suffix'] : '');
             return [
                 'id'     => (int)$achseZuweisung['externe_attribut_id'],
                 'option' => $option,
             ];
-        }, $this->repo->findKombinationFuerKind((int)$kind['artikel_id']));
+        }, $kombination);
 
         // Bei Variationen heißt das Bild-Feld 'image' (Singular, EIN Bild) --
         // beim Eltern-Payload ist es 'images' (Plural, ganze Galerie). Nur das

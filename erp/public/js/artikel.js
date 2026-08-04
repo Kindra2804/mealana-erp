@@ -38,6 +38,27 @@ function berechneNetto() {
     }
 }
 
+// Eingabehilfe: bei Garn mit befüllter Menge+Einheit die Bezugsmenge (100g) und
+// "Grundpreis im Shop: Ja" automatisch vorbelegen -- sichtbar/änderbar im
+// Formular, kein stiller Server-Zwang. Serverseitige Entsprechung (auch für den
+// JTL-Import, der kein Browser-JS durchläuft) siehe
+// ArtikelService::wendeGrundpreisDefaultAn().
+function grundpreisEingabehilfe() {
+    const typSelect = document.getElementById('artikeltyp');
+    if (!typSelect || typSelect.value !== 'GARN') return;
+
+    const menge = parseFloat(document.querySelector('[name="inhalt_menge"]')?.value) || 0;
+    const einheit = document.querySelector('[name="inhalt_einheit"]')?.value.trim();
+    if (menge <= 0 || !einheit) return;
+
+    const bezugInput = document.querySelector('[name="grundpreis_bezugsmenge"]');
+    if (bezugInput && (!bezugInput.value || parseFloat(bezugInput.value) <= 0)) {
+        bezugInput.value = 100;
+    }
+    const anzeigenSelect = document.querySelector('[name="grundpreis_anzeigen"]');
+    if (anzeigenSelect) anzeigenSelect.value = '1';
+}
+
 function berechneGrundpreis() {
     const brutto = parseFloat(document.getElementById('brutto_vk').value) || 0;
     let menge = parseFloat(document.querySelector('[name="inhalt_menge"]')?.value) || 0;

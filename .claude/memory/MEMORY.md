@@ -1,7 +1,7 @@
 # Memory Index
 
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
-- [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — 2026-08-02: gemischte Kategorien (normale Artikel + additive Kategoriezuweisung statt Ersetzen) gebaut+getestet; Live-Test mit Sale-Dateien steht aus
+- [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — ✅ 2026-08-04 Grundpreis-Aufräumaktion (Einheit+Vererbung+Hersteller-Lücken LY/PL/MEA) von Jacky abgenommen, FERTIG; Opal+Stenli als Hersteller noch anzulegen (wartet auf Jacky)
 - [JTL Bilder-Import](project_jtl_bilder_import.md) — FERTIG gebaut + End-to-End getestet 2026-07-31, eigenständiges Tool, GIF bewusst nicht unterstützt
 - [🟢 BUG: Shop-Sync Achsenwerte-Pagination](bug_shop_sync_term_pagination.md) — BEHOBEN 2026-07-31, live bestätigt
 - [🟢 BUG: getKategorienBaum() Performance](bug_kategorienbaum_performance.md) — BEHOBEN 2026-08-01: OR-Join verhinderte Index-Nutzung, 9,66s→0,015s (~640x); Browser-Test von Jacky steht noch aus
@@ -45,7 +45,7 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; ✅ 2026-08-02: Kategorie-Ausschluss pro Shop inkl. Vorfahren-Pfad-Fix + Kanal-Chip-Vererbung gebaut+getestet+bestätigt; Chip-UI kompakter (inline, Tooltip)
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — Phase 1-4 FERTIG; ✅ 2026-08-03 komplettabgleich.php gebaut+getestet; 🔴 echter sort_order-Bug in baueAchsenDimensionen() behoben (294 Kind-Werte verschwanden bei 6 Vätern inkl. Karisma), 314 Artikel resynct; Fortschrittsanzeige; Scope-Auswahl zurückgestellt
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — "Einordnen nach"-Positionierung FERTIG (2026-07-29), Vorbelegungs-Bug behoben
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
 - [Shop-Theme/UX](project_shop_theme.md) — Kaufentscheidung weiter pausiert; ✅ 2026-08-02: Mega-Menü-Autoupdate-Grenzen geklärt + Shortcode-Workaround (Block statt Custom HTML) bestätigt funktionierend, Breadcrumbs-Anleitung (Blocksy)

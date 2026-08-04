@@ -84,9 +84,9 @@ function berechneEkBrutto() {
     var gpBezug = document.querySelector('[name="grundpreis_bezugsmenge"]');
     if (gpBezug) gpBezug.addEventListener('input', berechneGrundpreis);
     var iMenge = document.querySelector('[name="inhalt_menge"]');
-    if (iMenge) iMenge.addEventListener('input', berechneGrundpreis);
+    if (iMenge) iMenge.addEventListener('input', function () { grundpreisEingabehilfe(); berechneGrundpreis(); });
     var iEinh = document.querySelector('[name="inhalt_einheit"]');
-    if (iEinh) iEinh.addEventListener('input', berechneGrundpreis);
+    if (iEinh) iEinh.addEventListener('input', function () { grundpreisEingabehilfe(); berechneGrundpreis(); });
 
     berechneNetto();
     berechneGrundpreis();

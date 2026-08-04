@@ -282,20 +282,32 @@ class VariantenService
             }
         }
 
+        // Sub-Achsen, deren Parent selbst zugewiesen ist, bekommen NIE eine eigene
+        // Dimension -- ihre Werte werden beim Durchlauf des Parents eingesammelt
+        // (Schritt weiter unten). Das MUSS vorab in einem eigenen Durchlauf
+        // feststehen, unabhängig von der Reihenfolge in $achsen (die kommt aus
+        // aa.sort_order) -- Bug bis 2026-08-03: stand eine Sub-Achse wie "[Uni]"
+        // in der Liste VOR ihrer Parent-Achse "Farbe", wurde sie beim Erreichen
+        // schon als "verarbeitet" markiert (um ihr keine eigene Dimension zu geben),
+        // aber genau dieses Flag hat den späteren Parent-Durchlauf dann davon
+        // abgehalten, ihre Werte überhaupt einzusammeln -- die Werte fielen
+        // komplett unter den Tisch, statt in der "Farbe"-Dimension zu landen.
+        $subsumiert = [];
+        foreach ($achsen as $a) {
+            $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
+            if ($pid > 0 && isset($assignedAchseIdSet[$pid])) {
+                $subsumiert[(int)$a['achse_id']] = true;
+            }
+        }
+
         $dimensionen = [];
         $verarbeitet = [];
 
         foreach ($achsen as $a) {
             $aId = (int)$a['achse_id'];
-            if (isset($verarbeitet[$aId])) continue;
+            if (isset($verarbeitet[$aId]) || isset($subsumiert[$aId])) continue;
 
             $pid = (int)($a['abhaengig_von_achse_id'] ?? 0);
-
-            if ($pid > 0 && isset($assignedAchseIdSet[$pid])) {
-                // Sub-Achse, Parent zugewiesen -> wird beim Parent-Durchlauf eingebaut
-                $verarbeitet[$aId] = true;
-                continue;
-            }
 
             if ($pid > 0 && !isset($assignedAchseIdSet[$pid])) {
                 // Sub-Achse, Parent NICHT zugewiesen -> UNION aller Geschwister = eine Dimension
@@ -315,7 +327,12 @@ class VariantenService
                 continue;
             }
 
-            // Root-Achse (pid=0): eigene Werte + ALLE Sub-Achsen-Werte (UNION, mit Suffix)
+            // Root-Achse (pid=0, oder Parent einer/mehrerer subsumierter Sub-Achsen):
+            // eigene Werte + ALLE zugewiesenen Sub-Achsen-Werte (UNION, mit Suffix).
+            // Kein $verarbeitet-Check auf $subId nötig -- eine Sub-Achse mit
+            // zugewiesenem Parent ist durch den $subsumiert-Filter oben bereits
+            // als eigenständiges Loop-Ziel ausgeschlossen, kann also nie doppelt
+            // eingesammelt werden.
             $gruppe = [];
             $verarbeitet[$aId] = true;
 
@@ -324,13 +341,11 @@ class VariantenService
             }
 
             foreach ($subAchsenByParent[$aId] ?? [] as $subId) {
-                if (isset($verarbeitet[$subId])) continue;
                 $subSuffix = $achseNamenById[$subId] ?? '';
                 foreach ($werteProAchse[$subId] ?? [] as $w) {
                     $w['achse_suffix'] = $subSuffix;
                     $gruppe[] = $w;
                 }
-                $verarbeitet[$subId] = true;
             }
 
             if (!empty($gruppe)) {

@@ -1,12 +1,53 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST (fehlender User-Agent war Ursache); ✅ Achsenwerte-Umbenennung-Sync BEHOBEN + 404-Altlast-Fallback (2026-07-31)"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST (fehlender User-Agent war Ursache); ✅ Achsenwerte-Umbenennung-Sync BEHOBEN + 404-Altlast-Fallback (2026-07-31); ✅ scripts/komplettabgleich.php gebaut + Live-Test mit 50er-Batch erfolgreich (2026-08-03); 🔴 ECHTER Bug in baueAchsenDimensionen() (sort_order-abhängiger Sub-Achsen-Datenverlust) BEHOBEN + 314 Artikel resynct + Fortschrittsanzeige nachgerüstet (2026-08-03)"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-02T20:23:22.137Z
+  modified: 2026-08-03T18:48:37.966Z
 ---
+
+## 🔴 BEHOBEN 2026-08-03: `baueAchsenDimensionen()` verlor Sub-Achsen-Werte, wenn die Sub-Achse VOR ihrer Parent-Achse sortiert war
+
+**Auslöser:** Erster echter `komplettabgleich.php mealana 50`-Testlauf -- Batch selbst lief sauber durch (`[Durchlauf 1] 48 erfolgreich, 0 Fehler`), danach aber mehrfach `PHP Warning: Trying to access array offset on value of type bool in ShopSyncService.php on line 505`.
+
+**Erste Diagnose war FALSCH:** Erste Vermutung war ein Freitext-Achsen-Leck (`findKombinationFuerKind()` filtert Freitext nicht mit) -- Jacky fragte zurecht nach, ob es überhaupt Freitext-Artikel gibt. DB-Check: **keine einzige** Achse mit `darstellungsform IN ('freitext','pflichtfreitext')` existiert im System. Diese Theorie war schlicht falsch, verworfen.
+
+**Echte Root Cause** (per Reflection-Skript gegen die reale DB gefunden, alle Väter durchgetestet): `VariantenService::baueAchsenDimensionen()` markiert eine Sub-Achse (z.B. "[Uni]", `abhaengig_von_achse_id=7`="Farbe") beim Erreichen in der `foreach`-Schleife als `$verarbeitet[$aId]=true`, wenn ihre Parent-Achse ("Farbe") ebenfalls direkt zugewiesen ist -- mit dem Kommentar "wird beim Parent-Durchlauf eingebaut". Das Problem: wird die Parent-Achse ("Farbe") SPÄTER in derselben Schleife erreicht (abhängig von `artikel_achsen.sort_order` -- bei den betroffenen Vätern stand "Farbe" hinter "[Uni]"/"[Mix]"/"[Print]"), prüft der Root-Achse-Zweig `if (isset($verarbeitet[$subId])) continue;` -- sieht das *bereits* gesetzte Flag der Sub-Achse und überspringt sie, OHNE ihre Werte einzusammeln. Das `$verarbeitet`-Flag wurde also für zwei unterschiedliche Bedeutungen wiederverwendet ("bekommt keine eigene Dimension" vs. "wurde schon einer Dimension zugeordnet") -- reihenfolgeabhängiger Bug, der bei "Sub-Achse zuerst" Werte komplett verschluckt.
+
+**Tatsächliche Auswirkung, mit einem Reflection-Skript gegen die komplette DB verifiziert (nicht nur vermutet):** 6 Väter betroffen -- **150, 165, 178 (Karisma!), 179, 184, 2859** -- mit zusammen **294 Kind-Artikeln**, deren Farbwert (aus "[Uni]"/"[Mix]"/"[Print]") beim Shop-Sync in eine nie synchte, rohe achse_id fiel -- exakt der Pfad, der `findAchseShopZuweisung()` `false` liefern ließ und die Warnung auslöste.
+
+**Wichtig:** Karisma (#178) war laut Memory-Eintrag vom 2026-07-30 "End-to-End verifiziert" -- der damalige Test lief aber vor der letzten Umsortierung/einem erneuten Resync und deckte diesen speziellen sort_order-Fall offenbar nicht ab. Lehre: ein einzelner erfolgreicher Testartikel beweist nicht, dass die Sortier-Reihenfolge bei ALLEN Artikeln gleich ist.
+
+**Fix:** `baueAchsenDimensionen()` berechnet jetzt VORAB (eigener Durchlauf, unabhängig von der Iterationsreihenfolge) eine `$subsumiert`-Menge -- alle Sub-Achsen, deren Parent zugewiesen ist. Der Haupt-Durchlauf überspringt diese von vornherein als eigenständiges Ziel, und der Root-Achse-Zweig sammelt ihre Werte jetzt IMMER ein (kein `$verarbeitet`-Check mehr auf die Sub-ID nötig, da sie durch den Vorab-Filter nie ein zweites Mal als Hauptziel auftauchen kann). Zusätzlich bleibt die defensive `array_filter` in `ShopSyncService::baueVariationPayload()` (verwirft Kombi-Werte ohne bekannte Dimension) als Sicherheitsnetz bestehen -- schadet nicht, greift jetzt aber nur noch bei echten Zukunfts-Fällen (z.B. falls doch mal eine Freitext-Achse dazukommt).
+
+**Verifiziert:** Reflection-Skript nach dem Fix erneut über ALLE Väter der DB gelaufen -- 0 von vorher 294 Mismatches übrig. Alle 6 betroffenen Väter liefern jetzt genau EINE korrekt zusammengeführte "Farbe"-Dimension (87/90/63/91/65/6 Werte je nach Vater). **314 Artikel (6 Väter + 298 bereits synchte Kinder) `aktualisiert_am` gebumpt**, damit der nächste Sync die korrigierten Attribute automatisch nachzieht (gleiches Muster wie beim Achsenwerte-Umbenennung-Fix vom 2026-07-31).
+
+**Noch offen:** Kein echter Cron-/Komplettabgleich-Lauf gegen `indra-design.at` seit dem Fix -- nur die reine DB-Logik verifiziert (kein WC-API-Call). Nächster Lauf sollte diese 6 Väter+298 Kinder korrekt nachziehen und keine Warnungen mehr zeigen. Bei WooCommerce selbst noch nicht gegengeprüft, ob die betroffenen Variationen dort aktuell tatsächlich ohne Farbauswahl dastehen (plausibel, aber nicht bestätigt).
+
+## ✅ NEU 2026-08-03: Fortschrittsanzeige für `komplettabgleich.php`
+
+Jacky bemängelte: bei einem großen Batch (viele Bilder pro Artikel, je 0,4s Pause + Upload) blieb die Konsole minutenlang ohne jede Ausgabe -- unklar ob das Skript noch lebt.
+
+**Gebaut:** `ShopSyncService::syncShop()` bekommt einen optionalen `?callable $fortschritt`-Parameter, wird in der Haupt-Artikel-Schleife per `finally`-Block nach JEDEM verarbeiteten Artikel aufgerufen (auch bei übersprungenen Kindern ohne fertigen Vater UND beim finalen Rate-Limit-Abbruch -- `finally` läuft in PHP auch bei `continue`/`break` innerhalb des `try`). Eigener Zähler `$verarbeiteteAnzahl` statt `$erfolg+$fehler`, damit der Fortschritt auch bei übersprungenen Artikeln weiterzählt. `komplettabgleich.php` druckt alle 5 Artikel eine Zeile (`FORTSCHRITT_SCHRITT`-Konstante) + `ob_implicit_flush(true)` gesetzt (sonst hätte PHPs Output-Puffer die Zeilen erst am Ende des Batches rausgelassen, nicht live).
+
+**Live bestätigt (2026-08-03, derselbe 50er-Testlauf):** Batch komplett durchgelaufen, 48 erfolgreich/0 Fehler, `bulk_import_aktiv` korrekt gesetzt/wieder freigegeben.
+
+## ✅ NEU 2026-08-03: `scripts/komplettabgleich.php` gebaut -- löst den 20-Artikel/15-Minuten-Flaschenhals bei großem Rückstau
+
+**Auslöser:** Jacky synct erstmals die Garne (Teilmenge der späteren 23.000 Artikel) und beobachtete, dass der Abgleich seit 1,5 Tagen läuft und noch nicht mal die Hälfte durch ist. Hochrechnung bestätigt: `cron/shop_sync.php` synct bewusst nur 20 Artikel pro 15-Minuten-Takt (`ShopSyncRepository::findFaelligeArtikel()`-Default) -- das war für den laufenden Normalbetrieb gedacht, nicht für einen Massen-Ersteinstieg. Bei 23.000 Artikeln wären das rechnerisch ~12 Tage.
+
+**Jackys Wunsch (JTL-Vorbild):** ein "Komplettabgleich"-Modus, der durchläuft bis WooCommerce eine Sperre setzt, dann automatisch pausiert und weitermacht -- plus eine Scope-Auswahl (nur Stammdaten/nur Kategorien/nur Bilder wie bei JTL). Mit Jacky abgestimmt: **zweistufig**, Scope-Auswahl bewusst zurückgestellt (siehe unten), zuerst nur das akute Tempo-Problem lösen.
+
+**Gebaut (Schritt 1):**
+- `ShopSyncService::syncShop()` bekommt einen optionalen `$limit`-Parameter (Default weiterhin 20, der normale Cron bleibt unverändert). Rückgabe-Array um `rate_limitiert` (bool) + `retry_after` (Sekunden aus dem `RateLimitException::$retryAfterSekunden`, an allen 5 Catch-Stellen in der Methode jetzt mitgegeben) erweitert -- rein additiv, `cron/shop_sync.php` liest weiterhin nur `erfolg`/`fehler` und ist unberührt.
+- Neues `scripts/komplettabgleich.php <shop-slug> [batch-groesse=200]`: gleiches Muster wie `erstbefuellung_bilder.php` (setzt `bulk_import_aktiv`-Sperre, try/finally). Ruft `syncShop()` in einer `while(true)`-Schleife mit dem großen Limit auf, bis ein Durchlauf `erfolg=0` UND nicht rate-limitiert zurückgibt (= fertig ODER nur noch dauerhaft fehlerhafte Reste, die sonst eine Endlosschleife erzeugen würden). Bei erkanntem Rate-Limit: schläft exakt `retry_after` Sekunden (Fallback 90s falls der Server keinen Header mitschickt), dann automatisch weiter -- **kein Warten mehr auf den nächsten 15-Minuten-Cron-Tick**.
+- Wichtige Design-Falle vermieden: ein `continue` in einer `do...while`-Schleife hätte die `while`-Bedingung trotzdem ausgewertet und die Pause-dann-weiter-Logik nach einem Rate-Limit mit `erfolg=0` fälschlich beendet -- deshalb bewusst `while(true)` mit explizitem `break` nur im Nicht-rate-limitiert-Zweig.
+
+**Noch nicht gemacht:** Kein echter Testlauf gegen `indra-design.at` mit dem tatsächlichen Rückstau -- nur `php -l` Syntax-Check. Nächster Schritt: Jacky lässt es einmal laufen und bestätigt Tempo/Fehlerbild.
+
+**Schritt 2 (zurückgestellt, auf Merkliste):** JTL-artige Scope-Auswahl (nur Artikelstammdaten / nur Kategorien / nur Bilder separat anstoßen). Bewusst nicht jetzt gebaut -- `syncShop()` ist aktuell ein einziger verzahnter Durchlauf (Kategorien→Hersteller→Achsenwerte→Artikel), eine saubere Aufteilung wäre größerer Umbau ohne zusätzlichen Nutzen fürs akute 23k-Tempo-Problem. Bei Bedarf hier weitermachen.
 
 ## ✅ NEU 2026-08-02: Kategorie-Ausschluss pro Shop (fehlende Möglichkeit, Blatt-Kategorie im Shop zu unterdrücken)
 

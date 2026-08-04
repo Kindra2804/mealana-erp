@@ -47,6 +47,7 @@ class ArtikelService
         if (!empty($fehler)) {
             return ['erfolg' => false, 'fehler' => $fehler];
         }
+        $data = $this->wendeGrundpreisDefaultAn($data);
 
         $bruttoVk  = $data['brutto_vk']  ?? null;
         $nettoVk   = $data['netto_vk']   ?? null;
@@ -77,6 +78,7 @@ class ArtikelService
         if (!empty($fehler)) {
             return ['erfolg' => false, 'fehler' => $fehler];
         }
+        $data = $this->wendeGrundpreisDefaultAn($data);
 
         $bruttoVk  = $data['brutto_vk']  ?? null;
         $nettoVk   = $data['netto_vk']   ?? null;
@@ -521,6 +523,42 @@ class ArtikelService
      * Prüft: Pflichtfelder (Artikelnummer, Name, Typ) + Eindeutigkeit der Artikelnummer
      * + Zustandsartikel brauchen eine Vater-ID.
      */
+    /**
+     * Eingabehilfe + "Secure Line" für Grundpreis bei Garn (Jackys Regel:
+     * "Garn sollte IMMER einen Grundpreis haben"). Läuft in save() UND update() --
+     * deckt damit sowohl das manuelle Formular als auch den JTL-Import ab (beide
+     * rufen dieselben zwei Methoden auf), ohne zwei getrennte Implementierungen
+     * zu brauchen. Kind-Artikel brauchen keinen eigenen Aufruf -- sie erben
+     * grundpreis_anzeigen/grundpreis_bezugsmenge ohnehin vom Vater
+     * (VariantenService::erstelleKombinationen()/ArtikelService::saveKind()).
+     *
+     * Bezugsmenge wird nur defaultet, wenn noch keine sinnvolle (>0) gesetzt ist
+     * -- ein bewusst abweichender Wert bleibt unangetastet. grundpreis_anzeigen
+     * wird dagegen bei jedem Speichern erzwungen (nicht nur beim ersten Anlegen),
+     * das ist explizit Jackys Wunsch: Garn mit befüllter Menge+Einheit soll NIE
+     * ohne Grundpreisausweisung bleiben, auch nicht nach einer späteren
+     * Bearbeitung.
+     */
+    private function wendeGrundpreisDefaultAn(array $data): array
+    {
+        if (($data['artikeltyp'] ?? '') !== 'GARN') {
+            return $data;
+        }
+
+        $menge   = (float) ($data['inhalt_menge'] ?? 0);
+        $einheit = trim((string) ($data['inhalt_einheit'] ?? ''));
+        if ($menge <= 0 || $einheit === '') {
+            return $data;
+        }
+
+        if ((float) ($data['grundpreis_bezugsmenge'] ?? 0) <= 0) {
+            $data['grundpreis_bezugsmenge'] = 100;
+        }
+        $data['grundpreis_anzeigen'] = 1;
+
+        return $data;
+    }
+
     private function validiere(array $data): array
     {
         $fehler = [];

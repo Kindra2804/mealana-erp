@@ -1,12 +1,56 @@
 ---
 name: project-jtl-vater-kind-import
-description: "JTL Vater+Kind-CSV-Import mit Achsenerkennung — LIVE GETESTET 2026-07-31 (83/87 Väter erfolgreich); 2026-08-02 um 'gemischte Kategorien' erweitert (normale Artikel + additive Kategoriezuweisung für bereits existierende Artikel)"
+description: "JTL Vater+Kind-CSV-Import mit Achsenerkennung — LIVE GETESTET 2026-07-31 (83/87 Väter erfolgreich); 2026-08-02 um 'gemischte Kategorien' erweitert; 🔴 2026-08-03/04 KOMPLETTE Grundpreis-Aufräumaktion bei Bestandsartikeln (Einheit-Bug, Kind-Vererbung, Hersteller-Lücken) + Eingabehilfe/Secure-Line für künftige Artikel gebaut — FERTIG, von Jacky abgenommen"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 85efc9a3-c1f8-4d31-89d2-a10e99128244
-  modified: 2026-08-02T12:18:01.020Z
+  modified: 2026-08-04T07:06:51.347Z
 ---
+
+## ✅ ABSCHLUSS 2026-08-04: Grundpreis-Aufräumaktion bei Bestandsartikeln von Jacky abgenommen
+
+Nach den beiden Datenlücken-Fixes (Einheit + Kind-Vererbung, siehe unten) und der neuen Eingabehilfe/Secure-Line (siehe [[project_shop_sync]] bzw. `ArtikelService::wendeGrundpreisDefaultAn()`) blieben bei einer finalen Kontrolle 52 von ursprünglich 142 Garn-Artikeln ohne funktionierenden Grundpreis übrig. **Von Jacky geprüft und bestätigt: alles legitime Ausnahmen** (Strickpakete/Sets/Anleitungen mit "Menge=1" statt echtem Gewicht, dazu ein paar Einzelstücke) -- kein weiterer Handlungsbedarf, keine Bugs mehr offen.
+
+**Auffälliger Nebenfund bei der finalen Kontrolle:** 4 Artikel (`V-BW-multi`, `V-Merino 36/2`, `V-Merino GOTS 28/2`, `Venne`) hatten `grundpreis_anzeigen=1` (Häkchen "an", sieht auf den ersten Blick erledigt aus) aber `inhalt_menge` komplett leer -- Grundpreis wäre trotz aktiviertem Flag nie berechnet worden. Jacky wollte hier nichts gesondert vorziehen, fällt unter dieselbe "Strickpakete/Einzelstücke passt so"-Freigabe.
+
+**Im selben Aufwasch: Hersteller-Lücken bei Bestandsartikeln behoben** (Jackys Beobachtung: "alle Lang Yarn Garne haben keinen Hersteller" -- stimmte nur teilweise, 88 von 129 `LY-*` waren schon korrekt). Präfix-Mapping von Jacky bestätigt: `LY-`=Lang Yarns(3), `PL-`=ProLana(54), `MEA-`=MEALANA(45), `ST-`=Stenli (noch nicht als Hersteller angelegt), `OP-`=Opal (noch nicht angelegt). Bulk-Update mit Kaskade auf bereits existierende Kinder (Kind erbt `hersteller_id` normalerweise nur bei Neuanlage vom Vater, ein nachträgliches Vater-Update über rohes SQL löst `propagiereZuKindern()` nicht aus -- daher zusätzlicher JOIN-Kaskaden-Schritt): **63 Väter/Standalone + 625 Kinder korrigiert** (38+590 LY, 1+11 PL, 24+24 MEA). Sonderfall gegengeprüft: 3 `LY-1000/1004/1014a`-Artikel ("FIRE"/"EARTH#"/"SUNSHINE") hatten schon `hersteller_id`, aber auf "WOOLADDICTS" statt "Lang Yarns" -- von Jacky bestätigt: WOOLADDICTS ist eine echte Lang-Yarns-Submarke, kein Fehler, unangetastet gelassen. Opal und Stenli müssen als Hersteller erst angelegt werden, bevor die verbleibenden 12 (`OP-*`) + 1 (`ST-CJ`) Artikel zugeordnet werden können -- wartet auf Jacky.
+
+## 🔴 BEHOBEN 2026-08-04: 8.852 Kind-Artikel (Farbvarianten) hatten NIE Grundpreis-Felder vom Vater geerbt
+
+## 🔴 BEHOBEN 2026-08-04: 8.852 Kind-Artikel (Farbvarianten) hatten NIE Grundpreis-Felder vom Vater geerbt
+
+**Auslöser:** Nachdem der `inhalt_einheit`-Fix + Backfill vom Vortag lief, meldete Jacky beim laufenden `komplettabgleich.php`: auch neu im Shop erscheinende Artikel zeigen weiterhin keine Grundpreisangabe. Erste Vermutung (neue DB-Zeilen ohne den Fix) widerlegt -- `MAX(erstellt_am)` in der ganzen `artikel`-Tabelle ist 2026-08-02, es kamen während der Session gar keine neuen Datensätze dazu. "Neu" bezog sich auf neu im SHOP erscheinende (= neu vom Komplettabgleich erreichte), nicht neu in der DB erstellte Artikel.
+
+**Root Cause (anderer Fehler als der `inhalt_einheit`-Bug vom Vortag):** Stichprobe der zuletzt synchten Kind-Artikel (`DB-1710-963`) zeigte: der VATER (`DB-1710`) hat korrekt `grundpreis_anzeigen=1, inhalt_menge=100, grundpreis_bezugsmenge=100, inhalt_einheit='g'` -- das KIND selbst hatte `grundpreis_anzeigen=0, inhalt_menge=NULL, grundpreis_bezugsmenge=NULL`. `ShopSyncService::baueGrundpreisFelder()` liest diese Felder aber von der Kind-Zeile selbst (`baueVariationPayload()` ruft es mit `$kind['artikel_id']` auf, nicht mit der Vater-ID) -- ein Kind ohne eigene Werte zeigt also nie einen Grundpreis, egal wie korrekt der Vater ist.
+
+**Code-Pfad geprüft, aktuell korrekt:** `VariantenService::erstelleKombinationen()` (gemeinsam genutzt von `detail.php`s VarKombi-Generator UND dem JTL-Import) vererbt `grundpreis_bezugsmenge`/`grundpreis_anzeigen`/`inhalt_menge`/`inhalt_einheit` bereits korrekt vom übergebenen `$vater`-Array an jedes neue Kind (Zeilen 176-186), und `ArtikelRepository::insert()` hat beide Felder sowohl im INSERT-Statement als auch in der `erlaubteKeys`-Allowlist. Auch `ArtikelService::saveKind()` (der manuelle Einzel-Kind-Pfad) macht es richtig. **Kein aktiver Code-Bug gefunden** -- da seit 2026-08-02 keine neuen Artikel angelegt wurden, konnte das nicht frisch gegengetestet werden, aber die Code-Lese-Analyse spricht klar dafür, dass NEU erstellte Kinder ab jetzt korrekt vererbt bekommen.
+
+**Wahrscheinliche Erklärung (wie beim `inhalt_einheit`-Fund):** Diese Bestandsartikel wurden vermutlich angelegt, bevor die Grundpreis-Spalten/-Vererbung im Code existierten, und nie nachträglich befüllt -- reine Altlast, keine aktuell aktive Lücke.
+
+**Backfill (direkte SQL-UPDATE, kein Extra-Skript nötig -- reines 1:1-Copy-Join):** Vorher geprüft, dass unter den 8.852 betroffenen Kindern **keine einzige** einen abweichenden (nicht nur fehlenden) `inhalt_menge`-Wert vom Vater hatte -- alle waren komplett leer, kein Risiko echte abweichende Daten zu überschreiben. `UPDATE artikel k JOIN artikel v ON v.id=k.vaterartikel_id SET k.grundpreis_anzeigen=v.grundpreis_anzeigen, k.grundpreis_bezugsmenge=v.grundpreis_bezugsmenge, k.inhalt_menge=v.inhalt_menge, k.inhalt_einheit=v.inhalt_einheit, k.aktualisiert_am=NOW() WHERE v.grundpreis_anzeigen=1 AND (k.grundpreis_anzeigen=0 OR NULL) AND k.inhalt_menge IS NULL AND k.grundpreis_bezugsmenge IS NULL`. **8.852 Kinder aktualisiert, 0 Lücken danach übrig** (verifiziert). `aktualisiert_am` gebumpt -- der laufende `komplettabgleich.php` zieht die Korrektur automatisch nach, sobald er zu diesen Artikeln kommt.
+
+**Zwei getrennte, inzwischen behobene Datenlücken bei Grundpreis, zur Übersicht:**
+1. `inhalt_einheit` bei Vätern/Standalone-Artikeln (Vortag, 9.316 Artikel, Ursache: Import-Skript las die CSV-Spalte nie)
+2. Grundpreis-Vererbung Vater→Kind (heute, 8.852 Kinder, Ursache: vermutlich reine Altlast vor Einführung der Grundpreis-Spalten)
+
+**Noch offen:** Kein frischer Testimport seit heute, der bestätigt, dass NEU angelegte Kinder das Problem nicht erneut zeigen -- Code-Analyse spricht dafür, aber unverifiziert.
+
+## 🔴 BEHOBEN 2026-08-03: `inhalt_einheit` (Grundpreis-Einheit) wurde beim Import nie gesetzt
+
+**Auslöser:** Jacky bemerkte, dass alle über dieses Skript importierten Artikel im Shop keine Grundpreisangabe zeigen (gesetzlich vorgeschrieben für Garn in AT). Grundpreis wird von uns selbst berechnet und über die WooCommerce `unit`/`unit_price`-Felder gepusht (siehe [[project_shop_sync]], Grundpreis-Sync-Automatisierung 2026-07-23) -- `ShopSyncService::baueGrundpreisFelder()` bricht aber sofort mit `[]` ab, sobald `inhalt_einheit` leer ist.
+
+**Root Cause:** Der JTL-Export liefert die Grundpreis-Einheit sehr wohl mit -- eigene Spalte `"Einheit Bezugsmenge"` (z.B. `"g"`), direkt neben `"GP-Bezugsmenge"`. `JtlVaterKindImportService.php` hat diese Spalte an keiner Stelle gelesen und `inhalt_einheit` an zwei Stellen (Vater-Zweig + normale-Artikel-Zweig) hart auf `null` gesetzt -- vermutlich beim Bau dieses (neueren) Import-Skripts übersehen, denn der ältere, einfachere CSV-Import (`public/artikel/import.php`) liest dieselbe Spalte schon lange korrekt.
+
+**Fix:** `inhalt_einheit` wird jetzt beim Parsen aus `Einheit Bezugsmenge` gelesen (analog zu den Nachbarfeldern `Inhalt/Menge`/`GP-Bezugsmenge`) und bei Vater- wie Normal-Artikeln durchgereicht. Kind-Artikel brauchten keine eigene Änderung -- sie erben `inhalt_einheit` bereits über die bestehende Vater→Kind-Vererbung (`ArtikelService`/`VariantenService`).
+
+**Backfill für bereits importierte Artikel** (`scripts/backfill_inhalt_einheit.php`, neu): liest alle Artikelstammdaten-CSVs unter `import/erledigt/` (per Spalten-Fingerprint erkannt, nicht Dateiname), baut eine Artikelnummer→Einheit-Zuordnung, trägt sie nur bei noch leeren `inhalt_einheit`-Werten nach (idempotent) und bumpt `aktualisiert_am` (damit der nächste Sync/[[project_shop_sync]]-Komplettabgleich den Grundpreis automatisch nachzieht). Mit `--dry-run` vorab geprüft.
+
+**Überraschender Fund beim Dry-Run:** Nicht nur die 624 Artikel mit aktivem `grundpreis_anzeigen=1` waren betroffen, sondern 9.316 von 13.877 Artikeln insgesamt (JTL befüllt "Einheit Bezugsmenge" offenbar unabhängig vom "Grundpreis ausweisen"-Häkchen). Mit Jacky abgestimmt: alle 9.316 Treffer backfilled (harmlos, `baueGrundpreisFelder()` prüft `grundpreis_anzeigen` zuerst, der Rest ist reine Datenkorrektur). **Live ausgeführt, 9.316 Artikel aktualisiert.**
+
+**12 echte Artikel blieben ohne Treffer** (keine passende Zeile in den vorhandenen CSVs gefunden, z.B. `LY-112-0003` BABY COTTON hellgrau melange, `272665-07490` Tweed Color 4-fädig, `CB-Fauve-272`, `BEL-GE6580`, `DU-010-71A` -- vollständige Liste im Skript-Output) -- müssen von Hand im Artikel-Formular nachgetragen werden, kein Automatismus dafür gebaut (zu wenige Einzelfälle).
+
+**How to apply:** Bei künftigen Import-Sessions mit diesem Skript ist der Bug behoben, kein erneuter Backfill nötig. Falls doch nochmal Artikel mit leerer `inhalt_einheit` aus einem Import auftauchen: erst prüfen ob eine neue CSV-Quelle eine andere Spaltenbenennung nutzt, bevor an der Logik selbst gezweifelt wird.
 
 ## ✅ Erweiterung 2026-08-02: Gemischte Kategorien (Vater+Kind + normale Artikel + bereits existierend)
 
