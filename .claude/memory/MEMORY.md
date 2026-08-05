@@ -34,7 +34,7 @@
 - [Logger UI](project_logger_ui.md) — ✅ FERTIG 2026-07-19: Shell-Zeile + Admin-Aktivitäten-Seite, Stufen info/warn/error, Zugriff-verweigert loggt als warn
 - [Aktions-Modul](project_aktionen_modul.md) — ✅ FERTIG, im Code verifiziert 2026-07-18; vermuteter Blocker war bereits behobener Bug
 - [Feedback: Achsen Modal](feedback_achsen_modal.md) — ✅ war beim Nachsehen 2026-07-10 schon fertig (Notiz veraltet), 4 verwaiste Alt-Dateien aufgeräumt
-- [Spalten-Picker](project_spalten_picker.md) — merkmale-Spalte aktiviert 2026-07-09; 🔍 2026-08-04 offen: welche Spalten sollen Kind-Zeilen zeigen (aktuell fast alle bewusst leer), abends mit Jacky besprechen
+- [Spalten-Picker](project_spalten_picker.md) — ✅ 2026-08-05: Kind-Zeilen zeigen jetzt volle Spalten-Parität mit Vater-Zeilen (Performance geprüft, vernachlässigbar)
 - [🔴 BUG: Kategorie-Verschieben](bug_kategorie_verschieben.md) — BEHOBEN 2026-06-19: saveKategorien + erstelleKombinationen + propagiereZuKindern implementiert
 - [🟡 BUG: Aktions-Kategorie Zuweisung](bug_aktionskategorie_zuweisung.md) — BEHOBEN 2026-06-19: Modal für Preiseingabe direkt nach Zuweisung, ⏰ in Shell-Baum + Modal
 - [Bilder-Modul](project_bilder_modul.md) — FERTIG 2026-06-19; 🟢 2026-07-11 Live-Logo-Upload-Bugkette komplett gelöst (GD/Silent-Fail/Fehlercodes/fehlender Kanal/hartcodierter Slug)
@@ -45,7 +45,7 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — diverse Sync-Bugs bis 2026-08-04 behoben (Achsen/Grundpreis/Kanal-Zuweisung); 🔍 NÄCHSTE SESSION ZUERST: UI-Seite "Shop-Synchronisierung" bauen (Design steht, siehe Datei) — Komplettabgleich mit/ohne Bilder per Web-UI + Cron-Übersicht/Pause
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — ✅ 2026-08-05: UI-Seite "Shop-Synchronisierung" gebaut + live bestätigt (Komplettabgleich, Pause, Bilder-FTP-Button)
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — "Einordnen nach"-Positionierung FERTIG (2026-07-29), Vorbelegungs-Bug behoben
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
 - [Shop-Theme/UX](project_shop_theme.md) — Kaufentscheidung weiter pausiert; ✅ 2026-08-02: Mega-Menü-Autoupdate-Grenzen geklärt + Shortcode-Workaround (Block statt Custom HTML) bestätigt funktionierend, Breadcrumbs-Anleitung (Blocksy)
@@ -80,3 +80,4 @@
 - [Sammelabholung mehrerer Aufträge (geplant)](project_sammelabholung_auftraege.md) — ein Bon/Abholung für mehrere Online-Bestellungen eines Kunden; kommt mit Start Online-Shop-Anbindung (Barbara-Bedarf bestätigt 2026-07-10)
 - [Feedback: Scope ohne validierten Bedarf](feedback_scope_ohne_bedarf.md) — Vor mehrtägigen Erweiterungen erst echten Bedarf checken (z.B. mit Barbara), nicht spekulativ bauen
 - [🟢 BUG: Kassenbons/Picklisten-PDFs in Git-Historie](bug_storage_pdfs_in_git.md) — BEHOBEN 2026-07-09: History-Rewrite (filter-branch) + Force-Push, Backup-Mirror vorhanden
+- [🟢 BUG: Kind "zurück zum Vater"-Button verschwand](bug_kind_zurueck_vater_button.md) — BEHOBEN 2026-08-05: hing an URL-Parameter statt DB-Verknüpfung, jetzt aus vaterartikel_id abgeleitet

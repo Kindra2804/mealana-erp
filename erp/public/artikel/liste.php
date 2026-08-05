@@ -141,7 +141,12 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
     return '<td></td>';
 }
 
-// Renderer für Kind-Zeilen (meistens leer außer bestand/preis/ean/status)
+// Renderer für Kind-Zeilen -- zeigt seit 2026-08-05 dieselben Spalten wie
+// spalteTd() (Vater), nicht mehr nur bestand/preis/ean/status/shops/charge.
+// Grund: bei aufgeklappten Kindern sonst unschöne Lücken in der Anzeige +
+// erschwerte Fehlersuche (z.B. fehlender Hersteller bei einzelnen Kindern
+// fällt so sofort auf, siehe [[bug_hersteller_modal_insert]]-artige Fälle).
+// findKinderFuerListe() lädt dafür dieselben Felder wie die Vater-Query.
 function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kindBstTitle, string $kindStatusChips, array $shopNamenById): string {
     switch ($key) {
         case 'status':   return '<td class="status-cell">' . $kindStatusChips . '</td>';
@@ -158,8 +163,36 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
             }
             return '<td style="text-align:right;font-size:12px;white-space:nowrap" class="' . $kindBstKlasse . '" ' . $kindBstTitle . '>' . $khtml . '</td>';
         case 'preis':    return '<td style="text-align:right;font-size:12px" class="preis-cell">' . ($k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–') . '</td>';
+        case 'hersteller':
+            return '<td>' . htmlspecialchars($k['hersteller'] ?? '–') . '</td>';
+        case 'artikeltyp':
+            return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['artikeltyp_name'] ?? '–') . '</td>';
         case 'ean':      return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['ean'] ?? '–') . '</td>';
+        case 'einheit':
+            return '<td>' . htmlspecialchars($k['einheit_kuerzel'] ?? '–') . '</td>';
+        case 'kategorie':
+            $kat = htmlspecialchars($k['kategorien'] ?? '');
+            return '<td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $kat . '">' . ($kat ?: '–') . '</td>';
+        case 'geaendert_am':
+            return '<td style="font-size:12px;color:var(--color-text-muted)">' . ($k['geaendert_am'] ? date('d.m.Y', strtotime($k['geaendert_am'])) : '–') . '</td>';
+        case 'ek':
+            return '<td style="text-align:right;font-size:12px">' . ($k['standard_ek'] !== null ? number_format((float)$k['standard_ek'], 2, ',', '.') . ' €' : '–') . '</td>';
+        case 'marge':
+            $m = '–';
+            if ($k['brutto_vk'] && $k['standard_ek'] !== null && $k['steuersatz']) {
+                $nVk = (float)$k['brutto_vk'] / (1 + (float)$k['steuersatz'] / 100);
+                if ($nVk > 0) $m = round((($nVk - (float)$k['standard_ek']) / $nVk) * 100, 1) . ' %';
+            }
+            return '<td style="text-align:right;font-size:12px">' . $m . '</td>';
         case 'charge':   return '<td style="text-align:center">' . ($k['charge_pflicht'] ? '✓' : '') . '</td>';
+        case 'merkmale':
+            $mrk = htmlspecialchars($k['merkmale'] ?? '');
+            return '<td style="font-size:12px;color:var(--color-text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $mrk . '">' . ($mrk ?: '–') . '</td>';
+        case 'lagerplatz':    return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+        case 'letzte_inventur':
+            $datum = $k['letzte_inventur_am'] ?? null;
+            return '<td style="font-size:12px;color:var(--color-text-muted)">'
+                . ($datum ? date('d.m.Y', strtotime($datum)) : '–') . '</td>';
     }
     return '<td></td>';
 }

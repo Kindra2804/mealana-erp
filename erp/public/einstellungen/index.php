@@ -37,6 +37,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         [
             'firma'    => 'Firma',
             'kanaele'  => 'Kanäle',
+            'shopsync' => 'Shop-Synchronisierung',
             'mail'     => 'Mail / SMTP',
             'system'   => 'System',
             'kassen'   => 'Kassen',
@@ -313,6 +314,204 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 </div>
             </form>
         <?php endforeach; ?>
+    </div>
+
+<?php elseif ($aktTab === 'shopsync'): ?>
+    <!-- ═══════════ TAB: SHOP-SYNCHRONISIERUNG ═══════════ -->
+    <?php
+    require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
+    $syncShops = array_filter($shops, fn($sh) => !empty($sh['wc_url']) && !empty($sh['wc_key']) && !empty($sh['wc_secret']));
+
+    $letzteLaeufe = $db->query("
+        SELECT a.referenz_id AS shop_id, a.aktion, a.details, a.erstellt_am, a.stufe
+        FROM aktivitaeten a
+        WHERE a.referenz_tabelle = 'shops'
+          AND a.aktion IN ('shop.sync_lauf', 'shop.cron_fehler', 'shop.komplettabgleich_gestartet', 'shop.bilder_ftp_gestartet')
+        ORDER BY a.erstellt_am DESC
+        LIMIT 40
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    $laeufeProShop = [];
+    foreach ($letzteLaeufe as $lauf) {
+        $laeufeProShop[(int)$lauf['shop_id']][] = $lauf;
+    }
+    ?>
+
+    <?php if (empty($syncShops)): ?>
+        <div class="card"><div style="padding:20px;color:var(--color-text-muted)">Noch kein Shop mit vollständiger WooCommerce-Anbindung (URL + Key + Secret) im Tab "Kanäle" hinterlegt.</div></div>
+    <?php endif; ?>
+
+    <?php foreach ($syncShops as $sh): ?>
+        <div class="card" style="margin-bottom:16px" data-shopsync-card data-shop-id="<?= $sh['id'] ?>">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                <span><?= htmlspecialchars($sh['name']) ?> <code style="font-size:11px;color:var(--color-text-muted)"><?= htmlspecialchars($sh['slug']) ?></code></span>
+                <span data-status-badge style="font-size:11px;padding:2px 8px;border-radius:10px;
+                    <?= $sh['bulk_import_aktiv'] ? 'background:#fff3e0;color:#e67e22' : ($sh['sync_pausiert'] ? 'background:#f5f5f5;color:var(--color-text-muted)' : 'background:var(--color-success-bg,#e8f5e9);color:var(--color-success)') ?>">
+                    <?= $sh['bulk_import_aktiv'] ? 'Vorgang läuft…' : ($sh['sync_pausiert'] ? 'Automatischer Sync pausiert' : 'Bereit') ?>
+                </span>
+            </div>
+            <div style="padding:16px;display:flex;gap:16px;align-items:end;flex-wrap:wrap">
+                <div class="form-group" style="margin:0">
+                    <label class="form-label">Batch-Größe</label>
+                    <input type="number" data-batch-groesse class="erp-input" value="200" min="1" style="width:100px">
+                </div>
+                <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;padding-bottom:8px">
+                    <input type="checkbox" data-mit-bildern checked>
+                    mit Bildern
+                </label>
+                <button type="button" class="btn btn-primary btn-sm" data-btn-start
+                    <?= $sh['bulk_import_aktiv'] ? 'disabled' : '' ?>>Komplettabgleich starten</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-btn-pause data-pausiert="<?= $sh['sync_pausiert'] ?>">
+                    <?= $sh['sync_pausiert'] ? 'Automatischen Sync fortsetzen' : 'Automatischen Sync pausieren' ?>
+                </button>
+                <div style="font-size:11px;color:var(--color-text-muted)">
+                    Der 15-Minuten-Cron läuft unabhängig weiter (kleine Häppchen) — der Komplettabgleich hier holt einen großen Rückstau zügig auf und pausiert bei Bedarf automatisch bei einer Rate-Limit-Sperre.
+                </div>
+            </div>
+            <div style="padding:0 16px 16px;display:flex;gap:16px;align-items:end;flex-wrap:wrap;border-top:1px solid var(--color-border);padding-top:16px">
+                <div class="form-group" style="margin:0;flex:1;min-width:280px">
+                    <label class="form-label">Bilder-Basis-URL (nach FTP-Upload von <code>public/uploads/artikel/</code>)</label>
+                    <input type="text" data-bilder-basis-url class="erp-input" style="width:100%"
+                        placeholder="https://mealana.at/wp-content/uploads/mealana-erstimport"
+                        value="<?= htmlspecialchars($sh['bilder_basis_url'] ?? '') ?>">
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" data-btn-bilder-ftp
+                    <?= $sh['bulk_import_aktiv'] ? 'disabled' : '' ?>>Bilder-Verknüpfung starten</button>
+            </div>
+            <pre data-log-tail style="display:<?= $sh['bulk_import_aktiv'] ? 'block' : 'none' ?>;margin:0 16px 16px;padding:10px 12px;background:#1e1e1e;color:#d4d4d4;font-size:11px;max-height:220px;overflow:auto;border-radius:4px"></pre>
+
+            <?php if (!empty($laeufeProShop[$sh['id']])): ?>
+                <div style="border-top:1px solid var(--color-border);padding:10px 16px">
+                    <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px">Letzte Cron-/Komplettabgleich-Aktivität</div>
+                    <?php foreach (array_slice($laeufeProShop[$sh['id']], 0, 5) as $lauf): ?>
+                        <?php $d = json_decode($lauf['details'] ?? '', true) ?: []; ?>
+                        <div style="font-size:12px;padding:2px 0;color:<?= $lauf['stufe'] === 'error' ? 'var(--color-danger)' : ($lauf['stufe'] === 'warn' ? '#e67e22' : 'inherit') ?>">
+                            <?= htmlspecialchars($lauf['erstellt_am']) ?> —
+                            <?php if ($lauf['aktion'] === 'shop.sync_lauf'): ?>
+                                Cron (<?= htmlspecialchars($d['richtung'] ?? '?') ?>): <?= (int)($d['erfolg'] ?? 0) ?> erfolgreich, <?= (int)($d['fehler'] ?? 0) ?> Fehler
+                            <?php elseif ($lauf['aktion'] === 'shop.cron_fehler'): ?>
+                                Cron-Fehler: <?= htmlspecialchars($d['fehler'] ?? '') ?>
+                            <?php elseif ($lauf['aktion'] === 'shop.bilder_ftp_gestartet'): ?>
+                                Bilder-Verknüpfung (FTP) manuell gestartet
+                            <?php else: ?>
+                                Komplettabgleich manuell gestartet (Batch <?= (int)($d['batch_groesse'] ?? 0) ?><?= empty($d['mit_bildern']) ? ', ohne Bilder' : '' ?>)
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endforeach; ?>
+
+    <script>
+    (function() {
+        function poll(card, shopId, logName) {
+            fetch('shop_sync_status.php?shop_id=' + shopId + '&log=' + encodeURIComponent(logName || ''))
+                .then(r => r.json())
+                .then(d => {
+                    if (!d.erfolg) return;
+                    const badge     = card.querySelector('[data-status-badge]');
+                    const pre       = card.querySelector('[data-log-tail]');
+                    const btnStart  = card.querySelector('[data-btn-start]');
+                    const btnBilder = card.querySelector('[data-btn-bilder-ftp]');
+                    if (d.log_tail) {
+                        pre.style.display = 'block';
+                        pre.textContent = d.log_tail;
+                        pre.scrollTop = pre.scrollHeight;
+                    }
+                    if (d.laeuft) {
+                        badge.textContent = 'Vorgang läuft…';
+                        badge.style.background = '#fff3e0';
+                        badge.style.color = '#e67e22';
+                        btnStart.disabled = true;
+                        btnBilder.disabled = true;
+                        setTimeout(() => poll(card, shopId, logName), 3000);
+                    } else {
+                        badge.textContent = 'Bereit';
+                        badge.style.background = 'var(--color-success-bg,#e8f5e9)';
+                        badge.style.color = 'var(--color-success)';
+                        btnStart.disabled = false;
+                        btnBilder.disabled = false;
+                    }
+                });
+        }
+
+        document.querySelectorAll('[data-shopsync-card]').forEach(card => {
+            const shopId = card.dataset.shopId;
+
+            card.querySelector('[data-btn-start]').addEventListener('click', () => {
+                const batch  = card.querySelector('[data-batch-groesse]').value || 200;
+                const bilder = card.querySelector('[data-mit-bildern]').checked ? '1' : '0';
+                const body = new FormData();
+                body.append('shop_id', shopId);
+                body.append('batch_groesse', batch);
+                body.append('mit_bildern', bilder);
+                fetch('shop_sync_start.php', { method: 'POST', body })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (!d.erfolg) { alert(d.meldung); return; }
+                        poll(card, shopId, d.log);
+                    });
+            });
+
+            card.querySelector('[data-btn-bilder-ftp]').addEventListener('click', () => {
+                const basisUrl = card.querySelector('[data-bilder-basis-url]').value.trim();
+                const body = new FormData();
+                body.append('shop_id', shopId);
+                body.append('basis_url', basisUrl);
+                fetch('shop_sync_bilder_ftp_start.php', { method: 'POST', body })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (!d.erfolg) { alert(d.meldung); return; }
+                        poll(card, shopId, d.log);
+                    });
+            });
+
+            card.querySelector('[data-btn-pause]').addEventListener('click', () => {
+                const btn = card.querySelector('[data-btn-pause]');
+                const neuerStatus = btn.dataset.pausiert === '1' ? '0' : '1';
+                const body = new FormData();
+                body.append('shop_id', shopId);
+                body.append('pausiert', neuerStatus);
+                fetch('shop_sync_pause.php', { method: 'POST', body })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (!d.erfolg) { alert(d.meldung || 'Fehler'); return; }
+                        btn.dataset.pausiert = neuerStatus;
+                        btn.textContent = neuerStatus === '1' ? 'Automatischen Sync fortsetzen' : 'Automatischen Sync pausieren';
+                        const badge = card.querySelector('[data-status-badge]');
+                        if (btn.closest('[data-shopsync-card]').querySelector('[data-btn-start]').disabled) return; // läuft gerade, Badge bleibt orange
+                        badge.textContent = neuerStatus === '1' ? 'Automatischer Sync pausiert' : 'Bereit';
+                        badge.style.background = neuerStatus === '1' ? '#f5f5f5' : 'var(--color-success-bg,#e8f5e9)';
+                        badge.style.color = neuerStatus === '1' ? 'var(--color-text-muted)' : 'var(--color-success)';
+                    });
+            });
+
+            // Läuft von einem früheren Start (z.B. Seite neu geladen) noch was?
+            // Ohne bekannten Log-Dateinamen weiter -- Status-Endpunkt liefert
+            // dann einfach keinen log_tail, "läuft"-Flag funktioniert trotzdem.
+            if (card.querySelector('[data-btn-start]').disabled) {
+                poll(card, shopId, '');
+            }
+        });
+    })();
+    </script>
+
+    <div class="card" style="margin-top:4px">
+        <div class="card-header">Bilder per FTP statt Byte-Upload (schneller Weg für große Bildmengen)</div>
+        <div style="padding:16px;font-size:12px;line-height:1.6;color:var(--color-text-muted)">
+            Der Komplettabgleich oben lädt Bilder standardmäßig einzeln per Byte-Upload hoch (langsam,
+            ca. 0,4s Pause je Bild). Bei sehr vielen Bildern geht es schneller: "ohne Bilder" abgleichen,
+            dann den kompletten lokalen Ordner <code>public/uploads/artikel/</code> <strong>1:1</strong> per FTP auf den
+            Webserver kopieren (Ordnerstruktur und Dateinamen müssen exakt gleich bleiben — die Zuordnung
+            läuft über Artikel-ID + Dateiname, kein Umbenennen/Umsortieren). Danach bei jedem Shop oben
+            die Bilder-Basis-URL eintragen (die Adresse, unter der der hochgeladene <code>artikel/</code>-Ordner
+            beim jeweiligen Shop erreichbar ist, z.B. <code>https://mealana.at/wp-content/uploads/mealana-erstimport</code>)
+            und auf "Bilder-Verknüpfung starten" klicken — läuft im Hintergrund genau wie der
+            Komplettabgleich, kein Kommandozeilen-Zugriff mehr nötig. Bereits verknüpfte
+            Bilder werden dabei automatisch übersprungen — der ganze Ordner kann also jederzeit gefahrlos
+            erneut hochgeladen/laufen gelassen werden. Voraussetzung: der Text-Sync muss für die Artikel
+            schon gelaufen sein (ohne WooCommerce-Produkt-ID kann kein Bild angehängt werden).
+        </div>
     </div>
 
 <?php elseif ($aktTab === 'mail'): ?>

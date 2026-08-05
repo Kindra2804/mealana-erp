@@ -12,10 +12,11 @@
  * nächsten 15-Minuten-Cron-Tick zu warten.
  *
  * Aufruf:
- *   php scripts/komplettabgleich.php <shop-slug> [batch-groesse]
+ *   php scripts/komplettabgleich.php <shop-slug> [batch-groesse] [ohne-bilder]
  *
  * Beispiel:
  *   php scripts/komplettabgleich.php mealana 200
+ *   php scripts/komplettabgleich.php mealana 200 ohne-bilder
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -38,8 +39,9 @@ const FALLBACK_WARTEZEIT_SEKUNDEN = 90;
 // Upload-Zeit + 0,4s Pause, siehe WooCommerceClient::MEDIEN_UPLOAD_PAUSE_SEKUNDEN).
 const FORTSCHRITT_SCHRITT = 5;
 
-$shopSlug = $argv[1] ?? null;
-$limit    = isset($argv[2]) ? (int)$argv[2] : 200;
+$shopSlug   = $argv[1] ?? null;
+$limit      = isset($argv[2]) ? (int)$argv[2] : 200;
+$mitBildern = ($argv[3] ?? '') !== 'ohne-bilder';
 
 if (!$shopSlug) {
     fwrite(STDERR, "Aufruf: php komplettabgleich.php <shop-slug> [batch-groesse]\n");
@@ -64,7 +66,8 @@ if (!$shop) {
 // läuft, sonst Race Condition (Cron greift mit veraltetem Stand rein).
 $repo->setBulkImportAktiv((int)$shop['id'], true);
 
-echo "Komplettabgleich für '{$shop['slug']}' gestartet (Batch-Größe: $limit)\n";
+echo "Komplettabgleich für '{$shop['slug']}' gestartet (Batch-Größe: $limit"
+    . ($mitBildern ? '' : ', ohne Bilder') . ")\n";
 
 try {
     $service = new ShopSyncService();
@@ -94,7 +97,7 @@ try {
 
     while (true) {
         $durchlauf++;
-        $ergebnis = $service->syncShop($shop, $limit, $fortschritt);
+        $ergebnis = $service->syncShop($shop, $limit, $fortschritt, $mitBildern);
         $gesamtErfolg += $ergebnis['erfolg'];
         $gesamtFehler += $ergebnis['fehler'];
 

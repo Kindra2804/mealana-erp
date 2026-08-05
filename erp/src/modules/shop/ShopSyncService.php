@@ -75,9 +75,15 @@ class ShopSyncService
      *                    komplettabgleich.php, die sonst minutenlang keine
      *                    Rückmeldung geben würden (ein Batch kann bei vielen
      *                    Bildern/Achsen pro Artikel durchaus lange dauern).
+     * @param bool $mitBildern Bilder-Upload pro Artikel überspringen (Default
+     *                    true = bisheriges Verhalten). Bei false bleibt der
+     *                    Text-/Stammdaten-Sync unverändert, nur der langsame
+     *                    Byte-Upload je Bild entfällt -- gedacht für den
+     *                    Komplettabgleich-Workflow "erst Text, Bilder separat
+     *                    per FTP" (siehe scripts/erstbefuellung_bilder.php).
      * @return array{erfolg:int,fehler:int,rate_limitiert:bool,retry_after:?int}
      */
-    public function syncShop(array $shop, int $limit = 20, ?callable $fortschritt = null): array
+    public function syncShop(array $shop, int $limit = 20, ?callable $fortschritt = null, bool $mitBildern = true): array
     {
         $client = new WooCommerceClient(
             $shop['wc_url'],
@@ -220,7 +226,9 @@ class ShopSyncService
                 // Bilder werden NICHT vom Vater geerbt (project_bilder_modul.md) --
                 // jede Artikel-Zeile (Vater UND jedes Kind) hat eigene Bilder,
                 // darum mit der eigenen artikel_id aufrufen, nicht $vaterId.
-                $this->syncBilderFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
+                if ($mitBildern) {
+                    $this->syncBilderFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
+                }
 
                 if ($istKind) {
                     if (!$row['vater_external_id']) {

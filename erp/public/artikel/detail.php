@@ -11,8 +11,7 @@ require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
 require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
 require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
 
-$id       = (int) ($_GET['id'] ?? 0);
-$vonVater = (int) ($_GET['von_vater'] ?? 0);
+$id = (int) ($_GET['id'] ?? 0);
 
 $service = new ArtikelService();
 $variantenService  = new VariantenService();
@@ -78,6 +77,11 @@ $zustandsArtikelListe = ($artikel && empty($artikel['zustand_vater_id']))
     : [];
 
 $istKind = !empty($artikel['vaterartikel_id']);
+// Bewusst aus der echten DB-Verknüpfung abgeleitet, nicht mehr aus dem
+// URL-Parameter "von_vater" -- der ging beim direkten Öffnen eines Kindes
+// (Suche, Liste) oder nach dem Speichern verloren, obwohl die Verknüpfung
+// selbst die ganze Zeit besteht (Jacky-Fund 2026-08-05).
+$vaterId = (int) ($artikel['vaterartikel_id'] ?? 0);
 
 $shopSyncRepo = new ShopSyncRepository();
 $kanaeleFuerArtikel = $id ? $shopSyncRepo->findKanalStatusFuerArtikel($id) : [];
@@ -298,10 +302,10 @@ foreach ($alleKombis as $kombi) {
 $pageTitle    = htmlspecialchars($artikel['name']);
 $activeModule = 'artikel';
 
-$abbrechenUrl  = $vonVater > 0 ? "detail.php?id={$vonVater}&tab=varianten" : 'liste.php';
-$abbrechenText = $vonVater > 0 ? '← Zum Vater-Artikel' : 'Abbrechen';
-$weRueckkehrInput = $vonVater > 0
-    ? '<input type="hidden" name="we_rueckkehr" form="stammdaten-form" value="' . BASE_PATH . '/artikel/detail.php?id=' . $vonVater . '&tab=varianten">'
+$abbrechenUrl  = $istKind ? "detail.php?id={$vaterId}&tab=varianten" : 'liste.php';
+$abbrechenText = $istKind ? '← Zum Vater-Artikel' : 'Abbrechen';
+$weRueckkehrInput = $istKind
+    ? '<input type="hidden" name="we_rueckkehr" form="stammdaten-form" value="' . BASE_PATH . '/artikel/detail.php?id=' . $vaterId . '&tab=varianten">'
     : '';
 
 $kanalPanelHtml = renderKanalPanelZeilen($kanaeleFuerArtikel);
@@ -328,7 +332,7 @@ $actionBarContent = <<<HTML
 HTML;
 
 $sidebarItems = [
-    ['type' => 'back', 'label' => $vonVater > 0 ? 'zum Vater-Artikel' : 'zur Liste', 'href' => $vonVater > 0 ? BASE_PATH . "/artikel/detail.php?id={$vonVater}&tab=varianten" : BASE_PATH . '/artikel/liste.php'],
+    ['type' => 'back', 'label' => $istKind ? 'zum Vater-Artikel' : 'zur Liste', 'href' => $istKind ? BASE_PATH . "/artikel/detail.php?id={$vaterId}&tab=varianten" : BASE_PATH . '/artikel/liste.php'],
     ['type' => 'separator'],
     ['type' => 'context', 'artNr' => $artikel['artikelnummer'], 'name' => $artikel['name']],
     ['type' => 'separator'],

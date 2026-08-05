@@ -47,6 +47,14 @@ foreach ($repo->findAktiveShops() as $shop) {
         continue;
     }
 
+    if ((int)$shop['sync_pausiert'] === 1) {
+        // Bewusst vom Betreiber über die "Shop-Synchronisierung"-Seite pausiert
+        // (Migration 157) -- anders als bulk_import_aktiv kein Selbst-Reset,
+        // bleibt so bis er es über die UI wieder aufhebt.
+        echo "[{$shop['slug']}] übersprungen -- Sync pausiert\n";
+        continue;
+    }
+
     try {
         $ergebnis = $artikelSync->syncShop($shop);
         echo "[{$shop['slug']}] Artikel: {$ergebnis['erfolg']} erfolgreich, {$ergebnis['fehler']} Fehler\n";

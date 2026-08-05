@@ -497,11 +497,25 @@ class ArtikelRepository
                 a.ueberverkauf_erlaubt,
                 a.charge_pflicht,
                 a.geaendert_am,
+                a.letzte_inventur_am,
+                at.name AS artikeltyp_name,
+                s.satz AS steuersatz,
+                e.kuerzel AS einheit_kuerzel,
                 ap.brutto_vk,
+                al_std.netto_ek AS standard_ek,
                 h.name AS hersteller,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
                 (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
+                (SELECT GROUP_CONCAT(k2.name ORDER BY k2.name SEPARATOR ', ')
+                 FROM artikel_kategorien ak2
+                 JOIN kategorien k2 ON k2.id = ak2.kategorie_id
+                 WHERE ak2.artikel_id = a.id) AS kategorien,
+                (SELECT GROUP_CONCAT(mw2.wert ORDER BY m2.sort_order, mw2.sort_order SEPARATOR ', ')
+                 FROM artikel_merkmale am2
+                 JOIN merkmal_werte mw2 ON mw2.id = am2.merkmal_wert_id
+                 JOIN merkmale m2 ON m2.id = am2.merkmal_id
+                 WHERE am2.artikel_id = a.id) AS merkmale,
                 (SELECT GROUP_CONCAT(CONCAT('S', s2.id) ORDER BY s2.id SEPARATOR ',')
                  FROM artikel_shops ash2
                  JOIN shops s2 ON s2.id = ash2.shop_id
@@ -517,9 +531,12 @@ class ArtikelRepository
                 ORDER BY (gueltig_ab IS NOT NULL) DESC, id DESC
                 LIMIT 1
             )
+            LEFT JOIN artikel_lieferanten al_std ON al_std.artikel_id = a.id AND al_std.standard_lieferant = 1
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
             LEFT JOIN artikel_typen at ON a.artikeltyp_id = at.id
+            LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
+            LEFT JOIN einheiten e ON a.einheit_id = e.id
             WHERE a.vaterartikel_id IN ($placeholders)
             GROUP BY a.id
             ORDER BY $sortSpalte $sortDir

@@ -24,11 +24,23 @@ class ShopSyncRepository
     {
         $stmt = $this->db->query("
             SELECT id, slug, name, wc_url, wc_key, wc_secret, wp_username, wp_app_password,
-                   bestellungen_letzter_sync, bulk_import_aktiv
+                   bestellungen_letzter_sync, bulk_import_aktiv, sync_pausiert, bilder_basis_url
             FROM shops
             WHERE ist_aktiv = 1 AND wc_url IS NOT NULL AND wc_key IS NOT NULL AND wc_secret IS NOT NULL
         ");
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Merkt sich die zuletzt verwendete Bilder-Basis-URL für den FTP-Bilder-
+     * Workflow (siehe scripts/erstbefuellung_bilder.php) -- wird beim nächsten
+     * Start in der "Shop-Synchronisierung"-Seite automatisch vorausgefüllt,
+     * damit sie nicht jedes Mal neu eingetippt werden muss.
+     */
+    public function setBilderBasisUrl(int $shopId, string $url): void
+    {
+        $this->db->prepare("UPDATE shops SET bilder_basis_url = :url WHERE id = :id")
+            ->execute(['url' => $url, 'id' => $shopId]);
     }
 
     /**
@@ -41,6 +53,18 @@ class ShopSyncRepository
     {
         $this->db->prepare("UPDATE shops SET bulk_import_aktiv = :aktiv WHERE id = :id")
             ->execute(['aktiv' => $aktiv ? 1 : 0, 'id' => $shopId]);
+    }
+
+    /**
+     * Pause-Schalter für die "Shop-Synchronisierung"-Seite (Migration 157) --
+     * anders als bulk_import_aktiv wird das NUR vom Menschen über die UI gesetzt
+     * und bleibt bestehen, bis er es wieder aufhebt (kein Selbst-Reset durch ein
+     * Skript). cron/shop_sync.php prüft das pro Shop beim Start.
+     */
+    public function setSyncPausiert(int $shopId, bool $pausiert): void
+    {
+        $this->db->prepare("UPDATE shops SET sync_pausiert = :pausiert WHERE id = :id")
+            ->execute(['pausiert' => $pausiert ? 1 : 0, 'id' => $shopId]);
     }
 
     /**

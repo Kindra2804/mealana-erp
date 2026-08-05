@@ -1,12 +1,49 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; diverse Sync-Bugs 2026-07-29 bis 2026-08-04 behoben (Achsen-Dimensionen, Grundpreis Vater/Kind, Kanal-Zuweisungs-Lücken); 🔍 NÄCHSTE SESSION: UI-Seite 'Shop-Synchronisierung' geplant (Komplettabgleich mit/ohne Bilder + Batch-Größe per Web-UI starten, Cron-Übersicht+Pause) — Design abgestimmt, Bau steht noch aus"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-05 UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt (Komplettabgleich mit/ohne Bilder, Pause-Schalter, Bilder-FTP-Verknüpfung per Button); diverse Sync-Bugs 2026-07-29 bis 2026-08-04 behoben"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-05T06:59:30.373Z
+  modified: 2026-08-05T10:14:55.981Z
 ---
+
+## ✅ GEBAUT 2026-08-05: UI-Seite "Shop-Synchronisierung" (Einstellungen) + live bestätigt
+
+Setzt den am 2026-08-04 abgestimmten Plan um (siehe unten für das Design). Neuer Tab in
+`einstellungen/index.php`, pro konfiguriertem Shop eine Karte:
+
+- **Komplettabgleich starten**: Batch-Größe + "mit Bildern"-Checkbox, Start-Button löst
+  `scripts/komplettabgleich.php` als Hintergrundprozess aus (Windows-Mechanismus:
+  `pclose(popen('start /B "" php.exe skript.php args > log 2>&1', 'r'))` -- isoliert mit
+  einem Dummy-Skript unter echtem Apache/mod_php verifiziert: Request kam in ~90ms zurück,
+  Prozess lief unabhängig weiter, Live-Log wurde währenddessen mitgeschrieben).
+- **Live-Fortschritt**: AJAX-Polling alle 3s (`shop_sync_status.php`) liest `shops.bulk_import_aktiv`
+  (verlässliches "läuft/fertig", vom Skript selbst im `finally` zurückgesetzt) + die letzten
+  Log-Zeilen aus `storage/shop_sync_logs/`.
+- **Pause/Fortsetzen**: neues Flag `shops.sync_pausiert` (Migration 157) -- anders als
+  `bulk_import_aktiv` (Selbst-Reset durchs Skript) wird das NUR vom Menschen gesetzt/aufgehoben,
+  `cron/shop_sync.php` prüft es zusätzlich beim Start pro Shop.
+  `ShopSyncService::syncShop()` hat dafür einen neuen `$mitBildern`-Parameter bekommen
+  (überspringt `syncBilderFuerArtikel()`), `komplettabgleich.php` reicht ihn über ein neues
+  3. CLI-Argument `ohne-bilder` durch.
+- **Bilder-FTP-Verknüpfung per Button** (auf Jackys Wunsch nachträglich ergänzt, "Barbara soll
+  nicht in die cmd müssen"): automatisiert `php scripts/erstbefuellung_bilder.php <slug> <url>`
+  genauso als Hintergrundprozess (`shop_sync_bilder_ftp_start.php`, teilt sich dieselbe
+  `bulk_import_aktiv`-Sperre + denselben Status-Endpunkt). Basis-URL wird pro Shop in
+  `shops.bilder_basis_url` (Migration 158) gemerkt, beim nächsten Mal vorausgefüllt.
+- Infokasten unten auf der Seite erklärt den FTP-Bilder-Workflow (Ordner `public/uploads/artikel/`
+  1:1 hochladen, URL wird aus Basis-URL + `/artikel/{id}/{dateiname}` gebaut, bereits verknüpfte
+  Bilder werden automatisch übersprungen).
+
+**Live von Jacky bestätigt (2026-08-05):** Komplettabgleich-Start gegen einen echten Shop
+getestet -- kein Rückstau vorhanden, 2 Durchläufe (die eingebaute "2 Leerdurchläufe in Folge"-
+Logik vom 2026-08-04-Fix hat korrekt gegriffen, kein Bug). Pause/Fortsetzen und der Bilder-FTP-
+Button selbst wurden noch nicht live geklickt -- bei Gelegenheit nachholen.
+
+Alle drei neuen AJAX-Endpunkte (`shop_sync_start.php`, `shop_sync_status.php`,
+`shop_sync_pause.php`, `shop_sync_bilder_ftp_start.php`) sind ins Rechtesystem
+(`Zugriffsregeln.php`, Berechtigung `einstellungen.bearbeiten`/`.anzeigen`) eingetragen.
 
 ## 🔍 NÄCHSTE SESSION, ALS ERSTES: UI-Seite "Shop-Synchronisierung" bauen (Design bereits abgestimmt, 2026-08-04)
 
