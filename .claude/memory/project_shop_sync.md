@@ -1,12 +1,32 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-05 UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt (Komplettabgleich mit/ohne Bilder, Pause-Schalter, Bilder-FTP-Verknüpfung per Button); diverse Sync-Bugs 2026-07-29 bis 2026-08-04 behoben"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-05 Artikel-Kategorie-Kanal-Ausschluss (Migration 159) + Sidebar-Shop-Vorschau-Filter GEBAUT; UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt; diverse Sync-Bugs 2026-07-29 bis 2026-08-04 behoben"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-05T10:14:55.981Z
+  modified: 2026-08-05T13:49:42.547Z
 ---
+
+## ✅ GEBAUT 2026-08-05: Artikel-eigener Kategorie/Kanal-Ausschluss (Migration 159) — Babsi-Wunsch
+
+**Auslöser (Jacky für Babsi):** Ein Artikel steht z.B. in "Wolle/Hersteller/Elisa" UND "Wolle/Hersteller/Sonstige", soll aber in Kanal 1 nur unter Elisa und in Kanal 2 nur unter Sonstige erscheinen. Bestehende Mechanismen deckten das nicht ab: `artikel_shops` kennt nur "Artikel im Shop aktiv oder nicht" (ganzer Artikel), `kategorie_shops.ausgeschlossen` ([[project_shop_sync]] 2026-08-02-Eintrag oben) nur "Kategorie im Shop aktiv oder nicht" (alle Artikel gleich) — die Kombination aus allen drei Dimensionen (Artikel × Kategorie × Shop) fehlte.
+
+**Bewusste Design-Entscheidung: schlanke Ausnahme-Tabelle statt volle Matrix.** Eine volle Matrix (jede Kategorie-Zuweisung bekommt für JEDEN Artikel sichtbare Kanal-Checkboxen) wäre transparenter, aber deutlich mehr UI-Klicks für den Normalfall (Artikel erscheint einfach überall, wo er zugewiesen ist) — der praktisch nie diese Feinsteuerung braucht.
+
+**Gebaut:**
+- Migration 159: `artikel_kategorie_shop_ausschluss (artikel_id, kategorie_id, shop_id)`, reine Ausnahme-Zeilen (Standard = kein Ausschluss).
+- `ShopSyncRepository::findWcKategorieIds()` filtert jetzt zusätzlich gegen diese Tabelle. Neue `findKategorieShopAusschluesseFuerArtikel()` (fürs UI) + `setKategorieShopAusschlussFuerArtikel()` (Toggle, bumpt `artikel.aktualisiert_am` wie beim bestehenden Kategorie-Ausschluss-Muster).
+- Neuer AJAX-Endpunkt `artikel/kategorie_kanal_ajax.php` (analog `kanal_ajax.php`).
+- **UI in `artikel/detail.php`:** jede Kategorie-Chip im Artikel-Formular zeigt darunter kleine "S1"/"S2"-Badges für jeden Kanal, in dem der Artikel selbst aktiv ist (grün=sichtbar, grau=für diesen Kanal ausgeblendet, klickbar, `artikel_detail.js:katKanalToggle()`).
+
+**Noch offen:** Kein echter Shop-Sync-Testlauf, der bestätigt, dass eine ausgeblendete Kategorie tatsächlich nicht mehr im WooCommerce-Payload landet (nur Code-Pfad verifiziert).
+
+## ✅ GEBAUT 2026-08-05: Sidebar-Kategoriebaum — Shop-Vorschau-Filter (weiterer Babsi-Wunsch)
+
+**Auslöser:** Babsi tut sich schwer, sich aus der normalen Kategorieliste + Kanal-Chips vorzustellen, wie das Menü im jeweiligen Shop tatsächlich aussehen würde.
+
+**Gebaut (nur `includes/shell_top.php` Sidebar-Baum, NICHT `artikel/kategorien_verwalten.php` — das war eine Verwechslung im ersten Anlauf, Jacky hat's klargestellt):** Die "Kanal-Legende" unten im Sidebar-Baum ist jetzt klickbar — Klick auf einen Shop blendet alle Kategorien aus, die in diesem Kanal nicht erscheinen würden (nutzt das bereits bestehende, rekursiv+vererbt berechnete `$knoten['shop_codes']`, jetzt zusätzlich als `data-shops`-Attribut am `.kat-knoten`-Wrapper). Nochmaliger Klick oder "✕ Vorschau beenden" (erscheint neben dem Legende-Titel, sobald ein Filter aktiv ist) setzt zurück. Rein clientseitig (`shell.js:katShopFilterToggle/-Reset`), kein Server-Roundtrip, kein Persistieren — Filter setzt sich beim nächsten Seitenaufruf automatisch zurück.
 
 ## ✅ GEBAUT 2026-08-05: UI-Seite "Shop-Synchronisierung" (Einstellungen) + live bestätigt
 

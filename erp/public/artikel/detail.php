@@ -86,6 +86,13 @@ $vaterId = (int) ($artikel['vaterartikel_id'] ?? 0);
 $shopSyncRepo = new ShopSyncRepository();
 $kanaeleFuerArtikel = $id ? $shopSyncRepo->findKanalStatusFuerArtikel($id) : [];
 
+// Für die Kategorie-Chips: nur Shops, in denen der Artikel effektiv aktiv ist, sind
+// überhaupt relevant für eine Kategorie-Ausnahme (siehe [[project_shop_sync]] Migration 159).
+$aktiveKanaeleFuerKatChips = array_values(array_filter($kanaeleFuerArtikel, function ($k) {
+    return (int)$k['eigener_status'] && (int)$k['vater_status'];
+}));
+$kategorieShopAusschluesse = $id ? $shopSyncRepo->findKategorieShopAusschluesseFuerArtikel($id) : [];
+
 /**
  * Zeilen fürs Kanal-Dropdown im Actionbar-Button "Im Shop ▼".
  * Drei Zustände: effektiv an (grün), eigener Wunsch an aber Vater aus (orange,
@@ -535,16 +542,39 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <div class="form-group">
                             <label class="form-label">Kategorie</label>
                             <div style="display:flex;align-items:center;gap:var(--space-sm);flex-wrap:wrap">
-                                <div id="kat-chips">
+                                <div id="kat-chips" style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
                                     <?php foreach ($alleKategorien as $k): ?>
                                         <?php if (in_array($k['id'], $zugewieseneIds)): ?>
-                                            <span class="chip chip-aktiv"><?= htmlspecialchars($k['name']) ?></span>
-                                            <input type="hidden" name="kategorien[]" value="<?= $k['id'] ?>">
+                                            <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
+                                                <span class="chip chip-aktiv"><?= htmlspecialchars($k['name']) ?></span>
+                                                <input type="hidden" name="kategorien[]" value="<?= $k['id'] ?>">
+                                                <?php if ($aktiveKanaeleFuerKatChips): ?>
+                                                    <div style="display:flex;gap:2px">
+                                                        <?php foreach ($aktiveKanaeleFuerKatChips as $kanal): ?>
+                                                            <?php
+                                                            $ausgeschlossen = isset($kategorieShopAusschluesse[$k['id'] . '_' . $kanal['shop_id']]);
+                                                            $badgeCls = $ausgeschlossen ? 'chip chip-inaktiv' : 'chip chip-aktiv';
+                                                            ?>
+                                                            <span class="kat-kanal-badge <?= $badgeCls ?>"
+                                                                  style="font-size:10px;padding:1px 5px;cursor:pointer"
+                                                                  data-artikel-id="<?= $id ?>"
+                                                                  data-kategorie-id="<?= $k['id'] ?>"
+                                                                  data-shop-id="<?= $kanal['shop_id'] ?>"
+                                                                  data-ausgeschlossen="<?= $ausgeschlossen ? '1' : '0' ?>"
+                                                                  title="<?= $ausgeschlossen ? 'In ' . htmlspecialchars($kanal['name']) . ' ausgeblendet — klicken zum Einblenden' : 'In ' . htmlspecialchars($kanal['name']) . ' sichtbar — klicken zum Ausblenden' ?>"
+                                                                  onclick="katKanalToggle(this)">S<?= (int)$kanal['shop_id'] ?></span>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
                                 </div>
                                 <button type="button" class="btn btn-secondary btn-sm" onclick="katModalOeffnen()">📁 Ändern</button>
                             </div>
+                            <?php if ($aktiveKanaeleFuerKatChips): ?>
+                                <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">S1/S2/… = Kanäle, in denen der Artikel aktiv ist. Klick blendet diese Kategorie nur für den jeweiligen Kanal aus.</div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

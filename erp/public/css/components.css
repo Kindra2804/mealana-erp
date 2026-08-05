@@ -506,6 +506,9 @@
 }
 
 .sidebar-kanal-legende-titel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -514,13 +517,42 @@
     font-size: 10.5px;
 }
 
+.kat-shopfilter-aufheben {
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 600;
+    color: var(--color-danger);
+    text-decoration: none;
+    font-size: 10.5px;
+}
+
+.kat-shopfilter-aufheben:hover {
+    text-decoration: underline;
+}
+
 .sidebar-kanal-legende-zeile {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 2px 0;
+    padding: 2px 4px;
     font-size: 11.5px;
     color: var(--color-text-muted);
+    border-radius: 4px;
+}
+
+.sidebar-kanal-legende-zeile-klickbar {
+    cursor: pointer;
+}
+
+.sidebar-kanal-legende-zeile-klickbar:hover {
+    background: var(--color-bg);
+    color: var(--color-nav);
+}
+
+.sidebar-kanal-legende-zeile-aktiv {
+    background: #EEF4FF;
+    color: var(--color-nav);
+    font-weight: 600;
 }
 
 .kat-filter-aufheben {

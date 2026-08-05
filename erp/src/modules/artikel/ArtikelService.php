@@ -395,6 +395,12 @@ class ArtikelService
         Logger::log('artikel.bulk_kategorie_hinzufuegen', 'kategorien', $kategorieId, ['artikel_anzahl' => count($artikelIds)]);
     }
 
+    public function bulkRemoveKategorie(array $artikelIds, int $kategorieId): void
+    {
+        $this->kategorieRepo->bulkRemoveKategorie($artikelIds, $kategorieId);
+        Logger::log('artikel.bulk_kategorie_entfernen', 'kategorien', $kategorieId, ['artikel_anzahl' => count($artikelIds)]);
+    }
+
     public function speichereCode(int $artikelId, string $typ, string $code): void
     {
         $this->repo->insertCode($artikelId, $typ, $code);

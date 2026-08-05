@@ -473,6 +473,10 @@ class ShopSyncRepository
      * Die Pfad-Prüfung (istKategoriePfadAusgeschlossen) kann nicht in der SQL-JOIN-Bedingung
      * passieren (Vorfahren-Kette, kein rekursives SQL), daher zweistufig: erst alle Blatt-
      * Kategorien des Artikels mit ihrer externen ID laden, dann pro Kategorie den Pfad prüfen.
+     * Zusätzlich: artikel_kategorie_shop_ausschluss -- Artikel-eigene Ausnahme, wenn DIESE
+     * Kategorie-Zuweisung für DIESEN einen Artikel in DIESEM Shop ausgeblendet sein soll, obwohl
+     * Artikel UND Kategorie für den Shop grundsätzlich aktiv sind (z.B. Artikel steht in
+     * Hersteller/Elisa UND Hersteller/Sonstige, soll in Kanal 1 aber nur unter Elisa erscheinen).
      */
     public function findWcKategorieIds(int $artikelId, int $shopId): array
     {
@@ -481,8 +485,12 @@ class ShopSyncRepository
             FROM artikel_kategorien ak
             JOIN kategorie_shops ks ON ks.kategorie_id = ak.kategorie_id AND ks.shop_id = :shop_id
             WHERE ak.artikel_id = :artikel_id AND ks.externe_kategorie_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM artikel_kategorie_shop_ausschluss aksa
+                  WHERE aksa.artikel_id = ak.artikel_id AND aksa.kategorie_id = ak.kategorie_id AND aksa.shop_id = :shop_id2
+              )
         ");
-        $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId]);
+        $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId, 'shop_id2' => $shopId]);
 
         $ergebnis = [];
         foreach ($stmt->fetchAll() as $row) {
@@ -491,6 +499,39 @@ class ShopSyncRepository
             }
         }
         return $ergebnis;
+    }
+
+    /** Artikel-eigene Kategorie/Shop-Ausnahmen als Set "kategorieId_shopId" (fürs UI im Artikel-Formular). */
+    public function findKategorieShopAusschluesseFuerArtikel(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("SELECT kategorie_id, shop_id FROM artikel_kategorie_shop_ausschluss WHERE artikel_id = :artikel_id");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        $ergebnis = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $ergebnis[$row['kategorie_id'] . '_' . $row['shop_id']] = true;
+        }
+        return $ergebnis;
+    }
+
+    /**
+     * Blendet eine einzelne Kategorie-Zuweisung dieses Artikels für einen bestimmten Shop aus
+     * (oder hebt die Ausnahme wieder auf). Markiert den Artikel als fällig, damit der Kategorie-
+     * Payload beim nächsten Sync-Lauf tatsächlich aktualisiert wird (gleiches Muster wie
+     * setKategorieAusschluss()).
+     */
+    public function setKategorieShopAusschlussFuerArtikel(int $artikelId, int $kategorieId, int $shopId, bool $ausgeschlossen): void
+    {
+        if ($ausgeschlossen) {
+            $this->db->prepare("
+                INSERT IGNORE INTO artikel_kategorie_shop_ausschluss (artikel_id, kategorie_id, shop_id)
+                VALUES (:artikel_id, :kategorie_id, :shop_id)
+            ")->execute(['artikel_id' => $artikelId, 'kategorie_id' => $kategorieId, 'shop_id' => $shopId]);
+        } else {
+            $this->db->prepare("
+                DELETE FROM artikel_kategorie_shop_ausschluss WHERE artikel_id = :artikel_id AND kategorie_id = :kategorie_id AND shop_id = :shop_id
+            ")->execute(['artikel_id' => $artikelId, 'kategorie_id' => $kategorieId, 'shop_id' => $shopId]);
+        }
+        $this->db->prepare("UPDATE artikel SET aktualisiert_am = NOW() WHERE id = :id")->execute(['id' => $artikelId]);
     }
 
     /** Ist EXAKT diese Kategorie (ohne Vorfahren) für diesen Shop ausgeschlossen? Für die

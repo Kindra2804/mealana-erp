@@ -654,3 +654,33 @@ function kanalToggle(shopId, neuerWert) {
         });
 }
 
+// Blendet eine einzelne Kategorie-Zuweisung für einen Kanal aus/ein (Migration 159).
+function katKanalToggle(el) {
+    var neuerWert = el.dataset.ausgeschlossen !== '1';
+    fetch(window.BASE_PATH + '/artikel/kategorie_kanal_ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'toggle',
+            artikel_id: el.dataset.artikelId,
+            kategorie_id: el.dataset.kategorieId,
+            shop_id: el.dataset.shopId,
+            ausgeschlossen: neuerWert
+        })
+    })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.erfolg) {
+                showFlash(d.fehler ?? 'Unbekannter Fehler', 'fehler');
+                return;
+            }
+            el.dataset.ausgeschlossen = neuerWert ? '1' : '0';
+            el.classList.toggle('chip-aktiv', !neuerWert);
+            el.classList.toggle('chip-inaktiv', neuerWert);
+            var kanalName = el.title.replace(/^In (.+?) (ausgeblendet|sichtbar).*$/, '$1');
+            el.title = neuerWert
+                ? 'In ' + kanalName + ' ausgeblendet — klicken zum Einblenden'
+                : 'In ' + kanalName + ' sichtbar — klicken zum Ausblenden';
+        });
+}
+

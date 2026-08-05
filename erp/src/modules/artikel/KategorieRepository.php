@@ -281,6 +281,22 @@ class KategorieRepository
         }
     }
 
+    public function bulkRemoveKategorie(array $artikelIds, int $kategorieId): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM artikel_kategorien WHERE artikel_id = ? AND kategorie_id = ?");
+        foreach ($artikelIds as $aid) {
+            $stmt->execute([(int)$aid, $kategorieId]);
+        }
+        // Kinder von Vater-Artikeln mitziehen
+        $kindStmt = $this->db->prepare("SELECT id FROM artikel WHERE vaterartikel_id = ?");
+        foreach ($artikelIds as $aid) {
+            $kindStmt->execute([(int)$aid]);
+            foreach ($kindStmt->fetchAll(\PDO::FETCH_COLUMN) as $kindId) {
+                $stmt->execute([(int)$kindId, $kategorieId]);
+            }
+        }
+    }
+
     public function insert(string $name, ?int $parentId = null, bool $istAktionsKategorie = false, ?string $beschreibung = null): int
     {
         $stmt = $this->db->prepare("INSERT INTO kategorien (name, beschreibung, parent_id, ist_aktions_kategorie) VALUES (:name, :beschreibung, :parent_id, :iak)");

@@ -177,7 +177,7 @@ window.KATEGORIE_AUSSCHLUESSE[<?= (int)$a['kategorie_id'] ?>][<?= (int)$a['shop_
                     <option value="">– Keine (Hauptkategorie) –</option>
                     <?php foreach ($flacheListe as $f): ?>
                         <option value="<?= $f['id'] ?>">
-                            <?= str_repeat('  ', $f['tiefe']) . ($f['tiefe'] > 0 ? '↳ ' : '') . htmlspecialchars($f['name']) ?>
+                            <?= str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $f['tiefe']) . ($f['tiefe'] > 0 ? '↳ ' : '') . htmlspecialchars($f['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

@@ -232,9 +232,13 @@ $sortSpalteSQL = $sortMap[$aktSort];
 $sortDirSQL    = strtoupper($aktDir);
 
 // Kategorie-Filter auf alle Nachkommen ausweiten (damit "Wolle" auch Unterkategorien zeigt)
+// - außer die Checkbox "nur direkt zugeordnet" ist gesetzt
+$nurDirekteKategorie = isset($_GET['nurDirekteKategorie']);
 $alleKatIds = null;
 if ($aktivKategorieId) {
-    $alleKatIds = array_merge([$aktivKategorieId], $service->getAlleNachkommenIds($aktivKategorieId));
+    $alleKatIds = $nurDirekteKategorie
+        ? [$aktivKategorieId]
+        : array_merge([$aktivKategorieId], $service->getAlleNachkommenIds($aktivKategorieId));
 }
 
 $qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder', 'keine_gruppe']) ? $statusFilter : '';
@@ -449,6 +453,7 @@ $actionBarContent = <<<HTML
         <option value="ist_auslaufartikel">ist Auslaufartikel</option>
         <option value="kein_auslaufartikel">kein Auslaufartikel</option>
         <option value="kategorie_zuweisen">Kategorie zuweisen</option>
+        <option value="kategorie_entfernen">Kategorie entfernen</option>
         <option value="kanal_zuweisen">Kanal zuweisen</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
@@ -524,6 +529,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <label><input onchange="this.form.requestSubmit()" type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
         <?php if ($aktivKategorieId): ?>
             <input type="hidden" name="kategorie_id" value="<?= $aktivKategorieId ?>">
+            <label title="Blendet Artikel aus, die nur über eine Unterkategorie hierher gehören">
+                <input onchange="this.form.requestSubmit()" type="checkbox" name="nurDirekteKategorie" <?= $nurDirekteKategorie ? 'checked' : '' ?>> Nur direkt zugeordnet (ohne Unterkategorien)
+            </label>
         <?php endif; ?>
         <button type="submit" class="btn btn-secondary btn-sm">Suchen</button>
         <?php if (!empty($_GET)): ?>
@@ -917,7 +925,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
         }
 
         if (aktion === 'kategorie_zuweisen') {
-            bulkKatOeffnen(ids);
+            bulkKatOeffnen(ids, 'zuweisen');
+            return;
+        }
+
+        if (aktion === 'kategorie_entfernen') {
+            bulkKatOeffnen(ids, 'entfernen');
             return;
         }
 
@@ -1018,7 +1031,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <!-- Bulk-Kategorie Modal -->
 <div id="bulk-kat-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">
     <div style="background:#fff;border-radius:8px;padding:20px;width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(0,0,0,.2)">
-        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:var(--color-nav)">Kategorie zuweisen</div>
+        <div id="bulk-kat-titel" style="font-weight:700;font-size:14px;margin-bottom:4px;color:var(--color-nav)">Kategorie zuweisen</div>
         <div id="bulk-kat-info" style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px"></div>
         <div id="bulk-kat-auswahl" style="font-size:12px;color:#1e40af;font-weight:600;min-height:18px;margin-bottom:8px"></div>
         <div style="border:1px solid #e2e8f0;border-radius:6px;overflow-y:auto;flex:1;padding:6px 0">
@@ -1048,13 +1061,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <script>
 var _bulkKatSelectedId   = null;
 var _bulkKatSelectedIds  = [];
+var _bulkKatModus        = 'zuweisen';
 
-function bulkKatOeffnen(ids) {
+function bulkKatOeffnen(ids, modus) {
     _bulkKatSelectedId  = null;
     _bulkKatSelectedIds = ids;
+    _bulkKatModus       = modus || 'zuweisen';
+    document.getElementById('bulk-kat-titel').textContent = _bulkKatModus === 'entfernen' ? 'Kategorie entfernen' : 'Kategorie zuweisen';
     document.getElementById('bulk-kat-info').textContent = ids.length + ' Artikel ausgewählt';
     document.getElementById('bulk-kat-auswahl').textContent = '';
-    document.getElementById('bulk-kat-speichern').disabled = true;
+    var speichernBtn = document.getElementById('bulk-kat-speichern');
+    speichernBtn.disabled = true;
+    speichernBtn.textContent = _bulkKatModus === 'entfernen' ? 'Entfernen' : 'Zuweisen';
+    speichernBtn.className = _bulkKatModus === 'entfernen' ? 'btn btn-danger btn-sm' : 'btn btn-primary btn-sm';
     document.querySelectorAll('.bulk-kat-zeile').forEach(z => z.style.background = '');
     var bd = document.getElementById('bulk-kat-backdrop');
     bd.style.display = 'flex';
@@ -1080,7 +1099,7 @@ function bulkKatSpeichern() {
     fetch('bulk_kategorie_speichern.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ids: _bulkKatSelectedIds, kategorie_id: _bulkKatSelectedId})
+        body: JSON.stringify({ids: _bulkKatSelectedIds, kategorie_id: _bulkKatSelectedId, modus: _bulkKatModus})
     })
     .then(r => r.json())
     .then(data => {

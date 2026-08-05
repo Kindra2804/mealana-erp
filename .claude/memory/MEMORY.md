@@ -45,8 +45,8 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — ✅ 2026-08-05: UI-Seite "Shop-Synchronisierung" gebaut + live bestätigt (Komplettabgleich, Pause, Bilder-FTP-Button)
-- [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — "Einordnen nach"-Positionierung FERTIG (2026-07-29), Vorbelegungs-Bug behoben
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — ✅ 2026-08-05: Artikel-Kategorie-Kanal-Ausschluss (Migration 159) + Sidebar-Shop-Vorschau-Filter + Shop-Sync-UI-Seite gebaut
+- [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — ✅ 2026-08-05: Artikelliste "nur direkt zugeordnet"-Filter + Kategorie-entfernen-Massenaktion + Dropdown-Einrückung gefixt
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
 - [Shop-Theme/UX](project_shop_theme.md) — Kaufentscheidung weiter pausiert; ✅ 2026-08-02: Mega-Menü-Autoupdate-Grenzen geklärt + Shortcode-Workaround (Block statt Custom HTML) bestätigt funktionierend, Breadcrumbs-Anleitung (Blocksy)
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)

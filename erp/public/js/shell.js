@@ -53,6 +53,30 @@
         s[nodeId] = wirdGeoeffnet;
         setState(s);
     };
+
+    // Shop-Vorschau im Kategoriebaum (Babsi-Wunsch 2026-08-05): blendet Kategorien aus, die im
+    // gewählten Kanal nicht erscheinen würden. Nutzt kat-knoten.data-shops (schon serverseitig
+    // rekursiv berechnet, inkl. Vererbung + Ausschluss -- siehe ArtikelService::berechneShopChips()).
+    // Rein clientseitig/pro Seitenaufruf, kein Persistieren nötig.
+    var aktiverShopFilter = null;
+
+    window.katShopFilterToggle = function (code) {
+        aktiverShopFilter = (aktiverShopFilter === code) ? null : code;
+        document.querySelectorAll('.kat-knoten').forEach(function (knoten) {
+            if (!aktiverShopFilter) { knoten.style.display = ''; return; }
+            var shops = (knoten.dataset.shops || '').split(',').filter(Boolean);
+            knoten.style.display = shops.indexOf(aktiverShopFilter) !== -1 ? '' : 'none';
+        });
+        document.querySelectorAll('.sidebar-kanal-legende-zeile-klickbar').forEach(function (zeile) {
+            zeile.classList.toggle('sidebar-kanal-legende-zeile-aktiv', zeile.id === 'kat-shopfilter-zeile-' + aktiverShopFilter);
+        });
+        var aufhebenLink = document.getElementById('kat-shopfilter-aufheben');
+        if (aufhebenLink) aufhebenLink.style.display = aktiverShopFilter ? '' : 'none';
+    };
+
+    window.katShopFilterReset = function () {
+        if (aktiverShopFilter) window.katShopFilterToggle(aktiverShopFilter);
+    };
 })();
 
 window.erpNavMoreToggle = function () {

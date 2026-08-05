@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $body        = json_decode(file_get_contents('php://input'), true) ?? [];
 $artikelIds  = array_filter(array_map('intval', $body['ids'] ?? []), fn($id) => $id > 0);
 $kategorieId = (int)($body['kategorie_id'] ?? 0);
+$modus       = ($body['modus'] ?? '') === 'entfernen' ? 'entfernen' : 'zuweisen';
 
 if (empty($artikelIds)) {
     echo json_encode(['fehler' => 'Keine Artikel ausgewählt']);
@@ -23,6 +24,10 @@ if ($kategorieId <= 0) {
 }
 
 $service = new ArtikelService();
-$service->bulkAddKategorie(array_values($artikelIds), $kategorieId);
+if ($modus === 'entfernen') {
+    $service->bulkRemoveKategorie(array_values($artikelIds), $kategorieId);
+} else {
+    $service->bulkAddKategorie(array_values($artikelIds), $kategorieId);
+}
 
 echo json_encode(['erfolg' => true, 'anzahl' => count($artikelIds)]);

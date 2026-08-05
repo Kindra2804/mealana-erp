@@ -1,12 +1,18 @@
 ---
 name: project-kategorie-verwaltung
-description: "Kategorie-Verwaltung (kategorien_verwalten.php): 'Einordnen nach'-Positionierung beim Neu/Bearbeiten FERTIG (2026-07-29), Kategoriebild FERTIG (siehe project_shop_sync.md)"
+description: "Kategorie-Verwaltung (kategorien_verwalten.php): 'Einordnen nach'-Positionierung FERTIG (2026-07-29); ✅ 2026-08-05 Artikelliste: 'nur direkt zugeordnet'-Filter + Kategorie-entfernen-Massenaktion + Oberkategorie-Dropdown-Einrückung gefixt"
 metadata:
   node_type: memory
   type: project
   originSessionId: 90944ba5-8049-44b1-96c3-29acb1265131
-  modified: 2026-07-29T14:33:22.557Z
+  modified: 2026-08-05T13:49:17.525Z
 ---
+
+## ✅ NEU 2026-08-05: Drei kleine Artikelliste/Kategorie-Verbesserungen
+
+1. **`artikel/liste.php`**: Kategorie-Klick zeigt standardmäßig weiterhin auch Unterkategorien-Artikel (bewusst, entspricht WooCommerce-Default `include_children=true`). Neue Checkbox "Nur direkt zugeordnet (ohne Unterkategorien)" (`nurDirekteKategorie`-Query-Param) für den Fall, dass man gezielt nach Artikeln sucht, die zwar in einer Unterkategorie sein sollen, aber nicht automatisch in der Oberkategorie mit auftauchen sollen.
+2. **Massenaktion "Kategorie entfernen"** neben dem bestehenden "Kategorie zuweisen" — `KategorieRepository::bulkRemoveKategorie()`/`ArtikelService::bulkRemoveKategorie()` spiegeln die bestehende `bulkAddKategorie()`-Logik (inkl. Mitziehen der Kind-Artikel bei Vätern). Gleiches Modal, Titel/Button wechseln dynamisch (rot bei Entfernen).
+3. **Bug gefixt:** Oberkategorie-Dropdown im "Kategorie bearbeiten"-Modal zeigte alle Ebenen gleich eingerückt — `str_repeat('  ', $tiefe)` nutzte normale Leerzeichen, die Browser in `<option>`-Texten kollabieren. Fix: `&nbsp;` statt normaler Spaces.
 
 ## Ausgangslage (Jacky, 2026-07-29)
 
