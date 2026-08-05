@@ -1,12 +1,37 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + cron/shop_sync.php + Kategorie/Hersteller-Update-Sync + Hersteller-GPSR-Beschreibung + FTP-Bulk-Bild + Live-Deploy 0.4.0beta alle fertig (2026-07-22); Kategoriebild-Sync + Rate-Limit-Erkennung + Achsen-Dimensionen-Fix FERTIG + Karisma End-to-End verifiziert (2026-07-30); ✅ 429-Sperre GELÖST; ✅ Achsenwerte-Umbenennung-Sync BEHOBEN (2026-07-31); ✅ scripts/komplettabgleich.php gebaut+getestet; 🔴 sort_order-Bug in baueAchsenDimensionen() BEHOBEN (2026-08-03); 🔴 2026-08-04 Grundpreis bei Variable Products: unit + unit_price.base gehören an den Vater (2 WC/Germanized-API-Eigenheiten) BEHOBEN; 🔴 2026-08-04 111 Väter fehlten die eigene Kanal-Zuweisung (Kinder hatten sie) + komplettabgleich.php brach dadurch fälschlich vorzeitig mit 'fertig' ab — BEIDES BEHOBEN"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; diverse Sync-Bugs 2026-07-29 bis 2026-08-04 behoben (Achsen-Dimensionen, Grundpreis Vater/Kind, Kanal-Zuweisungs-Lücken); 🔍 NÄCHSTE SESSION: UI-Seite 'Shop-Synchronisierung' geplant (Komplettabgleich mit/ohne Bilder + Batch-Größe per Web-UI starten, Cron-Übersicht+Pause) — Design abgestimmt, Bau steht noch aus"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-04T11:16:28.906Z
+  modified: 2026-08-05T06:59:30.373Z
 ---
+
+## 🔍 NÄCHSTE SESSION, ALS ERSTES: UI-Seite "Shop-Synchronisierung" bauen (Design bereits abgestimmt, 2026-08-04)
+
+**Auslöser:** Jacky macht den Komplettabgleich bisher händisch per Kommandozeile (`php scripts/komplettabgleich.php mealana <batch>`) und findet das unpraktisch. Wunsch: eine Einstellungen-Seite im ERP, die das übernimmt.
+
+**Vorausgegangener Performance-Fund (2026-08-04):** Ein 35,9h-Lauf hat 8.112 Artikel + 9.358 Bilder synct = ~16 Sekunden/Artikel im Schnitt. Kein Rate-Limit ausgelöst, keine hängengebliebenen Bilder -- die Langsamkeit ist rein strukturell (alles sequenziell, ein API-Call nach dem anderen, jedes Bild mit eigenem Byte-Upload + 0,4s Pause). Zwei Hebel besprochen: (a) den bestehenden FTP-Bilder-Weg (`scripts/erstbefuellung_bilder.php`, schon seit 22.07. fertig) nutzen statt Byte-Upload, (b) Parallelisierung (größerer Umbau). Jacky hat sich noch nicht endgültig zwischen den Hebeln entschieden, aber die Idee "Text-Sync ohne Bilder, Bilder separat per FTP" gefiel ihm -- braucht dafür einen **"mit/ohne Bilder"-Schalter** im Komplettabgleich (aktuell versucht `syncShop()` in JEDEM Lauf automatisch auch Bilder hochzuladen, kein Weg das abzuschalten).
+
+**Wichtige Klarstellung zum FTP-Bilder-Workflow** (Jacky hatte den Ablauf falsch im Kopf): Das FTP-Bilder-Skript kann Bilder nur an Artikel hängen, die in WooCommerce **schon existieren** (`external_id` nötig) -- der normale Text-Sync muss also so oder so ZUERST laufen. Reihenfolge die tatsächlich Zeit spart: **erst ein reiner Text-Sync-Lauf OHNE Bilder** (braucht den neuen Schalter, existiert noch nicht) **-> dann FTP-Bilder-Batch**. Bereits verknüpfte Bilder werden vom FTP-Skript automatisch übersprungen (prüft `sync_status='synced' + external_id` pro Bild) -- Jacky muss nichts filtern, einfach den kompletten `uploads/artikel/`-Ordner 1:1 auf den Webserver kopieren (Dateinamen/Struktur müssen exakt übereinstimmen, das Skript baut die URL aus `artikel_id`+`dateiname`).
+
+**Architektur-Fragen von Jacky, beide geklärt:**
+1. *"Cronjobs Arbeitsplatz-gebunden?"* -- Nein. `cron/shop_sync.php` läuft über den Windows Task Scheduler AUF DEM SERVER, unabhängig von jedem Browser/Arbeitsplatz. Verwechslung vermutlich mit dem Kassen-Arbeitsplatz-Konzept (andere Baustelle).
+2. *Kann eine Web-Seite die Cronjobs an/aus schalten?* -- Technisch ja, aber NICHT über direkte `schtasks.exe`-Steuerung (Sicherheitsrisiko: Webserver-Prozess bekäme OS-Rechte, ein kompromittierter Request könnte beliebige Server-Aktionen auslösen). Stattdessen dasselbe Muster wie `shops.bulk_import_aktiv`: ein DB-Flag, das der Cronjob selbst beim Start prüft und sich bei "pausiert" sofort beendet -- sicher, kein Task-Scheduler-Zugriff nötig. Überwachen (letzter Lauf/Ergebnis) ist unkritisch, reines Auslesen aus dem bestehenden Aktivitäten-Log (`shop.sync_lauf`-Einträge).
+
+**Abgestimmtes Seiten-Design** (noch nicht gebaut, nächste Session startet direkt hier):
+- Neue Seite, vermutlich Einstellungen → "Shop-Synchronisierung"
+- Shop-Auswahl, Batch-Größe-Eingabe, Checkbox "mit Bildern"/"nur Text"
+- Start-Button -> startet `komplettabgleich.php` als **Hintergrundprozess** (Web-Request kann nicht stundenlang laufen -- unter Windows vermutlich über `proc_open`/`cmd /c start /B`, noch zu klären welcher Mechanismus zuverlässig funktioniert)
+- Live-Fortschritt per Auto-Refresh/AJAX-Polling (Durchlauf-Nr., erfolgreich/Fehler, letzte Aktivität -- Quelle noch zu entscheiden: Log-Datei vom Skript oder direkte DB-Auszählung wie `artikel_shops.sync_status`)
+- Cron-Übersicht (nur lesend aus Aktivitäten-Log) + Pause/Fortsetzen-Schalter (DB-Flag-Pattern wie oben)
+
+**Offene technische Fragen für den Bau:** Genauer Mechanismus zum zuverlässigen Hintergrundprozess-Start unter Windows/XAMPP (verschiedene Ansätze möglich, noch nicht getestet welcher robust funktioniert), Format/Ort für den Live-Fortschritt (Datei vs. DB), ob der "mit/ohne Bilder"-Schalter als Parameter an `syncShop()`/`komplettabgleich.php` durchgereicht wird (kleiner Eingriff, `syncBilderFuerArtikel()`-Aufruf einfach überspringen).
+
+## 🟢 BEHOBEN 2026-08-05: 4 Kind-Artikel mit "invalid_sku" nach 24h-Marathonlauf -- gleiches Muster wie Artikel 3092 (2026-08-01)
+
+Nach einem 35,9h-Lauf (8.112 Artikel) meldeten 4 Variationen `product_invalid_sku` ("Ungültige oder doppelte Artikelnummer"). Gleiche Ursache wie beim dokumentierten Einzelfall vom 01.08.: Variation wurde bei WooCommerce erfolgreich angelegt, Erfolgsantwort kam bei uns nie an (Netzwerk-Hänger bei einem so langen Lauf nicht überraschend), `external_id` blieb lokal NULL, jeder Retry prallte als Duplikat ab. Vor dem Reparieren gegengeprüft (nicht blind vertraut): alle 4 Live-Varianten bei WooCommerce gefunden (`DU-010-80-0203`→15986, `LN-309-06`→18393, `SE-Scotland2-1785`→19327, `ST-CA-767`→19348), `parent_id` UND `regular_price` stimmten exakt mit unseren Daten überein. Nur die lokale Verknüpfung nachgetragen (`markiereSynced()`), kein Schreibzugriff auf WooCommerce nötig. Der schon 2026-08-01 als "strukturell nicht abgesichert" markierte Punkt (automatische SKU-Suche+Selbstheilung bei `invalid_sku`-Fehlern) bleibt weiterhin unangetastet -- bei 4 von 8.112 (0,05%) noch kein Grund für eine generische Lösung, aber bei künftigen noch längeren Läufen im Auge behalten.
 
 ## 🔴 BEHOBEN 2026-08-04: `komplettabgleich.php` meldete fälschlich "fertig" + 111 Väter fehlte die eigene Shop-Kanal-Zuweisung
 

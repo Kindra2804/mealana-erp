@@ -1,10 +1,11 @@
 ---
 name: project-spalten-picker
-description: "Spalten-Picker in der Artikelliste — Konfiguration, alle Spalten, Platzhalter für zukünftige Module"
+description: "Spalten-Picker in der Artikelliste — Konfiguration, alle Spalten, Platzhalter für zukünftige Module; 🔍 2026-08-04 offen: welche Spalten sollen bei Kind-Zeilen (Farbvarianten) sichtbar werden, aktuell fast alle bewusst leer"
 metadata:
   node_type: memory
   type: project
   originSessionId: c77183af-9ab6-4b3e-aba9-4dde1a826b7c
+  modified: 2026-08-04T11:33:30.155Z
 ---
 
 Stand: 2026-06-17
@@ -72,4 +73,12 @@ User-spezifische Spalten-Konfiguration in der Artikelliste (liste.php). Jeder Us
 Wenn ein neues Modul (Merkmale, Lagerplätze, Inventur) fertig gebaut wird:
 1. In liste.php die Platzhalter-Spalte aktivieren (SQL-JOIN ergänzen, "–" ersetzen)
 2. In diesem Memory-Eintrag Status auf ✅ baubar setzen
+
+## 🔍 Offen für später (Jacky, 2026-08-04): Kind-Zeilen zeigen viele Spalten bewusst leer
+
+Jacky fiel auf: bei eingeblendeter Hersteller-Spalte steht die bei jeder Kind-Zeile (Farbvariante) leer, nur die Vater-Zeile zeigt den Namen. **Kein Bug** -- Daten sind korrekt (`hersteller_id` bei Kind == Vater, direkt in DB verifiziert an zwei Beispielen: 278480/Silky, BC-11010008/SOFT SILK). Ursache ist reines Design: `spalteKindTd()` in `liste.php` (Zeile ~145, Kommentar "meistens leer außer bestand/preis/ean/status") hat nur `case`s für `status`/`shops`/`bestand`/`preis`/`ean`/`charge` -- jede andere Spalte (Hersteller, Artikeltyp, Geändert-am, Merkmale, ...) fällt auf `return '<td></td>';` zurück, unabhängig vom Spalten-Picker-Status.
+
+**Jackys Wunsch:** Heute Abend gemeinsam durchgehen, welche Spalten bei Kind-Zeilen wirklich sinnvoll sind und welche weiterhin leer bleiben können. Konkretes Beispiel von ihm: `geaendert_am` sollte seiner Meinung nach AUCH bei Kindern angezeigt werden ("damit man sieht was sich da getan hat" -- z.B. um zu erkennen, welche Farbvariante zuletzt geändert wurde, nicht nur der Vater).
+
+**How to apply:** Bei Wiedereinstieg zuerst hier nachsehen, dann mit Jacky gemeinsam pro Spalte entscheiden (vermutlich: manche bleiben Vater-only weil sie zwischen Kindern nie abweichen wie Hersteller, andere wie geaendert_am oder evtl. Status-relevantes sollen pro Kind sichtbar werden). Noch nicht umgesetzt, nur besprochen/vorgemerkt.
 
