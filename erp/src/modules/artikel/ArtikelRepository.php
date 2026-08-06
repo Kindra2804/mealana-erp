@@ -205,7 +205,17 @@ class ArtikelRepository
                 (SELECT GROUP_CONCAT(CONCAT('S', s2.id) ORDER BY s2.id SEPARATOR ',')
                  FROM artikel_shops ash2
                  JOIN shops s2 ON s2.id = ash2.shop_id
-                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1) AS shop_kanaele
+                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1) AS shop_kanaele,
+                -- Kanäle, in denen DIESER Vater selbst nicht aktiv ist, obwohl
+                -- mindestens ein Kind dort noch als aktiv gespeichert ist --
+                -- für den Warnhinweis (Fund 06.08.2026: genau dieser Zustand
+                -- blieb bisher komplett unsichtbar).
+                (SELECT GROUP_CONCAT(DISTINCT CONCAT('S', ks.shop_id) ORDER BY ks.shop_id SEPARATOR ',')
+                 FROM artikel k3
+                 JOIN artikel_shops ks ON ks.artikel_id = k3.id AND ks.aktiv = 1
+                 LEFT JOIN artikel_shops ashv3 ON ashv3.artikel_id = a.id AND ashv3.shop_id = ks.shop_id
+                 WHERE k3.vaterartikel_id = a.id AND k3.aktiv = 1
+                   AND COALESCE(ashv3.aktiv, 0) = 0) AS kinder_blockiert_kanaele
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
@@ -520,7 +530,16 @@ class ArtikelRepository
                  FROM artikel_shops ash2
                  JOIN shops s2 ON s2.id = ash2.shop_id
                  LEFT JOIN artikel_shops ash2v ON ash2v.artikel_id = a.vaterartikel_id AND ash2v.shop_id = ash2.shop_id
-                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND COALESCE(ash2v.aktiv, 0) = 1) AS shop_kanaele
+                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND COALESCE(ash2v.aktiv, 0) = 1) AS shop_kanaele,
+                -- Kind ist selbst als aktiv gespeichert, aber im Shop unsichtbar,
+                -- weil der Vater dort nicht aktiv ist -- ohne diese Spalte sah
+                -- man in der Liste schlicht nichts (weder grün noch grau), obwohl
+                -- der Wunsch in der DB noch aktiv steht.
+                (SELECT GROUP_CONCAT(CONCAT('S', s2.id) ORDER BY s2.id SEPARATOR ',')
+                 FROM artikel_shops ash2
+                 JOIN shops s2 ON s2.id = ash2.shop_id
+                 LEFT JOIN artikel_shops ash2v ON ash2v.artikel_id = a.vaterartikel_id AND ash2v.shop_id = ash2.shop_id
+                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND COALESCE(ash2v.aktiv, 0) = 0) AS shop_kanaele_blockiert
             FROM artikel a
             LEFT JOIN artikel_preise ap ON ap.id = (
                 SELECT id FROM artikel_preise

@@ -109,6 +109,17 @@ class ShopSyncService
         $rateLimitiert = false;
         $retryAfterSekunden = null;
 
+        // Aktionskategorien (kategorien.ist_aktions_kategorie) sind nur sichtbar,
+        // solange ihre Aktion tatsächlich läuft -- Start/Ende passiert rein über
+        // das Datum, ohne dass irgendjemand aktiv etwas anklickt. Muss darum VOR
+        // der Fälligkeits-Abfrage laufen: markiert betroffene Artikel als fällig,
+        // damit findWcKategorieIds() (weiter unten über istKategoriePfadAusgeschlossen())
+        // die neue Sichtbarkeit noch in DIESEM Durchlauf berücksichtigt, statt erst
+        // beim nächsten ohnehin fälligen Sync des Artikels.
+        foreach ($this->repo->findFaelligeAktionskategorien((int)$shop['id']) as $kategorieId) {
+            $this->repo->markiereAktionskategorieUebergang((int)$kategorieId, (int)$shop['id']);
+        }
+
         $faelligeArtikel = $this->repo->findFaelligeArtikel((int)$shop['id'], $limit);
 
         // Kategorien MÜSSEN vor den Artikeln in WooCommerce existieren, sonst kann der
@@ -209,6 +220,44 @@ class ShopSyncService
                     'shop'  => $shop['slug'],
                     'fehler' => $e->getMessage(),
                 ], $this->jarvisId, 'error');
+            }
+        }
+
+        // Vierter unabhängiger Durchlauf (Fund 06.08.2026): Artikel, die im
+        // Kanal deaktiviert wurden, aber bereits live in WooCommerce stehen --
+        // die normale Fälligkeitsschleife oben verlangt ash.aktiv=1 und würde
+        // sie NIE anfassen, sie blieben sonst für immer sichtbar/kaufbar im
+        // Shop stehen. Setzt sie einmalig auf 'draft', danach sync_status
+        // wieder 'synced' (kein erneuter Versuch bei jedem Lauf).
+        foreach ($this->repo->findKuerzlichDeaktivierte((int)$shop['id']) as $row) {
+            if ($rateLimitiert) break;
+            try {
+                $istKind = $row['vaterartikel_id'] !== null;
+                if ($istKind) {
+                    if (!$row['vater_external_id']) {
+                        // Vater selbst nicht (mehr) in WooCommerce auffindbar --
+                        // nichts abzumelden, einfach als erledigt markieren.
+                        $this->repo->markiereSynced((int)$row['artikel_shop_id'], (string)$row['external_id']);
+                        continue;
+                    }
+                    $client->aktualisiereVariation($row['vater_external_id'], $row['external_id'], ['status' => 'draft']);
+                } else {
+                    $client->aktualisiereProdukt($row['external_id'], ['status' => 'draft']);
+                }
+                $this->repo->markiereSynced((int)$row['artikel_shop_id'], (string)$row['external_id']);
+                $erfolg++;
+            } catch (RateLimitException $e) {
+                $rateLimitiert = true;
+                $retryAfterSekunden = $e->retryAfterSekunden;
+                $this->protokolliereRateLimit($shop, $e);
+                break;
+            } catch (Throwable $e) {
+                $this->repo->markiereFehler((int)$row['artikel_shop_id'], $e->getMessage());
+                Logger::log('shop.deaktivierung_sync_fehler', 'artikel', (int)$row['artikel_id'], [
+                    'shop'   => $shop['slug'],
+                    'fehler' => $e->getMessage(),
+                ], $this->jarvisId, 'error');
+                $fehler++;
             }
         }
 
@@ -509,7 +558,15 @@ class ShopSyncService
     {
         $preis = $this->repo->findEndkundenPreis((int)$kind['artikel_id']);
 
-        $payload = ['sku' => $kind['artikelnummer']];
+        // Explizit setzen, nicht weglassen: diese Methode wird nur aus der
+        // normalen Fälligkeits-Schleife heraus aufgerufen, die zwingend
+        // ash.aktiv=1 voraussetzt -- jede Variation, die hier ankommt, SOLL
+        // sichtbar sein. Ohne das explizite 'publish' würde eine Variation,
+        // die vorher über findKuerzlichDeaktivierte() auf 'draft' gesetzt
+        // wurde, bei der Reaktivierung für immer im Entwurf hängen bleiben
+        // (WooCommerce lässt bei PUT ohne 'status'-Feld den Status unverändert
+        // -- Fund 06.08.2026, direkt bevor er in Produktion aufgefallen wäre).
+        $payload = ['sku' => $kind['artikelnummer'], 'status' => 'publish'];
         if ($preis !== null) {
             $payload['regular_price'] = number_format($preis, 2, '.', '');
         }

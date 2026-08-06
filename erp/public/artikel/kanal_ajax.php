@@ -4,6 +4,7 @@
  * action=toggle — eigenen Wunsch-Status für einen Shop setzen.
  */
 require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../../src/core/logger.php';
 require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
 
 header('Content-Type: application/json');
@@ -21,6 +22,10 @@ try {
             $aktiv     = !empty($input['aktiv']);
             if (!$artikelId || !$shopId) throw new Exception('Ungültige Daten');
             $repo->upsertZuweisung($artikelId, $shopId, $aktiv);
+            Logger::log('shop.kanal_toggle', 'artikel', $artikelId, [
+                'shop_id' => $shopId,
+                'aktiv'   => $aktiv,
+            ]);
             echo json_encode(['erfolg' => true, 'kanaele' => $repo->findKanalStatusFuerArtikel($artikelId)]);
             break;
 

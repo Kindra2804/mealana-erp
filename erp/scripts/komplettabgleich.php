@@ -69,6 +69,17 @@ $repo->setBulkImportAktiv((int)$shop['id'], true);
 echo "Komplettabgleich für '{$shop['slug']}' gestartet (Batch-Größe: $limit"
     . ($mitBildern ? '' : ', ohne Bilder') . ")\n";
 
+function druckeFaelligkeit(ShopSyncRepository $repo, int $shopId): void
+{
+    $z = $repo->zaehleFaellige($shopId);
+    echo "  Fällig: {$z['vaeter']} Väter/Standalone, {$z['kinder']} Kinder, {$z['bilder']} Bilder"
+        . ($z['abzumelden'] > 0 ? ", {$z['abzumelden']} zum Abmelden (Entwurf)" : "")
+        . ($z['blockierte_kinder'] > 0 ? " -- {$z['blockierte_kinder']} Kinder warten auf ihren Vater (Kanal dort nicht aktiv)" : "")
+        . "\n";
+}
+
+druckeFaelligkeit($repo, (int)$shop['id']);
+
 try {
     $service = new ShopSyncService();
 
@@ -103,6 +114,7 @@ try {
 
         echo "[Durchlauf $durchlauf] {$ergebnis['erfolg']} erfolgreich, {$ergebnis['fehler']} Fehler"
             . ($ergebnis['rate_limitiert'] ? " -- Rate-Limit erkannt\n" : "\n");
+        druckeFaelligkeit($repo, (int)$shop['id']);
 
         if ($ergebnis['rate_limitiert']) {
             $wartezeit = $ergebnis['retry_after'] ?? FALLBACK_WARTEZEIT_SEKUNDEN;

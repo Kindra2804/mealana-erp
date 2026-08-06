@@ -194,6 +194,14 @@ class KategorieRepository
                 $stmt->execute(['artikel_id' => $artikelId, 'kategorie_id' => $kategorieId]);
             }
 
+            // Ohne diesen Bump bleibt eine neu zugewiesene Kategorie für den Shop-Sync
+            // unsichtbar, wenn der Artikel selbst schon synct war (findFaelligeArtikel()
+            // findet ihn dann nie wieder, findFaelligeKategorien() kennt nur bereits
+            // angelegte Kategorien -- siehe project_shop_sync.md, Fund 2026-08-05).
+            if (!empty($entfernteKatIds) || !empty($neueKatIds)) {
+                $this->bumpAktualisiertAm([$artikelId]);
+            }
+
             // Aktionspreise für entfernte Kategorien bereinigen
             if (!empty($entfernteKatIds)) {
                 $pl       = implode(',', array_fill(0, count($entfernteKatIds), '?'));
@@ -254,6 +262,10 @@ class KategorieRepository
         $pl = implode(',', array_fill(0, count($kindIds), '?'));
         $this->db->prepare("DELETE FROM artikel_kategorien WHERE artikel_id IN ($pl)")->execute($kindIds);
 
+        // Siehe bumpAktualisiertAm() -- ohne Bump bleiben Kinder für den Shop-Sync
+        // unsichtbar, wenn sie schon synct waren.
+        $this->bumpAktualisiertAm($kindIds);
+
         if (empty($kategorieIds)) return;
 
         $stmt = $this->db->prepare("INSERT INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)");
@@ -273,12 +285,15 @@ class KategorieRepository
         // Kinder von Vater-Artikeln mitziehen
         $kindStmt = $this->db->prepare("SELECT id FROM artikel WHERE vaterartikel_id = ?");
         $insStmt  = $this->db->prepare("INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)");
+        $betroffeneIds = $artikelIds;
         foreach ($artikelIds as $aid) {
             $kindStmt->execute([(int)$aid]);
             foreach ($kindStmt->fetchAll(\PDO::FETCH_COLUMN) as $kindId) {
                 $insStmt->execute([(int)$kindId, $kategorieId]);
+                $betroffeneIds[] = $kindId;
             }
         }
+        $this->bumpAktualisiertAm($betroffeneIds);
     }
 
     public function bulkRemoveKategorie(array $artikelIds, int $kategorieId): void
@@ -289,12 +304,27 @@ class KategorieRepository
         }
         // Kinder von Vater-Artikeln mitziehen
         $kindStmt = $this->db->prepare("SELECT id FROM artikel WHERE vaterartikel_id = ?");
+        $betroffeneIds = $artikelIds;
         foreach ($artikelIds as $aid) {
             $kindStmt->execute([(int)$aid]);
             foreach ($kindStmt->fetchAll(\PDO::FETCH_COLUMN) as $kindId) {
                 $stmt->execute([(int)$kindId, $kategorieId]);
+                $betroffeneIds[] = $kindId;
             }
         }
+        $this->bumpAktualisiertAm($betroffeneIds);
+    }
+
+    /**
+     * Markiert Artikel als fällig für den Shop-Sync -- ohne diesen Bump bleibt eine
+     * Kategorie-Zuweisung an einen bereits synchten Artikel für findFaelligeArtikel()
+     * unsichtbar (siehe project_shop_sync.md, Fund 2026-08-05).
+     */
+    private function bumpAktualisiertAm(array $artikelIds): void
+    {
+        if (empty($artikelIds)) return;
+        $pl = implode(',', array_fill(0, count($artikelIds), '?'));
+        $this->db->prepare("UPDATE artikel SET aktualisiert_am = NOW() WHERE id IN ($pl)")->execute($artikelIds);
     }
 
     public function insert(string $name, ?int $parentId = null, bool $istAktionsKategorie = false, ?string $beschreibung = null): int

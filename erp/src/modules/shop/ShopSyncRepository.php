@@ -87,6 +87,18 @@ class ShopSyncRepository
                    ON ash_vater.shop_id = ash.shop_id AND ash_vater.artikel_id = a.vaterartikel_id
             WHERE ash.shop_id = :shop_id
               AND ash.aktiv = 1
+              -- Ein Kind kann nie sync'en, solange sein Vater im selben Shop
+              -- nicht (mindestens) selbst eine aktive Zeile hat (siehe
+              -- ShopSyncService::syncShop(), skippt ohne vater_external_id).
+              -- Ohne diesen Filter würden genau solche für immer blockierten
+              -- Kinder das LIMIT-Fenster auffressen, ohne je Fortschritt zu
+              -- machen -- Ursache des Bugs vom 06.08.2026 ('meldet nichts zu
+              -- tun, obwohl tausende Artikel offen sind', 55 Väter ohne eigene
+              -- Zeile blockierten 679 Kinder unsichtbar). Steht ein Vater
+              -- absichtlich auf inaktiv, bleibt das Kind hier ebenfalls
+              -- ausgeschlossen -- das ist gewolltes Verhalten (siehe
+              -- findKanalStatusFuerArtikel()-Kommentar), keine Regression.
+              AND (a.vaterartikel_id IS NULL OR COALESCE(ash_vater.aktiv, 0) = 1)
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at
@@ -123,6 +135,78 @@ class ShopSyncRepository
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Vorschau-Zahlen für den Komplettabgleich (Frage "wie lange dauert das
+     * ungefähr" VOR dem Start, siehe scripts/komplettabgleich.php) -- gleiche
+     * Fälligkeits-Bedingung wie findFaelligeArtikel(), nur gezählt statt
+     * geholt, plus eine eigene Zahl für Kinder, deren Vater im Kanal nicht
+     * aktiv ist (können nicht sync'en, sollen aber sichtbar bleiben statt
+     * wieder stillschweigend zu verschwinden -- siehe findFaelligeArtikel()).
+     */
+    public function zaehleFaellige(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                SUM(CASE WHEN a.vaterartikel_id IS NULL THEN 1 ELSE 0 END) AS vaeter,
+                SUM(CASE WHEN a.vaterartikel_id IS NOT NULL AND COALESCE(ash_vater.aktiv, 0) = 1 THEN 1 ELSE 0 END) AS kinder,
+                SUM(CASE WHEN a.vaterartikel_id IS NOT NULL AND COALESCE(ash_vater.aktiv, 0) = 0 THEN 1 ELSE 0 END) AS blockierte_kinder
+            FROM artikel_shops ash
+            JOIN artikel a ON a.id = ash.artikel_id
+            LEFT JOIN artikel_shops ash_vater
+                   ON ash_vater.shop_id = ash.shop_id AND ash_vater.artikel_id = a.vaterartikel_id
+            WHERE ash.shop_id = :shop_id
+              AND ash.aktiv = 1
+              AND (
+                  ash.sync_status IN ('pending', 'error')
+                  OR a.aktualisiert_am > ash.synced_at
+                  OR EXISTS (
+                      SELECT 1 FROM artikel_bilder ab
+                      LEFT JOIN artikel_bilder_shops abs
+                             ON abs.bild_id = ab.id AND abs.shop_id = ash.shop_id
+                      WHERE ab.artikel_id = a.id
+                        AND (abs.id IS NULL OR abs.sync_status IN ('pending', 'error'))
+                  )
+                  OR EXISTS (
+                      SELECT 1 FROM lagerbestand lb
+                      JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ != 'messe'
+                      WHERE lb.artikel_id = a.id AND lb.geaendert_am > ash.synced_at
+                  )
+                  OR EXISTS (
+                      SELECT 1 FROM reservierungen r
+                      WHERE r.artikel_id = a.id AND r.geaendert_am > ash.synced_at
+                  )
+              )
+        ");
+        $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $stmt->execute();
+        $zeilen = $stmt->fetch();
+
+        $bilderStmt = $this->db->prepare("
+            SELECT COUNT(*) FROM artikel_bilder ab
+            JOIN artikel_shops ash ON ash.artikel_id = ab.artikel_id AND ash.shop_id = :shop_id AND ash.aktiv = 1
+            LEFT JOIN artikel_bilder_shops abs ON abs.bild_id = ab.id AND abs.shop_id = :shop_id2
+            WHERE abs.id IS NULL OR abs.sync_status IN ('pending', 'error')
+        ");
+        $bilderStmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $bilderStmt->bindValue('shop_id2', $shopId, PDO::PARAM_INT);
+        $bilderStmt->execute();
+
+        $abzumeldenStmt = $this->db->prepare("
+            SELECT COUNT(*) FROM artikel_shops
+            WHERE shop_id = :shop_id AND aktiv = 0 AND external_id IS NOT NULL AND sync_status = 'pending'
+        ");
+        $abzumeldenStmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $abzumeldenStmt->execute();
+
+        return [
+            'vaeter'             => (int)($zeilen['vaeter'] ?? 0),
+            'kinder'             => (int)($zeilen['kinder'] ?? 0),
+            'blockierte_kinder'  => (int)($zeilen['blockierte_kinder'] ?? 0),
+            'bilder'             => (int)$bilderStmt->fetchColumn(),
+            'abzumelden'         => (int)$abzumeldenStmt->fetchColumn(),
+        ];
     }
 
     /**
@@ -557,8 +641,41 @@ class ShopSyncRepository
             if ($this->istKategorieAusgeschlossen((int)$kat['id'], $shopId)) {
                 return true;
             }
+            if ($this->istAktionskategorieAktuellUnsichtbar((int)$kat['id'])) {
+                return true;
+            }
         }
         return false;
+    }
+
+    /**
+     * Aktionskategorien (kategorien.ist_aktions_kategorie) existieren im Shop
+     * nur, solange mindestens eine ihrer Aktionen tatsächlich läuft (gestartet=1,
+     * heute zwischen gueltig_ab/gueltig_bis) -- unabhängig vom manuellen
+     * Ausschluss-Flag oben, das bewusst eine eigene, nur vom Menschen gesetzte
+     * Einstellung bleibt. Kategorie-Term selbst wird dadurch NICHT gelöscht
+     * (gleiches Prinzip wie beim manuellen Ausschluss) -- Artikel verlieren nur
+     * die Zuordnung und bleiben über ihre reguläre(n) Kategorie(n) sichtbar.
+     */
+    private function istAktionskategorieAktuellUnsichtbar(int $kategorieId): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT k.ist_aktions_kategorie,
+                   EXISTS (
+                       SELECT 1 FROM aktionen_kategorien ak
+                       JOIN aktionen a ON a.id = ak.aktion_id AND a.gestartet = 1
+                       WHERE ak.kategorie_id = k.id
+                         AND CURDATE() BETWEEN ak.gueltig_ab AND ak.gueltig_bis
+                   ) AS hat_laufende_aktion
+            FROM kategorien k
+            WHERE k.id = :id
+        ");
+        $stmt->execute(['id' => $kategorieId]);
+        $row = $stmt->fetch();
+        if (!$row || !$row['ist_aktions_kategorie']) {
+            return false;
+        }
+        return !$row['hat_laufende_aktion'];
     }
 
     /**
@@ -606,6 +723,64 @@ class ShopSyncRepository
             VALUES (:kid, :sid, :aus)
             ON DUPLICATE KEY UPDATE ausgeschlossen = VALUES(ausgeschlossen)
         ")->execute(['kid' => $kategorieId, 'sid' => $shopId, 'aus' => $ausgeschlossen ? 1 : 0]);
+
+        $betroffeneIds = $this->findKategorieIdsMitUnterkategorien($kategorieId);
+        $platzhalter   = implode(',', array_fill(0, count($betroffeneIds), '?'));
+        $this->db->prepare("
+            UPDATE artikel a
+            JOIN artikel_kategorien ak ON ak.artikel_id = a.id
+            SET a.aktualisiert_am = NOW()
+            WHERE ak.kategorie_id IN ($platzhalter)
+        ")->execute($betroffeneIds);
+    }
+
+    /**
+     * Aktionskategorien, deren Sichtbarkeits-Fenster (Start ODER Ende, siehe
+     * aktionen_kategorien.gueltig_ab/gueltig_bis) seit dem letzten Abgleich
+     * eine Grenze überschritten hat -- ohne diese Prüfung würde eine Kategorie
+     * erst dann im Shop auftauchen/verschwinden, wenn ohnehin ein Artikel aus
+     * anderem Grund fällig wird (gleiches Muster wie bei Kategorien/Herstellern/
+     * Achsenwerten). Selbstbegrenzend über kategorie_shops.aktion_sichtbarkeit_
+     * synced_am (Migration 160, bewusst eine EIGENE Spalte -- nicht das
+     * bestehende synced_at, das den Kategorie-TERM selbst trackt und durch eine
+     * unabhängige Namens-/Beschreibungsänderung einen falschen "schon erledigt"-
+     * Stand vortäuschen könnte): nach markiereAktionskategorieUebergang() steht
+     * der Zeitstempel hinter der überschrittenen Grenze, dieselbe Grenze wird
+     * also nicht nochmal erkannt.
+     */
+    public function findFaelligeAktionskategorien(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT ak.kategorie_id
+            FROM aktionen_kategorien ak
+            JOIN aktionen a ON a.id = ak.aktion_id AND a.gestartet = 1
+            JOIN kategorien k ON k.id = ak.kategorie_id AND k.ist_aktions_kategorie = 1
+            LEFT JOIN kategorie_shops ks ON ks.kategorie_id = ak.kategorie_id AND ks.shop_id = :shop_id
+            WHERE
+                (ak.gueltig_ab <= CURDATE()
+                    AND (ks.aktion_sichtbarkeit_synced_am IS NULL OR ks.aktion_sichtbarkeit_synced_am < ak.gueltig_ab))
+                OR
+                (ak.gueltig_bis < CURDATE()
+                    AND (ks.aktion_sichtbarkeit_synced_am IS NULL OR ks.aktion_sichtbarkeit_synced_am <= ak.gueltig_bis))
+        ");
+        $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Markiert den Sichtbarkeits-Übergang einer Aktionskategorie als erledigt
+     * (Zeitstempel für findFaelligeAktionskategorien()) UND alle betroffenen
+     * Artikel (inkl. Unterkategorien) als fällig -- gleiches Prinzip wie
+     * setKategorieAusschluss().
+     */
+    public function markiereAktionskategorieUebergang(int $kategorieId, int $shopId): void
+    {
+        $this->db->prepare("
+            INSERT INTO kategorie_shops (kategorie_id, shop_id, aktion_sichtbarkeit_synced_am)
+            VALUES (:kid, :sid, NOW())
+            ON DUPLICATE KEY UPDATE aktion_sichtbarkeit_synced_am = NOW()
+        ")->execute(['kid' => $kategorieId, 'sid' => $shopId]);
 
         $betroffeneIds = $this->findKategorieIdsMitUnterkategorien($kategorieId);
         $platzhalter   = implode(',', array_fill(0, count($betroffeneIds), '?'));
@@ -720,6 +895,36 @@ class ShopSyncRepository
         ]);
     }
 
+    /**
+     * Artikel, die im Kanal deaktiviert wurden, aber schon live in WooCommerce
+     * stehen (externe_id vorhanden) -- müssen dort auf 'draft' gesetzt werden,
+     * sonst bleiben sie für immer sichtbar/kaufbar (Fund 06.08.2026:
+     * findFaelligeArtikel() verlangt ash.aktiv=1, ein deaktivierter Artikel
+     * wurde dadurch nie wieder angefasst, auch nicht zum Abmelden). Eigener,
+     * unabhängiger Durchlauf in syncShop() -- gleiches Muster wie bei
+     * Kategorien/Herstellern/Achsenwerten.
+     */
+    public function findKuerzlichDeaktivierte(int $shopId, int $limit = 50): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
+                   a.vaterartikel_id, ash_vater.external_id AS vater_external_id
+            FROM artikel_shops ash
+            JOIN artikel a ON a.id = ash.artikel_id
+            LEFT JOIN artikel_shops ash_vater
+                   ON ash_vater.shop_id = ash.shop_id AND ash_vater.artikel_id = a.vaterartikel_id
+            WHERE ash.shop_id = :shop_id
+              AND ash.aktiv = 0
+              AND ash.external_id IS NOT NULL
+              AND ash.sync_status = 'pending'
+            LIMIT :limit
+        ");
+        $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     public function markiereSynced(int $artikelShopId, string $externalId): void
     {
         $this->db->prepare("
@@ -738,14 +943,82 @@ class ShopSyncRepository
         ")->execute(['fehler' => $fehlermeldung, 'id' => $artikelShopId]);
     }
 
-    /** Kanal-Chip im Artikel-Formular: Zuweisung anlegen/aktualisieren. */
+    /**
+     * Kanal-Chip im Artikel-Formular / Massenaktion in der Artikelliste: setzt
+     * den Kanal-Wunsch für EINEN Artikel -- UND sichert bei Aktivierung
+     * zusätzlich die restliche Familie ab (Fund 06.08.2026: bisher völlig
+     * unabhängige Zeilen für Vater/Kind -- dadurch konnten Kinder aktiv
+     * werden, deren Vater nie eine eigene Zeile bekam, und blieben für immer
+     * unsichtbar 'pending'):
+     * - Kind aktiviert  -> Vater bekommt (falls er noch KEINE eigene Zeile
+     *   hat) ebenfalls eine aktive Zeile. Nur EINE Ebene nach oben, damit das
+     *   nicht versehentlich Geschwister mitzieht.
+     * - Vater aktiviert -> alle seine Kinder OHNE eigene Zeile für diesen
+     *   Shop bekommen ebenfalls eine aktive Zeile (analog zur "inkl. Kinder"-
+     *   Logik bei der Kategorie-Zuweisung, siehe bulk_kategorie_speichern.php).
+     * Deaktivieren bleibt bewusst rein lokal (kein Herunterziehen von Vater
+     * oder Geschwistern) UND eine bereits bestehende Zeile wird nie durch die
+     * Kaskade überschrieben -- ein bewusst ausgeschalteter Familienteil bleibt
+     * ausgeschaltet.
+     */
     public function upsertZuweisung(int $artikelId, int $shopId, bool $aktiv): void
+    {
+        $this->schreibeZuweisungsZeile($artikelId, $shopId, $aktiv);
+
+        if (!$aktiv) {
+            return;
+        }
+
+        $vaterId = $this->holeVaterId($artikelId);
+        if ($vaterId !== null) {
+            if (!$this->hatZuweisungsZeile($vaterId, $shopId)) {
+                $this->schreibeZuweisungsZeile($vaterId, $shopId, true);
+            }
+            return;
+        }
+
+        foreach ($this->findKinderOhneZuweisungsZeile($artikelId, $shopId) as $kindId) {
+            $this->schreibeZuweisungsZeile($kindId, $shopId, true);
+        }
+    }
+
+    private function schreibeZuweisungsZeile(int $artikelId, int $shopId, bool $aktiv): void
     {
         $this->db->prepare("
             INSERT INTO artikel_shops (artikel_id, shop_id, aktiv, sync_status)
             VALUES (:artikel_id, :shop_id, :aktiv, 'pending')
             ON DUPLICATE KEY UPDATE aktiv = VALUES(aktiv), sync_status = 'pending'
         ")->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId, 'aktiv' => $aktiv ? 1 : 0]);
+    }
+
+    private function holeVaterId(int $artikelId): ?int
+    {
+        $stmt = $this->db->prepare("SELECT vaterartikel_id FROM artikel WHERE id = :id");
+        $stmt->execute(['id' => $artikelId]);
+        $vaterId = $stmt->fetchColumn();
+        return $vaterId ? (int)$vaterId : null;
+    }
+
+    private function hatZuweisungsZeile(int $artikelId, int $shopId): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT 1 FROM artikel_shops WHERE artikel_id = :artikel_id AND shop_id = :shop_id
+        ");
+        $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId]);
+        return (bool)$stmt->fetchColumn();
+    }
+
+    private function findKinderOhneZuweisungsZeile(int $vaterId, int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT k.id FROM artikel k
+            WHERE k.vaterartikel_id = :vater_id AND k.aktiv = 1
+              AND NOT EXISTS (
+                  SELECT 1 FROM artikel_shops ash WHERE ash.artikel_id = k.id AND ash.shop_id = :shop_id
+              )
+        ");
+        $stmt->execute(['vater_id' => $vaterId, 'shop_id' => $shopId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /**

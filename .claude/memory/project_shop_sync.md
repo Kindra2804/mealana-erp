@@ -1,12 +1,82 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-05 Artikel-Kategorie-Kanal-Ausschluss (Migration 159) + Sidebar-Shop-Vorschau-Filter GEBAUT; UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt; diverse Sync-Bugs 2026-07-29 bis 2026-08-04 behoben"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien werden jetzt automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-05T13:49:42.547Z
+  modified: 2026-08-06T17:03:00.256Z
 ---
+
+## 🔍 OFFENE LIVE-TESTS (Stand 2026-08-06) — bei Gelegenheit mit Jacky nachholen
+
+Alles unten nur DB-seitig bzw. isoliert getestet, noch kein echter Durchlauf gegen einen echten WooCommerce-Shop:
+
+1. **Draft-Push bei Kanal-Deaktivierung + Reaktivierung** (2026-08-06): echten Testartikel (Standalone UND ein Kind) im Kanal deaktivieren, Cron/Komplettabgleich laufen lassen, in WooCommerce prüfen ob `status=draft` ankommt. Danach reaktivieren, nochmal syncen, prüfen ob `status=publish` zurückkommt (inkl. der frisch gefixten Kind-Variante).
+2. **Aktionskategorie-Sichtbarkeit** (2026-08-06): eine echte Aktionskategorie ihr Zeitfenster durchlaufen lassen (Start oder Ende abwarten oder künstlich `gueltig_ab`/`gueltig_bis` auf heute setzen), Sync laufen lassen, in WooCommerce prüfen dass der Kategorie-Term bestehen bleibt, aber die Produktzuordnung verschwindet/erscheint.
+3. **Pause/Fortsetzen-Schalter + Bilder-FTP-Button** (2026-08-05, aus der Shop-Synchronisierung-UI-Seite): beide Buttons selbst wurden noch nie live geklickt, nur die dahinterliegende Logik.
+
+## ✅ NEU 2026-08-06 (gleicher Tag, Fortsetzung): Reaktivierung nach Draft-Push + Aktionskategorien automatisch nach Aktions-Zeitfenster sichtbar/unsichtbar
+
+**Frage 1 von Jacky, direkt vorm Livetest des neuen Draft-Push:** Bekommt man bei der Reaktivierung ein "existiert schon"-Duplikat-Problem zurück (wie beim dokumentierten invalid_sku-Muster)? **Antwort: nein, unbegründet** -- `external_id` wird beim Deaktivieren nie gelöscht, die normale Fälligkeitsschleife erkennt sie beim Reaktivieren und ruft korrekt `aktualisiereProdukt()`/`aktualisiereVariation()` (Update) statt `erstelleProdukt()`/`erstelleVariation()` (Create) auf.
+
+**Dabei aber einen ECHTEN, neuen Gap gefunden, bevor er in Produktion aufgefallen wäre:** `baueVariationPayload()` (Kind-Payload) hat noch nie ein `status`-Feld gesetzt -- WooCommerce lässt beim PUT ein fehlendes Feld unverändert. Eine Kind-Variante, die durch den neuen Draft-Push (siehe voriger Eintrag) auf 'draft' steht, wäre bei der Reaktivierung für immer im Entwurf hängen geblieben, obwohl bei uns alles wieder aktiv aussah. **Fix:** `baueVariationPayload()` setzt jetzt immer explizit `status: publish` (die Methode wird ausschließlich aus der Fälligkeitsschleife heraus aufgerufen, die zwingend `ash.aktiv=1` voraussetzt -- publish ist an dieser Stelle immer korrekt).
+
+**Frage 2 von Jacky, größeres Thema:** Aktionskategorien (`kategorien.ist_aktions_kategorie`) sollen im Shop NUR sichtbar sein, während ihre Aktion tatsächlich läuft -- außerhalb des Zeitfensters raus, Kategorie-Term selbst darf aber ruhig in WooCommerce bestehen bleiben (Artikel hängen immer zusätzlich noch an mind. einer regulären Kategorie, verschwinden also nicht komplett). Sonderpreise während der Aktion laufen über den bereits bestehenden, datumsgefilterten Preis-Mechanismus (`artikel_preise` mit `gueltig_ab`/`gueltig_bis`, wie in `ArtikelRepository` schon lange verwendet) -- **nicht neu gebaut**, nur die Kategorie-Sichtbarkeit war die eigentliche Lücke.
+
+**Gebaut (Migration 160: `kategorie_shops.aktion_sichtbarkeit_synced_am`, bewusst eine EIGENE Spalte statt Wiederverwendung des bestehenden `synced_at` -- das trackt den Kategorie-TERM selbst und hätte durch eine unabhängige Namens-/Beschreibungsänderung einen falschen "schon erledigt"-Stand vortäuschen können):**
+1. **`ShopSyncRepository::istAktionskategorieAktuellUnsichtbar()`** (privat) -- prüft `ist_aktions_kategorie=1` UND ob AKTUELL eine Aktion mit `gestartet=1` läuft (`CURDATE()` zwischen `gueltig_ab`/`gueltig_bis`). In `istKategoriePfadAusgeschlossen()` per OR eingehängt, NEBEN (nicht anstelle) dem bestehenden manuellen `ausgeschlossen`-Flag -- bewusst getrennt gehalten, damit die manuelle "Shop-Sichtbarkeit"-Checkbox im Kategorie-Modal weiterhin nur den von Jacky selbst gesetzten Zustand zeigt, nicht einen durch die Aktion "automatisch" wirkenden.
+2. **`findFaelligeAktionskategorien(shopId)`**: erkennt Start- ODER Ende-Grenzübertritte seit dem letzten Abgleich (selbstbegrenzend über die neue Spalte -- nach einmaligem Markieren wird dieselbe Grenze nicht nochmal erkannt, erst die nächste).
+3. **`markiereAktionskategorieUebergang(kategorieId, shopId)`**: stempelt die neue Spalte + markiert alle betroffenen Artikel (inkl. Unterkategorien, wie bei `setKategorieAusschluss()`) als fällig.
+4. **`ShopSyncService::syncShop()`**: neuer fünfter unabhängiger Durchlauf, läuft bewusst VOR `findFaelligeArtikel()` (nicht danach wie die anderen vier), damit frisch markierte Artikel noch im selben Lauf mitgenommen werden, nicht erst beim nächsten Tick.
+
+**Getestet (read-only + eine rückgerollte Transaktion gegen echte Daten, kein WC-Call):** Vier reale Aktions-Kategorien in der DB gefunden (135 "Sommer 2026"/137 "Mai 2026", beide `gestartet=1` und abgelaufen; 136/143 `gestartet=0`, nie scharf). `istKategoriePfadAusgeschlossen()` liefert korrekt `true` für 135/137, `false` für eine normale Kategorie. `findFaelligeAktionskategorien(1)` liefert vor jeder Markierung `[135, 137]`; nach `markiereAktionskategorieUebergang(135, 1)` korrekt nur noch `[137]` (Selbstbegrenzung funktioniert). Den Artikel-Bump selbst konnte ich nicht gegen 135/137 prüfen (beide 0 verknüpfte Artikel, offenbar alte Test-/Demodaten) -- die Bump-SQL ist aber eine reine Kopie der bereits live bewährten `setKategorieAusschluss()`-Logik, kein neuer Code-Pfad.
+
+**Noch offen:** Kompletter Live-Test fehlt für BEIDE Themen (Draft-Push-Reaktivierung UND Aktionskategorie-Übergang) -- nächster sinnvoller Schritt zusammen mit Jacky: einen echten Testartikel deaktivieren/reaktivieren und eine echte Aktionskategorie ihr Zeitfenster durchlaufen lassen, dabei in WooCommerce direkt den Status/die Kategorie-Zuordnung prüfen.
+
+## ✅ NEU 2026-08-06 (gleicher Tag, Fortsetzung des verwaiste-Väter-Themas): Kanal-Deaktivierung wurde bisher NIE an den Shop übertragen + Artikelliste zeigt jetzt versteckte Kanal-Zustände
+
+**Auslöser:** Jacky fragte nach, ob eine explizite Kind-Deaktivierung eigentlich an WooCommerce durchgereicht wird. Antwort war: **Nein, bisher nie** -- `findFaelligeArtikel()` verlangt zwingend `ash.aktiv=1`, ein auf inaktiv gesetzter Artikel wird deshalb NIE WIEDER vom Sync angefasst. Ein bereits live stehendes Produkt/eine Variation bleibt nach dem Deaktivieren in unserem ERP für immer exakt so sichtbar/kaufbar im Shop stehen, wie es zuletzt war -- kein Fehler, kein Hinweis, einfach stiller Stillstand. Jacky entschied sich für "Auf Entwurf setzen" (WooCommerce `status=draft`) als gewünschtes Verhalten.
+
+**Gebaut:**
+1. **`ShopSyncRepository::findKuerzlichDeaktivierte(shopId, limit=50)`**: findet Zeilen mit `aktiv=0 AND external_id IS NOT NULL AND sync_status='pending'` (letzteres wird von `upsertZuweisung()`/`schreibeZuweisungsZeile()` bei JEDEM Wechsel gesetzt, auch beim Deaktivieren -- war schon vorher so, wurde nur nie ausgewertet).
+2. **`ShopSyncService::syncShop()`**: vierter unabhängiger Durchlauf (gleiches Muster wie Kategorien/Hersteller/Achsenwerte) -- pusht `status=draft` an `aktualisiereProdukt()`/`aktualisiereVariation()`, danach `markiereSynced()` (sync_status zurück auf 'synced', **`aktiv` bleibt unangetastet** -- wird der Artikel später reaktiviert, greift die normale Fälligkeitslogik sofort wieder, external_id bleibt erhalten für die Reaktivierung).
+3. **`zaehleFaellige()`** liefert jetzt zusätzlich `abzumelden` (Anzahl offener Draft-Pushes), `komplettabgleich.php` zeigt es in der Fälligkeits-Zeile mit an.
+
+**Getestet (Repository-Ebene, mit Transaktion+Rollback gegen echte Artikel #149 [Standalone] und #234 [Kind von #178]):** `findKuerzlichDeaktivierte()` findet den simuliert deaktivierten Artikel in beiden Fällen korrekt, inkl. korrekt aufgelöster `vater_external_id` beim Kind. **Noch NICHT live gegen WooCommerce getestet** (bewusst keine echten API-Calls gegen den Produktivshop ohne Jacky) -- nächster Schritt: einen echten Testartikel deaktivieren, Cron/Komplettabgleich laufen lassen, in WooCommerce den Status prüfen.
+
+## ✅ NEU 2026-08-06: Artikelliste zeigt jetzt "versteckte" Kanal-Zustände (graue Chips + Vater-Warnhinweis)
+
+**Auslöser:** Beim Nachsehen der 20 (später korrigiert: 11, davon 7 echte) "blockierten Kinder" aus dem verwaiste-Väter-Fix bemerkte Jacky: die Artikelliste zeigte bei diesen Kindern GAR NICHTS an (kein grüner Chip), obwohl sie in der DB weiterhin `aktiv=1` für den Kanal waren -- der Vater war nur explizit deaktiviert. Das bestehende Vater/Kind-Gating (`findKanalStatusFuerArtikel()`, "Kind behält eigenen Wunsch-Status") macht das genau so, aber ohne jede Sichtbarkeit sah es wie eine echte Kanal-Abmeldung aus, obwohl es keine war.
+
+**Gebaut:**
+- `ArtikelRepository::findKinderFuerListe()`: neue Spalte `shop_kanaele_blockiert` (Kind aktiv=1, aber Vater dort nicht aktiv).
+- `ArtikelRepository::findAll()` (Vater-Zeile): neue Spalte `kinder_blockiert_kanaele` (welche Kanäle haben Kinder, die durch den deaktivierten Vater blockiert sind).
+- `artikel/liste.php`: `renderShopChips()` rendert blockierte Kanäle jetzt zusätzlich als hellgrauen `.kc-blockiert`-Chip (CSS in `components.css`) mit Tooltip. Vater-Zeile bekommt einen orangen "!"-Warnbadge (`background:#B45309`, um sich vom blauen Info-Badge zu unterscheiden), Tooltip listet die betroffenen Kanäle.
+- Mit echten Daten getestet (Vater #2922 "Calzasocks", 8 Kinder alle blockiert durch Shop S1): Query liefert korrekt `kinder_blockiert_kanaele=S1` am Vater und `shop_kanaele_blockiert=S1` an allen Kindern.
+
+**Noch nicht im Browser bestätigt** (kein Login-Zugriff in dieser Session) -- nur Repository-Queries direkt getestet + `php -l`. Jacky sollte die Artikelliste (gefiltert auf z.B. "AD-KS") einmal ansehen und die Chip/Badge-Optik bestätigen.
+
+## 🟢 BEHOBEN 2026-08-06 (strukturell, nicht nur Datenfix): "Komplettabgleich meldet nichts zu tun, obwohl tausende Artikel offen sind"
+
+**Auslöser:** Jacky meldete, der manuelle Komplettabgleich für Shop "mealana" liefe durch (zwei volle 500er-Batches) und melde `0 erfolgreich, 0 Fehler`, obwohl er wusste, dass an dem Tag ein großer Kurzwaren-Import (Knöpfe/Reißverschlüsse/Perlen, ~4.900 neue Artikel) reingekommen war.
+
+**Root Cause (drittes Auftreten desselben Musters, siehe 2026-08-04-Eintrag unten -- diesmal 55 statt 111 Väter, aber strukturell behoben statt nur Daten repariert):** `findFaelligeArtikel()` verlangt zwingend eine eigene `artikel_shops`-Zeile für den Vater, bevor ein Kind sync'en kann (`ShopSyncService.php:234`, `continue` ohne Fehler/Erfolg-Zählung). 55 Väter hatten diese Zeile nie bekommen, obwohl ihre insgesamt 679 Kinder längst aktiv waren -- diese Kinder blieben für immer 'pending', füllten aber bei JEDEM Lauf die komplette 500er-LIMIT-Fensterbreite auf und verdrängten dadurch die tatsächlich bearbeitbaren fälligen Artikel. Daher meldete der Lauf fälschlich "nichts zu tun".
+
+**Zwei getrennte Ursachen-Ebenen identifiziert:**
+1. Ein zweiter, unabhängiger Fund am selben Tag: ~300 Väter-Familien (~5.000 Artikel) aus dem heutigen Kurzwaren-Import hatten **gar keine** `artikel_shops`-Zeile (weder Vater noch Kind) -- kein Bug, sondern schlicht noch nicht dem Kanal zugewiesen (Jacky bestätigt: "nicht alle Artikel kommen in den Shop", Absicht).
+2. Die eigentliche Bug-Ursache: Jackys Workflow war "Väter per Multiselect wählen → Kanal zuweisen" -- die Massenaktion (`bulk_shop_speichern.php`) UND der Einzel-Toggle (`kanal_ajax.php`) hatten aber noch nie irgendeine Verknüpfung zwischen Vater und Kind -- anders als die Kategorie-Bulk-Zuweisung, die bewusst "inkl. Kinder" arbeitet (Vorbild-Pattern). Weder Endpunkt loggte bisher irgendwas (`Logger::log()` fehlte komplett) -- die exakte Klick-Historie ließ sich deshalb nicht mehr forensisch rekonstruieren, nur der Code-Zustand.
+
+**Datenfix (sofort):** Die 55 verwaisten Väter über `ShopSyncRepository::upsertZuweisung()` (aktiv=1) nachgetragen -- 679 Kinder sofort entblockt. Verifiziert: 0 verwaiste Väter übrig.
+
+**Struktureller Fix (verhindert Neuauftreten, drei Teile):**
+1. **`ShopSyncRepository::upsertZuweisung()` kaskadiert jetzt bei Aktivierung** (nur bei `$aktiv=true`, Deaktivieren bleibt rein lokal): Kind aktiviert → Vater bekommt automatisch eine Zeile, FALLS er noch keine hat (nur eine Ebene nach oben, zieht nie Geschwister mit). Vater aktiviert → alle seine Kinder OHNE eigene Zeile bekommen ebenfalls eine (analog zur Kategorie-Zuweisung-Konvention). Bereits bestehende (auch bewusst deaktivierte) Zeilen werden nie überschrieben. Mit einer Transaktion+Rollback gegen echte Artikel (Vater #150, 68 Kinder) verifiziert: Kind-Aktivierung zieht exakt den Vater nach (Bruder unangetastet), Vater-Aktivierung zieht alle 68 Kinder nach.
+2. **`findFaelligeArtikel()` schließt jetzt Kinder aus, deren Vater im Kanal nicht aktiv ist** (`AND (a.vaterartikel_id IS NULL OR COALESCE(ash_vater.aktiv,0)=1)`) -- verhindert, dass so ein Fall (falls er trotz Fix 1 nochmal auftritt, z.B. über einen künftigen Importpfad, der `upsertZuweisung()` nicht nutzt) je wieder die Batches verstopft. Ein bewusst deaktivierter Vater blockiert seine Kinder weiterhin korrekt (kein Regressionsrisiko, entspricht der dokumentierten Gating-Absicht in `findKanalStatusFuerArtikel()`).
+3. **Neue `ShopSyncRepository::zaehleFaellige(shopId)`** liefert Väter/Kinder/Bilder/blockierte-Kinder-Zahlen OHNE Batch-Limit -- `scripts/komplettabgleich.php` druckt das jetzt vor dem Start UND nach jedem Durchlauf (Jackys Wunsch: vorab abschätzen können, wie lange ein Lauf dauert, und Fortschritt über Durchläufe hinweg sehen). Live gegen Shop 1 getestet nach dem Datenfix: 906 Väter, 2029 Kinder, 2335 Bilder fällig, nur noch 20 "blockierte Kinder" übrig -- gegengeprüft: die sind alle durch bewusst deaktivierte Väter (echte, vorhandene Zeile mit `aktiv=0`) blockiert, keine neuen verwaisten Fälle.
+
+**Nebenbei behoben:** Logging fehlte komplett auf beiden Kanal-Zuweisungs-Endpunkten (`kanal_ajax.php`, `bulk_shop_speichern.php`) -- beide loggen jetzt (`shop.kanal_toggle` / `shop.kanal_massenzuweisung`), damit ein künftiges "wie konnte das passieren" tatsächlich rekonstruierbar ist.
+
+**Bewusst NICHT gemacht:** Kein UI-Hinweis beim Toggle/Bulk-Action, der VOR dem Speichern warnt ("X Kinder werden nicht mitgenommen") -- die Kaskade selbst löst das Problem bereits automatisch, ein zusätzlicher Warnhinweis wäre nur noch kosmetisch. Die ~300 Kurzwaren-Väter-Familien ohne jede Kanal-Zuweisung wurden bewusst NICHT automatisch zugewiesen (das ist Jackys manuelle Entscheidung, welche Artikel in welchen Shop kommen).
 
 ## ✅ GEBAUT 2026-08-05: Artikel-eigener Kategorie/Kanal-Ausschluss (Migration 159) — Babsi-Wunsch
 

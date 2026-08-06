@@ -202,10 +202,27 @@ function katvSpeichern() {
     fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body })
         .then(function (r) { return r.json(); })
         .then(function (d) {
-            if (d.erfolg) window.location.reload();
+            if (d.erfolg) { katvScrollZielMerken(editId || d.id); window.location.reload(); }
             else fehler.textContent = d.fehler || 'Fehler beim Speichern';
         });
 }
+
+// Merkt sich die zuletzt bearbeitete/verschobene Kategorie über den Reload
+// hinweg (window.location.reload() springt sonst immer ganz nach oben).
+function katvScrollZielMerken(id) {
+    if (id) sessionStorage.setItem('katv_scroll_id', id);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    var id = sessionStorage.getItem('katv_scroll_id');
+    if (!id) return;
+    sessionStorage.removeItem('katv_scroll_id');
+    var zeile = document.querySelector('.katv-zeile[data-id="' + id + '"]');
+    if (!zeile) return;
+    zeile.scrollIntoView({ block: 'center' });
+    zeile.classList.add('katv-hervorgehoben');
+    setTimeout(function () { zeile.classList.remove('katv-hervorgehoben'); }, 2000);
+});
 
 function katLoeschenVorschau(id, name) {
     katvLoeschId       = id;
@@ -282,7 +299,7 @@ function katSortieren(id, richtung) {
     })
     .then(function (r) { return r.json(); })
     .then(function (d) {
-        if (d.erfolg) window.location.reload();
+        if (d.erfolg) { katvScrollZielMerken(id); window.location.reload(); }
         else alert(d.fehler || 'Fehler beim Sortieren');
     });
 }

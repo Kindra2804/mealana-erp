@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../../src/core/logger.php';
 require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
 
 header('Content-Type: application/json');
@@ -27,5 +28,12 @@ $repo = new ShopSyncRepository();
 foreach ($artikelIds as $artikelId) {
     $repo->upsertZuweisung($artikelId, $shopId, $aktiv);
 }
+
+Logger::log('shop.kanal_massenzuweisung', 'shops', $shopId, [
+    'shop_id'      => $shopId,
+    'aktiv'        => $aktiv,
+    'anzahl'       => count($artikelIds),
+    'ids_auszug'   => array_slice($artikelIds, 0, 50),
+]);
 
 echo json_encode(['erfolg' => true, 'anzahl' => count($artikelIds)]);

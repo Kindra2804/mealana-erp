@@ -370,15 +370,28 @@ function renderShopChips(array $artikel, array $shopNamenById): string
 {
     // K-Kanäle (Kassen) werden nicht angezeigt — sie gelten immer für alle Artikel.
     // S-Kanäle (Shops) kommen aus artikel_shops, Code "S{shop_id}" (siehe ArtikelRepository::findAll()/findKinderFuerListe()).
-    if (empty($artikel['shop_kanaele'])) return '–';
     $html = '';
-    foreach (explode(',', $artikel['shop_kanaele']) as $code) {
+    foreach (explode(',', $artikel['shop_kanaele'] ?? '') as $code) {
         $code = trim($code);
+        if ($code === '') continue;
         $shopId = (int) substr($code, 1);
         $name = $shopNamenById[$shopId] ?? $code;
         $html .= '<span class="kc kc-s' . $shopId . '" title="' . htmlspecialchars($name) . '">' . htmlspecialchars($code) . '</span>';
     }
-    return $html;
+    // Nur bei Kind-Zeilen befüllt (siehe ArtikelRepository::findKinderFuerListe()):
+    // Kind selbst ist für den Kanal aktiv, aber unsichtbar, weil der Vater es dort
+    // nicht ist -- hellgrau statt farbig, damit der gespeicherte Wunsch nicht
+    // einfach spurlos verschwindet (Fund 06.08.2026).
+    foreach (explode(',', $artikel['shop_kanaele_blockiert'] ?? '') as $code) {
+        $code = trim($code);
+        if ($code === '') continue;
+        $shopId = (int) substr($code, 1);
+        $name = $shopNamenById[$shopId] ?? $code;
+        $html .= '<span class="kc kc-blockiert" title="' . htmlspecialchars($name)
+            . ' — für diesen Kanal aktiv, aber unsichtbar, weil der Vater dort nicht aktiv ist">'
+            . htmlspecialchars($code) . '</span>';
+    }
+    return $html !== '' ? $html : '–';
 }
 
 /**
@@ -675,6 +688,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php endif; ?>
                         <?php if ($hatZustandsArtikel): ?>
                             <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
+                        <?php endif; ?>
+                        <?php if (!empty($a['kinder_blockiert_kanaele'])): ?>
+                            <?php
+                                $blockierteNamen = array_map(
+                                    fn($c) => $shopNamenById[(int)substr(trim($c), 1)] ?? trim($c),
+                                    explode(',', $a['kinder_blockiert_kanaele'])
+                                );
+                            ?>
+                            <span class="warn-badge" style="background:#B45309" title="Vater hier deaktiviert, aber Kinder sind noch aktiv im Kanal: <?= htmlspecialchars(implode(', ', $blockierteNamen)) ?>">!</span>
                         <?php endif; ?>
                     </td>
                     <?php foreach ($aktiveSpalten as $sp_key): echo spalteVaterTd($sp_key, $a, $bstKlasse, $bstTitle, $statusChips, $hatTeureresKind, $shopNamenById); endforeach; ?>

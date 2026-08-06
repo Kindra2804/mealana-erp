@@ -63,6 +63,15 @@ function renderVerwaltungsKnoten(array $knoten, int $tiefe, int $pos, int $total
             <?= $istBlatt ? '' : '▼' ?>
         </span>
 
+        <?php $bildPfad = $knoten['bild_pfad'] ?? ''; ?>
+        <?php if ($bildPfad): ?>
+            <img class="katv-bild-thumb"
+                 src="<?= BASE_PATH ?>/uploads/kategorien/<?= $knoten['id'] ?>/<?= htmlspecialchars($bildPfad) ?>"
+                 alt="" title="Kategoriebild">
+        <?php else: ?>
+            <span class="katv-bild-fehlt" title="Kein Bild hinterlegt">–</span>
+        <?php endif; ?>
+
         <span class="katv-name"><?= htmlspecialchars($knoten['name']) ?><?= $uhrsymbol ?></span>
 
         <?php if ($anzahl > 0): ?>
