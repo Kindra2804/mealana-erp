@@ -1,12 +1,38 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-07 shop-gefilterter Bilder-Export fürs FTP (nur Artikel im jeweiligen Kanal, spart Datenvolumen bei kleineren Shops) + Live-Fortschrittsanzeige übersteht jetzt Seiten-Reload (Migration 161); ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-07 Abend: WooCommerce-Batch-Sync (Produkte+Variationen über /products/batch statt einzeln, ~3-6x schneller) + Reconcile-Tool + Bilder-Teilexport per UI-Button startbar; ✅ 2026-08-07 shop-gefilterter Bilder-Export fürs FTP + Live-Fortschrittsanzeige übersteht Seiten-Reload (Migration 161); ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-07T09:19:29.917Z
+  modified: 2026-08-07T14:19:07.587Z
 ---
+
+## ✅ GEBAUT 2026-08-07 (Abend): WooCommerce-Batch-Sync — Produkte/Variationen gebündelt statt einzeln + zwei Wartungs-Tools per UI startbar
+
+**Auslöser:** Jacky fragte, ob WooCommerces Batch-Endpoint (`/products/batch`, bis 100 Items/Request) einen Performance-Boost bringen würde gegenüber dem bisherigen 1-Request-pro-Artikel-Sync (~2s/Artikel).
+
+**Gebaut:**
+- `WooCommerceClient::batchProdukte()` (`/products/batch`) + `batchVariationen()` (`/products/{id}/variations/batch`).
+- `ShopSyncService::syncShop()` umgebaut: erst ALLE fälligen Väter/Standalone dieser Runde gebatcht (Achsen/Bilder/Hersteller-Sync bleiben Einzel-Calls, nur der finale Create/Update-Call ist gebündelt), DANACH Kinder gruppiert nach Vater (ein Vater mit >BATCH_GROESSE Kindern bekommt mehrere Chunks). Antwort-Arrays behalten Anfrage-Reihenfolge bei (WooCommerce-Doku), Matching per Index zurück auf die ursprüngliche Zeile.
+- `BATCH_GROESSE` als Property (nicht const) + `setBatchGroesse()` -- testbar ohne Code-Änderung, Default nach echtem Test auf **75** gesetzt.
+- Fortschritts-Callback feuert wieder PRO ARTIKEL (nicht erst am Chunk-Ende) -- sonst bei bilderlastigen Chunks minutenlang keine Rückmeldung im UI-Log.
+
+**Zwei echte Bugs beim Live-Testen gefunden (beide vor Produktiveinsatz behoben):**
+1. **9-Minuten-Hänger**: `syncWerteFuerDimension()` lud die komplette Achsenwert-Terms-Liste eines Attributs UNGECACHT bei jedem Vater neu -- bei "Farbe" mit 8187 Termen (100/Seite paginiert) ~80 Requests PRO Vater. Fix: `$attributTermsCache` (Property, pro Sync-Lauf), neue `holeAttributTerms()`.
+2. **Fataler Crash bei Timeout/502**: Der Batch-Versand hatte kein `catch (Throwable)` (nur `RateLimitException`) -- ein Timeout riss das ganze Skript runter statt nur den Chunk als Fehler zu markieren. Neue `markiereBatchAlsUnklar()` fängt das ab.
+
+**Wichtigster Fund, mit echten Daten bestätigt (zweimal):** Ein Timeout (curl, 20s) oder ein 502 (nginx-Upstream-Timeout) beendet nur UNSERE Verbindung -- WooCommerce/WordPress verarbeitet serverseitig oft trotzdem fertig. Bei zwei Vorfällen (28 von 50 Väter, dann 113 weitere) waren die als "error" markierten Artikel tatsächlich schon live in WooCommerce, nur unsere DB wusste nichts davon. Per Hand mit echter WC-ID nachgetragen (kein Duplikat, WooCommerces SKU-Eindeutigkeit hätte einen blinden Retry ohnehin nur mit "invalid_sku" abgelehnt, nie ein echtes Duplikat erzeugt). `WooCommerceClient::request()` hat jetzt einen eigenen, größeren Timeout für Batch-Calls (`BATCH_TIMEOUT_SEKUNDEN=90`, getrennt vom 20s-Default für Einzel-Requests).
+
+**Batch-Größe live gegen echten Shop getestet** (`indra-design.at`, ohne Bilder um den reinen Produkt-Batch zu isolieren): 50 UND 75 liefen je zweimal fehlerfrei durch (2×225 bei 75, 0 Fehler). Ein scheinbarer Geschwindigkeitsunterschied zwischen den Testläufen lag NICHT an der Batch-Größe, sondern daran, wie viele neue Achsenwerte im jeweiligen Backlog-Ausschnitt lagen (0 vs. 100) -- wichtige Erkenntnis für künftige Batch-Tests: immer mitprüfen, ob `varianten_achse_werte_shops` im Testfenster viele neue Zeilen bekommt, sonst verfälscht das den Vergleich.
+
+**Zwei neue dauerhafte Wartungs-Tools, per UI-Button startbar (gleiches Hintergrundprozess-Muster wie Komplettabgleich/Bilder-FTP, gleiche `bulk_import_aktiv`-Sperre):**
+- **"Fehler abgleichen"** (`scripts/reconcile_fehler.php`, `ShopSyncService::reconciliereOffeneFehler()`): prüft jede `error`-Zeile ohne `external_id` per SKU-Suche (`sucheProduktNachSku()`/`sucheVariationNachSku()`, neue Client-Methoden) gegen WooCommerce, trägt echte Treffer nach. Badge an der Karte zeigt die Anzahl offener Fehler. **Von Jacky im Browser getestet und bestätigt.**
+- **"Bilder-Teilexport starten"** (`ShopSyncService::exportiereBilderFuerShop()`): macht das bestehende `scripts/bilder_export_fuer_shop.php` (kleinere Shops mit Teilsortiment, spart FTP-Datenvolumen) klickbar statt nur CLI. CLI-Skript ist jetzt dünner Wrapper um dieselbe Service-Methode. **Nur per CLI getestet** (12752 Ordner, 17458 Bilder, 1,36 GB gegen echte Daten) -- Browser-Klick von Jacky noch offen ("probiere ich später").
+
+**UI-Architektur-Hinweis für später:** Die ganze Shop-Sync-Kartenliste (`einstellungen/index.php`, Tab "Shop-Synchronisierung") ist schon von Anfang an mehrshop-fähig -- `foreach ($syncShops as $sh)` über ALLE Shops mit vollständiger WC-Anbindung (URL+Key+Secret im Tab "Kanäle"), jede Karte inkl. aller vier Aktions-Buttons/Badges/Log/Aktivitäten ist über `data-shop-id` gekapselt. Sobald bio-wolle/sockenwolle Zugangsdaten bekommen, erscheint automatisch eine weitere Karte, kein Code nötig.
+
+**Getestet:** `php -l` auf allen geänderten/neuen Dateien. Live gegen `indra-design.at`: mehrere Komplettabgleich-Läufe (mit/ohne Bilder, Batch 10/50/75), Reconcile-CLI (0 offene Fehler, sauber), Bilder-Teilexport-CLI (echter Lauf). Reconcile-Button im Browser von Jacky bestätigt. Bilder-Teilexport-Button noch nicht geklickt.
 
 ## ✅ GEBAUT 2026-08-07: Shop-gefilterter Bilder-Export fürs FTP (`scripts/bilder_export_fuer_shop.php`)
 

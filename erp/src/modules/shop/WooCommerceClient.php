@@ -115,9 +115,57 @@ class WooCommerceClient
         return $this->request('POST', '/products', [], $daten);
     }
 
+    /**
+     * Sucht ein Produkt anhand der SKU -- für den Abgleich, wenn unklar ist,
+     * ob ein per Batch angelegtes Produkt trotz Timeout/502 doch schon
+     * existiert (siehe ShopSyncService::reconciliereOffeneFehler()).
+     * @return ?int Die externe Produkt-ID, oder null wenn keine SKU-Übereinstimmung existiert.
+     */
+    public function sucheProduktNachSku(string $sku): ?int
+    {
+        $treffer = $this->request('GET', '/products', ['sku' => $sku]);
+        return isset($treffer[0]['id']) ? (int)$treffer[0]['id'] : null;
+    }
+
+    /** Gleiches Prinzip wie sucheProduktNachSku(), aber für eine Variation unter einem bekannten Vater-Produkt. */
+    public function sucheVariationNachSku(string $parentId, string $sku): ?int
+    {
+        $treffer = $this->request('GET', "/products/$parentId/variations", ['sku' => $sku]);
+        return isset($treffer[0]['id']) ? (int)$treffer[0]['id'] : null;
+    }
+
     public function aktualisiereProdukt(string $externalId, array $daten): array
     {
         return $this->request('PUT', '/products/' . $externalId, [], $daten);
+    }
+
+    /**
+     * Legt/aktualisiert bis zu ~30 Produkte (Väter/Standalone) in einem
+     * einzigen HTTP-Request an (WooCommerce erlaubt laut Doku bis zu 100 --
+     * der genaue Wert ist bei uns in ShopSyncService::BATCH_GROESSE bewusst
+     * konservativer gewählt, siehe Kommentar dort).
+     *
+     * @param array{create?:array,update?:array} $daten
+     * @return array{create?:array,update?:array} Antwort-Arrays behalten die
+     *         Reihenfolge der Anfrage bei -- ein fehlgeschlagenes Item hat an
+     *         seiner Position statt der Produktdaten nur ein 'error'-Objekt,
+     *         der Rest des Batches läuft trotzdem durch (kein Alles-oder-nichts).
+     */
+    // Erfahrungswert 2026-08-07: WooCommerce schaffte ~28 Produkte in den ersten
+    // 20s (Standard-Timeout) -- 90s lässt auch einen vollen 50er-Batch inkl.
+    // Netzwerk-Jitter sicher durchlaufen, statt am eigentlichen Server-Tempo
+    // vorbei künstlich abzubrechen.
+    private const BATCH_TIMEOUT_SEKUNDEN = 90;
+
+    public function batchProdukte(array $daten): array
+    {
+        return $this->request('POST', '/products/batch', [], $daten, self::BATCH_TIMEOUT_SEKUNDEN);
+    }
+
+    /** Gleiches Prinzip wie batchProdukte(), aber für die Variationen EINES Vater-Produkts. */
+    public function batchVariationen(string $parentId, array $daten): array
+    {
+        return $this->request('POST', "/products/$parentId/variations/batch", [], $daten, self::BATCH_TIMEOUT_SEKUNDEN);
     }
 
     public function erstelleKategorie(array $daten): array
@@ -303,8 +351,21 @@ class WooCommerceClient
         return $daten ?? [];
     }
 
-    /** @throws RuntimeException bei HTTP-Fehler oder Verbindungsproblem */
-    private function request(string $methode, string $pfad, array $query = [], ?array $body = null): array
+    /**
+     * @param int $timeoutSekunden Default 20 passt für normale Einzel-Requests.
+     *        Batch-Requests (siehe batchProdukte()/batchVariationen()) brauchen
+     *        mehr -- Fund 2026-08-07: ein 50er-Batch lief nach 20s in den
+     *        Timeout, WooCommerce hatte bis dahin aber schon 28 der 50 Produkte
+     *        fertig angelegt und lief serverseitig einfach weiter (ein
+     *        Client-Timeout beendet die Verbindung, nicht die Verarbeitung auf
+     *        der Gegenseite). Für unseren Client sah das wie ein Totalausfall
+     *        aus -- ohne Rückmeldung, welche der 50 Items durch waren, hätte
+     *        ein Retry dieselben SKUs nochmal als "create" losgeschickt
+     *        (WooCommerce hätte das dank SKU-Eindeutigkeit zwar abgelehnt statt
+     *        echte Duplikate anzulegen, aber eben als Fehler statt als Erfolg).
+     * @throws RuntimeException bei HTTP-Fehler oder Verbindungsproblem
+     */
+    private function request(string $methode, string $pfad, array $query = [], ?array $body = null, int $timeoutSekunden = 20): array
     {
         $query['consumer_key'] = $this->key;
         $query['consumer_secret'] = $this->secret;
@@ -315,7 +376,7 @@ class WooCommerceClient
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_USERAGENT => self::USER_AGENT,
             CURLOPT_CUSTOMREQUEST => $methode,
-            CURLOPT_TIMEOUT => 20,
+            CURLOPT_TIMEOUT => $timeoutSekunden,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
             CURLOPT_HEADER => true,
         ]);

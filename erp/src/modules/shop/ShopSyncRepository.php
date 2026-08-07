@@ -976,6 +976,31 @@ class ShopSyncRepository
     }
 
     /**
+     * 'error'-Zeilen ohne external_id -- genau die Fälle, bei denen unklar ist,
+     * ob WooCommerce das Objekt trotz einer bei uns als Fehler angekommenen
+     * Antwort (Timeout/502) doch schon angelegt hat (siehe
+     * ShopSyncService::reconciliereOffeneFehler()). Eine Zeile MIT external_id
+     * war ein Update, kein Create -- da gibt es kein Duplikat-Risiko, darum
+     * hier bewusst ausgeschlossen.
+     */
+    public function findOffeneFehlerOhneExternalId(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT ash.id AS artikel_shop_id, a.id AS artikel_id, a.artikelnummer,
+                   a.vaterartikel_id, ash_vater.external_id AS vater_external_id
+            FROM artikel_shops ash
+            JOIN artikel a ON a.id = ash.artikel_id
+            LEFT JOIN artikel_shops ash_vater
+                   ON ash_vater.shop_id = ash.shop_id AND ash_vater.artikel_id = a.vaterartikel_id
+            WHERE ash.shop_id = :shop_id AND ash.sync_status = 'error' AND ash.external_id IS NULL
+            ORDER BY a.id
+        ");
+        $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Kanal-Chip im Artikel-Formular / Massenaktion in der Artikelliste: setzt
      * den Kanal-Wunsch für EINEN Artikel -- UND sichert bei Aktivierung
      * zusätzlich die restliche Familie ab (Fund 06.08.2026: bisher völlig

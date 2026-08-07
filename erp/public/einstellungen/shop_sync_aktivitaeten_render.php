@@ -22,6 +22,10 @@ function renderShopSyncAktivitaetenZeilen(array $laeufe): string
             $html .= 'Cron-Fehler: ' . htmlspecialchars($d['fehler'] ?? '');
         } elseif ($lauf['aktion'] === 'shop.bilder_ftp_gestartet') {
             $html .= 'Bilder-Verknüpfung (FTP) manuell gestartet';
+        } elseif ($lauf['aktion'] === 'shop.reconcile_gestartet') {
+            $html .= 'Fehler-Abgleich gestartet';
+        } elseif ($lauf['aktion'] === 'shop.bilder_export_gestartet') {
+            $html .= 'Bilder-Teilexport gestartet';
         } else {
             $html .= 'Komplettabgleich manuell gestartet (Batch ' . (int)($d['batch_groesse'] ?? 0)
                 . (empty($d['mit_bildern']) ? ', ohne Bilder' : '') . ')';

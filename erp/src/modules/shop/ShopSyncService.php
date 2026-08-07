@@ -21,6 +21,14 @@ require_once __DIR__ . '/../achsen/AchsenRepository.php';
  * eine WooCommerce-Produkt-ID hat -- `findFaelligeArtikel()` liefert Väter
  * darum immer vor ihren Kindern, ein Kind ohne fertigen Vater wird in diesem
  * Durchlauf übersprungen und bleibt `pending` für den nächsten.
+ *
+ * **Batch statt Einzel-Requests (seit 2026-08-07):** Die eigentlichen
+ * Produkt-/Variations-Objekte werden in Häppchen von BATCH_GROESSE über
+ * `/products/batch` bzw. `/products/{id}/variations/batch` geschickt statt
+ * einzeln (~2 Sek. Netzwerk-Overhead pro Artikel bei Einzel-Requests). Erst
+ * ALLE fälligen Väter dieser Runde, danach die Kinder gruppiert nach Vater --
+ * Nebeneffekte pro Artikel (Achsen/Bilder/Hersteller-Sync) bleiben einzelne
+ * Requests, nur der finale Create/Update-Call ist gebündelt. Siehe syncShop().
  */
 class ShopSyncService
 {
@@ -36,6 +44,32 @@ class ShopSyncService
 
     /** @var array<int,array> vaterId => Dimensionen (siehe holeDimensionenFuerVater()), Cache pro Sync-Lauf */
     private array $dimensionenCache = [];
+
+    /**
+     * @var array<int,array<string,int>> attributId => [kleingeschriebener Term-Name => externe_term_id],
+     * Cache pro Sync-Lauf (siehe holeAttributTerms()). Ohne diesen Cache holt
+     * syncWerteFuerDimension() bei JEDEM Vater mit offenen Werten die komplette
+     * Term-Liste neu -- bei einem Attribut wie "Farbe" mit über 8000 Termen
+     * (100 pro Seite paginiert) sind das ~80 Requests PRO Vater. Fund
+     * 2026-08-07: erklärte eine 9-Minuten-Hänger bei einem Testlauf ohne Bilder.
+     */
+    private array $attributTermsCache = [];
+
+    // WooCommerce erlaubt laut Doku bis zu 100 Items pro Batch-Request
+    // (/products/batch, /products/{id}/variations/batch). 75 ist kein
+    // theoretischer Wert, sondern gegen den echten Shop (indra-design.at)
+    // getestet (2026-08-07, komplettabgleich.php ... ohne-bilder 75): zwei
+    // Durchläufe à 225 Artikel, 0 Fehler, klar innerhalb von
+    // WooCommerceClient::BATCH_TIMEOUT_SEKUNDEN. Bewusst als Property (nicht
+    // const), damit komplettabgleich.php beim Austesten größerer/kleinerer
+    // Werte nicht jedes Mal den Code ändern muss (siehe setBatchGroesse()).
+    private int $batchGroesse = 75;
+
+    /** Für Tests mit unterschiedlichen Batch-Größen (siehe komplettabgleich.php) -- betrifft nur diesen einen Service-Lauf. */
+    public function setBatchGroesse(int $groesse): void
+    {
+        $this->batchGroesse = $groesse;
+    }
 
     public function __construct()
     {
@@ -70,11 +104,12 @@ class ShopSyncService
      *                    mit einem viel größeren Limit in einer eigenen Schleife
      *                    auf, um einen großen Rückstau zügig aufzuholen.
      * @param ?callable(int,int):void $fortschritt Wird nach jedem verarbeiteten
-     *                    Artikel der Haupt-Schleife aufgerufen (erledigt, gesamt
-     *                    in diesem Batch) -- rein optional, für CLI-Tools wie
-     *                    komplettabgleich.php, die sonst minutenlang keine
-     *                    Rückmeldung geben würden (ein Batch kann bei vielen
-     *                    Bildern/Achsen pro Artikel durchaus lange dauern).
+     *                    Batch-Chunk (siehe BATCH_GROESSE) aufgerufen (erledigt,
+     *                    gesamt in diesem Durchlauf) -- rein optional, für
+     *                    CLI-Tools wie komplettabgleich.php, die sonst
+     *                    minutenlang keine Rückmeldung geben würden. Springt
+     *                    seit der Umstellung auf Batch-Requests in Schritten
+     *                    von bis zu BATCH_GROESSE statt pro Artikel.
      * @param bool $mitBildern Bilder-Upload pro Artikel überspringen (Default
      *                    true = bisheriges Verhalten). Bei false bleibt der
      *                    Text-/Stammdaten-Sync unverändert, nur der langsame
@@ -261,72 +296,229 @@ class ShopSyncService
             }
         }
 
-        $verarbeiteteAnzahl = 0;
+        // Erst die Väter/Standalone-Artikel dieser Runde von den Kindern trennen --
+        // Väter MÜSSEN zuerst dran sein (siehe Klassen-Docblock), Kinder werden
+        // weiter unten gruppiert nach Vater gebatcht.
+        $vaterRows = [];
+        $kindRows = [];
         foreach ($faelligeArtikel as $row) {
+            if ($row['vaterartikel_id'] !== null) {
+                $kindRows[] = $row;
+            } else {
+                $vaterRows[] = $row;
+            }
+        }
+
+        // artikel_id (Vater) => frisch ermittelte external_id aus DIESEM
+        // Durchlauf. Hat Vorrang vor $row['vater_external_id'] aus der
+        // findFaelligeArtikel()-Abfrage von oben, die für einen Vater, der
+        // gerade erst im Väter-Batch unten neu angelegt wurde, noch NULL zeigt.
+        $vaterExternalIds = [];
+        $verarbeiteteAnzahl = 0;
+        $gesamtAnzahl = count($faelligeArtikel);
+
+        foreach (array_chunk($vaterRows, $this->batchGroesse) as $chunk) {
             if ($rateLimitiert) break;
-            try {
-                $istKind = $row['vaterartikel_id'] !== null;
-                $vaterId = $istKind ? (int)$row['vaterartikel_id'] : (int)$row['artikel_id'];
 
-                // Idempotent (siehe syncAchsenFuerVater) -- bei einem Standard-Artikel
-                // ohne Achsen findet die Methode einfach nichts zu tun.
-                $this->syncAchsenFuerVater($client, $vaterId, (int)$shop['id']);
-
-                // Bilder werden NICHT vom Vater geerbt (project_bilder_modul.md) --
-                // jede Artikel-Zeile (Vater UND jedes Kind) hat eigene Bilder,
-                // darum mit der eigenen artikel_id aufrufen, nicht $vaterId.
-                if ($mitBildern) {
-                    $this->syncBilderFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
-                }
-
-                if ($istKind) {
-                    if (!$row['vater_external_id']) {
-                        // Vater noch nicht in WooCommerce vorhanden -- Kind bleibt
-                        // 'pending' und wird im nächsten Durchlauf erneut versucht,
-                        // sobald der Vater dann eine external_id hat.
-                        continue;
+            $create = [];
+            $createRows = [];
+            $update = [];
+            $updateRows = [];
+            foreach ($chunk as $row) {
+                try {
+                    // Idempotent (siehe syncAchsenFuerVater) -- bei einem Standard-Artikel
+                    // ohne Achsen findet die Methode einfach nichts zu tun.
+                    $this->syncAchsenFuerVater($client, (int)$row['artikel_id'], (int)$shop['id']);
+                    if ($mitBildern) {
+                        $this->syncBilderFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
                     }
-                    $payload = $this->baueVariationPayload($client, $row, (int)$shop['id'], $vaterId);
-                    if ($row['external_id']) {
-                        $wcObjekt = $client->aktualisiereVariation($row['vater_external_id'], $row['external_id'], $payload);
-                    } else {
-                        $wcObjekt = $client->erstelleVariation($row['vater_external_id'], $payload);
-                    }
-                } else {
                     if (!empty($row['hersteller_id']) && !isset($bereitsVersuchtHersteller[(int)$row['hersteller_id']])) {
                         $bereitsVersuchtHersteller[(int)$row['hersteller_id']] = true;
                         $this->syncHerstellerFuerArtikel($client, (int)$row['hersteller_id'], (int)$shop['id']);
                     }
                     $payload = $this->baueProduktPayload($client, $row, (int)$shop['id']);
                     if ($row['external_id']) {
-                        $wcObjekt = $client->aktualisiereProdukt($row['external_id'], $payload);
+                        $payload['id'] = (int)$row['external_id'];
+                        $update[] = $payload;
+                        $updateRows[] = $row;
                     } else {
-                        $wcObjekt = $client->erstelleProdukt($payload);
+                        $create[] = $payload;
+                        $createRows[] = $row;
+                    }
+                } catch (RateLimitException $e) {
+                    $rateLimitiert = true;
+                    $retryAfterSekunden = $e->retryAfterSekunden;
+                    $this->protokolliereRateLimit($shop, $e);
+                    break;
+                } catch (Throwable $e) {
+                    $this->repo->markiereFehler((int)$row['artikel_shop_id'], $e->getMessage());
+                    Logger::log('shop.sync_fehler', 'artikel', (int)$row['artikel_id'], [
+                        'shop'  => $shop['slug'],
+                        'fehler' => $e->getMessage(),
+                    ], $this->jarvisId, 'error');
+                    $fehler++;
+                } finally {
+                    // Absichtlich HIER (nicht erst nach dem Batch-Versand weiter unten)
+                    // -- Bilder-Uploads sind der eigentliche Zeitfresser (5-7s/Stück,
+                    // unbatchbar, siehe WooCommerceClient) und passieren pro Zeile in
+                    // DIESER Schleife. Fund 2026-08-07: ohne diesen Tick blieb die
+                    // Fortschrittsanzeige bei einem 75er-Chunk mit vielen Bildern
+                    // minutenlang komplett stumm, obwohl fleißig gearbeitet wurde.
+                    $verarbeiteteAnzahl++;
+                    if ($fortschritt) {
+                        $fortschritt($verarbeiteteAnzahl, $gesamtAnzahl);
                     }
                 }
+            }
 
-                $this->repo->markiereSynced((int)$row['artikel_shop_id'], (string)$wcObjekt['id']);
-                $erfolg++;
-            } catch (RateLimitException $e) {
-                $rateLimitiert = true;
-                $retryAfterSekunden = $e->retryAfterSekunden;
-                $this->protokolliereRateLimit($shop, $e);
-                break;
-            } catch (Throwable $e) {
-                $this->repo->markiereFehler((int)$row['artikel_shop_id'], $e->getMessage());
-                Logger::log('shop.sync_fehler', 'artikel', (int)$row['artikel_id'], [
-                    'shop'  => $shop['slug'],
-                    'fehler' => $e->getMessage(),
-                ], $this->jarvisId, 'error');
-                $fehler++;
-            } finally {
-                // finally läuft auch beim `continue` weiter oben (Kind ohne fertigen
-                // Vater) UND beim `break` im RateLimitException-Zweig -- Fortschritt
-                // spiegelt also immer "wie weit durch den Batch", unabhängig vom
-                // Ausgang des einzelnen Artikels.
-                $verarbeiteteAnzahl++;
-                if ($fortschritt) {
-                    $fortschritt($verarbeiteteAnzahl, count($faelligeArtikel));
+            // Beim Rate-Limit während des Payload-Baus wird der Chunk NICHT mehr
+            // gesendet -- die ganze Verbindung zum Shop ist betroffen (siehe
+            // Kommentar oben), ein Batch-Call würde ohnehin sofort wieder scheitern.
+            if (!$rateLimitiert && (!empty($create) || !empty($update))) {
+                try {
+                    $antwort = $client->batchProdukte(['create' => $create, 'update' => $update]);
+                    foreach ($createRows as $i => $row) {
+                        $externalId = $this->werteBatchErgebnisAus($antwort['create'][$i] ?? null, $row, $shop, $erfolg, $fehler);
+                        if ($externalId !== null) {
+                            $vaterExternalIds[(int)$row['artikel_id']] = $externalId;
+                        }
+                    }
+                    foreach ($updateRows as $i => $row) {
+                        $externalId = $this->werteBatchErgebnisAus($antwort['update'][$i] ?? null, $row, $shop, $erfolg, $fehler);
+                        if ($externalId !== null) {
+                            $vaterExternalIds[(int)$row['artikel_id']] = $externalId;
+                        }
+                    }
+                } catch (RateLimitException $e) {
+                    $rateLimitiert = true;
+                    $retryAfterSekunden = $e->retryAfterSekunden;
+                    $this->protokolliereRateLimit($shop, $e);
+                } catch (Throwable $e) {
+                    // z.B. Timeout (siehe WooCommerceClient::BATCH_TIMEOUT_SEKUNDEN) --
+                    // KEIN sicheres "also nicht angelegt": WooCommerce verarbeitet
+                    // serverseitig weiter, auch wenn unser Client die Verbindung
+                    // aufgibt (Fund 2026-08-07, siehe Kommentar bei request()).
+                    // Siehe markiereBatchAlsUnklar() für die Details, warum ein
+                    // automatischer Retry trotzdem sicher genug ist.
+                    $this->markiereBatchAlsUnklar(array_merge($createRows, $updateRows), $shop, $e, $fehler);
+                }
+            }
+        }
+
+        // Kinder gruppiert nach Vater -- /products/{id}/variations/batch ist ein
+        // Endpoint PRO Vater-Produkt, ein Vater mit weit mehr als BATCH_GROESSE
+        // Kindern (bei uns z.B. Garn mit vielen Farbvarianten) bekommt darum
+        // mehrere Chunks hintereinander.
+        if (!$rateLimitiert) {
+            $kindNachVater = [];
+            foreach ($kindRows as $row) {
+                $kindNachVater[(int)$row['vaterartikel_id']][] = $row;
+            }
+
+            foreach ($kindNachVater as $vaterId => $rowsFuerVater) {
+                if ($rateLimitiert) break;
+
+                $vaterExternalId = $vaterExternalIds[$vaterId] ?? $rowsFuerVater[0]['vater_external_id'] ?? null;
+                if (!$vaterExternalId) {
+                    // Vater (noch) nicht in WooCommerce -- alle Kinder bleiben
+                    // 'pending' und werden im nächsten Durchlauf erneut versucht.
+                    $verarbeiteteAnzahl += count($rowsFuerVater);
+                    if ($fortschritt) {
+                        $fortschritt($verarbeiteteAnzahl, $gesamtAnzahl);
+                    }
+                    continue;
+                }
+
+                try {
+                    // Einmal pro Vater-Gruppe statt pro Kind -- idempotent, aber
+                    // unnötig, dieselbe Prüfung für 50 Farbvarianten 50x zu wiederholen.
+                    $this->syncAchsenFuerVater($client, $vaterId, (int)$shop['id']);
+                } catch (RateLimitException $e) {
+                    $rateLimitiert = true;
+                    $retryAfterSekunden = $e->retryAfterSekunden;
+                    $this->protokolliereRateLimit($shop, $e);
+                    break;
+                } catch (Throwable $e) {
+                    // Betrifft alle Kinder dieses Vaters gleichermaßen -- ohne
+                    // synchte Achsen kann keins von ihnen sein Attribut-Payload
+                    // bauen, alle als Fehler markieren statt nur zu überspringen.
+                    foreach ($rowsFuerVater as $row) {
+                        $this->repo->markiereFehler((int)$row['artikel_shop_id'], $e->getMessage());
+                        $fehler++;
+                    }
+                    Logger::log('shop.sync_fehler', 'artikel', $vaterId, [
+                        'shop'  => $shop['slug'],
+                        'fehler' => $e->getMessage(),
+                    ], $this->jarvisId, 'error');
+                    $verarbeiteteAnzahl += count($rowsFuerVater);
+                    if ($fortschritt) {
+                        $fortschritt($verarbeiteteAnzahl, $gesamtAnzahl);
+                    }
+                    continue;
+                }
+
+                foreach (array_chunk($rowsFuerVater, $this->batchGroesse) as $chunk) {
+                    if ($rateLimitiert) break;
+
+                    $create = [];
+                    $createRows = [];
+                    $update = [];
+                    $updateRows = [];
+                    foreach ($chunk as $row) {
+                        try {
+                            // Bilder werden NICHT vom Vater geerbt (project_bilder_modul.md) --
+                            // jedes Kind hat eigene Bilder.
+                            if ($mitBildern) {
+                                $this->syncBilderFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
+                            }
+                            $payload = $this->baueVariationPayload($client, $row, (int)$shop['id'], $vaterId);
+                            if ($row['external_id']) {
+                                $payload['id'] = (int)$row['external_id'];
+                                $update[] = $payload;
+                                $updateRows[] = $row;
+                            } else {
+                                $create[] = $payload;
+                                $createRows[] = $row;
+                            }
+                        } catch (RateLimitException $e) {
+                            $rateLimitiert = true;
+                            $retryAfterSekunden = $e->retryAfterSekunden;
+                            $this->protokolliereRateLimit($shop, $e);
+                            break;
+                        } catch (Throwable $e) {
+                            $this->repo->markiereFehler((int)$row['artikel_shop_id'], $e->getMessage());
+                            Logger::log('shop.sync_fehler', 'artikel', (int)$row['artikel_id'], [
+                                'shop'  => $shop['slug'],
+                                'fehler' => $e->getMessage(),
+                            ], $this->jarvisId, 'error');
+                            $fehler++;
+                        } finally {
+                            // Gleicher Grund wie im Väter-Teil oben -- Bild-Uploads
+                            // passieren pro Zeile HIER, nicht erst beim Batch-Versand.
+                            $verarbeiteteAnzahl++;
+                            if ($fortschritt) {
+                                $fortschritt($verarbeiteteAnzahl, $gesamtAnzahl);
+                            }
+                        }
+                    }
+
+                    if (!$rateLimitiert && (!empty($create) || !empty($update))) {
+                        try {
+                            $antwort = $client->batchVariationen($vaterExternalId, ['create' => $create, 'update' => $update]);
+                            foreach ($createRows as $i => $row) {
+                                $this->werteBatchErgebnisAus($antwort['create'][$i] ?? null, $row, $shop, $erfolg, $fehler);
+                            }
+                            foreach ($updateRows as $i => $row) {
+                                $this->werteBatchErgebnisAus($antwort['update'][$i] ?? null, $row, $shop, $erfolg, $fehler);
+                            }
+                        } catch (RateLimitException $e) {
+                            $rateLimitiert = true;
+                            $retryAfterSekunden = $e->retryAfterSekunden;
+                            $this->protokolliereRateLimit($shop, $e);
+                        } catch (Throwable $e) {
+                            $this->markiereBatchAlsUnklar(array_merge($createRows, $updateRows), $shop, $e, $fehler);
+                        }
+                    }
                 }
             }
         }
@@ -337,6 +529,63 @@ class ShopSyncService
             'rate_limitiert' => $rateLimitiert,
             'retry_after'    => $retryAfterSekunden,
         ];
+    }
+
+    /**
+     * Ein einzelnes Ergebnis-Item aus einer Batch-Antwort (create[i]/update[i])
+     * auswerten und in der DB nachziehen. WooCommerce behält die Reihenfolge
+     * der Anfrage bei -- ein fehlgeschlagenes Item hat an seiner Position nur
+     * ein 'error'-Objekt statt der Produktdaten, kein Alles-oder-nichts für
+     * den ganzen Batch. `$ergebnis === null` fängt den (eigentlich nie
+     * erwarteten) Fall ab, dass die Antwort kürzer ist als die Anfrage.
+     *
+     * @return ?string Die neue external_id bei Erfolg, sonst null.
+     */
+    private function werteBatchErgebnisAus(?array $ergebnis, array $row, array $shop, int &$erfolg, int &$fehler): ?string
+    {
+        if ($ergebnis === null || isset($ergebnis['error'])) {
+            $meldung = $ergebnis['error']['message'] ?? 'Keine Antwort für dieses Item im Batch-Ergebnis';
+            $this->repo->markiereFehler((int)$row['artikel_shop_id'], $meldung);
+            Logger::log('shop.sync_fehler', 'artikel', (int)$row['artikel_id'], [
+                'shop'  => $shop['slug'],
+                'fehler' => $meldung,
+            ], $this->jarvisId, 'error');
+            $fehler++;
+            return null;
+        }
+        $this->repo->markiereSynced((int)$row['artikel_shop_id'], (string)$ergebnis['id']);
+        $erfolg++;
+        return (string)$ergebnis['id'];
+    }
+
+    /**
+     * Der komplette Batch-Request selbst ist gescheitert (Timeout o.ä.) --
+     * anders als bei werteBatchErgebnisAus() (ein einzelnes Item hat ein
+     * 'error'-Objekt) wissen wir hier NICHT, ob WooCommerce die Items nicht,
+     * teilweise oder sogar alle bereits verarbeitet hat (Fund 2026-08-07: ein
+     * Timeout beendet nur unsere Verbindung, nicht die serverseitige
+     * Verarbeitung). Jede Zeile bekommt darum eine Fehlermeldung, die explizit
+     * zur manuellen Prüfung auffordert statt "nicht angelegt" zu behaupten --
+     * Zeilen bleiben als 'error' markiert -- der nächste Lauf versucht sie
+     * automatisch erneut (kein manueller Eingriff nötig). Bei einer Zeile, die
+     * WooCommerce tatsächlich schon angelegt hatte, lehnt der erneute
+     * 'create'-Versuch wegen doppelter SKU einfach ab (kein echtes Duplikat) --
+     * dieser Fehler zeigt dann aber "SKU exists" statt Timeout, das ist der
+     * Hinweis fürs manuelle Nachziehen (external_id aus WooCommerce holen und
+     * per markiereSynced() eintragen, wie am 2026-08-07 einmalig von Hand gemacht).
+     */
+    private function markiereBatchAlsUnklar(array $rows, array $shop, Throwable $e, int &$fehler): void
+    {
+        $meldung = 'Batch-Request fehlgeschlagen (' . $e->getMessage() . ') -- Status in WooCommerce unklar, könnte teilweise/ganz schon angelegt sein';
+        foreach ($rows as $row) {
+            $this->repo->markiereFehler((int)$row['artikel_shop_id'], $meldung);
+            $fehler++;
+        }
+        Logger::log('shop.batch_sync_fehler', 'shops', (int)$shop['id'], [
+            'shop'          => $shop['slug'],
+            'betroffene_anzahl' => count($rows),
+            'fehler'        => $e->getMessage(),
+        ], $this->jarvisId, 'error');
     }
 
     /**
@@ -856,6 +1105,26 @@ class ShopSyncService
         return $map;
     }
 
+    /**
+     * Alle Terms eines Attributs (z.B. "Farbe"), gecacht pro Sync-Lauf --
+     * siehe $attributTermsCache. listeAttributTerms() selbst paginiert schon
+     * intern über alle Seiten (100/Seite), das hier verhindert nur, dass
+     * dieselbe komplette Liste für jeden Vater in diesem Lauf neu geholt wird.
+     *
+     * @return array<string,int> kleingeschriebener Term-Name => externe_term_id
+     */
+    private function holeAttributTerms(WooCommerceClient $client, int $attributId): array
+    {
+        if (!isset($this->attributTermsCache[$attributId])) {
+            $terms = [];
+            foreach ($client->listeAttributTerms($attributId) as $wcTerm) {
+                $terms[mb_strtolower($wcTerm['name'])] = (int)$wcTerm['id'];
+            }
+            $this->attributTermsCache[$attributId] = $terms;
+        }
+        return $this->attributTermsCache[$attributId];
+    }
+
     private function findeOderErstelleAttribut(WooCommerceClient $client, string $name, array $extraFelder = []): int
     {
         foreach ($client->listeAttribute() as $wcAttribut) {
@@ -1160,20 +1429,21 @@ class ShopSyncService
             return;
         }
 
-        // Terms des Attributs nur EINMAL laden (nicht pro Wert) -- billiger und
-        // deckt auch den Fall ab, dass der Term schon manuell/durch einen anderen
-        // Vater-Artikel mit dem gleichen Wertenamen existiert.
-        $vorhandeneTerms = [];
-        foreach ($client->listeAttributTerms($attributId) as $wcTerm) {
-            $vorhandeneTerms[mb_strtolower($wcTerm['name'])] = (int)$wcTerm['id'];
-        }
-
         foreach ($offeneWerte as $wert) {
             $anzeigeName = $wert['wert'] . (!empty($wert['achse_suffix']) ? ' ' . $wert['achse_suffix'] : '');
             $key = mb_strtolower($anzeigeName);
             try {
-                $termId = $vorhandeneTerms[$key]
-                    ?? (int)$client->erstelleAttributTerm($attributId, ['name' => $anzeigeName])['id'];
+                $vorhandeneTerms = $this->holeAttributTerms($client, $attributId);
+                if (isset($vorhandeneTerms[$key])) {
+                    $termId = $vorhandeneTerms[$key];
+                } else {
+                    $termId = (int)$client->erstelleAttributTerm($attributId, ['name' => $anzeigeName])['id'];
+                    // Sofort in den Cache eintragen -- der nächste Vater in DIESEM
+                    // Lauf, der denselben (oder einen weiteren neuen) Wert unter
+                    // demselben Attribut braucht, muss die Liste sonst erneut
+                    // komplett paginiert nachladen.
+                    $this->attributTermsCache[$attributId][$key] = $termId;
+                }
                 $this->repo->upsertWertZuweisung((int)$wert['id'], $shopId, (string)$termId);
             } catch (RateLimitException $e) {
                 // Eine Rate-Limit-Sperre betrifft die ganze Verbindung, nicht nur
@@ -1335,5 +1605,131 @@ class ShopSyncService
         }
 
         return ['erfolg' => $erfolg, 'fehler' => $fehler];
+    }
+
+    /**
+     * Gleicht 'error'-markierte Zeilen ohne external_id gegen den echten
+     * WooCommerce-Stand ab -- für den Fall, dass ein Timeout/502 nur unsere
+     * Antwort abgeschnitten hat, WooCommerce das Objekt serverseitig aber
+     * trotzdem fertig angelegt hat (Fund 2026-08-07, siehe Kommentar bei
+     * WooCommerceClient::request()). Trägt Treffer per markiereSynced() nach,
+     * lässt echte Fehlschläge (Objekt wirklich nicht gefunden) unangetastet.
+     *
+     * @param ?callable(int,int):void $fortschritt Wird nach jeder geprüften Zeile aufgerufen (geprüft, gesamt).
+     * @return array{geprueft:int,nachgetragen:int,weiterhin_offen:int}
+     */
+    public function reconciliereOffeneFehler(array $shop, ?callable $fortschritt = null): array
+    {
+        $client = new WooCommerceClient(
+            $shop['wc_url'],
+            $shop['wc_key'],
+            $shop['wc_secret'],
+            $shop['wp_username'],
+            $shop['wp_app_password']
+        );
+
+        $zeilen = $this->repo->findOffeneFehlerOhneExternalId((int)$shop['id']);
+        $gesamt = count($zeilen);
+        $geprueft = 0;
+        $nachgetragen = 0;
+        $weiterhinOffen = 0;
+
+        foreach ($zeilen as $row) {
+            try {
+                if ($row['vaterartikel_id'] === null) {
+                    $externalId = $client->sucheProduktNachSku($row['artikelnummer']);
+                } else {
+                    // Ohne bekannte Vater-external_id kann die Variation gar nicht
+                    // existieren -- ihr Vater müsste sie zuerst als Parent tragen.
+                    $externalId = $row['vater_external_id']
+                        ? $client->sucheVariationNachSku($row['vater_external_id'], $row['artikelnummer'])
+                        : null;
+                }
+
+                if ($externalId !== null) {
+                    $this->repo->markiereSynced((int)$row['artikel_shop_id'], (string)$externalId);
+                    $nachgetragen++;
+                } else {
+                    $weiterhinOffen++;
+                }
+            } catch (Throwable $e) {
+                $weiterhinOffen++;
+                Logger::log('shop.reconcile_fehler', 'artikel', (int)$row['artikel_id'], [
+                    'shop'  => $shop['slug'],
+                    'fehler' => $e->getMessage(),
+                ], $this->jarvisId, 'error');
+            } finally {
+                $geprueft++;
+                if ($fortschritt) {
+                    $fortschritt($geprueft, $gesamt);
+                }
+            }
+        }
+
+        return ['geprueft' => $geprueft, 'nachgetragen' => $nachgetragen, 'weiterhin_offen' => $weiterhinOffen];
+    }
+
+    /**
+     * Kopiert aus public/uploads/artikel/ nur die Bilder-Ordner der Artikel,
+     * die für einen Shop im Kanal aktiv sind -- lokal, kein Netzwerk-Call
+     * (siehe scripts/bilder_export_fuer_shop.php für den Anwendungsfall:
+     * kleinere Shops mit nur einem Teilsortiment, FTP nur den kleineren
+     * Export-Ordner statt des kompletten Bilderbestands hochladen).
+     *
+     * @param ?callable(int,int):void $fortschritt Wird nach jedem geprüften Artikel aufgerufen (geprüft, gesamt).
+     * @return array{ordner:int,dateien:int,bytes:int,ziel:string}
+     * @throws RuntimeException wenn Quell- oder Zielordner nicht zugreifbar sind
+     */
+    public function exportiereBilderFuerShop(int $shopId, string $shopSlug, ?callable $fortschritt = null): array
+    {
+        $quellOrdner = realpath(__DIR__ . '/../../../public/uploads/artikel');
+        if (!$quellOrdner) {
+            throw new RuntimeException('Quellordner public/uploads/artikel/ existiert nicht.');
+        }
+
+        $zielOrdner = __DIR__ . '/../../../storage/shop_export/' . $shopSlug . '/artikel';
+        if (!is_dir($zielOrdner) && !mkdir($zielOrdner, 0777, true)) {
+            throw new RuntimeException("Konnte Zielordner '$zielOrdner' nicht anlegen.");
+        }
+        // Nur für eine saubere Anzeige (z.B. in der Fertig-Meldung) -- realpath()
+        // löst das "../../../" aus dem __DIR__-Aufbau zu einem echten Pfad auf.
+        $zielOrdner = realpath($zielOrdner);
+
+        $artikelIds = $this->repo->findArtikelIdsFuerShop($shopId);
+        $gesamt = count($artikelIds);
+        $geprueft = 0;
+        $kopierteOrdner = 0;
+        $kopierteDateien = 0;
+        $kopierteBytes = 0;
+
+        foreach ($artikelIds as $artikelId) {
+            $quellArtikelOrdner = $quellOrdner . '/' . $artikelId;
+            if (is_dir($quellArtikelOrdner)) {
+                $zielArtikelOrdner = $zielOrdner . '/' . $artikelId;
+                if (!is_dir($zielArtikelOrdner)) {
+                    mkdir($zielArtikelOrdner, 0777, true);
+                }
+                foreach (glob($quellArtikelOrdner . '/*') as $dateiPfad) {
+                    if (!is_file($dateiPfad)) {
+                        continue;
+                    }
+                    copy($dateiPfad, $zielArtikelOrdner . '/' . basename($dateiPfad));
+                    $kopierteDateien++;
+                    $kopierteBytes += filesize($dateiPfad);
+                }
+                $kopierteOrdner++;
+            }
+            $geprueft++;
+            if ($fortschritt) {
+                $fortschritt($geprueft, $gesamt);
+            }
+        }
+
+        return [
+            'ordner'  => $kopierteOrdner,
+            'dateien' => $kopierteDateien,
+            'bytes'   => $kopierteBytes,
+            'ziel'    => $zielOrdner,
+        ];
     }
 }

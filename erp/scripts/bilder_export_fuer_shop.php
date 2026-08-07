@@ -12,7 +12,7 @@
  * "artikel"-Unterordners, gleiche Struktur wie beim kompletten Ordner).
  *
  * Aufruf:
- *   php scripts/bilder_export_fuer_shop.php <shop-slug> [ziel-ordner]
+ *   php scripts/bilder_export_fuer_shop.php <shop-slug>
  *
  * Beispiel:
  *   php scripts/bilder_export_fuer_shop.php bio-wolle
@@ -22,16 +22,30 @@
  * Zielordner einfach neu, kein Löschen nicht mehr benötigter Altbestände --
  * bei einer im ERP entfernten Kanal-Zuweisung müsste der Zielordner von Hand
  * bereinigt werden, das Skript räumt dort nichts auf).
+ *
+ * Dünner Wrapper um ShopSyncService::exportiereBilderFuerShop() -- die
+ * eigentliche Kopierlogik lebt dort, damit die Web-UI-Variante
+ * (public/einstellungen/shop_sync_bilder_export_start.php) sie mitbenutzen
+ * kann, ohne sie zu duplizieren.
+ *
+ * Setzt/löst dieselbe bulk_import_aktiv-Sperre wie komplettabgleich.php und
+ * erstbefuellung_bilder.php -- verhindert eine Race Condition mit den beiden
+ * anderen Skripten für denselben Shop UND lässt die Web-UI (die die Sperre
+ * beim Start bereits gesetzt hat) den "läuft"-Status korrekt wieder freigeben.
  */
 
 require_once __DIR__ . '/../src/core/Database.php';
+require_once __DIR__ . '/../src/core/logger.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncRepository.php';
+require_once __DIR__ . '/../src/modules/shop/ShopSyncService.php';
 
-$shopSlug   = $argv[1] ?? null;
-$zielOrdner = $argv[2] ?? null;
+ob_implicit_flush(true);
 
+const FORTSCHRITT_SCHRITT = 100;
+
+$shopSlug = $argv[1] ?? null;
 if (!$shopSlug) {
-    fwrite(STDERR, "Aufruf: php bilder_export_fuer_shop.php <shop-slug> [ziel-ordner]\n");
+    fwrite(STDERR, "Aufruf: php bilder_export_fuer_shop.php <shop-slug>\n");
     exit(1);
 }
 
@@ -48,51 +62,30 @@ if (!$shop) {
     exit(1);
 }
 
-$quellOrdner = realpath(__DIR__ . '/../public/uploads/artikel');
-if (!$quellOrdner) {
-    fwrite(STDERR, "Quellordner public/uploads/artikel/ existiert nicht.\n");
-    exit(1);
-}
+$repo->setBulkImportAktiv((int)$shop['id'], true);
 
-$zielOrdner = $zielOrdner ?: (__DIR__ . '/../storage/shop_export/' . $shopSlug . '/artikel');
-if (!is_dir($zielOrdner) && !mkdir($zielOrdner, 0777, true)) {
-    fwrite(STDERR, "Konnte Zielordner '$zielOrdner' nicht anlegen.\n");
-    exit(1);
-}
+try {
+    $artikelAnzahl = count($repo->findArtikelIdsFuerShop((int)$shop['id']));
+    echo "Shop '{$shop['slug']}': $artikelAnzahl Artikel im Kanal aktiv.\n";
 
-$artikelIds = $repo->findArtikelIdsFuerShop((int)$shop['id']);
-echo "Shop '{$shop['slug']}': " . count($artikelIds) . " Artikel im Kanal aktiv.\n";
-
-$kopierteOrdner  = 0;
-$kopierteDateien = 0;
-$kopierteBytes   = 0;
-
-foreach ($artikelIds as $artikelId) {
-    $quellArtikelOrdner = $quellOrdner . '/' . $artikelId;
-    if (!is_dir($quellArtikelOrdner)) {
-        continue; // Artikel hat keine Bilder
-    }
-
-    $zielArtikelOrdner = $zielOrdner . '/' . $artikelId;
-    if (!is_dir($zielArtikelOrdner)) {
-        mkdir($zielArtikelOrdner, 0777, true);
-    }
-
-    $dateien = glob($quellArtikelOrdner . '/*');
-    foreach ($dateien as $dateiPfad) {
-        if (!is_file($dateiPfad)) {
-            continue;
+    $fortschritt = function (int $erledigt, int $gesamt) {
+        if ($gesamt === 0) {
+            return;
         }
-        $zielPfad = $zielArtikelOrdner . '/' . basename($dateiPfad);
-        copy($dateiPfad, $zielPfad);
-        $kopierteDateien++;
-        $kopierteBytes += filesize($dateiPfad);
-    }
-    $kopierteOrdner++;
-}
+        if ($erledigt % FORTSCHRITT_SCHRITT === 0 || $erledigt === $gesamt) {
+            echo "  ... $erledigt/$gesamt geprüft\n";
+        }
+    };
 
-$mb = round($kopierteBytes / 1024 / 1024, 1);
-echo "Fertig: $kopierteOrdner Artikel-Ordner, $kopierteDateien Bilder, {$mb} MB kopiert nach:\n";
-echo "  $zielOrdner\n";
-echo "Diesen Ordner (nur den Inhalt, nicht den Ordner 'artikel' selbst nochmal verschachtelt)\n";
-echo "per FTP an die Bilder-Basis-URL von '{$shop['slug']}' hochladen.\n";
+    $service = new ShopSyncService();
+    $ergebnis = $service->exportiereBilderFuerShop((int)$shop['id'], $shop['slug'], $fortschritt);
+
+    $mb = round($ergebnis['bytes'] / 1024 / 1024, 1);
+    echo "Fertig: {$ergebnis['ordner']} Artikel-Ordner, {$ergebnis['dateien']} Bilder, {$mb} MB kopiert nach:\n";
+    echo "  {$ergebnis['ziel']}\n";
+    echo "Diesen Ordner (nur den Inhalt, nicht den Ordner 'artikel' selbst nochmal verschachtelt)\n";
+    echo "per FTP an die Bilder-Basis-URL von '{$shop['slug']}' hochladen.\n";
+} finally {
+    $repo->setBulkImportAktiv((int)$shop['id'], false);
+    $repo->setAktuellerSyncLog((int)$shop['id'], null);
+}

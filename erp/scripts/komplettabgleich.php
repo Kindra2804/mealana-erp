@@ -12,11 +12,19 @@
  * nächsten 15-Minuten-Cron-Tick zu warten.
  *
  * Aufruf:
- *   php scripts/komplettabgleich.php <shop-slug> [batch-groesse] [ohne-bilder]
+ *   php scripts/komplettabgleich.php <shop-slug> [faelligkeits-limit] [ohne-bilder] [wc-batch-groesse]
+ *
+ * `faelligkeits-limit` ist NICHT dasselbe wie `wc-batch-groesse`: Ersteres
+ * steuert, wie viele fällige Artikel EIN syncShop()-Aufruf aus der DB holt
+ * (SQL LIMIT), Letzteres steuert, wie viele Artikel EIN einzelner
+ * WooCommerce-Batch-Request (/products/batch) enthält -- bei einem
+ * faelligkeits-limit von z.B. 200 und wc-batch-groesse 50 macht ein einziger
+ * syncShop()-Aufruf vier Batch-Requests hintereinander.
  *
  * Beispiel:
  *   php scripts/komplettabgleich.php mealana 200
  *   php scripts/komplettabgleich.php mealana 200 ohne-bilder
+ *   php scripts/komplettabgleich.php mealana 200 ohne-bilder 50
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -39,9 +47,10 @@ const FALLBACK_WARTEZEIT_SEKUNDEN = 90;
 // Upload-Zeit + 0,4s Pause, siehe WooCommerceClient::MEDIEN_UPLOAD_PAUSE_SEKUNDEN).
 const FORTSCHRITT_SCHRITT = 5;
 
-$shopSlug   = $argv[1] ?? null;
-$limit      = isset($argv[2]) ? (int)$argv[2] : 200;
-$mitBildern = ($argv[3] ?? '') !== 'ohne-bilder';
+$shopSlug      = $argv[1] ?? null;
+$limit         = isset($argv[2]) ? (int)$argv[2] : 200;
+$mitBildern    = ($argv[3] ?? '') !== 'ohne-bilder';
+$batchGroesse  = isset($argv[4]) ? (int)$argv[4] : null;
 
 if (!$shopSlug) {
     fwrite(STDERR, "Aufruf: php komplettabgleich.php <shop-slug> [batch-groesse]\n");
@@ -82,6 +91,10 @@ druckeFaelligkeit($repo, (int)$shop['id']);
 
 try {
     $service = new ShopSyncService();
+    if ($batchGroesse !== null) {
+        $service->setBatchGroesse($batchGroesse);
+        echo "WC-Batch-Größe auf $batchGroesse gesetzt.\n";
+    }
 
     $gesamtErfolg = 0;
     $gesamtFehler = 0;

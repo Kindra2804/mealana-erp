@@ -327,7 +327,8 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         SELECT a.referenz_id AS shop_id, a.aktion, a.details, a.erstellt_am, a.stufe
         FROM aktivitaeten a
         WHERE a.referenz_tabelle = 'shops'
-          AND a.aktion IN ('shop.sync_lauf', 'shop.cron_fehler', 'shop.komplettabgleich_gestartet', 'shop.bilder_ftp_gestartet')
+          AND a.aktion IN ('shop.sync_lauf', 'shop.cron_fehler', 'shop.komplettabgleich_gestartet',
+                            'shop.bilder_ftp_gestartet', 'shop.reconcile_gestartet', 'shop.bilder_export_gestartet')
         ORDER BY a.erstellt_am DESC
         LIMIT 40
     ")->fetchAll(PDO::FETCH_ASSOC);
@@ -335,6 +336,16 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
     foreach ($letzteLaeufe as $lauf) {
         $laeufeProShop[(int)$lauf['shop_id']][] = $lauf;
     }
+
+    // Badge am "Fehler abgleichen"-Button -- nur 'error'-Zeilen OHNE external_id
+    // zählen (der eigentliche Unklar-Fall, siehe ShopSyncService::reconciliereOffeneFehler()),
+    // eine fehlgeschlagene UPDATE-Zeile (external_id vorhanden) ist kein Duplikat-Risiko.
+    $offeneFehlerProShop = $db->query("
+        SELECT shop_id, COUNT(*) AS anzahl
+        FROM artikel_shops
+        WHERE sync_status = 'error' AND external_id IS NULL
+        GROUP BY shop_id
+    ")->fetchAll(PDO::FETCH_KEY_PAIR);
     ?>
 
     <?php if (empty($syncShops)): ?>
@@ -378,6 +389,21 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 <button type="button" class="btn btn-secondary btn-sm" data-btn-bilder-ftp
                     <?= $sh['bulk_import_aktiv'] ? 'disabled' : '' ?>>Bilder-Verknüpfung starten</button>
             </div>
+            <div style="padding:0 16px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--color-border);padding-top:16px">
+                <button type="button" class="btn btn-secondary btn-sm" data-btn-reconcile
+                    <?= $sh['bulk_import_aktiv'] ? 'disabled' : '' ?>>Fehler abgleichen<?php
+                        $offeneFehler = (int)($offeneFehlerProShop[$sh['id']] ?? 0);
+                        if ($offeneFehler > 0): ?> <span style="background:#e67e22;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px"><?= $offeneFehler ?></span><?php endif; ?></button>
+                <div style="font-size:11px;color:var(--color-text-muted);max-width:340px">
+                    Prüft 'error'-Artikel per SKU gegen WooCommerce -- manchmal hat der Shop trotz Timeout/502 doch schon angelegt, nur unsere Rückmeldung kam nicht an.
+                </div>
+                <div style="flex:1"></div>
+                <button type="button" class="btn btn-secondary btn-sm" data-btn-bilder-export
+                    <?= $sh['bulk_import_aktiv'] ? 'disabled' : '' ?>>Bilder-Teilexport starten</button>
+                <div style="font-size:11px;color:var(--color-text-muted);max-width:280px">
+                    Kopiert nur die Bilder der für diesen Shop aktiven Artikel nach <code>storage/shop_export/<?= htmlspecialchars($sh['slug']) ?>/artikel/</code> -- praktisch bei einem Teilsortiment, spart unnötigen FTP-Upload.
+                </div>
+            </div>
             <pre data-log-tail style="display:<?= $sh['bulk_import_aktiv'] ? 'block' : 'none' ?>;margin:0 16px 16px;padding:10px 12px;background:#1e1e1e;color:#d4d4d4;font-size:11px;max-height:220px;overflow:auto;border-radius:4px"></pre>
 
             <div data-aktivitaeten-block style="border-top:1px solid var(--color-border);padding:10px 16px;<?= empty($laeufeProShop[$sh['id']]) ? 'display:none' : '' ?>">
@@ -398,6 +424,8 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     const pre       = card.querySelector('[data-log-tail]');
                     const btnStart  = card.querySelector('[data-btn-start]');
                     const btnBilder = card.querySelector('[data-btn-bilder-ftp]');
+                    const btnReconcile    = card.querySelector('[data-btn-reconcile]');
+                    const btnBilderExport = card.querySelector('[data-btn-bilder-export]');
                     if (d.log_tail) {
                         pre.style.display = 'block';
                         pre.textContent = d.log_tail;
@@ -415,6 +443,8 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         badge.style.color = '#e67e22';
                         btnStart.disabled = true;
                         btnBilder.disabled = true;
+                        btnReconcile.disabled = true;
+                        btnBilderExport.disabled = true;
                         // d.log: falls logName leer war (z.B. nach Seiten-Reload),
                         // hat shop_sync_status.php den Namen aus der DB nachgeliefert --
                         // ab jetzt direkt verwenden statt jedes Mal neu nachzuschlagen.
@@ -425,6 +455,8 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         badge.style.color = 'var(--color-success)';
                         btnStart.disabled = false;
                         btnBilder.disabled = false;
+                        btnReconcile.disabled = false;
+                        btnBilderExport.disabled = false;
                     }
                 });
         }
@@ -453,6 +485,28 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 body.append('shop_id', shopId);
                 body.append('basis_url', basisUrl);
                 fetch('shop_sync_bilder_ftp_start.php', { method: 'POST', body })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (!d.erfolg) { alert(d.meldung); return; }
+                        poll(card, shopId, d.log);
+                    });
+            });
+
+            card.querySelector('[data-btn-reconcile]').addEventListener('click', () => {
+                const body = new FormData();
+                body.append('shop_id', shopId);
+                fetch('shop_sync_reconcile_start.php', { method: 'POST', body })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (!d.erfolg) { alert(d.meldung); return; }
+                        poll(card, shopId, d.log);
+                    });
+            });
+
+            card.querySelector('[data-btn-bilder-export]').addEventListener('click', () => {
+                const body = new FormData();
+                body.append('shop_id', shopId);
+                fetch('shop_sync_bilder_export_start.php', { method: 'POST', body })
                     .then(r => r.json())
                     .then(d => {
                         if (!d.erfolg) { alert(d.meldung); return; }
@@ -508,9 +562,16 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             <br><br>
             <strong>Kleinerer Shop mit nur einem Teilsortiment?</strong> Statt den kompletten Ordner
             hochzuladen (unnötig viel Datenvolumen, wenn der Shop nur einen Bruchteil aller Artikel führt):
-            <code>php scripts/bilder_export_fuer_shop.php &lt;shop-slug&gt;</code> kopiert lokal nur die
-            Bilder-Ordner der Artikel, die für diesen Shop im Kanal aktiv sind, nach
-            <code>storage/shop_export/&lt;shop-slug&gt;/artikel/</code> — nur diesen (kleineren) Ordner per FTP hochladen.
+            "Bilder-Teilexport starten" oben kopiert lokal nur die Bilder-Ordner der Artikel, die für
+            diesen Shop im Kanal aktiv sind, nach <code>storage/shop_export/&lt;shop-slug&gt;/artikel/</code>
+            — nur diesen (kleineren) Ordner per FTP hochladen. Genauso per Kommandozeile möglich:
+            <code>php scripts/bilder_export_fuer_shop.php &lt;shop-slug&gt;</code>.
+            <br><br>
+            <strong>Nach einem großen Lauf bleiben Fehler stehen?</strong> "Fehler abgleichen" oben prüft
+            jede offene Fehler-Zeile per Artikelnummer gegen WooCommerce — bei einem Timeout oder einem
+            502 vom Hosting hat WooCommerce das Objekt oft trotzdem fertig angelegt, nur unsere
+            Rückmeldung ist nicht angekommen. Echte Treffer werden automatisch nachgetragen, alles
+            andere bleibt unangetastet für einen erneuten Sync-Versuch.
         </div>
     </div>
 

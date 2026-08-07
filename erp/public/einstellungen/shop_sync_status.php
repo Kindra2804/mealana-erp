@@ -52,7 +52,8 @@ $laeufeStmt = $db->prepare("
     SELECT aktion, details, erstellt_am, stufe
     FROM aktivitaeten
     WHERE referenz_tabelle = 'shops' AND referenz_id = :shop_id
-      AND aktion IN ('shop.sync_lauf', 'shop.cron_fehler', 'shop.komplettabgleich_gestartet', 'shop.bilder_ftp_gestartet')
+      AND aktion IN ('shop.sync_lauf', 'shop.cron_fehler', 'shop.komplettabgleich_gestartet',
+                      'shop.bilder_ftp_gestartet', 'shop.reconcile_gestartet', 'shop.bilder_export_gestartet')
     ORDER BY erstellt_am DESC
     LIMIT 5
 ");
