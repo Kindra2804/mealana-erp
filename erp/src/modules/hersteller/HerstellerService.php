@@ -77,7 +77,7 @@ class HerstellerService
      * @param array      $data  Formular-Daten
      * @param array|null $datei $_FILES['logo'] oder null
      */
-    public function save(array $data, ?array $datei = null): array
+    public function save(array $data, ?array $datei = null, ?int $benutzerId = null): array
     {
         $fehler = $this->validiere($data);
         if (!empty($fehler)) return ['erfolg' => false, 'fehler' => $fehler];
@@ -97,12 +97,12 @@ class HerstellerService
                 }
                 $this->repo->updateLogo($id, $this->speichereLogo($datei, $id));
             } catch (RuntimeException $e) {
-                Logger::log('hersteller.anlegen', 'hersteller', $id, ['name' => $data['name']]);
+                Logger::log('hersteller.anlegen', 'hersteller', $id, ['name' => $data['name']], $benutzerId);
                 return ['erfolg' => true, 'id' => $id, 'fehler' => ['Hersteller gespeichert, aber Logo: ' . $e->getMessage()]];
             }
         }
 
-        Logger::log('hersteller.anlegen', 'hersteller', $id, ['name' => $data['name']]);
+        Logger::log('hersteller.anlegen', 'hersteller', $id, ['name' => $data['name']], $benutzerId);
         return ['erfolg' => true, 'id' => $id];
     }
 
@@ -110,7 +110,7 @@ class HerstellerService
      * Aktualisiert einen Hersteller.
      * Bestehendes Logo bleibt erhalten wenn kein neues hochgeladen wurde.
      */
-    public function update(array $data, ?array $datei = null): array
+    public function update(array $data, ?array $datei = null, ?int $benutzerId = null): array
     {
         $fehler = $this->validiere($data);
         if (!empty($fehler)) return ['erfolg' => false, 'fehler' => $fehler];
@@ -135,7 +135,7 @@ class HerstellerService
         }
 
         $this->repo->update($data);
-        Logger::log('hersteller.bearbeiten', 'hersteller', $data['id'], ['name' => $data['name']]);
+        Logger::log('hersteller.bearbeiten', 'hersteller', $data['id'], ['name' => $data['name']], $benutzerId);
         return $logoFehler ? ['erfolg' => true, 'fehler' => [$logoFehler]] : ['erfolg' => true];
     }
 
@@ -143,13 +143,13 @@ class HerstellerService
      * Deaktiviert einen Hersteller (Soft-Delete).
      * Gibt Fehler zurück wenn Hersteller nicht gefunden.
      */
-    public function delete(int $id): array
+    public function delete(int $id, ?int $benutzerId = null): array
     {
         if ($this->repo->findById($id) === false) {
             return ['erfolg' => false, 'fehler' => ['Hersteller nicht gefunden']];
         }
         $this->repo->deactivate($id);
-        Logger::log('hersteller.loeschen', 'hersteller', $id);
+        Logger::log('hersteller.loeschen', 'hersteller', $id, [], $benutzerId);
         return ['erfolg' => true];
     }
 

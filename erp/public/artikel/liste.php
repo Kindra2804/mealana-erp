@@ -241,7 +241,7 @@ if ($aktivKategorieId) {
         : array_merge([$aktivKategorieId], $service->getAlleNachkommenIds($aktivKategorieId));
 }
 
-$qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder', 'keine_gruppe']) ? $statusFilter : '';
+$qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder', 'keine_gruppe', 'keine_hersteller']) ? $statusFilter : '';
 
 $filter = [
     'q'               => trim($_GET['q'] ?? ''),
@@ -524,6 +524,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <option value="doppelte_ean" <?= $statusFilter === 'doppelte_ean' ? 'selected' : '' ?>>Doppelte EAN</option>
                 <option value="keine_bilder" <?= $statusFilter === 'keine_bilder' ? 'selected' : '' ?>>Keine Bilder</option>
                 <option value="keine_gruppe" <?= $statusFilter === 'keine_gruppe' ? 'selected' : '' ?>>Keine Artikelgruppe</option>
+                <option value="keine_hersteller" <?= $statusFilter === 'keine_hersteller' ? 'selected' : '' ?>>Kein Hersteller</option>
             </optgroup>
         </select>
         <select name="kanal_filter" class="erp-select" onchange="this.form.requestSubmit()">
@@ -631,6 +632,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $statusChips .= '<span class="sc" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="EAN-Code ist mehrfach vergeben">EAN-Duplikat</span>';
                 } elseif ($qualitaetFilter === 'keine_bilder') {
                     $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Keine Bilder hinterlegt">Kein Bild</span>';
+                } elseif ($qualitaetFilter === 'keine_hersteller') {
+                    $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Kein Hersteller zugewiesen">Kein Hersteller</span>';
                 }
 
                 // ⚠ Vater-Badge

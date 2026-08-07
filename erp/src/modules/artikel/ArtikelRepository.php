@@ -53,7 +53,7 @@ class ArtikelRepository
      * $filter-Keys:
      *   q, hersteller_id, artikeltyp_id, kategorie_ids, nurKategorielos,
      *   nurMitBestand, mitInaktiven, status_filter (auslauf|uv|fehlbest|inaktiv),
-     *   qualitaet (keine_ean|doppelte_ean|keine_bilder|keine_gruppe), sort, dir
+     *   qualitaet (keine_ean|doppelte_ean|keine_bilder|keine_gruppe|keine_hersteller), sort, dir
      */
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
@@ -159,6 +159,8 @@ class ArtikelRepository
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
         } elseif ($qf === 'keine_gruppe') {
             $conditions[] = "a.artikel_gruppe_id IS NULL";
+        } elseif ($qf === 'keine_hersteller') {
+            $conditions[] = "a.hersteller_id IS NULL";
         }
 
         // Kanal-Filter: Vater/Standalone muss selbst im gewählten Shop aktiv sein. Ein Kind kann
@@ -339,6 +341,8 @@ class ArtikelRepository
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
         } elseif ($qf === 'keine_gruppe') {
             $conditions[] = "a.artikel_gruppe_id IS NULL";
+        } elseif ($qf === 'keine_hersteller') {
+            $conditions[] = "a.hersteller_id IS NULL";
         }
 
         if (!empty($filter['kanal_shop_id'])) {
