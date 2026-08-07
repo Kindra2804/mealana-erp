@@ -505,6 +505,12 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             Bilder werden dabei automatisch übersprungen — der ganze Ordner kann also jederzeit gefahrlos
             erneut hochgeladen/laufen gelassen werden. Voraussetzung: der Text-Sync muss für die Artikel
             schon gelaufen sein (ohne WooCommerce-Produkt-ID kann kein Bild angehängt werden).
+            <br><br>
+            <strong>Kleinerer Shop mit nur einem Teilsortiment?</strong> Statt den kompletten Ordner
+            hochzuladen (unnötig viel Datenvolumen, wenn der Shop nur einen Bruchteil aller Artikel führt):
+            <code>php scripts/bilder_export_fuer_shop.php &lt;shop-slug&gt;</code> kopiert lokal nur die
+            Bilder-Ordner der Artikel, die für diesen Shop im Kanal aktiv sind, nach
+            <code>storage/shop_export/&lt;shop-slug&gt;/artikel/</code> — nur diesen (kleineren) Ordner per FTP hochladen.
         </div>
     </div>
 

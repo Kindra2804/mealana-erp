@@ -1,12 +1,28 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-07 Live-Fortschrittsanzeige (Log-Tail + Aktivitäten-Liste) übersteht jetzt Seiten-Reload während eines laufenden Komplettabgleichs (Migration 161); ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien werden jetzt automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-07 shop-gefilterter Bilder-Export fürs FTP (nur Artikel im jeweiligen Kanal, spart Datenvolumen bei kleineren Shops) + Live-Fortschrittsanzeige übersteht jetzt Seiten-Reload (Migration 161); ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-07T09:03:43.198Z
+  modified: 2026-08-07T09:19:29.917Z
 ---
+
+## ✅ GEBAUT 2026-08-07: Shop-gefilterter Bilder-Export fürs FTP (`scripts/bilder_export_fuer_shop.php`)
+
+**Auslöser:** Jacky fiel beim Nachdenken über den FTP-Bilder-Workflow (siehe Eintrag direkt darunter) selbst auf: der WooCommerce-Sideload-Verknüpfungsschritt ist zwar korrekt pro Shop gefiltert (nur Artikel mit `external_id` für DIESEN Shop werden verknüpft), aber der FTP-Kopiervorgang davor ist ein reiner 1:1-Ordner-Mirror — Jacky lädt bisher den KOMPLETTEN `public/uploads/artikel/`-Ordner (aktuell 2,2 GB, ~17.800 Artikel-Ordner) auf JEDEN Shop-Webserver hoch, unabhängig davon, welcher Artikel dort überhaupt zugewiesen ist. Bei den beiden kleineren Shops (bio-wolle.at, sockenwolle-online.at — laut Jacky Teilsortiment desselben Katalogs, "spezialisiert" statt eigenständig, noch KEINE `artikel_shops`-Zuweisungen, Jacky will erst mit "dem Monster" mealana fertig werden) wäre das unnötig viel Datenvolumen/Übertragungszeit für ungenutzte Bilder.
+
+**Gebaut:**
+- `ShopSyncRepository::findArtikelIdsFuerShop(shopId)`: alle Artikel-IDs mit `artikel_shops.aktiv=1` für den Shop (deckt Vater UND Kind ab, da beide eine eigene Zeile haben).
+- `scripts/bilder_export_fuer_shop.php <shop-slug> [ziel-ordner]`: rein lokale Kopie (kein FTP/Netzwerk-Call) — kopiert nur die Bilder-Ordner der für den Shop aktiven Artikel von `public/uploads/artikel/{id}/` nach `storage/shop_export/{slug}/artikel/{id}/`. Diesen (kleineren) Ordner lädt Jacky danach wie gewohnt per FTP hoch. Idempotent (überschreibt einfach neu), räumt aber nicht automatisch auf, falls eine Kanal-Zuweisung später wieder entfernt wird.
+- `storage/shop_export/` neu in `.gitignore` (kann potenziell Gigabytes an Bildkopien enthalten).
+- Kurzer Hinweis + Aufruf-Beispiel im bestehenden FTP-Infokasten der Shop-Synchronisierung-Seite ergänzt.
+
+**Getestet:** `php -l`, `findArtikelIdsFuerShop()`-Query direkt gegen echte DB geprüft (mealana: 14.147 aktive Zeilen). Die reine Datei-Kopierlogik an 3 echten Artikel-Bilderordnern isoliert nachgestellt (in einem Scratch-Ordner außerhalb des Repos, danach wieder gelöscht) — Kopie funktioniert wie erwartet. **Kein echter End-to-End-Lauf** (macht aktuell keinen Sinn: beide kleineren Shops haben noch 0 Kanal-Zuweisungen — sinnvoll erst testbar, sobald Jacky mit mealana fertig ist und die ersten Artikel bio-wolle/sockenwolle zuweist).
+
+## ✅ NEU 2026-08-07: Geklärt — Sideload kopiert Bilder tatsächlich in die WP-Mediathek, FTP-Ordner bleibt nur "Abholstation"
+
+Jacky fragte nach, ob WooCommerce beim `images:[{src:URL}]`-Sideload die Datei nur verknüpft oder wirklich in einen neuen Ordner lädt. **Antwort (WordPress-Standardverhalten, kein Sonderfall in unserem Code):** WordPress lädt die Datei von der angegebenen URL herunter und legt eine eigene Kopie in der normalen Mediathek an (`wp-content/uploads/{Jahr}/{Monat}/`, eigener Attachment-Datensatz) — unabhängig davon, dass Quelle und Ziel dieselbe Domain sind. Der per FTP hochgeladene `uploads/artikel/`-Ordner ist danach nur noch die Quelle, wird selbst aber nie in die Mediathek eingetragen. Praktische Konsequenz: der FTP-"Transfer-Ordner" kann nach erfolgreicher Verknüpfung bei Speicherplatzmangel gefahrlos gelöscht werden, OHNE dass der Shop dadurch Bilder verliert (kein manuelles Aufräum-Feature dafür gebaut, reine Erkenntnis für Jacky).
 
 ## ✅ BEHOBEN 2026-08-07: Live-Fortschritt auf der Shop-Sync-Seite verschwand bei Seiten-Reload (Log-Tail-Balken + Aktivitäten-Liste)
 

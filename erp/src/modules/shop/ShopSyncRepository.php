@@ -19,6 +19,22 @@ class ShopSyncRepository
         $this->db = Database::getInstance();
     }
 
+    /**
+     * Alle Artikel-IDs, die für diesen Shop im Kanal aktiv sind (Vater UND
+     * Kind gleichermaßen, da beide eine eigene artikel_shops-Zeile haben,
+     * siehe upsertZuweisung()) -- Grundlage für scripts/bilder_export_fuer_shop.php:
+     * nur für DIESE Artikel müssen Bilder überhaupt per FTP übertragen werden,
+     * statt blind den kompletten uploads/artikel/-Ordner zu kopieren.
+     */
+    public function findArtikelIdsFuerShop(int $shopId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT artikel_id FROM artikel_shops WHERE shop_id = :shop_id AND aktiv = 1
+        ");
+        $stmt->execute(['shop_id' => $shopId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     /** Alle Shops mit konfigurierter WooCommerce-Anbindung. */
     public function findAktiveShops(): array
     {

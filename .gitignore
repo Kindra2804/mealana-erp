@@ -24,6 +24,9 @@ erp/storage/dokumente/
 erp/storage/picklisten/
 erp/storage/bons/
 
+# Shop-Sync: lokale Bilder-Export-Kopien für den FTP-Upload (scripts/bilder_export_fuer_shop.php)
+erp/storage/shop_export/
+
 # Hersteller-Logos (lokal hochgeladen, instanzspezifisch)
 erp/public/img/hersteller/
 
