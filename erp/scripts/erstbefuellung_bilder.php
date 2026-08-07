@@ -61,4 +61,5 @@ try {
     echo "Shop '{$shop['slug']}': {$ergebnis['erfolg']} Bilder verknüpft, {$ergebnis['fehler']} Fehler\n";
 } finally {
     $repo->setBulkImportAktiv((int)$shop['id'], false);
+    $repo->setAktuellerSyncLog((int)$shop['id'], null);
 }

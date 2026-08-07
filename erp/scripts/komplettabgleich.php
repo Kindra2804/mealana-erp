@@ -148,4 +148,5 @@ try {
     }
 } finally {
     $repo->setBulkImportAktiv((int)$shop['id'], false);
+    $repo->setAktuellerSyncLog((int)$shop['id'], null);
 }

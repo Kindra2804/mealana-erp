@@ -58,6 +58,10 @@ if (!is_dir($logDir)) {
 $logName = $shop['slug'] . '_' . date('Ymd_His') . '.log';
 $logPfad = $logDir . '/' . $logName;
 
+// In der DB merken, nicht nur im Browser -- shop_sync_status.php findet den
+// Log-Namen dann auch nach einem Seiten-Reload während des Laufs wieder.
+$repo->setAktuellerSyncLog($shopId, $logName);
+
 $phpBinary   = 'C:\\xampp\\php\\php.exe';
 $skriptPfad  = realpath(__DIR__ . '/../../scripts/komplettabgleich.php');
 

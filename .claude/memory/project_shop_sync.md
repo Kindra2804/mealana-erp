@@ -1,12 +1,27 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien werden jetzt automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-07 Live-Fortschrittsanzeige (Log-Tail + Aktivitäten-Liste) übersteht jetzt Seiten-Reload während eines laufenden Komplettabgleichs (Migration 161); ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien werden jetzt automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-06T17:03:00.256Z
+  modified: 2026-08-07T09:03:43.198Z
 ---
+
+## ✅ BEHOBEN 2026-08-07: Live-Fortschritt auf der Shop-Sync-Seite verschwand bei Seiten-Reload (Log-Tail-Balken + Aktivitäten-Liste)
+
+**Auslöser:** Jacky meldete, während eines laufenden Komplettabgleichs zeige die Seite immer wieder nur einen leeren schwarzen Balken statt Log-Text — Fortschritt nicht mehr verfolgbar.
+
+**Root Cause 1 (Log-Tail):** Der Log-Dateiname (`shop_sync_start.php` erzeugt ihn beim Start, z.B. `mealana_20260807_083027.log`) wurde bisher NUR im Browser-JS gehalten, nie in der DB. Nach Seiten-Reload/Tab-Wechsel während des Laufs kannte `poll()` den Namen nicht mehr, rief `shop_sync_status.php` mit leerem `log`-Parameter auf — die Log-Datei konnte dadurch nicht mehr gefunden werden, `log_tail` blieb leer (das dunkle `<pre>`-Feld ohne Text sieht dann wie ein leerer schwarzer Balken aus). Der Vorgang lief in Wahrheit ganz normal weiter (`shops.bulk_import_aktiv`, DB-Wahrheit, blieb korrekt).
+
+**Root Cause 2 (separat, gleichzeitig gefunden):** Die Liste "Letzte Cron-/Komplettabgleich-Aktivität" wurde nur einmal beim initialen Seitenaufbau aus der DB gerendert (reines PHP, kein JS-Zugriff) — zeigte während eines laufenden Vorgangs nie neue Einträge, auch ganz ohne Reload.
+
+**Fix:**
+- Migration 161: `shops.aktueller_sync_log`. `shop_sync_start.php`/`shop_sync_bilder_ftp_start.php` schreiben den Log-Dateinamen jetzt zusätzlich dorthin (`ShopSyncRepository::setAktuellerSyncLog()`), `scripts/komplettabgleich.php`/`scripts/erstbefuellung_bilder.php` löschen ihn im `finally`-Block wieder (analog zu `bulk_import_aktiv`). `shop_sync_status.php` fällt auf diese Spalte zurück, wenn der Client keinen `log`-Parameter mitschickt, und gibt den aufgelösten Namen im JSON zurück (`d.log`) — das Frontend übernimmt ihn für die nächste Poll-Runde.
+- Neue gemeinsame Render-Funktion `renderShopSyncAktivitaetenZeilen()` (`einstellungen/shop_sync_aktivitaeten_render.php`) — von `index.php` (Erstaufbau) UND `shop_sync_status.php` (Poll-Antwort, `aktivitaeten_html`) benutzt, ein Formatierungsort statt Duplikat in PHP+JS. `index.php`s JS aktualisiert bei jedem Poll (alle 3s, solange ein Vorgang läuft) sowohl Log-Tail als auch die Aktivitäten-Liste live.
+- Den gerade laufenden Abgleich (gestartet vor dem Fix, kannte `aktueller_sync_log` noch nicht) einmalig per manuellem DB-Update nachgezogen, damit Jacky den Fix sofort ohne Warten auf den nächsten Lauf sehen konnte.
+
+**Getestet:** `php -l` auf allen geänderten Dateien, Migration erfolgreich angewendet (Status vorher/nachher geprüft). **Kein Browser-Test in dieser Session** (kein Login-Zugriff) — Jacky bestätigt den Live-Eindruck direkt beim laufenden Abgleich.
 
 ## 🔍 OFFENE LIVE-TESTS (Stand 2026-08-06) — bei Gelegenheit mit Jacky nachholen
 

@@ -24,7 +24,8 @@ class ShopSyncRepository
     {
         $stmt = $this->db->query("
             SELECT id, slug, name, wc_url, wc_key, wc_secret, wp_username, wp_app_password,
-                   bestellungen_letzter_sync, bulk_import_aktiv, sync_pausiert, bilder_basis_url
+                   bestellungen_letzter_sync, bulk_import_aktiv, sync_pausiert, bilder_basis_url,
+                   aktueller_sync_log
             FROM shops
             WHERE ist_aktiv = 1 AND wc_url IS NOT NULL AND wc_key IS NOT NULL AND wc_secret IS NOT NULL
         ");
@@ -53,6 +54,21 @@ class ShopSyncRepository
     {
         $this->db->prepare("UPDATE shops SET bulk_import_aktiv = :aktiv WHERE id = :id")
             ->execute(['aktiv' => $aktiv ? 1 : 0, 'id' => $shopId]);
+    }
+
+    /**
+     * Merkt sich den Dateinamen des laufenden Komplettabgleich-/Bilder-FTP-Logs
+     * in der DB (Migration 161) -- der Browser-Tab, der den Lauf gestartet hat,
+     * kennt den Namen zwar auch selbst (siehe shop_sync_start.php), aber bei
+     * Seiten-Reload/Tab-Wechsel während des Laufs geht dieses Wissen verloren.
+     * shop_sync_status.php greift dann auf diese Spalte zurück, statt für immer
+     * ohne Log-Text dazustehen (der "läuft"-Status kam über bulk_import_aktiv
+     * ohnehin schon zuverlässig durch).
+     */
+    public function setAktuellerSyncLog(int $shopId, ?string $logName): void
+    {
+        $this->db->prepare("UPDATE shops SET aktueller_sync_log = :log WHERE id = :id")
+            ->execute(['log' => $logName, 'id' => $shopId]);
     }
 
     /**

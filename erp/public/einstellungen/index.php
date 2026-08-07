@@ -320,6 +320,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
     <!-- ═══════════ TAB: SHOP-SYNCHRONISIERUNG ═══════════ -->
     <?php
     require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
+    require_once __DIR__ . '/shop_sync_aktivitaeten_render.php';
     $syncShops = array_filter($shops, fn($sh) => !empty($sh['wc_url']) && !empty($sh['wc_key']) && !empty($sh['wc_secret']));
 
     $letzteLaeufe = $db->query("
@@ -379,26 +380,10 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             </div>
             <pre data-log-tail style="display:<?= $sh['bulk_import_aktiv'] ? 'block' : 'none' ?>;margin:0 16px 16px;padding:10px 12px;background:#1e1e1e;color:#d4d4d4;font-size:11px;max-height:220px;overflow:auto;border-radius:4px"></pre>
 
-            <?php if (!empty($laeufeProShop[$sh['id']])): ?>
-                <div style="border-top:1px solid var(--color-border);padding:10px 16px">
-                    <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px">Letzte Cron-/Komplettabgleich-Aktivität</div>
-                    <?php foreach (array_slice($laeufeProShop[$sh['id']], 0, 5) as $lauf): ?>
-                        <?php $d = json_decode($lauf['details'] ?? '', true) ?: []; ?>
-                        <div style="font-size:12px;padding:2px 0;color:<?= $lauf['stufe'] === 'error' ? 'var(--color-danger)' : ($lauf['stufe'] === 'warn' ? '#e67e22' : 'inherit') ?>">
-                            <?= htmlspecialchars($lauf['erstellt_am']) ?> —
-                            <?php if ($lauf['aktion'] === 'shop.sync_lauf'): ?>
-                                Cron (<?= htmlspecialchars($d['richtung'] ?? '?') ?>): <?= (int)($d['erfolg'] ?? 0) ?> erfolgreich, <?= (int)($d['fehler'] ?? 0) ?> Fehler
-                            <?php elseif ($lauf['aktion'] === 'shop.cron_fehler'): ?>
-                                Cron-Fehler: <?= htmlspecialchars($d['fehler'] ?? '') ?>
-                            <?php elseif ($lauf['aktion'] === 'shop.bilder_ftp_gestartet'): ?>
-                                Bilder-Verknüpfung (FTP) manuell gestartet
-                            <?php else: ?>
-                                Komplettabgleich manuell gestartet (Batch <?= (int)($d['batch_groesse'] ?? 0) ?><?= empty($d['mit_bildern']) ? ', ohne Bilder' : '' ?>)
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+            <div data-aktivitaeten-block style="border-top:1px solid var(--color-border);padding:10px 16px;<?= empty($laeufeProShop[$sh['id']]) ? 'display:none' : '' ?>">
+                <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px">Letzte Cron-/Komplettabgleich-Aktivität</div>
+                <div data-aktivitaeten-liste><?= renderShopSyncAktivitaetenZeilen($laeufeProShop[$sh['id']] ?? []) ?></div>
+            </div>
         </div>
     <?php endforeach; ?>
 
@@ -418,13 +403,22 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         pre.textContent = d.log_tail;
                         pre.scrollTop = pre.scrollHeight;
                     }
+                    const aktBlock = card.querySelector('[data-aktivitaeten-block]');
+                    const aktListe = card.querySelector('[data-aktivitaeten-liste]');
+                    if (d.aktivitaeten_html !== undefined) {
+                        aktListe.innerHTML = d.aktivitaeten_html;
+                        aktBlock.style.display = d.aktivitaeten_html ? '' : 'none';
+                    }
                     if (d.laeuft) {
                         badge.textContent = 'Vorgang läuft…';
                         badge.style.background = '#fff3e0';
                         badge.style.color = '#e67e22';
                         btnStart.disabled = true;
                         btnBilder.disabled = true;
-                        setTimeout(() => poll(card, shopId, logName), 3000);
+                        // d.log: falls logName leer war (z.B. nach Seiten-Reload),
+                        // hat shop_sync_status.php den Namen aus der DB nachgeliefert --
+                        // ab jetzt direkt verwenden statt jedes Mal neu nachzuschlagen.
+                        setTimeout(() => poll(card, shopId, d.log || logName), 3000);
                     } else {
                         badge.textContent = 'Bereit';
                         badge.style.background = 'var(--color-success-bg,#e8f5e9)';
