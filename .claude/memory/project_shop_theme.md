@@ -1,11 +1,11 @@
 ---
 name: project-shop-theme
-description: "WooCommerce-Theme/UX-Anpassung: Gratis-Basis (Blocksy+Elementor+Max Mega Menu+Germanized) 2026-07-22 fertig gebaut als Barbara-Testbasis; WoodMart/Blocksy-Pro-Kaufentscheidung weiterhin pausiert (Budget-Gespräch mit Barbara); Performance-Fund 2026-07-29 (kalter Seiten-Cache, TTFB-dominiert) zurückgestellt bis Shop voll befüllt; 2026-08-02: Mega-Menü aktualisiert sich nicht automatisch + Breadcrumbs-Anleitung"
+description: "WooCommerce-Theme/UX-Anpassung: Gratis-Basis (Blocksy+Elementor+Max Mega Menu+Germanized) 2026-07-22 fertig gebaut als Barbara-Testbasis; WoodMart/Blocksy-Pro-Kaufentscheidung weiterhin pausiert (Budget-Gespräch mit Barbara); Performance-Fund 2026-07-29 (kalter Seiten-Cache, TTFB-dominiert) zurückgestellt bis Shop voll befüllt; 2026-08-02: Mega-Menü aktualisiert sich nicht automatisch + Breadcrumbs-Anleitung; 2026-08-09: Max-Mega-Menu-Fallstricke bei eigenen Shortcodes (li-Stripping, float/width-Override) + Woostify-Pro-Kandidat"
 metadata: 
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-08-02T20:24:04.842Z
+  modified: 2026-08-09T19:18:07.497Z
 ---
 
 ## Ausgangslage (Jacky, 2026-07-20)
@@ -136,3 +136,18 @@ der zusätzlich angehakt werden muss. Noch nicht rückgemeldet ob es bei Jacky s
 **Nebenbefund (nicht vertieft):** Wenn ein Artikel in mehreren Kategorien steht, zeigt die Breadcrumb
 vermutlich nur EINEN Pfad (den Navigationskontext oder einen Standard-Pfad) -- lässt sich normalerweise
 nicht direkt beeinflussen, für später vormerken falls es doch mal störend auffällt.
+
+## Max Mega Menu: zwei Fallstricke bei eigenen Shortcodes in "Block"-Widgets (2026-08-09)
+
+Beim Bau der Hersteller-Liste fürs Menü (siehe [[project_fuenf_abendaufgaben_0809]], Punkt 3) gefunden — gilt für JEDEN künftigen eigenen Shortcode, der über den Block+Shortcode-Weg (siehe Abschnitt oben, "Mega-Menü aktualisiert sich nicht automatisch") ins Menü eingebunden wird, nicht nur für Hersteller:
+
+1. **`<ul>` wird entfernt:** Gibt der Shortcode eine `<ul><li>`-Struktur aus (z.B. `wp_list_categories()`), entfernt Mega Menu beim Rendern in einem "Block"-Widget das umschließende `<ul>` und lässt nackte `<li>`-Elemente stehen. Eigenes CSS, das über `.wrapper ul { ... }` geht, läuft dadurch ins Leere — Selektoren müssen direkt auf `li` zielen.
+2. **`float:left` + `width:100%` auf `<li>`:** Mega Menu setzt eigene Layout-Regeln direkt auf jedes `<li>` (vermutlich für seine JS-Höhenberechnung des Flyout-Panels). Diese mit `!important` überschreiben zu wollen hat einmal die GANZE Seite zerlegt (Menüzeile → große leere Lücke → Mobilmenü → erst danach der eigentliche Seiteninhalt) — vermutlich weil Mega Menu für Desktop/Mobil-Umschaltung auf genau diese Werte angewiesen ist.
+
+**Robuste Lösung, die funktioniert hat:** gar keine `<li>`-Elemente ausgeben. Stattdessen reine `<a>`-Tags direkt in einem eigenen `<div>` mit `column-count` fürs Spalten-Layout (`get_terms()` + `get_term_link()` statt `wp_list_categories()`). Mega Menu hat dann keine `<li>`-Elemente, auf die seine Spezialbehandlung greifen könnte — kein `!important`-Kampf nötig, kein Seitenlayout-Bruch.
+
+**How to apply:** Bei jedem künftigen eigenen Menü-Shortcode (z.B. Punkt 4 "Labels" aus [[project_fuenf_abendaufgaben_0809]], falls dafür auch eine Liste ins Menü soll) von Anfang an mit reinen `<a>`-Tags statt `<ul><li>` arbeiten, nicht das `<li>`-Problem neu entdecken.
+
+## Neuer Kandidat: Woostify Pro (2026-08-09, noch nicht recherchiert)
+
+Jacky brachte Woostify Pro als möglichen Live-Shop-Theme-Kandidaten ins Gespräch (Kontext: [[project_fuenf_abendaufgaben_0809]], Punkt 3 Hersteller-als-Marke/Labels). Vanilla JS statt jQuery (potenziell schneller als Blocksy/WoodMart), bietet Whitelabel, Lizenzstufen sollen laut Jacky mehrere/unbegrenzte Seiten abdecken -- das würde die bei WoodMart gefundene Pro-Domain-Lizenzfalle (siehe oben) vermeiden. **Ungeprüft:** aktuelle Preise/Plan-Grenzen, ob Labels/Marken-Feature wirklich so tief eingebaut ist wie erhofft. Nicht von selbst recherchieren -- erst wenn Jacky das Theme-Thema wieder aktiv aufgreift (gleiche Zurückstellungs-Regel wie oben).

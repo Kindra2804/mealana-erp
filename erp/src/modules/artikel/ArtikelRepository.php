@@ -186,6 +186,7 @@ class ArtikelRepository
                 a.letzte_inventur_am,
                 a.geaendert_am,
                 h.name AS hersteller,
+                ag.name AS artikelgruppe,
                 s.satz AS steuersatz,
                 e.kuerzel AS einheit_kuerzel,
                 ap.brutto_vk,
@@ -221,6 +222,7 @@ class ArtikelRepository
             FROM artikel a
             JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN hersteller h ON a.hersteller_id = h.id
+            LEFT JOIN artikel_gruppen ag ON a.artikel_gruppe_id = ag.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN einheiten e ON a.einheit_id = e.id
             LEFT JOIN artikel_preise ap ON ap.id = (
@@ -518,6 +520,7 @@ class ArtikelRepository
                 ap.brutto_vk,
                 al_std.netto_ek AS standard_ek,
                 h.name AS hersteller,
+                ag.name AS artikelgruppe,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
                 (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
@@ -560,6 +563,7 @@ class ArtikelRepository
             LEFT JOIN artikel_typen at ON a.artikeltyp_id = at.id
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN einheiten e ON a.einheit_id = e.id
+            LEFT JOIN artikel_gruppen ag ON a.artikel_gruppe_id = ag.id
             WHERE a.vaterartikel_id IN ($placeholders)
             GROUP BY a.id
             ORDER BY $sortSpalte $sortDir
@@ -714,16 +718,49 @@ class ArtikelRepository
 
         // PDO named-parameter execute braucht genau die 33 Placeholder-Keys — extra Keys entfernen
         $erlaubteKeys = [
-            'vaterartikel_id', 'hat_eigenen_lagerstand', 'artikelnummer', 'hersteller_id',
-            'steuerklasse_id', 'artikel_gruppe_id', 'artikeltyp_id', 'name', 'kurzbeschreibung',
-            'beschreibung', 'technische_details', 'beschreibung_intern', 'meta_titel',
-            'meta_description', 'url_slug', 'einheit_id', 'inhalt_menge', 'inhalt_einheit',
-            'gewicht_artikel', 'gewicht_versand', 'laenge', 'breite', 'hoehe', 'herkunftsland',
-            'taric_code', 'grundpreis_bezugsmenge', 'grundpreis_anzeigen', 'charge_pflicht',
-            'ist_auslaufartikel', 'ueberverkauf_erlaubt', 'aktiv', 'zustand', 'zustand_vater_id',
+            'vaterartikel_id',
+            'hat_eigenen_lagerstand',
+            'artikelnummer',
+            'hersteller_id',
+            'steuerklasse_id',
+            'artikel_gruppe_id',
+            'artikeltyp_id',
+            'name',
+            'kurzbeschreibung',
+            'beschreibung',
+            'technische_details',
+            'beschreibung_intern',
+            'meta_titel',
+            'meta_description',
+            'url_slug',
+            'einheit_id',
+            'inhalt_menge',
+            'inhalt_einheit',
+            'gewicht_artikel',
+            'gewicht_versand',
+            'laenge',
+            'breite',
+            'hoehe',
+            'herkunftsland',
+            'taric_code',
+            'grundpreis_bezugsmenge',
+            'grundpreis_anzeigen',
+            'charge_pflicht',
+            'ist_auslaufartikel',
+            'ueberverkauf_erlaubt',
+            'aktiv',
+            'zustand',
+            'zustand_vater_id',
         ];
         $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
         return (int) $this->db->lastInsertId();
+    }
+
+    /** Setzt den UVP/Streichpreis eines Artikels (eigener Aufruf, gleiches Muster wie uvp_speichern.php). */
+    public function updateUvp(int $id, float $uvp): void
+    {
+        $stmt = $this->db->prepare("UPDATE artikel SET uvp = :uvp WHERE id = :id");
+        $stmt->execute(['uvp' => $uvp, 'id' => $id]);
     }
 
     /** Aktualisiert alle editierbaren Stammdatenfelder eines bestehenden Artikels. */
@@ -779,14 +816,39 @@ class ArtikelRepository
 
         // Nur die Keys übergeben die im SQL definiert sind (PHP 8.x PDO wirft HY093 bei Extra-Keys)
         $erlaubt = [
-            'id', 'artikelnummer', 'hersteller_id', 'steuerklasse_id', 'artikel_gruppe_id',
-            'artikeltyp_id', 'name', 'kurzbeschreibung', 'beschreibung', 'technische_details',
-            'beschreibung_intern', 'meta_titel', 'meta_description', 'url_slug',
-            'einheit_id', 'inhalt_menge', 'inhalt_einheit',
-            'gewicht_artikel', 'gewicht_versand', 'laenge', 'breite', 'hoehe',
-            'herkunftsland', 'taric_code', 'grundpreis_bezugsmenge', 'grundpreis_anzeigen',
-            'charge_pflicht', 'ist_auslaufartikel', 'ueberverkauf_erlaubt', 'aktiv',
-            'zustand', 'zustand_vater_id', 'lieferzeit_text',
+            'id',
+            'artikelnummer',
+            'hersteller_id',
+            'steuerklasse_id',
+            'artikel_gruppe_id',
+            'artikeltyp_id',
+            'name',
+            'kurzbeschreibung',
+            'beschreibung',
+            'technische_details',
+            'beschreibung_intern',
+            'meta_titel',
+            'meta_description',
+            'url_slug',
+            'einheit_id',
+            'inhalt_menge',
+            'inhalt_einheit',
+            'gewicht_artikel',
+            'gewicht_versand',
+            'laenge',
+            'breite',
+            'hoehe',
+            'herkunftsland',
+            'taric_code',
+            'grundpreis_bezugsmenge',
+            'grundpreis_anzeigen',
+            'charge_pflicht',
+            'ist_auslaufartikel',
+            'ueberverkauf_erlaubt',
+            'aktiv',
+            'zustand',
+            'zustand_vater_id',
+            'lieferzeit_text',
         ];
         $stmt->execute(array_intersect_key($data, array_flip($erlaubt)));
         return true;

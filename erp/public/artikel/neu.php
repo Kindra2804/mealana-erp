@@ -256,6 +256,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     readonly style="background:var(--color-bg)"
                     value="<?= old('netto_vk', $formdata) ?>">
             </div>
+            <div class="form-row">
+                <label class="form-label">UVP / Streichpreis</label>
+                <input type="number" step="0.01" name="uvp" id="uvp" class="erp-input"
+                    placeholder="Standardmäßig = Brutto-VK"
+                    value="<?= old('uvp', $formdata) ?>">
+            </div>
 
             <!-- Inhalt-Felder — werden per JS bei physischen Einheiten eingeblendet -->
             <div id="felder-physisch" class="versteckt">

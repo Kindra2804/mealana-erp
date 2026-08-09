@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-07-31T17:06:24.870Z
+  modified: 2026-08-09T19:17:37.912Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -44,6 +44,16 @@ Jacky hatte vier Punkte festgelegt:
 3. ~~Dashboard~~ ✅ FERTIG 2026-07-23 — Online-Kanäle eingebunden, siehe [[project_shop_sync]].
 4. ~~Statistik/Auswertungen~~ ✅ FERTIG 2026-07-23 (Topseller/Umsatz-Zeitverlauf/Marge/Jahresvergleich) — Lagerwert-Snapshot + Umsatz-Vorhersage bewusst zurückgestellt, siehe [[project_statistik]].
 5. **JTL-Anreicherungs-Import** — Scope am 2026-07-23 mit Jacky durchgesprochen (siehe [[project_jtl_import]]), Bau noch nicht gestartet. Wartet auf: Jackys Re-Export mit Bildern, Lieferanten-Dedup-Strategie. Merkmale bewusst separat/zurückgestellt (Duplikat-Risiko in Live). **ALS NÄCHSTES** wenn Jacky bereit ist.
+
+## Fünf Abendaufgaben, 2026-08-09 festgelegt — der Reihe nach
+
+Jacky hat fünf Punkte gesammelt, die "der Reihe nach, einzeln besprochen" abgearbeitet werden: Kontrollliste (Buchhaltung) → UVP-Streichpreis → Hersteller-als-Marke → Labels → Download-Artikeltyp. Details, Stand und Reihenfolgen-Begründung siehe [[project_fuenf_abendaufgaben_0809]].
+
+1. Kontrollliste — ✅ FERTIG 2026-08-09
+2. UVP/Streichpreis — ✅ FERTIG 2026-08-09 (inkl. Shop-Sync-Preisfix, echter Bug gefunden: SALE-Override/Aktionsmodul kamen bisher nie im Shop an)
+3. Hersteller als Marke — ✅ FERTIG 2026-08-09 (WC-Attribut `pa_hersteller` war schon voll befüllt, nur Mega-Menü-Einbindung per WPCode-Shortcode gefehlt, siehe [[project_shop_theme]] für Mega-Menu-Fallstricke)
+4. Labels — offen, **ALS NÄCHSTES**
+5. Download-Artikeltyp — offen, komplexestes Thema, bewusst zuletzt
 
 ## Kleinere Punkte — "zwischendurch, je nach Lust und Laune", aber NICHT verlieren
 

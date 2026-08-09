@@ -7,6 +7,7 @@ require_once __DIR__ . '/../artikel/BilderRepository.php';
 require_once __DIR__ . '/../hersteller/HerstellerService.php';
 require_once __DIR__ . '/../varianten/VariantenService.php';
 require_once __DIR__ . '/../achsen/AchsenRepository.php';
+require_once __DIR__ . '/../preise/PreisService.php';
 
 /**
  * ShopSyncService – synct Standard-Artikel UND Vater/Kind-Artikel nach WooCommerce.
@@ -37,7 +38,9 @@ class ShopSyncService
     private HerstellerService $herstellerService;
     private VariantenService $variantenService;
     private AchsenRepository $achsenRepo;
+    private PreisService $preisService;
     private int $jarvisId;
+    private int $standardKgId;
 
     /** @var array<int,array<string,int>> shopId => [einheit_slug => wc_unit_id], siehe findeEinheitId() */
     private array $einheitenCache = [];
@@ -78,11 +81,15 @@ class ShopSyncService
         $this->herstellerService = new HerstellerService();
         $this->variantenService = new VariantenService();
         $this->achsenRepo = new AchsenRepository();
+        $this->preisService = new PreisService();
         // Läuft als Cron ohne Session -- Logger::log() braucht dann eine explizite
         // benutzer_id, sonst crasht der INSERT an aktivitaeten.benutzer_id NOT NULL
         // (gleiches Bug-Muster wie schon bei cron/mahnwesen.php und LagerService).
         $this->jarvisId = (int)Database::getInstance()
             ->query("SELECT id FROM benutzer WHERE username = 'system'")
+            ->fetchColumn();
+        $this->standardKgId = (int)Database::getInstance()
+            ->query("SELECT id FROM kundengruppen WHERE ist_standard = 1")
             ->fetchColumn();
     }
 
@@ -682,7 +689,8 @@ class ShopSyncService
 
     private function baueProduktPayload(WooCommerceClient $client, array $artikel, int $shopId): array
     {
-        $preis = $this->repo->findEndkundenPreis((int)$artikel['artikel_id']);
+        $preisErgebnis = $this->baueRegularUndSalePreis((int)$artikel['artikel_id']);
+        $preis = $preisErgebnis['preis'];
         $wcKategorieIds = $this->repo->findWcKategorieIds((int)$artikel['artikel_id'], $shopId);
 
         $payload = [
@@ -693,9 +701,7 @@ class ShopSyncService
             'status'            => $artikel['aktiv'] ? 'publish' : 'draft',
         ];
 
-        if ($preis !== null) {
-            $payload['regular_price'] = number_format($preis, 2, '.', '');
-        }
+        $payload += $preisErgebnis['felder'];
 
         if (!empty($wcKategorieIds)) {
             $payload['categories'] = array_map(fn($id) => ['id' => (int)$id], $wcKategorieIds);
@@ -789,6 +795,43 @@ class ShopSyncService
         return $payload;
     }
 
+    /**
+     * Baut regular_price/sale_price für WooCommerce, SALE-Override/Aktionsmodul-bewusst
+     * über PreisService::getEffektiverPreis() (bisher las der Sync direkt aus artikel_preise
+     * und ignorierte beide Mechanismen komplett -- ein aktiver SALE-Override kam nie im Shop an).
+     *
+     * regular_price = UVP (Fallback: Effektivpreis, falls kein UVP gesetzt ist). sale_price nur
+     * wenn der Effektivpreis wegen eines aktiven SALE-Override/einer Aktion tatsächlich niedriger
+     * als regular_price ist, sonst explizit '' -- WooCommerce lässt bei PUT-Updates einen früher
+     * gesetzten sale_price sonst stehen, auch wenn die Aktion längst vorbei ist (gleiches
+     * Muster wie schon bei manage_stock, siehe baueProduktPayload()).
+     *
+     * @return array{felder: array, preis: ?float} 'preis' ist der reine Effektivpreis (ohne UVP-Fallback),
+     *         wird von baueGrundpreisFelder() für die €/100g-Berechnung gebraucht.
+     */
+    private function baueRegularUndSalePreis(int $artikelId): array
+    {
+        $preisInfo = $this->preisService->getEffektiverPreis($artikelId, $this->standardKgId);
+        $preis     = $preisInfo['brutto_vk'];
+        $uvp       = $this->repo->findUvp($artikelId);
+        $regularPreis = $uvp ?? $preis;
+
+        if ($regularPreis === null) {
+            return ['felder' => [], 'preis' => $preis];
+        }
+
+        $istRabattiert = in_array($preisInfo['quelle'], ['sale', 'aktion'], true)
+            && $preis !== null && $preis < $regularPreis;
+
+        return [
+            'felder' => [
+                'regular_price' => number_format($regularPreis, 2, '.', ''),
+                'sale_price'    => $istRabattiert ? number_format($preis, 2, '.', '') : '',
+            ],
+            'preis' => $preis,
+        ];
+    }
+
     /** WC-Bild-Referenzen (nur bereits erfolgreich synced) eines Artikels, in Positions-Reihenfolge. */
     private function sammleBildReferenzen(int $artikelId, int $shopId): array
     {
@@ -805,7 +848,8 @@ class ShopSyncService
     /** Payload für eine WooCommerce-Variation (= unser Kind-Artikel). */
     private function baueVariationPayload(WooCommerceClient $client, array $kind, int $shopId, int $vaterId): array
     {
-        $preis = $this->repo->findEndkundenPreis((int)$kind['artikel_id']);
+        $preisErgebnis = $this->baueRegularUndSalePreis((int)$kind['artikel_id']);
+        $preis = $preisErgebnis['preis'];
 
         // Explizit setzen, nicht weglassen: diese Methode wird nur aus der
         // normalen Fälligkeits-Schleife heraus aufgerufen, die zwingend
@@ -816,9 +860,7 @@ class ShopSyncService
         // (WooCommerce lässt bei PUT ohne 'status'-Feld den Status unverändert
         // -- Fund 06.08.2026, direkt bevor er in Produktion aufgefallen wäre).
         $payload = ['sku' => $kind['artikelnummer'], 'status' => 'publish'];
-        if ($preis !== null) {
-            $payload['regular_price'] = number_format($preis, 2, '.', '');
-        }
+        $payload += $preisErgebnis['felder'];
 
         // Bei Variationen heißt das Feld 'option' (Singular, ein fester Wert) --
         // beim Eltern-Payload oben ist es 'options' (Plural, alle möglichen Werte).

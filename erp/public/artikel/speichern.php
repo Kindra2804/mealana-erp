@@ -56,6 +56,7 @@ $artikelData = array_intersect_key($data, array_flip([
 $artikelData['brutto_vk'] = $data['brutto_vk'] ?? null;
 $artikelData['netto_vk']  = $data['netto_vk']  ?? null;
 $artikelData['ean_gtin13'] = $data['ean_gtin13'] ?? null;
+$artikelData['uvp']       = $data['uvp']       ?? null;
 
 foreach (
     [

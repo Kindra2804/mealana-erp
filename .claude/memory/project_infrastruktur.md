@@ -1,10 +1,11 @@
 ---
 name: project-infrastruktur
-description: "Geplantes Server/Netzwerk-Setup MeaLana (lokaler Server, VPN, Messe-Kasse Offline)"
+description: "Geplantes Server/Netzwerk-Setup MeaLana (lokaler Server, VPN, Messe-Kasse Offline); Dev-PC-Umzug 2026-07-17 + DB-Encoding/Import-Lehren; 2026-08-09: Live→Dev-Import kann Shop-Sync-Fälligkeit unsichtbar blind machen"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 7c2206d0-2966-4b33-8077-f725a9bdff96
+  modified: 2026-08-09T19:31:38.678Z
 ---
 
 ## Aktuelles Setup (Ist-Stand)
@@ -128,3 +129,11 @@ Nach dem GD-Fund kamen beim selben Umzug noch zwei weitere vergessene Schritte a
 **Gefährlicher eigener Fehler bei der Untersuchung:** Beim testweisen Import eines alten Dumps (`Z:\ERP_dumps\...sql`) in eine isolierte Test-DB übersehen, dass die Datei ein fest eingebautes `USE \`mealana_erp\`;` enthielt — dadurch wurde kurzzeitig die LIVE-Datenbank mit dem 11 Tage alten Dump überschrieben (Migration 125→111, Datenverlust wäre real gewesen). Sofort per vorher gezogenem Backup rückgängig gemacht, kein bleibender Schaden, aber reiner Zufall dass ein Backup existierte.
 **How to apply:** Vor JEDEM testweisen Import einer fremden `.sql`-Datei IMMER zuerst `grep -a "^USE\|^CREATE DATABASE" datei.sql` prüfen. Falls Treffer: nur einzelne Tabellen per `awk '/DROP TABLE IF EXISTS \`tabelle\`/,/UNLOCK TABLES/'` extrahieren statt die ganze Datei zu pipen. Eigene mit `mysqldump -uroot dbname > datei.sql` (ohne `--databases`) erzeugte Dumps haben dieses Problem nicht (kein USE-Statement), fremde/vollständige Dumps (mit `--all-databases` oder `--databases`) fast immer.
 **Weitere Lehre:** Terminal-/Tool-Output von `mysql -e` ist beim Anzeigen von Umlauten/Sonderzeichen nicht vertrauenswürdig (hat mich zweimal getäuscht — korrupter Text wurde lesbar dargestellt). Bei Verdacht auf Encoding-Probleme immer `HEX(spalte)` zur Verifikation nutzen, nie der Bildschirmausgabe trauen.
+
+## Update 2026-08-09: DB-Import von Live nach Dev kann Shop-Sync-Fälligkeit unsichtbar kaputt machen
+
+Beim GPSR-Hersteller-Fix (siehe [[project_fuenf_abendaufgaben_0809]], Punkt 3-Nachtrag) gefunden: Jacky hatte an einem früheren Zeitpunkt Hersteller-Adressdaten auf LIVE korrigiert, dann per DB-Import von Live nach Dev zurückgeholt. Die korrigierten Daten kamen mit, aber der Import übernahm die alten `hersteller.aktualisiert_am`-Zeitstempel aus dem Dump statt sie auf "jetzt" zu setzen (reines `INSERT`/`REPLACE`, kein `UPDATE` — `ON UPDATE CURRENT_TIMESTAMP` greift nur bei echten UPDATEs ohne expliziten Wert für die Spalte). `hersteller_shops.synced_at` (Sync-Tracking) war dabei bereits NEUER als dieser alte Zeitstempel (aus einem Dev-eigenen Sync-Lauf vor dem Import) — die Fälligkeits-Prüfung (`h.aktualisiert_am > hs.synced_at`) sah deshalb **"0 fällig"**, obwohl der Live-Shop objektiv veraltete Daten von VOR Jackys Korrektur zeigte. Kein Code-Bug — reiner blinder Fleck des Imports gegenüber dem Sync-Tracking.
+
+**Fix angewendet:** `UPDATE hersteller_shops SET synced_at = NULL WHERE shop_id = X AND externe_term_id IS NOT NULL` (61 Zeilen), danach `php cron/shop_sync.php` manuell angestoßen — zieht alle Hersteller neu nach, unabhängig von der (unzuverlässigen) `aktualisiert_am`-Prüfung.
+
+**How to apply:** Nach JEDEM künftigen Live→Dev-DB-Import prüfen, ob zwischen Dump-Zeitpunkt und dem letzten echten Shop-Sync-Lauf Korrekturen an synct-relevanten Daten gemacht wurden (Hersteller/Artikel/Kategorien). Falls ja: `synced_at`-Spalte(n) der betroffenen `*_shops`-Tabellen gezielt auf NULL zurücksetzen und Cron manuell anstoßen, statt sich auf die automatische Fälligkeits-Erkennung zu verlassen — die ist gegenüber Raw-Imports blind. Gilt analog für `kategorie_shops`/`artikel_shops`/etc., nicht nur Hersteller.

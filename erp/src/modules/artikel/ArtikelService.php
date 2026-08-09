@@ -52,7 +52,8 @@ class ArtikelService
         $bruttoVk  = $data['brutto_vk']  ?? null;
         $nettoVk   = $data['netto_vk']   ?? null;
         $eanGtin13 = $data['ean_gtin13'] ?? null;
-        unset($data['brutto_vk'], $data['netto_vk'], $data['ean_gtin13']);
+        $uvp       = $data['uvp']        ?? null;
+        unset($data['brutto_vk'], $data['netto_vk'], $data['ean_gtin13'], $data['uvp']);
 
         $id = $this->repo->insert($data);
 
@@ -61,6 +62,13 @@ class ArtikelService
         }
         if ($eanGtin13) {
             $this->repo->insertCode($id, 'GTIN13', $eanGtin13);
+        }
+
+        // Ohne eigene UVP-Eingabe zählt der VK selbst als Referenzpreis --
+        // sonst bliebe uvp bei jedem neuen Artikel NULL, bis jemand es manuell nachträgt.
+        $uvpWert = $uvp !== null ? (float) $uvp : ($bruttoVk ? (float) $bruttoVk : null);
+        if ($uvpWert !== null) {
+            $this->repo->updateUvp($id, $uvpWert);
         }
 
         Logger::log('artikel.anlegen', 'artikel', $id, ['name' => $data['name']]);

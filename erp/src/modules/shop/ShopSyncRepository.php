@@ -548,28 +548,23 @@ class ShopSyncRepository
         return $stmt->fetch() ?: ['hat_lagerstand' => 0, 'ueberverkauf_erlaubt' => 0, 'gesamtbestand' => 0, 'reserviert' => 0];
     }
 
-    /** Endkunden-Bruttopreis (kundengruppen.ist_standard=1), da Shops immer B2C sind. */
-    public function findEndkundenPreis(int $artikelId): ?float
+    /**
+     * UVP/Streichpreis eines Artikels -- Basis für regular_price in WooCommerce.
+     * 0 zählt wie NULL als "nicht gesetzt" (gleiche Konvention wie im UVP-Backfill-Skript
+     * und im Preise-Tab -- 0,00 € ist nie ein echter UVP, nur der unbefüllte Anzeige-Default).
+     */
+    public function findUvp(int $artikelId): ?float
     {
-        $stmt = $this->db->prepare("
-            SELECT ap.brutto_vk
-            FROM artikel_preise ap
-            JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id
-            WHERE ap.artikel_id = :artikel_id AND kg.ist_standard = 1
-              AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= NOW())
-              AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= NOW())
-            ORDER BY ap.gueltig_ab DESC
-            LIMIT 1
-        ");
-        $stmt->execute(['artikel_id' => $artikelId]);
+        $stmt = $this->db->prepare("SELECT uvp FROM artikel WHERE id = :id");
+        $stmt->execute(['id' => $artikelId]);
         $wert = $stmt->fetchColumn();
-        return $wert !== false ? (float)$wert : null;
+        return ($wert !== false && $wert !== null && (float)$wert > 0) ? (float)$wert : null;
     }
 
     /**
      * Rohdaten für die Grundpreis-Berechnung (siehe ShopSyncService::baueGrundpreisFelder()) --
      * nicht Teil von findFaelligeArtikel(), weil dort nur die für JEDEN Artikel nötigen
-     * Kernfelder stehen (gleiches Muster wie findEndkundenPreis()/findBestandInfo()).
+     * Kernfelder stehen (gleiches Muster wie findUvp()/findBestandInfo()).
      */
     public function findGrundpreisFelder(int $artikelId): array|false
     {

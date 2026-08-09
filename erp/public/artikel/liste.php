@@ -49,6 +49,7 @@ $alleSpaltenDef = [
     'merkmale'        => ['label' => 'Merkmale',        'default' => false, 'baubar' => true],
     'lagerplatz'      => ['label' => 'Lagerplatz',      'default' => false, 'baubar' => false],
     'letzte_inventur' => ['label' => 'Letzte Inventur', 'default' => false, 'baubar' => true],
+    'artikelgruppe'   => ['label' => 'Artikelgruppe',   'default' => false, 'baubar' => true],
 ];
 $defaultSpalten = array_keys(array_filter($alleSpaltenDef, fn($s) => $s['default']));
 
@@ -58,33 +59,56 @@ $spRow = $spStmt->fetch();
 $aktiveSpalten = $spRow ? json_decode($spRow['wert'], true) : $defaultSpalten;
 $aktiveSpalten = array_values(array_filter($aktiveSpalten, fn($s) => isset($alleSpaltenDef[$s])));
 
-function sp(string $key, array $aktiv): bool { return in_array($key, $aktiv); }
+function sp(string $key, array $aktiv): bool
+{
+    return in_array($key, $aktiv);
+}
 
 // Renderer für Spalten-Header (TH)
-function spalteHeader(string $key, string $aktSort, string $aktDir, array $getParams): string {
+function spalteHeader(string $key, string $aktSort, string $aktDir, array $getParams): string
+{
     switch ($key) {
-        case 'status':        return '<th style="width:130px">STATUS</th>';
-        case 'shops':         return '<th style="width:100px">SHOPS</th>';
-        case 'bestand':       return '<th style="width:80px;text-align:right" title="Ist · Reserviert · Verfügbar">' . sortKopf('bestand', 'BESTAND', $aktSort, $aktDir, $getParams) . '</th>';
-        case 'preis':         return '<th style="width:90px;text-align:right">' . sortKopf('preis', 'PREIS', $aktSort, $aktDir, $getParams) . '</th>';
-        case 'hersteller':    return '<th style="width:110px">' . sortKopf('hersteller', 'HERSTELLER', $aktSort, $aktDir, $getParams) . '</th>';
-        case 'artikeltyp':    return '<th style="width:80px">' . sortKopf('artikeltyp', 'TYP', $aktSort, $aktDir, $getParams) . '</th>';
-        case 'ean':           return '<th style="width:130px">EAN</th>';
-        case 'einheit':       return '<th style="width:70px">EINHEIT</th>';
-        case 'kategorie':     return '<th style="min-width:120px;max-width:200px">KATEGORIE</th>';
-        case 'geaendert_am':  return '<th style="width:110px">' . sortKopf('geaendert_am', 'GEÄNDERT AM', $aktSort, $aktDir, $getParams) . '</th>';
-        case 'ek':            return '<th style="width:80px;text-align:right">EK</th>';
-        case 'marge':         return '<th style="width:70px;text-align:right">MARGE</th>';
-        case 'charge':        return '<th style="width:60px;text-align:center">' . sortKopf('charge', 'CHARGE', $aktSort, $aktDir, $getParams) . '</th>';
-        case 'merkmale':      return '<th style="width:100px">MERKMALE</th>';
-        case 'lagerplatz':    return '<th style="width:100px">LAGERPLATZ</th>';
-        case 'letzte_inventur': return '<th style="width:100px">INVENTUR</th>';
+        case 'status':
+            return '<th style="width:130px">STATUS</th>';
+        case 'shops':
+            return '<th style="width:100px">SHOPS</th>';
+        case 'bestand':
+            return '<th style="width:80px;text-align:right" title="Ist · Reserviert · Verfügbar">' . sortKopf('bestand', 'BESTAND', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'preis':
+            return '<th style="width:90px;text-align:right">' . sortKopf('preis', 'PREIS', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'hersteller':
+            return '<th style="width:110px">' . sortKopf('hersteller', 'HERSTELLER', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'artikeltyp':
+            return '<th style="width:80px">' . sortKopf('artikeltyp', 'TYP', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'ean':
+            return '<th style="width:130px">EAN</th>';
+        case 'einheit':
+            return '<th style="width:70px">EINHEIT</th>';
+        case 'artikelgruppe':
+            return '<th style="width: 70px">ARTIKELGRUPPE</th>';
+        case 'kategorie':
+            return '<th style="min-width:120px;max-width:200px">KATEGORIE</th>';
+        case 'geaendert_am':
+            return '<th style="width:110px">' . sortKopf('geaendert_am', 'GEÄNDERT AM', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'ek':
+            return '<th style="width:80px;text-align:right">EK</th>';
+        case 'marge':
+            return '<th style="width:70px;text-align:right">MARGE</th>';
+        case 'charge':
+            return '<th style="width:60px;text-align:center">' . sortKopf('charge', 'CHARGE', $aktSort, $aktDir, $getParams) . '</th>';
+        case 'merkmale':
+            return '<th style="width:100px">MERKMALE</th>';
+        case 'lagerplatz':
+            return '<th style="width:100px">LAGERPLATZ</th>';
+        case 'letzte_inventur':
+            return '<th style="width:100px">INVENTUR</th>';
     }
     return '';
 }
 
 // Renderer für Vater-Zeilen-Zellen (TD)
-function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitle, string $statusChips, bool $hatTeureresKind, array $shopNamenById): string {
+function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitle, string $statusChips, bool $hatTeureresKind, array $shopNamenById): string
+{
     switch ($key) {
         case 'status':
             return '<td class="status-cell">' . $statusChips . '</td>';
@@ -98,7 +122,7 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             $html = formatBestand($ist);
             if ($res > 0) {
                 $html .= ' / <span style="font-size:11px;color:#d97706">' . formatBestand($res) . '</span>'
-                       . ' / <span style="font-size:11px;color:' . $vc . ';font-weight:600">' . formatBestand($verf) . '</span>';
+                    . ' / <span style="font-size:11px;color:' . $vc . ';font-weight:600">' . formatBestand($verf) . '</span>';
             }
             return '<td style="text-align:right;white-space:nowrap" class="' . $bstKlasse . '" ' . $bstTitle . '>' . $html . '</td>';
         case 'preis':
@@ -113,6 +137,8 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($a['ean'] ?? '–') . '</td>';
         case 'einheit':
             return '<td>' . htmlspecialchars($a['einheit_kuerzel'] ?? '–') . '</td>';
+        case 'artikelgruppe':
+            return '<td>' . htmlspecialchars($a['artikelgruppe'] ?? '–') . '</td>';
         case 'kategorie':
             $kat = htmlspecialchars($a['kategorien'] ?? '');
             return '<td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $kat . '">' . ($kat ?: '–') . '</td>';
@@ -132,7 +158,8 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
         case 'merkmale':
             $mrk = htmlspecialchars($a['merkmale'] ?? '');
             return '<td style="font-size:12px;color:var(--color-text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $mrk . '">' . ($mrk ?: '–') . '</td>';
-        case 'lagerplatz':    return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+        case 'lagerplatz':
+            return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
         case 'letzte_inventur':
             $datum = $a['letzte_inventur_am'] ?? null;
             return '<td style="font-size:12px;color:var(--color-text-muted)">'
@@ -147,10 +174,13 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
 // erschwerte Fehlersuche (z.B. fehlender Hersteller bei einzelnen Kindern
 // fällt so sofort auf, siehe [[bug_hersteller_modal_insert]]-artige Fälle).
 // findKinderFuerListe() lädt dafür dieselben Felder wie die Vater-Query.
-function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kindBstTitle, string $kindStatusChips, array $shopNamenById): string {
+function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kindBstTitle, string $kindStatusChips, array $shopNamenById): string
+{
     switch ($key) {
-        case 'status':   return '<td class="status-cell">' . $kindStatusChips . '</td>';
-        case 'shops':    return '<td class="kanal-cell">' . renderShopChips($k, $shopNamenById) . '</td>';
+        case 'status':
+            return '<td class="status-cell">' . $kindStatusChips . '</td>';
+        case 'shops':
+            return '<td class="kanal-cell">' . renderShopChips($k, $shopNamenById) . '</td>';
         case 'bestand':
             $kist  = (float)$k['gesamtbestand'];
             $kres  = (float)($k['reserviert'] ?? 0);
@@ -159,17 +189,21 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
             $khtml = formatBestand($kist);
             if ($kres > 0) {
                 $khtml .= ' / <span style="font-size:11px;color:#d97706">' . formatBestand($kres) . '</span>'
-                        . ' / <span style="font-size:11px;color:' . $kvc . ';font-weight:600">' . formatBestand($kverf) . '</span>';
+                    . ' / <span style="font-size:11px;color:' . $kvc . ';font-weight:600">' . formatBestand($kverf) . '</span>';
             }
             return '<td style="text-align:right;font-size:12px;white-space:nowrap" class="' . $kindBstKlasse . '" ' . $kindBstTitle . '>' . $khtml . '</td>';
-        case 'preis':    return '<td style="text-align:right;font-size:12px" class="preis-cell">' . ($k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–') . '</td>';
+        case 'preis':
+            return '<td style="text-align:right;font-size:12px" class="preis-cell">' . ($k['brutto_vk'] ? number_format((float)$k['brutto_vk'], 2, ',', '.') . ' €' : '–') . '</td>';
         case 'hersteller':
             return '<td>' . htmlspecialchars($k['hersteller'] ?? '–') . '</td>';
         case 'artikeltyp':
             return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['artikeltyp_name'] ?? '–') . '</td>';
-        case 'ean':      return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['ean'] ?? '–') . '</td>';
+        case 'ean':
+            return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['ean'] ?? '–') . '</td>';
         case 'einheit':
             return '<td>' . htmlspecialchars($k['einheit_kuerzel'] ?? '–') . '</td>';
+        case 'artikelgruppe':
+            return '<td>' . htmlspecialchars($k['artikelgruppe'] ?? '–') . '</td>';
         case 'kategorie':
             $kat = htmlspecialchars($k['kategorien'] ?? '');
             return '<td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $kat . '">' . ($kat ?: '–') . '</td>';
@@ -184,11 +218,13 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
                 if ($nVk > 0) $m = round((($nVk - (float)$k['standard_ek']) / $nVk) * 100, 1) . ' %';
             }
             return '<td style="text-align:right;font-size:12px">' . $m . '</td>';
-        case 'charge':   return '<td style="text-align:center">' . ($k['charge_pflicht'] ? '✓' : '') . '</td>';
+        case 'charge':
+            return '<td style="text-align:center">' . ($k['charge_pflicht'] ? '✓' : '') . '</td>';
         case 'merkmale':
             $mrk = htmlspecialchars($k['merkmale'] ?? '');
             return '<td style="font-size:12px;color:var(--color-text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $mrk . '">' . ($mrk ?: '–') . '</td>';
-        case 'lagerplatz':    return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+        case 'lagerplatz':
+            return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
         case 'letzte_inventur':
             $datum = $k['letzte_inventur_am'] ?? null;
             return '<td style="font-size:12px;color:var(--color-text-muted)">'
@@ -198,14 +234,17 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
 }
 
 // Renderer für Zustandsartikel-Zeilen
-function spalteZustandTd(string $key, array $za, string $zaBstKlasse, string $zaSuffix): string {
+function spalteZustandTd(string $key, array $za, string $zaBstKlasse, string $zaSuffix): string
+{
     switch ($key) {
         case 'status':
             $chips = '<span class="sc" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd">' . $zaSuffix . '</span>';
             if (!$za['aktiv']) $chips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
             return '<td class="status-cell">' . $chips . '</td>';
-        case 'bestand': return '<td style="text-align:right;font-size:12px" class="' . $zaBstKlasse . '">' . formatBestand($za['gesamtbestand']) . '</td>';
-        case 'preis':   return '<td style="text-align:right;font-size:12px">–</td>';
+        case 'bestand':
+            return '<td style="text-align:right;font-size:12px" class="' . $zaBstKlasse . '">' . formatBestand($za['gesamtbestand']) . '</td>';
+        case 'preis':
+            return '<td style="text-align:right;font-size:12px">–</td>';
     }
     return '<td></td>';
 }
@@ -320,12 +359,12 @@ function renderThumbCell(int $artikelId, array $hauptbilder, string $name, ?floa
     $preisText = $preis !== null ? number_format($preis, 2, ',', '.') . ' €' : '–';
 
     return "<div class=\"$klasse thumb-hat-bild\">"
-         . "<img src=\"$url\" alt=\"$alt\" loading=\"lazy\">"
-         . "<div class=\"thumb-preview\">"
-         .   "<img src=\"$url\" alt=\"$alt\">"
-         .   "<div class=\"thumb-preview-name\">" . htmlspecialchars($name) . "</div>"
-         .   "<div class=\"thumb-preview-preis\">$preisText</div>"
-         . "</div></div>";
+        . "<img src=\"$url\" alt=\"$alt\" loading=\"lazy\">"
+        . "<div class=\"thumb-preview\">"
+        .   "<img src=\"$url\" alt=\"$alt\">"
+        .   "<div class=\"thumb-preview-name\">" . htmlspecialchars($name) . "</div>"
+        .   "<div class=\"thumb-preview-preis\">$preisText</div>"
+        . "</div></div>";
 }
 
 $gesamt = $controller->count($filter);
@@ -442,11 +481,15 @@ foreach ($alleSpaltenDef as $key => $def):
         . '<button class="spalten-sortierbtn" data-dir="down" title="Nach unten">↓</button>'
         : '';
     echo "<div class=\"spalten-panel-zeile{$isPlaceholder}\" data-key=\"{$key}\">"
-       . "<input type=\"checkbox\" id=\"sp-{$key}\"{$checked}{$disabled}>"
-       . "<label for=\"sp-{$key}\">{$label}</label>"
-       . "{$sortierbtn}</div>\n";
+        . "<input type=\"checkbox\" id=\"sp-{$key}\"{$checked}{$disabled}>"
+        . "<label for=\"sp-{$key}\">{$label}</label>"
+        . "{$sortierbtn}</div>\n";
 endforeach;
 $pickerZeilenHtml = ob_get_clean();
+
+$exportParams = $_GET;
+unset($exportParams['seite']);
+$queryOhneSeite = htmlspecialchars(http_build_query($exportParams));
 
 $actionBarContent = <<<HTML
 <a href="neu.php" class="btn btn-primary btn-sm">+ Neu</a>
@@ -455,7 +498,7 @@ $actionBarContent = <<<HTML
 <a href="import.php" class="btn btn-secondary btn-sm">⬇ Import</a>
 <a href="jtl_import.php" class="btn btn-secondary btn-sm">⬇ JTL Vater+Kind-Import</a>
 <a href="jtl_bilder_import.php" class="btn btn-secondary btn-sm">⬇ JTL Bilder-Import</a>
-<button class="btn btn-secondary btn-sm" disabled title="Export kommt später">⬆ Export</button>
+<a href="liste_export.php?{$queryOhneSeite}" class="btn btn-secondary btn-sm" title="Kontrollliste als CSV (Typ/Gruppe/Einheit/Hersteller)">⬆ Export</a>
 <div class="actionbar-right">
     <span style="color:var(--color-text-muted);font-size:13px">Ausgewählt:</span>
     <span id="ausgewaehlt-count" style="color:var(--color-text-muted);font-size:13px">0</span>
@@ -513,14 +556,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <select name="status_filter" class="erp-select" onchange="this.form.requestSubmit()">
             <option value="">– Status / Qualität –</option>
             <optgroup label="Status">
-                <option value="auslauf"  <?= $statusFilter === 'auslauf'  ? 'selected' : '' ?>>Auslaufartikel</option>
-                <option value="uv"       <?= $statusFilter === 'uv'       ? 'selected' : '' ?>>Überverkauf aktiv</option>
+                <option value="auslauf" <?= $statusFilter === 'auslauf'  ? 'selected' : '' ?>>Auslaufartikel</option>
+                <option value="uv" <?= $statusFilter === 'uv'       ? 'selected' : '' ?>>Überverkauf aktiv</option>
                 <option value="fehlbest" <?= $statusFilter === 'fehlbest' ? 'selected' : '' ?>>Fehlbestand / Unterdeckung</option>
-                <option value="inaktiv"  <?= $statusFilter === 'inaktiv'  ? 'selected' : '' ?>>Inaktiv</option>
-                <option value="ohnekat"  <?= $statusFilter === 'ohnekat'  ? 'selected' : '' ?>>Ohne Kategorie</option>
+                <option value="inaktiv" <?= $statusFilter === 'inaktiv'  ? 'selected' : '' ?>>Inaktiv</option>
+                <option value="ohnekat" <?= $statusFilter === 'ohnekat'  ? 'selected' : '' ?>>Ohne Kategorie</option>
             </optgroup>
             <optgroup label="Qualitätsprüfung">
-                <option value="keine_ean"    <?= $statusFilter === 'keine_ean'    ? 'selected' : '' ?>>Keine EAN</option>
+                <option value="keine_ean" <?= $statusFilter === 'keine_ean'    ? 'selected' : '' ?>>Keine EAN</option>
                 <option value="doppelte_ean" <?= $statusFilter === 'doppelte_ean' ? 'selected' : '' ?>>Doppelte EAN</option>
                 <option value="keine_bilder" <?= $statusFilter === 'keine_bilder' ? 'selected' : '' ?>>Keine Bilder</option>
                 <option value="keine_gruppe" <?= $statusFilter === 'keine_gruppe' ? 'selected' : '' ?>>Keine Artikelgruppe</option>
@@ -556,245 +599,249 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <div class="card">
     <div style="overflow-x:auto">
-    <table class="erp-table artikel-liste-table">
-        <?php $getOhnePagSort = array_diff_key($_GET, array_flip(['seite', 'sort', 'dir'])); ?>
-        <thead>
-            <tr>
-                <th class="cb-sticky" style="width:28px; text-align:center"><input type="checkbox" id="alle-auswaehlen" title="Alle auswählen"></th>
-                <th style="width:42px"></th>
-                <th style="width:100px"><?= sortKopf('artikelnummer', 'ART.-NR.', $aktSort, $aktDir, $getOhnePagSort) ?></th>
-                <th><?= sortKopf('name', 'ARTIKELNAME', $aktSort, $aktDir, $getOhnePagSort) ?></th>
-                <?php foreach ($aktiveSpalten as $sp_key): echo spalteHeader($sp_key, $aktSort, $aktDir, $getOhnePagSort); endforeach; ?>
-                <th style="width:80px"><button type="button" id="alle-toggle-btn" onclick="alleToggle()">alle zuklappen</button></th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            // Such-Terme für Render-Filter vorbereiten (leer = keine Suche aktiv)
-            $suchAktiv = !empty($filter['q']);
-            $renderTerms = $suchAktiv ? array_values(array_filter(explode(' ', strtolower(trim($filter['q']))))) : [];
-            ?>
-            <?php foreach ($artikel as $a):
-                $kinder = $kinderNachVater[$a['id']] ?? [];
+        <table class="erp-table artikel-liste-table">
+            <?php $getOhnePagSort = array_diff_key($_GET, array_flip(['seite', 'sort', 'dir'])); ?>
+            <thead>
+                <tr>
+                    <th class="cb-sticky" style="width:28px; text-align:center"><input type="checkbox" id="alle-auswaehlen" title="Alle auswählen"></th>
+                    <th style="width:42px"></th>
+                    <th style="width:100px"><?= sortKopf('artikelnummer', 'ART.-NR.', $aktSort, $aktDir, $getOhnePagSort) ?></th>
+                    <th><?= sortKopf('name', 'ARTIKELNAME', $aktSort, $aktDir, $getOhnePagSort) ?></th>
+                    <?php foreach ($aktiveSpalten as $sp_key): echo spalteHeader($sp_key, $aktSort, $aktDir, $getOhnePagSort);
+                    endforeach; ?>
+                    <th style="width:80px"><button type="button" id="alle-toggle-btn" onclick="alleToggle()">alle zuklappen</button></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                // Such-Terme für Render-Filter vorbereiten (leer = keine Suche aktiv)
+                $suchAktiv = !empty($filter['q']);
+                $renderTerms = $suchAktiv ? array_values(array_filter(explode(' ', strtolower(trim($filter['q']))))) : [];
+                ?>
+                <?php foreach ($artikel as $a):
+                    $kinder = $kinderNachVater[$a['id']] ?? [];
 
-                // Kinder filtern: nur matchende anzeigen wenn Vater selbst nicht matcht
-                // Gilt für Text-Suche UND Status-Filter die Kinder einschließen
-                $kinderGefiltertFuerSuche = false;
-                if (!empty($kinder)) {
-                    if ($suchAktiv && !matchesSuche($a, $renderTerms)) {
-                        $kinder = array_values(array_filter($kinder, fn($k) => matchesSuche($k, $renderTerms)));
-                        $kinderGefiltertFuerSuche = true;
-                    } elseif ($filter['status_filter'] === 'auslauf' && !$a['ist_auslaufartikel']) {
-                        // Vater matcht nur wegen Kind-Auslauf → nur Auslauf-Kinder zeigen
-                        $kinder = array_values(array_filter($kinder, fn($k) => $k['ist_auslaufartikel']));
-                        $kinderGefiltertFuerSuche = true;
-                    } elseif ($filter['status_filter'] === 'uv' && !$a['ueberverkauf_erlaubt']) {
-                        // Vater matcht nur wegen Kind-ÜV → nur ÜV-Kinder zeigen
-                        $kinder = array_values(array_filter($kinder, fn($k) => $k['ueberverkauf_erlaubt']));
-                        $kinderGefiltertFuerSuche = true;
-                    }
-                }
-
-                // Auto-Expand: bei aktiver Suche ODER wenn Kinder gefiltert wurden
-                $autoExpand = $suchAktiv || $kinderGefiltertFuerSuche;
-
-                $hatKinder = count($kinder) > 0;
-                // Status-Chips für Vater
-                $statusChips = '';
-                if (!$a['aktiv'])
-                    $statusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
-                if ($a['aktiv'] && $a['ist_auslaufartikel'])
-                    $statusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
-                if ($a['ueberverkauf_erlaubt'])
-                    $statusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
-                // Fehlbest. nur wenn Reservierungen den physischen Bestand übersteigen
-                if ($a['aktiv'] && (float)($a['reserviert'] ?? 0) > (float)$a['gesamtbestand'])
-                    $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)($a['reserviert'] ?? 0) . ' / Bestand: ' . (int)$a['gesamtbestand'] . '">Fehlbest.</span>';
-                if ((int)($a['kat_anzahl'] ?? 1) === 0)
-                    $statusChips .= '<span class="sc sc-ohnekat" title="Kein Kategorie-Eintrag – Artikel erscheint in keinem Shop">Kein Kat.</span>';
-                // Preis-Aktions-Chips
-                $ps = $preisStatus[$a['id']] ?? null;
-                if ($ps) {
-                    if ($ps['hat_sale'] && $ps['hat_aktion']) {
-                        $statusChips .= '<span class="sc sc-sale" title="Manueller SALE-Preis aktiv (überschreibt Kategorie-Aktion)">SALE</span>';
-                        $statusChips .= '<span class="sc sc-aktion-grau" title="Kategorie-Aktion vorhanden, aber durch SALE überschrieben">⏰</span>';
-                    } elseif ($ps['hat_sale']) {
-                        $statusChips .= '<span class="sc sc-sale" title="Manueller SALE-Preis aktiv">SALE</span>';
-                    } elseif ($ps['hat_aktion']) {
-                        $statusChips .= '<span class="sc sc-aktion" title="Kategorie-Aktion aktiv">⏰</span>';
-                    }
-                }
-
-                // Qualitäts-Chips (nur sichtbar wenn der Qualitäts-Filter aktiv ist)
-                if ($qualitaetFilter === 'keine_ean') {
-                    $statusChips .= '<span class="sc" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b" title="Kein EAN-Code vorhanden">Kein EAN</span>';
-                } elseif ($qualitaetFilter === 'doppelte_ean') {
-                    $statusChips .= '<span class="sc" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="EAN-Code ist mehrfach vergeben">EAN-Duplikat</span>';
-                } elseif ($qualitaetFilter === 'keine_bilder') {
-                    $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Keine Bilder hinterlegt">Kein Bild</span>';
-                } elseif ($qualitaetFilter === 'keine_hersteller') {
-                    $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Kein Hersteller zugewiesen">Kein Hersteller</span>';
-                }
-
-                // ⚠ Vater-Badge
-                $vaterAbwTypen = [];
-                foreach ($kinder as $k) {
-                    foreach (kindAbweichungen($k, $a) as $abw) {
-                        $vaterAbwTypen[$abw] = true;
-                    }
-                }
-                $vaterHatAbweichung = !empty($vaterAbwTypen);
-                $hatZustandsArtikel = !empty(array_filter($zustandsNachVater[$a['id']] ?? [], fn($z) => (float)$z['gesamtbestand'] > 0));
-
-                $bstKlasse = ((float)$a['gesamtbestand'] <= 0 && $a['aktiv']) ? 'bst-null' : '';
-                $bstTitle  = '';
-                if ((float)($a['reserviert'] ?? 0) > 0) {
-                    $vk = (float)$a['gesamtbestand'] - (float)$a['reserviert'];
-                    $bstTitle = 'title="' . formatBestand($a['gesamtbestand']) . ' physisch · '
-                        . formatBestand($a['reserviert']) . ' reserviert · '
-                        . formatBestand($vk) . ' verkaufbar"';
-                }
-
-                // "ab"-Preis: mind. ein Kind ist teurer als der Vater
-                $hatTeureresKind = false;
-                if ($a['brutto_vk'] !== null) {
-                    foreach ($kinder as $k) {
-                        if ($k['brutto_vk'] !== null && (float)$k['brutto_vk'] > (float)$a['brutto_vk']) {
-                            $hatTeureresKind = true;
-                            break;
+                    // Kinder filtern: nur matchende anzeigen wenn Vater selbst nicht matcht
+                    // Gilt für Text-Suche UND Status-Filter die Kinder einschließen
+                    $kinderGefiltertFuerSuche = false;
+                    if (!empty($kinder)) {
+                        if ($suchAktiv && !matchesSuche($a, $renderTerms)) {
+                            $kinder = array_values(array_filter($kinder, fn($k) => matchesSuche($k, $renderTerms)));
+                            $kinderGefiltertFuerSuche = true;
+                        } elseif ($filter['status_filter'] === 'auslauf' && !$a['ist_auslaufartikel']) {
+                            // Vater matcht nur wegen Kind-Auslauf → nur Auslauf-Kinder zeigen
+                            $kinder = array_values(array_filter($kinder, fn($k) => $k['ist_auslaufartikel']));
+                            $kinderGefiltertFuerSuche = true;
+                        } elseif ($filter['status_filter'] === 'uv' && !$a['ueberverkauf_erlaubt']) {
+                            // Vater matcht nur wegen Kind-ÜV → nur ÜV-Kinder zeigen
+                            $kinder = array_values(array_filter($kinder, fn($k) => $k['ueberverkauf_erlaubt']));
+                            $kinderGefiltertFuerSuche = true;
                         }
                     }
-                }
-            ?>
-                <tr class="artikel-zeile<?= !$a['aktiv'] ? ' row-inaktiv' : '' ?>">
-                    <td class="cb-sticky" style="text-align:center; width:28px">
-                        <input type="checkbox" class="zeile-cb" value="<?= $a['id'] ?>">
-                        <?php if ($hatKinder || $hatZustandsArtikel): ?>
-                            <?php $pfeilStart = $autoExpand ? '▼' : '▶'; ?>
-                            <br><span id="pfeil-<?= $a['id'] ?>" onclick="toggleKinder(<?= $a['id'] ?>)"
-                                class="expand-arrow"><?= $pfeilStart ?></span>
-                        <?php endif; ?>
-                    </td>
-                    <td class="thumb-cell">
-                        <?= renderThumbCell((int)$a['id'], $hauptbilder, $a['name'], $a['brutto_vk'] !== null ? (float)$a['brutto_vk'] : null) ?>
-                    </td>
-                    <td class="artnr-cell">
-                        <a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a>
-                    </td>
-                    <td>
-                        <span class="artikel-name"><?= htmlspecialchars($a['name']) ?></span>
-                        <?php if ($hatKinder): ?>
-                            <span class="varianten-count"><?= count($kinder) ?> Var.</span>
-                        <?php endif; ?>
-                        <?php if ($vaterHatAbweichung): ?>
-                            <span class="warn-badge" title="Kind-Abweichungen: <?= htmlspecialchars(implode(', ', array_keys($vaterAbwTypen))) ?>">!</span>
-                        <?php endif; ?>
-                        <?php if ($hatZustandsArtikel): ?>
-                            <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
-                        <?php endif; ?>
-                        <?php if (!empty($a['kinder_blockiert_kanaele'])): ?>
-                            <?php
+
+                    // Auto-Expand: bei aktiver Suche ODER wenn Kinder gefiltert wurden
+                    $autoExpand = $suchAktiv || $kinderGefiltertFuerSuche;
+
+                    $hatKinder = count($kinder) > 0;
+                    // Status-Chips für Vater
+                    $statusChips = '';
+                    if (!$a['aktiv'])
+                        $statusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
+                    if ($a['aktiv'] && $a['ist_auslaufartikel'])
+                        $statusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
+                    if ($a['ueberverkauf_erlaubt'])
+                        $statusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
+                    // Fehlbest. nur wenn Reservierungen den physischen Bestand übersteigen
+                    if ($a['aktiv'] && (float)($a['reserviert'] ?? 0) > (float)$a['gesamtbestand'])
+                        $statusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)($a['reserviert'] ?? 0) . ' / Bestand: ' . (int)$a['gesamtbestand'] . '">Fehlbest.</span>';
+                    if ((int)($a['kat_anzahl'] ?? 1) === 0)
+                        $statusChips .= '<span class="sc sc-ohnekat" title="Kein Kategorie-Eintrag – Artikel erscheint in keinem Shop">Kein Kat.</span>';
+                    // Preis-Aktions-Chips
+                    $ps = $preisStatus[$a['id']] ?? null;
+                    if ($ps) {
+                        if ($ps['hat_sale'] && $ps['hat_aktion']) {
+                            $statusChips .= '<span class="sc sc-sale" title="Manueller SALE-Preis aktiv (überschreibt Kategorie-Aktion)">SALE</span>';
+                            $statusChips .= '<span class="sc sc-aktion-grau" title="Kategorie-Aktion vorhanden, aber durch SALE überschrieben">⏰</span>';
+                        } elseif ($ps['hat_sale']) {
+                            $statusChips .= '<span class="sc sc-sale" title="Manueller SALE-Preis aktiv">SALE</span>';
+                        } elseif ($ps['hat_aktion']) {
+                            $statusChips .= '<span class="sc sc-aktion" title="Kategorie-Aktion aktiv">⏰</span>';
+                        }
+                    }
+
+                    // Qualitäts-Chips (nur sichtbar wenn der Qualitäts-Filter aktiv ist)
+                    if ($qualitaetFilter === 'keine_ean') {
+                        $statusChips .= '<span class="sc" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b" title="Kein EAN-Code vorhanden">Kein EAN</span>';
+                    } elseif ($qualitaetFilter === 'doppelte_ean') {
+                        $statusChips .= '<span class="sc" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5" title="EAN-Code ist mehrfach vergeben">EAN-Duplikat</span>';
+                    } elseif ($qualitaetFilter === 'keine_bilder') {
+                        $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Keine Bilder hinterlegt">Kein Bild</span>';
+                    } elseif ($qualitaetFilter === 'keine_hersteller') {
+                        $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Kein Hersteller zugewiesen">Kein Hersteller</span>';
+                    }
+
+                    // ⚠ Vater-Badge
+                    $vaterAbwTypen = [];
+                    foreach ($kinder as $k) {
+                        foreach (kindAbweichungen($k, $a) as $abw) {
+                            $vaterAbwTypen[$abw] = true;
+                        }
+                    }
+                    $vaterHatAbweichung = !empty($vaterAbwTypen);
+                    $hatZustandsArtikel = !empty(array_filter($zustandsNachVater[$a['id']] ?? [], fn($z) => (float)$z['gesamtbestand'] > 0));
+
+                    $bstKlasse = ((float)$a['gesamtbestand'] <= 0 && $a['aktiv']) ? 'bst-null' : '';
+                    $bstTitle  = '';
+                    if ((float)($a['reserviert'] ?? 0) > 0) {
+                        $vk = (float)$a['gesamtbestand'] - (float)$a['reserviert'];
+                        $bstTitle = 'title="' . formatBestand($a['gesamtbestand']) . ' physisch · '
+                            . formatBestand($a['reserviert']) . ' reserviert · '
+                            . formatBestand($vk) . ' verkaufbar"';
+                    }
+
+                    // "ab"-Preis: mind. ein Kind ist teurer als der Vater
+                    $hatTeureresKind = false;
+                    if ($a['brutto_vk'] !== null) {
+                        foreach ($kinder as $k) {
+                            if ($k['brutto_vk'] !== null && (float)$k['brutto_vk'] > (float)$a['brutto_vk']) {
+                                $hatTeureresKind = true;
+                                break;
+                            }
+                        }
+                    }
+                ?>
+                    <tr class="artikel-zeile<?= !$a['aktiv'] ? ' row-inaktiv' : '' ?>">
+                        <td class="cb-sticky" style="text-align:center; width:28px">
+                            <input type="checkbox" class="zeile-cb" value="<?= $a['id'] ?>">
+                            <?php if ($hatKinder || $hatZustandsArtikel): ?>
+                                <?php $pfeilStart = $autoExpand ? '▼' : '▶'; ?>
+                                <br><span id="pfeil-<?= $a['id'] ?>" onclick="toggleKinder(<?= $a['id'] ?>)"
+                                    class="expand-arrow"><?= $pfeilStart ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="thumb-cell">
+                            <?= renderThumbCell((int)$a['id'], $hauptbilder, $a['name'], $a['brutto_vk'] !== null ? (float)$a['brutto_vk'] : null) ?>
+                        </td>
+                        <td class="artnr-cell">
+                            <a href="detail.php?id=<?= $a['id'] ?>"><?= htmlspecialchars($a['artikelnummer']) ?></a>
+                        </td>
+                        <td>
+                            <span class="artikel-name"><?= htmlspecialchars($a['name']) ?></span>
+                            <?php if ($hatKinder): ?>
+                                <span class="varianten-count"><?= count($kinder) ?> Var.</span>
+                            <?php endif; ?>
+                            <?php if ($vaterHatAbweichung): ?>
+                                <span class="warn-badge" title="Kind-Abweichungen: <?= htmlspecialchars(implode(', ', array_keys($vaterAbwTypen))) ?>">!</span>
+                            <?php endif; ?>
+                            <?php if ($hatZustandsArtikel): ?>
+                                <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
+                            <?php endif; ?>
+                            <?php if (!empty($a['kinder_blockiert_kanaele'])): ?>
+                                <?php
                                 $blockierteNamen = array_map(
                                     fn($c) => $shopNamenById[(int)substr(trim($c), 1)] ?? trim($c),
                                     explode(',', $a['kinder_blockiert_kanaele'])
                                 );
-                            ?>
-                            <span class="warn-badge" style="background:#B45309" title="Vater hier deaktiviert, aber Kinder sind noch aktiv im Kanal: <?= htmlspecialchars(implode(', ', $blockierteNamen)) ?>">!</span>
-                        <?php endif; ?>
-                    </td>
-                    <?php foreach ($aktiveSpalten as $sp_key): echo spalteVaterTd($sp_key, $a, $bstKlasse, $bstTitle, $statusChips, $hatTeureresKind, $shopNamenById); endforeach; ?>
-                    <td class="aktion-cell">
-                        <span class="row-aktionen">
-                            <a href="detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
-                            <a href="kopieren.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Kopieren">📋</a>
-                            <a href="delete.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Deaktivieren"
-                                style="color:var(--color-danger)"
-                                onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
-                        </span>
-                    </td>
-                </tr>
-
-                <?php foreach ($kinder as $k):
-                    $kindAbw = kindAbweichungen($k, $a);
-                    $kindStatusChips = '';
-                    if (!$k['aktiv'])
-                        $kindStatusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
-                    if ($k['aktiv'] && $k['ist_auslaufartikel'])
-                        $kindStatusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
-                    if ($k['ueberverkauf_erlaubt'])
-                        $kindStatusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
-                    if ($k['aktiv'] && (float)($k['reserviert'] ?? 0) > (float)$k['gesamtbestand'])
-                        $kindStatusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)($k['reserviert'] ?? 0) . ' / Bestand: ' . (int)$k['gesamtbestand'] . '">Fehlbest.</span>';
-                    $kindBstKlasse = ((float)$k['gesamtbestand'] <= 0 && $k['aktiv']) ? 'bst-null' : '';
-                    $kindBstTitle  = '';
-                    if ((float)($k['reserviert'] ?? 0) > 0) {
-                        $kvk = (float)$k['gesamtbestand'] - (float)$k['reserviert'];
-                        $kindBstTitle = 'title="' . formatBestand($k['gesamtbestand']) . ' physisch · '
-                            . formatBestand($k['reserviert']) . ' reserviert · '
-                            . formatBestand($kvk) . ' verkaufbar"';
-                    }
-                ?>
-                    <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$k['aktiv'] ? ' row-inaktiv' : '' ?>">
-                        <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $k['id'] ?>"></td>
-                        <td class="thumb-cell">
-                            <?= renderThumbCell((int)$k['id'], $hauptbilder, $k['name'], $k['brutto_vk'] !== null ? (float)$k['brutto_vk'] : null, true) ?>
-                        </td>
-                        <td class="artnr-cell" style="padding-left:20px; color:var(--color-text-muted); font-size:12px">
-                            ↳ <a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a>
-                        </td>
-                        <td>
-                            <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($k['name']) ?></span>
-                            <?php if (!empty($kindAbw)): ?>
-                                <span class="warn-badge" title="Abweicht vom Vater: <?= htmlspecialchars(implode(', ', $kindAbw)) ?>">!</span>
-                            <?php endif; ?>
-                            <?php if (!empty($zustandsNachKind[$k['id']])): ?>
-                                <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
+                                ?>
+                                <span class="warn-badge" style="background:#B45309" title="Vater hier deaktiviert, aber Kinder sind noch aktiv im Kanal: <?= htmlspecialchars(implode(', ', $blockierteNamen)) ?>">!</span>
                             <?php endif; ?>
                         </td>
-                        <?php foreach ($aktiveSpalten as $sp_key): echo spalteKindTd($sp_key, $k, $kindBstKlasse, $kindBstTitle, $kindStatusChips, $shopNamenById); endforeach; ?>
+                        <?php foreach ($aktiveSpalten as $sp_key): echo spalteVaterTd($sp_key, $a, $bstKlasse, $bstTitle, $statusChips, $hatTeureresKind, $shopNamenById);
+                        endforeach; ?>
                         <td class="aktion-cell">
                             <span class="row-aktionen">
-                                <a href="detail.php?id=<?= $k['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                                <a href="detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                                <a href="kopieren.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Kopieren">📋</a>
+                                <a href="delete.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-xs" title="Deaktivieren"
+                                    style="color:var(--color-danger)"
+                                    onclick="return confirm('Artikel wirklich deaktivieren?')">🗑️</a>
                             </span>
                         </td>
                     </tr>
-                <?php endforeach; ?>
 
-                <?php
-                $zustandsArtikel = $zustandsNachVater[$a['id']] ?? [];
-                foreach ($zustandsArtikel as $za):
-                    $zaBstKlasse = ((float)$za['gesamtbestand'] <= 0 && $za['aktiv']) ? 'bst-null' : '';
-                    $zustandLabels = [
-                        'gebraucht'          => 'GEB',
-                        'generalueberholt'   => 'GUE',
-                        'beschaedigt'        => 'BSC',
-                        'retour'             => 'RET',
-                        'demo'               => 'DMO',
-                        'muster'             => 'MST',
-                        'ausstellungsstueck' => 'AST',
-                    ];
-                    $zaSuffix = $zustandLabels[$za['zustand']] ?? strtoupper($za['zustand']);
-                ?>
-                    <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
-                        <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $za['id'] ?>"></td>
-                        <td class="thumb-cell">
-                            <?= renderThumbCell((int)$za['id'], $hauptbilder, $za['name'], null, true) ?>
-                        </td>
-                        <td class="artnr-cell" style="padding-left:20px; font-size:12px">
-                            ↳ <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
-                        </td>
-                        <td><span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($za['name']) ?></span></td>
-                        <?php foreach ($aktiveSpalten as $sp_key): echo spalteZustandTd($sp_key, $za, $zaBstKlasse, $zaSuffix); endforeach; ?>
-                        <td class="aktion-cell">
-                            <span class="row-aktionen">
-                                <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
-                            </span>
-                        </td>
-                    </tr>
+                    <?php foreach ($kinder as $k):
+                        $kindAbw = kindAbweichungen($k, $a);
+                        $kindStatusChips = '';
+                        if (!$k['aktiv'])
+                            $kindStatusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
+                        if ($k['aktiv'] && $k['ist_auslaufartikel'])
+                            $kindStatusChips .= '<span class="sc sc-auslauf">Auslauf</span>';
+                        if ($k['ueberverkauf_erlaubt'])
+                            $kindStatusChips .= '<span class="sc sc-uv" title="Überverkauf aktiviert">Üv</span>';
+                        if ($k['aktiv'] && (float)($k['reserviert'] ?? 0) > (float)$k['gesamtbestand'])
+                            $kindStatusChips .= '<span class="sc sc-fehlbest" title="Reserviert: ' . (int)($k['reserviert'] ?? 0) . ' / Bestand: ' . (int)$k['gesamtbestand'] . '">Fehlbest.</span>';
+                        $kindBstKlasse = ((float)$k['gesamtbestand'] <= 0 && $k['aktiv']) ? 'bst-null' : '';
+                        $kindBstTitle  = '';
+                        if ((float)($k['reserviert'] ?? 0) > 0) {
+                            $kvk = (float)$k['gesamtbestand'] - (float)$k['reserviert'];
+                            $kindBstTitle = 'title="' . formatBestand($k['gesamtbestand']) . ' physisch · '
+                                . formatBestand($k['reserviert']) . ' reserviert · '
+                                . formatBestand($kvk) . ' verkaufbar"';
+                        }
+                    ?>
+                        <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$k['aktiv'] ? ' row-inaktiv' : '' ?>">
+                            <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $k['id'] ?>"></td>
+                            <td class="thumb-cell">
+                                <?= renderThumbCell((int)$k['id'], $hauptbilder, $k['name'], $k['brutto_vk'] !== null ? (float)$k['brutto_vk'] : null, true) ?>
+                            </td>
+                            <td class="artnr-cell" style="padding-left:20px; color:var(--color-text-muted); font-size:12px">
+                                ↳ <a href="detail.php?id=<?= $k['id'] ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a>
+                            </td>
+                            <td>
+                                <span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($k['name']) ?></span>
+                                <?php if (!empty($kindAbw)): ?>
+                                    <span class="warn-badge" title="Abweicht vom Vater: <?= htmlspecialchars(implode(', ', $kindAbw)) ?>">!</span>
+                                <?php endif; ?>
+                                <?php if (!empty($zustandsNachKind[$k['id']])): ?>
+                                    <span class="warn-badge" style="background:#2563EB" title="B-Ware / Zustandsartikel vorhanden">!</span>
+                                <?php endif; ?>
+                            </td>
+                            <?php foreach ($aktiveSpalten as $sp_key): echo spalteKindTd($sp_key, $k, $kindBstKlasse, $kindBstTitle, $kindStatusChips, $shopNamenById);
+                            endforeach; ?>
+                            <td class="aktion-cell">
+                                <span class="row-aktionen">
+                                    <a href="detail.php?id=<?= $k['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                                </span>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+
+                    <?php
+                    $zustandsArtikel = $zustandsNachVater[$a['id']] ?? [];
+                    foreach ($zustandsArtikel as $za):
+                        $zaBstKlasse = ((float)$za['gesamtbestand'] <= 0 && $za['aktiv']) ? 'bst-null' : '';
+                        $zustandLabels = [
+                            'gebraucht'          => 'GEB',
+                            'generalueberholt'   => 'GUE',
+                            'beschaedigt'        => 'BSC',
+                            'retour'             => 'RET',
+                            'demo'               => 'DMO',
+                            'muster'             => 'MST',
+                            'ausstellungsstueck' => 'AST',
+                        ];
+                        $zaSuffix = $zustandLabels[$za['zustand']] ?? strtoupper($za['zustand']);
+                    ?>
+                        <tr class="kind-zeile-<?= $a['id'] ?><?= $autoExpand ? '' : ' versteckt' ?> kind-zeile<?= !$za['aktiv'] ? ' row-inaktiv' : '' ?>">
+                            <td class="cb-sticky" style="text-align:center"><input type="checkbox" class="zeile-cb" value="<?= $za['id'] ?>"></td>
+                            <td class="thumb-cell">
+                                <?= renderThumbCell((int)$za['id'], $hauptbilder, $za['name'], null, true) ?>
+                            </td>
+                            <td class="artnr-cell" style="padding-left:20px; font-size:12px">
+                                ↳ <a href="detail.php?id=<?= $za['id'] ?>"><?= htmlspecialchars($za['artikelnummer']) ?></a>
+                            </td>
+                            <td><span style="font-size:12px; color:var(--color-text-muted)"><?= htmlspecialchars($za['name']) ?></span></td>
+                            <?php foreach ($aktiveSpalten as $sp_key): echo spalteZustandTd($sp_key, $za, $zaBstKlasse, $zaSuffix);
+                            endforeach; ?>
+                            <td class="aktion-cell">
+                                <span class="row-aktionen">
+                                    <a href="detail.php?id=<?= $za['id'] ?>" class="btn btn-secondary btn-xs" title="Bearbeiten">✏️</a>
+                                </span>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
                 <?php endforeach; ?>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+            </tbody>
+        </table>
     </div>
 </div>
 <div class="card">
@@ -987,10 +1034,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     // === SPALTEN-PICKER ===
     (function() {
-        const btn    = document.getElementById('spalten-picker-btn');
-        const panel  = document.getElementById('spalten-panel');
+        const btn = document.getElementById('spalten-picker-btn');
+        const panel = document.getElementById('spalten-panel');
         const defaultSpalten = <?= json_encode($defaultSpalten) ?>;
-        const alleSpalten    = <?= json_encode(array_keys($alleSpaltenDef)) ?>;
+        const alleSpalten = <?= json_encode(array_keys($alleSpaltenDef)) ?>;
 
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -1012,8 +1059,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
         function speichernUndLaden() {
             fetch('spalten_einstellung_speichern.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ spalten: getSpalten() })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    spalten: getSpalten()
+                })
             }).then(() => location.reload());
         }
 
@@ -1061,12 +1112,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div id="bulk-kat-auswahl" style="font-size:12px;color:#1e40af;font-weight:600;min-height:18px;margin-bottom:8px"></div>
         <div style="border:1px solid #e2e8f0;border-radius:6px;overflow-y:auto;flex:1;padding:6px 0">
             <?php
-            function renderKatModalKnoten(array $k, int $tiefe): void {
+            function renderKatModalKnoten(array $k, int $tiefe): void
+            {
                 $pad = 10 + $tiefe * 14;
                 echo '<div style="padding:5px 8px 5px ' . $pad . 'px;cursor:pointer;border-radius:4px;margin:1px 4px"'
-                   . ' class="bulk-kat-zeile" data-id="' . $k['id'] . '" data-name="' . htmlspecialchars($k['name'], ENT_QUOTES) . '"'
-                   . ' onclick="bulkKatWaehlen(this)">'
-                   . htmlspecialchars($k['name']) . '</div>';
+                    . ' class="bulk-kat-zeile" data-id="' . $k['id'] . '" data-name="' . htmlspecialchars($k['name'], ENT_QUOTES) . '"'
+                    . ' onclick="bulkKatWaehlen(this)">'
+                    . htmlspecialchars($k['name']) . '</div>';
                 foreach ($k['kinder'] ?? [] as $kind) {
                     renderKatModalKnoten($kind, $tiefe + 1);
                 }
@@ -1084,59 +1136,68 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <script>
-var _bulkKatSelectedId   = null;
-var _bulkKatSelectedIds  = [];
-var _bulkKatModus        = 'zuweisen';
+    var _bulkKatSelectedId = null;
+    var _bulkKatSelectedIds = [];
+    var _bulkKatModus = 'zuweisen';
 
-function bulkKatOeffnen(ids, modus) {
-    _bulkKatSelectedId  = null;
-    _bulkKatSelectedIds = ids;
-    _bulkKatModus       = modus || 'zuweisen';
-    document.getElementById('bulk-kat-titel').textContent = _bulkKatModus === 'entfernen' ? 'Kategorie entfernen' : 'Kategorie zuweisen';
-    document.getElementById('bulk-kat-info').textContent = ids.length + ' Artikel ausgewählt';
-    document.getElementById('bulk-kat-auswahl').textContent = '';
-    var speichernBtn = document.getElementById('bulk-kat-speichern');
-    speichernBtn.disabled = true;
-    speichernBtn.textContent = _bulkKatModus === 'entfernen' ? 'Entfernen' : 'Zuweisen';
-    speichernBtn.className = _bulkKatModus === 'entfernen' ? 'btn btn-danger btn-sm' : 'btn btn-primary btn-sm';
-    document.querySelectorAll('.bulk-kat-zeile').forEach(z => z.style.background = '');
-    var bd = document.getElementById('bulk-kat-backdrop');
-    bd.style.display = 'flex';
-}
+    function bulkKatOeffnen(ids, modus) {
+        _bulkKatSelectedId = null;
+        _bulkKatSelectedIds = ids;
+        _bulkKatModus = modus || 'zuweisen';
+        document.getElementById('bulk-kat-titel').textContent = _bulkKatModus === 'entfernen' ? 'Kategorie entfernen' : 'Kategorie zuweisen';
+        document.getElementById('bulk-kat-info').textContent = ids.length + ' Artikel ausgewählt';
+        document.getElementById('bulk-kat-auswahl').textContent = '';
+        var speichernBtn = document.getElementById('bulk-kat-speichern');
+        speichernBtn.disabled = true;
+        speichernBtn.textContent = _bulkKatModus === 'entfernen' ? 'Entfernen' : 'Zuweisen';
+        speichernBtn.className = _bulkKatModus === 'entfernen' ? 'btn btn-danger btn-sm' : 'btn btn-primary btn-sm';
+        document.querySelectorAll('.bulk-kat-zeile').forEach(z => z.style.background = '');
+        var bd = document.getElementById('bulk-kat-backdrop');
+        bd.style.display = 'flex';
+    }
 
-function bulkKatSchliessen() {
-    document.getElementById('bulk-kat-backdrop').style.display = 'none';
-}
+    function bulkKatSchliessen() {
+        document.getElementById('bulk-kat-backdrop').style.display = 'none';
+    }
 
-function bulkKatWaehlen(el) {
-    document.querySelectorAll('.bulk-kat-zeile').forEach(z => z.style.background = '');
-    el.style.background = '#dbeafe';
-    _bulkKatSelectedId = parseInt(el.dataset.id);
-    document.getElementById('bulk-kat-auswahl').textContent = '▶ ' + el.dataset.name;
-    document.getElementById('bulk-kat-speichern').disabled = false;
-}
+    function bulkKatWaehlen(el) {
+        document.querySelectorAll('.bulk-kat-zeile').forEach(z => z.style.background = '');
+        el.style.background = '#dbeafe';
+        _bulkKatSelectedId = parseInt(el.dataset.id);
+        document.getElementById('bulk-kat-auswahl').textContent = '▶ ' + el.dataset.name;
+        document.getElementById('bulk-kat-speichern').disabled = false;
+    }
 
-function bulkKatSpeichern() {
-    if (!_bulkKatSelectedId) return;
-    var btn = document.getElementById('bulk-kat-speichern');
-    btn.disabled = true;
-    btn.textContent = '...';
-    fetch('bulk_kategorie_speichern.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ids: _bulkKatSelectedIds, kategorie_id: _bulkKatSelectedId, modus: _bulkKatModus})
-    })
-    .then(r => r.json())
-    .then(data => {
-        bulkKatSchliessen();
-        if (data.fehler) { alert(data.fehler); return; }
-        location.reload();
+    function bulkKatSpeichern() {
+        if (!_bulkKatSelectedId) return;
+        var btn = document.getElementById('bulk-kat-speichern');
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('bulk_kategorie_speichern.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ids: _bulkKatSelectedIds,
+                    kategorie_id: _bulkKatSelectedId,
+                    modus: _bulkKatModus
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                bulkKatSchliessen();
+                if (data.fehler) {
+                    alert(data.fehler);
+                    return;
+                }
+                location.reload();
+            });
+    }
+
+    document.getElementById('bulk-kat-backdrop').addEventListener('click', function(e) {
+        if (e.target === this) bulkKatSchliessen();
     });
-}
-
-document.getElementById('bulk-kat-backdrop').addEventListener('click', function(e) {
-    if (e.target === this) bulkKatSchliessen();
-});
 </script>
 
 <!-- Bulk-Kanal Modal -->
@@ -1147,8 +1208,8 @@ document.getElementById('bulk-kat-backdrop').addEventListener('click', function(
         <div style="border:1px solid #e2e8f0;border-radius:6px;padding:6px 0;margin-bottom:12px">
             <?php foreach ($alleShops as $s): ?>
                 <div style="padding:5px 10px;cursor:pointer;border-radius:4px;margin:1px 4px"
-                     class="bulk-kanal-zeile" data-id="<?= $s['id'] ?>" data-name="<?= htmlspecialchars($s['name'], ENT_QUOTES) ?>"
-                     onclick="bulkKanalWaehlen(this)">
+                    class="bulk-kanal-zeile" data-id="<?= $s['id'] ?>" data-name="<?= htmlspecialchars($s['name'], ENT_QUOTES) ?>"
+                    onclick="bulkKanalWaehlen(this)">
                     <?= htmlspecialchars($s['name']) ?>
                 </div>
             <?php endforeach; ?>
@@ -1166,53 +1227,62 @@ document.getElementById('bulk-kat-backdrop').addEventListener('click', function(
 </div>
 
 <script>
-var _bulkKanalSelectedId  = null;
-var _bulkKanalSelectedIds = [];
+    var _bulkKanalSelectedId = null;
+    var _bulkKanalSelectedIds = [];
 
-function bulkKanalOeffnen(ids) {
-    _bulkKanalSelectedId  = null;
-    _bulkKanalSelectedIds = ids;
-    document.getElementById('bulk-kanal-info').textContent = ids.length + ' Artikel ausgewählt';
-    document.getElementById('bulk-kanal-auswahl').textContent = '';
-    document.getElementById('bulk-kanal-speichern').disabled = true;
-    document.querySelectorAll('.bulk-kanal-zeile').forEach(z => z.style.background = '');
-    document.getElementById('bulk-kanal-backdrop').style.display = 'flex';
-}
+    function bulkKanalOeffnen(ids) {
+        _bulkKanalSelectedId = null;
+        _bulkKanalSelectedIds = ids;
+        document.getElementById('bulk-kanal-info').textContent = ids.length + ' Artikel ausgewählt';
+        document.getElementById('bulk-kanal-auswahl').textContent = '';
+        document.getElementById('bulk-kanal-speichern').disabled = true;
+        document.querySelectorAll('.bulk-kanal-zeile').forEach(z => z.style.background = '');
+        document.getElementById('bulk-kanal-backdrop').style.display = 'flex';
+    }
 
-function bulkKanalSchliessen() {
-    document.getElementById('bulk-kanal-backdrop').style.display = 'none';
-}
+    function bulkKanalSchliessen() {
+        document.getElementById('bulk-kanal-backdrop').style.display = 'none';
+    }
 
-function bulkKanalWaehlen(el) {
-    document.querySelectorAll('.bulk-kanal-zeile').forEach(z => z.style.background = '');
-    el.style.background = '#dbeafe';
-    _bulkKanalSelectedId = parseInt(el.dataset.id);
-    document.getElementById('bulk-kanal-auswahl').textContent = '▶ ' + el.dataset.name;
-    document.getElementById('bulk-kanal-speichern').disabled = false;
-}
+    function bulkKanalWaehlen(el) {
+        document.querySelectorAll('.bulk-kanal-zeile').forEach(z => z.style.background = '');
+        el.style.background = '#dbeafe';
+        _bulkKanalSelectedId = parseInt(el.dataset.id);
+        document.getElementById('bulk-kanal-auswahl').textContent = '▶ ' + el.dataset.name;
+        document.getElementById('bulk-kanal-speichern').disabled = false;
+    }
 
-function bulkKanalSpeichern() {
-    if (!_bulkKanalSelectedId) return;
-    var aktiv = document.querySelector('input[name="bulk-kanal-status"]:checked').value;
-    var btn = document.getElementById('bulk-kanal-speichern');
-    btn.disabled = true;
-    btn.textContent = '...';
-    fetch('bulk_shop_speichern.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ids: _bulkKanalSelectedIds, shop_id: _bulkKanalSelectedId, aktiv: aktiv === '1'})
-    })
-    .then(r => r.json())
-    .then(data => {
-        bulkKanalSchliessen();
-        if (data.fehler) { alert(data.fehler); return; }
-        location.reload();
+    function bulkKanalSpeichern() {
+        if (!_bulkKanalSelectedId) return;
+        var aktiv = document.querySelector('input[name="bulk-kanal-status"]:checked').value;
+        var btn = document.getElementById('bulk-kanal-speichern');
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('bulk_shop_speichern.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ids: _bulkKanalSelectedIds,
+                    shop_id: _bulkKanalSelectedId,
+                    aktiv: aktiv === '1'
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                bulkKanalSchliessen();
+                if (data.fehler) {
+                    alert(data.fehler);
+                    return;
+                }
+                location.reload();
+            });
+    }
+
+    document.getElementById('bulk-kanal-backdrop').addEventListener('click', function(e) {
+        if (e.target === this) bulkKanalSchliessen();
     });
-}
-
-document.getElementById('bulk-kanal-backdrop').addEventListener('click', function(e) {
-    if (e.target === this) bulkKanalSchliessen();
-});
 </script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

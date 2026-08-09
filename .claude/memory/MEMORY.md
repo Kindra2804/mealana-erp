@@ -1,5 +1,6 @@
 # Memory Index
 
+- [Fünf Abendaufgaben 2026-08-09](project_fuenf_abendaufgaben_0809.md) — Kontrollliste+UVP-Streichpreis+Hersteller-als-Marke FERTIG; als Nächstes: Labels → Download-Artikeltyp
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
 - [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — ✅ 2026-08-04 Grundpreis-Aufräumaktion (Einheit+Vererbung+Hersteller-Lücken LY/PL/MEA) von Jacky abgenommen, FERTIG; Opal+Stenli als Hersteller noch anzulegen (wartet auf Jacky)
 - [JTL Bilder-Import](project_jtl_bilder_import.md) — FERTIG gebaut + End-to-End getestet 2026-07-31, eigenständiges Tool, GIF bewusst nicht unterstützt
@@ -50,7 +51,7 @@
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
 - [Shop-Theme/UX](project_shop_theme.md) — Kaufentscheidung weiter pausiert; ✅ 2026-08-02: Mega-Menü-Autoupdate-Grenzen geklärt + Shortcode-Workaround (Block statt Custom HTML) bestätigt funktionierend, Breadcrumbs-Anleitung (Blocksy)
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
-- [Infrastruktur / Server-Setup](project_infrastruktur.md) — Neuer Dev-PC-Umzug 2026-07-17 abgeschlossen (GD/Composer/Cron vergessen, doppelte Mojibake-Korruption + Kunden-BLOB-Korruption behoben); Messe-Kasse Variante B = IndexedDB+direkter BFR-Call
+- [Infrastruktur / Server-Setup](project_infrastruktur.md) — Dev-PC-Umzug 2026-07-17 abgeschlossen; 2026-08-09: Live→Dev-Import kann Shop-Sync-Fälligkeit blind machen (aktualisiert_am aus Dump); Messe-Kasse = IndexedDB+BFR-Call
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
 - [Gutschein-Modul Design](project_gutscheine.md) — 0% Code, bewusst zurückgestellt bis Nähe Online-Shop-Anbindung (WC/eigener Shop-Match), bestätigt 2026-07-10
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; 🔴 Nummernkreis-Selbstheilung-Bug BEHOBEN 2026-07-09
