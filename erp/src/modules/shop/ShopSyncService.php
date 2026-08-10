@@ -339,6 +339,7 @@ class ShopSyncService
                     if ($mitBildern) {
                         $this->syncBilderFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
                     }
+                    $this->syncDownloadFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
                     if (!empty($row['hersteller_id']) && !isset($bereitsVersuchtHersteller[(int)$row['hersteller_id']])) {
                         $bereitsVersuchtHersteller[(int)$row['hersteller_id']] = true;
                         $this->syncHerstellerFuerArtikel($client, (int)$row['hersteller_id'], (int)$shop['id']);
@@ -699,6 +700,7 @@ class ShopSyncService
             'description'       => $artikel['beschreibung'] ?? '',
             'short_description' => $artikel['kurzbeschreibung'] ?? '',
             'status'            => $artikel['aktiv'] ? 'publish' : 'draft',
+            'featured'          => (bool)$artikel['ist_hervorgehoben'],
         ];
 
         $payload += $preisErgebnis['felder'];
@@ -790,6 +792,29 @@ class ShopSyncService
         $images = $this->sammleBildReferenzen((int)$artikel['artikel_id'], $shopId);
         if (!empty($images)) {
             $payload['images'] = $images;
+        }
+
+        // Download-Datei: syncDownloadFuerArtikel() lief für diese Zeile bereits
+        // weiter oben in der Aufrufkette (lädt bei Bedarf in die WP-Mediathek
+        // hoch) -- hier nur noch das bereits synchte Ergebnis auslesen und als
+        // WooCommerce-Downloadable-Product-Feld eintragen.
+        $downloadInfo = $this->repo->findDownloadInfo((int)$artikel['artikel_id']);
+        if ($downloadInfo && $downloadInfo['ist_download']) {
+            $payload['virtual'] = true;
+            if (!empty($downloadInfo['download_dateiname'])) {
+                $zuweisung = $this->repo->findDownloadShopZuweisung((int)$artikel['artikel_id'], $shopId);
+                if ($zuweisung && $zuweisung['sync_status'] === 'synced' && !empty($zuweisung['external_media_url'])) {
+                    $payload['downloadable'] = true;
+                    $payload['downloads'] = [[
+                        'name' => $downloadInfo['download_dateiname'],
+                        'file' => $zuweisung['external_media_url'],
+                    ]];
+                    // NULL = folgt der globalen Vorbelegung aus den System-Einstellungen
+                    // -- -1 bedeutet für WooCommerce "unbegrenzt".
+                    $limit = $downloadInfo['download_limit'] ?? $this->repo->findDownloadLimitStandard();
+                    $payload['download_limit'] = $limit !== null ? (int)$limit : -1;
+                }
+            }
         }
 
         return $payload;
@@ -1540,6 +1565,47 @@ class ShopSyncService
                     'fehler' => $e->getMessage(),
                 ], $this->jarvisId, 'error');
             }
+        }
+    }
+
+    /**
+     * Lädt die Download-Datei eines Download-Artikels in die WP-Mediathek hoch,
+     * falls sie sich seit dem letzten Sync geändert hat (Vergleich dateiname_synced,
+     * gleiches Muster wie syncKategorieBild()). No-Op für alle anderen Artikeltypen.
+     * baueProduktPayload() liest das Ergebnis danach nur noch aus (kein Upload dort).
+     */
+    private function syncDownloadFuerArtikel(WooCommerceClient $client, int $artikelId, int $shopId): void
+    {
+        $info = $this->repo->findDownloadInfo($artikelId);
+        if (!$info || !$info['ist_download']) {
+            return;
+        }
+
+        $dateiname     = $info['download_dateiname'] ?? null;
+        $zuweisung     = $this->repo->findDownloadShopZuweisung($artikelId, $shopId);
+        $bereitsSynced = $zuweisung ? ($zuweisung['dateiname_synced'] ?? null) : null;
+
+        if ($dateiname === $bereitsSynced) {
+            return;
+        }
+
+        if ($dateiname === null) {
+            $this->repo->markiereDownloadSynced($artikelId, $shopId, null, null, null);
+            return;
+        }
+
+        try {
+            $pfad    = __DIR__ . '/../../../public/uploads/downloads/' . $artikelId . '/' . $dateiname;
+            $wcMedia = $client->ladeBildHoch($pfad, $dateiname);
+            $this->repo->markiereDownloadSynced($artikelId, $shopId, $dateiname, (string)$wcMedia['id'], $wcMedia['source_url'] ?? null);
+        } catch (RateLimitException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            $this->repo->markiereDownloadFehler($artikelId, $shopId, $e->getMessage());
+            Logger::log('shop.download_sync_fehler', 'artikel', $artikelId, [
+                'shop'   => $shopId,
+                'fehler' => $e->getMessage(),
+            ], $this->jarvisId, 'error');
         }
     }
 

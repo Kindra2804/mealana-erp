@@ -411,13 +411,17 @@ class ArtikelRepository
                 a.charge_pflicht,
                 a.ist_auslaufartikel,
                 a.ueberverkauf_erlaubt,
+                a.ist_hervorgehoben,
                 a.aktiv,
                 a.zustand,
                 a.uvp,
                 a.preise_vererben,
                 a.letzte_inventur_am,
+                a.download_dateiname,
+                a.download_limit,
                 at.code AS artikeltyp,
                 at.name AS artikeltyp_name,
+                at.ist_download AS artikeltyp_ist_download,
                 h.name AS hersteller,
                 s.satz AS steuersatz,
                 e.name AS einheit_name,
@@ -763,6 +767,20 @@ class ArtikelRepository
         $stmt->execute(['uvp' => $uvp, 'id' => $id]);
     }
 
+    /** Setzt/löscht die hochgeladene Download-Datei eines Download-Artikels. */
+    public function updateDownloadDatei(int $id, ?string $dateiname): void
+    {
+        $stmt = $this->db->prepare("UPDATE artikel SET download_dateiname = :dateiname WHERE id = :id");
+        $stmt->execute(['dateiname' => $dateiname, 'id' => $id]);
+    }
+
+    /** Setzt das individuelle Download-Limit eines Artikels (NULL = folgt der globalen Vorbelegung). */
+    public function updateDownloadLimit(int $id, ?int $limit): void
+    {
+        $stmt = $this->db->prepare("UPDATE artikel SET download_limit = :limit WHERE id = :id");
+        $stmt->execute(['limit' => $limit, 'id' => $id]);
+    }
+
     /** Aktualisiert alle editierbaren Stammdatenfelder eines bestehenden Artikels. */
     public function update(array $data): bool
     {
@@ -799,6 +817,7 @@ class ArtikelRepository
                 charge_pflicht         = :charge_pflicht,
                 ist_auslaufartikel     = :ist_auslaufartikel,
                 ueberverkauf_erlaubt    = :ueberverkauf_erlaubt,
+                ist_hervorgehoben      = :ist_hervorgehoben,
                 aktiv                  = :aktiv,
                 zustand                = :zustand,
                 zustand_vater_id       = :zustand_vater_id,
@@ -845,6 +864,7 @@ class ArtikelRepository
             'charge_pflicht',
             'ist_auslaufartikel',
             'ueberverkauf_erlaubt',
+            'ist_hervorgehoben',
             'aktiv',
             'zustand',
             'zustand_vater_id',

@@ -1,11 +1,11 @@
 ---
 name: project-fuenf-abendaufgaben-0809
-description: "Fünf Punkte von Jacky am Abend 2026-08-09 gesammelt, der Reihe nach abzuarbeiten: Kontrollliste, UVP-Streichpreis + Hersteller-als-Marke alle FERTIG; als Nächstes Labels, dann Download-Artikeltyp"
+description: "Fünf Abendaufgaben 2026-08-09/10: ALLE FÜNF Punkte gebaut (Kontrollliste, UVP-Streichpreis, Hersteller-als-Marke, Labels/Basis-Badges, Download-Artikeltyp) — nur Jackys eigener Upload-Test bei Punkt 5 steht noch aus"
 metadata: 
   node_type: memory
   type: project
   originSessionId: d1aef7f2-7ecd-41ea-b428-cf0b1d692643
-  modified: 2026-08-09T19:32:01.892Z
+  modified: 2026-08-10T10:03:38.598Z
 ---
 
 ## Ausgangslage (Jacky, 2026-08-09 Abend)
@@ -53,26 +53,45 @@ Für die Buchhaltung: alle Vaterartikel durchschauen können, ob Typ/Gruppe/Einh
 
 **Nebenthema dabei aufgekommen:** Jacky überlegt **Woostify Pro** als Theme-Alternative zu Blocksy Pro/WoodMart (siehe [[project_shop_theme]] für die bisherige Recherche) — vanilla JS (potenziell schneller), Whitelabel verfügbar, Lizenzstufen sollen (ungeprüft) mehrere/unbegrenzte Seiten abdecken, was die bei WoodMart gefundene Pro-Domain-Lizenzfalle vermeiden würde. Noch nicht recherchiert/bestätigt, nur als Kandidat vorgemerkt — Preise/Pläne vor einer Empfehlung frisch prüfen.
 
-## 4. Labels (Woo-Artikellabels) — offen, 0%
+## 4. Labels (Woo-Artikellabels) — ✅ Basis-Badges FERTIG 2026-08-10, Rest bewusst vertagt
 
-Ansteuerung vom ERP aus noch zu klären. Blocksy soll das können, evtl. kommt für die Live-Shops Woostify Pro (das ebenfalls Labels mitbringen soll) — siehe Punkt 3 oben zur Theme-Frage. Keine technische Recherche bisher.
+Recherche ergab: kein Grund, auf die Theme-Entscheidung zu warten — alle Basis-Badges sind Blocksy/Woostify-unabhängig.
+- **Sale-Badge:** natives WooCommerce-Core-Feature, lief automatisch nach dem UVP-Fix (Punkt 2) mit — nichts zu bauen.
+- **"Neu"-Badge:** rein zeitbasiert im Theme (Tage seit Veröffentlichung), keine Artikeldaten nötig.
+- **Featured-Badge:** natives WC-Feld `featured`, jetzt ERP-gesteuert: Migration 162 (`artikel.ist_hervorgehoben`), neues Häkchen "Hervorheben (Featured-Badge im Shop)" in `artikel/bearbeiten.php` (nur Edit-Formular, wie `ist_auslaufartikel`/`ueberverkauf_erlaubt` auch nicht in `neu.php`), `ShopSyncService::baueProduktPayload()` setzt `featured` nur beim Vater/Standalone (Variationen haben in WooCommerce kein eigenes Featured). Mit Testartikel per Reflection durchgespielt (`featured: true` korrekt im Payload), sauber zurückgesetzt.
+- **Frei wählbare Text-Labels** (z.B. "Handgemacht", "Limitiert") — bewusst vertagt: braucht ein dediziertes Badge-Plugin (kein Theme kann das nativ), Jackys Entscheidung: erst bei aktiviertem Woostify Pro anschauen, kann bis Live-Gang warten.
 
-## 5. Download-Artikeltyp — offen, 0%, komplexestes Thema
+## 5. Download-Artikeltyp — ✅ gebaut 2026-08-10, Jackys eigener Upload-Test steht noch aus
 
-Artikeltyp "Download" existiert nur als Typ-Eintrag, keine Funktionalität dahinter. Anforderungen laut Jacky:
-- Datei-Upload ähnlich den Artikelbildern (Drag&Drop), Ablage im Shop
-- Freischaltung erst NACH Bestellung — auch bei 0,-€-Downloadartikeln (nicht einfach frei zugänglich)
-- Globale Einstellung: wie oft ein Download pro Kauf abrufbar sein darf (sofern in WooCommerce nativ abbildbar — WC Downloadable Products hat dafür ein Limit-Feld, vermutlich direkt nutzbar)
-- Anzeige im Kundenkonto sowohl im Shop ALS AUCH im ERP (Kunden-Detail-Seite)
+Reference-Check ergab: WooCommerce kann fast alles davon schon nativ (Zugriffsrechte, Download-Zähler, "Mein Konto"-Anzeige, auch bei 0,-€-Bestellungen über einen echten Checkout-Abschluss) — nichts davon selbst nachgebaut, nur die ERP-Seite drumherum.
 
-**Wird zuletzt angegangen**, da bei weitem der größte Umbau der fünf Punkte.
+**Vier Teile, alle von Claude gebaut (Jackys Wunsch, wie beim UVP-Punkt):**
+1. **DB + Upload-UI:** Migration 163 (`artikel.download_dateiname`/`download_limit`, neue Tabelle `artikel_downloads_shops` fürs Sync-Tracking). Neuer "Download"-Tab in `artikel/detail.php` (nur bei Artikeltyp Download sichtbar), Drag&Drop für eine Datei (PDF/ZIP, max. 30 MB, ersetzt automatisch die alte). Jacky wollte bewusst nur EINE Datei pro Artikel (nicht wie bei Bildern mehrere) — reicht laut ihm, notfalls als ZIP bündeln.
+   - **Nebenbei echten Bug gefunden+gefixt:** das Featured-Häkchen aus Punkt 4 wurde nirgends aus der DB gelesen (nur geschrieben) — wäre beim Laden immer leer erschienen und hätte sich bei jeder Bearbeitung selbst zurückgesetzt. Außerdem hat `detail.php` ein EIGENES, zweites Stammdaten-Formular (Duplikat zu `bearbeiten.php`, beide posten zu `aktualisieren.php`) — das Featured-Häkchen fehlte dort, nachgezogen.
+2. **Globale Vorbelegung:** neues Feld "Download-Limit" in Einstellungen → System → Downloads. Jackys Präzisierung: Limit ist PRO ARTIKEL einstellbar (`artikel.download_limit`, NULL = folgt der globalen Vorbelegung dynamisch, Zahl = individuelle Überschreibung) — nicht rein global wie ursprünglich vorgeschlagen.
+3. **Shop-Sync:** Datei-Byte-Upload in die WP-Mediathek über den bereits bestehenden Bild-Upload-Mechanismus (`WooCommerceClient::ladeBildHoch()` ist generisch, keine Änderung nötig). `virtual`/`downloadable`/`downloads`/`download_limit`-Payload-Felder nur beim Vater/Standalone (nie bei Variationen). Change-Detection via `dateiname_synced`-Vergleich, gleiches Muster wie `syncKategorieBild()`. Mit simuliertem Sync-Zustand getestet (kein echter API-Call): globale Vorbelegung + individuelle Überschreibung beide korrekt geprüft.
+4. **Kundenkonto im ERP:** neuer "Downloads"-Tab auf der Kunden-Detail-Seite, zeigt bestellte Download-Artikel mit Zahlungsstatus + direktem Datei-Link (löst genau das ab, was bisher händisch per Mail gemacht wurde, siehe die Altbeschreibung bei `MAnl-123Hase`).
+
+**Bewusster Trade-off, transparent an Jacky kommuniziert:** Datei liegt wie Bilder in der normalen WP-Mediathek (kein separates geschütztes Verzeichnis) — WooCommerce sperrt den Zugriff über Bestellrechte, aber die rohe Datei-URL wäre bei Kenntnis/Erraten technisch erreichbar. Für Anleitungen/Muster als ausreichend eingeschätzt, kein Hard-Blocking auf Dateisystem-Ebene. Bei Bedarf später ein geschützter Auslieferungsweg nachrüstbar.
+
+**Noch offen:** Jacky lädt gerade echte Anleitungsdateien hoch, um den Upload-Teil selbst zu testen — Ergebnis steht noch aus.
+
+## Nebenbei erledigt: Kunden-Detail zeigt jetzt Shop-Zugehörigkeit (2026-08-10)
+
+Jacky bemerkte beim Multi-Shop-Nachdenken: Kunden-Detail-Seite zeigt nirgends, in welchem Shop ein Kunde registriert ist/bestellt hat, obwohl die Daten (`kunden_shops`) längst da sind. Kleiner Chip-Zusatz im Kunden-Header (🛒 Shopname pro Zeile aus `kunden_shops`), analog zu den bestehenden Status-/Kundengruppen-Chips. Dabei zwei bestehende Sorgen von Jacky im Code verifiziert und als bereits korrekt/erledigt bestätigt (kein neuer Code nötig):
+- `ShopBestellungSyncService::ermittleOderErstelleKunde()` lehnt nie einen Kunden wegen bereits existierender E-Mail ab — sucht per externer Shop-ID, dann per E-Mail-Hash über alle Shops hinweg, verknüpft nur die neue Shop-Zuordnung statt neu anzulegen.
+- Auftragsliste zeigt den Shop-Kanal bereits als Chip mit Filter (aus der Session vom 21.7.).
+
+## Erklärung: "Sync läuft wieder alle Artikel durch" (2026-08-10, nach dem UVP-Backfill)
+
+Jacky beobachtete beim manuellen Abgleich einen riesigen Rückstau. Ursache: der UVP-Nachtrag (Punkt 2) hatte am Vorabend 16.587 Artikel auf einmal aktualisiert — der normale 15-Minuten-Cron (nur ~20 Artikel/Lauf) hätte Tage gebraucht, das abzuarbeiten (7.973 Artikel waren zum Zeitpunkt der Frage noch offen). Kein Zusammenhang mit den Hersteller-Änderungen vom Vortag (andere, viel kleinere Tabelle, war schon komplett durch). Jackys manueller Abgleich war der richtige Move, um den Rückstau zügig aufzuholen — reines Backlog-Abarbeiten, kein neuer Bug.
 
 ## Nebenbei erledigt: GPSR-Hersteller-Daten im Shop veraltet (2026-08-09, nach Punkt 3)
 
 Jacky bemerkte, dass die live angezeigten GPSR-Kontaktdaten (fast alle Hersteller außer Addi) nicht mit dem ERP übereinstimmten. Ursache + Fix in [[project_infrastruktur]] dokumentiert (Live→Dev-DB-Import hatte alte `aktualisiert_am`-Zeitstempel mitgebracht, Sync-Fälligkeit dadurch blind) — 61 Hersteller-Zuweisungen zurückgesetzt + Cron manuell angestoßen, von Jacky live bestätigt ("jetzt passts").
 
-## Session-Ende 2026-08-09
+**How to apply:** Shop-Sync-Preis-Fix (Punkt 2) bei Gelegenheit mit einer echten Aktion gegentesten, nicht von selbst vorschlagen. Bei künftigen Mega-Menu-Shortcodes: die beiden Fallstricke aus Punkt 3 (li-Stripping, float/width-Override) als Ausgangspunkt nehmen, nicht neu entdecken. Custom-Text-Labels erst wieder aufgreifen, wenn Woostify Pro aktiviert ist — nicht von selbst vorschlagen.
 
-Drei von fünf Punkten fertig (Kontrollliste, UVP-Streichpreis, Hersteller-als-Marke) plus der GPSR-Nebenfund. **Restliche Punkte (4. Labels, 5. Download-Artikeltyp) vertagt auf die nächste Session**, kein Grund/Blocker — Jacky wollte für heute Schluss machen.
+## Session-Ende 2026-08-09 (Abend) / Fortsetzung 2026-08-10
 
-**How to apply:** Bei nächster Session mit Punkt 4 (Labels) weitermachen, in dieser Reihenfolge, nicht neu improvisieren — siehe auch [[project_roadmap_reihenfolge]]. Shop-Sync-Preis-Fix (Punkt 2) bei Gelegenheit mit einer echten Aktion gegentesten, nicht von selbst vorschlagen. Für Punkt 4 (Labels) UND generell künftige Mega-Menu-Shortcodes: die beiden Fallstricke aus Punkt 3 (li-Stripping, float/width-Override) als Ausgangspunkt nehmen, nicht neu entdecken.
+Abend: drei von fünf Punkten fertig (Kontrollliste, UVP-Streichpreis, Hersteller-als-Marke) plus GPSR-Nebenfund. Vormittag 2026-08-10: Punkt 4 (Labels, Basis-Badges) und Punkt 5 (Download-Artikeltyp) fertig gebaut, dazu Kunden-Shop-Chip und die JTL-Kunden+Aufträge-Machbarkeitsprüfung (siehe [[project_jtl_kunden_auftraege_import]]). **Alle fünf ursprünglichen Punkte sind durch** — offen bleibt nur Jackys eigener Live-Test des Download-Uploads mit echten Anleitungsdateien.

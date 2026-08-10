@@ -248,12 +248,14 @@ if ($tab === 'system') {
     $kdWillkommen     = trim($_POST['kundenanzeige_willkommenstext'] ?? '');
     $kdQrAktiv        = isset($_POST['kundenanzeige_qr_aktiv']) ? '1' : '0';
     $lsChargeAnzeigen = isset($_POST['lieferschein_charge_anzeigen']) ? '1' : '0';
+    $downloadLimit    = trim($_POST['download_limit_standard'] ?? '');
 
     setSetting($db, 'preisanzeige_auftrag', $preisanzeige);
     setSetting($db, 'kleinunternehmer',     $kleinunternehmer);
     setSetting($db, 'kundenanzeige_willkommenstext', $kdWillkommen);
     setSetting($db, 'kundenanzeige_qr_aktiv',        $kdQrAktiv);
     setSetting($db, 'lieferschein_charge_anzeigen',  $lsChargeAnzeigen);
+    setSetting($db, 'download_limit_standard',       $downloadLimit !== '' ? (string)(int)$downloadLimit : '');
 
     $_SESSION['erfolg'] = 'System-Einstellungen gespeichert.';
     header('Location: index.php?tab=system');

@@ -112,7 +112,7 @@ class ShopSyncRepository
         $stmt = $this->db->prepare("
             SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
                    a.vaterartikel_id, a.artikelnummer, a.name, a.kurzbeschreibung,
-                   a.beschreibung, a.aktiv, a.hersteller_id, ash_vater.external_id AS vater_external_id
+                   a.beschreibung, a.aktiv, a.hersteller_id, a.ist_hervorgehoben, ash_vater.external_id AS vater_external_id
             FROM artikel_shops ash
             JOIN artikel a ON a.id = ash.artikel_id
             LEFT JOIN artikel_shops ash_vater
@@ -516,6 +516,60 @@ class ShopSyncRepository
             VALUES (:bild_id, :shop_id, 'error', :fehler)
             ON DUPLICATE KEY UPDATE sync_status = 'error', fehler_meldung = VALUES(fehler_meldung)
         ")->execute(['bild_id' => $bildId, 'shop_id' => $shopId, 'fehler' => $fehlermeldung]);
+    }
+
+    /** Rohdaten für den Download-Sync: ob der Artikeltyp überhaupt ein Download ist + die aktuelle Datei/das Limit. */
+    public function findDownloadInfo(int $artikelId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT at.ist_download, a.download_dateiname, a.download_limit
+            FROM artikel a
+            JOIN artikel_typen at ON at.id = a.artikeltyp_id
+            WHERE a.id = :artikel_id
+        ");
+        $stmt->execute(['artikel_id' => $artikelId]);
+        return $stmt->fetch();
+    }
+
+    /** Globale Vorbelegung für das Download-Limit (system_einstellungen), NULL = unbegrenzt. */
+    public function findDownloadLimitStandard(): ?int
+    {
+        $stmt = $this->db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'download_limit_standard'");
+        $wert = $stmt->fetchColumn();
+        return ($wert !== false && $wert !== '') ? (int)$wert : null;
+    }
+
+    /** Bestehende Shop-Zuordnung der Download-Datei eines Artikels (Idempotenz, analog artikel_bilder_shops). */
+    public function findDownloadShopZuweisung(int $artikelId, int $shopId): array|false
+    {
+        $stmt = $this->db->prepare("SELECT * FROM artikel_downloads_shops WHERE artikel_id = :artikel_id AND shop_id = :shop_id");
+        $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId]);
+        return $stmt->fetch() ?: false;
+    }
+
+    public function markiereDownloadSynced(int $artikelId, int $shopId, ?string $dateiname, ?string $externalMediaId, ?string $externalMediaUrl): void
+    {
+        $this->db->prepare("
+            INSERT INTO artikel_downloads_shops (artikel_id, shop_id, dateiname_synced, external_media_id, external_media_url, sync_status, synced_at)
+            VALUES (:artikel_id, :shop_id, :dateiname, :media_id, :media_url, 'synced', NOW())
+            ON DUPLICATE KEY UPDATE dateiname_synced = VALUES(dateiname_synced), external_media_id = VALUES(external_media_id),
+                external_media_url = VALUES(external_media_url), sync_status = 'synced', synced_at = NOW(), fehler_meldung = NULL
+        ")->execute([
+            'artikel_id' => $artikelId,
+            'shop_id'    => $shopId,
+            'dateiname'  => $dateiname,
+            'media_id'   => $externalMediaId,
+            'media_url'  => $externalMediaUrl,
+        ]);
+    }
+
+    public function markiereDownloadFehler(int $artikelId, int $shopId, string $fehlermeldung): void
+    {
+        $this->db->prepare("
+            INSERT INTO artikel_downloads_shops (artikel_id, shop_id, sync_status, fehler_meldung)
+            VALUES (:artikel_id, :shop_id, 'error', :fehler)
+            ON DUPLICATE KEY UPDATE sync_status = 'error', fehler_meldung = VALUES(fehler_meldung)
+        ")->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId, 'fehler' => $fehlermeldung]);
     }
 
     /**

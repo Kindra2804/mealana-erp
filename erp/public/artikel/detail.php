@@ -37,6 +37,9 @@ $db_detail = \Database::getInstance();
 $artikelGruppen = $db_detail->query("
     SELECT id, konto_nr, name FROM artikel_gruppen WHERE aktiv = 1 ORDER BY sortierung, konto_nr
 ")->fetchAll();
+$downloadLimitStandard = (string)($db_detail->query("
+    SELECT wert FROM system_einstellungen WHERE schluessel = 'download_limit_standard'
+")->fetchColumn() ?: '');
 
 $variantenService  = new VariantenService();
 $achsen            = $variantenService->findAchsenByArtikelId($id);
@@ -425,6 +428,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <a class="tab" href="#" onclick="zeigeTab('preise',this);return false;">Preise</a>
     <a class="tab" href="#" onclick="zeigeTab('lager',this);return false;">Lager</a>
     <a class="tab" href="#" onclick="zeigeTab('bilder',this);return false;">Bilder</a>
+    <?php if (!empty($artikel['artikeltyp_ist_download'])): ?>
+        <a class="tab" href="#" onclick="zeigeTab('download',this);return false;">Download</a>
+    <?php endif; ?>
     <a class="tab" href="#" onclick="zeigeTab('merkmale',this);return false;">Merkmale</a>
     <a class="tab" href="#" onclick="zeigeTab('lieferanten',this);return false;">Lieferanten</a>
     <a class="tab" href="#" onclick="zeigeTab('seo',this);return false;">SEO</a>
@@ -597,6 +603,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <input type="checkbox" name="ist_auslaufartikel" value="1"
                                 <?= ($artikel['ist_auslaufartikel'] ?? 0) ? 'checked' : '' ?>>
                             Auslaufartikel
+                        </label>
+                        <label class="form-check">
+                            <input type="checkbox" name="ist_hervorgehoben" value="1"
+                                <?= ($artikel['ist_hervorgehoben'] ?? 0) ? 'checked' : '' ?>>
+                            Hervorheben (Featured-Badge im Shop)
                         </label>
                         <label class="form-check">
                             <input type="checkbox" name="charge_pflicht" value="1"
@@ -1542,6 +1553,59 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         </div>
     </div>
+    <?php if (!empty($artikel['artikeltyp_ist_download'])): ?>
+    <div id="tab-download" class="versteckt">
+        <div class="card" style="margin-bottom:16px">
+            <div class="form-section-header">Download-Datei</div>
+
+            <?php if (!empty($artikel['download_dateiname'])): ?>
+                <div id="download-datei-info" style="display:flex;align-items:center;gap:12px;padding:10px 0">
+                    <span style="font-size:20px">📄</span>
+                    <a href="<?= BASE_PATH ?>/uploads/downloads/<?= $id ?>/<?= rawurlencode($artikel['download_dateiname']) ?>"
+                        target="_blank"><?= htmlspecialchars($artikel['download_dateiname']) ?></a>
+                    <button type="button" class="btn btn-danger btn-sm" id="download-datei-loeschen">Löschen</button>
+                </div>
+            <?php else: ?>
+                <div id="download-datei-info" style="color:var(--color-text-muted);font-size:13px;padding:8px 0">
+                    Noch keine Datei hochgeladen.
+                </div>
+            <?php endif; ?>
+
+            <div id="download-dropzone"
+                style="border:2px dashed #93c5fd;border-radius:8px;background:#eff6ff;
+                        padding:32px 20px;text-align:center;cursor:pointer;margin-top:12px;
+                        transition:background .15s,border-color .15s">
+                <div style="font-size:28px;color:#93c5fd;margin-bottom:8px">⬆</div>
+                <div style="color:#1d4ed8;font-weight:500;font-size:13px">
+                    Datei hier reinziehen oder klicken
+                </div>
+                <div style="color:#94a3b8;font-size:11px;margin-top:4px">
+                    PDF, ZIP &middot; eine Datei &middot; max. 30 MB &middot; ersetzt eine vorhandene Datei
+                </div>
+                <input type="file" id="download-datei-input" accept=".pdf,.zip,application/pdf,application/zip"
+                    style="display:none">
+            </div>
+            <div id="download-upload-status" style="font-size:12px;color:#64748b;margin-top:8px"></div>
+        </div>
+
+        <div class="card">
+            <div class="form-section-header">Download-Limit</div>
+            <form id="download-limit-form" action="download_limit_speichern.php" method="POST">
+                <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                <div class="form-row">
+                    <label class="form-label">Wie oft je Bestellung herunterladbar</label>
+                    <input type="number" name="download_limit" class="erp-input" style="max-width:120px" min="1"
+                        value="<?= htmlspecialchars((string)($artikel['download_limit'] ?? '')) ?>"
+                        placeholder="Standard: <?= htmlspecialchars($downloadLimitStandard !== '' ? $downloadLimitStandard : 'unbegrenzt') ?>">
+                </div>
+                <div style="color:var(--color-text-muted);font-size:12px;margin:4px 0 12px">
+                    Leer lassen = folgt der globalen Vorbelegung aus den System-Einstellungen.
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
     <div id="tab-merkmale" class="versteckt">
         <?php if (empty($merkmaleFuerTyp)): ?>
             <div class="card" style="color:var(--color-text-muted);font-size:13px">
@@ -2203,4 +2267,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php endif; ?>
 
     <script src="<?= BASE_PATH ?>/js/bilder.js"></script>
+    <?php if (!empty($artikel['artikeltyp_ist_download'])): ?>
+        <script src="<?= BASE_PATH ?>/js/artikel_download.js"></script>
+    <?php endif; ?>
     <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

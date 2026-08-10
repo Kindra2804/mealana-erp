@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-08-09T19:17:37.912Z
+  modified: 2026-08-10T10:03:55.006Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -52,8 +52,10 @@ Jacky hat fünf Punkte gesammelt, die "der Reihe nach, einzeln besprochen" abgea
 1. Kontrollliste — ✅ FERTIG 2026-08-09
 2. UVP/Streichpreis — ✅ FERTIG 2026-08-09 (inkl. Shop-Sync-Preisfix, echter Bug gefunden: SALE-Override/Aktionsmodul kamen bisher nie im Shop an)
 3. Hersteller als Marke — ✅ FERTIG 2026-08-09 (WC-Attribut `pa_hersteller` war schon voll befüllt, nur Mega-Menü-Einbindung per WPCode-Shortcode gefehlt, siehe [[project_shop_theme]] für Mega-Menu-Fallstricke)
-4. Labels — offen, **ALS NÄCHSTES**
-5. Download-Artikeltyp — offen, komplexestes Thema, bewusst zuletzt
+4. Labels — ✅ Basis-Badges FERTIG 2026-08-10 (Sale/Neu automatisch, Featured jetzt ERP-gesteuert); frei wählbare Text-Labels vertagt bis Woostify Pro aktiv ist
+5. Download-Artikeltyp — ✅ gebaut 2026-08-10 (WooCommerce Downloadable Products nativ genutzt), Jackys eigener Upload-Test mit echten Dateien steht noch aus
+
+**Alle fünf Punkte durch.** Als Nächstes ansteh: JTL-Kunden+Aufträge-Import (Machbarkeit bereits geprüft, unproblematisch — siehe [[project_jtl_kunden_auftraege_import]]), Jacky entscheidet wann der eigentliche Import gebaut wird.
 
 ## Kleinere Punkte — "zwischendurch, je nach Lust und Laune", aber NICHT verlieren
 

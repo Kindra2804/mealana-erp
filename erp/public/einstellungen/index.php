@@ -730,6 +730,20 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         </div>
 
         <div class="card" style="margin-bottom:12px">
+            <div class="card-header">Downloads</div>
+            <div style="padding:16px">
+                <div class="form-group">
+                    <label class="form-label">Download-Limit, Vorbelegung neuer Download-Artikel</label>
+                    <input type="number" name="download_limit_standard" class="erp-input" style="max-width:120px" min="1"
+                        value="<?= htmlspecialchars($rows['download_limit_standard'] ?? '') ?>" placeholder="unbegrenzt">
+                    <div style="color:var(--color-text-muted);font-size:12px;margin-top:4px">
+                        Wie oft eine Datei je Bestellung heruntergeladen werden darf — leer = unbegrenzt. Gilt nur als Vorschlag beim Anlegen; jeder Download-Artikel kann das einzeln überschreiben.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
             <div class="card-header">Versand / Lieferschein</div>
             <div style="padding:16px">
                 <label style="font-size:13px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">

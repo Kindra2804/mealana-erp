@@ -374,6 +374,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
         } ?>
         <input type="checkbox" name="ueberverkauf_erlaubt" value="1" <?= $ueberverkaufChecked ?>>
 
+        <label>Hervorheben (Featured-Badge im Shop)</label>
+        <?php if (isset($formdata['ist_hervorgehoben']) && $formdata['ist_hervorgehoben'] == '1') {
+            $hervorgehobenChecked = 'checked';
+        } else {
+            $hervorgehobenChecked = '';
+        } ?>
+        <input type="checkbox" name="ist_hervorgehoben" value="1" <?= $hervorgehobenChecked ?>>
+
         <label>Aktiv</label>
         <select name="aktiv">
             <option value="1" <?= selected('aktiv', '1', $formdata) ?>>Ja</option>

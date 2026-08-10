@@ -15,6 +15,16 @@ $adressen  = $service->getAdressen($id);
 $consent   = $service->getConsent($id);
 $statistik = $service->getStatistik($id);
 
+$kundenShops = Database::getInstance()->prepare("
+    SELECT s.name
+    FROM kunden_shops ks
+    JOIN shops s ON s.id = ks.shop_id
+    WHERE ks.kunde_id = :kid
+    ORDER BY s.name
+");
+$kundenShops->execute(['kid' => $id]);
+$kundenShops = $kundenShops->fetchAll(PDO::FETCH_COLUMN);
+
 $flashErfolg = $_SESSION['erfolg'] ?? null;
 $flashFehler = $_SESSION['fehler'] ?? null;
 unset($_SESSION['erfolg'], $_SESSION['fehler']);
@@ -42,6 +52,23 @@ if ($activeTab === 'bestellungen') {
     ");
     $stmt->execute(['kid' => $id]);
     $kundenAuftraege = $stmt->fetchAll();
+}
+
+$kundenDownloads = [];
+if ($activeTab === 'downloads') {
+    $db = Database::getInstance();
+    $stmt = $db->prepare("
+        SELECT a.auftrag_nr, a.erstellt_am, a.zahlungsstatus, a.lieferstatus,
+               ap.bezeichnung, art.id AS artikel_id, art.download_dateiname
+        FROM auftrag_positionen ap
+        JOIN auftraege a ON a.id = ap.auftrag_id
+        JOIN artikel art ON art.id = ap.artikel_id
+        JOIN artikel_typen at ON at.id = art.artikeltyp_id
+        WHERE a.kunden_id = :kid AND at.ist_download = 1
+        ORDER BY a.erstellt_am DESC
+    ");
+    $stmt->execute(['kid' => $id]);
+    $kundenDownloads = $stmt->fetchAll();
 }
 
 $statusChip = match($kunde['status']) {
@@ -95,6 +122,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php if ($kunde['kundengruppe']): ?>
                 <span class="chip"><?= htmlspecialchars($kunde['kundengruppe']) ?></span>
             <?php endif; ?>
+            <?php foreach ($kundenShops as $shopName): ?>
+                <span class="chip" style="background:#eff6ff;color:#2563eb" title="Im Shop registriert/bestellt">
+                    🛒 <?= htmlspecialchars($shopName) ?>
+                </span>
+            <?php endforeach; ?>
         </div>
     </div>
     <!-- Schnellinfo rechts -->
@@ -147,6 +179,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         'adressen'   => 'Adressen (' . count($adressen) . ')',
         'dsgvo'      => 'DSGVO / Consent',
         'bestellungen' => 'Bestellungen',
+        'downloads'    => 'Downloads',
     ];
     foreach ($tabs as $key => $label):
         $isActive = $activeTab === $key;
@@ -514,6 +547,54 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <td><?= $liefChip ?></td>
             <td style="text-align:right;font-weight:600"><?= number_format((float)$auf['bruttobetrag'], 2, ',', '.') ?> €</td>
             <td><a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $auf['id'] ?>" class="btn btn-secondary btn-sm" style="padding:2px 8px">→</a></td>
+        </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
+<?php elseif ($activeTab === 'downloads'): ?>
+<?php if (empty($kundenDownloads)): ?>
+    <div class="card" style="text-align:center;padding:32px;color:var(--color-text-muted)">
+        Noch keine Download-Artikel bestellt.
+    </div>
+<?php else: ?>
+<div class="card">
+    <table class="erp-table">
+        <thead>
+            <tr>
+                <th>Auftrag</th>
+                <th>Datum</th>
+                <th>Artikel</th>
+                <th>Zahlung</th>
+                <th>Datei</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($kundenDownloads as $dl):
+            $zahlChip = match($dl['zahlungsstatus']) {
+                'bezahlt'    => '<span class="chip chip-aktiv">Bezahlt</span>',
+                'offen'      => '<span class="chip">Offen</span>',
+                'storniert'  => '<span class="chip chip-inaktiv">Storniert</span>',
+                'teilbezahlt' => '<span class="chip" style="background:#fff7ed;color:#c2410c">Teilbezahlt</span>',
+                default      => '<span class="chip">' . htmlspecialchars($dl['zahlungsstatus']) . '</span>',
+            };
+        ?>
+        <tr>
+            <td style="color:var(--color-text-muted)"><?= htmlspecialchars($dl['auftrag_nr']) ?></td>
+            <td style="color:var(--color-text-muted)"><?= date('d.m.Y', strtotime($dl['erstellt_am'])) ?></td>
+            <td><?= htmlspecialchars($dl['bezeichnung']) ?></td>
+            <td><?= $zahlChip ?></td>
+            <td>
+                <?php if (!empty($dl['download_dateiname'])): ?>
+                    <a href="<?= BASE_PATH ?>/uploads/downloads/<?= $dl['artikel_id'] ?>/<?= rawurlencode($dl['download_dateiname']) ?>" target="_blank">
+                        📄 <?= htmlspecialchars($dl['download_dateiname']) ?>
+                    </a>
+                <?php else: ?>
+                    <span style="color:var(--color-text-muted)">– keine Datei hinterlegt –</span>
+                <?php endif; ?>
+            </td>
         </tr>
         <?php endforeach; ?>
         </tbody>

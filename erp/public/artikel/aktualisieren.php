@@ -30,6 +30,10 @@ if (!isset($data['grundpreis_anzeigen']) || $data['grundpreis_anzeigen'] != '1')
     $data['grundpreis_anzeigen'] = '0';
 }
 
+if (!isset($data['ist_hervorgehoben']) || $data['ist_hervorgehoben'] != '1') {
+    $data['ist_hervorgehoben'] = '0';
+}
+
 // aktualisieren.php muss diese Felder herausfiltern:
 $artikelData = array_intersect_key($data, array_flip([
     'id',
@@ -61,6 +65,7 @@ $artikelData = array_intersect_key($data, array_flip([
     'charge_pflicht',
     'ist_auslaufartikel',
     'ueberverkauf_erlaubt',
+    'ist_hervorgehoben',
     'aktiv',
     'zustand',
     'zustand_vater_id',

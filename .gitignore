@@ -35,3 +35,6 @@ erp/public/uploads/artikel/
 
 # Kategorie-Bilder (lokal hochgeladen, instanzspezifisch)
 erp/public/uploads/kategorien/
+
+# Download-Artikel-Dateien (lokal hochgeladen, ggf. urheberrechtlich geschützt)
+erp/public/uploads/downloads/
