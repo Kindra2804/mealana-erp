@@ -1168,6 +1168,15 @@ Details siehe `.claude/memory/project_jtl_kunden_auftraege_import.md`, `.claude/
 - **Auftragsliste-Zeitraum-Filter** ✅ FERTIG (`public/auftraege/liste.php`): Presets Dieser Monat/Dieses Quartal/Letzte 6 Monate/Dieses Jahr/Jahr-Monat-Auswahl/Freier Zeitraum, wiederverwendet das Zeitraum-Filter-Muster aus `statistik.php`. `AuftragRepository::findAll()`/`AuftragService::getAll()` um optionale `$von`/`$bis` erweitert.
 - Vierter Kanal-Fall `jtl_archiv` ("Archiv") überall ergänzt wo `kanal` behandelt wird: `auftraege/liste.php`, `detail.php`, `statistik.php`, `StatistikRepository` (inkl. neuer `umsatz_archiv`-Bucket), `kasse/ajax_auftrag_laden.php` (Archiv von Kassen-Retouren ausgeschlossen).
 
+## Update 2026-08-11 (Abend, Nachfund): Vater→Kind-Vererbung lief bei 841 Vätern noch nie + Spalten-Picker-Bug
+
+Details siehe `.claude/memory/project_datenqualitaet_20260811.md`.
+
+- **Root Cause:** `ArtikelRepository::propagiereZuKindern()` läuft nur bei einem UI-Vater-Speichern. 841 JTL-importierte Väter wurden seit Anlage nie einzeln gespeichert → Vererbung lief für 15.135 Kind-Artikel nie, über alle 24 vererbten Felder hinweg. Kein Import-Bug (verifiziert: weder JTL-Archiv- noch Eigener-Export-Import schreiben diese Felder) — vorbestehende Lücke, durch den neuen Lagerbestand erstmals sichtbar geworden.
+- **Business-relevant:** `charge_pflicht` bei 1.177 Kindern fehlte trotz Vater-Pflicht (Farbkonsistenz-Risiko), `grundpreis_anzeigen` bei 1.565 Kindern fehlte (gesetzlich vorgeschrieben).
+- **Fix:** `erp/scripts/backfill_vater_kind_sync.php` (`--dry-run`-fähig) ruft die bestehende `propagiereZuKindern()` für alle betroffenen Väter auf — kein eigener Feldabgleich, garantiert identisches Ergebnis zum normalen UI-Speichern. Live gelaufen, 0 Abweichungen danach verifiziert.
+- **Separat gefixt:** `artikel/spalten_einstellung_speichern.php` hatte eine eigene, veraltete Spalten-Whitelist ohne `artikelgruppe` — Checkbox ließ sich anhaken, wurde aber nie gespeichert.
+
 ## Commit Convention
 
 ```

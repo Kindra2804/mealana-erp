@@ -12,7 +12,7 @@ if (!is_array($spalten)) {
 
 $erlaubt = ['status','shops','bestand','preis','hersteller','artikeltyp','ean','einheit',
             'kategorie','geaendert_am','ek','marge','charge',
-            'merkmale','lagerplatz','letzte_inventur'];
+            'merkmale','lagerplatz','letzte_inventur','artikelgruppe'];
 
 $spalten = array_values(array_filter($spalten, fn($s) => in_array($s, $erlaubt)));
 

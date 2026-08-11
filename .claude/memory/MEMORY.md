@@ -1,7 +1,7 @@
 # Memory Index
 
 - [Fünf Abendaufgaben 2026-08-09](project_fuenf_abendaufgaben_0809.md) — Kontrollliste+UVP-Streichpreis+Hersteller-als-Marke+Labels FERTIG; als Nächstes: Download-Artikeltyp
-- [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen (Grundpreis/Einheit/Chargenpflicht Garn) FERTIG korrigiert; unbestätigter Verdacht auf Speicher-Bug bei Chargenpflicht-Checkbox in artikel/bearbeiten.php, noch nicht untersucht
+- [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen FERTIG; Abend: Vater→Kind-Vererbung lief bei 841 Vätern nie (charge_pflicht+grundpreis_anzeigen!) BEHOBEN, Spalten-Picker-Bug BEHOBEN; Checkbox-Speicher-Verdacht weiter offen
 - [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — KOMPLETT FERTIG 2026-08-11: 6.775 Kunden + 39.191 Archiv-Aufträge (2013–2026); zusätzlich JTL-"Eigener Export" (Lieferanten-EK+Lagerbestand Ladengeschäft) auch fertig importiert; Browser-Test+Live-Deploy offen
 
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
