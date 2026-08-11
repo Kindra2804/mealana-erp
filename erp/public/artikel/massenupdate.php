@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
 require_once __DIR__ . '/../../src/core/Logger.php';
 
 $input  = json_decode(file_get_contents('php://input'), true);
@@ -51,6 +52,15 @@ if ($aktion === 'kein_auslaufartikel') {
     }
     Logger::log('artikel.masse.auslauf_entfernen', 'artikel', 0, ['ids' => $ids]);
     $_SESSION['erfolg'] = count($ids) . ' Artikel: Auslauf-Flag entfernt.';
+    echo json_encode(['erfolg' => true]);
+    exit;
+}
+
+if ($aktion === 'kanal_neu_synchronisieren') {
+    $shopRepo = new ShopSyncRepository();
+    $anzahl = $shopRepo->markiereFuerErneutenSync($ids);
+    Logger::log('artikel.masse.kanal_neu_synchronisieren', 'artikel', 0, ['ids' => $ids, 'betroffene_zuweisungen' => $anzahl]);
+    $_SESSION['erfolg'] = count($ids) . ' Artikel für erneuten Shop-Sync markiert (' . $anzahl . ' Kanal-Zuweisungen).';
     echo json_encode(['erfolg' => true]);
     exit;
 }

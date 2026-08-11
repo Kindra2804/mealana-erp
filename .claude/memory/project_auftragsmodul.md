@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 9a44da56-fbce-4da5-b4f6-17b472024d63
+  modified: 2026-08-11T19:35:16.235Z
 ---
 
 ## 🔴 BUG behoben (2026-07-09): Nummernkreis ohne Selbstheilung
@@ -182,9 +183,19 @@ Auftrag eingeht → Bestand < Menge → lieferstatus='zurueckgestellt'
 
 ## Auftragsliste-Features
 
-- Kanal-Chip (woocommerce / manuell / kasse) sichtbar in der Liste
-- Filterbox: Kanal, Zahlungsstatus, Lieferstatus, Datum, Kunde
+- Kanal-Chip (woocommerce / manuell / kasse / jtl_archiv) sichtbar in der Liste
+- Filterbox: Kanal, Zahlungsstatus, Lieferstatus, Datum ✅ FERTIG 2026-08-11, Kunde
 - Spalten-Picker (wie Artikelliste)
+
+## ✅ Zeitraum-Filter FERTIG (2026-08-11)
+
+Wurde relevant, weil der JTL-Archiv-Import (siehe [[project_jtl_kunden_auftraege_import]]) Aufträge bis 2013 in die Liste bringt — ohne Datumsfilter unhandlich. Jacky wollte JTLs Zeitraum-Auswahl (Screenshot gezeigt: Jahr-Stepper + Presets) als Vorbild, aber nicht 1:1 nachgebaut — stattdessen das schon bestehende Zeitraum-Filter-Muster aus `auftraege/statistik.php` wiederverwendet und um die von Jacky gewünschten Presets erweitert.
+
+**Presets in `auftraege/liste.php`:** Alle Zeiträume (Standard) / Dieser Monat / Dieses Quartal / Letzte 6 Monate / Dieses Jahr / Jahr-Monat-Auswahl (zwei zusätzliche Selects, Jahr-Range dynamisch aus `MIN(erstellt_am)` der DB) / Freier Zeitraum (von/bis).
+
+**Umsetzung:** `AuftragRepository::findAll()` + `AuftragService::getAll()` um optionale `?string $von, ?string $bis`-Parameter erweitert (rückwärtskompatibel, einziger betroffener Aufrufer war `auftraege/liste.php`), Filter läuft über `a.erstellt_am BETWEEN`. Presets bewusst NICHT auf "heute" geclamped bei Jahr-Monat/Freier Zeitraum (anders als in `statistik.php`), damit man auch reine Vergangenheits-Zeiträume (z.B. "2015") ansehen kann, ohne dass ein impliziter Enddatum-Filter dazwischenfunkt.
+
+Direkt gegen echte Daten getestet (`AuftragService::getAll()` mit verschiedenen Zeiträumen): 2026 gesamt 1.689, 2015 gesamt 3.022, August 2026 45 — plausibel. Kein Browser-Test in dieser Session.
 
 ## ✅ Rabatt-Design FERTIG (2026-07-10) — anderer Ansatz als ursprünglich notiert
 

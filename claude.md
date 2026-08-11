@@ -1158,6 +1158,16 @@ require_once __DIR__ . '/../includes/shell_bottom.php';
 - Import module (JTL-WAWI, CSV)
 - Promo/discount engine
 
+## Update 2026-08-11: JTL-Archiv-Import (Kunden+Aufträge) + Lieferanten-EK/Lagerbestand-Import + Auftragsliste-Zeitraum-Filter
+
+Details siehe `.claude/memory/project_jtl_kunden_auftraege_import.md`, `.claude/memory/project_auftragsmodul.md`.
+
+- **JTL-Kunden+Aufträge-Archiv-Import** ✅ FERTIG: neuer Kanal `jtl_archiv` (Migration 164), Kunden-Dedup über eigene n:1-Zuordnungstabelle `kunden_jtl_referenzen` (Migration 165 — löst ab, was Migration 164 als 1:1-Spalte versucht hatte). Neuer Service `JtlArchivImportService` + zwei CLI-Skripte (`scripts/jtl_archiv_import_kunden.php`, `jtl_archiv_import_auftraege.php`, `--dry-run`-fähig, idempotent). Fehlende Artikelnummern in Bestellpositionen bekommen einen eigenen Platzhalter-Artikel (`artikelnummer = 'JTL-<Original>'`, inaktiv) statt des Kassen-99er-Musters. Auf Dev importiert: 6.775 Kunden, 39.191 Archiv-Aufträge (01.09.2013–11.08.2026).
+- **`AuftragRepository::insertArchiv()`** neu — anders als `insert()` übernimmt sie `auftrag_nr`/`erstellt_am`/`zahlungsstatus`/`lieferstatus` direkt aus historischen Daten statt sie über `dokument_nummern` zu generieren bzw. hart auf 'neu'/'ausstehend' zu setzen.
+- **JTL "Eigener Export"** (Lieferanten-EK-Preise + Lagerbestand/Charge) ✅ FERTIG: neues Skript `scripts/jtl_eigener_export_import.php`, füllt `artikel_lieferanten` und `lagerbestand` (immer `lager_id=1` Ladengeschäft). Wird vor Go-Live nochmal als Basis für die Startinventur gezogen.
+- **Auftragsliste-Zeitraum-Filter** ✅ FERTIG (`public/auftraege/liste.php`): Presets Dieser Monat/Dieses Quartal/Letzte 6 Monate/Dieses Jahr/Jahr-Monat-Auswahl/Freier Zeitraum, wiederverwendet das Zeitraum-Filter-Muster aus `statistik.php`. `AuftragRepository::findAll()`/`AuftragService::getAll()` um optionale `$von`/`$bis` erweitert.
+- Vierter Kanal-Fall `jtl_archiv` ("Archiv") überall ergänzt wo `kanal` behandelt wird: `auftraege/liste.php`, `detail.php`, `statistik.php`, `StatistikRepository` (inkl. neuer `umsatz_archiv`-Bucket), `kasse/ajax_auftrag_laden.php` (Archiv von Kassen-Retouren ausgeschlossen).
+
 ## Commit Convention
 
 ```

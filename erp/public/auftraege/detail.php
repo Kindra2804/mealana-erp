@@ -94,6 +94,7 @@ $kanalLabels = [
     'woocommerce' => ['label' => 'WooCommerce', 'class' => 'chip-aktiv'],
     'manuell'     => ['label' => 'Manuell',     'class' => 'chip-auslauf'],
     'kasse'       => ['label' => 'Kasse',        'class' => 'chip-inaktiv'],
+    'jtl_archiv'  => ['label' => 'Archiv',       'class' => 'chip-inaktiv'],
 ];
 
 $zl  = $zahlungsLabels[$auftrag['zahlungsstatus']] ?? ['label' => $auftrag['zahlungsstatus'], 'class' => ''];

@@ -26,6 +26,7 @@ class StatistikRepository
             'kasse'   => "AND a.kanal = 'kasse'",
             'online'  => "AND a.kanal = 'woocommerce'",
             'manuell' => "AND a.kanal = 'manuell'",
+            'archiv'  => "AND a.kanal = 'jtl_archiv'",
             default   => '',
         };
     }
@@ -77,6 +78,7 @@ class StatistikRepository
                 SUM(CASE WHEN a.kanal = 'kasse' THEN a.bruttobetrag ELSE 0 END) AS umsatz_kasse,
                 SUM(CASE WHEN a.kanal = 'woocommerce' THEN a.bruttobetrag ELSE 0 END) AS umsatz_online,
                 SUM(CASE WHEN a.kanal = 'manuell' THEN a.bruttobetrag ELSE 0 END) AS umsatz_manuell,
+                SUM(CASE WHEN a.kanal = 'jtl_archiv' THEN a.bruttobetrag ELSE 0 END) AS umsatz_archiv,
                 SUM(a.bruttobetrag) AS umsatz_gesamt
             FROM auftraege a
             WHERE a.zahlungsstatus != 'storniert'

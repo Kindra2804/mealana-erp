@@ -11,7 +11,50 @@ $filterKanal          = $_GET['kanal']    ?? '';
 $suche                = $_GET['suche']    ?? '';
 $mitAbgeschlossenen   = isset($_GET['abgeschlossene']);
 
-$auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche, $mitAbgeschlossenen);
+// ── Zeitraum-Filter (Presets analog auftraege/statistik.php, plus Quartal/6-Monate/
+//    Jahr-Monat-Auswahl -- wichtig geworden, seit der JTL-Archiv-Import Aufträge
+//    bis 2013 zurück in die Liste bringt) ─────────────────────────────────────────
+$zeitraum = $_GET['zeitraum'] ?? '';
+$heute    = date('Y-m-d');
+$von = null;
+$bis = null;
+$jmJahr  = (int)($_GET['jm_jahr']  ?? date('Y'));
+$jmMonat = (int)($_GET['jm_monat'] ?? 0);
+
+switch ($zeitraum) {
+    case 'monat':
+        $von = date('Y-m-01'); $bis = $heute; break;
+    case 'quartal':
+        $quartalStartMonat = (intdiv((int)date('n') - 1, 3) * 3) + 1;
+        $von = date('Y-' . str_pad((string)$quartalStartMonat, 2, '0', STR_PAD_LEFT) . '-01');
+        $bis = $heute;
+        break;
+    case '6monate':
+        $von = date('Y-m-d', strtotime('-6 months')); $bis = $heute; break;
+    case 'jahr':
+        $von = date('Y-01-01'); $bis = $heute; break;
+    case 'jahrmonat':
+        if ($jmMonat >= 1 && $jmMonat <= 12) {
+            $von = sprintf('%04d-%02d-01', $jmJahr, $jmMonat);
+            $bis = date('Y-m-t', strtotime($von));
+        } else {
+            $von = sprintf('%04d-01-01', $jmJahr);
+            $bis = sprintf('%04d-12-31', $jmJahr);
+        }
+        break;
+    case 'frei':
+        $von = $_GET['von'] ?? null;
+        $bis = $_GET['bis'] ?? null;
+        break;
+    default:
+        $zeitraum = '';
+        break;
+}
+
+$jahrVon = (int)date('Y', strtotime((Database::getInstance()->query("SELECT MIN(erstellt_am) FROM auftraege")->fetchColumn()) ?: $heute));
+$jahrBis = (int)date('Y');
+
+$auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche, $mitAbgeschlossenen, $von, $bis);
 
 $zahlungsLabels = [
     'ausstehend'   => ['label' => 'Ausstehend',  'class' => 'chip-auslauf'],
@@ -45,6 +88,7 @@ $kanalLabels = [
     'woocommerce' => ['label' => 'WooCommerce', 'class' => 'chip-aktiv'],
     'manuell'     => ['label' => 'Manuell',     'class' => 'chip-auslauf'],
     'kasse'       => ['label' => 'Kasse',        'class' => 'chip-inaktiv'],
+    'jtl_archiv'  => ['label' => 'Archiv',       'class' => 'chip-inaktiv'],
 ];
 
 $pageTitle        = 'Aufträge';
@@ -87,7 +131,37 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php endforeach; ?>
         <option value="manuell" <?= $filterKanal === 'manuell'     ? 'selected' : '' ?>>Manuell</option>
         <option value="kasse" <?= $filterKanal === 'kasse'       ? 'selected' : '' ?>>Kasse</option>
+        <option value="jtl_archiv" <?= $filterKanal === 'jtl_archiv' ? 'selected' : '' ?>>Archiv</option>
     </select>
+    <select class="erp-select" style="font-size:13px" id="filter-zeitraum">
+        <option value="" <?= $zeitraum === '' ? 'selected' : '' ?>>Alle Zeiträume</option>
+        <option value="monat" <?= $zeitraum === 'monat' ? 'selected' : '' ?>>Dieser Monat</option>
+        <option value="quartal" <?= $zeitraum === 'quartal' ? 'selected' : '' ?>>Dieses Quartal</option>
+        <option value="6monate" <?= $zeitraum === '6monate' ? 'selected' : '' ?>>Letzte 6 Monate</option>
+        <option value="jahr" <?= $zeitraum === 'jahr' ? 'selected' : '' ?>>Dieses Jahr</option>
+        <option value="jahrmonat" <?= $zeitraum === 'jahrmonat' ? 'selected' : '' ?>>Jahr/Monat wählen…</option>
+        <option value="frei" <?= $zeitraum === 'frei' ? 'selected' : '' ?>>Freier Zeitraum…</option>
+    </select>
+    <?php if ($zeitraum === 'jahrmonat'): ?>
+        <select class="erp-select" style="font-size:13px" id="filter-jm-jahr">
+            <?php for ($j = $jahrBis; $j >= $jahrVon; $j--): ?>
+                <option value="<?= $j ?>" <?= $jmJahr === $j ? 'selected' : '' ?>><?= $j ?></option>
+            <?php endfor; ?>
+        </select>
+        <select class="erp-select" style="font-size:13px" id="filter-jm-monat">
+            <option value="0" <?= $jmMonat === 0 ? 'selected' : '' ?>>Alle Monate</option>
+            <?php
+            $monatsnamen = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+            foreach ($monatsnamen as $i => $mn): ?>
+                <option value="<?= $i + 1 ?>" <?= $jmMonat === $i + 1 ? 'selected' : '' ?>><?= $mn ?></option>
+            <?php endforeach; ?>
+        </select>
+    <?php elseif ($zeitraum === 'frei'): ?>
+        <input type="date" class="erp-input" style="font-size:13px" id="filter-von" value="<?= htmlspecialchars($von ?? '') ?>">
+        <span style="color:#94a3b8">bis</span>
+        <input type="date" class="erp-input" style="font-size:13px" id="filter-bis" value="<?= htmlspecialchars($bis ?? '') ?>">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyFilter()">Anwenden</button>
+    <?php endif; ?>
     <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--color-text-muted)">
         <input type="checkbox" id="filter-abgeschlossene" onchange="applyFilter()" <?= $mitAbgeschlossenen ? 'checked' : '' ?>>
         Abgeschlossene anzeigen
@@ -97,21 +171,37 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <script>
     function applyFilter() {
         const p = new URLSearchParams();
-        const s = document.getElementById('suche-input').value.trim();
-        const z = document.getElementById('filter-zahlung').value;
-        const l = document.getElementById('filter-lieferung').value;
-        const k = document.getElementById('filter-kanal').value;
-        const a = document.getElementById('filter-abgeschlossene').checked;
+        const s  = document.getElementById('suche-input').value.trim();
+        const z  = document.getElementById('filter-zahlung').value;
+        const l  = document.getElementById('filter-lieferung').value;
+        const k  = document.getElementById('filter-kanal').value;
+        const a  = document.getElementById('filter-abgeschlossene').checked;
+        const zr = document.getElementById('filter-zeitraum').value;
         if (s) p.set('suche', s);
         if (z) p.set('zahlung', z);
         if (l) p.set('lieferung', l);
         if (k) p.set('kanal', k);
         if (a) p.set('abgeschlossene', '1');
+        if (zr) p.set('zeitraum', zr);
+
+        const jmJahr  = document.getElementById('filter-jm-jahr');
+        const jmMonat = document.getElementById('filter-jm-monat');
+        if (jmJahr) p.set('jm_jahr', jmJahr.value);
+        if (jmMonat) p.set('jm_monat', jmMonat.value);
+
+        const von = document.getElementById('filter-von');
+        const bis = document.getElementById('filter-bis');
+        if (von && von.value) p.set('von', von.value);
+        if (bis && bis.value) p.set('bis', bis.value);
+
         window.location = '?' + p.toString();
     }
     document.getElementById('filter-zahlung').addEventListener('change', applyFilter);
     document.getElementById('filter-lieferung').addEventListener('change', applyFilter);
     document.getElementById('filter-kanal').addEventListener('change', applyFilter);
+    document.getElementById('filter-zeitraum').addEventListener('change', applyFilter);
+    document.getElementById('filter-jm-jahr')?.addEventListener('change', applyFilter);
+    document.getElementById('filter-jm-monat')?.addEventListener('change', applyFilter);
 </script>
 
 <div class="card">

@@ -7,7 +7,7 @@ $repo = new StatistikRepository();
 // ── Zeitraum-Filter ──────────────────────────────────────────────────────────
 $zeitraum = $_GET['zeitraum'] ?? '30t';
 $kanal    = $_GET['kanal'] ?? '';
-$kanal    = in_array($kanal, ['kasse', 'online', 'manuell'], true) ? $kanal : null;
+$kanal    = in_array($kanal, ['kasse', 'online', 'manuell', 'archiv'], true) ? $kanal : null;
 
 $heute = date('Y-m-d');
 switch ($zeitraum) {
@@ -98,6 +98,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <option value="kasse" <?= $kanal === 'kasse' ? 'selected' : '' ?>>Nur Kasse</option>
         <option value="online" <?= $kanal === 'online' ? 'selected' : '' ?>>Nur Online</option>
         <option value="manuell" <?= $kanal === 'manuell' ? 'selected' : '' ?>>Nur Manuell</option>
+        <option value="archiv" <?= $kanal === 'archiv' ? 'selected' : '' ?>>Nur Archiv</option>
     </select>
     <div style="flex:1"></div>
     <div style="font-size:11px;color:#94a3b8"><?= date('d.m.Y', strtotime($von)) ?> – <?= date('d.m.Y', strtotime($bis)) ?></div>
@@ -181,6 +182,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <span><span class="st-legende-dot" style="background:#2563eb"></span>Kasse</span>
         <span><span class="st-legende-dot" style="background:#16a34a"></span>Online</span>
         <span><span class="st-legende-dot" style="background:#f59e0b"></span>Manuell</span>
+        <span><span class="st-legende-dot" style="background:#94a3b8"></span>Archiv</span>
     </div>
     <?php
     $maxPeriode = max([1, ...array_column($zeitverlauf, 'umsatz_gesamt')]);
@@ -188,6 +190,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         $pctKasse   = $maxPeriode > 0 ? round((float)$z['umsatz_kasse'] / $maxPeriode * 100, 2) : 0;
         $pctOnline  = $maxPeriode > 0 ? round((float)$z['umsatz_online'] / $maxPeriode * 100, 2) : 0;
         $pctManuell = $maxPeriode > 0 ? round((float)$z['umsatz_manuell'] / $maxPeriode * 100, 2) : 0;
+        $pctArchiv  = $maxPeriode > 0 ? round((float)$z['umsatz_archiv'] / $maxPeriode * 100, 2) : 0;
         $label = $granularitaet === 'monat'
             ? date('M Y', strtotime($z['periode'] . '-01'))
             : date('d.m.', strtotime($z['periode']));
@@ -198,6 +201,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <div class="db-bar-fill" style="width:<?= $pctKasse ?>%;background:#2563eb"></div>
             <div class="db-bar-fill" style="width:<?= $pctOnline ?>%;background:#16a34a"></div>
             <div class="db-bar-fill" style="width:<?= $pctManuell ?>%;background:#f59e0b"></div>
+            <div class="db-bar-fill" style="width:<?= $pctArchiv ?>%;background:#94a3b8"></div>
         </div>
         <div class="db-bar-amt"><?= eur((float)$z['umsatz_gesamt']) ?></div>
     </div>

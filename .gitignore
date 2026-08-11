@@ -19,6 +19,9 @@ erp/public/test.php
 erp/import/*
 import/*
 
+# Export-Listen (generierte Arbeitslisten für Jacky, keine Quelldaten)
+exports/
+
 # Generierte Dokumente (PDFs)
 erp/storage/dokumente/
 erp/storage/picklisten/

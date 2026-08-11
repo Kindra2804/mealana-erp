@@ -1,7 +1,8 @@
 # Memory Index
 
 - [Fünf Abendaufgaben 2026-08-09](project_fuenf_abendaufgaben_0809.md) — Kontrollliste+UVP-Streichpreis+Hersteller-als-Marke+Labels FERTIG; als Nächstes: Download-Artikeltyp
-- [JTL Kunden+Aufträge-Import (Machbarkeit)](project_jtl_kunden_auftraege_import.md) — 2026-08-10: unproblematisch (100% Kundennummer-Match, 0% Auftrags-Überschneidung), eigentlicher Import noch NICHT gebaut, eigenständiges Thema nach den Fünf Abendaufgaben
+- [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen (Grundpreis/Einheit/Chargenpflicht Garn) FERTIG korrigiert; unbestätigter Verdacht auf Speicher-Bug bei Chargenpflicht-Checkbox in artikel/bearbeiten.php, noch nicht untersucht
+- [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — KOMPLETT FERTIG 2026-08-11: 6.775 Kunden + 39.191 Archiv-Aufträge (2013–2026); zusätzlich JTL-"Eigener Export" (Lieferanten-EK+Lagerbestand Ladengeschäft) auch fertig importiert; Browser-Test+Live-Deploy offen
 
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
 - [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — ✅ 2026-08-04 Grundpreis-Aufräumaktion (Einheit+Vererbung+Hersteller-Lücken LY/PL/MEA) von Jacky abgenommen, FERTIG; Opal+Stenli als Hersteller noch anzulegen (wartet auf Jacky)
@@ -48,15 +49,15 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — ✅ 2026-08-07 Abend: WooCommerce-Batch-Sync (Produkte/Variationen gebündelt, Batch-Größe 75) + Reconcile-Tool + Bilder-Teilexport per UI-Button; kleinere Shops (bio-wolle/sockenwolle) noch KEINE Kanal-Zuweisung — Jacky macht erst mealana fertig
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — 2026-08-10: Download-Artikel "nicht vorrätig"-Bug BEHOBEN + neue Massenaktion "Erneut synchronisieren" gebaut + 502-Serie war Shop-Server-seitig; sonst 2026-08-07: Batch-Sync+Reconcile fertig
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — ✅ 2026-08-05: Artikelliste "nur direkt zugeordnet"-Filter + Kategorie-entfernen-Massenaktion + Dropdown-Einrückung gefixt
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
-- [Shop-Theme/UX](project_shop_theme.md) — Kaufentscheidung weiter pausiert; ✅ 2026-08-02: Mega-Menü-Autoupdate-Grenzen geklärt + Shortcode-Workaround (Block statt Custom HTML) bestätigt funktionierend, Breadcrumbs-Anleitung (Blocksy)
+- [Shop-Theme/UX](project_shop_theme.md) — 2026-08-10: Produktkarten-Layout (Button-Ausrichtung+Grundpreis-Reihenfolge+Abstände) per CSS GELÖST, live bestätigt; Kaufentscheidung (Woostify?) weiter pausiert
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — Dev-PC-Umzug 2026-07-17 abgeschlossen; 2026-08-09: Live→Dev-Import kann Shop-Sync-Fälligkeit blind machen (aktualisiert_am aus Dump); Messe-Kasse = IndexedDB+BFR-Call
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
 - [Gutschein-Modul Design](project_gutscheine.md) — 0% Code, bewusst zurückgestellt bis Nähe Online-Shop-Anbindung (WC/eigener Shop-Match), bestätigt 2026-07-10
-- [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; 🔴 Nummernkreis-Selbstheilung-Bug BEHOBEN 2026-07-09
+- [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; Zeitraum-Filter in Auftragsliste FERTIG 2026-08-11
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign + Doppel-Gutschrift-Sperre fertig; 🟢 A4-Bon-PDF-Rand-Bug im Mailanhang BEHOBEN 2026-07-09 (Body-Padding statt @page-margin)
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — Echter BFR-Hardware-Test 2026-07-08 erfolgreich (Startbeleg, Kasse 4); 4 echte Bugs gefunden+gefixt, Netzwerkkassen-Doku-Lücke
 - [Dokumente-System](project_dokumente_system.md) — Alle Dokument-Typen, Twig+Dompdf; Storno-Kundenmail + Nummernkreise-Verwaltung FERTIG 2026-07-09; Bestellung an Lieferant PDF/Mail FERTIG 2026-07-10 (eigenständiger BestellDokumentService, Mail-Vorschau vor Versand)

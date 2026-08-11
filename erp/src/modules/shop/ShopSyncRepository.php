@@ -1128,6 +1128,32 @@ class ShopSyncRepository
     }
 
     /**
+     * Setzt sync_status wieder auf 'pending' für alle aktiven Kanal-Zuweisungen
+     * der übergebenen Artikel -- Massenaktion "Erneut synchronisieren"
+     * (artikel/liste.php). Gedacht für Fälle, in denen sich die SYNC-LOGIK
+     * geändert hat (z.B. ein Feld wird jetzt anders berechnet), nicht die
+     * Artikeldaten selbst -- findFaelligeArtikel() erkennt so einen Fall sonst
+     * nie von selbst, weil artikel.aktualisiert_am unverändert bleibt (Fund
+     * 2026-08-10 beim Download-Artikel-Bestandsfeld-Fix).
+     *
+     * @return int Anzahl der betroffenen artikel_shops-Zeilen.
+     */
+    public function markiereFuerErneutenSync(array $artikelIds): int
+    {
+        if (empty($artikelIds)) {
+            return 0;
+        }
+        $platzhalter = implode(',', array_fill(0, count($artikelIds), '?'));
+        $stmt = $this->db->prepare("
+            UPDATE artikel_shops
+            SET sync_status = 'pending'
+            WHERE artikel_id IN ($platzhalter) AND aktiv = 1
+        ");
+        $stmt->execute(array_map('intval', $artikelIds));
+        return $stmt->rowCount();
+    }
+
+    /**
      * Kanal-Status je aktivem Shop für einen Artikel (für den Kanal-Dropdown im Formular).
      *
      * Kein Vater/Kind-Feld wird kaskadierend überschrieben — ein Kind behält immer

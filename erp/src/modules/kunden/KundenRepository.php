@@ -134,6 +134,32 @@ class KundenRepository
         return (int) $stmt->fetchColumn() > 0;
     }
 
+    /**
+     * Dedup-Lookup für den JTL-Archiv-Import (siehe JtlArchivImportService).
+     * Läuft über kunden_jtl_referenzen (n:1 -- mehrere alte JTL-Kundennummern
+     * können auf denselben ERP-Kunden zeigen, siehe Migration 165).
+     */
+    public function findByJtlKundennummer(string $jtlKundennummer): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT k.id, k.kundennummer
+            FROM kunden_jtl_referenzen r
+            JOIN kunden k ON k.id = r.kunde_id
+            WHERE r.jtl_kundennummer = :nr
+        ");
+        $stmt->execute(['nr' => $jtlKundennummer]);
+        return $stmt->fetch();
+    }
+
+    /** Verknüpft eine (weitere) JTL-Kundennummer mit einem bestehenden ERP-Kunden. */
+    public function addJtlReferenz(int $kundeId, string $jtlKundennummer): void
+    {
+        $this->db->prepare("
+            INSERT IGNORE INTO kunden_jtl_referenzen (kunde_id, jtl_kundennummer)
+            VALUES (:kunde_id, :nr)
+        ")->execute(['kunde_id' => $kundeId, 'nr' => $jtlKundennummer]);
+    }
+
     public function findByEmailHash(string $email): array|false
     {
         $hash = Encryption::hash($email);

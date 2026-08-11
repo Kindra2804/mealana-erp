@@ -15,13 +15,14 @@ $alle = ($_GET['alle'] ?? '0') === '1';
 $basisFilter = "a.lieferstatus != 'storniert'";
 
 if ($alle) {
-    // Alle offenen (nicht abgeschlossenen) Aufträge (nicht Kassen-Bons)
-    $where = $basisFilter . " AND a.kanal != 'kasse' AND a.lieferstatus != 'abgeschlossen'";
+    // Alle offenen (nicht abgeschlossenen) Aufträge (nicht Kassen-Bons, nicht Archiv)
+    $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv') AND a.lieferstatus != 'abgeschlossen'";
 } else {
     // Abholung-Aufträge (jeder Status) ODER versendet/teilgeliefert/abgeschlossen
     // (Retouren-Kandidaten) unabhängig von der Lieferart — sonst findet das Personal
-    // Rückgaben nicht ohne den "alle"-Umschalter.
-    $where = $basisFilter . " AND a.kanal != 'kasse'
+    // Rückgaben nicht ohne den "alle"-Umschalter. Archiv-Aufträge bewusst ausgeschlossen,
+    // sonst tauchen die immer als "abgeschlossen" markierten JTL-Altaufträge hier auf.
+    $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv')
               AND (a.lieferart = 'abholung' OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen'))";
 }
 

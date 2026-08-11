@@ -34,10 +34,18 @@ class AuftragRepository
         string $lieferstatus = '',
         string $kanal = '',
         string $suche = '',
-        bool   $mitAbgeschlossenen = false
+        bool   $mitAbgeschlossenen = false,
+        ?string $von = null,
+        ?string $bis = null
     ): array {
         $where  = ['1=1'];
         $params = [];
+
+        if ($von !== null && $bis !== null) {
+            $where[]       = 'a.erstellt_am BETWEEN :von AND :bis';
+            $params['von'] = $von . ' 00:00:00';
+            $params['bis'] = $bis . ' 23:59:59';
+        }
 
         // Abgeschlossene (lieferung=abgeschlossen UND zahlung=bezahlt) standardmäßig ausblenden
         if (!$mitAbgeschlossenen && $lieferstatus === '' && $zahlungsstatus === '') {
@@ -303,6 +311,34 @@ class AuftragRepository
 
         $this->db->commit();
         return $id;
+    }
+
+    /**
+     * Legt einen Archiv-Auftrag (JTL-Import) an. Anders als insert() wird
+     * auftrag_nr NICHT über dokument_nummern generiert, sondern 1:1 aus der
+     * JTL-Auftragsnummer übernommen (Dedup-Schlüssel, siehe JtlArchivImportService).
+     * erstellt_am/zahlungsstatus/lieferstatus kommen ebenfalls direkt aus den
+     * historischen JTL-Daten statt der sonst hart gesetzten Defaults 'neu'/'ausstehend'.
+     */
+    public function insertArchiv(array $data): int
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO auftraege (
+                auftrag_nr, kunden_id, kunden_snapshot,
+                lieferadresse_snapshot, rechnungsadresse_snapshot,
+                kanal, zahlungsstatus, lieferstatus, zahlungsart,
+                nettobetrag, steuerbetrag, bruttobetrag,
+                bezahlt_am, notiz_intern, erstellt_am, erstellt_von
+            ) VALUES (
+                :auftrag_nr, :kunden_id, :kunden_snapshot,
+                :lieferadresse_snapshot, :rechnungsadresse_snapshot,
+                :kanal, :zahlungsstatus, :lieferstatus, :zahlungsart,
+                :nettobetrag, :steuerbetrag, :bruttobetrag,
+                :bezahlt_am, :notiz_intern, :erstellt_am, :erstellt_von
+            )
+        ");
+        $stmt->execute($data);
+        return (int)$this->db->lastInsertId();
     }
 
     /**

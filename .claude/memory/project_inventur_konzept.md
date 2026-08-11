@@ -5,10 +5,12 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 1208232f-9b1f-41ae-ae93-bb91abe26d76
-  modified: 2026-07-18T17:32:47.285Z
+  modified: 2026-08-11T19:30:49.627Z
 ---
 
 Stand: 2026-07-18, komplette Design-Absprache mit Jacky vor Baubeginn (wie von ihm gewünscht, siehe [[feedback_modul_vorgehen]]). Ersetzt/ergänzt die verstreuten Einzelnotizen in [[project_inventur_hinweis]] und den Lagerplätze-Abschnitt in [[project_lager_konzept]] — dies hier ist das verbindliche Konzept.
+
+**Update 2026-08-11:** Basis für die Startinventur wird ein JTL-"Eigener Export" (Lagerbestand+Charge fürs Ladengeschäft) sein, den Jacky kurz vor Go-Live nochmal zieht — Import-Skript (`erp/scripts/jtl_eigener_export_import.php`, idempotent) existiert bereits, siehe [[project_jtl_kunden_auftraege_import]] für Details zum ersten Testlauf.
 
 ## Grundprinzip: EIN Inventur-Lauf-Mechanismus, nicht mehrere Module
 

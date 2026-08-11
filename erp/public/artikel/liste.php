@@ -511,6 +511,7 @@ $actionBarContent = <<<HTML
         <option value="kategorie_zuweisen">Kategorie zuweisen</option>
         <option value="kategorie_entfernen">Kategorie entfernen</option>
         <option value="kanal_zuweisen">Kanal zuweisen</option>
+        <option value="kanal_neu_synchronisieren">Erneut synchronisieren (Shop)</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
     <div class="actionbar-sep"></div>

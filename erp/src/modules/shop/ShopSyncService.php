@@ -942,15 +942,18 @@ class ShopSyncService
     }
 
     /**
-     * Bestandsfelder für ein WooCommerce-Produkt/eine Variation. Leeres Array
-     * bei `hat_lagerstand=0` (z.B. Download-Artikel) -- Artikel bleibt dann
-     * einfach immer kaufbar, kein Bestandsfeld im Payload nötig.
+     * Bestandsfelder für ein WooCommerce-Produkt/eine Variation. 
+     * Wenn Artikel hat_lagerstand = 0 (nur Artikeltyp DOWNLOAD) hat wird manage_stock => false und stock_status => 'instock' gesetzt 
+     * -- Artikel bleibt dann einfach immer kaufbar und wird als verfügbar angezeigt.
      */
     private function baueBestandsFelder(int $artikelId): array
     {
         $info = $this->repo->findBestandInfo($artikelId);
         if (!$info['hat_lagerstand']) {
-            return [];
+            return [
+                'manage_stock' => false,
+                'stock_status' => 'instock',
+            ];
         }
 
         $verfuegbar = max(0, (int)$info['gesamtbestand'] - (int)$info['reserviert']);
