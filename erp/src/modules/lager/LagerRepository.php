@@ -549,7 +549,7 @@ class LagerRepository
             lb.charge,
             lb.charge_status,
             lb.bestand,
-            lb.mindestbestand
+            COALESCE(lb.mindestbestand, 0) AS mindestbestand
         FROM lagerbestand lb
         JOIN lager l ON l.id = lb.lager_id
         WHERE lb.artikel_id = :artikel_id

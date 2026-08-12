@@ -1,5 +1,7 @@
 # Memory Index
 
+- [Datenqualität 2026-08-12](project_datenqualitaet_20260812.md) — Kettenreaktion Tabs-Bug→mindestbestand-NULL→Preis-Duplikate→Achsenpreis-Differenzierung verloren, alle 4 behoben+aus JTL-CSVs wiederhergestellt+committed
+- [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — "neueste Zeile gewinnt" kann echte Differenzierung zerstören, immer gegen autoritative Quelle prüfen
 - [Fünf Abendaufgaben 2026-08-09](project_fuenf_abendaufgaben_0809.md) — Kontrollliste+UVP-Streichpreis+Hersteller-als-Marke+Labels FERTIG; als Nächstes: Download-Artikeltyp
 - [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen FERTIG; Abend: Vater→Kind-Vererbung lief bei 841 Vätern nie (charge_pflicht+grundpreis_anzeigen!) BEHOBEN, Spalten-Picker-Bug BEHOBEN; Checkbox-Speicher-Verdacht weiter offen
 - [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — KOMPLETT FERTIG 2026-08-11: 6.775 Kunden + 39.191 Archiv-Aufträge (2013–2026); zusätzlich JTL-"Eigener Export" (Lieferanten-EK+Lagerbestand Ladengeschäft) auch fertig importiert; Browser-Test+Live-Deploy offen

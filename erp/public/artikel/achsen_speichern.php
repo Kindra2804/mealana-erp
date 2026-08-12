@@ -41,7 +41,7 @@ if ($result['erfolg']) {
     foreach ($achsenIds as $achseId) {
         $modus = in_array($preisModi[$achseId] ?? '', ['aufpreis','direktpreis'])
                  ? $preisModi[$achseId]
-                 : 'aufpreis';
+                 : 'direktpreis';
         $wert  = (float)($preisWerte[$achseId] ?? 0);
         $service->updateAchsePreis($artikelId, $achseId, $modus, $wert);
     }

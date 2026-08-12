@@ -1156,7 +1156,7 @@ class ArtikelRepository
     }
 
     /** Passt Preise eines Kind-Artikels nach copyPreise() an (Aufpreis addieren oder Direktpreis setzen). */
-    public function passeKindPreiseAn(int $kindId, string $modus, float $preiswert): void
+    public function passeKindPreiseAn(int $kindId, int $vaterId, string $modus, float $preiswert): void
     {
         if ($modus === 'direktpreis') {
             $this->db->prepare("
@@ -1168,14 +1168,19 @@ class ArtikelRepository
                 WHERE ap.artikel_id = :kid
             ")->execute(['d1' => $preiswert, 'd2' => $preiswert, 'kid' => $kindId]);
         } else {
+            // Aufpreis bezieht sich auf den Vater-Preis (nicht den aktuellen Kind-Preis) — sonst
+            // wuerde jeder erneute Generator-/Import-Lauf den Aufpreis nochmal draufaddieren und
+            // sich bei jedem Durchlauf weiter aufschaukeln. Ueber den Vaterpreis ist die Anpassung
+            // idempotent: gleicher Lauf, gleiches Ergebnis.
             $this->db->prepare("
                 UPDATE artikel_preise ap
                 JOIN artikel a ON a.id = ap.artikel_id
                 JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
-                SET ap.brutto_vk = ap.brutto_vk + :ap,
-                    ap.netto_vk  = ROUND(ap.brutto_vk / (1 + sk.satz / 100), 4)
+                JOIN artikel_preise vp ON vp.artikel_id = :vater_id AND vp.kundengruppen_id = ap.kundengruppen_id
+                SET ap.brutto_vk = vp.brutto_vk + :ap,
+                    ap.netto_vk  = ROUND((vp.brutto_vk + :ap2) / (1 + sk.satz / 100), 4)
                 WHERE ap.artikel_id = :kid
-            ")->execute(['ap' => $preiswert, 'kid' => $kindId]);
+            ")->execute(['vater_id' => $vaterId, 'ap' => $preiswert, 'ap2' => $preiswert, 'kid' => $kindId]);
         }
     }
 
@@ -1186,18 +1191,31 @@ class ArtikelRepository
      */
     public function copyPreise(int $quellId, int $neueId)
     {
+        // INSERT IGNORE allein schützt nicht vor Duplikaten — artikel_preise hat keinen
+        // UNIQUE-Key auf (artikel_id, kundengruppen_id, gueltig_ab, gueltig_bis). Ein erneuter
+        // Aufruf (z.B. mehrfacher Generator-/Import-Lauf über denselben Vater) legte bisher
+        // bei jedem Durchlauf eine weitere Kopie an. NOT EXISTS mit <=> (NULL-sicherer Vergleich,
+        // da gueltig_ab/gueltig_bis bei Standardpreisen NULL sind) macht den Kopiervorgang echt idempotent.
         $stmt = $this->db->prepare("
-            INSERT IGNORE INTO artikel_preise (
+            INSERT INTO artikel_preise (
                 artikel_id, kundengruppen_id, brutto_vk, netto_vk, gueltig_ab, gueltig_bis
             )
-            SELECT :neue_id, kundengruppen_id, brutto_vk, netto_vk, gueltig_ab, gueltig_bis
-            FROM artikel_preise
-            WHERE artikel_id = :quell_id
+            SELECT :neue_id, src.kundengruppen_id, src.brutto_vk, src.netto_vk, src.gueltig_ab, src.gueltig_bis
+            FROM artikel_preise src
+            WHERE src.artikel_id = :quell_id
+            AND NOT EXISTS (
+                SELECT 1 FROM artikel_preise dst
+                WHERE dst.artikel_id = :neue_id2
+                AND dst.kundengruppen_id = src.kundengruppen_id
+                AND dst.gueltig_ab <=> src.gueltig_ab
+                AND dst.gueltig_bis <=> src.gueltig_bis
+            )
         ");
 
         $stmt->execute([
             'neue_id' => $neueId,
-            'quell_id' => $quellId
+            'quell_id' => $quellId,
+            'neue_id2' => $neueId,
         ]);
 
         return $stmt->rowCount() > 0;
@@ -1244,8 +1262,11 @@ class ArtikelRepository
      */
     public function copyLieferanten(int $quellId, int $neueId)
     {
+        // Gleiches Duplikat-Problem wie bei copyPreise() — artikel_lieferanten hat nur eine
+        // Surrogat-ID als PRIMARY KEY, kein UNIQUE auf (artikel_id, lieferant_id). NOT EXISTS
+        // macht den Kopiervorgang idempotent statt sich auf INSERT IGNORE zu verlassen.
         $stmt = $this->db->prepare("
-            INSERT IGNORE INTO artikel_lieferanten (
+            INSERT INTO artikel_lieferanten (
                 artikel_id,
                 lieferant_id,
                 artikelnummer_lieferant,
@@ -1258,25 +1279,31 @@ class ArtikelRepository
                 standard_lieferant,
                 aktiv
                 )
-            SELECT 
+            SELECT
                 :neue_id,
-                lieferant_id,
+                src.lieferant_id,
                 NULL,
                 NULL,
-                waehrung,
+                src.waehrung,
                 NULL,
                 NULL,
                 NULL,
                 NULL,
                 0,
-                aktiv
-            FROM artikel_lieferanten
-            WHERE artikel_id = :quell_id
+                src.aktiv
+            FROM artikel_lieferanten src
+            WHERE src.artikel_id = :quell_id
+            AND NOT EXISTS (
+                SELECT 1 FROM artikel_lieferanten dst
+                WHERE dst.artikel_id = :neue_id2
+                AND dst.lieferant_id = src.lieferant_id
+            )
         ");
 
         $stmt->execute([
             'neue_id' => $neueId,
-            'quell_id' => $quellId
+            'quell_id' => $quellId,
+            'neue_id2' => $neueId,
         ]);
 
         return $stmt->rowCount() > 0;

@@ -82,8 +82,8 @@ $lagerSelect = $db->prepare("
     SELECT id, bestand FROM lagerbestand WHERE artikel_id = :aid AND lager_id = 1 AND charge <=> :charge
 ");
 $lagerInsert = $db->prepare("
-    INSERT INTO lagerbestand (artikel_id, lager_id, charge, charge_status, bestand)
-    VALUES (:aid, 1, :charge, :charge_status, :bestand)
+    INSERT INTO lagerbestand (artikel_id, lager_id, charge, charge_status, bestand, mindestbestand)
+    VALUES (:aid, 1, :charge, :charge_status, :bestand, 0)
 ");
 $lagerUpdate = $db->prepare("UPDATE lagerbestand SET bestand = :bestand WHERE id = :id");
 

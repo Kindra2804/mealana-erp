@@ -392,7 +392,7 @@ class ArtikelService
             $this->repo->copyPreise($vaterId, $kindId);
             if (isset($preisAnpassungen[$kindId])) {
                 $pa = $preisAnpassungen[$kindId];
-                $this->repo->passeKindPreiseAn($kindId, $pa['modus'], $pa['preis_wert']);
+                $this->repo->passeKindPreiseAn($kindId, $vaterId, $pa['modus'], $pa['preis_wert']);
             }
         }
     }

@@ -25,7 +25,7 @@ $hatKindArtikel  = !empty($wertIdsInUse);
 // Preis-Map: achse_id → {preis_modus, preis_wert} aus artikel_achsen
 $preisMap = [];
 foreach ($zugewieseneRaw as $zr) {
-    $preisMap[(int)$zr['achse_id']] = ['preis_modus' => $zr['preis_modus'] ?? 'aufpreis', 'preis_wert' => (float)($zr['preis_wert'] ?? 0)];
+    $preisMap[(int)$zr['achse_id']] = ['preis_modus' => $zr['preis_modus'] ?? 'direktpreis', 'preis_wert' => (float)($zr['preis_wert'] ?? 0)];
 }
 
 // Achsenbaum aufbauen
@@ -139,7 +139,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
                    onclick="event.stopPropagation()"
                    style="width:16px;height:16px;cursor:<?= $achseGesperrt ? 'not-allowed' : 'pointer' ?>;flex-shrink:0">
             <?php
-            $pm    = $preisMap[$id] ?? ['preis_modus' => 'aufpreis', 'preis_wert' => 0];
+            $pm    = $preisMap[$id] ?? ['preis_modus' => 'direktpreis', 'preis_wert' => 0];
             $mod   = $pm['preis_modus'];
             $pv    = number_format((float)$pm['preis_wert'], 2, '.', '');
             $apAct = $mod === 'aufpreis'    ? 'background:#1e40af;color:#fff;border-color:#1e40af' : 'background:#f1f5f9;color:#64748b;border-color:#e2e8f0';
