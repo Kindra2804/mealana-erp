@@ -1,6 +1,7 @@
 # Memory Index
 
-- [Datenqualität 2026-08-12](project_datenqualitaet_20260812.md) — Kettenreaktion Tabs-Bug→mindestbestand-NULL→Preis-Duplikate→Achsenpreis-Differenzierung verloren, alle 4 behoben+aus JTL-CSVs wiederhergestellt+committed
+- [Datenqualität 2026-08-12](project_datenqualitaet_20260812.md) — Tabs-Bug/Preis-Duplikate/Achsenpreis-Verlust behoben; Echtbetrieb-Aktionstest fand 3 weitere Bugs (Aktionspreis-Kind-Auflösung, Datums-Vergleich, Grundpreis Regulär/Angebot-Split) alle behoben+verifiziert+committed
+- [Grundpreis-Rechtslage Wolle](project_grundpreis_rechtslage_wolle.md) — Bezugsmenge muss laut AT-Gesetz 1kg sein (nicht 100g) für Garn/Wolle/Zwirn, System rechnet noch falsch, TODO nächste Session
 - [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — "neueste Zeile gewinnt" kann echte Differenzierung zerstören, immer gegen autoritative Quelle prüfen
 - [Fünf Abendaufgaben 2026-08-09](project_fuenf_abendaufgaben_0809.md) — Kontrollliste+UVP-Streichpreis+Hersteller-als-Marke+Labels FERTIG; als Nächstes: Download-Artikeltyp
 - [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen FERTIG; Abend: Vater→Kind-Vererbung lief bei 841 Vätern nie (charge_pflicht+grundpreis_anzeigen!) BEHOBEN, Spalten-Picker-Bug BEHOBEN; Checkbox-Speicher-Verdacht weiter offen

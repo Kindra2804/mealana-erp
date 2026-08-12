@@ -691,7 +691,6 @@ class ShopSyncService
     private function baueProduktPayload(WooCommerceClient $client, array $artikel, int $shopId): array
     {
         $preisErgebnis = $this->baueRegularUndSalePreis((int)$artikel['artikel_id']);
-        $preis = $preisErgebnis['preis'];
         $wcKategorieIds = $this->repo->findWcKategorieIds((int)$artikel['artikel_id'], $shopId);
 
         $payload = [
@@ -771,7 +770,7 @@ class ShopSyncService
         // gesamten Vater als "ausverkauft", unabhängig vom Bestand der Kinder.
         if (empty($dimensionen)) {
             $payload += $this->baueBestandsFelder((int)$artikel['artikel_id']);
-            $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$artikel['artikel_id'], $preis);
+            $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$artikel['artikel_id'], $preisErgebnis['regularPreis'], $preisErgebnis['salePreis']);
         } else {
             // Explizit korrigieren statt nur weglassen: WooCommerce übernimmt bei
             // PUT-Updates weggelassene Felder unverändert -- ein Vater, der durch
@@ -842,7 +841,7 @@ class ShopSyncService
         $regularPreis = $uvp ?? $preis;
 
         if ($regularPreis === null) {
-            return ['felder' => [], 'preis' => $preis];
+            return ['felder' => [], 'preis' => $preis, 'regularPreis' => null, 'salePreis' => null];
         }
 
         $istRabattiert = in_array($preisInfo['quelle'], ['sale', 'aktion'], true)
@@ -853,7 +852,9 @@ class ShopSyncService
                 'regular_price' => number_format($regularPreis, 2, '.', ''),
                 'sale_price'    => $istRabattiert ? number_format($preis, 2, '.', '') : '',
             ],
-            'preis' => $preis,
+            'preis'        => $preis,
+            'regularPreis' => $regularPreis,
+            'salePreis'    => $istRabattiert ? $preis : null,
         ];
     }
 
@@ -874,7 +875,6 @@ class ShopSyncService
     private function baueVariationPayload(WooCommerceClient $client, array $kind, int $shopId, int $vaterId): array
     {
         $preisErgebnis = $this->baueRegularUndSalePreis((int)$kind['artikel_id']);
-        $preis = $preisErgebnis['preis'];
 
         // Explizit setzen, nicht weglassen: diese Methode wird nur aus der
         // normalen Fälligkeits-Schleife heraus aufgerufen, die zwingend
@@ -936,7 +936,7 @@ class ShopSyncService
         // der DB vorgesehen, aber nirgends im System tatsächlich verdrahtet
         // (siehe project_shop_sync.md), darum hier bewusst nicht extra beachtet.
         $payload += $this->baueBestandsFelder((int)$kind['artikel_id']);
-        $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$kind['artikel_id'], $preis);
+        $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$kind['artikel_id'], $preisErgebnis['regularPreis'], $preisErgebnis['salePreis']);
 
         return $payload;
     }
@@ -983,10 +983,20 @@ class ShopSyncService
      * (WooCommerce hat eine feste, vorinstallierte Einheitenliste -- g/kg/m/l/...
      * decken den yarn/Zubehör-Fall ab, ein exotischer freier Text würde einfach
      * nichts finden statt einen Fehler zu werfen).
+     *
+     * Germanized kennt zwei getrennte Grundpreis-Felder im "Preisauszeichnung"-Panel
+     * (Regulärer Grundpreis / Angebotsgrundpreis), analog zu regular_price/sale_price
+     * beim eigentlichen VK. Bisher wurde hier nur EIN Wert (der bereits reduzierte
+     * Effektivpreis) in `price`+`price_regular` gesteckt -- im Nicht-Sale-Fall sah
+     * das zufällig richtig aus (Effektivpreis = Regulärpreis), sobald aber eine
+     * Aktion lief, landete der REDUZIERTE Grundpreis im "Regulär"-Feld (wurde als
+     * durchgestrichener Referenzwert angezeigt) und das "Angebot"-Feld (price_sale)
+     * blieb leer -- kein reduzierter Grundpreis sichtbar, nur der (falsche) alte
+     * durchgestrichen (echter Fund 2026-08-12, Barbaras Kid-Silk-Produktseite).
      */
-    private function baueGrundpreisFelder(WooCommerceClient $client, int $shopId, int $artikelId, ?float $preis): array
+    private function baueGrundpreisFelder(WooCommerceClient $client, int $shopId, int $artikelId, ?float $regularPreis, ?float $salePreis): array
     {
-        if ($preis === null) {
+        if ($regularPreis === null) {
             return [];
         }
         $basis = $this->ermittleGrundpreisBasis($client, $shopId, $artikelId);
@@ -995,7 +1005,9 @@ class ShopSyncService
         }
         [$g, $einheitId] = $basis;
 
-        $grundpreis = round($preis / (float)$g['inhalt_menge'] * (float)$g['grundpreis_bezugsmenge'], 2);
+        $faktor = (float)$g['grundpreis_bezugsmenge'] / (float)$g['inhalt_menge'];
+        $grundpreisRegular = round($regularPreis * $faktor, 2);
+        $grundpreisSale    = $salePreis !== null ? round($salePreis * $faktor, 2) : null;
 
         return [
             'unit' => ['id' => $einheitId],
@@ -1003,8 +1015,9 @@ class ShopSyncService
                 'base'          => $this->formatGrundpreisMenge((float)$g['grundpreis_bezugsmenge']),
                 'product'       => $this->formatGrundpreisMenge((float)$g['inhalt_menge']),
                 'price_auto'    => false,
-                'price'         => number_format($grundpreis, 2, '.', ''),
-                'price_regular' => number_format($grundpreis, 2, '.', ''),
+                'price'         => number_format($grundpreisSale ?? $grundpreisRegular, 2, '.', ''),
+                'price_regular' => number_format($grundpreisRegular, 2, '.', ''),
+                'price_sale'    => $grundpreisSale !== null ? number_format($grundpreisSale, 2, '.', '') : '',
             ],
         ];
     }
@@ -1042,6 +1055,17 @@ class ShopSyncService
      * werden, egal wie oft synct wurde. Live verifiziert: beide Felder sitzen
      * am Vater sofort nach dem PUT korrekt, an der Variation bleiben sie
      * dagegen dauerhaft leer/`null`.
+     *
+     * `product`/`price`/`price_regular` waren hier bewusst ausgespart (sind
+     * ja pro Kind unterschiedlich) -- das lässt sie am Elternprodukt aber
+     * dauerhaft leer/0,00. Auf der Einzelproduktseite fällt das nicht auf
+     * (dort übernimmt die gewählte Variation ihren eigenen Wert), aber jede
+     * Grid-/Widget-Ansicht (z.B. "Sonderangebote"-Shortcode), die nur das
+     * Elternprodukt zeigt, zeigt dann "0,00 € / 100g" -- selbst wenn alle
+     * Kinder denselben Preis haben (echter Fund 2026-08-12, Barbaras
+     * Sonderangebote-Widget). Fix: güsntigster Kind-Preis (analog zur
+     * "ab X €"-Konvention, mit der WooCommerce selbst die Preisspanne
+     * anzeigt) als Grundpreis am Vater mitschreiben.
      */
     private function baueGrundpreisVaterFelder(WooCommerceClient $client, int $shopId, int $artikelId): array
     {
@@ -1051,10 +1075,28 @@ class ShopSyncService
         }
         [$g, $einheitId] = $basis;
 
-        return [
+        $felder = [
             'unit' => ['id' => $einheitId],
             'unit_price' => ['base' => $this->formatGrundpreisMenge((float)$g['grundpreis_bezugsmenge'])],
         ];
+
+        $guenstigsterPreis = null;
+        foreach ($this->repo->findAktiveKinderIds($artikelId) as $kindId) {
+            $preis = $this->preisService->getEffektiverPreis($kindId, $this->standardKgId)['brutto_vk'];
+            if ($preis !== null && ($guenstigsterPreis === null || $preis < $guenstigsterPreis)) {
+                $guenstigsterPreis = $preis;
+            }
+        }
+
+        if ($guenstigsterPreis !== null) {
+            $grundpreis = round($guenstigsterPreis / (float)$g['inhalt_menge'] * (float)$g['grundpreis_bezugsmenge'], 2);
+            $felder['unit_price']['product']       = $this->formatGrundpreisMenge((float)$g['inhalt_menge']);
+            $felder['unit_price']['price_auto']    = false;
+            $felder['unit_price']['price']         = number_format($grundpreis, 2, '.', '');
+            $felder['unit_price']['price_regular'] = number_format($grundpreis, 2, '.', '');
+        }
+
+        return $felder;
     }
 
     /**

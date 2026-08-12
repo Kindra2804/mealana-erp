@@ -837,12 +837,16 @@ class ShopSyncRepository
             JOIN aktionen a ON a.id = ak.aktion_id AND a.gestartet = 1
             JOIN kategorien k ON k.id = ak.kategorie_id AND k.ist_aktions_kategorie = 1
             LEFT JOIN kategorie_shops ks ON ks.kategorie_id = ak.kategorie_id AND ks.shop_id = :shop_id
+            -- DATE() auf synced_am: die Spalte ist ein Zeitstempel, gueltig_ab/gueltig_bis sind reine
+            -- Datumswerte (implizit 00:00:00). Ein Vergleich ohne DATE() faellt bei einem Sync am
+            -- exakt gleichen Kalendertag wie das Datumsfeld faelschlich negativ aus (Uhrzeit > 00:00:00),
+            -- die Uebergangs-Erkennung haette dann nie ausgeloest (echter Fund 2026-08-12).
             WHERE
                 (ak.gueltig_ab <= CURDATE()
-                    AND (ks.aktion_sichtbarkeit_synced_am IS NULL OR ks.aktion_sichtbarkeit_synced_am < ak.gueltig_ab))
+                    AND (ks.aktion_sichtbarkeit_synced_am IS NULL OR DATE(ks.aktion_sichtbarkeit_synced_am) < ak.gueltig_ab))
                 OR
                 (ak.gueltig_bis < CURDATE()
-                    AND (ks.aktion_sichtbarkeit_synced_am IS NULL OR ks.aktion_sichtbarkeit_synced_am <= ak.gueltig_bis))
+                    AND (ks.aktion_sichtbarkeit_synced_am IS NULL OR DATE(ks.aktion_sichtbarkeit_synced_am) <= ak.gueltig_bis))
         ");
         $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);
         $stmt->execute();
@@ -1112,6 +1116,15 @@ class ShopSyncRepository
         ");
         $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId]);
         return (bool)$stmt->fetchColumn();
+    }
+
+    /** Aktive Kind-Artikel-IDs eines Vaters -- z.B. um den guenstigsten Kind-Preis fuer den
+     *  Grundpreis am Elternprodukt zu ermitteln (siehe baueGrundpreisVaterFelder()). */
+    public function findAktiveKinderIds(int $vaterId): array
+    {
+        $stmt = $this->db->prepare("SELECT id FROM artikel WHERE vaterartikel_id = :vater_id AND aktiv = 1");
+        $stmt->execute(['vater_id' => $vaterId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     private function findKinderOhneZuweisungsZeile(int $vaterId, int $shopId): array

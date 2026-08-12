@@ -246,19 +246,35 @@ class PreisRepository
      * Priorität 2: Aktionspreis aus Aktionsmodul.
      * Bedingungen: a.gestartet = 1 UND CURDATE() im Aktionskategorie-Zeitraum.
      * Gibt false zurück wenn keine aktive Aktion für diesen Artikel/KG-Kombination.
+     *
+     * aktionen_artikel_preise wird immer unter der VATER-Artikel-ID gepflegt (Preis-Overrule-
+     * Modal im Vater, siehe aktpreisSpeichern() in artikel_detail.js), mit optionalem sub_achse_id
+     * für unterschiedliche Preise je Farbtyp-Achse (z.B. Fabel Uni/Print/Long Print). Ein direkter
+     * Abgleich gegen die übergebene $artikelId (oft ein Kind-Artikel) traf hier nie einen Treffer --
+     * der Aktionspreis kam nie im Shop an, obwohl er korrekt eingetragen war (echter Fund
+     * 2026-08-12 beim ersten Echtbetrieb-Test). Fix: über den Vater UND die Achsen-Zugehörigkeit
+     * des Kindes auflösen; ein Kind ohne eigene Achsen (Standard-Artikel) matcht über COALESCE
+     * einfach sich selbst. sub_achse_id NULL = "gilt für alle Varianten" (Fallback), eine konkrete
+     * Achsen-Übereinstimmung hat Vorrang (ORDER BY).
      */
     public function findAktionsPreis(int $artikelId, int $kgId): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT aap.brutto_vk, aap.netto_vk, a.name AS aktion_name, ak.gueltig_bis
-            FROM aktionen_artikel_preise aap
-            JOIN aktionen a ON a.id = aap.aktion_id
-            JOIN aktionen_kategorien ak ON ak.aktion_id = aap.aktion_id
-            WHERE aap.artikel_id = :artikel_id
-            AND aap.kundengruppen_id = :kundengruppen_id
-            AND a.gestartet = 1
-            AND (ak.gueltig_ab <= CURDATE())
-            AND (ak.gueltig_bis >= CURDATE())
+            SELECT aap.brutto_vk, aap.netto_vk, akt.name AS aktion_name, akat.gueltig_bis
+            FROM artikel art
+            LEFT JOIN varianten_kombination_werte vkw ON vkw.kombination_id = art.id
+            LEFT JOIN varianten_achse_werte vaw ON vaw.id = vkw.wert_id
+            JOIN aktionen_artikel_preise aap
+                ON aap.artikel_id = COALESCE(art.vaterartikel_id, art.id)
+                AND (aap.sub_achse_id IS NULL OR aap.sub_achse_id = vaw.achse_id)
+                AND aap.kundengruppen_id = :kundengruppen_id
+            JOIN aktionen akt ON akt.id = aap.aktion_id AND akt.gestartet = 1
+            JOIN aktionen_kategorien akat
+                ON akat.aktion_id = aap.aktion_id
+                AND akat.gueltig_ab <= CURDATE()
+                AND akat.gueltig_bis >= CURDATE()
+            WHERE art.id = :artikel_id
+            ORDER BY (aap.sub_achse_id IS NOT NULL) DESC
             LIMIT 1
         ");
 
