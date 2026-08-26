@@ -5,8 +5,27 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-08-09T19:18:07.497Z
+  modified: 2026-08-10T16:26:13.102Z
 ---
+
+## 🟢 GELÖST 2026-08-10: Produktkarten-Layout in der Shop-Übersicht (Blocksy) — Button-Ausrichtung + Grundpreis-Reihenfolge + Abstände
+
+**Auslöser:** Babsi störte sich an "zerrupft" wirkenden Produktkarten im Shop (`ul.products li.product`, Blocksy-Grid) — Artikel mit fehlendem Preis/Grundpreis hatten den "In den Warenkorb"/"Ausverkauft"-Button auf unterschiedlicher Höhe, und der Grundpreis (Germanized, z.B. "4,90 € / 100 g") stand vor dem Button statt danach unter dem Preis.
+
+**Root Cause:** Blocksys eigener Ausrichtungs-Mechanismus (`.ct-woo-card-actions[data-alignment="equal"]` mit `margin-top:auto`) geht davon aus, dass nach dem Button-Wrapper IMMER gleich viel Inhalt folgt (Preis+MwSt-Zeile) — fehlt der komplett (kein Preis gesetzt), rutscht der Button bis ganz nach unten. Germanized hängt den Grundpreis zudem VOR den Add-to-Cart-Button (eigener Hook, früher als der Warenkorb-Button), WooCommerce selbst den normalen Preis danach — dadurch falsche visuelle Reihenfolge.
+
+**Fix, komplett per "Zusätzliches CSS" im WordPress-Customizer (kein PHP/Theme-Datei nötig), vier Teile:**
+1. Blocksys `margin-top:auto` auf `.ct-woo-card-actions` mit `!important` auf 0 überschrieben.
+2. Titel (`.woocommerce-loop-product__title`) bekommt feste Höhe (`-webkit-line-clamp:2` + `min-height`) — Button startet danach IMMER an derselben Stelle, unabhängig davon was danach folgt.
+3. Visuelle Reihenfolge per Flex `order` erzwungen (Bild→Titel→Button→Preis→Grundpreis→MwSt→Versand→Inhalt) — `li.product` ist bereits ein Flex-Container (bestätigt, weil `margin:auto` überhaupt griff), kein DOM-Umbau nötig.
+4. Fehlt der Grundpreis komplett (kein `.price-unit`-Element im DOM bei Artikeln ohne Grundpreisangabe): `li.product:not(:has(.price-unit))::after` mit `order:5` (gleiche Position wie `.price-unit`) fügt eine leere Platzhalter-Zeile ein, damit MwSt./Versand-Zeile bei allen Karten auf gleicher Höhe bleiben. Nutzt CSS `:has()` (seit 2023 in allen gängigen Browsern verfügbar).
+5. Abstände zwischen den Zeilen einzeln verkleinert (Flex-Kinder haben kein Margin-Collapsing) — Preis→Grundpreis besonders eng.
+
+**Wichtiger Fallstrick beim Testen:** Erste Runde sah im Customizer richtig aus, änderte sich live aber nicht — Ursache war schlicht "Veröffentlichen" nicht geklickt, nur Vorschau offen gelassen. Bei jeder künftigen CSS-Änderung dran denken, das zu prüfen, bevor man nach einem Code-Fehler sucht.
+
+**Von Babsi/Jacky live am echten Shop bestätigt** (Startseite "Neuheiten"-Karussell + Kategorieseite). Betrifft nur den aktuellen Blocksy-Aufbau — falls doch auf Woostify gewechselt wird (siehe unten, noch unrecherchiert), muss das Grid-Verhalten dort neu geprüft werden, die Denkarbeit (welche Elemente/Reihenfolge/Lücken) bleibt aber übertragbar.
+
+**🔴 Nebenfund, selbst verursacht + behoben:** Die ersten CSS-Regeln nutzten `ul.products li.product ...` als Selektor -- zu breit gefasst. WooCommerce gibt bei `[product_categories]`-Kacheln (genau das Hersteller-als-Marke-Mega-Menü, siehe [[project_fuenf_abendaufgaben_0809]]) `<li class="product-category product ...">` aus -- die reine Klasse `product` steckt da zufällig mit drin. Dadurch griffen Titel-Höhe/`order`/Abstände auch im Hersteller-Menü und zerlegten dessen bis dahin sauber ausgerichtetes Icon-Raster. **Fix:** überall `li.product.type-product` statt `li.product` -- echte Produkte tragen immer zusätzlich `type-product` in der Klassenliste, Kategorie-/Marken-Kacheln nie. **Wichtig für jede künftige CSS-Regel an der Shop-Produktübersicht:** IMMER `.type-product` mit angeben, sonst besteht dieselbe Kollisionsgefahr mit Kategorie-/Marken-Grids.
 
 ## Ausgangslage (Jacky, 2026-07-20)
 

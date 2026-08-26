@@ -1118,6 +1118,19 @@ class ShopSyncService
             return null;
         }
 
+        // AT-Preisauszeichnungsgesetz + Grundpreisauszeichnungsverordnung: für Wolle/Garn/Zwirn
+        // ist die gesetzliche Bezugsmenge 1kg, NICHT 100g (die 100g-Ausnahme gilt nur für
+        // bestimmte Lebensmittel). Betrifft nur artikeltyp GARN -- andere g-Artikel (z.B. Ovis-
+        // Seifen/Haarshampoo unter STANDARD) bleiben bewusst auf ihrer gespeicherten Bezugsmenge,
+        // für die gilt die 1kg-Sonderregel nicht. Ignoriert bewusst die gespeicherte
+        // grundpreis_bezugsmenge für GARN (rechnet immer fix gegen 1000g) -- damit ist die
+        // gesetzliche Basis nicht von einem historisch falsch gepflegten Wert abhängig.
+        if ($g['artikeltyp_code'] === 'GARN' && mb_strtolower($g['inhalt_einheit']) === 'g') {
+            $g['inhalt_einheit'] = 'kg';
+            $g['inhalt_menge'] = (float)$g['inhalt_menge'] / 1000;
+            $g['grundpreis_bezugsmenge'] = 1;
+        }
+
         $einheitId = $this->findeEinheitId($client, $shopId, $g['inhalt_einheit']);
         if ($einheitId === null) {
             return null;

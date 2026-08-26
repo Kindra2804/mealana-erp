@@ -1,7 +1,8 @@
 # Memory Index
 
 - [Datenqualität 2026-08-12](project_datenqualitaet_20260812.md) — Tabs-Bug/Preis-Duplikate/Achsenpreis-Verlust behoben; Echtbetrieb-Aktionstest fand 3 weitere Bugs (Aktionspreis-Kind-Auflösung, Datums-Vergleich, Grundpreis Regulär/Angebot-Split) alle behoben+verifiziert+committed
-- [Grundpreis-Rechtslage Wolle](project_grundpreis_rechtslage_wolle.md) — Bezugsmenge muss laut AT-Gesetz 1kg sein (nicht 100g) für Garn/Wolle/Zwirn, System rechnet noch falsch, TODO nächste Session
+- [Grundpreis-Rechtslage Wolle](project_grundpreis_rechtslage_wolle.md) — ✅ 2026-08-13 UMGESETZT: Garn rechnet jetzt auf 1kg-Basis (Sync-Zeit, DB bleibt g); Meterware cm→m korrigiert; F-Mer120-Einheitsbug ✅ 2026-08-26 behoben
+- [Meterware Mindestabnahme/Intervall](project_meterware_mindestabnahme.md) — TODO nächste Session: existiert im ERP+Shop noch gar nicht, alter JTL-Shop konnte das (z.B. 20cm Mindestabnahme/10cm Intervall bei Vlieseline)
 - [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — "neueste Zeile gewinnt" kann echte Differenzierung zerstören, immer gegen autoritative Quelle prüfen
 - [Fünf Abendaufgaben 2026-08-09](project_fuenf_abendaufgaben_0809.md) — Kontrollliste+UVP-Streichpreis+Hersteller-als-Marke+Labels FERTIG; als Nächstes: Download-Artikeltyp
 - [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen FERTIG; Abend: Vater→Kind-Vererbung lief bei 841 Vätern nie (charge_pflicht+grundpreis_anzeigen!) BEHOBEN, Spalten-Picker-Bug BEHOBEN; Checkbox-Speicher-Verdacht weiter offen
@@ -52,10 +53,10 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — 2026-08-10: Download-Artikel "nicht vorrätig"-Bug BEHOBEN + neue Massenaktion "Erneut synchronisieren" gebaut + 502-Serie war Shop-Server-seitig; sonst 2026-08-07: Batch-Sync+Reconcile fertig
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — 2026-08-13: Vater/Kind-Kanal-Kaskade auf vollen Rückbau umgestellt (Vater überschreibt Kinder immer, auch bei Deaktivierung), 51 verwaiste aktive Väter rückwirkend gefixt; sonst 2026-08-10 Download-Bug+Resync-Massenaktion, 2026-08-07 Batch-Sync+Reconcile fertig
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — ✅ 2026-08-05: Artikelliste "nur direkt zugeordnet"-Filter + Kategorie-entfernen-Massenaktion + Dropdown-Einrückung gefixt
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
-- [Shop-Theme/UX](project_shop_theme.md) — 2026-08-10: Produktkarten-Layout (Button-Ausrichtung+Grundpreis-Reihenfolge+Abstände) per CSS GELÖST, live bestätigt; Kaufentscheidung (Woostify?) weiter pausiert
+- [Shop-Theme/UX](project_shop_theme.md) — 2026-08-13: leere Kategorien im Hauptmenü ausblenden gelöst (wp_get_nav_menu_items-Filter, Taxonomie+Menü-Hierarchie beide prüfen); sonst 2026-08-10 Produktkarten-CSS gelöst; Kaufentscheidung (Woostify?) weiter pausiert
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — Dev-PC-Umzug 2026-07-17 abgeschlossen; 2026-08-09: Live→Dev-Import kann Shop-Sync-Fälligkeit blind machen (aktualisiert_am aus Dump); Messe-Kasse = IndexedDB+BFR-Call
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen

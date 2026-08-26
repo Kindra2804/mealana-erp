@@ -1,7 +1,8 @@
 ---
 name: feedback-dedup-intra-gruppe-pruefen
 description: "Bei Datenbereinigung von Dubletten nie blind \"neueste Zeile gewinnt\" anwenden, wenn Gruppenmitglieder legitim unterschiedliche Werte haben koennten"
-metadata:
+metadata: 
+  node_type: memory
   type: feedback
   originSessionId: c9c5b016-f30a-42cf-9c6e-b1d797b48f58
   modified: 2026-08-12T09:19:17.956Z

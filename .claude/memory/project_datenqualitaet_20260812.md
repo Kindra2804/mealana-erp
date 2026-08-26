@@ -1,7 +1,8 @@
 ---
 name: project-datenqualitaet-20260812
 description: "Kettenreaktion 2026-08-12 - Tabs-Bug -> mindestbestand-NULL -> Preis-Duplikate -> Achsenpreis-Differenzierung verloren, alles behoben inkl. Wiederherstellung aus JTL-CSVs"
-metadata:
+metadata: 
+  node_type: memory
   type: project
   originSessionId: c9c5b016-f30a-42cf-9c6e-b1d797b48f58
   modified: 2026-08-12T19:47:25.190Z

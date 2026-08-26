@@ -623,9 +623,11 @@ class ShopSyncRepository
     public function findGrundpreisFelder(int $artikelId): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT inhalt_menge, inhalt_einheit, grundpreis_bezugsmenge, grundpreis_anzeigen
-            FROM artikel
-            WHERE id = :id
+            SELECT a.inhalt_menge, a.inhalt_einheit, a.grundpreis_bezugsmenge, a.grundpreis_anzeigen,
+                   t.code AS artikeltyp_code
+            FROM artikel a
+            JOIN artikel_typen t ON t.id = a.artikeltyp_id
+            WHERE a.id = :id
         ");
         $stmt->execute(['id' => $artikelId]);
         return $stmt->fetch();
@@ -1055,40 +1057,39 @@ class ShopSyncRepository
 
     /**
      * Kanal-Chip im Artikel-Formular / Massenaktion in der Artikelliste: setzt
-     * den Kanal-Wunsch für EINEN Artikel -- UND sichert bei Aktivierung
-     * zusätzlich die restliche Familie ab (Fund 06.08.2026: bisher völlig
-     * unabhängige Zeilen für Vater/Kind -- dadurch konnten Kinder aktiv
-     * werden, deren Vater nie eine eigene Zeile bekam, und blieben für immer
-     * unsichtbar 'pending'):
-     * - Kind aktiviert  -> Vater bekommt (falls er noch KEINE eigene Zeile
-     *   hat) ebenfalls eine aktive Zeile. Nur EINE Ebene nach oben, damit das
-     *   nicht versehentlich Geschwister mitzieht.
-     * - Vater aktiviert -> alle seine Kinder OHNE eigene Zeile für diesen
-     *   Shop bekommen ebenfalls eine aktive Zeile (analog zur "inkl. Kinder"-
-     *   Logik bei der Kategorie-Zuweisung, siehe bulk_kategorie_speichern.php).
-     * Deaktivieren bleibt bewusst rein lokal (kein Herunterziehen von Vater
-     * oder Geschwistern) UND eine bereits bestehende Zeile wird nie durch die
-     * Kaskade überschrieben -- ein bewusst ausgeschalteter Familienteil bleibt
-     * ausgeschaltet.
+     * den Kanal-Wunsch für EINEN Artikel -- und hält bei einem Vater IMMER
+     * die gesamte Kinderschar synchron (aktivieren UND deaktivieren).
+     *
+     * Rückbau vom 13.08.2026 (Jacky): bis dahin behielt jedes Kind einen
+     * komplett eigenen "Wunsch"-Status, ein Vater füllte nur LÜCKEN (Kinder
+     * ohne eigene Zeile) auf, Deaktivieren zog nie Kinder mit herunter. In
+     * der Praxis war das zu granular für Barbara und produzierte real aktive
+     * Väter ohne ein einziges aktives Kind im Shop -- ein nutzloses Variable
+     * Product (aufgefallen bei Eucalan). Neue Regel: ein Vater gibt seinen
+     * Kanal-Status IMMER 1:1 an alle (aktiven) Kinder weiter, überschreibt
+     * dabei auch eine schon bestehende eigene Zeile. Soll ein einzelnes Kind
+     * wirklich raus, geschieht das über artikel.aktiv oder fehlenden Bestand
+     * -- nicht mehr über eine kanalspezifische Ausnahme.
+     *
+     * Umgekehrte Richtung bleibt wie bisher: Kind aktiviert -> Vater bekommt
+     * (falls er noch KEINE eigene Zeile hat) ebenfalls eine aktive Zeile,
+     * damit er nicht für immer unsichtbar 'pending' bleibt.
      */
     public function upsertZuweisung(int $artikelId, int $shopId, bool $aktiv): void
     {
         $this->schreibeZuweisungsZeile($artikelId, $shopId, $aktiv);
+
+        foreach ($this->findAktiveKinderIds($artikelId) as $kindId) {
+            $this->schreibeZuweisungsZeile($kindId, $shopId, $aktiv);
+        }
 
         if (!$aktiv) {
             return;
         }
 
         $vaterId = $this->holeVaterId($artikelId);
-        if ($vaterId !== null) {
-            if (!$this->hatZuweisungsZeile($vaterId, $shopId)) {
-                $this->schreibeZuweisungsZeile($vaterId, $shopId, true);
-            }
-            return;
-        }
-
-        foreach ($this->findKinderOhneZuweisungsZeile($artikelId, $shopId) as $kindId) {
-            $this->schreibeZuweisungsZeile($kindId, $shopId, true);
+        if ($vaterId !== null && !$this->hatZuweisungsZeile($vaterId, $shopId)) {
+            $this->schreibeZuweisungsZeile($vaterId, $shopId, true);
         }
     }
 

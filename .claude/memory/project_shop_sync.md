@@ -1,12 +1,51 @@
 ---
 name: project-shop-sync
-description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-07 Abend: WooCommerce-Batch-Sync (Produkte+Variationen über /products/batch statt einzeln, ~3-6x schneller) + Reconcile-Tool + Bilder-Teilexport per UI-Button startbar; ✅ 2026-08-07 shop-gefilterter Bilder-Export fürs FTP + Live-Fortschrittsanzeige übersteht Seiten-Reload (Migration 161); ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
+description: "Online-Shop-Anbindung (WooCommerce): Phase 1-4 + Kategorie/Hersteller-Update-Sync + FTP-Bulk-Bild + Live-Deploy alle fertig; ✅ 2026-08-13 Vater/Kind-Kanal-Kaskade auf vollen Rückbau umgestellt (Vater ueberschreibt Kinder IMMER, auch bei Deaktivierung) -- die vorsichtige 'nur Luecken fuellen'-Version vom 06.08. reichte in der Praxis nicht, 51 aktive Vaeter ganz ohne aktives Kind gefunden+rueckwirkend gefixt; ✅ 2026-08-07 Abend: WooCommerce-Batch-Sync (Produkte+Variationen über /products/batch statt einzeln, ~3-6x schneller) + Reconcile-Tool + Bilder-Teilexport per UI-Button startbar; ✅ 2026-08-07 shop-gefilterter Bilder-Export fürs FTP + Live-Fortschrittsanzeige übersteht Seiten-Reload (Migration 161); ✅ 2026-08-06 verwaiste-Väter-Bug behoben + Kanal-Deaktivierung pusht jetzt 'draft' + Aktionskategorien automatisch nach Aktions-Zeitfenster ein-/ausgeblendet (Migration 160); UI-Seite 'Shop-Synchronisierung' GEBAUT + live bestätigt"
 metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-07T14:19:07.587Z
+  modified: 2026-08-13T10:20:11.169Z
 ---
+
+## ✅ UMGEBAUT 2026-08-13: Vater/Kind-Kanal-Kaskade — voller Rückbau statt "nur Lücken füllen"
+
+**Auslöser:** Beim Grundpreis-kg-Thema fiel Jacky beim Eucalan-Artikel auf: Vater im Shop aktiv, aber kein einziges Kind. Der 2026-08-06-Fix (siehe Eintrag weiter unten) kaskadierte nur EINE Richtung (aktivieren) und nur in LÜCKEN (Kind ohne eigene Zeile) — eine bereits bestehende, unabhängig gesetzte Zeile wurde nie überschrieben, Deaktivieren zog Kinder nie mit runter. War bewusst so gebaut (Barbara sollte einzelne Kinder gezielt vom Kanal ausschließen können), in der Praxis aber zu granular für sie und produzierte real nutzlose leere Variable Products.
+
+**Jackys Entscheidung:** Granularität komplett zurückbauen. Ein Vater gibt seinen Kanal-Status ab sofort IMMER 1:1 an alle aktiven Kinder weiter — aktivieren UND deaktivieren, überschreibt dabei auch eine bereits bestehende eigene Kind-Zeile. Soll ein einzelnes Kind wirklich raus, läuft das über `artikel.aktiv` (Artikel deaktivieren) oder fehlenden Bestand — nicht mehr über eine kanalspezifische Ausnahme.
+
+**Code:** `ShopSyncRepository::upsertZuweisung()` — Kaskade zu `findAktiveKinderIds()` läuft jetzt IMMER (nicht mehr nur bei `$aktiv=true`, nicht mehr nur bei fehlender Zeile). Die alte `findKinderOhneZuweisungsZeile()`-Methode war dadurch komplett unbenutzt, gelöscht. Umgekehrte Richtung (Kind aktiviert → Vater bekommt, falls er noch keine Zeile hat, ebenfalls eine) unverändert übernommen. Betrifft sowohl den Einzel-Toggle (`kanal_ajax.php`) als auch die Massenaktion (`bulk_shop_speichern.php`) — beide laufen durch dieselbe Repository-Methode, kein doppelter Code.
+
+**Rückwirkender Datenfix:** 51 Väter im Shop "MEALANA KG" waren aktiv, aber kein einziges Kind aktiv — teils sehr große Familien (Symfonie Rundstricknadel 141 Kinder, Royale Rundstricknadel 87, MERINO 120 121). Alle betroffenen Kinder per SQL aktiviert + auf `sync_status='pending'` gesetzt, verifiziert: 0 verwaiste Väter übrig danach.
+
+**Noch offen:** Kein Live-Test im Browser (Toggle/Massenaktion tatsächlich klicken und im Shop-Ergebnis prüfen) — nur der Code-Pfad + die rückwirkende SQL-Korrektur.
+
+## ✅ GEBAUT 2026-08-10: Massenaktion "Erneut synchronisieren (Shop)" in artikel/liste.php
+
+**Auslöser:** Direkte Folge des Download-Bestandsfeld-Fixes (siehe Eintrag unten) — bereits `sync_status='synced'` stehende Artikel werden von `findFaelligeArtikel()` NIE erneut aufgegriffen, wenn sich nur die SYNC-LOGIK ändert (nicht die Artikeldaten selbst, `artikel.aktualisiert_am` bleibt unverändert). Musste beim Download-Fix händisch per SQL nachgezogen werden — Jacky schlug vor, das als reguläre Massenaktion verfügbar zu machen.
+
+**Gebaut (kein Modal nötig, einfachste Art Massenaktion, analog zu "Aktivieren"/"Deaktivieren"):**
+- `ShopSyncRepository::markiereFuerErneutenSync(array $artikelIds): int` — setzt `sync_status='pending'` für alle aktiven Kanal-Zuweisungen der übergebenen Artikel, gibt Anzahl tatsächlich geänderter Zeilen zurück.
+- `artikel/massenupdate.php`: neuer `kanal_neu_synchronisieren`-Zweig, loggt (`artikel.masse.kanal_neu_synchronisieren`).
+- `artikel/liste.php`: neue Dropdown-Option "Erneut synchronisieren (Shop)" im `#massen-aktion`-Select — läuft ohne JS-Sonderfall durch den bestehenden Standard-Fetch-Pfad (kein Modal wie bei Kategorie/Kanal-Zuweisen nötig).
+
+**Getestet:** `php -l` auf allen drei Dateien, Repository-Methode live gegen echte Daten verifiziert (`synced`→`pending`-Wechsel, `rowCount()` korrekt 0 wenn schon pending). **Von Jacky im Browser bestätigt** — direkt bei den Anleitung-Download-Artikeln angewendet, "funktioniert tadellos".
+
+## 🟢 BEHOBEN 2026-08-10: Download-Artikel zeigten "nicht vorrätig" im Shop
+
+**Auslöser:** Jacky bemerkte, dass Download-Artikel (neuer Artikeltyp DOWNLOAD, `hat_lagerstand=0`, siehe Commit `02eb636` selben Tages) im Shop als "nicht vorrätig" angezeigt wurden — ergibt bei einem Download keinen Sinn.
+
+**Root Cause:** `ShopSyncService::baueBestandsFelder()` gab bei `hat_lagerstand=0` bisher `return []` zurück (bewusst "kein Bestandsfeld nötig"). Problem: WooCommerce übernimmt bei PUT-Updates ein fehlendes Feld unverändert, setzt es nie zurück — exakt dasselbe Muster wie der bereits dokumentierte `manage_stock`-Fix bei Variable Products (Vater-Artikel, siehe `baueProduktPayload()`-Kommentar). Betroffene Download-Artikel waren ursprünglich als normaler (lagergeführter) Artikeltyp angelegt und erst nachträglich auf DOWNLOAD umgestellt worden — der alte `manage_stock=true, stock_quantity=0, stock_status=outofstock`-Zustand blieb in WooCommerce hängen. Live an Artikel #22537 (WC-ID 27924) bestätigt: `curl` gegen die WC-API zeigte exakt diesen Altzustand.
+
+**Fix:** `baueBestandsFelder()` gibt bei `hat_lagerstand=0` jetzt explizit `['manage_stock' => false, 'stock_status' => 'instock']` zurück statt `[]`. Da `hat_lagerstand` live aus `artikel_typen` gelesen wird (nicht aus dem tatsächlichen Lagerbestand!), greift der Fix **nur** bei Artikeltyp DOWNLOAD (aktuell einziger Typ mit `hat_lagerstand=0`) — normale Artikel mit echtem Bestand=0 bleiben unverändert korrekt "nicht vorrätig" (laufen weiter über den `else`-Zweig). Kein Reparaturskript nötig: bereits falsch hängengebliebene, nachträglich umgestellte Artikel heilen sich beim nächsten Cron/Komplettabgleich automatisch, weil die Felder ab sofort bei jedem Sync-Durchlauf explizit gesendet werden. Live per direktem WC-API-Call verifiziert (nicht nur über den vollen Sync-Pfad): `manage_stock=false, stock_status=instock, purchasable=true` nach dem Push.
+
+**Von Jacky selbst geschrieben** (Trainer-Modus) — zwei Zwischenschritte gebraucht: erst nur `manage_stock=false` (stock_status fehlte, alter "outofstock"-Zustand wäre stehengeblieben), dann korrigiert.
+
+**Nebenthema (kein ERP-Code):** "Weiterlesen" statt "In den Warenkorb" bei nicht-vorrätigen Artikeln in der Shop-Übersicht ist reines WooCommerce-Kernverhalten (`WC_Product_Simple::add_to_cart_text()`, greift wenn `!is_purchasable() || !is_in_stock()`), keine ERP-Baustelle. Fix per Filter-Snippet (`woocommerce_product_add_to_cart_text`) direkt im WordPress-Child-Theme/Snippet-Plugin — von Jacky bereits eingebaut.
+
+## 🟢 2026-08-10: 502-Fehlerserie beim Komplettabgleich — Shop-Server-seitig, kein ERP-Bug
+
+Cron+drei manuelle Komplettabgleich-Versuche (Batch 200, 15:56-16:37) bekamen durchgehend `502 Bad Gateway` (nginx) von `indra-design.at` — kein `komplettabgleich_fertig`-Log in dem Fenster. Direkter `curl` gegen die WC-REST-API (mit echten `wc_key`/`wc_secret` aus der DB) lieferte kurz danach wieder sauber `200 OK` — der Shop-Server hatte sich von selbst erholt, Ursache vermutlich Hoster-seitige Überlastung durch den großen Batch (200 + Bilder), nicht `WooCommerceClient`/`ShopSyncService`. Mit **Batch-Größe 20** lief der Komplettabgleich danach durch. Falls die 502-Serie wiederkehrt: zuerst per `curl` direkt gegen `{wc_url}wp-json/wc/v3/products?...&consumer_key=...&consumer_secret=...` prüfen, ob der Shop grundsätzlich erreichbar ist, bevor man im ERP-Code sucht.
 
 ## ✅ GEBAUT 2026-08-07 (Abend): WooCommerce-Batch-Sync — Produkte/Variationen gebündelt statt einzeln + zwei Wartungs-Tools per UI startbar
 
