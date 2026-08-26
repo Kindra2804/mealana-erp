@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/modules/artikel/EinheitenRepository.php';
+require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
 $db = Database::getInstance();
 
@@ -43,6 +44,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             'kassen'   => 'Kassen',
             'nummernkreise' => 'Nummernkreise',
             'einheiten' => 'Einheiten',
+            'mindestabnahme' => 'Mindestabnahme',
         ] as $tabId => $tabLabel
     ): ?>
         <a href="?tab=<?= $tabId ?>"
@@ -1096,6 +1098,34 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         <?php endforeach; ?>
         <?php if (empty($einheitenListe)): ?>
             <div style="text-align:center;color:var(--color-text-muted);padding:20px">Noch keine Einheiten angelegt.</div>
+        <?php endif; ?>
+    </div>
+<?php elseif ($aktTab === 'mindestabnahme'): ?>
+    <!-- ═══════════ TAB: MINDESTABNAHME ═══════════ -->
+    <?php $teilbareTypen = (new ArtikelService())->getTeilbareArtikelTypen(); ?>
+
+    <div class="card">
+        <div class="card-header">Mindestabnahme / Abnahmeintervall je Artikeltyp</div>
+        <div style="padding:12px 16px;font-size:12px;color:var(--color-text-muted);border-bottom:1px solid var(--color-border)">
+            Vorgabe für Artikel, die diesen Typ nutzen und im Formular auf "Typ-Vorgabe übernehmen" stehen.
+            Ein einzelner Artikel kann davon abweichen oder die Mindestabnahme ganz ausschalten (Artikel-Formular, Tab Stammdaten).
+            <strong>Angabe in der Inhalt-Einheit des Artikels</strong> (bei Meterware i.d.R. Meter, z.B. 0,2 für 20cm) — nicht in "Stück".
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;padding:10px 16px;font-size:12px;color:var(--color-text-muted);border-bottom:1px solid var(--color-border)">
+            <div>Artikeltyp</div><div>Mindestabnahme</div><div>Abnahmeintervall</div><div></div>
+        </div>
+        <?php foreach ($teilbareTypen as $t): ?>
+            <form method="post" action="speichern.php" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;padding:10px 16px;border-bottom:1px solid var(--color-border);align-items:center">
+                <input type="hidden" name="tab" value="artikeltyp_mindestabnahme_update">
+                <input type="hidden" name="id" value="<?= $t['id'] ?>">
+                <div><?= htmlspecialchars($t['name']) ?></div>
+                <input type="number" step="0.001" name="mindestabnahme_default" class="erp-input" value="<?= $t['mindestabnahme_default'] ?? '' ?>">
+                <input type="number" step="0.001" name="abnahmeintervall_default" class="erp-input" value="<?= $t['abnahmeintervall_default'] ?? '' ?>">
+                <button type="submit" class="btn btn-secondary btn-sm">Speichern</button>
+            </form>
+        <?php endforeach; ?>
+        <?php if (empty($teilbareTypen)): ?>
+            <div style="text-align:center;color:var(--color-text-muted);padding:20px">Kein teilbarer Artikeltyp vorhanden.</div>
         <?php endif; ?>
     </div>
 <?php endif; ?>

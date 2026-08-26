@@ -743,6 +743,53 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         </div>
                     </div>
                 </div>
+
+                <?php if (!empty($artikel['artikeltyp_teilbar'])): ?>
+                <div class="card">
+                    <div class="form-section">
+                        <div class="form-section-header">Mindestabnahme (Shop)</div>
+
+                        <?php
+                        $mabEinheit = $artikel['inhalt_einheit'] ?? '';
+                        $typMin = $artikel['mindestabnahme_default'] ?? null;
+                        $typIntervall = $artikel['abnahmeintervall_default'] ?? null;
+                        $typHinweis = ($typMin !== null && (float)$typMin > 0)
+                            ? "Typ-Vorgabe: {$typMin}{$mabEinheit} Mindestabnahme, " . ($typIntervall ?: $typMin) . "{$mabEinheit} Intervall"
+                            : 'Für diesen Artikeltyp ist noch keine Typ-Vorgabe hinterlegt (Einstellungen → Mindestabnahme).';
+                        ?>
+                        <div class="form-row">
+                            <label class="form-label">Regel</label>
+                            <select name="mindestabnahme_modus" class="erp-select" onchange="mindestabnahmeModusToggle(this.value)">
+                                <option value="erbt_typ" <?= ($artikel['mindestabnahme_modus'] ?? 'erbt_typ') === 'erbt_typ' ? 'selected' : '' ?>>Typ-Vorgabe übernehmen</option>
+                                <option value="eigene_werte" <?= ($artikel['mindestabnahme_modus'] ?? '') === 'eigene_werte' ? 'selected' : '' ?>>Eigene Werte</option>
+                                <option value="deaktiviert" <?= ($artikel['mindestabnahme_modus'] ?? '') === 'deaktiviert' ? 'selected' : '' ?>>Keine Mindestabnahme</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div></div>
+                            <div style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($typHinweis) ?></div>
+                        </div>
+                        <div id="mindestabnahme_eigene_werte" class="<?= ($artikel['mindestabnahme_modus'] ?? '') === 'eigene_werte' ? '' : 'versteckt' ?>">
+                            <div class="form-row">
+                                <label class="form-label">Mindestabnahme (<?= htmlspecialchars($mabEinheit) ?: 'Inhalt-Einheit' ?>)</label>
+                                <input type="number" step="0.001" name="mindestabnahme" class="erp-input"
+                                    value="<?= $artikel['mindestabnahme'] ?? '' ?>">
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Abnahmeintervall (<?= htmlspecialchars($mabEinheit) ?: 'Inhalt-Einheit' ?>)</label>
+                                <input type="number" step="0.001" name="abnahmeintervall" class="erp-input"
+                                    value="<?= $artikel['abnahmeintervall'] ?? '' ?>">
+                            </div>
+                            <div class="form-row">
+                                <div></div>
+                                <div style="font-size:12px;color:var(--color-text-muted)">
+                                    Angabe in der Inhalt-Einheit dieses Artikels (aktuell "<?= htmlspecialchars($mabEinheit) ?>", siehe Inhalt Menge oben) -- nicht in "Stück".
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
 
         </form>

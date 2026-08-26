@@ -1,15 +1,20 @@
 function zeigeFelder(typ) {
     const physisch = document.getElementById('felder-physisch');
     const grundpreis = document.getElementById('grundpreis_container');
+    const mindestabnahme = document.getElementById('mindestabnahme_container');
 
     physisch.classList.add('versteckt');
     grundpreis.classList.add('versteckt');
+    if (mindestabnahme) mindestabnahme.classList.add('versteckt');
 
     if (['GARN', 'NADEL', 'METERWARE'].includes(typ)) {
         physisch.classList.remove('versteckt');
     }
     if (typ === 'GARN' || typ === 'METERWARE') {
         grundpreis.classList.remove('versteckt');
+    }
+    if (typ === 'METERWARE' && mindestabnahme) {
+        mindestabnahme.classList.remove('versteckt');
     }
 
     const label = document.getElementById('bezugsmenge_label');
@@ -23,6 +28,12 @@ function zeigeFelder(typ) {
     }
 
     berechneGrundpreis();
+}
+
+function mindestabnahmeModusToggle(modus) {
+    const eigeneWerte = document.getElementById('mindestabnahme_eigene_werte');
+    if (!eigeneWerte) return;
+    eigeneWerte.classList.toggle('versteckt', modus !== 'eigene_werte');
 }
 
 function berechneNetto() {

@@ -771,6 +771,7 @@ class ShopSyncService
         if (empty($dimensionen)) {
             $payload += $this->baueBestandsFelder((int)$artikel['artikel_id']);
             $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$artikel['artikel_id'], $preisErgebnis['regularPreis'], $preisErgebnis['salePreis']);
+            $payload += $this->baueMindestabnahmeFelder((int)$artikel['artikel_id']);
         } else {
             // Explizit korrigieren statt nur weglassen: WooCommerce übernimmt bei
             // PUT-Updates weggelassene Felder unverändert -- ein Vater, der durch
@@ -937,6 +938,7 @@ class ShopSyncService
         // (siehe project_shop_sync.md), darum hier bewusst nicht extra beachtet.
         $payload += $this->baueBestandsFelder((int)$kind['artikel_id']);
         $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$kind['artikel_id'], $preisErgebnis['regularPreis'], $preisErgebnis['salePreis']);
+        $payload += $this->baueMindestabnahmeFelder((int)$kind['artikel_id']);
 
         return $payload;
     }
@@ -1025,6 +1027,94 @@ class ShopSyncService
     private function formatGrundpreisMenge(float $n): string
     {
         return rtrim(rtrim(number_format($n, 3, '.', ''), '0'), '.');
+    }
+
+    /**
+     * Mindestabnahme/Abnahmeintervall als Custom-Meta-Felder (WooCommerce/Germanized haben dafür
+     * kein natives Feld -- ein WordPress-Snippet liest diese beiden Meta-Keys und steuert damit
+     * Mengenfeld-Step/Min sowie die Warenkorb-Validierung, siehe project_meterware_mindestabnahme.md).
+     * Nur relevant bei artikeltyp_teilbar=1 (aktuell nur METERWARE) -- bei allen anderen Typen
+     * ergibt eine Mindestabnahme/Intervall unterhalb von 1 Stück ohnehin keinen Sinn.
+     *
+     * Einheiten-Umrechnung (Fund 2026-08-26, Jackys Testartikel BEL-P2400): Mindestabnahme/
+     * Abnahmeintervall werden im Artikel-Formular in der physischen Inhalt-Einheit eingegeben
+     * (z.B. Meter, analog zur Grundpreis-Bezugsmenge) -- WooCommerces Mengenfeld/Warenkorb zählt
+     * aber immer in "Stück" (1 Stück = inhalt_menge, z.B. 0,01m bei einem Artikel der pro
+     * Zentimeter verkauft wird). Ohne Umrechnung würde ein eingegebenes "0,02m Mindestabnahme"
+     * als "0,02 Stück" an WooCommerce gehen -- sinnlos. Division durch inhalt_menge macht daraus
+     * die korrekte Stückzahl (hier: 2 Stück = 2cm).
+     *
+     * Sendet bei 'deaktiviert' UND fehlendem/leerem Wert explizit einen leeren String statt das
+     * Feld einfach wegzulassen -- meta_data-Keys, die nicht im Request stehen, bleiben in
+     * WooCommerce unverändert stehen (anders als bei den direkten Kern-Feldern wie manage_stock,
+     * aber mit demselben Grundproblem: ein vorher aktiver Wert würde sonst dauerhaft hängen
+     * bleiben, siehe die analogen Funde bei baueBestandsFelder()/baueVariationPayload()).
+     */
+    private function baueMindestabnahmeFelder(int $artikelId): array
+    {
+        $m = $this->repo->findMindestabnahmeFelder($artikelId);
+        if (!$m || !$m['artikeltyp_teilbar'] || (float)$m['inhalt_menge'] <= 0) {
+            return [];
+        }
+
+        $mindestabnahme = null;
+        $abnahmeintervall = null;
+        if ($m['mindestabnahme_modus'] === 'eigene_werte') {
+            $mindestabnahme   = $m['mindestabnahme'];
+            $abnahmeintervall = $m['abnahmeintervall'];
+        } elseif ($m['mindestabnahme_modus'] === 'erbt_typ') {
+            $mindestabnahme   = $m['mindestabnahme_default'];
+            $abnahmeintervall = $m['abnahmeintervall_default'];
+        }
+        // 'deaktiviert' -> beide bleiben null, werden unten als Leerstring gesendet
+
+        $mindestabnahme = ($mindestabnahme !== null && (float)$mindestabnahme > 0) ? (float)$mindestabnahme : null;
+        $abnahmeintervall = ($abnahmeintervall !== null && (float)$abnahmeintervall > 0)
+            ? (float)$abnahmeintervall
+            : $mindestabnahme;
+
+        // Physische Menge (z.B. Meter) -> WooCommerce-Stückzahl.
+        $inhaltMenge = (float)$m['inhalt_menge'];
+        $mindestabnahmeStueck   = $mindestabnahme !== null ? $mindestabnahme / $inhaltMenge : null;
+        $abnahmeintervallStueck = $abnahmeintervall !== null ? $abnahmeintervall / $inhaltMenge : null;
+
+        // Anzeige-Werte für den Kundenhinweis ("Bitte beachten Sie die Mindestabnahme von X cm.") --
+        // bewusst GETRENNT von der Stückzahl oben: inhalt_menge variiert von Artikel zu Artikel
+        // (mal 0,01m = 1cm/Stück, mal z.B. 0,05m = 5cm/Stück), die reine Stückzahl im Mengenfeld
+        // wäre für den Kunden also nicht immer als "cm" lesbar. Einheit + Umrechnungsfaktor
+        // (wie viel EIN Stück in der Anzeige-Einheit ist) werden deshalb serverseitig einmal fix
+        // bestimmt und als eigene Meta-Felder mitgeschickt -- das Snippet muss nichts raten.
+        [$anzeigeEinheit, $anzeigeFaktor] = $this->ermittleAnzeigeEinheit($m['inhalt_einheit'] ?? '', $inhaltMenge);
+        $jeStueckAnzeige = $inhaltMenge * $anzeigeFaktor;
+        $mindestabnahmeAnzeige   = $mindestabnahme !== null ? $mindestabnahme * $anzeigeFaktor : null;
+        $abnahmeintervallAnzeige = $abnahmeintervall !== null ? $abnahmeintervall * $anzeigeFaktor : null;
+
+        return [
+            'meta_data' => [
+                ['key' => '_mealana_mindestabnahme', 'value' => $mindestabnahmeStueck !== null ? $this->formatGrundpreisMenge($mindestabnahmeStueck) : ''],
+                ['key' => '_mealana_abnahmeintervall', 'value' => $abnahmeintervallStueck !== null ? $this->formatGrundpreisMenge($abnahmeintervallStueck) : ''],
+                ['key' => '_mealana_mindestabnahme_anzeige', 'value' => $mindestabnahmeAnzeige !== null ? $this->formatGrundpreisMenge($mindestabnahmeAnzeige) : ''],
+                ['key' => '_mealana_abnahmeintervall_anzeige', 'value' => $abnahmeintervallAnzeige !== null ? $this->formatGrundpreisMenge($abnahmeintervallAnzeige) : ''],
+                ['key' => '_mealana_je_stueck_anzeige', 'value' => $mindestabnahme !== null ? $this->formatGrundpreisMenge($jeStueckAnzeige) : ''],
+                ['key' => '_mealana_anzeige_einheit', 'value' => $mindestabnahme !== null ? $anzeigeEinheit : ''],
+            ],
+        ];
+    }
+
+    /**
+     * Wählt eine für Kunden lesbare Anzeige-Einheit + Umrechnungsfaktor (bezogen auf die
+     * Inhalt-Einheit des Artikels). Meter unter 1 werden als Zentimeter angezeigt (0,02m -> "2 cm"
+     * statt "0,02 m", übliche Konvention für kurze Längen) -- alle anderen Einheiten (inkl. Meter
+     * ab 1) bleiben unverändert, da es dafür keine ebenso etablierte Alltags-Konvention gibt.
+     *
+     * @return array{0:string,1:float} [Anzeige-Einheit, Faktor Inhalt-Einheit -> Anzeige-Einheit]
+     */
+    private function ermittleAnzeigeEinheit(string $inhaltEinheit, float $inhaltMenge): array
+    {
+        if (mb_strtolower($inhaltEinheit) === 'm' && $inhaltMenge < 1) {
+            return ['cm', 100.0];
+        }
+        return [$inhaltEinheit, 1.0];
     }
 
     /**

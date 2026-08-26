@@ -391,6 +391,9 @@ class ArtikelRepository
                 a.artikeltyp_id,
                 a.grundpreis_bezugsmenge,
                 a.grundpreis_anzeigen,
+                a.mindestabnahme_modus,
+                a.mindestabnahme,
+                a.abnahmeintervall,
                 a.gewicht_versand,
                 a.gewicht_artikel,
                 a.laenge,
@@ -426,6 +429,8 @@ class ArtikelRepository
                 s.satz AS steuersatz,
                 e.name AS einheit_name,
                 at.teilbar AS artikeltyp_teilbar,
+                at.mindestabnahme_default,
+                at.abnahmeintervall_default,
                 ap.brutto_vk,
                 ap.netto_vk
             FROM artikel a
@@ -659,6 +664,9 @@ class ArtikelRepository
                 taric_code,
                 grundpreis_bezugsmenge,
                 grundpreis_anzeigen,
+                mindestabnahme_modus,
+                mindestabnahme,
+                abnahmeintervall,
                 charge_pflicht,
                 ist_auslaufartikel,
                 ueberverkauf_erlaubt,
@@ -693,6 +701,9 @@ class ArtikelRepository
                 :taric_code,
                 :grundpreis_bezugsmenge,
                 :grundpreis_anzeigen,
+                :mindestabnahme_modus,
+                :mindestabnahme,
+                :abnahmeintervall,
                 :charge_pflicht,
                 :ist_auslaufartikel,
                 :ueberverkauf_erlaubt,
@@ -703,6 +714,9 @@ class ArtikelRepository
         ");
 
         $data['vaterartikel_id']        = $data['vaterartikel_id']        ?? null;
+        $data['mindestabnahme_modus']   = $data['mindestabnahme_modus']   ?? 'erbt_typ';
+        $data['mindestabnahme']         = $data['mindestabnahme']         ?? null;
+        $data['abnahmeintervall']       = $data['abnahmeintervall']       ?? null;
         $data['hat_eigenen_lagerstand'] = $data['hat_eigenen_lagerstand'] ?? 1;
         $data['ist_auslaufartikel']     = $data['ist_auslaufartikel']     ?? 0;
         $data['technische_details']     = $data['technische_details']     ?? null;
@@ -749,6 +763,9 @@ class ArtikelRepository
             'taric_code',
             'grundpreis_bezugsmenge',
             'grundpreis_anzeigen',
+            'mindestabnahme_modus',
+            'mindestabnahme',
+            'abnahmeintervall',
             'charge_pflicht',
             'ist_auslaufartikel',
             'ueberverkauf_erlaubt',
@@ -814,6 +831,9 @@ class ArtikelRepository
                 taric_code          = :taric_code,
                 grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
                 grundpreis_anzeigen    = :grundpreis_anzeigen,
+                mindestabnahme_modus   = :mindestabnahme_modus,
+                mindestabnahme         = :mindestabnahme,
+                abnahmeintervall       = :abnahmeintervall,
                 charge_pflicht         = :charge_pflicht,
                 ist_auslaufartikel     = :ist_auslaufartikel,
                 ueberverkauf_erlaubt    = :ueberverkauf_erlaubt,
@@ -832,6 +852,9 @@ class ArtikelRepository
         $data['zustand_vater_id'] = $data['zustand_vater_id'] ?? null;
         $data['lieferzeit_text']    = $data['lieferzeit_text']    ?? null;
         $data['artikel_gruppe_id']  = $data['artikel_gruppe_id']  ?? null;
+        $data['mindestabnahme_modus'] = $data['mindestabnahme_modus'] ?? 'erbt_typ';
+        $data['mindestabnahme']       = $data['mindestabnahme']       ?? null;
+        $data['abnahmeintervall']     = $data['abnahmeintervall']     ?? null;
 
         // Nur die Keys übergeben die im SQL definiert sind (PHP 8.x PDO wirft HY093 bei Extra-Keys)
         $erlaubt = [
@@ -861,6 +884,9 @@ class ArtikelRepository
             'taric_code',
             'grundpreis_bezugsmenge',
             'grundpreis_anzeigen',
+            'mindestabnahme_modus',
+            'mindestabnahme',
+            'abnahmeintervall',
             'charge_pflicht',
             'ist_auslaufartikel',
             'ueberverkauf_erlaubt',
@@ -1021,6 +1047,29 @@ class ArtikelRepository
             WHERE aktiv = 1 ORDER BY sortierung ASC
         ");
         return $stmt->fetchAll();
+    }
+
+    /** Artikeltypen mit teilbar=1 (aktuell nur METERWARE) -- fürs Mindestabnahme-Tab in Einstellungen. */
+    public function findTeilbareArtikelTypen(): array
+    {
+        $stmt = $this->db->query("
+            SELECT id, code, name, mindestabnahme_default, abnahmeintervall_default
+            FROM artikel_typen
+            WHERE aktiv = 1 AND teilbar = 1
+            ORDER BY sortierung ASC
+        ");
+        return $stmt->fetchAll();
+    }
+
+    /** Setzt die Mindestabnahme/Intervall-Vorgabe eines Artikeltyps (Einstellungen -> Mindestabnahme). */
+    public function updateArtikeltypMindestabnahme(int $typId, ?float $mindestabnahme, ?float $abnahmeintervall): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE artikel_typen
+            SET mindestabnahme_default = :min, abnahmeintervall_default = :intervall
+            WHERE id = :id
+        ");
+        $stmt->execute(['min' => $mindestabnahme, 'intervall' => $abnahmeintervall, 'id' => $typId]);
     }
 
     /** Übersetzt einen Artikeltyp-Code (z.B. 'GARN') in die DB-ID. Wirft Exception bei ungültigem Code. */
@@ -1343,6 +1392,9 @@ class ArtikelRepository
                 taric_code             = :taric_code,
                 grundpreis_bezugsmenge = :grundpreis_bezugsmenge,
                 grundpreis_anzeigen    = :grundpreis_anzeigen,
+                mindestabnahme_modus   = :mindestabnahme_modus,
+                mindestabnahme         = :mindestabnahme,
+                abnahmeintervall       = :abnahmeintervall,
                 charge_pflicht         = :charge_pflicht,
                 ueberverkauf_erlaubt   = :ueberverkauf_erlaubt
             WHERE vaterartikel_id = :vater_id
@@ -1370,6 +1422,9 @@ class ArtikelRepository
             'taric_code'             => $vater['taric_code'],
             'grundpreis_bezugsmenge' => $vater['grundpreis_bezugsmenge'],
             'grundpreis_anzeigen'    => $vater['grundpreis_anzeigen'],
+            'mindestabnahme_modus'   => $vater['mindestabnahme_modus'],
+            'mindestabnahme'         => $vater['mindestabnahme'],
+            'abnahmeintervall'       => $vater['abnahmeintervall'],
             'charge_pflicht'         => $vater['charge_pflicht'],
             'ueberverkauf_erlaubt'   => $vater['ueberverkauf_erlaubt'],
         ]);

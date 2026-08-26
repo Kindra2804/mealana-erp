@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/modules/artikel/EinheitenRepository.php';
+require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
@@ -311,6 +312,26 @@ if ($tab === 'einheiten_loeschen') {
         $_SESSION['fehler'] = 'Einheit wird noch von Artikeln verwendet und kann nicht gelöscht werden.';
     }
     header('Location: index.php?tab=einheiten');
+    exit;
+}
+
+// ─── TAB: MINDESTABNAHME (Artikeltyp-Vorgabe) ──────────────────────────────
+if ($tab === 'artikeltyp_mindestabnahme_update') {
+    $id               = (int) ($_POST['id'] ?? 0);
+    $mindestabnahme   = trim($_POST['mindestabnahme_default'] ?? '');
+    $abnahmeintervall = trim($_POST['abnahmeintervall_default'] ?? '');
+
+    if ($id <= 0) {
+        $_SESSION['fehler'] = 'Ungültiger Artikeltyp.';
+    } else {
+        (new ArtikelService())->setArtikeltypMindestabnahme(
+            $id,
+            $mindestabnahme === '' ? null : (float) $mindestabnahme,
+            $abnahmeintervall === '' ? null : (float) $abnahmeintervall
+        );
+        $_SESSION['erfolg'] = 'Mindestabnahme-Vorgabe gespeichert.';
+    }
+    header('Location: index.php?tab=mindestabnahme');
     exit;
 }
 

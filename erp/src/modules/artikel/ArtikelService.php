@@ -169,6 +169,9 @@ class ArtikelService
             'taric_code'           => $vater['taric_code'],
             'grundpreis_bezugsmenge' => $vater['grundpreis_bezugsmenge'],
             'grundpreis_anzeigen'    => $vater['grundpreis_anzeigen'],
+            'mindestabnahme_modus'   => $vater['mindestabnahme_modus'],
+            'mindestabnahme'         => $vater['mindestabnahme'],
+            'abnahmeintervall'       => $vater['abnahmeintervall'],
             'charge_pflicht'       => $vater['charge_pflicht'],
             'ist_auslaufartikel'   => $data['ist_auslaufartikel'] ?? 0,
             'aktiv'                => $data['aktiv'] ?? 1,
@@ -422,6 +425,20 @@ class ArtikelService
     public function getAllArtikelTypen(): array
     {
         return $this->repo->findAllArtikelTypen();
+    }
+
+    public function getTeilbareArtikelTypen(): array
+    {
+        return $this->repo->findTeilbareArtikelTypen();
+    }
+
+    public function setArtikeltypMindestabnahme(int $typId, ?float $mindestabnahme, ?float $abnahmeintervall): void
+    {
+        $this->repo->updateArtikeltypMindestabnahme($typId, $mindestabnahme, $abnahmeintervall);
+        Logger::log('artikel.artikeltyp_mindestabnahme_update', 'artikel_typen', $typId, [
+            'mindestabnahme' => $mindestabnahme,
+            'abnahmeintervall' => $abnahmeintervall,
+        ]);
     }
 
     public function getCodesByArtikelId(int $artikelId): array
@@ -709,6 +726,9 @@ class ArtikelService
             'taric_code',
             'grundpreis_bezugsmenge',
             'grundpreis_anzeigen',
+            'mindestabnahme_modus',
+            'mindestabnahme',
+            'abnahmeintervall',
             'charge_pflicht',
             'ist_auslaufartikel',
             'ueberverkauf_erlaubt',

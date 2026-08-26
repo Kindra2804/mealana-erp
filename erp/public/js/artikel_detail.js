@@ -1,3 +1,9 @@
+function mindestabnahmeModusToggle(modus) {
+    const eigeneWerte = document.getElementById('mindestabnahme_eigene_werte');
+    if (!eigeneWerte) return;
+    eigeneWerte.classList.toggle('versteckt', modus !== 'eigene_werte');
+}
+
 // Aktionspreis-Modal
 function aktpreisModalSchliessen() {
     document.getElementById('aktpreis-backdrop').style.display = 'none';

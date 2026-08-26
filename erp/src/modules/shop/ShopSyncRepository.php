@@ -634,6 +634,30 @@ class ShopSyncRepository
     }
 
     /**
+     * Rohdaten für die Mindestabnahme-Meta-Felder (siehe ShopSyncService::baueMindestabnahmeFelder()) --
+     * Kind hat mindestabnahme_modus/mindestabnahme/abnahmeintervall bereits als eigene Kopie
+     * (propagiereZuKindern() hält das synchron), deshalb reicht ein einfacher Blick auf die
+     * eigene Zeile ohne separaten Vater-Join.
+     *
+     * inhalt_menge wird zusätzlich gebraucht: Mindestabnahme/Abnahmeintervall werden im Formular
+     * in der physischen Inhalt-Einheit des Artikels eingegeben (z.B. Meter, wie Grundpreis-
+     * Bezugsmenge), WooCommerce zählt seine Mengen-/Bestandsfelder aber in "Stück" -- 1 Stück
+     * entspricht genau inhalt_menge der Inhalt-Einheit (siehe baueMindestabnahmeFelder()).
+     */
+    public function findMindestabnahmeFelder(int $artikelId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT a.mindestabnahme_modus, a.mindestabnahme, a.abnahmeintervall, a.inhalt_menge, a.inhalt_einheit,
+                   t.teilbar AS artikeltyp_teilbar, t.mindestabnahme_default, t.abnahmeintervall_default
+            FROM artikel a
+            JOIN artikel_typen t ON t.id = a.artikeltyp_id
+            WHERE a.id = :id
+        ");
+        $stmt->execute(['id' => $artikelId]);
+        return $stmt->fetch();
+    }
+
+    /**
      * Externe WooCommerce-Kategorie-IDs des Artikels für diesen Shop. Kategorien, die für DIESEN
      * Shop ausgeschlossen sind (kategorie_shops.ausgeschlossen) -- egal ob die Blatt-Kategorie
      * selbst oder eine ihrer Oberkategorien ("Wurzel gesperrt") -- werden bewusst nicht mitgeliefert.

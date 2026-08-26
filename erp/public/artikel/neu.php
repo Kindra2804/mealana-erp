@@ -299,6 +299,36 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </select>
                 </div>
             </div>
+
+            <!-- Mindestabnahme — wird per JS bei teilbaren Typen (Meterware) eingeblendet -->
+            <div id="mindestabnahme_container" class="versteckt">
+                <div class="form-row" style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--color-border)">
+                    <label class="form-label">Mindestabnahme-Regel</label>
+                    <select name="mindestabnahme_modus" class="erp-select" onchange="mindestabnahmeModusToggle(this.value)">
+                        <option value="erbt_typ" <?= selected('mindestabnahme_modus', 'erbt_typ', $formdata) ?>>Typ-Vorgabe übernehmen</option>
+                        <option value="eigene_werte" <?= selected('mindestabnahme_modus', 'eigene_werte', $formdata) ?>>Eigene Werte</option>
+                        <option value="deaktiviert" <?= selected('mindestabnahme_modus', 'deaktiviert', $formdata) ?>>Keine Mindestabnahme</option>
+                    </select>
+                </div>
+                <div id="mindestabnahme_eigene_werte" class="versteckt">
+                    <div class="form-row">
+                        <label class="form-label">Mindestabnahme</label>
+                        <input type="number" step="0.001" name="mindestabnahme" class="erp-input"
+                            value="<?= old('mindestabnahme', $formdata) ?>">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Abnahmeintervall</label>
+                        <input type="number" step="0.001" name="abnahmeintervall" class="erp-input"
+                            value="<?= old('abnahmeintervall', $formdata) ?>">
+                    </div>
+                    <div class="form-row">
+                        <div></div>
+                        <div style="font-size:12px;color:var(--color-text-muted)">
+                            Angabe in der Inhalt-Einheit oben (z.B. m) -- nicht in "Stück".
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

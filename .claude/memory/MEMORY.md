@@ -2,7 +2,7 @@
 
 - [Datenqualität 2026-08-12](project_datenqualitaet_20260812.md) — Tabs-Bug/Preis-Duplikate/Achsenpreis-Verlust behoben; Echtbetrieb-Aktionstest fand 3 weitere Bugs (Aktionspreis-Kind-Auflösung, Datums-Vergleich, Grundpreis Regulär/Angebot-Split) alle behoben+verifiziert+committed
 - [Grundpreis-Rechtslage Wolle](project_grundpreis_rechtslage_wolle.md) — ✅ 2026-08-13 UMGESETZT: Garn rechnet jetzt auf 1kg-Basis (Sync-Zeit, DB bleibt g); Meterware cm→m korrigiert; F-Mer120-Einheitsbug ✅ 2026-08-26 behoben
-- [Meterware Mindestabnahme/Intervall](project_meterware_mindestabnahme.md) — TODO nächste Session: existiert im ERP+Shop noch gar nicht, alter JTL-Shop konnte das (z.B. 20cm Mindestabnahme/10cm Intervall bei Vlieseline)
+- [Meterware Mindestabnahme/Intervall](project_meterware_mindestabnahme.md) — ✅ 2026-08-26 KOMPLETT FERTIG + live bestätigt (Migration 167/168, Typ-Vorgabe+Artikel-Override, Shop-Sync-Meta+Kundenhinweis, WordPress-Snippet eingespielt)
 - [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — "neueste Zeile gewinnt" kann echte Differenzierung zerstören, immer gegen autoritative Quelle prüfen
 - [Fünf Abendaufgaben 2026-08-09](project_fuenf_abendaufgaben_0809.md) — Kontrollliste+UVP-Streichpreis+Hersteller-als-Marke+Labels FERTIG; als Nächstes: Download-Artikeltyp
 - [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen FERTIG; Abend: Vater→Kind-Vererbung lief bei 841 Vätern nie (charge_pflicht+grundpreis_anzeigen!) BEHOBEN, Spalten-Picker-Bug BEHOBEN; Checkbox-Speicher-Verdacht weiter offen
