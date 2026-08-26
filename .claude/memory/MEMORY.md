@@ -1,5 +1,7 @@
 # Memory Index
 
+- [🟢 BUG: Artikelliste Massenaktion Flash-Meldung fehlt](bug_artikelliste_massenaktion_flash.md) — BEHOBEN 2026-08-26: liste.php zeigte $_SESSION['erfolg'] nie an, Meldung tauchte verzögert auf anderer Seite auf
+- [🟢 BUG: EAN Excel-Notation + Filter-Performance](bug_ean_excel_notation_repariert.md) — BEHOBEN 2026-08-26: 1202 kaputte EANs repariert + 120s-Timeout-Query in ArtikelRepository gefixt (0,02s) + doppelte EANs jetzt rot hervorgehoben in liste.php
 - [Datenqualität 2026-08-12](project_datenqualitaet_20260812.md) — Tabs-Bug/Preis-Duplikate/Achsenpreis-Verlust behoben; Echtbetrieb-Aktionstest fand 3 weitere Bugs (Aktionspreis-Kind-Auflösung, Datums-Vergleich, Grundpreis Regulär/Angebot-Split) alle behoben+verifiziert+committed
 - [Grundpreis-Rechtslage Wolle](project_grundpreis_rechtslage_wolle.md) — ✅ 2026-08-13 UMGESETZT: Garn rechnet jetzt auf 1kg-Basis (Sync-Zeit, DB bleibt g); Meterware cm→m korrigiert; F-Mer120-Einheitsbug ✅ 2026-08-26 behoben
 - [Meterware Mindestabnahme/Intervall](project_meterware_mindestabnahme.md) — ✅ 2026-08-26 KOMPLETT FERTIG + live bestätigt (Migration 167/168, Typ-Vorgabe+Artikel-Override, Shop-Sync-Meta+Kundenhinweis, WordPress-Snippet eingespielt)

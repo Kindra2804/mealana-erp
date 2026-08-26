@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 1fe37890-2d54-4c96-bcae-65d709049cbe
-  modified: 2026-08-26T13:17:40.631Z
+  modified: 2026-08-26T13:25:49.409Z
 ---
 
 Jacky zeigte am 2026-08-13 ein Beispiel vom alten JTL-Shop (mealana.at, Vlieseline H250, Meterware-Einlage): "Mindestabnahme 20 cm", "Abnahmeintervall 10 cm". Am 2026-08-26 umgesetzt.
@@ -74,13 +74,12 @@ Neue `ShopSyncService::ermittleAnzeigeEinheit()`: Meter unter 1 werden als Zenti
 
 Jacky hat das Snippet auf dem Testshop eingespielt. Screenshot bestätigt: Mengenfeld mit Mindestwert 20 vorbelegt, Hinweisbox "Bitte beachten Sie die Mindestabnahme von 20 cm." / "...das Abnahmeintervall von 10 cm." -- exakt wie im ursprünglich gewünschten Referenz-Screenshot. Getesteter Artikel läuft über "Typ-Vorgabe übernehmen" (erbt_typ), zeigt also korrekt den METERWARE-Default (0,2m/0,1m = 20cm/10cm aus Migration 168). Damit ist der komplette Pfad ERP -> Sync -> Meta-Felder -> WordPress-Snippet -> Kundenanzeige für den Default-Fall live verifiziert.
 
-**Noch nicht extra bestätigt:** BEL-P2400 selbst (der "Eigene Werte"-Override-Fall, 2cm/1cm) wurde nicht nochmal einzeln im Screenshot gezeigt -- Code-Pfad ist aber identisch (nur andere Werte aus `mindestabnahme_modus='eigene_werte'`), keine gesonderte Sorge. Serverseitige Mindestmengen-Validierung (Warenkorb-Fehlermeldung bei Unterschreitung/falschem Intervall) noch nicht mit einem echten Fehlversuch getestet -- nur das visuelle Mengenfeld+Hinweistext.
+**✅ Serverseitige Validierung live bestätigt (2026-08-26, gleicher Tag):** Jacky hat gezielt einen echten Fehlversuch gemacht -- Mindestmenge unterschritten UND ein nicht zum 5er-Intervall passender Wert eingegeben, beides wurde vom Snippet korrekt mit Fehlermeldung abgelehnt (`woocommerce_add_to_cart_validation`-Pfad funktioniert wie gebaut). Damit ist auch die eigentlich sicherheitsrelevante Serverseite (nicht nur das kosmetische Mengenfeld) bestätigt.
 
-## 🔲 NOCH OFFEN (klein, kein Blocker)
+## 🔲 NOCH OFFEN (rein kosmetisch, kein Blocker)
 
-1. **Server-seitige Validierung noch nicht mit einem echten Fehlversuch getestet** -- eine zu kleine Menge/falsches Intervall im Warenkorb bestellen und prüfen ob `wc_add_notice()`-Fehlermeldung wirklich erscheint (inkl. Umgehungsversuch per DevTools, ob die Sperre auch ohne das Mengenfeld-Attribut greift).
-2. **BEL-P2400 (Eigene-Werte-Fall, 2cm/1cm) nicht extra im Screenshot bestätigt** -- Code-Pfad identisch zum verifizierten Default-Fall, aber noch nicht eigens angeschaut.
-3. Dezimal-Mengen (z.B. 0,5-Schritte) sind über `step` im Mengenfeld technisch abgedeckt, aber **nicht eigens gegen WooCommerce-Rundungsverhalten bei Bestand/Cart-Berechnung getestet**.
-4. Aktuell nur METERWARE betroffen (`teilbar=1`). Falls lose GARN-Kammzüge später auch eine Mindestabnahme brauchen, einfach `artikel_typen.teilbar=1` für den Typ setzen -- Code ist dafür bereits generisch (keine Typ-Codes hartcodiert außer im JS-Toggle `zeigeFelder()`, dort müsste der Typ-Code ergänzt werden).
+1. **BEL-P2400 (Eigene-Werte-Fall, 2cm/1cm) nicht extra im Screenshot bestätigt** -- Code-Pfad identisch zum verifizierten Default-Fall, aber noch nicht eigens angeschaut.
+2. Dezimal-Mengen (z.B. 0,5-Schritte) sind über `step` im Mengenfeld technisch abgedeckt, aber **nicht eigens gegen WooCommerce-Rundungsverhalten bei Bestand/Cart-Berechnung getestet**.
+3. Aktuell nur METERWARE betroffen (`teilbar=1`). Falls lose GARN-Kammzüge später auch eine Mindestabnahme brauchen, einfach `artikel_typen.teilbar=1` für den Typ setzen -- Code ist dafür bereits generisch (keine Typ-Codes hartcodiert außer im JS-Toggle `zeigeFelder()`, dort müsste der Typ-Code ergänzt werden).
 
-**How to apply:** Feature ist funktional fertig und live bestätigt. Bei Gelegenheit Punkt 1 (echter Fehlversuch) nachholen, sonst keine aktive Baustelle mehr.
+**How to apply:** Feature komplett fertig, funktional UND sicherheitsrelevant (Server-Validierung) live bestätigt. Keine aktive Baustelle mehr -- die drei Punkte oben sind Nice-to-have, kein Grund von selbst wieder anzufangen.

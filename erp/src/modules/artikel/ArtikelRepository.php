@@ -42,6 +42,40 @@ class ArtikelRepository
     }
 
     /**
+     * Vater-IDs (bzw. Standalone-Artikel-IDs), bei denen der Artikel selbst ODER eines seiner
+     * Kinder eine EAN trägt, die in der DB mehrfach vorkommt -- für den Qualitätsfilter
+     * "doppelte_ean" in findAll()/countAll(). Eigene, günstige Aggregation statt einer pro
+     * Zeile korrelierten Subquery (siehe Fund 2026-08-26 in findAll()).
+     */
+    private function holeVaterIdsMitDoppelterEan(): array
+    {
+        $stmt = $this->db->query("
+            SELECT DISTINCT COALESCE(a2.vaterartikel_id, a2.id) AS vater_id
+            FROM artikel_codes ac
+            JOIN artikel a2 ON a2.id = ac.artikel_id
+            WHERE ac.typ = 'GTIN13'
+              AND ac.code IN (
+                  SELECT code FROM artikel_codes WHERE typ = 'GTIN13' GROUP BY code HAVING COUNT(*) > 1
+              )
+        ");
+        return array_map('intval', array_column($stmt->fetchAll(), 'vater_id'));
+    }
+
+    /**
+     * Die tatsächlichen EAN-Werte, die mehrfach vergeben sind (nicht die Artikel-IDs) --
+     * fürs Hervorheben einzelner EAN-Zellen in artikel/liste.php, damit Jacky beim
+     * Aufklappen einer Vater/Kind-Familie nicht jede EAN von Hand mit allen anderen
+     * vergleichen muss (Fund 2026-08-26, direkte Folge des doppelte_ean-Fixes).
+     */
+    public function findDoppelteEanCodes(): array
+    {
+        $stmt = $this->db->query("
+            SELECT code FROM artikel_codes WHERE typ = 'GTIN13' GROUP BY code HAVING COUNT(*) > 1
+        ");
+        return array_column($stmt->fetchAll(), 'code');
+    }
+
+    /**
      * Gibt eine paginierte und gefilterte Artikel-Liste zurück.
      *
      * Zeigt nur Top-Level-Artikel (vaterartikel_id IS NULL, zustand_vater_id IS NULL).
@@ -147,14 +181,14 @@ class ArtikelRepository
                        OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
             )";
         } elseif ($qf === 'doppelte_ean') {
-            // Mindestens ein EAN-Code (Artikel oder Kind) ist in der DB mehrfach vorhanden
-            $conditions[] = "EXISTS (
-                SELECT 1 FROM artikel_codes ac_q
-                WHERE ac_q.typ = 'GTIN13'
-                  AND (ac_q.artikel_id = a.id
-                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
-                  AND (SELECT COUNT(*) FROM artikel_codes ac_dup WHERE ac_dup.code = ac_q.code AND ac_dup.typ = 'GTIN13') > 1
-            )";
+            // Mindestens ein EAN-Code (Artikel oder Kind) ist in der DB mehrfach vorhanden.
+            // War früher eine pro Zeile korrelierte EXISTS+COUNT-Subquery -- lief nach der
+            // Vater/Kind/Lagerbestand-JOIN-Kreuzung (Zeilen VOR dem GROUP BY) einmal PRO ZEILE,
+            // nicht pro Artikel. Fund 2026-08-26 (Jacky, echter 120s-Timeout in Produktion):
+            // stattdessen die betroffenen Vater-IDs EINMALIG vorberechnen (kleine Aggregation
+            // über artikel_codes) und hier nur noch als simples a.id IN (...) prüfen.
+            $vaterIds = $this->holeVaterIdsMitDoppelterEan();
+            $conditions[] = $vaterIds ? ('a.id IN (' . implode(',', $vaterIds) . ')') : '1=0';
         } elseif ($qf === 'keine_bilder') {
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
         } elseif ($qf === 'keine_gruppe') {
@@ -332,13 +366,10 @@ class ArtikelRepository
                        OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
             )";
         } elseif ($qf === 'doppelte_ean') {
-            $conditions[] = "EXISTS (
-                SELECT 1 FROM artikel_codes ac_q
-                WHERE ac_q.typ = 'GTIN13'
-                  AND (ac_q.artikel_id = a.id
-                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
-                  AND (SELECT COUNT(*) FROM artikel_codes ac_dup WHERE ac_dup.code = ac_q.code AND ac_dup.typ = 'GTIN13') > 1
-            )";
+            // Siehe findAll() -- einmalig vorberechnete Vater-ID-Liste statt pro Zeile
+            // korrelierter EXISTS+COUNT-Subquery (Fund 2026-08-26, echter 120s-Timeout).
+            $vaterIds = $this->holeVaterIdsMitDoppelterEan();
+            $conditions[] = $vaterIds ? ('a.id IN (' . implode(',', $vaterIds) . ')') : '1=0';
         } elseif ($qf === 'keine_bilder') {
             $conditions[] = "NOT EXISTS (SELECT 1 FROM artikel_bilder ab_q WHERE ab_q.artikel_id = a.id)";
         } elseif ($qf === 'keine_gruppe') {

@@ -22,6 +22,15 @@ if (!empty($_GET)) {
     $_SESSION['artikel_liste_state'] = $_GET;
 }
 
+// Flash-Banner (Massenaktionen aus massenupdate.php schreiben hierher, siehe unten) --
+// muss VOR dem State-Redirect oben gelesen werden, sonst würde die Session-Nachricht den
+// Redirect überstehen und irgendwo auf der nächsten Seite auftauchen, die diese Konvention
+// nutzt (Fund 2026-08-26: liste.php selbst hatte diese Anzeige bisher komplett vergessen --
+// die Nachricht blieb einfach in der Session hängen, bis irgendeine andere Seite sie zeigte).
+$flashErfolg = $_SESSION['erfolg'] ?? null;
+$flashFehler = $_SESSION['fehler'] ?? null;
+unset($_SESSION['erfolg'], $_SESSION['fehler']);
+
 $controller = new ArtikelController();
 $service = new ArtikelService();
 
@@ -106,6 +115,21 @@ function spalteHeader(string $key, string $aktSort, string $aktDir, array $getPa
     return '';
 }
 
+// Prüft ob eine EAN mehrfach in der DB vergeben ist -- fürs Hervorheben der EAN-Zelle,
+// damit man beim Aufklappen einer Vater/Kind-Familie nicht jede EAN von Hand mit allen
+// anderen vergleichen muss (Jackys Wunsch 2026-08-26). Lazy + statisch gecacht: die Liste
+// wird nur einmal pro Seitenaufruf geladen, und nur dann, wenn die EAN-Spalte überhaupt
+// eine Zelle rendert (spart die Abfrage bei jedem normalen Listenaufruf ohne EAN-Spalte).
+function istDoppelteEanWert(?string $ean): bool
+{
+    static $doppelteCodes = null;
+    if ($ean === null || $ean === '') return false;
+    if ($doppelteCodes === null) {
+        $doppelteCodes = array_flip((new ArtikelRepository())->findDoppelteEanCodes());
+    }
+    return isset($doppelteCodes[$ean]);
+}
+
 // Renderer für Vater-Zeilen-Zellen (TD)
 function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitle, string $statusChips, bool $hatTeureresKind, array $shopNamenById): string
 {
@@ -134,6 +158,9 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
         case 'artikeltyp':
             return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($a['artikeltyp_name'] ?? '–') . '</td>';
         case 'ean':
+            if (istDoppelteEanWert($a['ean'] ?? null)) {
+                return '<td style="font-size:12px;color:#dc2626;font-weight:600" title="Diese EAN ist mehrfach vergeben">⚠ ' . htmlspecialchars($a['ean']) . '</td>';
+            }
             return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($a['ean'] ?? '–') . '</td>';
         case 'einheit':
             return '<td>' . htmlspecialchars($a['einheit_kuerzel'] ?? '–') . '</td>';
@@ -199,6 +226,9 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
         case 'artikeltyp':
             return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['artikeltyp_name'] ?? '–') . '</td>';
         case 'ean':
+            if (istDoppelteEanWert($k['ean'] ?? null)) {
+                return '<td style="font-size:12px;color:#dc2626;font-weight:600" title="Diese EAN ist mehrfach vergeben">⚠ ' . htmlspecialchars($k['ean']) . '</td>';
+            }
             return '<td style="font-size:12px;color:var(--color-text-muted)">' . htmlspecialchars($k['ean'] ?? '–') . '</td>';
         case 'einheit':
             return '<td>' . htmlspecialchars($k['einheit_kuerzel'] ?? '–') . '</td>';
@@ -532,6 +562,23 @@ HTML;
 require_once __DIR__ . '/../includes/shell_top.php';
 
 ?>
+
+<?php if ($flashErfolg): ?>
+    <div class="success-banner" id="flash-php">✓ <?= htmlspecialchars(is_array($flashErfolg) ? implode(', ', $flashErfolg) : $flashErfolg) ?></div>
+<?php endif; ?>
+<?php if ($flashFehler): ?>
+    <div class="error-banner" id="flash-php-err">✗ <?= htmlspecialchars(is_array($flashFehler) ? implode(' · ', $flashFehler) : $flashFehler) ?></div>
+<?php endif; ?>
+<?php if ($flashErfolg || $flashFehler): ?>
+<script>
+    (function () {
+        ['flash-php', 'flash-php-err'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) setTimeout(function () { el.style.display = 'none'; }, 3000);
+        });
+    })();
+</script>
+<?php endif; ?>
 
 <div class="card">
     <form method="GET" action="liste.php" class="filter-bar">
