@@ -70,9 +70,11 @@ $zielpfad  = $uploadDir . $dateiname;
 
 // Bild verkleinern und als JPEG speichern (PHP GD)
 $verkleinert = BildVerarbeitung::verkleinereUndSpeichere($file['tmp_name'], $mimeTyp, $zielpfad);
-if (!$verkleinert) {
+if ($verkleinert === false) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Bild konnte nicht verarbeitet werden']);
     exit;
+} else {
+    $dateiname = $verkleinert;
 }
 
 // DB-Eintrag
@@ -85,4 +87,3 @@ echo json_encode([
     'dateiname' => $dateiname,
     'url'       => BASE_PATH . '/uploads/artikel/' . $artikelId . '/' . $dateiname,
 ]);
-

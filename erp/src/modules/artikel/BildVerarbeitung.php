@@ -13,7 +13,7 @@ class BildVerarbeitung
     public const ERLAUBTE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
     /** Lädt $tmpPfad, verkleinert bei Bedarf auf max. 1920px und speichert unter $zielpfad. */
-    public static function verkleinereUndSpeichere(string $tmpPfad, string $mimeTyp, string $zielpfad): bool
+    public static function verkleinereUndSpeichere(string $tmpPfad, string $mimeTyp, string $zielpfad): string|false
     {
         $maxDimension  = 1920;
         $jpegQualitaet = 85;
@@ -59,6 +59,10 @@ class BildVerarbeitung
         }
 
         imagedestroy($quelle);
-        return $ergebnis;
+        if ($ergebnis) {
+            return basename($zielpfad);
+        } else {
+            return false;
+        }
     }
 }

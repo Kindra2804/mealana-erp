@@ -1,0 +1,65 @@
+---
+name: project-konfigurator-modul
+description: "Geplantes Konfigurator-Modul (Schilder/Buttons/Anhänger, später ggf. Anleitungspakete mit Stückliste) — Optionen mit Aufpreis statt Kind-Artikel-Explosion, eigenständiges lizenzierbares Modul"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
+  modified: 2026-08-27T12:06:59.708Z
+---
+
+## Auslöser (2026-08-27)
+Jacky will Schilder (viele Layouts als eigene Artikel) mit konfigurierbaren Optionen anbieten: Durchmesser (5), Farbe 1 (10+2 Glitzer), optional Farbe 2 (8+2 Glitzer), Hintergrund (Moosgummi 8 / Filz 5 / Holz 3 / Furnier 3), alle mit Aufpreisen. Vollkombinatorik wäre ~12.500 Kind-Artikel PRO Layout — bei "unzähligen" Layouts technisch nicht sinnvoll über den bestehenden VarKombi-Generator abbildbar.
+
+**Fertigung: Mischform** — ein paar Standard-Kombis liegen fertig auf Lager, der Rest wird individuell aus Rohmaterial (Moosgummi-/Filz-/Holz-/Furnier-Platten in Lagerfarben) angefertigt.
+
+## Architektur-Entscheidung
+- **Standard-Kombis (auf Lager):** weiterhin normale Kind-Artikel über den bestehenden VarKombi-Generator — aber gezielt nur die tatsächlich vorproduzierten Kombinationen anlegen, nicht die volle Kombinatorik.
+- **Individuell gefertigte Kombis:** neues Konzept "Konfigurationsartikel" — Layout = ein Artikel mit Optionsgruppen (Durchmesser/Farbe1/Farbe2/Hintergrund), Preis = Basispreis + Summe der gewählten Aufpreise, berechnet zur Bestellzeit. **Keine automatische Kind-Artikel-Generierung.** Nutzt konzeptionell dieselbe Aufpreis-Idee wie `varianten_achse_werte.aufpreis` (Migration 074), aber ohne kartesische Kombinationsexplosion.
+- **Rohmaterial** (Moosgummi/Filz/Holz/Furnier je Farbe) als normale Lagerartikel führen, damit der Materialbestand stimmt. Verbrauch beim individuellen Fertigen bleibt vorerst manuell — siehe Stückliste unten.
+
+## Korrektur einer alten Entscheidung
+`db_design_entscheidungen.md` (Session 2026-06-11) hatte notiert: *"Konfigurator: eigenes Modul für später, NICHT Teil des Varianten-Systems. freitext/pflichtfreitext in Variationen deckt Schilder-Usecase ab, kein Konfigurator nötig."* — Das war zu einfach gedacht, bevor die tatsächliche Komplexität (mehrfache Optionsgruppen mit je eigenen Aufpreisen, ~12.500 Kombis/Layout) bekannt war. Ein echter Konfigurator ist jetzt doch nötig.
+
+## Geplant als eigenständig lizenzierbares Modul
+Jacky will das Modul von Anfang an sauber abgegrenzt bauen (eigene Tabellen, eigener Namespace, keine harte Verflechtung mit dem Achsen/Vater-Kind-System), damit es später bei der Lizenzierung/Weitergabe an andere Installationen einen eigenen Eintrag in der bereits geplanten `modul_lizenzen`-Tabelle bekommt (siehe [[db_design_entscheidungen]], Abschnitt "Lizenzierung & Deployment-Modell", `modul_code` PRIMARY KEY).
+
+## Zukünftige Wiederverwendung: Anleitungspakete + Stückliste
+Jacky will den Konfigurator später auch für Anleitungspakete nutzen (unterschiedliche Größen/Farben → unterschiedlicher Materialbedarf). Dafür bräuchte es eine Stückliste/BOM-Logik. `db_design_entscheidungen.md` hat unter "Priorität 4: Bei Bedarf" bereits eine `stueckliste`-Tabellenskizze (für Artikeltyp SET) — das Konzept lässt sich vermutlich wiederverwenden.
+
+**Empfehlung (Stand 2026-08-27, noch nicht final entschieden):** Konfigurator-Engine jetzt generisch genug bauen, dass sie später erweiterbar ist — aber die Stückliste selbst nicht spekulativ mitbauen, erst wenn Anleitungspakete real ansteht. Siehe [[feedback_scope_ohne_bedarf]].
+
+## Stückliste bewusst zurückgestellt (2026-08-27)
+Jacky: Stückliste ist nicht "nur Anzahl" — Chargen müssen mitgedacht werden (spätestens am Packplatz, wo Chargen-Tracking zentral ist, siehe [[project_chargen_konzept]]). Das braucht eigene, gute Planung. Wird explizit erst angegangen, wenn die Anleitungspakete anstehen oder zwischendurch Luft ist — nicht jetzt mitbauen. Bestätigt [[feedback_scope_ohne_bedarf]].
+
+## Konfigurator-Frontend: Selbstbau bestätigt
+Jacky hat sich für die Selbstbau-Variante (kein WooCommerce-Add-on-Plugin) entschieden — kein Abo, passt besser zum Weitergabe-Modell.
+
+## Referenz-Check (2026-08-27) — siehe [[feedback_modul_vorgehen]]
+- **JTL-Wawi**: eigener kostenpflichtiger "Konfigurator" (~239€ Erweiterung), zentral in Wawi gepflegt + zu Shop synced, schrittweise Gruppenauswahl (wie PC-Zusammenbau), getrennt von normalen Variationsartikeln.
+- **Shopware 6**: unterscheidet explizit **Varianten** (starre SKU-Kombinationen, eigener Bestand) vs. **"Custom Products"** (kostenpflichtige Erweiterung, modulare dynamisch berechnete Optionen, kein SKU pro Kombi) — bestätigt unsere Trennung Standard-Kombis vs. Konfigurationsartikel.
+- **Odoo** (Open Source, am besten dokumentiert): zwei Ideen direkt übertragbar:
+  1. Varianten-Erzeugung "Instantly" (alle Kombis sofort, unser bestehender VarKombi-Generator) vs. "Dynamically" (Variante erst bei tatsächlicher Bestellung angelegt) — genau unsere Mischform.
+  2. **Eine Stückliste pro Produkt-Vorlage** mit Zeilen, die nur für bestimmte Attributwerte gelten (nicht eine Stückliste pro Kombination).
+- **SAP LO-VC** (Enterprise-Referenz für genau dieses Problem): **Super-BOM**-Prinzip — eine Stückliste deckt alle Varianten ab, **Dependencies** (Regelwerk) wählen zur Konfigurationszeit die passenden Zeilen aus UND verhindern ungültige Kombinationen.
+
+**Architektur-Konsequenz für später (Stückliste, noch nicht gebaut):** Das Super-BOM-Prinzip lässt sich auf unser bestehendes `artikel_achsen.bedingungs_achse_id`/`bedingungs_wert_id`-Muster (bedingte Achsenanzeige) abbilden — eine künftige Stücklisten-Zeile bekommt optional `achse_id`+`wert_id` und gilt nur bei dieser Auswahl. Damit reicht **eine** Stückliste pro Layout statt einer pro Kombination; "Konfiguration → Stückliste" wird beim Bestellen anhand der gewählten Werte aufgelöst (BOM-Explosion). Kein neues Bedingungs-Konzept nötig, nur Erweiterung des bestehenden Musters.
+
+**Architektur-Konsequenz für den Konfigurator jetzt:** Bestehende Achsen/Werte/Aufpreis-Tabellen bleiben Basis (deckt sich mit Odoos "Value Price Extra", schon gebaut). Neu: Flag am Vater-Artikel "Kombinationen sofort generieren (Standard-Kombis, bestehender Generator) vs. dynamisch/nicht generieren (Konfigurationsartikel, Preis zur Bestellzeit berechnet)" — analog Odoos Instantly/Dynamically.
+
+## Separater Nebenfund: Rundnadeln — WooCommerce-Variations-Schwellwert
+Bei manchen Rundnadel-Vätern bis zu 140 echte Kind-Kombinationen. WooCommerce filtert Dropdowns nur bei ≤30 Variationen automatisch dynamisch (`data-product_variations`-JSON, das schon aus dem bestehenden Vater/Kind→Variation-Sync kommt) — darüber statischer Fallback ("Auswahl nicht möglich" erst nach Klick), das erklärt das beobachtete JTL/Shop-Verhalten. **Reine Shop-Sache, kein ERP-Code:** `woocommerce_ajax_variation_threshold`-Filter per Snippet anheben. Noch nicht umgesetzt, vorgemerkt.
+
+## Baustufe 1: DB-Grundlage ✅ FERTIG 2026-08-27
+Migrationen 169+170 live eingespielt (gemeinsam mit Jacky Schritt für Schritt geschrieben, Trainer-Ansatz — [[feedback_trainer]]):
+- `artikel.ist_konfigurierbar TINYINT(1)` — Flag am Vater/Layout
+- `varianten_achse_werte.rohmaterial_artikel_id` — optionale FK auf Rohmaterial-Lagerartikel (nur Bestands-Ampel, keine Mengen — das bleibt der späteren Stückliste vorbehalten)
+- `position_konfiguration` (referenz_tabelle+referenz_id polymorph wie bei `reservierungen`, + achse_id/wert_id) — strukturierte Auswahl pro Kassenbon-/Auftragsposition
+
+**Wichtige Korrektur unterwegs:** Der ursprünglich angenommene `position_typ`-Mechanismus aus der alten 2026-06-12-Planung existiert in der echten DB gar nicht — `auftrag_positionen.artikel_id` ist NOT NULL (kein Freitext-Konzept dort), Kasse nutzt für Freitext-Zeilen stattdessen `artikel_id=NULL` direkt bzw. beim Spiegeln in den Auftrag einen Platzhalter-Artikel (99-9999 "Diverses"). Für Konfigurationsartikel ist das ohnehin einfacher: `artikel_id` zeigt direkt auf den echten Layout-Vater-Artikel (kein Platzhalter nötig), `bezeichnung` trägt die automatisch generierte Auswahlbeschreibung. Kein Schema-Eingriff an den Positions-Tabellen nötig.
+
+**Nächster Schritt:** UI/Service-Logik — Konfigurator-Frontend + Preisberechnung + Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), danach Rohmaterial-Bestandsampel im Shop-Sync.
+
+## Offen
+- WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig (Jahreslizenz pro Site, gleiches Modell wie die pausierte Theme-Kaufentscheidung, siehe [[project_shop_theme]]). Kostenlose Alternativen existieren (z.B. Acowebs Free-Tier), decken vermutlich den Bedarf (Dropdown+Aufpreis). Dritte Option: eigenen Konfigurator-Frontend bauen (kein Plugin-Abo, passt besser zum Weitergabe-Modell, aber mehr Eigenaufwand). Budget-Frage — mit Barbara klären, nicht allein entschieden.
+- Kein Code/Datenmodell bisher gebaut — reine Konzeptphase.
