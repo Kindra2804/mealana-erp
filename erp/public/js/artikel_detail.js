@@ -659,6 +659,21 @@ function konfiguratorToggle(neuerWert) {
         });
 }
 
+function lagerFlagToggle(neuerWert) {
+    fetch(window.BASE_PATH + '/artikel/lager_flag_ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', artikel_id: window.MEALANA_ARTIKEL_ID, aktiv: neuerWert })
+    })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.erfolg) {
+                showFlash(d.fehler ?? 'Unbekannter Fehler', 'fehler');
+                document.getElementById('lager-flag-checkbox').checked = !neuerWert;
+            }
+        });
+}
+
 function kanalToggle(shopId, neuerWert) {
     fetch(window.BASE_PATH + '/artikel/kanal_ajax.php', {
         method: 'POST',

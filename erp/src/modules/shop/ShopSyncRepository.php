@@ -112,7 +112,8 @@ class ShopSyncRepository
         $stmt = $this->db->prepare("
             SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
                    a.vaterartikel_id, a.artikelnummer, a.name, a.kurzbeschreibung,
-                   a.beschreibung, a.aktiv, a.hersteller_id, a.ist_hervorgehoben, ash_vater.external_id AS vater_external_id
+                   a.beschreibung, a.aktiv, a.hersteller_id, a.ist_hervorgehoben,
+                   a.ist_konfigurierbar, ash_vater.external_id AS vater_external_id
             FROM artikel_shops ash
             JOIN artikel a ON a.id = ash.artikel_id
             LEFT JOIN artikel_shops ash_vater

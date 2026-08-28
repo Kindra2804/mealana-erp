@@ -447,6 +447,7 @@ class ArtikelRepository
                 a.ueberverkauf_erlaubt,
                 a.ist_hervorgehoben,
                 a.ist_konfigurierbar,
+                a.keine_lagerbestandsfuehrung,
                 a.aktiv,
                 a.zustand,
                 a.uvp,
@@ -1589,8 +1590,19 @@ class ArtikelRepository
     public function setKonfigurierbar(int $artikelId, int $aktiv): bool
     {
         $this->db->prepare("
-            UPDATE artikel SET 
+            UPDATE artikel SET
             ist_konfigurierbar = :aktiv
+            WHERE id = :artikel_id
+        ")->execute(['artikel_id' => $artikelId, 'aktiv' => $aktiv]);
+        return true;
+    }
+
+    /** Generisches Flag "kein eigener Lagerbestand" — z.B. auf Bestellung gefertigte Konfigurator-Artikel. */
+    public function setKeineLagerbestandsfuehrung(int $artikelId, int $aktiv): bool
+    {
+        $this->db->prepare("
+            UPDATE artikel SET
+            keine_lagerbestandsfuehrung = :aktiv
             WHERE id = :artikel_id
         ")->execute(['artikel_id' => $artikelId, 'aktiv' => $aktiv]);
         return true;

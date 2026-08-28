@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../../core/Mailer.php';
 require_once __DIR__ . '/AuftragRepository.php';
+require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
 
 /**
  * AuftragService – Geschäftslogik für Verkaufsaufträge.
@@ -18,10 +19,12 @@ require_once __DIR__ . '/AuftragRepository.php';
 class AuftragService
 {
     private AuftragRepository $repo;
+    private KonfiguratorService $konfiguratorService;
 
     public function __construct()
     {
         $this->repo = new AuftragRepository();
+        $this->konfiguratorService = new KonfiguratorService();
     }
 
     /** Gibt alle Aufträge zurück, optional gefiltert. */
@@ -127,11 +130,21 @@ class AuftragService
         $id = $this->repo->insert($auftragData);
 
         foreach ($berechnetePos as $i => $pos) {
-            $this->repo->insertPosition(array_merge($pos, [
+            // konfig_wert_ids muss VOR insertPosition() raus -- die Methode reicht $data 1:1 an
+            // ein PDO execute() mit exakt benannten Platzhaltern durch, ein zusätzlicher Array-Key
+            // würde dort "Invalid parameter number" werfen.
+            $konfigWertIds = $pos['konfig_wert_ids'] ?? [];
+            unset($pos['konfig_wert_ids']);
+
+            $posId = $this->repo->insertPosition(array_merge($pos, [
                 'auftrag_id'      => $id,
                 'sort_order'      => $i,
                 'menge_geliefert' => 0,
             ]));
+
+            if (!empty($konfigWertIds)) {
+                $this->konfiguratorService->speichereAuswahl('auftrag_positionen', $posId, $konfigWertIds);
+            }
         }
 
         // Lagerreservierungen anlegen (für Bestand-Anzeige und Picklisten-Allocation)
@@ -293,6 +306,7 @@ class AuftragService
                 'steuer_prozent'    => $steuer,
                 'rabatt_prozent'    => $rabatt,
                 'gesamtpreis_netto' => $gesamtNetto,
+                'konfig_wert_ids'   => !empty($pos['konfig_wert_ids']) ? array_map('intval', $pos['konfig_wert_ids']) : [],
             ];
         }
         return $result;
@@ -396,6 +410,12 @@ class AuftragService
                 : 0.0;
             if ($mg < (float)$pos['menge']) $alleNeuGeliefert  = false;
             if ($mg > 0)                    $irgendetwasGelief = true;
+            // konfig_wert_ids muss VOR insertPosition() raus (siehe anlegen()) -- beim Bearbeiten
+            // eines Auftrags werden alle Positionen neu geschrieben, eine bestehende Konfigurator-
+            // Auswahl geht dabei aktuell verloren (bewusst zurückgestellt, siehe Konfigurator-Memory:
+            // die Klartext-bezeichnung bleibt als Fallback erhalten, nur die strukturierte
+            // position_konfiguration-Kopplung nicht).
+            unset($pos['konfig_wert_ids']);
             $this->repo->insertPosition(array_merge($pos, [
                 'auftrag_id'      => $id,
                 'sort_order'      => $i,

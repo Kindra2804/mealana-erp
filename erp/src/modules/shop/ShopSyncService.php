@@ -8,6 +8,7 @@ require_once __DIR__ . '/../hersteller/HerstellerService.php';
 require_once __DIR__ . '/../varianten/VariantenService.php';
 require_once __DIR__ . '/../achsen/AchsenRepository.php';
 require_once __DIR__ . '/../preise/PreisService.php';
+require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
 
 /**
  * ShopSyncService – synct Standard-Artikel UND Vater/Kind-Artikel nach WooCommerce.
@@ -39,6 +40,7 @@ class ShopSyncService
     private VariantenService $variantenService;
     private AchsenRepository $achsenRepo;
     private PreisService $preisService;
+    private KonfiguratorService $konfiguratorService;
     private int $jarvisId;
     private int $standardKgId;
 
@@ -82,6 +84,7 @@ class ShopSyncService
         $this->variantenService = new VariantenService();
         $this->achsenRepo = new AchsenRepository();
         $this->preisService = new PreisService();
+        $this->konfiguratorService = new KonfiguratorService();
         // Läuft als Cron ohne Session -- Logger::log() braucht dann eine explizite
         // benutzer_id, sonst crasht der INSERT an aktivitaeten.benutzer_id NOT NULL
         // (gleiches Bug-Muster wie schon bei cron/mahnwesen.php und LagerService).
@@ -716,11 +719,20 @@ class ShopSyncService
         // sonst würde hier für unionierte Sub-Achsen (z.B. "Mix"/"Uni" unter
         // "Farbe") wieder je ein eigenes falsches Attribut gesucht, das seit dem
         // Achsen-Dimensionen-Fix (2026-07-29) gar nicht mehr existiert.
-        $attribute = [];
+        // Konfigurationsartikel (ist_konfigurierbar=1) haben ATTRIBUTE (Achsen/Werte, für
+        // Anzeige/Filter im späteren Shop-Frontend), aber NIE echte WooCommerce-Variationen --
+        // es gibt ja keine Kind-Artikel. $istVariable trennt "hat Dimensionen UND soll als
+        // type=variable mit echten Variationen gesynct werden" von "hat Dimensionen, bleibt
+        // aber ein normales (einfaches) Produkt".
+        $istKonfig   = !empty($artikel['ist_konfigurierbar']);
+        $attribute   = [];
         $dimensionen = $this->holeDimensionenFuerVater((int)$artikel['artikel_id']);
+        $istVariable = !empty($dimensionen) && !$istKonfig;
         if (!empty($dimensionen)) {
-            $payload['type'] = 'variable';
-            $attribute = array_map(function (array $dimension) use ($shopId) {
+            if ($istVariable) {
+                $payload['type'] = 'variable';
+            }
+            $attribute = array_map(function (array $dimension) use ($shopId, $istVariable) {
                 $zuweisung = $this->repo->findAchseShopZuweisung((int)$dimension['achse_id'], $shopId);
                 $optionen = array_map(
                     fn(array $wert) => $wert['wert'] . (!empty($wert['achse_suffix']) ? ' ' . $wert['achse_suffix'] : ''),
@@ -728,7 +740,7 @@ class ShopSyncService
                 );
                 return [
                     'id'        => (int)$zuweisung['externe_attribut_id'],
-                    'variation' => true,
+                    'variation' => $istVariable,
                     'visible'   => true,
                     'options'   => $optionen,
                 ];
@@ -768,10 +780,10 @@ class ShopSyncService
         // befüllten) Lagerbestand aufgedrückt: manage_stock=true,
         // stock_quantity=0 am Elternprodukt selbst -> WooCommerce zeigte den
         // gesamten Vater als "ausverkauft", unabhängig vom Bestand der Kinder.
-        if (empty($dimensionen)) {
+        if (!$istVariable) {
             $payload += $this->baueBestandsFelder((int)$artikel['artikel_id']);
             $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$artikel['artikel_id'], $preisErgebnis['regularPreis'], $preisErgebnis['salePreis']);
-            $payload += $this->baueMindestabnahmeFelder((int)$artikel['artikel_id']);
+            $payload = $this->mergeMetaData($payload, $this->baueMindestabnahmeFelder((int)$artikel['artikel_id']));
         } else {
             // Explizit korrigieren statt nur weglassen: WooCommerce übernimmt bei
             // PUT-Updates weggelassene Felder unverändert -- ein Vater, der durch
@@ -785,6 +797,23 @@ class ShopSyncService
             // baueGrundpreisFelder() (baueVariationPayload()).
             $payload += $this->baueGrundpreisVaterFelder($client, $shopId, (int)$artikel['artikel_id']);
         }
+
+        // Konfigurationsartikel sind "auf Bestellung gefertigt" und führen nie eigenen
+        // Lagerbestand (siehe artikel.keine_lagerbestandsfuehrung) -- baueBestandsFelder()
+        // oben hätte reale (immer leere) Zahlen geliefert und WooCommerce hätte den Artikel
+        // sofort als "ausverkauft" gezeigt, bevor überhaupt jemand konfigurieren kann. Hart
+        // überschreiben statt nur weglassen (gleicher Grund wie beim manage_stock-Fix oben).
+        if ($istKonfig) {
+            $payload['manage_stock'] = false;
+            $payload['stock_status'] = 'instock';
+            unset($payload['stock_quantity']);
+        }
+
+        // Preis-Matrix fürs künftige Shop-Frontend -- IMMER als meta_data mitschicken, auch
+        // leer wenn nicht (mehr) konfigurierbar: WooCommerce räumt nie mitgeschickte Felder
+        // beim Abschalten nie von selbst auf, sonst bliebe eine tote Matrix im Shop stehen
+        // (gleiche Lehre wie bei baueMindestabnahmeFelder()).
+        $payload = $this->mergeMetaData($payload, $this->baueKonfiguratorFelder($artikel, $dimensionen, $shopId, $istKonfig));
 
         // Bilder: ALLE Bilder des Artikels als 'images'-Array (Plural!), in
         // Positions-Reihenfolge (Hauptbild zuerst). syncBilderFuerArtikel()
@@ -938,7 +967,7 @@ class ShopSyncService
         // (siehe project_shop_sync.md), darum hier bewusst nicht extra beachtet.
         $payload += $this->baueBestandsFelder((int)$kind['artikel_id']);
         $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$kind['artikel_id'], $preisErgebnis['regularPreis'], $preisErgebnis['salePreis']);
-        $payload += $this->baueMindestabnahmeFelder((int)$kind['artikel_id']);
+        $payload = $this->mergeMetaData($payload, $this->baueMindestabnahmeFelder((int)$kind['artikel_id']));
 
         return $payload;
     }
@@ -1099,6 +1128,43 @@ class ShopSyncService
                 ['key' => '_mealana_anzeige_einheit', 'value' => $mindestabnahme !== null ? $anzeigeEinheit : ''],
             ],
         ];
+    }
+
+    /**
+     * Führt meta_data-Arrays zweier Payload-Fragmente ECHT zusammen. PHPs `+=` auf Arrays
+     * überschreibt keine bereits vorhandenen Top-Level-Keys -- funktionierte bisher nur, weil
+     * baueMindestabnahmeFelder() der einzige meta_data-Produzent war. Sobald ein zweiter
+     * Produzent (z.B. baueKonfiguratorFelder()) im selben Payload landet, würde `+=` dessen
+     * meta_data stillschweigend verschlucken. Alle Stellen mit mehr als einem meta_data-
+     * Produzenten müssen darum über diesen Helfer laufen statt über `+=`.
+     */
+    private function mergeMetaData(array $payload, array $neu): array
+    {
+        $payload['meta_data'] = array_merge($payload['meta_data'] ?? [], $neu['meta_data'] ?? []);
+        unset($neu['meta_data']);
+        return $payload + $neu;
+    }
+
+    /**
+     * Preis-Matrix + Achsen-Struktur für das künftige, selbstgebaute WordPress-Konfigurator-
+     * Frontend (eigenes Vorhaben, nicht Teil dieses Sync-Codes) -- als meta_data-JSON am
+     * Produkt, damit das Frontend den Preis live im Browser berechnen kann, OHNE das ERP dafür
+     * live anzufragen (das hat bewusst keinen öffentlichen Endpunkt, siehe project_shop_sync).
+     *
+     * IMMER aufgerufen, auch für nicht-konfigurierbare Artikel (liefert dann eine leere Matrix)
+     * -- siehe Aufrufstelle für die Begründung (WooCommerce räumt nie gesendete Felder nicht auf).
+     */
+    private function baueKonfiguratorFelder(array $artikel, array $dimensionen, int $shopId, bool $istKonfig): array
+    {
+        $matrix = '';
+        if ($istKonfig && !empty($dimensionen)) {
+            $daten  = $this->konfiguratorService->bauePreisMatrix((int)$artikel['artikel_id'], $shopId, $this->standardKgId);
+            $matrix = json_encode($daten, JSON_UNESCAPED_UNICODE);
+        }
+        return ['meta_data' => [
+            ['key' => '_mealana_konfigurator',         'value' => $matrix],
+            ['key' => '_mealana_konfigurator_version', 'value' => $matrix !== '' ? '1' : ''],
+        ]];
     }
 
     /**

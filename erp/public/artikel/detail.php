@@ -828,6 +828,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     </label>
                 </div>
 
+                <!-- Lagerbestand Card -->
+                <div class="card" style="margin-bottom:var(--space-md)">
+                    <div class="form-section-header">Lagerbestand</div>
+                    <label style="font-size:13px; display:flex; align-items:center; gap:var(--space-xs)">
+                        <input type="checkbox" id="lager-flag-checkbox"
+                            onchange="lagerFlagToggle(this.checked)"
+                            <?= ($artikel['keine_lagerbestandsfuehrung'] ?? 0) ? 'checked' : '' ?>>
+                        Keine Lagerbestandsführung (auf Bestellung gefertigt, immer verfügbar, kein Lagerabzug)
+                    </label>
+                </div>
+
                 <!-- Achsen Card -->
                 <div class="card" style="margin-bottom:var(--space-md)">
                     <div class="form-section-header" style="display:flex; justify-content:space-between; align-items:center">

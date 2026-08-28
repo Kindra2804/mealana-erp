@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-28T13:13:13.929Z
+  modified: 2026-08-28T15:21:21.379Z
 ---
 
 ## Auslöser (2026-08-27)
@@ -87,11 +87,35 @@ Auslöser: Durchmesser sollte je nach gewähltem Wert unterschiedlich viel koste
 - Nebenfund dabei: das "Aufpreis"-Eingabefeld im VarKombi-Generator (`detail.php`) ist nur ein Vorschlagswert — was der Nutzer dort einträgt, wird beim Generieren aktuell gar nicht übernommen (`varkombi_erstellen.php`/`erstelleKombinationen()` liest `$kombi['aufpreis']` nie). Nicht angefasst, nur notiert — die neue additive Logik gilt bisher nur für die noch zu bauende Bestellzeit-Preisberechnung des Konfigurators.
 - Getestet per Playwright gegen beide Speicherpfade (freier Wert bei Testartikel 27473, gesperrter/in-use Wert bei D-1059) — beide persistieren korrekt über Reload, danach sauber auf 0 zurückgesetzt.
 
-## Nächster Schritt: Test-Schild im neuen Schema (Stand 2026-08-28)
-Jacky baut weiter am ersten Schild-Layout (Testartikel 27473, Achsen Durchmesser/Farbschema/2.Farbe/Filz-Farben/Glitzereffekt/Grundfarbe/Hintergrund/Holzauswahl), um Testdaten für den späteren Shop-Teil zu haben.
+## Phase 1 (ERP-Seite) ✅ KOMPLETT FERTIG 2026-08-28
+Kompletter Plan (`C:\Users\indy1\.claude\plans\zesty-moseying-meerkat.md`) in einer Session durchgebaut, jeder Abschnitt einzeln getestet (CLI gegen Wegwerf-Testdaten + Playwright + ein echter Sync-Lauf gegen `indra-design.at`). Testartikel 27473 ("Wollzimmer") ist jetzt live im Shop 1 (externe Produkt-ID 34168), bewusst so gelassen.
 
-Vor dem eigentlichen Shop-Teil fehlen laut Besprechung noch: Preisberechnung zur Bestellzeit (Basispreis + Achsen-Aufpreis + Wert-Aufpreis der gewählten Werte, additiv wie oben festgelegt), Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), das Options-Frontend im Shop selbst (Selbstbau), danach Rohmaterial-Bestandsampel.
+**Zwei Vorab-Fixes** (von den Recherche-Agenten gefunden, hätten sonst später real zugeschlagen):
+- `VariantenRepository::findWertIdsInUse()` kannte nur `varianten_kombination_werte` (Vater/Kind) — sobald die erste `position_konfiguration`-Zeile existiert hätte, wäre der Achsen-Editor beim nächsten Speichern mit FK-Verletzung gecrasht. UNION-Erweiterung ergänzt.
+- Neues **generisches Artikel-Flag `artikel.keine_lagerbestandsfuehrung`** (Migration 171, Checkbox in `detail.php` neben "Konfigurierbar", AJAX-Toggle `lager_flag_ajax.php`) — nicht Konfigurator-spezifisch, für jeden Artikel ohne eigenen Bestand nutzbar. Wirkt in Kasse (kein Lagerabzug), Shop-Sync (`manage_stock=false`), Reservierungen (übersprungen).
+
+**Neues Modul `src/modules/konfigurator/`** (`KonfiguratorRepository`+`KonfiguratorService`, bewusst eigenständig statt in `VariantenService` — siehe Docblock dort):
+- `getKonfiguration()` — Achsen als Dimensionen (nutzt `VariantenService::baueAchsenDimensionen()`, sonst Bug-Typ vom 2026-07-29 in neuem Gewand) inkl. Bedingung + Aufpreis pro Achse/Wert
+- `berechnePreis()` — additive Preisregel (Basispreis via `PreisService::getEffektiverPreis()` + Achsen-Aufpreis + Wert-Aufpreis), harte Validierung gegen fremde `wert_id`s, **erster echter Konsument** von `bedingungs_achse_id`/`bedingungs_wert_id` (vorher nur Dateneingabe ohne Auswertung)
+- `speichereAuswahl()`/`ladeAuswahl()` — polymorph wie `reservierungen`
+- `bauePreisMatrix()` — JSON-Struktur fürs künftige Shop-Frontend, `gesamt_aufpreis` wird im ERP vorberechnet (Vertrag mit dem Frontend bleibt trivial: `Preis = basis_brutto + Σ gesamt_aufpreis der gewählten Werte`)
+
+**Kasse** (`bon.php`/`bon_speichern.php`/`KassenService`): neues Options-Overlay (Scan **und** Namenssuche erkennen Konfigurator-Artikel), Live-Preisvorschau immer vom Server, bedingte Achsen blenden sich dynamisch ein/aus, zwei unterschiedlich konfigurierte Artikel verschmelzen im Warenkorb nicht. `erstelleBon()` schreibt `position_konfiguration` für Bon- UND gespiegelte Auftragsposition (lastInsertId() SOFORT nach dem INSERT lesen, sonst überschreibt der Lager-Block ihn).
+
+**Bestellungs-Rückweg** (`ShopBestellungSyncService::leseKonfigurationAusLineItem()`): liest `_mealana_konfig`-JSON aus WC-Line-Item-`meta_data` (Präfix-Fallback falls das Frontend die JSON-Variante mal verliert), plus Preis-Abweichungs-Warnung im Logger. **Nebenbefund + gefixt:** `AuftragService::bearbeiten()` hätte durch die neue `konfig_wert_ids` in `berechnePositionen()` bei JEDEM Auftrag-Bearbeiten (nicht nur Konfigurator!) mit PDO-Fehler gecrasht — Key wird jetzt auch dort vor `insertPosition()` gestrippt (Konfiguration geht beim Bearbeiten aktuell verloren, bewusst zurückgestellt, s.u.).
+
+**Shop-Sync** (`ShopSyncService::baueProduktPayload()`): dritter Zweig über `$istKonfig`/`$istVariable`-Flags (nicht über einen zweiten `empty($achsen)`-Check — genau der Tippfehler-Bug-Typ vom 2026-08-01). Konfigurationsartikel bekommen Attribute (`variation:false`, `type` bleibt normal) + `manage_stock=false` + die Preis-Matrix als `_mealana_konfigurator`-Meta (IMMER gesendet, auch leer beim Abschalten). **Echter Fund:** `$payload += $this->baueMindestabnahmeFelder(...)` funktionierte nur, weil das bisher der einzige `meta_data`-Produzent war — PHPs `+=` überschreibt keine vorhandenen Keys, ein zweiter Produzent wäre stillschweigend verschluckt worden. Neuer `mergeMetaData()`-Helfer, an allen Stellen nachgezogen (auch `baueVariationPayload()`, dort aktuell nur vorsorglich).
+
+**Leseseite:** `auftraege/detail.php` zeigt die gespeicherte Auswahl jetzt dezent unter der Artikelbezeichnung an (🔧-Zeile), Batch-Query gegen N+1.
+
+## Bekannte, bewusst zurückgestellte Lücke
+`AuftragService::bearbeiten()` löscht+schreibt Positionen komplett neu — eine bestehende Konfigurator-Auswahl geht beim Bearbeiten eines Auftrags verloren (nur der Klartext in `bezeichnung` bleibt). `KonfiguratorRepository::deleteAuswahl()` steht schon bereit, aber ob/wie `bearbeiten()` das nachziehen soll ist eine eigene kleine Entscheidung für später.
+
+## Für später vorbereitet: Rohmaterial-Bestandsampel
+`varianten_achse_werte.rohmaterial_artikel_id` existiert (Migration 169). Hook-Punkte für später: `KonfiguratorService::getKonfiguration()` (pro Wert zusätzlich `verfuegbar: bool` aus `LagerService`-Bestand des verknüpften Rohmaterial-Artikels) und `bauePreisMatrix()` (gleiches Feld im JSON). Kein Umbau nötig, nur additive Erweiterung derselben zwei Methoden. Bewusst nicht in Phase 1 mit eingebaut (Jackys Entscheidung 2026-08-28).
+
+## Phase 2 (als Nächstes): WordPress-Shop-Frontend
+Nicht Teil dieses Repos — WordPress/WooCommerce-Code (Code-Snippets-Plugin) auf `indra-design.at`. Jacky richtet dafür einen eigenen WP-Admin-Account für Claude ein (Rolle Administrator nötig, Code-Snippets braucht das). Inhalt: Options-Picker auf der Produktseite (liest `_mealana_konfigurator`-Matrix + Attribute), Live-Preis-JS (`Preis = basis_brutto + Σ gesamt_aufpreis`), Warenkorb-Integration (gewählte Werte als Line-Item-Meta gemäß `_mealana_konfig`-Schema, Preis serverseitig in WooCommerce festschreiben gegen Manipulation). Noch nicht begonnen, wartet auf den Zugang.
 
 ## Offen
-- WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig (Jahreslizenz pro Site, gleiches Modell wie die pausierte Theme-Kaufentscheidung, siehe [[project_shop_theme]]). Kostenlose Alternativen existieren (z.B. Acowebs Free-Tier), decken vermutlich den Bedarf (Dropdown+Aufpreis). Dritte Option: eigenen Konfigurator-Frontend bauen (kein Plugin-Abo, passt besser zum Weitergabe-Modell, aber mehr Eigenaufwand). Budget-Frage — mit Barbara klären, nicht allein entschieden.
-- Kein Code/Datenmodell bisher gebaut — reine Konzeptphase.
+- WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig — überholt durch die Selbstbau-Entscheidung (s.o.), reine Historie.

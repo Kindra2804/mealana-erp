@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
+require_once __DIR__ . '/../../src/modules/konfigurator/KonfiguratorRepository.php';
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
@@ -17,6 +18,10 @@ if (!$auftrag) {
 }
 
 $positionen      = $service->getPositionen($id);
+$konfigProPosition = (new KonfiguratorRepository())->findAuswahlFuerReferenzIds(
+    'auftrag_positionen',
+    array_column($positionen, 'id')
+);
 $statuslog       = $service->getStatuslog($id);
 $dokumentService = new DokumentService();
 $dokumente       = $dokumentService->getDokumente($id);
@@ -456,6 +461,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <span style="font-weight:600"><?= htmlspecialchars($p['bezeichnung']) ?></span>
                         <?php if ($p['charge']): ?>
                             <span style="font-size:11px;color:var(--color-text-muted)"> · Charge: <?= htmlspecialchars($p['charge']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($konfigProPosition[$p['id']])): ?>
+                            <div style="font-size:11px;color:var(--color-text-muted)">
+                                🔧 <?= htmlspecialchars(implode(' · ', array_map(
+                                    fn($k) => $k['achse_name'] . ': ' . $k['wert'],
+                                    $konfigProPosition[$p['id']]
+                                ))) ?>
+                            </div>
                         <?php endif; ?>
                         <?php if ((int)($p['menge_retourniert'] ?? 0) > 0): ?>
                             <div style="font-size:11px;color:var(--color-danger)">↩ <?= (int)$p['menge_retourniert'] ?> retourniert</div>

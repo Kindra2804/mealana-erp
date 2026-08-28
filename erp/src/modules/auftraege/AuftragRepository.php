@@ -344,7 +344,7 @@ class AuftragRepository
     /**
      * Fügt eine Position zu einem Auftrag hinzu.
      */
-    public function insertPosition(array $data): void
+    public function insertPosition(array $data): int
     {
         $stmt = $this->db->prepare("
             INSERT INTO auftrag_positionen (
@@ -358,13 +358,25 @@ class AuftragRepository
             )
         ");
         $stmt->execute($data);
+        return (int) $this->db->lastInsertId();
     }
 
     /**
      * Legt Lagerreservierungen für alle Positionen eines neuen Auftrags an.
+     * Positionen mit artikel.keine_lagerbestandsfuehrung=1 (z.B. auf Bestellung gefertigte
+     * Konfigurator-Artikel) werden übersprungen — die haben nie eigenen Lagerbestand.
      */
     public function legeReservierungenAn(int $auftragId, array $positionen, string $kanal): void
     {
+        $artikelIds = array_values(array_unique(array_filter(array_map(fn($p) => (int)($p['artikel_id'] ?? 0), $positionen))));
+        $keineLagerfuehrungSet = [];
+        if (!empty($artikelIds)) {
+            $placeholders = implode(',', array_fill(0, count($artikelIds), '?'));
+            $stmt0 = $this->db->prepare("SELECT id FROM artikel WHERE id IN ($placeholders) AND keine_lagerbestandsfuehrung = 1");
+            $stmt0->execute($artikelIds);
+            $keineLagerfuehrungSet = array_flip($stmt0->fetchAll(\PDO::FETCH_COLUMN));
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO reservierungen
                 (artikel_id, lager_id, menge, kanal, referenz_tabelle, referenz_id, status)
@@ -373,6 +385,7 @@ class AuftragRepository
         ");
         foreach ($positionen as $pos) {
             if (empty($pos['artikel_id'])) continue;
+            if (isset($keineLagerfuehrungSet[(int)$pos['artikel_id']])) continue;
             $stmt->execute([
                 ':artikel_id'  => (int)$pos['artikel_id'],
                 ':menge'       => (int)$pos['menge'],

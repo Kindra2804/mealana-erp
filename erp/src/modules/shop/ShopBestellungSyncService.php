@@ -7,6 +7,7 @@ require_once __DIR__ . '/../auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../auftraege/AuftragService.php';
 require_once __DIR__ . '/../kunden/KundenRepository.php';
 require_once __DIR__ . '/../kunden/KundenService.php';
+require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
 
 /**
  * ShopBestellungSyncService – Phase 3: Bestellungen aus WooCommerce ins ERP.
@@ -39,6 +40,7 @@ class ShopBestellungSyncService
     private AuftragService $auftragService;
     private KundenRepository $kundenRepo;
     private KundenService $kundenService;
+    private KonfiguratorService $konfiguratorService;
     private int $jarvisId;
 
     public function __construct()
@@ -48,6 +50,7 @@ class ShopBestellungSyncService
         $this->auftragService = new AuftragService();
         $this->kundenRepo = new KundenRepository();
         $this->kundenService = new KundenService();
+        $this->konfiguratorService = new KonfiguratorService();
         $this->jarvisId = (int)Database::getInstance()
             ->query("SELECT id FROM benutzer WHERE username = 'system'")
             ->fetchColumn();
@@ -259,6 +262,22 @@ class ShopBestellungSyncService
             $total    = (float)($item['total'] ?? 0);
             $totalTax = (float)($item['total_tax'] ?? 0);
 
+            $konfig = $this->leseKonfigurationAusLineItem($item);
+
+            // Frühwarnung bei veralteter Preis-Matrix im Shop: der Kunde hat trotzdem
+            // den WC-Preis bezahlt (siehe Kommentar unten) -- hier wird NICHTS korrigiert,
+            // nur geloggt, damit sowas auffällt bevor sich Beschwerden häufen.
+            if (!empty($konfig['wert_ids']) && $konfig['preis_brutto'] !== null) {
+                $berechnet = $this->konfiguratorService->berechnePreis($artikelId, $konfig['wert_ids']);
+                if ($berechnet['erfolg'] && abs($berechnet['brutto'] - $konfig['preis_brutto']) > 0.01) {
+                    Logger::log('shop.konfigurator_preis_abweichung', 'auftrag_positionen', 0, [
+                        'artikel_id'        => $artikelId,
+                        'shop_preis_brutto' => $konfig['preis_brutto'],
+                        'erp_preis_brutto'  => $berechnet['brutto'],
+                    ], $this->jarvisId, 'warn');
+                }
+            }
+
             $positionen[] = [
                 'artikel_id'        => $artikelId,
                 'bezeichnung'       => $item['name'] ?? '',
@@ -271,9 +290,49 @@ class ShopBestellungSyncService
                 'einzelpreis_netto' => $menge > 0 ? round($total / $menge, 4) : 0,
                 'steuer_prozent'    => $total > 0 ? round($totalTax / $total * 100, 2) : 20,
                 'rabatt_prozent'    => $subtotal > 0 ? max(0, round((1 - $total / $subtotal) * 100, 2)) : 0,
+                'konfig_wert_ids'   => $konfig['wert_ids'],
             ];
         }
         return $positionen;
+    }
+
+    /**
+     * Liest die Konfigurator-Auswahl aus den meta_data eines WC-Line-Items.
+     * Primärer Weg: Key "_mealana_konfig" mit JSON {version, werte:[wert_id,...], preis_brutto}
+     * (Underscore-Präfix -- WooCommerce blendet ihn in Admin/Mails aus, siehe baueKonfiguratorFelder()
+     * im Shop-Sync für das Gegenstück beim Senden). Fallback, falls das Shop-Frontend die
+     * JSON-Variante mal verliert: Keys nach dem Muster "_mealana_konfig_achse_<id>" mit
+     * numerischem Wert (wert_id).
+     *
+     * Bewusst rein/ohne DB-Zugriff -- per CLI mit handgebauten Arrays testbar, ohne WooCommerce
+     * oder Datenbank zu brauchen.
+     *
+     * @return array{wert_ids: int[], preis_brutto: ?float}
+     */
+    public function leseKonfigurationAusLineItem(array $item): array
+    {
+        $metaData = $item['meta_data'] ?? [];
+
+        foreach ($metaData as $meta) {
+            if (($meta['key'] ?? '') !== '_mealana_konfig') continue;
+            $decoded = json_decode((string)($meta['value'] ?? ''), true);
+            if (is_array($decoded) && !empty($decoded['werte']) && is_array($decoded['werte'])) {
+                return [
+                    'wert_ids'     => array_map('intval', $decoded['werte']),
+                    'preis_brutto' => isset($decoded['preis_brutto']) ? (float)$decoded['preis_brutto'] : null,
+                ];
+            }
+        }
+
+        // Fallback: einzelne _mealana_konfig_achse_<id>-Keys statt des JSON-Blobs
+        $wertIds = [];
+        foreach ($metaData as $meta) {
+            $key = (string)($meta['key'] ?? '');
+            if (preg_match('/^_mealana_konfig_achse_\d+$/', $key) && is_numeric($meta['value'] ?? null)) {
+                $wertIds[] = (int)$meta['value'];
+            }
+        }
+        return ['wert_ids' => $wertIds, 'preis_brutto' => null];
     }
 
     private function baueKundenSnapshot(array $order): array

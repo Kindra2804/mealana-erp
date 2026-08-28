@@ -604,6 +604,8 @@ body {
 }
 .kind-chip:hover { background: #dbeafe; }
 .kind-chip-sub { font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px; }
+.konfig-wert-chip.gewaehlt { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.konfig-wert-chip.gewaehlt .kind-chip-sub { color: #dbeafe; }
 
 /* Feedback-Snackbar */
 #feedback {
@@ -1037,6 +1039,20 @@ body {
     <div class="ov-title" id="vater-titel">Variante wählen</div>
     <div id="vater-kinder"></div>
     <button class="ov-btn ov-btn-sec" style="margin-top:14px" onclick="ovSchliessen('ov-vater')">Abbrechen</button>
+  </div>
+</div>
+
+<!-- Konfigurator-Auswahl -->
+<div class="ov" id="ov-konfigurator">
+  <div class="ov-box" style="max-width:580px;max-height:80vh;overflow-y:auto">
+    <div class="ov-title" id="konfig-titel">Optionen wählen</div>
+    <div id="konfig-achsen"></div>
+    <div class="ov-total" id="konfig-preis">€ 0,00</div>
+    <div id="konfig-fehler" style="color:#dc2626;font-size:13px;margin-bottom:8px"></div>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" id="btn-konfig-ok" onclick="konfigBestaetigen()" disabled>✓ Übernehmen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-konfigurator')">Abbrechen</button>
+    </div>
   </div>
 </div>
 
@@ -1544,6 +1560,8 @@ function scannenOK() {
             }
             if (d.typ === 'vater') {
                 zeigeVaterAuswahl(d);
+            } else if (d.typ === 'konfigurator') {
+                zeigeKonfiguratorAuswahl(d);
             } else {
                 artikelHinzufuegen(d);
             }
@@ -1620,12 +1638,16 @@ function nullbestandBestaetigen() {
 }
 
 function _artikelEinfuegen(a, menge) {
-    var preis      = parseFloat(a.brutto_vk) || 0;
-    var chargeNeu  = a._gewaehltCharge !== undefined ? a._gewaehltCharge : (a.fifo_charge || null);
-    // Gleiche Charge: zusammenführen; unterschiedliche Charge: neue Zeile
+    var preis        = parseFloat(a.brutto_vk) || 0;
+    var chargeNeu    = a._gewaehltCharge !== undefined ? a._gewaehltCharge : (a.fifo_charge || null);
+    var konfigIds    = a._konfig_wert_ids || null;
+    var konfigJson   = JSON.stringify((konfigIds || []).slice().sort());
+    // Gleiche Charge UND gleiche Konfigurator-Auswahl: zusammenführen; sonst neue Zeile
+    // (zwei unterschiedlich konfigurierte Schilder dürfen nie zu einer Menge verschmelzen)
     var idx = warenkorb.findIndex(p =>
         p.artikel_id == a.id && !p.istDivers && !p.vonAuftrag
         && (p.charge || null) === (chargeNeu || null)
+        && JSON.stringify((p.konfig_wert_ids || []).slice().sort()) === konfigJson
     );
     if (idx >= 0 && a.id) {
         warenkorb[idx].menge += menge;
@@ -1640,6 +1662,7 @@ function _artikelEinfuegen(a, menge) {
             steuer_prozent:              parseFloat(a.steuer_prozent) || 20,
             rabatt_prozent:              0,
             charge:                      chargeNeu,
+            konfig_wert_ids:             konfigIds,
             nachzutragen_lagerbestand_id: a._nachtragen_lagerbestand_id || null,
             istDivers:                   !!a.istDivers,
             hat_chargen:                 !!a.hat_chargen,
@@ -1701,6 +1724,112 @@ function kindGewaehlt(kind) {
     kind.bestand_reserviert = 0;
     kind.bestand_verkaufbar = kind.lagerbestand || 0;
     artikelHinzufuegen(kind);
+}
+
+// ── Konfigurator-Auswahl ──────────────────────────────────────────────────────
+// Preis kommt IMMER vom Server (ajax_konfigurator.php -> KonfiguratorService::berechnePreis()) --
+// kein Doppelrechnen im JS, sonst könnten Client und Server auseinanderlaufen.
+var konfigAktuellerArtikel = null;  // { id, bezeichnung, artikelnummer, ean, konfiguration: [...] }
+var konfigAuswahl          = {};    // achse_id -> wert_id
+var konfigLetzteBerechnung = null;  // letzte erfolgreiche Antwort von ajax_konfigurator.php
+
+function zeigeKonfiguratorAuswahl(a) {
+    konfigAktuellerArtikel = a;
+    konfigAuswahl = {};
+    konfigLetzteBerechnung = null;
+    document.getElementById('konfig-titel').textContent = a.bezeichnung + ' — Optionen wählen';
+    document.getElementById('konfig-fehler').textContent = '';
+    document.getElementById('konfig-preis').textContent = '€ 0,00';
+    document.getElementById('btn-konfig-ok').disabled = true;
+    konfigRenderAchsen();
+    ov('ov-konfigurator');
+}
+
+function konfigRenderAchsen() {
+    var html = '';
+    (konfigAktuellerArtikel.konfiguration || []).forEach(function(achse) {
+        // Bedingte Anzeige: Achse nur zeigen, wenn ihre Bedingungs-Achse den passenden Wert hat
+        if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) return;
+        html += '<div class="ov-label" style="margin-top:10px">' + esc(achse.name) + '</div><div>';
+        achse.werte.forEach(function(w) {
+            var gewaehlt = konfigAuswahl[achse.achse_id] === w.wert_id;
+            html += '<div class="kind-chip konfig-wert-chip' + (gewaehlt ? ' gewaehlt' : '') + '" '
+                  + 'onclick="konfigWertGewaehlt(' + achse.achse_id + ',' + w.wert_id + ')">'
+                  + esc(w.wert)
+                  + (w.wert_aufpreis > 0 ? '<span class="kind-chip-sub">+€ ' + fmt(w.wert_aufpreis) + '</span>' : '')
+                  + '</div>';
+        });
+        html += '</div>';
+    });
+    document.getElementById('konfig-achsen').innerHTML = html;
+}
+
+function konfigWertGewaehlt(achseId, wertId) {
+    konfigAuswahl[achseId] = wertId;
+    // Achsen, deren Bedingung durch diese Auswahl nicht mehr erfüllt ist, verlieren ihre eigene Auswahl
+    (konfigAktuellerArtikel.konfiguration || []).forEach(function(achse) {
+        if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) {
+            delete konfigAuswahl[achse.achse_id];
+        }
+    });
+    konfigRenderAchsen();
+    konfigPreisAktualisieren();
+}
+
+function konfigPreisAktualisieren() {
+    var wertIds = Object.keys(konfigAuswahl).map(function (k) { return konfigAuswahl[k]; });
+    var vollstaendig = (konfigAktuellerArtikel.konfiguration || []).every(function(achse) {
+        if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) return true;
+        return konfigAuswahl[achse.achse_id] !== undefined;
+    });
+
+    fetch('<?= BASE_PATH ?>/kasse/ajax_konfigurator.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artikel_id: konfigAktuellerArtikel.id, wert_ids: wertIds })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+        var fehlEl = document.getElementById('konfig-fehler');
+        var btn    = document.getElementById('btn-konfig-ok');
+        if (d.erfolg) {
+            document.getElementById('konfig-preis').textContent = '€ ' + fmt(d.brutto);
+            fehlEl.textContent = vollstaendig ? '' : 'Bitte alle Optionen wählen';
+            btn.disabled = !vollstaendig;
+            konfigLetzteBerechnung = d;
+        } else {
+            document.getElementById('konfig-preis').textContent = '€ 0,00';
+            fehlEl.textContent = (d.fehler || []).join(', ');
+            btn.disabled = true;
+            konfigLetzteBerechnung = null;
+        }
+    })
+    .catch(function () {
+        document.getElementById('konfig-fehler').textContent = 'Serverfehler';
+        document.getElementById('btn-konfig-ok').disabled = true;
+        konfigLetzteBerechnung = null;
+    });
+}
+
+function konfigBestaetigen() {
+    if (!konfigLetzteBerechnung || !konfigLetzteBerechnung.erfolg) return;
+    var a = konfigAktuellerArtikel;
+    var d = konfigLetzteBerechnung;
+    ovSchliessen('ov-konfigurator');
+    artikelHinzufuegen({
+        id:                  a.id,
+        bezeichnung:         a.bezeichnung + ' (' + d.beschreibung + ')',
+        artikelnummer:       a.artikelnummer,
+        ean:                 a.ean,
+        brutto_vk:           d.brutto,
+        steuer_prozent:      d.steuer_prozent,
+        ueberverkauf_erlaubt: true,
+        bestand_physisch:    999999,
+        bestand_reserviert:  0,
+        bestand_verkaufbar:  999999,
+        istDivers:           false,
+        _konfig_wert_ids:    Object.keys(konfigAuswahl).map(function (k) { return konfigAuswahl[k]; })
+    });
 }
 
 // ── Bon rendern ───────────────────────────────────────────────────────────────
@@ -2314,6 +2443,9 @@ function suchWaehlen(a) {
     if (a.ist_vater) {
         fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(a.artikelnummer) + '&lager_id=' + LAGER_ID)
             .then(r => r.json()).then(d => { if (d.erfolg) zeigeVaterAuswahl(d); });
+    } else if (a.ist_konfigurierbar) {
+        fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(a.artikelnummer) + '&lager_id=' + LAGER_ID)
+            .then(r => r.json()).then(d => { if (d.erfolg) zeigeKonfiguratorAuswahl(d); });
     } else {
         a.bestand_verkaufbar = Math.max(0, (parseFloat(a.bestand_physisch) || 0));
         artikelHinzufuegen(a);

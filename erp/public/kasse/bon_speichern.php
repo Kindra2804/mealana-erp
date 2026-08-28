@@ -72,12 +72,33 @@ foreach ($positionen as $p) {
         'steuer_prozent'      => (float)($p['steuer_prozent'] ?? 20),
         'rabatt_prozent'      => (float)($p['rabatt_prozent'] ?? 0),
         'charge'                       => $p['charge'] ?? null,
+        'konfig_wert_ids'              => !empty($p['konfig_wert_ids']) ? array_map('intval', $p['konfig_wert_ids']) : [],
         'nachzutragen_lagerbestand_id' => isset($p['nachzutragen_lagerbestand_id']) ? (int)$p['nachzutragen_lagerbestand_id'] : null,
         'block'               => !empty($p['vonAuftrag']) ? 'auftrag' : ($p['block'] ?? null),
         'auftrag_position_id' => isset($p['auftrag_position_id']) ? (int)$p['auftrag_position_id'] : null,
         'retour_von_position_id' => isset($p['retour_von_position_id']) ? (int)$p['retour_von_position_id'] : null,
     ];
 }
+
+// Konfigurator-Positionen: Preis IMMER serverseitig aus den gewählten Werten neu berechnen,
+// der vom Client mitgeschickte Preis wird verworfen (gleiche Philosophie wie der
+// Bruttobetrag-Check direkt darunter, nur eine Ebene tiefer). Zusätzlich kein Lagerabzug --
+// Konfigurationsartikel (Schilder etc.) werden auf Bestellung gefertigt, siehe
+// artikel.keine_lagerbestandsfuehrung.
+require_once __DIR__ . '/../../src/modules/konfigurator/KonfiguratorService.php';
+$konfigSvc = new KonfiguratorService();
+foreach ($sauberePositionen as &$p) {
+    if (empty($p['konfig_wert_ids'])) continue;
+    $r = $konfigSvc->berechnePreis((int)$p['artikel_id'], $p['konfig_wert_ids']);
+    if (!$r['erfolg']) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Konfigurator: ' . implode(', ', $r['fehler'])]);
+        exit;
+    }
+    $p['einzelpreis_brutto'] = $r['brutto'];
+    $p['steuer_prozent']     = $r['steuer_prozent'];
+    $p['kein_lagerabzug']    = true;
+}
+unset($p);
 
 // Bruttobetrag serverseitig aus Positionen neu berechnen (kein Vertrauen auf Client-Wert)
 $serverBrutto = 0;

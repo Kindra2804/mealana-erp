@@ -236,7 +236,9 @@ class VariantenRepository
     }
 
     /**
-     * Gibt alle Wert-IDs zurück die in mindestens einer Kombination (varianten_kombination_werte) verwendet werden.
+     * Gibt alle Wert-IDs zurück die entweder in einer Kombination (varianten_kombination_werte,
+     * klassische Vater/Kind-Varianten) ODER in einer Konfigurator-Bestellauswahl (position_konfiguration,
+     * z.B. eine gespeicherte Kassenbon-/Auftragsposition) verwendet werden.
      * Diese Werte sind "geschützt" und dürfen nicht gelöscht werden.
      * Wird in VariantenService::speichereAchsenUndWerte() genutzt um die Lösch-Whitelist zu bauen.
      */
@@ -247,8 +249,13 @@ class VariantenRepository
             FROM varianten_achse_werte vaw
             INNER JOIN varianten_kombination_werte vkw ON vkw.wert_id = vaw.id
             WHERE vaw.artikel_id = :artikel_id
+            UNION
+            SELECT DISTINCT vaw.id
+            FROM varianten_achse_werte vaw
+            INNER JOIN position_konfiguration pk ON pk.wert_id = vaw.id
+            WHERE vaw.artikel_id = :artikel_id2
         ");
-        $stmt->execute(['artikel_id' => $artikelId]);
+        $stmt->execute(['artikel_id' => $artikelId, 'artikel_id2' => $artikelId]);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 

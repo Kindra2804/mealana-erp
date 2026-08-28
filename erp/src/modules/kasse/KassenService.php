@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
 require_once __DIR__ . '/BfrService.php';
 require_once __DIR__ . '/../inventur/InventurService.php';
+require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
 
 class KassenService
 {
@@ -44,6 +45,8 @@ class KassenService
                 a.artikelnummer,
                 a.vaterartikel_id,
                 a.ist_vater,
+                a.ist_konfigurierbar,
+                a.keine_lagerbestandsfuehrung,
                 a.charge_pflicht,
                 a.ueberverkauf_erlaubt,
                 a.aktiv,
@@ -100,6 +103,13 @@ class KassenService
         if ($artikel['ist_vater']) {
             $artikel['kinder'] = $this->getKinderFuerKasse((int)$artikel['id'], $lagerId);
             $artikel['typ']    = 'vater';
+        } elseif ($artikel['ist_konfigurierbar']) {
+            // Konfigurator-Artikel: KEIN Preis aus obiger Inline-Subquery verwenden (die kennt
+            // weder Sale-Overrides noch Aktionspreise) -- das JS nutzt ausschließlich
+            // konfiguration.basis_brutto aus KonfiguratorService::getKonfiguration(), das über
+            // PreisService::getEffektiverPreis() geht.
+            $artikel['typ']           = 'konfigurator';
+            $artikel['konfiguration'] = (new KonfiguratorService())->getKonfiguration((int)$artikel['id']);
         } else {
             $artikel['typ']    = 'artikel';
             $hatChargen = $this->hatChargen((int)$artikel['id'], $lagerId);
@@ -272,7 +282,8 @@ class KassenService
             ]);
             $bonId = (int)$this->db->lastInsertId();
 
-            $lagerSvc = new LagerService();
+            $lagerSvc  = new LagerService();
+            $konfigSvc = new KonfiguratorService();
             foreach ($positionen as $i => $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
@@ -295,6 +306,13 @@ class KassenService
                     ':charge'             => $pos['charge']             ?? null,
                     ':sort'               => $i,
                 ]);
+
+                // lastInsertId() SOFORT lesen -- LagerService::wareneingang()/warenausgang() weiter
+                // unten machen eigene INSERTs und würden ihn sonst überschreiben.
+                if (!empty($pos['konfig_wert_ids'])) {
+                    $bonPosId = (int)$this->db->lastInsertId();
+                    $konfigSvc->speichereAuswahl('kassen_bon_positionen', $bonPosId, $pos['konfig_wert_ids']);
+                }
 
                 // Lager ausbuchen — überspringen wenn Position individuell gesperrt
                 // (abholbereit → Packplatz hat schon gebucht; nur_zahlung → Packplatz bucht später)
@@ -414,6 +432,9 @@ class KassenService
                     ':rabatt_prozent'     => $rabatt,
                     ':gesamtpreis_netto'  => $gesNetto,
                 ]);
+                if (!empty($p['konfig_wert_ids'])) {
+                    $konfigSvc->speichereAuswahl('auftrag_positionen', (int)$this->db->lastInsertId(), $p['konfig_wert_ids']);
+                }
             }
 
             // Bon mit Auftrag verknüpfen
@@ -1359,6 +1380,7 @@ class KassenService
                 a.name              AS bezeichnung,
                 a.artikelnummer,
                 a.ist_vater,
+                a.ist_konfigurierbar,
                 a.ueberverkauf_erlaubt,
                 a.charge_pflicht,
                 sk.satz             AS steuer_prozent,

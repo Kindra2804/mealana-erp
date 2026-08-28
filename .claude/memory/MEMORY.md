@@ -1,6 +1,6 @@
 # Memory Index
 
-- [Konfigurator-Modul (geplant)](project_konfigurator_modul.md) — 2026-08-28: Bedingte Achsenanzeige + VarKombi-Sperre bei Konfigurierbar + additives Wert-Aufpreis-Feld FERTIG+getestet; Jacky baut Test-Schild als Shop-Testgrundlage weiter
+- [Konfigurator-Modul](project_konfigurator_modul.md) — 2026-08-28: Phase 1 (ERP-Preisberechnung+Kasse+Shop-Sync+Bestellrückweg) KOMPLETT FERTIG, live gegen indra-design.at getestet; als Nächstes Phase 2 (WordPress-Frontend, wartet auf WP-Admin-Zugang)
 - [Browser-Testing-Tools (Playwright)](reference_browser_testing_tools.md) — Node+Playwright lokal installiert unter .claude-browser-tools/, da chromium-cli hier nicht verfügbar ist
 - [🟢 BUG: Artikelliste Massenaktion Flash-Meldung fehlt](bug_artikelliste_massenaktion_flash.md) — BEHOBEN 2026-08-26: liste.php zeigte $_SESSION['erfolg'] nie an, Meldung tauchte verzögert auf anderer Seite auf
 - [🟢 BUG: Bild-Upload PNG-Endung-Mismatch](bug_bild_upload_png_endung.md) — BEHOBEN 2026-08-27: verkleinereUndSpeichere() benannte PNGs intern auf .png um, gab aber nur bool zurück — DB/URL zeigten weiter auf .jpg → broken link
