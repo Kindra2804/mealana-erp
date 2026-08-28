@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-28T07:42:04.813Z
+  modified: 2026-08-28T09:44:11.553Z
 ---
 
 ## Auslöser (2026-08-27)
@@ -66,6 +66,20 @@ Checkbox "Konfigurierbar" im Varianten-Tab von `detail.php` (eigene Card oberhal
 - Von Claude direkt umgesetzt (Jacky war müde/nicht fit), nicht im vollen Trainer-Schritt-für-Schritt-Modus wie Baustufe 1
 
 **Nächster Schritt:** Optionsgruppen-Zuweisung fürs Konfigurator-Frontend + Preisberechnung + Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), danach Rohmaterial-Bestandsampel im Shop-Sync.
+
+## Bedingte Achsenanzeige ("Farbe 2 nur wenn Farbschema=Zweifärbig") ✅ FERTIG 2026-08-28
+Beim Besprechen der Optionsgruppen fiel auf: `artikel_achsen.bedingungs_achse_id`/`bedingungs_wert_id` existierte zwar seit Migration 024, hatte aber NIE ein UI — `achsen_zuweisen_ajax.php`/`achsen_speichern.php` überschrieben `artikel_achsen` bei jedem Speichern komplett neu, ohne diese Felder je zu setzen. Jetzt nachgebaut, direkt (nicht im vollen Trainer-Schritt-für-Schritt-Modus, Jacky wollte es zügig):
+- `VariantenRepository::updateAchseBedingung()` (UPDATE), `VariantenService::updateAchseBedingung()` validiert serverseitig (Bedingungs-Achse muss selbst zugewiesen sein, nicht sich selbst referenzieren, Wert muss wirklich zur Bedingungs-Achse gehören — sonst wird verworfen statt kaputte FK-Referenz zu speichern)
+- `achsen_speichern.php`: Bedingung wird NACH dem Werte-Speichern validiert/gespeichert (damit auch gerade neu angelegte Werte als gültiges Ziel zählen)
+- `achsen_zuweisen.php`/`achsen_zuweisen.js`: pro Achse eine Zeile "Nur anzeigen wenn [Achse]=[Wert]" — erstes Dropdown listet dynamisch die anderen gerade angehakten Achsen (analog zum bestehenden "in andere Achse verschieben"-Muster), zweites befüllt sich aus `WERTE_PRO_ACHSE`-JSON. Auf Jackys Wunsch zusätzlich ein Klartext-Hinweis daneben ("→ wird im Shop nur angezeigt, wenn „X" = „Y" gewählt ist") — die Achse selbst muss im ERP-Editor NICHT dynamisch versteckt werden, nur die Info reicht.
+- **Wichtig:** Das speichert nur die Einstellung. Nirgends im Code (VarKombi-Generator, Shop-Sync, Kasse) wird `bedingungs_achse_id` aktuell gelesen — es gibt noch keine Stelle, die dadurch tatsächlich etwas versteckt. Reine Dateneingabe-Vorbereitung für den späteren Konfigurator/Shop-Sync.
+- Getestet: Backend per isoliertem CLI-Skript (gültige/ungültige Kombinationen), UI per neu installiertem Playwright (siehe [[reference_browser_testing_tools]]) — dabei einen echten Bug gefunden+gefixt: Hinweistext blieb beim Reset auf "keine Bedingung" stehen (Early-Return übersprang den Hinweis-Reset).
+- Nebenfund beim Testen: Jacky hat in der DB schon eine Achse "Farbschema" mit Unterachsen "einfarbig"/"zweifarbig" angelegt — eigener Vorbau für den Schilder-Testfall.
+
+## Nächster Schritt: Test-Schild im neuen Schema (Stand 2026-08-28)
+Jacky baut als Nächstes ein erstes Schild-Layout komplett im bestehenden Schema durch (Achsen Durchmesser/Farbe1/Farbe2/Hintergrund inkl. Aufpreis + die neue Farbe2-Bedingung), um Testdaten für den späteren Shop-Teil zu haben. Wichtig dabei: **NICHT** den VarKombi-Generator ("Kombinationen erstellen") laufen lassen — das würde wieder in die ursprünglich vermiedene Kombinationsexplosion laufen. Nur Achsen zuweisen + "Konfigurierbar"-Checkbox reicht für jetzt.
+
+Vor dem eigentlichen Shop-Teil fehlen laut Besprechung noch: Preisberechnung zur Bestellzeit (kein Kind-Artikel mit fertigem Preis mehr, muss aus gewählten Werten live berechnet werden), Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), das Options-Frontend im Shop selbst (Selbstbau), danach Rohmaterial-Bestandsampel.
 
 ## Offen
 - WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig (Jahreslizenz pro Site, gleiches Modell wie die pausierte Theme-Kaufentscheidung, siehe [[project_shop_theme]]). Kostenlose Alternativen existieren (z.B. Acowebs Free-Tier), decken vermutlich den Bedarf (Dropdown+Aufpreis). Dritte Option: eigenen Konfigurator-Frontend bauen (kein Plugin-Abo, passt besser zum Weitergabe-Modell, aber mehr Eigenaufwand). Budget-Frage — mit Barbara klären, nicht allein entschieden.

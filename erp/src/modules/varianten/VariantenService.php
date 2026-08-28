@@ -139,6 +139,28 @@ class VariantenService
     }
 
     /**
+     * Speichert die bedingte Anzeige einer Achse — "Achse X nur zeigen, wenn Achse Y = Wert Z gewählt ist".
+     * Nimmt nur an, wenn die Bedingungs-Achse selbst zugewiesen ist (in $achsenIds), nicht die Achse
+     * selbst ist, und der Wert wirklich zu dieser Bedingungs-Achse gehört — sonst wird die Bedingung
+     * gelöscht (z.B. wenn die referenzierte Achse gerade abgewählt wurde).
+     */
+    public function updateAchseBedingung(int $artikelId, int $achseId, array $achsenIds, ?int $bedingungsAchseId, ?int $bedingungsWertId, array $wertIdsProAchse): void
+    {
+        $gueltig = $bedingungsAchseId
+            && $bedingungsAchseId !== $achseId
+            && in_array($bedingungsAchseId, $achsenIds, true)
+            && $bedingungsWertId
+            && in_array($bedingungsWertId, $wertIdsProAchse[$bedingungsAchseId] ?? [], true);
+
+        $this->repo->updateAchseBedingung(
+            $artikelId,
+            $achseId,
+            $gueltig ? $bedingungsAchseId : null,
+            $gueltig ? $bedingungsWertId : null
+        );
+    }
+
+    /**
      * Erstellt Kind-Artikel für eine Liste von Wert-Kombinationen.
      * Jeder Kind-Artikel erbt ~25 Felder vom Vater (Stammdaten, Texte, Maße, Flags).
      * Gibt die IDs aller neu erstellten Kinder zurück damit ArtikelService::kopiereVaterRelationenZuKindern()

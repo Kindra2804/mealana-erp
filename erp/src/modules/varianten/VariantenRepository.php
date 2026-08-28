@@ -317,6 +317,21 @@ class VariantenRepository
         ")->execute(['modus' => $modus, 'wert' => $preiswert, 'art' => $artikelId, 'achse' => $achseId]);
     }
 
+    /** Speichert die bedingte Anzeige einer Achse (nur sichtbar wenn bedingungs_achse_id == bedingungs_wert_id gewählt ist). */
+    public function updateAchseBedingung(int $artikelId, int $achseId, ?int $bedingungsAchseId, ?int $bedingungsWertId): void
+    {
+        $this->db->prepare("
+            UPDATE artikel_achsen
+            SET bedingungs_achse_id = :ba, bedingungs_wert_id = :bw
+            WHERE artikel_id = :art AND achse_id = :achse
+        ")->execute([
+            'ba'    => $bedingungsAchseId,
+            'bw'    => $bedingungsWertId,
+            'art'   => $artikelId,
+            'achse' => $achseId,
+        ]);
+    }
+
     /** Gibt Map achse_id → {preis_modus, preis_wert} zurück (nur Einträge mit preis_wert > 0). */
     public function findAchsenPreisMap(int $artikelId): array
     {

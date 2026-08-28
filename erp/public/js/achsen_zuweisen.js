@@ -1,4 +1,5 @@
-var ACHSEN_NAMEN = window.ACHSEN_NAMEN || {};
+var ACHSEN_NAMEN    = window.ACHSEN_NAMEN || {};
+var WERTE_PRO_ACHSE = window.WERTE_PRO_ACHSE || {};
 var chipCounter  = 9000;
 var formDirty    = false;
 
@@ -181,7 +182,93 @@ function achseGeaendert(achseId) {
     var checked = cb.checked;
     if (wBlk)  { if (checked) wBlk.removeAttribute('hidden');  else wBlk.setAttribute('hidden', ''); }
     if (uaBtn) { if (checked) uaBtn.removeAttribute('hidden'); else uaBtn.setAttribute('hidden', ''); }
+    bedingungAchsenAktualisieren();
 }
+
+/**
+ * Bedingte Anzeige ("Achse X nur zeigen wenn Achse Y = Wert Z"): baut die "welche Achse"-Dropdowns
+ * aus den aktuell angehakten Achsen (analog zu chipVerschieben) und stößt danach je Achse den
+ * passenden Wert-Dropdown-Aufbau an. Wird beim Laden UND bei jedem Achse-Checkbox-Wechsel aufgerufen,
+ * damit eine Bedingung auf eine gerade abgewählte Achse nicht bestehen bleibt.
+ */
+function bedingungAchsenAktualisieren() {
+    var checkedIds = [];
+    document.querySelectorAll('input[name="achsen[]"]:checked').forEach(function (cb) { checkedIds.push(cb.value); });
+
+    document.querySelectorAll('.bedingung-achse-sel').forEach(function (sel) {
+        var ownId     = sel.dataset.achseId;
+        var erstmalig = !sel.dataset.built;
+        var current   = erstmalig ? sel.dataset.initial : sel.value;
+
+        sel.innerHTML = '<option value="">(keine Bedingung)</option>';
+        checkedIds.forEach(function (cid) {
+            if (cid === ownId) return;
+            var opt = document.createElement('option');
+            opt.value = cid;
+            opt.textContent = ACHSEN_NAMEN[cid] || ('Achse ' + cid);
+            sel.appendChild(opt);
+        });
+
+        sel.value = (current && checkedIds.indexOf(String(current)) !== -1) ? current : '';
+        sel.dataset.built = '1';
+
+        var wertSel = document.getElementById('bed-wert-' + ownId);
+        bedingungWertAktualisieren(ownId, erstmalig && wertSel ? wertSel.dataset.initial : null);
+    });
+}
+
+/** Baut den Wert-Dropdown für die gewählte Bedingungs-Achse. initialWertId nur beim ersten Aufbau (aus DB). */
+function bedingungWertAktualisieren(achseId, initialWertId) {
+    var achseSel = document.getElementById('bed-achse-' + achseId);
+    var wertSel  = document.getElementById('bed-wert-' + achseId);
+    var gleich   = document.getElementById('bed-gleich-' + achseId);
+    if (!achseSel || !wertSel) return;
+
+    var gewaehlteAchse = achseSel.value;
+    wertSel.innerHTML = '';
+
+    if (!gewaehlteAchse) {
+        wertSel.style.display = 'none';
+        wertSel.disabled = true;
+        if (gleich) gleich.style.display = 'none';
+        bedingungHinweisAktualisieren(achseId);
+        return;
+    }
+
+    var werte = WERTE_PRO_ACHSE[gewaehlteAchse] || [];
+    werte.forEach(function (w) {
+        var opt = document.createElement('option');
+        opt.value = w.id;
+        opt.textContent = w.wert;
+        if (initialWertId && String(w.id) === String(initialWertId)) opt.selected = true;
+        wertSel.appendChild(opt);
+    });
+
+    wertSel.disabled = werte.length === 0;
+    wertSel.style.display = '';
+    if (gleich) gleich.style.display = '';
+
+    bedingungHinweisAktualisieren(achseId);
+}
+
+/** Lesbarer Klartext-Hinweis neben den Dropdowns — nur informativ, keine eigene Logik im ERP. */
+function bedingungHinweisAktualisieren(achseId) {
+    var achseSel = document.getElementById('bed-achse-' + achseId);
+    var wertSel  = document.getElementById('bed-wert-' + achseId);
+    var hinweis  = document.getElementById('bed-hinweis-' + achseId);
+    if (!hinweis || !achseSel || !wertSel) return;
+
+    if (!achseSel.value || !wertSel.value) {
+        hinweis.textContent = '';
+        return;
+    }
+    var achseName = ACHSEN_NAMEN[achseSel.value] || ('Achse ' + achseSel.value);
+    var wertOpt   = wertSel.options[wertSel.selectedIndex];
+    var wertText  = wertOpt ? wertOpt.textContent : '';
+    hinweis.textContent = '→ wird im Shop nur angezeigt, wenn „' + achseName + '“ = „' + wertText + '“ gewählt ist';
+}
+
+document.addEventListener('DOMContentLoaded', bedingungAchsenAktualisieren);
 
 function uaZeigen(parentId) {
     document.getElementById('ua-btn-'  + parentId).style.display = 'none';

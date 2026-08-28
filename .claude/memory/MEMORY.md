@@ -1,6 +1,7 @@
 # Memory Index
 
-- [Konfigurator-Modul (geplant)](project_konfigurator_modul.md) — 2026-08-27: Schilder/Buttons/Anhänger mit Optionen+Aufpreis statt Kind-Artikel-Explosion; eigenständig lizenzierbar; korrigiert alte "kein Konfigurator nötig"-Entscheidung
+- [Konfigurator-Modul (geplant)](project_konfigurator_modul.md) — 2026-08-28: Bedingte Achsenanzeige (Farbe2 nur wenn Farbschema=Zweifärbig) FERTIG+getestet; Jacky baut jetzt Test-Schild als Shop-Testgrundlage
+- [Browser-Testing-Tools (Playwright)](reference_browser_testing_tools.md) — Node+Playwright lokal installiert unter .claude-browser-tools/, da chromium-cli hier nicht verfügbar ist
 - [🟢 BUG: Artikelliste Massenaktion Flash-Meldung fehlt](bug_artikelliste_massenaktion_flash.md) — BEHOBEN 2026-08-26: liste.php zeigte $_SESSION['erfolg'] nie an, Meldung tauchte verzögert auf anderer Seite auf
 - [🟢 BUG: Bild-Upload PNG-Endung-Mismatch](bug_bild_upload_png_endung.md) — BEHOBEN 2026-08-27: verkleinereUndSpeichere() benannte PNGs intern auf .png um, gab aber nur bool zurück — DB/URL zeigten weiter auf .jpg → broken link
 - [🟢 BUG: EAN Excel-Notation + Filter-Performance](bug_ean_excel_notation_repariert.md) — BEHOBEN 2026-08-26: 1202 kaputte EANs repariert + 120s-Timeout-Query in ArtikelRepository gefixt (0,02s) + doppelte EANs jetzt rot hervorgehoben in liste.php

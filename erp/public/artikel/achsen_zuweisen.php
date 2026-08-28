@@ -28,6 +28,22 @@ foreach ($zugewieseneRaw as $zr) {
     $preisMap[(int)$zr['achse_id']] = ['preis_modus' => $zr['preis_modus'] ?? 'direktpreis', 'preis_wert' => (float)($zr['preis_wert'] ?? 0)];
 }
 
+// Bedingungs-Map: achse_id → {achse, wert} — "diese Achse nur zeigen wenn Achse X = Wert Y gewählt ist"
+$bedingungMap = [];
+foreach ($zugewieseneRaw as $zr) {
+    $bedingungMap[(int)$zr['achse_id']] = [
+        'achse' => (int)($zr['bedingungs_achse_id'] ?? 0),
+        'wert'  => (int)($zr['bedingungs_wert_id'] ?? 0),
+    ];
+}
+
+// Werte pro Achse für JS (Bedingungs-Wert-Dropdown): achse_id → [{id, wert}]
+$wertePreAchseJs = [];
+foreach ($vorhandeneWerte as $w) {
+    $wertePreAchseJs[(int)$w['achse_id']][] = ['id' => (int)$w['id'], 'wert' => $w['wert']];
+}
+$wertePreAchseJson = json_encode($wertePreAchseJs, JSON_UNESCAPED_UNICODE);
+
 // Achsenbaum aufbauen
 $roots  = [];
 $kinder = [];
@@ -104,7 +120,7 @@ HTML;
 HTML;
 }
 
-function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $werteProAchse, int $pos = 0, int $total = 1, array $wertIdsInUseSet = [], array $preisMap = []): void
+function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $werteProAchse, int $pos = 0, int $total = 1, array $wertIdsInUseSet = [], array $preisMap = [], array $bedingungMap = []): void
 {
     $id             = (int)$achse['id'];
     $checked        = in_array($id, $zugewieseneIds);
@@ -212,6 +228,32 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
         <div id="werte-blk-<?= $id ?>"
              <?= !$checked ? 'hidden' : '' ?>
              style="padding:12px 14px 10px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 6px 6px;background:#fff">
+
+            <!-- Bedingte Anzeige: diese Achse nur zeigen, wenn eine andere Achse einen bestimmten Wert hat -->
+            <?php $bed = $bedingungMap[$id] ?? ['achse' => 0, 'wert' => 0]; ?>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:12px;color:#64748b">
+                <span>Nur anzeigen wenn</span>
+                <select class="erp-select bedingung-achse-sel"
+                        id="bed-achse-<?= $id ?>"
+                        data-achse-id="<?= $id ?>"
+                        name="bedingung[<?= $id ?>][achse]"
+                        data-initial="<?= $bed['achse'] ?>"
+                        onchange="formDirty=true;bedingungWertAktualisieren(<?= $id ?>, null)"
+                        style="font-size:12px;padding:3px 6px;max-width:180px">
+                    <option value="">(keine Bedingung)</option>
+                </select>
+                <span id="bed-gleich-<?= $id ?>" style="display:none">=</span>
+                <select class="erp-select bedingung-wert-sel"
+                        id="bed-wert-<?= $id ?>"
+                        name="bedingung[<?= $id ?>][wert]"
+                        data-initial="<?= $bed['wert'] ?>"
+                        onchange="formDirty=true;bedingungHinweisAktualisieren(<?= $id ?>)"
+                        disabled
+                        style="display:none;font-size:12px;padding:3px 6px;max-width:160px">
+                </select>
+                <span id="bed-hinweis-<?= $id ?>" style="font-size:11px;color:#94a3b8;font-style:italic"></span>
+            </div>
+
             <?php if ($isGruppe && $showUa): ?>
                 <div style="font-size:11px;color:#64748b;margin-bottom:8px">
                     Direkte Werte (optional — für Garne ohne Untergruppe):
@@ -240,7 +282,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
         <div id="kinder-<?= $id ?>" style="margin-top:8px">
             <?php $kindListe = $kinder[$id]; $kindTotal = count($kindListe); ?>
             <?php foreach ($kindListe as $ki => $kind): ?>
-                <?php renderAchse($kind, $kinder, $zugewieseneIds, $werteProAchse, $ki, $kindTotal, $wertIdsInUseSet, $preisMap); ?>
+                <?php renderAchse($kind, $kinder, $zugewieseneIds, $werteProAchse, $ki, $kindTotal, $wertIdsInUseSet, $preisMap, $bedingungMap); ?>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
@@ -334,7 +376,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php else: ?>
             <?php $rootTotal = count($roots); ?>
             <?php foreach ($roots as $ri => $root): ?>
-                <?php renderAchse($root, $kinder, $zugewieseneIds, $werteProAchse, $ri, $rootTotal, $wertIdsInUseSet, $preisMap); ?>
+                <?php renderAchse($root, $kinder, $zugewieseneIds, $werteProAchse, $ri, $rootTotal, $wertIdsInUseSet, $preisMap, $bedingungMap); ?>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
@@ -434,7 +476,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 </div>
 
-<script>window.ACHSEN_NAMEN = <?= $achsenNamenJson ?>;</script>
+<script>
+window.ACHSEN_NAMEN     = <?= $achsenNamenJson ?>;
+window.WERTE_PRO_ACHSE  = <?= $wertePreAchseJson ?>;
+</script>
 <script src="<?= BASE_PATH ?>/js/achsen_zuweisen.js"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
