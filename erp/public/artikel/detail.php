@@ -813,6 +813,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
             <!-- Panel: Achsen & Generator -->
             <div id="var-panel-gen">
+                <!-- Konfigurator Card -->
+                <div class="card" style="margin-bottom:var(--space-md)">
+                    <div class="form-section-header">Konfigurator</div>
+                    <label style="font-size:13px; display:flex; align-items:center; gap:var(--space-xs)">
+                        <input type="checkbox" id="konfigurator-checkbox"
+                            onchange="konfiguratorToggle(this.checked)"
+                            <?= ($artikel['ist_konfigurierbar'] ?? 0) ? 'checked' : '' ?>>
+                        Konfigurierbar (Kunde stellt Optionen zusammen, statt vorgegebener Kombinationen)
+                    </label>
+                </div>
+
                 <!-- Achsen Card -->
                 <div class="card" style="margin-bottom:var(--space-md)">
                     <div class="form-section-header" style="display:flex; justify-content:space-between; align-items:center">

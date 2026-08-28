@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-27T12:06:59.708Z
+  modified: 2026-08-28T07:42:04.813Z
 ---
 
 ## Auslöser (2026-08-27)
@@ -58,7 +58,14 @@ Migrationen 169+170 live eingespielt (gemeinsam mit Jacky Schritt für Schritt g
 
 **Wichtige Korrektur unterwegs:** Der ursprünglich angenommene `position_typ`-Mechanismus aus der alten 2026-06-12-Planung existiert in der echten DB gar nicht — `auftrag_positionen.artikel_id` ist NOT NULL (kein Freitext-Konzept dort), Kasse nutzt für Freitext-Zeilen stattdessen `artikel_id=NULL` direkt bzw. beim Spiegeln in den Auftrag einen Platzhalter-Artikel (99-9999 "Diverses"). Für Konfigurationsartikel ist das ohnehin einfacher: `artikel_id` zeigt direkt auf den echten Layout-Vater-Artikel (kein Platzhalter nötig), `bezeichnung` trägt die automatisch generierte Auswahlbeschreibung. Kein Schema-Eingriff an den Positions-Tabellen nötig.
 
-**Nächster Schritt:** UI/Service-Logik — Konfigurator-Frontend + Preisberechnung + Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), danach Rohmaterial-Bestandsampel im Shop-Sync.
+## Baustufe 2: Konfigurierbar-Toggle im Artikel-Formular ✅ FERTIG 2026-08-28
+Checkbox "Konfigurierbar" im Varianten-Tab von `detail.php` (eigene Card oberhalb der Achsen-Card), sofort per AJAX gespeichert — analog zum bestehenden Kanal-Toggle-Muster:
+- `ArtikelRepository::setKonfigurierbar()` (UPDATE, kein INSERT — Jacky hatte anfangs `INSERT ... WHERE` geschrieben, syntaktisch ungültig, gemeinsam korrigiert), `findById()` liefert `ist_konfigurierbar` jetzt mit (fehlte vorher in der expliziten Spaltenliste)
+- Neuer Endpunkt `public/artikel/konfigurator_ajax.php` (Jacky hat den eigenständig nach dem Vorbild von `kanal_ajax.php` geschrieben, sehr sauber — nur zwei kleine Korrekturen: Rückgabewert sollte den neuen Zustand liefern statt nochmal die Artikel-ID, Fehlermeldung im `default`-Zweig war irreführend)
+- `artikel_detail.js`: `konfiguratorToggle()`, setzt Checkbox bei Fehler zurück
+- Von Claude direkt umgesetzt (Jacky war müde/nicht fit), nicht im vollen Trainer-Schritt-für-Schritt-Modus wie Baustufe 1
+
+**Nächster Schritt:** Optionsgruppen-Zuweisung fürs Konfigurator-Frontend + Preisberechnung + Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), danach Rohmaterial-Bestandsampel im Shop-Sync.
 
 ## Offen
 - WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig (Jahreslizenz pro Site, gleiches Modell wie die pausierte Theme-Kaufentscheidung, siehe [[project_shop_theme]]). Kostenlose Alternativen existieren (z.B. Acowebs Free-Tier), decken vermutlich den Bedarf (Dropdown+Aufpreis). Dritte Option: eigenen Konfigurator-Frontend bauen (kein Plugin-Abo, passt besser zum Weitergabe-Modell, aber mehr Eigenaufwand). Budget-Frage — mit Barbara klären, nicht allein entschieden.

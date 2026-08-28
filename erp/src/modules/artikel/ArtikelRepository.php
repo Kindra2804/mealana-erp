@@ -446,6 +446,7 @@ class ArtikelRepository
                 a.ist_auslaufartikel,
                 a.ueberverkauf_erlaubt,
                 a.ist_hervorgehoben,
+                a.ist_konfigurierbar,
                 a.aktiv,
                 a.zustand,
                 a.uvp,
@@ -1583,5 +1584,15 @@ class ArtikelRepository
             }
         }
         return $result;
+    }
+
+    public function setKonfigurierbar(int $artikelId, int $aktiv): bool
+    {
+        $this->db->prepare("
+            UPDATE artikel SET 
+            ist_konfigurierbar = :aktiv
+            WHERE id = :artikel_id
+        ")->execute(['artikel_id' => $artikelId, 'aktiv' => $aktiv]);
+        return true;
     }
 }
