@@ -237,10 +237,16 @@ class VariantenRepository
 
     /**
      * Gibt alle Wert-IDs zurück die entweder in einer Kombination (varianten_kombination_werte,
-     * klassische Vater/Kind-Varianten) ODER in einer Konfigurator-Bestellauswahl (position_konfiguration,
-     * z.B. eine gespeicherte Kassenbon-/Auftragsposition) verwendet werden.
-     * Diese Werte sind "geschützt" und dürfen nicht gelöscht werden.
+     * klassische Vater/Kind-Varianten), in einer Konfigurator-Bestellauswahl (position_konfiguration,
+     * z.B. eine gespeicherte Kassenbon-/Auftragsposition) ODER als Bedingungs-Ziel einer anderen Achse
+     * (artikel_achsen.bedingungs_wert_id, "Achse X nur zeigen wenn dieser Wert gewählt ist") verwendet
+     * werden. Diese Werte sind "geschützt" und dürfen nicht gelöscht werden.
      * Wird in VariantenService::speichereAchsenUndWerte() genutzt um die Lösch-Whitelist zu bauen.
+     *
+     * Der dritte Fall (Bedingungs-Ziel) ist notwendig, sonst versucht deleteWerteExcluding() einen
+     * Wert zu löschen, auf den eine andere Achse per FK verweist -- echter Fund 2026-08-28: Speichern
+     * mehrerer gleichzeitiger Bedingungen crashte mit "Cannot delete or update a parent row" (FK
+     * fk_artAchs_bedingungs_wert_id), weil genau dieser Fall noch fehlte.
      */
     public function findWertIdsInUse(int $artikelId): array
     {
@@ -254,8 +260,13 @@ class VariantenRepository
             FROM varianten_achse_werte vaw
             INNER JOIN position_konfiguration pk ON pk.wert_id = vaw.id
             WHERE vaw.artikel_id = :artikel_id2
+            UNION
+            SELECT DISTINCT vaw.id
+            FROM varianten_achse_werte vaw
+            INNER JOIN artikel_achsen aa ON aa.bedingungs_wert_id = vaw.id
+            WHERE vaw.artikel_id = :artikel_id3
         ");
-        $stmt->execute(['artikel_id' => $artikelId, 'artikel_id2' => $artikelId]);
+        $stmt->execute(['artikel_id' => $artikelId, 'artikel_id2' => $artikelId, 'artikel_id3' => $artikelId]);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 

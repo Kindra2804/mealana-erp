@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-28T15:21:21.379Z
+  modified: 2026-08-28T19:21:20.582Z
 ---
 
 ## Auslöser (2026-08-27)
@@ -76,6 +76,17 @@ Beim Besprechen der Optionsgruppen fiel auf: `artikel_achsen.bedingungs_achse_id
 - Getestet: Backend per isoliertem CLI-Skript (gültige/ungültige Kombinationen), UI per neu installiertem Playwright (siehe [[reference_browser_testing_tools]]) — dabei einen echten Bug gefunden+gefixt: Hinweistext blieb beim Reset auf "keine Bedingung" stehen (Early-Return übersprang den Hinweis-Reset).
 - Nebenfund beim Testen: Jacky hat in der DB schon eine Achse "Farbschema" mit Unterachsen "einfarbig"/"zweifarbig" angelegt — eigener Vorbau für den Schilder-Testfall.
 
+### Nachtrag 2026-08-28 (Abend): zwei echte Persistenz-Bugs beim Live-Einsatz gefunden+gefixt
+Jacky hat die Bedingung selbst über die UI gesetzt — verschwand nach Reload wieder. **Root Cause:** Freie (nicht in Kombination/Konfigurator-Bestellung verwendete) Werte werden bei JEDEM Speichern der Achsen-Seite komplett gelöscht und mit neuer ID neu angelegt (`VariantenService::speichereAchsenUndWerte()`), auch wenn sich am Text nichts ändert. Die Bedingung speicherte aber die alte Wert-ID — durch denselben Speichervorgang bereits ungültig, noch bevor sie geschrieben wurde. Kein Anzeigebug, echter Datenverlust.
+- **Fix 1:** Bedingung wird jetzt über den Wert-**Text** aufgelöst statt über die ID (Text bleibt stabil). `achsen_zuweisen.php`/`achsen_zuweisen.js`: Options-`value` im Bedingungs-Wert-Dropdown ist jetzt der Wert-Text, `data-initial` liefert PHP jetzt ebenfalls als Text (`$wertTextById`-Lookup). `achsen_speichern.php` löst über `$wertIdByAchseText[$achseId][$text]` NACH dem Werte-Speichern zur frischen ID auf.
+- **Fix 2 (Folgefund):** Beim Testen mit MEHREREN gleichzeitigen Bedingungen crashte das Speichern hart mit `PDOException ... Cannot delete or update a parent row (fk_artAchs_bedingungs_wert_id)` — `findWertIdsInUse()` schützte Werte nur bei Verwendung in Kombinationen/Konfigurator-Bestellungen, nicht wenn sie als Bedingungs-**Ziel** einer anderen Achse dienen. Dritter `UNION`-Zweig in `VariantenRepository::findWertIdsInUse()` ergänzt (JOIN gegen `artikel_achsen.bedingungs_wert_id`). Damit bleiben Bedingungs-Ziel-Werte jetzt auch über mehrere Speichervorgänge mit stabiler ID erhalten (kein Delete+Reinsert mehr für sie).
+- Beide Fixes mit Jackys genauem Reproduktionsszenario getestet (zwei gleichzeitige Bedingungen setzen+speichern, dann ein drittes unabhängiges Speichern) — läuft jetzt sauber durch.
+
+## Achsen-Reihenfolge pro Artikel + UX-Card ✅ FERTIG 2026-08-28
+Jackys UX-Beschwerde: bei vielen globalen Achsen (>20) war Umsortieren in der langen Gesamtliste mühsam (viele Klicks, Seite springt beim Reload immer an den Anfang). Neue Card "Für diesen Artikel aktive Achsen" oben in `achsen_zuweisen.php` — zeigt NUR die für diesen Artikel angehakten Achsen, sortierbar per ▲▼ **per AJAX ohne Neuladen** (`achse_artikel_sort_ajax.php`, neues File, Normalisieren+Tauschen-Muster wie das bestehende `achse_sort_tree_ajax.php`, aber auf `artikel_achsen.sort_order` statt der globalen `varianten_achsen.sort_order`). Entscheidung mit Jacky: Reihenfolge ist **pro Artikel** (nicht global), Card kann nur anzeigen+sortieren (Entfernen bleibt über die Checkbox unten).
+- **Dabei gefundener Bug:** Das normale "Speichern" hätte jede manuelle Umsortierung beim nächsten Speichern (z.B. neuen Wert hinzufügen) sofort wieder überschrieben — `speichereAchsenUndWerte()` setzte `sort_order` für JEDE Achse basierend auf der Checkbox-Reihenfolge der großen Liste neu. Gefixt: bestehende Achsen behalten ihre `sort_order` beim normalen Speichern unangetastet, nur neu hinzugefügte Achsen bekommen `max(sort_order)+1`.
+- Getestet: AJAX-Swap ohne Reload, Persistenz nach echtem Reload, UND dass ein nachfolgendes normales Speichern die Reihenfolge nicht mehr zurücksetzt.
+
 ## VarKombi-Generator-Sperre bei Konfigurierbar ✅ FERTIG 2026-08-28
 Beim echten Aufbau des Test-Schilds (Achse "Durchmesser" × "Farbschema" × "2. Farbe" × "Filz-Farben" × "Glitzereffekt" × "Grundfarbe" × "Hintergrund" × "Holzauswahl" ...) lief `detail.php` auf >92.000 Kombinationen in der Vorschau — genau die Explosion, die der Konfigurator ja vermeiden sollte. Ursache: `kartesischesProdukt()` lief bei JEDEM Laden von `detail.php` unconditional für jeden Vater mit Achsen, unabhängig von `ist_konfigurierbar`. Fix: Wenn `artikel.ist_konfigurierbar=1`, wird die komplette Berechnung übersprungen (kein PHP-Rechnen, kein Rendern der Tabelle), `varkombi_erstellen.php` lehnt zusätzlich serverseitig ab falls doch mal ein alter Tab/POST durchkommt. Getestet gegen den echten Testartikel (id 27473, "Wollzimmer" — Jackys Arbeitstitel fürs Test-Schild): Ladezeit 2,3s statt Browser-Hänger, DB-Check bestätigte dass nichts tatsächlich einexplodiert war (nur Browser-/PHP-Vorschau, keine Kind-Artikel entstanden).
 
@@ -114,8 +125,23 @@ Kompletter Plan (`C:\Users\indy1\.claude\plans\zesty-moseying-meerkat.md`) in ei
 ## Für später vorbereitet: Rohmaterial-Bestandsampel
 `varianten_achse_werte.rohmaterial_artikel_id` existiert (Migration 169). Hook-Punkte für später: `KonfiguratorService::getKonfiguration()` (pro Wert zusätzlich `verfuegbar: bool` aus `LagerService`-Bestand des verknüpften Rohmaterial-Artikels) und `bauePreisMatrix()` (gleiches Feld im JSON). Kein Umbau nötig, nur additive Erweiterung derselben zwei Methoden. Bewusst nicht in Phase 1 mit eingebaut (Jackys Entscheidung 2026-08-28).
 
-## Phase 2 (als Nächstes): WordPress-Shop-Frontend
-Nicht Teil dieses Repos — WordPress/WooCommerce-Code (Code-Snippets-Plugin) auf `indra-design.at`. Jacky richtet dafür einen eigenen WP-Admin-Account für Claude ein (Rolle Administrator nötig, Code-Snippets braucht das). Inhalt: Options-Picker auf der Produktseite (liest `_mealana_konfigurator`-Matrix + Attribute), Live-Preis-JS (`Preis = basis_brutto + Σ gesamt_aufpreis`), Warenkorb-Integration (gewählte Werte als Line-Item-Meta gemäß `_mealana_konfig`-Schema, Preis serverseitig in WooCommerce festschreiben gegen Manipulation). Noch nicht begonnen, wartet auf den Zugang.
+## Phase 2: WordPress-Shop-Frontend — Entwurf steht, wartet auf Freigabe (Stand 2026-08-28 Abend)
+Nicht Teil des `mealana-erp`-Git-Repos — WordPress/WooCommerce-Code (WPCode-Plugin) auf `indra-design.at`.
+
+**Zugang:** WP-Admin-Account "claude" (Rolle Administrator) — Zugangsdaten liegen in `D:\ERP\mealana\import\zugang Woo Claude.txt` (von Jacky angelegt, nicht in diese Memory kopiert). Login unter `https://indra-design.at/wp-login.php`.
+
+**Plugin-Fund:** Code-Snippets-Verwaltung läuft über **WPCode Lite** (nicht Code Snippets Pro) — PHP-Snippets sind in der kostenlosen Lite-Version bereits enthalten (nur Block-Snippets/SCSS/Code-Revisionen sind Pro-gated). Mehrere eigene PHP-Snippets von Jacky/Vorentwickler liefen schon aktiv auf der Seite (u.a. "Mindestabnahme" — passt zu [[project_meterware_mindestabnahme]]).
+
+**UI-Eigenheit für künftige Sessions:** Der "Neues Snippet"-Screen (`wp-admin/admin.php?page=wpcode-snippet-manager&custom=1`) ist eine Art SPA — die Typ-Auswahl-Karten (HTML/PHP/CSS/...) sind `<li>`-Elemente ohne href, dahinter aber ein normales `<select name="wpcode_snippet_type">`. Zuverlässig klickbar über `page.locator('h3', {hasText:'PHP-Snippet'}).first().click()`. Der Code-Editor ist CodeMirror über einer `textarea#wpcode_snippet_code` — Text per `page.keyboard.insertText()` nach Klick+Strg+A einfügen, nicht `.fill()` (wird von CodeMirror nicht übernommen).
+
+**Entwurf gebaut und gespeichert:** Snippet-ID 34170 "Konfigurator: Options-Picker (Entwurf, noch nicht aktiv)", Typ PHP, **bewusst INAKTIV gespeichert** (Toggle aus) — noch nicht live, wartet auf Jackys Review. Inhalt (ein Snippet, mehrere Hooks):
+- `woocommerce_before_add_to_cart_button` — rendert pro Achse ein `<select>` aus der `_mealana_konfigurator`-Matrix (liest `bedingung` fürs Ein-/Ausblenden), plus Live-Preis-Anzeige per Inline-JS (`Preis = basis_brutto + Σ gesamt_aufpreis` der sichtbaren gewählten Werte, "In den Warenkorb" bleibt disabled bis vollständig)
+- `woocommerce_add_cart_item_data` — nimmt die gewählten Wert-IDs vom Hidden-Input entgegen, berechnet den Preis **serverseitig neu** (eigene PHP-Funktion `mealana_konfig_berechne_preis()`, identische additive Regel wie `KonfiguratorService::berechnePreis()`)
+- `woocommerce_before_calculate_totals` — setzt den Cart-Item-Preis hart auf den serverseitig berechneten Wert (Manipulationsschutz — der Client-Preis wird nie übernommen)
+- `woocommerce_get_item_data` — zeigt die Auswahl in Warenkorb/Checkout an
+- `woocommerce_checkout_create_order_line_item` — schreibt `_mealana_konfig`-JSON (genau das Schema, das `ShopBestellungSyncService::leseKonfigurationAusLineItem()` erwartet: `{version,werte,preis_brutto}`) + Klartext-Achse-Keys ohne Unterstrich (für Kunde/Admin) auf die Bestellzeile
+
+**Noch nicht gemacht:** kein echter End-to-End-Test (Produktseite ansehen, Warenkorb, Checkout) — bewusst nicht während Jacky abwesend war, da erste unerprobte Live-Storefront-Änderung. Vor Aktivierung: Produktseite von Testartikel 27473 (`/product/holzschild-wollzimmer/`) ansehen, Options-Picker durchklicken, Preis prüfen, dann Testbestellung + ERP-Sync-Rücklauf verifizieren.
 
 ## Offen
 - WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig — überholt durch die Selbstbau-Entscheidung (s.o.), reine Historie.

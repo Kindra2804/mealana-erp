@@ -28,12 +28,19 @@ foreach ($zugewieseneRaw as $zr) {
     $preisMap[(int)$zr['achse_id']] = ['preis_modus' => $zr['preis_modus'] ?? 'direktpreis', 'preis_wert' => (float)($zr['preis_wert'] ?? 0)];
 }
 
-// Bedingungs-Map: achse_id → {achse, wert} — "diese Achse nur zeigen wenn Achse X = Wert Y gewählt ist"
+// Bedingungs-Map: achse_id → {achse, wert, wert_text} — "diese Achse nur zeigen wenn Achse X = Wert Y gewählt ist"
+// wert_text wird zusätzlich zur ID mitgegeben, weil die ID beim Speichern NICHT stabil ist: freie
+// (nicht in Kombination/Konfigurator-Bestellung verwendete) Werte werden bei jedem Speichern komplett
+// gelöscht und neu angelegt (siehe VariantenService::speichereAchsenUndWerte()) -- der Text bleibt aber
+// gleich. achsen_speichern.php löst die Bedingung deshalb über den Text auf, nicht über die ID.
+$wertTextById = array_column($vorhandeneWerte, 'wert', 'id');
 $bedingungMap = [];
 foreach ($zugewieseneRaw as $zr) {
+    $bedWertId = (int)($zr['bedingungs_wert_id'] ?? 0);
     $bedingungMap[(int)$zr['achse_id']] = [
-        'achse' => (int)($zr['bedingungs_achse_id'] ?? 0),
-        'wert'  => (int)($zr['bedingungs_wert_id'] ?? 0),
+        'achse'     => (int)($zr['bedingungs_achse_id'] ?? 0),
+        'wert'      => $bedWertId,
+        'wert_text' => $bedWertId ? ($wertTextById[$bedWertId] ?? '') : '',
     ];
 }
 
@@ -242,7 +249,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
              style="padding:12px 14px 10px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 6px 6px;background:#fff">
 
             <!-- Bedingte Anzeige: diese Achse nur zeigen, wenn eine andere Achse einen bestimmten Wert hat -->
-            <?php $bed = $bedingungMap[$id] ?? ['achse' => 0, 'wert' => 0]; ?>
+            <?php $bed = $bedingungMap[$id] ?? ['achse' => 0, 'wert' => 0, 'wert_text' => '']; ?>
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:12px;color:#64748b">
                 <span>Nur anzeigen wenn</span>
                 <select class="erp-select bedingung-achse-sel"
@@ -258,7 +265,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
                 <select class="erp-select bedingung-wert-sel"
                         id="bed-wert-<?= $id ?>"
                         name="bedingung[<?= $id ?>][wert]"
-                        data-initial="<?= $bed['wert'] ?>"
+                        data-initial="<?= htmlspecialchars($bed['wert_text'], ENT_QUOTES) ?>"
                         onchange="formDirty=true;bedingungHinweisAktualisieren(<?= $id ?>)"
                         disabled
                         style="display:none;font-size:12px;padding:3px 6px;max-width:160px">
@@ -366,6 +373,33 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div style="color:#94a3b8;font-size:12px"><?= htmlspecialchars($artikel['artikelnummer']) ?></div>
     <div style="flex:1"></div>
     <a href="detail.php?id=<?= $artikelId ?>" class="btn btn-secondary btn-sm">← Zum Artikel</a>
+</div>
+
+<!-- Für diesen Artikel aktive Achsen — kompakte, sortierbare Übersicht (Reihenfolge NUR für
+     diesen Artikel, unabhängig von der globalen Achsen-Katalog-Reihenfolge unten). Sortieren läuft
+     per AJAX ohne Neuladen, damit man bei vielen globalen Achsen nicht mehr durch die ganze lange
+     Liste scrollen/klicken muss, nur um zwei von wenigen aktiven Achsen zu vertauschen. -->
+<div class="card" style="margin-bottom:var(--space-md)">
+    <div class="form-section-header">Für diesen Artikel aktive Achsen</div>
+    <?php if (empty($zugewieseneRaw)): ?>
+        <p style="color:var(--color-text-muted);font-size:13px">Noch keine Achsen ausgewählt — unten in der Liste anhaken.</p>
+    <?php else: ?>
+        <div id="aktive-achsen-liste">
+            <?php $anzahlAktiv = count($zugewieseneRaw); ?>
+            <?php foreach ($zugewieseneRaw as $ai => $zr): $aId = (int)$zr['achse_id']; ?>
+                <div class="aktive-achse-zeile" data-achse-id="<?= $aId ?>"
+                     style="display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:4px;background:#f8fafc">
+                    <span style="flex:1;font-size:13px;font-weight:600"><?= htmlspecialchars($zr['name']) ?></span>
+                    <button type="button" class="aktive-achse-hoch" onclick="artikelAchseSort(<?= $aId ?>,'hoch')"
+                            title="Nach oben" <?= $ai === 0 ? 'disabled' : '' ?>
+                            style="background:none;border:1px solid #e2e8f0;border-radius:3px;cursor:pointer;padding:2px 8px;font-size:11px;color:#64748b">▲</button>
+                    <button type="button" class="aktive-achse-runter" onclick="artikelAchseSort(<?= $aId ?>,'runter')"
+                            title="Nach unten" <?= $ai === $anzahlAktiv - 1 ? 'disabled' : '' ?>
+                            style="background:none;border:1px solid #e2e8f0;border-radius:3px;cursor:pointer;padding:2px 8px;font-size:11px;color:#64748b">▼</button>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <form method="post" action="achsen_speichern.php" id="achsen-form">
@@ -491,6 +525,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <script>
 window.ACHSEN_NAMEN     = <?= $achsenNamenJson ?>;
 window.WERTE_PRO_ACHSE  = <?= $wertePreAchseJson ?>;
+window.ARTIKEL_ID_ACHSEN = <?= $artikelId ?>;
 </script>
 <script src="<?= BASE_PATH ?>/js/achsen_zuweisen.js"></script>
 

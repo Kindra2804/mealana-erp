@@ -48,15 +48,26 @@ if ($result['erfolg']) {
     }
 
     // Bedingte Anzeige pro Achse speichern (z.B. "Farbe 2" nur wenn "Farbschema" = "Zweifärbig")
-    // wertIdsProAchse erst NACH dem Werte-Speichern laden, damit auch gerade neu angelegte Werte gültig sind
-    $bedingungen      = $_POST['bedingung'] ?? [];
-    $wertIdsProAchse  = [];
+    // Werte-Listen erst NACH dem Werte-Speichern laden, damit auch gerade neu angelegte Werte gültig sind.
+    // WICHTIG: der Client schickt den Bedingungs-Wert als TEXT, nicht als ID -- freie (nicht in
+    // Kombination/Konfigurator-Bestellung verwendete) Werte werden bei jedem Speichern oben in
+    // speichereAchsenUndWerte() komplett gelöscht und mit NEUER ID neu angelegt, eine vom Formular
+    // mitgeschickte alte ID wäre also schon durch DIESEN Request ungültig. Der Text bleibt stabil,
+    // die tatsächliche (frische) ID wird hier je Achse per (achse_id, text)-Lookup aufgelöst.
+    $bedingungen        = $_POST['bedingung'] ?? [];
+    $wertIdsProAchse    = [];
+    $wertIdByAchseText  = [];
     foreach ($service->findWerteByArtikelId($artikelId) as $w) {
-        $wertIdsProAchse[(int)$w['achse_id']][] = (int)$w['id'];
+        $achseIdW = (int)$w['achse_id'];
+        $wertIdsProAchse[$achseIdW][] = (int)$w['id'];
+        $wertIdByAchseText[$achseIdW][$w['wert']] = (int)$w['id'];
     }
     foreach ($achsenIds as $achseId) {
-        $bedAchseId = (int)($bedingungen[$achseId]['achse'] ?? 0) ?: null;
-        $bedWertId  = (int)($bedingungen[$achseId]['wert'] ?? 0) ?: null;
+        $bedAchseId  = (int)($bedingungen[$achseId]['achse'] ?? 0) ?: null;
+        $bedWertText = trim((string)($bedingungen[$achseId]['wert'] ?? ''));
+        $bedWertId   = ($bedAchseId && $bedWertText !== '')
+            ? ($wertIdByAchseText[$bedAchseId][$bedWertText] ?? null)
+            : null;
         $service->updateAchseBedingung($artikelId, $achseId, $achsenIds, $bedAchseId, $bedWertId, $wertIdsProAchse);
     }
 

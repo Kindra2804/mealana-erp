@@ -278,8 +278,14 @@ function bedingungAchsenAktualisieren() {
     });
 }
 
-/** Baut den Wert-Dropdown für die gewählte Bedingungs-Achse. initialWertId nur beim ersten Aufbau (aus DB). */
-function bedingungWertAktualisieren(achseId, initialWertId) {
+/**
+ * Baut den Wert-Dropdown für die gewählte Bedingungs-Achse. initialWertText nur beim ersten Aufbau
+ * (aus DB). Der Options-Wert ist bewusst der Wert-TEXT, nicht die Wert-ID -- die ID ist beim
+ * Speichern nicht stabil (freie Werte werden bei jedem Speichern komplett neu angelegt, siehe
+ * VariantenService::speichereAchsenUndWerte()), achsen_speichern.php löst die Bedingung deshalb
+ * über den Text auf.
+ */
+function bedingungWertAktualisieren(achseId, initialWertText) {
     var achseSel = document.getElementById('bed-achse-' + achseId);
     var wertSel  = document.getElementById('bed-wert-' + achseId);
     var gleich   = document.getElementById('bed-gleich-' + achseId);
@@ -299,9 +305,9 @@ function bedingungWertAktualisieren(achseId, initialWertId) {
     var werte = WERTE_PRO_ACHSE[gewaehlteAchse] || [];
     werte.forEach(function (w) {
         var opt = document.createElement('option');
-        opt.value = w.id;
+        opt.value = w.wert;
         opt.textContent = w.wert;
-        if (initialWertId && String(w.id) === String(initialWertId)) opt.selected = true;
+        if (initialWertText && w.wert === initialWertText) opt.selected = true;
         wertSel.appendChild(opt);
     });
 
@@ -396,6 +402,46 @@ function neueAchseSpeichern() {
             else { fehlEl.textContent = Array.isArray(d.fehler) ? d.fehler.join(', ') : (d.fehler || 'Fehler'); document.getElementById('na-btn').disabled = false; }
         })
         .catch(function () { fehlEl.textContent = 'Serverfehler'; document.getElementById('na-btn').disabled = false; });
+}
+
+/**
+ * Sortiert die "Für diesen Artikel aktive Achsen"-Card per AJAX -- OHNE Neuladen, damit man beim
+ * Umsortieren nicht immer wieder an eine andere Scroll-Position springt. Ändert nur die
+ * per-Artikel-Reihenfolge (artikel_achsen.sort_order), nicht die globale Achsen-Katalog-Reihenfolge
+ * unten (die bleibt achseSort()'s Aufgabe).
+ */
+function artikelAchseSort(achseId, richtung) {
+    fetch(window.BASE_PATH + '/artikel/achse_artikel_sort_ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artikel_id: window.ARTIKEL_ID_ACHSEN, achse_id: achseId, richtung: richtung })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+        if (!d.erfolg) { alert(d.fehler || 'Fehler beim Sortieren'); return; }
+        var zeile = document.querySelector('.aktive-achse-zeile[data-achse-id="' + achseId + '"]');
+        if (!zeile) return;
+        if (richtung === 'hoch') {
+            var vorherige = zeile.previousElementSibling;
+            if (vorherige) zeile.parentNode.insertBefore(zeile, vorherige);
+        } else {
+            var naechste = zeile.nextElementSibling;
+            if (naechste) zeile.parentNode.insertBefore(naechste, zeile);
+        }
+        aktiveAchsenButtonsAktualisieren();
+    })
+    .catch(function () { alert('Serverfehler beim Sortieren'); });
+}
+
+/** Sperrt den ▲-Button der ersten und den ▼-Button der letzten Zeile in der aktiven-Achsen-Card. */
+function aktiveAchsenButtonsAktualisieren() {
+    var zeilen = document.querySelectorAll('.aktive-achse-zeile');
+    zeilen.forEach(function (zeile, i) {
+        var hoch   = zeile.querySelector('.aktive-achse-hoch');
+        var runter = zeile.querySelector('.aktive-achse-runter');
+        if (hoch)   hoch.disabled   = (i === 0);
+        if (runter) runter.disabled = (i === zeilen.length - 1);
+    });
 }
 
 function achseSort(id, richtung, parentId) {

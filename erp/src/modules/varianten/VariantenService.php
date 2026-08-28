@@ -70,14 +70,22 @@ class VariantenService
             }
         }
 
-        // Neue Achsen einfügen (nur fehlende) + sort_order für alle setzen
+        // Neue Achsen einfügen (nur fehlende), sort_order bestehender Achsen bleibt UNANGETASTET --
+        // die per-Artikel-Reihenfolge wird ausschließlich über achse_artikel_sort_ajax.php geändert
+        // (eigene Card "Für diesen Artikel aktive Achsen" in achsen_zuweisen.php). Würde hier bei
+        // jedem normalen Speichern die submission-Reihenfolge (= Checkbox-Reihenfolge der großen,
+        // globalen Liste) draufgeschrieben, ginge jede manuelle Umsortierung beim nächsten Speichern
+        // sofort wieder verloren.
         $currentAchsen    = $this->repo->findAchsenByArtikelId($artikelId);
         $existingAchseSet = array_flip(array_map(fn($a) => (int)$a['achse_id'], $currentAchsen));
-        foreach ($achsenIds as $sortOrder => $achseId) {
+        $naechsteSortOrder = 1;
+        foreach ($currentAchsen as $a) {
+            $naechsteSortOrder = max($naechsteSortOrder, (int)$a['sort_order'] + 1);
+        }
+        foreach ($achsenIds as $achseId) {
             if (!isset($existingAchseSet[$achseId])) {
-                $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId, 'sort_order' => $sortOrder]);
-            } else {
-                $this->repo->updateAchseSortOrder($artikelId, $achseId, $sortOrder);
+                $this->repo->insertArtikelAchse(['artikel_id' => $artikelId, 'achse_id' => $achseId, 'sort_order' => $naechsteSortOrder]);
+                $naechsteSortOrder++;
             }
         }
 
