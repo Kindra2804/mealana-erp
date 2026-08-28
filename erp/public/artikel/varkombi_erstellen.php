@@ -22,6 +22,11 @@ $kombis = array_filter($_POST['kombis'] ?? [], fn($k) => isset($k['selected']));
 $artikelService = new ArtikelService();
 $vater = $artikelService->findById($artikelId);
 
+if ($vater && !empty($vater['ist_konfigurierbar'])) {
+    header('Location: detail.php?id=' . $artikelId . '&tab=varianten&var_fehler=1');
+    exit;
+}
+
 $variantenService = new VariantenService();
 
 $result = $variantenService->erstelleKombinationen($vater, $hatEigenenLagerstand, $kombis);

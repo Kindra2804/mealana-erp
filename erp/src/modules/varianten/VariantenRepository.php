@@ -211,6 +211,13 @@ class VariantenRepository
         $stmt->execute(['id' => $id]);
     }
 
+    /** Aktualisiert nur den Aufpreis eines bestehenden Werts (additiv zum Achsen-Aufpreis bei der Preisberechnung). */
+    public function updateWertAufpreis(int $id, float $aufpreis): void
+    {
+        $stmt = $this->db->prepare("UPDATE varianten_achse_werte SET aufpreis = :ap WHERE id = :id");
+        $stmt->execute(['ap' => $aufpreis, 'id' => $id]);
+    }
+
     public function updateWertSortOrder(int $id, int $sortOrder): void
     {
         $stmt = $this->db->prepare("UPDATE varianten_achse_werte SET sort_order = :sort WHERE id = :id");

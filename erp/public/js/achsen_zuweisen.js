@@ -20,16 +20,21 @@ function chipHtmlJs(achseId, idx, text) {
     var esc    = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     var name   = 'werte[' + achseId + '][' + idx + '][wert]';
     var idName = 'werte[' + achseId + '][' + idx + '][id]';
+    var apName = 'werte[' + achseId + '][' + idx + '][aufpreis]';
     return '<span class="wert-chip" data-achse-id="' + achseId + '" '
          + 'style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1e40af;'
          + 'border-radius:16px;padding:3px 10px 3px 8px;font-size:12px;line-height:1.5">'
          + '<button type="button" onclick="chipSortieren(this,\'links\')" title="Nach links" '
          + 'style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">&#9664;</button>'
          + '<span class="chip-text">' + esc + '</span>'
+         + '<span class="chip-aufpreis-badge" style="font-size:10px;color:#16a34a;font-weight:600;display:none"></span>'
          + '<input type="hidden" name="' + name + '" value="' + esc + '">'
          + '<input type="hidden" name="' + idName + '" value="0">'
+         + '<input type="hidden" name="' + apName + '" class="chip-aufpreis-hidden" value="0.00">'
          + '<button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten" '
          + 'style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">&#x270E;</button>'
+         + '<button type="button" onclick="chipAufpreisBearbeiten(this)" title="Aufpreis für diesen Wert (addiert sich zum Achsen-Aufpreis)" '
+         + 'style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">&euro;</button>'
          + '<button type="button" onclick="chipSortieren(this,\'rechts\')" title="Nach rechts" '
          + 'style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">&#9654;</button>'
          + '<button type="button" onclick="chipVerschieben(this)" title="Verschieben" '
@@ -84,6 +89,62 @@ function chipBearbeiten(btn) {
     });
     // setTimeout verhindert dass blur sofort beim focus()-Aufruf feuert
     setTimeout(function() { inp.addEventListener('blur', bestaetigen); }, 0);
+}
+
+function chipAufpreisBearbeiten(btn) {
+    var chip   = btn.closest('.wert-chip');
+    var hidden = chip.querySelector('.chip-aufpreis-hidden');
+    if (chip.querySelector('.chip-aufpreis-inp')) return;
+
+    var inp = document.createElement('input');
+    inp.type      = 'number';
+    inp.step      = '0.01';
+    inp.min       = '0';
+    inp.value     = parseFloat(hidden.value) || 0;
+    inp.className = 'chip-aufpreis-inp';
+    inp.style.cssText = 'font-size:11px;border:1px solid #93c5fd;border-radius:4px;padding:1px 4px;'
+                      + 'width:56px;color:#1e40af;background:#fff;outline:none';
+
+    btn.style.display = 'none';
+    btn.after(inp);
+    inp.focus();
+    inp.select();
+
+    var bestaetigt = false;
+    function bestaetigen() {
+        if (bestaetigt) return;
+        bestaetigt = true;
+        var neu = parseFloat(inp.value) || 0;
+        hidden.value = neu.toFixed(2);
+        aktualisiereAufpreisBadge(chip, neu);
+        inp.remove();
+        btn.style.display = '';
+        formDirty = true;
+    }
+    function abbrechen() {
+        if (bestaetigt) return;
+        bestaetigt = true;
+        inp.remove();
+        btn.style.display = '';
+    }
+
+    inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter')  { e.preventDefault(); bestaetigen(); }
+        if (e.key === 'Escape') { abbrechen(); }
+    });
+    setTimeout(function () { inp.addEventListener('blur', bestaetigen); }, 0);
+}
+
+function aktualisiereAufpreisBadge(chip, betrag) {
+    var badge = chip.querySelector('.chip-aufpreis-badge');
+    if (!badge) return;
+    if (betrag > 0) {
+        badge.textContent   = '+' + betrag.toFixed(2).replace('.', ',') + '€';
+        badge.style.display = '';
+    } else {
+        badge.textContent   = '';
+        badge.style.display = 'none';
+    }
 }
 
 function chipEntfernen(btn) {

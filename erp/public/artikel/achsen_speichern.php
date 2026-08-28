@@ -24,6 +24,7 @@ foreach ($_POST['werte'] ?? [] as $achseId => $reihen) {
                 'wert'       => $text,
                 'sort_order' => (int)$idx,
                 'id'         => (int)($felder['id'] ?? 0),
+                'aufpreis'   => (float)($felder['aufpreis'] ?? 0),
             ];
         }
     }

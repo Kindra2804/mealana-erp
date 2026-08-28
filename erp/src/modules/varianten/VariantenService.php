@@ -43,14 +43,16 @@ class VariantenService
         $inUseIds   = array_map('intval', $this->repo->findWertIdsInUse($artikelId));
         $inUseIdSet = array_flip($inUseIds);
 
-        // In-use Werte aus DB holen – Lookup (achse_id|wert) → id für Duplikat-Check, id → wert für Text-Update
-        $currentWerte  = $this->repo->findWerteByArtikelId($artikelId);
-        $inUseWerte    = array_filter($currentWerte, fn($w) => in_array((int)$w['id'], $inUseIds));
-        $inUseLookup   = [];
-        $inUseTextById = [];
+        // In-use Werte aus DB holen – Lookup (achse_id|wert) → id für Duplikat-Check, id → wert/aufpreis für Korrektur
+        $currentWerte      = $this->repo->findWerteByArtikelId($artikelId);
+        $inUseWerte        = array_filter($currentWerte, fn($w) => in_array((int)$w['id'], $inUseIds));
+        $inUseLookup       = [];
+        $inUseTextById     = [];
+        $inUseAufpreisById = [];
         foreach ($inUseWerte as $w) {
             $inUseLookup[(int)$w['achse_id'] . '|' . $w['wert']] = (int)$w['id'];
-            $inUseTextById[(int)$w['id']] = $w['wert'];
+            $inUseTextById[(int)$w['id']]     = $w['wert'];
+            $inUseAufpreisById[(int)$w['id']] = (float)$w['aufpreis'];
         }
 
         // Achse-IDs mit in-use Werten (können nicht entfernt werden)
@@ -86,6 +88,10 @@ class VariantenService
             if ($wertId > 0 && isset($inUseIdSet[$wertId])) {
                 if (($inUseTextById[$wertId] ?? null) !== $wert['wert']) {
                     $this->repo->updateWertText($wertId, $wert['wert']);
+                }
+                $neuerAufpreis = (float)($wert['aufpreis'] ?? 0);
+                if ($neuerAufpreis !== ($inUseAufpreisById[$wertId] ?? 0.0)) {
+                    $this->repo->updateWertAufpreis($wertId, $neuerAufpreis);
                 }
                 continue;
             }

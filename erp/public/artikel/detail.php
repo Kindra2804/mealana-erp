@@ -271,41 +271,45 @@ $wertIdsInUseSet      = array_flip($wertIdsInUse);
 // Begründung der Union-Regel bei Sub-Achsen). Name-Lookup MUSS aus ALLEN
 // globalen Achsen kommen (nicht nur den zugewiesenen), falls eine Parent-Achse
 // selbst nicht direkt zugewiesen ist.
-$alleAchsenNamenMap = array_column($alleGlobalenAchsen, 'name', 'id');
-$dimensionen        = $variantenService->baueAchsenDimensionen($achsen, $werte, $alleAchsenNamenMap);
-$alleKombis         = !empty($dimensionen) ? kartesischesProdukt(array_column($dimensionen, 'werte')) : [];
+// Konfigurierbare Artikel bekommen NIE Kind-Artikel generiert (siehe "Konfigurierbar"-Checkbox
+// oben) -- die kartesische Kombinatorik hier komplett überspringen, sonst rechnet/rendert diese
+// Seite bei vielen Optionsgruppen (z.B. Schilder-Konfigurator) zehntausende Kombinationen und
+// hängt sich auf (real passiert: >92.000 Kombis bei Durchmesser×Farbe1×Farbe2×Hintergrund).
+$istKonfigurierbar = (bool)($artikel['ist_konfigurierbar'] ?? 0);
 
-// var_dump($alleKombis);
-
-$existing = $variantenService->findExistingKombinationen($id);
-
-// Bestehende Wert-ID-Sets als Lookup bauen
-$existingKeys = [];
-foreach ($existing as $e) {
-    $existingKeys[$e['wert_ids']] = $e;  // key: "1,3" → artikel-daten
-}
-
-// Achse-ID → Name Lookup für Namens-Vorschlag (nur Achsen mit im_kindnamen_anzeigen=1,
-// z.B. Sub-Achsen wie [Uni]/[Mix] -- die reine "Farbe"-Achse selbst i.d.R. ausgeblendet)
 $achseNamenMap = [];
 foreach ($achsen as $a) {
     $achseNamenMap[(int)$a['achse_id']] = $a['im_kindnamen_anzeigen'] ? $a['name'] : '';
 }
 
-// Kombis aufteilen
-$neueKombis     = [];
+$neueKombis       = [];
 $vorhandeneKombis = [];
 
-foreach ($alleKombis as $kombi) {
-    // Wert-IDs aus dieser Kombi extrahieren, sortieren, als String
-    $ids = array_map(fn($w) => $w['id'], $kombi);
-    sort($ids);
-    $key = implode(',', $ids);
+if (!$istKonfigurierbar) {
+    $alleAchsenNamenMap = array_column($alleGlobalenAchsen, 'name', 'id');
+    $dimensionen        = $variantenService->baueAchsenDimensionen($achsen, $werte, $alleAchsenNamenMap);
+    $alleKombis         = !empty($dimensionen) ? kartesischesProdukt(array_column($dimensionen, 'werte')) : [];
 
-    if (isset($existingKeys[$key])) {
-        $vorhandeneKombis[] = ['kombi' => $kombi, 'artikel' => $existingKeys[$key]];
-    } else {
-        $neueKombis[] = ['kombi' => $kombi, 'key' => $key];
+    $existing = $variantenService->findExistingKombinationen($id);
+
+    // Bestehende Wert-ID-Sets als Lookup bauen
+    $existingKeys = [];
+    foreach ($existing as $e) {
+        $existingKeys[$e['wert_ids']] = $e;  // key: "1,3" → artikel-daten
+    }
+
+    // Kombis aufteilen
+    foreach ($alleKombis as $kombi) {
+        // Wert-IDs aus dieser Kombi extrahieren, sortieren, als String
+        $ids = array_map(fn($w) => $w['id'], $kombi);
+        sort($ids);
+        $key = implode(',', $ids);
+
+        if (isset($existingKeys[$key])) {
+            $vorhandeneKombis[] = ['kombi' => $kombi, 'artikel' => $existingKeys[$key]];
+        } else {
+            $neueKombis[] = ['kombi' => $kombi, 'key' => $key];
+        }
     }
 }
 
@@ -897,7 +901,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div class="card">
                     <div class="form-section-header">VarKombi-Generator</div>
 
-                    <?php if (empty($achsen)): ?>
+                    <?php if ($istKonfigurierbar): ?>
+                        <p style="color:var(--color-text-muted); font-size:13px">
+                            Deaktiviert — dieser Artikel ist als „Konfigurierbar" markiert. Der Kunde stellt die Optionen
+                            zur Bestellzeit selbst zusammen, es werden bewusst keine Kind-Artikel vorab generiert.
+                        </p>
+                    <?php elseif (empty($achsen)): ?>
                         <p style="color:var(--color-text-muted); font-size:13px">Erst Achsen zuweisen um Kombinationen generieren zu können.</p>
                     <?php elseif (empty($neueKombis) && empty($vorhandeneKombis)): ?>
                         <p style="color:var(--color-text-muted); font-size:13px">Keine Kombinationen berechenbar.</p>

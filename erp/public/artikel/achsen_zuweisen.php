@@ -74,11 +74,15 @@ $actionBarContent = '<a href="detail.php?id=' . $artikelId . '" class="btn btn-s
 
 // ── Hilfsfunktionen ───────────────────────────────────────────────────────────
 
-function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = false, int $wertId = 0): string
+function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = false, int $wertId = 0, float $aufpreis = 0.0): string
 {
-    $esc    = htmlspecialchars($wert, ENT_QUOTES);
-    $name   = "werte[{$achseId}][{$idx}][wert]";
-    $idName = "werte[{$achseId}][{$idx}][id]";
+    $esc     = htmlspecialchars($wert, ENT_QUOTES);
+    $name    = "werte[{$achseId}][{$idx}][wert]";
+    $idName  = "werte[{$achseId}][{$idx}][id]";
+    $apName  = "werte[{$achseId}][{$idx}][aufpreis]";
+    $apVal   = number_format($aufpreis, 2, '.', '');
+    $apBadge = $aufpreis > 0 ? '+' . number_format($aufpreis, 2, ',', '.') . '€' : '';
+    $apShow  = $aufpreis > 0 ? '' : 'display:none';
 
     if ($isLocked) {
         return <<<HTML
@@ -88,10 +92,14 @@ function chipHtml(int $achseId, int|string $idx, string $wert, bool $isLocked = 
              border:1px solid #cbd5e1;border-radius:16px;padding:3px 10px 3px 8px;font-size:12px;line-height:1.5">
   <span style="font-size:9px;opacity:.7">🔒</span>
   <span class="chip-text">{$esc}</span>
+  <span class="chip-aufpreis-badge" style="font-size:10px;color:#16a34a;font-weight:600;{$apShow}">{$apBadge}</span>
   <input type="hidden" name="{$name}" value="{$esc}">
   <input type="hidden" name="{$idName}" value="{$wertId}">
+  <input type="hidden" name="{$apName}" class="chip-aufpreis-hidden" value="{$apVal}">
   <button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten"
           style="background:none;border:none;cursor:pointer;padding:0 0 0 3px;color:#94a3b8;font-size:11px;line-height:1">✎</button>
+  <button type="button" onclick="chipAufpreisBearbeiten(this)" title="Aufpreis für diesen Wert (addiert sich zum Achsen-Aufpreis)"
+          style="background:none;border:none;cursor:pointer;padding:0 0 0 2px;color:#94a3b8;font-size:11px;line-height:1">€</button>
 </span>
 HTML;
     }
@@ -103,10 +111,14 @@ HTML;
   <button type="button" onclick="chipSortieren(this,'links')" title="Nach links"
           style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">◀</button>
   <span class="chip-text">{$esc}</span>
+  <span class="chip-aufpreis-badge" style="font-size:10px;color:#16a34a;font-weight:600;{$apShow}">{$apBadge}</span>
   <input type="hidden" name="{$name}" value="{$esc}">
   <input type="hidden" name="{$idName}" value="{$wertId}">
+  <input type="hidden" name="{$apName}" class="chip-aufpreis-hidden" value="{$apVal}">
   <button type="button" onclick="chipBearbeiten(this)" title="Text bearbeiten"
           style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">✎</button>
+  <button type="button" onclick="chipAufpreisBearbeiten(this)" title="Aufpreis für diesen Wert (addiert sich zum Achsen-Aufpreis)"
+          style="background:none;border:none;cursor:pointer;padding:0 2px;color:#93c5fd;font-size:11px;line-height:1">€</button>
   <button type="button" onclick="chipSortieren(this,'rechts')" title="Nach rechts"
           style="background:none;border:none;cursor:pointer;padding:0 1px;color:#93c5fd;font-size:10px;line-height:1">▶</button>
   <button type="button" onclick="chipVerschieben(this)" title="In andere Achse verschieben"
@@ -262,7 +274,7 @@ function renderAchse(array $achse, array $kinder, array $zugewieseneIds, array $
             <div class="chip-cont" id="chips-<?= $id ?>"
                  style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:28px">
                 <?php foreach ($wertListe as $idx => $v): ?>
-                    <?= chipHtml($id, $idx, $v['wert'], isset($wertIdsInUseSet[(int)$v['id']]), (int)$v['id']) ?>
+                    <?= chipHtml($id, $idx, $v['wert'], isset($wertIdsInUseSet[(int)$v['id']]), (int)$v['id'], (float)($v['aufpreis'] ?? 0)) ?>
                 <?php endforeach; ?>
             </div>
             <div style="display:flex;gap:6px;align-items:center">

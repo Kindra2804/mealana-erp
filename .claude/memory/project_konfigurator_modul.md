@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-28T09:44:11.553Z
+  modified: 2026-08-28T13:13:13.929Z
 ---
 
 ## Auslöser (2026-08-27)
@@ -76,10 +76,21 @@ Beim Besprechen der Optionsgruppen fiel auf: `artikel_achsen.bedingungs_achse_id
 - Getestet: Backend per isoliertem CLI-Skript (gültige/ungültige Kombinationen), UI per neu installiertem Playwright (siehe [[reference_browser_testing_tools]]) — dabei einen echten Bug gefunden+gefixt: Hinweistext blieb beim Reset auf "keine Bedingung" stehen (Early-Return übersprang den Hinweis-Reset).
 - Nebenfund beim Testen: Jacky hat in der DB schon eine Achse "Farbschema" mit Unterachsen "einfarbig"/"zweifarbig" angelegt — eigener Vorbau für den Schilder-Testfall.
 
-## Nächster Schritt: Test-Schild im neuen Schema (Stand 2026-08-28)
-Jacky baut als Nächstes ein erstes Schild-Layout komplett im bestehenden Schema durch (Achsen Durchmesser/Farbe1/Farbe2/Hintergrund inkl. Aufpreis + die neue Farbe2-Bedingung), um Testdaten für den späteren Shop-Teil zu haben. Wichtig dabei: **NICHT** den VarKombi-Generator ("Kombinationen erstellen") laufen lassen — das würde wieder in die ursprünglich vermiedene Kombinationsexplosion laufen. Nur Achsen zuweisen + "Konfigurierbar"-Checkbox reicht für jetzt.
+## VarKombi-Generator-Sperre bei Konfigurierbar ✅ FERTIG 2026-08-28
+Beim echten Aufbau des Test-Schilds (Achse "Durchmesser" × "Farbschema" × "2. Farbe" × "Filz-Farben" × "Glitzereffekt" × "Grundfarbe" × "Hintergrund" × "Holzauswahl" ...) lief `detail.php` auf >92.000 Kombinationen in der Vorschau — genau die Explosion, die der Konfigurator ja vermeiden sollte. Ursache: `kartesischesProdukt()` lief bei JEDEM Laden von `detail.php` unconditional für jeden Vater mit Achsen, unabhängig von `ist_konfigurierbar`. Fix: Wenn `artikel.ist_konfigurierbar=1`, wird die komplette Berechnung übersprungen (kein PHP-Rechnen, kein Rendern der Tabelle), `varkombi_erstellen.php` lehnt zusätzlich serverseitig ab falls doch mal ein alter Tab/POST durchkommt. Getestet gegen den echten Testartikel (id 27473, "Wollzimmer" — Jackys Arbeitstitel fürs Test-Schild): Ladezeit 2,3s statt Browser-Hänger, DB-Check bestätigte dass nichts tatsächlich einexplodiert war (nur Browser-/PHP-Vorschau, keine Kind-Artikel entstanden).
 
-Vor dem eigentlichen Shop-Teil fehlen laut Besprechung noch: Preisberechnung zur Bestellzeit (kein Kind-Artikel mit fertigem Preis mehr, muss aus gewählten Werten live berechnet werden), Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), das Options-Frontend im Shop selbst (Selbstbau), danach Rohmaterial-Bestandsampel.
+## Wert-Aufpreis-Feld (additiv zum Achsen-Aufpreis) ✅ FERTIG 2026-08-28
+Auslöser: Durchmesser sollte je nach gewähltem Wert unterschiedlich viel kosten (z.B. 38cm teurer als 15cm) — der bestehende Achsen-weite Preis-Toggle (`artikel_achsen.preis_modus`/`preis_wert`) gilt aber für ALLE Werte einer Achse gleich, kann das nicht abbilden. Lösung: die bereits vorhandene, aber bisher nirgends im UI editierbare Spalte `varianten_achse_werte.aufpreis` jetzt tatsächlich nutzbar gemacht:
+- Neuer `€`-Button an jedem Wert-Chip in `achsen_zuweisen.php` (neben `✎`) — Klick öffnet Inline-Zahlenfeld, bei Wert>0 erscheint ein grünes Badge direkt am Chip
+- `VariantenRepository::updateWertAufpreis()`, `VariantenService::speichereAchsenUndWerte()` erweitert um Aufpreis-Änderungserkennung für geschützte/in-use Werte (analog zur bestehenden Text-Korrektur-Logik); freie Werte laufen ohnehin über den bestehenden delete+reinsert-Pfad, `insertWert()` kannte `aufpreis` schon
+- **Rechenregel (mit Jacky abgestimmt): additiv, nicht überschreibend** — Gesamtaufpreis = Achsen-Aufpreis (falls Modus=Aufpreis) + Wert-Aufpreis; bei Direktpreis-Modus kommt der Wert-Aufpreis obendrauf. 0€ am Wert = unverändertes Alt-Verhalten.
+- Nebenfund dabei: das "Aufpreis"-Eingabefeld im VarKombi-Generator (`detail.php`) ist nur ein Vorschlagswert — was der Nutzer dort einträgt, wird beim Generieren aktuell gar nicht übernommen (`varkombi_erstellen.php`/`erstelleKombinationen()` liest `$kombi['aufpreis']` nie). Nicht angefasst, nur notiert — die neue additive Logik gilt bisher nur für die noch zu bauende Bestellzeit-Preisberechnung des Konfigurators.
+- Getestet per Playwright gegen beide Speicherpfade (freier Wert bei Testartikel 27473, gesperrter/in-use Wert bei D-1059) — beide persistieren korrekt über Reload, danach sauber auf 0 zurückgesetzt.
+
+## Nächster Schritt: Test-Schild im neuen Schema (Stand 2026-08-28)
+Jacky baut weiter am ersten Schild-Layout (Testartikel 27473, Achsen Durchmesser/Farbschema/2.Farbe/Filz-Farben/Glitzereffekt/Grundfarbe/Hintergrund/Holzauswahl), um Testdaten für den späteren Shop-Teil zu haben.
+
+Vor dem eigentlichen Shop-Teil fehlen laut Besprechung noch: Preisberechnung zur Bestellzeit (Basispreis + Achsen-Aufpreis + Wert-Aufpreis der gewählten Werte, additiv wie oben festgelegt), Befüllung von `position_konfiguration` beim Bestellen (Kasse + Auftrag/Shop), das Options-Frontend im Shop selbst (Selbstbau), danach Rohmaterial-Bestandsampel.
 
 ## Offen
 - WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig (Jahreslizenz pro Site, gleiches Modell wie die pausierte Theme-Kaufentscheidung, siehe [[project_shop_theme]]). Kostenlose Alternativen existieren (z.B. Acowebs Free-Tier), decken vermutlich den Bedarf (Dropdown+Aufpreis). Dritte Option: eigenen Konfigurator-Frontend bauen (kein Plugin-Abo, passt besser zum Weitergabe-Modell, aber mehr Eigenaufwand). Budget-Frage — mit Barbara klären, nicht allein entschieden.
