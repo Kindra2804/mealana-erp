@@ -1,5 +1,6 @@
 # Memory Index
 
+- [Gutschein-Modul](project_gutscheine.md) — 2026-08-29 Abend: Baustufe 2 fertig, Kasse stellt bei Retoure jetzt RKSV-sauber Gutschein statt Bar aus; als Nächstes Shop-Checkout-Snippet (wartet auf Jackys Gutschein-Artikel)
 - [Konfigurator-Modul](project_konfigurator_modul.md) — ✅ 2026-08-29 BEHOBEN: Testbestellung verlor 5/7 Konfig-Werte (veraltete Shop-Preis-Matrix), Klartext-Fallback+Sync-Trigger gebaut, jetzt auf Pickliste/Detail/Rechnung/AB sichtbar; WP-Session-Cookie-Problem beim Warenkorb weiter offen
 - [WordPress-Zugang für Claude](reference_wp_claude_zugang.md) — eigener wp-admin-Benutzer "claude" auf indra-design.at, Zugangsdaten in D:\ERP\mealana\import\zugang Woo Claude.txt
 - [WP-Snippets im Repo](reference_wp_snippets_repo.md) — alle selbst gebauten WPCode-Snippets als Kopie in D:\ERP\mealana\shop\wp-snippets\, kein Auto-Sync mit wp-admin

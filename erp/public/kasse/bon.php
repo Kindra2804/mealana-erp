@@ -24,6 +24,14 @@ $lagerName = $kasseInfo['lager_name']          ?? 'Hauptlager';
 $rksvId    = $kasseInfo['rksv_kassen_id']      ?? null;
 $modus     = $kasseInfo['modus']               ?? 'online';
 
+// Gutschein-Ausgabe bei Retoure (statt Bar-Auszahlung) braucht einen echten
+// Artikel mit freiem Preis, genau wie der bestehende Divers-Artikel (99-9999) --
+// siehe project_gutscheine.md. Kann NULL sein solange dieser Artikel noch nicht
+// angelegt wurde -- der Button in ov-retour-bar wird dann serverseitig deaktiviert.
+$gutscheinArtikelId = (int)(Database::getInstance()
+    ->query("SELECT id FROM artikel WHERE ist_gutschein = 1 LIMIT 1")
+    ->fetchColumn() ?: 0) ?: null;
+
 // Resync-Sperre: verhindert Bon-Nr-Kollisionen, wenn diese Kasse noch unsynchronisierte
 // Messe-Daten hat (siehe MesseSyncService::hatOffenenResync). Die eigentliche, nicht
 // umgehbare Sperre sitzt zusätzlich in bon_speichern.php — das hier ist nur die UX,
@@ -1380,9 +1388,28 @@ body {
     <div style="padding:20px;text-align:center">
       <div id="retour-betrag-anzeige" style="font-size:32px;font-weight:700;color:#dc2626;margin-bottom:8px"></div>
       <p id="retour-info-text" style="font-size:13px;color:#6b7280;margin-bottom:24px"></p>
-      <div style="display:flex;gap:12px;justify-content:center">
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
         <button onclick="ovSchliessen('ov-retour-bar')" class="ov-btn ov-btn-sec">Abbrechen</button>
-        <button onclick="retourBestaetigen()" class="ov-btn ov-btn-red">↩ Auszahlen + Bon</button>
+        <button onclick="retourBestaetigen()" class="ov-btn ov-btn-red">↩ Bar auszahlen</button>
+        <button onclick="retourAlsGutschein()" class="ov-btn ov-btn-ok" id="btn-retour-gutschein"
+                <?= $gutscheinArtikelId ? '' : 'disabled title="Kein Gutschein-Artikel angelegt (artikel.ist_gutschein) — bitte zuerst in den Artikelstammdaten anlegen."' ?>>
+          🎁 Als Gutschein ausstellen
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ergebnis nach Gutschein-Ausgabe bei Retoure -->
+<div id="ov-gutschein-ausgabe-ergebnis" class="ov">
+  <div class="ov-box" style="max-width:420px">
+    <div class="ov-title">🎁 Gutschein erstellt</div>
+    <div style="padding:20px;text-align:center">
+      <div id="ga-code" style="font-family:monospace;font-size:20px;font-weight:700;margin-bottom:6px"></div>
+      <div id="ga-betrag" style="font-size:15px;color:#6b7280;margin-bottom:20px"></div>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button onclick="ovSchliessen('ov-gutschein-ausgabe-ergebnis')" class="ov-btn ov-btn-sec">Schließen</button>
+        <a id="ga-pdf-link" href="#" target="_blank" class="ov-btn ov-btn-ok">📄 PDF öffnen</a>
       </div>
     </div>
   </div>
@@ -1436,6 +1463,7 @@ var KASSE_ID       = <?= $kasseId ?>;
 var LAGER_ID       = <?= $lagerId ?>;
 var AUSGABE_FORMAT = <?= json_encode($kasseInfo['ausgabe_format'] ?? 'fragen') ?>;
 var KASSE_MODUS    = <?= json_encode($modus) ?>;
+var GUTSCHEIN_ARTIKEL_ID = <?= json_encode($gutscheinArtikelId) ?>;
 
 // ── Kundenanzeige-Sync ────────────────────────────────────────────────────────
 // Schreibt den aktuellen Anzeige-Zustand für das Kundenanzeige-Tablet (falls eins
@@ -2259,6 +2287,7 @@ function mitgebenSpeichern() {
 
 // ── Ausgabe nach Zahlung ──────────────────────────────────────────────────────
 var _letzterBonId = null;
+var _istGutscheinAusgabe = false; // true zwischen retourAlsGutschein() und der Server-Antwort
 
 function ausgabeNachZahlung(bonId, bonNr) {
     _letzterBonId = bonId;
@@ -2884,7 +2913,12 @@ function bonSpeichern(zahlDaten) {
             });
             _resetKasseState();
             if (d.bon_id) {
-                ausgabeNachZahlung(d.bon_id, d.bon_nr || '');
+                if (_istGutscheinAusgabe) {
+                    _istGutscheinAusgabe = false;
+                    zeigeGutscheinAusgabeErgebnis(d.bon_id);
+                } else {
+                    ausgabeNachZahlung(d.bon_id, d.bon_nr || '');
+                }
             }
         } else if (d.braucht_manager_pin) {
             zusatzPositionen = zp; // Rücksetzen, Retry übernimmt zp erneut
@@ -2948,6 +2982,50 @@ function retourBestaetigen() {
     ovSchliessen('ov-retour-bar');
     berechneZusatzPositionen();
     bonSpeichern({ zahlungsart: 'bar', gegeben: 0, rueckgeld: 0 });
+}
+
+/**
+ * Gutschein statt Bar-Auszahlung bei Retoure: fügt eine zusätzliche, echte
+ * Bon-Position "Gutschein-Verkauf" (0% MwSt, Betrag = Retourbetrag) hinzu --
+ * die Retour-Position (negativ) + diese Position (positiv) summieren sich zu
+ * 0, der Bon wird trotzdem ganz normal RKSV-signiert statt eine stille
+ * DB-Buchung ohne Bon-Bezug zu sein (siehe project_gutscheine.md).
+ */
+function retourAlsGutschein() {
+    if (!GUTSCHEIN_ARTIKEL_ID) {
+        feedback('Kein Gutschein-Artikel angelegt — bitte zuerst in den Artikelstammdaten anlegen.', 'fehler');
+        return;
+    }
+    ovSchliessen('ov-retour-bar');
+    berechneZusatzPositionen();
+    var m = berechneAbrechnungsModus();
+    var betrag = Math.round(Math.abs(m.netBrutto) * 100) / 100;
+    zusatzPositionen.push({
+        artikel_id: GUTSCHEIN_ARTIKEL_ID, bezeichnung: 'Gutschein-Verkauf', ean: null,
+        menge: 1, einzelpreis_brutto: betrag, steuer_prozent: 0, rabatt_prozent: 0,
+        charge: null, istDivers: false, vonAuftrag: false, auftrag_position_id: null,
+        kein_lagerabzug: true, block: 'gutschein_verkauf',
+    });
+    _istGutscheinAusgabe = true;
+    bonSpeichern({ zahlungsart: 'gutschein_ausgabe', gegeben: 0, rueckgeld: 0 });
+}
+
+function zeigeGutscheinAusgabeErgebnis(bonId) {
+    fetch('<?= BASE_PATH ?>/gutscheine/letzter_fuer_bon.php?bon_id=' + bonId)
+        .then(r => r.json())
+        .then(function(d) {
+            if (d.erfolg) {
+                document.getElementById('ga-code').textContent = d.code;
+                document.getElementById('ga-betrag').textContent = 'Wert: € ' + fmt(d.betrag);
+                document.getElementById('ga-pdf-link').href = '<?= BASE_PATH ?>/gutscheine/pdf_download.php?id=' + d.id;
+                ov('ov-gutschein-ausgabe-ergebnis');
+            } else {
+                feedback('Gutschein wurde erstellt, aber Code konnte nicht geladen werden — bitte in der Gutscheine-Liste nachsehen.', 'fehler');
+            }
+        })
+        .catch(function() {
+            feedback('Gutschein wurde erstellt, aber Code konnte nicht geladen werden — bitte in der Gutscheine-Liste nachsehen.', 'fehler');
+        });
 }
 
 // ── Manager-Freigabe per PIN ─────────────────────────────────────────────────

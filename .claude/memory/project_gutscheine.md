@@ -1,11 +1,11 @@
 ---
 name: project-gutscheine
-description: "Gutschein-Modul Design KOMPLETT (2026-08-29): ERP als Single Source of Truth, on+offline, WooCommerce-Sync als Slave, Design+Von/An/Grußtext via Shop-Gutschein-Artikel + Dokumente-System, Versand deckt auch Versandkosten. Planung fertig, Bau noch nicht gestartet."
+description: "Gutschein-Modul (Stand 2026-08-29 Abend): Baustufe 1 (Backend+ERP-UI) UND Baustufe 2 (Kasse: Retoure→Gutschein statt Bar, RKSV-sauber) fertig+verifiziert. Offen: Shop-Checkout-Snippet (wartet auf Jackys Gutschein-Artikel), Design-Vorlagen-Upload, Buchhaltungskonto."
 metadata:
   node_type: memory
   type: project
   originSessionId: 40a29a40-0c3b-483d-82e6-51045de0676d
-  modified: 2026-08-29T13:39:10.534Z
+  modified: 2026-08-29T18:07:50.988Z
 ---
 
 ## ✅ Baustufe 1 GEBAUT 2026-08-29: Backend + ERP-UI komplett, getestet
@@ -54,15 +54,31 @@ Direkt im Anschluss an die Planungsrunde umgesetzt (Jacky: "dann kannst du mit d
 
 ### 🔲 Noch offen (klar benannt, nicht vergessen)
 
-1. **Kasse-UI-Anbindung** -- der bestehende "Gutschein"-Zahlungsart-Knopf in der Kasse prüft aktuell nur `code.length>=3`, ist noch NICHT an `GutscheinService::einloesen()` angebunden. Braucht Live-Test in der Kasse.
-2. **Shop-seitiges WPCode-Snippet** -- Checkout-Felder am Gutschein-Artikel (Betrag/Empfänger/Zustellung/Grußtext → `_mealana_gutschein`-Meta), Versand-inklusive Rabattlogik (eigene Verrechnung Warenwert+Versand statt WC's binärem "Kostenloser Versand"-Haken), Teileinlösung-Checkout-Hinweis. Braucht zuerst einen echten "Shop-Gutschein"-Artikel in der ERP-DB (SKU "GUTSCHEIN", `ist_gutschein=1`) -- noch nicht angelegt.
-3. **Kasse-Erstattung via Gutschein** (bei abholbereit+bezahlt, Kunde nimmt weniger) -- weiterhin nur geplant, siehe unten.
+1. ~~Kasse-UI-Anbindung Retoure→Gutschein~~ ✅ erledigt, siehe Baustufe 2 unten. **Der bestehende "mit Gutschein BEZAHLEN"-Knopf** (`zahlenGutschein()`/`gsPruefen()` in bon.php, prüft aktuell nur `code.length>=3`) ist eine ANDERE, weiterhin offene Baustelle -- noch NICHT an `GutscheinService::einloesen()` angebunden.
+2. **Shop-seitiges WPCode-Snippet** -- Checkout-Felder am Gutschein-Artikel (Betrag/Empfänger/Zustellung/Grußtext → `_mealana_gutschein`-Meta), Versand-inklusive Rabattlogik (eigene Verrechnung Warenwert+Versand statt WC's binärem "Kostenloser Versand"-Haken), Teileinlösung-Checkout-Hinweis. Braucht zuerst einen echten "Shop-Gutschein"-Artikel in der ERP-DB (SKU "GUTSCHEIN", `ist_gutschein=1`) -- Jacky legt den als Nächstes selbst an.
+3. ~~Kasse-Erstattung via Gutschein~~ ✅ erledigt, siehe Baustufe 2 unten.
 4. **Design-Vorlagen** -- `gutschein_vorlagen` ist leer, Jacky muss die 8 JTL-Bildvorlagen (oder neue) hochladen.
 5. **Buchhaltungs-Konto** -- Gutschein-Anzahlungskonto-Nummer kommt noch von Babsi (siehe [[project_buchhaltung]]).
 6. **Zugriffsregeln** -- granulare Berechtigungen nachziehen sobald Rollen-Zuordnung klar ist.
-7. **Browser-Test** der neuen ERP-Seiten steht aus.
+7. **Browser-Test/Live-Test** aller neuen Kasse- und ERP-Seiten steht aus (echte BFR-Kasse, echter `ist_gutschein=1`-Artikel nötig).
 
-**How to apply beim Wiedereinstieg:** Backend ist fertig und verifiziert -- NICHT nochmal neu bauen. Bei Punkt 1 oder 2 weitermachen, je nachdem was Jacky zuerst braucht (Kasse-Verkauf vs. Online-Verkauf). Diese Liste als Fortschritts-Checkliste nehmen.
+**How to apply beim Wiedereinstieg:** Backend + Kasse-Ausstellung sind fertig und verifiziert -- NICHT nochmal neu bauen. Nächster Schritt hängt an Jacky: sobald der Gutschein-Artikel angelegt ist, Punkt 2 (Shop-Checkout-Snippet) angehen.
+
+## ✅ Baustufe 2 GEBAUT 2026-08-29 Abend: Kasse-Anbindung Retoure → Gutschein statt Bar
+
+Jackys Anfrage: "Machen wir die Kassenanbindung... damit die bei Rückgaben Gutscheine erstellen kann anstatt von Bar-Auszahlungen." Mit kritischer Ergänzung mid-turn: **muss RKSV-sauber als echter "Gutschein-Verkauf"-Bon-Posten laufen**, damit die Bon-Summe auf 0,- kommt (Retour negativ + Gutschein-Verkauf positiv) -- keine stille DB-Zeile ohne Bon-/Signatur-Bezug.
+
+**Migration 176:** `kassen_bons.zahlungsart` ENUM erweitert um `'gutschein_ausgabe'` -- bewusst NICHT der bestehende `'gutschein'`-Wert (der bedeutet "Kunde BEZAHLT mit Gutschein", eine andere, weiterhin offene Kasse-Funktion, siehe Punkt 1 oben). Angewendet.
+
+**Ablauf:** `bon.php::retourAlsGutschein()` hängt eine `block:'gutschein_verkauf'`-Position (0% MwSt, `kein_lagerabzug:true`) an, die die Bon-Summe exakt auf 0 bringt, und schickt mit `zahlungsart:'gutschein_ausgabe'`. `bon_speichern.php` erkennt diese Positions-Markierung serverseitig (NICHT den Client-Betrag -- Retourbetrag wird aus den `block:'retour'`-Positionen serverseitig neu berechnet, gleiche "nie dem Client trauen"-Philosophie wie beim Konfigurator-Preis), ruft `GutscheinService::erstelleGutschein()` mit `kanal_erstellt:'kasse'`, `kassen_bon_id`, `auftrag_id_ursprung` auf. Neuer Lookup-Endpunkt `gutscheine/letzter_fuer_bon.php` liefert Code/Betrag/PDF-Link an die Kasse-UI zurück (eigener Request NACH dem Bon-Speichern-Response, weil `bon_speichern.php` sein JSON schon vor den Retour-Zeilen `echo`t und PHP das nicht mehr nachträglich ändern kann).
+
+**Verifiziert (CLI, ohne echte BFR-Kasse-Session):**
+- `php -l` auf allen 3 Dateien (`bon.php`, `bon_speichern.php`, `letzter_fuer_bon.php`) sauber.
+- `GutscheinService::erstelleGutschein()` mit echtem Testaufruf durchlaufen (Test-Datensatz danach wieder gelöscht, siehe [[feedback_test_isolation]]) -- Rückgabeformat (`['erfolg'=>true,'id','code']`) passt exakt zu dem was `bon_speichern.php` erwartet.
+- `letzter_fuer_bon.php`-SQL direkt gegen die Test-Transaktion geprüft -- Join über `kassen_bon_id` liefert korrektes Ergebnis; Endpunkt selbst verlangt korrekt Login (302 auf `/login.php`, wie alle anderen `gutscheine/*.php`-Seiten).
+- Code-Review bestätigt: `new GutscheinService()`-Konstruktor ist No-Arg (passt), `$gErgebnis['erfolg']`-Check passt zum tatsächlichen Rückgabewert.
+
+**Nicht möglich ohne Jackys nächsten Schritt:** echter End-to-End-Klicktest an der Kasse -- braucht einen realen `ist_gutschein=1`-Artikel (Jacky legt den als Nächstes selbst an) und eine echte BFR-Session, beides nicht sinnvoll per CLI simulierbar (analog zu allen anderen Kassen-Features in diesem Projekt, die immer erst am echten Gerät final abgenommen werden).
 
 ## Status 2026-08-29 (Vormittag der Planung): Planung KOMPLETT abgeschlossen
 

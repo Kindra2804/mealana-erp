@@ -563,7 +563,41 @@ if ($result['erfolg'] && $webAuftragId) {
                     }
                 }
                 $retourBetrag = round($retourBetrag, 2);
-                if ($retourBetrag > 0.005) {
+
+                // Statt Bar-Auszahlung: Kassierer hat "Als Gutschein ausstellen" gewählt
+                // (bon.php::retourAlsGutschein()) -- erkennbar an der zusätzlichen
+                // "gutschein_verkauf"-Bon-Position, die den Bon auf Summe 0 bringt
+                // (Retour negativ + Gutschein-Verkauf positiv) und dadurch RKSV-sauber
+                // signiert wird, statt eine stille DB-Zeile ohne Bon-Bezug zu sein
+                // (Jacky-Anfrage 2026-08-29, siehe project_gutscheine.md).
+                $istGutscheinAusgabe = false;
+                foreach ($sauberePositionen as $bp) {
+                    if (($bp['block'] ?? null) === 'gutschein_verkauf') {
+                        $istGutscheinAusgabe = true;
+                        break;
+                    }
+                }
+
+                if ($retourBetrag > 0.005 && $istGutscheinAusgabe) {
+                    require_once __DIR__ . '/../../src/modules/gutscheine/GutscheinService.php';
+                    $gutscheinService = new GutscheinService();
+                    $gErgebnis = $gutscheinService->erstelleGutschein([
+                        // Betrag kommt bewusst aus dem serverseitig berechneten $retourBetrag,
+                        // NICHT aus dem Client-Wert der Position (gleiche "nie dem Client
+                        // trauen"-Philosophie wie beim Konfigurator-Preis weiter oben).
+                        'betrag'              => $retourBetrag,
+                        'kunden_id'           => $auftrag['kunden_id'] ?? null,
+                        'kanal_erstellt'      => 'kasse',
+                        'auftrag_id_ursprung' => $webAuftragId,
+                        'kassen_bon_id'       => $bonId,
+                        'versandart'          => 'selbst_ausdrucken',
+                    ], $benutzerId);
+                    if (!$gErgebnis['erfolg']) {
+                        Logger::log('gutschein.kasse_ausgabe_fehler', 'auftraege', $webAuftragId, [
+                            'fehler' => $gErgebnis['fehler'] ?? [], 'bon_nr' => $bonNr,
+                        ], $benutzerId, 'error');
+                    }
+                } elseif ($retourBetrag > 0.005) {
                     $db->prepare("
                         INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
                         VALUES (?, ?, CURDATE(), ?, ?)
