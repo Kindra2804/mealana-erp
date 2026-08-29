@@ -132,7 +132,7 @@
   </div>
 </div>
 
-<div class="total-badge">📋 PICKLISTE — {{ pl_nummer }}</div>
+<div class="total-badge">PICKLISTE — {{ pl_nummer }}</div>
 
 <!-- ═══ AUFTRÄGE ═════════════════════════════════════════════════════════════ -->
 {% for auftrag in auftraege %}
@@ -142,7 +142,7 @@
     <div class="auftrag-header-right">
       {{ auftrag.erstellt_am|date('d.m.Y') }}
       &nbsp;|&nbsp;
-      {% if auftrag.lieferart == 'abholung' %}🏪 Abholung{% else %}📦 Versand{% endif %}
+      {% if auftrag.lieferart == 'abholung' %}<span style="color:#f5a623; font-weight:bold;">ABHOLUNG</span>{% else %}Versand{% endif %}
     </div>
   </div>
 
