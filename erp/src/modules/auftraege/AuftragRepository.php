@@ -85,6 +85,7 @@ class AuftragRepository
                 a.kanal,
                 a.zahlungsstatus,
                 a.lieferstatus,
+                a.lieferart,
                 a.zahlungsart,
                 a.bruttobetrag,
                 a.versandkosten,
@@ -104,7 +105,7 @@ class AuftragRepository
             LEFT JOIN shops s ON s.id = a.shop_id
             LEFT JOIN auftrag_positionen p ON p.auftrag_id = a.id
             WHERE " . implode(' AND ', $where) . "
-            GROUP BY a.id, a.auftrag_nr, a.kanal, a.zahlungsstatus, a.lieferstatus,
+            GROUP BY a.id, a.auftrag_nr, a.kanal, a.zahlungsstatus, a.lieferstatus, a.lieferart,
                      a.zahlungsart, a.bruttobetrag, a.versandkosten, a.tracking_nr,
                      a.mahnung_stufe, a.bezahlt_am, a.erstellt_am, a.kunden_id,
                      a.kunden_snapshot, a.shop_id, s.name, k.kundennummer

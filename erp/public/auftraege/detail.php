@@ -275,6 +275,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div>
             <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Lieferstatus</div>
             <span class="chip <?= $ll['class'] ?>"><?= $ll['label'] ?></span>
+            <?php if (($auftrag['lieferart'] ?? '') === 'abholung'): ?>
+                <span class="chip sc-aktion" title="Selbstabholung">🏬 Abholung</span>
+            <?php endif; ?>
             <?php if ($auftrag['versand_datum']): ?>
                 <div style="margin-top:5px;font-size:12px;color:var(--color-text-muted)">
                     📅 <?= date('d.m.Y H:i', strtotime($auftrag['versand_datum'])) ?>

@@ -256,7 +256,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <td style="text-align:right;font-weight:600"><?= number_format((float)$a['bruttobetrag'], 2, ',', '.') ?> €</td>
                         <td><span class="chip <?= $za['class'] ?>"><?= $za['label'] ?></span></td>
                         <td><span class="chip <?= $zl['class'] ?>"><?= $zl['label'] ?></span></td>
-                        <td><span class="chip <?= $ll['class'] ?>"><?= $ll['label'] ?></span></td>
+                        <td>
+                            <span class="chip <?= $ll['class'] ?>"><?= $ll['label'] ?></span>
+                            <?php if (($a['lieferart'] ?? '') === 'abholung'): ?>
+                                <span class="chip sc-aktion" title="Selbstabholung">🏬 Abholung</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-sm">Detail</a>
                         </td>

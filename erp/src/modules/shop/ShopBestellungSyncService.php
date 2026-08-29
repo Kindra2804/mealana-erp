@@ -123,8 +123,9 @@ class ShopBestellungSyncService
             'shop_id'                   => $shopId,
             'kanal_auftrag_id'          => (int)$order['id'],
             'zahlungsart'               => $this->mappeZahlungsart((string)($order['payment_method'] ?? '')),
-            'lieferart'                 => 'versand',
+            'lieferart'                 => $this->ermittleLieferart($order),
             'versandkosten'             => (float)($order['shipping_total'] ?? 0),
+            'notiz_versand'             => trim((string)($order['customer_note'] ?? '')) !== '' ? $order['customer_note'] : null,
         ];
 
         $ergebnis = $this->auftragService->anlegen($auftragData, $positionen, $this->jarvisId);
@@ -350,6 +351,26 @@ class ShopBestellungSyncService
         ];
     }
 
+    /**
+     * "abholung" wenn eine der Versandpositionen die native WooCommerce-
+     * Abholung ist (method_id "pickup_location", siehe Snippet 34171 auf
+     * indra-design.at) -- sonst "versand". Gleiche Präfix-Liste wie dort,
+     * für den Fall älterer/klassischer Local-Pickup-Varianten.
+     */
+    private function ermittleLieferart(array $order): string
+    {
+        $abholungPraefixe = ['pickup_location', 'local_pickup', 'legacy_local_pickup'];
+        foreach ($order['shipping_lines'] ?? [] as $zeile) {
+            $methodId = (string)($zeile['method_id'] ?? '');
+            foreach ($abholungPraefixe as $praefix) {
+                if (strpos($methodId, $praefix) === 0) {
+                    return 'abholung';
+                }
+            }
+        }
+        return 'versand';
+    }
+
     private function baueAdresse(array $adresse): array
     {
         return [
@@ -367,6 +388,7 @@ class ShopBestellungSyncService
         return match (true) {
             in_array($wcPaymentMethod, ['bacs', 'cheque'], true) => 'vorkasse',
             $wcPaymentMethod === 'cod' => 'nachnahme',
+            $wcPaymentMethod === 'mealana_barabholung' => 'bar',
             in_array($wcPaymentMethod, ['paypal', 'ppcp-gateway', 'ppcp'], true) => 'paypal',
             default => $this->unbekannteZahlungsart($wcPaymentMethod),
         };
