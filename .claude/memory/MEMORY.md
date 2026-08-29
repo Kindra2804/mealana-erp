@@ -1,6 +1,8 @@
 # Memory Index
 
-- [Konfigurator-Modul](project_konfigurator_modul.md) — 2026-08-28 Abend: Phase 1+2 live getestet, dabei 3 echte Bugs gefunden+gefixt (Bedingung-Persistenz, FK-Crash bei Mehrfach-Bedingung, Sortier-UX+Persistenz); WP-Session-Cookie-Problem beim Warenkorb noch offen (Performance-Thema)
+- [Konfigurator-Modul](project_konfigurator_modul.md) — ✅ 2026-08-29 BEHOBEN: Testbestellung verlor 5/7 Konfig-Werte (veraltete Shop-Preis-Matrix), Klartext-Fallback+Sync-Trigger gebaut, jetzt auf Pickliste/Detail/Rechnung/AB sichtbar; WP-Session-Cookie-Problem beim Warenkorb weiter offen
+- [WordPress-Zugang für Claude](reference_wp_claude_zugang.md) — eigener wp-admin-Benutzer "claude" auf indra-design.at, Zugangsdaten in D:\ERP\mealana\import\zugang Woo Claude.txt
+- [WP-Snippets im Repo](reference_wp_snippets_repo.md) — alle selbst gebauten WPCode-Snippets als Kopie in D:\ERP\mealana\shop\wp-snippets\, kein Auto-Sync mit wp-admin
 - [Browser-Testing-Tools (Playwright)](reference_browser_testing_tools.md) — Node+Playwright lokal installiert unter .claude-browser-tools/, da chromium-cli hier nicht verfügbar ist
 - [🟢 BUG: Artikelliste Massenaktion Flash-Meldung fehlt](bug_artikelliste_massenaktion_flash.md) — BEHOBEN 2026-08-26: liste.php zeigte $_SESSION['erfolg'] nie an, Meldung tauchte verzögert auf anderer Seite auf
 - [🟢 BUG: Bild-Upload PNG-Endung-Mismatch](bug_bild_upload_png_endung.md) — BEHOBEN 2026-08-27: verkleinereUndSpeichere() benannte PNGs intern auf .png um, gab aber nur bool zurück — DB/URL zeigten weiter auf .jpg → broken link
@@ -58,12 +60,12 @@
 - [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
 - [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
-- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — 2026-08-13: Vater/Kind-Kanal-Kaskade auf vollen Rückbau umgestellt (Vater überschreibt Kinder immer, auch bei Deaktivierung), 51 verwaiste aktive Väter rückwirkend gefixt; sonst 2026-08-10 Download-Bug+Resync-Massenaktion, 2026-08-07 Batch-Sync+Reconcile fertig
+- [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — ✅ 2026-08-29 "Bar bei Abholung" GELÖST (fehlende Blocks-Payment-Registrierung war Ursache) + Testbestellung fand 2 weitere Sync-Bugs (lieferart hartcodiert, customer_note verworfen), beide gefixt; Meterware-Mengen-Verdacht widerlegt
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — ✅ 2026-08-05: Artikelliste "nur direkt zugeordnet"-Filter + Kategorie-entfernen-Massenaktion + Dropdown-Einrückung gefixt
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — WC-Produktattribut FERTIG 2026-07-21 (unabhängig vom bestehenden Kategorie-Ast); GPSR-Herstellerangaben weiterhin zurückgestellt
 - [Shop-Theme/UX](project_shop_theme.md) — 2026-08-13: leere Kategorien im Hauptmenü ausblenden gelöst (wp_get_nav_menu_items-Filter, Taxonomie+Menü-Hierarchie beide prüfen); sonst 2026-08-10 Produktkarten-CSS gelöst; Kaufentscheidung (Woostify?) weiter pausiert
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
-- [Infrastruktur / Server-Setup](project_infrastruktur.md) — Dev-PC-Umzug 2026-07-17 abgeschlossen; 2026-08-09: Live→Dev-Import kann Shop-Sync-Fälligkeit blind machen (aktualisiert_am aus Dump); Messe-Kasse = IndexedDB+BFR-Call
+- [Infrastruktur / Server-Setup](project_infrastruktur.md) — 2026-08-29 BEHOBEN: MySQL-Absturz bei jedem Login (korrupte Tabellenseite riss ganzen mysqld-Prozess mit + ibdata1/aria_log lagen verschoben in data\tmp\); Backup-Strategie weiter nur geplant
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
 - [Gutschein-Modul Design](project_gutscheine.md) — 0% Code, bewusst zurückgestellt bis Nähe Online-Shop-Anbindung (WC/eigener Shop-Match), bestätigt 2026-07-10
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; Zeitraum-Filter in Auftragsliste FERTIG 2026-08-11

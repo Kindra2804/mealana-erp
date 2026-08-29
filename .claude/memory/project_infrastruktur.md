@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 7c2206d0-2966-4b33-8077-f725a9bdff96
-  modified: 2026-08-09T19:31:38.678Z
+  modified: 2026-08-29T09:50:47.846Z
 ---
 
 ## Aktuelles Setup (Ist-Stand)
@@ -137,3 +137,29 @@ Beim GPSR-Hersteller-Fix (siehe [[project_fuenf_abendaufgaben_0809]], Punkt 3-Na
 **Fix angewendet:** `UPDATE hersteller_shops SET synced_at = NULL WHERE shop_id = X AND externe_term_id IS NOT NULL` (61 Zeilen), danach `php cron/shop_sync.php` manuell angestoßen — zieht alle Hersteller neu nach, unabhängig von der (unzuverlässigen) `aktualisiert_am`-Prüfung.
 
 **How to apply:** Nach JEDEM künftigen Live→Dev-DB-Import prüfen, ob zwischen Dump-Zeitpunkt und dem letzten echten Shop-Sync-Lauf Korrekturen an synct-relevanten Daten gemacht wurden (Hersteller/Artikel/Kategorien). Falls ja: `synced_at`-Spalte(n) der betroffenen `*_shops`-Tabellen gezielt auf NULL zurücksetzen und Cron manuell anstoßen, statt sich auf die automatische Fälligkeits-Erkennung zu verlassen — die ist gegenüber Raw-Imports blind. Gilt analog für `kategorie_shops`/`artikel_shops`/etc., nicht nur Hersteller.
+
+## Update 2026-08-28: WP-Shop-"Performance-Problem" war Cache-Blindheit für eingeloggte Admins (Fehlalarm)
+
+Jacky verglich `indra-design.at` (WooCommerce-Testshop, siehe [[project_shop_sync]]) mit einer JTL-Vergleichsseite: 6s vs. 0,76s Ladezeit, gleicher Server — Sorge über ein echtes Hosting-/Server-Problem. Per Playwright direkt gemessen:
+
+- **Eingeloggt** (wie bei jedem Test/jeder Adminarbeit): TTFB 3,9–4,2s, Gesamt 4,4–4,9s — durchgehend langsam.
+- **Anonym** (echter Kundenblick, frischer Browser-Kontext ohne Login): TTFB 5–212ms, Gesamt 276ms–1,2s — **schneller als der JTL-Vergleichswert**, außer beim allerersten kalten Cache-Aufruf.
+
+**Ursache:** WP Super Cache deaktiviert Caching absichtlich für eingeloggte Benutzer (Standardverhalten jedes Cache-Plugins — Admin soll nie eine veraltete gecachte Version der eigenen Änderungen sehen). Da Jacky als Admin praktisch nie ausgeloggt ist, sieht er im Alltag durchgehend die langsame ungecachte Variante — ein echter Kunde nie.
+
+**Kein Hosting-Problem, keine Rückfrage beim Hoster nötig.** Cache-Ablauf laut WP-Super-Cache-Einstellungen: 30 Minuten (Garbage Collection alle 10 Min).
+
+**How to apply:** Bei künftigen "der Shop ist langsam"-Meldungen von Jacky IMMER zuerst fragen/prüfen, ob eingeloggt oder anonym gemessen wurde (privates Browserfenster!), bevor man Richtung Server/Hosting/Code sucht — genau dieser eine Faktor hat hier eine vermeintliche 8x-Diskrepanz komplett erklärt. Playwright (`C:\Users\indy1\.claude-browser-tools`, siehe [[reference_browser_testing_tools]]) eignet sich gut für so einen eingeloggt/anonym-Vergleich: `performance.getEntriesByType('navigation')[0]` liefert TTFB direkt aus dem Browser, kein Rätselraten nötig. Falls Jacky die langsame Admin-Erfahrung im Alltag stört: Object-Cache (Memcached, in den WP-Super-Cache-Empfehlungen verlinkt) wäre der nächste Schritt, aber kein akuter Handlungsbedarf.
+
+## Vorfall 2026-08-29: MySQL-Absturz bei jedem Login — korrupte Tabellenseite + verschobene Systemdateien
+
+**Symptom:** `dashboard.php` warf `PDOException: SQLSTATE[HY000] MySQL server has gone away`, danach beim Neustart zusätzlich `Table 'mealana_erp.sessions' doesn't exist in engine`.
+
+**Ursache 1 (Auslöser):** Tabelle `lagerbestand_lagerplaetze` (Teil des laut [[project_lager_konzept]] noch 0% umgesetzten Lagerplätze-Features, praktisch leer) hatte eine physisch korrupte InnoDB-Datenseite (Page 0). InnoDB versucht bei so einem Fehler 100x zu lesen und reißt danach den **kompletten mysqld-Prozess** in einen FATAL-Crash — nicht nur die eine Abfrage. Das erklärt, warum ein Login den ganzen Server lahmlegte statt nur einen Fehler zu zeigen.
+
+**Ursache 2 (Folgeschaden):** Bei einem der Neustarts in der Absturzschleife fehlten `ibdata1` (kompletter InnoDB-Tabellenkatalog) und `aria_log.00000001` im Datenverzeichnis — MariaDB legte automatisch einen leeren Ersatz an, wodurch danach auch `sessions` "nicht in der Engine" existierte. Die echten Dateien lagen unversehrt in `C:\xampp\mysql\data\tmp\` (von Jacky gefunden). Wie/wodurch sie dorthin verschoben wurden, bleibt ungeklärt (kein Antivirus-Fund, kein offensichtlicher ausgeführter Prozess in den Windows-Logs) — falls es wieder passiert, lohnt ein Blick, was zwischen den beiden Zeitstempeln (letzter guter Start vs. "file not found") auf dem Rechner lief.
+
+**Fix:** Datenverzeichnis komplett gesichert (`D:\ERP\backup_mysql_data_crash_20260829\`) → echte `ibdata1`/`ib_logfile*` aus `tmp\` zurückgetauscht → stale `aria_log` (passte nicht mehr zu den seither veränderten Systemtabellen) entfernt, MariaDB baute es neu auf → mit `innodb_force_recovery=1` gestartet, kaputte Tabelle identifiziert, `DROP`+`CREATE` mit identischer Struktur (da praktisch leer/ungenutzt, kein Datenverlust) → Recovery-Modus wieder aus → `CHECK TABLE` auf allen 116 InnoDB-Tabellen: alle OK → frisches `mysqldump`-Backup gezogen.
+
+**Why:** Erstkontakt-Diagnose — Jacky hatte den entscheidenden Hinweis ("einige Dateien liegen im tmp-Ordner"), ohne den wäre der Datenverlust-Verdacht (fehlende `ibdata1`) deutlich schwerer aufzulösen gewesen.
+**How to apply:** Bei "MySQL server has gone away" im Log IMMER zuerst `mysql_error.log` nach `[ERROR] InnoDB: Database page corruption` und `File '...' not found` durchsuchen (ganzes Log, nicht nur die letzten Zeilen — der eigentliche Auslöser kann Minuten vor dem sichtbaren Folgefehler stehen). Bei fehlenden Systemdateien (`ibdata1`, `aria_log*`) zuerst `C:\xampp\mysql\data\tmp\` und Unterordner prüfen, bevor man von echtem Datenverlust ausgeht. [[project_backup_strategie]] ist weiterhin nur geplant — dieser Vorfall ist ein guter Anlass, das endlich umzusetzen (aktuell reiner Zufall, dass die Dateien überhaupt wiederauffindbar waren).

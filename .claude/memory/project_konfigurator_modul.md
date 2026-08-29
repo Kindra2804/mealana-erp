@@ -5,8 +5,25 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-28T19:21:20.582Z
+  modified: 2026-08-29T11:10:34.274Z
 ---
+
+## 🟢 BEHOBEN 2026-08-29: Erste echte Testbestellung verlor 5 von 7 Konfigurationswerten
+
+**Auslöser:** Jacky bestellte testweise ein konfiguriertes Schild (Durchmesser/Farbschema/Grundfarbe/2.Farbe/Glitzereffekt/Hintergrund/Holzauswahl) über den Shop. Im Auftragsdetail waren nur 2 der 7 gewählten Werte sichtbar ("Farbschema: zweifarbig · Hintergrund: Holz").
+
+**Root Cause (mehrstufig, per Playwright/curl direkt gegen WC-API + DB diagnostiziert, kein Server-Log nötig):**
+1. Der Shop (Snippet 34170 "Options-Picker", entgegen einer veralteten Notiz **doch aktiv**) sendete alle 7 wert_ids korrekt — sie stimmten exakt mit der Preis-Matrix übernommen beim LETZTEN Produkt-Sync überein.
+2. Die ERP-eigene `varianten_achse_werte`-Tabelle hatte sich seither geändert: `VariantenService::speichereAchsenUndWerte()` löscht/erneuert beim Speichern nicht-"in_use"-Werte (auch bei reiner Text-Korrektur, z.B. "18 cm"→"18cm") mit NEUEN Auto-Increment-IDs. `findWertIdsInUse()` schützt zwar bereits real bestellte Werte (`position_konfiguration`-Join), aber VOR der ersten Bestellung ist noch nichts geschützt.
+3. Diese Werte-Änderung löste bisher NIE einen erneuten Produkt-Sync aus — die im Shop gecachte Preis-Matrix (`_mealana_konfigurator`-Meta) blieb dadurch für 5 von 7 Achsen (die nicht zufällig unverändert gebliebenen) still veraltet, bis ein Kunde genau diese IDs bestellte und `KonfiguratorService::speichereAuswahl()`→`findWerteByIds()` sie nicht mehr fand.
+
+**Fix (vierteilig):**
+1. **Klartext-Fallback, IMMER unabhängig von ID-Auflösung** — Migration 172: `auftrag_positionen.konfig_freitext` (TEXT). `ShopBestellungSyncService::leseKlartextAusMetaData()` friert JEDE nicht-Underscore-Meta (Snippet 34170 schreibt pro gewählter Achse einen Klartext-Key fürs Kunden-/Admin-Display) als "Achse: Wert"-Zeilen ein — komplett unabhängig davon, ob die technischen wert_ids später noch existieren. `position_konfiguration.wert_id` blieb bewusst NOT NULL (von Preis-Nachrechnung/Kasse abhängig) -- der Freitext lebt stattdessen direkt an der Position.
+2. **Root-Cause-Fix:** `VariantenService::speichereAchsenUndWerte()` markiert am Ende, falls `artikel.ist_konfigurierbar=1`, den Artikel per `ShopSyncRepository::markiereFuerErneutenSync()` für erneuten Sync -- jede künftige Werte-Änderung hält die Shop-Preis-Matrix automatisch aktuell.
+3. **Testbestellung (Auftrag A-2026-00039) nachgetragen** (per PDO, nicht Shell -- CP850-Mojibake-Falle bei "ü" umgangen, siehe [[project_infrastruktur]]) + betroffener Artikel #27473 einmalig neu synct, Matrix jetzt wieder deckungsgleich mit der DB.
+4. **UI/Dokumente erweitert:** `auftraege/detail.php`, Pickliste (`lager/pickliste_erstellen.php` + `pickliste/standard.html.twig`) und Rechnung/Auftragsbestätigung/Lieferschein (gemeinsames `_positionen.html.twig`-Partial über `DokumentService::ladePositionen()`) zeigen jetzt alle den Konfigurations-Klartext (Freitext bevorzugt, strukturierte `position_konfiguration` als Fallback für Kasse/Alt-Bestellungen). Per PDF-Testgenerierung (CLI, `DokumentService`/`PdfGenerator` direkt aufgerufen) verifiziert -- dabei auch bemerkt: das 🔧-Emoji rendert in Dompdf/DejaVu Sans als kaputte Glyphen, durch Klartext "Konfiguration: " ersetzt. **Nebenbefund (nicht behoben, nicht Teil dieser Session):** dieselbe Emoji-Einschränkung betrifft offenbar auch die BEREITS BESTEHENDEN 📋/🏪/📦-Icons im Pickliste-Header/Auftragszeile -- rendern im PDF ebenfalls kaputt, war schon vor dieser Session so.
+
+**Noch offen:** Separater "Konfigurationszettel" als eigenes Dokument (Jackys "wenn nicht zu komplex"-Idee) bewusst NICHT gebaut -- der jetzt überall vorhandene Freitext deckt den eigentlichen Bedarf (Fertigungs-Info verfügbar, ohne in der Bestellbestätigung suchen zu müssen) bereits ab. Bei Bedarf könnte er analog zum bestehenden `abholzettel`-Dokumenttyp ergänzt werden. Migration + Code committed, `git push` steht noch aus (siehe [[project_shop_sync]]).
 
 ## Auslöser (2026-08-27)
 Jacky will Schilder (viele Layouts als eigene Artikel) mit konfigurierbaren Optionen anbieten: Durchmesser (5), Farbe 1 (10+2 Glitzer), optional Farbe 2 (8+2 Glitzer), Hintergrund (Moosgummi 8 / Filz 5 / Holz 3 / Furnier 3), alle mit Aufpreisen. Vollkombinatorik wäre ~12.500 Kind-Artikel PRO Layout — bei "unzähligen" Layouts technisch nicht sinnvoll über den bestehenden VarKombi-Generator abbildbar.
@@ -145,3 +162,6 @@ Nicht Teil des `mealana-erp`-Git-Repos — WordPress/WooCommerce-Code (WPCode-Pl
 
 ## Offen
 - WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig — überholt durch die Selbstbau-Entscheidung (s.o.), reine Historie.
+
+## Nebenthema 2026-08-28 (Abend): Zahlungsart "Bar bei Abholung" — nicht Teil des Konfigurators, aber gleicher Shop
+Jacky bemerkte beim Testbestellen, dass "Bar bei Abholung" im Checkout fehlt. Zwei echte Funde dabei, siehe [[project_shop_sync]] für Details zur Umsetzung — hier nur der Kontext-Link, damit die nächste Session nicht wieder bei null anfängt: **WooCommerce hat das klassische "Lokale Abholung"-Versandart-Modul aus neueren Versionen entfernt**, das neue "Abholung vor Ort"-Feature (unter Versand-Einstellungen, bei euch schon aktiviert) **funktioniert nur mit dem blockbasierten Checkout** — indra-design.at läuft aber noch auf dem klassischen Shortcode-Checkout, dort greift es nicht. Deshalb eigene Versandart + Zahlungsart per Snippet gebaut statt Bordmittel zu nutzen.

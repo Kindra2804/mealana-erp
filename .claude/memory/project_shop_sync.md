@@ -5,8 +5,85 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b67547bf-d9a0-405b-832f-e145eff451fa
-  modified: 2026-08-13T10:20:11.169Z
+  modified: 2026-08-29T10:48:10.657Z
 ---
+
+## ✅ GEBAUT 2026-08-28 (Abend): Zahlungsart "Bar bei Abholung" (WPCode-Snippet auf indra-design.at, kein ERP-Code außer Mapping)
+
+**Auslöser:** Jacky wollte im Checkout eine Testbestellung mit "Bar bei Abholung" machen — die Zahlungsart fehlte komplett. Frage: eigenes Snippet bauen oder ein Plugin suchen, und braucht es überhaupt ein Zahlart-Matching Shop→ERP?
+
+**Antwort zum Matching:** Es gibt schon eins — `ShopBestellungSyncService::mappeZahlungsart()` übersetzt WC-Gateway-IDs explizit auf ERP-Zahlungsarten (`bacs`/`cheque`→`vorkasse`, `cod`→`nachnahme`, `paypal`/`ppcp`→`paypal`), unbekannte IDs fallen mit Logger-Warnung auf `vorkasse` zurück statt zu crashen. Jede neue Zahlungsart braucht also zwingend einen neuen `match`-Zweig dort.
+
+**Warum kein einfaches Umlabeln des eingebauten WooCommerce-"Nachnahme" (COD)-Gateways:** Die Gateway-ID bliebe `cod` — kollidiert mit der bestehenden `cod`→`nachnahme`-Zuordnung. `nachnahme` ist bei uns aber ein echter eigener Workflow (EasyPak-Aufschlag, eigener Zweig in `packplatz/warenausgang/abschliessen.php`, siehe [[project_plc_versand]]) — hätte "Bar bei Abholung"-Bestellungen fälschlich als Nachnahme durchs ERP laufen lassen.
+
+**Zwei echte Funde beim Prüfen, wie "Abholung" im Shop technisch gehen könnte:**
+1. WooCommerce hat die **klassische "Lokale Abholung"-Versandart** (WC_Shipping_Local_Pickup, funktioniert mit dem Shortcode-Checkout) in neueren Versionen **komplett aus der Versandarten-Liste entfernt** — beim "Versandart hinzufügen"-Dialog gibt's nur noch "Kostenloser Versand" und "Versandkostenpauschale".
+2. Das neue Bordmittel-Ersatz-Feature ("Abholung vor Ort" unter Versand-Einstellungen, bei indra-design.at bereits mit Adresse "Wollboutique, Bahngasse 13" aktiviert) **funktioniert laut WooCommerce selbst nur mit dem blockbasierten Checkout** — indra-design.at läuft aber noch auf dem klassischen Shortcode-Checkout (`woocommerce-cart-form`, kein `wc-block-checkout`). Das Feature greift dort also gar nicht, obwohl es "aktiviert" aussieht.
+
+**Konsequenz:** Es gibt aktuell keine Bordmittel-Möglichkeit, im Checkout zwischen "wird verschickt" und "wird abgeholt" zu unterscheiden. Mit Jacky abgestimmt: eigene, schlanke Versandart PLUS eigene Zahlungsart per Snippet, letztere nur sichtbar wenn erstere gewählt ist (statt Checkout auf Blocks umzubauen, was ein viel größerer Eingriff wäre).
+
+**Gebaut (WPCode-Snippet-ID 34171 "MeaLana: Bar bei Abholung (Zahlungsart + Versandart)", PHP-Snippet, "Automatisch einfügen" / "Überall ausführen", bewusst INAKTIV gespeichert — wartet auf Jackys Review, gleiches Vorsichts-Muster wie beim Konfigurator-Options-Picker-Entwurf, siehe [[project_konfigurator_modul]]):**
+- Eigene `WC_Shipping_Method`-Klasse `Mealana_Abholung_Shipping_Method` (ID `mealana_abholung`), registriert über `woocommerce_shipping_methods` — muss von Jacky noch als Versandart in der AT-Zone hinzugefügt werden (Versand → Versandzonen → AT → Versandart hinzufügen → "Abholung im Geschäft (MeaLana)"), kostenlos, kein eigenes Preismodell nötig.
+- Eigene `WC_Payment_Gateway`-Klasse `Mealana_Bar_Abholung_Gateway` (ID `mealana_barabholung`), registriert über `woocommerce_payment_gateways`. `process_payment()` setzt die Bestellung auf `on-hold` (unbezahlt, wartet auf Barzahlung bei Abholung) — mappt auf `ausstehend`/`neu` im ERP (`STATUS_MAP`), genau wie `nachnahme` heute schon. `picklisten.php` behandelt `zahlungsart IN ('bar','rechnung','nachnahme')` bereits als sofort pickbereit unabhängig vom Zahlungsstatus — passt exakt zum Anwendungsfall (Ware wird erst bei Abholung bezahlt).
+- `woocommerce_available_payment_gateways`-Filter blendet `mealana_barabholung` aus, außer `WC()->session->get('chosen_shipping_methods')` enthält eine Rate-ID, die mit `mealana_abholung` beginnt.
+- **ERP-seitig:** ein Zeile in `mappeZahlungsart()` (`ShopBestellungSyncService.php`): `$wcPaymentMethod === 'mealana_barabholung' => 'bar'`. `bar` gewählt (nicht ein neuer eigener Zahlungsart-Wert), weil es semantisch passt (bar bezahlt bei Übergabe) und `picklisten.php`/Dashboard `bar` bereits wie "kein Warten auf Zahlungseingang nötig" behandeln.
+
+### Korrektur noch am selben Abend: Checkout ist doch blockbasiert — eigene Versandart war unnötig, Gating-ID war falsch
+
+Jacky hat das Snippet aktiviert und im Inkognito-Browser getestet — Checkout zeigte tatsächlich den vollen Block-Checkout inkl. "Lieferung: Versenden/Abholung"-Toggle und "Abholorte: Wollboutique" (Screenshot bestätigt), **aber** "Bar bei Abholung" erschien trotzdem nicht.
+
+**Root Cause, zwei Ebenen:**
+1. Meine frühere Einschätzung "Checkout ist klassisch" war falsch — beruhte auf einem anonymen Playwright-Test, der (ohne Login) auf die aktive "Demnächst verfügbar"-Wand lief (Coming-Soon-Modus, sieht für nicht-eingeloggte Besucher überall die Platzhalterseite, auch auf `/checkout/`). Mit echtem Login zeigte sich: der Checkout läuft sehr wohl blockbasiert — die native "Abholung vor Ort" funktioniert bei euch also einwandfrei. Der ganze eigene `Mealana_Abholung_Shipping_Method`-Baustein aus dem ersten Entwurf war dadurch unnötig und wieder entfernt.
+2. Mein Gating-Filter suchte in `chosen_shipping_methods` nach dem Präfix `mealana_abholung` — die native Abholung läuft aber unter der internen ID **`pickup_location`** (bestätigt über die Einstellungs-URL `tab=shipping&section=pickup_location` + Checkbox-Name `local_pickup_enabled`). Der Filter hat deshalb nie gegriffen.
+
+**Fix:** Snippet 34171 überarbeitet — Versandart-Klasse komplett entfernt, Gating prüft jetzt auf Präfixe `pickup_location`/`local_pickup`/`legacy_local_pickup` (mehrere Präfixe als Absicherung, falls WooCommerce die interne ID nochmal ändert). Über die WPCode-CodeMirror-JS-API (`.CodeMirror.setValue()`) statt simuliertem Tippen aktualisiert — zuverlässiger bei größeren Code-Änderungen an einem bereits gespeicherten Snippet. Nach dem Update per Reload verifiziert: neuer Code korrekt gespeichert (4427 Zeichen, `pickup_location` enthalten, alte Shipping-Klasse weg), Snippet weiterhin aktiv (`wpcode_active` Checkbox `checked=true`).
+
+### ✅ GELÖST 2026-08-29: Fehlende Blocks-Payment-Method-Registrierung war die eigentliche Ursache
+
+**Diagnoseweg (ohne Server-Log-Zugriff, per Playwright direkt gegen die echte Store-API von indra-design.at):** Ein `WC_Payment_Gateway` allein ist für den **blockbasierten Checkout NICHT sichtbar** — WooCommerce Blocks liest die anzuzeigenden Zahlungsarten nicht über das klassische `woocommerce_available_payment_gateways`-Filter (das steuert nur den alten Shortcode-Checkout + eine reine "Sortierreihenfolge"-Liste), sondern über eine komplett eigene "Blocks Payment Method"-Registrierung (PHP-Klasse `AbstractPaymentMethodType` + JS `wc.wcBlocksRegistry.registerPaymentMethod()`). Bestätigt am rohen Checkout-HTML: `paymentMethodSortOrder` enthielt `mealana_barabholung` bereits (Gateway war also aktiv/registriert), aber `paymentMethodData` (die Datenquelle, aus der der Block-Checkout tatsächlich rendert) hatte NUR `bacs`/`cod`/PayPal — unser Snippet fehlte dort komplett. Der ganze bisherige Verdacht (Session/`chosen_shipping_methods`/Versandart-Erkennung) war dadurch von Anfang an eine Sackgasse: das Gateway war unabhängig davon unsichtbar. Die native Abholung selbst meldet ihre Rate übrigens exakt wie erwartet als `rate_id: "pickup_location:0"` (per Store API direkt verifiziert) — der Präfix-Fix vom 28.08. war technisch korrekt, kam nur nie zum Einsatz.
+
+**Fix (Snippet 34171 erweitert, klassische Gateway-Klasse unverändert):**
+- Neue Klasse `Mealana_Barabholung_Blocks_Support extends AbstractPaymentMethodType`, registriert über `add_action('woocommerce_blocks_loaded', ...)` + `woocommerce_blocks_payment_method_type_registration`.
+- `get_payment_method_script_handles()`: `wp_register_script(..., false, [...])` (kein echtes .js-File nötig, `src=false` erlaubt reinen Inline-Code) + `wp_add_inline_script()` mit dem eigentlichen `registerPaymentMethod()`-Aufruf.
+- Die Sichtbarkeits-Prüfung ("nur bei Abholung") sitzt jetzt zwingend im JS als `canMakePayment`-Callback — fragt `wp.data.select('wc/store/cart').getShippingRates()` direkt ab (dieselbe Datenstruktur wie die Store API) und prüft `rate_id`-Präfix `pickup_location`/`local_pickup`/`legacy_local_pickup`. Das alte PHP-Filter (`mealana_barabholung_nur_bei_abholung`, `woocommerce_available_payment_gateways`) bleibt als Absicherung für einen eventuellen klassischen Checkout bestehen, ist aber für den tatsächlich genutzten Block-Checkout wirkungslos/unbenutzt.
+- **Zweiter, kleinerer Bug beim ersten Deploy-Versuch gefunden+gefixt:** `is_active()` der neuen Blocks-Klasse las die Gateway-Einstellungen direkt per `get_option('woocommerce_mealana_barabholung_settings', [])` — da die Zahlungsart-Einstellungsseite nie manuell geöffnet/gespeichert wurde, existierte die Option gar nicht, `$settings['enabled']` war undefined, `is_active()` lieferte `false` → die ganze Blocks-Registrierung blieb dadurch beim ersten Versuch stumm aus (kein Fehler, einfach nichts registriert). Fix: `$this->settings['enabled'] ?? 'yes'` (spiegelt den Formular-Default der klassischen Gateway-Klasse, die über `WC_Settings_API::get_option()` denselben Default bekommt).
+
+**End-to-End verifiziert (Playwright direkt gegen Store API + echte `/checkout/`-Seite, ohne UI-Klicks nötig — Artikel "Holzschild Wollzimmer" #34168, derselbe wie in Jackys Test):**
+- Abholung ausgewählt (`rate_id=pickup_location:0`) → Zahlungsoptionen zeigen korrekt `Vorkasse, Per Nachnahme, Bar bei Abholung`.
+- Echte Adresse gesetzt + `Versandkostenpauschale` (`flat_rate:1`) ausgewählt → Zahlungsoptionen zeigen korrekt nur `Vorkasse, Per Nachnahme` (Bar bei Abholung bleibt zu Recht versteckt).
+
+**Noch offen:**
+1. Echte Testbestellung im Browser abschließen (Jacky), Bestellungs-Sync laufen lassen, prüfen dass die Order im ERP mit `zahlungsart='bar'` ankommt.
+2. `git commit` für den `mappeZahlungsart()`-Einzeiler (`d:\ERP\mealana\erp\src\modules\shop\ShopBestellungSyncService.php`) steht noch aus — auf Jackys Wunsch warten wie sonst auch.
+3. Snippet-Änderung selbst ist nur live auf indra-design.at (WPCode), nicht in Git — kein Repo-Code betroffen, daher kein Commit dafür nötig/möglich.
+
+**Zugang für diese Diagnose:** eigener WordPress-Benutzer `claude` (Zugangsdaten in `D:\ERP\mealana\import\zugang Woo Claude.txt`, von Jacky angelegt) + Playwright direkt gegen die Store-API — kein Server-Error-Log nötig, da sich die komplette Payment-Method-Datenquelle bereits im öffentlich ausgelieferten Checkout-HTML befindet.
+
+### ✅ Echte Testbestellung 2026-08-29 ausgewertet — zwei weitere echte Bugs in `ShopBestellungSyncService` gefunden+gefixt
+
+Jacky bestellte gezielt eine Kombination zum Durchtesten: 2 teilbare Meterware-Artikel exakt an der Mindestabnahme-Grenze, ein konfiguriertes Schild (Konfigurator-Modul) und einen manuell eingegebenen Bestellhinweis — plus "Bar bei Abholung" als Zahlungsart (Order A-2026-00039 / WC-ID 34172).
+
+**Bestätigt korrekt:**
+- `zahlungsart='bar'` kam richtig an (Beweis, dass der Blocks-Payment-Fix von oben tatsächlich funktioniert, nicht nur im synthetischen Test).
+- Konfigurator-Auswahl des Schilds landete korrekt in `position_konfiguration` (Achsen "Farbschema=zweifarbig", "Hintergrund=Holz" etc.).
+- Meterware-Menge (Canvas/Denim, je 20 "Stück" bei `inhalt_menge=0,01m`): **kein Bug trotz ersten Verdachts** — kurz vermutet, WC-Menge (20) könnte fälschlich 1:1 als Meter statt als "Stück" in `auftrag_positionen.menge`/`reservierungen.menge` landen (100x-Verwechslung). Durch Quercheck mit dem ERP-eigenen `artikel_preise.netto_vk` (0,15 bzw. 0,10 -- identisch zum WC-Stückpreis, NICHT zum Meterpreis 15,00/10,00) widerlegt: ERP und Shop rechnen hier durchgängig in "Stück" (siehe [[project_meterware_mindestabnahme]] -- 1 Stück = `inhalt_menge`), 20 Stück = exakt die 20cm-Mindestabnahme. `menge`-Spalten (INT) sind also korrekt als "Stück-Zähler" zu verstehen, nicht als physische Meter -- wichtig für die nächste Diagnose in diese Richtung, nicht nochmal neu rätseln.
+
+**Zwei echte, unabhängige Bugs in `ShopBestellungSyncService::verarbeiteBestellung()` gefunden+gefixt:**
+1. **`lieferart` war hart auf `'versand'` codiert** (Zeile 126, alt) -- nie aus `order['shipping_lines']` gelesen. Jede Abholung-Bestellung landete im ERP fälschlich als Versand, unabhängig vom Zahlungsart-Fix. Fix: neue `ermittleLieferart()` -- prüft `shipping_lines[].method_id` auf dieselben Präfixe (`pickup_location`/`local_pickup`/`legacy_local_pickup`) wie Snippet 34171.
+2. **`customer_note` (Kunden-Bestellhinweis) wurde komplett ignoriert** -- kein Feld in `$auftragData` dafür vorgesehen, ging bei jeder Bestellung mit Hinweistext stillschweigend verloren. Fix: gemappt auf `notiz_versand` (bewusst dieses Feld, nicht `notiz_intern`/`kontakt_notiz` -- wird laut `auftraege/detail.php`+`packplatz/warenausgang/scan.php` bereits prominent als "VERSAND/PACKERL"-Hinweis mit ⚠-Symbol am Packplatz angezeigt, passt semantisch exakt zu einem Kundenwunsch beim Verpacken).
+
+Beide Fixes nur bei der Erstanlage (`verarbeiteBestellung()`), nicht beim erneuten Poll eines bestehenden Auftrags (`aktualisiereBestehenden()`) -- passt zum bestehenden Prinzip, dass interne Nachbearbeitung nicht durch Re-Sync überschrieben wird (wie schon bei `lieferstatus`).
+
+**Testbestellung selbst** (bereits vor dem Fix importiert, Re-Sync fasst sie nicht nochmal an) **einmalig per SQL korrigiert** (`lieferart='abholung'`, `notiz_versand` nachgetragen), damit Jacky das korrekte Endergebnis sofort im UI sieht.
+
+**✅ 2026-08-29 committed** (`936c4fd`, noch nicht gepusht): beide `ShopBestellungSyncService.php`-Fixes + der `mappeZahlungsart()`-Einzeiler zusammen mit den Auftragsliste/-detail-UI-Änderungen (siehe unten) in einem Commit, auf Jackys Wunsch.
+
+**Auftragsliste/-detail zeigten Abholung bisher NIRGENDS an** (Jacky-Feedback direkt nach der Testbestellung): einziger Hinweis war vorher erst am Packplatz/Pickliste sichtbar, viel zu spät im Prozess. Fix: `AuftragRepository::findAll()` liefert jetzt zusätzlich `a.lieferart` (fehlte in der Liste-Query, `findById()` hatte es via `a.*` schon), `auftraege/liste.php` + `auftraege/detail.php` zeigen bei `lieferart='abholung'` einen zusätzlichen Chip "🏬 Abholung" (Klasse `sc-aktion`, selbes orange wie der bestehende Vater/Kind-Kanal-Warnbadge) direkt neben dem Lieferstatus-Chip. Kein Browser-Test (kein ERP-Login in dieser Session) -- nur `php -l` + Musterabgleich mit dem bereits bestätigten Mahnstufe-Icon-Muster in derselben Datei.
+
+**Noch offen:**
+1. Auftrag A-2026-00039 im Browser ansehen und bestätigen, dass Abholung+Hinweistext jetzt korrekt in der UI erscheinen (nur per SQL/Code verifiziert, noch kein Browser-Blick).
+2. Keine weitere Testbestellung mit Meterware-Bruchmengen nötig -- Menge-Handling ist jetzt als korrekt bestätigt (siehe oben), war nur ein kurzer Verdacht, kein Fix nötig.
+3. `git push` steht noch aus (nur lokal committed).
 
 ## ✅ UMGEBAUT 2026-08-13: Vater/Kind-Kanal-Kaskade — voller Rückbau statt "nur Lücken füllen"
 
