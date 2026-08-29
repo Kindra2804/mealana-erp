@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-29T11:10:34.274Z
+  modified: 2026-08-29T11:51:38.007Z
 ---
 
 ## 🟢 BEHOBEN 2026-08-29: Erste echte Testbestellung verlor 5 von 7 Konfigurationswerten
@@ -64,8 +64,14 @@ Jacky hat sich für die Selbstbau-Variante (kein WooCommerce-Add-on-Plugin) ents
 
 **Architektur-Konsequenz für den Konfigurator jetzt:** Bestehende Achsen/Werte/Aufpreis-Tabellen bleiben Basis (deckt sich mit Odoos "Value Price Extra", schon gebaut). Neu: Flag am Vater-Artikel "Kombinationen sofort generieren (Standard-Kombis, bestehender Generator) vs. dynamisch/nicht generieren (Konfigurationsartikel, Preis zur Bestellzeit berechnet)" — analog Odoos Instantly/Dynamically.
 
-## Separater Nebenfund: Rundnadeln — WooCommerce-Variations-Schwellwert
-Bei manchen Rundnadel-Vätern bis zu 140 echte Kind-Kombinationen. WooCommerce filtert Dropdowns nur bei ≤30 Variationen automatisch dynamisch (`data-product_variations`-JSON, das schon aus dem bestehenden Vater/Kind→Variation-Sync kommt) — darüber statischer Fallback ("Auswahl nicht möglich" erst nach Klick), das erklärt das beobachtete JTL/Shop-Verhalten. **Reine Shop-Sache, kein ERP-Code:** `woocommerce_ajax_variation_threshold`-Filter per Snippet anheben. Noch nicht umgesetzt, vorgemerkt.
+## ✅ BEHOBEN 2026-08-29: Rundnadeln — WooCommerce-Variations-Schwellwert
+Bei manchen Rundnadel-Vätern bis zu 140 echte Kind-Kombinationen (DMC-Garnfarben sogar bis 499). WooCommerce filtert Dropdowns nur bei ≤30 Variationen automatisch dynamisch (`data-product_variations`-JSON) — darüber statischer Fallback (jede Auswahl per AJAX-Nachladung statt sofort aus dem Seiten-HTML), das erklärte das beobachtete JTL/Shop-Verhalten.
+
+**Fix:** Snippet 34174 "WooCommerce Variations-Schwellwert anheben (30 → 1000)" -- `add_filter('woocommerce_ajax_variation_threshold', fn() => 1000)`. Live aktiv gesetzt, per direktem HTML-Diff verifiziert (DOMDocument-Parse, nicht nur Textsuche -- eine erste manuelle Byte-Offset-Prüfung lieferte falsche Werte): DMC Mouline Special Sticktwist bettet danach 304 Variationen (alle mit Bestand) inline ein statt vorher `data-product_variations="false"`.
+
+**Nebenbefund beim Testen (kein Bug, nur Beobachtung):** Symfonie Rundstricknadel + HiyaHiya Sharp Rundnadel zeigten nach dem Fix zunächst nur 1 eingebettete Variation -- lag NICHT am Threshold, sondern daran, dass laut WC-API 140 von 141 Kombinationen aktuell `stock_status=outofstock` sind (nur 1 Länge/Stärke-Kombination hat Bestand). WooCommerce blendet Variationen ohne Bestand aus der Auswahl aus -- korrektes Verhalten. Nicht weiter untersucht, ob das eine echte Bestandslücke ist oder erwartet (viele Rundnadel-Kombis werden vermutlich nicht auf Lager gehalten) -- bei Bedarf mit Jacky abklären, nicht von selbst als Bug behandeln.
+
+**Kopie im Repo:** `shop/wp-snippets/variations_threshold_anheben.php`.
 
 ## Baustufe 1: DB-Grundlage ✅ FERTIG 2026-08-27
 Migrationen 169+170 live eingespielt (gemeinsam mit Jacky Schritt für Schritt geschrieben, Trainer-Ansatz — [[feedback_trainer]]):

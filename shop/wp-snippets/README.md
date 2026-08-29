@@ -18,7 +18,8 @@ nachgezogen werden (und umgekehrt). Quelle der Wahrheit ist immer WPCode selbst
 | Datei | WPCode-ID | Titel | Status | Einfügemethode |
 |---|---|---|---|---|
 | `bar_bei_abholung.php` | 34171 | MeaLana: Bar bei Abholung (Zahlungsart + Versandart) | ✅ Aktiv | Überall ausführen |
-| `konfigurator_options_picker.php` | 34170 | Konfigurator: Options-Picker | 🚧 Entwurf, bewusst inaktiv (wartet auf Review) | Überall ausführen |
+| `konfigurator_options_picker.php` | 34170 | Konfigurator: Options-Picker | ✅ Aktiv (Status-Notiz vom 28.08. war veraltet, siehe [[project_konfigurator_modul]]) | Überall ausführen |
+| `variations_threshold_anheben.php` | 34174 | WooCommerce Variations-Schwellwert anheben (30 → 1000) | ✅ Aktiv | Überall ausführen |
 | `mindestabnahme.php` | 34156 | Mindestabnahme (Meterware-Mindestmenge + Intervall) | ✅ Aktiv | Überall ausführen |
 | `leere_kategorien_ausblenden.php` | 32095 | Leere Kategorien ausblenden | ✅ Aktiv | Überall ausführen |
 | `ausverkauft_statt_weiterlesen.php` | 32085 | "Ausverkauft" statt "Weiterlesen" bei Out-of-Stock | ✅ Aktiv | Überall ausführen |
@@ -47,6 +48,12 @@ hier abgelegt.
   "Ausverkauft" auf nicht-vorrätigen Produktkarten.
 - **hersteller_menue** — Shortcode `[hersteller_liste]`, listet alle Hersteller-Attributwerte
   (`pa_hersteller`) als Link-Spalten fürs Mega-Menü.
+- **variations_threshold_anheben** — `woocommerce_ajax_variation_threshold`-Filter von 30 (WC-Default)
+  auf 1000 angehoben. WooCommerce bettet die Variations-Auswahl bei mehr Kombinationen als dem
+  Schwellwert nicht mehr fertig als JSON ins Seiten-HTML ein, sondern lädt jede Auswahl per AJAX nach
+  -- betrifft Artikel mit vielen Kombinationen (Rundnadeln bis 141, DMC-Garnfarben bis 499 Stand
+  2026-08-29). Live verifiziert: DMC-Produkt bettet danach 304 Variationen (alle mit Bestand) inline
+  ein statt vorher `false`.
 
 ## Bei einem weiteren Shop einspielen
 
