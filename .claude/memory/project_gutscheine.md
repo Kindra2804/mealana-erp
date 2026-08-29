@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 40a29a40-0c3b-483d-82e6-51045de0676d
-  modified: 2026-08-29T13:30:56.866Z
+  modified: 2026-08-29T13:39:10.534Z
 ---
 
 ## ✅ Baustufe 1 GEBAUT 2026-08-29: Backend + ERP-UI komplett, getestet
@@ -33,6 +33,24 @@ Direkt im Anschluss an die Planungsrunde umgesetzt (Jacky: "dann kannst du mit d
 **Bewusst NICHT auf Zugriffsregeln.php eingetragen** -- fehlender Eintrag = nur Login-Pflicht (dokumentiertes, sicheres Fallback-Verhalten dieser Datei). Granulare Berechtigungen (`gutscheine.anzeigen` etc.) erst nachziehen, wenn Jacky die Rollen-Zuordnung entschieden hat -- ein blind eingetragener, nirgends gewährter Berechtigungs-String hätte sonst RISIKO eines Lockouts (auch für Admin).
 
 **`legeReservierungenAn()`** (AuftragRepository) erweitert: `ist_gutschein=1`-Artikel werden wie `keine_lagerbestandsfuehrung=1` von der Lagerreservierung ausgenommen.
+
+## ✅ Nachverfolgbarkeit bei Teileinlösung ergänzt (2026-08-29, gleicher Tag)
+
+**Jackys Anfrage:** Support-Fall vorausgedacht -- Kunde ruft an "mein Code funktioniert nicht", weil er (a) den Checkout-Hinweis übersehen und (b) die Mail mit dem neuen Restbetrag-Code nicht beachtet hat. Frage: gibt es eine nachvollziehbare Liste welcher Code zu welchem Zeitpunkt/welcher Bestellung teileingelöst wurde und was der Nachfolge-Code ist?
+
+**Dabei einen echten Bug im ursprünglichen Bau gefunden+behoben:** Der ALTE Code behielt nach einer Teileinlösung fälschlich sein `restguthaben` auf dem übertragenen Betrag stehen (z.B. 70€), obwohl dieser Wert längst auf den neuen Code übertragen war -- hätte Support selbst in die Irre geführt ("der alte Code hat doch noch 70€ Guthaben lt. System"). Fix: `restguthaben` geht bei JEDER Einlösung (voll oder teilweise) auf 0, der tatsächliche Rest lebt ausschließlich auf dem neuen Code.
+
+**Migration 175:** `gutscheine.vorgaenger_gutschein_id` (self-referencing FK) -- verkettet einen neu erzeugten Rest-Code mit dem Code, aus dessen Teileinlösung er entstand.
+
+**`GutscheinRepository::findKette()`:** läuft von einem BELIEBIGEN Punkt der Kette rückwärts zum Ursprung UND vorwärts zum aktuell gültigen Code -- Support kann mit dem uralten, längst toten Code danach fragen und sofort den echten aktuellen Code samt Verlauf sehen.
+
+**Zusätzlich in `einloesen()`:** Bei Teileinlösung bekommt die ALTE Transaktionshistorie automatisch einen Eintrag "Restguthaben X€ übertragen auf neuen Code Y" -- direkt in der Transaktionsliste sichtbar, ohne erst der Kette folgen zu müssen.
+
+**UI (`detail.php`):** neue "🔗 Gutschein-Verlauf"-Karte (nur sichtbar wenn Kette >1 Glied hat) zeigt die komplette Kette als klickbare Chip-Kette, plus Warnhinweis wenn der aktuell angesehene Code NICHT mehr der gültige ist ("Rest wurde übertragen auf X").
+
+**Suchfunktion nach Code:** existierte schon in `liste.php` (LIKE-Suche auf `code`), deckt den "alten Code eintippen und finden"-Fall bereits ab -- keine Zusatzarbeit nötig.
+
+**Echter Kettentest bestanden** (2 Teileinlösungen hintereinander, 100€→70€→20€): `findKette()` liefert korrekt alle 3 Codes in Reihenfolge, alte Codes zeigen korrekt `restguthaben=0`, Transaktionslog zeigt den Übertrag-Hinweis. Committed+gepusht.
 
 ### 🔲 Noch offen (klar benannt, nicht vergessen)
 

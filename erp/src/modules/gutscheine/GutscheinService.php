@@ -75,6 +75,7 @@ class GutscheinService
             'shop_id'             => !empty($daten['shop_id']) ? (int)$daten['shop_id'] : null,
             'kanal_erstellt'      => $daten['kanal_erstellt']   ?? 'manuell',
             'auftrag_id_ursprung' => !empty($daten['auftrag_id_ursprung']) ? (int)$daten['auftrag_id_ursprung'] : null,
+            'vorgaenger_gutschein_id' => !empty($daten['vorgaenger_gutschein_id']) ? (int)$daten['vorgaenger_gutschein_id'] : null,
             'ausgestellt_von'     => $benutzerId,
         ]);
 
@@ -182,10 +183,16 @@ class GutscheinService
         }
 
         $benutzerId ??= $this->jarvisId;
-        $restNachher = round((float)$gutschein['restguthaben'] - $betrag, 2);
-        $neuerStatus = $restNachher > 0 ? 'teilweise' : 'eingeloest';
+        $restZumUebertragen = round((float)$gutschein['restguthaben'] - $betrag, 2);
+        $neuerStatus = $restZumUebertragen > 0 ? 'teilweise' : 'eingeloest';
 
-        $this->repo->updateRestguthabenUndStatus((int)$gutschein['id'], $restNachher, $neuerStatus);
+        // WICHTIG: restguthaben geht hier IMMER auf 0 -- ein evtl. verbleibender
+        // Rest wird sofort auf einen neuen Code übertragen (siehe unten), steht
+        // also nie mehr auf DIESEM Code zur Verfügung. Ohne diesen Fix hätte der
+        // alte (längst tote, usage_limit=1) Code fälschlich weiter ein
+        // "Restguthaben" angezeigt -- genau die Verwirrung, die beim
+        // Support-Anruf "mein Code funktioniert nicht" für Chaos sorgen würde.
+        $this->repo->updateRestguthabenUndStatus((int)$gutschein['id'], 0.0, $neuerStatus);
         $this->repo->insertTransaktion([
             'gutschein_id'  => $gutschein['id'],
             'auftrag_id'    => $auftragId,
@@ -196,13 +203,13 @@ class GutscheinService
             'benutzer_id'   => $benutzerId,
         ]);
         Logger::log('gutschein.eingeloest', 'gutscheine', (int)$gutschein['id'], [
-            'betrag' => $betrag, 'rest' => $restNachher, 'kanal' => $kanal,
+            'betrag' => $betrag, 'rest_uebertragen' => $restZumUebertragen, 'kanal' => $kanal,
         ], $benutzerId);
 
         $neuerCode = null;
-        if ($restNachher > 0) {
+        if ($restZumUebertragen > 0) {
             $neu = $this->erstelleGutschein([
-                'betrag'           => $restNachher,
+                'betrag'           => $restZumUebertragen,
                 'vorlage_id'       => $gutschein['vorlage_id'],
                 'kunden_id'        => $gutschein['kunden_id'],
                 'empfaenger_name'  => $gutschein['empfaenger_name'],
@@ -211,11 +218,27 @@ class GutscheinService
                 'shop_id'          => $gutschein['shop_id'],
                 'kanal_erstellt'   => 'erp',
                 'gueltig_bis'      => $gutschein['gueltig_bis'], // Restguthaben erbt die ursprüngliche Gültigkeit, kein Reset
+                'vorgaenger_gutschein_id' => $gutschein['id'],
             ], $benutzerId);
             $neuerCode = $neu['code'] ?? null;
+
+            // Auf der ALTEN Transaktionshistorie sichtbar hinterlegen, welcher
+            // Code der Nachfolger ist -- direkt in der Liste sichtbar, ohne erst
+            // der Kette folgen zu müssen (siehe auch findKette()).
+            if ($neuerCode) {
+                $this->repo->insertTransaktion([
+                    'gutschein_id'  => $gutschein['id'],
+                    'auftrag_id'    => $auftragId,
+                    'kassen_bon_id' => $kassenBonId,
+                    'betrag'        => 0,
+                    'kanal'         => $kanal,
+                    'notiz'         => "Restguthaben {$restZumUebertragen}€ übertragen auf neuen Code {$neuerCode}",
+                    'benutzer_id'   => $benutzerId,
+                ]);
+            }
         }
 
-        return ['erfolg' => true, 'neuer_code' => $neuerCode, 'restguthaben' => $restNachher];
+        return ['erfolg' => true, 'neuer_code' => $neuerCode, 'restguthaben' => $restZumUebertragen];
     }
 
     /**

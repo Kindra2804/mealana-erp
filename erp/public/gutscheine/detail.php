@@ -12,6 +12,7 @@ if (!$gutschein) {
 }
 
 $transaktionen = $repo->findTransaktionenFuerGutschein($id);
+$kette = $repo->findKette($id);
 
 $fehler = $_SESSION['fehler'] ?? null;
 $erfolg = $_SESSION['erfolg'] ?? null;
@@ -44,6 +45,34 @@ $kannEinloesen = in_array($gutschein['status'], ['aktiv', 'teilweise'], true);
 <?php if ($fehler): ?>
 <div class="card" style="border-left:3px solid var(--color-danger);margin-bottom:12px;padding:10px 16px;color:var(--color-danger)">
     <?= htmlspecialchars(is_array($fehler) ? implode(', ', $fehler) : $fehler) ?>
+</div>
+<?php endif; ?>
+
+<?php if (count($kette) > 1): ?>
+<div class="card" style="margin-bottom:16px;background:#fffbea;border:1px solid #f0d878">
+    <div style="font-weight:600;margin-bottom:8px">🔗 Gutschein-Verlauf (Teileinlösung — für Support-Rückfragen "mein Code funktioniert nicht")</div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:13px">
+        <?php foreach ($kette as $i => $k): ?>
+            <?php if ($i > 0): ?><span style="color:#999">→</span><?php endif; ?>
+            <?php if ((int)$k['id'] === $id): ?>
+                <span class="chip chip-aktiv" style="font-family:monospace"><?= htmlspecialchars($k['code']) ?> (dieser)</span>
+            <?php else: ?>
+                <a href="detail.php?id=<?= $k['id'] ?>" class="chip" style="font-family:monospace;text-decoration:none">
+                    <?= htmlspecialchars($k['code']) ?>
+                </a>
+            <?php endif; ?>
+            <span style="color:#777">(<?= number_format((float)$k['betrag'], 2, ',', '.') ?> €<?= $k['status'] === 'teilweise' ? ', ersetzt' : '' ?>)</span>
+        <?php endforeach; ?>
+    </div>
+    <?php
+        $letzter = end($kette);
+        if ((int)$letzter['id'] !== $id):
+    ?>
+    <div style="margin-top:8px;font-size:12px;color:#8a6d00">
+        ⚠ Dies ist NICHT der aktuell gültige Code — der Rest wurde auf
+        <a href="detail.php?id=<?= $letzter['id'] ?>"><strong><?= htmlspecialchars($letzter['code']) ?></strong></a> übertragen.
+    </div>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 

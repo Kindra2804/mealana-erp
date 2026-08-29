@@ -68,6 +68,45 @@ class GutscheinRepository
         return $row ?: false;
     }
 
+    /**
+     * Vollständige Kette bei Teileinlösung: läuft von einem beliebigen Punkt in
+     * der Kette rückwärts bis zum Ursprung UND vorwärts bis zum aktuell
+     * gültigen Code. Für den Support-Fall "Code funktioniert nicht" (weil
+     * längst durch einen neuen ersetzt) -- Jacky-Anfrage 2026-08-29.
+     *
+     * @return array Kette in chronologischer Reihenfolge (ältester zuerst).
+     */
+    public function findKette(int $gutscheinId): array
+    {
+        // Rückwärts zum Ursprung
+        $kette = [];
+        $aktuelleId = $gutscheinId;
+        $schutzZaehler = 0;
+        while ($aktuelleId !== null && $schutzZaehler++ < 50) {
+            $g = $this->findById($aktuelleId);
+            if (!$g) break;
+            array_unshift($kette, $g);
+            $aktuelleId = $g['vorgaenger_gutschein_id'] !== null ? (int)$g['vorgaenger_gutschein_id'] : null;
+        }
+
+        // Vorwärts zu allen Nachfolgern (normalerweise höchstens einer pro Schritt,
+        // eine Teileinlösung erzeugt immer nur EINEN neuen Code für den Rest)
+        $letzteId = (int)end($kette)['id'];
+        $schutzZaehler = 0;
+        while ($schutzZaehler++ < 50) {
+            $stmt = $this->db->prepare("SELECT id FROM gutscheine WHERE vorgaenger_gutschein_id = :id LIMIT 1");
+            $stmt->execute(['id' => $letzteId]);
+            $naechsteId = $stmt->fetchColumn();
+            if (!$naechsteId) break;
+            $g = $this->findById((int)$naechsteId);
+            if (!$g) break;
+            $kette[] = $g;
+            $letzteId = (int)$naechsteId;
+        }
+
+        return $kette;
+    }
+
     public function codeExistiert(string $code): bool
     {
         $stmt = $this->db->prepare("SELECT 1 FROM gutscheine WHERE code = :code");
@@ -82,12 +121,12 @@ class GutscheinRepository
                 code, vorlage_id, betrag, restguthaben, gueltig_bis, status,
                 kunden_id, empfaenger_name, empfaenger_email, zustellung_am,
                 versandart, grusstext, shop_id, kanal_erstellt,
-                auftrag_id_ursprung, ausgestellt_von
+                auftrag_id_ursprung, vorgaenger_gutschein_id, ausgestellt_von
             ) VALUES (
                 :code, :vorlage_id, :betrag, :restguthaben, :gueltig_bis, :status,
                 :kunden_id, :empfaenger_name, :empfaenger_email, :zustellung_am,
                 :versandart, :grusstext, :shop_id, :kanal_erstellt,
-                :auftrag_id_ursprung, :ausgestellt_von
+                :auftrag_id_ursprung, :vorgaenger_gutschein_id, :ausgestellt_von
             )
         ");
         $stmt->execute($daten);
