@@ -592,7 +592,21 @@ if ($result['erfolg'] && $webAuftragId) {
                         'kassen_bon_id'       => $bonId,
                         'versandart'          => 'selbst_ausdrucken',
                     ], $benutzerId);
-                    if (!$gErgebnis['erfolg']) {
+                    if ($gErgebnis['erfolg']) {
+                        // Auch bei Gutschein-Erstattung MUSS ein negativer auftrag_zahlungen-Posten
+                        // gebucht werden -- $offenBetrag in detail.php rechnet sonst mit dem vollen
+                        // Ursprungsbetrag weiter und zeigt fälschlich "Überbezahlt/Gutschrift" statt
+                        // "Vollständig bezahlt" (gleiche Buchungslogik wie beim Bar-Erstattungs-Zweig,
+                        // nur mit Gutschein-Code statt "bar" in der Notiz für die Nachverfolgbarkeit).
+                        $db->prepare("
+                            INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
+                            VALUES (?, ?, CURDATE(), ?, ?)
+                        ")->execute([
+                            $webAuftragId, -$retourBetrag,
+                            'Rückerstattung als Gutschein ' . $gErgebnis['code'] . ' — Bon ' . $bonNr,
+                            $benutzerId,
+                        ]);
+                    } else {
                         Logger::log('gutschein.kasse_ausgabe_fehler', 'auftraege', $webAuftragId, [
                             'fehler' => $gErgebnis['fehler'] ?? [], 'bon_nr' => $bonNr,
                         ], $benutzerId, 'error');

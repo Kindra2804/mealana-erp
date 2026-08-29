@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 40a29a40-0c3b-483d-82e6-51045de0676d
-  modified: 2026-08-29T18:07:50.988Z
+  modified: 2026-08-29T18:16:49.495Z
 ---
 
 ## ✅ Baustufe 1 GEBAUT 2026-08-29: Backend + ERP-UI komplett, getestet
@@ -79,6 +79,16 @@ Jackys Anfrage: "Machen wir die Kassenanbindung... damit die bei Rückgaben Guts
 - Code-Review bestätigt: `new GutscheinService()`-Konstruktor ist No-Arg (passt), `$gErgebnis['erfolg']`-Check passt zum tatsächlichen Rückgabewert.
 
 **Nicht möglich ohne Jackys nächsten Schritt:** echter End-to-End-Klicktest an der Kasse -- braucht einen realen `ist_gutschein=1`-Artikel (Jacky legt den als Nächstes selbst an) und eine echte BFR-Session, beides nicht sinnvoll per CLI simulierbar (analog zu allen anderen Kassen-Features in diesem Projekt, die immer erst am echten Gerät final abgenommen werden).
+
+### ✅ Nachtrag gleicher Tag: Auftrag-Anzeige bei Gutschein-Erstattung korrigiert
+
+Jackys Nachfrage: bei einem "überbezahlten" Web-Auftrag (Kunde nimmt weniger mit) muss die Auftrag-Detailseite bei Gutschein-Erstattung genauso korrekt "erstattet" zeigen wie bisher bei Bar -- inkl. Code/Link, damit Support sofort nachvollziehen kann. Beim Nachprüfen echten Bug im frisch gebauten Kasse-Zweig gefunden: die Gutschein-Ausgabe erzeugte KEINEN negativen `auftrag_zahlungen`-Posten (anders als der Bar-Zweig) -- Folge: `detail.php`s `$offenBetrag`-Rechnung (`bruttobetrag - retourGesamtbetrag - summeBezahlt`) wäre bei Gutschein-Erstattung fälschlich negativ geblieben und hätte "Überbezahlt ... Gutschrift" statt "Vollständig bezahlt" angezeigt.
+
+**Fix `bon_speichern.php`:** Bei erfolgreicher `erstelleGutschein()` wird jetzt genau wie beim Bar-Zweig ein negativer `auftrag_zahlungen`-Posten gebucht, Notiz enthält den echten Gutschein-Code ("Rückerstattung als Gutschein MEA-XXXX... — Bon Y") statt "bar" -- hält die Zahlungsverlauf-Arithmetik konsistent UND macht den Code direkt in der bestehenden Zahlungsverlauf-Liste sichtbar.
+
+**Neu in `auftraege/detail.php`:** eigene Karte "Als Gutschein erstattet" (nur sichtbar wenn vorhanden), findet über `gutscheine.auftrag_id_ursprung = auftrag.id` (Feld existierte schon, keine Schema-Änderung nötig) alle für diesen Auftrag ausgestellten Gutscheine und zeigt sie als klickbaren Link zu `gutscheine/detail.php` -- Notiz-Text allein kann keinen Link tragen (wird escaped), deshalb eigene Karte statt nur Text.
+
+**Verifiziert:** `php -l` beide Dateien sauber, neue SQL-Query per echtem Testdatensatz (danach gelöscht) bestätigt, Arithmetik-Symmetrie zum bereits bewährten Bar-Zweig durch Code-Vergleich bestätigt.
 
 ## Status 2026-08-29 (Vormittag der Planung): Planung KOMPLETT abgeschlossen
 

@@ -33,6 +33,17 @@ $preisanzeige = $db->query("SELECT wert FROM system_einstellungen WHERE schluess
 $zahlungen   = $service->getZahlungen($id);
 $summeBezahlt = array_sum(array_column($zahlungen, 'betrag'));
 
+// Gutschein(e), die für diesen Auftrag ausgestellt wurden (z.B. Kasse-Retoure statt Bar) --
+// gutscheine.auftrag_id_ursprung verlinkt bereits dorthin, keine eigene Repository-Methode nötig.
+$ausgestellteGutscheine = $db->prepare("
+    SELECT id, code, betrag, status
+    FROM gutscheine
+    WHERE auftrag_id_ursprung = :id
+    ORDER BY id DESC
+");
+$ausgestellteGutscheine->execute(['id' => $id]);
+$ausgestellteGutscheine = $ausgestellteGutscheine->fetchAll(PDO::FETCH_ASSOC);
+
 // Über die Kasse retournierte Positionen verkleinern den Auftrag effektiv — ohne das würde
 // "Offen" nach einer Kasse-Retoure fälschlich einen Restbetrag zeigen, obwohl wirtschaftlich
 // nichts mehr offen ist (Rückerstattung ist schon in $summeBezahlt als negativer Posten drin).
@@ -253,6 +264,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <span style="color:#059669;font-weight:600">Vollständig bezahlt</span>
                         <?php endif; ?>
                     </div>
+                </div>
+            <?php endif; ?>
+            <?php if (!empty($ausgestellteGutscheine)): ?>
+                <div style="margin-top:6px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+                    <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Als Gutschein erstattet</div>
+                    <?php foreach ($ausgestellteGutscheine as $g): ?>
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:2px 0">
+                            <a href="<?= BASE_PATH ?>/gutscheine/detail.php?id=<?= $g['id'] ?>">🎁 <?= htmlspecialchars($g['code']) ?></a>
+                            <span style="font-weight:600"><?= number_format((float)$g['betrag'], 2, ',', '.') ?> €</span>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             <?php endif; ?>
             <?php if (!$istStorniert && in_array($auftrag['zahlungsstatus'], ['ausstehend','teilbezahlt'])): ?>
