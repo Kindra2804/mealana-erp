@@ -307,6 +307,10 @@ class AuftragService
                 'rabatt_prozent'    => $rabatt,
                 'gesamtpreis_netto' => $gesamtNetto,
                 'konfig_wert_ids'   => !empty($pos['konfig_wert_ids']) ? array_map('intval', $pos['konfig_wert_ids']) : [],
+                // Klartext-Fallback (z.B. aus dem Shop-Bestellungs-Sync) -- bleibt IMMER
+                // erhalten, auch wenn die ID-basierte Konfigurator-Zuordnung oben (z.B. durch
+                // eine seither veraltete Preis-Matrix) unvollständig ist. Siehe [[project_konfigurator_modul]].
+                'konfig_freitext'   => !empty($pos['konfig_freitext']) ? $pos['konfig_freitext'] : null,
             ];
         }
         return $result;

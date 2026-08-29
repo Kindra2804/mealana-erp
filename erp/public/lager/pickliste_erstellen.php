@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/modules/dokumente/DokumentRepository.php';
 require_once __DIR__ . '/../../src/modules/dokumente/PdfGenerator.php';
+require_once __DIR__ . '/../../src/modules/konfigurator/KonfiguratorRepository.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: ' . BASE_PATH . '/lager/picklisten.php');
@@ -35,7 +36,7 @@ $neueIds = [];
 
 // Positionen-Statement vorbereiten
 $posStmt = $db->prepare("
-    SELECT p.id, p.bezeichnung, p.menge, p.artikel_id, ar.artikelnummer
+    SELECT p.id, p.bezeichnung, p.menge, p.artikel_id, p.konfig_freitext, ar.artikelnummer
     FROM auftrag_positionen p
     LEFT JOIN artikel ar ON ar.id = p.artikel_id
     WHERE p.auftrag_id = :id
@@ -54,9 +55,29 @@ $stmt = $db->prepare("
 $stmt->execute(array_values($auftragIds));
 $auftraege = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$konfiguratorRepo = new KonfiguratorRepository();
+
 foreach ($auftraege as $auftrag) {
     $posStmt->execute([':id' => $auftrag['id']]);
     $positionen = $posStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Konfigurator-Auswahl (z.B. auf Bestellung gefertigte Schilder) direkt in der Pickliste
+    // sichtbar machen -- bisher stand das nirgends außer im Auftragsdetail, siehe
+    // [[project_konfigurator_modul]]. konfig_freitext (Shop-Bestellungen) hat Vorrang, da er
+    // auch bei einer inzwischen veralteten Preis-Matrix immer vollständig ist; die strukturierte
+    // position_konfiguration (z.B. Kasse-Bestellungen) dient als Fallback.
+    $konfigProPosition = $konfiguratorRepo->findAuswahlFuerReferenzIds('auftrag_positionen', array_column($positionen, 'id'));
+    foreach ($positionen as &$pos) {
+        if (!empty($pos['konfig_freitext'])) {
+            $pos['konfig_anzeige'] = str_replace("\n", ' · ', $pos['konfig_freitext']);
+        } elseif (!empty($konfigProPosition[$pos['id']])) {
+            $pos['konfig_anzeige'] = implode(' · ', array_map(
+                fn($k) => $k['achse_name'] . ': ' . $k['wert'],
+                $konfigProPosition[$pos['id']]
+            ));
+        }
+    }
+    unset($pos);
 
     $auftragMitPos              = $auftrag;
     $auftragMitPos['positionen'] = $positionen;

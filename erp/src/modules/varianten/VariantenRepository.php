@@ -248,6 +248,14 @@ class VariantenRepository
      * mehrerer gleichzeitiger Bedingungen crashte mit "Cannot delete or update a parent row" (FK
      * fk_artAchs_bedingungs_wert_id), weil genau dieser Fall noch fehlte.
      */
+    /** Prüft artikel.ist_konfigurierbar -- entscheidet, ob eine Werte-Änderung den Shop-Sync antriggern muss. */
+    public function istArtikelKonfigurierbar(int $artikelId): bool
+    {
+        $stmt = $this->db->prepare("SELECT ist_konfigurierbar FROM artikel WHERE id = :id");
+        $stmt->execute(['id' => $artikelId]);
+        return (bool)$stmt->fetchColumn();
+    }
+
     public function findWertIdsInUse(int $artikelId): array
     {
         $stmt = $this->db->prepare("

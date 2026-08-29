@@ -465,7 +465,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php if ($p['charge']): ?>
                             <span style="font-size:11px;color:var(--color-text-muted)"> · Charge: <?= htmlspecialchars($p['charge']) ?></span>
                         <?php endif; ?>
-                        <?php if (!empty($konfigProPosition[$p['id']])): ?>
+                        <?php if (!empty($p['konfig_freitext'])): ?>
+                            <div style="font-size:11px;color:var(--color-text-muted)">
+                                🔧 <?= htmlspecialchars(str_replace("\n", ' · ', $p['konfig_freitext'])) ?>
+                            </div>
+                        <?php elseif (!empty($konfigProPosition[$p['id']])): ?>
                             <div style="font-size:11px;color:var(--color-text-muted)">
                                 🔧 <?= htmlspecialchars(implode(' · ', array_map(
                                     fn($k) => $k['achse_name'] . ': ' . $k['wert'],

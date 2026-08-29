@@ -292,6 +292,7 @@ class ShopBestellungSyncService
                 'steuer_prozent'    => $total > 0 ? round($totalTax / $total * 100, 2) : 20,
                 'rabatt_prozent'    => $subtotal > 0 ? max(0, round((1 - $total / $subtotal) * 100, 2)) : 0,
                 'konfig_wert_ids'   => $konfig['wert_ids'],
+                'konfig_freitext'   => !empty($konfig['klartext']) ? implode("\n", $konfig['klartext']) : null,
             ];
         }
         return $positionen;
@@ -321,6 +322,7 @@ class ShopBestellungSyncService
                 return [
                     'wert_ids'     => array_map('intval', $decoded['werte']),
                     'preis_brutto' => isset($decoded['preis_brutto']) ? (float)$decoded['preis_brutto'] : null,
+                    'klartext'     => $this->leseKlartextAusMetaData($metaData),
                 ];
             }
         }
@@ -333,7 +335,32 @@ class ShopBestellungSyncService
                 $wertIds[] = (int)$meta['value'];
             }
         }
-        return ['wert_ids' => $wertIds, 'preis_brutto' => null];
+        return ['wert_ids' => $wertIds, 'preis_brutto' => null, 'klartext' => $this->leseKlartextAusMetaData($metaData)];
+    }
+
+    /**
+     * Klartext-Fallback der Konfigurator-Auswahl, UNABHÄNGIG von jeder ID-Aufl��sung.
+     * Snippet 34170 auf indra-design.at schreibt für jede gewählte Achse zusätzlich
+     * zum technischen "_mealana_konfig"-JSON einen eigenen, nicht-Underscore-präfigierten
+     * Meta-Key (Achsenname => Wert-Label, für Kunde/Admin in WooCommerce selbst gedacht) --
+     * genau diese Klartext-Paare frieren wir hier zusätzlich ein. Grund: die IDs im JSON
+     * beziehen sich auf die Preis-Matrix VOM SYNC-ZEITPUNKT DES PRODUKTS; werden
+     * varianten_achse_werte danach bearbeitet/neu generiert (neue IDs), zeigen alte,
+     * noch nicht neu synchte Matrizen ins Leere -- der Klartext bleibt davon unberührt
+     * (Fund 2026-08-29: 5 von 7 Werten eines Testauftrags dadurch sonst spurlos verloren).
+     */
+    private function leseKlartextAusMetaData(array $metaData): array
+    {
+        $paare = [];
+        foreach ($metaData as $meta) {
+            $key   = (string)($meta['key'] ?? '');
+            $value = $meta['value'] ?? '';
+            if ($key === '' || $key[0] === '_' || !is_scalar($value) || trim((string)$value) === '') {
+                continue;
+            }
+            $paare[] = $key . ': ' . $value;
+        }
+        return $paare;
     }
 
     private function baueKundenSnapshot(array $order): array

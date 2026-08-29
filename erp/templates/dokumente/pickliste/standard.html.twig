@@ -167,7 +167,12 @@
       <tr>
         <td><span class="check-box"></span></td>
         <td style="font-size:10px;color:#777">{{ pos.artikelnummer ?? '—' }}</td>
-        <td>{{ pos.bezeichnung }}</td>
+        <td>
+          {{ pos.bezeichnung }}
+          {% if pos.konfig_anzeige %}
+          <div style="font-size:9px;color:#666;margin-top:2px">Konfiguration: {{ pos.konfig_anzeige }}</div>
+          {% endif %}
+        </td>
         <td class="menge-cell">{{ pos.menge }}</td>
       </tr>
       {% endfor %}

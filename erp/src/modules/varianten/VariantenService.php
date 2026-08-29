@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/VariantenRepository.php';
+require_once __DIR__ . '/../shop/ShopSyncRepository.php';
 
 /**
  * VariantenService – Business-Logik für Achsen-Zuweisungen und Kombinations-Generator
@@ -20,10 +21,12 @@ require_once __DIR__ . '/VariantenRepository.php';
 class VariantenService
 {
     private VariantenRepository $repo;
+    private ShopSyncRepository $shopSyncRepo;
 
     public function __construct()
     {
         $this->repo = new VariantenRepository();
+        $this->shopSyncRepo = new ShopSyncRepository();
     }
 
     /**
@@ -115,6 +118,16 @@ class VariantenService
             'achsen_anzahl' => count($achsenIds),
             'werte_anzahl'  => count($werte),
         ]);
+
+        // Konfigurator-Preis-Matrix im Shop hängt an genau diesen wert_ids (siehe
+        // ShopSyncService::baueKonfiguratorFelder()/Snippet 34170 auf indra-design.at).
+        // Werte hier oben können komplett neue IDs bekommen (deleteWerteExcluding()+insertWert()),
+        // auch wenn sich der sichtbare Text nicht ändert -- ohne diesen Re-Sync-Trigger bleibt die
+        // im Shop gecachte Matrix dann leise veraltet stehen. Fund 2026-08-29: eine echte Bestellung
+        // verlor dadurch 5 von 7 Konfigurationswerten, weil deren IDs im Shop ins Leere zeigten.
+        if ($this->repo->istArtikelKonfigurierbar($artikelId)) {
+            $this->shopSyncRepo->markiereFuerErneutenSync([$artikelId]);
+        }
 
         return ['erfolg' => true];
     }

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/DokumentRepository.php';
 require_once __DIR__ . '/PdfGenerator.php';
+require_once __DIR__ . '/../konfigurator/KonfiguratorRepository.php';
 
 /**
  * DokumentService – Erzeugt PDF-Dokumente für Aufträge.
@@ -19,6 +20,7 @@ class DokumentService
     private PDO               $db;
     private DokumentRepository $repo;
     private PdfGenerator      $pdf;
+    private KonfiguratorRepository $konfiguratorRepo;
 
     private string $storagePfad;
 
@@ -27,6 +29,7 @@ class DokumentService
         $this->db          = Database::getInstance();
         $this->repo        = new DokumentRepository();
         $this->pdf         = new PdfGenerator();
+        $this->konfiguratorRepo = new KonfiguratorRepository();
         $this->storagePfad = __DIR__ . '/../../../storage/dokumente';
     }
 
@@ -424,7 +427,27 @@ class DokumentService
             ORDER BY p.sort_order, p.id
         ");
         $stmt->execute([':id' => $auftragId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $positionen = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Konfigurator-Auswahl (z.B. auf Bestellung gefertigte Schilder) auf Rechnung/AB/
+        // Lieferschein sichtbar machen -- konfig_freitext (Shop-Bestellungen) hat Vorrang,
+        // da er auch bei einer inzwischen veralteten Preis-Matrix immer vollständig ist;
+        // die strukturierte position_konfiguration (z.B. Kasse-Bestellungen) ist der Fallback.
+        // Siehe [[project_konfigurator_modul]], Fund 2026-08-29.
+        $konfigProPosition = $this->konfiguratorRepo->findAuswahlFuerReferenzIds('auftrag_positionen', array_column($positionen, 'id'));
+        foreach ($positionen as &$pos) {
+            if (!empty($pos['konfig_freitext'])) {
+                $pos['konfig_anzeige'] = str_replace("\n", ' · ', $pos['konfig_freitext']);
+            } elseif (!empty($konfigProPosition[$pos['id']])) {
+                $pos['konfig_anzeige'] = implode(' · ', array_map(
+                    fn($k) => $k['achse_name'] . ': ' . $k['wert'],
+                    $konfigProPosition[$pos['id']]
+                ));
+            }
+        }
+        unset($pos);
+
+        return $positionen;
     }
 
     /**
