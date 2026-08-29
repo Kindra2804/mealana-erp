@@ -5,8 +5,20 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bcf52b92-a756-4c54-8a41-faaebdece89e
-  modified: 2026-08-10T16:26:13.102Z
+  modified: 2026-08-29T12:35:36.524Z
 ---
+
+## 🟢 GELÖST 2026-08-29: Viele Farb-Swatches schoben "In den Warenkorb" bildschirmhöhenweit nach unten
+
+**Auslöser:** Jacky bemerkte bei DMC Mouline Special Sticktwist (499 Garnfarben als Image-Swatches) — der "In den Warenkorb"-Button lag ca. 4 Bildschirmhöhen tiefer als gewohnt.
+
+**Live geprüft (wp-admin):** Zwei Swatch-Plugins gleichzeitig aktiv (**Smart Swatches** von ShapedPlugin UND **Variation Swatches for WooCommerce** von Emran Ahmed, v2.4.0) -- Doppelbelegung nicht weiter untersucht, evtl. überflüssig, bei Gelegenheit mit Jacky klären. Das Farbe-Attribut ist global (Produkte → Attribute) als Typ "Image" gesetzt -- gilt für ALLE Produkte, die dieses Attribut nutzen. Ein Produkt-individuelles Umschalten Swatches↔Dropdown ("Individual Product Basis Attribute Variation Swatches Customization") ist im Plugin explizit als **Pro-only** markiert (freie Version zeigt nur den Upsell-Screen im "Swatches Settings"-Produkt-Tab) -- kostenlos also nicht direkt lösbar.
+
+**Fix (Jackys Vorgabe, mit Babsi abgestimmt, noch nicht final freigegeben):** reine CSS-Lösung statt Pro-Kauf oder Datenmodell-Split. Swatch-Container bleibt Swatches, wird aber ab mehr als 45 Werten (Jackys Praxis-Faustregel: 9 Swatches/Reihe × 5 Reihen sehen noch gut aus) auf `max-height:340px` (= 5 Reihen à 68px, live vermessen: 60px Swatch + 4px Rand oben/unten) mit `overflow-y:auto` begrenzt. `:has(.variable-item:nth-child(46))` sorgt dafür, dass kleine Attribute (2-3 Farben, z.B. Rundnadeln) komplett unverändert bleiben -- selbes `:has()`-Muster wie beim Produktkarten-Fix oben.
+
+**Umgesetzt:** WPCode-CSS-Snippet 34175 "MeaLana: Swatch-Container Scroll ab 45 Werten", aktiv gesetzt, Kopie in `shop/wp-snippets/swatch_container_scroll.css`. Live verifiziert: DMC (499 Werte) zeigt `max-height:340px`/`overflow-y:auto`/tatsächlich scrollbar; Symfonie Rundstricknadel (8 Werte je Achse) zeigt `max-height:none` -- Schwelle greift korrekt selektiv.
+
+**Noch offen:** Babsi soll die Optik absegnen (Jackys Wunsch) -- bei Bedarf schnell wieder änderbar (Schwelle/Zeilenzahl im Snippet).
 
 ## 🟢 GELÖST 2026-08-10: Produktkarten-Layout in der Shop-Übersicht (Blocksy) — Button-Ausrichtung + Grundpreis-Reihenfolge + Abstände
 

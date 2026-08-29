@@ -1,0 +1,19 @@
+/**
+ * WPCode-Snippet #34175 auf indra-design.at (WordPress/WooCommerce, NICHT Teil der PHP-Autoload-Kette des ERP).
+ * Export-Datum: 2026-08-29. Quelle der Wahrheit bleibt WPCode (wp-admin) --
+ * diese Datei ist eine manuell aktualisierte Kopie fuers Repo, kein automatischer Sync.
+ */
+
+/* Farb-/Wert-Swatches (Plugin "Variation Swatches for WooCommerce") auf Produktseiten:
+   bei sehr vielen Werten (z.B. DMC-Garnfarben, 499 Stueck) begrenzt der Container die
+   Hoehe auf 5 Reihen (bei ca. 9 Swatches/Reihe = 45) und scrollt danach, statt den
+   "In den Warenkorb"-Button mehrere Bildschirmhoehen nach unten zu schieben.
+   :has() prueft ob ein 46. Swatch existiert -- greift nur bei vielen Werten,
+   kleine Attribute (z.B. 2-3 Farben) bleiben unveraendert. */
+.variable-items-wrapper:has(.variable-item:nth-child(46)) {
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+}

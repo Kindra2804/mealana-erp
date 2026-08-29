@@ -24,6 +24,7 @@ nachgezogen werden (und umgekehrt). Quelle der Wahrheit ist immer WPCode selbst
 | `leere_kategorien_ausblenden.php` | 32095 | Leere Kategorien ausblenden | ✅ Aktiv | Überall ausführen |
 | `ausverkauft_statt_weiterlesen.php` | 32085 | "Ausverkauft" statt "Weiterlesen" bei Out-of-Stock | ✅ Aktiv | Überall ausführen |
 | `hersteller_menue.php` | 32070 | Hersteller-Menü (Shortcode `[hersteller_liste]` fürs Mega-Menü) | ✅ Aktiv | Nur Frontend |
+| `swatch_container_scroll.css` | 34175 | Swatch-Container Scroll ab 45 Werten | ✅ Aktiv (wartet auf Babsis Sichtfreigabe) | Überall ausführen |
 
 Zwei weitere WPCode-Einträge (32068 "Nachricht nach 1. Absatz", 32069 "Kommentare deaktivieren")
 sind unveränderte Vorlagen aus der WPCode-Bibliothek, nicht MeaLana-spezifisch — bewusst nicht
@@ -38,7 +39,7 @@ hier abgelegt.
   klassisches Gateway allein ist im blockbasierten Checkout unsichtbar (siehe
   [[project_shop_sync]]-Memory, Fund vom 2026-08-29).
 - **konfigurator_options_picker** — Frontend-UI-Baustein für den Artikel-Konfigurator (Achsen/Werte
-  als klickbare Optionen statt Dropdown). Noch inaktiv, siehe [[project_konfigurator_modul]].
+  als klickbare Optionen statt Dropdown). Aktiv, siehe [[project_konfigurator_modul]].
 - **mindestabnahme** — Mengenfeld-Vorbelegung + Kundenhinweistext + serverseitige Validierung für
   Meterware mit Mindestabnahme/Abnahmeintervall (liest `_mealana_mindestabnahme*`-Metafelder, die
   `ShopSyncService::baueMindestabnahmeFelder()` beim Produkt-Sync setzt).
@@ -54,6 +55,13 @@ hier abgelegt.
   -- betrifft Artikel mit vielen Kombinationen (Rundnadeln bis 141, DMC-Garnfarben bis 499 Stand
   2026-08-29). Live verifiziert: DMC-Produkt bettet danach 304 Variationen (alle mit Bestand) inline
   ein statt vorher `false`.
+- **swatch_container_scroll** — begrenzt den Farb-/Wert-Swatch-Container (Plugin "Variation
+  Swatches for WooCommerce", kostenlose Version) bei mehr als 45 Werten auf 5 sichtbare Reihen
+  mit Scrollbalken statt den "In den Warenkorb"-Button beliebig weit nach unten zu schieben
+  (Fund: DMC-Garnfarben, 499 Swatches, Button ca. 4 Bildschirmhöhen tief). Reine CSS-`:has()`-Logik,
+  betrifft nur Attribute mit vielen Werten. **Ein pro-Produkt-Umschalten Swatches↔Dropdown wäre nur
+  mit der Pro-Version des Plugins möglich** (live geprüft, "Individual Product Basis Attribute
+  Variation Swatches Customization" ist dort explizit Pro-only) — CSS-Lösung war der kostenlose Weg.
 
 ## Bei einem weiteren Shop einspielen
 
