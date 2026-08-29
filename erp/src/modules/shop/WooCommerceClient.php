@@ -116,6 +116,28 @@ class WooCommerceClient
     }
 
     /**
+     * Gutschein-Coupon anlegen (siehe GutscheinService) -- ERP ist Source of
+     * Truth, dieser Coupon ist nur der technische Code-Spiegel im Shop.
+     * usage_limit=1 ist bewusst fix: verhindert Doppel-Einlösung im Zeitfenster
+     * zwischen Einlösung und unserem naechsten (poll-basierten) Bestellungs-Sync.
+     */
+    public function erstelleCoupon(array $daten): array
+    {
+        return $this->request('POST', '/coupons', [], $daten);
+    }
+
+    public function aktualisiereCoupon(int $externalId, array $daten): array
+    {
+        return $this->request('PUT', '/coupons/' . $externalId, [], $daten);
+    }
+
+    public function sucheCouponNachCode(string $code): ?array
+    {
+        $treffer = $this->request('GET', '/coupons', ['code' => $code]);
+        return $treffer[0] ?? null;
+    }
+
+    /**
      * Sucht ein Produkt anhand der SKU -- für den Abgleich, wenn unklar ist,
      * ob ein per Batch angelegtes Produkt trotz Timeout/502 doch schon
      * existiert (siehe ShopSyncService::reconciliereOffeneFehler()).

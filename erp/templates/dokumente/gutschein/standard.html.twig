@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: DejaVu Sans, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  .seite {
+    padding: 30mm 15mm;
+  }
+  .karte {
+    position: relative;
+    width: 100%;
+    height: 110mm;
+    border-radius: 6mm;
+    overflow: hidden;
+    background-color: #eef4f8;
+    {% if hintergrundbild_base64 %}
+    background-image: url('data:image/jpeg;base64,{{ hintergrundbild_base64 }}');
+    background-size: cover;
+    background-position: center;
+    {% endif %}
+  }
+  .logo {
+    position: absolute;
+    top: 8mm;
+    left: 8mm;
+    max-height: 14mm;
+  }
+  .titel {
+    position: absolute;
+    top: 12mm;
+    right: 12mm;
+    font-size: 24pt;
+    font-weight: bold;
+    color: #1e3a5f;
+    text-shadow: 0 0 4pt #ffffffcc, 0 0 8pt #ffffffcc;
+  }
+  .info-box {
+    position: absolute;
+    bottom: 10mm;
+    left: 10mm;
+    right: 10mm;
+    background: #ffffffdd;
+    border-radius: 3mm;
+    padding: 6mm 8mm;
+  }
+  .betrag {
+    font-size: 20pt;
+    font-weight: bold;
+    color: #1e3a5f;
+  }
+  .code-zeile {
+    font-size: 13pt;
+    letter-spacing: 1pt;
+    margin-top: 3mm;
+    font-family: monospace;
+  }
+  .gueltig-zeile {
+    font-size: 9pt;
+    color: #555;
+    margin-top: 2mm;
+  }
+  .empfaenger-block {
+    margin-top: 12mm;
+    font-size: 11pt;
+  }
+  .grusstext {
+    margin-top: 4mm;
+    font-size: 11pt;
+    font-style: italic;
+    white-space: pre-line;
+  }
+  .fussnote {
+    margin-top: 14mm;
+    font-size: 8pt;
+    color: #777;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="seite">
+  <div class="karte">
+    {% if logo_base64 %}
+      <img class="logo" src="data:image/png;base64,{{ logo_base64 }}" alt="Logo">
+    {% endif %}
+    <div class="titel">Gutschein</div>
+    <div class="info-box">
+      <div class="betrag">im Wert von {{ betrag|euroformat }} €</div>
+      <div class="code-zeile">Code: {{ code }}</div>
+      {% if gueltig_bis %}
+        <div class="gueltig-zeile">Gültig bis: {{ gueltig_bis|date('d.m.Y') }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if empfaenger_name %}
+    <div class="empfaenger-block">Für: <strong>{{ empfaenger_name }}</strong></div>
+  {% endif %}
+
+  {% if grusstext %}
+    <div class="grusstext">{{ grusstext }}</div>
+  {% endif %}
+
+  <div class="fussnote">
+    {{ firma.firmenname ?? 'MEALANA KG' }} &middot; einlösbar online und im Geschäft
+  </div>
+</div>
+</body>
+</html>

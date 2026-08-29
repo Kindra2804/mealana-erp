@@ -373,7 +373,7 @@ class AuftragRepository
         $keineLagerfuehrungSet = [];
         if (!empty($artikelIds)) {
             $placeholders = implode(',', array_fill(0, count($artikelIds), '?'));
-            $stmt0 = $this->db->prepare("SELECT id FROM artikel WHERE id IN ($placeholders) AND keine_lagerbestandsfuehrung = 1");
+            $stmt0 = $this->db->prepare("SELECT id FROM artikel WHERE id IN ($placeholders) AND (keine_lagerbestandsfuehrung = 1 OR ist_gutschein = 1)");
             $stmt0->execute($artikelIds);
             $keineLagerfuehrungSet = array_flip($stmt0->fetchAll(\PDO::FETCH_COLUMN));
         }

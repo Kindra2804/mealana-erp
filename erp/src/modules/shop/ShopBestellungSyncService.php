@@ -8,6 +8,8 @@ require_once __DIR__ . '/../auftraege/AuftragService.php';
 require_once __DIR__ . '/../kunden/KundenRepository.php';
 require_once __DIR__ . '/../kunden/KundenService.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
+require_once __DIR__ . '/../gutscheine/GutscheinRepository.php';
+require_once __DIR__ . '/../gutscheine/GutscheinService.php';
 
 /**
  * ShopBestellungSyncService – Phase 3: Bestellungen aus WooCommerce ins ERP.
@@ -41,6 +43,8 @@ class ShopBestellungSyncService
     private KundenRepository $kundenRepo;
     private KundenService $kundenService;
     private KonfiguratorService $konfiguratorService;
+    private GutscheinRepository $gutscheinRepo;
+    private GutscheinService $gutscheinService;
     private int $jarvisId;
 
     public function __construct()
@@ -51,6 +55,8 @@ class ShopBestellungSyncService
         $this->kundenRepo = new KundenRepository();
         $this->kundenService = new KundenService();
         $this->konfiguratorService = new KonfiguratorService();
+        $this->gutscheinRepo = new GutscheinRepository();
+        $this->gutscheinService = new GutscheinService();
         $this->jarvisId = (int)Database::getInstance()
             ->query("SELECT id FROM benutzer WHERE username = 'system'")
             ->fetchColumn();
@@ -105,7 +111,7 @@ class ShopBestellungSyncService
 
         $bestehender = $this->auftragRepo->findByShopUndKanalAuftragId($shopId, (int)$order['id']);
         if ($bestehender) {
-            $this->aktualisiereBestehenden((int)$bestehender['id'], $bestehender, $zahlungsstatus, $lieferstatus);
+            $this->aktualisiereBestehenden((int)$bestehender['id'], $bestehender, $zahlungsstatus, $lieferstatus, $order, $shopId);
             return;
         }
 
@@ -132,8 +138,14 @@ class ShopBestellungSyncService
         if (!$ergebnis['erfolg']) {
             throw new RuntimeException('Auftrag anlegen fehlgeschlagen: ' . implode(', ', $ergebnis['fehler']));
         }
+        $auftragId = (int)$ergebnis['id'];
 
-        $this->setzeStatus((int)$ergebnis['id'], $zahlungsstatus, $lieferstatus, 'Import aus WooCommerce');
+        $this->setzeStatus($auftragId, $zahlungsstatus, $lieferstatus, 'Import aus WooCommerce');
+
+        // Nur beim ERSTEN Import verarbeiten -- coupon_lines ändert sich nach
+        // Bestellabschluss nicht mehr, ein erneuter Poll würde sonst doppelt buchen.
+        $this->verarbeiteGutscheinEinloesungen($order, $auftragId);
+        $this->verarbeiteGutscheinKauf($order, $auftragId, $shopId, $zahlungsstatus);
     }
 
     /**
@@ -214,10 +226,151 @@ class ShopBestellungSyncService
      * überschrieben -- der restliche Versand-Workflow (Packplatz, Tracking)
      * ist unser eigener interner Prozess und soll nicht zurückgesetzt werden.
      */
-    private function aktualisiereBestehenden(int $auftragId, array $bestehender, string $zahlungsstatus, ?string $lieferstatus): void
-    {
+    private function aktualisiereBestehenden(
+        int $auftragId,
+        array $bestehender,
+        string $zahlungsstatus,
+        ?string $lieferstatus,
+        array $order,
+        int $shopId
+    ): void {
         $neuerLieferstatus = $lieferstatus === 'storniert' ? 'storniert' : null;
         $this->setzeStatus($auftragId, $zahlungsstatus, $neuerLieferstatus, 'Aktualisiert aus WooCommerce', $bestehender);
+
+        // Zahlungsstatus kann erst bei einem SPÄTEREN Poll auf "bezahlt" wechseln
+        // (z.B. Vorkasse) -- der Gutschein-Kauf-Check läuft deshalb bei JEDEM
+        // Poll, ist aber über findByAuftragUrsprung() idempotent.
+        $this->verarbeiteGutscheinKauf($order, $auftragId, $shopId, $zahlungsstatus);
+    }
+
+    /**
+     * Erkennt eingelöste Gutschein-Coupons in einer Bestellung und bucht sie über
+     * GutscheinService::einloesen() -- der tatsächlich abgezogene Betrag steht in
+     * coupon_lines[].discount (kann kleiner als das Restguthaben sein, dann
+     * entsteht dort automatisch ein neuer Code für den Rest, siehe
+     * GutscheinService::einloesen()). Unbekannte Coupon-Codes (normale
+     * Rabatt-Coupons, kein Gutschein) werden stillschweigend übersprungen.
+     */
+    private function verarbeiteGutscheinEinloesungen(array $order, int $auftragId): void
+    {
+        foreach ($order['coupon_lines'] ?? [] as $couponLine) {
+            $code = strtoupper(trim((string)($couponLine['code'] ?? '')));
+            if ($code === '' || !$this->gutscheinRepo->findByCode($code)) {
+                continue; // kein Gutschein-Code (z.B. normaler Rabatt-Coupon)
+            }
+
+            $betrag = (float)($couponLine['discount'] ?? 0);
+            if ($betrag <= 0) {
+                continue;
+            }
+
+            $ergebnis = $this->gutscheinService->einloesen($code, $betrag, 'woocommerce', $auftragId);
+            if (!$ergebnis['erfolg']) {
+                Logger::log('gutschein.einloesung_fehler', 'auftraege', $auftragId, [
+                    'code' => $code, 'fehler' => $ergebnis['fehler'] ?? [],
+                ], $this->jarvisId, 'warn');
+                continue;
+            }
+            if (!empty($ergebnis['neuer_code'])) {
+                Logger::log('gutschein.teileinloesung_neuer_code', 'auftraege', $auftragId, [
+                    'alter_code' => $code, 'neuer_code' => $ergebnis['neuer_code'],
+                    'restguthaben' => $ergebnis['restguthaben'],
+                ], $this->jarvisId);
+            }
+        }
+    }
+
+    /**
+     * Erkennt den Kauf eines Shop-Gutschein-Artikels (artikel.ist_gutschein=1)
+     * und erzeugt daraus einen echten Gutschein -- erst wenn zahlungsstatus
+     * tatsächlich 'bezahlt' ist (nicht schon bei 'pending'/Vorkasse-Bestelleingang).
+     * Personalisierung (Empfänger/Zustelldatum/Grußtext/Design) kommt aus dem
+     * "_mealana_gutschein"-Line-Item-Meta (Checkout-Snippet, analog zu
+     * "_mealana_konfig" beim Konfigurator).
+     */
+    private function verarbeiteGutscheinKauf(array $order, int $auftragId, int $shopId, string $zahlungsstatus): void
+    {
+        if ($zahlungsstatus !== 'bezahlt') {
+            return;
+        }
+
+        $gutscheinArtikelIds = $this->gutscheinRepo->findeGutscheinArtikelIds();
+        if (empty($gutscheinArtikelIds)) {
+            return;
+        }
+
+        foreach ($order['line_items'] ?? [] as $item) {
+            $sku = trim((string)($item['sku'] ?? ''));
+            $artikelId = $sku !== '' ? $this->repo->findArtikelIdFuerSku($sku) : null;
+            if ($artikelId === null || !in_array($artikelId, $gutscheinArtikelIds, true)) {
+                continue;
+            }
+
+            // Idempotenz: pro WC-Line-Item-ID darf nur einmal ein Gutschein entstehen,
+            // auch wenn dieselbe Bestellung (z.B. Menge > 1) mehrfach gepollt wird.
+            if ($this->gutscheinRepo->existiertBereitsFuerLineItem($auftragId, (int)$item['id'])) {
+                continue;
+            }
+
+            $meta = $this->leseGutscheinMetaAusLineItem($item);
+            $menge = max(1, (int)($item['quantity'] ?? 1));
+            $einzelBetrag = round((float)($item['total'] ?? 0) / $menge, 2);
+
+            for ($i = 0; $i < $menge; $i++) {
+                $ergebnis = $this->gutscheinService->erstelleGutschein([
+                    'betrag'           => $meta['betrag'] ?? $einzelBetrag,
+                    'vorlage_id'       => $meta['vorlage_id'] ?? null,
+                    'empfaenger_name'  => $meta['empfaenger_name'] ?? null,
+                    'empfaenger_email' => $meta['empfaenger_email'] ?? null,
+                    'zustellung_am'    => $meta['zustellung_am'] ?? null,
+                    'versandart'       => $meta['versandart'] ?? 'selbst_ausdrucken',
+                    'grusstext'        => $meta['grusstext'] ?? null,
+                    'shop_id'          => $shopId,
+                    'kanal_erstellt'   => 'woocommerce',
+                    'auftrag_id_ursprung' => $auftragId,
+                ], $this->jarvisId);
+
+                if ($ergebnis['erfolg']) {
+                    $this->gutscheinRepo->verknuepfeMitLineItem((int)$ergebnis['id'], $auftragId, (int)$item['id']);
+                    // Sofortversand, außer der Käufer hat ein späteres Zustelldatum gewählt
+                    // (dann übernimmt der gutschein_versand-Cronjob).
+                    if (empty($meta['zustellung_am'])) {
+                        try {
+                            $this->gutscheinService->versende((int)$ergebnis['id']);
+                        } catch (Throwable $e) {
+                            Logger::log('gutschein.versand_fehler', 'gutscheine', (int)$ergebnis['id'], [
+                                'fehler' => $e->getMessage(),
+                            ], $this->jarvisId, 'error');
+                        }
+                    }
+                } else {
+                    Logger::log('gutschein.kauf_fehler', 'auftraege', $auftragId, [
+                        'fehler' => $ergebnis['fehler'] ?? [],
+                    ], $this->jarvisId, 'warn');
+                }
+            }
+        }
+    }
+
+    /**
+     * Liest die Personalisierung aus dem "_mealana_gutschein"-Meta eines
+     * Line-Items (JSON-Blob, vom Checkout-Snippet gesetzt -- analog zu
+     * leseKonfigurationAusLineItem()). Fehlt das Meta (z.B. Snippet noch nicht
+     * gebaut/aktiv), liefert diese Methode ein leeres Array -- der Gutschein
+     * entsteht dann trotzdem, nur ohne Personalisierung.
+     */
+    private function leseGutscheinMetaAusLineItem(array $item): array
+    {
+        foreach ($item['meta_data'] ?? [] as $meta) {
+            if (($meta['key'] ?? '') !== '_mealana_gutschein') {
+                continue;
+            }
+            $decoded = json_decode((string)($meta['value'] ?? ''), true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+        return [];
     }
 
     private function setzeStatus(int $auftragId, string $zahlungsstatus, ?string $lieferstatus, string $notiz, ?array $vorher = null): void

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/DokumentRepository.php';
 require_once __DIR__ . '/PdfGenerator.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorRepository.php';
+require_once __DIR__ . '/../gutscheine/GutscheinRepository.php';
 
 /**
  * DokumentService – Erzeugt PDF-Dokumente für Aufträge.
@@ -21,6 +22,7 @@ class DokumentService
     private DokumentRepository $repo;
     private PdfGenerator      $pdf;
     private KonfiguratorRepository $konfiguratorRepo;
+    private GutscheinRepository $gutscheinRepo;
 
     private string $storagePfad;
 
@@ -30,6 +32,7 @@ class DokumentService
         $this->repo        = new DokumentRepository();
         $this->pdf         = new PdfGenerator();
         $this->konfiguratorRepo = new KonfiguratorRepository();
+        $this->gutscheinRepo = new GutscheinRepository();
         $this->storagePfad = __DIR__ . '/../../../storage/dokumente';
     }
 
@@ -139,6 +142,50 @@ class DokumentService
         $this->repo->speichern($auftragId, 'abholzettel', $dateiname, $benutzerId);
 
         return ['erfolg' => true, 'dateiname' => $dateiname, 'auftrag_id' => $auftragId];
+    }
+
+    /**
+     * Erstellt das Gutschein-PDF (Design+Code+Betrag+Grußtext). Nicht an einen
+     * Auftrag gebunden (Gutscheine können auch ganz ohne Bestellung entstehen,
+     * z.B. manuell im ERP) -- eigener Storage-Pfad, keine auftrag_dokumente-Zeile.
+     */
+    public function erstelleGutscheinPdf(int $gutscheinId): string
+    {
+        $gutschein = $this->gutscheinRepo->findById($gutscheinId);
+        if (!$gutschein) {
+            throw new RuntimeException("Gutschein $gutscheinId nicht gefunden.");
+        }
+
+        $firma = $this->repo->ladeFirmaDaten();
+        $shop  = $this->ladeShop((int)($gutschein['shop_id'] ?? 1));
+        $logoPfad   = __DIR__ . '/../../../public/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
+        $logoBase64 = file_exists($logoPfad) ? base64_encode(file_get_contents($logoPfad)) : '';
+
+        $hintergrundBase64 = null;
+        if (!empty($gutschein['hintergrundbild_pfad'])) {
+            $bildPfad = __DIR__ . '/../../../public/' . $gutschein['hintergrundbild_pfad'];
+            if (file_exists($bildPfad)) {
+                $hintergrundBase64 = base64_encode(file_get_contents($bildPfad));
+            }
+        }
+
+        $daten = [
+            'code'                   => $gutschein['code'],
+            'betrag'                 => $gutschein['betrag'],
+            'gueltig_bis'            => $gutschein['gueltig_bis'],
+            'empfaenger_name'        => $gutschein['empfaenger_name'],
+            'grusstext'              => $gutschein['grusstext'],
+            'firma'                  => $firma,
+            'logo_base64'            => $logoBase64,
+            'hintergrundbild_base64' => $hintergrundBase64,
+        ];
+
+        $dateiname = 'Gutschein-' . $gutschein['code'] . '.pdf';
+        $dateipfad = $this->storagePfad . '/gutscheine/' . $gutscheinId . '/' . $dateiname;
+
+        $this->pdf->generiere('gutschein/standard.html.twig', $daten, $dateipfad);
+
+        return $dateipfad;
     }
 
     /**

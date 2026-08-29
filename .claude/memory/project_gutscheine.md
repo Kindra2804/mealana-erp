@@ -5,12 +5,50 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 40a29a40-0c3b-483d-82e6-51045de0676d
-  modified: 2026-08-29T13:07:13.068Z
+  modified: 2026-08-29T13:30:56.866Z
 ---
 
-## Status 2026-08-29: Planung KOMPLETT abgeschlossen, Bau noch nicht gestartet
+## ✅ Baustufe 1 GEBAUT 2026-08-29: Backend + ERP-UI komplett, getestet
 
-Vollständige Planungsrunde mit Jacky (Referenz-Check JTL-Shop-Screenshots + WAWI-Vergleich + Wireframe), löst die alte 2026-07-10-Zurückstellung ein ("in der Nähe der Online-Shop-Anbindung bauen" — die ist jetzt weit fortgeschritten). Alte Annahme "kein Design/Von-An im WC möglich, nackter Code reicht" ist **überholt** — der Shop-Gutschein-Artikel-Ansatz (siehe unten) löst das sauber. **Nächster Schritt sobald Jacky grünes Licht gibt: Migrationen ausformulieren.**
+Direkt im Anschluss an die Planungsrunde umgesetzt (Jacky: "dann kannst du mit dem bauen anfangen"). Kompletter Kern-Durchstich funktioniert end-to-end, alle Backend-Pfade mit echten Funktionstests verifiziert (nicht nur `php -l`):
+
+**Migrationen 173+174:** `gutschein_vorlagen`/`gutscheine`/`gutschein_transaktionen` + FK auf das seit Migration 060 vorsorglich existierende `auftraege.gutschein_id` + neue `kassen_bons.gutschein_id`-FK (alte `gutschein_code`-Freitextspalte bleibt für historische Bons) + `artikel.ist_gutschein`-Flag + `system_einstellungen` (`gutschein_gueltigkeit_tage`=3650, `gutschein_mindestbetrag_shop`=10.00) + `gutscheine.kanal_line_item_id` (Idempotenz-Tracking für den Shop-Kauf-Pfad).
+
+**`GutscheinRepository`/`GutscheinService`** (`src/modules/gutscheine/`): `erstelleGutschein()`, `einloesen()` (inkl. automatischer Neu-Code-Erzeugung bei Teileinlösung + Betrag-Cap auf Restguthaben + Ablauf-/Storno-/Vollständig-eingelöst-Prüfung), `spiegleZuWooCommerce()`, `versende()` (PDF+Mail), `generiereEindeutigenCode()` (Format `MEA-XXXX-XXXX-XXXX`, Alphabet ohne 0/O/1/I/L). **Echter Funktionstest bestanden:** 100€ erstellt → 30€ teileingelöst (via simuliertem `coupon_lines`-Aufruf) → korrekt neuer 70€-Code erzeugt, Transaktionen sauber, unbekannter Coupon-Code korrekt ignoriert.
+
+**WooCommerceClient** um `erstelleCoupon()`/`aktualisiereCoupon()`/`sucheCouponNachCode()` erweitert (fixed_cart, usage_limit=1 fix -- siehe Race-Condition-Begründung im Code-Kommentar).
+
+**`ShopBestellungSyncService`** (beide Richtungen, per Reflection-Test verifiziert):
+- `verarbeiteGutscheinEinloesungen()`: liest `order.coupon_lines`, matched gegen bekannte Gutschein-Codes, bucht via `einloesen()`. Läuft NUR beim Erstimport (Idempotenz, coupon_lines ändert sich nach Bestellabschluss nicht mehr).
+- `verarbeiteGutscheinKauf()`: erkennt `artikel.ist_gutschein=1`-Line-Items, erst wenn `zahlungsstatus='bezahlt'` (läuft bei JEDEM Poll, idempotent über `kanal_line_item_id`). Liest Personalisierung aus `_mealana_gutschein`-Line-Item-Meta (JSON, analog `_mealana_konfig` beim Konfigurator -- **Checkout-Snippet dafür noch nicht gebaut**, Feld-Konvention aber im Code dokumentiert). Menge>1 erzeugt mehrere Einzelcodes. Sofortversand außer bei gewähltem `zustellung_am`.
+
+**Dokumente-System:** `gutschein/standard.html.twig` (Karten-Design mit Hintergrundbild-Variable, Logo, Betrag/Code/Gültig-bis-Box, Empfänger+Grußtext) + `DokumentService::erstelleGutscheinPdf()`. **Per echtem PDF-Test bestätigt** (Screenshot-Qualität geprüft) -- funktioniert auch OHNE Design-Hintergrundbild (Jacky muss die 8 JTL-Vorlagenbilder noch hochladen, `gutschein_vorlagen` ist leer).
+
+**Mail:** `templates/mails/gutschein_versand.html.twig` (unterscheidet "X hat dir geschenkt" vs. Direktversand an Käufer).
+
+**Cron:** `cron/gutschein_versand.php` (nur für geplante `zustellung_am`-Zustellungen -- Soforversand läuft direkt am Entstehungspunkt, nie über den Cron).
+
+**ERP-Oberfläche** (`public/gutscheine/`): `liste.php` (Filter Status/Suche), `neu.php` (Formular inkl. Design-Auswahl/Versandart-Toggle/JS), `speichern.php`, `detail.php` (Transaktions-Historie, PDF-Download, manuelles Einlösen-Formular für Telefon-/Laden-Bestellungen, "Jetzt versenden"-Button), `einloesen.php`, `versenden.php`, `pdf_download.php`. In `shell_top.php` als eigenes Modul unter "Verkauf" eingehängt. **Kein Browser-Test** (kein ERP-Login in dieser Session) -- nur `php -l` + 302-Redirect-Check (kein Fatal Error) verifiziert.
+
+**Bewusst NICHT auf Zugriffsregeln.php eingetragen** -- fehlender Eintrag = nur Login-Pflicht (dokumentiertes, sicheres Fallback-Verhalten dieser Datei). Granulare Berechtigungen (`gutscheine.anzeigen` etc.) erst nachziehen, wenn Jacky die Rollen-Zuordnung entschieden hat -- ein blind eingetragener, nirgends gewährter Berechtigungs-String hätte sonst RISIKO eines Lockouts (auch für Admin).
+
+**`legeReservierungenAn()`** (AuftragRepository) erweitert: `ist_gutschein=1`-Artikel werden wie `keine_lagerbestandsfuehrung=1` von der Lagerreservierung ausgenommen.
+
+### 🔲 Noch offen (klar benannt, nicht vergessen)
+
+1. **Kasse-UI-Anbindung** -- der bestehende "Gutschein"-Zahlungsart-Knopf in der Kasse prüft aktuell nur `code.length>=3`, ist noch NICHT an `GutscheinService::einloesen()` angebunden. Braucht Live-Test in der Kasse.
+2. **Shop-seitiges WPCode-Snippet** -- Checkout-Felder am Gutschein-Artikel (Betrag/Empfänger/Zustellung/Grußtext → `_mealana_gutschein`-Meta), Versand-inklusive Rabattlogik (eigene Verrechnung Warenwert+Versand statt WC's binärem "Kostenloser Versand"-Haken), Teileinlösung-Checkout-Hinweis. Braucht zuerst einen echten "Shop-Gutschein"-Artikel in der ERP-DB (SKU "GUTSCHEIN", `ist_gutschein=1`) -- noch nicht angelegt.
+3. **Kasse-Erstattung via Gutschein** (bei abholbereit+bezahlt, Kunde nimmt weniger) -- weiterhin nur geplant, siehe unten.
+4. **Design-Vorlagen** -- `gutschein_vorlagen` ist leer, Jacky muss die 8 JTL-Bildvorlagen (oder neue) hochladen.
+5. **Buchhaltungs-Konto** -- Gutschein-Anzahlungskonto-Nummer kommt noch von Babsi (siehe [[project_buchhaltung]]).
+6. **Zugriffsregeln** -- granulare Berechtigungen nachziehen sobald Rollen-Zuordnung klar ist.
+7. **Browser-Test** der neuen ERP-Seiten steht aus.
+
+**How to apply beim Wiedereinstieg:** Backend ist fertig und verifiziert -- NICHT nochmal neu bauen. Bei Punkt 1 oder 2 weitermachen, je nachdem was Jacky zuerst braucht (Kasse-Verkauf vs. Online-Verkauf). Diese Liste als Fortschritts-Checkliste nehmen.
+
+## Status 2026-08-29 (Vormittag der Planung): Planung KOMPLETT abgeschlossen
+
+Vollständige Planungsrunde mit Jacky (Referenz-Check JTL-Shop-Screenshots + WAWI-Vergleich + Wireframe), löst die alte 2026-07-10-Zurückstellung ein ("in der Nähe der Online-Shop-Anbindung bauen" — die ist jetzt weit fortgeschritten). Alte Annahme "kein Design/Von-An im WC möglich, nackter Code reicht" ist **überholt** — der Shop-Gutschein-Artikel-Ansatz (siehe unten) löst das sauber.
 
 ## Konzept: ERP = Single Source of Truth, WooCommerce nur Slave (Code-Spiegel)
 

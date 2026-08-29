@@ -67,7 +67,7 @@
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — 2026-08-29 BEHOBEN: MySQL-Absturz bei jedem Login (korrupte Tabellenseite riss ganzen mysqld-Prozess mit + ibdata1/aria_log lagen verschoben in data\tmp\); Backup-Strategie weiter nur geplant
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
-- [Gutschein-Modul Design](project_gutscheine.md) — ✅ 2026-08-29 Planung KOMPLETT (JTL-Referenz, Datenmodell, Versand+Steuer+Rechtsfragen geklärt), Bau noch nicht gestartet; als Nächstes Migrationen ausformulieren
+- [Gutschein-Modul](project_gutscheine.md) — ✅ 2026-08-29 Baustufe 1 GEBAUT+getestet: Backend (Repository/Service/WC-Sync beidseitig/PDF/Mail/Cron) + ERP-UI fertig; offen: Kasse-Anbindung, Shop-Checkout-Snippet, Design-Uploads, Buchhaltungskonto
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; Zeitraum-Filter in Auftragsliste FERTIG 2026-08-11
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign + Doppel-Gutschrift-Sperre fertig; 🟢 A4-Bon-PDF-Rand-Bug im Mailanhang BEHOBEN 2026-07-09 (Body-Padding statt @page-margin)
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — Echter BFR-Hardware-Test 2026-07-08 erfolgreich (Startbeleg, Kasse 4); 4 echte Bugs gefunden+gefixt, Netzwerkkassen-Doku-Lücke

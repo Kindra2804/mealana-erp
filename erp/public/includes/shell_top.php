@@ -11,6 +11,7 @@ $moduleLabel = match ($activeModule ?? '') {
     'lieferanten' => 'Lieferanten',
     'hersteller'  => 'Hersteller',
     'partner'      => 'Partner',
+    'gutscheine'   => 'Gutscheine',
     'benutzer'     => 'Benutzer',
     'rollen'       => 'Rollen & Rechte',
     'einstellungen' => 'Einstellungen',
@@ -41,6 +42,12 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '➕', 'label' => 'Neuer Auftrag',      'href' => BASE_PATH . '/auftraege/neu.php'],
         ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => BASE_PATH . '/dokumente/index.php'],
         ['icon' => '📊', 'label' => 'Statistik',          'href' => BASE_PATH . '/auftraege/statistik.php'],
+        ['icon' => '🎁', 'label' => 'Gutscheine',         'href' => BASE_PATH . '/gutscheine/liste.php'],
+    ],
+    'gutscheine' => [
+        ['icon' => '📋', 'label' => 'Liste',              'href' => BASE_PATH . '/gutscheine/liste.php'],
+        ['icon' => '➕', 'label' => 'Neuer Gutschein',    'href' => BASE_PATH . '/gutscheine/neu.php'],
+        ['icon' => '◀',  'label' => 'Zurück: Verkauf',    'href' => BASE_PATH . '/auftraege/liste.php', 'type' => 'back'],
     ],
     'einkauf' => [
         ['icon' => '📋', 'label' => 'Bestellungen',    'href' => BASE_PATH . '/bestellungen/liste.php'],
@@ -119,7 +126,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <div class="erp-nav-divider"></div>
                 <a href="<?= BASE_PATH ?>/artikel/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['artikel', 'hersteller']) ? 'active' : '' ?>">Artikel</a>
                 <a href="<?= BASE_PATH ?>/kunden/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'kunden'      ? 'active' : '' ?>">Kunden</a>
-                <a href="<?= BASE_PATH ?>/auftraege/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'verkauf'     ? 'active' : '' ?>">Verkauf</a>
+                <a href="<?= BASE_PATH ?>/auftraege/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['verkauf', 'gutscheine']) ? 'active' : '' ?>">Verkauf</a>
                 <a href="<?= BASE_PATH ?>/lager/picklisten.php" class="erp-nav-link <?= ($activeModule ?? '') === 'lager'       ? 'active' : '' ?>">Lager</a>
                 <a href="<?= BASE_PATH ?>/versand/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'versand'     ? 'active' : '' ?>">Versand</a>
                 <a href="<?= BASE_PATH ?>/packplatz/retoure/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>

@@ -1,0 +1,52 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+{% if empfaenger_name %}
+<p>Liebe/r {{ empfaenger_name }},</p>
+{% else %}
+<p>Hallo,</p>
+{% endif %}
+
+{% if kaeufer_name %}
+<p>
+  <strong>{{ kaeufer_name }}</strong> hat dir einen Gutschein über
+  <strong>€&nbsp;{{ betrag|number_format(2, ',', '.') }}</strong> geschenkt!
+</p>
+{% else %}
+<p>
+  im Anhang findest du deinen Gutschein über
+  <strong>€&nbsp;{{ betrag|number_format(2, ',', '.') }}</strong>.
+</p>
+{% endif %}
+
+{% if grusstext %}
+<div class="hinweis" style="font-style:italic;white-space:pre-line">{{ grusstext }}</div>
+{% endif %}
+
+<table class="table">
+  <tr>
+    <th>Code</th>
+    <th>Gültig bis</th>
+  </tr>
+  <tr>
+    <td><strong style="font-family:monospace">{{ code }}</strong></td>
+    <td>{{ gueltig_bis }}</td>
+  </tr>
+</table>
+
+<p>
+  Einlösbar sowohl online im Shop (Code beim Checkout eingeben) als auch direkt
+  bei uns im Geschäft.
+</p>
+
+<p>
+  Bei Fragen stehen wir Ihnen gerne unter
+  <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Mit freundlichen Grüßen<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Gutschein {{ code }} &bull;
+{% endblock %}
