@@ -71,4 +71,32 @@ class PdfGenerator
         $png       = $generator->getBarcode($text, $generator::TYPE_CODE_128, 2, 60);
         return base64_encode($png);
     }
+
+    /**
+     * Wie barcodeAlsBase64(), aber hochkant (90° gedreht) -- für den schmalen Rand
+     * einer Karte (Gutschein). Dompdf kann Bilder per CSS nicht zuverlässig drehen,
+     * deshalb wird das PNG selbst mit GD gedreht. Ohne GD: normaler (waagrechter) Barcode.
+     */
+    public function barcodeHochkantAlsBase64(string $text): string
+    {
+        require_once __DIR__ . '/../../../vendor/autoload.php';
+        $generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
+        $png       = $generator->getBarcode($text, $generator::TYPE_CODE_128, 2, 70);
+        if (!function_exists('imagerotate')) {
+            return base64_encode($png);
+        }
+        // Picqer-PNG hat transparenten Hintergrund -- beim Drehen würde der schwarz.
+        // Deshalb erst auf eine weiße Truecolor-Fläche kopieren, dann drehen.
+        $quelle = imagecreatefromstring($png);
+        $w = imagesx($quelle);
+        $h = imagesy($quelle);
+        $bild  = imagecreatetruecolor($w, $h);
+        $weiss = imagecolorallocate($bild, 255, 255, 255);
+        imagefill($bild, 0, 0, $weiss);
+        imagecopy($bild, $quelle, 0, 0, 0, 0, $w, $h);
+        $hoch  = imagerotate($bild, 90, $weiss);
+        ob_start();
+        imagepng($hoch);
+        return base64_encode(ob_get_clean());
+    }
 }

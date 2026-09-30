@@ -34,7 +34,7 @@
   .titel {
     position: absolute;
     top: 12mm;
-    right: 12mm;
+    right: 28mm;
     font-size: 24pt;
     font-weight: bold;
     color: #1e3a5f;
@@ -44,10 +44,26 @@
     position: absolute;
     bottom: 10mm;
     left: 10mm;
-    right: 10mm;
+    right: 28mm;
     background: #ffffffdd;
     border-radius: 3mm;
     padding: 6mm 8mm;
+  }
+  /* Barcode hochkant am rechten Kartenrand, auf weißem Streifen (scannt auch auf
+     bunten Motiv-Hintergründen); Titel + Wert-Box lassen rechts Platz dafür */
+  .barcode-streifen {
+    position: absolute;
+    top: 7mm;
+    bottom: 7mm;
+    right: 5mm;
+    width: 17mm;
+    background: #ffffff;
+    border-radius: 2mm;
+    text-align: center;
+  }
+  .barcode {
+    height: 88mm;
+    margin-top: 4mm;
   }
   .betrag {
     font-size: 20pt;
@@ -90,6 +106,9 @@
       <img class="logo" src="data:image/png;base64,{{ logo_base64 }}" alt="Logo">
     {% endif %}
     <div class="titel">Gutschein</div>
+    {% if barcode_base64 %}
+      <div class="barcode-streifen"><img class="barcode" src="data:image/png;base64,{{ barcode_base64 }}" alt="{{ code }}"></div>
+    {% endif %}
     <div class="info-box">
       <div class="betrag">im Wert von {{ betrag|euroformat }} €</div>
       <div class="code-zeile">Code: {{ code }}</div>

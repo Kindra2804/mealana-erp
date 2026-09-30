@@ -24,6 +24,7 @@ nachgezogen werden (und umgekehrt). Quelle der Wahrheit ist immer WPCode selbst
 | `leere_kategorien_ausblenden.php` | 32095 | Leere Kategorien ausblenden | ✅ Aktiv | Überall ausführen |
 | `ausverkauft_statt_weiterlesen.php` | 32085 | "Ausverkauft" statt "Weiterlesen" bei Out-of-Stock | ✅ Aktiv | Überall ausführen |
 | `hersteller_menue.php` | 32070 | Hersteller-Menü (Shortcode `[hersteller_liste]` fürs Mega-Menü) | ✅ Aktiv | Nur Frontend |
+| `erp_zahlung_ohne_shop_mail.php` | 34191 | MeaLana: ERP-Zahlung ohne Shop-Mail | ✅ Aktiv (seit 2026-09-30) | Überall ausführen |
 | `gutschein.php` | 34188 | MeaLana: Gutschein (Kauf-Formular + Einlöse-Hinweis) | ✅ Aktiv (seit 2026-09-30) | Überall ausführen |
 | `swatch_container_scroll.css` | 34175 | Swatch-Container Scroll ab 45 Werten | ✅ Aktiv (wartet auf Babsis Sichtfreigabe) | Überall ausführen |
 
@@ -41,6 +42,10 @@ hier abgelegt.
   [[project_shop_sync]]-Memory, Fund vom 2026-08-29).
 - **konfigurator_options_picker** — Frontend-UI-Baustein für den Artikel-Konfigurator (Achsen/Werte
   als klickbare Optionen statt Dropdown). Aktiv, siehe [[project_konfigurator_modul]].
+- **erp_zahlung_ohne_shop_mail** — Das ERP meldet Zahlung ("In Bearbeitung") und Versand/Abholung ("Fertiggestellt")
+  an die Shop-Bestellung zurück, mit Notiz (Betrag/Datum/Zahlungsart bzw. Versanddatum/Sendungsnummer) und
+  markiert sie mit `_mealana_erp_zahlung` / `_mealana_erp_versand`. Dieses Snippet unterdrückt für genau solche
+  Bestellungen die WooCommerce-Mails "In Bearbeitung" und "Abgeschlossen" — der Kunde bekommt die ERP-Mails.
 - **gutschein** — Kauf-Formular am Gutschein-Artikel (erkennt ihn am Meta `_mealana_gutschein_artikel`,
   das der ERP-Sync setzt): Betrag, Selbst ausdrucken/an Empfänger senden, Zustelldatum, Grußtext →
   `_mealana_gutschein`-JSON an der Bestellzeile. Die Einlösung selbst macht **Germanized** (ERP legt

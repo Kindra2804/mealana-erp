@@ -22,7 +22,7 @@ $ergebnis = (new GutscheinService())->pruefeEinloesbar($code);
 if (!empty($_GET['info'])) {
     require_once __DIR__ . '/../../src/modules/gutscheine/GutscheinRepository.php';
     $repo = new GutscheinRepository();
-    $g = $repo->findByCode(strtoupper($code));
+    $g = (new GutscheinService())->findeCodeTolerant($code);
     if (!$g) {
         echo json_encode(['erfolg' => false, 'fehler' => 'Gutschein-Code nicht gefunden.']);
         exit;

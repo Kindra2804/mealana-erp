@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../../core/Mailer.php';
 require_once __DIR__ . '/AuftragRepository.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
+require_once __DIR__ . '/Versandsteuer.php';
 
 /**
  * AuftragService – Geschäftslogik für Verkaufsaufträge.
@@ -93,7 +94,7 @@ class AuftragService
             return ['erfolg' => false, 'fehler' => ['Mindestens eine gültige Position ist erforderlich']];
         }
 
-        $summen = $this->berechneSummen($berechnetePos);
+        $summen = $this->berechneSummen($berechnetePos, (float)($data['versandkosten'] ?? 0));
 
         $kunden_snapshot = null;
         if (!empty($data['kunden_snapshot']) && is_array($data['kunden_snapshot'])) {
@@ -319,13 +320,23 @@ class AuftragService
     /**
      * Addiert Netto, Steuer und Brutto aus berechneten Positionen.
      */
-    private function berechneSummen(array $positionen): array
+    /**
+     * Summen des Auftrags INKL. Versandkosten (brutto, Steuersatz der überwiegenden
+     * Leistung, siehe Versandsteuer). Bis 2026-09-30 fehlte der Versand hier komplett --
+     * bruttobetrag (offener Betrag, Zahlung buchen, Mahnungen) war um die Versandkosten zu niedrig.
+     */
+    private function berechneSummen(array $positionen, float $versandBrutto = 0.0): array
     {
         $netto  = 0.0;
         $steuer = 0.0;
         foreach ($positionen as $p) {
             $netto  += $p['gesamtpreis_netto'];
             $steuer += round($p['gesamtpreis_netto'] * $p['steuer_prozent'] / 100, 2);
+        }
+        if ($versandBrutto > 0) {
+            $v = Versandsteuer::aufteilen($versandBrutto, $positionen);
+            $netto  += $v['netto'];
+            $steuer += $v['steuer'];
         }
         return [
             'netto'  => round($netto, 2),
@@ -361,7 +372,7 @@ class AuftragService
             return ['erfolg' => false, 'fehler' => ['Mindestens eine gültige Position ist erforderlich']];
         }
         // 3. Summen berechnen (berechneSummen() — schon vorhanden!)
-        $positionenSummen = $this->berechneSummen($positionenBerechnet);
+        $positionenSummen = $this->berechneSummen($positionenBerechnet, (float)($data['versandkosten'] ?? 0));
 
         // 4. Header updaten (neues Repo-Method: updateHeader)
         $headerData = [

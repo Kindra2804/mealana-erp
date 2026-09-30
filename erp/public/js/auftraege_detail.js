@@ -14,6 +14,8 @@ async function zahlungBuchen(auftragId) {
     const r    = await fetch(window.BASE_PATH + '/auftraege/zahlung_buchen.php', { method: 'POST', body });
     const data = await r.json();
     if (data.erfolg) {
+        // Shop-Bestellung: Rückmeldung an WooCommerce fehlgeschlagen -> Hinweis, Zahlung ist trotzdem gebucht
+        if (data.shop_hinweis && data.shop_gemeldet === false) alert(data.shop_hinweis);
         location.reload();
     } else {
         alert(data.fehler || 'Fehler beim Buchen');

@@ -383,7 +383,7 @@ class GutscheinService
      */
     public function pruefeEinloesbar(string $code): array
     {
-        $gutschein = $this->repo->findByCode(strtoupper(trim($code)));
+        $gutschein = $this->findeCodeTolerant($code);
         if (!$gutschein) {
             return ['erfolg' => false, 'fehler' => ['Gutschein-Code nicht gefunden.']];
         }
@@ -416,6 +416,21 @@ class GutscheinService
             return ['erfolg' => false, 'fehler' => ['Kein Restguthaben mehr auf diesem Gutschein.']];
         }
         return ['erfolg' => true, 'gutschein' => $gutschein];
+    }
+
+    /**
+     * Code-Suche, die Scanner-Tippfehler verzeiht: Barcode-Scanner mit US-Tastaturbelegung
+     * an einem deutschen PC tippen "ß" statt "-" und vertauschen Y/Z (EANs sind reine
+     * Ziffern, da fällt das nie auf -- Gutschein-Codes enthalten aber Y, Z und "-").
+     */
+    public function findeCodeTolerant(string $code): array|false
+    {
+        $code = strtoupper(str_replace(['ß', 'ẞ', '?'], '-', trim($code)));
+        $g = $this->repo->findByCode($code);
+        if (!$g && strpbrk($code, 'YZ') !== false) {
+            $g = $this->repo->findByCode(strtr($code, ['Y' => 'Z', 'Z' => 'Y']));
+        }
+        return $g;
     }
 
     /**

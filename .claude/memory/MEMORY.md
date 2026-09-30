@@ -1,8 +1,10 @@
 # Memory Index
 
-- [Gutschein-Modul](project_gutscheine.md) — 2026-09-30: A+B committed+gepusht; C (Shop via Germanized-Wertgutschein, Coupon-Spiegel per Cron, Snippet 34188) fertig+getestet+committed; offen: echte Testbestellung, Rechnungsanzeige Gutschein, Design-Vorlagen
+- [Gutschein-Modul](project_gutscheine.md) — ✅ 2026-09-30 A+B+C fertig+getestet+committed (Kasse, Shop via Germanized, Rechnung, Barcode hochkant, Zahlung ERP→Shop); WARTET auf Babsis Motiv-Vorlagen (ohne Box) → dann PDF-Raster + Vorlagen-Verwaltung + Motiv-Auswahl Kasse/Snippet
 - [🟢 BUG: Kasse Chargen-Popup leer](bug_kasse_charge_unbekannt.md) — BEHOBEN 2026-09-30: Status "unbekannt" (JTL-Import) + Varianten/Suche ohne Chargen-Liste; Migration 178 + Importskript korrigiert; DokumentService-Gutschrift-Nebenbefund durch Retouren-Zusammenführung erledigt
 - [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — 2026-09-30 gebaut, nicht committed: Kasse/Packplatz/ERP-Gutschrift mit gemeinsamen Zählern (retourniert/gutgeschrieben), Zustand→Zustandsartikel (-RET/-GEB/-BSC, nie Shop), Chargen aus Verkauf vorbefüllt
+- [Zahlung+Versand ERP → Shop](project_zahlung_erp_an_shop.md) — ✅ 2026-09-30 getestet+committed: Zahlung buchen → processing (getestet ✅), bezahlt+versendet → completed per Cron, unbezahlt+versendet nur Notiz; Snippet 34191 unterdrückt WC-Mails
+- [🟢 BUG: Versand nicht im Betrag + B2C-Preise 0,00](bug_versand_nicht_im_betrag.md) — BEHOBEN+committed 2026-09-30: Versandsteuer.php (überwiegender Satz), Migration 181; offen: Versand im Buchhaltungsexport
 - [Konfigurator-Modul](project_konfigurator_modul.md) — ✅ 2026-08-29 BEHOBEN: Testbestellung verlor 5/7 Konfig-Werte (veraltete Shop-Preis-Matrix), Klartext-Fallback+Sync-Trigger gebaut, jetzt auf Pickliste/Detail/Rechnung/AB sichtbar; WP-Session-Cookie-Problem beim Warenkorb weiter offen
 - [WordPress-Zugang für Claude](reference_wp_claude_zugang.md) — eigener wp-admin-Benutzer "claude" auf indra-design.at, Zugangsdaten in D:\ERP\mealana\import\zugang Woo Claude.txt
 - [WP-Snippets im Repo](reference_wp_snippets_repo.md) — alle selbst gebauten WPCode-Snippets als Kopie in D:\ERP\mealana\shop\wp-snippets\, kein Auto-Sync mit wp-admin

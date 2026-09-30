@@ -32,6 +32,8 @@ require_once __DIR__ . '/../src/core/Database.php';
 require_once __DIR__ . '/../src/core/logger.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncRepository.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncService.php';
+require_once __DIR__ . '/../src/modules/shop/ShopBestellungSyncService.php';
+require_once __DIR__ . '/../src/modules/gutscheine/GutscheinService.php';
 
 // Ohne das würde PHP die Ausgabe intern puffern -- bei einem Batch, der wegen
 // vieler Bilder/Achsen mehrere Minuten dauert, käme sonst alles auf einmal am
@@ -158,6 +160,25 @@ try {
     echo "\nFertig nach $durchlauf Durchläufen: $gesamtErfolg erfolgreich, $gesamtFehler Fehler insgesamt.\n";
     if ($gesamtFehler > 0) {
         echo "Hinweis: $gesamtFehler Fehler stehen noch offen -- Details im Aktivitäten-Log ('shop.sync_fehler' u.ä.).\n";
+    }
+
+    // Wie der 15-Minuten-Cron: nach den Artikeln auch Bestellungen abholen und
+    // Gutschein-Coupons abgleichen -- sonst wirkt "Komplettabgleich starten" für
+    // Bestellungen wie tot (Jacky 2026-09-30), obwohl der Name alles verspricht.
+    try {
+        $bestSync = new ShopBestellungSyncService();
+        $b = $bestSync->syncBestellungen($shop);
+        echo "Bestellungen: {$b['erfolg']} verarbeitet, {$b['fehler']} Fehler\n";
+        $st = $bestSync->meldeOffeneStatusAnShop($shop);
+        echo "Status an Shop gemeldet (bezahlt/versendet): {$st['gemeldet']}, Fehler: {$st['fehler']}\n";
+    } catch (Throwable $e) {
+        echo "Bestellungs-Abgleich abgebrochen: {$e->getMessage()}\n";
+    }
+    try {
+        $g = (new GutscheinService())->syncShopCoupons($shop);
+        echo "Gutscheine: {$g['angelegt']} angelegt, {$g['aktualisiert']} aktualisiert, {$g['geloescht']} gelöscht, {$g['fehler']} Fehler\n";
+    } catch (Throwable $e) {
+        echo "Gutschein-Abgleich abgebrochen: {$e->getMessage()}\n";
     }
 } finally {
     $repo->setBulkImportAktiv((int)$shop['id'], false);

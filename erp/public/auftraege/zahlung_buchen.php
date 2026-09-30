@@ -28,6 +28,36 @@ if (!$buchungsdatum || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $buchungsdatum)) {
 $service  = new AuftragService();
 $ergebnis = $service->bucheZahlung($auftragId, $betrag, $buchungsdatum, $notiz);
 
+$zahlungsartLabels = [
+    'vorkasse'  => 'Überweisung',
+    'paypal'    => 'PayPal',
+    'rechnung'  => 'Kauf auf Rechnung',
+    'bar'       => 'Barzahlung',
+    'karte'     => 'Kartenzahlung',
+    'nachnahme' => 'Nachnahme',
+    'gutschein' => 'Gutschein',
+];
+
+// Shop-Bestellung: Zahlung an WooCommerce zurückmelden (Status + Notiz, siehe
+// ShopBestellungSyncService::meldeZahlungAnShop) -- vor dem JSON, damit die
+// Oberfläche eine Warnung zeigen kann, falls der Shop nicht erreichbar war.
+if ($ergebnis['erfolg']) {
+    $aRow = Database::getInstance()->prepare("SELECT kanal, zahlungsart FROM auftraege WHERE id = ?");
+    $aRow->execute([$auftragId]);
+    $aRow = $aRow->fetch(PDO::FETCH_ASSOC) ?: [];
+    if (($aRow['kanal'] ?? '') === 'woocommerce') {
+        require_once __DIR__ . '/../../src/modules/shop/ShopBestellungSyncService.php';
+        $meldung = (new ShopBestellungSyncService())->meldeZahlungAnShop(
+            $auftragId, $betrag, $buchungsdatum, $notiz,
+            $zahlungsartLabels[$aRow['zahlungsart'] ?? ''] ?? ucfirst((string)($aRow['zahlungsart'] ?? '')),
+            $ergebnis['neuer_status'] === 'bezahlt',
+            max(0, round((float)$ergebnis['gesamt'] - (float)$ergebnis['summe'], 2))
+        );
+        $ergebnis['shop_hinweis'] = $meldung['hinweis'];
+        $ergebnis['shop_gemeldet'] = $meldung['gemeldet'];
+    }
+}
+
 // JSON zuerst ausgeben — Mail-Fehler dürfen die Antwort nicht blockieren
 echo json_encode($ergebnis);
 
@@ -83,11 +113,6 @@ try {
     $offenBetrag  = max(0, round($bruttoGesamt - $summeBezahlt, 2));
     $neuerStatus  = $ergebnis['neuer_status'];
 
-    $zahlungsartLabels = [
-        'vorkasse' => 'Überweisung',
-        'paypal'   => 'PayPal',
-        'rechnung' => 'Kauf auf Rechnung',
-    ];
     $zahlungsartLabel = $zahlungsartLabels[$zahlungsart] ?? ucfirst($zahlungsart);
 
     $buchungsDatumFormatiert = date('d.m.Y', strtotime($buchungsdatum));

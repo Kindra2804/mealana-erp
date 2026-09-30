@@ -1609,6 +1609,24 @@ function scannenOK() {
     if (!raw) return;
     scanInput.value = '';
 
+    // Gutschein-Barcode (MEA-XXXX-XXXX-XXXX) im Artikel-Scanfeld: volle Kasse -> direkt
+    // mit Gutschein bezahlen, leere Kasse -> Gutschein abfragen. "ß" statt "-" kommt von
+    // Scannern mit US-Tastaturbelegung an einem deutschen PC (Server korrigiert auch Y/Z).
+    var gsScan = raw.replace(/ß/g, '-').toUpperCase();
+    if (/^MEA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(gsScan)) {
+        if (warenkorb.length > 0 && getGesamt() > 0) {
+            zahlenGutschein();
+            document.getElementById('gs-code').value = gsScan;
+            gsCodeGeaendert();
+            gsPruefen();
+        } else {
+            gutscheinAbfrageDialog();
+            document.getElementById('gsa-code').value = gsScan;
+            gutscheinAbfragen();
+        }
+        return;
+    }
+
     // Menge-Präfix: z.B. "5×4002309302009" oder "5*4002309302009"
     var mengePrefix = raw.match(/^(\d+)[×*xX](.+)$/);
     var menge, code;

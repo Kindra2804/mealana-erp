@@ -9,7 +9,9 @@
     summen.steuer_gesamt
     summen.brutto_gesamt
     kleinuntern          – Boolean: bei true nur Gesamtbetrag, kein MwSt-Block
-    auftrag.versandkosten (optional)
+    summen.versand       – null oder {satz, netto, steuer, brutto}: Versandkosten, bereits
+                           im passenden Steuerblock und im Gesamtbetrag enthalten
+                           (Steuersatz der überwiegenden Leistung, siehe Versandsteuer.php)
 #}
 <table style="width:100%; border-collapse:collapse; margin-top:8pt; font-size:8.5pt;">
   <tr>
@@ -17,8 +19,18 @@
     <td style="width:40%;">
       <table style="width:100%; border-collapse:collapse;">
 
+        {# Versand zuerst: er steckt in den Netto-/MwSt-Zeilen darunter bereits mit drin #}
+        {% if summen.versand %}
+          <tr>
+            <td style="padding:2pt 0;">Versandkosten{{ not kleinuntern ? ' (' ~ summen.versand.satz|number_format(0) ~ ' % MwSt)' : '' }}:</td>
+            <td style="padding:2pt 0; text-align:right;">
+              {{ (ist_b2b and not kleinuntern ? summen.versand.netto : summen.versand.brutto)|euroformat }} EUR
+            </td>
+          </tr>
+        {% endif %}
+
         {% if not kleinuntern %}
-          {# Steuerblock: eine Zeile pro Steuersatz #}
+          {# Steuerblock: eine Zeile pro Steuersatz (inkl. Versand) #}
           {% for block in summen.bloecke %}
             {% if block.satz > 0 %}
               <tr>
@@ -47,15 +59,6 @@
           {% endif %}
         {% endif %}
 
-        {% if auftrag.versandkosten is defined and auftrag.versandkosten > 0 %}
-          <tr>
-            <td style="padding:2pt 0;">Versandkosten:</td>
-            <td style="padding:2pt 0; text-align:right;">
-              {{ auftrag.versandkosten|euroformat }} EUR
-            </td>
-          </tr>
-        {% endif %}
-
         {# Gesamtbetrag – immer fett und unterstrichen #}
         <tr>
           <td style="padding:4pt 0 2pt; border-top:1.5px solid #333;
@@ -65,6 +68,26 @@
             {{ summen.brutto_gesamt|euroformat }} EUR
           </td>
         </tr>
+
+        {# Gutschein = Zahlungsmittel (Mehrzweckgutschein): Abzug NACH dem Gesamtbetrag,
+           die Steuer oben bleibt unverändert. Nicht auf Gutschriften (dort leer). #}
+        {% if gutschein_zahlungen is defined and gutschein_zahlungen|length > 0 %}
+          {% for gz in gutschein_zahlungen %}
+            <tr>
+              <td style="padding:3pt 0 1pt;">Bezahlt mit Gutschein {{ gz.code }}:</td>
+              <td style="padding:3pt 0 1pt; text-align:right;">−{{ gz.betrag|euroformat }} EUR</td>
+            </tr>
+          {% endfor %}
+          {% set restbetrag = max(0, summen.brutto_gesamt - gutschein_summe) %}
+          <tr>
+            <td style="padding:3pt 0 2pt; border-top:0.5px solid #999; font-weight:bold;">
+              {{ restbetrag > 0.004 ? 'Restbetrag:' : 'Offener Betrag:' }}
+            </td>
+            <td style="padding:3pt 0 2pt; text-align:right; border-top:0.5px solid #999; font-weight:bold;">
+              {{ restbetrag|euroformat }} EUR
+            </td>
+          </tr>
+        {% endif %}
 
         {% if kleinuntern %}
           <tr>

@@ -5,6 +5,7 @@ require_once __DIR__ . '/DokumentRepository.php';
 require_once __DIR__ . '/PdfGenerator.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorRepository.php';
 require_once __DIR__ . '/../gutscheine/GutscheinRepository.php';
+require_once __DIR__ . '/../auftraege/Versandsteuer.php';
 
 /**
  * DokumentService – Erzeugt PDF-Dokumente für Aufträge.
@@ -178,6 +179,8 @@ class DokumentService
             'firma'                  => $firma,
             'logo_base64'            => $logoBase64,
             'hintergrundbild_base64' => $hintergrundBase64,
+            // Code 128 zum Scannen an der Kasse (Bezahlen/Abfragen: Scanner tippt Code + Enter)
+            'barcode_base64'         => $this->pdf->barcodeHochkantAlsBase64($gutschein['code']),
         ];
 
         $dateiname = 'Gutschein-' . $gutschein['code'] . '.pdf';
@@ -270,6 +273,9 @@ class DokumentService
         ];
         $daten['positionen'] = $gsPosi;
         $daten['summen']     = $gsSummen;
+        // Auf einer Gutschrift (Rechnungskorrektur) keine Gutschein-Zahlungszeilen
+        $daten['gutschein_zahlungen'] = [];
+        $daten['gutschein_summe']     = 0.0;
 
         $dateiname = 'GS-' . $daten['auftrag']['auftrag_nr'] . '_' . $gsNr . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
@@ -428,7 +434,23 @@ class DokumentService
         $rechnungadr= $this->decodeSnapshot($auftrag['rechnungsadresse_snapshot'] ?? '{}');
 
         $istB2B      = !empty($kunde['uid_nummer']);
-        $summen      = $this->berechneSummen($positionen);
+        $summen      = $this->berechneSummen($positionen, (float)($auftrag['versandkosten'] ?? 0));
+
+        // Mit Gutschein bezahlte Beträge (Zahlungsmittel, Mehrzweckgutschein) -- die
+        // Positionen bleiben zum vollen Preis und voll versteuert, der Gutschein wird
+        // erst NACH dem Gesamtbetrag abgezogen. Quelle: Einlöse-Buchungen mit Bezug auf
+        // diesen Auftrag (Online-Shop: ShopBestellungSyncService), ein Eintrag pro Code.
+        $gsStmt = $this->db->prepare("
+            SELECT g.code, -SUM(t.betrag) AS betrag
+            FROM gutschein_transaktionen t
+            JOIN gutscheine g ON g.id = t.gutschein_id
+            WHERE t.auftrag_id = :id AND t.betrag < 0
+            GROUP BY g.id, g.code
+            ORDER BY MIN(t.id)
+        ");
+        $gsStmt->execute([':id' => $auftragId]);
+        $gutscheinZahlungen = $gsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $gutscheinSumme = round(array_sum(array_map(fn($g) => (float)$g['betrag'], $gutscheinZahlungen)), 2);
         $kleinuntern = ($firma['kleinunternehmer'] ?? '0') === '1';
 
         $shop       = $this->ladeShop((int)($auftrag['shop_id'] ?? 1));
@@ -444,6 +466,8 @@ class DokumentService
             'rechnungadr' => $rechnungadr,
             'positionen'  => $positionen,
             'summen'      => $summen,
+            'gutschein_zahlungen' => $gutscheinZahlungen,
+            'gutschein_summe'     => $gutscheinSumme,
             'ist_b2b'     => $istB2B,
             'kleinuntern' => $kleinuntern,
             'logo_base64' => $logoBase64,
@@ -496,6 +520,12 @@ class DokumentService
                     $konfigProPosition[$pos['id']]
                 ));
             }
+            // Brutto-Preise für die B2C-Anzeige. Standen früher nur in berechneSummen(),
+            // das auf einer KOPIE der Positionen arbeitet -- die Werte kamen nie im
+            // Template an, B2C-Dokumente zeigten seit 25.06. pro Zeile 0,00 (Fund 2026-09-30).
+            $satz = (float)($pos['steuer_prozent'] ?? 0);
+            $pos['einzelpreis_brutto'] = round((float)($pos['einzelpreis_netto'] ?? 0) * (1 + $satz / 100), 2);
+            $pos['gesamtpreis_brutto'] = round((float)($pos['gesamtpreis_netto'] ?? 0) * (1 + $satz / 100), 2);
         }
         unset($pos);
 
@@ -505,8 +535,12 @@ class DokumentService
     /**
      * Berechnet Netto/MwSt/Brutto gruppiert nach Steuersatz.
      * Positionswerte sind in der DB netto gespeichert (gesamtpreis_netto).
+     * Versandkosten (brutto) fließen mit dem Satz der überwiegenden Leistung in den
+     * passenden Steuerblock und in den Gesamtbetrag ein (Versandsteuer -- gleiche
+     * Rechnung wie AuftragService, damit Rechnung und Auftragsbetrag übereinstimmen).
+     * Bis 2026-09-30 wurde der Versand nur angezeigt, aber nicht mitgerechnet.
      */
-    private function berechneSummen(array $positionen): array
+    private function berechneSummen(array $positionen, float $versandBrutto = 0.0): array
     {
         $blöcke       = [];  // ['20.00' => ['netto' => x, 'steuer' => y, 'brutto' => z]]
         $nettoGesamt  = 0.0;
@@ -530,16 +564,19 @@ class DokumentService
             $steuerGesamt += $steuer;
         }
 
-        // Brutto-Einzelpreise für B2C-Anzeige berechnen
-        foreach ($positionen as &$pos) {
-            $netto  = (float)($pos['einzelpreis_netto'] ?? 0);
-            $satz   = (float)($pos['steuer_prozent']    ?? 0);
-            $pos['einzelpreis_brutto'] = round($netto * (1 + $satz / 100), 2);
-
-            $gNetto  = (float)($pos['gesamtpreis_netto'] ?? 0);
-            $pos['gesamtpreis_brutto'] = round($gNetto * (1 + $satz / 100), 2);
+        $versand = null;
+        if ($versandBrutto > 0) {
+            $versand = Versandsteuer::aufteilen($versandBrutto, $positionen);
+            $key = number_format($versand['satz'], 2);
+            if (!isset($blöcke[$key])) {
+                $blöcke[$key] = ['satz' => $versand['satz'], 'netto' => 0.0, 'steuer' => 0.0, 'brutto' => 0.0];
+            }
+            $blöcke[$key]['netto']  += $versand['netto'];
+            $blöcke[$key]['steuer'] += $versand['steuer'];
+            $blöcke[$key]['brutto'] += $versand['brutto'];
+            $nettoGesamt  += $versand['netto'];
+            $steuerGesamt += $versand['steuer'];
         }
-        unset($pos);
 
         ksort($blöcke);
 
@@ -548,6 +585,7 @@ class DokumentService
             'netto_gesamt'  => round($nettoGesamt, 2),
             'steuer_gesamt' => round($steuerGesamt, 2),
             'brutto_gesamt' => round($nettoGesamt + $steuerGesamt, 2),
+            'versand'       => $versand, // null = kein Versand (auch auf Gutschriften)
         ];
     }
 

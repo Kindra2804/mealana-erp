@@ -62,6 +62,209 @@ class ShopBestellungSyncService
             ->fetchColumn();
     }
 
+    /**
+     * Gegenrichtung ERP → Shop: eine im ERP gebuchte Zahlung (Zahlung buchen, z.B.
+     * Überweisung laut Kontoauszug) an die WooCommerce-Bestellung melden -- sonst bliebe
+     * sie im Shop für immer "In Wartestellung" und Folgeprozesse (Gutschein-Erzeugung,
+     * Kundenkonto-Status) liefen nie an. Den Status setzt meldeStatusAnShop() nach der
+     * gemeinsamen Regel (bezahlt → In Bearbeitung, bezahlt+versendet → Fertiggestellt);
+     * eine Teilzahlung bekommt nur die Notiz. Danach sofortiger Bestellungs-Abgleich,
+     * damit z.B. ein gekaufter Gutschein gleich entsteht statt erst beim nächsten Cron-Lauf.
+     *
+     * @return array{gemeldet:bool, hinweis:string}
+     */
+    public function meldeZahlungAnShop(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, string $zahlungsartLabel, bool $vollstaendigBezahlt, float $offen): array
+    {
+        $auftrag = $this->auftragRepo->findById($auftragId);
+        if (!$auftrag || ($auftrag['kanal'] ?? '') !== 'woocommerce' || empty($auftrag['kanal_auftrag_id'])) {
+            return ['gemeldet' => false, 'hinweis' => ''];
+        }
+        $shop = $this->findeShop((int)$auftrag['shop_id']);
+        if (!$shop) {
+            return ['gemeldet' => false, 'hinweis' => 'Shop ohne WooCommerce-Anbindung — Zahlung nur im ERP gebucht.'];
+        }
+
+        $text = sprintf('%s: %s € am %s per %s (gebucht im ERP, %s)%s',
+            $vollstaendigBezahlt ? 'Zahlung eingegangen' : 'Teilzahlung eingegangen',
+            number_format($betrag, 2, ',', '.'),
+            date('d.m.Y', strtotime($buchungsdatum)),
+            $zahlungsartLabel,
+            $auftrag['auftrag_nr'],
+            ($vollstaendigBezahlt ? '' : ' — noch offen: ' . number_format($offen, 2, ',', '.') . ' €')
+                . ($notiz ? ' — Notiz: ' . $notiz : '')
+        );
+
+        // Kunde sieht im Kundenkonto nur Betrag/Datum/Zahlungsart -- Auftragsnummer und
+        // Buchungsvermerk (z.B. "testbuchung…") bleiben in der internen Notiz
+        $kundenText = sprintf('%s: %s € am %s per %s.%s',
+            $vollstaendigBezahlt ? 'Zahlung eingegangen' : 'Teilzahlung eingegangen',
+            number_format($betrag, 2, ',', '.'),
+            date('d.m.Y', strtotime($buchungsdatum)),
+            $zahlungsartLabel,
+            $vollstaendigBezahlt ? ' Vielen Dank!' : ' Noch offen: ' . number_format($offen, 2, ',', '.') . ' €.'
+        );
+
+        $ergebnis = $this->meldeStatusAnShop($auftragId, $shop, $text, $kundenText);
+        if (!$ergebnis['gemeldet']) {
+            return ['gemeldet' => false, 'hinweis' => 'Zahlung gebucht, aber der Shop konnte nicht aktualisiert werden (' . $ergebnis['fehler'] . ') — bitte die Bestellung im Shop von Hand auf "In Bearbeitung" setzen.'];
+        }
+
+        // Sofort-Abgleich: holt die eben geänderte Bestellung zurück (Gutschein-Kauf etc.)
+        try {
+            $this->syncBestellungen($shop);
+        } catch (Throwable $e) {
+            // unkritisch -- der 15-Minuten-Cron holt es nach
+        }
+        return ['gemeldet' => true, 'hinweis' => ''];
+    }
+
+    /**
+     * Soll-Status der Shop-Bestellung aus dem ERP-Stand. Bewusst NIE "Fertiggestellt"
+     * für unbezahlte Aufträge: der Abgleich Shop → ERP liest processing/completed als
+     * "bezahlt" -- eine versendete Rechnungs-/Nachnahme-Bestellung würde sonst im ERP
+     * fälschlich bezahlt. Versendet + unbezahlt → nur Notiz ('versand_notiz').
+     */
+    private function sollShopStatus(array $auftrag): ?string
+    {
+        $versendet = in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen'], true);
+        if ($auftrag['zahlungsstatus'] === 'bezahlt') {
+            return $versendet ? 'completed' : 'processing';
+        }
+        return $versendet ? 'versand_notiz' : null;
+    }
+
+    /**
+     * Unsichtbare Endung (Zero-Width-Space) an allen ERP-Kunden-Notizen. Das Snippet "MeaLana:
+     * ERP-Zahlung ohne Shop-Mail" erkennt daran ERP-Notizen und schickt keine WC-Hinweis-Mail --
+     * von Hand im wp-admin geschriebene Kunden-Notizen verschicken ihre Mail weiterhin.
+     */
+    public const KUNDENNOTIZ_MARKE = "​";
+
+    /** Rangfolge, damit nie zurückgestuft wird (completed → processing o.ä.). */
+    private const SHOP_STATUS_RANG = ['versand_notiz' => 1, 'processing' => 2, 'completed' => 3];
+
+    /**
+     * Meldet den ERP-Stand einer Shop-Bestellung an WooCommerce, falls sich der Soll-Status
+     * vom zuletzt bekannten (auftraege.shop_status_gemeldet) unterscheidet -- mit Notiz
+     * (Zahlungs-/Versanddaten aus dem ERP) und Meta-Markierung, damit das Shop-Snippet
+     * "MeaLana: ERP-Zahlung ohne Shop-Mail" die doppelte WooCommerce-Mail unterdrückt
+     * (das ERP verschickt Zahlungseingang/Versandbestätigung/Abholbereit selbst).
+     * $interneNotiz (nur wp-admin, z.B. mit Auftragsnummer + Buchungsvermerk) und $kundenNotiz
+     * (im Kundenkonto sichtbar) werden auch ohne Statuswechsel angehängt. Kunden-Notizen tragen
+     * die unsichtbare Markierung KUNDENNOTIZ_MARKE -- das Snippet unterdrückt für GENAU diese die
+     * WC-Mail "Hinweis zu Ihrer Bestellung" (das ERP hat den Kunden schon per eigener Mail informiert).
+     *
+     * @return array{gemeldet:bool, ziel:?string, fehler:?string}
+     */
+    public function meldeStatusAnShop(int $auftragId, array $shop, ?string $interneNotiz = null, ?string $kundenNotiz = null): array
+    {
+        $auftrag = $this->auftragRepo->findById($auftragId);
+        if (!$auftrag || empty($auftrag['kanal_auftrag_id'])) {
+            return ['gemeldet' => false, 'ziel' => null, 'fehler' => 'keine Shop-Bestellung'];
+        }
+        $orderId = (int)$auftrag['kanal_auftrag_id'];
+        $ziel    = $this->sollShopStatus($auftrag);
+        $bekannt = $auftrag['shop_status_gemeldet'] ?? null;
+        $neu     = $ziel !== null && (self::SHOP_STATUS_RANG[$ziel] ?? 0) > (self::SHOP_STATUS_RANG[$bekannt] ?? 0);
+
+        if (!$neu && $interneNotiz === null && $kundenNotiz === null) {
+            return ['gemeldet' => false, 'ziel' => $ziel, 'fehler' => null]; // nichts zu tun
+        }
+
+        $client = new WooCommerceClient($shop['wc_url'], $shop['wc_key'], $shop['wc_secret'], $shop['wp_username'], $shop['wp_app_password']);
+        try {
+            if ($neu && $ziel !== 'versand_notiz') {
+                $meta = [['key' => '_mealana_erp_zahlung', 'value' => date('Y-m-d')]];
+                if ($ziel === 'completed') $meta[] = ['key' => '_mealana_erp_versand', 'value' => date('Y-m-d')];
+                $client->aktualisiereBestellung($orderId, ['status' => $ziel, 'meta_data' => $meta]);
+            }
+            if ($kundenNotiz !== null) {
+                $client->erstelleBestellNotiz($orderId, $kundenNotiz . self::KUNDENNOTIZ_MARKE, true);
+            }
+            if ($interneNotiz !== null) {
+                $client->erstelleBestellNotiz($orderId, $interneNotiz);
+            }
+            if ($neu && in_array($ziel, ['completed', 'versand_notiz'], true)) {
+                $client->erstelleBestellNotiz($orderId, $this->versandNotiz($auftrag) . self::KUNDENNOTIZ_MARKE, true);
+            }
+        } catch (Throwable $e) {
+            Logger::log('shop.status_melden_fehler', 'auftraege', $auftragId, [
+                'wc_order_id' => $orderId, 'ziel' => $ziel, 'fehler' => $e->getMessage(),
+            ], $this->jarvisId, 'error');
+            return ['gemeldet' => false, 'ziel' => $ziel, 'fehler' => $e->getMessage()];
+        }
+
+        if ($neu) {
+            Database::getInstance()->prepare("UPDATE auftraege SET shop_status_gemeldet = ? WHERE id = ?")->execute([$ziel, $auftragId]);
+        }
+        Logger::log('shop.status_gemeldet', 'auftraege', $auftragId, ['wc_order_id' => $orderId, 'ziel' => $ziel], $this->jarvisId);
+        return ['gemeldet' => true, 'ziel' => $ziel, 'fehler' => null];
+    }
+
+    /** Kunden-Notiz zum Versand/Abschluss mit den Daten aus dem ERP (im Kundenkonto sichtbar). */
+    private function versandNotiz(array $auftrag): string
+    {
+        $datum = !empty($auftrag['versand_datum']) ? date('d.m.Y', strtotime($auftrag['versand_datum'])) : date('d.m.Y');
+        if (!empty($auftrag['tracking_nr'])) {
+            return 'Ihre Bestellung wurde am ' . $datum . ' versendet'
+                . (!empty($auftrag['versanddienstleister']) ? ' mit ' . $auftrag['versanddienstleister'] : '')
+                . ', Sendungsnummer ' . $auftrag['tracking_nr'] . '.';
+        }
+        if (($auftrag['lieferart'] ?? '') === 'abholung') {
+            return 'Ihre Bestellung wurde am ' . date('d.m.Y') . ' abgeholt. Vielen Dank!';
+        }
+        return 'Ihre Bestellung wurde am ' . date('d.m.Y') . ' abgeschlossen.';
+    }
+
+    /**
+     * Cron/Komplettabgleich: alle Shop-Aufträge dieses Shops melden, deren ERP-Stand im
+     * Shop noch nicht angekommen ist (z.B. am Packplatz versendet, an der Kasse abgeholt,
+     * reiner Gutschein-Auftrag abgeschlossen). Unabhängig davon, WO im ERP der Status
+     * geändert wurde -- deshalb hier gesammelt statt an jeder einzelnen Stelle.
+     *
+     * @return array{gemeldet:int, fehler:int}
+     */
+    public function meldeOffeneStatusAnShop(array $shop): array
+    {
+        $stmt = Database::getInstance()->prepare("
+            SELECT id FROM auftraege
+            WHERE shop_id = ? AND kanal = 'woocommerce' AND kanal_auftrag_id IS NOT NULL
+              AND lieferstatus <> 'storniert'
+              AND (zahlungsstatus = 'bezahlt' OR lieferstatus IN ('versendet', 'abgeschlossen'))
+              AND COALESCE(shop_status_gemeldet, '') <> 'completed'
+            ORDER BY id
+            LIMIT 100
+        ");
+        $stmt->execute([(int)$shop['id']]);
+        $zahl = ['gemeldet' => 0, 'fehler' => 0];
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) {
+            $r = $this->meldeStatusAnShop((int)$id, $shop);
+            if ($r['gemeldet']) $zahl['gemeldet']++;
+            elseif ($r['fehler'] !== null) $zahl['fehler']++;
+        }
+        return $zahl;
+    }
+
+    /** Tatsächlichen Shop-Status merken (nur höher, nie zurückstufen), damit der Cron nicht unnötig meldet. */
+    private function merkeShopStatus(int $auftragId, string $wcStatus): void
+    {
+        if (!isset(self::SHOP_STATUS_RANG[$wcStatus])) return;
+        $stmt = Database::getInstance()->prepare("SELECT shop_status_gemeldet FROM auftraege WHERE id = ?");
+        $stmt->execute([$auftragId]);
+        $bekannt = $stmt->fetchColumn() ?: null;
+        if (self::SHOP_STATUS_RANG[$wcStatus] > (self::SHOP_STATUS_RANG[$bekannt] ?? 0)) {
+            Database::getInstance()->prepare("UPDATE auftraege SET shop_status_gemeldet = ? WHERE id = ?")->execute([$wcStatus, $auftragId]);
+        }
+    }
+
+    private function findeShop(int $shopId): ?array
+    {
+        foreach ($this->repo->findAktiveShops() as $s) {
+            if ((int)$s['id'] === $shopId) return $s;
+        }
+        return null;
+    }
+
     /** @return array{erfolg:int,fehler:int} */
     public function syncBestellungen(array $shop): array
     {
@@ -130,7 +333,9 @@ class ShopBestellungSyncService
             'kanal_auftrag_id'          => (int)$order['id'],
             'zahlungsart'               => $this->mappeZahlungsart((string)($order['payment_method'] ?? '')),
             'lieferart'                 => $this->ermittleLieferart($order),
-            'versandkosten'             => (float)($order['shipping_total'] ?? 0),
+            // brutto (ERP führt Versandkosten immer brutto, siehe Versandsteuer) --
+            // WooCommerce liefert Netto + Steuer getrennt
+            'versandkosten'             => round((float)($order['shipping_total'] ?? 0) + (float)($order['shipping_tax'] ?? 0), 2),
             'notiz_versand'             => trim((string)($order['customer_note'] ?? '')) !== '' ? $order['customer_note'] : null,
         ];
 
@@ -141,6 +346,7 @@ class ShopBestellungSyncService
         $auftragId = (int)$ergebnis['id'];
 
         $this->setzeStatus($auftragId, $zahlungsstatus, $lieferstatus, 'Import aus WooCommerce');
+        $this->merkeShopStatus($auftragId, (string)($order['status'] ?? ''));
 
         // Nur beim ERSTEN Import verarbeiten -- coupon_lines ändert sich nach
         // Bestellabschluss nicht mehr, ein erneuter Poll würde sonst doppelt buchen.
@@ -235,6 +441,18 @@ class ShopBestellungSyncService
         int $shopId
     ): void {
         $neuerLieferstatus = $lieferstatus === 'storniert' ? 'storniert' : null;
+
+        // Zahlungen werden inzwischen AUCH im ERP gebucht (Zahlung buchen → Shop-Meldung,
+        // siehe meldeZahlungAnShop). Ein im ERP höherer Zahlungsstatus darf deshalb nicht
+        // durch einen (noch) älteren Shop-Stand zurückgestuft werden. Storno/Erstattung
+        // aus dem Shop gelten weiterhin immer.
+        $rang = ['ausstehend' => 1, 'teilbezahlt' => 2, 'bezahlt' => 3];
+        $erp  = (string)($bestehender['zahlungsstatus'] ?? '');
+        if (isset($rang[$zahlungsstatus], $rang[$erp]) && $rang[$erp] > $rang[$zahlungsstatus]) {
+            $zahlungsstatus = $erp;
+        }
+
+        $this->merkeShopStatus($auftragId, (string)($order['status'] ?? ''));
         $this->setzeStatus($auftragId, $zahlungsstatus, $neuerLieferstatus, 'Aktualisiert aus WooCommerce', $bestehender);
 
         // Zahlungsstatus kann erst bei einem SPÄTEREN Poll auf "bezahlt" wechseln

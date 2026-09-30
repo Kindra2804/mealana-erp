@@ -36,13 +36,17 @@ $summeBezahlt = array_sum(array_column($zahlungen, 'betrag'));
 // Gutschein(e), die für diesen Auftrag ausgestellt wurden (z.B. Kasse-Retoure statt Bar) --
 // gutscheine.auftrag_id_ursprung verlinkt bereits dorthin, keine eigene Repository-Methode nötig.
 $ausgestellteGutscheine = $db->prepare("
-    SELECT id, code, betrag, status
+    SELECT id, code, betrag, status, versendet_am, zustellung_am, kanal_line_item_id
     FROM gutscheine
     WHERE auftrag_id_ursprung = :id
     ORDER BY id DESC
 ");
 $ausgestellteGutscheine->execute(['id' => $id]);
 $ausgestellteGutscheine = $ausgestellteGutscheine->fetchAll(PDO::FETCH_ASSOC);
+// Gekaufte (Shop-Gutscheinartikel, an eine Bestellzeile gebunden) vs. als Erstattung
+// ausgestellte Gutscheine (Kasse-Retoure) -- beide hängen über auftrag_id_ursprung am Auftrag
+$gekaufteGutscheine     = array_values(array_filter($ausgestellteGutscheine, fn($g) => !empty($g['kanal_line_item_id'])));
+$ausgestellteGutscheine = array_values(array_filter($ausgestellteGutscheine, fn($g) => empty($g['kanal_line_item_id'])));
 
 // Über die Kasse retournierte Positionen verkleinern den Auftrag effektiv — ohne das würde
 // "Offen" nach einer Kasse-Retoure fälschlich einen Restbetrag zeigen, obwohl wirtschaftlich
@@ -264,6 +268,26 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <span style="color:#059669;font-weight:600">Vollständig bezahlt</span>
                         <?php endif; ?>
                     </div>
+                </div>
+            <?php endif; ?>
+            <?php if (!empty($gekaufteGutscheine)): ?>
+                <div style="margin-top:6px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+                    <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Gekaufte Gutscheine</div>
+                    <?php foreach ($gekaufteGutscheine as $g): ?>
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:2px 0">
+                            <a href="<?= BASE_PATH ?>/gutscheine/detail.php?id=<?= $g['id'] ?>">🎁 <?= htmlspecialchars($g['code']) ?></a>
+                            <span style="font-weight:600"><?= number_format((float)$g['betrag'], 2, ',', '.') ?> €</span>
+                        </div>
+                        <div style="font-size:11px;color:var(--color-text-muted)">
+                            <?php if ($g['versendet_am']): ?>
+                                ✉ versendet am <?= date('d.m.Y H:i', strtotime($g['versendet_am'])) ?>
+                            <?php elseif ($g['zustellung_am']): ?>
+                                ⏰ Zustellung geplant am <?= date('d.m.Y', strtotime($g['zustellung_am'])) ?>
+                            <?php else: ?>
+                                noch nicht versendet
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             <?php endif; ?>
             <?php if (!empty($ausgestellteGutscheine)): ?>

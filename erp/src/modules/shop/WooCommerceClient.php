@@ -131,6 +131,20 @@ class WooCommerceClient
         return $this->request('PUT', '/coupons/' . $externalId, [], $daten);
     }
 
+    /** Aktualisiert eine Bestellung (z.B. Status 'processing' nach im ERP gebuchter Zahlung). */
+    public function aktualisiereBestellung(int $orderId, array $daten): array
+    {
+        return $this->request('PUT', '/orders/' . $orderId, [], $daten);
+    }
+
+    /** Hängt eine Notiz an eine Bestellung (customer_note=false: nur im wp-admin sichtbar). */
+    public function erstelleBestellNotiz(int $orderId, string $notiz, bool $fuerKunde = false): array
+    {
+        return $this->request('POST', '/orders/' . $orderId . '/notes', [], [
+            'note' => $notiz, 'customer_note' => $fuerKunde,
+        ]);
+    }
+
     /** Löscht einen Coupon endgültig (force=true, kein Papierkorb) -- z.B. wenn ein Gutschein nicht mehr einlösbar ist. */
     public function loescheCoupon(int $externalId): array
     {

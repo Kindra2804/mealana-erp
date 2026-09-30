@@ -41,14 +41,6 @@ $bestellungSync   = new ShopBestellungSyncService();
 $gutscheinService = new GutscheinService();
 
 foreach ($repo->findAktiveShops() as $shop) {
-    if ((int)$shop['bulk_import_aktiv'] === 1) {
-        // Sperre analog zum JTL-Komplettabgleich (siehe scripts/erstbefuellung_bilder.php) --
-        // während ein manueller Bulk-Import läuft, überspringt der Cron diesen
-        // Shop komplett, sonst Race Condition (doppelter Bild-Upload etc.).
-        echo "[{$shop['slug']}] übersprungen -- Bulk-Import läuft gerade\n";
-        continue;
-    }
-
     if ((int)$shop['sync_pausiert'] === 1) {
         // Bewusst vom Betreiber über die "Shop-Synchronisierung"-Seite pausiert
         // (Migration 157) -- anders als bulk_import_aktiv kein Selbst-Reset,
@@ -57,7 +49,18 @@ foreach ($repo->findAktiveShops() as $shop) {
         continue;
     }
 
-    try {
+    // Sperre analog zum JTL-Komplettabgleich (siehe scripts/erstbefuellung_bilder.php) --
+    // während ein manueller Bulk-Import/Komplettabgleich läuft, überspringt der Cron
+    // NUR den Artikel-Teil (sonst Race Condition, doppelter Bild-Upload etc.).
+    // Bestellungen + Gutscheine laufen weiter -- früher wurde der ganze Shop
+    // übersprungen, bei einem stundenlangen Komplettabgleich kamen so lange gar
+    // keine Bestellungen ins ERP (Fund 2026-09-30).
+    $artikelGesperrt = (int)$shop['bulk_import_aktiv'] === 1;
+    if ($artikelGesperrt) {
+        echo "[{$shop['slug']}] Artikel übersprungen -- Bulk-Import/Komplettabgleich läuft gerade\n";
+    }
+
+    if (!$artikelGesperrt) try {
         $ergebnis = $artikelSync->syncShop($shop);
         echo "[{$shop['slug']}] Artikel: {$ergebnis['erfolg']} erfolgreich, {$ergebnis['fehler']} Fehler\n";
         // Nur bei tatsächlicher Aktivität loggen -- ein Leerlauf-Poll alle 15 Min
@@ -99,6 +102,17 @@ foreach ($repo->findAktiveShops() as $shop) {
             'fehler'   => $e->getMessage(),
         ], $jarvisId, 'error');
         echo "[{$shop['slug']}] Bestellungs-Sync abgebrochen: {$e->getMessage()}\n";
+    }
+
+    // ERP → Shop: Zahlungs-/Versandstand melden (z.B. am Packplatz versendet, an der
+    // Kasse abgeholt) -- sonst blieben die Bestellungen im Shop offen.
+    try {
+        $st = $bestellungSync->meldeOffeneStatusAnShop($shop);
+        echo "[{$shop['slug']}] Status an Shop gemeldet: {$st['gemeldet']}, Fehler: {$st['fehler']}\n";
+    } catch (Throwable $e) {
+        Logger::log('shop.cron_fehler', 'shops', (int)$shop['id'], [
+            'richtung' => 'status', 'shop' => $shop['slug'], 'fehler' => $e->getMessage(),
+        ], $jarvisId, 'error');
     }
 
     // Gutschein-Coupons NACH dem Bestellungs-Sync: so werden online eingelöste Codes
