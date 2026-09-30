@@ -2,10 +2,11 @@
 require_once __DIR__ . '/../../core/Database.php';
 
 /**
- * RuecklagerungRepository – Warteschlange "physische Ware aus Kasse-Retoure
- * noch nicht eingelagert" (siehe Migration 121). Wird von bon_speichern.php
- * befüllt (block='retour'-Positionen ohne automatische Rücklagerung) und von
- * packplatz/ruecklagerungen.php abgearbeitet.
+ * RuecklagerungRepository – Warteschlange "zurückgekommene Ware noch nicht geprüft/
+ * eingelagert" (Migration 121, erweitert 179). Befüllt von der Kasse (bon_speichern.php,
+ * block='retour'-Positionen) und von der ERP-Gutschrift mit "Lager zurückbuchen"
+ * (DokumentService::erstelleGutschrift); abgearbeitet in packplatz/ruecklagerungen.php,
+ * wo Zustand, Lager und Charge entschieden werden (Buchung über RetourService).
  */
 class RuecklagerungRepository
 {
@@ -20,20 +21,26 @@ class RuecklagerungRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO packplatz_ruecklagerungen
-                (kassen_bon_id, bon_nr, auftrag_id, auftrag_nr, artikel_id, bezeichnung, menge, charge, kasse_id)
+                (quelle, kassen_bon_id, bon_nr, gutschrift_nr, auftrag_id, auftrag_nr, auftrag_position_id,
+                 artikel_id, bezeichnung, menge, charge, lager_vorschlag_id, kasse_id)
             VALUES
-                (:kassen_bon_id, :bon_nr, :auftrag_id, :auftrag_nr, :artikel_id, :bezeichnung, :menge, :charge, :kasse_id)
+                (:quelle, :kassen_bon_id, :bon_nr, :gutschrift_nr, :auftrag_id, :auftrag_nr, :auftrag_position_id,
+                 :artikel_id, :bezeichnung, :menge, :charge, :lager_vorschlag_id, :kasse_id)
         ");
         $stmt->execute([
-            'kassen_bon_id' => $daten['kassen_bon_id'],
-            'bon_nr'        => $daten['bon_nr'],
-            'auftrag_id'    => $daten['auftrag_id'] ?? null,
-            'auftrag_nr'    => $daten['auftrag_nr'] ?? null,
-            'artikel_id'    => $daten['artikel_id'],
-            'bezeichnung'   => $daten['bezeichnung'],
-            'menge'         => $daten['menge'],
-            'charge'        => $daten['charge'] ?? null,
-            'kasse_id'      => $daten['kasse_id'],
+            'quelle'              => $daten['quelle'] ?? 'kasse',
+            'kassen_bon_id'       => $daten['kassen_bon_id'] ?? null,
+            'bon_nr'              => $daten['bon_nr'] ?? null,
+            'gutschrift_nr'       => $daten['gutschrift_nr'] ?? null,
+            'auftrag_id'          => $daten['auftrag_id'] ?? null,
+            'auftrag_nr'          => $daten['auftrag_nr'] ?? null,
+            'auftrag_position_id' => $daten['auftrag_position_id'] ?? null,
+            'artikel_id'          => $daten['artikel_id'],
+            'bezeichnung'         => $daten['bezeichnung'],
+            'menge'               => $daten['menge'],
+            'charge'              => $daten['charge'] ?? null,
+            'lager_vorschlag_id'  => $daten['lager_vorschlag_id'] ?? null,
+            'kasse_id'            => $daten['kasse_id'] ?? null,
         ]);
         return (int)$this->db->lastInsertId();
     }
@@ -41,9 +48,9 @@ class RuecklagerungRepository
     public function findOffene(): array
     {
         $stmt = $this->db->query("
-            SELECT r.*, k.name AS kasse_name, a.charge_pflicht
+            SELECT r.*, k.name AS kasse_name, a.charge_pflicht, a.artikelnummer
             FROM packplatz_ruecklagerungen r
-            JOIN kassen k ON k.id = r.kasse_id
+            LEFT JOIN kassen k ON k.id = r.kasse_id
             JOIN artikel a ON a.id = r.artikel_id
             WHERE r.status = 'offen'
             ORDER BY r.erstellt_am ASC
@@ -63,18 +70,20 @@ class RuecklagerungRepository
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    public function markiereErledigt(int $id, int $lagerId, string $zustand, int $benutzerId, ?string $charge = null): void
+    public function markiereErledigt(int $id, int $lagerId, string $zustand, int $benutzerId, ?string $charge = null, ?int $artikelId = null): void
     {
         $this->db->prepare("
             UPDATE packplatz_ruecklagerungen SET
                 status = 'erledigt', erledigt_am = NOW(), charge = :charge,
-                erledigt_von = :benutzer_id, erledigt_lager_id = :lager_id, erledigt_zustand = :zustand
+                erledigt_von = :benutzer_id, erledigt_lager_id = :lager_id, erledigt_zustand = :zustand,
+                erledigt_artikel_id = :artikel_id
             WHERE id = :id
         ")->execute([
             'benutzer_id' => $benutzerId,
             'lager_id'    => $lagerId,
             'zustand'     => $zustand,
             'charge'      => $charge,
+            'artikel_id'  => $artikelId,
             'id'          => $id,
         ]);
     }

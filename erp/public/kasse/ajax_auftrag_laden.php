@@ -75,7 +75,7 @@ foreach ($auftraege as $a) {
     // Positionen
     $pStmt = $db->prepare("
         SELECT p.id, p.artikel_id, p.bezeichnung, p.ean, p.charge,
-               p.menge, p.menge_geliefert, p.menge_retourniert,
+               p.menge, p.menge_geliefert, GREATEST(p.menge_retourniert, p.menge_gutgeschrieben) AS menge_retourniert,
                p.einzelpreis_netto, p.steuer_prozent, p.rabatt_prozent
         FROM auftrag_positionen p
         WHERE p.auftrag_id = ?
@@ -92,6 +92,8 @@ foreach ($auftraege as $a) {
             'charge'              => $p['charge'] ?? null,
             'menge'               => (float)$p['menge'],
             'menge_geliefert'     => (float)($p['menge_geliefert'] ?? 0),
+            // inkl. bereits gutgeschriebener Menge (Packplatz-Retoure/ERP-Gutschrift), damit die
+            // Kasse sie nicht nochmal als Retoure anbietet
             'menge_retourniert'   => (float)($p['menge_retourniert'] ?? 0),
             'einzelpreis_brutto'  => round((float)$p['einzelpreis_netto'] * (1 + (float)$p['steuer_prozent'] / 100), 4),
             'steuer_prozent'      => (float)$p['steuer_prozent'],

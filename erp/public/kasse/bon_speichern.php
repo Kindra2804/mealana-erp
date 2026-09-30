@@ -77,6 +77,7 @@ foreach ($positionen as $p) {
         'block'               => !empty($p['vonAuftrag']) ? 'auftrag' : ($p['block'] ?? null),
         'auftrag_position_id' => isset($p['auftrag_position_id']) ? (int)$p['auftrag_position_id'] : null,
         'retour_von_position_id' => isset($p['retour_von_position_id']) ? (int)$p['retour_von_position_id'] : null,
+        'gutschein_empfaenger'   => trim((string)($p['gutschein_empfaenger'] ?? '')) ?: null,
     ];
 }
 
@@ -99,6 +100,49 @@ foreach ($sauberePositionen as &$p) {
     $p['kein_lagerabzug']    = true;
 }
 unset($p);
+
+// Artikel ohne eigenen Lagerbestand (Gutschein-Artikel, Typ ohne Lagerstand, "keine
+// Lagerbestandsführung") nie vom Lager abbuchen -- das kein_lagerabzug-Flag aus dem
+// Client wird oben beim Bereinigen bewusst verworfen, deshalb serverseitig aus den
+// Stammdaten bestimmen. Gutschein-Kauf-Positionen (block 'gutschein_kauf') zusätzlich
+// absichern: nur echter Gutschein-Artikel, 0% MwSt (Mehrzweckgutschein), kein Rabatt,
+// ganze Stückzahl -- jeder Stück wird ein eigener Code.
+$posArtikelIds = array_values(array_unique(array_filter(array_column($sauberePositionen, 'artikel_id'))));
+$ohneLagerIds = [];
+$gutscheinArtikelIds = [];
+if ($posArtikelIds) {
+    $ph = implode(',', array_fill(0, count($posArtikelIds), '?'));
+    $stmtOL = Database::getInstance()->prepare("
+        SELECT a.id, a.ist_gutschein
+        FROM artikel a
+        JOIN artikel_typen at ON at.id = a.artikeltyp_id
+        WHERE a.id IN ($ph)
+          AND (a.ist_gutschein = 1 OR a.keine_lagerbestandsfuehrung = 1 OR at.hat_lagerstand = 0)
+    ");
+    $stmtOL->execute($posArtikelIds);
+    foreach ($stmtOL->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $ohneLagerIds[(int)$r['id']] = true;
+        if ((int)$r['ist_gutschein'] === 1) $gutscheinArtikelIds[(int)$r['id']] = true;
+    }
+}
+foreach ($sauberePositionen as &$p) {
+    if (!empty($p['artikel_id']) && isset($ohneLagerIds[$p['artikel_id']])) {
+        $p['kein_lagerabzug'] = true;
+    }
+    if ($p['block'] === 'gutschein_kauf') {
+        if (empty($p['artikel_id']) || !isset($gutscheinArtikelIds[$p['artikel_id']])) {
+            echo json_encode(['erfolg' => false, 'fehler' => 'Gutschein-Position ohne gültigen Gutschein-Artikel.']); exit;
+        }
+        if ($p['einzelpreis_brutto'] <= 0 || $p['menge'] < 1 || floor($p['menge']) != $p['menge']) {
+            echo json_encode(['erfolg' => false, 'fehler' => 'Gutschein: Betrag und Stückzahl müssen größer als 0 sein.']); exit;
+        }
+        $p['einzelpreis_brutto'] = round($p['einzelpreis_brutto'], 2);
+        $p['rabatt_prozent']     = 0;
+        $p['steuer_prozent']     = 0;
+    }
+}
+unset($p);
+$gutscheinKaufPositionen = array_values(array_filter($sauberePositionen, fn($p) => $p['block'] === 'gutschein_kauf'));
 
 // Bruttobetrag serverseitig aus Positionen neu berechnen (kein Vertrauen auf Client-Wert)
 $serverBrutto = 0;
@@ -158,7 +202,7 @@ if (!$nurAbschliessen && $webAuftragBezahlt && $webAuftragId) {
 // Per-Position: kein_lagerabzug für Auftrag-Positionen (schon gebucht) + Retour-Positionen
 foreach ($sauberePositionen as &$bp) {
     if ($bp['block'] === 'auftrag') {
-        $bp['kein_lagerabzug'] = ($webAuftragStatus === 'abholbereit' || $webMitnehmen === false);
+        $bp['kein_lagerabzug'] = !empty($bp['kein_lagerabzug']) || $webAuftragStatus === 'abholbereit' || $webMitnehmen === false;
     } elseif ($bp['block'] === 'retour') {
         $bp['kein_lagerabzug'] = true; // Packplatz hat schon ausgebucht; Rücklagerung erfolgt über menge_geliefert-Tracking
     }
@@ -287,12 +331,14 @@ foreach ($sauberePositionen as $bp) {
     }
 }
 if (!empty($retourAnfrageProPosition)) {
-    $chk = Database::getInstance()->prepare("SELECT menge, menge_retourniert, bezeichnung FROM auftrag_positionen WHERE id = ?");
+    // Zurückgekommen ODER schon gutgeschrieben (Packplatz-Retoure, ERP-Gutschrift) zählt
+    // beides als "nicht mehr offen" -- eine Kassen-Retoure erstattet ja immer auch Geld.
+    $chk = Database::getInstance()->prepare("SELECT menge, GREATEST(menge_retourniert, menge_gutgeschrieben) AS erledigt, bezeichnung FROM auftrag_positionen WHERE id = ?");
     foreach ($retourAnfrageProPosition as $pid => $angefragteMenge) {
         $chk->execute([$pid]);
         $origPos = $chk->fetch(PDO::FETCH_ASSOC);
         if (!$origPos) continue;
-        $nochOffen = (int)$origPos['menge'] - (int)$origPos['menge_retourniert'];
+        $nochOffen = (int)$origPos['menge'] - (int)$origPos['erledigt'];
         if ($angefragteMenge > $nochOffen) {
             echo json_encode([
                 'erfolg' => false,
@@ -304,7 +350,110 @@ if (!empty($retourAnfrageProPosition)) {
     }
 }
 
+// ── Bezahlen mit Gutschein: vor dem Signieren prüfen, Beträge serverseitig festlegen ──
+// Eingelöst wird erst NACH erfolgreich erstelltem Bon (unten) -- sonst wäre das
+// Guthaben weg, falls der BFR den Bon ablehnt. Reicht das Guthaben nicht, zahlt der
+// Kunde den Rest bar oder mit Karte (rest_zahlungsart); bar_betrag ist dabei der
+// NETTO-Rest (ohne Rückgeld), damit der Kassenstand stimmt.
+$gutscheinZahlung = null;
+if ($bonDaten['zahlungsart'] === 'gutschein') {
+    require_once __DIR__ . '/../../src/modules/gutscheine/GutscheinService.php';
+    if ($gutscheinKaufPositionen) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Gutscheine können nicht mit einem Gutschein bezahlt werden.']); exit;
+    }
+    if ($bonDaten['bruttobetrag'] <= 0) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Gutschein-Zahlung ist nur bei einem positiven Bon-Betrag möglich.']); exit;
+    }
+    $gsPruefung = (new GutscheinService())->pruefeEinloesbar((string)($bonDaten['gutschein_code'] ?? ''));
+    if (!$gsPruefung['erfolg']) {
+        echo json_encode(['erfolg' => false, 'fehler' => implode(' ', $gsPruefung['fehler'])]); exit;
+    }
+    $gs       = $gsPruefung['gutschein'];
+    $gsBetrag = round(min((float)$gs['restguthaben'], $bonDaten['bruttobetrag']), 2);
+    $offen    = round($bonDaten['bruttobetrag'] - $gsBetrag, 2);
+    $restArt  = $input['rest_zahlungsart'] ?? null;
+
+    $bonDaten['gutschein_code']   = $gs['code'];
+    $bonDaten['gutschein_betrag'] = $gsBetrag;
+    $bonDaten['bar_betrag']       = null;
+    $bonDaten['karten_betrag']    = null;
+    $bonDaten['gegeben']          = null;
+    $bonDaten['rueckgeld']        = null;
+    if ($offen > 0.005) {
+        if ($restArt === 'bar') {
+            $bonDaten['bar_betrag'] = $offen;
+            $gegeben = isset($input['gegeben']) ? (float)$input['gegeben'] : 0.0;
+            if ($gegeben >= $offen) {
+                $bonDaten['gegeben']   = $gegeben;
+                $bonDaten['rueckgeld'] = round($gegeben - $offen, 2);
+            }
+        } elseif ($restArt === 'karte_extern') {
+            $bonDaten['karten_betrag'] = $offen;
+        } else {
+            echo json_encode(['erfolg' => false, 'fehler' => 'Guthaben reicht nicht — Restbetrag € '
+                . number_format($offen, 2, ',', '.') . ' bitte bar oder mit Karte kassieren.']); exit;
+        }
+    }
+    $gutscheinZahlung = ['code' => $gs['code'], 'id' => (int)$gs['id'], 'betrag' => $gsBetrag];
+}
+
 $result = $service->erstelleBon($bonDaten, $bonErstellungPositionen, $benutzerId);
+
+// ── Nach erfolgreichem Bon: Gutschein einlösen bzw. verkaufte Gutscheine ausstellen ──
+// Läuft VOR dem echo, damit die Kasse Codes/PDF-Links direkt in der Antwort bekommt.
+// Ein Fehler hier darf den (bereits signierten) Bon nicht mehr kippen -> Warnung + Log.
+if ($result['erfolg'] && !empty($result['bon_id']) && ($gutscheinZahlung || $gutscheinKaufPositionen)) {
+    require_once __DIR__ . '/../../src/modules/gutscheine/GutscheinService.php';
+    $gsService = new GutscheinService();
+    $bonIdGs   = (int)$result['bon_id'];
+    $result['warnungen'] = [];
+
+    if ($gutscheinZahlung) {
+        try {
+            $e = $gsService->einloesen($gutscheinZahlung['code'], $gutscheinZahlung['betrag'], 'kasse', null, $bonIdGs, $benutzerId);
+            Database::getInstance()->prepare("UPDATE kassen_bons SET gutschein_id = ? WHERE id = ?")
+                ->execute([$gutscheinZahlung['id'], $bonIdGs]);
+            if (!$e['erfolg']) {
+                throw new RuntimeException(implode(' ', $e['fehler'] ?? []));
+            }
+            if (!empty($e['neuer_code'])) {
+                $neu = (new GutscheinRepository())->findByCode($e['neuer_code']);
+                $result['gutschein_rest'] = ['id' => (int)$neu['id'], 'code' => $neu['code'], 'betrag' => (float)$neu['betrag']];
+            }
+        } catch (Throwable $ex) {
+            Logger::log('gutschein.kasse_einloesung_fehler', 'kassen_bons', $bonIdGs, [
+                'code' => $gutscheinZahlung['code'], 'fehler' => $ex->getMessage(), 'bon_nr' => $result['bon_nr'] ?? '',
+            ], $benutzerId, 'error');
+            $result['warnungen'][] = 'Bon wurde erstellt, aber der Gutschein konnte nicht abgebucht werden ('
+                . $ex->getMessage() . ') — bitte in der Gutschein-Verwaltung prüfen.';
+        }
+    }
+
+    $result['gutscheine_ausgestellt'] = [];
+    foreach ($gutscheinKaufPositionen as $gp) {
+        for ($i = 0; $i < (int)$gp['menge']; $i++) {
+            try {
+                $g = $gsService->erstelleGutschein([
+                    'betrag'          => $gp['einzelpreis_brutto'],
+                    'kunden_id'       => $bonDaten['kunden_id'],
+                    'empfaenger_name' => $gp['gutschein_empfaenger'],
+                    'kanal_erstellt'  => 'kasse',
+                    'kassen_bon_id'   => $bonIdGs,
+                    'versandart'      => 'selbst_ausdrucken',
+                ], $benutzerId);
+                if (!$g['erfolg']) throw new RuntimeException(implode(' ', $g['fehler'] ?? []));
+                $result['gutscheine_ausgestellt'][] = ['id' => $g['id'], 'code' => $g['code'], 'betrag' => $gp['einzelpreis_brutto']];
+            } catch (Throwable $ex) {
+                Logger::log('gutschein.kasse_verkauf_fehler', 'kassen_bons', $bonIdGs, [
+                    'betrag' => $gp['einzelpreis_brutto'], 'fehler' => $ex->getMessage(), 'bon_nr' => $result['bon_nr'] ?? '',
+                ], $benutzerId, 'error');
+                $result['warnungen'][] = 'Gutschein über € ' . number_format($gp['einzelpreis_brutto'], 2, ',', '.')
+                    . ' konnte nicht erstellt werden — bitte in der Gutschein-Verwaltung manuell nachtragen.';
+            }
+        }
+    }
+}
+
 echo json_encode($result);
 
 // ─── Packplatz-Rücklagerung: Freitext-Retour (kein Auftrag) ─────────────────────
@@ -488,8 +637,9 @@ if ($result['erfolg'] && $webAuftragId) {
                 $gepackt  = (float)$op['menge'];
 
                 if (!empty($retourProPosition[$op['id']])) {
-                    $db->prepare("UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + ? WHERE id = ?")
-                       ->execute([$retourProPosition[$op['id']], $op['id']]);
+                    // Kassen-Retoure = Ware zurück UND erstattet (bar oder Gutschein)
+                    $db->prepare("UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + ?, menge_gutgeschrieben = menge_gutgeschrieben + ? WHERE id = ?")
+                       ->execute([$retourProPosition[$op['id']], $retourProPosition[$op['id']], $op['id']]);
                 }
 
                 if ($webAuftragStatus === 'abholbereit') {

@@ -525,7 +525,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md)">
                             <div class="form-group">
                                 <label class="form-label">Artikeltyp *</label>
-                                <select name="artikeltyp" class="erp-select" style="width:100%">
+                                <select name="artikeltyp" class="erp-select" style="width:100%"
+                                    onchange="document.getElementById('gutschein-typ-hinweis').hidden = this.value !== 'GUTSCHEIN'">
                                     <option value="">– bitte wählen –</option>
                                     <?php foreach ($artikelTypen as $typ): ?>
                                         <option value="<?= htmlspecialchars($typ['code']) ?>"
@@ -534,6 +535,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <div id="gutschein-typ-hinweis" style="font-size:12px;color:var(--color-text-muted);margin-top:4px"
+                                    <?= ($artikel['artikeltyp'] ?? '') === 'GUTSCHEIN' ? '' : 'hidden' ?>>
+                                    Gutschein-Artikel: Betrag wird beim Verkauf frei eingegeben, Steuerklasse wird beim Speichern automatisch auf steuerfrei gesetzt (USt erst bei Einlösung).
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Einheit</label>

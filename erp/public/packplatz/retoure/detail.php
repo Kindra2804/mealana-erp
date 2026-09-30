@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../../src/core/Database.php';
 require_once __DIR__ . '/../../../src/modules/lager/LagerService.php';
+require_once __DIR__ . '/../../../src/modules/packplatz/RetourService.php';
 
 $db           = Database::getInstance();
 $lagerService = new LagerService();
@@ -31,7 +32,7 @@ if (!$auftrag) {
 }
 
 $positionen = $db->prepare("
-    SELECT ap.*, a.zustand_vater_id,
+    SELECT ap.*, a.zustand_vater_id, a.charge_pflicht,
            (SELECT code FROM artikel_codes WHERE artikel_id = ap.artikel_id AND typ = 'GTIN13' LIMIT 1) AS ean
     FROM auftrag_positionen ap
     LEFT JOIN artikel a ON a.id = ap.artikel_id
@@ -40,6 +41,16 @@ $positionen = $db->prepare("
 ");
 $positionen->execute([':id' => $auftragId]);
 $positionen = $positionen->fetchAll(PDO::FETCH_ASSOC);
+
+// Pro Position: was ist noch offen (gegen Doppel-Retoure/-Gutschrift, z.B. wenn die
+// Kasse schon zurückgenommen hat) + welche Chargen gingen mit diesem Auftrag raus.
+$retourSvc = new RetourService();
+foreach ($positionen as &$p) {
+    $p['offen_physisch'] = max(0, (int)$p['menge'] - (int)$p['menge_retourniert']);
+    $p['offen_gs']       = max(0, (int)$p['menge'] - (int)$p['menge_gutgeschrieben']);
+    $p['verkauft']       = $p['artikel_id'] ? $retourSvc->verkaufteChargen($auftragId, (int)$p['artikel_id']) : [];
+}
+unset($p);
 
 // Rechnung vorhanden?
 $rechnung = $db->prepare("SELECT id, rechnung_nr FROM rechnungen WHERE auftrag_id = :id AND storniert = 0 ORDER BY id DESC LIMIT 1");
@@ -68,6 +79,8 @@ require_once __DIR__ . '/../shell_top.php';
 .ret-table { width:100%; border-collapse:collapse; }
 .ret-table th { background:#0f3460; color:#aaa; font-size:12px; text-align:left; padding:8px 12px; text-transform:uppercase; letter-spacing:.5px; }
 .ret-table td { padding:10px 12px; border-bottom:1px solid #1a1a3e; font-size:14px; vertical-align:middle; }
+.teil { display:flex; gap:6px; align-items:center; margin-bottom:6px; flex-wrap:wrap; }
+.ret-mini { background:#0f3460; border:none; color:#ccc; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; }
 </style>
 
 <form method="post" action="speichern.php">
@@ -104,8 +117,7 @@ require_once __DIR__ . '/../shell_top.php';
                         <th style="width:36px"></th>
                         <th>Artikel</th>
                         <th>Orig.</th>
-                        <th style="width:80px">Menge</th>
-                        <th style="width:120px">Zustand</th>
+                        <th>Menge · Charge · Zustand</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -128,21 +140,31 @@ require_once __DIR__ . '/../shell_top.php';
                             <input type="hidden" name="positionen[<?= $i ?>][einzelpreis_netto]" value="<?= $p['einzelpreis_netto'] ?>">
                             <input type="hidden" name="positionen[<?= $i ?>][steuer_prozent]" value="<?= $p['steuer_prozent'] ?>">
                         </td>
-                        <td style="color:#aaa"><?= (int)$p['menge'] ?></td>
-                        <td>
-                            <input type="number" name="positionen[<?= $i ?>][menge]" min="1"
-                                   max="<?= (int)$p['menge'] ?>" value="1"
-                                   class="ret-input" style="width:70px;text-align:center;font-size:18px"
-                                   oninput="mengeGeaendert(this, 'chk<?= $i ?>')">
+                        <td style="color:#aaa">
+                            <?= (int)$p['menge'] ?>
+                            <?php if ((int)$p['menge_retourniert'] > 0): ?>
+                                <div style="font-size:11px;color:#ff9800">↩ <?= (int)$p['menge_retourniert'] ?> schon zurück</div>
+                            <?php endif; ?>
+                            <?php if ((int)$p['menge_gutgeschrieben'] > 0): ?>
+                                <div style="font-size:11px;color:#ff9800">€ <?= (int)$p['menge_gutgeschrieben'] ?> gutgeschrieben</div>
+                            <?php endif; ?>
                         </td>
                         <td>
-                            <select name="positionen[<?= $i ?>][zustand]" class="ret-select">
-                                <option value="neu">Neu</option>
-                                <option value="gebraucht">Gebraucht</option>
-                                <option value="beschaedigt">Beschädigt</option>
-                                <option value="retour">Retour</option>
-                                <option value="defekt">Defekt</option>
-                            </select>
+                            <?php if ($p['offen_physisch'] <= 0 || !$p['artikel_id']): ?>
+                                <span style="color:#666;font-size:13px">Bereits vollständig zurückgekommen (Kasse/Rücklagerung/frühere Retoure)</span>
+                                <script>document.getElementById('chk<?= $i ?>').disabled = true;</script>
+                            <?php else: ?>
+                                <?php if ($p['verkauft']): ?>
+                                    <div style="font-size:11px;color:#6c8ebf;margin-bottom:4px">
+                                        verkauft: <?= htmlspecialchars(implode(', ', array_map(fn($v) => ($v['charge'] ?? 'ohne Charge') . ' (' . (int)$v['menge'] . ')', $p['verkauft']))) ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="teile" id="teile<?= $i ?>" data-idx="<?= $i ?>" data-max="<?= $p['offen_physisch'] ?>"
+                                     data-pflicht="<?= $p['charge_pflicht'] ? 1 : 0 ?>"
+                                     data-chargen="<?= htmlspecialchars(json_encode(array_values(array_filter(array_column($p['verkauft'], 'charge'))))) ?>"></div>
+                                <button type="button" class="ret-mini" onclick="teilHinzufuegen(<?= $i ?>)">＋ Charge</button>
+                                <span style="font-size:11px;color:#666">max. <?= $p['offen_physisch'] ?></span>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -242,10 +264,48 @@ function ergebnisGewaehlt(val) {
     document.getElementById('gs-bereich').style.display = val === 'gutschrift' ? 'block' : 'none';
 }
 
-function mengeGeaendert(input, chkId) {
-    var chk = document.getElementById(chkId);
-    if (chk) chk.checked = (parseFloat(input.value) > 0);
+// Teile-Editor: pro Position eine oder mehrere Zeilen (Menge · Charge · Zustand).
+// Erste Zeile ist mit der ersten verkauften Charge vorbelegt.
+var teilZaehler = {};
+function teilHinzufuegen(idx, vorCharge) {
+    var box = document.getElementById('teile' + idx);
+    if (!box) return;
+    var k = teilZaehler[idx] = (teilZaehler[idx] || 0) + 1;
+    var chargen = JSON.parse(box.dataset.chargen || '[]');
+    var listId = 'cl' + idx;
+    if (!document.getElementById(listId)) {
+        var dl = document.createElement('datalist');
+        dl.id = listId;
+        chargen.forEach(function(c) { var o = document.createElement('option'); o.value = c; dl.appendChild(o); });
+        box.appendChild(dl);
+    }
+    var n = 'positionen[' + idx + '][teile][' + k + ']';
+    var div = document.createElement('div');
+    div.className = 'teil';
+    div.innerHTML =
+        '<input type="number" name="' + n + '[menge]" min="0" value="' + (k === 1 ? 1 : 0) + '" class="ret-input" style="width:64px;text-align:center" oninput="teilGeaendert(' + idx + ')">' +
+        '<input type="text" name="' + n + '[charge]" list="' + listId + '" class="ret-input" style="width:120px;font-size:14px" placeholder="Charge' + (box.dataset.pflicht === '1' ? ' (Pflicht)' : '') + '">' +
+        '<select name="' + n + '[zustand]" class="ret-select">' +
+            '<option value="neu">Neu</option><option value="retour">Retour → -RET</option>' +
+            '<option value="gebraucht">Gebraucht → -GEB</option><option value="beschaedigt">Beschädigt → -BSC</option>' +
+            '<option value="defekt">Defekt (nicht einbuchen)</option></select>';
+    box.appendChild(div);
+    div.querySelector('input[type=text]').value = vorCharge || '';
+    teilGeaendert(idx);
 }
+function teilGeaendert(idx) {
+    var box = document.getElementById('teile' + idx);
+    var summe = 0;
+    box.querySelectorAll('input[type=number]').forEach(function(i) { summe += parseInt(i.value || 0, 10); });
+    var chk = document.getElementById('chk' + idx);
+    if (chk && !chk.disabled) chk.checked = summe > 0;
+    box.style.outline = summe > parseInt(box.dataset.max, 10) ? '2px solid #e94560' : '';
+}
+document.querySelectorAll('.teile').forEach(function(box) {
+    var chargen = JSON.parse(box.dataset.chargen || '[]');
+    teilHinzufuegen(parseInt(box.dataset.idx, 10), chargen[0] || '');
+    document.getElementById('chk' + box.dataset.idx).checked = false; // erst beim bewussten Anhaken/Ändern
+});
 
 document.querySelector('form').addEventListener('submit', function () {
     var overlay = document.getElementById('sende-overlay');

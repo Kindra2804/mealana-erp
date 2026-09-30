@@ -162,20 +162,11 @@ class GutscheinService
         ?int $kassenBonId = null,
         ?int $benutzerId = null
     ): array {
-        $gutschein = $this->repo->findByCode(strtoupper(trim($code)));
-        if (!$gutschein) {
-            return ['erfolg' => false, 'fehler' => ['Gutschein-Code nicht gefunden.']];
+        $pruefung = $this->pruefeEinloesbar($code);
+        if (!$pruefung['erfolg']) {
+            return $pruefung;
         }
-        if ($gutschein['status'] === 'storniert') {
-            return ['erfolg' => false, 'fehler' => ['Dieser Gutschein wurde storniert.']];
-        }
-        if ($gutschein['status'] === 'eingeloest') {
-            return ['erfolg' => false, 'fehler' => ['Dieser Gutschein wurde bereits vollständig eingelöst.']];
-        }
-        if ($gutschein['gueltig_bis'] !== null && $gutschein['gueltig_bis'] < date('Y-m-d')) {
-            $this->repo->updateRestguthabenUndStatus((int)$gutschein['id'], (float)$gutschein['restguthaben'], 'abgelaufen');
-            return ['erfolg' => false, 'fehler' => ['Dieser Gutschein ist abgelaufen.']];
-        }
+        $gutschein = $pruefung['gutschein'];
 
         $betrag = round(min($betrag, (float)$gutschein['restguthaben']), 2);
         if ($betrag <= 0) {
@@ -295,6 +286,118 @@ class GutscheinService
         Logger::log('gutschein.versendet', 'gutscheine', $gutscheinId, ['email' => $zielEmail], $this->jarvisId);
 
         return ['erfolg' => true, 'versendet' => true];
+    }
+
+    /**
+     * Prüft, ob ein Code aktuell einlösbar ist (Kasse vor dem Bezahlen, und
+     * einloesen() selbst). Bei einem durch Teileinlösung ersetzten Code wird der
+     * aktuell gültige Nachfolger-Code mitgeliefert -- genau der Support-Fall
+     * "mein Code funktioniert nicht" (Kunde hat die Mail mit dem neuen Code übersehen).
+     *
+     * @return array{erfolg:bool, gutschein?:array, fehler?:string[], nachfolger?:array}
+     */
+    public function pruefeEinloesbar(string $code): array
+    {
+        $gutschein = $this->repo->findByCode(strtoupper(trim($code)));
+        if (!$gutschein) {
+            return ['erfolg' => false, 'fehler' => ['Gutschein-Code nicht gefunden.']];
+        }
+        if ($gutschein['status'] === 'storniert') {
+            return ['erfolg' => false, 'fehler' => ['Dieser Gutschein wurde storniert.']];
+        }
+        if ($gutschein['status'] === 'teilweise' || $gutschein['status'] === 'eingeloest') {
+            $kette = $this->repo->findKette((int)$gutschein['id']);
+            $aktuell = end($kette);
+            if ($aktuell && (int)$aktuell['id'] !== (int)$gutschein['id']
+                && in_array($aktuell['status'], ['aktiv', 'teilweise'], true)) {
+                return [
+                    'erfolg' => false,
+                    'fehler' => ['Dieser Code wurde bereits eingelöst — das Restguthaben liegt auf dem neuen Code '
+                        . $aktuell['code'] . ' (€ ' . number_format((float)$aktuell['restguthaben'], 2, ',', '.') . ').'],
+                    'nachfolger' => ['code' => $aktuell['code'], 'restguthaben' => (float)$aktuell['restguthaben']],
+                ];
+            }
+            return ['erfolg' => false, 'fehler' => ['Dieser Gutschein wurde bereits vollständig eingelöst.']];
+        }
+        if ($gutschein['status'] === 'abgelaufen') {
+            return ['erfolg' => false, 'fehler' => ['Dieser Gutschein ist abgelaufen.']];
+        }
+        if ($gutschein['gueltig_bis'] !== null && $gutschein['gueltig_bis'] < date('Y-m-d')) {
+            $this->repo->updateRestguthabenUndStatus((int)$gutschein['id'], (float)$gutschein['restguthaben'], 'abgelaufen');
+            return ['erfolg' => false, 'fehler' => ['Dieser Gutschein ist abgelaufen.']];
+        }
+        if ((float)$gutschein['restguthaben'] <= 0) {
+            return ['erfolg' => false, 'fehler' => ['Kein Restguthaben mehr auf diesem Gutschein.']];
+        }
+        return ['erfolg' => true, 'gutschein' => $gutschein];
+    }
+
+    /**
+     * Gegenbuchung, wenn ein Kassenbon storniert wird, auf dem Gutscheine
+     * VERKAUFT/AUSGESTELLT oder damit BEZAHLT wurden:
+     * - ausgestellte Gutscheine werden storniert, solange sie unangetastet sind;
+     *   schon (teil)eingelöste -> Warnung, manuell klären
+     * - Einlösungen: der eingelöste Betrag kommt als NEUER Code zurück (der alte
+     *   ist per usage_limit=1 im Shop ohnehin tot, siehe Klassenkommentar)
+     * Alle Gegenbuchungen hängen am Storno-Bon, nicht am Originalbon.
+     *
+     * @return array{warnungen:string[], neue_codes:array}
+     */
+    public function bonStorniert(int $bonId, int $stornoBonId, string $stornoBonNr, int $benutzerId): array
+    {
+        $warnungen = [];
+        $neueCodes = [];
+
+        $stmt = $this->db->prepare("
+            SELECT t.gutschein_id, t.betrag, g.code, g.betrag AS g_betrag, g.restguthaben, g.status,
+                   g.kunden_id, g.vorlage_id, g.empfaenger_name, g.empfaenger_email, g.shop_id, g.gueltig_bis
+            FROM gutschein_transaktionen t
+            JOIN gutscheine g ON g.id = t.gutschein_id
+            WHERE t.kassen_bon_id = :bon AND t.betrag <> 0
+        ");
+        $stmt->execute(['bon' => $bonId]);
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $t) {
+            $betrag = (float)$t['betrag'];
+            if ($betrag > 0) {
+                $unangetastet = $t['status'] === 'aktiv'
+                    && abs((float)$t['restguthaben'] - (float)$t['g_betrag']) < 0.005;
+                if ($unangetastet) {
+                    $this->repo->storniere((int)$t['gutschein_id']);
+                    $this->repo->insertTransaktion([
+                        'gutschein_id'  => $t['gutschein_id'],
+                        'auftrag_id'    => null,
+                        'kassen_bon_id' => $stornoBonId,
+                        'betrag'        => -(float)$t['restguthaben'],
+                        'kanal'         => 'kasse',
+                        'notiz'         => 'Storniert mit Storno-Bon ' . $stornoBonNr,
+                        'benutzer_id'   => $benutzerId,
+                    ]);
+                    Logger::log('gutschein.storniert', 'gutscheine', (int)$t['gutschein_id'], ['bon_nr' => $stornoBonNr], $benutzerId);
+                } else {
+                    $warnungen[] = 'Gutschein ' . $t['code'] . ' wurde bereits (teil)eingelöst und konnte nicht automatisch storniert werden — bitte manuell klären.';
+                    Logger::log('gutschein.storno_nicht_moeglich', 'gutscheine', (int)$t['gutschein_id'], ['bon_nr' => $stornoBonNr], $benutzerId, 'warn');
+                }
+            } else {
+                $neu = $this->erstelleGutschein([
+                    'betrag'           => abs($betrag),
+                    'vorlage_id'       => $t['vorlage_id'],
+                    'kunden_id'        => $t['kunden_id'],
+                    'empfaenger_name'  => $t['empfaenger_name'],
+                    'empfaenger_email' => $t['empfaenger_email'],
+                    'shop_id'          => $t['shop_id'],
+                    'kanal_erstellt'   => 'kasse',
+                    'kassen_bon_id'    => $stornoBonId,
+                    'gueltig_bis'      => $t['gueltig_bis'],
+                    'vorgaenger_gutschein_id' => $t['gutschein_id'],
+                ], $benutzerId);
+                if ($neu['erfolg']) {
+                    $neueCodes[] = ['id' => $neu['id'], 'code' => $neu['code'], 'betrag' => abs($betrag)];
+                }
+            }
+        }
+
+        return ['warnungen' => $warnungen, 'neue_codes' => $neueCodes];
     }
 
     public function generiereEindeutigenCode(): string

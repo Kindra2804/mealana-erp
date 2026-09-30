@@ -187,6 +187,10 @@ function stornoAusfuehren(bonId) {
         .then(function(d) {
             if (d.erfolg) {
                 _bfrFehlschlagAnzahl = 0;
+                var gsInfo = (d.gutschein_neue_codes || []).map(function(g) {
+                    return 'Guthaben zurück auf neuen Gutschein-Code ' + g.code + ' (€ ' + Number(g.betrag).toFixed(2).replace('.', ',') + ')';
+                }).concat(d.gutschein_warnungen || []);
+                if (gsInfo.length) alert(gsInfo.join('\n\n'));
                 location.reload();
             } else if (d.bfr_nicht_erreichbar) {
                 _bfrPendingStornoId = bonId;

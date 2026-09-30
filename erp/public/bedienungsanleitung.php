@@ -215,6 +215,10 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#kasse-abholbereit" class="sub">↳ Abholbereit / Aufträge</a>
             <a href="#kasse-freitext-retour" class="sub">↳ Freitext-Retour</a>
             <a href="#kasse-kassensturz" class="sub">↳ Kassensturz / Z-Bon</a>
+            <a href="#gutscheine">Gutscheine</a>
+            <a href="#gutscheine-verkaufen" class="sub">↳ An der Kasse verkaufen</a>
+            <a href="#gutscheine-bezahlen" class="sub">↳ Mit Gutschein bezahlen</a>
+            <a href="#gutscheine-storno" class="sub">↳ Storno</a>
             <a href="#inventur">Inventur</a>
         </nav>
 
@@ -350,12 +354,18 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p>Für <strong>Teillieferung</strong> (nicht alle Artikel lieferbar): Button "Teillieferung" statt "Verpacken" → gleicher Overlay-Flow.</p>
 
             <h3 id="packplatz-rueck">Rücklagerungen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <p>Nach einer Kassen-Retoure (egal ob zu einem Auftrag oder als Freitext-Retour) liegt die Ware physisch am Tresen, ist aber noch nicht im Lagerbestand — die Kasse bucht nur das Geld, nicht das Lager.</p>
+            <p>Nach einer Kassen-Retoure (bar oder als Gutschein, zu einem Auftrag oder als Freitext-Retour) oder einer ERP-Gutschrift mit <strong>"Ware zur Prüfung an den Packplatz"</strong> ist nur das Geld erledigt — die Ware ist noch nicht im Lagerbestand. Bei Gutschriften sind Charge und Lager aus dem ursprünglichen Verkauf vorbefüllt (eine Zeile pro verkaufter Charge).</p>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Packplatz → <strong>Rücklagerungen</strong> (Badge zeigt Anzahl offener Einträge)</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Zeile suchen → <strong>Einbuchen</strong></div></div>
-            <div class="ba-step"><div class="ba-step-nr">3</div><div>Ziel-Lager + <strong>Zustand</strong> wählen (Neu / Gebraucht / Beschädigt / Defekt)</div></div>
-            <div class="ba-step"><div class="ba-step-nr">4</div><div>Bei chargenpflichtigen Artikeln: Charge eintragen (Pflicht, sonst kein Einbuchen möglich)</div></div>
-            <div class="ba-hint">💡 Hier gibt's keine Gutschrift/Mail-Optionen mehr wie bei der normalen Retoure — das ist an der Kasse bereits erledigt.</div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Ziel-Lager + <strong>Zustand</strong> wählen (siehe Tabelle)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Bei chargenpflichtigen Artikeln: Charge prüfen/eintragen (Pflicht, außer bei "Defekt")</div></div>
+            <table class="ba-table">
+                <tr><th>Zustand</th><th>Wohin wird gebucht</th></tr>
+                <tr><td><strong>Neu</strong></td><td>Originalartikel</td></tr>
+                <tr><td><strong>Retour / Gebraucht / Beschädigt</strong></td><td>Zustandsartikel mit Anhang (<code>D-101071-RET</code>, <code>-GEB</code>, <code>-BSC</code>) — wird bei Bedarf automatisch angelegt, <strong>zählt nie für den Onlineshop</strong>. Zu finden über Artikelliste → Status / Qualität → Zustand (B-Ware).</td></tr>
+                <tr><td><strong>Defekt</strong></td><td>wird nicht eingebucht, nur protokolliert</td></tr>
+            </table>
+            <p><strong>Retoure (Rücksendung per Post):</strong> Packplatz → Retoure → pro Position Menge · Charge · Zustand (Charge aus dem Verkauf vorbefüllt, <strong>＋ Charge</strong> für mehrere Chargen/Zustände). Möglich ist nur die Menge, die noch nicht zurückgekommen bzw. gutgeschrieben ist — schützt vor Doppelbuchung mit der Kasse.</p>
 
             <!-- EINKAUF -->
             <h2 id="einkauf">Einkauf & Bestellungen <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
@@ -513,7 +523,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><th>Zahlart</th><th>Was passiert</th></tr>
                 <tr><td><strong>Bar</strong></td><td>Gegeben-Betrag eingeben → Rückgeld wird angezeigt</td></tr>
                 <tr><td><strong>Karte extern</strong></td><td>SumUp/Bankomat — Betrag extern bestätigen, hier nur dokumentiert</td></tr>
-                <tr><td><strong>Gutschein</strong></td><td>Gutschein-Code eingeben → Betrag wird abgezogen</td></tr>
+                <tr><td><strong>Gutschein</strong></td><td>Code eingeben → Prüfen → Guthaben wird angezeigt; reicht es nicht, Rest bar oder mit Karte (siehe <a href="#gutscheine">Gutscheine</a>)</td></tr>
                 <tr><td><strong>Divers</strong></td><td>Freie Position ohne Stammdaten — Beschreibung + Betrag eingeben</td></tr>
             </table>
 
@@ -548,6 +558,33 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-hint">💡 Druckerkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen. Im Browser: Rand "Keine", Kopfzeile "Aus".</div>
             <p>RKSV-Signatur läuft über den BFR BONit Fiscal Recorder — jeder Bon wird automatisch signiert. Ist BFR kurz nicht erreichbar, verkauft die Kasse trotzdem weiter (Bon zeigt "Sicherheitseinrichtung ausgefallen"), Details unter Kasse → 🔏 RKSV.</p>
             <div class="ba-hint">💡 Bon parken: ⏸ Parken-Button — mehrere Bons können gleichzeitig geparkt und später wieder abgerufen werden.</div>
+
+            <!-- GUTSCHEINE -->
+            <h2 id="gutscheine">Gutscheine <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p>Jeder Gutschein hat einen eigenen Code (<code>MEA-XXXX-XXXX-XXXX</code>), ist standardmäßig 10 Jahre gültig und beim Verkauf <strong>steuerfrei</strong> (Mehrzweckgutschein — die Umsatzsteuer fällt erst beim Einkauf damit an). Bei einer <strong>Teileinlösung</strong> wird der alte Code ungültig und der Kunde bekommt für den Rest einen neuen Code. Kauf/Einlösung im Online-Shop folgt noch.</p>
+            <p><strong>Einmalig einrichten:</strong> Artikel mit <strong>Artikeltyp "Gutschein"</strong> und <strong>Artikelgruppe "4700 – Gutscheine"</strong> anlegen. Die Steuerklasse wird beim Speichern automatisch auf steuerfrei gesetzt, ein Preis ist nicht nötig.</p>
+
+            <h3 id="gutscheine-verkaufen">An der Kasse verkaufen</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>⚙ Menü → <strong>🎁 Gutschein verkaufen</strong> (oder Gutschein-Artikel suchen/scannen)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Betrag eingeben oder Schnellbetrag antippen, optional <strong>Für</strong> (Name des Beschenkten)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>+ Hinzufügen</strong> → normal bezahlen (Bar / Karte / Kombi)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Code + <strong>📄 PDF öffnen</strong> erscheinen, danach wie gewohnt der Bon</div></div>
+            <div class="ba-hint">💡 Der Code steht zusätzlich auf dem Kassenbon. Auf Gutscheine gibt es keinen Rabatt.</div>
+
+            <h3 id="gutscheine-bezahlen">Mit Gutschein bezahlen</h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>BEZAHLEN</strong> → <strong>🎁 Gutschein</strong> → Code eintippen → <strong>Prüfen</strong></div></div>
+            <table class="ba-table">
+                <tr><th>Fall</th><th>Was passiert</th></tr>
+                <tr><td>Guthaben reicht</td><td><strong>✓ Einlösen</strong> — bei Restguthaben bekommt der Kunde einen neuen Code (PDF + auf dem Bon)</td></tr>
+                <tr><td>Guthaben reicht nicht</td><td>"Offen: € …" → <strong>Rest bar</strong> (Rückgeld wird angezeigt) oder <strong>Rest Karte</strong></td></tr>
+                <tr><td>Code schon eingelöst</td><td>Kasse zeigt den neuen Code, auf dem das Restguthaben liegt</td></tr>
+                <tr><td>storniert / abgelaufen / unbekannt</td><td>Rote Meldung, keine Einlösung</td></tr>
+            </table>
+
+            <h3 id="gutscheine-storno">Storno &amp; Retoure</h3>
+            <p><strong>Retoure als Gutschein:</strong> im Retour-Dialog <strong>🎁 Als Gutschein ausstellen</strong> statt Bargeld auszuzahlen.</p>
+            <p><strong>Storno</strong> (Bon-Journal): ein auf dem Bon verkaufter Gutschein wird mitstorniert, solange er unbenutzt ist (sonst Warnung → manuell klären). Wurde mit Gutschein bezahlt, bekommt der Kunde den Betrag als neuen Code zurück.</p>
+            <p><strong>Verwaltung:</strong> Verkauf → Gutscheine — Liste, manuell ausstellen, Historie jedes Codes inkl. Nachfolger-Codes, PDF, erneut versenden.</p>
 
             <!-- INVENTUR -->
             <h2 id="inventur">Inventur <span class="ba-badge ba-badge-geplant">Geplant</span></h2>

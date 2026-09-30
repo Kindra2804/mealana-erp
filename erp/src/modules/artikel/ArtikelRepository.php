@@ -136,6 +136,8 @@ class ArtikelRepository
             $having = 'HAVING reserviert > gesamtbestand';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
+        } elseif ($z = $this->zustandFilterBedingung($sf)) {
+            $conditions[] = $z;
         }
 
         // Multi-Word-Suche: jedes Wort muss irgendwo matchen (Vater-Name/Nr, Kind-Name/Nr, EAN)
@@ -156,6 +158,7 @@ class ArtikelRepository
                             OR EXISTS (SELECT 1 FROM artikel_codes kc_s{$i} WHERE kc_s{$i}.artikel_id = k_s{$i}.id AND kc_s{$i}.code LIKE :{$key})
                         )
                     )
+                    OR a.id IN (" . $this->holeOriginalIdsZuZustandsartikeln("z.artikelnummer LIKE " . $this->db->quote('%' . $term . '%')) . ")
                 )";
                 $params[$key] = '%' . $term . '%';
             }
@@ -322,6 +325,8 @@ class ArtikelRepository
             $having = 'HAVING reserviert > gesamtbestand';
         } elseif ($sf === 'inaktiv') {
             $conditions[] = "a.aktiv = 0";
+        } elseif ($z = $this->zustandFilterBedingung($sf)) {
+            $conditions[] = $z;
         }
 
         // Multi-Word-Suche: jedes Wort muss irgendwo matchen (Vater-Name/Nr, Kind-Name/Nr, EAN)
@@ -342,6 +347,7 @@ class ArtikelRepository
                             OR EXISTS (SELECT 1 FROM artikel_codes kc_s{$i} WHERE kc_s{$i}.artikel_id = k_s{$i}.id AND kc_s{$i}.code LIKE :{$key})
                         )
                     )
+                    OR a.id IN (" . $this->holeOriginalIdsZuZustandsartikeln("z.artikelnummer LIKE " . $this->db->quote('%' . $term . '%')) . ")
                 )";
                 $params[$key] = '%' . $term . '%';
             }
@@ -458,6 +464,7 @@ class ArtikelRepository
                 at.code AS artikeltyp,
                 at.name AS artikeltyp_name,
                 at.ist_download AS artikeltyp_ist_download,
+                at.ist_gutschein AS artikeltyp_ist_gutschein,
                 h.name AS hersteller,
                 s.satz AS steuersatz,
                 e.name AS einheit_name,
@@ -1595,6 +1602,68 @@ class ArtikelRepository
             WHERE id = :artikel_id
         ")->execute(['artikel_id' => $artikelId, 'aktiv' => $aktiv]);
         return true;
+    }
+
+    /**
+     * Filter "Zustand (B-Ware)" der Artikelliste: zeigt Original-Artikel (Vater/Standalone),
+     * zu denen es Zustandsartikel MIT Bestand gibt -- direkt oder über ein Kind (Retoure
+     * einer Farbe hängt am Kind). Die Zustandsartikel selbst erscheinen in der Liste
+     * eingerückt unter ihrem Original.
+     * $sf: 'zustand_alle' oder 'zustand_<zustand>' (z.B. zustand_retour)
+     */
+    private function zustandFilterBedingung(string $sf): ?string
+    {
+        if (!str_starts_with($sf, 'zustand_')) return null;
+        $zustand = substr($sf, 8);
+        $erlaubt = ['alle', 'retour', 'gebraucht', 'beschaedigt', 'generalueberholt', 'demo', 'muster', 'ausstellungsstueck'];
+        if (!in_array($zustand, $erlaubt, true)) return null;
+        $zBedingung = ($zustand === 'alle' ? "z.zustand <> 'neu'" : "z.zustand = " . $this->db->quote($zustand))
+            . " AND EXISTS (SELECT 1 FROM lagerbestand lb_z WHERE lb_z.artikel_id = z.id AND lb_z.bestand > 0)";
+        return "a.id IN (" . $this->holeOriginalIdsZuZustandsartikeln($zBedingung) . ")";
+    }
+
+    /**
+     * Top-Level-IDs (Vater bzw. Standalone) aller Originale, deren Zustandsartikel die
+     * Bedingung $zBedingung (Alias z) erfüllen -- EINMAL vorab berechnet und als ID-Liste
+     * zurückgegeben. Als korrelierte Unterabfrage direkt in findAll() lief das nach der
+     * Vater/Kind/Lagerbestand-JOIN-Kreuzung pro Zeile statt pro Artikel und hing minutenlang
+     * (gleiche Falle wie beim Doppelte-EAN-Filter, siehe holeVaterIdsMitDoppelterEan()).
+     * Liefert '0' statt einer leeren Liste, damit "IN (...)" gültiges SQL bleibt.
+     */
+    private function holeOriginalIdsZuZustandsartikeln(string $zBedingung): string
+    {
+        $ids = $this->db->query("
+            SELECT DISTINCT COALESCE(o.vaterartikel_id, o.id)
+            FROM artikel z
+            JOIN artikel o ON o.id = z.zustand_vater_id
+            WHERE $zBedingung
+        ")->fetchAll(PDO::FETCH_COLUMN);
+        return $ids ? implode(',', array_map('intval', $ids)) : '0';
+    }
+
+    /**
+     * Gleicht artikel.ist_gutschein mit dem Artikeltyp ab (Typ GUTSCHEIN ist die
+     * einzige Quelle) und erzwingt bei Gutschein-Artikeln die steuerfreie
+     * Steuerklasse -- Mehrzweckgutschein, USt faellt erst bei Einloesung an.
+     * Nach jedem Insert/Update aufrufen, damit ein Typwechsel das Flag auch
+     * wieder zuruecksetzt.
+     */
+    public function syncGutscheinFlag(int $artikelId): void
+    {
+        $this->db->prepare("
+            UPDATE artikel a
+            JOIN artikel_typen at ON at.id = a.artikeltyp_id
+            SET a.ist_gutschein = at.ist_gutschein
+            WHERE a.id = :id
+        ")->execute(['id' => $artikelId]);
+
+        $this->db->prepare("
+            UPDATE artikel a
+            JOIN artikel_typen at ON at.id = a.artikeltyp_id
+            JOIN (SELECT id FROM steuerklassen WHERE satz = 0 AND aktiv = 1 ORDER BY id LIMIT 1) sk
+            SET a.steuerklasse_id = sk.id
+            WHERE a.id = :id AND at.ist_gutschein = 1
+        ")->execute(['id' => $artikelId]);
     }
 
     /** Generisches Flag "kein eigener Lagerbestand" — z.B. auf Bestellung gefertigte Konfigurator-Artikel. */

@@ -57,8 +57,25 @@ foreach ($db->query("SELECT id, name FROM lieferanten")->fetchAll() as $l) {
 
 // Artikelnummer -> id, einmalig geladen (schneller als 26k Einzel-Queries)
 $artikelByNr = [];
-foreach ($db->query("SELECT id, artikelnummer FROM artikel")->fetchAll() as $a) {
+$chargePflicht = [];
+foreach ($db->query("SELECT id, artikelnummer, charge_pflicht FROM artikel")->fetchAll() as $a) {
     $artikelByNr[$a['artikelnummer']] = (int)$a['id'];
+    if ((int)$a['charge_pflicht'] === 1) $chargePflicht[(int)$a['id']] = true;
+}
+
+/**
+ * Status einer Lagerbestand-Zeile -- gleiche Regel wie LagerService::wareneingang():
+ * mit Charge 'erfasst'; ohne Charge bei Charge-Pflicht UND vorhandenem Bestand
+ * 'nachzutragen' (erscheint in der Nachtragsliste, Kasse fragt die Charge ab), sonst
+ * 'unbekannt'. Leere Zeilen (Bestand <= 0, im JTL-Export zu Tausenden enthalten)
+ * bewusst nicht -- da gibt es nichts nachzutragen. Früher stand hier fest 'unbekannt'
+ * -> 527 Pflicht-Artikel mit Bestand waren weder in der Nachtragsliste noch an der
+ * Kasse nachtragbar (behoben 2026-09-30).
+ */
+function chargeStatus(?string $charge, bool $pflicht, float $bestand): string
+{
+    if ($charge !== null) return 'erfasst';
+    return ($pflicht && $bestand > 0) ? 'nachzutragen' : 'unbekannt';
 }
 
 // Artikel, die bereits einen Standard-Lieferanten haben -> nie überschreiben
@@ -79,13 +96,13 @@ $lieferantNichtGefunden = [];
 $lieferantIgnoriert = 0;
 
 $lagerSelect = $db->prepare("
-    SELECT id, bestand FROM lagerbestand WHERE artikel_id = :aid AND lager_id = 1 AND charge <=> :charge
+    SELECT id, bestand, charge_status FROM lagerbestand WHERE artikel_id = :aid AND lager_id = 1 AND charge <=> :charge
 ");
 $lagerInsert = $db->prepare("
     INSERT INTO lagerbestand (artikel_id, lager_id, charge, charge_status, bestand, mindestbestand)
     VALUES (:aid, 1, :charge, :charge_status, :bestand, 0)
 ");
-$lagerUpdate = $db->prepare("UPDATE lagerbestand SET bestand = :bestand WHERE id = :id");
+$lagerUpdate = $db->prepare("UPDATE lagerbestand SET bestand = :bestand, charge_status = :charge_status WHERE id = :id");
 
 $liefSelect = $db->prepare("SELECT id FROM artikel_lieferanten WHERE artikel_id = :aid AND lieferant_id = :lid");
 $liefInsert = $db->prepare("
@@ -123,11 +140,16 @@ foreach ($rows as $row) {
     $charge = trim($row['Charge'] ?? '') ?: null;
     $bestand = komma($row['BestandAktuell'] ?? '0') ?? 0.0;
 
+    $status = chargeStatus($charge, isset($chargePflicht[$artikelId]), $bestand);
+
     $lagerSelect->execute(['aid' => $artikelId, 'charge' => $charge]);
     $bestehend = $lagerSelect->fetch();
     if ($bestehend) {
-        if (!$dryRun && (float)$bestehend['bestand'] !== $bestand) {
-            $lagerUpdate->execute(['bestand' => $bestand, 'id' => $bestehend['id']]);
+        // Status nur von 'unbekannt' auf den korrekten Wert heben -- ein
+        // 'nachzutragen'/'erfasst' aus dem laufenden Betrieb nie zurückstufen
+        $neuerStatus = $bestehend['charge_status'] === 'unbekannt' ? $status : $bestehend['charge_status'];
+        if (!$dryRun && ((float)$bestehend['bestand'] !== $bestand || $neuerStatus !== $bestehend['charge_status'])) {
+            $lagerUpdate->execute(['bestand' => $bestand, 'charge_status' => $neuerStatus, 'id' => $bestehend['id']]);
         }
         $lagerAktualisiert++;
     } else {
@@ -135,7 +157,7 @@ foreach ($rows as $row) {
             $lagerInsert->execute([
                 'aid' => $artikelId,
                 'charge' => $charge,
-                'charge_status' => $charge !== null ? 'erfasst' : 'unbekannt',
+                'charge_status' => $status,
                 'bestand' => $bestand,
             ]);
         }

@@ -227,14 +227,14 @@ class DokumentService
         $gsNr = $this->repo->naechsteNummer('gutschrift', (int)date('Y'));
 
         // GS-Positionen und Summen bestimmen. Vollstorno kreditiert nur das, was noch NICHT
-        // über die Kasse retourniert wurde (menge - menge_retourniert) — sonst würde eine
-        // bereits erstattete Menge hier ein zweites Mal gutgeschrieben. Läuft dafür über
-        // dieselbe Positions-Berechnung wie die Teilgutschrift, nur mit allen offenen Mengen
-        // statt einer manuellen Auswahl.
+        // gutgeschrieben wurde (menge - menge_gutgeschrieben; zählt Kasse, Packplatz-Retoure
+        // und frühere Gutschriften) — sonst würde eine bereits erstattete Menge hier ein
+        // zweites Mal gutgeschrieben. Läuft dafür über dieselbe Positions-Berechnung wie die
+        // Teilgutschrift, nur mit allen offenen Mengen statt einer manuellen Auswahl.
         if ($gsArt === 'vollstorno') {
             $positionen = [];
             foreach ($daten['positionen'] as $orig) {
-                $offen = (int)$orig['menge'] - (int)($orig['menge_retourniert'] ?? 0);
+                $offen = (int)$orig['menge'] - (int)($orig['menge_gutgeschrieben'] ?? 0);
                 if ($offen <= 0) continue;
                 $positionen[] = [
                     'pos_id'            => (int)$orig['id'],
@@ -286,44 +286,49 @@ class DokumentService
                 ->execute([':id' => $auftragId]);
         }
 
-        // Lager zurückbuchen wenn gewünscht
+        // Gutgeschriebene Menge an der Original-Position mitzählen -- gemeinsamer Zähler
+        // mit Kasse und Packplatz-Retoure gegen Doppel-Gutschriften.
+        $gutgeschriebenStmt = $this->db->prepare("
+            UPDATE auftrag_positionen SET menge_gutgeschrieben = menge_gutgeschrieben + :m WHERE id = :id
+        ");
+        foreach ($gsPosi as $p) {
+            $gutgeschriebenStmt->execute([':m' => (int)$p['menge'], ':id' => (int)$p['id']]);
+        }
+
+        // "Lager zurückbuchen": NICHT mehr direkt einbuchen, sondern an den Packplatz
+        // (Rücklagerungen) weiterleiten -- dort wird die Ware geprüft und Zustand, Lager
+        // und Charge entschieden (RetourService). Chargen + Lager sind aus den
+        // Lagerbewegungen des Verkaufs vorbefüllt. Früher: direkte Buchung ohne Charge
+        // fest in Lager 1, die bei jeder Gutschrift eine neue Null-Charge-Zeile anlegte.
         if ($lagerRueckbuchen && !empty($gsPosi)) {
-            $lagerId = 1; // Standard-Lager
-            $stmt = $this->db->prepare("
-                SELECT COALESCE(SUM(lb.bestand), 0) AS bestand
-                FROM lagerbestand lb WHERE lb.lager_id = :lid AND lb.artikel_id = :aid
+            require_once __DIR__ . '/../packplatz/RetourService.php';
+            require_once __DIR__ . '/../packplatz/RuecklagerungRepository.php';
+            $retour = new RetourService();
+            $rlRepo = new RuecklagerungRepository();
+            $retourStmt = $this->db->prepare("
+                UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + :m WHERE id = :id
             ");
             foreach ($gsPosi as $p) {
                 if (empty($p['artikel_id'])) continue;
-                $stmt->execute([':lid' => $lagerId, ':aid' => $p['artikel_id']]);
-                $bestand = (float)$stmt->fetchColumn();
-                $this->db->prepare("
-                    INSERT INTO lager_bewegungen
-                        (lager_id, artikel_id, bewegungstyp, menge, bestand_vorher, bestand_nachher,
-                         referenz, notiz, benutzer_id)
-                    VALUES
-                        (:lid, :aid, 'eingang', :menge, :vorher, :nachher, :ref, :notiz, :buid)
-                ")->execute([
-                    ':lid'    => $lagerId,
-                    ':aid'    => $p['artikel_id'],
-                    ':menge'  => $p['menge'],
-                    ':vorher' => $bestand,
-                    ':nachher'=> $bestand + $p['menge'],
-                    ':ref'    => $gsNr,
-                    ':notiz'  => 'Rückbuchung Gutschrift ' . $gsNr,
-                    ':buid'   => $benutzerId,
-                ]);
-                // lagerbestand-Tabelle aktualisieren
-                $this->db->prepare("
-                    INSERT INTO lagerbestand (lager_id, artikel_id, bestand)
-                    VALUES (:lid, :aid, :menge)
-                    ON DUPLICATE KEY UPDATE bestand = bestand + :menge2
-                ")->execute([
-                    ':lid'   => $lagerId,
-                    ':aid'   => $p['artikel_id'],
-                    ':menge' => $p['menge'],
-                    ':menge2'=> $p['menge'],
-                ]);
+                $teile = $retour->verteileAufChargen(
+                    $retour->verkaufteChargen($auftragId, (int)$p['artikel_id']),
+                    (float)$p['menge']
+                );
+                foreach ($teile as $t) {
+                    $rlRepo->insert([
+                        'quelle'              => 'gutschrift',
+                        'gutschrift_nr'       => $gsNr,
+                        'auftrag_id'          => $auftragId,
+                        'auftrag_nr'          => $daten['auftrag']['auftrag_nr'],
+                        'auftrag_position_id' => (int)$p['id'],
+                        'artikel_id'          => (int)$p['artikel_id'],
+                        'bezeichnung'         => $p['bezeichnung'],
+                        'menge'               => (int)round($t['menge']),
+                        'charge'              => $t['charge'],
+                        'lager_vorschlag_id'  => $t['lager_id'],
+                    ]);
+                }
+                $retourStmt->execute([':m' => (int)$p['menge'], ':id' => (int)$p['id']]);
             }
         }
 

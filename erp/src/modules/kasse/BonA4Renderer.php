@@ -86,8 +86,25 @@ class BonA4Renderer
             'bar'          => 'Bar',
             'karte_extern' => 'Karte (extern)',
             'gutschein'    => 'Gutschein',
+            'gutschein_ausgabe' => 'Erstattung als Gutschein',
             'kombi'        => 'Bar + Karte',
         ][$bon['zahlungsart']] ?? $bon['zahlungsart'];
+
+        // Gutscheine rund um diesen Bon (gleiche Logik wie kasse/bon_druck.php)
+        $gsStmt = $db->prepare("
+            SELECT g.code, g.betrag, g.gueltig_bis
+            FROM gutschein_transaktionen t JOIN gutscheine g ON g.id = t.gutschein_id
+            WHERE t.kassen_bon_id = ? AND t.betrag > 0
+            ORDER BY t.id
+        ");
+        $gsStmt->execute([(int)$bon['id']]);
+        $gsAusgestellt = $gsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $gsRest = null;
+        if (!empty($bon['gutschein_id'])) {
+            $gsStmt = $db->prepare("SELECT code, betrag FROM gutscheine WHERE vorgaenger_gutschein_id = ? ORDER BY id LIMIT 1");
+            $gsStmt->execute([(int)$bon['gutschein_id']]);
+            $gsRest = $gsStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
 
         // Positionen gruppieren
         $posBlocks = [];
@@ -378,7 +395,26 @@ if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftra
     <?php endif; ?>
   <?php elseif ($bon['zahlungsart'] === 'gutschein'): ?>
     <div class="zahl-row"><span>Gutschein-Code:</span><span><?= htmlspecialchars($bon['gutschein_code'] ?? '') ?></span></div>
+    <?php if ($bon['gutschein_betrag'] !== null): ?>
+      <div class="zahl-row"><span>Gutschein:</span><span>€ <?= number_format((float)$bon['gutschein_betrag'], 2, ',', '.') ?></span></div>
+    <?php endif; ?>
+    <?php if ((float)($bon['bar_betrag'] ?? 0) > 0): ?>
+      <div class="zahl-row"><span>Rest bar:</span><span>€ <?= number_format((float)$bon['bar_betrag'], 2, ',', '.') ?></span></div>
+      <?php if ($bon['gegeben'] !== null): ?>
+        <div class="zahl-row"><span>Gegeben:</span><span>€ <?= number_format((float)$bon['gegeben'], 2, ',', '.') ?></span></div>
+        <div class="zahl-row fett"><span>Rückgeld:</span><span>€ <?= number_format((float)($bon['rueckgeld'] ?? 0), 2, ',', '.') ?></span></div>
+      <?php endif; ?>
+    <?php endif; ?>
+    <?php if ((float)($bon['karten_betrag'] ?? 0) > 0): ?>
+      <div class="zahl-row"><span>Rest Karte:</span><span>€ <?= number_format((float)$bon['karten_betrag'], 2, ',', '.') ?></span></div>
+    <?php endif; ?>
+    <?php if ($gsRest): ?>
+      <div class="zahl-row fett"><span>Restguthaben (neuer Code <?= htmlspecialchars($gsRest['code']) ?>):</span><span>€ <?= number_format((float)$gsRest['betrag'], 2, ',', '.') ?></span></div>
+    <?php endif; ?>
   <?php endif; ?>
+  <?php foreach ($gsAusgestellt as $ga): ?>
+    <div class="zahl-row fett"><span>Gutschein-Code <?= htmlspecialchars($ga['code']) ?><?= $ga['gueltig_bis'] ? ' (gültig bis ' . date('d.m.Y', strtotime($ga['gueltig_bis'])) . ')' : '' ?>:</span><span>€ <?= number_format((float)$ga['betrag'], 2, ',', '.') ?></span></div>
+  <?php endforeach; ?>
 </div>
 
 <!-- ── BANKVERBINDUNG (wenn vorhanden) ── -->

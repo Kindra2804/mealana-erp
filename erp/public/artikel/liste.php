@@ -617,6 +617,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <option value="keine_gruppe" <?= $statusFilter === 'keine_gruppe' ? 'selected' : '' ?>>Keine Artikelgruppe</option>
                 <option value="keine_hersteller" <?= $statusFilter === 'keine_hersteller' ? 'selected' : '' ?>>Kein Hersteller</option>
             </optgroup>
+            <optgroup label="Zustand (B-Ware, mit Bestand)">
+                <option value="zustand_alle" <?= $statusFilter === 'zustand_alle' ? 'selected' : '' ?>>Alle Zustandsartikel</option>
+                <option value="zustand_retour" <?= $statusFilter === 'zustand_retour' ? 'selected' : '' ?>>Retour (-RET)</option>
+                <option value="zustand_gebraucht" <?= $statusFilter === 'zustand_gebraucht' ? 'selected' : '' ?>>Gebraucht (-GEB)</option>
+                <option value="zustand_beschaedigt" <?= $statusFilter === 'zustand_beschaedigt' ? 'selected' : '' ?>>Beschädigt (-BSC)</option>
+            </optgroup>
         </select>
         <select name="kanal_filter" class="erp-select" onchange="this.form.requestSubmit()">
             <option value="">– Kanal –</option>

@@ -30,9 +30,11 @@ require_once __DIR__ . '/shell_top.php';
 <div style="max-width:1000px;margin:0 auto">
 
     <div style="color:#aaa;font-size:13px;margin-bottom:16px;line-height:1.6">
-        Ware, die an der Kasse als Retoure zurückgenommen wurde (finanziell schon erledigt —
-        Erstattung ist bereits gebucht) und physisch am Tresen liegt, aber noch nicht wieder
-        im Lagerbestand ist. Bitte Zustand prüfen und einbuchen.
+        Zurückgekommene Ware aus einer Kassen-Retoure oder einer Gutschrift (finanziell schon
+        erledigt — Erstattung ist bereits gebucht), die noch nicht wieder im Lagerbestand ist.
+        Bitte Zustand prüfen und einbuchen: <strong>Neu</strong> → Originalartikel,
+        <strong>Gebraucht/Retour/Beschädigt</strong> → Zustandsartikel (z.B. …-RET, zählt nicht
+        für den Onlineshop), <strong>Defekt</strong> → wird nicht eingebucht.
     </div>
 
     <?php if (empty($offene)): ?>
@@ -67,18 +69,22 @@ require_once __DIR__ . '/shell_top.php';
                         <?php endif; ?>
                     </td>
                     <td style="color:#aaa">
-                        Bon <?= htmlspecialchars($r['bon_nr']) ?>
+                        <?php if ($r['quelle'] === 'gutschrift'): ?>
+                            Gutschrift <?= htmlspecialchars($r['gutschrift_nr'] ?? '') ?>
+                        <?php else: ?>
+                            Bon <?= htmlspecialchars($r['bon_nr'] ?? '') ?>
+                        <?php endif; ?>
                         <?php if ($r['auftrag_nr']): ?>
                             <br><span style="font-size:12px">zu <?= htmlspecialchars($r['auftrag_nr']) ?></span>
                         <?php else: ?>
                             <br><span style="font-size:12px;color:#e65100">Freitext-Retour (kein Auftrag)</span>
                         <?php endif; ?>
                     </td>
-                    <td style="color:#aaa"><?= htmlspecialchars($r['kasse_name']) ?></td>
+                    <td style="color:#aaa"><?= htmlspecialchars($r['kasse_name'] ?? '—') ?></td>
                     <td style="color:#aaa;font-size:12px"><?= date('d.m.Y H:i', strtotime($r['erstellt_am'])) ?></td>
                     <td>
                         <button type="button" class="pp-btn pp-btn-primary"
-                                onclick="rlEinbuchenOeffnen(<?= $r['id'] ?>, '<?= htmlspecialchars($r['bezeichnung'], ENT_QUOTES) ?>', <?= (int)$r['menge'] ?>, <?= $r['charge_pflicht'] ? 'true' : 'false' ?>, '<?= htmlspecialchars($r['charge'] ?? '', ENT_QUOTES) ?>')">
+                                onclick="rlEinbuchenOeffnen(<?= $r['id'] ?>, '<?= htmlspecialchars($r['bezeichnung'], ENT_QUOTES) ?>', <?= (int)$r['menge'] ?>, <?= $r['charge_pflicht'] ? 'true' : 'false' ?>, '<?= htmlspecialchars($r['charge'] ?? '', ENT_QUOTES) ?>', <?= (int)($r['lager_vorschlag_id'] ?? 0) ?>)">
                             Einbuchen
                         </button>
                     </td>
@@ -98,7 +104,7 @@ require_once __DIR__ . '/shell_top.php';
             <input type="hidden" name="id" id="rl-id">
 
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Ziel-Lager:</label>
-            <select name="lager_id" class="pp-overlay-input" style="margin-bottom:16px;cursor:pointer">
+            <select name="lager_id" id="rl-lager" class="pp-overlay-input" style="margin-bottom:16px;cursor:pointer">
                 <?php foreach ($alleLager as $l): ?>
                     <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
                 <?php endforeach; ?>
@@ -106,10 +112,11 @@ require_once __DIR__ . '/shell_top.php';
 
             <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Zustand der Ware:</label>
             <select name="zustand" class="pp-overlay-input" style="margin-bottom:16px;cursor:pointer">
-                <option value="neu">Neu</option>
-                <option value="gebraucht">Gebraucht</option>
-                <option value="beschaedigt">Beschädigt</option>
-                <option value="defekt">Defekt</option>
+                <option value="neu">Neu → Originalartikel</option>
+                <option value="retour">Retour → Zustandsartikel …-RET</option>
+                <option value="gebraucht">Gebraucht → Zustandsartikel …-GEB</option>
+                <option value="beschaedigt">Beschädigt → Zustandsartikel …-BSC</option>
+                <option value="defekt">Defekt → nicht einbuchen</option>
             </select>
 
             <div id="rl-charge-block" style="display:none;margin-bottom:20px">
@@ -130,8 +137,9 @@ require_once __DIR__ . '/shell_top.php';
 <script>
 var rlChargePflicht = false;
 
-function rlEinbuchenOeffnen(id, bezeichnung, menge, chargePflicht, vorhandeneCharge) {
+function rlEinbuchenOeffnen(id, bezeichnung, menge, chargePflicht, vorhandeneCharge, lagerVorschlag) {
     document.getElementById('rl-id').value = id;
+    if (lagerVorschlag) document.getElementById('rl-lager').value = lagerVorschlag;
     document.getElementById('rl-titel').textContent = menge + '× ' + bezeichnung + ' einbuchen';
     rlChargePflicht = chargePflicht;
     document.getElementById('rl-charge-block').style.display = chargePflicht ? 'block' : 'none';

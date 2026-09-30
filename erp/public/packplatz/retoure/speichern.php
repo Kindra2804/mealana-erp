@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../../src/modules/dokumente/DokumentService.php';
 require_once __DIR__ . '/../../../src/core/Mailer.php';
 require_once __DIR__ . '/../../../src/core/Logger.php';
+require_once __DIR__ . '/../../../src/modules/packplatz/RetourService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php'); exit;
@@ -51,20 +52,61 @@ if ($ergebnis === 'gutschrift' && !Auth::kann('packplatz.gutschrift')) {
     ]);
 }
 
-// ── Positionen filtern (nur angehakte) ─────────────────────────────────────
+// ── Positionen filtern (nur angehakte) + gegen Doppel-Retoure/-Gutschrift prüfen ──
+// Pro Position können mehrere Teile kommen (unterschiedliche Charge und/oder Zustand).
+// Obergrenzen kommen aus der DB, nie aus dem Formular:
+//   physisch zurück:  menge - menge_retourniert   (Kasse/Rücklagerung/frühere Retoure)
+//   gutschreiben:     menge - menge_gutgeschrieben (Kasse, ERP-Gutschrift, frühere Retoure)
+$erlaubteZustaende = ['neu', 'retour', 'gebraucht', 'beschaedigt', 'defekt'];
+$posStmt = $db->prepare("
+    SELECT ap.id, ap.artikel_id, ap.bezeichnung, ap.menge, ap.menge_retourniert, ap.menge_gutgeschrieben,
+           ap.einzelpreis_netto, ap.steuer_prozent, a.charge_pflicht
+    FROM auftrag_positionen ap
+    LEFT JOIN artikel a ON a.id = ap.artikel_id
+    WHERE ap.id = ? AND ap.auftrag_id = ?
+");
+
 $positionen = $_POST['positionen'] ?? [];
 $rueckPositionen = [];
+$fehlerListe = [];
 foreach ($positionen as $p) {
     if (empty($p['checked'])) continue;
-    $menge = max(1, (int)($p['menge'] ?? 1));
+    $posStmt->execute([(int)($p['pos_id'] ?? 0), $auftragId]);
+    $pos = $posStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$pos || empty($pos['artikel_id'])) continue;
+
+    $teile = [];
+    foreach (($p['teile'] ?? []) as $t) {
+        $m = (int)($t['menge'] ?? 0);
+        if ($m <= 0) continue;
+        $zustand = in_array($t['zustand'] ?? 'neu', $erlaubteZustaende, true) ? $t['zustand'] : 'neu';
+        $charge  = trim($t['charge'] ?? '') ?: null;
+        if ($pos['charge_pflicht'] && !$charge && $zustand !== 'defekt') {
+            $fehlerListe[] = $pos['bezeichnung'] . ': Charge ist Pflicht.';
+        }
+        $teile[] = ['menge' => $m, 'zustand' => $zustand, 'charge' => $charge];
+    }
+    $summe = array_sum(array_column($teile, 'menge'));
+    if ($summe <= 0) continue;
+
+    $offenPhysisch = (int)$pos['menge'] - (int)$pos['menge_retourniert'];
+    $offenGs       = (int)$pos['menge'] - (int)$pos['menge_gutgeschrieben'];
+    if ($summe > $offenPhysisch) {
+        $fehlerListe[] = $pos['bezeichnung'] . ": nur noch $offenPhysisch Stück offen — der Rest ist bereits zurückgekommen (Kasse, Rücklagerung oder frühere Retoure).";
+    }
+    if ($ergebnis === 'gutschrift' && $summe > $offenGs) {
+        $fehlerListe[] = $pos['bezeichnung'] . ": nur noch $offenGs Stück gutschreibbar — der Rest wurde bereits gutgeschrieben (Kasse oder frühere Gutschrift).";
+    }
+
     $rueckPositionen[] = [
-        'pos_id'           => (int)$p['pos_id'],
-        'artikel_id'       => (int)$p['artikel_id'],
-        'bezeichnung'      => $p['bezeichnung'] ?? '',
-        'menge'            => $menge,
-        'zustand'          => $p['zustand'] ?? 'neu',
-        'einzelpreis_netto'=> (float)($p['einzelpreis_netto'] ?? 0),
-        'steuer_prozent'   => (float)($p['steuer_prozent'] ?? 0),
+        'pos_id'            => (int)$pos['id'],
+        'artikel_id'        => (int)$pos['artikel_id'],
+        'bezeichnung'       => $pos['bezeichnung'],
+        'menge'             => $summe,
+        'teile'             => $teile,
+        'zustand'           => implode(', ', array_unique(array_map(fn($t) => RetourService::ZUSTAND_LABELS[$t['zustand']] ?? $t['zustand'], $teile))),
+        'einzelpreis_netto' => (float)$pos['einzelpreis_netto'],
+        'steuer_prozent'    => (float)$pos['steuer_prozent'],
     ];
 }
 
@@ -72,21 +114,32 @@ if (empty($rueckPositionen)) {
     $_SESSION['fehler'] = 'Bitte mindestens eine Position auswählen.';
     header('Location: detail.php?auftrag_id=' . $auftragId); exit;
 }
-
-// ── Lager einbuchen ─────────────────────────────────────────────────────────
-$referenz = 'Retoure ' . $auftrag['auftrag_nr'];
-foreach ($rueckPositionen as $rp) {
-    $lagerSvc->wareneingang([
-        'artikel_id'  => $rp['artikel_id'],
-        'lager_id'    => $lagerId,
-        'menge'       => $rp['menge'],
-        'charge'      => null,
-        'referenz'    => $referenz,
-        'notiz'       => 'Retoure — Zustand: ' . $rp['zustand'],
-        'benutzer_id' => $benutzerId,
-    ]);
+if ($fehlerListe) {
+    $_SESSION['fehler'] = implode(' ', array_unique($fehlerListe));
+    header('Location: detail.php?auftrag_id=' . $auftragId); exit;
 }
 
+// ── Lager einbuchen (Zustandsregel über RetourService) ──────────────────────
+$referenz = 'Retoure ' . $auftrag['auftrag_nr'];
+$retourSvc = new RetourService();
+$buchungsTexte = [];
+$retourniertStmt = $db->prepare("UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + ? WHERE id = ?");
+foreach ($rueckPositionen as $rp) {
+    foreach ($rp['teile'] as $t) {
+        $r = $retourSvc->einbuchen([
+            'artikel_id'  => $rp['artikel_id'],
+            'lager_id'    => $lagerId,
+            'menge'       => $t['menge'],
+            'zustand'     => $t['zustand'],
+            'charge'      => $t['charge'],
+            'referenz'    => $referenz,
+            'notiz'       => 'Retoure',
+            'benutzer_id' => $benutzerId,
+        ]);
+        $buchungsTexte[] = $rp['bezeichnung'] . ': ' . ($r['erfolg'] ? $r['text'] : 'FEHLER ' . ($r['fehler'] ?? ''));
+    }
+    $retourniertStmt->execute([$rp['menge'], $rp['pos_id']]);
+}
 // ── Gutschrift ───────────────────────────────────────────────────────────────
 $gsPfad = null;
 $gsNr   = null;
@@ -169,7 +222,7 @@ if ($mailSenden) {
     }
 }
 
-$_SESSION['erfolg'] = 'Retoure verarbeitet: ' . count($rueckPositionen) . ' Position(en) eingebucht.'
+$_SESSION['erfolg'] = 'Retoure verarbeitet: ' . implode(' · ', $buchungsTexte) . '.'
     . ($gsNr ? ' Gutschrift ' . $gsNr . ' erstellt.' : '')
     . ($mailSenden ? ' Mail gesendet.' : '');
 header('Location: ' . BASE_PATH . '/packplatz/retoure/index.php');

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../../src/core/Database.php';
 require_once __DIR__ . '/../../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../../src/core/Logger.php';
+require_once __DIR__ . '/../../../src/modules/packplatz/RetourService.php';
 
 header('Content-Type: application/json');
 
@@ -77,85 +78,15 @@ if ($bestand < $menge) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Nicht genug Bestand (verfügbar: ' . (int)$bestand . ')']); exit;
 }
 
-// ── Zustandsartikel finden oder anlegen ──────────────────────────────────
-$zsStmt = $db->prepare("SELECT id FROM artikel WHERE zustand_vater_id = :vid AND zustand = :z LIMIT 1");
-$zsStmt->execute([':vid' => $originalId, ':z' => $zustand]);
-$zustandsArtikelId = (int)($zsStmt->fetchColumn() ?: 0);
-
-$zustandSuffixe = [
-    'gebraucht'          => 'GEB',
-    'generalueberholt'   => 'GEN',
-    'beschaedigt'        => 'BSC',
-    'retour'             => 'RET',
-    'demo'               => 'DEMO',
-    'muster'             => 'MST',
-    'ausstellungsstueck' => 'AUS',
-];
-$zustandLabels = [
-    'gebraucht'          => 'Gebraucht',
-    'generalueberholt'   => 'Generalüberholt',
-    'beschaedigt'        => 'Beschädigt',
-    'retour'             => 'Retour',
-    'demo'               => 'Demo',
-    'muster'             => 'Muster',
-    'ausstellungsstueck' => 'Ausstellungsstück',
-];
-
-$neuAngelegt = false;
-if (!$zustandsArtikelId) {
-    $suffix = $zustandSuffixe[$zustand];
-    $neueNr = $orig['artikelnummer'] . '-' . $suffix;
-
-    // Kollision mit fremdem Artikel vermeiden
-    $checkStmt = $db->prepare("SELECT id FROM artikel WHERE artikelnummer = :nr AND (zustand_vater_id != :vid OR zustand_vater_id IS NULL)");
-    $checkStmt->execute([':nr' => $neueNr, ':vid' => $originalId]);
-    if ($checkStmt->fetchColumn()) {
-        $neueNr = $orig['artikelnummer'] . '-' . $suffix . '-' . $originalId;
-    }
-
-    $neuName = $orig['name'] . ' (' . $zustandLabels[$zustand] . ')';
-
-    $ins = $db->prepare("
-        INSERT INTO artikel (
-            artikelnummer, name, zustand, zustand_vater_id,
-            steuerklasse_id, artikeltyp_id, hersteller_id, einheit_id,
-            hat_eigenen_lagerstand, aktiv, ist_vater,
-            inhalt_menge, inhalt_einheit,
-            gewicht_artikel, gewicht_versand,
-            charge_pflicht
-        ) VALUES (
-            :nr, :name, :zustand, :zvid,
-            :sklid, :atid, :hid, :eid,
-            1, 1, 0,
-            :imenge, :ieinheit,
-            :gewart, :gewvers,
-            :cpflicht
-        )
-    ");
-    $ins->execute([
-        ':nr'       => $neueNr,
-        ':name'     => $neuName,
-        ':zustand'  => $zustand,
-        ':zvid'     => $originalId,
-        ':sklid'    => $orig['steuerklasse_id'],
-        ':atid'     => $orig['artikeltyp_id'],
-        ':hid'      => $orig['hersteller_id'],
-        ':eid'      => $orig['einheit_id'],
-        ':imenge'   => $orig['inhalt_menge'],
-        ':ieinheit' => $orig['inhalt_einheit'],
-        ':gewart'   => $orig['gewicht_artikel'],
-        ':gewvers'  => $orig['gewicht_versand'],
-        ':cpflicht' => $orig['charge_pflicht'] ?? 0,
-    ]);
-    $zustandsArtikelId = (int)$db->lastInsertId();
-    $neuAngelegt = true;
-
-    Logger::log('artikel.zustandsartikel_angelegt', 'artikel', $zustandsArtikelId, [
-        'vater_id'   => $originalId,
-        'zustand'    => $zustand,
-        'artikelnr'  => $neueNr,
-    ], $benutzerId);
+// ── Zustandsartikel finden oder anlegen (gemeinsame Logik, siehe RetourService) ──
+try {
+    $zs = (new RetourService())->findeOderLegeZustandsartikelAn($originalId, $zustand, $benutzerId);
+} catch (Throwable $e) {
+    echo json_encode(["erfolg" => false, "fehler" => $e->getMessage()]); exit;
 }
+$zustandsArtikelId = $zs["id"];
+$neuAngelegt       = $zs["neu_angelegt"];
+$zustandLabels     = RetourService::ZUSTAND_LABELS;
 
 // ── Ausgang vom Original + Eingang zum Zustandsartikel ───────────────────
 $refText = 'Zustandsumbuchung → ' . $zustandLabels[$zustand];

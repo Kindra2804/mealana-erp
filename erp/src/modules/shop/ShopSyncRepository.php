@@ -132,6 +132,9 @@ class ShopSyncRepository
               -- ausgeschlossen -- das ist gewolltes Verhalten (siehe
               -- findKanalStatusFuerArtikel()-Kommentar), keine Regression.
               AND (a.vaterartikel_id IS NULL OR COALESCE(ash_vater.aktiv, 0) = 1)
+              -- Zustandsartikel (B-Ware: -RET/-GEB/-BSC ...) gehen NIE in den Onlineshop,
+              -- auch wenn sie versehentlich einem Shop zugewiesen wurden (Jacky 2026-09-30)
+              AND a.zustand = 'neu'
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at
@@ -191,6 +194,7 @@ class ShopSyncRepository
                    ON ash_vater.shop_id = ash.shop_id AND ash_vater.artikel_id = a.vaterartikel_id
             WHERE ash.shop_id = :shop_id
               AND ash.aktiv = 1
+              AND a.zustand = 'neu' -- Zustandsartikel nie im Shop, siehe findFaelligeArtikel()
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at

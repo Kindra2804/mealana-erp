@@ -23,6 +23,7 @@
 | [11 Kasse (POS)](11_kasse.md) | Bon-Erstellung, Zahlarten, Kassensturz, Abholbereit-Flow |
 | [12 Buchhaltung](12_buchhaltung.md) | Kontenplan, Kreditoren/Lieferantenrechnungen, DATEV/CSV-Export |
 | [13 Inventur](13_inventur.md) *(in Arbeit)* | Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen |
+| [14 Gutscheine](14_gutscheine.md) | Gutschein-Artikel, Verkauf/Einlösung an der Kasse, Teileinlösung, Storno |
 
 ---
 

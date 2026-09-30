@@ -111,20 +111,37 @@ Wenn nicht alle Artikel lieferbar sind (z.B. einer ist gerade nicht auf Lager):
 
 ---
 
-## Rücklagerungen — Ware aus Kassen-Retoure einbuchen
+## Zustand zurückgekommener Ware — gilt für Retoure UND Rücklagerungen
 
-Wenn an der Kasse eine Retoure verarbeitet wird (egal ob zu einem Auftrag oder als Freitext-Retour ohne Auftrag), bucht die Kasse **nur den finanziellen Ausgleich** — die Ware liegt danach physisch am Tresen, ist aber noch nicht im Lagerbestand. Diese Liste zeigt genau das.
+| Zustand | Wohin wird gebucht |
+|---------|--------------------|
+| **Neu** | Originalartikel (normal verkaufbar, auch online) |
+| **Retour / Gebraucht / Beschädigt** | **Zustandsartikel** = Artikelnummer mit Anhang (`D-101071-RET`, `-GEB`, `-BSC`). Wird beim ersten Mal automatisch angelegt (übernimmt Gruppe, Chargenpflicht und den aktuellen Preis als Startwert — B-Ware-Preis danach am Artikel anpassen). **Zählt nie für den Onlineshop.** |
+| **Defekt** | Wird **nicht** eingebucht, nur protokolliert |
+
+Zustandsartikel finden: Artikelliste → Filter **Status / Qualität → Zustand (B-Ware)**, oder direkt nach der Nummer mit Anhang suchen.
+
+## Rücklagerungen — Ware aus Kassen-Retoure oder Gutschrift einbuchen
+
+Wenn an der Kasse eine Retoure verarbeitet wird (egal ob bar oder als Gutschein erstattet, zu einem Auftrag oder als Freitext-Retour) oder im ERP eine Gutschrift mit **"Ware zur Prüfung an den Packplatz"** erstellt wird, ist **nur der finanzielle Ausgleich** erledigt — die Ware ist noch nicht im Lagerbestand. Diese Liste zeigt genau das.
 
 **Packplatz → Rücklagerungen** (Badge zeigt die Anzahl offener Einträge)
 
-1. Zeile mit der zurückgenommenen Ware suchen — zeigt Artikel, Menge, Herkunfts-Bon (und Auftragsnummer, falls vorhanden)
+1. Zeile suchen — zeigt Artikel, Menge, Charge und Herkunft (Bon oder Gutschrift, ggf. Auftragsnummer). Bei einer Gutschrift sind Charge und Lager schon aus dem ursprünglichen Verkauf vorbefüllt; wurden mehrere Chargen verkauft, gibt es eine Zeile pro Charge.
 2. **Einbuchen** klicken
-3. Ziel-Lager wählen
-4. **Zustand der Ware** wählen (Neu / Gebraucht / Beschädigt / Defekt) — wichtig, da zurückgenommene Ware nicht automatisch wieder als "neu" gilt
-5. Bei chargenpflichtigen Artikeln (⚠ "fehlt (Pflicht)" in der Liste): **Charge eintragen**, sonst lässt sich nicht einbuchen
-6. **✓ Einbuchen** — Lagerbestand wird erhöht, Eintrag verschwindet aus der Liste
+3. Ziel-Lager prüfen/wählen
+4. **Zustand der Ware** wählen (siehe Tabelle oben)
+5. Bei chargenpflichtigen Artikeln: **Charge prüfen/eintragen**, sonst lässt sich nicht einbuchen (außer "Defekt")
+6. **✓ Einbuchen** — Eintrag verschwindet aus der Liste
 
-> Anders als bei der normalen Retoure (unten) gibt es hier keine Gutschrift/Mail-Optionen mehr — das ist an der Kasse bereits erledigt, hier geht es nur noch um die physische Einlagerung.
+> Anders als bei der normalen Retoure (unten) gibt es hier keine Gutschrift/Mail-Optionen — das ist bereits erledigt, hier geht es nur noch um Prüfung und Einlagerung.
+
+## Retoure (Rücksendung per Post)
+
+**Packplatz → Retoure** → Auftrag suchen → Positionen anhaken.
+
+- Pro Position **Menge · Charge · Zustand**. Die Charge ist mit der verkauften vorbefüllt ("verkauft: A123 (3), B456 (2)"). Kamen Stücke aus mehreren Chargen oder in unterschiedlichem Zustand zurück: **＋ Charge** für eine weitere Zeile.
+- **Schutz vor Doppelbuchung:** Es geht nur die Menge, die noch nicht zurückgekommen ist ("max. X"). Wurde schon an der Kasse retourniert oder eine Gutschrift erstellt, steht das an der Position ("↩ 2 schon zurück", "€ 2 gutgeschrieben") — eine Gutschrift ist nur für die noch nicht gutgeschriebene Menge möglich.
 
 ---
 

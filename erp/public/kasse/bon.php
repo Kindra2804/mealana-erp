@@ -789,6 +789,8 @@ body {
   <div class="ph-dropdown" id="ph-dropdown">
     <button class="ph-dd-item" onclick="kasseladeOeffnen()">⊟ Kassenlade öffnen</button>
     <button class="ph-dd-item" onclick="diversDialog()">+ Freier Artikel</button>
+    <button class="ph-dd-item" onclick="gutscheinVerkaufDialog()">🎁 Gutschein verkaufen</button>
+    <button class="ph-dd-item" onclick="gutscheinAbfrageDialog()">🔍 Gutschein abfragen</button>
     <button class="ph-dd-item" onclick="freitextRetourDialog()">↩ Freitext-Retour</button>
     <div class="ph-dd-sep"></div>
     <button class="ph-dd-item" onclick="bonAbrufen()">⏸ Geparkten Bon abrufen</button>
@@ -1003,14 +1005,28 @@ body {
 <!-- Gutschein -->
 <div class="ov" id="ov-gutschein">
   <div class="ov-box">
-    <div class="ov-title">Gutschein</div>
+    <div class="ov-title">Mit Gutschein bezahlen</div>
     <div class="ov-total" id="gs-total">€ 0,00</div>
     <div class="ov-label">Gutschein-Code</div>
-    <input class="ov-input-sm" type="text" id="gs-code" placeholder="Code eingeben…"
-           style="font-size:20px" onkeyup="gsPruefen()">
-    <div id="gs-info" style="min-height:24px;margin-top:8px;font-size:13px;color:#64748b"></div>
+    <div style="display:flex;gap:8px">
+      <input class="ov-input-sm" type="text" id="gs-code" placeholder="MEA-XXXX-XXXX-XXXX"
+             style="font-size:20px;flex:1;text-transform:uppercase" oninput="gsCodeGeaendert()"
+             onkeydown="if(event.key==='Enter')gsPruefen()">
+      <button class="ov-btn ov-btn-sec" style="width:auto;padding:0 18px" onclick="gsPruefen()">Prüfen</button>
+    </div>
+    <div id="gs-info" style="min-height:24px;margin-top:10px;font-size:14px;color:#64748b"></div>
+    <div id="gs-rest-bereich" hidden style="margin-top:10px">
+      <div class="ov-label">Rest bar gegeben (€, optional)</div>
+      <input class="ov-input-sm" type="number" id="gs-gegeben" step="0.01" min="0" placeholder="0,00"
+             oninput="gsRueckgeld()" style="font-size:18px">
+      <div id="gs-rueck" style="min-height:20px;margin-top:6px;font-size:14px"></div>
+      <div class="ov-grid2" style="margin-top:10px">
+        <button class="ov-btn" style="background:#16a34a;color:#fff" onclick="abschliessenGS('bar')">💶 Rest bar</button>
+        <button class="ov-btn" style="background:#2563eb;color:#fff" onclick="abschliessenGS('karte_extern')">💳 Rest Karte</button>
+      </div>
+    </div>
     <div class="ov-grid2" style="margin-top:14px">
-      <button class="ov-btn ov-btn-ok" id="btn-gs-ok" onclick="abschliessenGS()" disabled>✓ Einlösen</button>
+      <button class="ov-btn ov-btn-ok" id="btn-gs-ok" onclick="abschliessenGS(null)" disabled>✓ Einlösen</button>
       <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-gutschein')">Abbrechen</button>
     </div>
   </div>
@@ -1083,6 +1099,46 @@ body {
     <div class="ov-grid2">
       <button class="ov-btn ov-btn-ok" id="btn-div-ok" onclick="divHinzufuegen()" disabled>+ Hinzufügen</button>
       <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-divers')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gutschein abfragen (nur Auskunft, keine Buchung) -->
+<div class="ov" id="ov-gs-abfrage">
+  <div class="ov-box">
+    <div class="ov-title">🔍 Gutschein abfragen</div>
+    <div class="ov-label">Gutschein-Code</div>
+    <div style="display:flex;gap:8px">
+      <input class="ov-input-sm" type="text" id="gsa-code" placeholder="MEA-XXXX-XXXX-XXXX"
+             style="font-size:20px;flex:1;text-transform:uppercase"
+             onkeydown="if(event.key==='Enter')gutscheinAbfragen()">
+      <button class="ov-btn ov-btn-sec" style="width:auto;padding:0 18px" onclick="gutscheinAbfragen()">Abfragen</button>
+    </div>
+    <div id="gsa-ergebnis" style="min-height:24px;margin:14px 0;font-size:14px"></div>
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Nur Auskunft — es wird nichts gebucht.</div>
+    <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-gs-abfrage')">Schließen</button>
+  </div>
+</div>
+
+<!-- Gutschein verkaufen -->
+<div class="ov" id="ov-gs-verkauf">
+  <div class="ov-box">
+    <div class="ov-title">🎁 Gutschein verkaufen</div>
+    <div class="ov-label">Betrag (€)</div>
+    <input class="ov-input" type="number" id="gsv-betrag" step="0.01" min="0"
+           placeholder="0,00" oninput="gsvPruefen()" style="margin-bottom:8px;font-size:22px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <?php foreach ([10, 20, 25, 30, 50, 100] as $gsvBetrag): ?>
+        <button class="ov-btn ov-btn-sec" style="width:auto;flex:1;padding:8px 0"
+                onclick="gsvBetragSetzen(<?= $gsvBetrag ?>)"><?= $gsvBetrag ?> €</button>
+      <?php endforeach; ?>
+    </div>
+    <div class="ov-label">Für (Name auf dem Gutschein, optional)</div>
+    <input class="ov-input-sm" type="text" id="gsv-empfaenger" maxlength="150" placeholder="z.B. Maria"
+           style="margin-bottom:14px">
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" id="btn-gsv-ok" onclick="gsvHinzufuegen()" disabled>+ Hinzufügen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-gs-verkauf')">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -1400,18 +1456,12 @@ body {
   </div>
 </div>
 
-<!-- Ergebnis nach Gutschein-Ausgabe bei Retoure -->
+<!-- Ergebnis: erstellte Gutscheine (Retoure, Verkauf, Restguthaben nach Einlösung) -->
 <div id="ov-gutschein-ausgabe-ergebnis" class="ov">
-  <div class="ov-box" style="max-width:420px">
-    <div class="ov-title">🎁 Gutschein erstellt</div>
-    <div style="padding:20px;text-align:center">
-      <div id="ga-code" style="font-family:monospace;font-size:20px;font-weight:700;margin-bottom:6px"></div>
-      <div id="ga-betrag" style="font-size:15px;color:#6b7280;margin-bottom:20px"></div>
-      <div style="display:flex;gap:12px;justify-content:center">
-        <button onclick="ovSchliessen('ov-gutschein-ausgabe-ergebnis')" class="ov-btn ov-btn-sec">Schließen</button>
-        <a id="ga-pdf-link" href="#" target="_blank" class="ov-btn ov-btn-ok">📄 PDF öffnen</a>
-      </div>
-    </div>
+  <div class="ov-box" style="max-width:460px">
+    <div class="ov-title" id="ga-titel">🎁 Gutschein erstellt</div>
+    <div id="ga-liste" style="padding:12px 0"></div>
+    <button onclick="gutscheinErgebnisSchliessen()" class="ov-btn ov-btn-sec">Weiter</button>
   </div>
 </div>
 
@@ -1599,6 +1649,11 @@ function scannenOK() {
 
 // ── Artikel hinzufügen ────────────────────────────────────────────────────────
 function artikelHinzufuegen(a) {
+    // Gutschein-Artikel hat keinen festen Preis -- Betrag wird im eigenen Dialog erfasst
+    if (GUTSCHEIN_ARTIKEL_ID && a.id == GUTSCHEIN_ARTIKEL_ID) {
+        gutscheinVerkaufDialog();
+        return;
+    }
     var menge = getMenge();
     var preis = parseFloat(a.brutto_vk) || 0;
     if (preis <= 0 && !a.istDivers) {
@@ -1751,7 +1806,29 @@ function kindGewaehlt(kind) {
     kind.bestand_physisch = kind.lagerbestand || 0;
     kind.bestand_reserviert = 0;
     kind.bestand_verkaufbar = kind.lagerbestand || 0;
-    artikelHinzufuegen(kind);
+    artikelVollstaendigHinzufuegen(kind);
+}
+
+/**
+ * Varianten-Liste und Textsuche liefern nur Kurzdaten OHNE Chargen-Liste
+ * (alle_chargen/hat_chargen/fifo_charge) -- das Chargen-Popup war dadurch bei
+ * Charge-Pflicht immer leer ("bitte Charge im Wareneingang eintragen"), obwohl
+ * Bestand da war. Deshalb vor dem Hinzufügen die vollständigen Daten wie beim
+ * Scannen nachladen; bei Fehler mit den Kurzdaten weitermachen.
+ */
+function artikelVollstaendigHinzufuegen(kurz) {
+    var code = kurz.artikelnummer || kurz.ean;
+    if (!code) { artikelHinzufuegen(kurz); return; }
+    fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(code) + '&lager_id=' + LAGER_ID)
+        .then(r => r.json())
+        .then(function(d) {
+            if (d.erfolg && d.typ === 'artikel' && d.id == kurz.id) {
+                artikelHinzufuegen(d);
+            } else {
+                artikelHinzufuegen(kurz);
+            }
+        })
+        .catch(function() { artikelHinzufuegen(kurz); });
 }
 
 // ── Konfigurator-Auswahl ──────────────────────────────────────────────────────
@@ -1903,7 +1980,7 @@ function renderBon(skipKdSync) {
             sepGesetzt = true;
         }
 
-        var rabFaktor = 1 - (Math.max(p.rabatt_prozent, globalRabatt) / 100);
+        var rabFaktor = 1 - (posRabatt(p) / 100);
         var summe = p.menge * p.einzelpreis_brutto * rabFaktor;
         var istAktiv = (i === aktiveZeile);
 
@@ -1914,8 +1991,8 @@ function renderBon(skipKdSync) {
         div.dataset.idx = i;
         div.onclick = function() { zeilaKlick(i); };
 
-        var rabHtml = (p.rabatt_prozent > 0 || globalRabatt > 0)
-            ? '<span class="bon-row-rabatt">-' + Math.max(p.rabatt_prozent, globalRabatt) + '%</span>'
+        var rabHtml = posRabatt(p) > 0
+            ? '<span class="bon-row-rabatt">-' + posRabatt(p) + '%</span>'
             : '';
         var auftragBadge = p.vonAuftrag ? '<span class="bon-row-auftrag-badge">📦</span>' : '';
         var retourBadge  = istRetour ? '<span class="bon-row-retour-badge">↩</span>' : '';
@@ -1948,7 +2025,7 @@ function renderBon(skipKdSync) {
 function kdSyncWarenkorb() {
     var aktiv = (aktiveZeile >= 0 ? warenkorb[aktiveZeile] : warenkorb[warenkorb.length - 1]);
     var positionen = warenkorb.map(function(p) {
-        var rab = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
+        var rab = 1 - posRabatt(p) / 100;
         return {
             bezeichnung: p.bezeichnung,
             menge:       p.menge,
@@ -2108,7 +2185,7 @@ function zeileEntfernen(i) {
 function aktualisiereFooter() {
     var gesamt = 0, st20 = 0, st10 = 0, anzahl = 0;
     warenkorb.forEach(function(p) {
-        var rab = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
+        var rab = 1 - posRabatt(p) / 100;
         var pos = p.menge * p.einzelpreis_brutto * rab;
         gesamt += pos;
         anzahl += p.menge;
@@ -2127,10 +2204,17 @@ function aktualisiereFooter() {
     document.getElementById('rf-ges').textContent  = '€ ' + fmt(gesamt);
 }
 
+// Effektiver Rabatt einer Position (Zeilen- oder Bon-Rabatt, der höhere zählt).
+// Gutscheine sind Zahlungsmittel, nie rabattierbar -- Server erzwingt das zusätzlich.
+function posRabatt(p) {
+    if (p.block === 'gutschein_kauf') return 0;
+    return Math.max(p.rabatt_prozent, globalRabatt);
+}
+
 function getGesamt() {
     var g = 0;
     warenkorb.forEach(function(p) {
-        var rab = 1 - Math.max(p.rabatt_prozent, globalRabatt) / 100;
+        var rab = 1 - posRabatt(p) / 100;
         g += p.menge * p.einzelpreis_brutto * rab;
     });
     return Math.round(g * 100) / 100;
@@ -2255,6 +2339,100 @@ function divHinzufuegen() {
     _artikelEinfuegen(a, 1);
 }
 
+// ── Gutschein abfragen (Auskunft ohne Buchung) ────────────────────────────────
+function gutscheinAbfrageDialog() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+    document.getElementById('gsa-code').value = '';
+    document.getElementById('gsa-ergebnis').innerHTML = '';
+    ov('ov-gs-abfrage');
+    setTimeout(() => document.getElementById('gsa-code').focus(), 100);
+}
+function gutscheinAbfragen() {
+    var code = document.getElementById('gsa-code').value.trim().toUpperCase();
+    var el = document.getElementById('gsa-ergebnis');
+    if (code.length < 3) return;
+    el.style.color = '#64748b';
+    el.textContent = 'Frage ab…';
+    fetch('<?= BASE_PATH ?>/gutscheine/pruefen.php?info=1&code=' + encodeURIComponent(code))
+        .then(r => r.json())
+        .then(function(d) {
+            if (!d.erfolg) {
+                el.style.color = '#dc2626';
+                el.textContent = '✕ ' + d.fehler;
+                return;
+            }
+            var datum = function(s) { return s ? s.substr(0, 10).split('-').reverse().join('.') : '—'; };
+            var farbe = d.einloesbar ? '#16a34a' : '#dc2626';
+            var zeile = function(l, w) {
+                return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f1f5f9">' +
+                       '<span style="color:#64748b">' + l + '</span><span>' + w + '</span></div>';
+            };
+            var html = '<div style="font-size:22px;font-weight:700;color:' + farbe + ';margin-bottom:8px">' +
+                       (d.einloesbar ? '✓ € ' + fmt(d.restguthaben) + ' verfügbar' : '✕ nicht einlösbar') + '</div>';
+            html += zeile('Code', '<span style="font-family:monospace">' + esc(d.code) + '</span>');
+            html += zeile('Status', esc(d.status_text));
+            html += zeile('Ursprünglicher Wert', '€ ' + fmt(d.betrag));
+            html += zeile('Restguthaben', '€ ' + fmt(d.restguthaben));
+            html += zeile('Gültig bis', datum(d.gueltig_bis));
+            html += zeile('Ausgestellt am', datum(d.ausgestellt));
+            if (d.empfaenger) html += zeile('Für', esc(d.empfaenger));
+            if (d.nachfolger) {
+                html += '<div style="margin-top:10px;padding:8px;background:#fef3c7;border-radius:6px;color:#92400e">' +
+                        'Restguthaben liegt auf neuem Code <strong style="font-family:monospace">' + esc(d.nachfolger.code) +
+                        '</strong> (€ ' + fmt(d.nachfolger.restguthaben) + ')</div>';
+            } else if (!d.einloesbar && d.hinweis) {
+                html += '<div style="margin-top:10px;color:#dc2626">' + esc(d.hinweis) + '</div>';
+            }
+            el.style.color = '#1e293b';
+            el.innerHTML = html;
+        })
+        .catch(function() {
+            el.style.color = '#dc2626';
+            el.textContent = 'Verbindungsfehler bei der Abfrage.';
+        });
+}
+
+// ── Gutschein verkaufen ───────────────────────────────────────────────────────
+function gutscheinVerkaufDialog() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+    if (!GUTSCHEIN_ARTIKEL_ID) {
+        feedback('Kein Gutschein-Artikel angelegt — bitte zuerst einen Artikel vom Typ "Gutschein" anlegen.', 'fehler');
+        return;
+    }
+    document.getElementById('gsv-betrag').value = '';
+    document.getElementById('gsv-empfaenger').value = '';
+    document.getElementById('btn-gsv-ok').disabled = true;
+    ov('ov-gs-verkauf');
+    setTimeout(() => document.getElementById('gsv-betrag').focus(), 100);
+}
+function gsvBetragSetzen(b) {
+    document.getElementById('gsv-betrag').value = b;
+    gsvPruefen();
+}
+function gsvPruefen() {
+    document.getElementById('btn-gsv-ok').disabled = !(parseFloat(document.getElementById('gsv-betrag').value) > 0);
+}
+function gsvHinzufuegen() {
+    var betrag = Math.round((parseFloat(document.getElementById('gsv-betrag').value) || 0) * 100) / 100;
+    if (betrag <= 0) return;
+    var empfaenger = document.getElementById('gsv-empfaenger').value.trim();
+    // Direkt anhängen statt _artikelEinfuegen(): dort würden zwei Gutscheine mit
+    // unterschiedlichem Betrag zu einer Zeile zusammengeführt (Merge nur über artikel_id)
+    warenkorb.push({
+        artikel_id: GUTSCHEIN_ARTIKEL_ID,
+        bezeichnung: 'Gutschein' + (empfaenger ? ' für ' + empfaenger : ''),
+        ean: null, artnr: null, menge: 1,
+        einzelpreis_brutto: betrag, steuer_prozent: 0, rabatt_prozent: 0,
+        charge: null, konfig_wert_ids: null, istDivers: false,
+        hat_chargen: false, charge_pflicht: false,
+        bestand_physisch: 0, bestand_reserviert: 0, bestand_verkaufbar: 0,
+        block: 'gutschein_kauf', gutschein_empfaenger: empfaenger || null,
+    });
+    aktiveZeile = warenkorb.length - 1;
+    ovSchliessen('ov-gs-verkauf');
+    renderBon();
+}
+
 // ── Mitgeben ──────────────────────────────────────────────────────────────────
 function mitgebenDialog() {
     if (warenkorb.length === 0) { feedback('Bon ist leer', 'info'); return; }
@@ -2263,7 +2441,7 @@ function mitgebenDialog() {
     ov('ov-mitgeben');
 }
 function mitgebenSpeichern() {
-    var positionen = warenkorb.filter(p => !p.istDivers && p.artikel_id);
+    var positionen = warenkorb.filter(p => !p.istDivers && p.artikel_id && p.block !== 'gutschein_kauf');
     if (!positionen.length) { feedback('Nur echte Artikel können mitgegeben werden', 'fehler'); return; }
     fetch('<?= BASE_PATH ?>/kasse/offene_auswahl_speichern.php', {
         method: 'POST',
@@ -2477,7 +2655,7 @@ function suchWaehlen(a) {
             .then(r => r.json()).then(d => { if (d.erfolg) zeigeKonfiguratorAuswahl(d); });
     } else {
         a.bestand_verkaufbar = Math.max(0, (parseFloat(a.bestand_physisch) || 0));
-        artikelHinzufuegen(a);
+        artikelVollstaendigHinzufuegen(a);
     }
 }
 
@@ -2659,7 +2837,7 @@ function berechneAbrechnungsModus() {
     var extraBrutto  = 0;
     var retourBrutto = 0;
     warenkorb.forEach(function(p) {
-        var rab = 1 - (Math.max(p.rabatt_prozent, globalRabatt) / 100);
+        var rab = 1 - (posRabatt(p) / 100);
         if (p.vonAuftrag) {
             var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
             var diff = origMenge - p.menge;
@@ -2691,7 +2869,7 @@ function berechneZusatzPositionen() {
             artikel_id: p.artikel_id, bezeichnung: p.bezeichnung, ean: p.ean || null,
             menge: -diff, einzelpreis_brutto: p.einzelpreis_brutto,
             steuer_prozent: p.steuer_prozent,
-            rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt),
+            rabatt_prozent: posRabatt(p),
             charge: p.charge || null, istDivers: false,
             vonAuftrag: false, auftrag_position_id: null,
             kein_lagerabzug: true, block: 'retour',
@@ -2731,7 +2909,7 @@ function bezahlenDialog() {
             warenkorb.forEach(function(p) {
                 if (p.vonAuftrag) {
                     var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
-                    origTotal += orig * p.einzelpreis_brutto * (1 - Math.max(p.rabatt_prozent, globalRabatt) / 100);
+                    origTotal += orig * p.einzelpreis_brutto * (1 - posRabatt(p) / 100);
                 }
             });
             document.getElementById('bezahlt-info-text').textContent =
@@ -2807,23 +2985,98 @@ function zahlenKarte() {
 }
 function abschliessenKarte() { bonSpeichern({ zahlungsart: 'karte_extern' }); }
 
+// Ergebnis der letzten Code-Prüfung -- nur ein geprüfter Code kann eingelöst werden
+var _gsGeprueft = null; // { code, restguthaben, einloesen, offen }
+
 function zahlenGutschein() {
+    if (warenkorb.some(p => p.block === 'gutschein_kauf')) {
+        feedback('Gutscheine können nicht mit einem Gutschein bezahlt werden.', 'fehler');
+        return;
+    }
+    if (_zahlBetrag() <= 0) {
+        feedback('Gutschein-Zahlung ist nur bei einem positiven Betrag möglich.', 'fehler');
+        return;
+    }
     ovSchliessen('ov-bezahlen');
     document.getElementById('gs-total').textContent = '€ ' + fmt(_zahlBetrag());
     document.getElementById('gs-code').value = '';
-    document.getElementById('gs-info').textContent = '';
-    document.getElementById('btn-gs-ok').disabled = true;
+    gsCodeGeaendert();
     ov('ov-gutschein');
     setTimeout(() => document.getElementById('gs-code').focus(), 100);
 }
-function gsPruefen() {
-    var code = document.getElementById('gs-code').value.trim();
-    document.getElementById('btn-gs-ok').disabled = code.length < 3;
+function gsCodeGeaendert() {
+    _gsGeprueft = null;
+    document.getElementById('gs-info').textContent = '';
+    document.getElementById('gs-rest-bereich').hidden = true;
+    document.getElementById('gs-gegeben').value = '';
+    document.getElementById('gs-rueck').textContent = '';
+    document.getElementById('btn-gs-ok').disabled = true;
 }
-function abschliessenGS() {
-    var code = document.getElementById('gs-code').value.trim();
-    if (!code) return;
-    bonSpeichern({ zahlungsart: 'gutschein', gutschein_code: code });
+function gsPruefen() {
+    var code = document.getElementById('gs-code').value.trim().toUpperCase();
+    if (code.length < 3) return;
+    var info = document.getElementById('gs-info');
+    info.style.color = '#64748b';
+    info.textContent = 'Prüfe…';
+    fetch('<?= BASE_PATH ?>/gutscheine/pruefen.php?code=' + encodeURIComponent(code))
+        .then(r => r.json())
+        .then(function(d) {
+            if (!d.erfolg) {
+                info.style.color = '#dc2626';
+                info.textContent = '✕ ' + d.fehler;
+                return;
+            }
+            var g = _zahlBetrag();
+            var einloesen = Math.min(d.restguthaben, g);
+            var offen = Math.round((g - einloesen) * 100) / 100;
+            var restNachher = Math.round((d.restguthaben - einloesen) * 100) / 100;
+            _gsGeprueft = { code: d.code, restguthaben: d.restguthaben, einloesen: einloesen, offen: offen };
+            info.style.color = '#16a34a';
+            var html = '✓ Guthaben € ' + fmt(d.restguthaben) + ' — wird eingelöst: € ' + fmt(einloesen);
+            if (restNachher > 0.005) {
+                html += '<br><span style="color:#64748b">Restguthaben € ' + fmt(restNachher) + ' → Kunde bekommt einen neuen Code</span>';
+            }
+            if (offen > 0.005) {
+                html += '<br><strong style="color:#b45309">Offen: € ' + fmt(offen) + ' — Rest bar oder mit Karte</strong>';
+                document.getElementById('gs-rest-bereich').hidden = false;
+                document.getElementById('btn-gs-ok').disabled = true;
+            } else {
+                document.getElementById('btn-gs-ok').disabled = false;
+            }
+            info.innerHTML = html;
+        })
+        .catch(function() {
+            info.style.color = '#dc2626';
+            info.textContent = 'Verbindungsfehler beim Prüfen.';
+        });
+}
+function gsRueckgeld() {
+    var el = document.getElementById('gs-rueck');
+    var geg = parseFloat(document.getElementById('gs-gegeben').value) || 0;
+    if (!_gsGeprueft || geg <= 0) { el.textContent = ''; return; }
+    var diff = geg - _gsGeprueft.offen;
+    el.style.color = diff >= -0.005 ? '#16a34a' : '#dc2626';
+    el.textContent = diff >= -0.005 ? 'Rückgeld: € ' + fmt(diff) : 'Fehlend: € ' + fmt(-diff);
+}
+function abschliessenGS(restArt) {
+    if (!_gsGeprueft) return;
+    var daten = { zahlungsart: 'gutschein', gutschein_code: _gsGeprueft.code, gutschein_betrag: _gsGeprueft.einloesen };
+    if (_gsGeprueft.offen > 0.005) {
+        if (!restArt) return;
+        daten.rest_zahlungsart = restArt;
+        if (restArt === 'bar') {
+            var geg = parseFloat(document.getElementById('gs-gegeben').value) || 0;
+            if (geg > 0 && geg < _gsGeprueft.offen - 0.005) {
+                feedback('Gegebener Betrag reicht nicht für den Rest.', 'fehler');
+                return;
+            }
+            if (geg > 0) {
+                daten.gegeben = geg;
+                daten.rueckgeld = Math.round((geg - _gsGeprueft.offen) * 100) / 100;
+            }
+        }
+    }
+    bonSpeichern(daten);
 }
 
 function zahlenKombi() {
@@ -2880,7 +3133,7 @@ function bonSpeichern(zahlDaten) {
 
     var g = _zahlBetrag();
     var positionen = warenkorb.map(function(p) {
-        return Object.assign({}, p, { rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt) });
+        return Object.assign({}, p, { rabatt_prozent: posRabatt(p) });
     }).concat(zusatzPositionen);
     var zp = zusatzPositionen.slice(); // Kopie vor Reset
     zusatzPositionen = [];
@@ -2912,10 +3165,16 @@ function bonSpeichern(zahlDaten) {
                 abgeschlossen: true
             });
             _resetKasseState();
+            (d.warnungen || []).forEach(w => feedback('⚠ ' + w, 'fehler'));
             if (d.bon_id) {
+                var gsListe = (d.gutscheine_ausgestellt || []).map(g => Object.assign({ label: 'Gutschein' }, g));
+                if (d.gutschein_rest) gsListe.push(Object.assign({ label: 'Restguthaben — neuer Code' }, d.gutschein_rest));
                 if (_istGutscheinAusgabe) {
                     _istGutscheinAusgabe = false;
                     zeigeGutscheinAusgabeErgebnis(d.bon_id);
+                } else if (gsListe.length) {
+                    // Erst Codes/PDF zeigen, danach wie gewohnt den Bon ausgeben
+                    zeigeGutscheinErgebnis(gsListe, function() { ausgabeNachZahlung(d.bon_id, d.bon_nr || ''); });
                 } else {
                     ausgabeNachZahlung(d.bon_id, d.bon_nr || '');
                 }
@@ -2946,7 +3205,7 @@ function abschliessenOhneBon() {
     ovSchliessen('ov-bezahlt-info');
     document.getElementById('spinner').classList.add('offen');
     var positionen = warenkorb.map(function(p) {
-        return Object.assign({}, p, { rabatt_prozent: Math.max(p.rabatt_prozent, globalRabatt) });
+        return Object.assign({}, p, { rabatt_prozent: posRabatt(p) });
     });
     fetch('<?= BASE_PATH ?>/kasse/bon_speichern.php', {
         method: 'POST',
@@ -3015,10 +3274,7 @@ function zeigeGutscheinAusgabeErgebnis(bonId) {
         .then(r => r.json())
         .then(function(d) {
             if (d.erfolg) {
-                document.getElementById('ga-code').textContent = d.code;
-                document.getElementById('ga-betrag').textContent = 'Wert: € ' + fmt(d.betrag);
-                document.getElementById('ga-pdf-link').href = '<?= BASE_PATH ?>/gutscheine/pdf_download.php?id=' + d.id;
-                ov('ov-gutschein-ausgabe-ergebnis');
+                zeigeGutscheinErgebnis([{ id: d.id, code: d.code, betrag: d.betrag, label: 'Erstattung als Gutschein' }], null);
             } else {
                 feedback('Gutschein wurde erstellt, aber Code konnte nicht geladen werden — bitte in der Gutscheine-Liste nachsehen.', 'fehler');
             }
@@ -3026,6 +3282,29 @@ function zeigeGutscheinAusgabeErgebnis(bonId) {
         .catch(function() {
             feedback('Gutschein wurde erstellt, aber Code konnte nicht geladen werden — bitte in der Gutscheine-Liste nachsehen.', 'fehler');
         });
+}
+
+var _gsErgebnisDanach = null;
+/** Zeigt erstellte Gutschein-Codes mit PDF-Link; danach() läuft beim Schließen (z.B. Bon-Ausgabe). */
+function zeigeGutscheinErgebnis(liste, danach) {
+    _gsErgebnisDanach = danach || null;
+    document.getElementById('ga-titel').textContent = liste.length > 1 ? '🎁 Gutscheine erstellt' : '🎁 Gutschein erstellt';
+    document.getElementById('ga-liste').innerHTML = liste.map(function(g) {
+        return '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;text-align:center">' +
+            '<div style="font-size:12px;color:#64748b">' + esc(g.label || 'Gutschein') + '</div>' +
+            '<div style="font-family:monospace;font-size:20px;font-weight:700;margin:4px 0">' + esc(g.code) + '</div>' +
+            '<div style="font-size:15px;color:#374151;margin-bottom:8px">Wert: € ' + fmt(g.betrag) + '</div>' +
+            '<a href="<?= BASE_PATH ?>/gutscheine/pdf_download.php?id=' + encodeURIComponent(g.id) + '" target="_blank" ' +
+            'class="ov-btn ov-btn-ok" style="display:inline-block;width:auto;padding:8px 18px;text-decoration:none">📄 PDF öffnen</a>' +
+            '</div>';
+    }).join('');
+    ov('ov-gutschein-ausgabe-ergebnis');
+}
+function gutscheinErgebnisSchliessen() {
+    ovSchliessen('ov-gutschein-ausgabe-ergebnis');
+    var f = _gsErgebnisDanach;
+    _gsErgebnisDanach = null;
+    if (f) f();
 }
 
 // ── Manager-Freigabe per PIN ─────────────────────────────────────────────────

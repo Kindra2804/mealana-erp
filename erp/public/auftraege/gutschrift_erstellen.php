@@ -31,7 +31,7 @@ unset($_SESSION['fehler'], $_SESSION['formdata']);
 // versprechen, wenn schon ein Teil zurückgegeben wurde.
 $vollstornoBetrag = 0.0;
 foreach ($positionen as $pos) {
-    $offen = (int)$pos['menge'] - (int)($pos['menge_retourniert'] ?? 0);
+    $offen = (int)$pos['menge'] - (int)($pos['menge_gutgeschrieben'] ?? 0);
     if ($offen <= 0) continue;
     $einzelBruttoV = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
     $vollstornoBetrag += $offen * $einzelBruttoV * (1 - ($pos['rabatt_prozent'] ?? 0) / 100);
@@ -97,9 +97,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php foreach ($positionen as $i => $pos):
                     $einzelBrutto = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
                     $gesamtBrutto = round($pos['gesamtpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-                    // Bereits über die Kasse retournierte Menge darf hier nicht nochmal
-                    // gutgeschrieben werden (sonst doppelte Erstattung).
-                    $bereitsRetourniert = (int)($pos['menge_retourniert'] ?? 0);
+                    // Bereits gutgeschriebene Menge (Kasse, Packplatz-Retoure, frühere
+                    // Gutschrift) darf hier nicht nochmal gutgeschrieben werden.
+                    $bereitsRetourniert = (int)($pos['menge_gutgeschrieben'] ?? 0);
                     $maxGutschrift      = max(0, (int)$pos['menge'] - $bereitsRetourniert);
                     $savedMenge   = $formdata['positionen'][$i]['menge'] ?? $maxGutschrift;
                     $savedChecked = (isset($formdata['positionen'][$i]) || empty($formdata)) && $maxGutschrift > 0;
@@ -123,7 +123,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <br><small style="color:#888;">Rabatt: <?= $pos['rabatt_prozent'] ?> %</small>
                         <?php endif; ?>
                         <?php if ($bereitsRetourniert > 0): ?>
-                            <br><small style="color:#dc2626;">bereits <?= $bereitsRetourniert ?>× über Kasse retourniert<?= $maxGutschrift <= 0 ? ' — nichts mehr gutzuschreiben' : '' ?></small>
+                            <br><small style="color:#dc2626;">bereits <?= $bereitsRetourniert ?>× gutgeschrieben<?= $maxGutschrift <= 0 ? ' — nichts mehr gutzuschreiben' : '' ?></small>
                         <?php endif; ?>
                     </td>
                     <td style="text-align:right;"><?= $pos['menge'] ?></td>
@@ -164,7 +164,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <label class="form-label" style="display:flex; align-items:center; gap:8px; padding-top:24px; cursor:pointer;">
                     <input type="checkbox" name="lager_rueckbuchen" value="1"
                            <?= !empty($formdata['lager_rueckbuchen']) ? 'checked' : '' ?>>
-                    Lagerbestand zurückbuchen
+                    Ware zur Prüfung an den Packplatz (Rücklagerung)
                 </label>
             </div>
         </div>

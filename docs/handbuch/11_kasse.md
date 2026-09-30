@@ -32,7 +32,7 @@ Auf eine Position klicken → Rabatt % eingeben → Preis wird neu berechnet.
 |---------|-------------|
 | **Bar** | Gegeben-Betrag eingeben → Rückgeld wird berechnet angezeigt |
 | **Karte extern** | SumUp/Bankomat — Betrag extern bestätigen, hier nur dokumentieren |
-| **Gutschein** | Gutschein-Code eingeben → Betrag wird abgezogen |
+| **Gutschein** | Code eingeben → Prüfen → Guthaben wird angezeigt; reicht es nicht, Rest bar oder mit Karte. Details: [14 Gutscheine](14_gutscheine.md) |
 
 **Schritt 4: Bon speichern**
 

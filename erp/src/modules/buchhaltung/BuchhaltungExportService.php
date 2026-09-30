@@ -110,7 +110,12 @@ class BuchhaltungExportService
         $diversesGruppeId = $this->diversesGruppeId() ?? 0;
 
         $rows = $this->db->query("
-            SELECT DATE(b.erstellt_am) AS datum, b.zahlungsart,
+            SELECT DATE(b.erstellt_am) AS datum,
+                   -- Gutschein + Restzahlung bar/Karte ist eine gemischte Zahlung wie kombi,
+                   -- darf nicht komplett gegen das Gutschein-Konto gebucht werden
+                   CASE WHEN b.zahlungsart = 'gutschein'
+                         AND COALESCE(b.bar_betrag, 0) + COALESCE(b.karten_betrag, 0) > 0
+                        THEN 'kombi' ELSE b.zahlungsart END AS zahlungsart_eff,
                    ag.konto_nr, ag.name AS gruppe_name, bp.steuer_prozent,
                    SUM(ABS(bp.menge) * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
             FROM kassen_bon_positionen bp
@@ -119,7 +124,7 @@ class BuchhaltungExportService
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(a.artikel_gruppe_id, {$diversesGruppeId})
             WHERE b.typ = 'verkauf' AND b.storniert = 0
               AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
-            GROUP BY datum, b.zahlungsart, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
+            GROUP BY datum, zahlungsart_eff, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
         ")->fetchAll();
 
         foreach ($rows as $r) {
@@ -128,7 +133,7 @@ class BuchhaltungExportService
                 datum: $r['datum'], belegnr: 'Kasse-' . $r['datum'],
                 erloesKonto: $r['konto_nr'], gruppeName: $r['gruppe_name'] ?? 'ohne Gruppe',
                 satz: (float)$r['steuer_prozent'], brutto: (float)$r['brutto'],
-                zahlungsart: $r['zahlungsart'], quelle: 'Kasse'
+                zahlungsart: $r['zahlungsart_eff'], quelle: 'Kasse'
             );
         }
     }

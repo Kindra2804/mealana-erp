@@ -135,6 +135,7 @@ class LagerRepository
             INNER JOIN lager l ON l.id = lb.lager_id
             WHERE lb.charge_status = 'nachzutragen'
             AND a.charge_pflicht = 1
+            AND lb.bestand > 0
             ORDER BY artikel_name, a.name
         ");
         return $stmt->fetchAll();

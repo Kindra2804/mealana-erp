@@ -23,9 +23,10 @@ if (!$auftragId || !$rechnungId || !$benutzerId) {
 }
 
 // Positionen aus POST aufbereiten (bei Teilgutschrift)
-// Server-seitige Obergrenze: menge - menge_retourniert (nicht nur der Client-max-Wert,
-// der sich per direktem POST umgehen ließe) — sonst könnte eine bereits über die Kasse
-// erstattete Menge hier ein zweites Mal gutgeschrieben werden.
+// Server-seitige Obergrenze: menge - menge_gutgeschrieben (nicht nur der Client-max-Wert,
+// der sich per direktem POST umgehen ließe) — sonst könnte eine bereits über Kasse,
+// Packplatz-Retoure oder frühere Gutschrift erstattete Menge ein zweites Mal
+// gutgeschrieben werden.
 $positionen = [];
 if ($gsArt === 'teilgutschrift' && !empty($_POST['positionen'])) {
     $db = Database::getInstance();
@@ -33,13 +34,13 @@ if ($gsArt === 'teilgutschrift' && !empty($_POST['positionen'])) {
         if (empty($item['aktiv'])) continue;
         $posId = (int)($item['pos_id'] ?? 0);
 
-        $maxStmt = $db->prepare("SELECT menge, menge_retourniert FROM auftrag_positionen WHERE id = ? AND auftrag_id = ?");
+        $maxStmt = $db->prepare("SELECT menge, menge_gutgeschrieben FROM auftrag_positionen WHERE id = ? AND auftrag_id = ?");
         $maxStmt->execute([$posId, $auftragId]);
         $origPos = $maxStmt->fetch(PDO::FETCH_ASSOC);
         if (!$origPos) continue; // Position gehört nicht zu diesem Auftrag — ignorieren
 
-        $maxMenge = max(0, (int)$origPos['menge'] - (int)$origPos['menge_retourniert']);
-        if ($maxMenge <= 0) continue; // bereits vollständig retourniert — nichts mehr gutzuschreiben
+        $maxMenge = max(0, (int)$origPos['menge'] - (int)$origPos['menge_gutgeschrieben']);
+        if ($maxMenge <= 0) continue; // bereits vollständig gutgeschrieben — nichts mehr offen
 
         $menge = min($maxMenge, max(1, (int)($item['menge'] ?? 1)));
         $positionen[] = [

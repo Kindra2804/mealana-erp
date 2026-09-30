@@ -56,6 +56,7 @@ class ArtikelService
         unset($data['brutto_vk'], $data['netto_vk'], $data['ean_gtin13'], $data['uvp']);
 
         $id = $this->repo->insert($data);
+        $this->repo->syncGutscheinFlag($id);
 
         if ($bruttoVk && $nettoVk) {
             $this->repo->insertPreis($id, (float) $bruttoVk, (float) $nettoVk);
@@ -94,6 +95,7 @@ class ArtikelService
         unset($data['brutto_vk'], $data['netto_vk'], $data['ean_gtin13']);
 
         $this->repo->update($data);
+        $this->repo->syncGutscheinFlag((int) $data['id']);
 
         // Auslauf-Flag auf alle Kinder propagieren (betrifft Vater-Artikel, bei Kindern trifft UPDATE 0 Zeilen)
         $this->repo->propagiereZuKindern((int) $data['id']);
@@ -736,6 +738,7 @@ class ArtikelService
         ]));
 
         $neueId = $this->repo->insert($neuerArtikelGefiltert);
+        $this->repo->syncGutscheinFlag($neueId);
 
         if ($kopierData['preise']) {
             $this->repo->copyPreise($quell_id, $neueId);

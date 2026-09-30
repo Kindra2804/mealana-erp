@@ -116,7 +116,7 @@ class KassenService
             $artikel['hat_chargen'] = $hatChargen;
             if ($artikel['charge_pflicht'] || $hatChargen) {
                 $artikel['fifo_charge']   = $this->getFifoCharge((int)$artikel['id'], $lagerId);
-                $artikel['alle_chargen']  = $this->getAlleChargenFuerKasse((int)$artikel['id'], $lagerId);
+                $artikel['alle_chargen']  = $this->getAlleChargenFuerKasse((int)$artikel['id'], $lagerId, (bool)$artikel['charge_pflicht']);
             }
         }
 
@@ -173,15 +173,28 @@ class KassenService
     }
 
     /** Alle verfügbaren Chargen für die Kasse-Auswahl (id, charge, bestand, charge_status) */
-    private function getAlleChargenFuerKasse(int $artikelId, int $lagerId): array
+    /**
+     * Chargen-Zeilen fürs Kasse-Popup. Bei Charge-Pflicht zählt JEDER Bestand ohne
+     * Charge als nachzutragen -- nicht nur charge_status='nachzutragen', sondern auch
+     * 'unbekannt' (so legte z.B. der JTL-Lagerbestand-Import vom 2026-08-11 die Zeilen
+     * an, und so bleibt Altbestand stehen, wenn charge_pflicht erst später gesetzt wird).
+     * Ohne das war die Liste leer und die Kasse verlangte einen Wareneingang.
+     * Solche Zeilen kommen als 'nachzutragen' zurück -> das Popup zeigt das
+     * Chargennummer-Feld, KassenService::erstelleBon() bucht per chargeNachtragen() um.
+     */
+    private function getAlleChargenFuerKasse(int $artikelId, int $lagerId, bool $chargePflicht = false): array
     {
+        $ohneCharge = $chargePflicht
+            ? "charge_status IN ('nachzutragen', 'unbekannt')"
+            : "charge_status = 'nachzutragen'";
         $stmt = $this->db->prepare("
-            SELECT id, charge, bestand, charge_status
+            SELECT id, charge,  bestand,
+                   CASE WHEN charge IS NULL THEN 'nachzutragen' ELSE charge_status END AS charge_status
             FROM lagerbestand
             WHERE artikel_id = :aid AND lager_id = :lid
-              AND (charge IS NOT NULL OR charge_status = 'nachzutragen')
+              AND (charge IS NOT NULL OR $ohneCharge)
               AND bestand > 0
-            ORDER BY charge_status = 'nachzutragen' DESC, erstellt_am ASC
+            ORDER BY charge IS NULL DESC, erstellt_am ASC
         ");
         $stmt->execute([':aid' => $artikelId, ':lid' => $lagerId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -369,10 +382,13 @@ class KassenService
                 $netto   += $zeileNet;
                 $steuerBetrag += $zeileBrutto - $zeileNet;
             }
-            $aufZahlungsart = match($bonDaten['zahlungsart'] ?? 'bar') {
-                'bar'       => 'bar',
-                'gutschein' => 'gutschein',
-                default     => 'gemischt',
+            // Gutschein + Restzahlung (bar/Karte) ist gemischt, nicht reine Gutschein-Zahlung
+            $gsMitRest = ($bonDaten['zahlungsart'] ?? '') === 'gutschein'
+                && ((float)($bonDaten['bar_betrag'] ?? 0) + (float)($bonDaten['karten_betrag'] ?? 0)) > 0;
+            $aufZahlungsart = match(true) {
+                ($bonDaten['zahlungsart'] ?? 'bar') === 'bar' => 'bar',
+                ($bonDaten['zahlungsart'] ?? '') === 'gutschein' && !$gsMitRest => 'gutschein',
+                default => 'gemischt',
             };
             $kundenSnapshot = $bonDaten['kunden_id']
                 ? null
@@ -731,7 +747,7 @@ class KassenService
             SELECT COALESCE(SUM(
                 CASE
                     WHEN zahlungsart = 'bar' THEN bruttobetrag
-                    WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0)
+                    WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(bar_betrag, 0)
                     ELSE 0
                 END
             ), 0)
@@ -758,9 +774,9 @@ class KassenService
                 COALESCE(SUM(bruttobetrag), 0)                   AS umsatz_gesamt,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'bar'           THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern'  THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'     THEN bruttobetrag ELSE 0 END), 0) AS umsatz_gs,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi'         THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_bar,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi'         THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_karte,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'     THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
+                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_bar,
+                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_karte,
                 COALESCE(SUM(CASE WHEN storniert = 1                 THEN bruttobetrag ELSE 0 END), 0) AS storniert_betrag,
                 COUNT(CASE WHEN storniert = 1 THEN 1 END)         AS anzahl_stornos
             FROM kassen_bons
@@ -797,9 +813,9 @@ class KassenService
                 COALESCE(SUM(bruttobetrag), 0)                                                   AS umsatz_gesamt,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'bar'          THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'    THEN bruttobetrag ELSE 0 END), 0) AS umsatz_gs,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi'        THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0)     AS umsatz_kombi_bar,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi'        THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0)  AS umsatz_kombi_karte,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'    THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
+                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0)     AS umsatz_kombi_bar,
+                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0)  AS umsatz_kombi_karte,
                 COALESCE(SUM(CASE WHEN storniert = 1                THEN bruttobetrag ELSE 0 END), 0) AS storniert_betrag,
                 COUNT(CASE WHEN storniert = 1 THEN 1 END)                                        AS anzahl_stornos,
                 MIN(DATE(erstellt_am))                                                           AS datum_von,
