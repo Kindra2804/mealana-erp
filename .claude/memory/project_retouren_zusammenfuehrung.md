@@ -10,7 +10,7 @@ metadata:
 
 Anlass: Jacky fragte, ob Gutschriften die verkauften Chargen zurückbuchen, und ob Retouren über den Packplatz laufen. Befund: Bausteine existierten (Packplatz-Retoure, Rücklagerungen, Zustandsumbuchung intern), waren aber nicht verbunden; Zustand war nur Notiz; ERP-Gutschrift buchte direkt ohne Charge in Lager 1 (Null-Charge-Duplikate); Packplatz-Retoure und ERP-Gutschrift zählten nichts → Doppel-Gutschriften möglich.
 
-**Jackys Entscheidungen:** Zustandsartikel mit Anhang am Ende (`D-101071-RET`, schon so gebaut, kein Präfix). Gebraucht/Retour → Zustandsartikel, zählt nie für Onlineshop. Kassen-Retoure (auch als Gutschein) → Packplatz zur Kontrolle (war schon so). Packplatz-Retoure muss gegen vorherige Kassen-Gutschrift gesperrt sein. Beschädigt → Zustandsartikel -BSC, **Defekt → nicht einbuchen** (meine Festlegung, von Jacky nicht explizit bestätigt).
+**Jackys Entscheidungen:** Zustandsartikel mit Anhang am Ende (`D-101071-RET`, schon so gebaut, kein Präfix). Gebraucht/Retour → Zustandsartikel, zählt nie für Onlineshop. Kassen-Retoure (auch als Gutschein) → Packplatz zur Kontrolle (war schon so). Packplatz-Retoure muss gegen vorherige Kassen-Gutschrift gesperrt sein. Beschädigt → Zustandsartikel -BSC. **Defekt (Jacky bestätigt 2026-09-30): nur ausbuchen + in Lagerverfolgung dokumentieren** → RetourService bucht Retoure-Eingang + sofort warenSchwund() (netto 0, beide Bewegungen mit Charge im Bewegungslog), committed.
 
 **Gebaut:**
 - Migration 179: `auftrag_positionen.menge_gutgeschrieben` (Startwert = menge_retourniert), `charge` 20→255 Zeichen, `packplatz_ruecklagerungen` + quelle(kasse|gutschrift)/gutschrift_nr/auftrag_position_id/lager_vorschlag_id/erledigt_artikel_id, kassen_bon_id/bon_nr/kasse_id nullable, Zustand-Enum + retour.

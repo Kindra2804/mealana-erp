@@ -363,7 +363,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><th>Zustand</th><th>Wohin wird gebucht</th></tr>
                 <tr><td><strong>Neu</strong></td><td>Originalartikel</td></tr>
                 <tr><td><strong>Retour / Gebraucht / Beschädigt</strong></td><td>Zustandsartikel mit Anhang (<code>D-101071-RET</code>, <code>-GEB</code>, <code>-BSC</code>) — wird bei Bedarf automatisch angelegt, <strong>zählt nie für den Onlineshop</strong>. Zu finden über Artikelliste → Status / Qualität → Zustand (B-Ware).</td></tr>
-                <tr><td><strong>Defekt</strong></td><td>wird nicht eingebucht, nur protokolliert</td></tr>
+                <tr><td><strong>Defekt</strong></td><td>nicht in den Bestand — wird als Retoure-Eingang und sofort als <strong>Schwund</strong> ausgebucht, steht also in der Lagerverfolgung (Bewegungslog) des Artikels</td></tr>
             </table>
             <p><strong>Retoure (Rücksendung per Post):</strong> Packplatz → Retoure → pro Position Menge · Charge · Zustand (Charge aus dem Verkauf vorbefüllt, <strong>＋ Charge</strong> für mehrere Chargen/Zustände). Möglich ist nur die Menge, die noch nicht zurückgekommen bzw. gutgeschrieben ist — schützt vor Doppelbuchung mit der Kasse.</p>
 

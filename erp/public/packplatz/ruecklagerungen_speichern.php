@@ -29,7 +29,7 @@ if (!$eintrag || $eintrag['status'] !== 'offen' || !$lagerId) {
 // nicht (direkter POST würde sie umgehen), siehe Jackys Hinweis: "spätestens am
 // Packplatz muss es eine Chargenzuordnung geben, sonst haben wir wieder Artikel
 // in ungültigem Zustand". Übernommene Charge aus Kasse/Gutschrift zählt genauso wie
-// eine hier neu eingetragene. Defekte Ware wird nicht eingebucht -> keine Charge nötig.
+// eine hier neu eingetragene. Defekte Ware wird sofort als Schwund ausgebucht -> Charge optional (oft nicht mehr lesbar).
 $finaleCharge = $charge ?: $eintrag['charge'];
 if ($eintrag['charge_pflicht'] && !$finaleCharge && $zustand !== 'defekt') {
     $_SESSION['fehler'] = 'Dieser Artikel ist chargenpflichtig — bitte Charge eintragen, bevor eingebucht wird.';

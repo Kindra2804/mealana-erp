@@ -288,7 +288,7 @@ function teilHinzufuegen(idx, vorCharge) {
         '<select name="' + n + '[zustand]" class="ret-select">' +
             '<option value="neu">Neu</option><option value="retour">Retour → -RET</option>' +
             '<option value="gebraucht">Gebraucht → -GEB</option><option value="beschaedigt">Beschädigt → -BSC</option>' +
-            '<option value="defekt">Defekt (nicht einbuchen)</option></select>';
+            '<option value="defekt">Defekt (Schwund)</option></select>';
     box.appendChild(div);
     div.querySelector('input[type=text]').value = vorCharge || '';
     teilGeaendert(idx);

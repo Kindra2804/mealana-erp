@@ -34,7 +34,7 @@ require_once __DIR__ . '/shell_top.php';
         erledigt — Erstattung ist bereits gebucht), die noch nicht wieder im Lagerbestand ist.
         Bitte Zustand prüfen und einbuchen: <strong>Neu</strong> → Originalartikel,
         <strong>Gebraucht/Retour/Beschädigt</strong> → Zustandsartikel (z.B. …-RET, zählt nicht
-        für den Onlineshop), <strong>Defekt</strong> → wird nicht eingebucht.
+        für den Onlineshop), <strong>Defekt</strong> → wird als Schwund ausgebucht (nur in der Lagerverfolgung).
     </div>
 
     <?php if (empty($offene)): ?>
@@ -116,7 +116,7 @@ require_once __DIR__ . '/shell_top.php';
                 <option value="retour">Retour → Zustandsartikel …-RET</option>
                 <option value="gebraucht">Gebraucht → Zustandsartikel …-GEB</option>
                 <option value="beschaedigt">Beschädigt → Zustandsartikel …-BSC</option>
-                <option value="defekt">Defekt → nicht einbuchen</option>
+                <option value="defekt">Defekt → als Schwund ausbuchen</option>
             </select>
 
             <div id="rl-charge-block" style="display:none;margin-bottom:20px">

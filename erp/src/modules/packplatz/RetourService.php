@@ -13,7 +13,7 @@ require_once __DIR__ . '/../lager/LagerService.php';
  *
  * Zustandsregel (Jacky 2026-09-30):
  *   neu              -> Originalartikel
- *   defekt           -> gar nicht in den Bestand (nur protokolliert)
+ *   defekt           -> nicht in den Bestand: Retoure-Eingang + sofortige Schwund-Ausbuchung (Lagerverfolgung)
  *   alles andere     -> Zustandsartikel (Artikelnummer + Anhang, z.B. D-101071-RET),
  *                       wird bei Bedarf automatisch angelegt; zählt nie zum Shop-Bestand
  */
@@ -141,11 +141,25 @@ class RetourService
         $benutzerId = (int)($d['benutzer_id'] ?? 0);
 
         if ($zustand === 'defekt') {
-            Logger::log('retoure.defekt_nicht_eingebucht', 'artikel', (int)$d['artikel_id'], [
-                'menge' => $d['menge'], 'charge' => $d['charge'] ?? null, 'referenz' => $d['referenz'],
-            ], $benutzerId, 'warn');
+            // Jacky 2026-09-30: defekt nicht in den Bestand, aber in der Lagerverfolgung
+            // dokumentieren -> Retoure-Eingang + sofortige Schwund-Ausbuchung (netto 0,
+            // beide Bewegungen inkl. Charge im Bewegungslog des Artikels sichtbar).
+            $basis = [
+                'artikel_id'  => (int)$d['artikel_id'],
+                'lager_id'    => (int)$d['lager_id'],
+                'menge'       => (float)$d['menge'],
+                'charge'      => $d['charge'] ?? null,
+                'referenz'    => $d['referenz'],
+                'benutzer_id' => $benutzerId,
+            ];
+            $ein = $this->lager->wareneingang($basis + ['notiz' => trim(($d['notiz'] ?? '') . ' — Zustand: Defekt', ' —')]);
+            if (!($ein['erfolg'] ?? false)) {
+                return ['erfolg' => false, 'artikel_id' => null, 'artikelnummer' => null, 'text' => '',
+                        'fehler' => $ein['fehler'] ?? 'Einbuchen fehlgeschlagen'];
+            }
+            $this->lager->warenSchwund($basis + ['notiz' => 'Defekte Retoure ausgebucht']);
             return ['erfolg' => true, 'artikel_id' => null, 'artikelnummer' => null,
-                    'text' => $d['menge'] . '× defekt — nicht eingebucht'];
+                    'text' => $d['menge'] . '× defekt — als Schwund ausgebucht'];
         }
 
         $zielId = (int)$d['artikel_id'];

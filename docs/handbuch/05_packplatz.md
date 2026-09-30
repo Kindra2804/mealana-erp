@@ -117,7 +117,7 @@ Wenn nicht alle Artikel lieferbar sind (z.B. einer ist gerade nicht auf Lager):
 |---------|--------------------|
 | **Neu** | Originalartikel (normal verkaufbar, auch online) |
 | **Retour / Gebraucht / Beschädigt** | **Zustandsartikel** = Artikelnummer mit Anhang (`D-101071-RET`, `-GEB`, `-BSC`). Wird beim ersten Mal automatisch angelegt (übernimmt Gruppe, Chargenpflicht und den aktuellen Preis als Startwert — B-Ware-Preis danach am Artikel anpassen). **Zählt nie für den Onlineshop.** |
-| **Defekt** | Wird **nicht** eingebucht, nur protokolliert |
+| **Defekt** | Nicht in den Bestand — wird als Retoure-Eingang und sofort als **Schwund** ausgebucht, steht also in der Lagerverfolgung (Bewegungslog) des Artikels |
 
 Zustandsartikel finden: Artikelliste → Filter **Status / Qualität → Zustand (B-Ware)**, oder direkt nach der Nummer mit Anhang suchen.
 
