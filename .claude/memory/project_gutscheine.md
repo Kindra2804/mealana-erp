@@ -5,8 +5,28 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 40a29a40-0c3b-483d-82e6-51045de0676d
-  modified: 2026-08-29T18:16:49.495Z
+  modified: 2026-09-30T13:28:36.754Z
 ---
+
+## 2026-09-30: Wiedereinstieg -- Lückenfund + neue Reihenfolge A/B/C
+
+Jacky legte Artikel GUTSCHEIN (#27478) an und konnte `ist_gutschein` nirgends setzen -- Flag existierte nur in der DB, keine UI (Versäumnis Baustufe 1). Außerdem gefunden: Kasse kann Gutscheine weder VERKAUFEN (Kunde kauft Gutschein, zahlt bar/Karte) noch damit BEZAHLEN (Knopf ist Attrappe) -- nur Retoure→Gutschein war fertig. Jacky hat Reihenfolge freigegeben:
+
+- **A ✅ FERTIG 2026-09-30:** Migration 177 -- `artikel_typen.ist_gutschein` + neuer Typ GUTSCHEIN (id 7, keine Varianten, kein Lagerstand) + Artikelgruppe 4700 "Gutscheine" aktiviert. Typ ist einzige Quelle: `ArtikelRepository::syncGutscheinFlag()` nach insert/update/kopiere setzt `artikel.ist_gutschein` aus dem Typ und erzwingt steuerfreie Steuerklasse (satz=0). Rückwechsel auf anderen Typ setzt Flag zurück, Steuerklasse bleibt aber 0% (muss dann händisch gewählt werden). Hinweistext unter Artikeltyp in detail.php/neu.php. Getestet per zurückgerollter Transaktion an #27478. **Jacky muss #27478 noch selbst auf Typ Gutschein + Gruppe 4700 umstellen** (war STANDARD/Gruppe 9/20%). Alter JTL-GUTSCHEIN (#23695, inaktiv, 511 historische Positionen) bewusst unangetastet.
+- **B ✅ GEBAUT 2026-09-30 (nicht committed, kein Klicktest an echter Kasse):**
+  - Verkauf: ⚙ Menü "🎁 Gutschein verkaufen" bzw. Antippen des Gutschein-Artikels öffnet `ov-gs-verkauf` (Betrag+Schnellbeträge+Empfänger) → Position `block:'gutschein_kauf'` (direkt gepusht, nicht über `_artikelEinfuegen` wegen Merge nur über artikel_id). `posRabatt(p)` ersetzt alle `Math.max(p.rabatt_prozent, globalRabatt)` in bon.php → Gutschein nie rabattiert. Server (`bon_speichern.php`) erzwingt 0%/kein Rabatt/ganze Menge, erstellt pro Stück einen Code NACH erstelleBon und VOR dem echo → `gutscheine_ausgestellt` in der Antwort, Kasse zeigt `zeigeGutscheinErgebnis()` (mehrere Codes+PDF), danach normale Bon-Ausgabe.
+  - Bezahlen: neuer Endpunkt `gutscheine/pruefen.php` + `GutscheinService::pruefeEinloesbar()` (liefert bei eingelöstem Code den aktuellen Nachfolger aus `findKette`; `einloesen()` nutzt es jetzt auch). Rest bar/Karte über `rest_zahlungsart`; Server legt `gutschein_betrag`/`bar_betrag` (NETTO-Rest)/`karten_betrag` selbst fest, löst erst nach signiertem Bon ein, setzt `kassen_bons.gutschein_id`, Restcode → `gutschein_rest`. Fehler nach Signatur = Warnung+Log error, Bon bleibt.
+  - Berichte: `umsatz_gs` = COALESCE(gutschein_betrag, bruttobetrag); kombi_bar/karte + Kassenstand zählen auch `zahlungsart='gutschein'`-Reste. Auftrag-Spiegel: Gutschein+Rest = 'gemischt'. Buchhaltungsexport: Gutschein+Rest → 'kombi' (Hinweis zur manuellen Buchung).
+  - Storno: `GutscheinService::bonStorniert()` aus `ajax_bon_stornieren.php` — verkaufte unbenutzte Codes storniert (sonst Warnung), Einlösungen → neuer Code; Gegenbuchungen hängen am Storno-Bon. bon_journal zeigt es per alert.
+  - Bon-Druck (80mm + A4): Gutschein-Betrag, Rest bar/Karte, Rückgeld, Restguthaben-Code, auf dem Bon verkaufte Codes.
+  - **Stufe-2-Bug mitbehoben:** Sanitizer in bon_speichern verwarf `kein_lagerabzug` → Retour-Gutschein hätte Lager vom Gutschein-Artikel abgebucht. Jetzt serverseitig: ist_gutschein / keine_lagerbestandsfuehrung / Typ hat_lagerstand=0 → kein Lagerabzug (gilt damit auch für Downloads/Konfigurator an der Kasse).
+  - Getestet: php -l, node --check auf bon.php-JS, 14-Punkte-Funktionstest in zurückgerollter Transaktion (Verkauf, Voll-/Teileinlösung, Nachfolger-Hinweis, Kennzahlen, A4-Render, Storno beider Richtungen), SQL-Check Lagerabzug + Buchhaltungsexport.
+  - Handbuch: `docs/handbuch/14_gutscheine.md` + Abschnitt `#gutscheine` in bedienungsanleitung.php + Kasse-Zahlart-Zeile in beiden.
+  - **Bekannte Lücken:** Kasse-Gutscheine werden NICHT nach WooCommerce gespiegelt (kein shop_id) → online nicht einlösbar, gehört zu C. Offline-Kasse kann Gutscheine nicht prüfen. Storno-Hinweis nur per alert.
+  - **Nachtrag (Jacky-Wunsch, gleicher Tag):** ⚙ Menü → "🔍 Gutschein abfragen" = reine Auskunft ohne Buchung (Status, Wert, Restguthaben, gültig bis, Empfänger, Nachfolger-Code). `gutscheine/pruefen.php?info=1` liefert immer alle Daten, auch für eingelöste/abgelaufene/stornierte Codes. Getestet (aktiv/teilweise mit Nachfolger/unbekannt, Rollback).
+  - **Committed 2026-09-30** zusammen mit Chargen-Fix + Retouren-Zusammenführung, Push stand noch aus.
+- **C (als Nächstes):** Shop-Checkout-Snippet + Spiegelung von Kasse-/ERP-Gutscheinen in alle Shops.
+- Offene Frage an Babsi: Gruppe hängt an Erlöskonto 4700, Babsi bucht laut Notiz auf 3er-Konto "Anzahlung ohne Steuer" -- richtige Nummer klären.
 
 ## ✅ Baustufe 1 GEBAUT 2026-08-29: Backend + ERP-UI komplett, getestet
 

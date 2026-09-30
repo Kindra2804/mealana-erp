@@ -1,6 +1,8 @@
 # Memory Index
 
-- [Gutschein-Modul](project_gutscheine.md) — 2026-08-29 Abend: Baustufe 2 fertig, Kasse stellt bei Retoure jetzt RKSV-sauber Gutschein statt Bar aus; als Nächstes Shop-Checkout-Snippet (wartet auf Jackys Gutschein-Artikel)
+- [Gutschein-Modul](project_gutscheine.md) — 2026-09-30: A (Artikeltyp) + B (Kasse verkaufen/bezahlen/Storno, Handbuch) gebaut, nicht committed, Klicktest an Kasse offen; als Nächstes C = Shop-Snippet + WC-Spiegelung
+- [🟢 BUG: Kasse Chargen-Popup leer](bug_kasse_charge_unbekannt.md) — BEHOBEN 2026-09-30: Status "unbekannt" (JTL-Import) + Varianten/Suche ohne Chargen-Liste; Migration 178 + Importskript korrigiert; DokumentService-Gutschrift-Nebenbefund durch Retouren-Zusammenführung erledigt
+- [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — 2026-09-30 gebaut, nicht committed: Kasse/Packplatz/ERP-Gutschrift mit gemeinsamen Zählern (retourniert/gutgeschrieben), Zustand→Zustandsartikel (-RET/-GEB/-BSC, nie Shop), Chargen aus Verkauf vorbefüllt
 - [Konfigurator-Modul](project_konfigurator_modul.md) — ✅ 2026-08-29 BEHOBEN: Testbestellung verlor 5/7 Konfig-Werte (veraltete Shop-Preis-Matrix), Klartext-Fallback+Sync-Trigger gebaut, jetzt auf Pickliste/Detail/Rechnung/AB sichtbar; WP-Session-Cookie-Problem beim Warenkorb weiter offen
 - [WordPress-Zugang für Claude](reference_wp_claude_zugang.md) — eigener wp-admin-Benutzer "claude" auf indra-design.at, Zugangsdaten in D:\ERP\mealana\import\zugang Woo Claude.txt
 - [WP-Snippets im Repo](reference_wp_snippets_repo.md) — alle selbst gebauten WPCode-Snippets als Kopie in D:\ERP\mealana\shop\wp-snippets\, kein Auto-Sync mit wp-admin
@@ -68,7 +70,6 @@
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — 2026-08-29 BEHOBEN: MySQL-Absturz bei jedem Login (korrupte Tabellenseite riss ganzen mysqld-Prozess mit + ibdata1/aria_log lagen verschoben in data\tmp\); Backup-Strategie weiter nur geplant
 - [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
-- [Gutschein-Modul](project_gutscheine.md) — ✅ 2026-08-29 Baustufe 1 GEBAUT+getestet: Backend (Repository/Service/WC-Sync beidseitig/PDF/Mail/Cron) + ERP-UI fertig; offen: Kasse-Anbindung, Shop-Checkout-Snippet, Design-Uploads, Buchhaltungskonto
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; Zeitraum-Filter in Auftragsliste FERTIG 2026-08-11
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign + Doppel-Gutschrift-Sperre fertig; 🟢 A4-Bon-PDF-Rand-Bug im Mailanhang BEHOBEN 2026-07-09 (Body-Padding statt @page-margin)
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — Echter BFR-Hardware-Test 2026-07-08 erfolgreich (Startbeleg, Kasse 4); 4 echte Bugs gefunden+gefixt, Netzwerkkassen-Doku-Lücke
