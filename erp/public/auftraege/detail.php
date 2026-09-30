@@ -55,8 +55,7 @@ $retourGesamtbetrag = 0.0;
 foreach ($positionen as $pos) {
     $retMenge = (int)($pos['menge_retourniert'] ?? 0);
     if ($retMenge <= 0) continue;
-    $einzelBruttoR = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-    $retourGesamtbetrag += $retMenge * $einzelBruttoR * (1 - ($pos['rabatt_prozent'] ?? 0) / 100);
+    $retourGesamtbetrag += Positionsrechnung::ausPosition($pos, $retMenge)['brutto'];
 }
 $offenBetrag  = ((float)$auftrag['bruttobetrag'] - $retourGesamtbetrag) - $summeBezahlt;
 
@@ -550,7 +549,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php endif; ?>
                     </td>
                     <?php if (in_array($preisanzeige, ['brutto', 'beides'])): ?>
-                        <td style="text-align:right"><?= number_format((float)$p['einzelpreis_netto'] * (1 + $p['steuer_prozent'] / 100), 4, ',', '.') ?> €</td>
+                        <td style="text-align:right"><?= number_format(Positionsrechnung::ausPosition($p)['einzel_brutto'], 2, ',', '.') ?> €</td>
                     <?php endif; ?>
                     <?php if (in_array($preisanzeige, ['netto', 'beides'])): ?>
                         <td style="text-align:right"><?= number_format((float)$p['einzelpreis_netto'], 4, ',', '.') ?> €</td>
@@ -559,7 +558,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?= $p['rabatt_prozent'] > 0 ? number_format($p['rabatt_prozent'], 1, ',', '.') . ' %' : '—' ?>
                     </td>
                     <?php if (in_array($preisanzeige, ['brutto', 'beides'])): ?>
-                        <td style="text-align:right;font-weight:600"><?= number_format((float)$p['gesamtpreis_netto'] * (1 + $p['steuer_prozent'] / 100), 2, ',', '.') ?> €</td>
+                        <td style="text-align:right;font-weight:600"><?= number_format(Positionsrechnung::ausPosition($p)['brutto'], 2, ',', '.') ?> €</td>
                     <?php endif; ?>
                     <?php if (in_array($preisanzeige, ['netto', 'beides'])): ?>
                         <td style="text-align:right;font-weight:600"><?= number_format((float)$p['gesamtpreis_netto'], 2, ',', '.') ?> €</td>

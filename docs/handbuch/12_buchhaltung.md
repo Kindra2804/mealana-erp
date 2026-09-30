@@ -78,6 +78,19 @@ Legt fest, welches Konto beim Export für welche Zahlungsart (bar, Bank, PayPal,
 **Buchungslogik kurz erklärt:**
 - Kassenverkäufe + "einfache" Auftrags-Zahlarten (bar, Karte, PayPal, Vorkasse, Nachnahme): Erlös + Umsatzsteuer werden sofort gegen das Zahlungsmittel-Konto gebucht.
 - Rechnung: Erlös + Umsatzsteuer werden zum Auftragsdatum gegen das individuelle Kundenkonto (Debitorenkonto) gebucht. Der spätere Zahlungseingang ist eine eigene, zweite Buchung (Bank gegen Kundenkonto).
-- Gutschein, gemischte Zahlarten: bisher zu selten für eine verlässliche automatische Buchung — tauchen als Hinweis auf und werden von Hand gebucht.
+- Versandkosten: eigener Erlös (Artikelgruppe "Versandkosten") mit dem Steuersatz der überwiegenden Leistung.
+- Gutscheine laufen über das Anzahlungskonto **3230**: Verkauf = Anzahlung (keine USt), Einlösung = Zahlung vom Konto 3230. Bei Online-Aufträgen wird die Einlösung als Umbuchung Bank → 3230 gebucht.
+- Gemischte Zahlung an der Kasse (Bar + Karte oder Gutschein + Rest): Der Bon wird **anteilig** aufgeteilt — jede Warengruppe im Verhältnis der Zahlungsanteile auf Kassa, Bank und 3230. Bei Bar + Karte zählt nur der Baranteil abzüglich Rückgeld.
+- Kasse-Aufträge und importierte JTL-Altaufträge sind nicht nochmal im Export (Kassenumsatz steckt schon in den Bons, JTL-Altdaten wurden damals in JTL gebucht).
+
+### Zahlungs-Kontrolle
+
+**Navigation:** Buchhaltung → Zahlungs-Kontrolle
+
+Zeigt für einen Zeitraum die Kassenbons und Aufträge mit ihren Zahlungen und daneben, wie der Export sie auf die Konten verteilt — zum Gegenprüfen vor der Übergabe an den Steuerberater.
+
+- Standardmäßig nur Belege mit **gemischter Zahlung, Gutschein oder Differenz**; Haken „alle Belege zeigen" für die komplette Liste.
+- **Orange markiert** = Differenz: bei Bons weicht die Summe der Positionen oder der Zahlungen vom Bon-Betrag ab, bei Aufträgen ist ein als „bezahlt" markierter Auftrag nicht voll gedeckt (Offen = Betrag − Gutschein − Zahlungen) oder überzahlt.
+- Unten die **Summe je Konto** der aufgelisteten Belege.
 
 **Wichtig beim allerersten Export:** Vor dem ersten "scharfen" DATEV-Import unbedingt mit dem Steuerberater eine Testdatei abstimmen — DATEV-Programmversionen unterscheiden sich in Detail-Spalten, die hier bewusst nicht alle abgedeckt sind.

@@ -85,6 +85,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '💳', 'label' => 'Zahlungsart-Konten', 'href' => BASE_PATH . '/buchhaltung/zahlungsart_konten.php'],
         ['icon' => '🧾', 'label' => 'Steuer-Konten',    'href' => BASE_PATH . '/buchhaltung/steuerklassen_konten.php'],
         ['icon' => '📤', 'label' => 'DATEV/CSV-Export', 'href' => BASE_PATH . '/buchhaltung/export.php'],
+        ['icon' => '🔍', 'label' => 'Zahlungs-Kontrolle', 'href' => BASE_PATH . '/buchhaltung/zahlungskontrolle.php'],
     ],
     'einstellungen' => [
         ['icon' => '🏢', 'label' => 'Firma',       'href' => BASE_PATH . '/einstellungen/index.php?tab=firma'],

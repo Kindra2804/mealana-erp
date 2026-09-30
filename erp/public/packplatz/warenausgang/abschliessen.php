@@ -297,7 +297,7 @@ $nachnahmeBetrag = null;
 if (($auftrag['zahlungsart'] ?? '') === 'nachnahme') {
     $warenwertBrutto = 0.0;
     foreach ($gelieferteFuerPdf as $gp) {
-        $warenwertBrutto += (float)$gp['gesamtpreis_netto'] * (1 + (float)$gp['steuer_prozent'] / 100);
+        $warenwertBrutto += Positionsrechnung::ausPosition($gp)['brutto'];
     }
     $stmtAnzahl = $db->prepare("SELECT COUNT(*) FROM auftrag_lieferungen WHERE auftrag_id = ?");
     $stmtAnzahl->execute([$auftragId]);

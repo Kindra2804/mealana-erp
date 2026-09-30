@@ -257,6 +257,18 @@ class ShopBestellungSyncService
         }
     }
 
+    /** Rastet einen errechneten Satz (z.B. 20,03) auf den nächsten Satz aus steuerklassen ein (max. 0,5 %-Punkte daneben). */
+    private function echterSteuersatz(float $roh): float
+    {
+        static $saetze = null;
+        $saetze ??= array_map('floatval', Database::getInstance()->query("SELECT DISTINCT satz FROM steuerklassen")->fetchAll(PDO::FETCH_COLUMN));
+        $best = null;
+        foreach ($saetze as $s) {
+            if ($best === null || abs($s - $roh) < abs($best - $roh)) $best = $s;
+        }
+        return ($best !== null && abs($best - $roh) <= 0.5) ? $best : round($roh, 2);
+    }
+
     private function findeShop(int $shopId): ?array
     {
         foreach ($this->repo->findAktiveShops() as $s) {
@@ -710,6 +722,11 @@ class ShopBestellungSyncService
             $subtotal = (float)($item['subtotal'] ?? $item['total'] ?? 0);
             $total    = (float)($item['total'] ?? 0);
             $totalTax = (float)($item['total_tax'] ?? 0);
+            $subtotalTax = (float)($item['subtotal_tax'] ?? $totalTax);
+            // Aus gerundeten Beträgen errechnet ergibt z.B. 20,03 % -- auf den nächsten
+            // echten Steuersatz einrasten, sonst findet der Buchhaltungsexport kein
+            // USt-Konto und der Auftragsbetrag weicht um Cents ab (Fund 2026-09-30)
+            $satz = $total > 0 ? $this->echterSteuersatz($totalTax / $total * 100) : ($totalTax > 0 ? 20.0 : 0.0);
 
             $konfig = $this->leseKonfigurationAusLineItem($item);
 
@@ -736,8 +753,12 @@ class ShopBestellungSyncService
                 // zum Bestellzeitpunkt einen bestimmten Preis bezahlt, der
                 // muss eingefroren bleiben (passt zur "bezeichnung/ean
                 // eingefroren"-Philosophie von auftrag_positionen).
-                'einzelpreis_netto' => $menge > 0 ? round($total / $menge, 4) : 0,
-                'steuer_prozent'    => $total > 0 ? round($totalTax / $total * 100, 2) : 20,
+                // Einzelpreis aus dem BRUTTO vor Rabatt (subtotal + subtotal_tax) -- WC liefert
+                // nur centgerundete Netto-Zeilen (7,25 € → 6,04 netto → zurück 7,248 €). Vorher
+                // kam der Preis aus dem rabattierten total UND rabatt_prozent wurde zusätzlich
+                // gesetzt -> Coupon-Rabatt doppelt abgezogen (Fund 2026-09-30).
+                'einzelpreis_netto' => $menge > 0 ? Positionsrechnung::einzelNettoAusBrutto(($subtotal + $subtotalTax) / $menge, $satz) : 0,
+                'steuer_prozent'    => $satz,
                 'rabatt_prozent'    => $subtotal > 0 ? max(0, round((1 - $total / $subtotal) * 100, 2)) : 0,
                 'konfig_wert_ids'   => $konfig['wert_ids'],
                 'konfig_freitext'   => !empty($konfig['klartext']) ? implode("\n", $konfig['klartext']) : null,

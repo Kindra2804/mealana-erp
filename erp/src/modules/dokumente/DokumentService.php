@@ -254,8 +254,9 @@ class DokumentService
                 if ((int)$orig['id'] === $item['pos_id']) {
                     $p = $orig;
                     $p['menge']              = $item['menge'];
-                    $p['gesamtpreis_netto']  = round($item['einzelpreis_netto'] * $item['menge'] * (1 - ($orig['rabatt_prozent'] ?? 0) / 100), 4);
-                    $p['gesamtpreis_brutto'] = round($p['gesamtpreis_netto'] * (1 + $item['steuer_prozent'] / 100), 2);
+                    $z = Positionsrechnung::ausPosition($orig, (float)$item['menge']);
+                    $p['gesamtpreis_netto']  = $z['netto'];
+                    $p['gesamtpreis_brutto'] = $z['brutto'];
                     $gsPosi[] = $p;
                     break;
                 }
@@ -523,9 +524,9 @@ class DokumentService
             // Brutto-Preise für die B2C-Anzeige. Standen früher nur in berechneSummen(),
             // das auf einer KOPIE der Positionen arbeitet -- die Werte kamen nie im
             // Template an, B2C-Dokumente zeigten seit 25.06. pro Zeile 0,00 (Fund 2026-09-30).
-            $satz = (float)($pos['steuer_prozent'] ?? 0);
-            $pos['einzelpreis_brutto'] = round((float)($pos['einzelpreis_netto'] ?? 0) * (1 + $satz / 100), 2);
-            $pos['gesamtpreis_brutto'] = round((float)($pos['gesamtpreis_netto'] ?? 0) * (1 + $satz / 100), 2);
+            $z = Positionsrechnung::ausPosition($pos);
+            $pos['einzelpreis_brutto'] = $z['einzel_brutto'];
+            $pos['gesamtpreis_brutto'] = $z['brutto'];
         }
         unset($pos);
 
@@ -547,10 +548,11 @@ class DokumentService
         $steuerGesamt = 0.0;
 
         foreach ($positionen as $pos) {
-            $netto  = (float)($pos['gesamtpreis_netto'] ?? 0);
-            $satz   = (float)($pos['steuer_prozent']    ?? 0);
-            $steuer = round($netto * $satz / 100, 2);
-            $brutto = round($netto + $steuer, 2);
+            $z      = Positionsrechnung::ausPosition($pos);
+            $netto  = $z['netto'];
+            $satz   = (float)($pos['steuer_prozent'] ?? 0);
+            $steuer = $z['steuer'];
+            $brutto = $z['brutto'];
 
             $key = number_format($satz, 2);
             if (!isset($blöcke[$key])) {

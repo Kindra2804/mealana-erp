@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../../src/modules/auftraege/Positionsrechnung.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -95,7 +96,7 @@ foreach ($auftraege as $a) {
             // inkl. bereits gutgeschriebener Menge (Packplatz-Retoure/ERP-Gutschrift), damit die
             // Kasse sie nicht nochmal als Retoure anbietet
             'menge_retourniert'   => (float)($p['menge_retourniert'] ?? 0),
-            'einzelpreis_brutto'  => round((float)$p['einzelpreis_netto'] * (1 + (float)$p['steuer_prozent'] / 100), 4),
+            'einzelpreis_brutto'  => Positionsrechnung::einzelBrutto((float)$p['einzelpreis_netto'], (float)$p['steuer_prozent']),
             'steuer_prozent'      => (float)$p['steuer_prozent'],
             'rabatt_prozent'      => (float)$p['rabatt_prozent'],
         ];

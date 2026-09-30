@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../../src/modules/auftraege/Positionsrechnung.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/core/Database.php';
@@ -99,7 +100,7 @@ try {
     $bruttoGesamt = (float)($auftrag['bruttobetrag'] ?? 0);
 
     foreach ($rohdaten as $pos) {
-        $gesamtBrutto = round($pos['gesamtpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
+        $gesamtBrutto = Positionsrechnung::ausPosition($pos)['brutto'];
         $nettoGesamt += (float)$pos['gesamtpreis_netto'];
         $positionen[] = [
             'bezeichnung'  => $pos['bezeichnung'],

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../../src/modules/auftraege/Positionsrechnung.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
 
@@ -33,8 +34,7 @@ $vollstornoBetrag = 0.0;
 foreach ($positionen as $pos) {
     $offen = (int)$pos['menge'] - (int)($pos['menge_gutgeschrieben'] ?? 0);
     if ($offen <= 0) continue;
-    $einzelBruttoV = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-    $vollstornoBetrag += $offen * $einzelBruttoV * (1 - ($pos['rabatt_prozent'] ?? 0) / 100);
+    $vollstornoBetrag += Positionsrechnung::ausPosition($pos, $offen)['brutto'];
 }
 
 require_once __DIR__ . '/../includes/shell_top.php';
@@ -95,8 +95,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </thead>
             <tbody>
                 <?php foreach ($positionen as $i => $pos):
-                    $einzelBrutto = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-                    $gesamtBrutto = round($pos['gesamtpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
+                    $zeile        = Positionsrechnung::ausPosition($pos);
+                    $einzelBrutto = $zeile['einzel_brutto'];
+                    $gesamtBrutto = $zeile['brutto'];
                     // Bereits gutgeschriebene Menge (Kasse, Packplatz-Retoure, frühere
                     // Gutschrift) darf hier nicht nochmal gutgeschrieben werden.
                     $bereitsRetourniert = (int)($pos['menge_gutgeschrieben'] ?? 0);

@@ -203,7 +203,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#kunden">Kunden</a>
             <a href="#partner">Partner & Mietfächer</a>
             <a href="#buchhaltung">Buchhaltung</a>
-            <a href="#buchhaltung-export" class="sub">↳ DATEV/CSV-Export</a>
+            <a href="#buchhaltung-export" class="sub">↳ DATEV/CSV-Export + Zahlungs-Kontrolle</a>
             <a href="#inventur">Inventur</a>
             <a href="#einstellungen">Einstellungen</a>
             <a href="#einstellungen-mail" class="sub">↳ Mail / SMTP</a>
@@ -452,6 +452,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Zeitraum</strong> wählen (Von/Bis oder Schnellwahl Monat/Quartal/Jahr)</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Gelbe <strong>Hinweise</strong> prüfen — diese Positionen wurden NICHT automatisch gebucht und müssen von Hand nachgetragen werden</div></div>
             <div class="ba-step"><div class="ba-step-nr">4</div><div><strong>CSV</strong> (funktioniert überall) oder <strong>DATEV</strong> herunterladen und an den Steuerberater übergeben</div></div>
+            <p><strong>Gutscheine</strong> laufen über das Anzahlungskonto 3230 (Verkauf = Anzahlung ohne USt, Einlösung = Zahlung von 3230). <strong>Gemischte Kassenzahlungen</strong> (Bar + Karte, Gutschein + Rest) werden anteilig auf Kassa, Bank und 3230 aufgeteilt. Versandkosten werden als eigener Erlös mit dem Steuersatz der überwiegenden Leistung gebucht.</p>
+            <p><strong>Zahlungs-Kontrolle</strong> (Buchhaltung → Zahlungs-Kontrolle): listet Kassenbons und Aufträge mit ihren Zahlungen und der Konten-Aufteilung des Exports. Standard: nur gemischte Zahlungen, Gutscheine und Differenzen (orange) — Haken „alle Belege zeigen" für die ganze Liste. Unten die Summe je Konto.</p>
             <p style="color:#c2410c"><strong>Wichtig:</strong> Vor dem ersten echten DATEV-Import unbedingt eine Testdatei mit dem Steuerberater abstimmen.</p>
 
             <!-- INVENTUR -->

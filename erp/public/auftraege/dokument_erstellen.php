@@ -96,8 +96,9 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
             $bruttoGesamt = 0.0;
 
             foreach ($rohdaten as $pos) {
-                $einzelBrutto = round($pos['einzelpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
-                $gesamtBrutto = round($pos['gesamtpreis_netto'] * (1 + $pos['steuer_prozent'] / 100), 2);
+                $zeile        = Positionsrechnung::ausPosition($pos);
+                $einzelBrutto = $zeile['einzel_brutto'];
+                $gesamtBrutto = $zeile['brutto'];
                 $bruttoGesamt += $gesamtBrutto;
                 $nettoGesamt  += (float)$pos['gesamtpreis_netto'];
 

@@ -295,7 +295,7 @@ class AuftragService
             $rabatt      = (float)($pos['rabatt_prozent'] ?? 0);
             $steuer      = (float)($pos['steuer_prozent'] ?? 20);
 
-            $gesamtNetto = round($einzelNetto * $menge * (1 - $rabatt / 100), 2);
+            $gesamtNetto = Positionsrechnung::zeile($einzelNetto, $menge, $rabatt, $steuer)['netto'];
 
             $result[] = [
                 'artikel_id'        => (int)$pos['artikel_id'],
@@ -330,8 +330,9 @@ class AuftragService
         $netto  = 0.0;
         $steuer = 0.0;
         foreach ($positionen as $p) {
-            $netto  += $p['gesamtpreis_netto'];
-            $steuer += round($p['gesamtpreis_netto'] * $p['steuer_prozent'] / 100, 2);
+            $z = Positionsrechnung::ausPosition($p);
+            $netto  += $z['netto'];
+            $steuer += $z['steuer'];
         }
         if ($versandBrutto > 0) {
             $v = Versandsteuer::aufteilen($versandBrutto, $positionen);

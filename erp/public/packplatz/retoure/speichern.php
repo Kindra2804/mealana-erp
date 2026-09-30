@@ -169,7 +169,7 @@ if ($ergebnis === 'gutschrift' && $rechnungId) {
         $gsPfad  = file_exists($storagePfad) ? $storagePfad : null;
         // Brutto aus Positionen berechnen
         foreach ($rueckPositionen as $rp) {
-            $gsBrutto += round($rp['einzelpreis_netto'] * $rp['menge'] * (1 + $rp['steuer_prozent'] / 100), 2);
+            $gsBrutto += Positionsrechnung::ausPosition($rp)['brutto'];
         }
     }
 }

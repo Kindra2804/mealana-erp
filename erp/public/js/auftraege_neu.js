@@ -160,10 +160,14 @@ function aktualisiereAnzeige() {
         const preisInput = parseFloat(tr.querySelector('.pos-preis')?.value) || 0;
         const rabatt     = parseFloat(tr.querySelector('.pos-rabatt')?.value) || 0;
         const stProz     = parseFloat(tr.querySelector('.pos-steuer')?.value) || 20;
-        const preisNetto = window.PREISANZEIGE !== 'netto' ? preisInput / (1 + stProz / 100) : preisInput;
-        const n = menge * preisNetto * (1 - rabatt / 100);
+        // Gleiche Rechnung wie Positionsrechnung.php (Brutto-Basis): Zeilen-Brutto auf Cent,
+        // Netto daraus abgeleitet, MwSt = Differenz -- sonst weicht die Vorschau um Cents ab
+        const r2 = v => Math.round((v + Number.EPSILON) * 100) / 100;
+        const einzelBrutto = window.PREISANZEIGE !== 'netto' ? r2(preisInput) : r2(preisInput * (1 + stProz / 100));
+        const b = r2(einzelBrutto * menge * (1 - rabatt / 100));
+        const n = r2(b / (1 + stProz / 100));
         netto  += n;
-        steuer += n * stProz / 100;
+        steuer += b - n;
     });
     document.getElementById('summe-netto').textContent = fmtEur(netto);
     document.getElementById('summe-steuer').textContent = fmtEur(steuer);

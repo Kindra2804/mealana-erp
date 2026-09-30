@@ -747,7 +747,9 @@ class KassenService
             SELECT COALESCE(SUM(
                 CASE
                     WHEN zahlungsart = 'bar' THEN bruttobetrag
-                    WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(bar_betrag, 0)
+                    -- kombi: bar_betrag = GEGEBENER Betrag, Rückgeld abziehen; Gutschein+Rest bar speichert schon netto
+                    WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0) - COALESCE(rueckgeld, 0)
+                    WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0)
                     ELSE 0
                 END
             ), 0)
@@ -775,7 +777,7 @@ class KassenService
                 COALESCE(SUM(CASE WHEN zahlungsart = 'bar'           THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern'  THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'     THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
-                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_bar,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0) - COALESCE(rueckgeld, 0) WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_karte,
                 COALESCE(SUM(CASE WHEN storniert = 1                 THEN bruttobetrag ELSE 0 END), 0) AS storniert_betrag,
                 COUNT(CASE WHEN storniert = 1 THEN 1 END)         AS anzahl_stornos
@@ -814,7 +816,7 @@ class KassenService
                 COALESCE(SUM(CASE WHEN zahlungsart = 'bar'          THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'    THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
-                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0)     AS umsatz_kombi_bar,
+                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0) - COALESCE(rueckgeld, 0) WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0)     AS umsatz_kombi_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0)  AS umsatz_kombi_karte,
                 COALESCE(SUM(CASE WHEN storniert = 1                THEN bruttobetrag ELSE 0 END), 0) AS storniert_betrag,
                 COUNT(CASE WHEN storniert = 1 THEN 1 END)                                        AS anzahl_stornos,

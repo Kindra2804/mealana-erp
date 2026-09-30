@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/Positionsrechnung.php';
+
 /**
  * Versandsteuer – Steuersatz und Netto/MwSt-Aufteilung der Versandkosten.
  *
@@ -26,7 +28,10 @@ class Versandsteuer
             $satz = (float)($p['steuer_prozent'] ?? 0);
             if ($satz <= 0) continue;
             $key = number_format($satz, 2, '.', '');
-            $bruttoProSatz[$key] = ($bruttoProSatz[$key] ?? 0) + (float)($p['gesamtpreis_netto'] ?? 0) * (1 + $satz / 100);
+            $brutto = isset($p['einzelpreis_netto'], $p['menge'])
+                ? Positionsrechnung::ausPosition($p)['brutto']
+                : (float)($p['gesamtpreis_netto'] ?? 0) * (1 + $satz / 100);
+            $bruttoProSatz[$key] = ($bruttoProSatz[$key] ?? 0) + $brutto;
         }
         if (!$bruttoProSatz) return self::STANDARD_SATZ;
 
