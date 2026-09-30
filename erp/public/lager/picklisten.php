@@ -26,12 +26,16 @@ $auftraegeRaw = $db->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // Positionen pro Auftrag laden
+// Gutschein-Positionen sind nie etwas zum Packen (Code + PDF per Mail) --
+// Aufträge, die nur Gutscheine enthalten, erscheinen deshalb gar nicht.
 $posStmt = $db->prepare("
     SELECT p.artikel_id, p.bezeichnung,
            p.menge - COALESCE(p.menge_geliefert, 0) AS menge
     FROM auftrag_positionen p
+    LEFT JOIN artikel art ON art.id = p.artikel_id
     WHERE p.auftrag_id = :id
       AND p.menge - COALESCE(p.menge_geliefert, 0) > 0
+      AND COALESCE(art.ist_gutschein, 0) = 0
     ORDER BY p.sort_order, p.id
 ");
 
@@ -39,6 +43,7 @@ $auftraege = [];
 foreach ($auftraegeRaw as $a) {
     $posStmt->execute([':id' => $a['id']]);
     $a['positionen'] = $posStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (empty($a['positionen'])) continue;
     $auftraege[]     = $a;
 }
 

@@ -113,7 +113,7 @@ class ShopSyncRepository
             SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
                    a.vaterartikel_id, a.artikelnummer, a.name, a.kurzbeschreibung,
                    a.beschreibung, a.aktiv, a.hersteller_id, a.ist_hervorgehoben,
-                   a.ist_konfigurierbar, ash_vater.external_id AS vater_external_id
+                   a.ist_konfigurierbar, a.ist_gutschein, ash_vater.external_id AS vater_external_id
             FROM artikel_shops ash
             JOIN artikel a ON a.id = ash.artikel_id
             LEFT JOIN artikel_shops ash_vater
@@ -534,6 +534,15 @@ class ShopSyncRepository
         ");
         $stmt->execute(['artikel_id' => $artikelId]);
         return $stmt->fetch();
+    }
+
+    /** Einzelner Wert aus system_einstellungen, NULL wenn nicht gesetzt. */
+    public function findSystemEinstellung(string $schluessel): ?string
+    {
+        $stmt = $this->db->prepare("SELECT wert FROM system_einstellungen WHERE schluessel = ?");
+        $stmt->execute([$schluessel]);
+        $wert = $stmt->fetchColumn();
+        return ($wert !== false && $wert !== '') ? (string)$wert : null;
     }
 
     /** Globale Vorbelegung für das Download-Limit (system_einstellungen), NULL = unbegrenzt. */

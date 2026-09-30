@@ -219,6 +219,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#gutscheine-verkaufen" class="sub">↳ An der Kasse verkaufen</a>
             <a href="#gutscheine-bezahlen" class="sub">↳ Mit Gutschein bezahlen</a>
             <a href="#gutscheine-storno" class="sub">↳ Storno</a>
+            <a href="#gutscheine-shop" class="sub">↳ Online-Shop</a>
             <a href="#inventur">Inventur</a>
         </nav>
 
@@ -561,7 +562,7 @@ require_once __DIR__ . '/includes/shell_top.php';
 
             <!-- GUTSCHEINE -->
             <h2 id="gutscheine">Gutscheine <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
-            <p>Jeder Gutschein hat einen eigenen Code (<code>MEA-XXXX-XXXX-XXXX</code>), ist standardmäßig 10 Jahre gültig und beim Verkauf <strong>steuerfrei</strong> (Mehrzweckgutschein — die Umsatzsteuer fällt erst beim Einkauf damit an). Bei einer <strong>Teileinlösung</strong> wird der alte Code ungültig und der Kunde bekommt für den Rest einen neuen Code. Kauf/Einlösung im Online-Shop folgt noch.</p>
+            <p>Jeder Gutschein hat einen eigenen Code (<code>MEA-XXXX-XXXX-XXXX</code>), ist standardmäßig 10 Jahre gültig und beim Verkauf <strong>steuerfrei</strong> (Mehrzweckgutschein — die Umsatzsteuer fällt erst beim Einkauf damit an). Bei einer <strong>Teileinlösung</strong> wird der alte Code ungültig und der Kunde bekommt für den Rest einen neuen Code. Gutscheine sind an der Kasse und im Online-Shop einlösbar (siehe <a href="#gutscheine-shop">Online-Shop</a>).</p>
             <p><strong>Einmalig einrichten:</strong> Artikel mit <strong>Artikeltyp "Gutschein"</strong> und <strong>Artikelgruppe "4700 – Gutscheine"</strong> anlegen. Die Steuerklasse wird beim Speichern automatisch auf steuerfrei gesetzt, ein Preis ist nicht nötig.</p>
 
             <h3 id="gutscheine-verkaufen">An der Kasse verkaufen</h3>
@@ -585,6 +586,12 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Retoure als Gutschein:</strong> im Retour-Dialog <strong>🎁 Als Gutschein ausstellen</strong> statt Bargeld auszuzahlen.</p>
             <p><strong>Storno</strong> (Bon-Journal): ein auf dem Bon verkaufter Gutschein wird mitstorniert, solange er unbenutzt ist (sonst Warnung → manuell klären). Wurde mit Gutschein bezahlt, bekommt der Kunde den Betrag als neuen Code zurück.</p>
             <p><strong>Verwaltung:</strong> Verkauf → Gutscheine — Liste, manuell ausstellen, Historie jedes Codes inkl. Nachfolger-Codes, PDF, erneut versenden.</p>
+            <p><strong>Abfragen an der Kasse:</strong> ⚙ Menü → <strong>🔍 Gutschein abfragen</strong> — zeigt Status, Restguthaben, Gültigkeit und ggf. den Nachfolger-Code, ohne etwas zu buchen.</p>
+
+            <h3 id="gutscheine-shop">Online-Shop</h3>
+            <p><strong>Kaufen:</strong> Gutschein-Artikel im Shop ("ab 10,00 € – Betrag frei wählbar") → Betrag, "Selbst ausdrucken" oder "direkt an den Empfänger senden" (Name, E-Mail, optional Zustelldatum), Grußtext. Sobald die Bestellung bezahlt ist, legt das ERP beim nächsten Abgleich den Gutschein an und verschickt PDF + Mail.</p>
+            <p><strong>Einlösen:</strong> Jeder Gutschein (Kasse, ERP oder online gekauft) ist im Shop als Code einlösbar — wird <strong>nach der Steuer</strong> wie ein Zahlungsmittel abgezogen und deckt auch die <strong>Versandkosten</strong>. Bei Teileinlösung steht im Warenkorb "Rest … kommt per E-Mail als neuer Code", der Kunde bekommt ihn nach der Bestellung zugeschickt.</p>
+            <div class="ba-hint">💡 An der Kasse eingelöste oder stornierte Gutscheine werden im Shop beim nächsten Abgleich (spätestens nach 15 Minuten) ungültig. Die Codes im wp-admin (Germanized-"Wertgutscheine") verwaltet das ERP — dort nicht von Hand ändern.</div>
 
             <!-- INVENTUR -->
             <h2 id="inventur">Inventur <span class="ba-badge ba-badge-geplant">Geplant</span></h2>

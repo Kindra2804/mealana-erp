@@ -1,7 +1,7 @@
 # 14 — Gutscheine
 
-> **Fertig:** Gutschein-Artikel, Verwaltung im ERP, Verkauf und Einlösung an der Kasse, Retoure als Gutschein, Storno.
-> **Noch offen:** Kauf und Einlösung im Online-Shop (Checkout), Design-Vorlagen hochladen.
+> **Fertig:** Gutschein-Artikel, Verwaltung im ERP, Verkauf/Einlösung/Abfrage an der Kasse, Retoure als Gutschein, Storno, Kauf und Einlösung im Online-Shop.
+> **Noch offen:** Design-Vorlagen hochladen.
 
 ## Grundprinzip
 
@@ -50,6 +50,32 @@
 | Code storniert / abgelaufen / unbekannt | Rote Meldung, keine Einlösung möglich. |
 
 > Einen Gutschein kann man nicht mit einem Gutschein bezahlen.
+
+---
+
+## Gutschein abfragen (ohne Buchung)
+
+⚙ Menü → **🔍 Gutschein abfragen** → Code eintippen → **Abfragen**. Zeigt Status, ursprünglichen Wert, Restguthaben, Gültigkeit und Empfänger — und bei einem schon eingelösten Code den neuen Code, auf dem das Restguthaben liegt. Es wird nichts gebucht.
+
+---
+
+## Online-Shop
+
+**Gutschein kaufen:** Der Gutschein-Artikel erscheint im Shop mit "ab 10,00 € – Betrag frei wählbar". Auf der Produktseite wählt der Kunde:
+
+- **Betrag** (10 bis 1.000 €, Schnellbeträge 20/30/50/100 €)
+- **Selbst ausdrucken** (Gutschein kommt per Mail an den Käufer) oder **direkt an den Empfänger senden** (Name + E-Mail Pflicht, optional **Zustellung am** — z.B. zum Geburtstag)
+- **Grußtext** (optional)
+
+Sobald die Bestellung **bezahlt** ist, legt das ERP beim nächsten Shop-Abgleich den Gutschein an und verschickt PDF + Mail (bei gewähltem Zustelldatum an diesem Tag). Der Gutschein-Artikel ist virtuell (kein Versand) und steuerfrei.
+
+**Gutschein einlösen:** Jeder Gutschein — egal ob an der Kasse, im ERP oder online gekauft — ist im Shop als Gutschein-Code einlösbar. Er wird wie ein Zahlungsmittel **nach der Steuer** abgezogen (Ware bleibt voll versteuert) und deckt auch die **Versandkosten**. Im Warenkorb steht er als "Gutschein MEA-…".
+
+- **Teileinlösung:** Ist der Gutschein mehr wert als die Bestellung, steht im Warenkorb "Rest … kommt per E-Mail als neuer Code". Nach der Bestellung bekommt der Kunde den Restbetrag als neuen Code zugeschickt.
+- An der Kasse eingelöste oder stornierte Gutscheine werden im Shop beim nächsten Abgleich (spätestens nach 15 Minuten) ungültig gemacht.
+- Gutscheine können auch online nicht mit einem Gutschein bezahlt werden.
+
+> Technik: Im Shop ist jeder Code ein Germanized-"Wertgutschein" (vom ERP angelegt und gepflegt — **im wp-admin nicht von Hand ändern**). Online einlösbar sind Kasse-/ERP-Gutscheine im Shop aus der Einstellung `gutschein_shop_id`.
 
 ---
 

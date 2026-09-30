@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 40a29a40-0c3b-483d-82e6-51045de0676d
-  modified: 2026-09-30T13:28:36.754Z
+  modified: 2026-09-30T13:58:08.829Z
 ---
 
 ## 2026-09-30: Wiedereinstieg -- Lückenfund + neue Reihenfolge A/B/C
@@ -25,7 +25,15 @@ Jacky legte Artikel GUTSCHEIN (#27478) an und konnte `ist_gutschein` nirgends se
   - **Bekannte Lücken:** Kasse-Gutscheine werden NICHT nach WooCommerce gespiegelt (kein shop_id) → online nicht einlösbar, gehört zu C. Offline-Kasse kann Gutscheine nicht prüfen. Storno-Hinweis nur per alert.
   - **Nachtrag (Jacky-Wunsch, gleicher Tag):** ⚙ Menü → "🔍 Gutschein abfragen" = reine Auskunft ohne Buchung (Status, Wert, Restguthaben, gültig bis, Empfänger, Nachfolger-Code). `gutscheine/pruefen.php?info=1` liefert immer alle Daten, auch für eingelöste/abgelaufene/stornierte Codes. Getestet (aktiv/teilweise mit Nachfolger/unbekannt, Rollback).
   - **Committed 2026-09-30** zusammen mit Chargen-Fix + Retouren-Zusammenführung, Push stand noch aus.
-- **C (als Nächstes):** Shop-Checkout-Snippet + Spiegelung von Kasse-/ERP-Gutscheinen in alle Shops.
+- **C IN ARBEIT 2026-09-30 (gebaut, NICHT committed, E2E-Test offen):**
+  - **Schlüsselfund:** Germanized (aktiv auf indra-design.at) hat am Coupon "Wertgutschein?" (`is_voucher=yes` Meta) = Mehrzweckgutschein: Abzug NACH Steuer als negative Gebühr "Wertgutschein: code" (Ware bleibt voll versteuert). `free_shipping=true` heißt bei Germanized-Wertgutscheinen "deckt Versand" (nicht Gratisversand, `voucher_includes_shipping_costs`). Per Store-API gegen indra-design verifiziert: 500€ deckt 105,15 inkl. Versand, 100€ zieht exakt 100 ab. → KEINE eigene Rabatt-/Versandlogik nötig (alter Plan "eigene Verrechnung" überholt). Coupon-Zeile selbst hat discount=0.
+  - Migration 180: `gutscheine.woo_sync_faellig` + Einstellung `gutschein_shop_id`=1 (bewusst EIN Shop, sonst Doppel-Einlösung über Shops möglich). `GutscheinService::markiereShopSync()` bei Erstellen/Einlösen/Ablauf/Storno; `syncShopCoupons($shop)` im `cron/shop_sync.php` NACH Bestellungs-Sync: einlösbar → Coupon anlegen/aktualisieren (fixed_cart, amount=restguthaben, usage_limit 1, free_shipping, is_voucher), sonst Coupon löschen (`WooCommerceClient::loescheCoupon`). Direkt-Spiegel in erstelleGutschein entfernt (hätte Kasse bei Netzproblem blockiert). Fenster bis zu 15 min (Cron-Takt) zwischen Kassen-Einlösung und Löschung im Shop — akzeptiert.
+  - Bestellungs-Sync: Betrag aus fee_lines (Name enthält Code), Fallback coupon discount+tax; `auftraege.gutschein_id/gutschein_betrag` gesetzt; Restcode nach Online-Teileinlösung per `versende($id, $billingEmail)`. **2 Bugs behoben:** Online-Kauf "selbst ausdrucken" bekam nie Mail (kein kunden_id übergeben, versende() ohne Ersatz-Adresse); Restcode nach Online-Teileinlösung wurde nie verschickt.
+  - Produkt-Sync (`ist_gutschein` jetzt in findFaelligeArtikel): virtual, tax_status none, manage_stock false, regular_price = gutschein_mindestbetrag_shop, Meta `_mealana_gutschein_artikel` {"mindestbetrag":10}.
+  - Snippet `shop/wp-snippets/gutschein.php`: Preis "ab 10 € – frei wählbar", Formular (Betrag 10–1000, Schnellbeträge, selbst_ausdrucken/versenden, Empfänger, Zustellung am ≤1 Jahr, Grußtext), Validierung, Cart-Preis, `_mealana_gutschein`-JSON an Bestellzeile, Sperre Gutschein-mit-Gutschein (woocommerce_coupon_is_valid), Germanized-Gebühr umbenannt "Gutschein MEA-…" (`woocommerce_gzd_voucher_name`) + Rest-Hinweis in woocommerce_after_calculate_totals. **Von Jacky selbst in WPCode eingespielt** (mein Playwright-Einspielen scheiterte: Aktiv-Schalter + Speichern-Navigation; WPCode-ID noch unbekannt → README-Tabelle nachtragen).
+  - Handbuch 14_gutscheine.md + bedienungsanleitung.php (#gutscheine-shop, Abfrage).
+  - **E2E-Test im Testshop bestanden 2026-09-30** (Playwright, 14 Punkte, ohne Bestellung: Formular, Validierung, Preis, virtuell/steuerfrei, Sperre, 58€-Code auf 21,90-Bestellung → 0,00 inkl. Versand + "Rest 36,10 € kommt per E-Mail"; ERP-Rückweg per Reflection-Test mit Rollback). Snippet WPCode-ID 34188, committed. Pickliste blendet Gutschein-Positionen aus, reine Gutschein-Aufträge werden abgeschlossen.
+  - **Offen:** echte Testbestellung durch Jacky (bezahlen → Gutschein+Mail), Rechnung zeigt "bezahlt mit Gutschein" noch nicht (auftraege.gutschein_betrag wird in keinem Template genutzt), Design-Vorlagen, commit+push.
 - Offene Frage an Babsi: Gruppe hängt an Erlöskonto 4700, Babsi bucht laut Notiz auf 3er-Konto "Anzahlung ohne Steuer" -- richtige Nummer klären.
 
 ## ✅ Baustufe 1 GEBAUT 2026-08-29: Backend + ERP-UI komplett, getestet

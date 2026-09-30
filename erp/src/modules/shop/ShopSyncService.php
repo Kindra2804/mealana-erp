@@ -809,6 +809,28 @@ class ShopSyncService
             unset($payload['stock_quantity']);
         }
 
+        // Gutschein-Artikel (Artikeltyp GUTSCHEIN): virtuell (kein Versand), steuerfrei
+        // (Mehrzweckgutschein -- USt erst bei Einlösung), immer verfügbar. Der Betrag wird
+        // im Shop frei gewählt (WPCode-Snippet "MeaLana Gutschein", erkennt das Produkt
+        // am Meta _mealana_gutschein_artikel) -- regular_price ist nur der Mindestbetrag
+        // als "ab"-Anzeigepreis, der Warenkorb setzt den gewählten Betrag.
+        if (!empty($artikel['ist_gutschein'])) {
+            $mindest = (float)($this->repo->findSystemEinstellung('gutschein_mindestbetrag_shop') ?? 10);
+            $payload['virtual']       = true;
+            $payload['tax_status']    = 'none';
+            $payload['manage_stock']  = false;
+            $payload['stock_status']  = 'instock';
+            $payload['regular_price'] = number_format($mindest, 2, '.', '');
+            $payload['sale_price']    = '';
+            unset($payload['stock_quantity']);
+            $payload = $this->mergeMetaData($payload, [
+                'meta_data' => [[
+                    'key'   => '_mealana_gutschein_artikel',
+                    'value' => json_encode(['mindestbetrag' => $mindest]),
+                ]],
+            ]);
+        }
+
         // Preis-Matrix fürs künftige Shop-Frontend -- IMMER als meta_data mitschicken, auch
         // leer wenn nicht (mehr) konfigurierbar: WooCommerce räumt nie mitgeschickte Felder
         // beim Abschalten nie von selbst auf, sonst bliebe eine tote Matrix im Shop stehen

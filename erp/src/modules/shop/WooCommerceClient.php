@@ -131,6 +131,12 @@ class WooCommerceClient
         return $this->request('PUT', '/coupons/' . $externalId, [], $daten);
     }
 
+    /** Löscht einen Coupon endgültig (force=true, kein Papierkorb) -- z.B. wenn ein Gutschein nicht mehr einlösbar ist. */
+    public function loescheCoupon(int $externalId): array
+    {
+        return $this->request('DELETE', '/coupons/' . $externalId, ['force' => 'true']);
+    }
+
     public function sucheCouponNachCode(string $code): ?array
     {
         $treffer = $this->request('GET', '/coupons', ['code' => $code]);

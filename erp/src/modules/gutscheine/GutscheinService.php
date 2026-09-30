@@ -93,58 +93,134 @@ class GutscheinService
             'code' => $code, 'betrag' => $betrag, 'kanal' => $daten['kanal_erstellt'] ?? 'manuell',
         ], $benutzerId);
 
-        // WC-Spiegelung ist best-effort -- ein Netzwerkfehler darf die eigentliche
-        // Gutschein-Erstellung nicht verhindern, der Code funktioniert in der Kasse
-        // in jedem Fall sofort. Manueller Retry über spiegleZuWooCommerce() möglich.
-        if (!empty($daten['shop_id'])) {
-            try {
-                $this->spiegleZuWooCommerce($id, (int)$daten['shop_id']);
-            } catch (Throwable $e) {
-                Logger::log('gutschein.wc_spiegel_fehlgeschlagen', 'gutscheine', $id, [
-                    'fehler' => $e->getMessage(),
-                ], $benutzerId, 'warn');
-            }
-        }
+        // Shop-Spiegel NICHT direkt hier (hätte die Kasse bei langsamer/fehlender
+        // Internetverbindung blockiert) -- nur als fällig markieren, der Shop-Sync-Cron
+        // legt den Coupon an (syncShopCoupons()). Der Code funktioniert an der Kasse sofort.
+        $this->markiereShopSync($id);
 
         return ['erfolg' => true, 'id' => $id, 'code' => $code];
     }
 
-    /** Legt den Coupon in WooCommerce an ODER aktualisiert ihn (z.B. nach Teileinlösung). */
-    public function spiegleZuWooCommerce(int $gutscheinId, int $shopId): void
+    /** Jede Wertänderung (Ausstellung, Einlösung, Storno) -> Coupon im Shop beim nächsten Cron-Lauf anpassen. */
+    public function markiereShopSync(int $gutscheinId): void
+    {
+        $this->db->prepare("UPDATE gutscheine SET woo_sync_faellig = 1 WHERE id = ?")->execute([$gutscheinId]);
+    }
+
+    /** Shop, in dem ein Gutschein online einlösbar ist: eigene shop_id, sonst Einstellung gutschein_shop_id. */
+    public function shopIdFuer(array $gutschein): ?int
+    {
+        if (!empty($gutschein['shop_id'])) return (int)$gutschein['shop_id'];
+        $id = (int)($this->ladeEinstellung('gutschein_shop_id') ?? 0);
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * Cron (cron/shop_sync.php): gleicht alle fälligen Gutscheine dieses Shops mit
+     * WooCommerce ab. Einlösbar -> Coupon anlegen/Betrag aktualisieren; nicht (mehr)
+     * einlösbar (eingelöst, Rest auf neuen Code übertragen, storniert, abgelaufen) ->
+     * Coupon löschen, damit er online nicht mehr verwendet werden kann.
+     *
+     * @return array{angelegt:int, aktualisiert:int, geloescht:int, fehler:int}
+     */
+    public function syncShopCoupons(array $shop): array
+    {
+        $zahl = ['angelegt' => 0, 'aktualisiert' => 0, 'geloescht' => 0, 'fehler' => 0];
+        $client = new WooCommerceClient($shop['wc_url'], $shop['wc_key'], $shop['wc_secret']);
+        $standardShop = (int)($this->ladeEinstellung('gutschein_shop_id') ?? 0);
+
+        $stmt = $this->db->prepare("
+            SELECT id FROM gutscheine
+            WHERE woo_sync_faellig = 1
+              AND (shop_id = :shop OR (shop_id IS NULL AND :standard = :shop2))
+            ORDER BY id
+            LIMIT 200
+        ");
+        $stmt->execute(['shop' => (int)$shop['id'], 'standard' => $standardShop, 'shop2' => (int)$shop['id']]);
+
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) {
+            try {
+                $ergebnis = $this->spiegleZuWooCommerce((int)$id, $client);
+                $zahl[$ergebnis]++;
+                $this->db->prepare("UPDATE gutscheine SET woo_sync_faellig = 0 WHERE id = ?")->execute([(int)$id]);
+            } catch (Throwable $e) {
+                $zahl['fehler']++;
+                Logger::log('gutschein.wc_spiegel_fehlgeschlagen', 'gutscheine', (int)$id, [
+                    'shop' => $shop['slug'], 'fehler' => $e->getMessage(),
+                ], $this->jarvisId, 'warn');
+            }
+        }
+        return $zahl;
+    }
+
+    /**
+     * Legt den Coupon in WooCommerce an, aktualisiert ihn oder löscht ihn (siehe
+     * syncShopCoupons()). Gespiegelt wird als Germanized-"Wertgutschein":
+     * is_voucher=yes -> Einlösung als Zahlungsmittel NACH Steuer (Mehrzweckgutschein,
+     * Ware bleibt voll versteuert); free_shipping=true bedeutet bei Germanized-Wert-
+     * gutscheinen "deckt auch Versandkosten" (NICHT Gratisversand) -- beides am
+     * 2026-09-30 per Store-API gegen indra-design.at verifiziert. usage_limit=1: siehe
+     * Klassenkommentar (Teileinlösung erzeugt immer einen neuen Code).
+     *
+     * @return string 'angelegt'|'aktualisiert'|'geloescht'
+     */
+    public function spiegleZuWooCommerce(int $gutscheinId, WooCommerceClient $client): string
     {
         $gutschein = $this->repo->findById($gutscheinId);
         if (!$gutschein) {
             throw new RuntimeException("Gutschein $gutscheinId nicht gefunden.");
         }
 
-        $shop = $this->db->prepare("SELECT * FROM shops WHERE id = :id");
-        $shop->execute(['id' => $shopId]);
-        $shop = $shop->fetch(PDO::FETCH_ASSOC);
-        if (!$shop || empty($shop['wc_url'])) {
-            return; // Shop hat keine WooCommerce-Anbindung -- nichts zu spiegeln
+        $einloesbar = $gutschein['status'] === 'aktiv'
+            && (float)$gutschein['restguthaben'] > 0
+            && ($gutschein['gueltig_bis'] === null || $gutschein['gueltig_bis'] >= date('Y-m-d'));
+
+        if (!$einloesbar) {
+            if (!empty($gutschein['woo_coupon_id'])) {
+                try {
+                    $client->loescheCoupon((int)$gutschein['woo_coupon_id']);
+                } catch (WooCommerceNotFoundException $e) {
+                    // schon weg (z.B. im wp-admin gelöscht) -- Ziel erreicht
+                }
+                $this->repo->updateWooCouponId($gutscheinId, null);
+            }
+            return 'geloescht';
         }
 
-        $client = new WooCommerceClient($shop['wc_url'], $shop['wc_key'], $shop['wc_secret']);
-
         $payload = [
-            'code'          => $gutschein['code'],
-            'discount_type' => 'fixed_cart',
-            'amount'        => number_format((float)$gutschein['restguthaben'], 2, '.', ''),
-            'usage_limit'   => 1,
+            'code'           => $gutschein['code'],
+            'discount_type'  => 'fixed_cart',
+            'amount'         => number_format((float)$gutschein['restguthaben'], 2, '.', ''),
+            'usage_limit'    => 1,
             'individual_use' => false,
-            'description'   => 'MeaLana Gutschein ' . $gutschein['code'],
-            'date_expires'  => $gutschein['gueltig_bis'],
+            'free_shipping'  => true,
+            'description'    => 'MeaLana Gutschein ' . $gutschein['code'] . ' (vom ERP verwaltet — nicht hier ändern)',
+            'date_expires'   => $gutschein['gueltig_bis'],
+            'meta_data'      => [['key' => 'is_voucher', 'value' => 'yes']],
         ];
 
         if (!empty($gutschein['woo_coupon_id'])) {
-            $client->aktualisiereCoupon((int)$gutschein['woo_coupon_id'], $payload);
-            return;
+            try {
+                $client->aktualisiereCoupon((int)$gutschein['woo_coupon_id'], $payload);
+                return 'aktualisiert';
+            } catch (WooCommerceNotFoundException $e) {
+                $this->repo->updateWooCouponId($gutscheinId, null); // im Shop gelöscht -> neu anlegen
+            }
+        }
+
+        // Code existiert im Shop evtl. schon (z.B. Anlage lief, Antwort ging verloren)
+        $vorhanden = $client->sucheCouponNachCode($gutschein['code']);
+        if ($vorhanden) {
+            $client->aktualisiereCoupon((int)$vorhanden['id'], $payload);
+            $this->repo->updateWooCouponId($gutscheinId, (int)$vorhanden['id']);
+            return 'aktualisiert';
         }
 
         $ergebnis = $client->erstelleCoupon($payload);
         if (!empty($ergebnis['id'])) {
             $this->repo->updateWooCouponId($gutscheinId, (int)$ergebnis['id']);
         }
+        return 'angelegt';
     }
 
     /**
@@ -184,6 +260,7 @@ class GutscheinService
         // "Restguthaben" angezeigt -- genau die Verwirrung, die beim
         // Support-Anruf "mein Code funktioniert nicht" für Chaos sorgen würde.
         $this->repo->updateRestguthabenUndStatus((int)$gutschein['id'], 0.0, $neuerStatus);
+        $this->markiereShopSync((int)$gutschein['id']); // alter Code darf online nicht mehr gelten
         $this->repo->insertTransaktion([
             'gutschein_id'  => $gutschein['id'],
             'auftrag_id'    => $auftragId,
@@ -240,7 +317,12 @@ class GutscheinService
      * E-Mail-Adresse (z.B. rein manuell erstellter Gutschein ohne Kunde) wird
      * nur das PDF erzeugt, kein Fehler -- Kasse übergibt dann direkt ausgedruckt.
      */
-    public function versende(int $gutscheinId): array
+    /**
+     * @param ?string $ersatzEmail Mailziel, wenn weder Empfänger (bei "versenden") noch ein
+     *        Käufer-Kundendatensatz mit E-Mail bekannt ist -- z.B. Rechnungs-E-Mail einer
+     *        Shop-Bestellung (Gast-Kauf "selbst ausdrucken", Restcode nach Online-Teileinlösung).
+     */
+    public function versende(int $gutscheinId, ?string $ersatzEmail = null): array
     {
         $gutschein = $this->repo->findById($gutscheinId);
         if (!$gutschein) {
@@ -259,6 +341,9 @@ class GutscheinService
         } elseif ($kaeufer && !empty($kaeufer['email'])) {
             $zielEmail = $kaeufer['email'];
             $kaeuferName = null; // an sich selbst -- kein "X hat dir geschenkt"-Text nötig
+        } elseif ($ersatzEmail !== null && filter_var($ersatzEmail, FILTER_VALIDATE_EMAIL)) {
+            $zielEmail = $ersatzEmail;
+            $kaeuferName = null;
         } else {
             return ['erfolg' => true, 'versendet' => false]; // kein Mailziel bekannt, kein Fehler
         }
@@ -324,6 +409,7 @@ class GutscheinService
         }
         if ($gutschein['gueltig_bis'] !== null && $gutschein['gueltig_bis'] < date('Y-m-d')) {
             $this->repo->updateRestguthabenUndStatus((int)$gutschein['id'], (float)$gutschein['restguthaben'], 'abgelaufen');
+            $this->markiereShopSync((int)$gutschein['id']);
             return ['erfolg' => false, 'fehler' => ['Dieser Gutschein ist abgelaufen.']];
         }
         if ((float)$gutschein['restguthaben'] <= 0) {
@@ -364,6 +450,7 @@ class GutscheinService
                     && abs((float)$t['restguthaben'] - (float)$t['g_betrag']) < 0.005;
                 if ($unangetastet) {
                     $this->repo->storniere((int)$t['gutschein_id']);
+                    $this->markiereShopSync((int)$t['gutschein_id']);
                     $this->repo->insertTransaktion([
                         'gutschein_id'  => $t['gutschein_id'],
                         'auftrag_id'    => null,

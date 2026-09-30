@@ -1,6 +1,6 @@
 # Memory Index
 
-- [Gutschein-Modul](project_gutscheine.md) — 2026-09-30: A (Artikeltyp) + B (Kasse verkaufen/bezahlen/Storno, Handbuch) gebaut, nicht committed, Klicktests erledigt+gepusht; in Arbeit C = Shop-Snippet + WC-Spiegelung
+- [Gutschein-Modul](project_gutscheine.md) — 2026-09-30: A+B committed+gepusht; C (Shop via Germanized-Wertgutschein, Coupon-Spiegel per Cron, Snippet 34188) fertig+getestet+committed; offen: echte Testbestellung, Rechnungsanzeige Gutschein, Design-Vorlagen
 - [🟢 BUG: Kasse Chargen-Popup leer](bug_kasse_charge_unbekannt.md) — BEHOBEN 2026-09-30: Status "unbekannt" (JTL-Import) + Varianten/Suche ohne Chargen-Liste; Migration 178 + Importskript korrigiert; DokumentService-Gutschrift-Nebenbefund durch Retouren-Zusammenführung erledigt
 - [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — 2026-09-30 gebaut, nicht committed: Kasse/Packplatz/ERP-Gutschrift mit gemeinsamen Zählern (retourniert/gutgeschrieben), Zustand→Zustandsartikel (-RET/-GEB/-BSC, nie Shop), Chargen aus Verkauf vorbefüllt
 - [Konfigurator-Modul](project_konfigurator_modul.md) — ✅ 2026-08-29 BEHOBEN: Testbestellung verlor 5/7 Konfig-Werte (veraltete Shop-Preis-Matrix), Klartext-Fallback+Sync-Trigger gebaut, jetzt auf Pickliste/Detail/Rechnung/AB sichtbar; WP-Session-Cookie-Problem beim Warenkorb weiter offen

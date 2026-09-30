@@ -253,13 +253,16 @@ class ShopBestellungSyncService
      */
     private function verarbeiteGutscheinEinloesungen(array $order, int $auftragId): void
     {
+        $billingEmail = trim((string)($order['billing']['email'] ?? '')) ?: null;
+
         foreach ($order['coupon_lines'] ?? [] as $couponLine) {
             $code = strtoupper(trim((string)($couponLine['code'] ?? '')));
-            if ($code === '' || !$this->gutscheinRepo->findByCode($code)) {
+            $gutschein = $code !== '' ? $this->gutscheinRepo->findByCode($code) : false;
+            if (!$gutschein) {
                 continue; // kein Gutschein-Code (z.B. normaler Rabatt-Coupon)
             }
 
-            $betrag = (float)($couponLine['discount'] ?? 0);
+            $betrag = $this->eingeloesterGutscheinBetrag($order, $couponLine, $code);
             if ($betrag <= 0) {
                 continue;
             }
@@ -271,13 +274,53 @@ class ShopBestellungSyncService
                 ], $this->jarvisId, 'warn');
                 continue;
             }
+
+            // Gutschein ist ein Zahlungsmittel -> am Auftrag festhalten (Positionen bleiben
+            // zum vollen Preis, Germanized zieht den Gutschein erst nach Steuer ab)
+            Database::getInstance()->prepare("
+                UPDATE auftraege SET gutschein_id = ?, gutschein_betrag = gutschein_betrag + ? WHERE id = ?
+            ")->execute([(int)$gutschein['id'], $betrag, $auftragId]);
+
             if (!empty($ergebnis['neuer_code'])) {
                 Logger::log('gutschein.teileinloesung_neuer_code', 'auftraege', $auftragId, [
                     'alter_code' => $code, 'neuer_code' => $ergebnis['neuer_code'],
                     'restguthaben' => $ergebnis['restguthaben'],
                 ], $this->jarvisId);
+                // Checkout-Hinweis verspricht es: Restguthaben kommt als neuer Code per Mail --
+                // an den ursprünglichen Empfänger, sonst an die E-Mail dieser Bestellung
+                $neu = $this->gutscheinRepo->findByCode($ergebnis['neuer_code']);
+                if ($neu) {
+                    try {
+                        $this->gutscheinService->versende((int)$neu['id'], $billingEmail);
+                    } catch (Throwable $e) {
+                        Logger::log('gutschein.versand_fehler', 'gutscheine', (int)$neu['id'], [
+                            'fehler' => $e->getMessage(),
+                        ], $this->jarvisId, 'error');
+                    }
+                }
             }
         }
+    }
+
+    /**
+     * Tatsächlich eingelöster Betrag eines Gutschein-Codes in einer Bestellung.
+     * Gutscheine sind im Shop Germanized-"Wertgutscheine": der Coupon selbst rabattiert
+     * NICHTS (discount = 0), Germanized zieht den Betrag nach Steuer als negative Gebühr
+     * "Wertgutschein: <code>" ab (inkl. Versand). Fallback für alte/normale Coupons:
+     * discount + discount_tax der Coupon-Zeile.
+     */
+    private function eingeloesterGutscheinBetrag(array $order, array $couponLine, string $code): float
+    {
+        $betrag = 0.0;
+        foreach ($order['fee_lines'] ?? [] as $fee) {
+            if (stripos((string)($fee['name'] ?? ''), $code) !== false) {
+                $betrag += abs((float)($fee['total'] ?? 0) + (float)($fee['total_tax'] ?? 0));
+            }
+        }
+        if ($betrag <= 0) {
+            $betrag = (float)($couponLine['discount'] ?? 0) + (float)($couponLine['discount_tax'] ?? 0);
+        }
+        return round($betrag, 2);
     }
 
     /**
@@ -298,6 +341,11 @@ class ShopBestellungSyncService
         if (empty($gutscheinArtikelIds)) {
             return;
         }
+
+        $billingEmail = trim((string)($order['billing']['email'] ?? '')) ?: null;
+        $kundenStmt = Database::getInstance()->prepare("SELECT kunden_id FROM auftraege WHERE id = ?");
+        $kundenStmt->execute([$auftragId]);
+        $kundenId = (int)$kundenStmt->fetchColumn() ?: null;
 
         foreach ($order['line_items'] ?? [] as $item) {
             $sku = trim((string)($item['sku'] ?? ''));
@@ -325,6 +373,7 @@ class ShopBestellungSyncService
                     'zustellung_am'    => $meta['zustellung_am'] ?? null,
                     'versandart'       => $meta['versandart'] ?? 'selbst_ausdrucken',
                     'grusstext'        => $meta['grusstext'] ?? null,
+                    'kunden_id'        => $kundenId,
                     'shop_id'          => $shopId,
                     'kanal_erstellt'   => 'woocommerce',
                     'auftrag_id_ursprung' => $auftragId,
@@ -336,7 +385,7 @@ class ShopBestellungSyncService
                     // (dann übernimmt der gutschein_versand-Cronjob).
                     if (empty($meta['zustellung_am'])) {
                         try {
-                            $this->gutscheinService->versende((int)$ergebnis['id']);
+                            $this->gutscheinService->versende((int)$ergebnis['id'], $billingEmail);
                         } catch (Throwable $e) {
                             Logger::log('gutschein.versand_fehler', 'gutscheine', (int)$ergebnis['id'], [
                                 'fehler' => $e->getMessage(),
@@ -349,6 +398,34 @@ class ShopBestellungSyncService
                     ], $this->jarvisId, 'warn');
                 }
             }
+        }
+
+        $this->schliesseGutscheinPositionenAb($auftragId, $gutscheinArtikelIds);
+    }
+
+    /**
+     * Gutschein-Positionen gelten mit der Ausstellung als "geliefert" (Code + PDF per Mail,
+     * nichts zu packen). Besteht der Auftrag nur aus Gutscheinen, ist er damit komplett
+     * erledigt -- sonst hinge er für immer in Pickliste/Packplatz. Idempotent.
+     */
+    private function schliesseGutscheinPositionenAb(int $auftragId, array $gutscheinArtikelIds): void
+    {
+        $db = Database::getInstance();
+        $ph = implode(',', array_fill(0, count($gutscheinArtikelIds), '?'));
+        $db->prepare("
+            UPDATE auftrag_positionen SET menge_geliefert = menge
+            WHERE auftrag_id = ? AND artikel_id IN ($ph) AND COALESCE(menge_geliefert, 0) < menge
+        ")->execute(array_merge([$auftragId], $gutscheinArtikelIds));
+
+        $offen = $db->prepare("SELECT COUNT(*) FROM auftrag_positionen WHERE auftrag_id = ? AND menge - COALESCE(menge_geliefert, 0) > 0");
+        $offen->execute([$auftragId]);
+        $status = $db->prepare("SELECT lieferstatus FROM auftraege WHERE id = ?");
+        $status->execute([$auftragId]);
+        $lieferstatus = (string)$status->fetchColumn();
+
+        if ((int)$offen->fetchColumn() === 0 && in_array($lieferstatus, ['neu', 'in_bearbeitung', 'versandbereit'], true)) {
+            $this->auftragService->statusAktualisieren($auftragId, ['lieferstatus' => 'abgeschlossen'],
+                'Nur Gutscheine — per E-Mail zugestellt, nichts zu versenden', $this->jarvisId);
         }
     }
 

@@ -24,6 +24,7 @@ nachgezogen werden (und umgekehrt). Quelle der Wahrheit ist immer WPCode selbst
 | `leere_kategorien_ausblenden.php` | 32095 | Leere Kategorien ausblenden | ✅ Aktiv | Überall ausführen |
 | `ausverkauft_statt_weiterlesen.php` | 32085 | "Ausverkauft" statt "Weiterlesen" bei Out-of-Stock | ✅ Aktiv | Überall ausführen |
 | `hersteller_menue.php` | 32070 | Hersteller-Menü (Shortcode `[hersteller_liste]` fürs Mega-Menü) | ✅ Aktiv | Nur Frontend |
+| `gutschein.php` | 34188 | MeaLana: Gutschein (Kauf-Formular + Einlöse-Hinweis) | ✅ Aktiv (seit 2026-09-30) | Überall ausführen |
 | `swatch_container_scroll.css` | 34175 | Swatch-Container Scroll ab 45 Werten | ✅ Aktiv (wartet auf Babsis Sichtfreigabe) | Überall ausführen |
 
 Zwei weitere WPCode-Einträge (32068 "Nachricht nach 1. Absatz", 32069 "Kommentare deaktivieren")
@@ -40,6 +41,12 @@ hier abgelegt.
   [[project_shop_sync]]-Memory, Fund vom 2026-08-29).
 - **konfigurator_options_picker** — Frontend-UI-Baustein für den Artikel-Konfigurator (Achsen/Werte
   als klickbare Optionen statt Dropdown). Aktiv, siehe [[project_konfigurator_modul]].
+- **gutschein** — Kauf-Formular am Gutschein-Artikel (erkennt ihn am Meta `_mealana_gutschein_artikel`,
+  das der ERP-Sync setzt): Betrag, Selbst ausdrucken/an Empfänger senden, Zustelldatum, Grußtext →
+  `_mealana_gutschein`-JSON an der Bestellzeile. Die Einlösung selbst macht **Germanized** (ERP legt
+  jeden Gutschein als "Wertgutschein" an: Abzug nach Steuer, Versand inklusive) — das Snippet benennt
+  nur die Gebühr in "Gutschein MEA-…" um, hängt den Restguthaben-Hinweis an und verhindert
+  "Gutschein mit Gutschein bezahlen". **Braucht Germanized** — in weiteren Shops mit einspielen.
 - **mindestabnahme** — Mengenfeld-Vorbelegung + Kundenhinweistext + serverseitige Validierung für
   Meterware mit Mindestabnahme/Abnahmeintervall (liest `_mealana_mindestabnahme*`-Metafelder, die
   `ShopSyncService::baueMindestabnahmeFelder()` beim Produkt-Sync setzt).

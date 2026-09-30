@@ -29,6 +29,7 @@ require_once __DIR__ . '/../src/core/logger.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncRepository.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncService.php';
 require_once __DIR__ . '/../src/modules/shop/ShopBestellungSyncService.php';
+require_once __DIR__ . '/../src/modules/gutscheine/GutscheinService.php';
 
 $jarvisId = (int)Database::getInstance()
     ->query("SELECT id FROM benutzer WHERE username = 'system'")
@@ -37,6 +38,7 @@ $jarvisId = (int)Database::getInstance()
 $repo             = new ShopSyncRepository();
 $artikelSync      = new ShopSyncService();
 $bestellungSync   = new ShopBestellungSyncService();
+$gutscheinService = new GutscheinService();
 
 foreach ($repo->findAktiveShops() as $shop) {
     if ((int)$shop['bulk_import_aktiv'] === 1) {
@@ -97,5 +99,23 @@ foreach ($repo->findAktiveShops() as $shop) {
             'fehler'   => $e->getMessage(),
         ], $jarvisId, 'error');
         echo "[{$shop['slug']}] Bestellungs-Sync abgebrochen: {$e->getMessage()}\n";
+    }
+
+    // Gutschein-Coupons NACH dem Bestellungs-Sync: so werden online eingelöste Codes
+    // und dabei entstandene Restguthaben-Codes noch im selben Lauf abgeglichen.
+    try {
+        $ergebnis = $gutscheinService->syncShopCoupons($shop);
+        $summe = $ergebnis['angelegt'] + $ergebnis['aktualisiert'] + $ergebnis['geloescht'];
+        echo "[{$shop['slug']}] Gutscheine: {$ergebnis['angelegt']} angelegt, {$ergebnis['aktualisiert']} aktualisiert, {$ergebnis['geloescht']} gelöscht, {$ergebnis['fehler']} Fehler\n";
+        if ($summe > 0 || $ergebnis['fehler'] > 0) {
+            Logger::log('shop.sync_lauf', 'shops', (int)$shop['id'], [
+                'richtung' => 'gutscheine', 'shop' => $shop['slug'],
+            ] + $ergebnis, $jarvisId, $ergebnis['fehler'] > 0 ? 'warn' : 'info');
+        }
+    } catch (Throwable $e) {
+        Logger::log('shop.cron_fehler', 'shops', (int)$shop['id'], [
+            'richtung' => 'gutscheine', 'shop' => $shop['slug'], 'fehler' => $e->getMessage(),
+        ], $jarvisId, 'error');
+        echo "[{$shop['slug']}] Gutschein-Sync abgebrochen: {$e->getMessage()}\n";
     }
 }
