@@ -434,7 +434,8 @@ class DokumentService
         $lieferadr  = $this->decodeSnapshot($auftrag['lieferadresse_snapshot'] ?? '{}');
         $rechnungadr= $this->decodeSnapshot($auftrag['rechnungsadresse_snapshot'] ?? '{}');
 
-        $istB2B      = !empty($kunde['uid_nummer']);
+        // Händler-Rechnungen (kanal 'haendler') immer mit Netto-Preisen, auch ohne UID
+        $istB2B      = !empty($kunde['uid_nummer']) || ($auftrag['kanal'] ?? '') === 'haendler';
         $summen      = $this->berechneSummen($positionen, (float)($auftrag['versandkosten'] ?? 0));
 
         // Mit Gutschein bezahlte Beträge (Zahlungsmittel, Mehrzweckgutschein) -- die

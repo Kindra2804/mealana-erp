@@ -81,8 +81,14 @@ $statusChip = match($kunde['status']) {
 $pageTitle        = $anzeigename;
 $activeModule     = 'kunden';
 $basePath = BASE_PATH;
+// Händler-Außenlager (Konsignation): eingerichtet → direkt dorthin, sonst einrichten
+require_once __DIR__ . '/../../src/modules/haendler/HaendlerService.php';
+$haendlerLink = (new HaendlerService())->getLager($id)
+    ? '<a href="' . $basePath . '/haendler/detail.php?kunde_id=' . $id . '" class="btn btn-secondary btn-sm">🏬 Händler-Außenlager</a>'
+    : '<a href="' . $basePath . '/haendler/detail.php?kunde_id=' . $id . '" class="btn btn-secondary btn-sm" title="Ware in Kommission an diesen Händler liefern">🏬 Als Händler einrichten</a>';
 $actionBarContent = <<<HTML
     <a href="bearbeiten.php?id={$id}" class="btn btn-primary btn-sm">✏ Bearbeiten</a>
+    {$haendlerLink}
     <a href="{$basePath}/auftraege/neu.php?kunden_id={$id}" class="btn btn-secondary btn-sm">+ Auftrag erstellen</a>
     <a href="liste.php" class="btn btn-secondary btn-sm">← Liste</a>
 HTML;

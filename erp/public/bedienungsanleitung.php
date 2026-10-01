@@ -201,6 +201,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#einkauf">Einkauf & Bestellungen</a>
             <a href="#verkauf">Aufträge & Verkauf</a>
             <a href="#mahnwesen" class="sub">↳ Mahnwesen</a>
+            <a href="#haendler" class="sub">↳ Händler-Außenlager</a>
             <a href="#kunden">Kunden</a>
             <a href="#partner">Partner & Mietfächer</a>
             <a href="#partner-lager" class="sub">↳ Partner-Lager & Partnerware</a>
@@ -423,6 +424,13 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-warn">⚠ Bei Rechnung gibt es keinen automatischen Storno — die Ware ist meist schon beim Kunden. Manuelle Prüfung nötig.</div>
 
             <!-- KUNDEN -->
+            <h3 id="haendler">Händler-Außenlager (Kommission) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Ware liegt beim Händler, bleibt aber euer Bestand, bis er den Verkauf meldet. Einrichten: Kunde öffnen → <strong>🏬 Als Händler einrichten</strong>. Übersicht: Verkauf → <strong>Händler</strong> (dort auch der Standard-Händlerrabatt in % auf den Endkunden-VK; ein eigener Händlerpreis am Artikel hat Vorrang).</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>🚚 Ware liefern</strong> → Lieferschein (HL) mit Händlerpreis netto + empfohlenem VK. Der Preis gilt ab Lieferung.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>🧾 Verkauf melden</strong> — „was verkauft wurde“ oder „was noch da ist“; Preise korrigierbar, Schwund-Spalte wird nicht verrechnet → Auftrag + Rechnung (netto + USt), erst dann Lagerabbuchung.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>↩ Rücknahme</strong> (HR) zurück ins eigene Lager, <strong>⚠ Schwund</strong> (HS, Grund Pflicht).</div></div>
+            <p>Verschiedene Lieferpreise: die älteste Lieferung wird zuerst verrechnet. Zahlung, Mahnung und Export laufen über den normalen Auftrag.</p>
+
             <h2 id="kunden">Kunden <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Privat- und Geschäftskunden verwalten. Datenschutz-sensible Felder sind AES-256-verschlüsselt gespeichert (DSGVO-konform).</p>
             <p><strong>Neuen Kunden anlegen:</strong> Kunden → Neuer Kunde → Typ wählen (Privat / B2B) → Felder ausfüllen → Speichern.</p>

@@ -586,7 +586,7 @@ class LagerService
      * Legt zwei Bewegungen an: ausgang (Quelle) + eingang (Ziel).
      * Optional: charge — die Charge wandert mit (gleiche Chargennummer im Ziellager).
      */
-    public function umbucheZwischenLager(int $artikelId, int $vonLagerId, int $zuLagerId, float $menge, ?int $benutzerId = null, ?string $charge = null): array
+    public function umbucheZwischenLager(int $artikelId, int $vonLagerId, int $zuLagerId, float $menge, ?int $benutzerId = null, ?string $charge = null, ?string $referenzText = null): array
     {
         if (!$artikelId || !$vonLagerId || !$zuLagerId || $menge <= 0) {
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten'];
@@ -603,7 +603,7 @@ class LagerService
             return ['erfolg' => false, 'fehler' => 'Nicht genug Bestand im Quelllager (verfügbar: ' . (int)$bestandVorher . ')'];
         }
 
-        $referenz = 'Lagerumbuchung';
+        $referenz = $referenzText ?: 'Lagerumbuchung';
         $this->repo->reduziereBestand($artikelId, $vonLagerId, $menge, $charge);
         $this->repo->insertBewegung([
             'artikel_id'      => $artikelId,

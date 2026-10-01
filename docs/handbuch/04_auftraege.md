@@ -105,6 +105,29 @@ Das Protokoll der gesendeten Mahnungen ist in der Auftragsliste sichtbar.
 
 ---
 
+## Händler-Außenlager (Kommission)
+
+Händler verkaufen eure Ware in ihrem Geschäft. Die Ware bleibt **euer Bestand**, bis der Händler den Verkauf meldet; erst dann wird verrechnet.
+
+**Einrichten:** Kunde öffnen → **🏬 Als Händler einrichten**. Der Kunde kommt in die Kundengruppe „Händler“ und bekommt ein eigenes Außenlager. Übersicht aller Händler: Verkauf → **Händler**.
+
+**Händlerpreis:**
+- Standard: **Rabatt in %** auf den Endkunden-Verkaufspreis (netto) — einstellen unter Verkauf → Händler.
+- Ein eigener Preis für die Kundengruppe „Händler“ im Preise-Reiter des Artikels hat Vorrang.
+- Der Preis wird **bei der Lieferung** festgehalten. Ändert sich euer VK später, gilt für bereits gelieferte Ware weiter der alte Preis.
+
+**Ablauf:**
+1. **🚚 Ware liefern** — Artikel scannen oder suchen, Mengen eintragen → Umbuchung ins Außenlager + **Lieferschein (HL-Nummer)** mit Händlerpreis netto und empfohlenem Endkunden-VK.
+2. **🧾 Verkauf melden & abrechnen** — Händler meldet entweder **was verkauft wurde** oder **was noch da ist** (dann rechnet das ERP die Differenz). Preise je Zeile vor der Rechnung korrigierbar; Spalte **Schwund** für verlorene/beschädigte Ware (wird nicht verrechnet, Grund in die Notiz). → Auftrag (Kanal „Händler“) + **Rechnung mit Netto-Preisen + USt**; erst jetzt wird der Bestand im Außenlager abgebucht.
+3. **↩ Rücknahme** — Ware geht zurück ins eigene Lager (Rücknahmeschein HR-Nummer).
+4. **⚠ Schwund** — auch einzeln buchbar (HS-Nummer, Grund Pflicht).
+
+Wurde Ware zu verschiedenen Preisen geliefert, wird beim Abrechnen die **älteste Lieferung zuerst** verrechnet (jeweils mit ihrem Preis).
+
+Belege, Rechnungen und alle Lagerbewegungen stehen auf der Händler-Seite in den Reitern **Belege & Rechnungen** und **Bewegungen**. Zahlung, Mahnung und Buchhaltungsexport laufen über den normalen Auftrag.
+
+---
+
 ## Häufige Probleme
 
 | Problem | Lösung |

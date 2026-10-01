@@ -43,6 +43,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => BASE_PATH . '/dokumente/index.php'],
         ['icon' => '📊', 'label' => 'Statistik',          'href' => BASE_PATH . '/auftraege/statistik.php'],
         ['icon' => '🎁', 'label' => 'Gutscheine',         'href' => BASE_PATH . '/gutscheine/liste.php'],
+        ['icon' => '🏬', 'label' => 'Händler',            'href' => BASE_PATH . '/haendler/liste.php'],
     ],
     'gutscheine' => [
         ['icon' => '📋', 'label' => 'Liste',              'href' => BASE_PATH . '/gutscheine/liste.php'],

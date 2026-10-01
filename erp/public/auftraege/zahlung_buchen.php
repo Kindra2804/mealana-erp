@@ -87,7 +87,8 @@ try {
 
     // Bestellpositionen für Übersicht
     $pStmt = $db->prepare("
-        SELECT p.bezeichnung, p.menge, p.gesamtpreis_netto, p.steuer_prozent
+        SELECT p.bezeichnung, p.menge, p.einzelpreis_netto, p.rabatt_prozent, p.preisbasis,
+               p.gesamtpreis_netto, p.steuer_prozent
         FROM auftrag_positionen p
         WHERE p.auftrag_id = ?
         ORDER BY p.sort_order, p.id

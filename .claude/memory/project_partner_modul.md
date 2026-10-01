@@ -115,4 +115,4 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 - **Spende (Yarnpride)** hat eine EIGENE Kassenlade → vermischt sich nicht mit Kassenstand/Kassenbuch; System soll nur dokumentieren/nachverfolgen und bei Spendenübergabe eine Liste liefern.
 - Bon: Jacky tendiert zu **2 Belegen** (eigener + Partner), kennt aber das Tankstellen-Modell (Vignette "im Namen und auf Rechnung der ASFINAG" auf derselben Rechnung). Offen bis Babsi/Steuerberater antworten.
 - Offene Steuerfrage: Partner ist Kleinunternehmer + wir verkaufen auf Kommission → wir schulden USt, er nicht — wie behandeln?
-- Fragenblatt für Babsi/Steuerberater erstellt (2026-10-01), Antworten abwarten BEVOR Abrechnung/Bon/RKSV gebaut wird.
+- Fragenblatt für Babsi/Steuerberater erstellt (2026-10-01): https://claude.ai/artifact/PCVngy3WkBwTbWQG6axqjA (10 Fragen: Bon 1 vs 2 Belege, RKSV Fremdumsatz, Partnerbeleg-Pflichtangaben, Bargeld/Kassenbuch, Kommission=eigener Umsatz?, Spende eigene Lade, KU+Kommission, KU+Fremdrechnung, Fachmiete/Gegenverrechnung, Konten, Unterlagen). Antworten abwarten BEVOR Abrechnung/Bon/RKSV gebaut wird.

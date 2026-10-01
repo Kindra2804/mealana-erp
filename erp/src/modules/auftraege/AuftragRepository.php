@@ -266,7 +266,10 @@ class AuftragRepository
      */
     public function insert(array $data): int
     {
-        $this->db->beginTransaction();
+        // Eigene Transaktion nur, wenn der Aufrufer keine offen hat (z.B. HaendlerService
+        // legt Auftrag + Lagerbuchungen gemeinsam in einer Transaktion an)
+        $eigeneTransaktion = !$this->db->inTransaction();
+        if ($eigeneTransaktion) $this->db->beginTransaction();
 
         $jahr = date('Y');
         $this->db->prepare("
@@ -312,7 +315,7 @@ class AuftragRepository
         $stmt->execute(array_merge($data, ['auftrag_nr' => $auftragNr]));
         $id = (int)$this->db->lastInsertId();
 
-        $this->db->commit();
+        if ($eigeneTransaktion) $this->db->commit();
         return $id;
     }
 

@@ -1,0 +1,97 @@
+{# Händler-Außenlager: Lieferschein (Konsignation) / Rücknahmeschein / Schwund-Protokoll #}
+{% set titel = {'lieferung': 'Lieferschein (Kommissionsware)', 'ruecknahme': 'Rücknahmeschein', 'schwund': 'Schwund-Protokoll'}[beleg.typ] %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 9pt; color: #1a1a1a; padding: 18mm 15mm 25mm 15mm; }
+    .absender { font-size:7pt; color:#555; border-bottom:0.5px solid #aaa; padding-bottom:2pt; margin-bottom:3pt; }
+    .doc-titel { font-size:16pt; font-weight:bold; margin:12pt 0 4pt; }
+    .info td { padding:2pt 6pt; font-size:8.5pt; border-bottom:1px solid #ddd; }
+    .info td:first-child { color:#555; }
+    table.pos { width:100%; border-collapse:collapse; margin-top:10pt; }
+    table.pos th { background:#f1f5f9; text-align:left; font-size:7.5pt; padding:4pt; border-bottom:1px solid #999; }
+    table.pos td { padding:4pt; border-bottom:0.5px solid #ddd; font-size:8.5pt; }
+    .r { text-align:right; }
+    .mono { font-family: DejaVu Sans Mono, monospace; font-size:7.5pt; }
+    .summe td { font-weight:bold; border-top:1px solid #333; border-bottom:none; }
+    .hinweis { margin-top:10pt; font-size:8pt; color:#444; border:1px solid #ccc; padding:5pt 7pt; }
+    .unterschrift td { padding-top:32pt; width:50%; font-size:8pt; color:#555; }
+    .linie { border-top:0.5px solid #333; padding-top:3pt; margin-right:20pt; }
+  </style>
+</head>
+<body>
+  {% include '_partials/_header.html.twig' %}
+
+  <table style="width:100%;border-collapse:collapse;margin-top:10pt">
+    <tr>
+      <td style="width:55%;vertical-align:top;padding-right:10pt">
+        <div class="absender">{{ firma.firmenname ?? 'MEALANA KG' }} · {{ firma.strasse ?? '' }} · {{ firma.plz ?? '' }} {{ firma.ort ?? '' }}</div>
+        <strong>{{ adresse.firmenname ?: kunde_name }}</strong><br>
+        {% if adresse and (adresse.vorname or adresse.nachname) and adresse.firmenname %}{{ adresse.vorname }} {{ adresse.nachname }}<br>{% endif %}
+        {% if adresse %}{{ adresse.strasse }}<br>{{ adresse.plz }} {{ adresse.ort }}{% if adresse.land and adresse.land != 'AT' %}<br>{{ adresse.land }}{% endif %}{% endif %}
+      </td>
+      <td style="width:45%;vertical-align:top">
+        <table class="info" style="width:100%;border:1px solid #ccc;border-collapse:collapse">
+          <tr><td>Beleg-Nr.:</td><td><strong>{{ beleg.nummer }}</strong></td></tr>
+          <tr><td>Datum:</td><td>{{ beleg.erstellt_am|date('d.m.Y') }}</td></tr>
+          <tr><td>Kunden-Nr.:</td><td>{{ kunde.kundennummer ?? '' }}</td></tr>
+          {% if kunde.uid_nummer ?? false %}<tr><td>UID:</td><td>{{ kunde.uid_nummer }}</td></tr>{% endif %}
+          <tr><td>Bearbeitet von:</td><td>{{ beleg.benutzer_name ?? '' }}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="doc-titel">{{ titel }}</div>
+
+  <table class="pos">
+    <thead><tr>
+      <th style="width:95pt">Artikel-Nr.</th><th>Bezeichnung</th><th style="width:60pt">Charge</th><th class="r" style="width:38pt">Menge</th>
+      {% if beleg.typ == 'lieferung' %}<th class="r" style="width:62pt">Ihr Preis netto</th><th class="r" style="width:62pt">Summe netto</th><th class="r" style="width:62pt">Empf. VK brutto</th>{% endif %}
+    </tr></thead>
+    <tbody>
+    {% for p in beleg.positionen %}
+      <tr>
+        <td class="mono">{{ p.artikelnummer }}</td>
+        <td>{{ p.bezeichnung }}</td>
+        <td>{{ p.charge ?? '' }}</td>
+        <td class="r"><strong>{{ p.menge|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</strong></td>
+        {% if beleg.typ == 'lieferung' %}
+          <td class="r">{{ p.preis_netto|number_format(2, ',', '.') }}</td>
+          <td class="r">{{ (p.menge * p.preis_netto)|number_format(2, ',', '.') }}</td>
+          <td class="r">{{ p.vk_brutto ? p.vk_brutto|number_format(2, ',', '.') : '–' }}</td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+      <tr class="summe">
+        <td colspan="3">Gesamt</td>
+        <td class="r">{{ stueck|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</td>
+        {% if beleg.typ == 'lieferung' %}<td></td><td class="r">€ {{ summe_netto|number_format(2, ',', '.') }}</td><td class="r">€ {{ summe_vk|number_format(2, ',', '.') }}</td>{% endif %}
+      </tr>
+    </tbody>
+  </table>
+
+  {% if beleg.typ == 'lieferung' %}
+    <div class="hinweis">
+      Die Ware wird in Kommission übergeben und bleibt bis zur Bezahlung Eigentum der {{ firma.firmenname ?? 'MEALANA KG' }}.
+      Verrechnet wird nur verkaufte Ware, zu den oben angeführten Preisen zuzüglich der gesetzlichen Umsatzsteuer, nach Ihrer Verkaufsmeldung.
+      Der empfohlene Verkaufspreis ist unverbindlich.
+    </div>
+  {% elseif beleg.typ == 'ruecknahme' %}
+    <div class="hinweis">Die angeführte Kommissionsware wurde zurückgenommen und wird nicht verrechnet.</div>
+  {% else %}
+    <div class="hinweis">Die angeführte Ware ist beim Händler verloren gegangen bzw. beschädigt worden und wird nicht verrechnet.</div>
+  {% endif %}
+  {% if beleg.notiz %}<p style="margin-top:8pt;font-size:8.5pt"><strong>Notiz:</strong> {{ beleg.notiz }}</p>{% endif %}
+
+  <table class="unterschrift" style="width:100%;margin-top:12pt">
+    <tr>
+      <td><div class="linie">{{ beleg.typ == 'lieferung' ? 'Ware erhalten' : 'Übergeben' }}: {{ kunde_name }}</div></td>
+      <td><div class="linie">{{ beleg.typ == 'lieferung' ? 'Übergeben' : 'Erhalten' }}: {{ firma.firmenname ?? 'MEALANA KG' }}</div></td>
+    </tr>
+  </table>
+</body>
+</html>

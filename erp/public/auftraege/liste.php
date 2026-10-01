@@ -89,6 +89,7 @@ $kanalLabels = [
     'manuell'     => ['label' => 'Manuell',     'class' => 'chip-auslauf'],
     'kasse'       => ['label' => 'Kasse',        'class' => 'chip-inaktiv'],
     'jtl_archiv'  => ['label' => 'Archiv',       'class' => 'chip-inaktiv'],
+    'haendler'    => ['label' => 'Händler',      'class' => 'chip-auslauf'],
 ];
 
 $pageTitle        = 'Aufträge';

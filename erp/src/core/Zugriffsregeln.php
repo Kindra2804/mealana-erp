@@ -253,6 +253,17 @@ final class Zugriffsregeln
             'verkaufsliste_pdf.php'  => 'partner.anzeigen',
         ],
 
+        // === Händler-Außenlager (Konsignation) ===
+        'haendler' => [
+            'liste.php'        => 'auftraege.anzeigen',
+            'detail.php'       => 'auftraege.anzeigen',
+            'beleg_pdf.php'    => 'auftraege.anzeigen',
+            'buchen.php'       => 'auftraege.anlegen',
+            'verkauf.php'      => 'auftraege.anlegen',
+            'aktion.php'       => 'auftraege.anlegen',
+            'artikel_ajax.php' => 'auftraege.anlegen',
+        ],
+
         // === Aufträge / Verkauf ===
         'auftraege' => [
             'liste.php'                => 'auftraege.anzeigen',
@@ -471,6 +482,7 @@ final class Zugriffsregeln
         ],
         'achsen'      => ['achse_sort_tree_ajax.php', 'achse_loeschen_ajax.php', 'achse_aktualisieren_ajax.php', 'achse_speichern_ajax.php', 'sort_ajax.php'],
         'hersteller'  => ['schnell_speichern.php', 'aktualisieren.php', 'speichern.php'],
+        'haendler'    => ['aktion.php', 'artikel_ajax.php'],
         'partner'     => ['lager_anlegen.php', 'artikel_speichern.php', 'beleg_buchen.php', 'vertrag_beenden.php', 'vertrag_speichern.php', 'fach_aktualisieren.php', 'fach_speichern.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
         'auftraege'   => ['zahlung_buchen.php', 'status_ajax.php', 'kunden_ajax.php', 'artikel_ajax.php', 'mahnung_manuell_ajax.php'],
         'kunden'      => ['debitorennummer_ajax.php'],

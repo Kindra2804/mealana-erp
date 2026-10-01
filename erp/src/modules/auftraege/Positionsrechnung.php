@@ -12,9 +12,10 @@
  * Vorher wurde netto-basiert gerechnet (Netto runden, MwSt aufschlagen) -- 3 × 7,25 €
  * ergab dann 21,76 statt 21,75 € und Auftrag/Rechnung wichen vom Shop um Cents ab.
  *
- * Preisbasis NETTO ist für B2B vorbereitet (Händler bekommen Nettopreise, MwSt wird
- * aufgeschlagen), wird aber derzeit nirgends verwendet. Umschalten später pro Kunde bzw.
- * Auftrag -- dann den $basis-Parameter an den Aufrufstellen durchreichen.
+ * Preisbasis NETTO (Händler-Rechnungen, kanal 'haendler', seit 2026-10-01): Netto runden,
+ * MwSt aufschlagen. Gesteuert über die Spalte auftrag_positionen.preisbasis -- ausPosition()
+ * liest sie selbst, deshalb rechnen alle Stellen, die die Positionszeile vollständig laden,
+ * ohne weiteres Durchreichen richtig.
  *
  * In der DB bleiben einzelpreis_netto (4 Nachkommastellen) und gesamtpreis_netto (Cent)
  * gespeichert; gesamtpreis_netto ist bei Brutto-Basis das aus dem Brutto abgeleitete Netto.
@@ -60,6 +61,9 @@ class Positionsrechnung
     /** zeile() für eine Positionszeile (auftrag_positionen o.ä.), optional mit abweichender Menge. */
     public static function ausPosition(array $p, ?float $menge = null, string $basis = self::STANDARD_BASIS): array
     {
+        if ($basis === self::STANDARD_BASIS && ($p['preisbasis'] ?? null) === self::NETTO) {
+            $basis = self::NETTO;
+        }
         // Sonderfall Kasse-Retoure im Spiegel-Auftrag: Menge 0, aber negatives
         // gesamtpreis_netto (bon_speichern.php) -- dann gilt der gespeicherte Zeilenbetrag
         if ($menge === null && (float)($p['menge'] ?? 0) == 0 && abs((float)($p['gesamtpreis_netto'] ?? 0)) > 0.004) {

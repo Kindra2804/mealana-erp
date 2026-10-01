@@ -77,7 +77,7 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
             // Positionen mit Artikelnummer + Lagerbestand für ÜV-Check
             $pStmt = $db->prepare("
                 SELECT p.id, p.bezeichnung, p.menge,
-                       p.einzelpreis_netto, p.gesamtpreis_netto, p.steuer_prozent,
+                       p.einzelpreis_netto, p.gesamtpreis_netto, p.steuer_prozent, p.rabatt_prozent, p.preisbasis,
                        a.artikelnummer,
                        COALESCE(SUM(lb.bestand), 0) AS verfuegbar_bestand
                 FROM auftrag_positionen p
