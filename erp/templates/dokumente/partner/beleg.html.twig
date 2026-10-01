@@ -1,0 +1,64 @@
+{# Übernahmeschein / Rückgabeschein für Partnerware (PartnerLagerService::belegBuchen) #}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 9pt; color: #1a1a1a; padding: 18mm 15mm 25mm 15mm; }
+    .doc-titel { font-size:16pt; font-weight:bold; margin:12pt 0 4pt; }
+    .info td { padding:2pt 6pt; font-size:9pt; }
+    .info td:first-child { color:#555; }
+    table.pos { width:100%; border-collapse:collapse; margin-top:10pt; }
+    table.pos th { background:#f1f5f9; text-align:left; font-size:8pt; padding:4pt; border-bottom:1px solid #999; }
+    table.pos td { padding:4pt; border-bottom:0.5px solid #ddd; font-size:9pt; }
+    .r { text-align:right; }
+    .mono { font-family: DejaVu Sans Mono, monospace; font-size:8.5pt; }
+    .unterschrift td { padding-top:34pt; width:50%; font-size:8pt; color:#555; }
+    .linie { border-top:0.5px solid #333; padding-top:3pt; margin-right:20pt; }
+  </style>
+</head>
+<body>
+  {% include '_partials/_header.html.twig' %}
+
+  <div class="doc-titel">{{ beleg.typ == 'uebernahme' ? 'Übernahmeschein' : 'Rückgabeschein' }}</div>
+  <div style="font-size:9pt;color:#444;margin-bottom:8pt">
+    {% if beleg.typ == 'uebernahme' %}
+      Folgende Ware wurde von <strong>{{ partner.name }}</strong> zum Verkauf übernommen.
+    {% else %}
+      Folgende Ware wurde an <strong>{{ partner.name }}</strong> zurückgegeben.
+    {% endif %}
+  </div>
+
+  <table class="info">
+    <tr><td>Beleg-Nr.:</td><td><strong>{{ beleg.nummer }}</strong></td><td style="padding-left:30pt">Partner:</td><td><strong>{{ partner.name }}</strong></td></tr>
+    <tr><td>Datum:</td><td>{{ beleg.erstellt_am|date('d.m.Y H:i') }}</td><td style="padding-left:30pt">Erfasst von:</td><td>{{ beleg.benutzer_name ?? '–' }}</td></tr>
+  </table>
+
+  <table class="pos">
+    <thead><tr><th style="width:60pt">Fach</th><th style="width:105pt">Artikel-Nr.</th><th>Bezeichnung</th><th style="width:70pt">Charge</th><th class="r" style="width:50pt">Menge</th></tr></thead>
+    <tbody>
+    {% for p in beleg.positionen %}
+      <tr>
+        <td class="mono">{{ p.fach ?? '–' }}</td>
+        <td class="mono">{{ p.artikelnummer }}</td>
+        <td>{{ p.bezeichnung }}</td>
+        <td>{{ p.charge ?? '' }}</td>
+        <td class="r"><strong>{{ p.menge|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</strong></td>
+      </tr>
+    {% endfor %}
+      <tr><td colspan="4" class="r" style="border-bottom:none;color:#555">Stück gesamt</td>
+          <td class="r" style="border-bottom:none"><strong>{{ summe|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</strong></td></tr>
+    </tbody>
+  </table>
+
+  {% if beleg.notiz %}<p style="margin-top:10pt;font-size:8.5pt"><strong>Notiz:</strong> {{ beleg.notiz }}</p>{% endif %}
+
+  <table class="unterschrift" style="width:100%;margin-top:14pt">
+    <tr>
+      <td><div class="linie">{{ beleg.typ == 'uebernahme' ? 'Übergeben' : 'Erhalten' }}: {{ partner.name }}</div></td>
+      <td><div class="linie">{{ beleg.typ == 'uebernahme' ? 'Übernommen' : 'Übergeben' }}: {{ firma.firmenname ?? 'MEALANA KG' }}</div></td>
+    </tr>
+  </table>
+</body>
+</html>

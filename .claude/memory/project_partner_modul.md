@@ -87,3 +87,32 @@ ALTER TABLE partner
 **Why:** Abrechnung erst sinnvoll wenn Verkaufsmodul Daten liefert (welche Artikel wurden pro Partner verkauft).
 
 **How to apply:** Nächster Partner-Schritt = Abrechnung, nach Auftragsmodul/Kasse.
+
+## Stand + Entscheidungen 2026-10-01 (Jacky)
+**Befund:** Partner-/Händler-Lager wurden NIE gebaut (nur Schema: lager.lager_beziehung/partner_id/kunde_id, artikel.partner_id/partner_modus ohne UI; Lager-Formular kann Beziehung wählen, aber nicht mit Partner/Kunde verknüpfen). Nichts verloren — lager max id 3, keine Buchungen auf andere Lager. Partner-Abrechnung ebenfalls nicht gebaut.
+**Entscheidungen:**
+- Kasse erkennt Partner-Artikel und bucht sie automatisch vom Partner-Lager ab.
+- EIN Lager pro Partner; die Mietfächer sind die Lagerplätze darin (z.B. Seifenfabrik · R1-F1). Ein Mietfach gehört immer nur einem Partner.
+- Händler: Lieferschein bei Lieferung; Rechnung erst nach Verkaufsmeldung, gesammelt über einen Zeitraum, zu Kundengruppen-Preisen; die Lagerkorrektur im Händler-Lager passiert erst mit dieser Rechnung.
+- Abrechnung (eigene Rechnung/Gutschrift, Fremdrechnung, Info-Abrechnung) muss "nochmal genau angeschaut" werden — eigene Planungsrunde, nicht nebenbei bauen.
+**Reihenfolge:** 1. Partner-Lager → 2. Händler-Außenlager → 3. Partner-Abrechnung.
+
+## ✅ Partner-Lager GEBAUT 2026-10-01 (nicht committed)
+Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + Verkaufsliste je Zeitraum; Artikelnummer `XP<Partner-ID 2-stellig>-<frei>` (eigene Artikel mit ^XP\d werden abgelehnt); Partnerware getrennt vom Sortiment (nur auf Partnerseite pflegen, nicht in Artikelliste, nie im Shop); RKSV/"im Namen und auf Rechnung von" bleibt offen → eigener Punkt mit der Abrechnung.
+- **Migration 189:** lagerplaetze.mietfach_id (UNIQUE), lager UNIQUE(partner_id), dokument_nummern-Typen partner_uebernahme (US) / partner_rueckgabe (RS), Tabellen partner_belege + partner_beleg_positionen, Artikelgruppe "Partnerware" mit Platzhalter-Konto 'PARTNER' (echtes Konto klärt die Abrechnung mit Babsi — Kontenplan-Seite warnt).
+- `src/modules/partner/PartnerLagerService.php`: lagerAnlegen, mietfaecherSichern (Fach→Platz, wandert beim Mieterwechsel nur wenn leer, sonst Hinweis), getArtikel/artikelSpeichern (Anlage über ArtikelService::save mit `_partnerware`-Flag, Update gezielt per SQL), belegBuchen (LagerService::wareneingang/warenausgang, Referenz "Übernahme US-…"/"Rückgabe an Partner RS-…"), getBewegungen, getVerkaeufe (nur typ=verkauf & nicht storniert), dokumentBasis.
+- MietfachService::vertragStarten ruft mietfaecherSichern. KassenService::lagerFuerArtikel() → Scan-Bestand, Verkauf, Storno aus/in Partner-Lager. RuecklagerungRepository schlägt Partner-Lager vor. ShopSyncRepository: findFaelligeArtikel `a.partner_id IS NULL` + schreibeZuweisungsZeile verweigert Partnerware. ArtikelRepository findAll/countAll: Partnerware nur mit `mit_partnerware` (Liste: Checkbox "inkl. Partnerware").
+- UI: `partner/detail.php` (Reiter Bestand/Artikel/Bewegungen/Belege & Verkaufsliste/Mietfächer), `beleg_neu.php` (Scan +1), `beleg_pdf.php` (storage/partner_belege, gitignored), `verkaufsliste_pdf.php`, Templates `dokumente/partner/beleg|verkaufsliste.html.twig`. Partnername in liste.php verlinkt.
+- **Falle:** shell_top.php benutzt `$typ` und `$titel` als eigene Variablen → in Seiten NICHT vor dem Include setzen und danach verwenden (beleg_neu.php hatte dadurch "Ungültiger Belegtyp").
+- Handbuch 08_partner.md: falsch beschriebene "Kommission-Tab-Abrechnung" (nie gebaut) ersetzt.
+- Getestet: Rollback-Harness 28 Punkte + Playwright mit Testpartner 2 (danach alles gelöscht, Belegzähler auf 0 zurück).
+- **Offen:** Partnerware in Aufträgen/Packplatz (bucht dort weiter vom Auftragslager), Mitgeben/offene Auswahl, Messe-Offline; Abrechnung; RKSV-Trennung; Händler-Außenlager (Schritt 2 der Reihenfolge).
+
+## Klärungen Jacky 2026-10-01 (nach Bau Partner-Lager)
+- Partnerware ist IMMER nur Kassenverkauf → in Aufträgen gesperrt (Suche + AuftragService::pruefePartnerware), GEBAUT.
+- **Abrechnungsmodus** gemeint als: werden Verkaufserlöse eines Partners mit der Fachmiete **gegenverrechnet** oder immer **getrennt** betrachtet. Daraus Belegtypen: **Gutschrift** wenn gegenverrechnet, **Fremdrechnung** = zweiter Beleg mit den Daten des Partners, **Info-Beleg** für Spendenzahlungen.
+- **Provision** = was MeaLana beim Verkauf einbehält. Kleinunternehmer-Flag des Partners wichtig für Liste/Steuer.
+- **Spende (Yarnpride)** hat eine EIGENE Kassenlade → vermischt sich nicht mit Kassenstand/Kassenbuch; System soll nur dokumentieren/nachverfolgen und bei Spendenübergabe eine Liste liefern.
+- Bon: Jacky tendiert zu **2 Belegen** (eigener + Partner), kennt aber das Tankstellen-Modell (Vignette "im Namen und auf Rechnung der ASFINAG" auf derselben Rechnung). Offen bis Babsi/Steuerberater antworten.
+- Offene Steuerfrage: Partner ist Kleinunternehmer + wir verkaufen auf Kommission → wir schulden USt, er nicht — wie behandeln?
+- Fragenblatt für Babsi/Steuerberater erstellt (2026-10-01), Antworten abwarten BEVOR Abrechnung/Bon/RKSV gebaut wird.

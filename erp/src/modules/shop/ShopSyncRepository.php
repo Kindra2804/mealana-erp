@@ -135,6 +135,9 @@ class ShopSyncRepository
               -- Zustandsartikel (B-Ware: -RET/-GEB/-BSC ...) gehen NIE in den Onlineshop,
               -- auch wenn sie versehentlich einem Shop zugewiesen wurden (Jacky 2026-09-30)
               AND a.zustand = 'neu'
+              -- Partnerware (Mietfach/Kommission, artikel.partner_id) gehört nicht ins eigene
+              -- Sortiment und geht NIE in den Onlineshop (Jacky 2026-10-01)
+              AND a.partner_id IS NULL
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at
@@ -1133,6 +1136,12 @@ class ShopSyncRepository
 
     private function schreibeZuweisungsZeile(int $artikelId, int $shopId, bool $aktiv): void
     {
+        // Partnerware nie einem Shop zuordnen (siehe findFaelligeArtikel)
+        if ($aktiv) {
+            $p = $this->db->prepare("SELECT partner_id FROM artikel WHERE id = ?");
+            $p->execute([$artikelId]);
+            if ($p->fetchColumn()) return;
+        }
         $this->db->prepare("
             INSERT INTO artikel_shops (artikel_id, shop_id, aktiv, sync_status)
             VALUES (:artikel_id, :shop_id, :aktiv, 'pending')

@@ -80,7 +80,7 @@ function beleg_chip(string $typ): string {
         <?php foreach ($partner as $p): ?>
             <tr <?= $p['aktiv'] ? '' : 'style="opacity:.55"' ?>>
                 <td>
-                    <strong><?= htmlspecialchars($p['name']) ?></strong>
+                    <a href="<?= BASE_PATH ?>/partner/detail.php?id=<?= (int)$p['id'] ?>"><strong><?= htmlspecialchars($p['name']) ?></strong></a>
                     <?php if ($p['email']): ?>
                         <div style="font-size:11px;color:var(--color-text-muted)"><?= htmlspecialchars($p['email']) ?></div>
                     <?php endif; ?>

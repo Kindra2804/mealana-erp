@@ -36,6 +36,25 @@ class KassenService
      * Sucht einen Artikel per EAN (exakt) oder Artikelnummer (exakt/LIKE).
      * Gibt Preisdaten (Standard-Kundengruppe) und Lagerbestand im angegebenen Lager zurück.
      */
+    /**
+     * Lager, aus dem ein Artikel an der Kasse gebucht wird: Partnerware (artikel.partner_id)
+     * immer aus dem Lager ihres Partners (Jacky 2026-10-01), alles andere aus dem Kassenlager.
+     */
+    public function lagerFuerArtikel(int $artikelId, int $kassenLagerId): int
+    {
+        static $cache = [];
+        if (!array_key_exists($artikelId, $cache)) {
+            $stmt = $this->db->prepare("
+                SELECT l.id FROM artikel a
+                JOIN lager l ON l.partner_id = a.partner_id AND l.lager_beziehung = 'partner_bestand'
+                WHERE a.id = ?
+            ");
+            $stmt->execute([$artikelId]);
+            $cache[$artikelId] = ($id = $stmt->fetchColumn()) ? (int)$id : null;
+        }
+        return $cache[$artikelId] ?? $kassenLagerId;
+    }
+
     public function findArtikelByCode(string $code, int $lagerId): ?array
     {
         $stmt = $this->db->prepare("
@@ -96,6 +115,15 @@ class KassenService
         $stmt->execute([':code' => $code, ':code2' => $code, ':lager_id' => $lagerId, ':lager_id2' => $lagerId]);
         $artikel = $stmt->fetch();
         if (!$artikel) return null;
+
+        // Partnerware: Bestand + Chargen stehen im Partner-Lager, nicht im Kassenlager
+        $partnerLager = $this->lagerFuerArtikel((int)$artikel['id'], $lagerId);
+        if ($partnerLager !== $lagerId) {
+            $stmt->execute([':code' => $code, ':code2' => $code, ':lager_id' => $partnerLager, ':lager_id2' => $partnerLager]);
+            $artikel = $stmt->fetch();
+            $lagerId = $partnerLager;
+            $artikel['partner_lager_id'] = $partnerLager;
+        }
 
         $artikel['bestand_verkaufbar'] = max(0, (float)$artikel['bestand_physisch'] - (float)$artikel['bestand_reserviert']);
 
@@ -333,6 +361,7 @@ class KassenService
                 if (!empty($pos['artikel_id']) && empty($pos['kein_lagerabzug'])) {
                     $artId    = (int)$pos['artikel_id'];
                     $posMenge = (float)($pos['menge'] ?? 1);
+                    $posLager = $this->lagerFuerArtikel($artId, $lagerId); // Partnerware → Partner-Lager
                     $kasseNr  = explode('-', $bonNr)[0]; // z.B. 'K1'
 
                     $charge   = $pos['charge'] ?? null;
@@ -341,12 +370,12 @@ class KassenService
 
                     // Korrekturbuchung wenn Bestand nicht ausreicht
                     // (Artikel war physisch vorhanden, Systembestand war falsch)
-                    $aktBestand = $this->getAktuellerBestand($artId, $lagerId);
+                    $aktBestand = $this->getAktuellerBestand($artId, $posLager);
                     if ($aktBestand < $posMenge) {
                         $korrMenge = $posMenge - max(0.0, $aktBestand);
                         $lagerSvc->wareneingang([
                             'artikel_id'  => $artId,
-                            'lager_id'    => $lagerId,
+                            'lager_id'    => $posLager,
                             'menge'       => $korrMenge,
                             'charge'      => $charge ?: null,
                             'referenz'    => 'Korrekturbuchung ' . $kasseNr . ' – ' . $bonNr,
@@ -362,7 +391,7 @@ class KassenService
 
                     $lagerSvc->warenausgang([
                         'artikel_id'  => $artId,
-                        'lager_id'    => $lagerId,
+                        'lager_id'    => $posLager,
                         'menge'       => $posMenge,
                         'charge'      => $charge,
                         'referenz'    => 'Kassenbon ' . $bonNr,
@@ -589,7 +618,7 @@ class KassenService
                 if (!empty($pos['artikel_id'])) {
                     $lagerSvc->wareneingang([
                         'artikel_id'  => (int)$pos['artikel_id'],
-                        'lager_id'    => $lagerId,
+                        'lager_id'    => $this->lagerFuerArtikel((int)$pos['artikel_id'], $lagerId),
                         'menge'       => abs((float)$pos['menge']),
                         'charge'      => $pos['charge'] ?? null,
                         'referenz'    => 'Storno ' . $bon['bon_nr'],

@@ -19,6 +19,17 @@ class RuecklagerungRepository
 
     public function insert(array $daten): int
     {
+        // Partnerware gehört zurück ins Lager ihres Partners -- als Vorschlag beim Einlagern
+        if (empty($daten['lager_vorschlag_id']) && !empty($daten['artikel_id'])) {
+            $pl = $this->db->prepare("
+                SELECT l.id FROM artikel a
+                JOIN lager l ON l.partner_id = a.partner_id AND l.lager_beziehung = 'partner_bestand'
+                WHERE a.id = ?
+            ");
+            $pl->execute([(int)$daten['artikel_id']]);
+            $daten['lager_vorschlag_id'] = ($id = $pl->fetchColumn()) ? (int)$id : null;
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO packplatz_ruecklagerungen
                 (quelle, kassen_bon_id, bon_nr, gutschrift_nr, auftrag_id, auftrag_nr, auftrag_position_id,

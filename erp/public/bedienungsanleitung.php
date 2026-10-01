@@ -203,6 +203,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#mahnwesen" class="sub">↳ Mahnwesen</a>
             <a href="#kunden">Kunden</a>
             <a href="#partner">Partner & Mietfächer</a>
+            <a href="#partner-lager" class="sub">↳ Partner-Lager & Partnerware</a>
             <a href="#buchhaltung">Buchhaltung</a>
             <a href="#buchhaltung-export" class="sub">↳ DATEV/CSV-Export + Zahlungs-Kontrolle</a>
             <a href="#inventur">Inventur</a>
@@ -438,6 +439,14 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Spende</strong></td><td>Überschussware gespendet, Gegenwert protokolliert</td></tr>
             </table>
             <p><strong>Mietfach zuweisen:</strong> Partner öffnen → Tab Mietfächer → "Mietfach zuweisen" → Nummer, Mietbeginn, Monatsbetrag → Speichern. Vertragshistorie bleibt immer erhalten.</p>
+
+            <h3 id="partner-lager">Partner-Lager und Partnerware <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Partner → Name anklicken → <strong>Partner-Lager anlegen</strong>. Die gemieteten Fächer werden Lagerplätze im Lager des Partners; neue Mietverträge kommen automatisch dazu.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Reiter <strong>Artikel</strong>: Partner-Artikel anlegen — Nummer immer <code>XP</code> + Partner-ID (z.B. <code>XP01-SEIFE-LAV</code>), Preis, MwSt, EAN, Fach. Nicht in der normalen Artikelliste, nie im Onlineshop.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Reiter <strong>Bestand</strong> → <strong>📥 Ware übernehmen</strong> (Mengen eintragen oder scannen) → Übernahmeschein (US-Nr.) zum Unterschreiben. <strong>📤 Rückgabe</strong> → Rückgabeschein (RS-Nr.).</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Die <strong>Kasse</strong> bucht Partner-Artikel automatisch aus dem Partner-Lager ab (Storno zurück dorthin).</div></div>
+            <p>Reiter <strong>Bewegungen</strong> zeigt jede Übernahme, jeden Verkauf, jedes Storno und jede Rückgabe; Reiter <strong>Belege &amp; Verkaufsliste</strong> alle Scheine und eine Verkaufsliste als PDF für einen frei wählbaren Zeitraum.</p>
+            <p><em>Noch nicht gebaut:</em> Partner-Abrechnung (Gutschrift/Fremdrechnung/Info) und „im Namen und auf Rechnung von“ samt RKSV-Trennung — wird gesondert geplant.</p>
 
             <!-- BUCHHALTUNG -->
             <h2 id="buchhaltung">Buchhaltung <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

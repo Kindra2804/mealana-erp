@@ -231,6 +231,8 @@ class AuftragRepository
                              OR EXISTS (SELECT 1 FROM artikel_codes ac WHERE ac.artikel_id = a.id AND ac.code LIKE :$k))";
             $params[$k] = '%' . $word . '%';
         }
+        // Partnerware (artikel.partner_id) wird nur an der Kasse verkauft, nie per Auftrag
+        $whereParts[] = 'a.partner_id IS NULL';
         $where = implode(' AND ', $whereParts);
 
         $stmt = $this->db->prepare("

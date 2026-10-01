@@ -336,6 +336,7 @@ $filter = [
     'qualitaet'       => $qualitaetFilter,
     'kanal_shop_id'   => (int)($_GET['kanal_filter'] ?? 0) ?: null,
     'lagerplatz_id'   => (int)($_GET['lagerplatz_id'] ?? 0) ?: null,
+    'mit_partnerware' => !empty($_GET['partnerware']),
     'sort'            => $aktSort,
     'dir'             => $aktDir,
 ];
@@ -667,6 +668,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <input onchange="this.form.requestSubmit()" type="checkbox" name="nurMitBestand" <?= isset($_GET['nurMitBestand']) ? 'checked' : '' ?>> Nur mit Bestand
         </label>
         <label><input onchange="this.form.requestSubmit()" type="checkbox" name="inaktive" <?= isset($_GET['inaktive']) ? 'checked' : '' ?>> Auch inaktive</label>
+        <label title="Ware von Partnern (Mietfach/Kommission) — gepflegt wird sie beim jeweiligen Partner"><input onchange="this.form.requestSubmit()" type="checkbox" name="partnerware" <?= !empty($_GET['partnerware']) ? 'checked' : '' ?>> inkl. Partnerware</label>
         <?php if ($aktivKategorieId): ?>
             <input type="hidden" name="kategorie_id" value="<?= $aktivKategorieId ?>">
             <label title="Blendet Artikel aus, die nur über eine Unterkategorie hierher gehören">

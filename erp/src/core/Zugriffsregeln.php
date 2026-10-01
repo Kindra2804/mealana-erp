@@ -244,6 +244,13 @@ final class Zugriffsregeln
             'fach_aktualisieren.php' => 'partner.bearbeiten',
             'status_setzen.php'      => 'partner.bearbeiten',
             'vertrag_beenden.php'    => 'partner.bearbeiten',
+            'detail.php'             => 'partner.anzeigen',
+            'lager_anlegen.php'      => 'partner.bearbeiten',
+            'artikel_speichern.php'  => 'partner.bearbeiten',
+            'beleg_neu.php'          => 'partner.bearbeiten',
+            'beleg_buchen.php'       => 'partner.bearbeiten',
+            'beleg_pdf.php'          => 'partner.anzeigen',
+            'verkaufsliste_pdf.php'  => 'partner.anzeigen',
         ],
 
         // === Aufträge / Verkauf ===
@@ -464,7 +471,7 @@ final class Zugriffsregeln
         ],
         'achsen'      => ['achse_sort_tree_ajax.php', 'achse_loeschen_ajax.php', 'achse_aktualisieren_ajax.php', 'achse_speichern_ajax.php', 'sort_ajax.php'],
         'hersteller'  => ['schnell_speichern.php', 'aktualisieren.php', 'speichern.php'],
-        'partner'     => ['vertrag_beenden.php', 'vertrag_speichern.php', 'fach_aktualisieren.php', 'fach_speichern.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
+        'partner'     => ['lager_anlegen.php', 'artikel_speichern.php', 'beleg_buchen.php', 'vertrag_beenden.php', 'vertrag_speichern.php', 'fach_aktualisieren.php', 'fach_speichern.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
         'auftraege'   => ['zahlung_buchen.php', 'status_ajax.php', 'kunden_ajax.php', 'artikel_ajax.php', 'mahnung_manuell_ajax.php'],
         'kunden'      => ['debitorennummer_ajax.php'],
         'einstellungen' => ['test_mail.php', 'shop_sync_start.php', 'shop_sync_status.php', 'shop_sync_pause.php', 'shop_sync_bilder_ftp_start.php'],

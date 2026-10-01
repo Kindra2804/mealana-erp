@@ -53,7 +53,7 @@ class ArtikelService
         $nettoVk   = $data['netto_vk']   ?? null;
         $eanGtin13 = $data['ean_gtin13'] ?? null;
         $uvp       = $data['uvp']        ?? null;
-        unset($data['brutto_vk'], $data['netto_vk'], $data['ean_gtin13'], $data['uvp']);
+        unset($data['brutto_vk'], $data['netto_vk'], $data['ean_gtin13'], $data['uvp'], $data['_partnerware']);
 
         $id = $this->repo->insert($data);
         $this->repo->syncGutscheinFlag($id);
@@ -603,6 +603,12 @@ class ArtikelService
             if ($vorhanden !== false) {
                 $fehler[] = 'Artikelnummer "' . $data['artikelnummer'] . '" existiert bereits!';
             }
+            // "XP<Zahl>" am Anfang ist für Partnerware reserviert (PartnerLagerService) --
+            // eigene Artikel dürfen damit nie beginnen, sonst könnten Nummern kollidieren.
+            if (preg_match('/^XP\d/i', $data['artikelnummer']) && empty($data['_partnerware'])
+                && !$this->istPartnerArtikel((int)($data['id'] ?? 0))) {
+                $fehler[] = 'Artikelnummern mit "XP" + Zahl am Anfang sind für Partnerware reserviert.';
+            }
         }
         if (empty($data['name'])) {
             $fehler[] = 'Name ist Pflichtfeld';
@@ -620,6 +626,14 @@ class ArtikelService
         }
 
         return $fehler;
+    }
+
+    private function istPartnerArtikel(int $id): bool
+    {
+        if (!$id) return false;
+        $stmt = Database::getInstance()->prepare("SELECT partner_id IS NOT NULL FROM artikel WHERE id = ?");
+        $stmt->execute([$id]);
+        return (bool)$stmt->fetchColumn();
     }
 
     /** Validierung für Kind-Artikel: Artikelnummer (eindeutig) + vaterartikel_id Pflicht. */

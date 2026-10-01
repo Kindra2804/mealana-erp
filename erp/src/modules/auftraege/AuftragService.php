@@ -93,6 +93,9 @@ class AuftragService
         if (empty($berechnetePos)) {
             return ['erfolg' => false, 'fehler' => ['Mindestens eine gültige Position ist erforderlich']];
         }
+        if ($partnerFehler = $this->pruefePartnerware($berechnetePos)) {
+            return ['erfolg' => false, 'fehler' => $partnerFehler];
+        }
 
         $summen = $this->berechneSummen($berechnetePos, (float)($data['versandkosten'] ?? 0));
 
@@ -285,6 +288,26 @@ class AuftragService
      * Berechnet Einzelpreis-Summen für eine Liste von Positions-Eingaben.
      * Überspringt Zeilen ohne artikel_id oder menge.
      */
+    /**
+     * Partnerware (artikel.partner_id) ist nur Kassenverkauf (Jacky 2026-10-01): kein Auftrag,
+     * kein Telefon-/Rechnungsverkauf -- Lager, Abrechnung und Bon laufen über die Kasse.
+     *
+     * @return string[] Fehlermeldungen (leer = ok)
+     */
+    private function pruefePartnerware(array $positionen): array
+    {
+        $ids = array_values(array_unique(array_filter(array_column($positionen, 'artikel_id'))));
+        if (!$ids) return [];
+        $ph   = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = Database::getInstance()->prepare("
+            SELECT a.artikelnummer, a.name, p.name AS partner FROM artikel a
+            JOIN partner p ON p.id = a.partner_id WHERE a.id IN ($ph)
+        ");
+        $stmt->execute($ids);
+        return array_map(fn($a) => $a['artikelnummer'] . ' ' . $a['name'] . ' ist Partnerware (' . $a['partner']
+            . ') und kann nur an der Kasse verkauft werden, nicht per Auftrag.', $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
     private function berechnePositionen(array $eingaben): array
     {
         $result = [];
@@ -368,6 +391,9 @@ class AuftragService
 
         // 2. Positionen berechnen (berechnePositionen() — schon vorhanden!)
         $positionenBerechnet = $this->berechnePositionen($positionen);
+        if ($partnerFehler = $this->pruefePartnerware($positionenBerechnet)) {
+            return ['erfolg' => false, 'fehler' => $partnerFehler];
+        }
 
         if (empty($positionenBerechnet)) {
             return ['erfolg' => false, 'fehler' => ['Mindestens eine gültige Position ist erforderlich']];

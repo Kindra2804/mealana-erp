@@ -148,7 +148,11 @@ class MietfachService
             'notiz'                => $data['notiz'] ?: null,
         ]);
 
-        return ['erfolg' => true, 'id' => $id];
+        // Hat der Partner ein Partner-Lager, wird das Fach dort sofort zum Lagerplatz
+        require_once __DIR__ . '/PartnerLagerService.php';
+        $hinweise = (new PartnerLagerService())->mietfaecherSichern($partnerId);
+
+        return ['erfolg' => true, 'id' => $id, 'hinweise' => $hinweise];
     }
 
     /**

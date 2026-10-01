@@ -199,6 +199,11 @@ class ArtikelRepository
         } elseif ($qf === 'keine_hersteller') {
             $conditions[] = "a.hersteller_id IS NULL";
         }
+        // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter
+        if (empty($filter['mit_partnerware'])) {
+            $conditions[] = "a.partner_id IS NULL";
+        }
+
         // Artikel an einem Lagerplatz (Stamm- oder Nachfüllplatz, bei Vätern über ihre Varianten)
         if (!empty($filter['lagerplatz_id'])) {
             $conditions[] = "(a.stammplatz_id = :lp_f1 OR a.nachfuellplatz_id = :lp_f2 OR EXISTS (
@@ -391,6 +396,11 @@ class ArtikelRepository
         } elseif ($qf === 'keine_hersteller') {
             $conditions[] = "a.hersteller_id IS NULL";
         }
+        // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter
+        if (empty($filter['mit_partnerware'])) {
+            $conditions[] = "a.partner_id IS NULL";
+        }
+
         // Artikel an einem Lagerplatz (Stamm- oder Nachfüllplatz, bei Vätern über ihre Varianten)
         if (!empty($filter['lagerplatz_id'])) {
             $conditions[] = "(a.stammplatz_id = :lp_f1 OR a.nachfuellplatz_id = :lp_f2 OR EXISTS (

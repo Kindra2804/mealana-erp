@@ -1,0 +1,48 @@
+{# Verkaufsliste Partnerware für einen Zeitraum (PartnerLagerService::getVerkaeufe) #}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 8.5pt; color: #1a1a1a; padding: 18mm 15mm 20mm 15mm; }
+    .doc-titel { font-size:15pt; font-weight:bold; margin:12pt 0 4pt; }
+    table.pos { width:100%; border-collapse:collapse; margin-top:10pt; }
+    table.pos th { background:#f1f5f9; text-align:left; font-size:7.5pt; padding:3pt; border-bottom:1px solid #999; }
+    table.pos td { padding:3pt; border-bottom:0.5px solid #ddd; }
+    .r { text-align:right; }
+    .mono { font-family: DejaVu Sans Mono, monospace; font-size:7.5pt; }
+    .summe td { font-weight:bold; border-top:1px solid #333; border-bottom:none; }
+  </style>
+</head>
+<body>
+  {% include '_partials/_header.html.twig' %}
+  <div class="doc-titel">Verkaufsliste {{ partner.name }}</div>
+  <div style="color:#444">Zeitraum {{ von|date('d.m.Y') }} – {{ bis|date('d.m.Y') }} · erstellt {{ 'now'|date('d.m.Y H:i') }}</div>
+
+  <table class="pos">
+    <thead><tr><th style="width:78pt">Datum</th><th style="width:85pt">Bon</th><th style="width:95pt">Artikel-Nr.</th><th>Bezeichnung</th>
+      <th class="r" style="width:35pt">Menge</th><th class="r" style="width:50pt">Einzelpreis</th><th class="r" style="width:30pt">MwSt</th><th class="r" style="width:55pt">Summe</th></tr></thead>
+    <tbody>
+    {% for v in verkaeufe %}
+      <tr>
+        <td style="white-space:nowrap">{{ v.erstellt_am|date('d.m.Y H:i') }}</td>
+        <td class="mono">{{ v.bon_nr }}</td>
+        <td class="mono">{{ v.artikelnummer }}</td>
+        <td>{{ v.bezeichnung }}{% if v.rabatt_prozent > 0 %} <span style="color:#777">(−{{ v.rabatt_prozent|number_format(0) }} %)</span>{% endif %}</td>
+        <td class="r">{{ v.menge|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</td>
+        <td class="r">{{ v.einzelpreis_brutto|number_format(2, ',', '.') }}</td>
+        <td class="r">{{ v.steuer_prozent|number_format(0) }}%</td>
+        <td class="r">{{ v.summe|number_format(2, ',', '.') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" style="text-align:center;color:#777;padding:12pt">Keine Verkäufe in diesem Zeitraum.</td></tr>
+    {% endfor %}
+    {% if verkaeufe|length %}
+      <tr class="summe"><td colspan="4">Gesamt (brutto)</td><td class="r">{{ menge_gesamt|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</td><td colspan="2"></td><td class="r">€ {{ summe_gesamt|number_format(2, ',', '.') }}</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+  <p style="margin-top:10pt;font-size:7.5pt;color:#666">Verkäufe an der Kasse; Retouren sind mit negativer Menge enthalten, stornierte Bons nicht. Keine Abrechnung — dient der Information des Partners.</p>
+</body>
+</html>

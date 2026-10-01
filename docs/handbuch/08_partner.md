@@ -54,15 +54,28 @@ Mietfächer sind physische Einheiten (Regal, Vitrine, Tisch) im Geschäft.
 
 ---
 
-## Kommission
+## Partner-Lager und Partnerware
 
-Wenn Partnerware verkauft wird:
+Ware eines Partners liegt in einem **eigenen Lager des Partners**, nicht im Ladengeschäft-Bestand.
 
-1. Partner öffnen → Tab **Kommission**
-2. Abrechnung für Zeitraum erstellen
-3. System berechnet automatisch den Partneranteil aus den gebuchten Verkäufen
+**Einrichten:** Partner → Name anklicken → **Partner-Lager anlegen**. Die gemieteten Fächer werden automatisch Lagerplätze darin (z.B. „Mollramer Seifen Fabrik · R1-F1“). Wird später ein Fach neu vermietet, kommt es beim Start des Mietvertrags automatisch dazu. Wechselt ein Fach den Mieter und liegt dort noch Ware des Vormieters, bleibt es beim Vormieter, bis die Rückgabe gebucht ist.
 
-> Kommissions-Artikel müssen im Artikel-Modul dem Partner zugeordnet sein.
+**Partner-Artikel** (Reiter **Artikel**):
+- Artikelnummer beginnt immer mit `XP` + Partner-ID, z.B. `XP01-SEIFE-LAV` — den Teil dahinter wählt ihr frei. Eigene Artikel dürfen nicht mit „XP“ + Zahl beginnen.
+- Bezeichnung, Verkaufspreis, MwSt, EAN, Fach.
+- Partnerware steht **nicht** in der normalen Artikelliste (Umschalter „inkl. Partnerware“ zeigt sie zur Ansicht) und geht **nie** in den Onlineshop.
+
+**Ware übernehmen / zurückgeben** (Reiter **Bestand**):
+- **📥 Ware übernehmen** — Mengen eintragen oder EAN scannen (jeder Scan +1) → **Buchen** → **Übernahmeschein** (US-Nummer) als PDF zum Unterschreiben.
+- **📤 Rückgabe an Partner** — höchstens der aktuelle Bestand → **Rückgabeschein** (RS-Nummer).
+
+**Kasse:** Partner-Artikel werden automatisch aus dem Lager ihres Partners abgebucht (Storno bucht dorthin zurück). Eine Rückgabe an der Kasse schlägt beim Einlagern am Packplatz das Partner-Lager vor.
+
+**Nachverfolgung:**
+- Reiter **Bewegungen** — jede Übernahme, jeder Verkauf (mit Bon-Nr.), jedes Storno, jede Rückgabe.
+- Reiter **Belege & Verkaufsliste** — alle Übernahme-/Rückgabescheine; **Verkaufsliste** als PDF für einen frei wählbaren Zeitraum (was wann um wie viel verkauft wurde).
+
+> **Noch nicht gebaut:** die eigentliche Partner-**Abrechnung** (Gutschrift / Fremdrechnung / Info-Abrechnung) und der Hinweis „im Namen und auf Rechnung von“ auf dem Kassenbon samt RKSV-Trennung — das wird gesondert geplant. Die Verkaufsliste dient bis dahin als Grundlage.
 
 ---
 

@@ -63,8 +63,8 @@
 - [Statistik Konzept](project_statistik.md) — Kein eigener Sidebar-Link bis Verkauf steht; kommt aus Dashboard + Verkauf-Modul
 - [Kundendatenbank Design](project_kundendatenbank.md) — B2B, Laufkunde, AES-256-GCM, DSGVO Crypto-Shredding; Shop-Sync-Szenario 1 FERTIG 2026-07-21, Rest zurückgestellt
 - [Feedback: Emoji CSS](feedback_emoji_css.md) — color: hat keine Wirkung auf Emojis → filter:grayscale(1) verwenden
-- [Händler-Konsignation](project_haendler_konsignation.md) — Partnerbetriebe die MeaLana-Ware verkaufen = externe Lager; lager.typ='extern_haendler', Buchungsregeln LS+Rechnungsdialog
-- [Partner-Modul](project_partner_modul.md) — FERTIG 2026-06-21: Typen mietfach/kommission/spende/beides; Mietfächer als physische Einheiten mit Vertragshistory; public/partner/ vollständig
+- [Händler-Konsignation](project_haendler_konsignation.md) — Schema lager_beziehung=haendler_aussenlager + kunde_id; LS bei Lieferung, Sammelrechnung nach Verkaufsmeldung zu Kundengruppenpreis, Lagerkorrektur erst mit Rechnung (Jacky 2026-10-01); NICHT gebaut
+- [Partner-Modul](project_partner_modul.md) — Stammdaten+Mietfächer FERTIG; Partner-/Händler-LAGER + Abrechnung NIE gebaut (2026-10-01 bestätigt); Entscheidungen: Kasse bucht Partner-Artikel vom Partner-Lager, 1 Lager/Partner mit Mietfächern als Lagerplätze, Händler LS→Sammelrechnung nach Verkaufsmeldung; Partner-Lager GEBAUT 2026-10-01 (Migration 189, nicht committed); als Nächstes Händler-Außenlager, dann Abrechnung
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync (voller Pfad, Blatt-ID am Artikel), Kanal-Chips berechnet, ein geteilter Baum für alle Shops (2026-06-21)
 - [Online-Shop-Anbindung: Baufortschritt](project_shop_sync.md) — ✅ 2026-08-29 "Bar bei Abholung" GELÖST (fehlende Blocks-Payment-Registrierung war Ursache) + Testbestellung fand 2 weitere Sync-Bugs (lieferart hartcodiert, customer_note verworfen), beide gefixt; Meterware-Mengen-Verdacht widerlegt
 - [Kategorie-Verwaltung](project_kategorie_verwaltung.md) — ✅ 2026-08-05: Artikelliste "nur direkt zugeordnet"-Filter + Kategorie-entfernen-Massenaktion + Dropdown-Einrückung gefixt
