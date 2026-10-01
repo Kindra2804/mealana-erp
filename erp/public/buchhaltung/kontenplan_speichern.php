@@ -14,7 +14,7 @@ $name        = trim($_POST['name'] ?? '');
 $typ         = $_POST['typ'] ?? '';
 $aktiv       = isset($_POST['aktiv']) ? 1 : 0;
 
-$erlaubteTypen = ['erloes', 'aufwand', 'steuer', 'bank', 'kasse'];
+$erlaubteTypen = ['erloes', 'aufwand', 'steuer', 'bank', 'kasse', 'verbindlichkeit'];
 
 $fehler = [];
 if ($kontonummer === '') $fehler[] = 'Kontonummer ist Pflichtfeld.';

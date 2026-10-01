@@ -9,9 +9,27 @@ unset($_SESSION['fehler'], $_SESSION['erfolg']);
 
 $konten = $db->query("SELECT id, kontonummer, name, typ, aktiv FROM kontenplan ORDER BY kontonummer")->fetchAll();
 
+// Wo wird welches Konto verwendet? (Warengruppen über Kontonummer, Zahlungsarten und
+// Steuerklassen über Konto-ID) -- damit sichtbar ist, was ein Umnummerieren/Deaktivieren betrifft.
+$verwendung = [];
+foreach ($db->query("SELECT konto_nr, name FROM artikel_gruppen WHERE aktiv = 1 ORDER BY name") as $r) {
+    $verwendung['nr:' . $r['konto_nr']][] = 'Warengruppe ' . $r['name'];
+}
+foreach ($db->query("SELECT konto_id, zahlungsart FROM zahlungsart_konten WHERE konto_id IS NOT NULL ORDER BY zahlungsart") as $r) {
+    $verwendung['id:' . $r['konto_id']][] = 'Zahlungsart ' . $r['zahlungsart'];
+}
+foreach ($db->query("SELECT sk.steuer_konto_id, s.name FROM steuerklassen_konten sk JOIN steuerklassen s ON s.id = sk.steuerklasse_id WHERE sk.steuer_konto_id IS NOT NULL ORDER BY s.name") as $r) {
+    $verwendung['id:' . $r['steuer_konto_id']][] = 'Steuerklasse ' . $r['name'];
+}
+
+// Warengruppen, deren Kontonummer im Kontenplan fehlt (Export hätte ein unbekanntes Konto)
+$kontoNummern = array_column($konten, 'kontonummer');
+$fehlendeKonten = $db->query("SELECT name, konto_nr FROM artikel_gruppen WHERE aktiv = 1 AND konto_nr IS NOT NULL AND konto_nr <> '' ORDER BY konto_nr")->fetchAll();
+$fehlendeKonten = array_filter($fehlendeKonten, fn($g) => !in_array($g['konto_nr'], $kontoNummern, true));
+
 $typLabel = [
     'erloes' => 'Erlös', 'aufwand' => 'Aufwand', 'steuer' => 'Steuer',
-    'bank' => 'Bank', 'kasse' => 'Kasse',
+    'bank' => 'Bank', 'kasse' => 'Kasse', 'verbindlichkeit' => 'Verbindlichkeit',
 ];
 
 $pageTitle        = 'Kontenplan';
@@ -31,6 +49,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 <?php endif; ?>
 
+<?php if ($fehlendeKonten): ?>
+<div class="card" style="border-left:3px solid var(--color-danger);margin-bottom:12px;padding:10px 16px">
+    <strong>Warengruppen mit Konto, das im Kontenplan fehlt:</strong>
+    <?php foreach ($fehlendeKonten as $g): ?>
+        <?= htmlspecialchars($g['name']) ?> (<?= htmlspecialchars($g['konto_nr']) ?>)<?= $g !== end($fehlendeKonten) ? ',' : '' ?>
+    <?php endforeach; ?>
+    — bitte hier anlegen oder in der Warengruppe korrigieren.
+</div>
+<?php endif; ?>
+
 <div class="card">
     <div class="card-header">Kontenplan — Basis für Kontierung und DATEV-Export</div>
     <table class="erp-table">
@@ -38,7 +66,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <tr>
                 <th style="width:100px">Kontonr.</th>
                 <th>Name</th>
-                <th style="width:100px">Typ</th>
+                <th style="width:120px">Typ</th>
+                <th>Verwendet in</th>
                 <th style="width:70px;text-align:center">Aktiv</th>
                 <th style="width:80px"></th>
             </tr>
@@ -49,6 +78,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <td><code style="font-size:12px;color:var(--color-nav)"><?= htmlspecialchars($k['kontonummer']) ?></code></td>
                 <td><?= htmlspecialchars($k['name']) ?></td>
                 <td><span class="chip"><?= $typLabel[$k['typ']] ?? htmlspecialchars($k['typ']) ?></span></td>
+                <?php $verw = array_merge($verwendung['nr:' . $k['kontonummer']] ?? [], $verwendung['id:' . $k['id']] ?? []); ?>
+                <td style="font-size:12px;color:var(--color-text-muted)">
+                    <?= $verw ? htmlspecialchars(implode(' · ', $verw)) : '—' ?>
+                    <?php if ($verw && !$k['aktiv']): ?>
+                        <span style="color:var(--color-danger)" title="Inaktives Konto wird noch verwendet">● inaktiv, aber zugeordnet</span>
+                    <?php endif; ?>
+                </td>
                 <td style="text-align:center">
                     <?= $k['aktiv'] ? '<span style="color:#16a34a">✓</span>' : '<span style="color:#dc2626">✗</span>' ?>
                 </td>
@@ -92,6 +128,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <option value="steuer">Steuer</option>
                         <option value="bank">Bank</option>
                         <option value="kasse">Kasse</option>
+                        <option value="verbindlichkeit">Verbindlichkeit (z.B. Gutschein-Anzahlung)</option>
                     </select>
                 </div>
                 <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
