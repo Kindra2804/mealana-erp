@@ -150,10 +150,12 @@ $istGesperrt = in_array($auftrag['lieferstatus'], $sperrZustände);
 $stmtZusatzBons = $db->prepare("
     SELECT id, bon_nr, bruttobetrag, erstellt_am
     FROM kassen_bons
-    WHERE web_auftrag_id = :aid AND typ = 'verkauf' AND id != :ausgenommen
+    WHERE (web_auftrag_id = :aid
+           OR id IN (SELECT bon_id FROM kassen_bon_auftraege WHERE auftrag_id = :aid2))  -- Sammelabholung
+      AND typ = 'verkauf' AND id != :ausgenommen
     ORDER BY erstellt_am
 ");
-$stmtZusatzBons->execute([':aid' => $id, ':ausgenommen' => $kassenBonId ?: 0]);
+$stmtZusatzBons->execute([':aid' => $id, ':aid2' => $id, ':ausgenommen' => $kassenBonId ?: 0]);
 $zusatzBons = $stmtZusatzBons->fetchAll();
 
 // Adress-Snapshots dekodieren

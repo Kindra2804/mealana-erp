@@ -213,6 +213,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#kasse">Kasse</a>
             <a href="#kasse-bon" class="sub">↳ Bon erstellen</a>
             <a href="#kasse-abholbereit" class="sub">↳ Abholbereit / Aufträge</a>
+            <a href="#kasse-sammelabholung" class="sub">↳ Sammelabholung</a>
             <a href="#kasse-freitext-retour" class="sub">↳ Freitext-Retour</a>
             <a href="#kasse-kassensturz" class="sub">↳ Kassensturz / Z-Bon</a>
             <a href="#gutscheine">Gutscheine</a>
@@ -542,6 +543,22 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Extra</strong> — Kunde nimmt mehr</td><td>Extra-Bon für die Zugaben, Zusatzbetrag einzahlen</td></tr>
                 <tr><td><strong>Mix</strong> — teils retour, teils extra</td><td>Retour-Bon + Extra-Bon werden erstellt</td></tr>
             </table>
+
+            <h3 id="kasse-sammelabholung">Sammelabholung — mehrere Bestellungen eines Kunden <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Hat ein Kunde mehrere Bestellungen zur Abholung, holt er sie mit <strong>einem</strong> Bon ab.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>📦 Auftrag</strong> → eine der Bestellungen suchen und anklicken</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Die Kasse bietet weitere offene Abholungen desselben Kunden an — abholbereite sind angehakt, noch nicht gepackte nicht</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Ausgewählte mitladen</strong> — jeder Auftrag erscheint als eigener Block mit Nummer und „bezahlt/unbezahlt“</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Nicht Mitgenommenes per <strong>−</strong> auf 0 setzen, Regal-Artikel einfach dazuscannen, dann <strong>Bezahlen</strong></div></div>
+            <table class="ba-table">
+                <tr><th>Situation</th><th>Was passiert</th></tr>
+                <tr><td>Auftrag schon online bezahlt</td><td>Steht nicht im Kassenbetrag, wird nur abgeschlossen</td></tr>
+                <tr><td>Auftrag unbezahlt</td><td>Wird mit dem Bon bezahlt (nur die mitgenommenen Mengen)</td></tr>
+                <tr><td>Teilabholung</td><td>Auftrag wird „teilgeliefert“, nicht Mitgenommenes geht zurück ins Lager</td></tr>
+                <tr><td>Von einem Auftrag nichts mitgenommen</td><td>Auftrag bleibt unverändert liegen (✕ nimmt ihn ganz vom Bon)</td></tr>
+                <tr><td>Alles bezahlt, alles mitgenommen</td><td>Kein Bon nötig, alle Aufträge werden direkt abgeschlossen</td></tr>
+            </table>
+            <p>Nur Aufträge <strong>desselben Kunden</strong> lassen sich zusammenfassen. Auf dem Bon steht jeder Auftrag mit seiner Nummer, bereits bezahlte als „Abgeholt, bereits bezahlt: …“. Eine Retoure aus einem älteren Auftrag braucht weiterhin einen eigenen Bon.</p>
 
             <h3 id="kasse-freitext-retour">Freitext-Retour <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Für Rückgaben ohne Auftrag im ERP (z.B. alte JTL-Verkäufe von vor der Umstellung).</p>

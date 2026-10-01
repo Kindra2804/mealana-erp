@@ -300,15 +300,16 @@ class KassenService
             foreach ($positionen as $i => $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, artikel_id, bezeichnung, ean, menge,
+                        (bon_id, block, web_auftrag_id, artikel_id, bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
-                        (:bon_id, :block, :artikel_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge, :sort)
                 ");
                 $stmt2->execute([
                     ':bon_id'             => $bonId,
                     ':block'              => $pos['block']              ?? null,
+                    ':web_auftrag_id'     => $pos['web_auftrag_id']     ?? null,
                     ':artikel_id'         => $pos['artikel_id']         ?? null,
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean']                ?? null,
@@ -665,6 +666,18 @@ class KassenService
         ");
         $stmt2->execute([':bid' => $bonId]);
         $bon['positionen'] = $stmt2->fetchAll();
+
+        // Alle abgeholten Web-Aufträge (Sammelabholung: mehrere) -- für die Zwischen-
+        // überschriften auf dem Druck und den Hinweis auf vorher bezahlte Aufträge
+        $stmt3 = $this->db->prepare("
+            SELECT a.id, a.auftrag_nr, ba.vorher_bezahlt
+            FROM kassen_bon_auftraege ba
+            JOIN auftraege a ON a.id = ba.auftrag_id
+            WHERE ba.bon_id = :bid
+            ORDER BY ba.id
+        ");
+        $stmt3->execute([':bid' => $bonId]);
+        $bon['web_auftraege'] = $stmt3->fetchAll();
 
         return $bon;
     }

@@ -77,6 +77,7 @@ foreach ($positionen as $p) {
         'block'               => !empty($p['vonAuftrag']) ? 'auftrag' : ($p['block'] ?? null),
         'auftrag_position_id' => isset($p['auftrag_position_id']) ? (int)$p['auftrag_position_id'] : null,
         'retour_von_position_id' => isset($p['retour_von_position_id']) ? (int)$p['retour_von_position_id'] : null,
+        'web_auftrag_id'         => !empty($p['web_auftrag_id']) ? (int)$p['web_auftrag_id'] : null,
         'gutschein_empfaenger'   => trim((string)($p['gutschein_empfaenger'] ?? '')) ?: null,
     ];
 }
@@ -151,34 +152,126 @@ foreach ($sauberePositionen as $p) {
 }
 $bonDaten['bruttobetrag'] = round($serverBrutto, 2);
 
-$webAuftragId     = isset($input['web_auftrag_id']) && $input['web_auftrag_id']
-    ? (int)$input['web_auftrag_id'] : null;
-$webAuftragStatus = $input['web_auftrag_status']    ?? null;
-$webMitnehmen     = $input['web_auftrag_mitnehmen'] ?? null;
+// ── Geladene Web-Aufträge ──────────────────────────────────────────────────────
+// Sammelabholung (2026-10-01): mehrere Online-Aufträge EINES Kunden auf einem Bon.
+// Payload 'web_auftraege' = [{id, mitnehmen}]; der alte Einzel-Payload (web_auftrag_id +
+// web_auftrag_mitnehmen) wird weiter verstanden. Liefer- und Zahlungsstatus kommen aus
+// der DB, nicht vom Client.
+$webAuftragEingabe = [];
+if (!empty($input['web_auftraege']) && is_array($input['web_auftraege'])) {
+    foreach ($input['web_auftraege'] as $wa) {
+        if (!empty($wa['id'])) {
+            $webAuftragEingabe[(int)$wa['id']] = array_key_exists('mitnehmen', $wa) ? $wa['mitnehmen'] : null;
+        }
+    }
+} elseif (!empty($input['web_auftrag_id'])) {
+    $webAuftragEingabe[(int)$input['web_auftrag_id']] = $input['web_auftrag_mitnehmen'] ?? null;
+}
 
-$nurAbschliessen      = ($input['nur_abschliessen'] ?? false) === true;
-$webAuftragZahlStatus = $input['web_auftrag_zahlungsstatus'] ?? null;
-$webAuftragBezahlt    = ($webAuftragZahlStatus === 'bezahlt');
+/** @var array<int, array{id:int, auftrag:array, status:string, mitnehmen:?bool, bezahlt:bool}> $webAuftraege */
+$webAuftraege = [];
+if ($webAuftragEingabe) {
+    $ph = implode(',', array_fill(0, count($webAuftragEingabe), '?'));
+    $stmtWa = Database::getInstance()->prepare("SELECT * FROM auftraege WHERE id IN ($ph)");
+    $stmtWa->execute(array_keys($webAuftragEingabe));
+    $waZeilen = [];
+    foreach ($stmtWa->fetchAll(PDO::FETCH_ASSOC) as $a) $waZeilen[(int)$a['id']] = $a;
+
+    $kundenSchluessel = [];
+    foreach ($webAuftragEingabe as $aid => $mitnehmen) {
+        $a = $waZeilen[$aid] ?? null;
+        if (!$a || $a['lieferstatus'] === 'storniert') {
+            echo json_encode(['erfolg' => false, 'fehler' => 'Ein geladener Auftrag existiert nicht mehr oder ist storniert — bitte neu laden.']); exit;
+        }
+        $snap = json_decode($a['kunden_snapshot'] ?? '{}', true) ?: [];
+        $kundenSchluessel[] = $a['kunden_id'] ? 'k' . $a['kunden_id'] : 'm' . strtolower(trim($snap['email'] ?? ''));
+        $webAuftraege[$aid] = [
+            'id'        => $aid,
+            'auftrag'   => $a,
+            'status'    => $a['lieferstatus'],
+            'mitnehmen' => $mitnehmen === null ? null : (bool)$mitnehmen,
+            'bezahlt'   => $a['zahlungsstatus'] === 'bezahlt',
+        ];
+    }
+    // Mehrere Aufträge nur vom selben Kunden (gleiches Kundenkonto bzw. bei Gast-
+    // Bestellungen gleiche E-Mail; Gast ohne E-Mail = 'm' -> nie zusammenfassbar)
+    if (count($webAuftraege) > 1 && (count(array_unique($kundenSchluessel)) > 1 || in_array('m', $kundenSchluessel, true))) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Sammelabholung geht nur für Aufträge desselben Kunden.']); exit;
+    }
+}
+// Erster Auftrag = Haupt-Auftrag für kassen_bons.auftrag_id/web_auftrag_id (Altbestand)
+$webAuftragId = $webAuftraege ? array_key_first($webAuftraege) : null;
+
+$nurAbschliessen = ($input['nur_abschliessen'] ?? false) === true;
+
+// Positionen ihrem Auftrag zuordnen: über auftrag_position_id bzw. retour_von_position_id
+// aus der DB (maßgeblich), sonst die vom Client mitgegebene web_auftrag_id (Retour-Zeilen
+// aus verringerten Abhol-Mengen). Freitext-Retouren und Extras bleiben ohne Auftrag.
+$posIdsZuordnen = [];
+foreach ($sauberePositionen as $p) {
+    if ($p['auftrag_position_id'])    $posIdsZuordnen[] = $p['auftrag_position_id'];
+    if ($p['retour_von_position_id']) $posIdsZuordnen[] = $p['retour_von_position_id'];
+}
+$posZuAuftrag = [];
+if ($posIdsZuordnen) {
+    $posIdsZuordnen = array_values(array_unique($posIdsZuordnen));
+    $ph = implode(',', array_fill(0, count($posIdsZuordnen), '?'));
+    $stmtPz = Database::getInstance()->prepare("SELECT id, auftrag_id FROM auftrag_positionen WHERE id IN ($ph)");
+    $stmtPz->execute($posIdsZuordnen);
+    $posZuAuftrag = array_map('intval', $stmtPz->fetchAll(PDO::FETCH_KEY_PAIR));
+}
+foreach ($sauberePositionen as &$p) {
+    $pid = $p['auftrag_position_id'] ?: $p['retour_von_position_id'];
+    if ($pid) {
+        $p['web_auftrag_id'] = $posZuAuftrag[$pid] ?? null;
+    }
+    if ($p['web_auftrag_id'] && !isset($webAuftraege[$p['web_auftrag_id']])) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Eine Bon-Position gehört zu einem Auftrag, der nicht geladen ist — bitte Auftrag neu laden.']); exit;
+    }
+}
+unset($p);
+
+// Sammelabholung: von einem Auftrag gar nichts mitgenommen (alle Mengen 0) → er bleibt
+// unverändert liegen (Ware bleibt gepackt/reserviert, keine Zahlung, keine Erstattung).
+// Seine Zeilen inkl. evtl. Retour-Zeilen fliegen ganz aus dem Bon. Beim EINZELNEN
+// Auftrag bleibt es wie bisher (bezahlt + alles 0 = komplette Rückgabe).
+if (count($webAuftraege) > 1) {
+    foreach (array_keys($webAuftraege) as $aid) {
+        $mengen = array_column(array_filter($sauberePositionen, fn($p) => $p['web_auftrag_id'] === $aid && !empty($p['auftrag_position_id'])), 'menge');
+        if ($mengen && array_sum($mengen) < 0.001) {
+            unset($webAuftraege[$aid]);
+            $sauberePositionen = array_values(array_filter($sauberePositionen, fn($p) => $p['web_auftrag_id'] !== $aid));
+        }
+    }
+    if (!$webAuftraege) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Von keinem der Aufträge wird etwas mitgenommen.']); exit;
+    }
+    $webAuftragId = array_key_first($webAuftraege);
+}
+
+/** Positionen eines Auftrags (inkl. seiner Retour-Zeilen) */
+$positionenVon = fn(int $aid): array => array_values(array_filter($sauberePositionen, fn($p) => $p['web_auftrag_id'] === $aid));
 
 // ── Manager-Override: Barauszahlung bei Retour eines bereits bezahlten Web-Auftrags ──
 // Läuft VOR jeder Buchung (erstelleBon() folgt erst weiter unten), damit bei fehlender
 // Freigabe wirklich nichts passiert — kein halb gebuchter Bon, keine Lagerbewegung.
-if (!$nurAbschliessen && $webAuftragBezahlt && $webAuftragId) {
-    $vorabStmt = Database::getInstance()->prepare("SELECT bruttobetrag FROM auftraege WHERE id = ?");
-    $vorabStmt->execute([$webAuftragId]);
-    $vorabBruttobetrag = (float)($vorabStmt->fetchColumn() ?: 0);
-
-    $vorabAuftragAnteil = 0.0;
-    foreach ($sauberePositionen as $bp) {
-        if (!empty($bp['auftrag_position_id'])) {
-            $vorabAuftragAnteil += $bp['menge'] * $bp['einzelpreis_brutto'] * (1 - $bp['rabatt_prozent'] / 100);
+// Rechnung je bezahltem Auftrag wie bisher beim Einzelauftrag, dann summiert.
+if (!$nurAbschliessen) {
+    $vorabRetourBetrag = 0.0;
+    foreach ($webAuftraege as $aid => $wa) {
+        if (!$wa['bezahlt']) continue;
+        $vorabAuftragAnteil = 0.0;
+        foreach ($positionenVon($aid) as $bp) {
+            if (!empty($bp['auftrag_position_id'])) {
+                $vorabAuftragAnteil += $bp['menge'] * $bp['einzelpreis_brutto'] * (1 - $bp['rabatt_prozent'] / 100);
+            }
         }
+        $vorabAuftragAnteil = round($vorabAuftragAnteil, 2);
+        if ($vorabAuftragAnteil <= 0) {
+            $vorabAuftragAnteil = (float)$wa['auftrag']['bruttobetrag'];
+        }
+        $vorabRetourBetrag += round((float)$wa['auftrag']['bruttobetrag'] - $vorabAuftragAnteil, 2);
     }
-    $vorabAuftragAnteil = round($vorabAuftragAnteil, 2);
-    if ($vorabAuftragAnteil <= 0) {
-        $vorabAuftragAnteil = $vorabBruttobetrag;
-    }
-    $vorabRetourBetrag = round($vorabBruttobetrag - $vorabAuftragAnteil, 2);
 
     if ($vorabRetourBetrag > 0.005 && !Auth::kann('kasse.auszahlung')) {
         $manager = Auth::pruefeManagerPin((string)($input['manager_pin'] ?? ''));
@@ -202,106 +295,162 @@ if (!$nurAbschliessen && $webAuftragBezahlt && $webAuftragId) {
 // Per-Position: kein_lagerabzug für Auftrag-Positionen (schon gebucht) + Retour-Positionen
 foreach ($sauberePositionen as &$bp) {
     if ($bp['block'] === 'auftrag') {
-        $bp['kein_lagerabzug'] = !empty($bp['kein_lagerabzug']) || $webAuftragStatus === 'abholbereit' || $webMitnehmen === false;
+        $wa = $webAuftraege[$bp['web_auftrag_id']] ?? null;
+        $bp['kein_lagerabzug'] = !empty($bp['kein_lagerabzug'])
+            || ($wa && ($wa['status'] === 'abholbereit' || $wa['mitnehmen'] === false));
     } elseif ($bp['block'] === 'retour') {
         $bp['kein_lagerabzug'] = true; // Packplatz hat schon ausgebucht; Rücklagerung erfolgt über menge_geliefert-Tracking
     }
 }
 unset($bp);
 
-// ── Kein-Bon-Abschluss: Auftrag bereits bezahlt, exakt abgeholt ──────────────
-if ($nurAbschliessen && $webAuftragId) {
-    try {
-        $db    = Database::getInstance();
-        $repo  = new AuftragRepository();
-        $aStmt = $db->prepare("SELECT * FROM auftraege WHERE id = ?");
-        $aStmt->execute([$webAuftragId]);
-        $auftrag = $aStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$auftrag) throw new RuntimeException('Auftrag nicht gefunden');
+// ── Abholbestätigung per Mail (nach Abholung ohne Bon bzw. nach Bon) ─────────────
+$sendeAbholMail = function (array $auftrag, string $bonNr, array $anhaenge) {
+    $kunde = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
+    $email = trim($kunde['email'] ?? '');
+    if (!$email) return;
+    static $firma = null;
+    if ($firma === null) {
+        $firma = Database::getInstance()->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+    $mailer = new Mailer();
+    $mailer->sendeTemplate(
+        empfaenger:   $email,
+        betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' — Vielen Dank für Ihren Einkauf!',
+        templatePfad: 'mails/abholung_kasse.html.twig',
+        variablen: [
+            'logo_base64'    => $mailer->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
+            'anrede'         => $kunde['anrede']   ?? '',
+            'nachname'       => $kunde['nachname'] ?? '',
+            'kunde_name'     => trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? '')) ?: ($kunde['firma'] ?? ''),
+            'auftrag_nummer' => $auftrag['auftrag_nr'],
+            'bon_nr'         => $bonNr,
+            'firma_email'    => $firma['mail_from_address'] ?? '',
+        ],
+        anhaenge: $anhaenge,
+    );
+};
 
+// ── Kein-Bon-Abschluss: alle geladenen Aufträge bereits bezahlt, exakt abgeholt ──
+if ($nurAbschliessen && $webAuftraege) {
+    $db = Database::getInstance();
+    try {
+        foreach ($webAuftraege as $wa) {
+            if (!$wa['bezahlt']) {
+                throw new RuntimeException('Auftrag ' . $wa['auftrag']['auftrag_nr'] . ' ist nicht bezahlt — bitte über "Bezahlen" abschließen.');
+            }
+        }
+        $db->beginTransaction();
+        $repo     = new AuftragRepository();
         $lagerId  = (int)($bonDaten['lager_id'] ?? 1);
         $lagerSvc = new LagerService();
+        $mails    = [];
+        $nummern  = [];
 
-        $bonAuftragPos = [];
-        foreach ($sauberePositionen as $bp) {
-            if (!empty($bp['auftrag_position_id'])) {
-                $bonAuftragPos[(int)$bp['auftrag_position_id']] = (float)$bp['menge'];
+        foreach ($webAuftraege as $aid => $wa) {
+            $auftrag = $wa['auftrag'];
+            $nummern[] = $auftrag['auftrag_nr'];
+
+            $bonAuftragPos = [];
+            foreach ($positionenVon($aid) as $bp) {
+                if (!empty($bp['auftrag_position_id'])) {
+                    $bonAuftragPos[(int)$bp['auftrag_position_id']] = (float)$bp['menge'];
+                }
             }
+
+            $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, charge FROM auftrag_positionen WHERE auftrag_id = ?");
+            $origPosStmt->execute([$aid]);
+
+            $alleGeliefert = true;
+            foreach ($origPosStmt->fetchAll(PDO::FETCH_ASSOC) as $op) {
+                $imBon   = (float)($bonAuftragPos[$op['id']] ?? $op['menge']);
+                $gepackt = (float)$op['menge'];
+                $rueck   = $gepackt - $imBon;
+                if ($rueck > 0.001 && !empty($op['artikel_id'])) {
+                    $lagerSvc->wareneingang([
+                        'artikel_id'  => (int)$op['artikel_id'],
+                        'lager_id'    => $lagerId,
+                        'menge'       => $rueck,
+                        'charge'      => $op['charge'] ?? null,
+                        'referenz'    => 'Nicht abgeholt — Auftrag ' . $auftrag['auftrag_nr'],
+                        'notiz'       => 'Abholung Kasse ohne Bon',
+                        'benutzer_id' => $benutzerId,
+                    ]);
+                }
+                $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ? WHERE id = ?")->execute([$imBon, $op['id']]);
+                if ($imBon < $gepackt) $alleGeliefert = false;
+            }
+
+            $neuerLieferStatus = $alleGeliefert ? 'abgeschlossen' : 'teilgeliefert';
+            $db->prepare("UPDATE auftraege SET lieferstatus = ?, aktualisiert_am = NOW() WHERE id = ?")->execute([$neuerLieferStatus, $aid]);
+            $repo->logStatus($aid,
+                ['lieferstatus' => [$auftrag['lieferstatus'], $neuerLieferStatus]],
+                'Abgeholt an Kasse — bereits bezahlt — kein Kassenbon'
+                    . (count($webAuftraege) > 1 ? ' (Sammelabholung mit ' . count($webAuftraege) . ' Aufträgen)' : ''),
+                $benutzerId
+            );
+            if ($alleGeliefert) $mails[] = $auftrag;
+        }
+        $db->commit();
+
+        // Mails erst nach dem Commit -- ein Mailfehler darf die Abholung nicht zurückrollen
+        foreach ($mails as $auftrag) {
+            try { $sendeAbholMail($auftrag, '', []); } catch (Throwable $eMail) { error_log('[AbholungOhneBon Mail] ' . $eMail->getMessage()); }
         }
 
-        $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, charge FROM auftrag_positionen WHERE auftrag_id = ?");
-        $origPosStmt->execute([$webAuftragId]);
-        $origPositionen = $origPosStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $alleGeliefert = true;
-        foreach ($origPositionen as $op) {
-            $imBon   = (float)($bonAuftragPos[$op['id']] ?? $op['menge']);
-            $gepackt = (float)$op['menge'];
-            $rueck   = $gepackt - $imBon;
-            if ($rueck > 0.001 && !empty($op['artikel_id'])) {
-                $lagerSvc->wareneingang([
-                    'artikel_id'  => (int)$op['artikel_id'],
-                    'lager_id'    => $lagerId,
-                    'menge'       => $rueck,
-                    'charge'      => $op['charge'] ?? null,
-                    'referenz'    => 'Nicht abgeholt — Auftrag ' . $auftrag['auftrag_nr'],
-                    'notiz'       => 'Abholung Kasse ohne Bon',
-                    'benutzer_id' => $benutzerId,
-                ]);
-            }
-            $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ? WHERE id = ?")->execute([$imBon, $op['id']]);
-            if ($imBon < $gepackt) $alleGeliefert = false;
-        }
-
-        $neuerLieferStatus = $alleGeliefert ? 'abgeschlossen' : 'teilgeliefert';
-        $db->prepare("UPDATE auftraege SET lieferstatus = ?, aktualisiert_am = NOW() WHERE id = ?")->execute([$neuerLieferStatus, $webAuftragId]);
-        $repo->logStatus($webAuftragId,
-            ['lieferstatus' => [$auftrag['lieferstatus'], $neuerLieferStatus]],
-            'Abgeholt an Kasse — bereits bezahlt — kein Kassenbon', $benutzerId
-        );
-
-        if ($alleGeliefert) {
-            $kunde = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
-            $email = trim($kunde['email'] ?? '');
-            if ($email) {
-                $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
-                $mailer = new Mailer();
-                $mailer->sendeTemplate(
-                    empfaenger:   $email,
-                    betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' — Vielen Dank für Ihren Einkauf!',
-                    templatePfad: 'mails/abholung_kasse.html.twig',
-                    variablen: [
-                        'logo_base64'    => $mailer->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
-                        'anrede'         => $kunde['anrede']   ?? '',
-                        'nachname'       => $kunde['nachname'] ?? '',
-                        'kunde_name'     => trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? '')) ?: ($kunde['firma'] ?? ''),
-                        'auftrag_nummer' => $auftrag['auftrag_nr'],
-                        'bon_nr'         => '',
-                        'firma_email'    => $firma['mail_from_address'] ?? '',
-                    ],
-                    anhaenge: [],
-                );
-            }
-        }
-
-        echo json_encode(['erfolg' => true, 'auftrag_nr' => $auftrag['auftrag_nr']]);
+        echo json_encode(['erfolg' => true, 'auftrag_nr' => implode(', ', $nummern)]);
     } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
         error_log('[AbholungOhneBon] ' . $e->getMessage());
         echo json_encode(['erfolg' => false, 'fehler' => 'Fehler beim Abschließen: ' . $e->getMessage()]);
     }
     exit;
 }
 
-// ── Für Bon-Erstellung: bei bereits bezahltem Auftrag nur Extra+Retour-Positionen ──
-$bonErstellungPositionen = $sauberePositionen;
-if ($webAuftragBezahlt && $webAuftragId) {
-    $bonErstellungPositionen = array_values(array_filter($sauberePositionen, fn($p) => empty($p['auftrag_position_id'])));
-    $bruttoBon = 0.0;
-    foreach ($bonErstellungPositionen as $p) {
-        $bruttoBon += $p['menge'] * $p['einzelpreis_brutto'] * (1 - $p['rabatt_prozent'] / 100);
+// ── Für Bon-Erstellung: Positionen bereits bezahlter Aufträge stehen nicht auf dem Bon ──
+// (nur Extras, Retouren und die Zeilen noch unbezahlter Aufträge werden kassiert).
+// Auftrags-Zeilen mit Menge 0 (nicht mitgenommen) gehören auch nicht auf den Beleg --
+// die Auftrags-Logik unten sieht sie weiterhin über $sauberePositionen.
+$bonErstellungPositionen = array_values(array_filter($sauberePositionen, fn($p) =>
+    empty($p['auftrag_position_id']) || abs($p['menge']) > 0.0001
+));
+$bonErstellungPositionen = array_values(array_filter($bonErstellungPositionen, fn($p) =>
+    empty($p['auftrag_position_id']) || !$webAuftraege[$p['web_auftrag_id']]['bezahlt']
+));
+
+// Retoure als Gutschein (bon.php::retourAlsGutschein()): die "gutschein_verkauf"-Zeile
+// bringt den Bon auf 0. Ihr Betrag = was nach Retouren und Extras tatsächlich zu erstatten
+// ist -- serverseitig nachgerechnet, nicht vom Client übernommen. Genau dieser Betrag wird
+// unten EIN Gutschein (bis 2026-10-01 wurde je Auftrag der volle Retourbetrag ausgestellt,
+// Extra-Käufe im selben Bon wurden dabei nicht abgezogen).
+$gutscheinAusgabeBetrag = null;
+$gvIndex = null;
+foreach ($bonErstellungPositionen as $i => $p) {
+    if ($p['block'] === 'gutschein_verkauf') {
+        if ($gvIndex !== null) { echo json_encode(['erfolg' => false, 'fehler' => 'Mehrere Gutschein-Ausgaben in einem Bon.']); exit; }
+        $gvIndex = $i;
     }
-    $bonDaten['bruttobetrag'] = round($bruttoBon, 2);
 }
+if ($gvIndex !== null) {
+    $rest = 0.0;
+    foreach ($bonErstellungPositionen as $i => $p) {
+        if ($i !== $gvIndex) $rest += $p['menge'] * $p['einzelpreis_brutto'] * (1 - $p['rabatt_prozent'] / 100);
+    }
+    $gutscheinAusgabeBetrag = round(-$rest, 2);
+    if ($gutscheinAusgabeBetrag <= 0.005) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Es gibt nichts zu erstatten — Gutschein-Ausgabe nicht möglich.']); exit;
+    }
+    $bonErstellungPositionen[$gvIndex]['menge']              = 1;
+    $bonErstellungPositionen[$gvIndex]['einzelpreis_brutto'] = $gutscheinAusgabeBetrag;
+    $bonErstellungPositionen[$gvIndex]['rabatt_prozent']     = 0;
+    $bonErstellungPositionen[$gvIndex]['steuer_prozent']     = 0;
+}
+
+$bruttoBon = 0.0;
+foreach ($bonErstellungPositionen as $p) {
+    $bruttoBon += $p['menge'] * $p['einzelpreis_brutto'] * (1 - $p['rabatt_prozent'] / 100);
+}
+$bonDaten['bruttobetrag'] = round($bruttoBon, 2);
 
 // RKSV-Vorabcheck: eine Netto-Rückgabe (z.B. Retour einer auf anderer Kasse bezahlten
 // Bestellung) darf den lokalen Umsatzzähler DIESER Kasse nie negativ machen — jede Kasse
@@ -457,14 +606,15 @@ if ($result['erfolg'] && !empty($result['bon_id']) && ($gutscheinZahlung || $gut
 echo json_encode($result);
 
 // ─── Packplatz-Rücklagerung: Freitext-Retour (kein Auftrag) ─────────────────────
-// Auftrag-gebundene Retouren werden weiter unten behandelt (dort steht der Auftrag
-// für auftrag_nr schon bereit). Kein_lagerabzug gilt für JEDE block='retour'-Position
-// (siehe oben) — physisch liegt die Ware jetzt am Tresen und muss von Packplatz
-// eingelagert werden, siehe packplatz/ruecklagerungen.php.
-if ($result['erfolg'] && !$webAuftragId) {
+// Auftrag-gebundene Retouren werden weiter unten je Auftrag behandelt. Kein_lagerabzug
+// gilt für JEDE block='retour'-Position (siehe oben) — physisch liegt die Ware jetzt am
+// Tresen und muss von Packplatz eingelagert werden, siehe packplatz/ruecklagerungen.php.
+// Retour-Zeilen mit web_auftrag_id (weniger mitgenommen als abholbereit) bucht die
+// Auftrags-Logik unten direkt zurück, die Ware hat das Haus nie verlassen.
+if ($result['erfolg']) {
     $ruecklagerungRepo = new RuecklagerungRepository();
     foreach ($sauberePositionen as $bp) {
-        if ($bp['block'] === 'retour' && empty($bp['retour_von_position_id']) && !empty($bp['artikel_id'])) {
+        if ($bp['block'] === 'retour' && empty($bp['retour_von_position_id']) && empty($bp['web_auftrag_id']) && !empty($bp['artikel_id'])) {
             $ruecklagerungRepo->insert([
                 'kassen_bon_id' => $result['bon_id'],
                 'bon_nr'        => $result['bon_nr'],
@@ -478,19 +628,192 @@ if ($result['erfolg'] && !$webAuftragId) {
     }
 }
 
-// ─── Web-Auftrag abschließen ───────────────────────────────────────────────────
-if ($result['erfolg'] && $webAuftragId) {
+// ─── Web-Aufträge abschließen ──────────────────────────────────────────────────
+if ($result['erfolg'] && $webAuftraege) {
+    $db    = Database::getInstance();
+    $bonId = $result['bon_id'] ?? null;
+    $bonNr = $result['bon_nr'] ?? '';
+
+    // ── K1 Kassen-Auftrag aufteilen ──────────────────────────────────────────
+    // erstelleBon() erstellt immer einen K1-Auftrag mit ALLEN Bon-Positionen.
+    // Strategie:
+    //   Keine Extras → K1 löschen, Bon direkt auf den (ersten) Web-Auftrag zeigen
+    //   Extras vorhanden → K1 behält nur die Extra-Positionen (separater Auftrag),
+    //                      Web-Aufträge und K1 sind über den Bon verknüpft.
     try {
-        $db    = Database::getInstance();
-        $repo  = new AuftragRepository();
-        $bonId = $result['bon_id'] ?? null;
-        $bonNr = $result['bon_nr'] ?? '';
+        $k1AuftragId = null;
+        if ($bonId) {
+            $k1Row = $db->prepare("SELECT auftrag_id FROM kassen_bons WHERE id = ?");
+            $k1Row->execute([$bonId]);
+            $k1AuftragId = (int)$k1Row->fetchColumn() ?: null;
+        }
 
-        $aStmt = $db->prepare("SELECT * FROM auftraege WHERE id = ?");
-        $aStmt->execute([$webAuftragId]);
-        $auftrag = $aStmt->fetch(PDO::FETCH_ASSOC);
+        // Extra-Positionen = Bon-Artikel ohne auftrag_position_id (inkl. Divers-Artikel
+        // ohne artikel_id — die bekommen beim Einfügen unten den Platzhalter 99-9999,
+        // genau wie erstelleBon() das bei der ursprünglichen K1-Erstellung schon macht;
+        // vorher fielen sie hier komplett raus, siehe project_kasse_bon_design Memory)
+        $extraPositionen = array_values(array_filter($sauberePositionen, fn($bp) =>
+            empty($bp['auftrag_position_id'])
+        ));
 
-        if ($auftrag) {
+        if ($k1AuftragId && !isset($webAuftraege[$k1AuftragId])) {
+            if (empty($extraPositionen)) {
+                // Keine Extras → K1 vollständig entfernen
+                $db->prepare("UPDATE kassen_bons SET auftrag_id = ? WHERE id = ?")
+                   ->execute([$webAuftragId, $bonId]);
+                $db->prepare("DELETE FROM auftrag_positionen WHERE auftrag_id = ?")
+                   ->execute([$k1AuftragId]);
+                $db->prepare("DELETE FROM auftraege WHERE id = ?")
+                   ->execute([$k1AuftragId]);
+                $k1AuftragId = null;
+            } else {
+                // Extras vorhanden → K1 auf Extra-Positionen reduzieren
+                // Alle alten K1-Positionen löschen und nur Extras neu einfügen
+                $db->prepare("DELETE FROM auftrag_positionen WHERE auftrag_id = ?")
+                   ->execute([$k1AuftragId]);
+
+                $diversArtikelId = $service->getDiversArtikelId();
+                $extraNetto  = 0.0;
+                $extraSteuer = 0.0;
+                $extraBrutto = 0.0;
+                foreach ($extraPositionen as $sortIdx => $ep) {
+                    $artIdPos = !empty($ep['artikel_id']) ? (int)$ep['artikel_id'] : $diversArtikelId;
+                    if (!$artIdPos) continue; // 99-9999 nicht angelegt? überspringen (wie erstelleBon())
+                    $rab      = 1 - $ep['rabatt_prozent'] / 100;
+                    $nettEP   = round($ep['einzelpreis_brutto'] / (1 + $ep['steuer_prozent'] / 100), 4);
+                    $gesNetto = round($nettEP * $ep['menge'] * $rab, 4);
+                    $gesBrut  = $ep['menge'] * $ep['einzelpreis_brutto'] * $rab;
+                    $db->prepare("
+                        INSERT INTO auftrag_positionen
+                            (auftrag_id, artikel_id, bezeichnung, ean, menge, menge_geliefert,
+                             einzelpreis_netto, steuer_prozent, rabatt_prozent, gesamtpreis_netto, sort_order)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ")->execute([
+                        $k1AuftragId, $artIdPos, $ep['bezeichnung'], $ep['ean'],
+                        $ep['menge'], $ep['menge'],
+                        $nettEP, $ep['steuer_prozent'], $ep['rabatt_prozent'], $gesNetto, $sortIdx,
+                    ]);
+                    $steuerAnteil = $gesBrut - $gesBrut / (1 + $ep['steuer_prozent'] / 100);
+                    $extraNetto  += $gesBrut / (1 + $ep['steuer_prozent'] / 100);
+                    $extraSteuer += $steuerAnteil;
+                    $extraBrutto += $gesBrut;
+                }
+
+                // K1-Beträge auf Extra-Summe korrigieren + Kunde vom (ersten) Web-Auftrag übernehmen
+                $hauptAuftrag = $webAuftraege[$webAuftragId]['auftrag'];
+                $db->prepare("
+                    UPDATE auftraege SET
+                        nettobetrag = ?, steuerbetrag = ?, bruttobetrag = ?,
+                        kassen_bon_id = ?, kunden_id = ?, kunden_snapshot = ?,
+                        aktualisiert_am = NOW()
+                    WHERE id = ?
+                ")->execute([
+                    round($extraNetto, 2), round($extraSteuer, 2), round($extraBrutto, 2),
+                    $bonId,
+                    $hauptAuftrag['kunden_id'] ?: null,
+                    $hauptAuftrag['kunden_snapshot'],  // immer kopieren — enthält den Namen für die Liste
+                    $k1AuftragId,
+                ]);
+            }
+        }
+
+        // Bon → Aufträge: web_auftrag_id = erster Auftrag (Altbestand/bestehende Abfragen),
+        // vollständige Liste in kassen_bon_auftraege
+        if ($bonId) {
+            $db->prepare("UPDATE kassen_bons SET web_auftrag_id = ? WHERE id = ?")
+               ->execute([$webAuftragId, $bonId]);
+            $stmtKba = $db->prepare("INSERT IGNORE INTO kassen_bon_auftraege (bon_id, auftrag_id, vorher_bezahlt) VALUES (?, ?, ?)");
+            foreach ($webAuftraege as $aid => $wa) {
+                $stmtKba->execute([$bonId, $aid, $wa['bezahlt'] ? 1 : 0]);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('[AbholungKasse K1] ' . $e->getMessage());
+    }
+
+    // Bon als A4-PDF für die Abholmails -- einmal erzeugen, für alle Aufträge verwenden
+    $bonAnhang = null;
+    $holeBonAnhang = function () use (&$bonAnhang, $bonId, $bonNr): array {
+        if ($bonAnhang !== null) return $bonAnhang;
+        $bonAnhang = [];
+        if (!$bonId) return $bonAnhang;
+        try {
+            require_once __DIR__ . '/../../vendor/autoload.php';
+            require_once __DIR__ . '/../../src/modules/kasse/BonA4Renderer.php';
+
+            $htmlA4 = BonA4Renderer::render((int)$bonId, fuerPdf: true);
+            if ($htmlA4 !== null) {
+                $opt = new \Dompdf\Options();
+                $opt->set('defaultFont', 'DejaVu Sans');
+                $opt->set('isRemoteEnabled', false);
+                $dom = new \Dompdf\Dompdf($opt);
+                $dom->loadHtml($htmlA4, 'UTF-8');
+                $dom->setPaper('A4', 'portrait');
+                $dom->render();
+
+                $bonDir = __DIR__ . '/../../storage/bons/';
+                if (!is_dir($bonDir)) mkdir($bonDir, 0755, true);
+                $bonPdfPfad = $bonDir . $bonId . '.pdf';
+                file_put_contents($bonPdfPfad, $dom->output());
+                $bonAnhang = [['pfad' => $bonPdfPfad, 'name' => 'Kassenbon_' . $bonNr . '.pdf']];
+            }
+        } catch (Throwable $ePdf) {
+            error_log('[BonPDF] ' . $ePdf->getMessage());
+        }
+        return $bonAnhang;
+    };
+
+    $repo      = new AuftragRepository();
+    $lagerId   = (int)($bonDaten['lager_id'] ?? 1);
+    $lagerSvc  = new LagerService();
+    $anzahlAuf = count($webAuftraege);
+
+    // Retoure als Gutschein (bon.php::retourAlsGutschein()) -- erkennbar an der zusätzlichen
+    // "gutschein_verkauf"-Bon-Position, die den Bon auf Summe 0 bringt (Retour negativ +
+    // Gutschein-Verkauf positiv) und dadurch RKSV-sauber signiert wird, statt eine stille
+    // DB-Zeile ohne Bon-Bezug zu sein (Jacky-Anfrage 2026-08-29, siehe project_gutscheine.md).
+    $istGutscheinAusgabe = $gutscheinAusgabeBetrag !== null;
+    $ausgabeGutschein    = null;
+    if ($istGutscheinAusgabe) {
+        $erstattAuftrag = null;
+        foreach ($webAuftraege as $aid => $wa) {
+            foreach ($positionenVon($aid) as $bp) {
+                if ($bp['block'] === 'retour') { $erstattAuftrag = $wa['auftrag']; break 2; }
+            }
+        }
+        require_once __DIR__ . '/../../src/modules/gutscheine/GutscheinService.php';
+        $gErgebnis = (new GutscheinService())->erstelleGutschein([
+            'betrag'              => $gutscheinAusgabeBetrag,
+            'kunden_id'           => ($erstattAuftrag ?? $webAuftraege[$webAuftragId]['auftrag'])['kunden_id'] ?? null,
+            'kanal_erstellt'      => 'kasse',
+            'auftrag_id_ursprung' => (int)($erstattAuftrag ?? $webAuftraege[$webAuftragId]['auftrag'])['id'],
+            'kassen_bon_id'       => $bonId,
+            'versandart'          => 'selbst_ausdrucken',
+        ], $benutzerId);
+        if ($gErgebnis['erfolg']) {
+            $ausgabeGutschein = $gErgebnis;
+        } else {
+            Logger::log('gutschein.kasse_ausgabe_fehler', 'kassen_bons', $bonId, [
+                'fehler' => $gErgebnis['fehler'] ?? [], 'bon_nr' => $bonNr, 'betrag' => $gutscheinAusgabeBetrag,
+            ], $benutzerId, 'error');
+        }
+    }
+
+    foreach ($webAuftraege as $aid => $wa) {
+        try {
+            $auftrag          = $wa['auftrag'];
+            $auftragStatus    = $wa['status'];
+            $mitnehmen        = $wa['mitnehmen'];
+            $warBezahlt       = $wa['bezahlt'];
+            $eigenePositionen = $positionenVon($aid);
+
+            // Bon-Positionen mit auftrag_position_id (= aus dem Auftrag geladen)
+            $bonAuftragPos = [];
+            foreach ($eigenePositionen as $bp) {
+                if (!empty($bp['auftrag_position_id'])) {
+                    $bonAuftragPos[(int)$bp['auftrag_position_id']] = $bp['menge'];
+                }
+            }
 
             // ── Packplatz-Rücklagerung: Auftrag-gebundene Retoure ────────────
             // Nur wenn NICHT abholbereit — der Fall "Kunde nimmt beim Abholen weniger
@@ -498,14 +821,14 @@ if ($result['erfolg'] && $webAuftragId) {
             // Ware nie das Haus verlassen hat. Eine physische Retoure einer bereits
             // versendeten/abgeschlossenen Bestellung braucht dagegen echte manuelle
             // Sichtprüfung + Einlagerung durch Packplatz.
-            if ($webAuftragStatus !== 'abholbereit') {
+            if ($auftragStatus !== 'abholbereit') {
                 $ruecklagerungRepo = new RuecklagerungRepository();
-                foreach ($sauberePositionen as $bp) {
+                foreach ($eigenePositionen as $bp) {
                     if ($bp['block'] === 'retour' && !empty($bp['retour_von_position_id']) && !empty($bp['artikel_id'])) {
                         $ruecklagerungRepo->insert([
                             'kassen_bon_id' => $bonId,
                             'bon_nr'        => $bonNr,
-                            'auftrag_id'    => $webAuftragId,
+                            'auftrag_id'    => $aid,
                             'auftrag_nr'    => $auftrag['auftrag_nr'],
                             'artikel_id'    => $bp['artikel_id'],
                             'bezeichnung'   => $bp['bezeichnung'],
@@ -517,105 +840,11 @@ if ($result['erfolg'] && $webAuftragId) {
                 }
             }
 
-            // ── K1 Kassen-Auftrag aufteilen ──────────────────────────────────
-            // erstelleBon() erstellt immer einen K1-Auftrag mit ALLEN Bon-Positionen.
-            // Strategie:
-            //   Keine Extras → K1 löschen, Bon direkt auf Web-Auftrag zeigen
-            //   Extras vorhanden → K1 behält nur die Extra-Positionen (separate Auftrag),
-            //                      Web-Auftrag und K1 sind über den Bon verknüpft.
-            $k1AuftragId = null;
-            if ($bonId) {
-                $k1Row = $db->prepare("SELECT auftrag_id FROM kassen_bons WHERE id = ?");
-                $k1Row->execute([$bonId]);
-                $k1AuftragId = (int)$k1Row->fetchColumn() ?: null;
-            }
-
-            // Extra-Positionen = Bon-Artikel ohne auftrag_position_id (inkl. Divers-Artikel
-            // ohne artikel_id — die bekommen beim Einfügen unten den Platzhalter 99-9999,
-            // genau wie erstelleBon() das bei der ursprünglichen K1-Erstellung schon macht;
-            // vorher fielen sie hier komplett raus, siehe project_kasse_bon_design Memory)
-            $extraPositionen = array_values(array_filter($sauberePositionen, fn($bp) =>
-                empty($bp['auftrag_position_id'])
-            ));
-
-            if ($k1AuftragId && $k1AuftragId !== $webAuftragId) {
-                if (empty($extraPositionen)) {
-                    // Keine Extras → K1 vollständig entfernen
-                    $db->prepare("UPDATE kassen_bons SET auftrag_id = ? WHERE id = ?")
-                       ->execute([$webAuftragId, $bonId]);
-                    $db->prepare("DELETE FROM auftrag_positionen WHERE auftrag_id = ?")
-                       ->execute([$k1AuftragId]);
-                    $db->prepare("DELETE FROM auftraege WHERE id = ?")
-                       ->execute([$k1AuftragId]);
-                    $k1AuftragId = null;
-                } else {
-                    // Extras vorhanden → K1 auf Extra-Positionen reduzieren
-                    // Alle alten K1-Positionen löschen und nur Extras neu einfügen
-                    $db->prepare("DELETE FROM auftrag_positionen WHERE auftrag_id = ?")
-                       ->execute([$k1AuftragId]);
-
-                    $diversArtikelId = $service->getDiversArtikelId();
-                    $extraNetto  = 0.0;
-                    $extraSteuer = 0.0;
-                    $extraBrutto = 0.0;
-                    foreach ($extraPositionen as $sortIdx => $ep) {
-                        $artIdPos = !empty($ep['artikel_id']) ? (int)$ep['artikel_id'] : $diversArtikelId;
-                        if (!$artIdPos) continue; // 99-9999 nicht angelegt? überspringen (wie erstelleBon())
-                        $rab      = 1 - $ep['rabatt_prozent'] / 100;
-                        $nettEP   = round($ep['einzelpreis_brutto'] / (1 + $ep['steuer_prozent'] / 100), 4);
-                        $gesNetto = round($nettEP * $ep['menge'] * $rab, 4);
-                        $gesBrut  = $ep['menge'] * $ep['einzelpreis_brutto'] * $rab;
-                        $db->prepare("
-                            INSERT INTO auftrag_positionen
-                                (auftrag_id, artikel_id, bezeichnung, ean, menge, menge_geliefert,
-                                 einzelpreis_netto, steuer_prozent, rabatt_prozent, gesamtpreis_netto, sort_order)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ")->execute([
-                            $k1AuftragId, $artIdPos, $ep['bezeichnung'], $ep['ean'],
-                            $ep['menge'], $ep['menge'],
-                            $nettEP, $ep['steuer_prozent'], $ep['rabatt_prozent'], $gesNetto, $sortIdx,
-                        ]);
-                        $steuerAnteil = $gesBrut - $gesBrut / (1 + $ep['steuer_prozent'] / 100);
-                        $extraNetto  += $gesBrut / (1 + $ep['steuer_prozent'] / 100);
-                        $extraSteuer += $steuerAnteil;
-                        $extraBrutto += $gesBrut;
-                    }
-
-                    // K1-Beträge auf Extra-Summe korrigieren + Kunde vom Original-Auftrag übernehmen
-                    $db->prepare("
-                        UPDATE auftraege SET
-                            nettobetrag = ?, steuerbetrag = ?, bruttobetrag = ?,
-                            kassen_bon_id = ?, kunden_id = ?, kunden_snapshot = ?,
-                            aktualisiert_am = NOW()
-                        WHERE id = ?
-                    ")->execute([
-                        round($extraNetto, 2), round($extraSteuer, 2), round($extraBrutto, 2),
-                        $bonId,
-                        $auftrag['kunden_id'] ?: null,
-                        $auftrag['kunden_snapshot'],  // immer kopieren — enthält den Namen für die Liste
-                        $k1AuftragId,
-                    ]);
-
-                    // Bon: web_auftrag_id zeigt auf Web-Auftrag, auftrag_id bleibt K1
-                    $db->prepare("UPDATE kassen_bons SET web_auftrag_id = ? WHERE id = ?")
-                       ->execute([$webAuftragId, $bonId]);
-                }
-            }
-
-            // ── Positions-Abgleich: was war tatsächlich im Bon? ───────────────
-            // Bon-Positionen mit auftrag_position_id (= aus dem Auftrag geladen)
-            $bonAuftragPos = [];
-            foreach ($sauberePositionen as $bp) {
-                if (!empty($bp['auftrag_position_id'])) {
-                    $bonAuftragPos[(int)$bp['auftrag_position_id']] = $bp['menge'];
-                }
-            }
-
             // Retour-Positionen (block='retour') je ursprünglicher Position summieren —
             // für menge_retourniert, damit gutschrift_erstellen.php nicht nochmal dieselbe
             // Menge gutschreiben kann, die hier schon über die Kasse erstattet wurde.
             $retourProPosition = [];
-            foreach ($sauberePositionen as $bp) {
+            foreach ($eigenePositionen as $bp) {
                 if ($bp['block'] === 'retour' && !empty($bp['retour_von_position_id'])) {
                     $pid = (int)$bp['retour_von_position_id'];
                     $retourProPosition[$pid] = ($retourProPosition[$pid] ?? 0) + abs($bp['menge']);
@@ -624,17 +853,14 @@ if ($result['erfolg'] && $webAuftragId) {
 
             // Alle Original-Positionen des Auftrags laden (inkl. artikel_id + charge für Rückbuchung)
             $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, menge_geliefert, charge FROM auftrag_positionen WHERE auftrag_id = ?");
-            $origPosStmt->execute([$webAuftragId]);
+            $origPosStmt->execute([$aid]);
             $origPositionen = $origPosStmt->fetchAll(PDO::FETCH_ASSOC);
 
             // menge_geliefert aktualisieren + prüfen ob alle geliefert
             $alleGeliefert = true;
-            $lagerId       = (int)($bonDaten['lager_id'] ?? 1);
-            $lagerSvc      = new LagerService();
-
             foreach ($origPositionen as $op) {
-                $imBon    = (float)($bonAuftragPos[$op['id']] ?? 0);
-                $gepackt  = (float)$op['menge'];
+                $imBon   = (float)($bonAuftragPos[$op['id']] ?? 0);
+                $gepackt = (float)$op['menge'];
 
                 if (!empty($retourProPosition[$op['id']])) {
                     // Kassen-Retoure = Ware zurück UND erstattet (bar oder Gutschein)
@@ -642,7 +868,7 @@ if ($result['erfolg'] && $webAuftragId) {
                        ->execute([$retourProPosition[$op['id']], $retourProPosition[$op['id']], $op['id']]);
                 }
 
-                if ($webAuftragStatus === 'abholbereit') {
+                if ($auftragStatus === 'abholbereit') {
                     // Packplatz hat menge_geliefert schon gesetzt — wir korrigieren nur die Differenz
                     $rueck = $gepackt - $imBon;
                     if ($rueck > 0.001 && !empty($op['artikel_id'])) {
@@ -669,44 +895,47 @@ if ($result['erfolg'] && $webAuftragId) {
                 }
             }
 
-            // ── Bezahlten Betrag (nur Auftrag-Anteil) berechnen ──────────────
+            // ── Bezahlten Betrag (nur Anteil dieses Auftrags) berechnen ──────
+            // Ohne eigene Auftrags-Zeilen im Bon (z.B. reine Retoure) gilt wie bisher der
+            // Auftragsbetrag; sind Zeilen da, zählt nur, was tatsächlich mitgeht.
             $auftragAnteil = 0.0;
-            foreach ($sauberePositionen as $bp) {
+            foreach ($eigenePositionen as $bp) {
                 if (!empty($bp['auftrag_position_id'])) {
                     $rab = 1 - ($bp['rabatt_prozent'] / 100);
                     $auftragAnteil += $bp['menge'] * $bp['einzelpreis_brutto'] * $rab;
                 }
             }
             $auftragAnteil = round($auftragAnteil, 2);
-            if ($auftragAnteil <= 0) {
+            if (!$bonAuftragPos) {
                 $auftragAnteil = (float)$auftrag['bruttobetrag'];
             }
 
             // ── Zahlung buchen ────────────────────────────────────────────────
-            // $summeBezahltGesamt bleibt null wenn $webAuftragBezahlt (Retour-Zweig, siehe unten) —
+            // $summeBezahltGesamt bleibt null wenn $warBezahlt (Retour-Zweig, siehe unten) —
             // dort wird der Zahlstatus über $retourBetrag entschieden, nicht über die Summe.
             $summeBezahltGesamt = null;
-            if (!$webAuftragBezahlt) {
-                $db->prepare("
-                    INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
-                    VALUES (?, ?, CURDATE(), ?, ?)
-                ")->execute([$webAuftragId, $auftragAnteil, 'Bezahlt an der Kasse — Bon ' . $bonNr, $benutzerId]);
+            $retourBetrag       = 0.0;
+            if (!$warBezahlt) {
+                if ($auftragAnteil > 0.005) {
+                    $db->prepare("
+                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
+                        VALUES (?, ?, CURDATE(), ?, ?)
+                    ")->execute([$aid, $auftragAnteil, 'Bezahlt an der Kasse — Bon ' . $bonNr, $benutzerId]);
+                }
 
                 // Kumulierte Summe ALLER Zahlungen (nicht nur dieser Transaktion!) entscheidet
                 // über "vollständig bezahlt" — ein $auftragAnteil-Vergleich allein würde bei
                 // mehreren Teilzahlungen oder Rundungsdifferenzen zwischen Positions- und
                 // Kopfbetrag fälschlich dauerhaft auf 'teilbezahlt' stehen bleiben.
                 $summeStmt = $db->prepare("SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = ?");
-                $summeStmt->execute([$webAuftragId]);
+                $summeStmt->execute([$aid]);
                 $summeBezahltGesamt = (float)$summeStmt->fetchColumn();
             } else {
                 // Bereits bezahlt: nur Erstattung (negativen Betrag) buchen wenn Retour.
-                // Direkt aus den block='retour'-Positionen berechnen — NICHT über
-                // bruttobetrag-auftragAnteil, da Retour/Extra-Positionen bewusst keine
-                // auftrag_position_id tragen und $auftragAnteil sonst immer auf den vollen
-                // bruttobetrag zurückfällt (Retourbetrag würde immer 0 ergeben).
-                $retourBetrag = 0.0;
-                foreach ($sauberePositionen as $bp) {
+                // Direkt aus den block='retour'-Positionen dieses Auftrags berechnen — NICHT
+                // über bruttobetrag-auftragAnteil (Retour-Zeilen tragen bewusst keine
+                // auftrag_position_id).
+                foreach ($eigenePositionen as $bp) {
                     if (($bp['block'] ?? null) === 'retour') {
                         $rab = 1 - ($bp['rabatt_prozent'] / 100);
                         $retourBetrag += abs($bp['menge']) * $bp['einzelpreis_brutto'] * $rab;
@@ -714,80 +943,50 @@ if ($result['erfolg'] && $webAuftragId) {
                 }
                 $retourBetrag = round($retourBetrag, 2);
 
-                // Statt Bar-Auszahlung: Kassierer hat "Als Gutschein ausstellen" gewählt
-                // (bon.php::retourAlsGutschein()) -- erkennbar an der zusätzlichen
-                // "gutschein_verkauf"-Bon-Position, die den Bon auf Summe 0 bringt
-                // (Retour negativ + Gutschein-Verkauf positiv) und dadurch RKSV-sauber
-                // signiert wird, statt eine stille DB-Zeile ohne Bon-Bezug zu sein
-                // (Jacky-Anfrage 2026-08-29, siehe project_gutscheine.md).
-                $istGutscheinAusgabe = false;
-                foreach ($sauberePositionen as $bp) {
-                    if (($bp['block'] ?? null) === 'gutschein_verkauf') {
-                        $istGutscheinAusgabe = true;
-                        break;
-                    }
-                }
-
                 if ($retourBetrag > 0.005 && $istGutscheinAusgabe) {
-                    require_once __DIR__ . '/../../src/modules/gutscheine/GutscheinService.php';
-                    $gutscheinService = new GutscheinService();
-                    $gErgebnis = $gutscheinService->erstelleGutschein([
-                        // Betrag kommt bewusst aus dem serverseitig berechneten $retourBetrag,
-                        // NICHT aus dem Client-Wert der Position (gleiche "nie dem Client
-                        // trauen"-Philosophie wie beim Konfigurator-Preis weiter oben).
-                        'betrag'              => $retourBetrag,
-                        'kunden_id'           => $auftrag['kunden_id'] ?? null,
-                        'kanal_erstellt'      => 'kasse',
-                        'auftrag_id_ursprung' => $webAuftragId,
-                        'kassen_bon_id'       => $bonId,
-                        'versandart'          => 'selbst_ausdrucken',
-                    ], $benutzerId);
-                    if ($gErgebnis['erfolg']) {
-                        // Auch bei Gutschein-Erstattung MUSS ein negativer auftrag_zahlungen-Posten
-                        // gebucht werden -- $offenBetrag in detail.php rechnet sonst mit dem vollen
-                        // Ursprungsbetrag weiter und zeigt fälschlich "Überbezahlt/Gutschrift" statt
-                        // "Vollständig bezahlt" (gleiche Buchungslogik wie beim Bar-Erstattungs-Zweig,
-                        // nur mit Gutschein-Code statt "bar" in der Notiz für die Nachverfolgbarkeit).
-                        $db->prepare("
-                            INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
-                            VALUES (?, ?, CURDATE(), ?, ?)
-                        ")->execute([
-                            $webAuftragId, -$retourBetrag,
-                            'Rückerstattung als Gutschein ' . $gErgebnis['code'] . ' — Bon ' . $bonNr,
-                            $benutzerId,
-                        ]);
-                    } else {
-                        Logger::log('gutschein.kasse_ausgabe_fehler', 'auftraege', $webAuftragId, [
-                            'fehler' => $gErgebnis['fehler'] ?? [], 'bon_nr' => $bonNr,
-                        ], $benutzerId, 'error');
-                    }
+                    // Auch bei Gutschein-Erstattung MUSS ein negativer auftrag_zahlungen-Posten
+                    // gebucht werden -- $offenBetrag in detail.php rechnet sonst mit dem vollen
+                    // Ursprungsbetrag weiter und zeigt fälschlich "Überbezahlt/Gutschrift" statt
+                    // "Vollständig bezahlt". Erstattet wird der Retourwert des Auftrags; ein Teil
+                    // davon kann im selben Bon in Extra-Ware geflossen sein, der Rest steckt im
+                    // (einen) Gutschein des Bons.
+                    $db->prepare("
+                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
+                        VALUES (?, ?, CURDATE(), ?, ?)
+                    ")->execute([
+                        $aid, -$retourBetrag,
+                        'Rückerstattung an der Kasse — Gutschein ' . ($ausgabeGutschein['code'] ?? '(Fehler, siehe Log)') . ' — Bon ' . $bonNr,
+                        $benutzerId,
+                    ]);
                 } elseif ($retourBetrag > 0.005) {
                     $db->prepare("
                         INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
                         VALUES (?, ?, CURDATE(), ?, ?)
-                    ")->execute([$webAuftragId, -$retourBetrag, 'Rückerstattung bar an der Kasse — Bon ' . $bonNr, $benutzerId]);
+                    ")->execute([$aid, -$retourBetrag, 'Rückerstattung bar an der Kasse — Bon ' . $bonNr, $benutzerId]);
                 }
             }
 
             // ── Status setzen ─────────────────────────────────────────────────
-            if ($webAuftragStatus === 'abholbereit' || $webMitnehmen === true) {
+            $sammelHinweis = $anzahlAuf > 1 ? ' (Sammelabholung)' : '';
+            if ($warBezahlt) {
+                $neuerZahlStatus = $retourBetrag > 0.005 ? 'erstattet' : 'bezahlt';
+            } else {
+                $neuerZahlStatus = $summeBezahltGesamt >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt'
+                                 : ($summeBezahltGesamt > 0.005 ? 'teilbezahlt' : $auftrag['zahlungsstatus']);
+            }
+            if ($auftragStatus === 'abholbereit' || $mitnehmen === true) {
                 $neuerLieferStatus = $alleGeliefert ? 'abgeschlossen' : 'teilgeliefert';
-                if ($webAuftragBezahlt) {
-                    $neuerZahlStatus = isset($retourBetrag) && $retourBetrag > 0.005 ? 'erstattet' : 'bezahlt';
-                } else {
-                    $neuerZahlStatus = $summeBezahltGesamt >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt' : 'teilbezahlt';
-                }
 
                 $db->prepare("
                     UPDATE auftraege
                     SET zahlungsstatus = ?, lieferstatus = ?, aktualisiert_am = NOW()
                     WHERE id = ?
-                ")->execute([$neuerZahlStatus, $neuerLieferStatus, $webAuftragId]);
+                ")->execute([$neuerZahlStatus, $neuerLieferStatus, $aid]);
 
-                $repo->logStatus($webAuftragId,
+                $repo->logStatus($aid,
                     ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerZahlStatus],
                      'lieferstatus'   => [$auftrag['lieferstatus'],   $neuerLieferStatus]],
-                    ($webMitnehmen === true ? 'Mitgenommen' : 'Abgeholt') . ' und bezahlt an der Kasse — Bon ' . $bonNr,
+                    ($mitnehmen === true ? 'Mitgenommen' : 'Abgeholt') . ' und bezahlt an der Kasse — Bon ' . $bonNr . $sammelHinweis,
                     $benutzerId
                 );
             } else {
@@ -795,95 +994,33 @@ if ($result['erfolg'] && $webAuftragId) {
                 // (versendet/teilgeliefert/abgeschlossen-Retoure, siehe Redesign 2026-07-08),
                 // entscheidet der echte Retourbetrag statt der Kumulierten-Summe-Formel —
                 // die gilt nur für den "wird hier erstmals bezahlt"-Fall.
-                if ($webAuftragBezahlt) {
-                    $neuerZahlStatus = isset($retourBetrag) && $retourBetrag > 0.005 ? 'erstattet' : 'bezahlt';
-                } else {
-                    $neuerZahlStatus = $summeBezahltGesamt >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt' : 'teilbezahlt';
-                }
                 $db->prepare("
                     UPDATE auftraege SET zahlungsstatus = ?, aktualisiert_am = NOW() WHERE id = ?
-                ")->execute([$neuerZahlStatus, $webAuftragId]);
+                ")->execute([$neuerZahlStatus, $aid]);
 
-                $repo->logStatus($webAuftragId,
+                $repo->logStatus($aid,
                     ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerZahlStatus]],
-                    ($webAuftragBezahlt ? 'Retoure an der Kasse' : 'Nur Zahlung an der Kasse — Versand/Abholung folgt') . ' — Bon ' . $bonNr,
+                    ($warBezahlt ? 'Retoure an der Kasse' : 'Nur Zahlung an der Kasse — Versand/Abholung folgt') . ' — Bon ' . $bonNr . $sammelHinweis,
                     $benutzerId
                 );
             }
 
             // ── kassen_bon_id auf Auftrag setzen (sperrt Rechnung-Erstellung) ─
             // NUR wenn der Auftrag durch DIESE Transaktion überhaupt erst bezahlt/fakturiert
-            // wird ($webAuftragBezahlt war beim Laden false) — war er schon vorher bezahlt
+            // wird ($warBezahlt war beim Laden false) — war er schon vorher bezahlt
             // (z.B. eigene Rechnung, PayPal), darf ein späterer Retoure/Extra-Bon diese nicht
-            // verdrängen. web_auftrag_id wird trotzdem immer gesetzt (reine Referenz, keine Sperre).
-            if ($bonId) {
-                if (!$webAuftragBezahlt) {
-                    $db->prepare("UPDATE auftraege SET kassen_bon_id = ? WHERE id = ?")
-                       ->execute([$bonId, $webAuftragId]);
-                }
-                $db->prepare("UPDATE kassen_bons SET web_auftrag_id = ? WHERE id = ?")
-                   ->execute([$webAuftragId, $bonId]);
+            // verdrängen.
+            if ($bonId && !$warBezahlt) {
+                $db->prepare("UPDATE auftraege SET kassen_bon_id = ? WHERE id = ?")
+                   ->execute([$bonId, $aid]);
             }
 
             // ── Abholbestätigungs-Mail (nur bei vollständiger Übergabe) ──────
             if ($alleGeliefert) {
-                $kunde = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
-                $email = trim($kunde['email'] ?? '');
-                if ($email) {
-                    if (!isset($firma)) {
-                        $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")
-                                     ->fetchAll(PDO::FETCH_KEY_PAIR);
-                    }
-
-                    // Bon als A4-Rechnung für Mail-Anhang generieren (statt schmalem 68mm-Bon)
-                    $bonAnhang = [];
-                    if ($bonId) {
-                        try {
-                            require_once __DIR__ . '/../../vendor/autoload.php';
-                            require_once __DIR__ . '/../../src/modules/kasse/BonA4Renderer.php';
-
-                            $htmlA4 = BonA4Renderer::render((int)$bonId, fuerPdf: true);
-                            if ($htmlA4 !== null) {
-                                $opt = new \Dompdf\Options();
-                                $opt->set('defaultFont', 'DejaVu Sans');
-                                $opt->set('isRemoteEnabled', false);
-                                $dom = new \Dompdf\Dompdf($opt);
-                                $dom->loadHtml($htmlA4, 'UTF-8');
-                                $dom->setPaper('A4', 'portrait');
-                                $dom->render();
-
-                                $bonDir = __DIR__ . '/../../storage/bons/';
-                                if (!is_dir($bonDir)) mkdir($bonDir, 0755, true);
-                                $bonPdfPfad = $bonDir . $bonId . '.pdf';
-                                file_put_contents($bonPdfPfad, $dom->output());
-                                $bonAnhang = [['pfad' => $bonPdfPfad, 'name' => 'Kassenbon_' . $bonNr . '.pdf']];
-                            }
-                        } catch (Throwable $ePdf) {
-                            error_log('[BonPDF] ' . $ePdf->getMessage());
-                        }
-                    }
-
-                    $mailer = new Mailer();
-                    $mailer->sendeTemplate(
-                        empfaenger:   $email,
-                        betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' — Vielen Dank für Ihren Einkauf!',
-                        templatePfad: 'mails/abholung_kasse.html.twig',
-                        variablen: [
-                            'logo_base64'    => $mailer->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
-                            'anrede'         => $kunde['anrede']   ?? '',
-                            'nachname'       => $kunde['nachname'] ?? '',
-                            'kunde_name'     => trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? ''))
-                                               ?: ($kunde['firma'] ?? ''),
-                            'auftrag_nummer' => $auftrag['auftrag_nr'],
-                            'bon_nr'         => $bonNr,
-                            'firma_email'    => $firma['mail_from_address'] ?? '',
-                        ],
-                        anhaenge: $bonAnhang,
-                    );
-                }
+                $sendeAbholMail($auftrag, $bonNr, $holeBonAnhang());
             }
+        } catch (Throwable $e) {
+            error_log('[AbholungKasse ' . ($wa['auftrag']['auftrag_nr'] ?? $aid) . '] ' . $e->getMessage());
         }
-    } catch (Throwable $e) {
-        error_log('[AbholungKasse] ' . $e->getMessage());
     }
 }

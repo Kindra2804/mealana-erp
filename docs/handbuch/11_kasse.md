@@ -102,6 +102,37 @@ Wenn ein ERP-Auftrag auf "Abholbereit" gesetzt und bereits bezahlt ist, erschein
 
 ---
 
+## Sammelabholung — mehrere Online-Bestellungen eines Kunden
+
+Hat ein Kunde mehrere Bestellungen zur Abholung, holt er sie mit **einem** Bon ab.
+
+**Ablauf:**
+
+1. **📦 Auftrag** → eine der Bestellungen suchen und anklicken
+2. Hat derselbe Kunde weitere offene Abholungen, fragt die Kasse automatisch nach:
+   - Abholbereite Aufträge sind schon angehakt
+   - Noch nicht gepackte Aufträge stehen dabei, sind aber **nicht** angehakt
+3. **Ausgewählte mitladen** (oder **Nur diesen**)
+4. Der Bon zeigt jeden Auftrag als eigenen Block mit Auftragsnummer und „bezahlt/unbezahlt“
+5. Nimmt der Kunde etwas nicht mit: Zeile antippen → **−** (Anzeige „0 von 1 mitgenommen“)
+6. Zusätzliche Artikel aus dem Regal einfach dazuscannen (Block „weitere Artikel“)
+7. **Bezahlen** — kassiert wird nur, was noch nicht bezahlt ist
+
+| Situation | Was passiert |
+|-----------|--------------|
+| Auftrag schon online bezahlt | Steht nicht im Kassenbetrag, wird nur abgeschlossen |
+| Auftrag unbezahlt | Wird mit dem Bon bezahlt (nur die mitgenommenen Mengen) |
+| Teilabholung | Auftrag wird „teilgeliefert“, nicht Mitgenommenes geht zurück ins Lager |
+| Von einem Auftrag gar nichts mitgenommen | Auftrag bleibt unverändert liegen (✕ im Block nimmt ihn ganz vom Bon) |
+| Alle Aufträge bezahlt, alles mitgenommen | Kein Bon nötig, alle Aufträge werden direkt abgeschlossen |
+
+**Gut zu wissen:**
+- Nur Aufträge **desselben Kunden** (gleiches Kundenkonto bzw. gleiche E-Mail) lassen sich zusammenfassen. Ein Auftrag eines anderen Kunden ersetzt nach Rückfrage den Bon.
+- Auf dem Bon (80 mm und A4) steht jeder Auftrag mit seiner Nummer; bereits bezahlte Aufträge werden als „Abgeholt, bereits bezahlt: …“ genannt.
+- Eine **Retoure** aus einem älteren Auftrag geht nicht im selben Sammel-Bon — dafür einen eigenen Bon machen.
+
+---
+
 ## Bon stornieren
 
 Wenn ein Bon fehlerhaft war:

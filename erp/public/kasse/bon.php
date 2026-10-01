@@ -230,7 +230,18 @@ body {
 .bon-row-retour-badge { font-size: 11px; margin-right: 4px; opacity: .8; }
 .bon-row-retour .bon-row-menge, .bon-row-retour .bon-row-summe { color: #dc2626; }
 .bon-row-separator { font-size: 10px; color: #94a3b8; text-align: center; padding: 4px 0; letter-spacing: .05em; }
-.bon-row-auftrag-header { font-size: 11px; color: #3b82f6; padding: 6px 0 2px 6px; font-weight: 700; }
+.bon-row-auftrag-header { font-size: 11px; color: #3b82f6; padding: 6px 6px 2px 6px; font-weight: 700; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bon-hdr-x { margin-left: auto; border: 1px solid #cbd5e1; background: #fff; color: #64748b; border-radius: 4px; width: 22px; height: 20px; font-size: 11px; cursor: pointer; font-family: inherit; }
+.bon-hdr-hinweis { flex-basis: 100%; font-size: 11px; font-weight: 400; color: #b45309; }
+.bon-row-teil { display: block; font-size: 10px; color: #b45309; font-weight: 400; }
+.weitere-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+.weitere-item:hover { background: #eff6ff; }
+.weitere-item input { width: 18px; height: 18px; flex-shrink: 0; }
+.weitere-item-info { flex: 1; }
+.weitere-item-sub { font-size: 11px; color: #64748b; }
+.weitere-item-warn { color: #b45309; }
+.weitere-item-offen .auftrag-item-nr { color: #94a3b8; }
+.a-chip-ausstehend, .a-chip-teilbezahlt { background: #fef3c7; color: #92400e; }
 .bon-row-menge { width: 50px; font-size: 13px; color: #1e3a5f; text-align: right; padding: 14px 0; }
 .bon-row-ep    { width: 74px; font-size: 12px; color: #475569; text-align: right; padding: 14px 0; }
 .bon-row-summe { width: 74px; font-size: 13px; font-weight: 600; color: #1e3a5f; text-align: right; padding: 14px 0; }
@@ -1396,6 +1407,20 @@ body {
   </div>
 </div>
 
+<!-- ── Sammelabholung: weitere Abholungen desselben Kunden ────────────────── -->
+<div class="ov" id="ov-weitere-auftraege">
+  <div class="ov-box" style="max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="ov-title" id="weitere-titel">📦 Auftrag geladen</div>
+    <div id="weitere-info" style="font-size:13px;color:#374151;margin-bottom:10px"></div>
+    <div id="weitere-liste" style="flex:1;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px"></div>
+    <div style="font-size:11px;color:#64748b;margin-top:8px">Noch nicht gepackte Aufträge sind nicht vorausgewählt.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+      <button class="ov-btn ov-btn-sec" style="width:auto;padding:0 20px;height:40px" onclick="ovSchliessen('ov-weitere-auftraege')">Nur diesen</button>
+      <button class="ov-btn ov-btn-ok" style="width:auto;padding:0 20px;height:40px" id="btn-weitere-laden" onclick="weitereMitladen()">Ausgewählte mitladen</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Mitnehmen-Frage ────────────────────────────────────────────────────── -->
 <div class="ov" id="ov-mitnehmen">
   <div class="ov-box" style="max-width:480px">
@@ -1544,6 +1569,10 @@ var geladenerAuftragZahlungsstatus = null;
 var aktuellerZahlBetrag            = null;
 var zusatzPositionen               = [];
 var retourePositionen               = []; // {artikel_id, bezeichnung, ean, einzelpreis_brutto, steuer_prozent, rabatt_prozent, maxMenge, retourMenge, charge}
+// Sammelabholung: alle geladenen Web-Aufträge (ein Kunde), siehe _hauptAuftragSpiegeln()
+var geladeneAuftraege              = []; // {id, nr, status, mitnehmen, zahlungsstatus, kunden_id, kunden_email, kunden_name}
+var mitnehmenWarteschlange         = []; // Auftrags-IDs, für die "mitnehmen oder nur zahlen?" noch offen ist
+var weitereAuftraegePruefenFuer    = null;
 
 // ── Schnellwahl befüllen (PHP → JS) ─────────────────────────────────────────
 (function() {
@@ -1975,64 +2004,89 @@ function renderBon(skipKdSync) {
     // Vorhandene Zeilen und Separator entfernen und neu aufbauen
     Array.from(liste.querySelectorAll('.bon-row, .bon-row-separator, .bon-row-auftrag-header')).forEach(r => r.remove());
 
-    var hatAuftrag     = warenkorb.some(p => p.vonAuftrag);
-    var hatNormal      = warenkorb.some(p => !p.vonAuftrag);
-    var sepGesetzt     = false;
-    var hdrGesetzt     = false;
-
-    warenkorb.forEach(function(p, i) {
-        // Auftrag-Header über den ersten 📦-Zeilen
-        if (p.vonAuftrag && !hdrGesetzt && geladenerAuftragNr) {
-            var hdr = document.createElement('div');
-            hdr.className = 'bon-row-auftrag-header';
-            hdr.innerHTML = '📦 <strong>' + esc(geladenerAuftragNr) + '</strong>';
-            liste.appendChild(hdr);
-            hdrGesetzt = true;
-        }
-        // Trennlinie zwischen Auftrag-Block und normalen Artikeln
-        if (hatAuftrag && hatNormal && !p.vonAuftrag && !sepGesetzt) {
-            var sep = document.createElement('div');
-            sep.className = 'bon-row-separator';
-            sep.textContent = '─── weitere Artikel ───';
-            liste.appendChild(sep);
-            sepGesetzt = true;
-        }
-
-        var rabFaktor = 1 - (posRabatt(p) / 100);
-        var summe = p.menge * p.einzelpreis_brutto * rabFaktor;
-        var istAktiv = (i === aktiveZeile);
-
-        var istRetour = (p.block === 'retour' && !p.vonAuftrag);
-
-        var div = document.createElement('div');
-        div.className = 'bon-row' + (istAktiv ? ' aktiv' : '') + (p.vonAuftrag ? ' bon-row-auftrag' : '') + (istRetour ? ' bon-row-retour' : '');
-        div.dataset.idx = i;
-        div.onclick = function() { zeilaKlick(i); };
-
-        var rabHtml = posRabatt(p) > 0
-            ? '<span class="bon-row-rabatt">-' + posRabatt(p) + '%</span>'
-            : '';
-        var auftragBadge = p.vonAuftrag ? '<span class="bon-row-auftrag-badge">📦</span>' : '';
-        var retourBadge  = istRetour ? '<span class="bon-row-retour-badge">↩</span>' : '';
-
-        div.innerHTML =
-            '<div class="bon-row-nr">' + (i + 1) + '</div>' +
-            '<div class="bon-row-name">' + auftragBadge + retourBadge + esc(p.bezeichnung) + rabHtml + '</div>' +
-            '<div class="bon-row-menge">' + p.menge + '</div>' +
-            '<div class="bon-row-ep">€ ' + fmt(p.einzelpreis_brutto) + '</div>' +
-            '<div class="bon-row-summe">€ ' + fmt(summe) + '</div>' +
-            (istAktiv ?
-                '<div class="bon-row-ctrl">' +
-                '  <button class="bon-ctrl" onclick="event.stopPropagation();zeileMinus(' + i + ')">−</button>' +
-                '  <button class="bon-ctrl" onclick="event.stopPropagation();zeilePlus(' + i + ')">+</button>' +
-                '  <button class="bon-ctrl bon-ctrl-preis" onclick="event.stopPropagation();preisOverride(' + i + ')" title="Preis überschreiben (Zahl auf Numpad, dann hier drücken)">€ Preis</button>' +
-                '  <span class="bon-ctrl-hint">STORNO-Taste zum Entfernen</span>' +
-                '</div>'
-                : ''
-            );
-
-        liste.appendChild(div);
+    // Reihenfolge: je geladenem Auftrag seine Zeilen unter einer Überschrift (Sammelabholung:
+    // mehrere), danach alle weiteren Artikel. Die Indizes bleiben die des warenkorb-Arrays.
+    var gruppen = [];
+    geladeneAuftraege.forEach(function(a) {
+        var idx = [];
+        warenkorb.forEach(function(p, i) { if (zeileAuftragId(p) === a.id) idx.push(i); });
+        if (idx.length) gruppen.push({ auftrag: a, idx: idx });
     });
+    var restIdx = [];
+    warenkorb.forEach(function(p, i) { if (!auftragInfo(zeileAuftragId(p))) restIdx.push(i); });
+    var mehrereAuftraege = geladeneAuftraege.length > 1;
+    var lfdNr = 0;
+
+    function zeileRendern(i) {
+        var p = warenkorb[i];
+            var rabFaktor = 1 - (posRabatt(p) / 100);
+            var summe = p.menge * p.einzelpreis_brutto * rabFaktor;
+            var istAktiv = (i === aktiveZeile);
+
+            var istRetour = (p.block === 'retour' && !p.vonAuftrag);
+
+            var div = document.createElement('div');
+            div.className = 'bon-row' + (istAktiv ? ' aktiv' : '') + (p.vonAuftrag ? ' bon-row-auftrag' : '') + (istRetour ? ' bon-row-retour' : '');
+            div.dataset.idx = i;
+            div.onclick = function() { zeilaKlick(i); };
+
+            var rabHtml = posRabatt(p) > 0
+                ? '<span class="bon-row-rabatt">-' + posRabatt(p) + '%</span>'
+                : '';
+            var auftragBadge = p.vonAuftrag ? '<span class="bon-row-auftrag-badge">📦</span>' : '';
+            var retourBadge  = istRetour ? '<span class="bon-row-retour-badge">↩</span>' : '';
+            // Teilabholung sichtbar machen: weniger mitgenommen als bestellt/gepackt
+            var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
+            var teilHtml = (p.vonAuftrag && p.menge < orig)
+                ? '<span class="bon-row-teil">' + p.menge + ' von ' + orig + ' mitgenommen</span>'
+                : '';
+
+            div.innerHTML =
+                '<div class="bon-row-nr">' + (++lfdNr) + '</div>' +
+                '<div class="bon-row-name">' + auftragBadge + retourBadge + esc(p.bezeichnung) + rabHtml + teilHtml + '</div>' +
+                '<div class="bon-row-menge">' + p.menge + '</div>' +
+                '<div class="bon-row-ep">€ ' + fmt(p.einzelpreis_brutto) + '</div>' +
+                '<div class="bon-row-summe">€ ' + fmt(summe) + '</div>' +
+                (istAktiv ?
+                    '<div class="bon-row-ctrl">' +
+                    '  <button class="bon-ctrl" onclick="event.stopPropagation();zeileMinus(' + i + ')">−</button>' +
+                    '  <button class="bon-ctrl" onclick="event.stopPropagation();zeilePlus(' + i + ')">+</button>' +
+                    '  <button class="bon-ctrl bon-ctrl-preis" onclick="event.stopPropagation();preisOverride(' + i + ')" title="Preis überschreiben (Zahl auf Numpad, dann hier drücken)">€ Preis</button>' +
+                    '  <span class="bon-ctrl-hint">STORNO-Taste zum Entfernen</span>' +
+                    '</div>'
+                    : ''
+                );
+
+            liste.appendChild(div);
+    }
+
+    gruppen.forEach(function(g) {
+        var a = g.auftrag;
+        var nichtsMit = auftragNichtsMitgenommen(a.id);
+        var hdr = document.createElement('div');
+        hdr.className = 'bon-row-auftrag-header';
+        hdr.innerHTML = '📦 <strong>' + esc(a.nr) + '</strong> '
+            + (a.zahlungsstatus === 'bezahlt'
+                ? '<span class="a-chip a-chip-bezahlt">bezahlt</span>'
+                : '<span class="a-chip a-chip-offen">unbezahlt</span>')
+            + (a.mitnehmen === false ? ' <span class="a-chip a-chip-versandbereit">nur Zahlung</span>' : '')
+            + (mehrereAuftraege
+                ? '<button class="bon-hdr-x" title="Auftrag wieder vom Bon nehmen" onclick="event.stopPropagation();auftragEntfernen(' + a.id + ')">✕</button>'
+                : '')
+            + (nichtsMit
+                ? '<div class="bon-hdr-hinweis">nichts mitgenommen — Auftrag bleibt unverändert liegen</div>'
+                : '');
+        liste.appendChild(hdr);
+        g.idx.forEach(zeileRendern);
+    });
+    // Trennlinie zwischen Auftrag-Blöcken und normalen Artikeln
+    if (gruppen.length && restIdx.length) {
+        var sep = document.createElement('div');
+        sep.className = 'bon-row-separator';
+        sep.textContent = '─── weitere Artikel ───';
+        liste.appendChild(sep);
+    }
+    restIdx.forEach(zeileRendern);
 
     document.getElementById('btn-bezahlen').disabled = false;
     aktualisiereFooter();
@@ -2058,7 +2112,7 @@ function kdSyncWarenkorb() {
         artikel_einzelpreis: aktiv.einzelpreis_brutto,
         positionen:          positionen,
         gesamt:              getGesamt(),
-        auftrag_nr:          geladenerAuftragNr || null
+        auftrag_nr:          auftragNummernText() || null
     });
 }
 
@@ -2220,6 +2274,12 @@ function aktualisiereFooter() {
 
     document.getElementById('rf-cnt').textContent  = anzahl + ' Artikel' + (globalRabatt > 0 ? ' · ' + globalRabatt + '% Rabatt' : '') + ' · inkl. MwSt.';
     document.getElementById('rf-ges').textContent  = '€ ' + fmt(gesamt);
+    // Bereits bezahlte Aufträge werden nicht kassiert -- Anzeige = tatsächlicher Zahlbetrag
+    if (geladeneAuftraege.some(function(a) { return a.zahlungsstatus === 'bezahlt'; })) {
+        var m = berechneAbrechnungsModus();
+        document.getElementById('rf-cnt').textContent += ' · bezahlte Aufträge nicht enthalten';
+        document.getElementById('rf-ges').textContent  = '€ ' + fmt(m.netBrutto);
+    }
 }
 
 // Effektiver Rabatt einer Position (Zeilen- oder Bon-Rabatt, der höhere zählt).
@@ -2521,9 +2581,10 @@ function bonParken() {
             warenkorb:    warenkorb,
             global_rabatt: globalRabatt,
             kunden_id:    kundeId,
-            kunden_name:  kundenId ? kundenAnzeige : null,
+            kunden_name:  (kundeId || geladeneAuftraege.length) ? kundenAnzeige : null,
             auftrag_id:   geladenerAuftragId,
             kontext: {
+                auftraege:               geladeneAuftraege,
                 auftrag_nr:              geladenerAuftragNr,
                 auftrag_status:          geladenerAuftragStatus,
                 auftrag_mitnehmen:       geladenerAuftragMitnehmen,
@@ -2537,11 +2598,9 @@ function bonParken() {
         if (!d.erfolg) { feedback('Parken fehlgeschlagen', 'fehler'); return; }
         // Bon zurücksetzen
         warenkorb = []; aktiveZeile = -1; globalRabatt = 0;
-        kundeId = null; geladenerAuftragId = null; geladenerAuftragNr = null;
-        geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
-        geladenerAuftragZahlungsstatus = null; zusatzPositionen = [];
+        kundeId = null; geladeneAuftraege = []; mitnehmenWarteschlange = [];
+        _hauptAuftragSpiegeln(); zusatzPositionen = [];
         document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
-        document.getElementById('btn-auftrag-laden').classList.remove('geladen');
         clearNumpad(); renderBon();
         feedback('Bon geparkt (#' + d.id + ')', 'ok');
     })
@@ -2597,13 +2656,22 @@ function geparktenLaden(id) {
             if (b.kunden_name) document.getElementById('kunden-anzeige').textContent = b.kunden_name;
             else               document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
             var ktx = b.kontext ? (typeof b.kontext === 'string' ? JSON.parse(b.kontext) : b.kontext) : {};
-            geladenerAuftragId             = b.auftrag_id ? parseInt(b.auftrag_id) : null;
-            geladenerAuftragNr             = ktx.auftrag_nr             || null;
-            geladenerAuftragStatus         = ktx.auftrag_status         || null;
-            geladenerAuftragMitnehmen      = ktx.auftrag_mitnehmen      || null;
-            geladenerAuftragZahlungsstatus = ktx.auftrag_zahlungsstatus || null;
+            if (ktx.auftraege) {
+                geladeneAuftraege = ktx.auftraege;
+            } else if (b.auftrag_id) {
+                // vor der Sammelabholung geparkt: ein Auftrag im alten Format
+                geladeneAuftraege = [{
+                    id: parseInt(b.auftrag_id), nr: ktx.auftrag_nr || null, status: ktx.auftrag_status || null,
+                    mitnehmen: ktx.auftrag_mitnehmen === undefined ? null : ktx.auftrag_mitnehmen,
+                    zahlungsstatus: ktx.auftrag_zahlungsstatus || null,
+                    kunden_id: kundeId, kunden_email: null, kunden_name: '',
+                }];
+            } else {
+                geladeneAuftraege = [];
+            }
+            mitnehmenWarteschlange = [];
+            _hauptAuftragSpiegeln();
             zusatzPositionen               = ktx.zusatz_positionen      || [];
-            if (geladenerAuftragId) document.getElementById('btn-auftrag-laden').classList.add('geladen');
             aktiveZeile = -1;
             // Nach Laden aus DB löschen
             fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' });
@@ -2856,11 +2924,13 @@ function berechneAbrechnungsModus() {
     var retourBrutto = 0;
     warenkorb.forEach(function(p) {
         var rab = 1 - (posRabatt(p) / 100);
-        if (p.vonAuftrag) {
+        if (p.vonAuftrag && auftragNichtsMitgenommen(zeileAuftragId(p))) return;
+        if (p.vonAuftrag && auftragBezahlt(zeileAuftragId(p))) {
             var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
             var diff = origMenge - p.menge;
             if (diff > 0.001) retourBrutto += diff * p.einzelpreis_brutto * rab;
         } else {
+            // Extras + Zeilen noch unbezahlter Aufträge (Sammelabholung) werden kassiert
             extraBrutto += p.menge * p.einzelpreis_brutto * rab;
         }
     });
@@ -2879,7 +2949,7 @@ function berechneAbrechnungsModus() {
 function berechneZusatzPositionen() {
     zusatzPositionen = [];
     warenkorb.forEach(function(p) {
-        if (!p.vonAuftrag) return;
+        if (!p.vonAuftrag || !auftragBezahlt(zeileAuftragId(p)) || auftragNichtsMitgenommen(zeileAuftragId(p))) return;
         var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
         var diff = origMenge - p.menge;
         if (diff < 0.001) return;
@@ -2890,6 +2960,7 @@ function berechneZusatzPositionen() {
             rabatt_prozent: posRabatt(p),
             charge: p.charge || null, istDivers: false,
             vonAuftrag: false, auftrag_position_id: null,
+            web_auftrag_id: zeileAuftragId(p),
             kein_lagerabzug: true, block: 'retour',
         });
     });
@@ -2907,6 +2978,7 @@ function berechneZusatzPositionen() {
             // menge_retourniert auf der Original-Position korrekt hochgezählt werden kann.
             vonAuftrag: false, auftrag_position_id: null,
             retour_von_position_id: p.auftrag_position_id || null,
+            web_auftrag_id: geladenerAuftragId,
             kein_lagerabzug: true, block: 'retour',
         });
     });
@@ -2915,7 +2987,8 @@ function berechneZusatzPositionen() {
 function bezahlenDialog() {
     if (warenkorb.length === 0 && !retoureAktiv()) return;
 
-    if ((geladenerAuftragZahlungsstatus === 'bezahlt' || retoureAktiv()) && geladenerAuftragId) {
+    var einAuftragBezahlt = geladeneAuftraege.some(function(a) { return a.zahlungsstatus === 'bezahlt'; });
+    if ((einAuftragBezahlt || retoureAktiv()) && geladeneAuftraege.length) {
         var m = berechneAbrechnungsModus();
         aktuellerZahlBetrag = m.netBrutto;
         // Immer schon hier berechnen (nicht erst im Zahlungs-Popup) — sonst geht bei
@@ -2931,7 +3004,8 @@ function bezahlenDialog() {
                 }
             });
             document.getElementById('bezahlt-info-text').textContent =
-                'Auftrag ' + geladenerAuftragNr + ' · € ' + fmt(origTotal) + ' — vollständig bezahlt.';
+                (geladeneAuftraege.length > 1 ? 'Aufträge ' : 'Auftrag ') + auftragNummernText()
+                + ' · € ' + fmt(origTotal) + ' — vollständig bezahlt.';
             ov('ov-bezahlt-info');
             return;
         }
@@ -3133,11 +3207,10 @@ function abschliessenKombi() {
 // ── Bon speichern ─────────────────────────────────────────────────────────────
 function _resetKasseState() {
     warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad(); kundeId = null;
-    geladenerAuftragId = null; geladenerAuftragNr = null;
-    geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
-    geladenerAuftragZahlungsstatus = null; aktuellerZahlBetrag = null; zusatzPositionen = [];
+    geladeneAuftraege = []; mitnehmenWarteschlange = []; weitereAuftraegePruefenFuer = null;
+    _hauptAuftragSpiegeln();
+    aktuellerZahlBetrag = null; zusatzPositionen = [];
     retourePositionen = [];
-    document.getElementById('btn-auftrag-laden').classList.remove('geladen');
     document.getElementById('ai-leer').style.display = 'block';
     document.getElementById('ai-inhalt').style.display = 'none';
     document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
@@ -3165,10 +3238,7 @@ function bonSpeichern(zahlDaten) {
             kunden_id: kundeId,
             bruttobetrag: g,
             positionen: positionen,
-            web_auftrag_id:              geladenerAuftragId,
-            web_auftrag_status:          geladenerAuftragStatus,
-            web_auftrag_mitnehmen:       geladenerAuftragMitnehmen,
-            web_auftrag_zahlungsstatus:  geladenerAuftragZahlungsstatus,
+            web_auftraege:               geladeneAuftraege.map(function(a) { return { id: a.id, mitnehmen: a.mitnehmen }; }),
         }, zahlDaten))
     })
     .then(r => r.json())
@@ -3231,10 +3301,7 @@ function abschliessenOhneBon() {
         body: JSON.stringify({
             kasse_id: KASSE_ID, lager_id: LAGER_ID, kunden_id: kundeId, bruttobetrag: 0,
             zahlungsart: 'bar', positionen: positionen,
-            web_auftrag_id:             geladenerAuftragId,
-            web_auftrag_status:         geladenerAuftragStatus,
-            web_auftrag_mitnehmen:      geladenerAuftragMitnehmen,
-            web_auftrag_zahlungsstatus: geladenerAuftragZahlungsstatus,
+            web_auftraege:              geladeneAuftraege.map(function(a) { return { id: a.id, mitnehmen: a.mitnehmen }; }),
             nur_abschliessen:           true,
         })
     })
@@ -3794,8 +3861,7 @@ function auftragSucheAusfuehren() {
                     + '</div>'
                     + '<div class="auftrag-item-betrag">€ ' + fmt(parseFloat(a.bruttobetrag)) + '</div>';
                 div.addEventListener('click', function() {
-                    var d = this._auftragDaten;
-                    auftragWaehlen(d.id, d.auftrag_nr, d.positionen, d.lieferstatus, d.kunden_id, d.kunden_name, d.zahlungsstatus);
+                    auftragWaehlen(this._auftragDaten);
                 });
                 liste.appendChild(div);
             });
@@ -3805,39 +3871,129 @@ function auftragSucheAusfuehren() {
         });
 }
 
-function auftragWaehlen(id, nr, positionen, lieferstatus, kunden_id, kunden_name, zahlungsstatus) {
-    // Bereits manuell gescannte Artikel (Laufkunde) bleiben erhalten und werden als
-    // "weitere Artikel" neben dem geladenen Auftrag geführt (gleiches Prinzip wie beim
-    // umgekehrten Weg: erst Auftrag laden, danach Extra-Artikel dazuscannen). Nur wenn
-    // schon EIN Auftrag geladen ist, wird beim Wechsel auf einen zweiten wirklich alles
-    // zurückgesetzt — zwei verschiedene Aufträge gemeinsam auf einem Bon ist (noch)
-    // nicht unterstützt (siehe Sammelabholung-Idee, kommt erst mit Online-Shop-Anbindung).
-    if (geladenerAuftragId !== null) {
-        if (!confirm('Es ist bereits Auftrag ' + geladenerAuftragNr + ' geladen — wirklich durch ' + nr + ' ersetzen?')) return;
-        warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
-    }
-    geladenerAuftragId              = id;
-    geladenerAuftragNr              = nr;
-    geladenerAuftragStatus          = lieferstatus || null;
-    geladenerAuftragMitnehmen       = null;
-    geladenerAuftragZahlungsstatus  = zahlungsstatus || null;
-    aktuellerZahlBetrag             = null;
-    retourePositionen               = [];
-    kundeId = kunden_id || null;
-
+// ── Geladene Web-Aufträge (Sammelabholung) ───────────────────────────────────
+// geladeneAuftraege = alle Aufträge auf diesem Bon (nur EIN Kunde). geladenerAuftragId
+// & Co. spiegeln den ersten davon -- Retoure-Modus, Parken und älterer Code lesen die.
+function _hauptAuftragSpiegeln() {
+    var a = geladeneAuftraege[0] || null;
+    geladenerAuftragId             = a ? a.id : null;
+    geladenerAuftragNr             = a ? a.nr : null;
+    geladenerAuftragStatus         = a ? a.status : null;
+    geladenerAuftragMitnehmen      = a ? a.mitnehmen : null;
+    geladenerAuftragZahlungsstatus = a ? a.zahlungsstatus : null;
+    document.getElementById('btn-auftrag-laden').classList.toggle('geladen', !!a);
+}
+function auftragInfo(id) {
+    for (var i = 0; i < geladeneAuftraege.length; i++) if (geladeneAuftraege[i].id === id) return geladeneAuftraege[i];
+    return null;
+}
+function auftragBezahlt(id) {
+    var a = auftragInfo(id);
+    return !!a && a.zahlungsstatus === 'bezahlt';
+}
+// Zeile → Auftrag. Ältere geparkte Bons kennen web_auftrag_id an der Zeile noch nicht.
+function zeileAuftragId(p) {
+    if (!p.vonAuftrag) return null;
+    return p.web_auftrag_id || (geladeneAuftraege[0] ? geladeneAuftraege[0].id : null);
+}
+// Sammelabholung: von diesem Auftrag wird gar nichts mitgenommen → er bleibt unverändert
+// liegen (keine Zahlung, keine Erstattung). Gleiche Regel wie in bon_speichern.php.
+function auftragNichtsMitgenommen(id) {
+    if (geladeneAuftraege.length < 2) return false;
+    var zeilen = warenkorb.filter(function(p) { return zeileAuftragId(p) === id; });
+    return zeilen.length > 0 && zeilen.every(function(p) { return p.menge <= 0; });
+}
+function auftragNummernText() {
+    return geladeneAuftraege.map(function(a) { return a.nr; }).join(', ');
+}
+function _kundenAnzeigeAuftraege() {
+    var name = geladeneAuftraege.length ? geladeneAuftraege[0].kunden_name : '';
+    document.getElementById('kunden-anzeige').textContent = geladeneAuftraege.length
+        ? '📦 ' + auftragNummernText() + (name ? ' · ' + name : '')
+        : 'Laufkunde';
+}
+function _gleicherKunde(a, b) {
+    if (a.kunden_id && b.kunden_id) return a.kunden_id === b.kunden_id;
+    return !!a.kunden_email && a.kunden_email === b.kunden_email;
+}
+function _istRetoureStatus(lieferstatus) {
     // versendet/teilgeliefert/abgeschlossen: Ware ist (teilweise) schon raus — es gibt nichts
     // zu "behalten", einzig sinnvolle Aktion ist eine Rückgabe. Eigene Retoure-Sektion statt
     // Warenkorb-Zeilen. 'abgeschlossen' zählt mit, weil ein bezahlter, versendeter Auftrag
     // durch die Auto-Logik in packplatz/warenausgang/abschliessen.php sofort dorthin springt —
     // der Praxisfall "bezahlt + versendet" landet also fast nie sichtbar bei 'versendet'.
-    var istRetoure = (lieferstatus === 'versendet' || lieferstatus === 'teilgeliefert' || lieferstatus === 'abgeschlossen');
+    return lieferstatus === 'versendet' || lieferstatus === 'teilgeliefert' || lieferstatus === 'abgeschlossen';
+}
+
+function auftragWaehlen(a) {
+    if (auftragInfo(a.id)) {
+        ovSchliessen('ov-auftrag-laden');
+        feedback('Auftrag ' + a.auftrag_nr + ' ist schon geladen', 'info');
+        return;
+    }
+    var istRetoure = _istRetoureStatus(a.lieferstatus);
+
+    // Bereits manuell gescannte Artikel (Laufkunde) bleiben erhalten und werden als
+    // "weitere Artikel" neben dem geladenen Auftrag geführt. Ist schon ein Auftrag geladen:
+    // weiterer Abhol-Auftrag DESSELBEN Kunden kommt dazu (Sammelabholung), alles andere
+    // (anderer Kunde, Retoure) ersetzt nach Rückfrage den Bon wie bisher -- Retoure und
+    // Sammelabholung auf einem Bon ist (noch) nicht unterstützt.
+    if (geladeneAuftraege.length) {
+        var dazu = !istRetoure && retourePositionen.length === 0 && _gleicherKunde(geladeneAuftraege[0], a);
+        if (dazu) {
+            ovSchliessen('ov-auftrag-laden');
+            _auftragHinzufuegen(a);
+            renderBon();
+            feedback('Auftrag ' + a.auftrag_nr + ' dazugeladen — Sammelabholung', 'ok');
+            _naechsteMitnehmenFrage();
+            return;
+        }
+        var grund = istRetoure || retourePositionen.length ? '' : ' (anderer Kunde)';
+        if (!confirm('Es ist bereits ' + auftragNummernText() + ' geladen' + grund + ' — wirklich durch ' + a.auftrag_nr + ' ersetzen?')) return;
+        warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
+        geladeneAuftraege = []; mitnehmenWarteschlange = [];
+        retourePositionen = [];
+    }
+    aktuellerZahlBetrag = null;
+    kundeId = a.kunden_id || null;
+
+    _auftragHinzufuegen(a);
+    renderBon();
+    renderRetoureSektion();
+    ovSchliessen('ov-auftrag-laden');
 
     if (istRetoure) {
-        positionen.forEach(function(p) {
+        feedback('Auftrag ' + a.auftrag_nr + ' geladen — bereits ausgeliefert. Menge zurück eintragen für die Rückgabe.', 'ok');
+        return;
+    }
+    if (a.lieferstatus === 'abholbereit') {
+        feedback(a.zahlungsstatus === 'bezahlt'
+            ? 'Auftrag ' + a.auftrag_nr + ' geladen — bereits bezahlt · Abholung'
+            : 'Auftrag ' + a.auftrag_nr + ' geladen — bereit zur Abholung', 'ok');
+    }
+    // Erst ggf. "Was passiert mit der Ware?" beantworten, danach nach weiteren
+    // Abholungen desselben Kunden schauen (siehe _naechsteMitnehmenFrage)
+    weitereAuftraegePruefenFuer = a.id;
+    _naechsteMitnehmenFrage();
+}
+
+function _auftragHinzufuegen(a) {
+    var istRetoure = _istRetoureStatus(a.lieferstatus);
+    geladeneAuftraege.push({
+        id: a.id, nr: a.auftrag_nr, status: a.lieferstatus || null,
+        mitnehmen: null, zahlungsstatus: a.zahlungsstatus || null,
+        kunden_id: a.kunden_id || null, kunden_email: a.kunden_email || null,
+        kunden_name: a.kunden_name || '',
+    });
+    _hauptAuftragSpiegeln();
+    if (!kundeId && a.kunden_id) kundeId = a.kunden_id;
+
+    if (istRetoure) {
+        a.positionen.forEach(function(p) {
             // 'versendet'/'abgeschlossen' = der ganze Auftrag ist raus (auch wenn menge_geliefert
             // aus einem einfacheren Status-Pfad, z.B. reiner Tracking-Nr.-Eingabe, nie gepflegt
             // wurde) — nur bei echtem 'teilgeliefert' zählt die tatsächlich gelieferte Teilmenge.
-            var maxMenge = lieferstatus === 'teilgeliefert'
+            var maxMenge = a.lieferstatus === 'teilgeliefert'
                 ? parseFloat(p.menge_geliefert || 0)
                 : parseFloat(p.menge);
             // Schon früher über die Kasse retournierte Menge abziehen — sonst könnte
@@ -3858,7 +4014,7 @@ function auftragWaehlen(id, nr, positionen, lieferstatus, kunden_id, kunden_name
             });
         });
     } else {
-        positionen.forEach(function(p) {
+        a.positionen.forEach(function(p) {
             var menge = parseFloat(p.menge);
             warenkorb.push({
                 artikel_id:           p.artikel_id,
@@ -3876,54 +4032,135 @@ function auftragWaehlen(id, nr, positionen, lieferstatus, kunden_id, kunden_name
                 bestand_verkaufbar:   0,
                 vonAuftrag:           true,
                 auftrag_position_id:  p.auftrag_position_id || null,
+                web_auftrag_id:       a.id,
             });
         });
+        // Noch nicht gepackte Aufträge: "mitnehmen oder nur zahlen?" fragen
+        if (a.lieferstatus !== 'abholbereit') mitnehmenWarteschlange.push(a.id);
     }
+    _kundenAnzeigeAuftraege();
+}
 
-    document.getElementById('kunden-anzeige').textContent = '📦 ' + nr + (kunden_name ? ' · ' + kunden_name : '');
-    document.getElementById('btn-auftrag-laden').classList.add('geladen');
+// Ein Auftrag aus der Sammelabholung wieder vom Bon nehmen (✕ in der Auftrags-Überschrift)
+function auftragEntfernen(id) {
+    if (geladeneAuftraege.length <= 1) { auftragMitnehmenAbbrechen(); return; }
+    warenkorb = warenkorb.filter(function(p) { return zeileAuftragId(p) !== id; });
+    geladeneAuftraege = geladeneAuftraege.filter(function(a) { return a.id !== id; });
+    mitnehmenWarteschlange = mitnehmenWarteschlange.filter(function(x) { return x !== id; });
+    aktiveZeile = -1;
+    _hauptAuftragSpiegeln();
+    _kundenAnzeigeAuftraege();
     renderBon();
-    renderRetoureSektion();
-    ovSchliessen('ov-auftrag-laden');
+}
 
-    if (istRetoure) {
-        feedback('Auftrag ' + nr + ' geladen — bereits ausgeliefert. Menge zurück eintragen für die Rückgabe.', 'ok');
-    } else if (lieferstatus === 'abholbereit') {
-        var msg = zahlungsstatus === 'bezahlt'
-            ? 'Auftrag ' + nr + ' geladen — bereits bezahlt · Abholung'
-            : 'Auftrag ' + nr + ' geladen — bereit zur Abholung';
-        feedback(msg, 'ok');
-    } else {
+// Mitnehmen-Frage nacheinander für jeden noch nicht gepackten Auftrag; ist keiner mehr
+// offen, ggf. nach weiteren Abholungen desselben Kunden suchen.
+var _mitnehmenFrageFuer = null;
+function _naechsteMitnehmenFrage() {
+    if (mitnehmenWarteschlange.length) {
+        _mitnehmenFrageFuer = mitnehmenWarteschlange[0];
+        var a = auftragInfo(_mitnehmenFrageFuer);
         document.getElementById('ov-mitnehmen-info').textContent =
-            'Auftrag ' + nr + ' — was passiert mit der Ware?';
+            'Auftrag ' + (a ? a.nr : '') + ' — was passiert mit der Ware?';
         ov('ov-mitnehmen');
+        return;
+    }
+    _mitnehmenFrageFuer = null;
+    if (weitereAuftraegePruefenFuer) {
+        var refId = weitereAuftraegePruefenFuer;
+        weitereAuftraegePruefenFuer = null;
+        weitereAbholungenPruefen(refId);
     }
 }
 
 function auftragMitnahmeBestaetigen(mitnehmen) {
-    geladenerAuftragMitnehmen = mitnehmen;
+    var a = auftragInfo(_mitnehmenFrageFuer);
+    if (a) a.mitnehmen = mitnehmen;
+    _hauptAuftragSpiegeln();
+    mitnehmenWarteschlange.shift();
     ovSchliessen('ov-mitnehmen');
-    feedback(
+    if (a) feedback(
         mitnehmen
-            ? 'Auftrag ' + geladenerAuftragNr + ' — Ware wird mitgenommen'
-            : 'Auftrag ' + geladenerAuftragNr + ' — nur Zahlung, Versand folgt',
+            ? 'Auftrag ' + a.nr + ' — Ware wird mitgenommen'
+            : 'Auftrag ' + a.nr + ' — nur Zahlung, Versand folgt',
         'ok'
     );
+    _naechsteMitnehmenFrage();
 }
 
 function auftragMitnehmenAbbrechen() {
     ovSchliessen('ov-mitnehmen');
+    // Sammelabholung: nur den gefragten Auftrag wieder herausnehmen
+    if (geladeneAuftraege.length > 1 && _mitnehmenFrageFuer) {
+        var nr = (auftragInfo(_mitnehmenFrageFuer) || {}).nr || '';
+        auftragEntfernen(_mitnehmenFrageFuer);
+        feedback('Auftrag ' + nr + ' wieder entfernt', 'info');
+        _naechsteMitnehmenFrage();
+        return;
+    }
     warenkorb = []; aktiveZeile = -1; globalRabatt = 0; clearNumpad();
-    geladenerAuftragId = null; geladenerAuftragNr = null;
-    geladenerAuftragStatus = null; geladenerAuftragMitnehmen = null;
-    geladenerAuftragZahlungsstatus = null; aktuellerZahlBetrag = null; zusatzPositionen = [];
+    geladeneAuftraege = []; mitnehmenWarteschlange = []; weitereAuftraegePruefenFuer = null;
+    _hauptAuftragSpiegeln();
+    aktuellerZahlBetrag = null; zusatzPositionen = [];
     retourePositionen = [];
     kundeId = null;
     document.getElementById('kunden-anzeige').textContent = '';
-    document.getElementById('btn-auftrag-laden').classList.remove('geladen');
     renderBon();
     renderRetoureSektion();
     feedback('Auftrag entladen', 'info');
+}
+
+// ── Sammelabholung: weitere offene Abholungen desselben Kunden anbieten ──────
+var _weitereAuftraegeDaten = [];
+function weitereAbholungenPruefen(refId) {
+    fetch('<?= BASE_PATH ?>/kasse/ajax_auftrag_laden.php?weitere_zu=' + refId)
+        .then(r => r.json())
+        .then(function(data) {
+            // Inzwischen anders entschieden (Bon entladen/ersetzt)?
+            if (!auftragInfo(refId)) return;
+            _weitereAuftraegeDaten = (data || []).filter(function(a) { return !auftragInfo(a.id); });
+            if (!_weitereAuftraegeDaten.length) return;
+
+            var ref = auftragInfo(refId);
+            document.getElementById('weitere-titel').textContent = '📦 ' + ref.nr + ' geladen';
+            document.getElementById('weitere-info').textContent = (ref.kunden_name || 'Dieser Kunde')
+                + ' hat noch ' + (_weitereAuftraegeDaten.length === 1 ? 'eine weitere Abholung' : _weitereAuftraegeDaten.length + ' weitere Abholungen') + ':';
+            var liste = document.getElementById('weitere-liste');
+            liste.innerHTML = '';
+            _weitereAuftraegeDaten.forEach(function(a, i) {
+                var bereit = a.lieferstatus === 'abholbereit';
+                var zeile = document.createElement('label');
+                zeile.className = 'weitere-item' + (bereit ? '' : ' weitere-item-offen');
+                zeile.innerHTML =
+                    '<input type="checkbox" data-idx="' + i + '"' + (bereit ? ' checked' : '') + ' onchange="weitereZaehlen()">' +
+                    '<div class="weitere-item-info"><div class="auftrag-item-nr">' + esc(a.auftrag_nr) + '</div>' +
+                    '<div class="weitere-item-sub' + (bereit ? '' : ' weitere-item-warn') + '">' + esc(a.erstellt_datum) + ' · '
+                        + (bereit ? 'Abholbereit' : 'noch nicht gepackt (' + esc(a.lieferstatus_label) + ')') + '</div></div>' +
+                    '<span class="a-chip a-chip-' + esc(a.zahlungsstatus) + '">' + esc(a.zahlungsstatus_label) + '</span>' +
+                    '<div class="auftrag-item-betrag">€ ' + fmt(parseFloat(a.bruttobetrag)) + '</div>';
+                liste.appendChild(zeile);
+            });
+            weitereZaehlen();
+            ov('ov-weitere-auftraege');
+        })
+        .catch(function() { /* Hinweis ist optional -- Kasse läuft ohne weiter */ });
+}
+
+function weitereZaehlen() {
+    var n = document.querySelectorAll('#weitere-liste input:checked').length;
+    var btn = document.getElementById('btn-weitere-laden');
+    btn.textContent = 'Ausgewählte mitladen (' + n + ')';
+    btn.disabled = n === 0;
+}
+
+function weitereMitladen() {
+    var gewaehlt = Array.from(document.querySelectorAll('#weitere-liste input:checked'))
+        .map(function(cb) { return _weitereAuftraegeDaten[parseInt(cb.dataset.idx)]; });
+    ovSchliessen('ov-weitere-auftraege');
+    gewaehlt.forEach(function(a) { if (!auftragInfo(a.id)) _auftragHinzufuegen(a); });
+    renderBon();
+    if (gewaehlt.length) feedback(gewaehlt.length + ' weitere(r) Auftrag/Aufträge dazugeladen — Sammelabholung', 'ok');
+    _naechsteMitnehmenFrage();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

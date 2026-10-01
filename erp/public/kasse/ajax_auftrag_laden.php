@@ -15,7 +15,33 @@ $alle = ($_GET['alle'] ?? '0') === '1';
 // der 'versendet'-Zustand ist für diesen (häufigsten) Fall praktisch nicht beobachtbar.
 $basisFilter = "a.lieferstatus != 'storniert'";
 
-if ($alle) {
+// Sammelabholung: weitere offene Abholungen desselben Kunden zu einem schon geladenen
+// Auftrag (gleiche kunden_id, bei Gast-Bestellungen ohne Kundenkonto gleiche E-Mail).
+// Nur Aufträge, die noch abgeholt werden können -- teilgeliefert/versendet laufen an der
+// Kasse als Retoure und werden nicht mit einer Abholung gemischt.
+$weitereZu = (int)($_GET['weitere_zu'] ?? 0);
+
+if ($weitereZu) {
+    $ref = $db->prepare("SELECT kunden_id, JSON_UNQUOTE(JSON_EXTRACT(kunden_snapshot, '$.email')) AS email FROM auftraege WHERE id = ?");
+    $ref->execute([$weitereZu]);
+    $refAuftrag = $ref->fetch(PDO::FETCH_ASSOC);
+    if (!$refAuftrag || (!$refAuftrag['kunden_id'] && trim((string)$refAuftrag['email']) === '')) {
+        echo json_encode([]);
+        exit;
+    }
+    $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv') AND a.lieferart = 'abholung'
+              AND a.lieferstatus IN ('neu', 'in_bearbeitung', 'kommissioniert', 'versandbereit', 'abholbereit', 'zurueckgestellt')
+              AND a.id != :ref_id
+              AND (a.kunden_id = :ref_kid
+                   OR (:ref_email <> '' AND LOWER(JSON_UNQUOTE(JSON_EXTRACT(a.kunden_snapshot, '$.email'))) = LOWER(:ref_email2)))";
+    $params = [
+        ':ref_id'     => $weitereZu,
+        ':ref_kid'    => (int)$refAuftrag['kunden_id'],
+        ':ref_email'  => trim((string)$refAuftrag['email']),
+        ':ref_email2' => trim((string)$refAuftrag['email']),
+    ];
+    $q = '';
+} elseif ($alle) {
     // Alle offenen (nicht abgeschlossenen) Aufträge (nicht Kassen-Bons, nicht Archiv)
     $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv') AND a.lieferstatus != 'abgeschlossen'";
 } else {
@@ -27,9 +53,14 @@ if ($alle) {
               AND (a.lieferart = 'abholung' OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen'))";
 }
 
-$params = [];
+$params = $params ?? [];
 if ($q !== '') {
-    $where .= " AND (a.auftrag_nr LIKE :q OR k.name LIKE :q OR k.email LIKE :q
+    // Kundendaten in `kunden` sind verschlüsselt (*_enc) -- gesucht wird im Klartext-
+    // Snapshot am Auftrag (Name, Firma, E-Mail zum Bestellzeitpunkt)
+    $where .= " AND (a.auftrag_nr LIKE :q
+                     OR JSON_UNQUOTE(JSON_EXTRACT(a.kunden_snapshot, '$.email')) LIKE :q
+                     OR JSON_UNQUOTE(JSON_EXTRACT(a.kunden_snapshot, '$.name')) LIKE :q
+                     OR JSON_UNQUOTE(JSON_EXTRACT(a.kunden_snapshot, '$.firma')) LIKE :q
                      OR CONCAT(
                          COALESCE(JSON_UNQUOTE(JSON_EXTRACT(a.kunden_snapshot, '$.vorname')),''),
                          ' ',
@@ -42,9 +73,8 @@ $stmt = $db->prepare("
     SELECT a.id, a.auftrag_nr, a.bruttobetrag, a.zahlungsstatus, a.lieferstatus,
            a.erstellt_am, a.kunden_snapshot, a.kunden_id
     FROM auftraege a
-    LEFT JOIN kunden k ON k.id = a.kunden_id
     WHERE {$where}
-    ORDER BY a.erstellt_am DESC
+    ORDER BY " . ($weitereZu ? "a.erstellt_am ASC" : "a.erstellt_am DESC") . "
     LIMIT 50
 ");
 $stmt->execute($params);
@@ -57,10 +87,14 @@ $lieferLabels = [
     'versandbereit'   => 'Bereit',
     'teilgeliefert'   => 'Teillief.',
     'versendet'       => 'Versendet',
+    'abholbereit'     => 'Abholbereit',
+    'kommissioniert'  => 'Gepackt',
+    'zurueckgestellt' => 'Zurückgest.',
     'abgeschlossen'   => 'Abgeschl.',
 ];
 $zahlLabels = [
     'offen'       => 'Unbezahlt',
+    'ausstehend'  => 'Unbezahlt',
     'teilbezahlt' => 'Teilbez.',
     'bezahlt'     => 'Bezahlt',
     'erstattet'   => 'Erstattet',
@@ -114,6 +148,7 @@ foreach ($auftraege as $a) {
         'erstellt_datum'    => date('d.m.Y', strtotime($a['erstellt_am'])),
         'positionen'        => $positionen,
         'kunden_id'         => $a['kunden_id'] ? (int)$a['kunden_id'] : null,
+        'kunden_email'      => strtolower(trim($snap['email'] ?? '')) ?: null,
     ];
 }
 

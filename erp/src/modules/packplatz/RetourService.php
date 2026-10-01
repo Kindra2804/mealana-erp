@@ -206,8 +206,10 @@ class RetourService
         $a->execute([$auftragId]);
         $referenzen = [(string)$a->fetchColumn()];
 
-        $b = $this->db->prepare("SELECT bon_nr FROM kassen_bons WHERE (auftrag_id = :id OR web_auftrag_id = :id2) AND typ = 'verkauf' AND storniert = 0");
-        $b->execute([':id' => $auftragId, ':id2' => $auftragId]);
+        $b = $this->db->prepare("SELECT bon_nr FROM kassen_bons WHERE (auftrag_id = :id OR web_auftrag_id = :id2
+                                     OR id IN (SELECT bon_id FROM kassen_bon_auftraege WHERE auftrag_id = :id3))
+                                    AND typ = 'verkauf' AND storniert = 0");
+        $b->execute([':id' => $auftragId, ':id2' => $auftragId, ':id3' => $auftragId]);
         foreach ($b->fetchAll(PDO::FETCH_COLUMN) as $bonNr) {
             $referenzen[] = 'Kassenbon ' . $bonNr;
         }

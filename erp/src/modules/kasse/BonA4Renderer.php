@@ -287,10 +287,11 @@ class BonA4Renderer
     <label>Zahlungsart</label>
     <span><?= htmlspecialchars($zahlungsartLabel) ?></span>
   </div>
-  <?php if ($bon['web_auftrag_nr'] ?? ''): ?>
+  <?php $alleNr = array_column($bon['web_auftraege'] ?? [], 'auftrag_nr') ?: array_filter([$bon['web_auftrag_nr'] ?? '']); ?>
+  <?php if ($alleNr): ?>
   <div class="infobar-item">
-    <label>Auftrag</label>
-    <span><?= htmlspecialchars($bon['web_auftrag_nr']) ?></span>
+    <label><?= count($alleNr) > 1 ? 'Aufträge' : 'Auftrag' ?></label>
+    <span><?= htmlspecialchars(implode(', ', $alleNr)) ?></span>
   </div>
   <?php endif; ?>
 </div>
@@ -338,10 +339,28 @@ $renderBlock = function(array $positionen, string $blockLabel = '') use (&$zeile
     </tr>
 <?php endforeach; };
 
-if (isset($posBlocks['auftrag']))  $renderBlock($posBlocks['auftrag'],  $bon['web_auftrag_nr'] ? 'Auftrag ' . $bon['web_auftrag_nr'] : 'Auftrag');
-if (isset($posBlocks['retour']))   $renderBlock($posBlocks['retour'],   $bon['web_auftrag_nr'] ? '↩ Rückgabe aus Auftrag ' . $bon['web_auftrag_nr'] : '↩ Rückgabe');
-$rest = array_merge($posBlocks['normal'] ?? [], $posBlocks['addon'] ?? []);
-if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftrag']) || isset($posBlocks['retour'])) ? 'Weitere Positionen' : '');
+// Sammelabholung: je Auftrag ein eigener Block mit seiner Nummer
+$auftragNr = array_column($bon['web_auftraege'] ?? [], 'auftrag_nr', 'id');
+$auftragGruppen = [];
+foreach ($posBlocks['auftrag'] ?? [] as $pos) {
+    $auftragGruppen[(int)($pos['web_auftrag_id'] ?? 0)][] = $pos;
+}
+foreach ($auftragGruppen as $gid => $gPositionen) {
+    $nr = $auftragNr[$gid] ?? $bon['web_auftrag_nr'] ?? '';
+    $renderBlock($gPositionen, $nr ? 'Auftrag ' . $nr : 'Auftrag');
+}
+$vorherBezahlt = array_column(array_filter($bon['web_auftraege'] ?? [], fn($a) => $a['vorher_bezahlt']), 'auftrag_nr');
+if ($vorherBezahlt): ?>
+    <tr class="block-header"><td colspan="6">Abgeholt, bereits bezahlt: <?= htmlspecialchars(implode(', ', $vorherBezahlt)) ?></td></tr>
+<?php endif;
+if (isset($posBlocks['retour'])) {
+    $retourNr = array_values(array_unique(array_filter(array_map(fn($p) => $auftragNr[(int)($p['web_auftrag_id'] ?? 0)] ?? null, $posBlocks['retour']))));
+    if (!$retourNr && !empty($bon['web_auftrag_nr']) && count($auftragNr) <= 1) $retourNr = [$bon['web_auftrag_nr']];
+    $renderBlock($posBlocks['retour'], $retourNr ? '↩ Rückgabe aus Auftrag ' . implode(', ', $retourNr) : '↩ Rückgabe');
+}
+// alles außer Auftrag/Retour (normal, addon, Gutschein verkauft/ausgegeben)
+$rest = array_merge(...array_values(array_diff_key($posBlocks, ['auftrag' => 1, 'retour' => 1])));
+if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftrag']) || isset($posBlocks['retour']) || $vorherBezahlt) ? 'Weitere Positionen' : '');
 ?>
   </tbody>
 </table>

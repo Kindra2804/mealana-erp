@@ -161,13 +161,22 @@ foreach ($bon['positionen'] as $pos) {
 }
 $stSign    = $bon['typ'] === 'storno' ? '-' : '';
 $hatAuftrag = isset($posBlocks['auftrag']);
+
+// Sammelabholung: Auftrags-Zeilen je Auftrag mit eigener Überschrift; vorher bezahlte
+// Aufträge stehen nicht auf dem Bon und werden unten nur namentlich genannt
+$auftragNr = array_column($bon['web_auftraege'] ?? [], 'auftrag_nr', 'id');
+$auftragGruppen = [];
+foreach ($posBlocks['auftrag'] ?? [] as $pos) {
+    $auftragGruppen[(int)($pos['web_auftrag_id'] ?? 0)][] = $pos;
+}
+$vorherBezahlt = array_column(array_filter($bon['web_auftraege'] ?? [], fn($a) => $a['vorher_bezahlt']), 'auftrag_nr');
 $hatRest    = isset($posBlocks['normal']) || isset($posBlocks['addon']);
 ?>
 
-<?php if ($hatAuftrag): ?>
+<?php foreach ($auftragGruppen as $gruppenAuftragId => $gruppenPositionen): ?>
 <div class="linie-doppelt"></div>
-<div class="fett" style="font-size:11px;margin:2px 0"><?= htmlspecialchars($bon['web_auftrag_nr'] ?? 'Auftrag') ?></div>
-<?php foreach ($posBlocks['auftrag'] as $pos):
+<div class="fett" style="font-size:11px;margin:2px 0"><?= htmlspecialchars($auftragNr[$gruppenAuftragId] ?? $bon['web_auftrag_nr'] ?? 'Auftrag') ?></div>
+<?php foreach ($gruppenPositionen as $pos):
     $menge  = (float)$pos['menge'];
     $preis  = (float)$pos['einzelpreis_brutto'];
     $rabatt = (float)$pos['rabatt_prozent'];
@@ -188,6 +197,11 @@ $hatRest    = isset($posBlocks['normal']) || isset($posBlocks['addon']);
 <div class="pos-sub"><?= number_format((float)$pos['steuer_prozent'], 0) ?>% MwSt<?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
 <?php endif; ?>
 <?php endforeach; ?>
+<?php endforeach; ?>
+
+<?php if ($vorherBezahlt): ?>
+<div class="linie-doppelt"></div>
+<div style="font-size:10px;margin:2px 0">Abgeholt, bereits bezahlt:<br><span class="fett"><?= htmlspecialchars(implode(', ', $vorherBezahlt)) ?></span></div>
 <?php endif; ?>
 
 <?php
@@ -196,7 +210,11 @@ $retourPositionen = $posBlocks['retour'] ?? [];
 if (!empty($retourPositionen)):
 ?>
 <div class="linie-doppelt"></div>
-<div class="fett" style="font-size:11px;margin:2px 0">↩ RÜCKGABE<?= !empty($bon['web_auftrag_nr']) ? ' aus Auftrag ' . htmlspecialchars($bon['web_auftrag_nr']) : '' ?></div>
+<?php
+$retourNummern = array_values(array_unique(array_filter(array_map(fn($p) => $auftragNr[(int)($p['web_auftrag_id'] ?? 0)] ?? null, $retourPositionen))));
+if (!$retourNummern && !empty($bon['web_auftrag_nr']) && count($auftragNr) <= 1) $retourNummern = [$bon['web_auftrag_nr']];
+?>
+<div class="fett" style="font-size:11px;margin:2px 0">↩ RÜCKGABE<?= $retourNummern ? ' aus Auftrag ' . htmlspecialchars(implode(', ', $retourNummern)) : '' ?></div>
 <?php foreach ($retourPositionen as $pos):
     $menge  = abs((float)$pos['menge']);
     $preis  = (float)$pos['einzelpreis_brutto'];
@@ -221,10 +239,11 @@ if (!empty($retourPositionen)):
 
 <?php
 // Restliche Positionen (normal + addon)
-$restPositionen = array_merge($posBlocks['normal'] ?? [], $posBlocks['addon'] ?? []);
+// alles außer Auftrag/Retour (normal, addon, Gutschein verkauft/ausgegeben)
+$restPositionen = array_merge(...array_values(array_diff_key($posBlocks, ['auftrag' => 1, 'retour' => 1])));
 if (!empty($restPositionen)):
 ?>
-<?php if ($hatAuftrag || !empty($retourPositionen)): ?>
+<?php if ($hatAuftrag || !empty($retourPositionen) || $vorherBezahlt): ?>
 <div class="linie-doppelt"></div>
 <?php endif; ?>
 <?php foreach ($restPositionen as $pos):

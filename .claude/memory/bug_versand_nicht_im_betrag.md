@@ -19,4 +19,4 @@ Gefunden beim Gutschein-auf-Rechnung-Bau ([[project_gutscheine]]), beide Fehler 
 
 **Migration 181:** 5 von 8 Aufträgen mit Versand nachgerechnet (nur ohne gültige Rechnung und nur wo bruttobetrag == Positionssumme). A-2026-00008 übersprungen (bruttobetrag 32,50 passte schon vorher nicht zur Positionssumme 5,00 — alte Testdaten?). A-00002/00018/00026 haben Rechnungen → bleiben, Korrektur nur per Gutschrift+Neu-Rechnung.
 
-**Offen:** Zahlungsstatus der nachgerechneten Aufträge nicht neu bewertet; Buchhaltungsexport (auftragUmsaetzeEinfach) exportiert Versand weiterhin NICHT als Erlös (Artikelgruppe 4090 Versandkosten existiert) — nachziehen.
+**Nachprüfung 2026-10-01:** Versand im Export erledigt (260cf29). Zahlungsstatus: A-00001/00005/00007 stehen auf "bezahlt", obwohl Zahlungen jetzt unter dem Betrag liegen (Kunde zahlte damals ohne Versand) — alles Juni-Testdaten, bewusst so gelassen (Mahnwesen greift nur bei 'ausstehend'). A-2026-00043 (Gutschein 35,90) hatte 35,91 aus alter Netto-Rechnung → auf 35,90 korrigiert.

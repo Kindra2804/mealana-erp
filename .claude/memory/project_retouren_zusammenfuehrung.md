@@ -1,6 +1,6 @@
 ---
 name: project-retouren-zusammenfuehrung
-description: "2026-09-30 gebaut (nicht committed) — Kasse/Packplatz-Retoure/ERP-Gutschrift teilen Zähler + Rücklagerungs-Weg; Zustand wirkt (Zustandsartikel), Chargen aus Verkauf vorbefüllt, Shop-Sperre für B-Ware"
+description: "2026-09-30 gebaut, committed+gepusht (79e2c1f), Browser-Klicktest offen — Kasse/Packplatz-Retoure/ERP-Gutschrift teilen Zähler + Rücklagerungs-Weg; Zustand wirkt (Zustandsartikel), Chargen aus Verkauf vorbefüllt, Shop-Sperre für B-Ware"
 metadata:
   node_type: memory
   type: project

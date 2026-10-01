@@ -2,7 +2,7 @@
 
 - [Gutschein-Modul](project_gutscheine.md) — ✅ 2026-09-30 A+B+C fertig+getestet+committed (Kasse, Shop via Germanized, Rechnung, Barcode hochkant, Zahlung ERP→Shop); WARTET auf Babsis Motiv-Vorlagen (ohne Box) → dann PDF-Raster + Vorlagen-Verwaltung + Motiv-Auswahl Kasse/Snippet
 - [🟢 BUG: Kasse Chargen-Popup leer](bug_kasse_charge_unbekannt.md) — BEHOBEN 2026-09-30: Status "unbekannt" (JTL-Import) + Varianten/Suche ohne Chargen-Liste; Migration 178 + Importskript korrigiert; DokumentService-Gutschrift-Nebenbefund durch Retouren-Zusammenführung erledigt
-- [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — 2026-09-30 gebaut, nicht committed: Kasse/Packplatz/ERP-Gutschrift mit gemeinsamen Zählern (retourniert/gutgeschrieben), Zustand→Zustandsartikel (-RET/-GEB/-BSC, nie Shop), Chargen aus Verkauf vorbefüllt
+- [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — ✅ 2026-09-30 gebaut+committed+gepusht (kein Browser-Klicktest): Kasse/Packplatz/ERP-Gutschrift mit gemeinsamen Zählern (retourniert/gutgeschrieben), Zustand→Zustandsartikel (-RET/-GEB/-BSC, nie Shop), Chargen aus Verkauf vorbefüllt
 - [Zahlung+Versand ERP → Shop](project_zahlung_erp_an_shop.md) — ✅ 2026-09-30 getestet+committed: Zahlung buchen → processing (getestet ✅), bezahlt+versendet → completed per Cron, unbezahlt+versendet nur Notiz; Snippet 34191 unterdrückt WC-Mails
 - [🟢 BUG: Versand nicht im Betrag + B2C-Preise 0,00](bug_versand_nicht_im_betrag.md) — BEHOBEN+committed 2026-09-30: Versandsteuer.php (überwiegender Satz), Migration 181; offen: Versand im Buchhaltungsexport
 - [Konfigurator-Modul](project_konfigurator_modul.md) — ✅ 2026-08-29 BEHOBEN: Testbestellung verlor 5/7 Konfig-Werte (veraltete Shop-Preis-Matrix), Klartext-Fallback+Sync-Trigger gebaut, jetzt auf Pickliste/Detail/Rechnung/AB sichtbar; WP-Session-Cookie-Problem beim Warenkorb weiter offen
@@ -20,6 +20,7 @@
 - [Datenqualität 2026-08-11](project_datenqualitaet_20260811.md) — 5 Listen FERTIG; Abend: Vater→Kind-Vererbung lief bei 841 Vätern nie (charge_pflicht+grundpreis_anzeigen!) BEHOBEN, Spalten-Picker-Bug BEHOBEN; Checkbox-Speicher-Verdacht weiter offen
 - [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — KOMPLETT FERTIG 2026-08-11: 6.775 Kunden + 39.191 Archiv-Aufträge (2013–2026); zusätzlich JTL-"Eigener Export" (Lieferanten-EK+Lagerbestand Ladengeschäft) auch fertig importiert; Browser-Test+Live-Deploy offen
 
+- [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — nach allen großen Baustellen (inkl. Modul-Aktivieren) auslieferbare 1.0 mit allen Migrationen konsolidiert; Live erst darauf, danach nur Updates; bis dahin Dev-DB gegen Testshop
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — Alle vier 19.07.-Punkte FERTIG (RKSV-Hardwaretest, Packplatz-Teillieferung, Logger-UI, Live-DB-Update auf 0.3.0); nächstes Thema: Online-Shop-Anbindung (IMMER hier nachsehen bei "was als Nächstes")
 - [JTL Vater+Kind-Import mit Achsenerkennung](project_jtl_vater_kind_import.md) — ✅ 2026-08-04 Grundpreis-Aufräumaktion (Einheit+Vererbung+Hersteller-Lücken LY/PL/MEA) von Jacky abgenommen, FERTIG; Opal+Stenli als Hersteller noch anzulegen (wartet auf Jacky)
 - [JTL Bilder-Import](project_jtl_bilder_import.md) — FERTIG gebaut + End-to-End getestet 2026-07-31, eigenständiges Tool, GIF bewusst nicht unterstützt
@@ -40,7 +41,7 @@
 - [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale UND Bilder-Upload sind fertig (im Code verifiziert 2026-07-03, Datei war veraltet)
 - [Merkmale-Modul Design](project_merkmale.md) — 2-Ebenen (Merkmal/Wert), Single/Multi, Artikeltyp-Filter, WooCommerce slug, Modal wie Kategorie
 - [WAWI-Benchmark Gaps](project_wawi_gaps.md) — Lücken-Vergleich (JTL/Shopware/Sage/LS-POS) + 99er-Freitext-Artikel-Idee (2026-07-05)
-- [Buchhaltungsmodul](project_buchhaltung.md) — FERTIG 2026-07-18; 2026-09-30 Export überarbeitet (Gutschein 3230, Versand 4090, Doppelexport weg, Kombi-Bons anteilig, Retouren-Vorzeichen) + Seite Zahlungs-Kontrolle + Aufträge jetzt BRUTTO-basiert (Positionsrechnung.php, B2B-Netto vorbereitet → für später)
+- [Buchhaltungsmodul](project_buchhaltung.md) — FERTIG 2026-07-18; 2026-09-30 Export überarbeitet (Gutschein 3230, Versand 4090, Doppelexport weg, Kombi-Bons anteilig, Retouren-Vorzeichen) + Seite Zahlungs-Kontrolle + Aufträge jetzt BRUTTO-basiert; 2026-10-01 Kontenplan-Seite (gab es schon!) um Typ Verbindlichkeit (3230) + Spalte "Verwendet in" erweitert (Positionsrechnung.php, B2B-Netto vorbereitet → für später)
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
 - [UI Redesign Plan](project_ui_redesign.md) — JTL-inspiriertes Layout nach Artikel-Modul: Top-Nav Module, Sidebar Untergruppen, 1280×1024 Basis, Barbara hat Mitspracherecht
 - [Verkauf Workflows](project_verkauf_workflows.md) — Mahnwesen-Cron BEHOBEN 2026-07-05; Dashboard-Aktion-Spalte (Erinnerung/Storno-Buttons) FERTIG 2026-07-17, MahnwesenService teilt Logik mit Cron
@@ -71,7 +72,7 @@
 - [Shop-Theme/UX](project_shop_theme.md) — ✅ 2026-08-29 viele Swatches (DMC 499 Farben) schoben Warenkorb-Button weit runter, CSS-:has()-Scroll-Fix ab 45 Werten (wartet auf Babsis Freigabe); Pro-Version nötig für Produkt-individuelles Dropdown; zwei Swatch-Plugins gleichzeitig aktiv (Nebenbefund); sonst 2026-08-13 leere Kategorien gelöst, Theme-Kaufentscheidung weiter pausiert
 - [RKSV: BFR BONit Fiscal Recorder API](reference_bfr_api.md) — Lokale Signaturkarte, POST XML /register, TaxG A-E, QR-Code aus Response, 100% offline; echte Anleitung als PDF hinterlegt (Startbeleg/Nullbelege macht BFR selbst!)
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — 2026-08-29 BEHOBEN: MySQL-Absturz bei jedem Login (korrupte Tabellenseite riss ganzen mysqld-Prozess mit + ibdata1/aria_log lagen verschoben in data\tmp\); Backup-Strategie weiter nur geplant
-- [Backup-Strategie](project_backup_strategie.md) — GEPLANT: DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
+- [Backup-Strategie](project_backup_strategie.md) — GEPLANT, wartet bewusst bis 1.0-Live-Gang (Jacky 2026-10-01: alles noch Testdaten): DB täglich, Bilder quartalsweise, Verschlüsselungs-Key getrennt; Speicherort (Proxmox?) offen
 - [Auftragsmodul Design](project_auftragsmodul.md) — Zahlungs+Lieferstatus getrennt, A-2026-/R-2026- ohne Kanal-Prefix; Zeitraum-Filter in Auftragsliste FERTIG 2026-08-11
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign + Doppel-Gutschrift-Sperre fertig; 🟢 A4-Bon-PDF-Rand-Bug im Mailanhang BEHOBEN 2026-07-09 (Body-Padding statt @page-margin)
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — Echter BFR-Hardware-Test 2026-07-08 erfolgreich (Startbeleg, Kasse 4); 4 echte Bugs gefunden+gefixt, Netzwerkkassen-Doku-Lücke
@@ -96,7 +97,7 @@
 - [🟢 BUG: Offline-Resync-Kollision](bug_offline_resync_kollision.md) — BEHOBEN 2026-07-07: Resync-Sperre in bon.php/bon_speichern.php, nur Backend getestet
 - [Paperless-Rechnung-Modul (geplant)](project_paperless_rechnung_modul.md) — QR-Code statt Papierbeleg; Timing korrigiert 2026-07-10: erst mit Start Online-Shop-Anbindung (gehört auf Hauptwebserver); "Keiner"-Option muss vor Live-Gang weg
 - [Kundenanzeige-Modul](project_kundenanzeige_modul.md) — V1 GEBAUT + läuft live 2026-07-10 auf Fully Kiosk Browser (`kundenanzeige/?kasse=K1`); Cache-Bug + Willkommenstext-Warning gefixt; Barbara-Feedback steht noch aus
-- [Sammelabholung mehrerer Aufträge (geplant)](project_sammelabholung_auftraege.md) — ein Bon/Abholung für mehrere Online-Bestellungen eines Kunden; kommt mit Start Online-Shop-Anbindung (Barbara-Bedarf bestätigt 2026-07-10)
+- [Sammelabholung mehrerer Aufträge](project_sammelabholung_auftraege.md) — ✅ 2026-10-01 GEBAUT (nicht committed, Migrationen 186+187): ein Kunde, Teilabholung, Druck mit Auftragsnummern; nebenbei behoben: Kassen-Suche-Crash, Parken-JS-Fehler, Gutschein-zu-hoch bei Retoure+Extra, Gutschein-Zeile fehlte im Druck; echter Kassen-Klicktest offen; als Nächstes Lagerplätze
 - [Feedback: Scope ohne validierten Bedarf](feedback_scope_ohne_bedarf.md) — Vor mehrtägigen Erweiterungen erst echten Bedarf checken (z.B. mit Barbara), nicht spekulativ bauen
 - [🟢 BUG: Kassenbons/Picklisten-PDFs in Git-Historie](bug_storage_pdfs_in_git.md) — BEHOBEN 2026-07-09: History-Rewrite (filter-branch) + Force-Push, Backup-Mirror vorhanden
 - [🟢 BUG: Kind "zurück zum Vater"-Button verschwand](bug_kind_zurueck_vater_button.md) — BEHOBEN 2026-08-05: hing an URL-Parameter statt DB-Verknüpfung, jetzt aus vaterartikel_id abgeleitet
