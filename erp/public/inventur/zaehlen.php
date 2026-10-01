@@ -86,13 +86,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <div id="banner" style="display:none;position:fixed;top:16px;right:16px;z-index:2000;padding:10px 18px;border-radius:6px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.2)"></div>
 
+<!-- "gezählt – gehört in R3-F12": bleibt stehen, bis man ihn wegklickt -->
+<div id="platz-hinweis" style="display:none;margin-bottom:12px;padding:10px 14px;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;font-size:14px;color:#9a3412">
+    <span id="platz-hinweis-text"></span>
+    <button onclick="document.getElementById('platz-hinweis').style.display='none'" style="float:right;background:none;border:none;font-size:16px;cursor:pointer;color:#9a3412">×</button>
+</div>
+
 <!-- Neue Position erfassen (Scan/Suche) -->
 <div class="card" style="margin-bottom:12px">
     <strong style="font-size:13px;display:block;margin-bottom:10px">Artikel erfassen (auch neu, nicht auf der Liste unten)</strong>
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:end">
         <div>
             <label class="erp-label">Artikel</label>
-            <input type="text" id="neu_artikel_suche" class="erp-input" style="width:100%" placeholder="Name oder Artikelnummer...">
+            <input type="text" id="neu_artikel_suche" class="erp-input" style="width:100%" placeholder="Name, Artikelnummer — oder Fach-QR scannen">
             <input type="hidden" id="neu_artikel_id">
             <div id="neu_artikel_treffer" style="border:1px solid var(--color-border);border-radius:4px;margin-top:4px;max-height:180px;overflow-y:auto;display:none;position:absolute;background:#fff;z-index:100"></div>
         </div>
@@ -180,6 +186,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
     window.INVENTUR_SCOPE_TABELLE = <?= json_encode($lauf['scope_tabelle']) ?>;
     window.INVENTUR_SCOPE_ID = <?= (int)$lauf['scope_id'] ?>;
     window.AKTUELLER_LAGERPLATZ_ID = null;
+    // Fach per QR-Code geöffnet (inventur/fach.php) → als aktuellen Arbeitsbereich vorwählen
+    window.VORWAHL_LAGERPLATZ_ID = <?= (int)($_GET['lagerplatz'] ?? 0) ?>;
 </script>
 <script src="<?= BASE_PATH ?>/js/inventur_zaehlen.js"></script>
 

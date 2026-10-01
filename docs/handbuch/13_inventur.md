@@ -20,7 +20,14 @@ Das deckt sowohl die große Jahresinventur als auch spontane Anlässe ab (z.B. e
 
 **Navigation:** Lager → Lagerplätze
 
-Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur (mehrere gleichzeitige Zähler brauchen eine Orts-Aufteilung). Verwaltung wie bei Herstellern/Lagern: Liste + Modal, Filter nach Lager und Aktiv-Status.
+Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur (mehrere gleichzeitige Zähler brauchen eine Orts-Aufteilung). Verwaltung wie bei Herstellern/Lagern: Liste + Modal, Filter nach Lager und Aktiv-Status. Anlegen, Etiketten und Stamm-/Nachfüllplatz der Artikel: siehe Handbuch Lager → Lagerplätze.
+
+**Fach-QR-Code scannen** (Handy-Kamera oder Scanner ins Artikel-Suchfeld der Zählseite):
+- Läuft eine Inventur für dieses Fach → direkt zur Zählung.
+- Läuft eine Inventur über das ganze Lager → Zählseite mit diesem Fach als „Ich zähle gerade an“ vorgewählt.
+- Sonst → Seite „Zwischenzählung starten“ für nur dieses Fach (braucht die Berechtigung „Inventur anlegen“).
+
+**Artikel am falschen Platz:** Wird ein Artikel in einem Fach gezählt, das weder sein Stamm- noch sein Nachfüllplatz ist, bleibt oben ein Hinweis stehen: „Gezählt – gehört aber in R3-F12 … dort in dieser Inventur schon 5 gezählt. Bitte zurückräumen.“ Die Zählung selbst gilt trotzdem.
 
 ## Inventur-Lauf starten
 

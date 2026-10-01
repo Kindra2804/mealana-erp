@@ -671,20 +671,60 @@ class LagerService
         return $this->repo->findLagerplatzById($id);
     }
 
-    /** Legt einen neuen Lagerplatz an. Validiert: Lager + Bezeichnung Pflichtfeld. */
+    /**
+     * Kürzel eines Lagerplatzes aus Bereich/Regal/Fach, z.B. "R3-F12" oder "K-R1-F4".
+     * Ohne Regal/Fach (Altbestand, Sonderplätze) gilt die frei eingegebene Bezeichnung.
+     */
+    public static function lagerplatzKuerzel(?string $bereich, ?string $regal, ?string $fach): string
+    {
+        $teile = [];
+        if (trim((string)$bereich) !== '') $teile[] = strtoupper(trim($bereich));
+        if (trim((string)$regal)   !== '') $teile[] = 'R' . strtoupper(trim($regal));
+        if (trim((string)$fach)    !== '') $teile[] = 'F' . strtoupper(trim($fach));
+        return implode('-', $teile);
+    }
+
+    /** Laufweg-Reihenfolge: Bereich, dann Regal und Fach numerisch (R2 vor R10). */
+    public static function lagerplatzSortierung(?string $bereich, ?string $regal, ?string $fach, string $bezeichnung): string
+    {
+        $teil = fn(?string $t) => ctype_digit(trim((string)$t))
+            ? str_pad(trim((string)$t), 5, '0', STR_PAD_LEFT)
+            : str_pad(strtoupper(trim((string)$t)), 5, ' ', STR_PAD_LEFT);
+        if (trim((string)$regal) === '' && trim((string)$fach) === '') {
+            return 'zz' . mb_strtolower($bezeichnung);
+        }
+        return strtoupper(trim((string)$bereich)) . '|' . $teil($regal) . '|' . $teil($fach);
+    }
+
+    /** Bereitet Formulardaten auf: Kürzel + Sortierung bilden. */
+    private function lagerplatzDaten(array $data): array
+    {
+        $bereich = trim($data['bereich'] ?? '') ?: null;
+        $regal   = trim($data['regal'] ?? '') ?: null;
+        $fach    = trim($data['fach'] ?? '') ?: null;
+        $bez     = ($regal || $fach) ? self::lagerplatzKuerzel($bereich, $regal, $fach) : trim($data['bezeichnung'] ?? '');
+        return [
+            'lager_id'    => (int)($data['lager_id'] ?? 0),
+            'bereich'     => $bereich,
+            'regal'       => $regal,
+            'fach'        => $fach,
+            'bezeichnung' => $bez,
+            'sortierung'  => self::lagerplatzSortierung($bereich, $regal, $fach, $bez),
+            'aktiv'       => !empty($data['aktiv']) ? 1 : 0,
+        ];
+    }
+
+    /** Legt einen neuen Lagerplatz an (Regal + Fach, optional Bereich; sonst freie Bezeichnung). */
     public function saveLagerplatz(array $data): array
     {
-        $fehler = $this->validiereLagerplatz($data);
+        $d = $this->lagerplatzDaten($data);
+        $fehler = $this->validiereLagerplatz($d);
         if (!empty($fehler)) {
             return ['erfolg' => false, 'fehler' => $fehler];
         }
 
-        $id = $this->repo->insertLagerplatz([
-            'lager_id'    => (int)$data['lager_id'],
-            'bezeichnung' => trim($data['bezeichnung']),
-            'aktiv'       => !empty($data['aktiv']) ? 1 : 0,
-        ]);
-        Logger::log('lagerplatz.anlegen', 'lagerplaetze', $id, ['bezeichnung' => trim($data['bezeichnung'])]);
+        $id = $this->repo->insertLagerplatz($d);
+        Logger::log('lagerplatz.anlegen', 'lagerplaetze', $id, ['bezeichnung' => $d['bezeichnung']]);
 
         return ['erfolg' => true, 'id' => $id];
     }
@@ -694,20 +734,77 @@ class LagerService
         if (empty($data['id'])) {
             return ['erfolg' => false, 'fehler' => ['ID fehlt.']];
         }
-        $fehler = $this->validiereLagerplatz($data);
+        $d = $this->lagerplatzDaten($data);
+        $d['id'] = (int)$data['id'];
+        $fehler = $this->validiereLagerplatz($d);
         if (!empty($fehler)) {
             return ['erfolg' => false, 'fehler' => $fehler];
         }
 
-        $this->repo->updateLagerplatz([
-            'id'          => (int)$data['id'],
-            'lager_id'    => (int)$data['lager_id'],
-            'bezeichnung' => trim($data['bezeichnung']),
-            'aktiv'       => !empty($data['aktiv']) ? 1 : 0,
-        ]);
-        Logger::log('lagerplatz.bearbeiten', 'lagerplaetze', (int)$data['id']);
+        $this->repo->updateLagerplatz($d);
+        Logger::log('lagerplatz.bearbeiten', 'lagerplaetze', $d['id'], ['bezeichnung' => $d['bezeichnung']]);
 
         return ['erfolg' => true];
+    }
+
+    /**
+     * Serienanlage: ein Regal mit Fach von..bis (z.B. R3, F1–F20). Bereits vorhandene
+     * Plätze werden übersprungen, nicht doppelt angelegt.
+     */
+    public function lagerplatzSerieAnlegen(array $data): array
+    {
+        $von = (int)($data['fach_von'] ?? 0);
+        $bis = (int)($data['fach_bis'] ?? 0);
+        if (empty($data['lager_id']) || trim($data['regal'] ?? '') === '') {
+            return ['erfolg' => false, 'fehler' => ['Lager und Regal sind Pflichtfelder.']];
+        }
+        if ($von < 1 || $bis < $von || $bis - $von > 199) {
+            return ['erfolg' => false, 'fehler' => ['Fach von–bis prüfen (1 bis höchstens 200 Fächer auf einmal).']];
+        }
+        $angelegt = 0;
+        $vorhanden = 0;
+        for ($f = $von; $f <= $bis; $f++) {
+            $d = $this->lagerplatzDaten([
+                'lager_id' => $data['lager_id'], 'bereich' => $data['bereich'] ?? '',
+                'regal' => $data['regal'], 'fach' => (string)$f, 'aktiv' => 1,
+            ]);
+            if ($this->repo->findLagerplatzByBezeichnung($d['lager_id'], $d['bezeichnung'])) {
+                $vorhanden++;
+                continue;
+            }
+            $this->repo->insertLagerplatz($d);
+            $angelegt++;
+        }
+        Logger::log('lagerplatz.serie', 'lagerplaetze', null, [
+            'regal' => $data['regal'], 'von' => $von, 'bis' => $bis, 'angelegt' => $angelegt,
+        ]);
+        return ['erfolg' => true, 'angelegt' => $angelegt, 'vorhanden' => $vorhanden];
+    }
+
+    /**
+     * Stamm- und/oder Nachfüllplatz setzen. $felder enthält nur die zu ändernden Schlüssel
+     * ('stammplatz_id', 'nachfuellplatz_id'; null = entfernen). Vater-Artikel geben den Platz
+     * an alle ihre Varianten weiter (der Vater selbst liegt nirgends).
+     *
+     * @return array{erfolg:bool, anzahl?:int, fehler?:array}
+     */
+    public function setzeArtikelLagerplaetze(array $artikelIds, array $felder): array
+    {
+        $felder = array_intersect_key($felder, ['stammplatz_id' => 1, 'nachfuellplatz_id' => 1]);
+        if (!$felder || !$artikelIds) {
+            return ['erfolg' => false, 'fehler' => ['Nichts zu ändern.']];
+        }
+        foreach ($felder as $k => $v) {
+            $felder[$k] = $v ? (int)$v : null;
+            if ($felder[$k] && !$this->repo->findLagerplatzById($felder[$k])) {
+                return ['erfolg' => false, 'fehler' => ['Lagerplatz nicht gefunden.']];
+            }
+        }
+        $anzahl = $this->repo->setzeArtikelLagerplaetze(array_map('intval', $artikelIds), $felder);
+        Logger::log('artikel.lagerplatz', 'artikel', count($artikelIds) === 1 ? (int)$artikelIds[0] : null, [
+            'ids' => array_map('intval', $artikelIds), 'felder' => $felder, 'anzahl' => $anzahl,
+        ]);
+        return ['erfolg' => true, 'anzahl' => $anzahl];
     }
 
     public function setLagerplatzAktiv(int $id, int $aktiv): array
@@ -716,14 +813,19 @@ class LagerService
         return ['erfolg' => true];
     }
 
-    private function validiereLagerplatz(array $data): array
+    private function validiereLagerplatz(array $d): array
     {
         $fehler = [];
-        if (empty($data['lager_id'])) {
+        if (empty($d['lager_id'])) {
             $fehler[] = 'Lager ist Pflichtfeld.';
         }
-        if (empty(trim($data['bezeichnung'] ?? ''))) {
-            $fehler[] = 'Bezeichnung ist Pflichtfeld.';
+        if ($d['bezeichnung'] === '') {
+            $fehler[] = 'Regal und Fach (oder eine Bezeichnung) angeben.';
+        } else {
+            $vorhanden = $this->repo->findLagerplatzByBezeichnung($d['lager_id'], $d['bezeichnung']);
+            if ($vorhanden && (int)$vorhanden['id'] !== (int)($d['id'] ?? 0)) {
+                $fehler[] = 'Lagerplatz ' . $d['bezeichnung'] . ' gibt es in diesem Lager schon.';
+            }
         }
         return $fehler;
     }

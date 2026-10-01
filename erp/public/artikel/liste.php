@@ -120,6 +120,18 @@ function spalteHeader(string $key, string $aktSort, string $aktDir, array $getPa
 // anderen vergleichen muss (Jackys Wunsch 2026-08-26). Lazy + statisch gecacht: die Liste
 // wird nur einmal pro Seitenaufruf geladen, und nur dann, wenn die EAN-Spalte überhaupt
 // eine Zelle rendert (spart die Abfrage bei jedem normalen Listenaufruf ohne EAN-Spalte).
+/** Stammplatz (fett) + Nachfüllplatz; Väter ohne eigenen Platz zeigen nichts (Plätze hängen an den Varianten). */
+function lagerplatzZelle(array $a): string
+{
+    if (empty($a['stammplatz']) && empty($a['nachfuellplatz'])) {
+        return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+    }
+    return '<td style="font-size:12px;font-family:monospace;white-space:nowrap">'
+        . '<strong>' . htmlspecialchars($a['stammplatz'] ?? '–') . '</strong>'
+        . (!empty($a['nachfuellplatz']) ? ' <span style="color:var(--color-text-muted)" title="Nachfüllplatz">/ ' . htmlspecialchars($a['nachfuellplatz']) . '</span>' : '')
+        . '</td>';
+}
+
 function istDoppelteEanWert(?string $ean): bool
 {
     static $doppelteCodes = null;
@@ -186,7 +198,7 @@ function spalteVaterTd(string $key, array $a, string $bstKlasse, string $bstTitl
             $mrk = htmlspecialchars($a['merkmale'] ?? '');
             return '<td style="font-size:12px;color:var(--color-text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $mrk . '">' . ($mrk ?: '–') . '</td>';
         case 'lagerplatz':
-            return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+            return lagerplatzZelle($a);
         case 'letzte_inventur':
             $datum = $a['letzte_inventur_am'] ?? null;
             return '<td style="font-size:12px;color:var(--color-text-muted)">'
@@ -254,7 +266,7 @@ function spalteKindTd(string $key, array $k, string $kindBstKlasse, string $kind
             $mrk = htmlspecialchars($k['merkmale'] ?? '');
             return '<td style="font-size:12px;color:var(--color-text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' . $mrk . '">' . ($mrk ?: '–') . '</td>';
         case 'lagerplatz':
-            return '<td style="font-size:12px;color:var(--color-text-muted)">–</td>';
+            return lagerplatzZelle($k);
         case 'letzte_inventur':
             $datum = $k['letzte_inventur_am'] ?? null;
             return '<td style="font-size:12px;color:var(--color-text-muted)">'
@@ -323,11 +335,21 @@ $filter = [
     'nurKategorielos' => $statusFilter === 'ohnekat',
     'qualitaet'       => $qualitaetFilter,
     'kanal_shop_id'   => (int)($_GET['kanal_filter'] ?? 0) ?: null,
+    'lagerplatz_id'   => (int)($_GET['lagerplatz_id'] ?? 0) ?: null,
     'sort'            => $aktSort,
     'dir'             => $aktDir,
 ];
 
 $kategorienBaum = $service->getKategorienBaum();
+
+// Lagerplätze für Massenaktion "Lagerplatz zuweisen" + Filter-Hinweis
+require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+$lagerplatzOptionen = [];
+$lagerplatzFilterName = null;
+foreach ((new LagerService())->getAlleLagerplaetze(0, 1) as $lpOpt) {
+    $lagerplatzOptionen[$lpOpt['lager_name']][] = $lpOpt;
+    if ((int)$lpOpt['id'] === (int)($filter['lagerplatz_id'] ?? 0)) $lagerplatzFilterName = $lpOpt['bezeichnung'];
+}
 
 $seite = (int)($_GET['seite'] ?? 1);
 $proSeite = (int)($_GET['pro_seite'] ?? 12);
@@ -542,6 +564,7 @@ $actionBarContent = <<<HTML
         <option value="kategorie_entfernen">Kategorie entfernen</option>
         <option value="kanal_zuweisen">Kanal zuweisen</option>
         <option value="kanal_neu_synchronisieren">Erneut synchronisieren (Shop)</option>
+        <option value="lagerplatz_zuweisen">Lagerplatz zuweisen</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
     <div class="actionbar-sep"></div>
@@ -563,6 +586,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 ?>
 
+<?php if (!empty($filter['lagerplatz_id'])): ?>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:8px 14px;border-radius:6px;margin-bottom:10px;font-size:13px">
+        📍 Gefiltert nach Lagerplatz <strong style="font-family:monospace"><?= htmlspecialchars($lagerplatzFilterName ?? ('#' . (int)$filter['lagerplatz_id'])) ?></strong>
+        (Stamm- oder Nachfüllplatz) — <a href="?<?= htmlspecialchars(http_build_query(array_diff_key($_GET, ['lagerplatz_id' => 1, 'seite' => 1]))) ?>">Filter entfernen</a>
+    </div>
+<?php endif; ?>
 <?php if ($flashErfolg): ?>
     <div class="success-banner" id="flash-php">✓ <?= htmlspecialchars(is_array($flashErfolg) ? implode(', ', $flashErfolg) : $flashErfolg) ?></div>
 <?php endif; ?>
@@ -1065,6 +1094,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             return;
         }
 
+        if (aktion === 'lagerplatz_zuweisen') {
+            bulkLpOeffnen(ids);
+            return;
+        }
+
         fetch('massenupdate.php', {
                 method: 'POST',
                 headers: {
@@ -1159,6 +1193,54 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </script>
 
 <!-- Bulk-Kategorie Modal -->
+<!-- Massenaktion: Lagerplatz zuweisen (Väter geben den Platz an alle Varianten weiter) -->
+<div id="bulk-lp-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:8px;padding:20px;width:420px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:var(--color-nav)">Lagerplatz zuweisen</div>
+        <div id="bulk-lp-info" style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px"></div>
+        <?php foreach (['stammplatz_id' => 'Stammplatz (Verkaufsfach)', 'nachfuellplatz_id' => 'Nachfüllplatz'] as $feld => $label): ?>
+        <label class="form-label" style="display:block;margin-top:8px"><?= $label ?></label>
+        <select id="bulk-lp-<?= $feld ?>" class="erp-select" style="width:100%">
+            <option value="__">— nicht ändern —</option>
+            <option value="">— entfernen —</option>
+            <?php foreach ($lagerplatzOptionen as $lagerName => $plaetze): ?>
+                <optgroup label="<?= htmlspecialchars($lagerName) ?>">
+                <?php foreach ($plaetze as $lpOpt): ?>
+                    <option value="<?= (int)$lpOpt['id'] ?>"><?= htmlspecialchars($lpOpt['bezeichnung']) ?></option>
+                <?php endforeach; ?>
+                </optgroup>
+            <?php endforeach; ?>
+        </select>
+        <?php endforeach; ?>
+        <div style="font-size:11px;color:var(--color-text-muted);margin-top:8px">Bei Vater-Artikeln gilt der Platz für alle Varianten.</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button onclick="document.getElementById('bulk-lp-backdrop').style.display='none'" class="btn btn-secondary btn-sm">Abbrechen</button>
+            <button onclick="bulkLpSpeichern()" class="btn btn-primary btn-sm">Zuweisen</button>
+        </div>
+    </div>
+</div>
+<script>
+    var _bulkLpIds = [];
+    function bulkLpOeffnen(ids) {
+        _bulkLpIds = ids;
+        document.getElementById('bulk-lp-info').textContent = ids.length + ' Artikel ausgewählt';
+        document.getElementById('bulk-lp-backdrop').style.display = 'flex';
+    }
+    function bulkLpSpeichern() {
+        var daten = { ids: _bulkLpIds };
+        ['stammplatz_id', 'nachfuellplatz_id'].forEach(function (f) {
+            var v = document.getElementById('bulk-lp-' + f).value;
+            if (v !== '__') daten[f] = v || null;
+        });
+        if (Object.keys(daten).length === 1) { alert('Bitte mindestens einen Platz wählen.'); return; }
+        fetch('lagerplatz_speichern.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) })
+            .then(r => r.json()).then(function (d) {
+                if (!d.erfolg) { alert((d.fehler || ['Fehler']).join(' ')); return; }
+                location.reload();
+            });
+    }
+</script>
+
 <div id="bulk-kat-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">
     <div style="background:#fff;border-radius:8px;padding:20px;width:420px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(0,0,0,.2)">
         <div id="bulk-kat-titel" style="font-weight:700;font-size:14px;margin-bottom:4px;color:var(--color-nav)">Kategorie zuweisen</div>

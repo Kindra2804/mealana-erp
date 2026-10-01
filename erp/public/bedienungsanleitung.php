@@ -192,6 +192,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-merkmale" class="sub">↳ Merkmale</a>
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
             <a href="#lager">Lager</a>
+            <a href="#lager-lagerplaetze" class="sub">↳ Lagerplätze</a>
             <a href="#lager-wareneingang" class="sub">↳ Wareneingang</a>
             <a href="#packplatz">Packplatz</a>
             <a href="#packplatz-scan" class="sub">↳ Artikel scannen</a>
@@ -325,7 +326,12 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p>Das Lager-Modul verwaltet Bestände und Bewegungen. Zwei Lager: <strong>Standardlager</strong> und <strong>Lager Messe</strong>.</p>
             <p>Bestand = <strong>Ist</strong> (physisch vorhanden) − <strong>Reserviert</strong> (für offene Aufträge) = <strong>Verfügbar</strong> (kann noch verkauft werden).</p>
             <div class="ba-warn">⚠ Bestände nie direkt in der Datenbank ändern! Immer über Wareneingang oder Storno. Direkte Änderungen zerstören das Bewegungsprotokoll.</div>
-            <p><strong>Lagerplätze</strong> (Lager → Lagerplätze): Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für das kommende Inventur-Modul. Aktuell rein informativ, noch nicht mit dem Lagerbestand verknüpft.</p>
+            <h3 id="lager-lagerplaetze">Lagerplätze <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Lager → Lagerplätze. Kürzel aus Bereich (optional), Regal und Fach: Regal 3 / Fach 12 → <code>R3-F12</code>, Bereich K / Regal 1 / Fach 4 → <code>K-R1-F4</code>. Sortierung nach Laufweg.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>+ Regal mit Fächern</strong> legt ein ganzes Regal an (z.B. Fach 1–20), <strong>+ Neuer Lagerplatz</strong> ein einzelnes Fach</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>🏷 Etiketten drucken</strong>: A4, 3 × 8 Etiketten (70 × 37 mm) mit QR-Code — der Code öffnet die Zählung des Fachs</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Artikeln <strong>Stammplatz</strong> (Verkaufsfach) und optional <strong>Nachfüllplatz</strong> geben: Artikel → Lager-Reiter, Massenaktion „Lagerplatz zuweisen“ in der Artikelliste oder „+ Platz“ im Wareneingang. Beim Vater gilt der Platz für alle Varianten.</div></div>
+            <p>Angezeigt auf Pickliste und Packplatz (nach Laufweg sortiert) und im Wareneingang („Gehört in …“). Mehrere Chargen dürfen im selben Fach liegen. Bestand wird weiter je Lager geführt, nicht je Fach.</p>
 
             <h3 id="lager-wareneingang">Wareneingang <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Lager → Wareneingang</div></div>
@@ -460,7 +466,9 @@ require_once __DIR__ . '/includes/shell_top.php';
             <!-- INVENTUR -->
             <h2 id="inventur">Inventur <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Ein Inventur-Lauf mit frei wählbarem Scope: ganzes Lager, ein Lagerplatz, eine Kategorie, ein einzelner Artikel oder ein Mietfach — statt getrennter Module für große und kleine Zählungen.</p>
-            <p><strong>Lagerplätze</strong> (Lager → Lagerplätze): Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur.</p>
+            <p><strong>Lagerplätze</strong> (Lager → Lagerplätze): Regal/Fach-Struktur unterhalb eines Lagers, siehe <a href="#lager-lagerplaetze">Lagerplätze</a>.</p>
+            <p><strong>Fach-QR-Code scannen</strong> (Handy-Kamera oder ins Suchfeld der Zählseite): läuft eine Inventur für das Fach oder das ganze Lager → direkt zur Zählung (Fach vorgewählt), sonst „Zwischenzählung starten“ nur für dieses Fach.</p>
+            <p><strong>Artikel am falschen Platz:</strong> beim Zählen in einem fremden Fach erscheint „Gezählt – gehört aber in R3-F12 … Bitte zurückräumen“ (mit der Menge, die am richtigen Platz schon gezählt wurde). Die Zählung gilt trotzdem.</p>
             <p><strong>Inventur starten</strong> (Lager → Inventur): Scope wählen, "Blind zählen" (Soll-Bestand für den Zähler ausblenden) ist standardmäßig aktiv. Ein laufender Lauf kann pausiert und später fortgesetzt werden (Zwischenstand bleibt erhalten) oder endgültig abgebrochen werden.</p>
             <p><strong>Zählen</strong> (Button bei einem laufenden Lauf): zeigt die Soll-Liste passend zum Scope, pro Zeile Ist-Menge + Notiz eintragen und speichern (kein Seiten-Neuladen nötig). Oben kann jederzeit ein Artikel frei erfasst werden, der nicht auf der Liste steht (neue Charge, unerwarteter Fund).</p>
             <p><strong>Mehrere Zähler:</strong> bei Scope "Ganzes Lager" oben einen Lagerplatz als aktuellen Arbeitsbereich wählen — informativ, warnt nur wenn eine andere Person denselben Platz schon zählt.</p>

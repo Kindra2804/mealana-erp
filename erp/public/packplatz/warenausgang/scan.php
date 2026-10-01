@@ -95,6 +95,8 @@ $positionen = $db->prepare("
            ap.menge - COALESCE(ap.menge_geliefert, 0) AS menge,
            a.artikelnummer, a.name,
            a.gewicht_versand,
+           (SELECT bezeichnung FROM lagerplaetze WHERE id = a.stammplatz_id)     AS stammplatz,
+           (SELECT bezeichnung FROM lagerplaetze WHERE id = a.nachfuellplatz_id) AS nachfuellplatz,
            COALESCE(a.charge_pflicht, 0) AS charge_pflicht,
            (SELECT CONCAT('uploads/artikel/', ap.artikel_id, '/', bi.dateiname) FROM artikel_bilder bi
             WHERE bi.artikel_id = ap.artikel_id
@@ -106,9 +108,11 @@ $positionen = $db->prepare("
            ) AS hat_chargen
     FROM auftrag_positionen ap
     LEFT JOIN artikel a ON a.id = ap.artikel_id
+    LEFT JOIN lagerplaetze lp_sort ON lp_sort.id = a.stammplatz_id
     WHERE ap.auftrag_id = ?
       AND ap.menge - COALESCE(ap.menge_geliefert, 0) > 0
-    ORDER BY ap.sort_order, ap.id
+    -- Laufweg wie auf der Pickliste: nach Stammplatz, Positionen ohne Platz am Ende
+    ORDER BY (lp_sort.id IS NULL), lp_sort.lager_id, lp_sort.sortierung, ap.sort_order, ap.id
 ");
 $positionen->execute([$auftragId]);
 $positionen = $positionen->fetchAll(PDO::FETCH_ASSOC);
@@ -180,6 +184,9 @@ require_once __DIR__ . '/../shell_top.php';
                         <td style="font-size:13px;font-family:monospace"><?= htmlspecialchars($pos['artikelnummer'] ?? '—') ?></td>
                         <td>
                             <div style="font-weight:600"><?= htmlspecialchars($pos['name'] ?? $pos['bezeichnung_snapshot'] ?? '—') ?></div>
+                            <?php if (!empty($pos['stammplatz']) || !empty($pos['nachfuellplatz'])): ?>
+                                <div style="font-size:12px;color:#1e40af;font-family:monospace">📍 <?= htmlspecialchars($pos['stammplatz'] ?? '—') ?><?= !empty($pos['nachfuellplatz']) ? ' <span style="color:#64748b">· Nachfüller ' . htmlspecialchars($pos['nachfuellplatz']) . '</span>' : '' ?></div>
+                            <?php endif; ?>
                             <?php if (empty($pos['ean'])): ?>
                                 <div style="font-size:11px;color:#e94560;margin-top:2px;cursor:pointer" onclick="event.stopPropagation();eanNacherfassenOeffnen(<?= $i ?>)" title="Doppelklick oder hier klicken zum Nachtragen">⚠ Kein EAN — nachtragen</div>
                             <?php endif; ?>

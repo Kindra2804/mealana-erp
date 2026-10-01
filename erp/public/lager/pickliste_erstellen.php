@@ -36,11 +36,15 @@ $neueIds = [];
 
 // Positionen-Statement vorbereiten
 $posStmt = $db->prepare("
-    SELECT p.id, p.bezeichnung, p.menge, p.artikel_id, p.konfig_freitext, ar.artikelnummer
+    SELECT p.id, p.bezeichnung, p.menge, p.artikel_id, p.konfig_freitext, ar.artikelnummer,
+           lps.bezeichnung AS stammplatz, lpn.bezeichnung AS nachfuellplatz
     FROM auftrag_positionen p
     LEFT JOIN artikel ar ON ar.id = p.artikel_id
+    LEFT JOIN lagerplaetze lps ON lps.id = ar.stammplatz_id
+    LEFT JOIN lagerplaetze lpn ON lpn.id = ar.nachfuellplatz_id
     WHERE p.auftrag_id = :id
-    ORDER BY p.sort_order, p.id
+    -- Laufweg: nach Stammplatz (Regal/Fach numerisch), Positionen ohne Platz am Ende
+    ORDER BY (lps.id IS NULL), lps.lager_id, lps.sortierung, p.sort_order, p.id
 ");
 
 // Auftragsdaten laden (alle auf einmal für Reihenfolge)

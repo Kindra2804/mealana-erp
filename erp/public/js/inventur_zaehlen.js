@@ -8,6 +8,22 @@ function zeigeBanner(msg, ok) {
     setTimeout(function () { b.style.display = 'none'; }, 3000);
 }
 
+// Hinweis "gezählt – gehört in …" sichtbar lassen (auch über das Neuladen nach neuer Position)
+function zeigePlatzHinweis(text) {
+    if (!text) return;
+    document.getElementById('platz-hinweis-text').textContent = '📍 ' + text;
+    document.getElementById('platz-hinweis').style.display = 'block';
+    try { sessionStorage.setItem('inventurPlatzHinweis', text); } catch (e) {}
+}
+(function () {
+    var t = null;
+    try { t = sessionStorage.getItem('inventurPlatzHinweis'); sessionStorage.removeItem('inventurPlatzHinweis'); } catch (e) {}
+    if (t) {
+        document.getElementById('platz-hinweis-text').textContent = '📍 ' + t;
+        document.getElementById('platz-hinweis').style.display = 'block';
+    }
+})();
+
 async function buchePosition(payload) {
     var res = await fetch(window.BASE_PATH + '/inventur/zaehlung_speichern.php', {
         method: 'POST',
@@ -62,6 +78,7 @@ document.querySelectorAll('#zaehl-tabelle .zeile-speichern').forEach(function (b
         if (data.erfolg) {
             zeigeBanner('Gespeichert.');
             tr.style.background = '#e6f7ee';
+            if (data.hinweis) { zeigePlatzHinweis(data.hinweis); try { sessionStorage.removeItem('inventurPlatzHinweis'); } catch (e) {} }
         } else {
             zeigeBanner(data.fehler.join(' | '), false);
         }
@@ -97,8 +114,22 @@ document.querySelectorAll('#zaehl-tabelle .auslauf-markieren').forEach(function 
     var gewaehlt = document.getElementById('neu_gewaehlt');
     var timer;
 
+    // Fach-QR-Code ins Suchfeld gescannt (Adresse von inventur/fach.php?lp=…) → zum Fach
+    // springen. Tolerant gegen Scanner mit anderem Tastaturlayout, die "=" oder "?"
+    // verfälschen: entscheidend ist nur "lp" + Zahl am Ende.
+    function fachCode(text) {
+        var m = /fach[^a-z0-9]*php.*lp[^a-z0-9]?(\d+)\s*$/i.exec(text);
+        return m ? parseInt(m[1], 10) : null;
+    }
+    suchfeld.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var lp = fachCode(suchfeld.value);
+        if (lp) { e.preventDefault(); location.href = window.BASE_PATH + '/inventur/fach.php?lp=' + lp; }
+    });
+
     suchfeld.addEventListener('input', function () {
         clearTimeout(timer);
+        if (fachCode(suchfeld.value)) { treffer.style.display = 'none'; return; }
         hiddenId.value = '';
         gewaehlt.textContent = '';
         var q = suchfeld.value.trim();
@@ -158,9 +189,18 @@ async function neuePositionSpeichern() {
     });
 
     if (data.erfolg) {
+        if (data.hinweis) zeigePlatzHinweis(data.hinweis);
         zeigeBanner('Erfasst — Seite lädt neu, damit die Position in der Liste erscheint.');
         setTimeout(function () { location.reload(); }, 800);
     } else {
         zeigeBanner(data.fehler.join(' | '), false);
     }
 }
+
+// Fach per QR-Code vorgewählt (Lager-Inventur): Arbeitsbereich setzen wie bei manueller Auswahl
+(function () {
+    var sel = document.getElementById('aktueller_lagerplatz');
+    if (!window.VORWAHL_LAGERPLATZ_ID || !sel) return;
+    sel.value = String(window.VORWAHL_LAGERPLATZ_ID);
+    if (sel.value) lagerplatzWaehlen();
+})();

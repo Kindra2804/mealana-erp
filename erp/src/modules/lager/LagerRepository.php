@@ -774,11 +774,13 @@ class LagerRepository
         }
 
         $stmt = $this->db->prepare("
-            SELECT lp.*, l.name AS lager_name
+            SELECT lp.*, l.name AS lager_name,
+                   (SELECT COUNT(*) FROM artikel a WHERE a.stammplatz_id = lp.id)     AS anzahl_stamm,
+                   (SELECT COUNT(*) FROM artikel a WHERE a.nachfuellplatz_id = lp.id) AS anzahl_nachfuell
             FROM lagerplaetze lp
             JOIN lager l ON l.id = lp.lager_id
             WHERE " . implode(' AND ', $where) . "
-            ORDER BY l.name, lp.bezeichnung
+            ORDER BY l.name, lp.sortierung, lp.bezeichnung
         ");
         $stmt->execute($params);
         return $stmt->fetchAll();
@@ -791,15 +793,26 @@ class LagerRepository
         return $stmt->fetch();
     }
 
+    public function findLagerplatzByBezeichnung(int $lagerId, string $bezeichnung): array|false
+    {
+        $stmt = $this->db->prepare('SELECT * FROM lagerplaetze WHERE lager_id = :l AND bezeichnung = :b');
+        $stmt->execute(['l' => $lagerId, 'b' => $bezeichnung]);
+        return $stmt->fetch();
+    }
+
     public function insertLagerplatz(array $data): int
     {
         $stmt = $this->db->prepare('
-            INSERT INTO lagerplaetze (lager_id, bezeichnung, aktiv)
-            VALUES (:lager_id, :bezeichnung, :aktiv)
+            INSERT INTO lagerplaetze (lager_id, bereich, regal, fach, bezeichnung, sortierung, aktiv)
+            VALUES (:lager_id, :bereich, :regal, :fach, :bezeichnung, :sortierung, :aktiv)
         ');
         $stmt->execute([
             'lager_id'    => $data['lager_id'],
+            'bereich'     => $data['bereich'] ?? null,
+            'regal'       => $data['regal'] ?? null,
+            'fach'        => $data['fach'] ?? null,
             'bezeichnung' => $data['bezeichnung'],
+            'sortierung'  => $data['sortierung'] ?? '',
             'aktiv'       => $data['aktiv'],
         ]);
         return (int) $this->db->lastInsertId();
@@ -808,16 +821,42 @@ class LagerRepository
     public function updateLagerplatz(array $data): bool
     {
         $stmt = $this->db->prepare('
-            UPDATE lagerplaetze SET lager_id = :lager_id, bezeichnung = :bezeichnung, aktiv = :aktiv
+            UPDATE lagerplaetze SET lager_id = :lager_id, bereich = :bereich, regal = :regal, fach = :fach,
+                   bezeichnung = :bezeichnung, sortierung = :sortierung, aktiv = :aktiv
             WHERE id = :id
         ');
         $stmt->execute([
             'lager_id'    => $data['lager_id'],
+            'bereich'     => $data['bereich'] ?? null,
+            'regal'       => $data['regal'] ?? null,
+            'fach'        => $data['fach'] ?? null,
             'bezeichnung' => $data['bezeichnung'],
+            'sortierung'  => $data['sortierung'] ?? '',
             'aktiv'       => $data['aktiv'],
             'id'          => $data['id'],
         ]);
         return $stmt->rowCount() > 0;
+    }
+
+    /** Setzt Stamm-/Nachfüllplatz; Väter werden durch ihre Varianten ersetzt. Liefert Anzahl Artikel. */
+    public function setzeArtikelLagerplaetze(array $artikelIds, array $felder): int
+    {
+        $ph = implode(',', array_fill(0, count($artikelIds), '?'));
+        $stmt = $this->db->prepare("
+            SELECT a.id FROM artikel a
+            WHERE (a.id IN ($ph) AND NOT EXISTS (SELECT 1 FROM artikel k WHERE k.vaterartikel_id = a.id))
+               OR a.vaterartikel_id IN ($ph)
+        ");
+        $stmt->execute(array_merge($artikelIds, $artikelIds));
+        $ziele = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        if (!$ziele) return 0;
+
+        $set = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($felder)));
+        $upd = $this->db->prepare("UPDATE artikel SET $set WHERE id = :id");
+        foreach ($ziele as $id) {
+            $upd->execute(array_merge($felder, ['id' => $id]));
+        }
+        return count($ziele);
     }
 
     public function setLagerplatzAktiv(int $id, int $aktiv): bool

@@ -48,6 +48,19 @@ foreach ($positionen as $p) {
 }
 
 $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : [];
+
+// Lagerplätze: "gehört in" anzeigen, fehlenden Stammplatz direkt hier vergeben
+require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
+$lagerplatzOptionen = [];
+foreach ((new LagerService())->getAlleLagerplaetze(0, 1) as $lpOpt) {
+    $lagerplatzOptionen[$lpOpt['lager_name']][] = $lpOpt;
+}
+function wePlatzText(array $p): string
+{
+    if (empty($p['stammplatz'])) return '';
+    return '📍 Gehört in <strong style="font-family:monospace">' . htmlspecialchars($p['stammplatz']) . '</strong>'
+        . (!empty($p['nachfuellplatz']) ? ' · Nachfüller <span style="font-family:monospace">' . htmlspecialchars($p['nachfuellplatz']) . '</span>' : '');
+}
 ?>
 
 <?php if ($erfolg): ?>
@@ -94,6 +107,7 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
                 <?php if ($aktivArtikel): ?>
                     <div style="font-weight:600;font-size:14px"><?= htmlspecialchars($aktivArtikel['artikel_name']) ?><?= $aktivArtikel['variante_name'] ? ' — ' . htmlspecialchars($aktivArtikel['variante_name']) : '' ?></div>
                     <div style="font-size:12px;color:var(--color-text-muted)">Bestellt: <?= (int)$aktivArtikel['menge_bestellt'] ?> &nbsp;|&nbsp; Offen: <?= (int)($aktivArtikel['menge_bestellt'] - $aktivArtikel['menge_eingegangen']) ?></div>
+                    <div style="font-size:13px;color:#1e40af;margin-top:2px"><?= wePlatzText($aktivArtikel) ?></div>
                 <?php else: ?>
                     <div style="color:var(--color-text-muted);font-size:13px">Artikel scannen um Buchung zu starten</div>
                 <?php endif; ?>
@@ -142,7 +156,7 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
     <strong style="font-size:13px;display:block;margin-bottom:8px">Positionen</strong>
     <table class="erp-table" id="positionen-tabelle">
         <thead>
-            <tr><th>Artikel</th><th>Bestellt</th><th>Eingeg.</th><th>Offen</th><th></th><th></th></tr>
+            <tr><th>Artikel</th><th style="width:150px">Lagerplatz</th><th>Bestellt</th><th>Eingeg.</th><th>Offen</th><th></th><th></th></tr>
         </thead>
         <tbody>
             <?php foreach ($positionen as $p):
@@ -156,8 +170,18 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
                     data-hauptbild="<?= htmlspecialchars($p['hauptbild'] ?? '') ?>"
                     data-artikel-name="<?= htmlspecialchars($p['artikel_name'] . ($p['variante_name'] ? ' — ' . $p['variante_name'] : '')) ?>"
                     data-offen="<?= $offen ?>"
+                    data-platz="<?= htmlspecialchars(wePlatzText($p)) ?>"
                     <?= $klickbar ? 'style="cursor:pointer" onclick="positionWaehlen(this)"' : ($p['gestrichen'] ? 'style="opacity:.4;text-decoration:line-through"' : 'style="opacity:.6"') ?>>
                     <td><?= htmlspecialchars($p['artikel_name']) ?><?= $p['variante_name'] ? ' <span style="font-size:11px;color:var(--color-text-muted)">— ' . htmlspecialchars($p['variante_name']) . '</span>' : '' ?></td>
+                    <td onclick="event.stopPropagation()" style="font-size:12px;white-space:nowrap">
+                        <?php if (!empty($p['stammplatz'])): ?>
+                            <strong style="font-family:monospace"><?= htmlspecialchars($p['stammplatz']) ?></strong>
+                            <?= !empty($p['nachfuellplatz']) ? '<span style="color:var(--color-text-muted);font-family:monospace">/ ' . htmlspecialchars($p['nachfuellplatz']) . '</span>' : '' ?>
+                        <?php elseif ($lagerplatzOptionen): ?>
+                            <button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px"
+                                    onclick="wePlatzVergeben(<?= (int)$p['artikel_id'] ?>, '<?= htmlspecialchars($p['artikel_name'] . ($p['variante_name'] ? ' — ' . $p['variante_name'] : ''), ENT_QUOTES) ?>')">+ Platz</button>
+                        <?php else: ?>–<?php endif; ?>
+                    </td>
                     <td><?= (int)$p['menge_bestellt'] ?></td>
                     <td><?= (int)$p['menge_eingegangen'] ?></td>
                     <td><?= $p['gestrichen'] ? '—' : (int)$offen ?></td>
@@ -181,6 +205,29 @@ $chargen = $aktivArtikelId ? $service->getChargenFuerArtikel($aktivArtikelId) : 
 <div id="abschluss-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
     <div style="background:#fff;border-radius:8px;padding:24px;width:420px;box-shadow:0 4px 24px rgba(0,0,0,.2)">
         <div id="abschluss-inhalt"></div>
+    </div>
+</div>
+
+<!-- Dialog: Stammplatz vergeben (Artikel hat noch keinen Lagerplatz) -->
+<div id="we-platz-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:8px;padding:20px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.2)">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:var(--color-nav)">Lagerplatz vergeben</div>
+        <div id="we-platz-artikel" style="font-size:12px;color:var(--color-text-muted);margin-bottom:10px"></div>
+        <?php foreach (['stammplatz_id' => 'Stammplatz (Verkaufsfach)', 'nachfuellplatz_id' => 'Nachfüllplatz (optional)'] as $feld => $label): ?>
+        <label style="font-size:12px;display:block;margin-top:8px"><?= $label ?></label>
+        <select id="we-<?= $feld ?>" class="erp-select" style="width:100%">
+            <option value="">— keiner —</option>
+            <?php foreach ($lagerplatzOptionen as $lagerName => $plaetze): ?>
+                <optgroup label="<?= htmlspecialchars($lagerName) ?>">
+                <?php foreach ($plaetze as $lpOpt): ?><option value="<?= (int)$lpOpt['id'] ?>"><?= htmlspecialchars($lpOpt['bezeichnung']) ?></option><?php endforeach; ?>
+                </optgroup>
+            <?php endforeach; ?>
+        </select>
+        <?php endforeach; ?>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('we-platz-modal').style.display='none'">Abbrechen</button>
+            <button class="btn btn-primary btn-sm" onclick="wePlatzSpeichern()">Speichern</button>
+        </div>
     </div>
 </div>
 

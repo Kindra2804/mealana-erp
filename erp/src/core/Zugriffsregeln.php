@@ -46,6 +46,7 @@ final class Zugriffsregeln
 
             'bearbeiten.php'                => 'artikel.bearbeiten',
             'aktualisieren.php'             => 'artikel.bearbeiten',
+            'lagerplatz_speichern.php'      => 'artikel.bearbeiten',
             'variante_bearbeiten.php'       => 'artikel.bearbeiten',
             'variante_aktualisieren.php'    => 'artikel.bearbeiten',
             'massenupdate.php'              => 'artikel.bearbeiten',
@@ -139,6 +140,8 @@ final class Zugriffsregeln
             'lagerplaetze_speichern.php'       => 'lager.anlegen',
             'lagerplaetze_aktualisieren.php'   => 'lager.bearbeiten',
             'lagerplaetze_status_setzen.php'   => 'lager.bearbeiten',
+            'lagerplaetze_serie.php'           => 'lager.anlegen',
+            'lagerplaetze_etiketten.php'       => 'lager.anzeigen',
         ],
 
         'inventur' => [
@@ -156,6 +159,7 @@ final class Zugriffsregeln
             'abschluss_bestaetigen.php'  => 'inventur.bearbeiten',
             'artikel_auslauf_markieren.php' => 'inventurpositionen.anlegen',
             'zaehlliste_druck.php'          => 'inventurpositionen.anzeigen',
+            'fach.php'                      => 'inventurpositionen.anzeigen',
         ],
 
         // === Wareneingang (Einkauf → Lager) ===
@@ -433,6 +437,7 @@ final class Zugriffsregeln
             'verwaltung_status_setzen.php', 'verwaltung_aktualisieren.php', 'verwaltung_speichern.php',
             'variante_suche.php', 'artikel_suche_ajax.php', 'chargen_fuer_artikel_ajax.php',
             'lagerplaetze_speichern.php', 'lagerplaetze_aktualisieren.php', 'lagerplaetze_status_setzen.php',
+            'lagerplaetze_serie.php',
         ],
         'inventur'    => ['artikel_suche_ajax.php', 'zaehlung_speichern.php', 'lagerplatz_waehlen_ajax.php', 'artikel_auslauf_markieren.php'],
         'kasse'       => [
@@ -443,6 +448,7 @@ final class Zugriffsregeln
             'ajax_bon_stornieren.php', 'ajax_kundenanzeige_sync.php',
         ],
         'artikel'     => [
+            'lagerplatz_speichern.php',
             'bild_upload.php', 'bulk_kategorie_speichern.php', 'bild_ajax.php', 'bild_loeschen.php',
             'kategorie_bild_upload.php', 'kategorie_bild_loeschen.php',
             'sale_override_loeschen.php', 'sale_override_speichern.php', 'kategorie_erstellen.php',

@@ -34,7 +34,9 @@ function positionWaehlen(row) {
 
     document.getElementById('artikel-info').innerHTML =
         '<div style="font-weight:600;font-size:14px">' + escHtml(name) + '</div>' +
-        '<div style="font-size:12px;color:var(--color-text-muted)">Offen: ' + Math.round(offen) + ' Stk</div>';
+        '<div style="font-size:12px;color:var(--color-text-muted)">Offen: ' + Math.round(offen) + ' Stk</div>' +
+        // data-platz ist serverseitig bereits HTML-escaped (wePlatzText)
+        (row.dataset.platz ? '<div style="font-size:13px;color:#1e40af;margin-top:2px">' + row.dataset.platz + '</div>' : '');
 
     var bildBox = document.getElementById('artikel-bild-box');
     if (hauptbild) {
@@ -143,3 +145,23 @@ function escHtml(s) {
 }
 
 setTimeout(function () { var b = document.getElementById('msg-banner'); if (b) b.style.display = 'none'; }, 3000);
+
+// ── Lagerplatz vergeben (Artikel ohne Stammplatz) ──
+var _wePlatzArtikelId = null;
+function wePlatzVergeben(artikelId, name) {
+    _wePlatzArtikelId = artikelId;
+    document.getElementById('we-platz-artikel').textContent = name;
+    document.getElementById('we-platz-modal').style.display = 'flex';
+}
+function wePlatzSpeichern() {
+    var stamm = document.getElementById('we-stammplatz_id').value;
+    if (!stamm) { alert('Bitte einen Stammplatz wählen.'); return; }
+    fetch(window.BASE_PATH + '/artikel/lagerplatz_speichern.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [_wePlatzArtikelId], stammplatz_id: stamm,
+                               nachfuellplatz_id: document.getElementById('we-nachfuellplatz_id').value || null })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+        if (!d.erfolg) { alert((d.fehler || ['Fehler']).join(' ')); return; }
+        location.reload();
+    });
+}

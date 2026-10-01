@@ -239,6 +239,48 @@ class InventurRepository
      * Gibt zurück, welches Lager zu einem Lagerplatz gehört (für die Positionserfassung,
      * wo lager_id gebraucht wird auch wenn der Scope nur den Lagerplatz nennt).
      */
+    /** Stamm-/Nachfüllplatz eines Artikels mit Kürzeln */
+    public function findArtikelPlaetze(int $artikelId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT a.stammplatz_id, a.nachfuellplatz_id, lps.bezeichnung AS stammplatz, lpn.bezeichnung AS nachfuellplatz
+            FROM artikel a
+            LEFT JOIN lagerplaetze lps ON lps.id = a.stammplatz_id
+            LEFT JOIN lagerplaetze lpn ON lpn.id = a.nachfuellplatz_id
+            WHERE a.id = :id
+        ");
+        $stmt->execute(['id' => $artikelId]);
+        return $stmt->fetch();
+    }
+
+    public function summeGezaehltAmPlatz(int $laufId, int $artikelId, int $lagerplatzId): float
+    {
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(ist_menge), 0) FROM inventur_positionen
+            WHERE inventur_lauf_id = :l AND artikel_id = :a AND lagerplatz_id = :p
+        ");
+        $stmt->execute(['l' => $laufId, 'a' => $artikelId, 'p' => $lagerplatzId]);
+        return (float)$stmt->fetchColumn();
+    }
+
+    /** Laufender Lauf für genau dieses Fach, sonst für das ganze Lager des Fachs. */
+    public function findLaufendenLaufFuerLagerplatz(int $lagerplatzId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT il.id AS lauf_id, il.scope_tabelle AS scope
+            FROM inventur_laeufe il
+            JOIN lagerplaetze lp ON lp.id = :lp1
+            WHERE il.status = 'laufend'
+              AND ((il.scope_tabelle = 'lagerplaetze' AND il.scope_id = :lp2)
+                OR (il.scope_tabelle = 'lager' AND il.scope_id = lp.lager_id))
+            ORDER BY (il.scope_tabelle = 'lagerplaetze') DESC, il.id DESC
+            LIMIT 1
+        ");
+        $stmt->execute(['lp1' => $lagerplatzId, 'lp2' => $lagerplatzId]);
+        $row = $stmt->fetch();
+        return $row ? ['lauf_id' => (int)$row['lauf_id'], 'scope' => $row['scope']] : null;
+    }
+
     public function findLagerIdFuerLagerplatz(int $lagerplatzId): ?int
     {
         $stmt = $this->db->prepare("SELECT lager_id FROM lagerplaetze WHERE id = :id");

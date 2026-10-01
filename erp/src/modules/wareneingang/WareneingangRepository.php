@@ -143,6 +143,9 @@ class WareneingangRepository
                 a.artikelnummer                                   AS kind_artikelnummer,
                 CASE WHEN a.vaterartikel_id IS NOT NULL THEN a.name END AS variante_name,
                 a.charge_pflicht,
+                a.stammplatz_id,
+                (SELECT bezeichnung FROM lagerplaetze WHERE id = a.stammplatz_id)     AS stammplatz,
+                (SELECT bezeichnung FROM lagerplaetze WHERE id = a.nachfuellplatz_id) AS nachfuellplatz,
                 (SELECT dateiname
                  FROM artikel_bilder
                  WHERE artikel_id = COALESCE(a.vaterartikel_id, a.id) AND position = 0

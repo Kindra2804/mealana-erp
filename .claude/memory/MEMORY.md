@@ -45,7 +45,7 @@
 - [Preise-Modul Design](project_preise.md) — Migrations 028-030, Effektivpreis-Logik, Preis-Aktionen, Jarvis-Auto, Marge, Grundpreisangabe
 - [UI Redesign Plan](project_ui_redesign.md) — JTL-inspiriertes Layout nach Artikel-Modul: Top-Nav Module, Sidebar Untergruppen, 1280×1024 Basis, Barbara hat Mitspracherecht
 - [Verkauf Workflows](project_verkauf_workflows.md) — Mahnwesen-Cron BEHOBEN 2026-07-05; Dashboard-Aktion-Spalte (Erinnerung/Storno-Buttons) FERTIG 2026-07-17, MahnwesenService teilt Logik mit Cron
-- [Lager Konzept](project_lager_konzept.md) — Altes K2-Umschaltmodell ersetzt; Lager-Verwaltungs-UI FERTIG 2026-07-05; Lagerplätze weiterhin 0% (bestätigt 2026-07-10, wichtig für Inventur)
+- [Lager Konzept](project_lager_konzept.md) — Altes K2-Umschaltmodell ersetzt; Lager-Verwaltungs-UI FERTIG 2026-07-05; Lagerplätze Variante A (Stammplatz/Nachfüllplatz, QR-Etiketten, Pickliste/Packplatz/WE/Inventur-Hinweis) GEBAUT 2026-10-01, nicht committed
 - [Feedback: Design-Workflow](feedback_design_workflow.md) — 3-Stufen: ASCII-Wireframe → SVG → HTML, nie direkt in HTML, SVG für Barbara
 - [Feedback: Banner Auto-Hide](feedback_banner_autohide.md) — Erfolgs/Fehler-Banner in detail.php sollen nach ~3s automatisch verschwinden
 - [Feedback: Barbara UI](feedback_barbara_ui.md) — Blaues "!" statt ⚠, konfigurierbarer Indikator, ⚠=kaputt für Barbara

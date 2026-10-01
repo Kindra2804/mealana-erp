@@ -199,6 +199,12 @@ class ArtikelRepository
         } elseif ($qf === 'keine_hersteller') {
             $conditions[] = "a.hersteller_id IS NULL";
         }
+        // Artikel an einem Lagerplatz (Stamm- oder Nachfüllplatz, bei Vätern über ihre Varianten)
+        if (!empty($filter['lagerplatz_id'])) {
+            $conditions[] = "(a.stammplatz_id = :lp_f1 OR a.nachfuellplatz_id = :lp_f2 OR EXISTS (
+                SELECT 1 FROM artikel k_lp WHERE k_lp.vaterartikel_id = a.id AND (k_lp.stammplatz_id = :lp_f3 OR k_lp.nachfuellplatz_id = :lp_f4)))";
+            foreach (['lp_f1', 'lp_f2', 'lp_f3', 'lp_f4'] as $k) $params[$k] = (int)$filter['lagerplatz_id'];
+        }
 
         // Kanal-Filter: Vater/Standalone muss selbst im gewählten Shop aktiv sein. Ein Kind kann
         // dort nie effektiv aktiv sein, wenn der Vater es nicht ist (siehe ShopSyncRepository-Gating),
@@ -230,6 +236,8 @@ class ArtikelRepository
                 al_std.netto_ek AS standard_ek,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl,
+                (SELECT lp_s.bezeichnung FROM lagerplaetze lp_s WHERE lp_s.id = a.stammplatz_id) AS stammplatz,
+                (SELECT lp_n.bezeichnung FROM lagerplaetze lp_n WHERE lp_n.id = a.nachfuellplatz_id) AS nachfuellplatz,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
                 (SELECT COUNT(*) FROM artikel_kategorien WHERE artikel_id = a.id) AS kat_anzahl,
                 (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
@@ -383,6 +391,12 @@ class ArtikelRepository
         } elseif ($qf === 'keine_hersteller') {
             $conditions[] = "a.hersteller_id IS NULL";
         }
+        // Artikel an einem Lagerplatz (Stamm- oder Nachfüllplatz, bei Vätern über ihre Varianten)
+        if (!empty($filter['lagerplatz_id'])) {
+            $conditions[] = "(a.stammplatz_id = :lp_f1 OR a.nachfuellplatz_id = :lp_f2 OR EXISTS (
+                SELECT 1 FROM artikel k_lp WHERE k_lp.vaterartikel_id = a.id AND (k_lp.stammplatz_id = :lp_f3 OR k_lp.nachfuellplatz_id = :lp_f4)))";
+            foreach (['lp_f1', 'lp_f2', 'lp_f3', 'lp_f4'] as $k) $params[$k] = (int)$filter['lagerplatz_id'];
+        }
 
         if (!empty($filter['kanal_shop_id'])) {
             $conditions[] = "EXISTS (SELECT 1 FROM artikel_shops ash_f WHERE ash_f.artikel_id = a.id AND ash_f.shop_id = :kanal_shop_id AND ash_f.aktiv = 1)";
@@ -421,6 +435,8 @@ class ArtikelRepository
                 a.artikelnummer,
                 a.name,
                 a.vaterartikel_id,
+                a.stammplatz_id,
+                a.nachfuellplatz_id,
                 a.hat_eigenen_lagerstand,
                 a.hersteller_id,
                 a.steuerklasse_id,
@@ -572,6 +588,8 @@ class ArtikelRepository
                 ag.name AS artikelgruppe,
                 COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
+                (SELECT lp_s.bezeichnung FROM lagerplaetze lp_s WHERE lp_s.id = a.stammplatz_id) AS stammplatz,
+                (SELECT lp_n.bezeichnung FROM lagerplaetze lp_n WHERE lp_n.id = a.nachfuellplatz_id) AS nachfuellplatz,
                 (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
                 (SELECT GROUP_CONCAT(k2.name ORDER BY k2.name SEPARATOR ', ')
                  FROM artikel_kategorien ak2

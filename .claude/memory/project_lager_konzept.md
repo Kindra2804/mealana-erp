@@ -126,3 +126,13 @@ Alle vier Fälle (Update normal, Update mit Aktiv-Häkchen weg ohne Bestand, Upd
 ## Online-Messelager ohne Offline-Kasse — funktioniert bereits (2026-07-05, keine Code-Änderung nötig)
 
 Für Messen mit fixem Internet: `kassen.lager_id` und `kassen.modus` sind unabhängige Felder, `bon.php`/`KassenService` lesen `lager_id` schon jetzt aus der Kassen-Konfiguration (verifiziert im Code, nicht hart codiert). Ablauf: Bestand per normaler Umlagerung (`packplatz/intern/index.php`, kein Messe-Sync nötig) ins Messelager bringen → Kassen-Zeile mit `lager_id`=Messelager + `modus`='online' anlegen → normales `bon.php` bucht live. Rückkehr: normale Umlagerung Restbestand zurück, der spezielle `messe_rueckkehr.php`-Abgleich ist nur für den echten Offline-Fall nötig (dort wird während der Messe nichts live gebucht).
+
+## ✅ Lagerplätze Variante A GEBAUT 2026-10-01 (nicht committed)
+Jacky: Variante A (Stammplatz je Artikel, KEIN WMS/Platzbestand), Kürzel Regal/Fach "R3-F12", optional Bereich davor ("K-R1-F4" = Keller/Nachfüller, Lager "Privathaus-Keller"), QR-Etiketten pro Fach (Zwischenzählungen), mehrere Chargen pro Fach, Hinweis bei Inventur "gezählt – gehört in …".
+- **Migration 188:** lagerplaetze.bereich/regal/fach/sortierung + UNIQUE(lager_id, bezeichnung); artikel.stammplatz_id + nachfuellplatz_id (FK ON DELETE SET NULL). bezeichnung = gebildetes Kürzel (LagerService::lagerplatzKuerzel/-Sortierung).
+- Lager → Lagerplätze: Kürzel-Vorschau, "+ Regal mit Fächern" (Serie, max 200), Etiketten-PDF `lager/lagerplaetze_etiketten.php?ids=..&start=N` (A4 3×8, 70×37 mm, QR = URL `inventur/fach.php?lp=ID`, Schriftgröße nach Kürzellänge).
+- Artikel: Lager-Reiter Karte "Lagerplatz" (Vater → alle Varianten, Vorauswahl wenn alle gleich), `artikel/lagerplatz_speichern.php` (JSON, nur übergebene Felder), Liste-Spalte "lagerplatz" (war Platzhalter) + Filter `?lagerplatz_id=` + Massenaktion "Lagerplatz zuweisen".
+- Pickliste (Spalte Platz, ORDER BY Stammplatz-Sortierung, ohne Platz ans Ende), Packplatz scan.php (📍 + gleiche Sortierung), Wareneingang detail.php ("Gehört in", "+ Platz"-Modal).
+- Inventur: `inventur/fach.php` (laufender Lauf Fach → zählen; Lager-Lauf → zählen mit &lagerplatz= vorgewählt; sonst Zwischenzählung starten, braucht inventur.anlegen), Suchfeld erkennt gescannte Fach-URL (tolerant gegen Layout-Fehler), bucheZaehlung liefert `hinweis` (persistent oben + über Reload per sessionStorage).
+- Getestet per Playwright mit Test-Session + Testplätzen (Bereich TEST), alles wieder gelöscht (0 Plätze, 0 Zuordnungen). Noch NICHT: echter QR-Scan mit Handy/Scanner, echter Etikettendruck auf Jackys Etikettenbogen (Maße prüfen!).
+- Rechte-Hinweis: "+ Platz" im Wareneingang braucht artikel.bearbeiten.

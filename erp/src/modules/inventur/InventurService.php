@@ -286,7 +286,40 @@ class InventurService
             'ist_menge'        => $istMenge,
         ]);
 
-        return ['erfolg' => true, 'id' => $id];
+        return ['erfolg' => true, 'id' => $id, 'hinweis' => $this->platzHinweis($laufId, $artikelId, $lagerplatzId)];
+    }
+
+    /**
+     * Artikel an einem Platz gezählt, der weder sein Stamm- noch sein Nachfüllplatz ist →
+     * "gezählt – gehört in R3-F12" (Jacky 2026-10-01), mit Info, wie viel davon in diesem
+     * Lauf schon am richtigen Platz gezählt wurde. Die Zählung selbst bleibt gültig (der
+     * Bestand stimmt ja), der Hinweis soll nur zum Zurückräumen auffordern.
+     */
+    private function platzHinweis(int $laufId, int $artikelId, ?int $lagerplatzId): ?string
+    {
+        if (!$lagerplatzId) return null;
+        $p = $this->repo->findArtikelPlaetze($artikelId);
+        if (!$p || !$p['stammplatz_id']) return null;
+        if (in_array($lagerplatzId, array_filter([(int)$p['stammplatz_id'], (int)$p['nachfuellplatz_id']]), true)) return null;
+
+        $text = 'Gezählt – gehört aber in ' . $p['stammplatz'];
+        if ($p['nachfuellplatz']) $text .= ' (Nachfüller ' . $p['nachfuellplatz'] . ')';
+        $dort = $this->repo->summeGezaehltAmPlatz($laufId, $artikelId, (int)$p['stammplatz_id']);
+        if ($dort > 0) {
+            $text .= ' – dort in dieser Inventur schon ' . rtrim(rtrim(number_format($dort, 3, ',', ''), '0'), ',') . ' gezählt';
+        }
+        return $text . '. Bitte zurückräumen.';
+    }
+
+    /**
+     * Ziel für einen gescannten Fach-QR-Code (inventur/fach.php): laufender Lauf genau für
+     * dieses Fach, sonst laufender Lauf über das ganze Lager des Fachs, sonst nichts.
+     *
+     * @return array{lauf_id:int, scope:string}|null
+     */
+    public function laufFuerLagerplatz(int $lagerplatzId): ?array
+    {
+        return $this->repo->findLaufendenLaufFuerLagerplatz($lagerplatzId);
     }
 
     // -------------------------------------------------------------------------

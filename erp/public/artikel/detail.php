@@ -51,6 +51,20 @@ $achsService        = new AchsenService();
 $alleGlobalenAchsen = $achsService->findAll();
 
 $lagerService       = new LagerService();
+// Lagerplätze für Stamm-/Nachfüllplatz-Auswahl (gruppiert nach Lager)
+$lagerplatzOptionen = [];
+foreach ($lagerService->getAlleLagerplaetze(0, 1) as $lpOpt) {
+    $lagerplatzOptionen[$lpOpt['lager_name']][] = $lpOpt;
+}
+// Vater: Plätze hängen an den Varianten -- haben alle denselben, diesen vorauswählen
+if (count($kinder) > 0) {
+    $lpStmt = Database::getInstance()->prepare("SELECT COUNT(DISTINCT COALESCE(stammplatz_id,0)) AS n_s, MAX(stammplatz_id) AS s,
+        COUNT(DISTINCT COALESCE(nachfuellplatz_id,0)) AS n_n, MAX(nachfuellplatz_id) AS n FROM artikel WHERE vaterartikel_id = ?");
+    $lpStmt->execute([$id]);
+    $lpK = $lpStmt->fetch(PDO::FETCH_ASSOC);
+    if ((int)$lpK['n_s'] === 1) $artikel['stammplatz_id']     = $lpK['s'];
+    if ((int)$lpK['n_n'] === 1) $artikel['nachfuellplatz_id'] = $lpK['n'];
+}
 $lagerGruppen       = $lagerService->getLagerBestandChargen($id);
 $chargenFuerArtikel = $lagerService->getChargenFuerArtikel($id);
 
@@ -1358,6 +1372,50 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 ⚠ <?= htmlspecialchars($_GET['we_fehler']) ?>
             </div>
         <?php endif; ?>
+
+        <!-- Lagerplatz: Stammplatz (Verkaufsfach) + Nachfüllplatz -->
+        <div class="card" style="margin-bottom:var(--space-md)">
+            <div class="pagination-bar"><div style="font-weight:600">Lagerplatz</div></div>
+            <?php if (count($kinder) > 0): ?>
+                <p style="font-size:13px;color:var(--color-text-muted);margin:0">
+                    Lagerplätze werden je Variante gesetzt — in der Variante selbst oder für alle Varianten auf einmal hier:
+                </p>
+            <?php endif; ?>
+            <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:8px">
+                <?php foreach (['stammplatz_id' => 'Stammplatz (Verkaufsfach)', 'nachfuellplatz_id' => 'Nachfüllplatz'] as $feld => $label): ?>
+                <div>
+                    <label class="form-label" style="display:block"><?= $label ?></label>
+                    <select id="lp-<?= $feld ?>" class="erp-select" style="min-width:200px">
+                        <option value="">— keiner —</option>
+                        <?php foreach ($lagerplatzOptionen as $lagerName => $plaetze): ?>
+                            <optgroup label="<?= htmlspecialchars($lagerName) ?>">
+                            <?php foreach ($plaetze as $lpOpt): ?>
+                                <option value="<?= (int)$lpOpt['id'] ?>" <?= (int)($artikel[$feld] ?? 0) === (int)$lpOpt['id'] ? 'selected' : '' ?>><?= htmlspecialchars($lpOpt['bezeichnung']) ?></option>
+                            <?php endforeach; ?>
+                            </optgroup>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endforeach; ?>
+                <button class="btn btn-primary btn-sm" onclick="lagerplatzSpeichern(<?= (int)$artikel['id'] ?>, <?= count($kinder) ?>)"><?= count($kinder) > 0 ? 'Für alle ' . count($kinder) . ' Varianten setzen' : 'Speichern' ?></button>
+                <?php if (empty($lagerplatzOptionen)): ?>
+                    <span style="font-size:12px;color:var(--color-text-muted)">Noch keine Lagerplätze angelegt — <a href="<?= BASE_PATH ?>/lager/lagerplaetze.php">Lager → Lagerplätze</a></span>
+                <?php endif; ?>
+            </div>
+        </div>
+        <script>
+        function lagerplatzSpeichern(id, kinder) {
+            if (kinder > 0 && !confirm('Lagerplatz für alle ' + kinder + ' Varianten setzen?')) return;
+            fetch(window.BASE_PATH + '/artikel/lagerplatz_speichern.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [id],
+                    stammplatz_id: document.getElementById('lp-stammplatz_id').value || null,
+                    nachfuellplatz_id: document.getElementById('lp-nachfuellplatz_id').value || null })
+            }).then(r => r.json()).then(function (d) {
+                alert(d.erfolg ? 'Lagerplatz gespeichert (' + d.anzahl + ' Artikel).' : (d.fehler || ['Fehler']).join(' '));
+            });
+        }
+        </script>
 
         <!-- Bestandsübersicht -->
         <div class="card">
