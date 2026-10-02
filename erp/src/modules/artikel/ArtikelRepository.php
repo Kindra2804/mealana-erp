@@ -47,6 +47,18 @@ class ArtikelRepository
      * "doppelte_ean" in findAll()/countAll(). Eigene, günstige Aggregation statt einer pro
      * Zeile korrelierten Subquery (siehe Fund 2026-08-26 in findAll()).
      */
+    /** Listen-IDs (Väter/Einzelartikel) mit bewertetem Bestand ohne EK — pro Aufruf einmal berechnet (findAll + countAll). */
+    private ?array $listenIdsOhneEk = null;
+
+    private function holeListenIdsOhneEk(): array
+    {
+        if ($this->listenIdsOhneEk === null) {
+            require_once __DIR__ . '/../statistik/LagerwertService.php';
+            $this->listenIdsOhneEk = array_map('intval', (new LagerwertService())->listenIdsOhneEk());
+        }
+        return $this->listenIdsOhneEk;
+    }
+
     private function holeVaterIdsMitDoppelterEan(): array
     {
         $stmt = $this->db->query("
@@ -87,7 +99,7 @@ class ArtikelRepository
      * $filter-Keys:
      *   q, hersteller_id, artikeltyp_id, kategorie_ids, nurKategorielos,
      *   nurMitBestand, mitInaktiven, status_filter (auslauf|uv|fehlbest|inaktiv),
-     *   qualitaet (keine_ean|doppelte_ean|keine_bilder|keine_gruppe|keine_hersteller), sort, dir
+     *   qualitaet (keine_ean|doppelte_ean|keine_bilder|keine_gruppe|keine_hersteller|kein_ek), sort, dir
      */
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
@@ -198,6 +210,10 @@ class ArtikelRepository
             $conditions[] = "a.artikel_gruppe_id IS NULL";
         } elseif ($qf === 'keine_hersteller') {
             $conditions[] = "a.hersteller_id IS NULL";
+        } elseif ($qf === 'kein_ek') {
+            // Bestand im bewerteten Lager, aber kein EK (gleiche Regel wie die Lagerwert-Seite)
+            $ids = $this->holeListenIdsOhneEk();
+            $conditions[] = $ids ? ('a.id IN (' . implode(',', $ids) . ')') : '1=0';
         }
         // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter
         if (empty($filter['mit_partnerware'])) {
@@ -395,6 +411,10 @@ class ArtikelRepository
             $conditions[] = "a.artikel_gruppe_id IS NULL";
         } elseif ($qf === 'keine_hersteller') {
             $conditions[] = "a.hersteller_id IS NULL";
+        } elseif ($qf === 'kein_ek') {
+            // Bestand im bewerteten Lager, aber kein EK (gleiche Regel wie die Lagerwert-Seite)
+            $ids = $this->holeListenIdsOhneEk();
+            $conditions[] = $ids ? ('a.id IN (' . implode(',', $ids) . ')') : '1=0';
         }
         // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter
         if (empty($filter['mit_partnerware'])) {

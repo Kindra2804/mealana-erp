@@ -57,7 +57,12 @@ foreach ($positionen as $pos) {
     if ($retMenge <= 0) continue;
     $retourGesamtbetrag += Positionsrechnung::ausPosition($pos, $retMenge)['brutto'];
 }
-$offenBetrag  = ((float)$auftrag['bruttobetrag'] - $retourGesamtbetrag) - $summeBezahlt;
+// Versendete, nicht erlassene Mahngebühren (Verkauf → Mahnwesen) sind zusätzlich zu zahlen
+$mahngebuehrenStmt = $db->prepare("SELECT COALESCE(SUM(gebuehr), 0) FROM mahnungen WHERE auftrag_id = ? AND status = 'versendet' AND gebuehr_erlassen_am IS NULL");
+$mahngebuehrenStmt->execute([$id]);
+$mahngebuehren = (float)$mahngebuehrenStmt->fetchColumn();
+
+$offenBetrag  = ((float)$auftrag['bruttobetrag'] - $retourGesamtbetrag) + $mahngebuehren - $summeBezahlt;
 
 $lieferungen = $db->prepare("
     SELECT al.id, al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung,
@@ -259,6 +264,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <span style="font-weight:600;color:<?= $istErstattung ? '#dc2626' : '#059669' ?>"><?= $istErstattung ? '' : '+' ?><?= number_format((float)$z['betrag'], 2, ',', '.') ?> €</span>
                         </div>
                     <?php endforeach; ?>
+                    <?php if ($mahngebuehren > 0): ?>
+                        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid #e2e8f0">
+                            <a href="<?= BASE_PATH ?>/auftraege/mahnwesen.php" style="color:#d97706">Mahngebühren (offen)</a>
+                            <span style="font-weight:600;color:#d97706"><?= number_format($mahngebuehren, 2, ',', '.') ?> €</span>
+                        </div>
+                    <?php endif; ?>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
                         <?php if ($offenBetrag < 0): ?>
                             <span style="color:#d97706;font-weight:600">Überbezahlt</span>

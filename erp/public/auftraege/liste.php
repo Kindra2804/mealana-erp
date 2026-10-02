@@ -62,6 +62,7 @@ $zahlungsLabels = [
     'teilbezahlt'  => ['label' => 'Teilbezahlt', 'class' => 'chip-auslauf'],
     'ueberbezahlt' => ['label' => 'Überbezahlt', 'class' => 'chip-auslauf'],
     'erstattet'    => ['label' => 'Erstattet',   'class' => 'chip-inaktiv'],
+    'gutschrift'   => ['label' => 'Gutschrift',  'class' => 'chip-inaktiv'],
     'storniert'    => ['label' => 'Storniert',   'class' => 'chip-inaktiv'],
 ];
 $zahlungsArtLabels = [
@@ -228,7 +229,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php foreach ($auftraege as $a):
                     $za = $zahlungsArtLabels[$a['zahlungsart']] ?? ['label' => $a['zahlungsart'], 'class' => ''];
                     $zStatus = $a['zahlungsstatus'];
-                    if ($zStatus === 'bezahlt' && (float)($a['summe_zahlungen'] ?? 0) > (float)$a['bruttobetrag']) {
+                    if ((float)$a['bruttobetrag'] < 0) {
+                        // Kassenbon mit Retoure/Gutschrift (Spiegel-Auftrag mit negativem Betrag)
+                        $zStatus = 'gutschrift';
+                    } elseif ($zStatus === 'bezahlt' && (float)($a['summe_zahlungen'] ?? 0) > (float)$a['bruttobetrag']) {
                         $zStatus = 'ueberbezahlt';
                     }
                     $zl = $zahlungsLabels[$zStatus] ?? ['label' => $zStatus, 'class' => ''];
@@ -239,7 +243,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     if ($a['kanal'] === 'woocommerce' && !empty($a['shop_name'])) {
                         $kl = ['label' => $a['shop_name'], 'class' => $kl['class']];
                     }
-                    $istErledigt = $a['lieferstatus'] === 'abgeschlossen' && $a['zahlungsstatus'] === 'bezahlt';
+                    $istErledigt = $a['lieferstatus'] === 'abgeschlossen' && in_array($a['zahlungsstatus'], ['bezahlt', 'erstattet'], true);
                 ?>
                     <tr<?= $istErledigt ? ' style="opacity:0.55;background:var(--color-bg-secondary)"' : '' ?>>
                         <td>

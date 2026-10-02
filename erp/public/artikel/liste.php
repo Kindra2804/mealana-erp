@@ -322,7 +322,7 @@ if ($aktivKategorieId) {
         : array_merge([$aktivKategorieId], $service->getAlleNachkommenIds($aktivKategorieId));
 }
 
-$qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder', 'keine_gruppe', 'keine_hersteller']) ? $statusFilter : '';
+$qualitaetFilter = in_array($statusFilter, ['keine_ean', 'doppelte_ean', 'keine_bilder', 'keine_gruppe', 'keine_hersteller', 'kein_ek']) ? $statusFilter : '';
 
 $filter = [
     'q'               => trim($_GET['q'] ?? ''),
@@ -646,6 +646,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <option value="keine_bilder" <?= $statusFilter === 'keine_bilder' ? 'selected' : '' ?>>Keine Bilder</option>
                 <option value="keine_gruppe" <?= $statusFilter === 'keine_gruppe' ? 'selected' : '' ?>>Keine Artikelgruppe</option>
                 <option value="keine_hersteller" <?= $statusFilter === 'keine_hersteller' ? 'selected' : '' ?>>Kein Hersteller</option>
+                <option value="kein_ek" <?= $statusFilter === 'kein_ek' ? 'selected' : '' ?>>Kein EK (mit Bestand)</option>
             </optgroup>
             <optgroup label="Zustand (B-Ware, mit Bestand)">
                 <option value="zustand_alle" <?= $statusFilter === 'zustand_alle' ? 'selected' : '' ?>>Alle Zustandsartikel</option>
@@ -763,6 +764,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Keine Bilder hinterlegt">Kein Bild</span>';
                     } elseif ($qualitaetFilter === 'keine_hersteller') {
                         $statusChips .= '<span class="sc" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" title="Kein Hersteller zugewiesen">Kein Hersteller</span>';
+                    } elseif ($qualitaetFilter === 'kein_ek') {
+                        $statusChips .= '<span class="sc" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b" title="Bestand vorhanden, aber kein Einkaufspreis (Artikel oder Variante) — zählt im Lagerwert mit 0 €">Kein EK</span>';
                     }
 
                     // ⚠ Vater-Badge

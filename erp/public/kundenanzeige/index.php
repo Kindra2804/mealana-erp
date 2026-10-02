@@ -147,7 +147,7 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
             return praefix + '<div class="kd-bonzeile">'
                 + '<div class="kd-bonzeile-name">' + esc(z.bezeichnung) + '</div>'
                 + '<div class="kd-bonzeile-menge">' + z.menge + '×</div>'
-                + '<div class="kd-bonzeile-summe">€ ' + fmt(z.summe) + '</div>'
+                + '<div class="kd-bonzeile-summe">' + (z.bezahlt ? '<span style="font-size:.7em;color:#16a34a;font-weight:600">bezahlt</span>' : '€ ' + fmt(z.summe)) + '</div>'
                 + '</div>';
         }).join('');
 
@@ -164,7 +164,10 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
             +     '<div class="kd-bonzeilen">' + zeilenHtml + '</div>'
             +     '<div class="kd-summen">'
             +       '<div class="kd-summen-zeile"><span>MwSt. inkludiert</span><span></span></div>'
-            +       '<div class="kd-summen-gesamt"><span>Gesamt</span><span>€ ' + fmt(p.gesamt) + '</span></div>'
+            +       (p.bereits_bezahlt > 0
+                        ? '<div class="kd-summen-zeile"><span>Bereits bezahlt</span><span>€ ' + fmt(p.bereits_bezahlt) + '</span></div>'
+                        : '')
+            +       '<div class="kd-summen-gesamt"><span>' + (p.bereits_bezahlt > 0 ? (p.gesamt < 0 ? 'Rückgabe' : 'Zu zahlen') : 'Gesamt') + '</span><span>€ ' + fmt(Math.abs(p.gesamt)) + '</span></div>'
             +     '</div>'
             +   '</div>'
             + '</div>'

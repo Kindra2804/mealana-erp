@@ -61,24 +61,28 @@ class DokumentService
         if (!$daten) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden.'];
 
         $rechnungsNr = $this->repo->naechsteNummer('rechnung', (int)date('Y'));
+        $faellig     = $this->berechneFaelligkeit($daten['auftrag']);
 
+        // faellig_am ist die Basis fürs Mahnwesen (Erinnerung/Mahnstufen ab Fälligkeit)
         $this->db->prepare("
-            INSERT INTO rechnungen (auftrag_id, rechnung_nr, nettobetrag, steuerbetrag, bruttobetrag, erstellt_von, erstellt_am)
-            VALUES (:aid, :nr, :netto, :steuer, :brutto, :buid, NOW())
+            INSERT INTO rechnungen (auftrag_id, rechnung_nr, nettobetrag, steuerbetrag, bruttobetrag, faellig_am, erstellt_von, erstellt_am)
+            VALUES (:aid, :nr, :netto, :steuer, :brutto, :faellig, :buid, NOW())
             ON DUPLICATE KEY UPDATE rechnung_nr = rechnung_nr
         ")->execute([
-            ':aid'    => $auftragId,
-            ':nr'     => $rechnungsNr,
-            ':netto'  => $daten['summen']['netto_gesamt'],
-            ':steuer' => $daten['summen']['steuer_gesamt'],
-            ':brutto' => $daten['summen']['brutto_gesamt'],
-            ':buid'   => $benutzerId,
+            ':aid'     => $auftragId,
+            ':nr'      => $rechnungsNr,
+            ':netto'   => $daten['summen']['netto_gesamt'],
+            ':steuer'  => $daten['summen']['steuer_gesamt'],
+            ':brutto'  => $daten['summen']['brutto_gesamt'],
+            ':faellig' => $faellig['datum'],
+            ':buid'    => $benutzerId,
         ]);
 
         $daten['rechnung'] = [
-            'nr'        => $rechnungsNr,
-            'datum'     => date('d.m.Y'),
-            'faellig'   => $this->berechneFaelligDatum($daten['auftrag']),
+            'nr'           => $rechnungsNr,
+            'datum'        => date('d.m.Y'),
+            'faellig'      => date('d.m.Y', strtotime($faellig['datum'])),
+            'faellig_text' => $faellig['text'],
         ];
 
         $dateiname = 'R-' . $daten['auftrag']['auftrag_nr'] . '_' . $rechnungsNr . '.pdf';
@@ -608,12 +612,67 @@ class DokumentService
         return json_decode($json, true) ?: [];
     }
 
-    private function berechneFaelligDatum(array $auftrag): string
+    /**
+     * Fälligkeit der Rechnung: Zahlungsbedingung des Auftrags, sonst die des Kunden, sonst
+     * 14 Tage (bar: 4 Tage, wie bisher). Liefert ['datum' => 'Y-m-d', 'text' => '14 Tage'].
+     */
+    private function berechneFaelligkeit(array $auftrag): array
     {
-        $tage = 14;
-        if (!empty($auftrag['zahlungsart']) && $auftrag['zahlungsart'] === 'bar') {
-            $tage = 4;
+        $tage = null;
+        $bedingungId = $auftrag['zahlungsbedingung_id'] ?? null;
+        if (!$bedingungId && !empty($auftrag['kunden_id'])) {
+            $k = $this->db->prepare("SELECT zahlungsbedingung_id FROM kunden WHERE id = ?");
+            $k->execute([$auftrag['kunden_id']]);
+            $bedingungId = $k->fetchColumn() ?: null;
         }
-        return date('d.m.Y', strtotime('+' . $tage . ' days'));
+        if ($bedingungId) {
+            $z = $this->db->prepare("SELECT netto_tage FROM zahlungsbedingungen WHERE id = ?");
+            $z->execute([$bedingungId]);
+            $wert = $z->fetchColumn();
+            if ($wert !== false && $wert !== null) $tage = (int)$wert;
+        }
+        $tage ??= ($auftrag['zahlungsart'] ?? '') === 'bar' ? 4 : 14;
+
+        return [
+            'datum' => date('Y-m-d', strtotime('+' . $tage . ' days')),
+            'text'  => $tage === 0 ? 'sofort' : $tage . ' Tage',
+        ];
+    }
+
+    /**
+     * Mahnung bzw. Zahlungserinnerung als PDF (Verkauf → Mahnwesen, Freigabe).
+     * $mahnung: typ (mahnung1|mahnung2), offen_betrag, gebuehr, gebuehren_vorher, neue_frist (Y-m-d)
+     */
+    public function erstelleMahnung(int $auftragId, array $mahnung, int $benutzerId): array
+    {
+        $daten = $this->ladeDaten($auftragId);
+        if (!$daten) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden.'];
+        $rechnung = $this->getRechnung($auftragId);
+        if (!$rechnung) return ['erfolg' => false, 'fehler' => 'Zum Auftrag gibt es keine Rechnung.'];
+
+        $stufe = $mahnung['typ'] === 'mahnung2' ? 2 : 1;
+        $daten['rechnung'] = [
+            'nr'      => $rechnung['rechnung_nr'],
+            'datum'   => date('d.m.Y', strtotime($rechnung['erstellt_am'])),
+            'faellig' => $rechnung['faellig_am'] ? date('d.m.Y', strtotime($rechnung['faellig_am'])) : '',
+            'brutto'  => (float)$rechnung['bruttobetrag'],
+        ];
+        $daten['mahnung'] = [
+            'stufe'            => $stufe,
+            'titel'            => $stufe === 2 ? '2. Mahnung' : '1. Mahnung',
+            'offen_betrag'     => (float)$mahnung['offen_betrag'],
+            'gebuehren_vorher' => (float)($mahnung['gebuehren_vorher'] ?? 0),
+            'gebuehr'          => (float)$mahnung['gebuehr'],
+            'gesamt'           => round((float)$mahnung['offen_betrag'] + (float)($mahnung['gebuehren_vorher'] ?? 0) + (float)$mahnung['gebuehr'], 2),
+            'neue_frist'       => date('d.m.Y', strtotime($mahnung['neue_frist'])),
+        ];
+
+        $dateiname = 'M' . $stufe . '-' . $daten['auftrag']['auftrag_nr'] . '_' . date('Ymd_His') . '.pdf';
+        $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
+
+        $this->pdf->generiere('mahnung/standard.html.twig', $daten, $dateipfad);
+        $this->repo->speichern($auftragId, 'mahnung', $dateiname, $benutzerId);
+
+        return ['erfolg' => true, 'dateiname' => $dateiname, 'pfad' => $dateipfad];
     }
 }

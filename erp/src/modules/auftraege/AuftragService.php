@@ -521,23 +521,43 @@ class AuftragService
         $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
         $this->repo->insertZahlung($auftragId, $betrag, $buchungsdatum, $notiz, $benutzerId);
 
-        $summe   = $this->repo->getSummeZahlungen($auftragId);
-        $gesamt  = (float)$auftrag['bruttobetrag'];
+        $stand = $this->setzeZahlungsstatus($auftrag, $buchungsdatum,
+            'Zahlung gebucht: ' . number_format($betrag, 2, ',', '.') . ' €', $benutzerId);
 
-        if ($summe >= $gesamt) {
-            $neuerStatus = 'bezahlt';
-            $bezahltAm   = $buchungsdatum;
-        } else {
-            $neuerStatus = 'teilbezahlt';
-            $bezahltAm   = null;
-        }
+        Logger::log('auftraege.zahlung_buchen', 'auftraege', $auftragId, ['betrag' => $betrag, 'status' => $stand['neuer_status']]);
 
+        return ['erfolg' => true] + $stand;
+    }
+
+    /**
+     * Zahlungsstatus nach erlassener Mahngebühr neu bewerten — war nur noch die Gebühr
+     * offen, ist der Auftrag jetzt bezahlt (MahnwesenService::gebuehrErlassen).
+     */
+    public function zahlungsstatusNachGebuehrErlass(int $auftragId, int $benutzerId): void
+    {
+        $auftrag = $this->repo->findById($auftragId);
+        if (!$auftrag || !in_array($auftrag['zahlungsstatus'], ['ausstehend', 'teilbezahlt'], true)) return;
+        if ($this->repo->getSummeZahlungen($auftragId) <= 0) return; // nichts bezahlt → bleibt ausstehend
+        $this->setzeZahlungsstatus($auftrag, date('Y-m-d'), 'Mahngebühr erlassen', $benutzerId);
+    }
+
+    /**
+     * Setzt bezahlt/teilbezahlt anhand der Zahlungssumme. Zu zahlen ist der Auftragsbetrag
+     * plus offene (versendete, nicht erlassene) Mahngebühren.
+     */
+    private function setzeZahlungsstatus(array $auftrag, string $datum, string $grund, int $benutzerId): array
+    {
+        $auftragId = (int)$auftrag['id'];
+        $summe     = $this->repo->getSummeZahlungen($auftragId);
+        $gesamt    = round((float)$auftrag['bruttobetrag'] + $this->repo->getOffeneMahngebuehren($auftragId), 2);
+
+        $neuerStatus = $summe >= $gesamt - 0.004 ? 'bezahlt' : 'teilbezahlt';
         $felder = ['zahlungsstatus' => $neuerStatus];
-        if ($bezahltAm) {
-            $felder['bezahlt_am'] = $bezahltAm;
+        if ($neuerStatus === 'bezahlt') {
+            $felder['bezahlt_am'] = $datum;
         }
         $this->repo->updateStatus($auftragId, $felder);
-        $this->repo->logStatus($auftragId, ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerStatus]], 'Zahlung gebucht: ' . number_format($betrag, 2, ',', '.') . ' €', $benutzerId);
+        $this->repo->logStatus($auftragId, ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerStatus]], $grund, $benutzerId);
 
         // Auto-Abgeschlossen: bezahlt + bereits versendet → abgeschlossen
         if ($neuerStatus === 'bezahlt' && $auftrag['lieferstatus'] === 'versendet') {
@@ -545,8 +565,6 @@ class AuftragService
             $this->repo->logStatus($auftragId, ['lieferstatus' => ['versendet', 'abgeschlossen']], 'Automatisch abgeschlossen (bezahlt + versendet)', $benutzerId);
         }
 
-        Logger::log('auftraege.zahlung_buchen', 'auftraege', $auftragId, ['betrag' => $betrag, 'status' => $neuerStatus]);
-
-        return ['erfolg' => true, 'neuer_status' => $neuerStatus, 'summe' => $summe, 'gesamt' => $gesamt];
+        return ['neuer_status' => $neuerStatus, 'summe' => $summe, 'gesamt' => $gesamt];
     }
 }

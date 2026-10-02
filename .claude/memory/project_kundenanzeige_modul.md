@@ -69,3 +69,6 @@ ASCII-Wireframes aller vier Zustände liegen im Chat-Verlauf vom 2026-07-10 (nic
 **How to apply:** Bei künftigen kiosk-artigen Seiten (kein Login, Dauerbetrieb) von Anfang an No-Cache-Header mitbauen, nicht erst nachträglich. Fullscreen-Erwartung bei älteren Android-Tablets nicht voraussetzen — Fully Kiosk (oder ähnliche Kiosk-Launcher) als Standard-Empfehlung für echte Ladengeräte einplanen, Manifest-Trick nur als Bonus für neuere Geräte.
 
 **How to apply:** Zeitliche Einordnung unverändert (Jacky, 2026-07-07): Kassen-Thema, ursprünglich NACH BFR-Hardware-Test eingeplant — der Hardware-Test lief zwar schon (2026-07-08), wartet aber noch auf die Herstellerantwort (siehe [[project_rksv_bfr]]), daher wurde das Konzept-Gespräch vorgezogen ohne auf den kompletten BFR-Abschluss zu warten. Implementierung kann jederzeit starten, Design ist fertig abgenommen.
+
+## 🟢 2026-10-02 Kundenanzeige zeigte bei geladenen Aufträgen den Auftragswert statt Zahlbetrag (Jacky-Klicktest)
+kdSyncWarenkorb schickte getGesamt(). Jetzt wie Kassen-Footer: bei bezahlten Aufträgen gesamt = berechneAbrechnungsModus().netBrutto, zusätzlich bereits_bezahlt + je Zeile bezahlt:true. Anzeige: Zeile "bezahlt" statt Preis, Summenblock "Bereits bezahlt € X" + "Zu zahlen" (bzw. "Rückgabe" bei negativ). Abrechnen-Zustand war schon richtig. Nur JS-Syntax geprüft.

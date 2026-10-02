@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php'
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragRepository.php';
+require_once __DIR__ . '/../../src/modules/auftraege/Positionsrechnung.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../src/modules/packplatz/RuecklagerungRepository.php';
 require_once __DIR__ . '/../../src/core/Logger.php';
@@ -177,6 +178,16 @@ if ($webAuftragEingabe) {
     $waZeilen = [];
     foreach ($stmtWa->fetchAll(PDO::FETCH_ASSOC) as $a) $waZeilen[(int)$a['id']] = $a;
 
+    // Menge im Abholfach je Position: gepackt minus schon abgeholt. Ist ein Auftrag ohne
+    // Packplatz auf "abholbereit" gesetzt worden (menge_geliefert 0), liegt die ganze Menge bereit.
+    $fachVon = function (array $op, string $status): float {
+        $geliefert = (float)$op['menge_geliefert'];
+        if ($status === 'abholbereit' && $geliefert < 0.001) $geliefert = (float)$op['menge'];
+        return max(0.0, $geliefert - (float)$op['menge_abgeholt']);
+    };
+    $fachStmt  = Database::getInstance()->prepare("SELECT COALESCE(SUM(GREATEST(CAST(menge_geliefert AS SIGNED) - CAST(menge_abgeholt AS SIGNED), 0)), 0) FROM auftrag_positionen WHERE auftrag_id = ?");
+    $fachMenge = function (int $aid) use ($fachStmt): float { $fachStmt->execute([$aid]); return (float)$fachStmt->fetchColumn(); };
+
     $kundenSchluessel = [];
     foreach ($webAuftragEingabe as $aid => $mitnehmen) {
         $a = $waZeilen[$aid] ?? null;
@@ -191,6 +202,10 @@ if ($webAuftragEingabe) {
             'status'    => $a['lieferstatus'],
             'mitnehmen' => $mitnehmen === null ? null : (bool)$mitnehmen,
             'bezahlt'   => $a['zahlungsstatus'] === 'bezahlt',
+            // Abholfach: gepackte Ware liegt bereit (abholbereit, oder teilgeliefert mit Rest im
+            // Fach nach "holt er später") → Übergabe ohne Lagerbuchung, siehe Migration 194
+            'im_fach'   => $a['lieferstatus'] === 'abholbereit'
+                || ($a['lieferstatus'] === 'teilgeliefert' && $a['lieferart'] === 'abholung' && $fachMenge((int)$aid) > 0),
         ];
     }
     // Mehrere Aufträge nur vom selben Kunden (gleiches Kundenkonto bzw. bei Gast-
@@ -252,6 +267,20 @@ if (count($webAuftraege) > 1) {
 /** Positionen eines Auftrags (inkl. seiner Retour-Zeilen) */
 $positionenVon = fn(int $aid): array => array_values(array_filter($sauberePositionen, fn($p) => $p['web_auftrag_id'] === $aid));
 
+// "Rest will der Kunde nicht" (bon.php fragt je reduzierter Auftragszeile, Jacky 2026-10-02):
+// diese Menge wird NICHT später abgeholt — zählt wie eine Kassen-Retoure (menge_retourniert,
+// bei bezahlten Aufträgen auch menge_gutgeschrieben; das Geld läuft über die Retour-Zeile des
+// Bons). Ohne Angabe bleibt der Rest offen (teilgeliefert, Kunde holt ihn später).
+$restVerzicht = []; // [auftrag_id][auftrag_position_id] => menge
+foreach ((array)($input['rest_verzicht'] ?? []) as $rv) {
+    $pid   = (int)($rv['auftrag_position_id'] ?? 0);
+    $menge = (float)($rv['menge'] ?? 0);
+    $aidRv = $posZuAuftrag[$pid] ?? null;
+    if ($pid && $menge > 0 && $aidRv && isset($webAuftraege[$aidRv])) {
+        $restVerzicht[$aidRv][$pid] = $menge;
+    }
+}
+
 // ── Manager-Override: Barauszahlung bei Retour eines bereits bezahlten Web-Auftrags ──
 // Läuft VOR jeder Buchung (erstelleBon() folgt erst weiter unten), damit bei fehlender
 // Freigabe wirklich nichts passiert — kein halb gebuchter Bon, keine Lagerbewegung.
@@ -297,7 +326,7 @@ foreach ($sauberePositionen as &$bp) {
     if ($bp['block'] === 'auftrag') {
         $wa = $webAuftraege[$bp['web_auftrag_id']] ?? null;
         $bp['kein_lagerabzug'] = !empty($bp['kein_lagerabzug'])
-            || ($wa && ($wa['status'] === 'abholbereit' || $wa['mitnehmen'] === false));
+            || ($wa && ($wa['im_fach'] || $wa['mitnehmen'] === false));
     } elseif ($bp['block'] === 'retour') {
         $bp['kein_lagerabzug'] = true; // Packplatz hat schon ausgebucht; Rücklagerung erfolgt über menge_geliefert-Tracking
     }
@@ -358,27 +387,21 @@ if ($nurAbschliessen && $webAuftraege) {
                 }
             }
 
-            $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, charge FROM auftrag_positionen WHERE auftrag_id = ?");
+            $origPosStmt = $db->prepare("SELECT id, menge, menge_geliefert, menge_abgeholt FROM auftrag_positionen WHERE auftrag_id = ?");
             $origPosStmt->execute([$aid]);
 
+            // Bezahlt + nichts zu kassieren: Übergabe aus dem Abholfach. Was nicht mitgeht,
+            // bleibt im Fach ("holt er später") — keine Lagerbuchung. "Will er nicht" mit
+            // Erstattung läuft immer über einen Bon, nie hier.
             $alleGeliefert = true;
             foreach ($origPosStmt->fetchAll(PDO::FETCH_ASSOC) as $op) {
-                $imBon   = (float)($bonAuftragPos[$op['id']] ?? $op['menge']);
-                $gepackt = (float)$op['menge'];
-                $rueck   = $gepackt - $imBon;
-                if ($rueck > 0.001 && !empty($op['artikel_id'])) {
-                    $lagerSvc->wareneingang([
-                        'artikel_id'  => (int)$op['artikel_id'],
-                        'lager_id'    => $lagerId,
-                        'menge'       => $rueck,
-                        'charge'      => $op['charge'] ?? null,
-                        'referenz'    => 'Nicht abgeholt — Auftrag ' . $auftrag['auftrag_nr'],
-                        'notiz'       => 'Abholung Kasse ohne Bon',
-                        'benutzer_id' => $benutzerId,
-                    ]);
+                $fach     = $fachVon($op, $wa['status']);
+                $imBon    = min((float)($bonAuftragPos[$op['id']] ?? 0), $fach);
+                $abgeholt = (float)$op['menge_abgeholt'] + $imBon;
+                if ($imBon > 0.001) {
+                    $db->prepare("UPDATE auftrag_positionen SET menge_abgeholt = ? WHERE id = ?")->execute([$abgeholt, $op['id']]);
                 }
-                $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ? WHERE id = ?")->execute([$imBon, $op['id']]);
-                if ($imBon < $gepackt) $alleGeliefert = false;
+                if ($abgeholt < (float)$op['menge'] - 0.001) $alleGeliefert = false;
             }
 
             $neuerLieferStatus = $alleGeliefert ? 'abgeschlossen' : 'teilgeliefert';
@@ -821,7 +844,8 @@ if ($result['erfolg'] && $webAuftraege) {
             // Ware nie das Haus verlassen hat. Eine physische Retoure einer bereits
             // versendeten/abgeschlossenen Bestellung braucht dagegen echte manuelle
             // Sichtprüfung + Einlagerung durch Packplatz.
-            if ($auftragStatus !== 'abholbereit') {
+            $istFach = $wa['im_fach'];
+            if (!$istFach) {
                 $ruecklagerungRepo = new RuecklagerungRepository();
                 foreach ($eigenePositionen as $bp) {
                     if ($bp['block'] === 'retour' && !empty($bp['retour_von_position_id']) && !empty($bp['artikel_id'])) {
@@ -852,15 +876,31 @@ if ($result['erfolg'] && $webAuftraege) {
             }
 
             // Alle Original-Positionen des Auftrags laden (inkl. artikel_id + charge für Rückbuchung)
-            $origPosStmt = $db->prepare("SELECT id, artikel_id, menge, menge_geliefert, charge FROM auftrag_positionen WHERE auftrag_id = ?");
+            $origPosStmt = $db->prepare("SELECT * FROM auftrag_positionen WHERE auftrag_id = ?");
             $origPosStmt->execute([$aid]);
             $origPositionen = $origPosStmt->fetchAll(PDO::FETCH_ASSOC);
 
             // menge_geliefert aktualisieren + prüfen ob alle geliefert
             $alleGeliefert = true;
+            $verzichtWert  = 0.0; // Bruttowert des Rests, den der Kunde nicht will
             foreach ($origPositionen as $op) {
                 $imBon   = (float)($bonAuftragPos[$op['id']] ?? 0);
                 $gepackt = (float)$op['menge'];
+
+                // Abholfach: übergeben werden kann nur, was gepackt im Fach liegt
+                $fach = $fachVon($op, $auftragStatus);
+                if ($istFach) $imBon = min($imBon, $fach);
+
+                // "Will er nicht": höchstens die Menge, die nach dieser Abholung noch offen wäre
+                $nochOffen = $istFach
+                    ? $fach - $imBon
+                    : $gepackt - (float)($op['menge_geliefert'] ?? 0) - $imBon;
+                $verzicht = min((float)($restVerzicht[$aid][(int)$op['id']] ?? 0), max(0.0, $nochOffen));
+                if ($verzicht > 0.001) {
+                    $db->prepare("UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + ?, menge_gutgeschrieben = menge_gutgeschrieben + ? WHERE id = ?")
+                       ->execute([$verzicht, $warBezahlt ? $verzicht : 0, $op['id']]);
+                    $verzichtWert += Positionsrechnung::ausPosition($op, $verzicht)['brutto'];
+                }
 
                 if (!empty($retourProPosition[$op['id']])) {
                     // Kassen-Retoure = Ware zurück UND erstattet (bar oder Gutschein)
@@ -868,30 +908,34 @@ if ($result['erfolg'] && $webAuftraege) {
                        ->execute([$retourProPosition[$op['id']], $retourProPosition[$op['id']], $op['id']]);
                 }
 
-                if ($auftragStatus === 'abholbereit') {
-                    // Packplatz hat menge_geliefert schon gesetzt — wir korrigieren nur die Differenz
-                    $rueck = $gepackt - $imBon;
-                    if ($rueck > 0.001 && !empty($op['artikel_id'])) {
-                        // Nicht mitgenommene Artikel zurück ins Lager — mit Charge aus auftrag_positionen
-                        $lagerSvc->wareneingang([
-                            'artikel_id'  => (int)$op['artikel_id'],
-                            'lager_id'    => $lagerId,
-                            'menge'       => $rueck,
-                            'charge'      => $op['charge'] ?? null,
-                            'referenz'    => 'Rückgabe Kasse — Bon ' . $bonNr,
-                            'notiz'       => 'Abholbereit, aber nicht mitgenommen — Auftrag ' . $auftrag['auftrag_nr'],
-                            'benutzer_id' => $benutzerId,
+                $abgeholt = (float)$op['menge_abgeholt'] + $imBon + $verzicht;
+                if ($istFach) {
+                    // Aus dem Abholfach: Übergabe ohne Lagerbuchung (Packplatz hat schon ausgebucht).
+                    // "Holt er später" bleibt im Fach. "Will er nicht" → Rücklagerung am Packplatz
+                    // (Kontrolle + Einlagerung dort, Bestand erst dann).
+                    if ($verzicht > 0.001 && !empty($op['artikel_id'])) {
+                        (new RuecklagerungRepository())->insert([
+                            'kassen_bon_id'       => $bonId,
+                            'bon_nr'              => $bonNr,
+                            'auftrag_id'          => $aid,
+                            'auftrag_nr'          => $auftrag['auftrag_nr'],
+                            'auftrag_position_id' => (int)$op['id'],
+                            'artikel_id'          => (int)$op['artikel_id'],
+                            'bezeichnung'         => $op['bezeichnung'],
+                            'menge'               => (int)round($verzicht),
+                            'charge'              => $op['charge'] ?? null,
+                            'kasse_id'            => $aktuelleKasseId,
                         ]);
                     }
-                    // menge_geliefert auf tatsächlich mitgenommene Menge korrigieren
-                    $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ? WHERE id = ?")
-                       ->execute([$imBon, $op['id']]);
-                    if ($imBon < $gepackt) $alleGeliefert = false;
+                    $db->prepare("UPDATE auftrag_positionen SET menge_abgeholt = ? WHERE id = ?")
+                       ->execute([$abgeholt, $op['id']]);
+                    if ($abgeholt < $gepackt - 0.001) $alleGeliefert = false;
                 } else {
+                    // Nicht gepackt ("mitnehmen"): Ware geht direkt aus dem Regal mit (Bon bucht ab)
                     $neu = (float)($op['menge_geliefert'] ?? 0) + $imBon;
-                    $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ? WHERE id = ?")
-                       ->execute([$neu, $op['id']]);
-                    if ($neu < $gepackt) $alleGeliefert = false;
+                    $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ?, menge_abgeholt = ? WHERE id = ?")
+                       ->execute([$neu, $abgeholt, $op['id']]);
+                    if ($neu + $verzicht < $gepackt - 0.001) $alleGeliefert = false;
                 }
             }
 
@@ -969,12 +1013,17 @@ if ($result['erfolg'] && $webAuftraege) {
             // ── Status setzen ─────────────────────────────────────────────────
             $sammelHinweis = $anzahlAuf > 1 ? ' (Sammelabholung)' : '';
             if ($warBezahlt) {
-                $neuerZahlStatus = $retourBetrag > 0.005 ? 'erstattet' : 'bezahlt';
+                // "erstattet" nur, wenn nach der Rückzahlung nichts mehr bezahlt bleibt — eine
+                // Teil-Erstattung (Kunde behält einen Teil der Ware) bleibt "bezahlt"
+                $nettoStmt = $db->prepare("SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = ?");
+                $nettoStmt->execute([$aid]);
+                $neuerZahlStatus = ($retourBetrag > 0.005 && (float)$nettoStmt->fetchColumn() <= 0.005) ? 'erstattet' : 'bezahlt';
             } else {
-                $neuerZahlStatus = $summeBezahltGesamt >= (float)$auftrag['bruttobetrag'] - 0.01 ? 'bezahlt'
+                // Was der Kunde nicht will, muss er auch nicht zahlen
+                $neuerZahlStatus = $summeBezahltGesamt >= (float)$auftrag['bruttobetrag'] - $verzichtWert - 0.01 ? 'bezahlt'
                                  : ($summeBezahltGesamt > 0.005 ? 'teilbezahlt' : $auftrag['zahlungsstatus']);
             }
-            if ($auftragStatus === 'abholbereit' || $mitnehmen === true) {
+            if ($istFach || $mitnehmen === true) {
                 $neuerLieferStatus = $alleGeliefert ? 'abgeschlossen' : 'teilgeliefert';
 
                 $db->prepare("

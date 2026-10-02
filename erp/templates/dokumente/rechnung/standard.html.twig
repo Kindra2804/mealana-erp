@@ -160,7 +160,7 @@
   {# ── Zahlungshinweis ── #}
   <div class="zahlungshinweis">
     <strong>Zahlungsart:</strong> {{ zahlungsarten[auftrag.zahlungsart] ?? auftrag.zahlungsart }}&emsp;
-    <strong>Zahlungsziel:</strong> {{ rechnung.faellig }} ({{ auftrag.zahlungsart == 'bar' ? '4 Tage' : '14 Tage' }})
+    <strong>Zahlungsziel:</strong> {{ rechnung.faellig }} ({{ rechnung.faellig_text ?? (auftrag.zahlungsart == 'bar' ? '4 Tage' : '14 Tage') }})
     {% if auftrag.lieferart == 'abholung' and auftrag.kanal != 'haendler' %}
       <br>Bei Selbstabholung Bezahlung in Bar oder Bankomat möglich.
       Bitte um vorherige Terminvereinbarung!

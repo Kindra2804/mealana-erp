@@ -258,6 +258,16 @@ if ($tab === 'system') {
     setSetting($db, 'lieferschein_charge_anzeigen',  $lsChargeAnzeigen);
     setSetting($db, 'download_limit_standard',       $downloadLimit !== '' ? (string)(int)$downloadLimit : '');
 
+    // Mahnwesen (Rechnungskunden) — Tage ganzzahlig, Gebühren mit Komma oder Punkt
+    foreach (['mahnung_erinnerung_tage' => 7, 'mahnung_stufe1_tage' => 14, 'mahnung_stufe2_tage' => 14] as $k => $vorgabe) {
+        $wert = trim($_POST[$k] ?? '');
+        setSetting($db, $k, (string)max(0, $wert === '' ? $vorgabe : (int)$wert));
+    }
+    foreach (['mahnung_gebuehr_stufe1' => 5, 'mahnung_gebuehr_stufe2' => 10] as $k => $vorgabe) {
+        $wert = trim(str_replace(',', '.', $_POST[$k] ?? ''));
+        setSetting($db, $k, number_format(max(0, $wert === '' ? $vorgabe : (float)$wert), 2, '.', ''));
+    }
+
     $_SESSION['erfolg'] = 'System-Einstellungen gespeichert.';
     header('Location: index.php?tab=system');
     exit;

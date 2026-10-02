@@ -1,4 +1,5 @@
 <?php
+header('Cache-Control: no-store');
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
@@ -6,7 +7,9 @@ header('Content-Type: application/json; charset=utf-8');
 
 $db      = Database::getInstance();
 $aktion  = $_GET['aktion'] ?? $_POST['aktion'] ?? '';
-$kasseId = (int)($_GET['kasse_id'] ?? $_POST['kasse_id'] ?? 0);
+// "speichern" kommt als JSON-Body (bon.php::bonParken) — kasse_id steht dann dort, nicht in GET/POST
+$inp     = json_decode(file_get_contents('php://input') ?: 'null', true);
+$kasseId = (int)($_GET['kasse_id'] ?? $_POST['kasse_id'] ?? (is_array($inp) ? ($inp['kasse_id'] ?? 0) : 0));
 $userId  = (int)($_SESSION['benutzer']['id'] ?? 0);
 
 if (!$kasseId) { echo json_encode(['erfolg' => false, 'fehler' => 'Keine Kasse-ID']); exit; }
@@ -14,9 +17,14 @@ if (!$kasseId) { echo json_encode(['erfolg' => false, 'fehler' => 'Keine Kasse-I
 switch ($aktion) {
 
     case 'speichern':
-        $raw = file_get_contents('php://input');
-        $inp = json_decode($raw, true);
         if (!$inp) { echo json_encode(['erfolg' => false, 'fehler' => 'Ungültige Daten']); exit; }
+
+        // Pro Kasse nur EIN geparkter Bon (Jacky 2026-10-02)
+        $schon = $db->prepare("SELECT COUNT(*) FROM kassen_geparkte_bons WHERE kasse_id = ?");
+        $schon->execute([$kasseId]);
+        if ((int)$schon->fetchColumn() > 0) {
+            echo json_encode(['erfolg' => false, 'fehler' => 'Es ist schon ein Bon geparkt — bitte zuerst den geparkten Bon holen und abschließen.']); exit;
+        }
 
         $warenkorb   = json_encode($inp['warenkorb']   ?? []);
         $globalRab   = (float)($inp['global_rabatt']   ?? 0);
@@ -47,18 +55,27 @@ switch ($aktion) {
         break;
 
     case 'liste':
+        // Summe in PHP statt per JSON_TABLE/->> (gibt es in MariaDB nicht — die Liste brach ab).
+        // Gleiche Rechnung wie bon.php::getGesamt (Zeilen- oder Bon-Rabatt, der höhere zählt).
         $stmt = $db->prepare("
-            SELECT id, kunden_name, global_rabatt, auftrag_id, notiz, erstellt_am,
-                   JSON_LENGTH(warenkorb) AS positionen_anz,
-                   (SELECT SUM(CAST(p.value->>'$.summe' AS DECIMAL(10,2)))
-                    FROM JSON_TABLE(warenkorb, '$[*]' COLUMNS (value JSON PATH '$')) j
-                   ) AS total
+            SELECT id, kunden_name, global_rabatt, auftrag_id, notiz, erstellt_am, warenkorb
             FROM kassen_geparkte_bons
             WHERE kasse_id = :kasse_id
             ORDER BY erstellt_am DESC
         ");
         $stmt->execute(['kasse_id' => $kasseId]);
-        echo json_encode(['erfolg' => true, 'liste' => $stmt->fetchAll()]);
+        $liste = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $zeilen = json_decode($row['warenkorb'] ?? '[]', true) ?: [];
+            $total  = 0.0;
+            foreach ($zeilen as $z) {
+                $rab    = ($z['block'] ?? null) === 'gutschein_kauf' ? 0 : max((float)($z['rabatt_prozent'] ?? 0), (float)$row['global_rabatt']);
+                $total += (float)($z['menge'] ?? 0) * (float)($z['einzelpreis_brutto'] ?? 0) * (1 - $rab / 100);
+            }
+            unset($row['warenkorb']);
+            $liste[] = $row + ['positionen_anz' => count($zeilen), 'total' => round($total, 2)];
+        }
+        echo json_encode(['erfolg' => true, 'liste' => $liste]);
         break;
 
     case 'laden':

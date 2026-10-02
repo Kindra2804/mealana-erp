@@ -746,6 +746,40 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         </div>
 
         <div class="card" style="margin-bottom:12px">
+            <div class="card-header">Mahnwesen (Rechnungskunden)</div>
+            <div style="padding:16px">
+                <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 220px));gap:12px">
+                    <div class="form-group">
+                        <label class="form-label">Erinnerung nach … Tagen</label>
+                        <input type="number" name="mahnung_erinnerung_tage" class="erp-input" min="0" value="<?= $s('mahnung_erinnerung_tage', '7') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">1. Mahnung … Tage danach</label>
+                        <input type="number" name="mahnung_stufe1_tage" class="erp-input" min="1" value="<?= $s('mahnung_stufe1_tage', '14') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">2. Mahnung … Tage danach</label>
+                        <input type="number" name="mahnung_stufe2_tage" class="erp-input" min="1" value="<?= $s('mahnung_stufe2_tage', '14') ?>">
+                    </div>
+                    <div></div>
+                    <div class="form-group">
+                        <label class="form-label">Mahngebühr 1. Mahnung (€)</label>
+                        <input type="text" name="mahnung_gebuehr_stufe1" class="erp-input" value="<?= $s('mahnung_gebuehr_stufe1', '5.00') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mahngebühr 2. Mahnung (€)</label>
+                        <input type="text" name="mahnung_gebuehr_stufe2" class="erp-input" value="<?= $s('mahnung_gebuehr_stufe2', '10.00') ?>">
+                    </div>
+                </div>
+                <div style="color:var(--color-text-muted);font-size:12px;margin-top:4px">
+                    Erinnerung gerechnet ab Fälligkeit der Rechnung, geht automatisch raus. Die Mahnungen werden nur vorgeschlagen
+                    und erst unter Verkauf → Mahnwesen freigegeben. Die Frist in der Mahnung = Tage bis zur 2. Mahnung.
+                    Vorkasse ist davon nicht betroffen (Erinnerung nach 14, Storno nach 30 Tagen).
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
             <div class="card-header">Versand / Lieferschein</div>
             <div style="padding:16px">
                 <label style="font-size:13px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">

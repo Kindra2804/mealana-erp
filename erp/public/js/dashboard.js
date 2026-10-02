@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const aktion    = btn.dataset.aktion;
 
             const bestaetigungstext = aktion === 'stornierung'
-                ? 'Auftrag wirklich stornieren? Lagerbestand wird zurückgebucht, Kunde bekommt eine Stornierungsmail. Das kann nicht rückgängig gemacht werden.'
+                ? 'Auftrag wirklich stornieren? Reservierungen werden freigegeben, Kunde bekommt eine Stornierungsmail. Das kann nicht rückgängig gemacht werden.'
                 : 'Zahlungserinnerung jetzt manuell senden?';
             if (!confirm(bestaetigungstext)) return;
 

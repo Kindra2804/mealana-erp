@@ -12,9 +12,12 @@
  *   0 6 * * * php /var/www/mealana/erp/cron/mahnwesen.php >> /var/log/mealana_cron.log 2>&1
  *
  * Logik (Details siehe MahnwesenService):
- *   14+ Tage ohne Zahlung → Erinnerungsmail (einmal)
- *   30+ Tage ohne Zahlung, Vorkasse → Automatische Stornierung + Lagerrückbuchung
- *   30+ Tage ohne Zahlung, Rechnung → nur Hinweis (Ware evtl. schon versendet, kein Auto-Storno)
+ *   Vorkasse (ab Bestelldatum):
+ *     14+ Tage ohne Zahlung → Erinnerungsmail (einmal)
+ *     30+ Tage ohne Zahlung → automatische Stornierung (Reservierungen frei, kein Lagerbuchen)
+ *   Rechnung (ab Fälligkeit der Rechnung, Fristen unter Einstellungen → System → Mahnwesen):
+ *     Erinnerung automatisch (Vorgabe 7 Tage), 1. und 2. Mahnung nur als VORSCHLAG
+ *     (je 14 Tage nach der Vorstufe) — Freigabe auf Verkauf → Mahnwesen. Kein Auto-Storno.
  *
  * Dieselbe Logik (MahnwesenService) wird auch vom manuellen "Erinnerung senden"/
  * "Stornieren?"-Button im Dashboard verwendet (public/auftraege/mahnung_manuell_ajax.php).
@@ -37,7 +40,7 @@ $jarvisId = (int) $db->query("SELECT id FROM benutzer WHERE username = 'system'"
 
 $log('=== Mahnwesen-Cronjob gestartet ===');
 
-// Alle offenen Aufträge mit Zahlungsrückstand (Vorkasse + Rechnung)
+// Vorkasse: offene Aufträge nach Bestellalter
 $offene = $db->query("
     SELECT
         a.id,
@@ -45,26 +48,23 @@ $offene = $db->query("
         a.zahlungsart,
         DATEDIFF(NOW(), a.erstellt_am) AS tage_offen,
         (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'erinnerung')   AS erinnerung_gesendet,
-        (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'stornierung')  AS stornierung_gesendet,
-        (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'hinweis')      AS hinweis_gesendet
+        (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'stornierung')  AS stornierung_gesendet
     FROM auftraege a
-    WHERE a.zahlungsart IN ('vorkasse', 'rechnung')
+    WHERE a.zahlungsart = 'vorkasse'
       AND a.zahlungsstatus IN ('ausstehend', 'teilbezahlt')
       AND a.lieferstatus NOT IN ('storniert', 'abgeschlossen')
     ORDER BY a.erstellt_am ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-$log('Gefundene überfällige Aufträge: ' . count($offene));
+$log('Offene Vorkasse-Aufträge: ' . count($offene));
 
 foreach ($offene as $auftrag) {
     $tage    = (int)$auftrag['tage_offen'];
     $id      = (int)$auftrag['id'];
     $nummer  = $auftrag['auftrag_nr'];
-    $istVorkasse = $auftrag['zahlungsart'] === 'vorkasse';
-    $istRechnung = $auftrag['zahlungsart'] === 'rechnung';
 
     // ─── 30+ Tage, VORKASSE → AUTOMATISCHE STORNIERUNG ──────────────────────
-    if ($tage >= 30 && $istVorkasse && !$auftrag['stornierung_gesendet']) {
+    if ($tage >= 30 && !$auftrag['stornierung_gesendet']) {
         $log("Auftrag #{$id} ({$nummer}): {$tage} Tage — STORNIERUNG");
         $ergebnis = $mahnwesen->storniere($id, $jarvisId, 'cronjob');
         $log($ergebnis['erfolg']
@@ -73,14 +73,7 @@ foreach ($offene as $auftrag) {
         continue;
     }
 
-    // ─── 30+ Tage, RECHNUNG → nur Hinweis im Log (kein Auto-Storno!) ────────
-    if ($tage >= 30 && $istRechnung && !$auftrag['hinweis_gesendet']) {
-        $log("Auftrag #{$id} ({$nummer}): {$tage} Tage — RECHNUNG ÜBERFÄLLIG (manuell prüfen, kein Auto-Storno)");
-        $mahnwesen->rechnungHinweis($id, $jarvisId);
-        continue;
-    }
-
-    // ─── 14+ Tage → ERINNERUNG (nur einmal, gilt für Vorkasse + Rechnung) ───
+    // ─── 14+ Tage → ERINNERUNG (nur einmal) ──────────────────────────────────
     if ($tage >= 14 && !$auftrag['erinnerung_gesendet']) {
         $log("Auftrag #{$id} ({$nummer}): {$tage} Tage — ERINNERUNGSMAIL");
         $ergebnis = $mahnwesen->sendeErinnerung($id, $jarvisId, 'cronjob');
@@ -92,5 +85,9 @@ foreach ($offene as $auftrag) {
 
     $log("Auftrag #{$id} ({$nummer}): {$tage} Tage — noch keine Aktion nötig");
 }
+
+// Rechnung: Erinnerung automatisch, Mahnstufen als Vorschlag zur Freigabe
+$r = $mahnwesen->pruefeRechnungen($jarvisId);
+$log("Rechnungen: {$r['erinnerungen']} Erinnerung(en) gesendet, {$r['vorschlaege']} Mahnung(en) zur Freigabe vorgeschlagen");
 
 $log('=== Mahnwesen-Cronjob abgeschlossen ===');

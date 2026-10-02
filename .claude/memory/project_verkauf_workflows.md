@@ -73,3 +73,15 @@ Pendant zu LS-POS "Offene Auswahl": Stammkunde nimmt Ware mit OHNE sofortige Bez
 4. Finalisieren → echter Bon + RKSV-Signatur + Rechnungsnummer
 
 **How to apply:** An der Kasse als eigener Button "Mitgeben ▷" (Amber/Orange) neben BEZAHLEN. Kundenzuweisung ist Pflichtfeld. Die offene Auswahl ist kein Bon — erst bei Finalisierung wird RKSV-Signatur erzeugt. Liste offener Auswahlvorgänge muss in der Kasse abrufbar sein.
+
+## ✅ 2026-10-02 Mahnstufen für Rechnungskunden GEBAUT (nicht committed, Migration 193)
+Jacky-Entscheidungen: Erinnerung → 1. → 2. (letzte) Mahnung → "manuell klären"; Fristen 7/14/14 ab FÄLLIGKEIT (einstellbar, Einstellungen → System → Mahnwesen); NUR Mahngebühr (5/10 €), keine Verzugszinsen/keine 40-€-B2B-Pauschale; Erinnerung automatisch, Mahnungen nur als Vorschlag + Freigabe. Vorkasse unverändert (14 Erinnerung / 30 Auto-Storno ab Bestelldatum).
+- mahnungen: typ + mahnung1/mahnung2, status vorgeschlagen|versendet|verworfen, offen_betrag, gebuehr, gebuehr_erlassen_am, neue_frist, dateiname, bearbeitet_von; gesendet_am nullable (Vorschläge).
+- rechnungen.faellig_am wird jetzt gesetzt (DokumentService::berechneFaelligkeit: Zahlungsbedingung Auftrag → Kunde → 14 Tage, bar 4) und auf der Rechnung gedruckt; Altbestand = Rechnungsdatum+14.
+- MahnwesenService: pruefeRechnungen (Cron), freigeben (PDF `dokumente/mahnung/standard.html.twig` → auftrag_dokumente typ 'mahnung', Mail `mails/mahnwesen/mahnung.html.twig` mit Anhang), verwerfen (Stufe kommt nie wieder), gebuehrErlassen (→ AuftragService::zahlungsstatusNachGebuehrErlass), Listen für `auftraege/mahnwesen.php` (Sidebar Verkauf, Badge = Vorschläge).
+- Offene (versendete, nicht erlassene) Gebühren zählen zum zu zahlenden Betrag: AuftragService::setzeZahlungsstatus (bucheZahlung refaktoriert), detail.php "Mahngebühren (offen)", Dashboard-Forderungen, Zahlungs-Kontrolle.
+- Buchhaltungsexport Block 4: Gebühr bei Versand Debitor an Konto der Artikelgruppe "Mahngebühren" (4890 neu im Kontenplan, 0 %), Erlass = Gegenbuchung. **4890 mit Steuerberater abstimmen.**
+- Dashboard-Mahnblock: Rechnung zeigt Tage nach Fälligkeit + Stufe ("→ Mahnung freigeben", "✓ 1. Mahnung"…), Chip "Mahnungen zur Freigabe".
+- **Echter Alt-Bug behoben:** MahnwesenService::storniere() schrieb lager_bewegungen mit nicht existierenden Spalten (typ/referenz_typ/referenz_id) → JEDE Vorkasse-Auto-Stornierung mit Positionen brach ab (hat nie funktioniert), außerdem hätte sie Bestand auf Lager 1 gebucht, obwohl vor Versand nur reserviert ist. Jetzt wie AuftragService::stornieren (Reservierungen schließen, kein Lagerbuchen, versendet/abgeschlossen gesperrt). Erinnerungsmail hatte Zahlungsart fix "Rechnung".
+- Toter Code bemerkt (nicht angefasst): AuftragRepository::findVorkasseUeberfaellig nutzt k.name/k.email (gibt es seit Verschlüsselung nicht) — wird nirgends aufgerufen.
+- Getestet: 21-Punkte-End-to-End (Wegwerf-Auftrag ohne E-Mail, aufgeräumt), PDF per pdf_zu_png angesehen, Playwright Mahnwesen/Dashboard/Einstellungen/Zahlungskontrolle ohne PHP-/JS-Fehler. Kein echter Mailversand getestet.

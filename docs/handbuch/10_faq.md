@@ -85,7 +85,7 @@ Cursor muss im Scan-Feld sein (blaues Eingabefeld oben). Einmal ins Feld klicken
 ## Mahnwesen
 
 **Ich möchte eine Mahnung für einen bestimmten Auftrag manuell senden.**  
-Derzeit nur über den Cronjob automatisch. Manuelle Mahnung: E-Mail direkt aus dem E-Mail-Programm senden und im Auftrags-Notizfeld dokumentieren.
+Zahlungserinnerung: im Dashboard bei „Offene Kundenrechnungen“ auf **→ Erinnerung senden**. Die 1. und 2. Mahnung schlägt das System vor (Verkauf → Mahnwesen) — dort freigeben. Siehe [04 — Aufträge](04_auftraege.md#mahnwesen).
 
 ---
 

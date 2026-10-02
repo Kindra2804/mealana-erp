@@ -793,7 +793,7 @@ body {
   <div class="ph-right">
     <button class="ph-btn ph-btn-menu" onclick="toggleMenue(event)">⚙ Menü</button>
     <button class="ph-btn ph-btn-mitgeb" onclick="mitgebenDialog()">Mitgeben ▷</button>
-    <button class="ph-btn ph-btn-parken" onclick="bonParken()">⏸ Parken</button>
+    <button class="ph-btn ph-btn-parken" id="btn-parken" onclick="bonParken()">⏸ Parken</button>
     <button class="ph-btn ph-btn-close" onclick="location.href='<?= BASE_PATH ?>/kasse/index.php'">✕ Schließen</button>
   </div>
   <!-- Dropdown -->
@@ -1463,6 +1463,22 @@ body {
 </div>
 
 <!-- Retour-Bon: Barauszahlung bestätigen -->
+<!-- Kunde nimmt von einem Auftrag weniger mit: Rest später abholen oder will er nicht? -->
+<div id="ov-rest" class="ov">
+  <div class="ov-box" style="max-width:560px">
+    <div class="ov-title">Nicht alles mitgenommen</div>
+    <div style="padding:16px 20px">
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px">Was passiert mit dem Rest?</p>
+      <div id="rest-liste"></div>
+      <div id="rest-fehler" style="color:#dc2626;font-size:13px;margin-top:8px;display:none">Bitte für jede Zeile auswählen.</div>
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:16px">
+        <button onclick="ovSchliessen('ov-rest')" class="ov-btn ov-btn-sec">Abbrechen</button>
+        <button onclick="restFrageBestaetigen()" class="ov-btn ov-btn-prim">Weiter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="ov-retour-bar" class="ov">
   <div class="ov-box" style="max-width:440px">
     <div class="ov-title">↩ Rückgabe — Barauszahlung</div>
@@ -2102,16 +2118,24 @@ function kdSyncWarenkorb() {
             bezeichnung: p.bezeichnung,
             menge:       p.menge,
             summe:       p.menge * p.einzelpreis_brutto * rab,
-            vonAuftrag:  !!p.vonAuftrag
+            vonAuftrag:  !!p.vonAuftrag,
+            bezahlt:     !!(p.vonAuftrag && auftragBezahlt(zeileAuftragId(p)))
         };
     });
+    // Wie die Summe unten an der Kasse: bereits bezahlte Aufträge werden nicht kassiert
+    var gesamt = getGesamt(), bereitsBezahlt = 0;
+    if (geladeneAuftraege.some(function(a) { return a.zahlungsstatus === 'bezahlt'; })) {
+        bereitsBezahlt = positionen.reduce(function(s, z) { return s + (z.bezahlt ? z.summe : 0); }, 0);
+        gesamt = berechneAbrechnungsModus().netBrutto;
+    }
     kdSync('warenkorb', {
         artikel_id:          aktiv.artikel_id || null,
         artikel_name:        aktiv.bezeichnung,
         artikel_variante:    null,
         artikel_einzelpreis: aktiv.einzelpreis_brutto,
         positionen:          positionen,
-        gesamt:              getGesamt(),
+        gesamt:              Math.round(gesamt * 100) / 100,
+        bereits_bezahlt:     Math.round(bereitsBezahlt * 100) / 100,
         auftrag_nr:          auftragNummernText() || null
     });
 }
@@ -2569,7 +2593,25 @@ function ausgabeOeffnen(format) {
 }
 
 // ── Parken ────────────────────────────────────────────────────────────────────
+// Pro Kasse höchstens EIN geparkter Bon (Jacky 2026-10-02). Ist einer geparkt, wird der
+// Parken-Knopf zu "Geparkten holen" — ein zweiter wird nicht angenommen (Server prüft auch).
+var geparkterBonId = null;
+function parkenKnopfSetzen(id) {
+    geparkterBonId = id || null;
+    var btn = document.getElementById('btn-parken');
+    if (btn) btn.textContent = geparkterBonId ? '▶ Geparkten holen' : '⏸ Parken';
+}
+// Abgleich mit dem Server (z.B. nach Kassenstart) — nie aus dem Browser-Cache
+function geparktStatusLaden() {
+    fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=liste&kasse_id=' + KASSE_ID + '&_=' + Date.now(), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(function(d) { parkenKnopfSetzen((d.erfolg && d.liste.length) ? d.liste[0].id : null); })
+        .catch(function() {});
+}
+document.addEventListener('DOMContentLoaded', geparktStatusLaden);
+
 function bonParken() {
+    if (geparkterBonId) { geparktenLaden(geparkterBonId); return; }
     if (warenkorb.length === 0) { feedback('Kein Bon zum Parken', 'info'); return; }
     document.getElementById('ph-dropdown').classList.remove('offen');
     var kundenAnzeige = document.getElementById('kunden-anzeige').textContent.trim();
@@ -2595,13 +2637,14 @@ function bonParken() {
     })
     .then(r => r.json())
     .then(d => {
-        if (!d.erfolg) { feedback('Parken fehlgeschlagen', 'fehler'); return; }
+        if (!d.erfolg) { feedback(d.fehler || 'Parken fehlgeschlagen', 'fehler'); geparktStatusLaden(); return; }
         // Bon zurücksetzen
         warenkorb = []; aktiveZeile = -1; globalRabatt = 0;
         kundeId = null; geladeneAuftraege = []; mitnehmenWarteschlange = [];
         _hauptAuftragSpiegeln(); zusatzPositionen = [];
         document.getElementById('kunden-anzeige').textContent = 'Laufkunde';
         clearNumpad(); renderBon();
+        parkenKnopfSetzen(d.id); // sofort umschalten, ohne auf den Server zu warten
         feedback('Bon geparkt (#' + d.id + ')', 'ok');
     })
     .catch(() => feedback('Verbindungsfehler', 'fehler'));
@@ -2674,7 +2717,9 @@ function geparktenLaden(id) {
             zusatzPositionen               = ktx.zusatz_positionen      || [];
             aktiveZeile = -1;
             // Nach Laden aus DB löschen
-            fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' });
+            parkenKnopfSetzen(null);
+            fetch('<?= BASE_PATH ?>/kasse/ajax_parken.php?aktion=loeschen&id=' + id + '&kasse_id=' + KASSE_ID, { method: 'POST' })
+                .then(geparktStatusLaden, geparktStatusLaden);
             ovSchliessen('ov-geparkt');
             renderBon();
             feedback('Bon geladen', 'ok');
@@ -2694,6 +2739,7 @@ function geparktenLoeschen(id, btn) {
                 document.getElementById('geparkt-liste').innerHTML =
                     '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Keine geparkten Bons</div>';
             }
+            geparktStatusLaden();
             feedback('Gelöscht', 'ok');
         })
         .catch(() => feedback('Verbindungsfehler', 'fehler'));
@@ -2928,7 +2974,8 @@ function berechneAbrechnungsModus() {
         if (p.vonAuftrag && auftragBezahlt(zeileAuftragId(p))) {
             var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
             var diff = origMenge - p.menge;
-            if (diff > 0.001) retourBrutto += diff * p.einzelpreis_brutto * rab;
+            // Nur was der Kunde nicht will, wird erstattet — "später abholen" bleibt bezahlt+offen
+            if (diff > 0.001 && p.restModus === 'verzicht') retourBrutto += diff * p.einzelpreis_brutto * rab;
         } else {
             // Extras + Zeilen noch unbezahlter Aufträge (Sammelabholung) werden kassiert
             extraBrutto += p.menge * p.einzelpreis_brutto * rab;
@@ -2952,7 +2999,7 @@ function berechneZusatzPositionen() {
         if (!p.vonAuftrag || !auftragBezahlt(zeileAuftragId(p)) || auftragNichtsMitgenommen(zeileAuftragId(p))) return;
         var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
         var diff = origMenge - p.menge;
-        if (diff < 0.001) return;
+        if (diff < 0.001 || p.restModus !== 'verzicht') return;
         zusatzPositionen.push({
             artikel_id: p.artikel_id, bezeichnung: p.bezeichnung, ean: p.ean || null,
             menge: -diff, einzelpreis_brutto: p.einzelpreis_brutto,
@@ -2984,8 +3031,59 @@ function berechneZusatzPositionen() {
     });
 }
 
+// ── Weniger mitgenommen als bestellt: Rest später abholen oder will er nicht? ──
+// (Jacky 2026-10-02) Gilt für bezahlte und unbezahlte Aufträge. "Will er nicht" = wie eine
+// Retoure des Rests (bezahlt: Geld zurück), "später" = Rest bleibt offen (teilgeliefert).
+function reduzierteAuftragsZeilen() {
+    return warenkorb.filter(function(p) {
+        if (!p.vonAuftrag || !p.auftrag_position_id || auftragNichtsMitgenommen(zeileAuftragId(p))) return false;
+        var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
+        return orig - p.menge > 0.001;
+    });
+}
+function restFrageOffen() {
+    return reduzierteAuftragsZeilen().some(function(p) { return !p.restModus || p.restModusMenge !== p.menge; });
+}
+function restVerzichtListe() {
+    return reduzierteAuftragsZeilen().filter(function(p) { return p.restModus === 'verzicht'; }).map(function(p) {
+        var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
+        return { auftrag_position_id: p.auftrag_position_id, menge: orig - p.menge };
+    });
+}
+function restFrageZeigen() {
+    var html = '';
+    reduzierteAuftragsZeilen().forEach(function(p, i) {
+        var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
+        var a = auftragInfo(zeileAuftragId(p));
+        var gewaehlt = p.restModusMenge === p.menge ? p.restModus : null;
+        html += '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:8px">'
+              + '<div style="font-weight:600;font-size:14px">' + esc(p.bezeichnung) + '</div>'
+              + '<div style="font-size:12px;color:#6b7280;margin-bottom:6px">' + (a ? esc(a.nr) + ' · ' + (a.zahlungsstatus === 'bezahlt' ? 'bezahlt' : 'unbezahlt') + ' · ' : '')
+              + p.menge + ' von ' + orig + ' mitgenommen — Rest ' + (orig - p.menge) + '</div>'
+              + '<label style="display:block;font-size:14px;padding:3px 0;cursor:pointer"><input type="radio" name="rest-' + i + '" value="spaeter"' + (gewaehlt === 'spaeter' ? ' checked' : '') + '> Holt der Kunde <strong>später</strong> ab (bleibt offen)</label>'
+              + '<label style="display:block;font-size:14px;padding:3px 0;cursor:pointer"><input type="radio" name="rest-' + i + '" value="verzicht"' + (gewaehlt === 'verzicht' ? ' checked' : '') + '> Will der Kunde <strong>nicht</strong> (Ware zurück ins Lager'
+              + (a && a.zahlungsstatus === 'bezahlt' ? ', Geld zurück' : '') + ')</label>'
+              + '</div>';
+    });
+    document.getElementById('rest-liste').innerHTML = html;
+    document.getElementById('rest-fehler').style.display = 'none';
+    ov('ov-rest');
+}
+function restFrageBestaetigen() {
+    var zeilen = reduzierteAuftragsZeilen();
+    var wahl = zeilen.map(function(p, i) {
+        var r = document.querySelector('input[name="rest-' + i + '"]:checked');
+        return r ? r.value : null;
+    });
+    if (wahl.indexOf(null) !== -1) { document.getElementById('rest-fehler').style.display = 'block'; return; }
+    zeilen.forEach(function(p, i) { p.restModus = wahl[i]; p.restModusMenge = p.menge; });
+    ovSchliessen('ov-rest');
+    bezahlenDialog();
+}
+
 function bezahlenDialog() {
     if (warenkorb.length === 0 && !retoureAktiv()) return;
+    if (geladeneAuftraege.length && restFrageOffen()) { restFrageZeigen(); return; }
 
     var einAuftragBezahlt = geladeneAuftraege.some(function(a) { return a.zahlungsstatus === 'bezahlt'; });
     if ((einAuftragBezahlt || retoureAktiv()) && geladeneAuftraege.length) {
@@ -3005,7 +3103,8 @@ function bezahlenDialog() {
             });
             document.getElementById('bezahlt-info-text').textContent =
                 (geladeneAuftraege.length > 1 ? 'Aufträge ' : 'Auftrag ') + auftragNummernText()
-                + ' · € ' + fmt(origTotal) + ' — vollständig bezahlt.';
+                + ' · € ' + fmt(origTotal) + ' — vollständig bezahlt.'
+                + (reduzierteAuftragsZeilen().length ? ' Nicht Mitgenommenes bleibt offen (teilgeliefert) und kann später abgeholt werden.' : '');
             ov('ov-bezahlt-info');
             return;
         }
@@ -3239,6 +3338,7 @@ function bonSpeichern(zahlDaten) {
             bruttobetrag: g,
             positionen: positionen,
             web_auftraege:               geladeneAuftraege.map(function(a) { return { id: a.id, mitnehmen: a.mitnehmen }; }),
+            rest_verzicht:               restVerzichtListe(),
         }, zahlDaten))
     })
     .then(r => r.json())
@@ -3302,6 +3402,7 @@ function abschliessenOhneBon() {
             kasse_id: KASSE_ID, lager_id: LAGER_ID, kunden_id: kundeId, bruttobetrag: 0,
             zahlungsart: 'bar', positionen: positionen,
             web_auftraege:              geladeneAuftraege.map(function(a) { return { id: a.id, mitnehmen: a.mitnehmen }; }),
+            rest_verzicht:              restVerzichtListe(),
             nur_abschliessen:           true,
         })
     })
@@ -3924,6 +4025,16 @@ function _istRetoureStatus(lieferstatus) {
     // der Praxisfall "bezahlt + versendet" landet also fast nie sichtbar bei 'versendet'.
     return lieferstatus === 'versendet' || lieferstatus === 'teilgeliefert' || lieferstatus === 'abgeschlossen';
 }
+// Ausnahme: Abholung, von der noch etwas offen ist ("holt er später", Rest im Abholfach oder
+// noch ungepackt) — die wird wieder als Abholung geladen, nicht als Retoure (Jacky 2026-10-02)
+function _istRetoureAuftrag(a) {
+    if (a.lieferstatus === 'teilgeliefert' && a.lieferart === 'abholung' && parseFloat(a.menge_offen || 0) > 0) return false;
+    return _istRetoureStatus(a.lieferstatus);
+}
+// Gepackte Ware liegt im Abholfach → Übergabe ohne neue Lagerbuchung, keine Mitnehmen-Frage
+function _istFachAuftrag(a) {
+    return a.lieferstatus === 'abholbereit' || (a.lieferstatus === 'teilgeliefert' && parseFloat(a.menge_im_fach || 0) > 0);
+}
 
 function auftragWaehlen(a) {
     if (auftragInfo(a.id)) {
@@ -3931,7 +4042,7 @@ function auftragWaehlen(a) {
         feedback('Auftrag ' + a.auftrag_nr + ' ist schon geladen', 'info');
         return;
     }
-    var istRetoure = _istRetoureStatus(a.lieferstatus);
+    var istRetoure = _istRetoureAuftrag(a);
 
     // Bereits manuell gescannte Artikel (Laufkunde) bleiben erhalten und werden als
     // "weitere Artikel" neben dem geladenen Auftrag geführt. Ist schon ein Auftrag geladen:
@@ -3966,7 +4077,7 @@ function auftragWaehlen(a) {
         feedback('Auftrag ' + a.auftrag_nr + ' geladen — bereits ausgeliefert. Menge zurück eintragen für die Rückgabe.', 'ok');
         return;
     }
-    if (a.lieferstatus === 'abholbereit') {
+    if (_istFachAuftrag(a)) {
         feedback(a.zahlungsstatus === 'bezahlt'
             ? 'Auftrag ' + a.auftrag_nr + ' geladen — bereits bezahlt · Abholung'
             : 'Auftrag ' + a.auftrag_nr + ' geladen — bereit zur Abholung', 'ok');
@@ -3978,7 +4089,7 @@ function auftragWaehlen(a) {
 }
 
 function _auftragHinzufuegen(a) {
-    var istRetoure = _istRetoureStatus(a.lieferstatus);
+    var istRetoure = _istRetoureAuftrag(a);
     geladeneAuftraege.push({
         id: a.id, nr: a.auftrag_nr, status: a.lieferstatus || null,
         mitnehmen: null, zahlungsstatus: a.zahlungsstatus || null,
@@ -4014,8 +4125,12 @@ function _auftragHinzufuegen(a) {
             });
         });
     } else {
+        var fachModus = _istFachAuftrag(a);
         a.positionen.forEach(function(p) {
-            var menge = parseFloat(p.menge);
+            // Abholfach: nur was gepackt bereitliegt; teilgeliefert ohne Fach: noch offene Menge
+            var menge = fachModus ? parseFloat(p.menge_im_fach !== undefined ? p.menge_im_fach : p.menge)
+                      : (a.lieferstatus === 'teilgeliefert' ? parseFloat(p.menge_offen || 0) : parseFloat(p.menge));
+            if (menge <= 0 && a.lieferstatus !== 'abholbereit') return;
             warenkorb.push({
                 artikel_id:           p.artikel_id,
                 bezeichnung:          p.bezeichnung,
@@ -4036,7 +4151,7 @@ function _auftragHinzufuegen(a) {
             });
         });
         // Noch nicht gepackte Aufträge: "mitnehmen oder nur zahlen?" fragen
-        if (a.lieferstatus !== 'abholbereit') mitnehmenWarteschlange.push(a.id);
+        if (!fachModus) mitnehmenWarteschlange.push(a.id);
     }
     _kundenAnzeigeAuftraege();
 }

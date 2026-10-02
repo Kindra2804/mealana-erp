@@ -97,6 +97,27 @@ Der **Bestand** wird weiterhin je Lager geführt, nicht je Fach — Verkauf und 
 
 ---
 
+## Lagerwert
+
+**Lager → Lagerwert** (nur mit Recht „Buchhaltung anzeigen“, weil Einkaufswerte zu sehen sind).
+
+Zeigt den aktuellen Wert des Lagerbestands zu Einkaufspreisen (netto), aufgeteilt in **eigene Lager** und **bei Händlern** (Kommissionsware bleibt bis zur Verkaufsmeldung unser Bestand). Partner-Lager und Partnerware zählen nie mit.
+
+**Welcher EK zählt?** Der erste vorhandene in dieser Reihenfolge:
+1. echter EK aus dem **letzten Wareneingang** (kommt aus der Bestellung)
+2. EK des **Standardlieferanten**
+3. **günstigster** EK der übrigen Lieferanten
+4. EK des **Vater- bzw. Originalartikels** (Varianten und Zustandsartikel -RET/-GEB/-BSC bekommen keinen eigenen EK)
+5. sonst **0 €** — diese Artikel stehen in der Kachel „Artikel ohne EK“. Der Link führt zur Artikelliste mit dem Filter **„Kein EK (mit Bestand)“** zum Nachpflegen.
+
+**Festgehaltene Werte** entstehen automatisch:
+- am **Monatsende** (Cronjob `cron/lagerwert.php`, täglich spätabends einplanen — läuft nur am letzten Tag des Monats)
+- beim **Start** und beim **Abschluss** jeder Inventur
+
+Zu jedem festgehaltenen Wert gibt es eine **CSV**-Datei mit der bewerteten Bestandsliste (Lager, Artikel, Menge, EK, EK-Quelle, Wert) — z. B. für den Steuerberater. Oben auf der Seite lässt sich auch der aktuelle Stand als CSV herunterladen.
+
+---
+
 ## Umlagerung (geplant)
 
 Ware zwischen Lagern verschieben — z.B. Standardlager → Messe-Lager.

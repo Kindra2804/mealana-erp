@@ -96,6 +96,7 @@ Vor jeder echten Bestandsänderung steht immer eine **Vorschau-Seite** — sie b
 3. **Verteilung geändert** (Chargen zusammengelegt/umbenannt, Lagerplatz gewechselt) → die neuen Chargen-Zeilen werden eingetragen; bei Scope "Ganzes Lager"/"Kategorie"/"Artikel" werden dabei alte, nicht mehr vorkommende Chargen auf 0 gesetzt (dort wird ja der komplette Artikelbestand betrachtet) — bei Scope "Lagerplatz" bleiben nicht gezählte alte Chargen an diesem Platz bewusst unangetastet (könnten schlicht übersehen worden sein). Auch wenn die Gesamtsumme gleich bleibt, gibt es dabei keine Lagerbewegung (kein Zugang/Schwund-Ereignis, nur Umverteilung).
 4. **Echte Mengenabweichung** → zusätzlich eine Lagerbewegung für die Netto-Differenz (Zugang → Typ "inventur", Fehlbestand → Typ "schwund").
 5. Der Lauf wird auf "Abgeschlossen" gesetzt, das Inventurdatum an allen gezählten Artikeln aktualisiert.
+6. Der **Lagerwert** wird festgehalten — genauso schon beim **Start** des Laufs. So lässt sich unter Lager → Lagerwert vergleichen, wie sich der Wert durch die Zählung verändert hat (siehe [03 — Lager](03_lager.md#lagerwert)).
 
 **Rollenabhängige Notizpflicht** (bereits beim Zählen selbst, nicht erst beim Abschluss): weicht die eingegebene Menge vom Soll ab, ist die Notiz für alle unterhalb Manager-Rang Pflicht — ab Manager-Rang optional.
 

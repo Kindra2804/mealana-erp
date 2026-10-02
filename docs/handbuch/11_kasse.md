@@ -122,7 +122,7 @@ Hat ein Kunde mehrere Bestellungen zur Abholung, holt er sie mit **einem** Bon a
 |-----------|--------------|
 | Auftrag schon online bezahlt | Steht nicht im Kassenbetrag, wird nur abgeschlossen |
 | Auftrag unbezahlt | Wird mit dem Bon bezahlt (nur die mitgenommenen Mengen) |
-| Teilabholung | Auftrag wird „teilgeliefert“, nicht Mitgenommenes geht zurück ins Lager |
+| Teilabholung | Beim Bezahlen fragt die Kasse je Zeile: **„holt er später“** (Rest bleibt gepackt im Abholfach, Auftrag „teilgeliefert“, beim nächsten Laden steht der Rest im Bon) oder **„will er nicht“** (Rest geht in die Rücklagerung am Packplatz, bei bezahlten Aufträgen Geld zurück, Auftrag dafür erledigt) |
 | Von einem Auftrag gar nichts mitgenommen | Auftrag bleibt unverändert liegen (✕ im Block nimmt ihn ganz vom Bon) |
 | Alle Aufträge bezahlt, alles mitgenommen | Kein Bon nötig, alle Aufträge werden direkt abgeschlossen |
 

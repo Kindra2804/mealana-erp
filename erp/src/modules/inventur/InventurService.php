@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/InventurRepository.php';
 require_once __DIR__ . '/../lager/LagerRepository.php';
 require_once __DIR__ . '/../artikel/ArtikelRepository.php';
+require_once __DIR__ . '/../statistik/LagerwertService.php';
 
 /**
  * InventurService – Lebenszyklus der Inventur-Läufe (Slice 1: nur Kopf + Scope)
@@ -69,6 +70,9 @@ class InventurService
             'scope_tabelle' => $scopeTabelle,
             'scope'         => $bezeichnung,
         ]);
+
+        // Lagerwert vor der Zählung festhalten (Vergleich mit dem Wert nach dem Abschluss)
+        (new LagerwertService())->festhaltenOhneAbbruch('inventur_start', $id);
 
         return ['erfolg' => true, 'id' => $id];
     }
@@ -664,6 +668,8 @@ class InventurService
             'korrigierte_artikel' => count($korrigiert),
             'unveraendert'        => count($unveraendert),
         ]);
+
+        (new LagerwertService())->festhaltenOhneAbbruch('inventur_abschluss', $laufId);
 
         return ['erfolg' => true, 'korrigiert' => $korrigiert, 'unveraendert' => $unveraendert];
     }

@@ -47,13 +47,14 @@ class AuftragRepository
             $params['bis'] = $bis . ' 23:59:59';
         }
 
-        // Abgeschlossene (lieferung=abgeschlossen UND zahlung=bezahlt) standardmäßig ausblenden
+        // Erledigte (lieferung=abgeschlossen UND zahlung=bezahlt/erstattet) standardmäßig ausblenden
         if (!$mitAbgeschlossenen && $lieferstatus === '' && $zahlungsstatus === '') {
-            $where[] = "NOT (a.lieferstatus = 'abgeschlossen' AND a.zahlungsstatus = 'bezahlt')";
+            $where[] = "NOT (a.lieferstatus = 'abgeschlossen' AND a.zahlungsstatus IN ('bezahlt', 'erstattet'))";
         }
 
         if ($zahlungsstatus === 'ueberbezahlt') {
-            $where[] = "a.zahlungsstatus = 'bezahlt' AND (SELECT COALESCE(SUM(az.betrag),0) FROM auftrag_zahlungen az WHERE az.auftrag_id = a.id) > a.bruttobetrag";
+            // Kassenbons mit Gutschrift (negativer Betrag, keine Zahlungszeilen) sind nicht überbezahlt
+            $where[] = "a.zahlungsstatus = 'bezahlt' AND a.bruttobetrag >= 0 AND (SELECT COALESCE(SUM(az.betrag),0) FROM auftrag_zahlungen az WHERE az.auftrag_id = a.id) > a.bruttobetrag";
         } elseif ($zahlungsstatus !== '') {
             $where[]                = 'a.zahlungsstatus = :zahlungsstatus';
             $params['zahlungsstatus'] = $zahlungsstatus;
@@ -404,6 +405,20 @@ class AuftragRepository
     /**
      * Schließt alle Reservierungen eines Auftrags (nach Versand oder Stornierung).
      */
+    /**
+     * Summe der Mahngebühren aus versendeten, nicht erlassenen Mahnungen — gehört zum
+     * offenen Betrag des Auftrags (bezahlt erst, wenn Rechnung + Gebühren gedeckt sind).
+     */
+    public function getOffeneMahngebuehren(int $auftragId): float
+    {
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(gebuehr), 0) FROM mahnungen
+            WHERE auftrag_id = ? AND status = 'versendet' AND gebuehr_erlassen_am IS NULL
+        ");
+        $stmt->execute([$auftragId]);
+        return (float)$stmt->fetchColumn();
+    }
+
     public function schliesseReservierungen(int $auftragId): void
     {
         $this->db->prepare("

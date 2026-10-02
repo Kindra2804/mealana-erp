@@ -36,12 +36,18 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '🗄️', 'label' => 'Lagerverwaltung',    'href' => BASE_PATH . '/lager/verwaltung.php'],
         ['icon' => '📍', 'label' => 'Lagerplätze',         'href' => BASE_PATH . '/lager/lagerplaetze.php'],
         ['icon' => '🔢', 'label' => 'Inventur',            'href' => BASE_PATH . '/inventur/liste.php'],
+        ['icon' => '💶', 'label' => 'Lagerwert',           'href' => BASE_PATH . '/lager/lagerwert.php', 'recht' => 'buchhaltung.anzeigen'],
     ],
     'verkauf' => [
         ['icon' => '📋', 'label' => 'Aufträge',           'href' => BASE_PATH . '/auftraege/liste.php'],
         ['icon' => '➕', 'label' => 'Neuer Auftrag',      'href' => BASE_PATH . '/auftraege/neu.php'],
         ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => BASE_PATH . '/dokumente/index.php'],
         ['icon' => '📊', 'label' => 'Statistik',          'href' => BASE_PATH . '/auftraege/statistik.php'],
+        // Badge = Mahnungen zur Freigabe (Abfrage nur, wenn das Verkauf-Menü sichtbar ist)
+        ['icon' => '📨', 'label' => 'Mahnwesen',          'href' => BASE_PATH . '/auftraege/mahnwesen.php',
+         'badge' => ($activeModule ?? '') === 'verkauf'
+             ? (int)Database::getInstance()->query("SELECT COUNT(*) FROM mahnungen WHERE status = 'vorgeschlagen'")->fetchColumn()
+             : 0],
         ['icon' => '🎁', 'label' => 'Gutscheine',         'href' => BASE_PATH . '/gutscheine/liste.php'],
         ['icon' => '🏬', 'label' => 'Händler',            'href' => BASE_PATH . '/haendler/liste.php'],
     ],
@@ -169,6 +175,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
             <?php endif; ?>
             <nav class="erp-sidebar-nav">
                 <?php foreach ($sidebarItems as $item): ?>
+                    <?php if (!empty($item['recht']) && !Auth::kann($item['recht'])) continue; ?>
                     <?php $typ = $item['type'] ?? 'nav'; ?>
                     <?php if ($typ === 'separator'): ?>
                         <div class="sidebar-sep"></div>

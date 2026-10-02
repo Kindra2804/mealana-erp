@@ -30,7 +30,9 @@ if ($weitereZu) {
         exit;
     }
     $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv', 'haendler') AND a.lieferart = 'abholung'
-              AND a.lieferstatus IN ('neu', 'in_bearbeitung', 'kommissioniert', 'versandbereit', 'abholbereit', 'zurueckgestellt')
+              AND (a.lieferstatus IN ('neu', 'in_bearbeitung', 'kommissioniert', 'versandbereit', 'abholbereit', 'zurueckgestellt')
+                   OR (a.lieferstatus = 'teilgeliefert' AND EXISTS (SELECT 1 FROM auftrag_positionen ap
+                        WHERE ap.auftrag_id = a.id AND ap.menge > ap.menge_abgeholt)))
               AND a.id != :ref_id
               AND (a.kunden_id = :ref_kid
                    OR (:ref_email <> '' AND LOWER(JSON_UNQUOTE(JSON_EXTRACT(a.kunden_snapshot, '$.email'))) = LOWER(:ref_email2)))";
@@ -70,7 +72,7 @@ if ($q !== '') {
 }
 
 $stmt = $db->prepare("
-    SELECT a.id, a.auftrag_nr, a.bruttobetrag, a.zahlungsstatus, a.lieferstatus,
+    SELECT a.id, a.auftrag_nr, a.bruttobetrag, a.zahlungsstatus, a.lieferstatus, a.lieferart,
            a.erstellt_am, a.kunden_snapshot, a.kunden_id
     FROM auftraege a
     WHERE {$where}
@@ -110,7 +112,7 @@ foreach ($auftraege as $a) {
     // Positionen
     $pStmt = $db->prepare("
         SELECT p.id, p.artikel_id, p.bezeichnung, p.ean, p.charge,
-               p.menge, p.menge_geliefert, GREATEST(p.menge_retourniert, p.menge_gutgeschrieben) AS menge_retourniert,
+               p.menge, p.menge_geliefert, p.menge_abgeholt, GREATEST(p.menge_retourniert, p.menge_gutgeschrieben) AS menge_retourniert,
                p.einzelpreis_netto, p.steuer_prozent, p.rabatt_prozent
         FROM auftrag_positionen p
         WHERE p.auftrag_id = ?
@@ -118,8 +120,18 @@ foreach ($auftraege as $a) {
     ");
     $pStmt->execute([$a['id']]);
     $positionen = [];
+    $fachSumme  = 0.0; // im Abholfach (gepackt, noch nicht abgeholt) — siehe bon_speichern.php $fachVon
+    $offenSumme = 0.0; // noch nicht abgeholt (Fach + ungepackt)
     foreach ($pStmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+        $geliefertFach = (float)$p['menge_geliefert'];
+        if ($a['lieferstatus'] === 'abholbereit' && $geliefertFach < 0.001) $geliefertFach = (float)$p['menge'];
+        $imFach = max(0.0, $geliefertFach - (float)$p['menge_abgeholt']);
+        $offen  = max(0.0, (float)$p['menge'] - (float)$p['menge_abgeholt']);
+        $fachSumme  += $imFach;
+        $offenSumme += $offen;
         $positionen[] = [
+            'menge_im_fach'       => $imFach,
+            'menge_offen'         => $offen,
             'auftrag_position_id' => (int)$p['id'],
             'artikel_id'          => $p['artikel_id'] ? (int)$p['artikel_id'] : null,
             'bezeichnung'         => $p['bezeichnung'],
@@ -143,6 +155,10 @@ foreach ($auftraege as $a) {
         'bruttobetrag'      => (float)$a['bruttobetrag'],
         'zahlungsstatus'    => $a['zahlungsstatus'],
         'lieferstatus'      => $a['lieferstatus'],
+        'lieferart'         => $a['lieferart'],
+        // Abholung, von der schon ein Teil übergeben wurde: Rest im Fach bzw. noch offen
+        'menge_im_fach'     => $fachSumme,
+        'menge_offen'       => $offenSumme,
         'zahlungsstatus_label' => $zahlLabels[$a['zahlungsstatus']] ?? $a['zahlungsstatus'],
         'lieferstatus_label'   => $lieferLabels[$a['lieferstatus']] ?? $a['lieferstatus'],
         'erstellt_datum'    => date('d.m.Y', strtotime($a['erstellt_am'])),

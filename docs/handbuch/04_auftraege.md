@@ -89,19 +89,34 @@ Positionen und Stammdaten können geändert werden, solange der Auftrag noch nic
 
 ---
 
-## Mahnwesen — automatisch
+## Mahnwesen
 
-Der Cronjob läuft täglich und prüft automatisch:
+Der Cronjob `cron/mahnwesen.php` läuft täglich.
 
-| Zeitraum | Zahlungsart | Aktion |
-|----------|-------------|--------|
-| 14 Tage offen | Vorkasse oder Rechnung | Zahlungserinnerung per Mail |
-| 30 Tage offen | **Vorkasse** | Automatische Stornierung + Ware wird zurückgebucht |
-| 30 Tage offen | **Rechnung** | Nur Hinweis (kein Auto-Storno — Ware ggf. bereits geliefert!) |
+**Vorkasse** (gerechnet ab Bestelldatum):
 
-> **Warum kein Auto-Storno bei Rechnung?** Bei Rechnungszahlern ist die Ware oft schon unterwegs. Ein automatischer Storno würde den Lagerstand falsch zurückbuchen. Bei Rechnung ist daher manuelle Prüfung nötig.
+| Zeitraum | Aktion |
+|----------|--------|
+| 14 Tage offen | Zahlungserinnerung per Mail |
+| 30 Tage offen | Automatische Stornierung (Reservierungen werden frei, Kunde bekommt eine Mail) |
 
-Das Protokoll der gesendeten Mahnungen ist in der Auftragsliste sichtbar.
+**Rechnung** (gerechnet ab **Fälligkeit** der Rechnung — sie ergibt sich aus der Zahlungsbedingung von Auftrag oder Kunde, sonst 14 Tage):
+
+| Wann | Stufe | Wie |
+|------|-------|-----|
+| 7 Tage nach Fälligkeit | Zahlungserinnerung (ohne Gebühr) | automatisch per Mail |
+| 14 Tage nach der Erinnerung | 1. Mahnung (Gebühr 5 €) | **Vorschlag** → Freigabe |
+| 14 Tage nach der 1. Mahnung | 2. Mahnung (Gebühr 10 €) | **Vorschlag** → Freigabe |
+| Frist der 2. Mahnung abgelaufen | — | Liste „Manuell klären“ (anrufen, Inkasso, Anwalt) |
+
+Tage und Gebühren: **Einstellungen → System → Mahnwesen**. Bei Rechnung gibt es nie einen automatischen Storno — die Ware ist meist schon beim Kunden.
+
+**Verkauf → Mahnwesen** (die Zahl im Menü = Mahnungen zur Freigabe):
+- **Freigeben** erzeugt das Mahnungs-PDF (landet im Dokumentenarchiv des Auftrags) und schickt es per Mail. Hat der Kunde keine E-Mail-Adresse, kommt ein Hinweis — PDF dann ausdrucken und per Post schicken (Verlauf → PDF).
+- **Verwerfen**: diese Stufe wird für den Auftrag nicht mehr vorgeschlagen.
+- **Gebühr erlassen** (Kulanz): die Mahngebühr wird nicht mehr verlangt.
+
+Die **Mahngebühr gehört zum offenen Betrag**: Zahlt der Kunde nur den Rechnungsbetrag, bleibt der Auftrag „teilbezahlt“, bis auch die Gebühr bezahlt oder erlassen ist. Die Auftragsseite zeigt „Mahngebühren (offen)“ im Zahlungsverlauf.
 
 ---
 

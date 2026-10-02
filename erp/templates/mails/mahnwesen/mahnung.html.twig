@@ -1,0 +1,32 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  {% if stufe == 2 %}
+    leider ist zu unserer Rechnung <strong>{{ rechnung_nr }}</strong> trotz Zahlungserinnerung und 1. Mahnung
+    noch kein vollständiger Zahlungseingang zu verzeichnen.
+  {% else %}
+    zu unserer Rechnung <strong>{{ rechnung_nr }}</strong> konnten wir trotz Zahlungserinnerung
+    noch keinen vollständigen Zahlungseingang feststellen.
+  {% endif %}
+  Im Anhang finden Sie die {{ titel }} mit allen Details.
+</p>
+
+<div class="hinweis">
+  <strong>Bitte überweisen Sie € {{ gesamt }} bis zum {{ frist }}.</strong><br>
+  Verwenden Sie dabei bitte die Rechnungsnummer <strong>{{ rechnung_nr }}</strong> als Verwendungszweck.
+</div>
+
+<p>
+  Falls Sie die Zahlung inzwischen veranlasst haben, betrachten Sie diese Nachricht bitte als gegenstandslos —
+  Überweisungen können einige Banktage benötigen.
+</p>
+
+<p>Mit freundlichen Grüßen,<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Rechnung {{ rechnung_nr }} &bull;
+{% endblock %}

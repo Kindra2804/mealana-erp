@@ -48,3 +48,13 @@ Verkauf-Modul steht längst, Vorbedingung oben erfüllt. Jacky wollte ursprüngl
 **Getestet:** Alle vier Repository-Methoden direkt gegen echte Dev-Daten (Topseller/Marge/Zeitverlauf/Jahresvergleich liefern plausible Werte). Volles Seiten-Rendering per CLI-Harness mit simulierter Session verifiziert (21KB HTML, keine PHP-Warnings, alle vier Sektionen vorhanden) — echter Stolperstein dabei: `session_start()` in `auth_check.php` überschreibt ein zuvor manuell gesetztes `$_SESSION` wieder mit leer, wenn man nicht selbst zuerst `session_start()` aufruft.
 
 **How to apply:** Bei Wiedereinstieg (Lagerwert-Snapshot ans Inventur-Modul koppeln, Umsatz-Vorhersage eigenes Konzeptgespräch) diesen Abschnitt als Ausgangspunkt nehmen. Dashboard-`manuell`-Lücke bei nächster Gelegenheit mit Jacky klären.
+
+## ✅ Lagerwert GEBAUT 2026-10-02 (nicht committed, Migration 192)
+Jacky-Entscheidungen: Schnappschuss am Monatsende (Cron) + bei Inventur-START + Inventur-ABSCHLUSS (kein manueller Knopf); Bewertung = echter EK aus letztem Wareneingang (lager_bewegungen 'eingang' mit ek_preis), sonst Standardlieferant; ohne EK → 0 € + Warnliste; eigene Lager + Händler-Außenlager getrennt, Partnerware nie.
+- Eigene Seite **Lager → Lagerwert** (`public/lager/lagerwert.php`, nicht in der Verkaufs-Statistik), Recht `buchhaltung.anzeigen` (EK = Finanzdaten); Sidebar-Items können jetzt `'recht' => '...'` tragen (shell_top blendet aus).
+- `src/modules/statistik/LagerwertService.php`: berechne() (EK-Kette: wareneingang → standardlieferant → günstigster lieferant → vater/original → keiner), zusammenfassen(), festhalten() (transaktionsbewusst), festhaltenOhneAbbruch() (Inventur darf nie daran scheitern, loggt error), listenIdsOhneEk().
+- Tabellen lagerwert_snapshots / _lager / _positionen (bewertete Liste je Artikel+Lager, CSV-Export `lager/lagerwert_csv.php?id=` bzw. ohne id = aktuell).
+- `cron/lagerwert.php` (täglich ~23:30, wirkt nur am Monatsletzten; `--jetzt` zum Testen) — **muss noch im Windows-Aufgabenplaner eingetragen werden (Dev + Live)**.
+- Artikelliste: Qualitätsfilter `kein_ek` ("Kein EK (mit Bestand)"), ~2 s.
+- Dev-Stand: ~24.500 € netto, 3.401 Artikel, 734 ohne EK, nur 4 mit echtem Wareneingangs-EK (Wareneingänge kaum genutzt). EK überall netto — Kleinunternehmer-EK-brutto nirgends umgesetzt (auch nicht in Marge).
+- Getestet: CLI-Probelauf, Cron --jetzt (2× → nur 1 Wert/Monat), Playwright (Seite, CSV 3.405 Zeilen, Listenfilter), Inventur starten+abschliessen in zurückgerollter Transaktion. Testwerte gelöscht (0 Schnappschüsse).

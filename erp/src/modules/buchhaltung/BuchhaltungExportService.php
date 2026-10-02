@@ -58,6 +58,7 @@ class BuchhaltungExportService
         $this->auftragUmsaetzeEinfach($von, $bis, $buchungen, $hinweise);
         $this->auftragUmsaetzeRechnung($von, $bis, $buchungen, $hinweise);
         $this->rechnungZahlungseingaenge($von, $bis, $buchungen, $hinweise);
+        $this->mahngebuehren($von, $bis, $buchungen, $hinweise);
 
         // DATEV & übliche Buchungsformate erwarten immer einen POSITIVEN Betrag —
         // die Soll/Haben-Kennung trägt das Vorzeichen. Retouren/Gutschriften können
@@ -521,6 +522,54 @@ class BuchhaltungExportService
         }
     }
 
+    // ── Block 4: Mahngebühren (Rechnungskunden) ─────────────────────────────
+
+    /**
+     * Mahngebühr wird mit dem Versand der Mahnung zur Forderung: Kundenkonto an Erlöskonto
+     * Mahngebühren (Artikelgruppe "Mahngebühren", nicht umsatzsteuerbar). Erlassene Gebühr
+     * am Erlassdatum zurück. Die Zahlung selbst läuft unverändert über Block 3 (Bank an Kunde).
+     */
+    private function mahngebuehren(string $von, string $bis, array &$buchungen, array &$hinweise): void
+    {
+        $zeitraum = " BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis);
+        $rows = $this->db->query("
+            SELECT m.typ, m.gebuehr, DATE(m.gesendet_am) AS gesendet, DATE(m.gebuehr_erlassen_am) AS erlassen,
+                   a.auftrag_nr, k.debitorennummer
+            FROM mahnungen m
+            JOIN auftraege a ON a.id = m.auftrag_id
+            LEFT JOIN kunden k ON k.id = a.kunden_id
+            WHERE m.status = 'versendet' AND m.gebuehr > 0
+              AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
+              AND (DATE(m.gesendet_am) $zeitraum OR DATE(m.gebuehr_erlassen_am) $zeitraum)
+        ")->fetchAll();
+        if (!$rows) return;
+
+        $konto = $this->db->query("SELECT konto_nr FROM artikel_gruppen WHERE name = 'Mahngebühren' AND aktiv = 1 LIMIT 1")->fetchColumn() ?: null;
+
+        foreach ($rows as $r) {
+            $stufe = $r['typ'] === 'mahnung2' ? '2. Mahnung' : '1. Mahnung';
+            if (!$r['debitorennummer'] || !$konto) {
+                $hinweise[] = "Mahngebühr {$stufe} {$r['auftrag_nr']}: " . (!$konto ? 'keine Artikelgruppe "Mahngebühren"' : 'Kunde ohne Debitorennummer') . " — manuell buchen";
+                continue;
+            }
+            $betrag = round((float)$r['gebuehr'], 2);
+            if ($r['gesendet'] >= $von && $r['gesendet'] <= $bis) {
+                $buchungen[] = [
+                    'datum' => $r['gesendet'], 'belegnr' => $r['auftrag_nr'], 'konto' => $konto,
+                    'gegenkonto' => $r['debitorennummer'], 'betrag' => $betrag, 'soll_haben' => 'H', 'satz' => 0.0,
+                    'text' => "Mahngebühr {$stufe} {$r['auftrag_nr']}",
+                ];
+            }
+            if ($r['erlassen'] && $r['erlassen'] >= $von && $r['erlassen'] <= $bis) {
+                $buchungen[] = [
+                    'datum' => $r['erlassen'], 'belegnr' => $r['auftrag_nr'], 'konto' => $konto,
+                    'gegenkonto' => $r['debitorennummer'], 'betrag' => $betrag, 'soll_haben' => 'S', 'satz' => 0.0,
+                    'text' => "Mahngebühr {$stufe} {$r['auftrag_nr']} erlassen",
+                ];
+            }
+        }
+    }
+
     // ── Zahlungs-Kontrollliste (Seite buchhaltung/zahlungskontrolle.php) ─────
 
     /**
@@ -587,6 +636,8 @@ class BuchhaltungExportService
         $auftraege = $this->db->query("
             SELECT a.id, a.auftrag_nr, a.erstellt_am, a.kanal, a.zahlungsart, a.zahlungsstatus,
                    a.bruttobetrag, a.versandkosten, a.gutschein_betrag,
+                   (SELECT COALESCE(SUM(m.gebuehr), 0) FROM mahnungen m
+                     WHERE m.auftrag_id = a.id AND m.status = 'versendet' AND m.gebuehr_erlassen_am IS NULL) AS mahngebuehren,
                    (SELECT GROUP_CONCAT(DISTINCT g.code SEPARATOR ', ') FROM gutschein_transaktionen t
                       JOIN gutscheine g ON g.id = t.gutschein_id
                      WHERE t.auftrag_id = a.id AND t.betrag < 0) AS gutschein_codes
@@ -605,7 +656,8 @@ class BuchhaltungExportService
             $zahlungen = $zStmt->fetchAll(PDO::FETCH_ASSOC);
             $gezahlt   = round(array_sum(array_column($zahlungen, 'betrag')), 2);
             $gutschein = round((float)$a['gutschein_betrag'], 2);
-            $offen     = round((float)$a['bruttobetrag'] - $gutschein - $gezahlt, 2);
+            // Offene Mahngebühren gehören zum zu zahlenden Betrag (MahnwesenService)
+            $offen     = round((float)$a['bruttobetrag'] + (float)$a['mahngebuehren'] - $gutschein - $gezahlt, 2);
             // Differenz nur relevant, wenn der Auftrag als bezahlt gilt (ausstehend = offen ist normal)
             $auffaellig = ($a['zahlungsstatus'] === 'bezahlt' && abs($offen) > 0.004) || $offen < -0.004;
             $interessant = $gutschein > 0 || count($zahlungen) > 1 || $auffaellig;

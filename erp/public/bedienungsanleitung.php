@@ -193,6 +193,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
             <a href="#lager">Lager</a>
             <a href="#lager-lagerplaetze" class="sub">↳ Lagerplätze</a>
+            <a href="#lager-lagerwert" class="sub">↳ Lagerwert</a>
             <a href="#lager-wareneingang" class="sub">↳ Wareneingang</a>
             <a href="#packplatz">Packplatz</a>
             <a href="#packplatz-scan" class="sub">↳ Artikel scannen</a>
@@ -335,6 +336,12 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Artikeln <strong>Stammplatz</strong> (Verkaufsfach) und optional <strong>Nachfüllplatz</strong> geben: Artikel → Lager-Reiter, Massenaktion „Lagerplatz zuweisen“ in der Artikelliste oder „+ Platz“ im Wareneingang. Beim Vater gilt der Platz für alle Varianten.</div></div>
             <p>Angezeigt auf Pickliste und Packplatz (nach Laufweg sortiert) und im Wareneingang („Gehört in …“). Mehrere Chargen dürfen im selben Fach liegen. Bestand wird weiter je Lager geführt, nicht je Fach.</p>
 
+            <h3 id="lager-lagerwert">Lagerwert <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Lager → Lagerwert (Recht „Buchhaltung anzeigen“). Wert des Bestands zu Einkaufspreisen netto, getrennt nach <strong>eigenen Lagern</strong> und <strong>bei Händlern</strong>. Partnerware zählt nie mit.</p>
+            <p>EK-Reihenfolge: letzter Wareneingang → Standardlieferant → günstigster Lieferant → Vater-/Originalartikel → sonst 0 €.</p>
+            <div class="ba-hint">💡 Kachel „Artikel ohne EK“ → Link zur Artikelliste mit Filter „Kein EK (mit Bestand)“ zum Nachpflegen.</div>
+            <p>Automatisch festgehalten am <strong>Monatsende</strong> (Cronjob <code>cron/lagerwert.php</code>) sowie bei <strong>Start und Abschluss jeder Inventur</strong>. Je Stichtag gibt es eine CSV mit der bewerteten Bestandsliste.</p>
+
             <h3 id="lager-wareneingang">Wareneingang <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Lager → Wareneingang</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Artikel suchen oder EAN scannen</div></div>
@@ -413,15 +420,21 @@ require_once __DIR__ . '/includes/shell_top.php';
             <h3>Zahlungseingang buchen</h3>
             <p>Auftrag öffnen → <strong>Zahlung buchen</strong> → Betrag bestätigen → Zahlungsstatus wechselt auf "bezahlt". Bei Vorkasse-Aufträgen wird der Lagerabgang erst jetzt gebucht.</p>
 
-            <h3 id="mahnwesen">Mahnwesen — automatisch <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <p>Der Cronjob läuft täglich und prüft alle offenen Aufträge:</p>
+            <h3 id="mahnwesen">Mahnwesen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Der Cronjob läuft täglich.</p>
             <table class="ba-table">
-                <tr><th>Zeitraum</th><th>Zahlungsart</th><th>Aktion</th></tr>
-                <tr><td>14 Tage offen</td><td>Vorkasse oder Rechnung</td><td>Zahlungserinnerung per Mail</td></tr>
-                <tr><td>30 Tage offen</td><td><strong>Vorkasse</strong></td><td>Automatische Stornierung + Lagerrückbuchung</td></tr>
-                <tr><td>30 Tage offen</td><td><strong>Rechnung</strong></td><td>Nur interner Hinweis — kein Auto-Storno!</td></tr>
+                <tr><th>Zahlungsart</th><th>Wann</th><th>Aktion</th></tr>
+                <tr><td><strong>Vorkasse</strong></td><td>14 Tage nach Bestellung</td><td>Zahlungserinnerung per Mail</td></tr>
+                <tr><td><strong>Vorkasse</strong></td><td>30 Tage nach Bestellung</td><td>Automatische Stornierung (Reservierungen frei)</td></tr>
+                <tr><td><strong>Rechnung</strong></td><td>7 Tage nach Fälligkeit</td><td>Zahlungserinnerung per Mail (automatisch)</td></tr>
+                <tr><td><strong>Rechnung</strong></td><td>14 Tage nach Erinnerung</td><td>1. Mahnung (5 €) — Vorschlag zur Freigabe</td></tr>
+                <tr><td><strong>Rechnung</strong></td><td>14 Tage nach 1. Mahnung</td><td>2. Mahnung (10 €) — Vorschlag zur Freigabe</td></tr>
             </table>
-            <div class="ba-warn">⚠ Bei Rechnung gibt es keinen automatischen Storno — die Ware ist meist schon beim Kunden. Manuelle Prüfung nötig.</div>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Verkauf → <strong>Mahnwesen</strong> (Zahl im Menü = offene Vorschläge)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Freigeben</strong> → PDF + Mail an den Kunden, Gebühr wird fällig. Ohne E-Mail-Adresse: PDF ausdrucken (Verlauf → PDF)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Kulanz: <strong>Gebühr erlassen</strong>. Nach abgelaufener 2. Mahnung steht der Auftrag unter „Manuell klären“</div></div>
+            <div class="ba-hint">💡 Fälligkeit = Zahlungsbedingung von Auftrag oder Kunde (sonst 14 Tage). Tage und Gebühren: Einstellungen → System → Mahnwesen. Die Mahngebühr zählt zum offenen Betrag — erst wenn auch sie bezahlt oder erlassen ist, steht der Auftrag auf „bezahlt“.</div>
+            <div class="ba-warn">⚠ Bei Rechnung gibt es nie einen automatischen Storno — die Ware ist meist schon beim Kunden.</div>
 
             <!-- KUNDEN -->
             <h3 id="haendler">Händler-Außenlager (Kommission) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
@@ -579,7 +592,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><th>Situation</th><th>Was passiert</th></tr>
                 <tr><td>Auftrag schon online bezahlt</td><td>Steht nicht im Kassenbetrag, wird nur abgeschlossen</td></tr>
                 <tr><td>Auftrag unbezahlt</td><td>Wird mit dem Bon bezahlt (nur die mitgenommenen Mengen)</td></tr>
-                <tr><td>Teilabholung</td><td>Auftrag wird „teilgeliefert“, nicht Mitgenommenes geht zurück ins Lager</td></tr>
+                <tr><td>Teilabholung</td><td>Kasse fragt je Zeile: „holt er später“ (Rest bleibt im Abholfach, teilgeliefert, kommt beim nächsten Laden wieder) oder „will er nicht“ (Rücklagerung am Packplatz, bezahlt → Geld zurück)</td></tr>
                 <tr><td>Von einem Auftrag nichts mitgenommen</td><td>Auftrag bleibt unverändert liegen (✕ nimmt ihn ganz vom Bon)</td></tr>
                 <tr><td>Alles bezahlt, alles mitgenommen</td><td>Kein Bon nötig, alle Aufträge werden direkt abgeschlossen</td></tr>
             </table>

@@ -142,6 +142,9 @@ final class Zugriffsregeln
             'lagerplaetze_status_setzen.php'   => 'lager.bearbeiten',
             'lagerplaetze_serie.php'           => 'lager.anlegen',
             'lagerplaetze_etiketten.php'       => 'lager.anzeigen',
+            // Lagerwert zeigt Einkaufswerte → Finanzdaten, nicht jeder mit Lagerzugriff
+            'lagerwert.php'                    => 'buchhaltung.anzeigen',
+            'lagerwert_csv.php'                => 'buchhaltung.anzeigen',
         ],
 
         'inventur' => [
@@ -283,6 +286,8 @@ final class Zugriffsregeln
             'gutschrift_speichern.php'  => 'auftraege.bearbeiten',
             'stornieren.php'            => 'auftraege.stornieren',
             'mahnung_manuell_ajax.php'  => 'auftraege.bearbeiten',
+            'mahnwesen.php'             => 'auftraege.anzeigen',
+            'mahnwesen_aktion.php'      => 'auftraege.bearbeiten',
         ],
 
         // === Dokumentenarchiv (nur Lesen, reine Übersicht) ===
@@ -484,7 +489,7 @@ final class Zugriffsregeln
         'hersteller'  => ['schnell_speichern.php', 'aktualisieren.php', 'speichern.php'],
         'haendler'    => ['aktion.php', 'artikel_ajax.php'],
         'partner'     => ['lager_anlegen.php', 'artikel_speichern.php', 'beleg_buchen.php', 'vertrag_beenden.php', 'vertrag_speichern.php', 'fach_aktualisieren.php', 'fach_speichern.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
-        'auftraege'   => ['zahlung_buchen.php', 'status_ajax.php', 'kunden_ajax.php', 'artikel_ajax.php', 'mahnung_manuell_ajax.php'],
+        'auftraege'   => ['zahlung_buchen.php', 'status_ajax.php', 'kunden_ajax.php', 'artikel_ajax.php', 'mahnung_manuell_ajax.php', 'mahnwesen_aktion.php'],
         'kunden'      => ['debitorennummer_ajax.php'],
         'einstellungen' => ['test_mail.php', 'shop_sync_start.php', 'shop_sync_status.php', 'shop_sync_pause.php', 'shop_sync_bilder_ftp_start.php'],
         'bestellungen'  => ['artikel_ajax.php', 'reserviert_ajax.php'],

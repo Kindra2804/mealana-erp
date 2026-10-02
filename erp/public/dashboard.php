@@ -230,14 +230,18 @@ $forderungenRows = $db->query("
            r.faellig_am,
            DATEDIFF(CURDATE(), COALESCE(r.faellig_am, DATE_ADD(a.erstellt_am, INTERVAL 14 DAY))) AS tage_ueberfaellig,
            DATEDIFF(CURDATE(), a.erstellt_am) AS alter_tage,
-           (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'erinnerung') AS erinnerung_gesendet
+           (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.typ = 'erinnerung') AS erinnerung_gesendet,
+           a.zahlungsart,
+           (SELECT COALESCE(SUM(m.gebuehr), 0) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.status = 'versendet' AND m.gebuehr_erlassen_am IS NULL) AS mahngebuehren,
+           (SELECT MAX(CASE m.typ WHEN 'mahnung2' THEN 2 WHEN 'mahnung1' THEN 1 END) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.status = 'versendet') AS mahnstufe,
+           (SELECT COUNT(*) FROM mahnungen m WHERE m.auftrag_id = a.id AND m.status = 'vorgeschlagen') AS mahnung_vorschlag
     FROM auftraege a
     LEFT JOIN auftrag_zahlungen z ON z.auftrag_id = a.id
     LEFT JOIN rechnungen r ON r.auftrag_id = a.id AND r.storniert = 0
     WHERE a.zahlungsstatus IN ('ausstehend','teilbezahlt')
       AND a.lieferstatus != 'storniert'
     GROUP BY a.id, r.faellig_am
-    HAVING (a.bruttobetrag - bezahlt) > 0.01
+    HAVING (a.bruttobetrag + mahngebuehren - bezahlt) > 0.01
     ORDER BY alter_tage DESC
     LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -281,12 +285,8 @@ $forderungen14bis29 = (int)$db->query("
       AND DATEDIFF(CURDATE(), a.erstellt_am) BETWEEN 14 AND 29
 ")->fetchColumn();
 
-$mahnungenAktiv = (int)$db->query("
-    SELECT COUNT(*) FROM mahnungen m
-    JOIN auftraege a ON a.id = m.auftrag_id
-    WHERE m.typ = 'erinnerung'
-      AND a.zahlungsstatus IN ('ausstehend','teilbezahlt')
-")->fetchColumn();
+// Mahnungen zur Freigabe (Rechnungskunden, Verkauf → Mahnwesen)
+$mahnungenAktiv = (int)$db->query("SELECT COUNT(*) FROM mahnungen WHERE status = 'vorgeschlagen'")->fetchColumn();
 
 // ── Offene Lieferantenrechnungen (Kreditoren) ───────────────────────────────
 // offener_betrag = Rechnungsbetrag minus Summe aller Zahlungen (Überweisung + Guthaben-
@@ -592,7 +592,7 @@ require_once __DIR__ . '/includes/shell_top.php';
         <?php endif; ?>
         <?php if ($mahnungenAktiv > 0): ?>
         <div style="margin-bottom:4px">
-            <span class="db-chip db-chip-amber">Mahnungen: <?= $mahnungenAktiv ?></span>
+            <a href="<?= BASE_PATH ?>/auftraege/mahnwesen.php" class="db-chip db-chip-amber" style="text-decoration:none">✉ Mahnungen zur Freigabe: <?= $mahnungenAktiv ?></a>
         </div>
         <?php endif; ?>
         <div style="margin-top:8px">
@@ -778,7 +778,15 @@ require_once __DIR__ . '/includes/shell_top.php';
                 // Ampelfarbe richtet sich deshalb nach denselben Schwellen, damit die
                 // Dashboard-Anzeige vorwegnimmt, was der Cronjob als Nächstes tun wird.
                 $tage = (int)$f['alter_tage'];
-                if ($tage >= 30) {
+                // Rechnung: Mahnwesen rechnet ab Fälligkeit (MahnwesenService) — Tage = Tage nach
+                // Fälligkeit, Ampel nach Mahnstufe statt nach Bestellalter
+                $istRechnung = $f['zahlungsart'] === 'rechnung';
+                if ($istRechnung) $tage = (int)$f['tage_ueberfaellig'];
+                if ($istRechnung) {
+                    $stufe = (int)$f['mahnstufe'];
+                    [$agingFarbe, $agingPct] = $stufe >= 2 ? ['#dc2626', 100] : ($stufe === 1 ? ['#f59e0b', 66]
+                        : ($f['erinnerung_gesendet'] > 0 ? ['#fb923c', 33] : ($tage > 0 ? ['#fb923c', 20] : ['#86efac', 10])));
+                } elseif ($tage >= 30) {
                     $agingFarbe = '#dc2626'; $agingPct = min(100, 33 + $tage);
                 } elseif ($tage >= 14) {
                     $agingFarbe = '#f59e0b'; $agingPct = 50;
@@ -787,15 +795,16 @@ require_once __DIR__ . '/includes/shell_top.php';
                 } else {
                     $agingFarbe = '#86efac'; $agingPct = 10;
                 }
-                $offen = (float)$f['bruttobetrag'] - (float)$f['bezahlt'];
+                $offen = (float)$f['bruttobetrag'] + (float)$f['mahngebuehren'] - (float)$f['bezahlt'];
             ?>
             <tr>
                 <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                     <?= htmlspecialchars(kundenName($f['kunden_snapshot'], 'Unbekannt')) ?>
                 </td>
                 <td style="text-align:right;font-weight:600"><?= eur($offen) ?></td>
-                <td style="text-align:center;font-weight:700;color:<?= $tage >= 30 ? '#dc2626' : ($tage >= 14 ? '#f59e0b' : '#64748b') ?>">
-                    <?= $tage ?>
+                <td style="text-align:center;font-weight:700;color:<?= $istRechnung ? $agingFarbe : ($tage >= 30 ? '#dc2626' : ($tage >= 14 ? '#f59e0b' : '#64748b')) ?>"
+                    <?= $istRechnung ? 'title="Tage nach Fälligkeit der Rechnung"' : '' ?>>
+                    <?= $istRechnung && $tage <= 0 ? '–' : $tage ?>
                 </td>
                 <td>
                     <span class="db-aging-track">
@@ -803,7 +812,17 @@ require_once __DIR__ . '/includes/shell_top.php';
                     </span>
                 </td>
                 <td>
-                    <?php if ($tage >= 30): ?>
+                    <?php if ($istRechnung): ?>
+                        <?php if ($f['mahnung_vorschlag'] > 0): ?>
+                            <a href="<?= BASE_PATH ?>/auftraege/mahnwesen.php" class="db-aktion-btn db-aktion-orange" style="text-decoration:none">→ Mahnung freigeben</a>
+                        <?php elseif ($f['mahnstufe']): ?>
+                            <span class="db-aktion-erledigt">✓ <?= (int)$f['mahnstufe'] ?>. Mahnung</span>
+                        <?php elseif ($f['erinnerung_gesendet'] > 0): ?>
+                            <span class="db-aktion-erledigt">✓ Erinnerung</span>
+                        <?php elseif ($tage > 0): ?>
+                            <button type="button" class="db-aktion-btn db-aktion-orange" data-auftrag-id="<?= $f['id'] ?>" data-aktion="erinnerung">→ Erinnerung senden</button>
+                        <?php endif; ?>
+                    <?php elseif ($tage >= 30): ?>
                         <button type="button" class="db-aktion-btn db-aktion-rot" data-auftrag-id="<?= $f['id'] ?>" data-aktion="stornierung">⚠ Stornieren?</button>
                     <?php elseif ($tage >= 14 && $f['erinnerung_gesendet'] > 0): ?>
                         <span class="db-aktion-erledigt">✓ Mail gesendet</span>
