@@ -28,6 +28,13 @@ $dokumente       = $dokumentService->getDokumente($id);
 $vorhandeneRechnung = $dokumentService->getRechnung($id);
 
 $db = Database::getInstance();
+
+// Alle (Teil-)Rechnungen + ob es ausgelieferte, noch nicht verrechnete Ware gibt
+$rechnungenStmt = $db->prepare("SELECT id, rechnung_nr, bruttobetrag, storniert, dateiname, erstellt_am FROM rechnungen WHERE auftrag_id = ? ORDER BY id");
+$rechnungenStmt->execute([$id]);
+$rechnungenAlle = $rechnungenStmt->fetchAll(PDO::FETCH_ASSOC);
+require_once __DIR__ . '/../../src/modules/auftraege/AuftragAbschluss.php';
+$abschlussKriterien = AuftragAbschluss::kriterien($id);
 $preisanzeige = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'preisanzeige_auftrag'")->fetchColumn() ?: 'brutto';
 
 $zahlungen   = $service->getZahlungen($id);
@@ -63,6 +70,15 @@ $mahngebuehrenStmt->execute([$id]);
 $mahngebuehren = (float)$mahngebuehrenStmt->fetchColumn();
 
 $offenBetrag  = ((float)$auftrag['bruttobetrag'] - $retourGesamtbetrag) + $mahngebuehren - $summeBezahlt;
+// Sobald es Belege gibt, zählt der Saldo aus Rechnungen/Bons − Korrekturen − Zahlungen
+// (inkl. erstatteter Versandkosten). Vorher: Auftragsbetrag − retournierte Ware, was nach
+// einer Stornorechnung mit Versand "überbezahlt 5,-" zeigte (Klicktest 2026-10-07).
+$saldoAusBelegen = AuftragAbschluss::saldoAussagekraeftig($id);
+// Retoure offen: was konkret fehlt (Korrektur, Einlagerung, Rückzahlung) -- Klicktest 2026-10-07
+$retoureDetails  = $auftrag['lieferstatus'] === 'retoure_offen' ? AuftragAbschluss::retoureDetails($id) : null;
+if ($saldoAusBelegen) {
+    $offenBetrag = AuftragAbschluss::saldo($id);
+}
 
 $lieferungen = $db->prepare("
     SELECT al.id, al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung,
@@ -93,7 +109,9 @@ if (!empty($lieferungen)) {
 
 $erfolg = $_SESSION['erfolg'] ?? null;
 $fehler = $_SESSION['fehler'] ?? [];
-unset($_SESSION['erfolg'], $_SESSION['fehler']);
+// Gerade erstelltes Dokument (Rechnung, Rechnungskorrektur, AB …): im neuen Tab öffnen
+$dokumentOeffnen = $_SESSION['dokument_oeffnen'] ?? null;
+unset($_SESSION['erfolg'], $_SESSION['fehler'], $_SESSION['dokument_oeffnen']);
 
 $zahlungsLabels = [
     'ausstehend'  => ['label' => 'Ausstehend',  'class' => 'chip-auslauf'],
@@ -110,6 +128,7 @@ $lieferLabels = [
     'zurueckgestellt' => ['label' => 'Zurückgestellt',  'class' => 'chip-inaktiv'],
     'versendet'       => ['label' => 'Versendet',       'class' => 'chip-aktiv'],
     'abgeschlossen'   => ['label' => 'Abgeschlossen',   'class' => 'chip-inaktiv'],
+    'retoure_offen'   => ['label' => 'Retoure offen',   'class' => 'chip-auslauf'],
     'storniert'       => ['label' => 'Storniert',       'class' => 'chip-inaktiv'],
     'kommissioniert'  => ['label' => 'Kommissioniert',  'class' => 'chip-auslauf'],
     'abholbereit'     => ['label' => 'Abholbereit',     'class' => 'chip-aktiv'],
@@ -130,7 +149,7 @@ if ($auftrag['kanal'] === 'woocommerce' && !empty($auftrag['shop_name'])) {
 }
 
 $istStorniert = in_array($auftrag['lieferstatus'], ['storniert']);
-$sperrZustände = ['versendet', 'abgeschlossen', 'storniert'];
+$sperrZustände = ['versendet', 'abgeschlossen', 'storniert', 'retoure_offen'];
 
 // Kassen-Auftrag: eigene Logik, keine normalen Dokumente erlaubt
 $istKasse  = ($auftrag['kanal'] === 'kasse');
@@ -195,6 +214,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <?php if ($erfolg): ?>
     <div class="banner banner-success" id="erfolg-banner"><?= htmlspecialchars($erfolg) ?></div>
+<?php endif; ?>
+<?php if ($dokumentOeffnen): ?>
+    <div class="card" style="margin-bottom:12px;padding:8px 14px;border-left:3px solid #16a34a">
+        📄 Dokument erstellt — <a href="<?= htmlspecialchars($dokumentOeffnen) ?>" target="_blank">PDF öffnen</a>
+    </div>
+    <script>try { window.open(<?= json_encode($dokumentOeffnen) ?>, '_blank'); } catch (e) {}</script>
 <?php endif; ?>
 <?php if (!empty($fehler)): ?>
     <div class="card" style="border-left:3px solid var(--color-danger);margin-bottom:12px">
@@ -271,14 +296,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         </div>
                     <?php endif; ?>
                     <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0">
-                        <?php if ($offenBetrag < 0): ?>
-                            <span style="color:#d97706;font-weight:600">Überbezahlt</span>
-                            <span style="font-weight:600;color:#d97706"><?= number_format(abs($offenBetrag), 2, ',', '.') ?> € Gutschrift</span>
-                        <?php elseif ($offenBetrag > 0): ?>
+                        <?php if ($offenBetrag < -0.004): ?>
+                            <span style="color:#d97706;font-weight:600"><?= $saldoAusBelegen ? 'Rückerstattung offen' : 'Überbezahlt' ?></span>
+                            <span style="font-weight:600;color:#d97706"><?= number_format(abs($offenBetrag), 2, ',', '.') ?> € Guthaben</span>
+                        <?php elseif ($offenBetrag > 0.004): ?>
                             <span style="color:var(--color-text-muted)">Offen</span>
                             <span style="font-weight:600;color:#dc2626"><?= number_format($offenBetrag, 2, ',', '.') ?> €</span>
                         <?php else: ?>
+                            <?php if ($retoureDetails && $retoureDetails['korrektur']): ?>
+                                <span style="color:#2563eb;font-weight:600">Bezahlt — Korrektur für Retoure ausständig</span>
+                                <span style="font-weight:600;color:#2563eb"><?= number_format(array_sum(array_column($retoureDetails['korrektur'], 'betrag')), 2, ',', '.') ?> € an Kunden</span>
+                            <?php else: ?>
                             <span style="color:#059669;font-weight:600">Vollständig bezahlt</span>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -314,6 +344,26 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+            <?php if (!$istStorniert && $saldoAusBelegen && $offenBetrag < -0.004): ?>
+                <!-- Guthaben des Kunden (nach Rechnungskorrektur/Stornorechnung): Rückerstattung buchen -->
+                <div style="margin-top:6px;padding:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px">
+                    <div style="font-size:11px;font-weight:600;color:#92400e;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Rückerstattung buchen</div>
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                        <input type="number" id="re-betrag" class="erp-input" style="width:100px" step="0.01" min="0.01"
+                               value="<?= number_format(abs($offenBetrag), 2, '.', '') ?>">
+                        <input type="date" id="re-datum" class="erp-input" style="width:140px" value="<?= date('Y-m-d') ?>">
+                        <select id="re-weg" class="erp-select" style="width:130px">
+                            <?php foreach (['ueberweisung' => 'Überweisung', 'paypal' => 'PayPal', 'sonstig' => 'Sonstige'] as $w => $l): ?>
+                                <option value="<?= $w ?>" <?= ($auftrag['zahlungsart'] === 'paypal') === ($w === 'paypal') && $w !== 'sonstig' ? 'selected' : '' ?>><?= $l ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="rueckerstattungBuchen(<?= $id ?>)">↩ Rückerstattung buchen</button>
+                    </div>
+                    <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                        Bar zurück: an der Kasse (Auftrag laden → Auszahlung bar oder als Gutschein).
+                    </div>
+                </div>
+            <?php endif; ?>
             <?php if (!$istStorniert && in_array($auftrag['zahlungsstatus'], ['ausstehend','teilbezahlt'])): ?>
                 <div style="margin-top:6px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
                     <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Zahlung buchen</div>
@@ -323,9 +373,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                step="0.01" min="0.01" placeholder="Betrag">
                         <input type="date" id="zahl-datum" class="erp-input" style="width:140px"
                                value="<?= date('Y-m-d') ?>">
+                        <?php $standardWeg = ['paypal' => 'paypal', 'nachnahme' => 'nachnahme'][$auftrag['zahlungsart']] ?? 'ueberweisung'; ?>
+                        <select id="zahl-weg" class="erp-select" style="width:130px" title="Erscheint in der Zahlungsinfo auf der Rechnung">
+                            <?php foreach (['ueberweisung' => 'Überweisung', 'paypal' => 'PayPal', 'nachnahme' => 'Nachnahme', 'sonstig' => 'Sonstige'] as $w => $l): ?>
+                                <option value="<?= $w ?>" <?= $w === $standardWeg ? 'selected' : '' ?>><?= $l ?></option>
+                            <?php endforeach; ?>
+                        </select>
                         <input type="text" id="zahl-notiz" class="erp-input" style="flex:1;min-width:80px"
                                placeholder="Notiz (optional)">
                         <button class="btn btn-primary btn-sm" onclick="zahlungBuchen(<?= $id ?>)">✓ Buchen</button>
+                    </div>
+                    <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                        Bar- oder Kartenzahlung bitte an der Kasse kassieren (RKSV — Zahlbeleg).
                     </div>
                 </div>
             <?php endif; ?>
@@ -334,8 +393,33 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div>
             <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:4px">Lieferstatus</div>
             <span class="chip <?= $ll['class'] ?>"><?= $ll['label'] ?></span>
+            <?php if ($retoureDetails): ?>
+                <div style="margin:6px 0;padding:8px 10px;background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;font-size:12px">
+                    <div style="font-weight:600;color:#1e40af;margin-bottom:4px">Retoure offen — noch zu erledigen:</div>
+                    <?php foreach ($retoureDetails['korrektur'] as $k): ?>
+                        <div>• <?= $k['menge'] ?>× <?= htmlspecialchars($k['bezeichnung']) ?> zurück — <strong>Rechnungskorrektur</strong> fehlt (<?= number_format($k['betrag'], 2, ',', '.') ?> €)</div>
+                    <?php endforeach; ?>
+                    <?php foreach ($retoureDetails['ruecklagerung'] as $r): ?>
+                        <div>• <?= (int)$r['menge'] ?>× <?= htmlspecialchars($r['bezeichnung']) ?> — am Packplatz noch <strong>einzubuchen</strong> (Rücklagerungen<?= $r['quelle'] ? ', ' . htmlspecialchars($r['quelle']) : '' ?>)</div>
+                    <?php endforeach; ?>
+                    <?php if ($retoureDetails['erstattung'] > 0): ?>
+                        <div>• <strong>Rückerstattung</strong> von <?= number_format($retoureDetails['erstattung'], 2, ',', '.') ?> € an den Kunden offen (siehe Zahlung)</div>
+                    <?php endif; ?>
+                    <?php if ($retoureDetails['korrektur']): ?>
+                        <a href="<?= BASE_PATH ?>/auftraege/gutschrift_erstellen.php?auftrag_id=<?= $id ?>" class="btn btn-secondary btn-sm" style="margin-top:6px">Rechnungskorrektur erstellen</a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
             <?php if (($auftrag['lieferart'] ?? '') === 'abholung'): ?>
                 <span class="chip sc-aktion" title="Selbstabholung">🏬 Abholung</span>
+            <?php else: ?>
+                <span class="chip" title="Versand">📦 Versand<?= (float)$auftrag['versandkosten'] > 0 ? ' · ' . number_format((float)$auftrag['versandkosten'], 2, ',', '.') . ' €' : '' ?></span>
+            <?php endif; ?>
+            <?php $versandartAenderbar = !in_array($auftrag['kanal'], ['kasse', 'jtl_archiv', 'haendler'], true)
+                && !in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'retoure_offen', 'storniert'], true); ?>
+            <?php if ($versandartAenderbar): ?>
+                <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="versandartDialog()"
+                        title="Kunde will doch Versand statt Abholung (oder umgekehrt)">⇄ Versandart ändern</button>
             <?php endif; ?>
             <?php if ($auftrag['versand_datum']): ?>
                 <div style="margin-top:5px;font-size:12px;color:var(--color-text-muted)">
@@ -346,7 +430,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div style="margin-top:8px">
                     <select class="erp-select" style="font-size:12px" id="lieferstatus-select">
                         <?php foreach ($lieferLabels as $val => $info): ?>
-                            <?php if ($val === 'storniert') continue; ?>
+                            <?php // abgeschlossen / Retoure offen setzt nur AuftragAbschluss (Beleg-Regel), nie von Hand
+                                  if (in_array($val, ['storniert', 'abgeschlossen', 'retoure_offen'], true) && $auftrag['lieferstatus'] !== $val) continue; ?>
                             <option value="<?= $val ?>" <?= $auftrag['lieferstatus'] === $val ? 'selected' : '' ?>><?= $info['label'] ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -710,19 +795,27 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php else: ?>
     <!-- Erzeugen-Buttons (normale Aufträge) -->
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
-        <?php if ($vorhandeneRechnung): ?>
+        <?php foreach ($rechnungenAlle as $re): ?>
             <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px;
-                         border:1px solid #ccc; border-radius:4px; font-size:0.9em; color:#555;">
-                &#10003; <?= htmlspecialchars($vorhandeneRechnung['rechnung_nr']) ?>
+                         border:1px solid #ccc; border-radius:4px; font-size:0.9em; color:<?= $re['storniert'] ? '#aaa' : '#555' ?>;"
+                  title="<?= $re['storniert'] ? 'storniert' : 'Erstellt ' . date('d.m.Y', strtotime($re['erstellt_am'])) ?>">
+                <?= $re['storniert'] ? '&#10007;' : '&#10003;' ?> <?= htmlspecialchars($re['rechnung_nr']) ?>
+                · <?= number_format((float)$re['bruttobetrag'], 2, ',', '.') ?> €
+                <a href="<?= BASE_PATH ?>/auftraege/rechnung_nachdruck.php?id=<?= $re['id'] ?>" target="_blank"
+                   title="Nachdruck mit aktueller Zahlungsinfo" style="text-decoration:none">🖨</a>
             </span>
-            <a href="<?= BASE_PATH ?>/auftraege/gutschrift_erstellen.php?auftrag_id=<?= $id ?>"
-               class="erp-btn erp-btn-secondary">Gutschrift erstellen</a>
-        <?php else: ?>
+        <?php endforeach; ?>
+        <?php if (!$abschlussKriterien['belegt']): ?>
             <form method="post" action="<?= BASE_PATH ?>/auftraege/dokument_erstellen.php" style="display:inline;">
                 <input type="hidden" name="auftrag_id" value="<?= $id ?>">
                 <input type="hidden" name="typ" value="rechnung">
-                <button type="submit" class="erp-btn">Rechnung erstellen</button>
+                <button type="submit" class="erp-btn"
+                        title="Rechnung über die ausgelieferte, noch nicht verrechnete Ware"><?= $rechnungenAlle ? 'Teilrechnung erstellen' : 'Rechnung erstellen' ?></button>
             </form>
+        <?php endif; ?>
+        <?php if ($rechnungenAlle || $dokumentService->kassenbonBelege($id)): ?>
+            <a href="<?= BASE_PATH ?>/auftraege/gutschrift_erstellen.php?auftrag_id=<?= $id ?>"
+               class="erp-btn erp-btn-secondary">Rechnungskorrektur / Storno</a>
         <?php endif; ?>
         <form method="post" action="<?= BASE_PATH ?>/auftraege/dokument_erstellen.php" style="display:inline;">
             <input type="hidden" name="auftrag_id" value="<?= $id ?>">
@@ -767,7 +860,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     'auftragsbestaetigung' => 'Auftragsbestätigung',
                     'lieferschein'         => 'Lieferschein',
                     'abholzettel'          => 'Abholzettel',
-                    'gutschrift'           => 'Gutschrift',
+                    'gutschrift'           => 'Rechnungskorrektur',
                     'mahnung'              => 'Mahnung',
                 ];
                 foreach ($dokumente as $dok): ?>
@@ -794,6 +887,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <script>
     window.AUFTRAG_ID = <?= $id ?>;
     window.STATUS_AJAX_URL = '<?= BASE_PATH ?>/auftraege/status_ajax.php';
+    window.VERSANDART = <?= json_encode([
+        'lieferart'        => $auftrag['lieferart'],
+        'versandklasse_id' => $auftrag['versandklasse_id'] ? (int)$auftrag['versandklasse_id'] : null,
+        'versandkosten'    => (float)$auftrag['versandkosten'],
+        'zahlungsstatus'   => $auftrag['zahlungsstatus'],
+        'lieferstatus'     => $auftrag['lieferstatus'],
+        'klassen'          => $db->query("SELECT id, name, preis_brutto FROM versandklassen ORDER BY sortierung")->fetchAll(PDO::FETCH_ASSOC),
+    ], JSON_UNESCAPED_UNICODE) ?>;
     window.STORNO_URL = '<?= BASE_PATH ?>/auftraege/stornieren.php';
 
     function toggleAbschnitt(bodyId, header) {
@@ -804,6 +905,6 @@ require_once __DIR__ . '/../includes/shell_top.php';
         if (arrow) arrow.textContent = hidden ? '▲' : '▼';
     }
 </script>
-<script src="<?= BASE_PATH ?>/js/auftraege_detail.js"></script>
+<script src="<?= BASE_PATH ?>/js/auftraege_detail.js?v=<?= filemtime(__DIR__ . '/../js/auftraege_detail.js') ?>"></script>
 
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

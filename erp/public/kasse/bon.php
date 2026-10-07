@@ -802,6 +802,7 @@ body {
     <button class="ph-dd-item" onclick="diversDialog()">+ Freier Artikel</button>
     <button class="ph-dd-item" onclick="gutscheinVerkaufDialog()">🎁 Gutschein verkaufen</button>
     <button class="ph-dd-item" onclick="gutscheinAbfrageDialog()">🔍 Gutschein abfragen</button>
+    <button class="ph-dd-item" onclick="rechnungZahlenDialog()">💶 Rechnung bezahlen</button>
     <button class="ph-dd-item" onclick="freitextRetourDialog()">↩ Freitext-Retour</button>
     <div class="ph-dd-sep"></div>
     <button class="ph-dd-item" onclick="bonAbrufen()">⏸ Geparkten Bon abrufen</button>
@@ -1150,6 +1151,25 @@ body {
     <div class="ov-grid2">
       <button class="ov-btn ov-btn-ok" id="btn-gsv-ok" onclick="gsvHinzufuegen()" disabled>+ Hinzufügen</button>
       <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-gs-verkauf')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rechnung bezahlen (Zahlbeleg, 0 % — USt steht schon auf der Rechnung) -->
+<div class="ov" id="ov-re-zahlung">
+  <div class="ov-box">
+    <div class="ov-title">💶 Rechnung bezahlen</div>
+    <div class="ov-label">Rechnungs-/Auftragsnummer (auch Teil, z.B. 0045) oder Kundenname</div>
+    <input class="ov-input-sm" type="text" id="rz-suche" placeholder="z.B. R-2026-00012, 0045 oder Huber"
+           oninput="rzSuchenVerzoegert()" onkeydown="if(event.key==='Enter'){rzSuchen();}" style="margin-bottom:8px">
+    <div id="rz-ergebnis" style="font-size:14px;margin-bottom:10px;max-height:260px;overflow:auto"></div>
+    <div id="rz-betrag-box" style="display:none">
+      <div class="ov-label">Betrag (€) — höchstens offener Betrag</div>
+      <input class="ov-input" type="number" id="rz-betrag" step="0.01" min="0" style="margin-bottom:12px;font-size:22px">
+    </div>
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" id="btn-rz-ok" onclick="rzHinzufuegen()" disabled>+ Hinzufügen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-re-zahlung')">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -2012,7 +2032,7 @@ function renderBon(skipKdSync) {
         // Bezahlen bleibt möglich, wenn eine reine Retoure (ohne normalen Warenkorb-Inhalt) aktiv ist
         document.getElementById('btn-bezahlen').disabled = !retoureAktiv();
         aktualisiereFooter();
-        if (!skipKdSync) kdSync('idle', {});
+        if (!skipKdSync) kdSyncWarenkorb(); // reine Rückgabe → Anzeige, sonst idle
         return;
     }
     leer.style.display = 'none';
@@ -2111,7 +2131,8 @@ function renderBon(skipKdSync) {
 
 // ── Kundenanzeige-Sync: Warenkorb-Stand als Payload aufbereiten ──────────────
 function kdSyncWarenkorb() {
-    var aktiv = (aktiveZeile >= 0 ? warenkorb[aktiveZeile] : warenkorb[warenkorb.length - 1]);
+    if (warenkorb.length === 0 && !retoureAktiv()) { kdSync('idle', {}); return; }
+    var aktiv = (aktiveZeile >= 0 ? warenkorb[aktiveZeile] : warenkorb[warenkorb.length - 1]) || null;
     var positionen = warenkorb.map(function(p) {
         var rab = 1 - posRabatt(p) / 100;
         return {
@@ -2122,17 +2143,29 @@ function kdSyncWarenkorb() {
             bezahlt:     !!(p.vonAuftrag && auftragBezahlt(zeileAuftragId(p)))
         };
     });
-    // Wie die Summe unten an der Kasse: bereits bezahlte Aufträge werden nicht kassiert
+    // Rückgabe-Zeilen (bereits ausgelieferter Auftrag) mit negativem Betrag dazu
+    retourePositionen.forEach(function(p) {
+        if (p.retourMenge <= 0) return;
+        positionen.push({
+            bezeichnung: p.bezeichnung,
+            menge:       p.retourMenge,
+            summe:       -p.retourMenge * p.einzelpreis_brutto * (1 - (p.rabatt_prozent || 0) / 100),
+            vonAuftrag:  false,
+            retour:      true
+        });
+    });
+    // Wie die Summe unten an der Kasse: bereits bezahlte Aufträge werden nicht kassiert,
+    // Rückgaben werden abgezogen
     var gesamt = getGesamt(), bereitsBezahlt = 0;
-    if (geladeneAuftraege.some(function(a) { return a.zahlungsstatus === 'bezahlt'; })) {
+    if (geladeneAuftraege.some(function(a) { return a.zahlungsstatus === 'bezahlt'; }) || retoureAktiv()) {
         bereitsBezahlt = positionen.reduce(function(s, z) { return s + (z.bezahlt ? z.summe : 0); }, 0);
         gesamt = berechneAbrechnungsModus().netBrutto;
     }
     kdSync('warenkorb', {
-        artikel_id:          aktiv.artikel_id || null,
-        artikel_name:        aktiv.bezeichnung,
+        artikel_id:          aktiv ? (aktiv.artikel_id || null) : null,
+        artikel_name:        aktiv ? aktiv.bezeichnung : 'Rückgabe',
         artikel_variante:    null,
-        artikel_einzelpreis: aktiv.einzelpreis_brutto,
+        artikel_einzelpreis: aktiv ? aktiv.einzelpreis_brutto : null,
         positionen:          positionen,
         gesamt:              Math.round(gesamt * 100) / 100,
         bereits_bezahlt:     Math.round(bereitsBezahlt * 100) / 100,
@@ -2185,6 +2218,7 @@ function retoureMinus(i) {
     if (retourePositionen[i].retourMenge > 0) {
         retourePositionen[i].retourMenge--;
         renderRetoureSektion();
+        kdSyncWarenkorb();
     }
 }
 function retourePlus(i) {
@@ -2192,6 +2226,7 @@ function retourePlus(i) {
     if (p.retourMenge < p.maxMenge) {
         p.retourMenge++;
         renderRetoureSektion();
+        kdSyncWarenkorb();
     }
 }
 
@@ -2309,7 +2344,7 @@ function aktualisiereFooter() {
 // Effektiver Rabatt einer Position (Zeilen- oder Bon-Rabatt, der höhere zählt).
 // Gutscheine sind Zahlungsmittel, nie rabattierbar -- Server erzwingt das zusätzlich.
 function posRabatt(p) {
-    if (p.block === 'gutschein_kauf') return 0;
+    if (p.block === 'gutschein_kauf' || p.block === 'zahlung') return 0;
     return Math.max(p.rabatt_prozent, globalRabatt);
 }
 
@@ -2535,6 +2570,112 @@ function gsvHinzufuegen() {
     renderBon();
 }
 
+// ── Rechnung bezahlen (Zahlbeleg) ─────────────────────────────────────────────
+// Eigene Bon-Zeile "Zahlung zu Auftrag ..." mit 0 % -- die USt steht schon auf der
+// Rechnung. Betrag/Bezeichnung legt bon_speichern.php serverseitig fest.
+var rzAuswahl = null;
+function rechnungZahlenDialog() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+    if (warenkorb.some(p => p.vonAuftrag || p.block === 'retour')) {
+        feedback('Rechnung bezahlen bitte als eigenen Bon — nicht zusammen mit einer Abholung oder Retoure.', 'fehler');
+        return;
+    }
+    rzAuswahl = null;
+    document.getElementById('rz-suche').value = '';
+    document.getElementById('rz-ergebnis').innerHTML = '';
+    document.getElementById('rz-betrag-box').style.display = 'none';
+    document.getElementById('btn-rz-ok').disabled = true;
+    ov('ov-re-zahlung');
+    setTimeout(() => document.getElementById('rz-suche').focus(), 100);
+}
+var _rzTimer = null;
+function rzSuchenVerzoegert() {
+    clearTimeout(_rzTimer);
+    _rzTimer = setTimeout(rzSuchen, 300);
+}
+var _rzTimer = null;
+function rzSuchenVerzoegert() {
+    clearTimeout(_rzTimer);
+    _rzTimer = setTimeout(rzSuchen, 300);
+}
+function rzSuchen() {
+    var q = document.getElementById('rz-suche').value.trim();
+    var el = document.getElementById('rz-ergebnis');
+    if (q.length < 3) { el.textContent = 'Bitte mindestens 3 Zeichen eingeben.'; return; }
+    el.textContent = 'Suche …';
+    fetch('<?= BASE_PATH ?>/kasse/ajax_rechnung_offen.php?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(function(d) {
+            if (!d.erfolg) { el.textContent = d.fehler || 'Fehler'; return; }
+            if (!d.treffer.length) { el.textContent = 'Keine Rechnung gefunden.'; return; }
+            // offene zuerst; sind alle bezahlt, klar sagen warum nichts auswählbar ist
+            d.treffer.sort(function(x, y) { return (y.offen > 0.004) - (x.offen > 0.004); });
+            var keinOffen = !d.treffer.some(function(t) { return t.offen > 0.004; });
+            el.innerHTML = d.treffer.map(function(t, i) {
+                var re = t.ohne_rechnung
+                    ? 'Noch keine Rechnung (' + (t.lieferart === 'abholung' ? 'Abholung' : 'Versand') + ') — Klick lädt den Auftrag in die Kasse'
+                    : t.rechnungen.map(r => esc(r.rechnung_nr) + ' (' + r.datum + ', € ' + fmt(r.bruttobetrag) + ')').join('<br>');
+                var offen = t.offen > 0.004
+                    ? '<strong style="color:#b45309">offen € ' + fmt(t.offen) + '</strong>'
+                    : '<span style="color:#15803d">bezahlt</span>';
+                return '<div class="rz-treffer" data-i="' + i + '" style="padding:8px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:6px;cursor:' + (t.offen > 0.004 ? 'pointer' : 'default') + '">'
+                    + '<strong>' + esc(t.auftrag_nr) + '</strong> — ' + esc(t.kunde || '') + '<br>'
+                    + '<span style="font-size:12px;color:#64748b">' + re + '</span><br>' + offen + '</div>';
+            }).join('') + (keinOffen ? '<div style="color:#64748b;font-size:12px;margin-top:4px">Alle gefundenen Rechnungen sind bereits bezahlt — hier gibt es nichts zu kassieren.</div>' : '');
+            el.querySelectorAll('.rz-treffer').forEach(function(div) {
+                var t = d.treffer[+div.dataset.i];
+                if (t.offen <= 0.004) return;
+                div.onclick = function() { rzWaehlen(t, div); };
+            });
+            if (d.treffer.length === 1 && d.treffer[0].offen > 0.004 && !d.treffer[0].ohne_rechnung) rzWaehlen(d.treffer[0], el.querySelector('.rz-treffer'));
+        })
+        .catch(() => { el.textContent = 'Verbindungsfehler.'; });
+}
+function rzWaehlen(t, div) {
+    // Noch keine Rechnung (z.B. Zahlart Rechnung + Abholung): normal als Auftrag laden --
+    // Abholung/Zahlung läuft dann über den Bon (= Beleg), inkl. Charge und "mitnehmen?"
+    if (t.ohne_rechnung) {
+        ovSchliessen('ov-re-zahlung');
+        fetch('<?= BASE_PATH ?>/kasse/ajax_auftrag_laden.php?q=' + encodeURIComponent(t.auftrag_nr))
+            .then(r => r.json())
+            .then(function(liste) {
+                var a = (liste || []).filter(function(x) { return x.id === t.auftrag_id; })[0];
+                if (a) auftragWaehlen(a); else feedback('Auftrag ' + t.auftrag_nr + ' kann an der Kasse nicht geladen werden', 'fehler');
+            })
+            .catch(() => feedback('Verbindungsfehler', 'fehler'));
+        return;
+    }
+    rzAuswahl = t;
+    document.querySelectorAll('.rz-treffer').forEach(x => x.style.background = '');
+    if (div) div.style.background = '#eff6ff';
+    document.getElementById('rz-betrag-box').style.display = '';
+    var b = document.getElementById('rz-betrag');
+    b.value = t.offen.toFixed(2);
+    b.max = t.offen.toFixed(2);
+    document.getElementById('btn-rz-ok').disabled = false;
+}
+function rzHinzufuegen() {
+    if (!rzAuswahl) return;
+    var betrag = Math.round((parseFloat(document.getElementById('rz-betrag').value) || 0) * 100) / 100;
+    if (betrag <= 0 || betrag > rzAuswahl.offen + 0.004) { feedback('Betrag muss zwischen 0 und € ' + fmt(rzAuswahl.offen) + ' liegen', 'fehler'); return; }
+    if (warenkorb.some(p => p.block === 'zahlung' && p.zahlung_auftrag_id === rzAuswahl.auftrag_id)) {
+        feedback('Zahlung zu diesem Auftrag ist schon im Bon', 'fehler'); return;
+    }
+    warenkorb.push({
+        artikel_id: null,
+        bezeichnung: 'Zahlung zu Auftrag ' + rzAuswahl.auftrag_nr,
+        ean: null, artnr: null, menge: 1,
+        einzelpreis_brutto: betrag, steuer_prozent: 0, rabatt_prozent: 0,
+        charge: null, konfig_wert_ids: null, istDivers: false,
+        hat_chargen: false, charge_pflicht: false,
+        bestand_physisch: 0, bestand_reserviert: 0, bestand_verkaufbar: 0,
+        block: 'zahlung', zahlung_auftrag_id: rzAuswahl.auftrag_id,
+    });
+    aktiveZeile = warenkorb.length - 1;
+    ovSchliessen('ov-re-zahlung');
+    renderBon();
+}
+
 // ── Mitgeben ──────────────────────────────────────────────────────────────────
 function mitgebenDialog() {
     if (warenkorb.length === 0) { feedback('Bon ist leer', 'info'); return; }
@@ -2568,6 +2709,7 @@ function mitgebenSpeichern() {
 // ── Ausgabe nach Zahlung ──────────────────────────────────────────────────────
 var _letzterBonId = null;
 var _istGutscheinAusgabe = false; // true zwischen retourAlsGutschein() und der Server-Antwort
+var _gutscheinAusgabeBetrag = 0;  // Betrag dieses Gutscheins — für die Kundenanzeige
 
 function ausgabeNachZahlung(bonId, bonNr) {
     _letzterBonId = bonId;
@@ -2986,6 +3128,7 @@ function berechneAbrechnungsModus() {
             retourBrutto += p.retourMenge * p.einzelpreis_brutto * (1 - p.rabatt_prozent / 100);
         }
     });
+    guthabenAuftraege().forEach(function(a) { retourBrutto += a.guthaben; });
     var netBrutto = extraBrutto - retourBrutto;
     var modus = (retourBrutto < 0.005 && extraBrutto < 0.005) ? 'exakt'
               : (netBrutto < -0.005)                          ? 'retour'
@@ -2993,8 +3136,25 @@ function berechneAbrechnungsModus() {
     return { modus: modus, extraBrutto: extraBrutto, retourBrutto: retourBrutto, netBrutto: netBrutto };
 }
 
+// Geladene, bezahlte Aufträge mit Guthaben (mehr bezahlt als der Auftragsbetrag, z.B. Versand
+// → Abholung umgestellt), von denen etwas mitgenommen wird -> Auszahlung bar oder als Gutschein
+// über die normale Rückgabe-Abfrage (ov-retour-bar). Server prüft den Betrag nach.
+function guthabenAuftraege() {
+    return geladeneAuftraege.filter(function(a) {
+        return a.guthaben > 0.004 && a.zahlungsstatus === 'bezahlt' && !auftragNichtsMitgenommen(a.id);
+    });
+}
+
 function berechneZusatzPositionen() {
     zusatzPositionen = [];
+    guthabenAuftraege().forEach(function(a) {
+        zusatzPositionen.push({
+            artikel_id: null, bezeichnung: 'Guthaben zu Auftrag ' + a.nr, ean: null,
+            menge: -1, einzelpreis_brutto: a.guthaben, steuer_prozent: 0, rabatt_prozent: 0,
+            charge: null, istDivers: false, vonAuftrag: false, auftrag_position_id: null,
+            web_auftrag_id: a.id, kein_lagerabzug: true, block: 'retour', guthaben: true,
+        });
+    });
     warenkorb.forEach(function(p) {
         if (!p.vonAuftrag || !auftragBezahlt(zeileAuftragId(p)) || auftragNichtsMitgenommen(zeileAuftragId(p))) return;
         var origMenge = p.original_menge !== undefined ? p.original_menge : p.menge;
@@ -3081,9 +3241,52 @@ function restFrageBestaetigen() {
     bezahlenDialog();
 }
 
+// ── Charge für mitgenommene Auftragsware (nicht gepackt, "Ware wird mitgenommen") ──
+// Die Kasse bucht diese Ware selbst ab -> Charge wie beim Scannen abfragen (Fund Klicktest
+// 2026-10-07: wurde ohne Charge gebucht). Gefragt wird beim Bezahlen, damit Mengenänderungen
+// vorher noch möglich sind. Mehrere Chargen -> Zeile wird aufgeteilt (gleiche Auftragsposition).
+var _mitnahmeChargeZeile = null;
+function _mitnahmeChargeOffen() {
+    for (var i = 0; i < warenkorb.length; i++) {
+        var p = warenkorb[i];
+        if (!p.vonAuftrag || !p.artikel_id || p.menge <= 0 || p.charge || p._chargeGeprueft) continue;
+        var a = auftragInfo(zeileAuftragId(p));
+        if (a && a.mitnehmen === true) return i;
+    }
+    return -1;
+}
+function _mitnahmeChargeFragen(idx) {
+    var p = warenkorb[idx];
+    fetch('<?= BASE_PATH ?>/kasse/ajax_artikel.php?code=' + encodeURIComponent(p.artnr || p.ean || '') + '&lager_id=' + LAGER_ID)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.erfolg || !(d.charge_pflicht || d.hat_chargen)) {
+                if (!d.erfolg && p.charge_pflicht) { feedback('Chargen zu ' + p.bezeichnung + ' nicht ladbar — bitte prüfen', 'fehler'); return; }
+                p._chargeGeprueft = true; bezahlenDialog(); return;
+            }
+            _mitnahmeChargeZeile = idx;
+            zeigeKasseChargePopup(Object.assign({}, d, { bezeichnung: p.bezeichnung }), p.menge);
+        })
+        .catch(function() { feedback('Verbindungsfehler beim Laden der Chargen', 'fehler'); });
+}
+function _mitnahmeChargeUebernehmen(eintraege) {
+    var idx = _mitnahmeChargeZeile; _mitnahmeChargeZeile = null;
+    var p = warenkorb[idx];
+    if (!eintraege.length) { p._chargeGeprueft = true; bezahlenDialog(); return; } // "Ohne Charge" (nur ohne Pflicht)
+    var teile = eintraege.map(function(e) {
+        return Object.assign({}, p, { menge: e.menge, original_menge: e.menge, charge: e.charge,
+            nachzutragen_lagerbestand_id: e.nachtragen ? e.lagerbestand_id : null, _chargeGeprueft: true });
+    });
+    warenkorb.splice.apply(warenkorb, [idx, 1].concat(teile));
+    renderBon();
+    bezahlenDialog();
+}
+
 function bezahlenDialog() {
     if (warenkorb.length === 0 && !retoureAktiv()) return;
     if (geladeneAuftraege.length && restFrageOffen()) { restFrageZeigen(); return; }
+    var chargeIdx = _mitnahmeChargeOffen();
+    if (chargeIdx >= 0) { _mitnahmeChargeFragen(chargeIdx); return; }
 
     var einAuftragBezahlt = geladeneAuftraege.some(function(a) { return a.zahlungsstatus === 'bezahlt'; });
     if ((einAuftragBezahlt || retoureAktiv()) && geladeneAuftraege.length) {
@@ -3346,12 +3549,18 @@ function bonSpeichern(zahlDaten) {
         document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
             _bfrFehlschlagAnzahl = 0;
-            kdSync('abrechnen', {
-                betrag:       g,
-                gegeben:      (zahlDaten.gegeben !== undefined ? zahlDaten.gegeben : null),
-                rueckgeld:    (zahlDaten.rueckgeld !== undefined ? zahlDaten.rueckgeld : null),
-                abgeschlossen: true
-            });
+            if (_istGutscheinAusgabe) {
+                // Rückgabe als Gutschein: kein Rückgeld, sondern Gutschrift (Code folgt, siehe
+                // zeigeGutscheinAusgabeErgebnis)
+                kdSync('abrechnen', { betrag: -_gutscheinAusgabeBetrag, gutschein_ausgabe: true, gutschein_code: null, abgeschlossen: true });
+            } else {
+                kdSync('abrechnen', {
+                    betrag:       g,
+                    gegeben:      (zahlDaten.gegeben !== undefined ? zahlDaten.gegeben : null),
+                    rueckgeld:    (zahlDaten.rueckgeld !== undefined ? zahlDaten.rueckgeld : null),
+                    abgeschlossen: true
+                });
+            }
             _resetKasseState();
             (d.warnungen || []).forEach(w => feedback('⚠ ' + w, 'fehler'));
             if (d.bon_id) {
@@ -3426,7 +3635,9 @@ function abschliessenOhneBon() {
 function retourBestaetigen() {
     ovSchliessen('ov-retour-bar');
     berechneZusatzPositionen();
-    bonSpeichern({ zahlungsart: 'bar', gegeben: 0, rueckgeld: 0 });
+    // Auszahlung aus Kundensicht: nichts gegeben, Betrag als Rückgeld (Bon-Betrag/RKSV bleibt negativ)
+    var auszahlung = Math.round(Math.abs(_zahlBetrag()) * 100) / 100;
+    bonSpeichern({ zahlungsart: 'bar', gegeben: 0, rueckgeld: auszahlung });
 }
 
 /**
@@ -3452,6 +3663,7 @@ function retourAlsGutschein() {
         kein_lagerabzug: true, block: 'gutschein_verkauf',
     });
     _istGutscheinAusgabe = true;
+    _gutscheinAusgabeBetrag = betrag;
     bonSpeichern({ zahlungsart: 'gutschein_ausgabe', gegeben: 0, rueckgeld: 0 });
 }
 
@@ -3460,6 +3672,7 @@ function zeigeGutscheinAusgabeErgebnis(bonId) {
         .then(r => r.json())
         .then(function(d) {
             if (d.erfolg) {
+                kdSync('abrechnen', { betrag: -parseFloat(d.betrag), gutschein_ausgabe: true, gutschein_code: d.code, abgeschlossen: true });
                 zeigeGutscheinErgebnis([{ id: d.id, code: d.code, betrag: d.betrag, label: 'Erstattung als Gutschein' }], null);
             } else {
                 feedback('Gutschein wurde erstellt, aber Code konnte nicht geladen werden — bitte in der Gutscheine-Liste nachsehen.', 'fehler');
@@ -3632,6 +3845,7 @@ function kasseChargeUpdateGesamt() {
 
 function kasseChargeOhne() {
     ovSchliessen('ov-charge');
+    if (_mitnahmeChargeZeile !== null) { _mitnahmeChargeUebernehmen([]); return; }
     var a = Object.assign({}, kasseChargePendingArtikel, { _gewaehltCharge: null, _nachtragen_lagerbestand_id: null });
     _fortsetzungNachChargeAuswahl(a, kasseChargePendingMenge);
 }
@@ -3645,6 +3859,16 @@ function chargeKasseBestaetigen() {
             return;
         }
     }
+    if (_mitnahmeChargeZeile !== null) {
+        var summe = eintraege.reduce(function(s, e) { return s + e.menge; }, 0);
+        if (Math.abs(summe - kasseChargePendingMenge) > 0.001) {
+            alert('Bitte genau ' + kasseChargePendingMenge + ' Stk. auf die Chargen verteilen (derzeit ' + summe + ').');
+            return;
+        }
+        ovSchliessen('ov-charge');
+        _mitnahmeChargeUebernehmen(eintraege);
+        return;
+    }
     ovSchliessen('ov-charge');
     eintraege.forEach(function(entry) {
         var a = Object.assign({}, kasseChargePendingArtikel, {
@@ -3657,6 +3881,7 @@ function chargeKasseBestaetigen() {
 
 function chargeKasseAbbrechen() {
     ovSchliessen('ov-charge');
+    _mitnahmeChargeZeile = null; // Bezahlen abgebrochen -- beim nächsten Bezahlen wird wieder gefragt
     kasseChargePendingArtikel = null;
     kasseChargeEingaben       = {};
 }
@@ -4023,7 +4248,7 @@ function _istRetoureStatus(lieferstatus) {
     // Warenkorb-Zeilen. 'abgeschlossen' zählt mit, weil ein bezahlter, versendeter Auftrag
     // durch die Auto-Logik in packplatz/warenausgang/abschliessen.php sofort dorthin springt —
     // der Praxisfall "bezahlt + versendet" landet also fast nie sichtbar bei 'versendet'.
-    return lieferstatus === 'versendet' || lieferstatus === 'teilgeliefert' || lieferstatus === 'abgeschlossen';
+    return lieferstatus === 'versendet' || lieferstatus === 'teilgeliefert' || lieferstatus === 'abgeschlossen' || lieferstatus === 'retoure_offen';
 }
 // Ausnahme: Abholung, von der noch etwas offen ist ("holt er später", Rest im Abholfach oder
 // noch ungepackt) — die wird wieder als Abholung geladen, nicht als Retoure (Jacky 2026-10-02)
@@ -4095,6 +4320,7 @@ function _auftragHinzufuegen(a) {
         mitnehmen: null, zahlungsstatus: a.zahlungsstatus || null,
         kunden_id: a.kunden_id || null, kunden_email: a.kunden_email || null,
         kunden_name: a.kunden_name || '',
+        guthaben: parseFloat(a.guthaben || 0), // z.B. Versandkosten nach Umstellung auf Abholung entfallen
     });
     _hauptAuftragSpiegeln();
     if (!kundeId && a.kunden_id) kundeId = a.kunden_id;
@@ -4148,6 +4374,8 @@ function _auftragHinzufuegen(a) {
                 vonAuftrag:           true,
                 auftrag_position_id:  p.auftrag_position_id || null,
                 web_auftrag_id:       a.id,
+                artnr:                p.artikelnummer || null,
+                charge_pflicht:       !!p.charge_pflicht,
             });
         });
         // Noch nicht gepackte Aufträge: "mitnehmen oder nur zahlen?" fragen

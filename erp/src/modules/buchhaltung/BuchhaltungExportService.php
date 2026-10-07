@@ -11,14 +11,20 @@ require_once __DIR__ . '/../auftraege/Versandsteuer.php';
  * (Erlöskonto, USt-Konto oder Debitorenkonto), 'gegenkonto' das Zahlungsmittel-
  * oder Debitorenkonto, 'soll_haben' bezieht sich auf 'konto'.
  *
- * Drei Buchungsblöcke:
- * 1. "Einfache" Zahlarten (Kassenbons + Aufträge außer Rechnung/gemischt/kombi):
- *    Umsatz UND Zahlung fallen zusammen → Erlös+USt sofort gegen Zahlungsmittel,
- *    aggregiert pro Tag × Warengruppe × Steuersatz × Zahlungsart.
- * 2. Rechnung (Soll-Versteuerung, pro Auftrag einzeln wegen individuellem
- *    Debitorenkonto): Erlös+USt bei Auftragsdatum gegen Kundenkonto.
- * 3. Zahlungseingänge auf Rechnung (auftrag_zahlungen): Bank gegen Kundenkonto,
- *    zeitlich unabhängig von Block 2.
+ * Grundsatz (Belege-Umbau, Jacky 2026-10-07): Erlös kommt NUR aus Belegen -- Kassenbon,
+ * Rechnung, Gutschrift (Gutschein-Verkauf = Anzahlung 3230). Aufträge selbst sind nur
+ * "erwarteter Umsatz" und werden nicht mehr gebucht. MEALANA ist eine KG ->
+ * Soll-Versteuerung, die USt entsteht mit der Rechnung.
+ *
+ * Buchungsblöcke:
+ * 1. Kassenbons: Umsatz UND Zahlung fallen zusammen → Erlös+USt sofort gegen
+ *    Zahlungsmittel, pro Tag × Warengruppe × Steuersatz × Zahlungsart (ohne Zahlungszeilen).
+ * 2. Zahlbelege an der Kasse (Zahlung auf Rechnung / Rückzahlung Anzahlung, 0 %):
+ *    Kassa an Kundenkonto.
+ * 3. Rechnungen + Gutschriften: Erlös+USt am Rechnungs-/Gutschriftsdatum gegen Kundenkonto.
+ * 4. Zahlungseingänge außerhalb der Kasse (alle Zahlarten) + Online-Gutschein-Einlösungen:
+ *    Bank/PayPal/3230 an Kundenkonto, am Buchungsdatum.
+ * 5. Mahngebühren.
  *
  * Kassenbons mit mehreren Zahlungsmitteln (kombi, Gutschein + Rest) werden seit
  * 2026-09-30 anteilig auf Kassa/Bank/3230 aufgeteilt (gemischteBonsAufteilen). Zum
@@ -27,7 +33,7 @@ require_once __DIR__ . '/../auftraege/Versandsteuer.php';
  * Seit 2026-09-30 zusätzlich: Versandkosten als Erlös (Gruppe "Versandkosten",
  * Steuersatz der überwiegenden Leistung, siehe Versandsteuer), Gutscheine über das
  * Anzahlungskonto 3230 (Verkauf = Artikelgruppe Gutscheine, Einlösung = Zahlungsart
- * "gutschein" bzw. bei Online-Aufträgen Umbuchung Bank → 3230). Aufträge der Kanäle
+ * "gutschein" bzw. bei Online-Aufträgen 3230 an Kundenkonto). Aufträge der Kanäle
  * AUSGESCHLOSSENE_KANAELE werden nicht exportiert (siehe dort).
  */
 class BuchhaltungExportService
@@ -38,6 +44,10 @@ class BuchhaltungExportService
      * damals in JTL gebucht -- dürfen nicht nochmal in den Export (Fund 2026-09-30).
      */
     private const AUSGESCHLOSSENE_KANAELE = "'kasse', 'jtl_archiv'";
+
+    /** auftrag_zahlungen.zahlungsweg -> Schlüssel in zahlungsart_konten */
+    private const ZAHLUNGSWEG_ZU_ZAHLUNGSART = ['ueberweisung' => 'vorkasse', 'paypal' => 'paypal', 'nachnahme' => 'nachnahme',
+                                               'bar' => 'bar', 'karte' => 'karte_extern', 'gutschein' => 'gutschein'];
 
     private PDO $db;
 
@@ -55,9 +65,9 @@ class BuchhaltungExportService
         $hinweise  = [];
 
         $this->kassenbonUmsaetze($von, $bis, $buchungen, $hinweise);
-        $this->auftragUmsaetzeEinfach($von, $bis, $buchungen, $hinweise);
-        $this->auftragUmsaetzeRechnung($von, $bis, $buchungen, $hinweise);
-        $this->rechnungZahlungseingaenge($von, $bis, $buchungen, $hinweise);
+        $this->kassenZahlbelege($von, $bis, $buchungen, $hinweise);
+        $this->rechnungenUndGutschriften($von, $bis, $buchungen, $hinweise);
+        $this->zahlungseingaenge($von, $bis, $buchungen, $hinweise);
         $this->mahngebuehren($von, $bis, $buchungen, $hinweise);
 
         // DATEV & übliche Buchungsformate erwarten immer einen POSITIVEN Betrag —
@@ -150,7 +160,7 @@ class BuchhaltungExportService
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             LEFT JOIN artikel a       ON a.id  = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(a.artikel_gruppe_id, {$diversesGruppeId})
-            WHERE b.typ = 'verkauf' AND b.storniert = 0
+            WHERE b.typ = 'verkauf' AND b.storniert = 0 AND COALESCE(bp.block, '') <> 'zahlung'
               AND NOT (" . self::GEMISCHT_BEDINGUNG . ")
               AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
             GROUP BY datum, b.zahlungsart, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
@@ -217,7 +227,7 @@ class BuchhaltungExportService
             FROM kassen_bon_positionen bp
             LEFT JOIN artikel a ON a.id = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(a.artikel_gruppe_id, {$diversesGruppeId})
-            WHERE bp.bon_id = ?
+            WHERE bp.bon_id = ? AND COALESCE(bp.block, '') <> 'zahlung'
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
         ");
 
@@ -253,95 +263,6 @@ class BuchhaltungExportService
                 zahlungsart: $za, quelle: 'Kasse (Kombi)'
             );
         }
-    }
-
-    // ── Block 1b: Auftrags-Positionen, alle Zahlarten außer Rechnung/gemischt ──
-
-    private function auftragUmsaetzeEinfach(string $von, string $bis, array &$buchungen, array &$hinweise): void
-    {
-        $rows = $this->db->query("
-            SELECT DATE(a.erstellt_am) AS datum, a.zahlungsart, a.auftrag_nr,
-                   ag.konto_nr, ag.name AS gruppe_name, ap.steuer_prozent,
-                   SUM(ap.gesamtpreis_netto) AS netto
-            FROM auftrag_positionen ap
-            INNER JOIN auftraege a ON a.id = ap.auftrag_id
-            LEFT JOIN artikel art       ON art.id = ap.artikel_id
-            LEFT JOIN artikel_gruppen ag ON ag.id = art.artikel_gruppe_id
-            WHERE a.zahlungsart NOT IN ('rechnung', 'gemischt')
-              AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
-              AND a.lieferstatus != 'storniert'
-              AND DATE(a.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
-            GROUP BY datum, a.zahlungsart, ag.id, ag.konto_nr, ag.name, ap.steuer_prozent
-        ")->fetchAll();
-
-        foreach ($rows as $r) {
-            $netto  = (float)$r['netto'];
-            $satz   = (float)$r['steuer_prozent'];
-            $brutto = round($netto * (1 + $satz / 100), 2);
-            $this->erloesZeilenAnhaengen(
-                $buchungen, $hinweise,
-                datum: $r['datum'], belegnr: 'Auftrag-' . $r['datum'],
-                erloesKonto: $r['konto_nr'], gruppeName: $r['gruppe_name'] ?? 'ohne Gruppe',
-                satz: $satz, brutto: $brutto,
-                zahlungsart: $r['zahlungsart'], quelle: 'Auftrag'
-            );
-        }
-
-        // Versand + Gutschein-Einlösung pro Auftrag (Versandsteuersatz hängt an den
-        // Positionen des einzelnen Auftrags, deshalb nicht in der Aggregation oben)
-        $auftraege = $this->db->query("
-            SELECT a.id, a.auftrag_nr, DATE(a.erstellt_am) AS datum, a.zahlungsart, a.versandkosten, a.gutschein_betrag
-            FROM auftraege a
-            WHERE a.zahlungsart NOT IN ('rechnung', 'gemischt')
-              AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
-              AND a.lieferstatus != 'storniert'
-              AND (a.versandkosten > 0 OR a.gutschein_betrag > 0)
-              AND DATE(a.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
-        ")->fetchAll();
-
-        foreach ($auftraege as $a) {
-            if ((float)$a['versandkosten'] > 0) {
-                $v = Versandsteuer::aufteilen((float)$a['versandkosten'], $this->positionenFuerSteuer((int)$a['id']));
-                $this->erloesZeilenAnhaengen(
-                    $buchungen, $hinweise,
-                    datum: $a['datum'], belegnr: 'Auftrag-' . $a['datum'],
-                    erloesKonto: $this->versandKonto(), gruppeName: 'Versandkosten',
-                    satz: $v['satz'], brutto: $v['brutto'],
-                    zahlungsart: $a['zahlungsart'], quelle: 'Auftrag'
-                );
-            }
-            if ((float)$a['gutschein_betrag'] > 0) {
-                $this->gutscheinEinloesungAnhaengen($buchungen, $hinweise, $a, $this->zahlungsartKonto($a['zahlungsart'])['kontonummer'] ?? null);
-            }
-        }
-    }
-
-    /**
-     * Online mit Gutschein bezahlt: Erlös wurde oben voll gegen das Zahlungsmittel
-     * (z.B. Bank) gebucht, tatsächlich kam der Gutschein-Anteil aber aus dem
-     * Anzahlungskonto 3230 → Umbuchung Zahlungsmittel (Haben) an 3230 (Soll).
-     */
-    private function gutscheinEinloesungAnhaengen(array &$buchungen, array &$hinweise, array $a, ?string $vonKonto): void
-    {
-        $gsKonto = $this->zahlungsartKonto('gutschein')['kontonummer'] ?? null;
-        $betrag  = round((float)$a['gutschein_betrag'], 2);
-        if (!$gsKonto || !$vonKonto) {
-            $hinweise[] = "Auftrag {$a['auftrag_nr']}: Gutschein-Einlösung € " . number_format($betrag, 2, ',', '.') . " — Konto fehlt, manuell buchen";
-            return;
-        }
-        $buchungen[] = [
-            'datum' => $a['datum'], 'belegnr' => $a['auftrag_nr'], 'konto' => $vonKonto,
-            'gegenkonto' => $gsKonto, 'betrag' => $betrag, 'soll_haben' => 'H', 'satz' => null,
-            'text' => "Gutschein-Einlösung Auftrag {$a['auftrag_nr']}",
-        ];
-    }
-
-    /** Positionen eines Auftrags (für den Versandsteuersatz der überwiegenden Leistung). */
-    private function positionenFuerSteuer(int $auftragId): array
-    {
-        $stmt = $this->db->prepare("SELECT steuer_prozent, gesamtpreis_netto FROM auftrag_positionen WHERE auftrag_id = ?");
-        $stmt->execute([$auftragId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /** Erlöskonto für Versandkosten = Konto der Artikelgruppe "Versandkosten" (Standard 4090). */
@@ -399,135 +320,213 @@ class BuchhaltungExportService
         }
     }
 
-    // ── Block 2: Rechnung (Soll-Versteuerung, pro Auftrag einzeln) ─────────────
+    // ── Block 2: Zahlbelege / Rückzahlungen an der Kasse ─────────────────────
 
-    private function auftragUmsaetzeRechnung(string $von, string $bis, array &$buchungen, array &$hinweise): void
-    {
-        $auftraege = $this->db->query("
-            SELECT a.id, a.auftrag_nr, DATE(a.erstellt_am) AS datum, k.debitorennummer,
-                   a.versandkosten, a.gutschein_betrag
-            FROM auftraege a
-            LEFT JOIN kunden k ON k.id = a.kunden_id
-            WHERE a.zahlungsart = 'rechnung' AND a.lieferstatus != 'storniert'
-              AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
-              AND DATE(a.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
-        ")->fetchAll();
-
-        foreach ($auftraege as $auf) {
-            if (!$auf['debitorennummer']) {
-                $hinweise[] = "Rechnung {$auf['auftrag_nr']} ({$auf['datum']}): Kunde ohne Debitorennummer — manuell buchen";
-                continue;
-            }
-
-            $positionen = $this->db->prepare("
-                SELECT ag.konto_nr, ag.name AS gruppe_name, ap.steuer_prozent, SUM(ap.gesamtpreis_netto) AS netto
-                FROM auftrag_positionen ap
-                LEFT JOIN artikel art       ON art.id = ap.artikel_id
-                LEFT JOIN artikel_gruppen ag ON ag.id = art.artikel_gruppe_id
-                WHERE ap.auftrag_id = :id
-                GROUP BY ag.id, ag.konto_nr, ag.name, ap.steuer_prozent
-            ");
-            $positionen->execute([':id' => $auf['id']]);
-
-            foreach ($positionen->fetchAll() as $p) {
-                if (!$p['konto_nr']) {
-                    $hinweise[] = "Rechnung {$auf['auftrag_nr']}: Position ohne Artikelgruppe — manuell prüfen";
-                    continue;
-                }
-                $netto  = round((float)$p['netto'], 2);
-                $satz   = (float)$p['steuer_prozent'];
-                $steuer = round($netto * $satz / 100, 2);
-
-                $buchungen[] = [
-                    'datum' => $auf['datum'], 'belegnr' => $auf['auftrag_nr'], 'konto' => $p['konto_nr'],
-                    'gegenkonto' => $auf['debitorennummer'], 'betrag' => $netto, 'soll_haben' => 'H', 'satz' => $satz,
-                    'text' => "Erlös {$p['gruppe_name']} Rechnung {$auf['auftrag_nr']}",
-                ];
-
-                if (abs($steuer) > 0.004) {
-                    $ustKonto = $this->ustKonto($satz);
-                    if (!$ustKonto) {
-                        $hinweise[] = "Rechnung {$auf['auftrag_nr']}: Kein USt-Konto für $satz% — Steuerbetrag € " . number_format($steuer, 2, ',', '.') . " manuell buchen";
-                    } else {
-                        $buchungen[] = [
-                            'datum' => $auf['datum'], 'belegnr' => $auf['auftrag_nr'], 'konto' => $ustKonto,
-                            'gegenkonto' => $auf['debitorennummer'], 'betrag' => $steuer, 'soll_haben' => 'H', 'satz' => $satz,
-                            'text' => "USt $satz% Rechnung {$auf['auftrag_nr']}",
-                        ];
-                    }
-                }
-            }
-
-            // Versandkosten der Rechnung: Erlös (Gruppe Versandkosten) + USt gegen Kundenkonto
-            if ((float)$auf['versandkosten'] > 0) {
-                $v = Versandsteuer::aufteilen((float)$auf['versandkosten'], $this->positionenFuerSteuer((int)$auf['id']));
-                if (!$this->versandKonto()) {
-                    $hinweise[] = "Rechnung {$auf['auftrag_nr']}: keine Artikelgruppe \"Versandkosten\" — Versand € " . number_format($v['brutto'], 2, ',', '.') . " manuell buchen";
-                } else {
-                    $buchungen[] = [
-                        'datum' => $auf['datum'], 'belegnr' => $auf['auftrag_nr'], 'konto' => $this->versandKonto(),
-                        'gegenkonto' => $auf['debitorennummer'], 'betrag' => $v['netto'], 'soll_haben' => 'H', 'satz' => $v['satz'],
-                        'text' => "Erlös Versandkosten Rechnung {$auf['auftrag_nr']}",
-                    ];
-                    $ustKonto = $v['steuer'] > 0 ? $this->ustKonto($v['satz']) : null;
-                    if ($v['steuer'] > 0 && !$ustKonto) {
-                        $hinweise[] = "Rechnung {$auf['auftrag_nr']}: Kein USt-Konto für {$v['satz']}% — Versand-Steuer € " . number_format($v['steuer'], 2, ',', '.') . " manuell buchen";
-                    } elseif ($ustKonto) {
-                        $buchungen[] = [
-                            'datum' => $auf['datum'], 'belegnr' => $auf['auftrag_nr'], 'konto' => $ustKonto,
-                            'gegenkonto' => $auf['debitorennummer'], 'betrag' => $v['steuer'], 'soll_haben' => 'H', 'satz' => $v['satz'],
-                            'text' => "USt {$v['satz']}% Versand Rechnung {$auf['auftrag_nr']}",
-                        ];
-                    }
-                }
-            }
-
-            // Mit Gutschein bezahlter Teil: Kundenforderung (Haben) an Anzahlungskonto 3230
-            if ((float)$auf['gutschein_betrag'] > 0) {
-                $this->gutscheinEinloesungAnhaengen($buchungen, $hinweise, $auf, $auf['debitorennummer']);
-            }
-        }
-    }
-
-    // ── Block 3: Zahlungseingänge auf Rechnung ──────────────────────────────
-
-    private function rechnungZahlungseingaenge(string $von, string $bis, array &$buchungen, array &$hinweise): void
+    /**
+     * Bon-Zeilen block 'zahlung': Zahlung auf eine Rechnung (positiv) bzw. Rückzahlung einer
+     * nie verrechneten Anzahlung (negativ). Kein Erlös -- Kassa/Bank an Kundenkonto.
+     */
+    private function kassenZahlbelege(string $von, string $bis, array &$buchungen, array &$hinweise): void
     {
         $rows = $this->db->query("
-            SELECT z.buchungsdatum, z.betrag, a.auftrag_nr, k.debitorennummer
-            FROM auftrag_zahlungen z
-            INNER JOIN auftraege a ON a.id = z.auftrag_id
+            SELECT DATE(b.erstellt_am) AS datum, b.bon_nr, b.zahlungsart,
+                   SUM(bp.menge * bp.einzelpreis_brutto) AS betrag,
+                   a.auftrag_nr, k.debitorennummer
+            FROM kassen_bon_positionen bp
+            JOIN kassen_bons b ON b.id = bp.bon_id
+            LEFT JOIN auftraege a ON a.id = bp.web_auftrag_id
             LEFT JOIN kunden k ON k.id = a.kunden_id
-            WHERE a.zahlungsart = 'rechnung'
-              AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
-              AND z.buchungsdatum BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
+            WHERE bp.block = 'zahlung' AND b.typ = 'verkauf' AND b.storniert = 0
+              AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
+            GROUP BY b.id, bp.web_auftrag_id
         ")->fetchAll();
 
-        $bankKonto = $this->zahlungsartKonto('vorkasse')['kontonummer'] ?? null; // Rechnung wird i.d.R. per Überweisung beglichen -> Bank-Konto
-
         foreach ($rows as $r) {
-            if (!$r['debitorennummer']) {
-                $hinweise[] = "Zahlungseingang {$r['auftrag_nr']} ({$r['buchungsdatum']}): Kunde ohne Debitorennummer — manuell buchen";
-                continue;
+            $betrag = round((float)$r['betrag'], 2);
+            $za     = in_array($r['zahlungsart'], ['bar', 'karte_extern', 'gutschein'], true) ? $r['zahlungsart'] : 'bar';
+            if ($za !== $r['zahlungsart']) {
+                $hinweise[] = "Zahlbeleg {$r['bon_nr']}: Bon mit mehreren Zahlungsmitteln — Zahlung zu {$r['auftrag_nr']} als Kassa gebucht, bitte prüfen";
             }
-            if (!$bankKonto) {
-                $hinweise[] = "Zahlungseingang {$r['auftrag_nr']}: Kein Bank-Konto gemappt — manuell buchen";
+            $zk = $this->zahlungsartKonto($za)['kontonummer'] ?? null;
+            if (!$r['debitorennummer'] || !$zk) {
+                $hinweise[] = "Zahlbeleg {$r['bon_nr']} ({$r['auftrag_nr']}): " . (!$zk ? 'Zahlungskonto fehlt' : 'Kunde ohne Debitorennummer')
+                    . " — € " . number_format($betrag, 2, ',', '.') . " manuell buchen";
                 continue;
             }
             $buchungen[] = [
-                'datum' => $r['buchungsdatum'], 'belegnr' => $r['auftrag_nr'], 'konto' => $r['debitorennummer'],
-                'gegenkonto' => $bankKonto, 'betrag' => round((float)$r['betrag'], 2), 'soll_haben' => 'H', 'satz' => null,
-                'text' => "Zahlungseingang Rechnung {$r['auftrag_nr']}",
+                'datum' => $r['datum'], 'belegnr' => $r['bon_nr'], 'konto' => $r['debitorennummer'],
+                'gegenkonto' => $zk, 'betrag' => $betrag, 'soll_haben' => 'H', 'satz' => null,
+                'text' => ($betrag >= 0 ? 'Zahlung Kasse' : 'Rückzahlung Kasse') . " Auftrag {$r['auftrag_nr']}",
             ];
         }
     }
 
-    // ── Block 4: Mahngebühren (Rechnungskunden) ─────────────────────────────
+    // ── Block 3: Rechnungen und Gutschriften (Soll-Versteuerung, KG) ───────────
+
+    /**
+     * Erlös entsteht mit der (Teil-)Rechnung: Kundenkonto an Erlös je Warengruppe × Steuersatz
+     * + USt, am Rechnungsdatum (Belege-Umbau 2026-10-07; vorher Auftragsdatum und nur für
+     * Zahlart "Rechnung"). Gutschriften mindern den Erlös gleich, mit umgekehrtem Vorzeichen.
+     * Gutschein-Verkauf läuft über die Artikelgruppe Gutscheine (Konto 3230, 0 %).
+     */
+    private function rechnungenUndGutschriften(string $von, string $bis, array &$buchungen, array &$hinweise): void
+    {
+        $zeitraum = " BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis);
+        $belege = $this->db->query("
+            SELECT 'rechnung' AS art, r.id, r.rechnung_nr AS nr, DATE(r.erstellt_am) AS datum,
+                   r.versandkosten_brutto, a.auftrag_nr, k.debitorennummer, a.id AS auftrag_id
+            FROM rechnungen r
+            JOIN auftraege a ON a.id = r.auftrag_id
+            LEFT JOIN kunden k ON k.id = a.kunden_id
+            WHERE a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ") AND DATE(r.erstellt_am) $zeitraum
+            UNION ALL
+            SELECT 'gutschrift', g.id, g.gutschrift_nr, DATE(g.erstellt_am), g.versandkosten_brutto, a.auftrag_nr, k.debitorennummer, a.id
+            FROM gutschriften g
+            JOIN auftraege a ON a.id = g.auftrag_id
+            LEFT JOIN kunden k ON k.id = a.kunden_id
+            WHERE a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ") AND DATE(g.erstellt_am) $zeitraum
+        ")->fetchAll();
+
+        $posStmt = [
+            'rechnung' => $this->db->prepare("
+                SELECT ag.konto_nr, ag.name AS gruppe_name, rp.steuer_prozent,
+                       SUM(rp.netto) AS netto, SUM(rp.steuer) AS steuer, SUM(rp.brutto) AS brutto
+                FROM rechnung_positionen rp
+                LEFT JOIN artikel art ON art.id = rp.artikel_id
+                LEFT JOIN artikel_gruppen ag ON ag.id = art.artikel_gruppe_id
+                WHERE rp.rechnung_id = ?
+                GROUP BY ag.id, ag.konto_nr, ag.name, rp.steuer_prozent
+            "),
+            'gutschrift' => $this->db->prepare("
+                SELECT ag.konto_nr, ag.name AS gruppe_name, gp.steuer_prozent,
+                       SUM(gp.netto) AS netto, SUM(gp.steuer) AS steuer, SUM(gp.brutto) AS brutto
+                FROM gutschrift_positionen gp
+                LEFT JOIN artikel art ON art.id = gp.artikel_id
+                LEFT JOIN artikel_gruppen ag ON ag.id = art.artikel_gruppe_id
+                WHERE gp.gutschrift_id = ?
+                GROUP BY ag.id, ag.konto_nr, ag.name, gp.steuer_prozent
+            "),
+        ];
+        $gsKonto = $this->zahlungsartKonto('gutschein')['kontonummer'] ?? null;
+
+        foreach ($belege as $b) {
+            $vz    = $b['art'] === 'gutschrift' ? -1 : 1;
+            $label = $b['art'] === 'gutschrift' ? 'Gutschrift' : 'Rechnung';
+            if (!$b['debitorennummer']) {
+                $hinweise[] = "$label {$b['nr']} ({$b['datum']}, Auftrag {$b['auftrag_nr']}): Kunde ohne Debitorennummer — manuell buchen";
+                continue;
+            }
+            $posStmt[$b['art']]->execute([(int)$b['id']]);
+            $zeilen = $posStmt[$b['art']]->fetchAll();
+
+            foreach ($zeilen as $p) {
+                $this->belegZeile($buchungen, $hinweise, $b, $label, $p['konto_nr'], $p['gruppe_name'] ?? 'ohne Gruppe',
+                    $this->echterSatz((float)$p['steuer_prozent']), $vz * (float)$p['netto'], $vz * (float)$p['steuer'], $gsKonto);
+            }
+
+            if ((float)$b['versandkosten_brutto'] > 0) {
+                // Satz wie auf der Rechnung mit den Versandkosten (bei einer Korrektur deren Original)
+                $basis = $b['art'] === 'gutschrift' ? $this->versandBasisRechnung((int)$b['auftrag_id']) : null;
+                $v = Versandsteuer::aufteilen((float)$b['versandkosten_brutto'], $basis ??
+                    array_map(fn($p) => ['steuer_prozent' => $p['steuer_prozent'], 'gesamtpreis_netto' => $p['netto']], $zeilen));
+                $this->belegZeile($buchungen, $hinweise, $b, $label, $this->versandKonto(), 'Versandkosten',
+                    (float)$v['satz'], $vz * $v['netto'], $vz * $v['steuer'], $gsKonto);
+            }
+        }
+    }
+
+    /** Positionen der Rechnung, auf der die Versandkosten des Auftrags standen. */
+    private function versandBasisRechnung(int $auftragId): ?array
+    {
+        $s = $this->db->prepare("
+            SELECT steuer_prozent, netto AS gesamtpreis_netto FROM rechnung_positionen
+            WHERE rechnung_id = (SELECT id FROM rechnungen WHERE auftrag_id = ? AND versandkosten_brutto > 0 ORDER BY id LIMIT 1)
+        ");
+        $s->execute([$auftragId]);
+        return $s->fetchAll(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /** Erlös- und USt-Zeile eines Rechnungs-/Gutschrift-Belegs gegen das Kundenkonto. */
+    private function belegZeile(array &$buchungen, array &$hinweise, array $b, string $label, ?string $konto,
+                                string $gruppe, float $satz, float $netto, float $steuer, ?string $gsKonto): void
+    {
+        $netto = round($netto, 2); $steuer = round($steuer, 2);
+        if (!$konto) {
+            $hinweise[] = "$label {$b['nr']}: $gruppe ohne Erlöskonto — € " . number_format($netto + $steuer, 2, ',', '.') . " manuell buchen";
+            return;
+        }
+        $buchungen[] = [
+            'datum' => $b['datum'], 'belegnr' => $b['nr'], 'konto' => $konto, 'gegenkonto' => $b['debitorennummer'],
+            'betrag' => $netto, 'soll_haben' => 'H', 'satz' => $satz,
+            'text' => ($konto === $gsKonto ? 'Gutschein-Verkauf (Anzahlung)' : "Erlös $gruppe") . " $label {$b['nr']}",
+        ];
+        if (abs($steuer) > 0.004) {
+            $ustKonto = $this->ustKonto($satz);
+            if (!$ustKonto) {
+                $hinweise[] = "$label {$b['nr']}: Kein USt-Konto für $satz% — Steuer € " . number_format($steuer, 2, ',', '.') . " manuell buchen";
+                return;
+            }
+            $buchungen[] = [
+                'datum' => $b['datum'], 'belegnr' => $b['nr'], 'konto' => $ustKonto, 'gegenkonto' => $b['debitorennummer'],
+                'betrag' => $steuer, 'soll_haben' => 'H', 'satz' => $satz,
+                'text' => "USt $satz% $gruppe $label {$b['nr']}",
+            ];
+        }
+    }
+
+    // ── Block 4: Zahlungseingänge + Gutschein-Einlösungen (außerhalb der Kasse) ──
+
+    /**
+     * Jede Zahlung auf einen Auftrag: Bank/PayPal/... an Kundenkonto, am Buchungsdatum --
+     * für ALLE Zahlarten (Vorkasse wird so zur Anzahlung, die Rechnung gleicht sie später aus).
+     * An der Kasse gebuchte Zahlungen (kassen_bon_id gesetzt) laufen über den Bon und werden
+     * hier übersprungen. Online eingelöste Gutscheine: Anzahlungskonto 3230 an Kundenkonto.
+     */
+    private function zahlungseingaenge(string $von, string $bis, array &$buchungen, array &$hinweise): void
+    {
+        $zeitraum = " BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis);
+        $rows = $this->db->query("
+            SELECT z.buchungsdatum AS datum, z.betrag, z.zahlungsweg, a.zahlungsart, a.auftrag_nr, k.debitorennummer,
+                   'zahlung' AS quelle
+            FROM auftrag_zahlungen z
+            JOIN auftraege a ON a.id = z.auftrag_id
+            LEFT JOIN kunden k ON k.id = a.kunden_id
+            WHERE z.kassen_bon_id IS NULL AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
+              AND z.buchungsdatum $zeitraum
+            UNION ALL
+            SELECT DATE(t.erstellt_am), -t.betrag, 'gutschein', a.zahlungsart, a.auftrag_nr, k.debitorennummer, 'gutschein'
+            FROM gutschein_transaktionen t
+            JOIN auftraege a ON a.id = t.auftrag_id
+            LEFT JOIN kunden k ON k.id = a.kunden_id
+            WHERE t.betrag < 0 AND t.kassen_bon_id IS NULL AND t.kanal <> 'kasse'
+              AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
+              AND DATE(t.erstellt_am) $zeitraum
+        ")->fetchAll();
+
+        foreach ($rows as $r) {
+            $za = self::ZAHLUNGSWEG_ZU_ZAHLUNGSART[$r['zahlungsweg'] ?? ''] ?? (in_array($r['zahlungsart'], ['rechnung', 'gemischt'], true) ? 'vorkasse' : $r['zahlungsart']);
+            $zk = $this->zahlungsartKonto($za)['kontonummer'] ?? null;
+            $betrag = round((float)$r['betrag'], 2);
+            if (!$r['debitorennummer'] || !$zk) {
+                $hinweise[] = "Zahlung {$r['auftrag_nr']} ({$r['datum']}): " . (!$zk ? "kein Konto für '$za'" : 'Kunde ohne Debitorennummer')
+                    . " — € " . number_format($betrag, 2, ',', '.') . " manuell buchen";
+                continue;
+            }
+            $buchungen[] = [
+                'datum' => $r['datum'], 'belegnr' => $r['auftrag_nr'], 'konto' => $r['debitorennummer'],
+                'gegenkonto' => $zk, 'betrag' => $betrag, 'soll_haben' => 'H', 'satz' => null,
+                'text' => ($r['quelle'] === 'gutschein' ? 'Gutschein-Einlösung' : ($betrag < 0 ? 'Rückerstattung' : 'Zahlungseingang'))
+                    . " Auftrag {$r['auftrag_nr']}",
+            ];
+        }
+    }
+
+    // ── Block 5: Mahngebühren (Rechnungskunden) ─────────────────────────────
 
     /**
      * Mahngebühr wird mit dem Versand der Mahnung zur Forderung: Kundenkonto an Erlöskonto
      * Mahngebühren (Artikelgruppe "Mahngebühren", nicht umsatzsteuerbar). Erlassene Gebühr
-     * am Erlassdatum zurück. Die Zahlung selbst läuft unverändert über Block 3 (Bank an Kunde).
+     * am Erlassdatum zurück. Die Zahlung selbst läuft über Block 4 (Bank an Kunde).
      */
     private function mahngebuehren(string $von, string $bis, array &$buchungen, array &$hinweise): void
     {
@@ -568,6 +567,19 @@ class BuchhaltungExportService
                 ];
             }
         }
+    }
+
+    /** Wert der zurückgenommenen Ware (wie auftraege/detail.php, solange noch nicht alles verrechnet ist). */
+    private function retourWert(int $auftragId): float
+    {
+        require_once __DIR__ . '/../auftraege/Positionsrechnung.php';
+        $s = $this->db->prepare("SELECT * FROM auftrag_positionen WHERE auftrag_id = ? AND menge_retourniert > 0");
+        $s->execute([$auftragId]);
+        $summe = 0.0;
+        foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $p) {
+            $summe += Positionsrechnung::ausPosition($p, (float)$p['menge_retourniert'])['brutto'];
+        }
+        return $summe;
     }
 
     // ── Zahlungs-Kontrollliste (Seite buchhaltung/zahlungskontrolle.php) ─────
@@ -647,41 +659,74 @@ class BuchhaltungExportService
             ORDER BY a.erstellt_am
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-        $zStmt = $this->db->prepare("SELECT buchungsdatum, betrag, notiz FROM auftrag_zahlungen WHERE auftrag_id = ? ORDER BY buchungsdatum, id");
-        $bankKonto = $kontoVon('vorkasse');
+        // Belege-basiert wie der Export (Belege-Umbau 2026-10-07): Rechnungen + Bons − Korrekturen
+        // gegen Zahlungen. Vorher Auftragsbetrag − Zahlungen -- zeigte z.B. bei Teilabholung mit
+        // Erstattung "offen 5,-" (Klicktest B7/47, A-2026-00068).
+        require_once __DIR__ . '/../auftraege/AuftragAbschluss.php';
+        $zStmt = $this->db->prepare("SELECT buchungsdatum, betrag, notiz, zahlungsweg, kassen_bon_id FROM auftrag_zahlungen WHERE auftrag_id = ? ORDER BY buchungsdatum, id");
+        $belegStmt = $this->db->prepare("
+            SELECT 'Rechnung' COLLATE utf8mb4_unicode_ci AS art, rechnung_nr COLLATE utf8mb4_unicode_ci AS nr, bruttobetrag AS betrag FROM rechnungen WHERE auftrag_id = :a1
+            UNION ALL
+            SELECT 'Bon' COLLATE utf8mb4_unicode_ci, b.bon_nr COLLATE utf8mb4_unicode_ci, SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100))
+              FROM kassen_bon_positionen bp JOIN kassen_bons b ON b.id = bp.bon_id AND b.typ = 'verkauf' AND b.storniert = 0
+             WHERE bp.web_auftrag_id = :a2 AND bp.block IN ('auftrag', 'retour') GROUP BY b.id, b.bon_nr
+            UNION ALL
+            SELECT 'Korrektur' COLLATE utf8mb4_unicode_ci, gutschrift_nr COLLATE utf8mb4_unicode_ci, -bruttobetrag FROM gutschriften WHERE auftrag_id = :a3
+        ");
 
         $auftragZeilen = [];
         foreach ($auftraege as $a) {
-            $zStmt->execute([(int)$a['id']]);
+            $id = (int)$a['id'];
+            $zStmt->execute([$id]);
             $zahlungen = $zStmt->fetchAll(PDO::FETCH_ASSOC);
+            $belegStmt->execute([':a1' => $id, ':a2' => $id, ':a3' => $id]);
+            $belege    = $belegStmt->fetchAll(PDO::FETCH_ASSOC);
             $gezahlt   = round(array_sum(array_column($zahlungen, 'betrag')), 2);
             $gutschein = round((float)$a['gutschein_betrag'], 2);
-            // Offene Mahngebühren gehören zum zu zahlenden Betrag (MahnwesenService)
-            $offen     = round((float)$a['bruttobetrag'] + (float)$a['mahngebuehren'] - $gutschein - $gezahlt, 2);
-            // Differenz nur relevant, wenn der Auftrag als bezahlt gilt (ausstehend = offen ist normal)
-            $auffaellig = ($a['zahlungsstatus'] === 'bezahlt' && abs($offen) > 0.004) || $offen < -0.004;
-            $interessant = $gutschein > 0 || count($zahlungen) > 1 || $auffaellig;
 
+            $k = AuftragAbschluss::kriterien($id);
+            $aussagekraeftig = $belege && $k['belegt'];
+            $offen = $aussagekraeftig
+                ? round(AuftragAbschluss::saldo($id), 2)
+                : round((float)$a['bruttobetrag'] - $this->retourWert($id) + (float)$a['mahngebuehren'] - $gutschein - $gezahlt, 2);
+            $nichtVerrechnet = !$k['belegt'];
+
+            // Auffällig: geliefert ohne Beleg, als bezahlt markiert aber nicht ausgeglichen,
+            // oder dem Kunden ist Geld zurückzuzahlen
+            $auffaellig = $nichtVerrechnet
+                || (in_array($a['zahlungsstatus'], ['bezahlt', 'erstattet'], true) && abs($offen) > 0.004)
+                || $offen < -0.004;
+            $interessant = $gutschein > 0 || count($zahlungen) > 1 || $auffaellig
+                || in_array('Korrektur', array_column($belege, 'art'), true);
             if (!$alle && !$interessant) continue;
 
+            // Buchung wie im Export: Zahlungen ohne Bon auf das Konto ihres Zahlungswegs,
+            // Kassen-Zahlungen laufen über den Bon (oben), Online-Gutschein über 3230
             $konten = [];
-            if ($gezahlt != 0) {
-                $k = $a['zahlungsart'] === 'rechnung' ? $bankKonto : $kontoVon($a['zahlungsart']);
-                $konten[$k] = $gezahlt;
+            $ueberBon = 0.0;
+            foreach ($zahlungen as $z) {
+                if (!empty($z['kassen_bon_id'])) { $ueberBon += (float)$z['betrag']; continue; }
+                $za = self::ZAHLUNGSWEG_ZU_ZAHLUNGSART[$z['zahlungsweg'] ?? ''] ?? (in_array($a['zahlungsart'], ['rechnung', 'gemischt'], true) ? 'vorkasse' : $a['zahlungsart']);
+                $kn = $kontoVon($za);
+                $konten[$kn] = round(($konten[$kn] ?? 0) + (float)$z['betrag'], 2);
             }
             if ($gutschein > 0) {
-                $k = $kontoVon('gutschein');
-                $konten[$k] = ($konten[$k] ?? 0) + $gutschein;
+                $kn = $kontoVon('gutschein');
+                $konten[$kn] = round(($konten[$kn] ?? 0) + $gutschein, 2);
             }
-            foreach ($konten as $k => $betrag) {
-                $kontoSummen[$k] = ($kontoSummen[$k] ?? 0) + $betrag;
+            foreach ($konten as $kn => $betrag) {
+                $kontoSummen[$kn] = ($kontoSummen[$kn] ?? 0) + $betrag;
             }
             $auftragZeilen[] = $a + [
-                'zahlungen'  => $zahlungen,
-                'gezahlt'    => $gezahlt,
-                'offen'      => $offen,
-                'konten'     => $konten,
-                'auffaellig' => $auffaellig,
+                'zahlungen'        => $zahlungen,
+                'belege'           => $belege,
+                'beleg_summe'      => round(array_sum(array_column($belege, 'betrag')), 2),
+                'gezahlt'          => $gezahlt,
+                'offen'            => $offen,
+                'nicht_verrechnet' => $nichtVerrechnet,
+                'konten'           => $konten,
+                'ueber_bon'        => round($ueberBon, 2),
+                'auffaellig'       => $auffaellig,
             ];
         }
 

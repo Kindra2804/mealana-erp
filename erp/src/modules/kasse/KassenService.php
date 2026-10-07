@@ -6,6 +6,8 @@ require_once __DIR__ . '/../lager/LagerService.php';
 require_once __DIR__ . '/BfrService.php';
 require_once __DIR__ . '/../inventur/InventurService.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
+require_once __DIR__ . '/../auftraege/AuftragRepository.php';
+require_once __DIR__ . '/../auftraege/AuftragAbschluss.php';
 
 class KassenService
 {
@@ -337,7 +339,7 @@ class KassenService
                 $stmt2->execute([
                     ':bon_id'             => $bonId,
                     ':block'              => $pos['block']              ?? null,
-                    ':web_auftrag_id'     => $pos['web_auftrag_id']     ?? null,
+                    ':web_auftrag_id'     => $pos['web_auftrag_id'] ?? $pos['zahlung_auftrag_id'] ?? null,
                     ':artikel_id'         => $pos['artikel_id']         ?? null,
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean']                ?? null,
@@ -401,6 +403,10 @@ class KassenService
             }
 
             // Auftrag-Eintrag anlegen (kanal='kasse') → erscheint in auftraege/liste.php
+            // Zahlbeleg-Zeilen (block 'zahlung' = Zahlung auf eine bestehende Rechnung) sind
+            // kein Verkauf und gehören nicht in den Spiegel-Auftrag; besteht der Bon nur
+            // daraus, gibt es keinen Spiegel-Auftrag (Belege-Umbau 2026-10-07).
+            $positionen = array_values(array_filter($positionen, fn($p) => ($p['block'] ?? null) !== 'zahlung'));
             $netto = 0.0;
             $steuerBetrag = 0.0;
             foreach ($positionen as $p) {
@@ -420,72 +426,75 @@ class KassenService
                 ($bonDaten['zahlungsart'] ?? '') === 'gutschein' && !$gsMitRest => 'gutschein',
                 default => 'gemischt',
             };
-            $kundenSnapshot = $bonDaten['kunden_id']
-                ? null
-                : json_encode(['name' => 'Laufkunde', 'kundennummer' => '-'], JSON_UNESCAPED_UNICODE);
-            $stmtAuf = $this->db->prepare("
-                INSERT INTO auftraege
-                    (auftrag_nr, kunden_id, kunden_snapshot, kanal,
-                     zahlungsstatus, lieferstatus, zahlungsart,
-                     nettobetrag, steuerbetrag, bruttobetrag,
-                     bezahlt_am, versand_datum, lieferart, erstellt_von)
-                VALUES
-                    (:bon_nr, :kunden_id, :kunden_snapshot, 'kasse',
-                     'bezahlt', 'abgeschlossen', :zahlungsart,
-                     :netto, :steuer, :brutto,
-                     NOW(), NOW(), 'abholung', :erstellt_von)
-            ");
-            $stmtAuf->execute([
-                ':bon_nr'          => $bonNr,
-                ':kunden_id'       => $bonDaten['kunden_id'] ?: null,
-                ':kunden_snapshot' => $kundenSnapshot,
-                ':zahlungsart'     => $aufZahlungsart,
-                ':netto'           => round($netto, 2),
-                ':steuer'          => round($steuerBetrag, 2),
-                ':brutto'          => $bonDaten['bruttobetrag'] ?? 0,
-                ':erstellt_von'    => $benutzerId,
-            ]);
-            $auftragId = (int)$this->db->lastInsertId();
-
-            // Positionen in auftrag_positionen spiegeln
-            // Divers (artikel_id=null) → Platzhalter-Artikel 99-9999, Bezeichnung bleibt frei
-            $diversArtikelId = $this->getDiversArtikelId();
-            $stmtPos = $this->db->prepare("
-                INSERT INTO auftrag_positionen
-                    (auftrag_id, artikel_id, bezeichnung, menge,
-                     einzelpreis_netto, steuer_prozent, rabatt_prozent, gesamtpreis_netto)
-                VALUES
-                    (:auftrag_id, :artikel_id, :bezeichnung, :menge,
-                     :einzelpreis_netto, :steuer_prozent, :rabatt_prozent, :gesamtpreis_netto)
-            ");
-            foreach ($positionen as $p) {
-                $artIdPos  = !empty($p['artikel_id']) ? (int)$p['artikel_id'] : $diversArtikelId;
-                if (!$artIdPos) continue; // 99-9999 nicht angelegt? überspringen
-                $brutto    = (float)($p['einzelpreis_brutto'] ?? 0);
-                $stProzent = (float)($p['steuer_prozent'] ?? 20);
-                $faktor    = 1 + $stProzent / 100;
-                $nettEP    = $faktor > 0 ? round($brutto / $faktor, 4) : $brutto;
-                $menge     = (float)($p['menge'] ?? 1);
-                $rabatt    = (float)($p['rabatt_prozent'] ?? 0);
-                $gesNetto  = round($menge * $nettEP * (1 - $rabatt / 100), 2);
-                $stmtPos->execute([
-                    ':auftrag_id'         => $auftragId,
-                    ':artikel_id'         => $artIdPos,
-                    ':bezeichnung'        => $p['bezeichnung'],
-                    ':menge'              => (int)$menge,
-                    ':einzelpreis_netto'  => $nettEP,
-                    ':steuer_prozent'     => $stProzent,
-                    ':rabatt_prozent'     => $rabatt,
-                    ':gesamtpreis_netto'  => $gesNetto,
+            $auftragId = null;
+            if ($positionen) {
+                $kundenSnapshot = $bonDaten['kunden_id']
+                    ? null
+                    : json_encode(['name' => 'Laufkunde', 'kundennummer' => '-'], JSON_UNESCAPED_UNICODE);
+                $stmtAuf = $this->db->prepare("
+                    INSERT INTO auftraege
+                        (auftrag_nr, kunden_id, kunden_snapshot, kanal,
+                         zahlungsstatus, lieferstatus, zahlungsart,
+                         nettobetrag, steuerbetrag, bruttobetrag,
+                         bezahlt_am, versand_datum, lieferart, erstellt_von)
+                    VALUES
+                        (:bon_nr, :kunden_id, :kunden_snapshot, 'kasse',
+                         'bezahlt', 'abgeschlossen', :zahlungsart,
+                         :netto, :steuer, :brutto,
+                         NOW(), NOW(), 'abholung', :erstellt_von)
+                ");
+                $stmtAuf->execute([
+                    ':bon_nr'          => $bonNr,
+                    ':kunden_id'       => $bonDaten['kunden_id'] ?: null,
+                    ':kunden_snapshot' => $kundenSnapshot,
+                    ':zahlungsart'     => $aufZahlungsart,
+                    ':netto'           => round($netto, 2),
+                    ':steuer'          => round($steuerBetrag, 2),
+                    ':brutto'          => round($netto + $steuerBetrag, 2),
+                    ':erstellt_von'    => $benutzerId,
                 ]);
-                if (!empty($p['konfig_wert_ids'])) {
-                    $konfigSvc->speichereAuswahl('auftrag_positionen', (int)$this->db->lastInsertId(), $p['konfig_wert_ids']);
-                }
-            }
+                $auftragId = (int)$this->db->lastInsertId();
 
-            // Bon mit Auftrag verknüpfen
-            $this->db->prepare("UPDATE kassen_bons SET auftrag_id = :aid WHERE id = :bid")
-                ->execute([':aid' => $auftragId, ':bid' => $bonId]);
+                // Positionen in auftrag_positionen spiegeln
+                // Divers (artikel_id=null) → Platzhalter-Artikel 99-9999, Bezeichnung bleibt frei
+                $diversArtikelId = $this->getDiversArtikelId();
+                $stmtPos = $this->db->prepare("
+                    INSERT INTO auftrag_positionen
+                        (auftrag_id, artikel_id, bezeichnung, menge,
+                         einzelpreis_netto, steuer_prozent, rabatt_prozent, gesamtpreis_netto)
+                    VALUES
+                        (:auftrag_id, :artikel_id, :bezeichnung, :menge,
+                         :einzelpreis_netto, :steuer_prozent, :rabatt_prozent, :gesamtpreis_netto)
+                ");
+                foreach ($positionen as $p) {
+                    $artIdPos  = !empty($p['artikel_id']) ? (int)$p['artikel_id'] : $diversArtikelId;
+                    if (!$artIdPos) continue; // 99-9999 nicht angelegt? überspringen
+                    $brutto    = (float)($p['einzelpreis_brutto'] ?? 0);
+                    $stProzent = (float)($p['steuer_prozent'] ?? 20);
+                    $faktor    = 1 + $stProzent / 100;
+                    $nettEP    = $faktor > 0 ? round($brutto / $faktor, 4) : $brutto;
+                    $menge     = (float)($p['menge'] ?? 1);
+                    $rabatt    = (float)($p['rabatt_prozent'] ?? 0);
+                    $gesNetto  = round($menge * $nettEP * (1 - $rabatt / 100), 2);
+                    $stmtPos->execute([
+                        ':auftrag_id'         => $auftragId,
+                        ':artikel_id'         => $artIdPos,
+                        ':bezeichnung'        => $p['bezeichnung'],
+                        ':menge'              => (int)$menge,
+                        ':einzelpreis_netto'  => $nettEP,
+                        ':steuer_prozent'     => $stProzent,
+                        ':rabatt_prozent'     => $rabatt,
+                        ':gesamtpreis_netto'  => $gesNetto,
+                    ]);
+                    if (!empty($p['konfig_wert_ids'])) {
+                        $konfigSvc->speichereAuswahl('auftrag_positionen', (int)$this->db->lastInsertId(), $p['konfig_wert_ids']);
+                    }
+                }
+
+                // Bon mit Auftrag verknüpfen
+                $this->db->prepare("UPDATE kassen_bons SET auftrag_id = :aid WHERE id = :bid")
+                    ->execute([':aid' => $auftragId, ':bid' => $bonId]);
+            } // Ende Spiegel-Auftrag
 
             Logger::log('kasse.bon.erstellt', 'kassen_bons', $bonId, [
                 'bon_nr'       => $bonNr,
@@ -594,17 +603,21 @@ class KassenService
             $stornoBonId = (int)$this->db->lastInsertId();
 
             $lagerSvc = new LagerService();
+            $zahlbelegAuftraege = [];
             foreach ($bon['positionen'] as $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, artikel_id, bezeichnung, ean, menge,
+                        (bon_id, block, web_auftrag_id, artikel_id, bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge)
                     VALUES
-                        (:bon_id, :artikel_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge)
                 ");
+                $istZahlung = ($pos['block'] ?? null) === 'zahlung';
                 $stmt2->execute([
                     ':bon_id'             => $stornoBonId,
+                    ':block'              => $istZahlung ? 'zahlung' : null,
+                    ':web_auftrag_id'     => $istZahlung ? $pos['web_auftrag_id'] : null,
                     ':artikel_id'         => $pos['artikel_id'],
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean'],
@@ -614,6 +627,13 @@ class KassenService
                     ':steuer_prozent'     => $pos['steuer_prozent'],
                     ':charge'             => $pos['charge'],
                 ]);
+
+                // Zahlbeleg storniert -> Zahlung am Auftrag gegenbuchen
+                if ($istZahlung && !empty($pos['web_auftrag_id'])) {
+                    $this->stornierteZahlungZuruecknehmen((int)$pos['web_auftrag_id'], (float)$pos['einzelpreis_brutto'] * abs((float)$pos['menge']),
+                        $stornoBonId, $stornoBonNr, $bon['bon_nr'], $benutzerId);
+                    $zahlbelegAuftraege[] = (int)$pos['web_auftrag_id'];
+                }
 
                 if (!empty($pos['artikel_id'])) {
                     $lagerSvc->wareneingang([
@@ -636,6 +656,9 @@ class KassenService
             $this->db->rollBack();
             return ['erfolg' => false, 'fehler' => $e->getMessage()];
         }
+        foreach (array_unique($zahlbelegAuftraege) as $aid) {
+            AuftragAbschluss::pruefe($aid, $benutzerId);
+        }
 
         // BFR-Signatur nach dem Commit, außerhalb der Transaktion — siehe erstelleBon().
         $kasseVoll = array_merge($this->getKasse((int)$bon['kasse_id']) ?? [], ['id' => (int)$bon['kasse_id']]);
@@ -654,6 +677,27 @@ class KassenService
         }
 
         return ['erfolg' => true, 'storno_bon_id' => $stornoBonId, 'bon_nr' => $stornoBonNr];
+    }
+
+    /**
+     * Storno eines Zahlbelegs: Gegenbuchung in auftrag_zahlungen + Zahlungsstatus aus der
+     * verbleibenden Zahlungssumme neu setzen (bezahlt/teilbezahlt/ausstehend).
+     */
+    private function stornierteZahlungZuruecknehmen(int $auftragId, float $betrag, int $stornoBonId, string $stornoBonNr, string $bonNr, int $benutzerId): void
+    {
+        $repo = new AuftragRepository();
+        $repo->insertZahlung($auftragId, -round($betrag, 2), date('Y-m-d'),
+            'Storno Zahlbeleg ' . $bonNr . ' (' . $stornoBonNr . ')', $benutzerId, null, $stornoBonId);
+
+        $auftrag = $repo->findById($auftragId);
+        $summe   = $repo->getSummeZahlungen($auftragId);
+        $gesamt  = round((float)$auftrag['bruttobetrag'] + $repo->getOffeneMahngebuehren($auftragId), 2);
+        $neu = $summe >= $gesamt - 0.004 ? 'bezahlt' : ($summe > 0.004 ? 'teilbezahlt' : 'ausstehend');
+        if ($neu !== $auftrag['zahlungsstatus']) {
+            $repo->updateStatus($auftragId, ['zahlungsstatus' => $neu]);
+            $repo->logStatus($auftragId, ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neu]],
+                'Zahlbeleg ' . $bonNr . ' storniert', $benutzerId);
+        }
     }
 
     // ── Bon-Nr generieren ─────────────────────────────────────────────────────

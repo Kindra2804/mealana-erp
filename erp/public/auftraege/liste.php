@@ -10,11 +10,23 @@ $filterLieferung      = $_GET['lieferung'] ?? '';
 $filterKanal          = $_GET['kanal']    ?? '';
 $suche                = $_GET['suche']    ?? '';
 $mitAbgeschlossenen   = isset($_GET['abgeschlossene']);
+// Belege-Filter aus den Kacheln "Offene Werte" (Buchhaltung → Zahlungs-Kontrolle, Dashboard)
+$belegFilterLabels = [
+    'bestand'          => 'Auftragsbestand — bestellt, noch nicht geliefert',
+    'nicht_verrechnet' => 'Geliefert, aber noch nicht verrechnet',
+    'rechnung_offen'   => 'Offene Rechnungen — verrechnet, noch nicht bezahlt',
+];
+$belegFilter = isset($belegFilterLabels[$_GET['belege'] ?? '']) ? $_GET['belege'] : '';
 
 // ── Zeitraum-Filter (Presets analog auftraege/statistik.php, plus Quartal/6-Monate/
 //    Jahr-Monat-Auswahl -- wichtig geworden, seit der JTL-Archiv-Import Aufträge
 //    bis 2013 zurück in die Liste bringt) ─────────────────────────────────────────
-$zeitraum = $_GET['zeitraum'] ?? '';
+// Standard "Dieser Monat" -- "Alle Zeiträume" lädt mit dem JTL-Archiv ~39.000 Aufträge.
+// Suche, Status-Filter und Kachel-Filter (belege=...) sollen aber auch Ältere finden -> dann alle.
+$zeitraum = $_GET['zeitraum'] ?? (($suche !== '' || $belegFilter !== '' || $filterLieferung !== '' || $filterZahlung !== '') ? 'alle' : 'monat');
+// Suche (auch Teilnummer wie "0051") immer über alle Zeiträume -- die Auswahl steht sonst
+// auf "Dieser Monat" und würde mitgeschickt (Klicktest 2026-10-07)
+if ($suche !== '') $zeitraum = 'alle';
 $heute    = date('Y-m-d');
 $von = null;
 $bis = null;
@@ -46,15 +58,37 @@ switch ($zeitraum) {
         $von = $_GET['von'] ?? null;
         $bis = $_GET['bis'] ?? null;
         break;
-    default:
-        $zeitraum = '';
+    default: // 'alle'
+        $zeitraum = 'alle';
         break;
 }
 
 $jahrVon = (int)date('Y', strtotime((Database::getInstance()->query("SELECT MIN(erstellt_am) FROM auftraege")->fetchColumn()) ?: $heute));
 $jahrBis = (int)date('Y');
 
-$auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche, $mitAbgeschlossenen, $von, $bis);
+$auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche, $mitAbgeschlossenen, $von, $bis, $belegFilter);
+// JTL-Archiv hat keine Belege im ERP -> nicht abfragen (bei "Alle Zeiträume" ~39.000 Aufträge)
+$belege    = $service->getBelegeFuerAuftraege(array_column(array_filter($auftraege, fn($a) => $a['kanal'] !== 'jtl_archiv'), 'id'));
+
+// Belege-Spalte: Kürzel, Bezeichnung, Farbe (Hintergrund/Rahmen/Text) -- siehe
+// docs/design/belege_spalte_uebersicht_mockup.svg (von Barbara freigegeben 2026-10-07)
+$belegTypen = [
+    'ab'  => ['AB',  'Auftragsbestätigung', '#e0e7ff', '#6366f1', '#3730a3'],
+    'ls'  => ['LS',  'Lieferschein',        '#fef3c7', '#d97706', '#92400e'],
+    'rg'  => ['RG',  'Rechnung',            '#dcfce7', '#16a34a', '#166534'],
+    'gs'  => ['RK',  'Rechnungskorrektur / Storno', '#fee2e2', '#dc2626', '#991b1b'],
+    'az'  => ['AZ',  'Abholzettel',         '#f3e8ff', '#9333ea', '#6b21a8'],
+    'bon' => ['Bon', 'Kassenbon (= Rechnung)', '#e0f2fe', '#0284c7', '#075985'],
+];
+// Welche Kürzel je Auftrag immer (auch grau) gezeigt werden
+$belegeSpalte = function (array $a, array $b): array {
+    if ($a['kanal'] === 'kasse') return ['bon'];
+    if ($a['kanal'] === 'jtl_archiv') return [];
+    $liste = ['ab', ($a['lieferart'] ?? '') === 'abholung' ? 'az' : 'ls', 'rg', 'gs'];
+    if ($b['bon']) $liste[] = 'bon';
+    if ($b['ls'] && !in_array('ls', $liste, true)) array_splice($liste, 2, 0, ['ls']);
+    return $liste;
+};
 
 $zahlungsLabels = [
     'ausstehend'   => ['label' => 'Ausstehend',  'class' => 'chip-auslauf'],
@@ -62,7 +96,7 @@ $zahlungsLabels = [
     'teilbezahlt'  => ['label' => 'Teilbezahlt', 'class' => 'chip-auslauf'],
     'ueberbezahlt' => ['label' => 'Überbezahlt', 'class' => 'chip-auslauf'],
     'erstattet'    => ['label' => 'Erstattet',   'class' => 'chip-inaktiv'],
-    'gutschrift'   => ['label' => 'Gutschrift',  'class' => 'chip-inaktiv'],
+    'gutschrift'   => ['label' => 'Guthaben',    'class' => 'chip-inaktiv'],
     'storniert'    => ['label' => 'Storniert',   'class' => 'chip-inaktiv'],
 ];
 $zahlungsArtLabels = [
@@ -81,6 +115,7 @@ $lieferLabels = [
     'zurueckgestellt'  => ['label' => 'Zurückgestellt',   'class' => 'chip-inaktiv'],
     'versendet'        => ['label' => 'Versendet',        'class' => 'chip-aktiv'],
     'abgeschlossen'    => ['label' => 'Abgeschlossen',    'class' => 'chip-inaktiv'],
+    'retoure_offen'    => ['label' => 'Retoure offen',    'class' => 'chip-auslauf'],
     'storniert'        => ['label' => 'Storniert',        'class' => 'chip-inaktiv'],
     'kommissioniert'   => ['label' => 'Kommissioniert',   'class' => 'chip-auslauf'],
     'abholbereit'      => ['label' => 'Abholbereit',      'class' => 'chip-aktiv'],
@@ -120,6 +155,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <option value="versendet" <?= $filterLieferung === 'versendet'       ? 'selected' : '' ?>>Versendet</option>
         <option value="zurueckgestellt" <?= $filterLieferung === 'zurueckgestellt' ? 'selected' : '' ?>>Zurückgestellt</option>
         <option value="abgeschlossen" <?= $filterLieferung === 'abgeschlossen'   ? 'selected' : '' ?>>Abgeschlossen</option>
+        <option value="retoure_offen" <?= $filterLieferung === 'retoure_offen'   ? 'selected' : '' ?>>Retoure offen</option>
         <option value="kommissioniert" <?= $filterLieferung === 'kommissioniert' ? 'selected' : '' ?>>Kommissioniert</option>
         <option value="abholbereit" <?= $filterLieferung === 'abholbereit'    ? 'selected' : '' ?>>Abholbereit</option>
     </select>
@@ -136,7 +172,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <option value="jtl_archiv" <?= $filterKanal === 'jtl_archiv' ? 'selected' : '' ?>>Archiv</option>
     </select>
     <select class="erp-select" style="font-size:13px" id="filter-zeitraum">
-        <option value="" <?= $zeitraum === '' ? 'selected' : '' ?>>Alle Zeiträume</option>
+        <option value="alle" <?= $zeitraum === 'alle' ? 'selected' : '' ?>>Alle Zeiträume</option>
         <option value="monat" <?= $zeitraum === 'monat' ? 'selected' : '' ?>>Dieser Monat</option>
         <option value="quartal" <?= $zeitraum === 'quartal' ? 'selected' : '' ?>>Dieses Quartal</option>
         <option value="6monate" <?= $zeitraum === '6monate' ? 'selected' : '' ?>>Letzte 6 Monate</option>
@@ -206,6 +242,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
     document.getElementById('filter-jm-monat')?.addEventListener('change', applyFilter);
 </script>
 
+<?php if ($belegFilter): ?>
+<div class="card" style="margin-bottom:10px;padding:8px 14px;background:#eff6ff;border-left:3px solid #2563eb">
+    Gefiltert: <strong><?= htmlspecialchars($belegFilterLabels[$belegFilter]) ?></strong>
+    · <a href="<?= BASE_PATH ?>/auftraege/liste.php">✕ Filter entfernen</a>
+</div>
+<?php endif; ?>
+
 <div class="card">
     <?php if (empty($auftraege)): ?>
         <p style="color:var(--color-text-muted);padding:16px">Keine Aufträge gefunden.</p>
@@ -222,6 +265,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <th>Zahlungsart</th>
                     <th>Zahlung</th>
                     <th>Lieferung</th>
+                    <th>Belege</th>
                     <th></th>
                 </tr>
             </thead>
@@ -267,6 +311,29 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <span class="chip sc-aktion" title="Selbstabholung">🏬 Abholung</span>
                             <?php endif; ?>
                         </td>
+                        <td class="belege-zelle" style="white-space:nowrap">
+                            <?php $b = $belege[$a['id']] ?? ['ab' => [], 'ls' => [], 'rg' => [], 'gs' => [], 'az' => [], 'bon' => [], 'nicht_verrechnet' => false];
+                            foreach ($belegeSpalte($a, $b) as $typ):
+                                [$kurz, $name, $bg, $rand, $farbe] = $belegTypen[$typ];
+                                $docs = array_map(fn($d) => [
+                                    'nr' => $d['nr'], 'datum' => $d['datum'],
+                                    'url' => isset($d['bon_id'])
+                                        ? BASE_PATH . '/kasse/bon_a4.php?id=' . $d['bon_id']
+                                        : BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $a['id'] . '&datei=' . rawurlencode($d['datei']),
+                                ], $b[$typ]);
+                                $anz = count($docs);
+                            ?>
+                                <span class="beleg-chip<?= $anz ? ' beleg-da' : '' ?>"
+                                      style="<?= $anz ? "background:$bg;border-color:$rand;color:$farbe" : '' ?>"
+                                      title="<?= $name . ($anz ? '' : ' — noch keine') ?>"
+                                      <?= $anz ? 'data-titel="' . htmlspecialchars($name . ' zu ' . $a['auftrag_nr']) . '" data-docs="' . htmlspecialchars(json_encode($docs, JSON_UNESCAPED_UNICODE)) . '"' : '' ?>>
+                                    <?= $kurz ?><?php if ($anz > 1): ?><span class="beleg-anz" style="background:<?= $rand ?>"><?= $anz ?></span><?php endif; ?>
+                                </span>
+                            <?php endforeach; ?>
+                            <?php if ($b['nicht_verrechnet']): ?>
+                                <span class="beleg-warn" title="Ausgeliefert, aber noch auf keinem Beleg — bitte Rechnung erstellen">!</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $a['id'] ?>" class="btn btn-secondary btn-sm">Detail</a>
                         </td>
@@ -277,4 +344,20 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php endif ?>
 </div>
 
+<style>
+.beleg-chip { position:relative; display:inline-block; min-width:30px; padding:2px 6px; margin-right:4px; border:1px solid #cbd5e1;
+              border-radius:5px; background:#f1f5f9; color:#94a3b8; font-size:11px; font-weight:700; text-align:center; cursor:default; }
+.beleg-chip.beleg-da { cursor:pointer; }
+.beleg-anz  { position:absolute; top:-7px; right:-7px; min-width:15px; height:15px; line-height:15px; border-radius:8px;
+              color:#fff; font-size:9px; text-align:center; }
+.beleg-warn { display:inline-block; width:20px; height:20px; line-height:20px; border-radius:50%; background:#2563eb;
+              color:#fff; font-weight:700; text-align:center; vertical-align:middle; }
+.beleg-popup { position:absolute; z-index:2000; background:#fff; border:1.5px solid #16a34a; border-radius:6px;
+               box-shadow:0 4px 12px rgba(0,0,0,.15); padding:8px 12px; min-width:230px; font-size:12px; }
+.beleg-popup .titel { font-weight:700; font-size:11px; margin-bottom:4px; }
+.beleg-popup a { display:block; padding:3px 0; color:var(--color-text); text-decoration:none; }
+.beleg-popup a:hover { text-decoration:underline; }
+.beleg-popup .hint { color:var(--color-text-muted); font-size:10px; margin-top:2px; }
+</style>
+<script src="<?= BASE_PATH ?>/js/auftraege_liste_belege.js?v=<?= filemtime(__DIR__ . '/../js/auftraege_liste_belege.js') ?>"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

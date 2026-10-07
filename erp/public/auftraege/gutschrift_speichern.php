@@ -14,9 +14,12 @@ $rechnungId = (int)($_POST['rechnung_id'] ?? 0);
 $gsArt      = trim($_POST['gs_art'] ?? 'teilgutschrift');
 $grund      = trim($_POST['grund'] ?? '');
 $lagerRueck = !empty($_POST['lager_rueckbuchen']);
+// Versandkosten mit erstatten: bei Stornorechnung immer, bei Korrektur auf Wunsch
+$versandErstatten = $gsArt === 'vollstorno' || !empty($_POST['versand_erstatten']);
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 
-if (!$auftragId || !$rechnungId || !$benutzerId) {
+// rechnung_id 0 = Originalbeleg ist ein Kassenbon (an der Kasse bezahlte Abholung)
+if (!$auftragId || !$benutzerId) {
     $_SESSION['fehler'] = ['Ungültige Anfrage.'];
     header('Location: ' . BASE_PATH . '/auftraege/liste.php');
     exit;
@@ -34,12 +37,12 @@ if ($gsArt === 'teilgutschrift' && !empty($_POST['positionen'])) {
         if (empty($item['aktiv'])) continue;
         $posId = (int)($item['pos_id'] ?? 0);
 
-        $maxStmt = $db->prepare("SELECT menge, menge_gutgeschrieben FROM auftrag_positionen WHERE id = ? AND auftrag_id = ?");
+        $maxStmt = $db->prepare("SELECT LEAST(menge, menge_verrechnet) AS menge_verrechnet, menge_gutgeschrieben FROM auftrag_positionen WHERE id = ? AND auftrag_id = ?");
         $maxStmt->execute([$posId, $auftragId]);
         $origPos = $maxStmt->fetch(PDO::FETCH_ASSOC);
         if (!$origPos) continue; // Position gehört nicht zu diesem Auftrag — ignorieren
 
-        $maxMenge = max(0, (int)$origPos['menge'] - (int)$origPos['menge_gutgeschrieben']);
+        $maxMenge = max(0, (int)$origPos['menge_verrechnet'] - (int)$origPos['menge_gutgeschrieben']); // nur Verrechnetes korrigierbar
         if ($maxMenge <= 0) continue; // bereits vollständig gutgeschrieben — nichts mehr offen
 
         $menge = min($maxMenge, max(1, (int)($item['menge'] ?? 1)));
@@ -62,18 +65,20 @@ if ($gsArt === 'teilgutschrift' && !empty($_POST['positionen'])) {
 $service  = new DokumentService();
 $ergebnis = $service->erstelleGutschrift(
     $auftragId, $rechnungId, $benutzerId,
-    $gsArt, $positionen, $grund, $lagerRueck
+    $gsArt, $positionen, $grund, $lagerRueck, $versandErstatten
 );
 
 if ($ergebnis['erfolg']) {
     // Gutschrift-Mail mit PDF-Anhang versenden
     versendeGutschriftMail($auftragId, $rechnungId, $gsArt, $grund, $ergebnis);
 
-    $_SESSION['erfolg'] = 'Gutschrift ' . $ergebnis['gs_nr'] . ' wurde erstellt.';
-    header('Location: ' . BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $auftragId
-        . '&datei=' . urlencode($ergebnis['dateiname']));
+    $_SESSION['erfolg'] = ($gsArt === 'vollstorno' ? 'Stornorechnung ' : 'Rechnungskorrektur ') . $ergebnis['gs_nr'] . ' wurde erstellt.';
+    // Zurück zum Auftrag, PDF öffnet sich im neuen Tab (vorher ersetzte es das ERP-Fenster)
+    $_SESSION['dokument_oeffnen'] = BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $auftragId
+        . '&datei=' . urlencode($ergebnis['dateiname']);
+    header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $auftragId);
 } else {
-    $_SESSION['fehler']   = [$ergebnis['fehler'] ?? 'Fehler beim Erstellen der Gutschrift.'];
+    $_SESSION['fehler']   = [$ergebnis['fehler'] ?? 'Fehler beim Erstellen der Rechnungskorrektur.'];
     $_SESSION['formdata'] = $_POST;
     header('Location: ' . BASE_PATH . '/auftraege/gutschrift_erstellen.php?auftrag_id=' . $auftragId);
 }
@@ -127,7 +132,7 @@ function versendeGutschriftMail(
 
         $mailer->sendeTemplate(
             $email,
-            'Ihre Gutschrift ' . $ergebnis['gs_nr'],
+            ($gsArt === 'vollstorno' ? 'Stornorechnung ' : 'Rechnungskorrektur ') . $ergebnis['gs_nr'],
             'mails/gutschrift_mail.html.twig',
             [
                 'kunde_name'     => $kundeName,

@@ -9,6 +9,7 @@ require_once __DIR__ . '/../dokumente/DokumentRepository.php';
 require_once __DIR__ . '/../dokumente/DokumentService.php';
 require_once __DIR__ . '/../auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../auftraege/Positionsrechnung.php';
+require_once __DIR__ . '/../auftraege/AuftragAbschluss.php';
 
 /**
  * HaendlerService – Händler-Außenlager / Konsignation (Jacky 2026-10-01).
@@ -346,7 +347,7 @@ class HaendlerService
                 'lieferadresse_snapshot' => null,
                 'rechnungsadresse_snapshot' => $adresse ? json_encode($adresse, JSON_UNESCAPED_UNICODE) : null,
                 'kanal' => 'haendler', 'kanal_auftrag_id' => null, 'shop_id' => null,
-                'zahlungsstatus' => 'ausstehend', 'lieferstatus' => 'abgeschlossen',
+                'zahlungsstatus' => 'ausstehend', 'lieferstatus' => 'versendet',
                 'zahlungsart' => 'rechnung', 'lieferart' => 'abholung', 'versandklasse_id' => null,
                 'zahlungsbedingung_id' => null, 'gutschein_id' => null, 'gutschein_betrag' => 0, 'versandkosten' => 0,
                 'rabatt_gesamt' => 0, 'nettobetrag' => round($netto, 2), 'steuerbetrag' => round($steuer, 2),
@@ -365,7 +366,7 @@ class HaendlerService
                 $this->db->prepare("UPDATE auftrag_positionen SET preisbasis = 'netto' WHERE id = ?")->execute([$posId]);
             }
             $auftragNr = $this->db->query("SELECT auftrag_nr FROM auftraege WHERE id = " . (int)$auftragId)->fetchColumn();
-            $repo->logStatus($auftragId, ['lieferstatus' => [null, 'abgeschlossen'], 'zahlungsstatus' => [null, 'ausstehend']], 'Verkaufsmeldung Händler abgerechnet', $benutzerId);
+            $repo->logStatus($auftragId, ['lieferstatus' => [null, 'versendet'], 'zahlungsstatus' => [null, 'ausstehend']], 'Verkaufsmeldung Händler abgerechnet', $benutzerId);
 
             // Beleg der Meldung + Bestand im Händler-Lager abbuchen
             $this->db->prepare("INSERT INTO haendler_belege (kunde_id, lager_id, typ, nummer, auftrag_id, notiz, benutzer_id) VALUES (?, ?, 'verkauf', ?, ?, ?, ?)")
@@ -388,7 +389,9 @@ class HaendlerService
         }
 
         // Rechnung nach dem Commit (PDF-Erzeugung außerhalb der Transaktion)
-        $re = (new DokumentService())->erstelleRechnung($auftragId, $benutzerId);
+        // Vollrechnung (Ware ist beim Händler schon verkauft); abgeschlossen erst mit Zahlung
+        $re = (new DokumentService())->erstelleVollrechnung($auftragId, $benutzerId);
+        AuftragAbschluss::pruefe($auftragId, $benutzerId);
         Logger::log('haendler.verkauf', 'auftraege', $auftragId, ['kunde_id' => $kundeId, 'rechnung' => $re['erfolg'] ?? false]);
         return ['erfolg' => true, 'auftrag_id' => $auftragId, 'auftrag_nr' => $auftragNr,
                 'rechnung' => !empty($re['erfolg']), 'rechnung_fehler' => $re['fehler'] ?? null];

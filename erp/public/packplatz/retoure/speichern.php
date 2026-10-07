@@ -42,7 +42,7 @@ if (!$auftrag) {
 if ($ergebnis === 'gutschrift' && !Auth::kann('packplatz.gutschrift')) {
     $manager = Auth::pruefeManagerPin((string)($_POST['manager_pin'] ?? ''));
     if (!$manager) {
-        $_SESSION['fehler'] = 'Gutschrift braucht eine Manager-Freigabe (PIN).';
+        $_SESSION['fehler'] = 'Rechnungskorrektur braucht eine Manager-Freigabe (PIN).';
         header('Location: detail.php?auftrag_id=' . $auftragId); exit;
     }
     Logger::log('manager_override', 'auftraege', $auftragId, [
@@ -59,7 +59,7 @@ if ($ergebnis === 'gutschrift' && !Auth::kann('packplatz.gutschrift')) {
 //   gutschreiben:     menge - menge_gutgeschrieben (Kasse, ERP-Gutschrift, frühere Retoure)
 $erlaubteZustaende = ['neu', 'retour', 'gebraucht', 'beschaedigt', 'defekt'];
 $posStmt = $db->prepare("
-    SELECT ap.id, ap.artikel_id, ap.bezeichnung, ap.menge, ap.menge_retourniert, ap.menge_gutgeschrieben,
+    SELECT ap.id, ap.artikel_id, ap.bezeichnung, ap.menge, ap.menge_retourniert, ap.menge_gutgeschrieben, ap.menge_verrechnet,
            ap.einzelpreis_netto, ap.steuer_prozent, a.charge_pflicht
     FROM auftrag_positionen ap
     LEFT JOIN artikel a ON a.id = ap.artikel_id
@@ -90,12 +90,13 @@ foreach ($positionen as $p) {
     if ($summe <= 0) continue;
 
     $offenPhysisch = (int)$pos['menge'] - (int)$pos['menge_retourniert'];
-    $offenGs       = (int)$pos['menge'] - (int)$pos['menge_gutgeschrieben'];
+    // Gutschreiben nur, was auch verrechnet wurde (Rechnung/Bon) — Belege-Umbau 2026-10-07
+    $offenGs       = min((int)$pos['menge'], (int)$pos['menge_verrechnet']) - (int)$pos['menge_gutgeschrieben'];
     if ($summe > $offenPhysisch) {
         $fehlerListe[] = $pos['bezeichnung'] . ": nur noch $offenPhysisch Stück offen — der Rest ist bereits zurückgekommen (Kasse, Rücklagerung oder frühere Retoure).";
     }
     if ($ergebnis === 'gutschrift' && $summe > $offenGs) {
-        $fehlerListe[] = $pos['bezeichnung'] . ": nur noch $offenGs Stück gutschreibbar — der Rest wurde bereits gutgeschrieben (Kasse oder frühere Gutschrift).";
+        $fehlerListe[] = $pos['bezeichnung'] . ": nur noch $offenGs Stück korrigierbar — der Rest wurde bereits erstattet bzw. korrigiert (Kasse oder frühere Rechnungskorrektur).";
     }
 
     $rueckPositionen[] = [
@@ -145,7 +146,8 @@ $gsPfad = null;
 $gsNr   = null;
 $gsBrutto = 0;
 
-if ($ergebnis === 'gutschrift' && $rechnungId) {
+// Rechnung ODER Kassenbon als Originalbeleg (an der Kasse bezahlte Abholung: rechnung_id leer)
+if ($ergebnis === 'gutschrift') {
     $dokumentService = new DokumentService();
     $gsPositionen    = array_map(fn($rp) => [
         'pos_id'           => $rp['pos_id'],
@@ -173,6 +175,11 @@ if ($ergebnis === 'gutschrift' && $rechnungId) {
         }
     }
 }
+
+// Retoure ohne Gutschrift -> "Retoure offen" bis zur Gutschrift/Erstattung; mit Gutschrift
+// hat erstelleGutschrift() schon geprüft
+require_once __DIR__ . '/../../../src/modules/auftraege/AuftragAbschluss.php';
+AuftragAbschluss::pruefe($auftragId, $benutzerId);
 
 // ── Log ──────────────────────────────────────────────────────────────────────
 Logger::log('retoure.verarbeitet', 'auftraege', $auftragId, [
@@ -223,7 +230,7 @@ if ($mailSenden) {
 }
 
 $_SESSION['erfolg'] = 'Retoure verarbeitet: ' . implode(' · ', $buchungsTexte) . '.'
-    . ($gsNr ? ' Gutschrift ' . $gsNr . ' erstellt.' : '')
+    . ($gsNr ? ' Rechnungskorrektur ' . $gsNr . ' erstellt.' : '')
     . ($mailSenden ? ' Mail gesendet.' : '');
 header('Location: ' . BASE_PATH . '/packplatz/retoure/index.php');
 exit;

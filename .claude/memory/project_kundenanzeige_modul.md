@@ -72,3 +72,4 @@ ASCII-Wireframes aller vier Zustände liegen im Chat-Verlauf vom 2026-07-10 (nic
 
 ## 🟢 2026-10-02 Kundenanzeige zeigte bei geladenen Aufträgen den Auftragswert statt Zahlbetrag (Jacky-Klicktest)
 kdSyncWarenkorb schickte getGesamt(). Jetzt wie Kassen-Footer: bei bezahlten Aufträgen gesamt = berechneAbrechnungsModus().netBrutto, zusätzlich bereits_bezahlt + je Zeile bezahlt:true. Anzeige: Zeile "bezahlt" statt Preis, Summenblock "Bereits bezahlt € X" + "Zu zahlen" (bzw. "Rückgabe" bei negativ). Abrechnen-Zustand war schon richtig. Nur JS-Syntax geprüft.
+- Rückgabe als Gutschein (2026-10-02): Kundenanzeige zeigt "Gutschrift € x — wird als Gutschein ausgegeben, Nr. CODE" (kdSync payload gutschein_ausgabe/gutschein_code; erst ohne Code, nach letzter_fuer_bon.php mit Code) statt Rückgeld.

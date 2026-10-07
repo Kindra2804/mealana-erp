@@ -61,9 +61,13 @@ class BonA4Renderer
         // Steuer-Totale
         $steuerTotale = [];
         $nettoBetrag  = 0;
+        $steuerSumme  = 0;
+        $gutscheinSumme = 0; // Gutschein-Kauf/-Ausgabe: nicht steuerbar, eigene Summenzeile
+        $zahlungSumme   = 0; // Zahlbeleg: Zahlung auf eine Rechnung, USt steht schon auf der Rechnung
         foreach ($bon['positionen'] as $p) {
             $rohmenge = (float)$p['menge'];
-            $menge    = ($p['block'] === 'retour') ? $rohmenge : abs($rohmenge);
+            // Retour- und Zahlungszeilen (Rückzahlung negativ) behalten ihr Vorzeichen
+            $menge    = in_array($p['block'], ['retour', 'zahlung'], true) ? $rohmenge : abs($rohmenge);
             $brutto   = $menge * (float)$p['einzelpreis_brutto'] * (1 - (float)$p['rabatt_prozent'] / 100);
             $satz     = (float)$p['steuer_prozent'];
             $netto    = $satz > 0 ? $brutto / (1 + $satz / 100) : $brutto;
@@ -73,7 +77,14 @@ class BonA4Renderer
             $steuerTotale[$key]['netto']  += $netto;
             $steuerTotale[$key]['steuer'] += $steuer;
             $steuerTotale[$key]['brutto'] += $brutto;
-            $nettoBetrag += $netto;
+            $steuerSumme += $steuer;
+            if (($p['block'] ?? null) === 'zahlung') {
+                $zahlungSumme += $brutto;
+            } elseif (in_array($p['block'] ?? null, ['gutschein_kauf', 'gutschein_verkauf'], true)) {
+                $gutscheinSumme += $brutto;
+            } else {
+                $nettoBetrag += $netto;
+            }
         }
 
         $bonBrutto    = (float)$bon['bruttobetrag'];
@@ -112,7 +123,9 @@ class BonA4Renderer
             $posBlocks[$pos['block'] ?? 'normal'][] = $pos;
         }
 
-        $dokumentTitel = $istStorno ? 'STORNO' : ($istRetour ? 'GUTSCHRIFT' : 'KASSENBELEG');
+        // Ein Bon mit Minusbetrag ist trotzdem ein Kassenbeleg -- "Gutschrift" stellt nur der
+        // Leistungsempfänger aus (Belege-Umbau 2026-10-07). Beträge stehen mit echtem Vorzeichen.
+        $dokumentTitel = $istStorno ? 'STORNO' : 'KASSENBELEG';
 
         ob_start();
         ?>
@@ -321,7 +334,8 @@ $renderBlock = function(array $positionen, string $blockLabel = '') use (&$zeile
         $preis  = (float)$pos['einzelpreis_brutto'];
         $rabatt = (float)$pos['rabatt_prozent'];
         $gesamt = abs($menge) * $preis * (1 - $rabatt / 100);
-        $istRetourZeile = $pos['block'] === 'retour';
+        // Rückgabe / Rückzahlung (negative Menge) mit Minus bei Menge und Betrag
+        $istRetourZeile = $pos['block'] === 'retour' || ($pos['block'] === 'zahlung' && $menge < 0);
         $cls = $istRetourZeile ? ' class="retour-zeile"' : '';
         $vorzeichen = $istRetourZeile ? '-' : $stSign;
         $satz = number_format((float)$pos['steuer_prozent'], 0);
@@ -332,7 +346,7 @@ $renderBlock = function(array $positionen, string $blockLabel = '') use (&$zeile
         <?= htmlspecialchars($pos['bezeichnung']) ?>
         <div class="pos-sub"><?= $satz ?>% MwSt<?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
       </td>
-      <td class="r"><?= abs($menge) ?></td>
+      <td class="r"><?= ($istRetourZeile ? '-' : '') . abs($menge) ?></td>
       <td class="r">€ <?= number_format(abs($preis), 2, ',', '.') ?></td>
       <td class="r"><?= $rabatt > 0 ? number_format($rabatt, 0) . ' %' : '—' ?></td>
       <td class="r"><strong><?= $vorzeichen ?>€ <?= number_format($gesamt, 2, ',', '.') ?></strong></td>
@@ -356,7 +370,7 @@ if ($vorherBezahlt): ?>
 if (isset($posBlocks['retour'])) {
     $retourNr = array_values(array_unique(array_filter(array_map(fn($p) => $auftragNr[(int)($p['web_auftrag_id'] ?? 0)] ?? null, $posBlocks['retour']))));
     if (!$retourNr && !empty($bon['web_auftrag_nr']) && count($auftragNr) <= 1) $retourNr = [$bon['web_auftrag_nr']];
-    $renderBlock($posBlocks['retour'], $retourNr ? '↩ Rückgabe aus Auftrag ' . implode(', ', $retourNr) : '↩ Rückgabe');
+    $renderBlock($posBlocks['retour'], $retourNr ? 'Rückgabe aus Auftrag ' . implode(', ', $retourNr) : 'Rückgabe');
 }
 // alles außer Auftrag/Retour (normal, addon, Gutschein verkauft/ausgegeben)
 $rest = array_merge(...array_values(array_diff_key($posBlocks, ['auftrag' => 1, 'retour' => 1])));
@@ -386,24 +400,43 @@ if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftra
 
 <!-- ── SUMMEN ── -->
 <div class="summen">
+  <?php
+  // Rückgabe/Storno: wie der Gesamtbetrag ohne Vorzeichen (aus Kundensicht), sonst wie berechnet
+  $sumVz = 1; // Rückgabe: Summen bleiben negativ (Minus), Storno rechnet Positionen ohne Vorzeichen + "−"
+  ?>
   <div class="sum-row sub">
     <span>Nettobetrag:</span>
-    <span>€ <?= number_format($nettoBetrag, 2, ',', '.') ?></span>
+    <span>€ <?= number_format($sumVz * $nettoBetrag, 2, ',', '.') ?></span>
   </div>
   <div class="sum-row sub">
     <span>MwSt gesamt:</span>
-    <span>€ <?= number_format($bruttoBetrag - $nettoBetrag, 2, ',', '.') ?></span>
+    <span>€ <?= number_format($sumVz * $steuerSumme, 2, ',', '.') ?></span>
   </div>
+  <?php if (abs($zahlungSumme) > 0.004): ?>
+  <div class="sum-row sub">
+    <span><?= $zahlungSumme < 0 ? 'Rückzahlung Anzahlung (nicht steuerbar):' : 'Zahlung auf Rechnung (USt bereits auf der Rechnung):' ?></span>
+    <span>€ <?= number_format($sumVz * $zahlungSumme, 2, ',', '.') ?></span>
+  </div>
+  <?php endif; ?>
+  <?php if (abs($gutscheinSumme) > 0.004): ?>
+  <div class="sum-row sub">
+    <span>Gutschein (nicht steuerbar):</span>
+    <span>€ <?= number_format($sumVz * $gutscheinSumme, 2, ',', '.') ?></span>
+  </div>
+  <?php endif; ?>
   <div class="sum-row gesamt">
-    <span><?= $istRetour ? 'RÜCKGABE' : 'GESAMT' ?>:</span>
-    <span><?= $istRetour || $istStorno ? '−' : '' ?>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
+    <span><?= $istStorno ? 'STORNO' : ($istRetour ? 'GESAMT (Auszahlung)' : 'GESAMT') ?>:</span>
+    <span><?= ($istStorno || $istRetour) ? '-' : '' ?>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
   </div>
 </div>
 
 <!-- ── ZAHLUNGSDETAIL ── -->
 <div class="zahl-box">
   <div class="zahl-row"><span>Zahlungsart:</span><span><?= htmlspecialchars($zahlungsartLabel) ?></span></div>
-  <?php if ($bon['zahlungsart'] === 'bar' && $bon['gegeben'] !== null): ?>
+  <?php if ($bon['zahlungsart'] === 'bar' && $istRetour && !$istStorno): // Auszahlung aus Kundensicht ?>
+    <div class="zahl-row"><span>Gegeben:</span><span>€ 0,00</span></div>
+    <div class="zahl-row fett"><span>Rückgeld:</span><span>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span></div>
+  <?php elseif ($bon['zahlungsart'] === 'bar' && $bon['gegeben'] !== null): ?>
     <div class="zahl-row"><span>Gegeben:</span><span>€ <?= number_format((float)$bon['gegeben'], 2, ',', '.') ?></span></div>
     <div class="zahl-row fett"><span>Rückgeld:</span><span>€ <?= number_format((float)($bon['rueckgeld'] ?? 0), 2, ',', '.') ?></span></div>
   <?php elseif ($bon['zahlungsart'] === 'kombi'): ?>

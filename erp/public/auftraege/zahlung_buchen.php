@@ -16,6 +16,8 @@ $auftragId    = (int)($_POST['auftrag_id'] ?? 0);
 $betrag       = (float)str_replace(',', '.', $_POST['betrag'] ?? '0');
 $buchungsdatum = trim($_POST['buchungsdatum'] ?? '');
 $notiz        = trim($_POST['notiz'] ?? '') ?: null;
+// Zahlungsweg für die Zahlungsinfo auf der Rechnung (leer = aus der Zahlungsart des Auftrags)
+$zahlungsweg  = trim($_POST['zahlungsweg'] ?? '') ?: null;
 
 if (!$auftragId) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Auftrag-ID fehlt']);
@@ -27,7 +29,12 @@ if (!$buchungsdatum || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $buchungsdatum)) {
 }
 
 $service  = new AuftragService();
-$ergebnis = $service->bucheZahlung($auftragId, $betrag, $buchungsdatum, $notiz);
+// Rückerstattung an den Kunden (Guthaben nach Rechnungskorrektur/Stornorechnung)
+if (!empty($_POST['rueckerstattung'])) {
+    echo json_encode($service->bucheRueckerstattung($auftragId, $betrag, $buchungsdatum, $notiz, $zahlungsweg));
+    exit;
+}
+$ergebnis = $service->bucheZahlung($auftragId, $betrag, $buchungsdatum, $notiz, $zahlungsweg);
 
 $zahlungsartLabels = [
     'vorkasse'  => 'Überweisung',

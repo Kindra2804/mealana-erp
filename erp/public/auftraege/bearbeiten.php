@@ -24,7 +24,7 @@ if (!$id) {
 
 $auftrag = $service->getById($id);
 
-if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'storniert'])) {
+if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'storniert', 'retoure_offen'])) {
     $_SESSION['fehler'] = ['Dieser Auftrag kann nicht mehr bearbeitet werden.'];
     header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $id);
     exit;

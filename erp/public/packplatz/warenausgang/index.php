@@ -12,7 +12,7 @@ $picklisten = $db->query("
     LEFT JOIN auftraege a ON a.id = pa.auftrag_id
     WHERE pl.status IN ('offen','gedruckt')
       AND (a.lieferstatus IS NULL
-           OR a.lieferstatus NOT IN ('kommissioniert','versendet','teilgeliefert','abholbereit','abgeschlossen','storniert'))
+           OR a.lieferstatus NOT IN ('kommissioniert','versendet','teilgeliefert','abholbereit','abgeschlossen','retoure_offen','storniert'))
     ORDER BY pl.erstellt_am DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -27,7 +27,10 @@ $kommissioniert = $db->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $fehler = $_SESSION['fehler'] ?? null;
-unset($_SESSION['fehler']);
+$erfolg = $_SESSION['erfolg'] ?? null;
+// Rechnung ohne Mailversand (Kunde ohne E-Mail) -> Druck-Link, siehe abschliessen.php
+$rechnungDrucken = $_SESSION['rechnung_drucken'] ?? null;
+unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['rechnung_drucken']);
 
 $pageTitle = 'Warenausgang';
 $backUrl   = BASE_PATH . '/packplatz/index.php';
@@ -38,6 +41,16 @@ require_once __DIR__ . '/../shell_top.php';
 <?php if ($fehler): ?>
 <div style="background:#2d0d0d;border:1px solid #e94560;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#ef5350">
     <?= htmlspecialchars($fehler) ?>
+</div>
+<?php endif; ?>
+
+<?php if ($erfolg): ?>
+<div style="background:#0d2d17;border:1px solid #2e7d32;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#81c784">
+    <?= htmlspecialchars($erfolg) ?>
+    <?php if ($rechnungDrucken): ?>
+        <a href="<?= htmlspecialchars($rechnungDrucken) ?>" target="_blank"
+           style="margin-left:10px;color:#fff;background:#2e7d32;border-radius:6px;padding:4px 10px;text-decoration:none">🖨 Rechnung drucken</a>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 

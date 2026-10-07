@@ -619,6 +619,8 @@ require_once __DIR__ . '/includes/shell_top.php';
 </div><!-- /db-grid-kpi -->
 
 <!-- ── MITTLERE REIHE: Kanal-Umsatz + Monatsvergleich ──────────────────────── -->
+<?php $offeneWerteKompakt = true; require __DIR__ . '/includes/offene_werte_kacheln.php'; ?>
+
 <div class="db-grid-mid">
 
     <!-- Umsatz Heute nach Kanal (Detail) -->

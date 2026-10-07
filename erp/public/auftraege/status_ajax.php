@@ -26,8 +26,18 @@ foreach ($erlaubt as $f) {
     }
 }
 
+// "abgeschlossen"/"Retoure offen" vergibt nur AuftragAbschluss (Beleg-Regel) -- nie von Hand
+if (in_array($felder['lieferstatus'] ?? '', ['abgeschlossen', 'retoure_offen'], true)) {
+    echo json_encode(['erfolg' => false, 'fehler' => ['„Abgeschlossen“ und „Retoure offen“ setzt das System automatisch (geliefert + verrechnet + bezahlt).']]);
+    exit;
+}
+
 $notiz    = !empty($_POST['notiz']) ? trim($_POST['notiz']) : null;
 $ergebnis = $service->statusAktualisieren($id, $felder, $notiz);
+if ($ergebnis['erfolg']) {
+    require_once __DIR__ . '/../../src/modules/auftraege/AuftragAbschluss.php';
+    AuftragAbschluss::pruefe($id);
+}
 
 // Wenn Tracking manuell eingetragen → History-Eintrag anlegen
 if ($ergebnis['erfolg'] && !empty($felder['tracking_nr'])) {

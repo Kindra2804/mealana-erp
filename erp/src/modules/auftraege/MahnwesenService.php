@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Mailer.php';
 require_once __DIR__ . '/../../core/logger.php';
 require_once __DIR__ . '/AuftragRepository.php';
+require_once __DIR__ . '/../dokumente/DokumentService.php';
 
 /**
  * MahnwesenService – Erinnerung/Stornierung für überfällige Aufträge.
@@ -71,14 +72,22 @@ class MahnwesenService
      */
     public function rechnungsStand(int $auftragId): ?array
     {
-        $r = $this->db->prepare("SELECT * FROM rechnungen WHERE auftrag_id = ? AND storniert = 0 ORDER BY erstellt_am DESC LIMIT 1");
+        // Teilrechnungen (Belege-Umbau 2026-10-07): maßgeblich ist die älteste noch nicht
+        // (voll) bezahlte Rechnung -- Zahlungen werden in Rechnungsreihenfolge angerechnet.
+        $r = $this->db->prepare("SELECT * FROM rechnungen WHERE auftrag_id = ? AND storniert = 0 ORDER BY id");
         $r->execute([$auftragId]);
-        $rechnung = $r->fetch(PDO::FETCH_ASSOC);
-        if (!$rechnung) return null;
+        $alle = $r->fetchAll(PDO::FETCH_ASSOC);
+        if (!$alle) return null;
+        $dok = new DokumentService();
+        $rechnung = end($alle);
+        foreach ($alle as $re) {
+            if ($dok->zahlungsInfo((int)$re['id'])['offen'] > 0.004) { $rechnung = $re; break; }
+        }
 
-        $auftrag  = $this->ladeAuftrag($auftragId);
-        $bezahlt  = $this->auftragRepo->getSummeZahlungen($auftragId);
         $gebuehren = $this->auftragRepo->getOffeneMahngebuehren($auftragId);
+        // Offen = was auf Belegen steht (Rechnungen − Gutschriften − Zahlungen − Gutscheine),
+        // NICHT der Auftragsbetrag -- noch nicht gelieferte Ware wird nicht gemahnt
+        $offenBelege = $dok->offenerRechnungsbetrag($auftragId) - $gebuehren;
 
         $m = $this->db->prepare("SELECT * FROM mahnungen WHERE auftrag_id = ? ORDER BY id");
         $m->execute([$auftragId]);
@@ -90,7 +99,7 @@ class MahnwesenService
         return [
             'rechnung'        => $rechnung,
             'faellig_am'      => $rechnung['faellig_am'] ?: date('Y-m-d', strtotime($rechnung['erstellt_am'] . ' +14 days')),
-            'offen'           => round(max(0, (float)$auftrag['bruttobetrag'] - $bezahlt), 2),
+            'offen'           => round(max(0, $offenBelege), 2),
             'gebuehren_offen' => $gebuehren,
             'stufen'          => $stufen,
         ];
@@ -281,17 +290,19 @@ class MahnwesenService
     {
         $rows = $this->db->query("
             SELECT m.*, a.auftrag_nr, a.kunden_snapshot, a.bruttobetrag, a.zahlungsstatus,
-                   r.rechnung_nr, r.faellig_am,
-                   (SELECT COALESCE(SUM(z.betrag), 0) FROM auftrag_zahlungen z WHERE z.auftrag_id = a.id) AS bezahlt
+                   r.rechnung_nr, r.faellig_am
             FROM mahnungen m
             JOIN auftraege a ON a.id = m.auftrag_id
-            LEFT JOIN rechnungen r ON r.auftrag_id = a.id AND r.storniert = 0
+            -- bei Teilrechnungen nur eine Zeile je Mahnung (älteste Rechnung)
+            LEFT JOIN rechnungen r ON r.id = (SELECT MIN(r2.id) FROM rechnungen r2 WHERE r2.auftrag_id = a.id AND r2.storniert = 0)
             WHERE $where
             ORDER BY COALESCE(r.faellig_am, a.erstellt_am), m.id
         ")->fetchAll(PDO::FETCH_ASSOC);
+        $dok = new DokumentService();
         foreach ($rows as &$r) {
             $r['kunde_name'] = $this->kundenDaten($r)['name'];
-            $r['offen']      = round(max(0, (float)$r['bruttobetrag'] - (float)$r['bezahlt']), 2);
+            $r['offen']      = round(max(0, $dok->offenerRechnungsbetrag((int)$r['auftrag_id'])
+                                        - $this->auftragRepo->getOffeneMahngebuehren((int)$r['auftrag_id'])), 2);
         }
         return $rows;
     }
@@ -400,7 +411,7 @@ class MahnwesenService
             return ['erfolg' => false, 'fehler' => 'Auftrag ist bereits storniert'];
         }
         // Gleiche Regel wie AuftragService::stornieren(): Ware ist schon beim Kunden
-        if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen'], true)) {
+        if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'retoure_offen'], true)) {
             return ['erfolg' => false, 'fehler' => 'Bereits versendete oder abgeschlossene Aufträge können nicht storniert werden'];
         }
 

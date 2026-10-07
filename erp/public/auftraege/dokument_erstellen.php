@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
+require_once __DIR__ . '/../../src/modules/dokumente/RechnungMailService.php';
+require_once __DIR__ . '/../../src/modules/auftraege/AuftragAbschluss.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
@@ -31,13 +33,23 @@ $ergebnis = match($typ) {
 
 if ($ergebnis['erfolg']) {
     // Mail versenden für AB und Rechnung
-    if (in_array($typ, ['auftragsbestaetigung', 'rechnung'])) {
+    if ($typ === 'auftragsbestaetigung') {
         versendeDokumentMail($auftragId, $typ, $ergebnis);
+    } elseif ($typ === 'rechnung') {
+        // Rechnung = über die ausgelieferte, noch nicht verrechnete Ware (Belege-Umbau 2026-10-07)
+        try {
+            RechnungMailService::sende((int)$ergebnis['rechnung_id']);
+        } catch (Throwable $e) {
+            error_log('[RechnungMail] ' . $e->getMessage());
+        }
+        AuftragAbschluss::pruefe($auftragId, $benutzerId);
     }
 
     $_SESSION['erfolg'] = 'Dokument wurde erstellt.';
-    header('Location: ' . BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $auftragId
-        . '&datei=' . urlencode($ergebnis['dateiname']));
+    // Zurück zum Auftrag, PDF öffnet sich im neuen Tab (vorher ersetzte es das ERP-Fenster)
+    $_SESSION['dokument_oeffnen'] = BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $auftragId
+        . '&datei=' . urlencode($ergebnis['dateiname']);
+    header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $auftragId);
 } else {
     $_SESSION['fehler'] = [$ergebnis['fehler'] ?? 'Fehler beim Erstellen des Dokuments.'];
     header('Location: ' . BASE_PATH . '/auftraege/detail.php?id=' . $auftragId);
@@ -157,51 +169,6 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
                     'datum_heute'    => date('d.m.Y'),
                     'firma_email'    => $firmaEmail,
                 ]
-            );
-
-        } elseif ($typ === 'rechnung') {
-            $rStmt = $db->prepare("
-                SELECT rechnung_nr, bruttobetrag FROM rechnungen
-                WHERE auftrag_id = :id AND storniert = 0
-                ORDER BY erstellt_am DESC LIMIT 1
-            ");
-            $rStmt->execute([':id' => $auftragId]);
-            $rechnung = $rStmt->fetch(PDO::FETCH_ASSOC);
-            if (!$rechnung) return;
-
-            $zStmt = $db->prepare("
-                SELECT betrag, buchungsdatum, notiz FROM auftrag_zahlungen
-                WHERE auftrag_id = :id ORDER BY buchungsdatum, erfasst_am
-            ");
-            $zStmt->execute([':id' => $auftragId]);
-            $zahlungenRoh = $zStmt->fetchAll(PDO::FETCH_ASSOC);
-            $zahlungenMail = array_map(fn($z) => [
-                'buchungsdatum' => date('d.m.Y', strtotime($z['buchungsdatum'])),
-                'betrag'        => (float)$z['betrag'],
-                'notiz'         => $z['notiz'] ?? '',
-            ], $zahlungenRoh);
-            $bezahltGesamt = array_sum(array_column($zahlungenRoh, 'betrag'));
-            $offenerBetrag = (float)$rechnung['bruttobetrag'] - $bezahltGesamt;
-
-            $mailer->sendeTemplate(
-                $email,
-                'Ihre Rechnung ' . $rechnung['rechnung_nr'],
-                'mails/rechnung_mail.html.twig',
-                [
-                    'logo_base64'    => $logoBase64,
-                    'anrede'         => $anrede,
-                    'nachname'       => $nachname,
-                    'kunde_name'     => $kundeName,
-                    'auftrag_nummer' => $auftrag['auftrag_nr'],
-                    'rechnung_nr'    => $rechnung['rechnung_nr'],
-                    'brutto_gesamt'  => (float)$rechnung['bruttobetrag'],
-                    'faellig_datum'  => date('d.m.Y', strtotime('+14 days')),
-                    'firma_email'    => $firmaEmail,
-                    'zahlungsstatus' => $auftrag['zahlungsstatus'] ?? '',
-                    'zahlungen'      => $zahlungenMail,
-                    'offener_betrag' => $offenerBetrag,
-                ],
-                [['pfad' => $storagePfad, 'name' => $rechnung['rechnung_nr'] . '.pdf']]
             );
         }
 

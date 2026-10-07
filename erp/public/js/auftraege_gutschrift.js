@@ -4,7 +4,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const checkboxes = document.querySelectorAll('.gs-checkbox');
     const mengenFelder = document.querySelectorAll('.gs-menge');
 
+    // Versandkosten: bei Stornorechnung automatisch mit erstatten, bei Korrektur wählbar
+    const versandCb = document.getElementById('versand-erstatten');
+    const versandBetrag = () => (versandCb && versandCb.checked) ? (parseFloat(versandCb.dataset.betrag) || 0) : 0;
+
     function toggleModus() {
+        if (versandCb && vollstorno.checked) versandCb.checked = true;
         if (vollstorno.checked) {
             teilBlock.style.opacity = '0.5';
             teilBlock.style.pointerEvents = 'none';
@@ -35,10 +40,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function berechneGesamt() {
         if (vollstorno.checked) {
-            // Gesamtbetrag aus Original-Rechnung
-            const el = document.getElementById('gs-gesamt');
-            const span = document.querySelector('[data-rechnung-brutto]');
-            el.textContent = span ? span.dataset.rechnungBrutto : '—';
+            const ware = parseFloat(document.getElementById('vs-betrag').dataset.ware) || 0;
+            const summe = (ware + versandBetrag()).toFixed(2).replace('.', ',');
+            document.getElementById('gs-gesamt').textContent = summe;
+            document.getElementById('vs-betrag').textContent = summe;
             return;
         }
         let gesamt = 0;
@@ -46,12 +51,13 @@ document.addEventListener('DOMContentLoaded', function () {
             gesamt += berechneBetrag(inp.dataset.idx);
         });
         document.getElementById('gs-gesamt').textContent =
-            gesamt.toFixed(2).replace('.', ',');
+            (gesamt + versandBetrag()).toFixed(2).replace('.', ',');
     }
 
     vollstorno.addEventListener('change', toggleModus);
     document.getElementById('gs_teil').addEventListener('change', toggleModus);
     checkboxes.forEach(cb => cb.addEventListener('change', berechneGesamt));
+    if (versandCb) versandCb.addEventListener('change', berechneGesamt);
     mengenFelder.forEach(inp => inp.addEventListener('input', function () {
         berechneBetrag(this.dataset.idx);
         berechneGesamt();

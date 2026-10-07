@@ -97,11 +97,19 @@ function pruefeFertig() {
 
 // ─── Verpacken-Overlay ──────────────────────────────────────────────────────
 
+// Restbetrag offen (Vorkasse/PayPal/bar, z.B. nach Umstellung auf Versand) -> nachfragen
+function restOffenBestaetigt() {
+    if (typeof REST_OFFEN === 'undefined' || !(REST_OFFEN > 0.004)) return true;
+    return confirm('Restbetrag offen: € ' + REST_OFFEN.toFixed(2).replace('.', ',')
+        + '\n\nDer Auftrag ist noch nicht vollständig bezahlt.\nWirklich versenden?');
+}
+
 function verpackenStarten(lieferart) {
     if (lieferart === 'abholung') {
         document.getElementById('overlay-abholung').classList.add('aktiv');
         return;
     }
+    if (!restOffenBestaetigt()) return;
     // Fortschritt sofort sichern — fire-and-forget
     fetch(window.BASE_PATH + '/packplatz/warenausgang/ajax_status_setzen.php', {
         method: 'POST',
@@ -172,6 +180,7 @@ tlTrackingInput.addEventListener('keydown', (e) => {
 });
 
 function teillieferung() {
+    if (!restOffenBestaetigt()) return;
     document.getElementById('overlay-teillieferung').classList.add('aktiv');
     setTimeout(() => document.getElementById('overlay-tl-tracking').focus(), 100);
 }

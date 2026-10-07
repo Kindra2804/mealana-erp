@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1280" height="900" fill="#F8FAFC"/>
+
+  <!-- Titel -->
+  <text x="40" y="44" font-size="22" font-weight="700" fill="#1B3A6B">Entwurf: Belege-Spalte in der Auftragsliste + Übersicht offene Werte</text>
+  <text x="40" y="68" font-size="13" fill="#6c757d">Für Barbara · 07.10.2026 · Farbig = Beleg vorhanden, grau = fehlt noch, Zahl = mehrere (Teillieferungen), blaues ! = geliefert aber noch kein Beleg</text>
+
+  <!-- ═══════════ Teil A: Auftragsliste ═══════════ -->
+  <text x="40" y="112" font-size="15" font-weight="700" fill="#1a1a1a">A) Verkauf → Aufträge (neue Spalte „Belege“)</text>
+  <rect x="40" y="124" width="1200" height="330" rx="8" fill="#fff" stroke="#dee2e6"/>
+
+  <!-- Kopfzeile -->
+  <rect x="41" y="125" width="1198" height="34" fill="#f1f5f9"/>
+  <g font-size="12" font-weight="700" fill="#475569">
+    <text x="58" y="147">Auftrag</text>
+    <text x="178" y="147">Kanal</text>
+    <text x="268" y="147">Kunde</text>
+    <text x="428" y="147">Datum</text>
+    <text x="518" y="147">Brutto</text>
+    <text x="608" y="147">Zahlung</text>
+    <text x="728" y="147">Lieferung</text>
+    <text x="868" y="147" fill="#1B3A6B">Belege</text>
+  </g>
+  <rect x="858" y="125" width="370" height="34" fill="#7EC8E3" opacity="0.25"/>
+
+  <!-- Symbol-Vorlagen -->
+  <defs>
+    <g id="leer"><rect width="34" height="22" rx="5" fill="#f1f5f9" stroke="#cbd5e1"/></g>
+  </defs>
+
+  <!-- Zeile 1: Teillieferung mit 2 Teilrechnungen -->
+  <g transform="translate(0,159)">
+    <line x1="41" y1="50" x2="1239" y2="50" stroke="#eef2f6"/>
+    <g font-size="13" fill="#1a1a1a">
+      <text x="58" y="30" font-weight="600" fill="#1B3A6B">A-2026-00062</text>
+      <text x="178" y="30">Shop</text>
+      <text x="268" y="30">Maria Huber</text>
+      <text x="428" y="30">03.10.2026</text>
+      <text x="518" y="30">52,90 €</text>
+    </g>
+    <rect x="606" y="16" width="70" height="20" rx="10" fill="#dcfce7"/><text x="615" y="30" font-size="11" fill="#166534">Bezahlt</text>
+    <rect x="726" y="16" width="96" height="20" rx="10" fill="#e5e7eb"/><text x="733" y="30" font-size="11" fill="#374151">Abgeschlossen</text>
+    <!-- Belege -->
+    <g transform="translate(868,14)" font-size="11" font-weight="700">
+      <rect width="34" height="22" rx="5" fill="#e0e7ff" stroke="#6366f1"/><text x="9" y="15" fill="#3730a3">AB</text>
+      <rect x="42" width="34" height="22" rx="5" fill="#fef3c7" stroke="#d97706"/><text x="52" y="15" fill="#92400e">LS</text>
+      <circle cx="74" cy="2" r="8" fill="#d97706"/><text x="71" y="6" fill="#fff" font-size="10">2</text>
+      <rect x="90" width="34" height="22" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="99" y="15" fill="#166534">RG</text>
+      <circle cx="122" cy="2" r="8" fill="#16a34a"/><text x="119" y="6" fill="#fff" font-size="10">2</text>
+      <use href="#leer" x="138"/><text x="147" y="15" fill="#94a3b8">GS</text>
+    </g>
+  </g>
+
+  <!-- Zeile 2: Abholung vorab bezahlt -->
+  <g transform="translate(0,209)">
+    <line x1="41" y1="50" x2="1239" y2="50" stroke="#eef2f6"/>
+    <g font-size="13" fill="#1a1a1a">
+      <text x="58" y="30" font-weight="600" fill="#1B3A6B">A-2026-00061</text>
+      <text x="178" y="30">Manuell</text>
+      <text x="268" y="30">Karin Berger</text>
+      <text x="428" y="30">02.10.2026</text>
+      <text x="518" y="30">18,40 €</text>
+    </g>
+    <rect x="606" y="16" width="70" height="20" rx="10" fill="#dcfce7"/><text x="615" y="30" font-size="11" fill="#166534">Bezahlt</text>
+    <rect x="726" y="16" width="96" height="20" rx="10" fill="#e5e7eb"/><text x="733" y="30" font-size="11" fill="#374151">Abgeschlossen</text>
+    <g transform="translate(868,14)" font-size="11" font-weight="700">
+      <rect width="34" height="22" rx="5" fill="#e0e7ff" stroke="#6366f1"/><text x="9" y="15" fill="#3730a3">AB</text>
+      <rect x="42" width="34" height="22" rx="5" fill="#f3e8ff" stroke="#9333ea"/><text x="51" y="15" fill="#6b21a8">AZ</text>
+      <rect x="90" width="34" height="22" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="99" y="15" fill="#166534">RG</text>
+    </g>
+  </g>
+
+  <!-- Zeile 3: Kassenverkauf -->
+  <g transform="translate(0,259)">
+    <line x1="41" y1="50" x2="1239" y2="50" stroke="#eef2f6"/>
+    <g font-size="13" fill="#1a1a1a">
+      <text x="58" y="30" font-weight="600" fill="#1B3A6B">K1-2026-000027</text>
+      <text x="178" y="30">Kasse</text>
+      <text x="268" y="30">Laufkunde</text>
+      <text x="428" y="30">30.09.2026</text>
+      <text x="518" y="30">12,90 €</text>
+    </g>
+    <rect x="606" y="16" width="70" height="20" rx="10" fill="#dcfce7"/><text x="615" y="30" font-size="11" fill="#166534">Bezahlt</text>
+    <rect x="726" y="16" width="96" height="20" rx="10" fill="#e5e7eb"/><text x="733" y="30" font-size="11" fill="#374151">Abgeschlossen</text>
+    <g transform="translate(868,14)" font-size="11" font-weight="700">
+      <rect width="40" height="22" rx="5" fill="#e0f2fe" stroke="#0284c7"/><text x="7" y="15" fill="#075985">Bon</text>
+    </g>
+  </g>
+
+  <!-- Zeile 4: versendet, aber noch kein Beleg -->
+  <g transform="translate(0,309)">
+    <rect x="41" y="0" width="1198" height="50" fill="#eff6ff"/>
+    <line x1="41" y1="50" x2="1239" y2="50" stroke="#eef2f6"/>
+    <g font-size="13" fill="#1a1a1a">
+      <text x="58" y="30" font-weight="600" fill="#1B3A6B">A-2026-00054</text>
+      <text x="178" y="30">Manuell</text>
+      <text x="268" y="30">Josef Mayr</text>
+      <text x="428" y="30">28.09.2026</text>
+      <text x="518" y="30">34,00 €</text>
+    </g>
+    <rect x="606" y="16" width="70" height="20" rx="10" fill="#dcfce7"/><text x="615" y="30" font-size="11" fill="#166534">Bezahlt</text>
+    <rect x="726" y="16" width="80" height="20" rx="10" fill="#dbeafe"/><text x="735" y="30" font-size="11" fill="#1e40af">Versendet</text>
+    <g transform="translate(868,14)" font-size="11" font-weight="700">
+      <use href="#leer"/><text x="9" y="15" fill="#94a3b8">AB</text>
+      <rect x="42" width="34" height="22" rx="5" fill="#fef3c7" stroke="#d97706"/><text x="52" y="15" fill="#92400e">LS</text>
+      <use href="#leer" x="90"/><text x="99" y="15" fill="#94a3b8">RG</text>
+      <circle cx="148" cy="11" r="11" fill="#2563eb"/><text x="145" y="16" fill="#fff" font-size="14">!</text>
+      <text x="166" y="15" font-size="11" font-weight="400" fill="#1e40af">geliefert, noch nicht verrechnet</text>
+    </g>
+  </g>
+
+  <!-- Zeile 5: Retoure offen -->
+  <g transform="translate(0,359)">
+    <line x1="41" y1="50" x2="1239" y2="50" stroke="#eef2f6"/>
+    <g font-size="13" fill="#1a1a1a">
+      <text x="58" y="30" font-weight="600" fill="#1B3A6B">A-2026-00041</text>
+      <text x="178" y="30">Shop</text>
+      <text x="268" y="30">Eva Steiner</text>
+      <text x="428" y="30">22.09.2026</text>
+      <text x="518" y="30">64,50 €</text>
+    </g>
+    <rect x="606" y="16" width="70" height="20" rx="10" fill="#dcfce7"/><text x="615" y="30" font-size="11" fill="#166534">Bezahlt</text>
+    <rect x="726" y="16" width="96" height="20" rx="10" fill="#ffedd5"/><text x="734" y="30" font-size="11" fill="#9a3412">Retoure offen</text>
+    <g transform="translate(868,14)" font-size="11" font-weight="700">
+      <rect width="34" height="22" rx="5" fill="#e0e7ff" stroke="#6366f1"/><text x="9" y="15" fill="#3730a3">AB</text>
+      <rect x="42" width="34" height="22" rx="5" fill="#fef3c7" stroke="#d97706"/><text x="52" y="15" fill="#92400e">LS</text>
+      <rect x="90" width="34" height="22" rx="5" fill="#dcfce7" stroke="#16a34a"/><text x="99" y="15" fill="#166534">RG</text>
+      <use href="#leer" x="138"/><text x="147" y="15" fill="#94a3b8">GS</text>
+    </g>
+  </g>
+
+  <!-- Aufklapp-Liste zu RG² -->
+  <g transform="translate(930,196)">
+    <rect width="250" height="86" rx="6" fill="#fff" stroke="#16a34a" stroke-width="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,.12))"/>
+    <text x="12" y="20" font-size="11" font-weight="700" fill="#166534">Rechnungen zu A-2026-00062</text>
+    <text x="12" y="42" font-size="12" fill="#1a1a1a">📄 R-2026-00007 · 03.10. · 29,90 €</text>
+    <text x="12" y="62" font-size="12" fill="#1a1a1a">📄 R-2026-00008 · 07.10. · 23,00 €</text>
+    <text x="12" y="78" font-size="10" fill="#6c757d">Klick öffnet das PDF</text>
+  </g>
+
+  <!-- Legende -->
+  <g transform="translate(40,470)" font-size="12" fill="#1a1a1a">
+    <text x="0" y="0" font-weight="700">Legende:</text>
+    <text x="70" y="0">AB Auftragsbestätigung · LS Lieferschein · RG Rechnung · GS Gutschrift · AZ Abholzettel · Bon Kassenbon (= Rechnung)</text>
+  </g>
+
+  <!-- ═══════════ Teil B: Übersicht ═══════════ -->
+  <text x="40" y="520" font-size="15" font-weight="700" fill="#1a1a1a">B) Übersicht offene Werte (oben auf Buchhaltung → Zahlungs-Kontrolle, Kurzform als Dashboard-Kachel)</text>
+
+  <g transform="translate(40,536)">
+    <!-- Kachel 1 -->
+    <rect width="282" height="150" rx="10" fill="#fff" stroke="#dee2e6"/>
+    <rect width="282" height="6" rx="3" fill="#7EC8E3"/>
+    <text x="18" y="36" font-size="13" fill="#6c757d">Auftragsbestand</text>
+    <text x="18" y="54" font-size="11" fill="#94a3b8">bestellt, noch nicht geliefert</text>
+    <text x="18" y="96" font-size="30" font-weight="700" fill="#1B3A6B">1.284,60 €</text>
+    <text x="18" y="124" font-size="12" fill="#6c757d">17 Aufträge · erwarteter Umsatz</text>
+
+    <!-- Kachel 2 -->
+    <g transform="translate(300,0)">
+      <rect width="282" height="150" rx="10" fill="#fff" stroke="#dee2e6"/>
+      <rect width="282" height="6" rx="3" fill="#2563eb"/>
+      <text x="18" y="36" font-size="13" fill="#6c757d">Geliefert, nicht verrechnet</text>
+      <text x="18" y="54" font-size="11" fill="#94a3b8">sollte immer 0 sein</text>
+      <text x="18" y="96" font-size="30" font-weight="700" fill="#1e40af">34,00 €</text>
+      <circle cx="252" cy="86" r="14" fill="#2563eb"/><text x="248" y="92" fill="#fff" font-size="17" font-weight="700">!</text>
+      <text x="18" y="124" font-size="12" fill="#1e40af" text-decoration="underline">1 Auftrag → Liste anzeigen</text>
+    </g>
+
+    <!-- Kachel 3 -->
+    <g transform="translate(600,0)">
+      <rect width="282" height="150" rx="10" fill="#fff" stroke="#dee2e6"/>
+      <rect width="282" height="6" rx="3" fill="#fd7e14"/>
+      <text x="18" y="36" font-size="13" fill="#6c757d">Offene Rechnungen</text>
+      <text x="18" y="54" font-size="11" fill="#94a3b8">verrechnet, noch nicht bezahlt</text>
+      <text x="18" y="96" font-size="30" font-weight="700" fill="#9a3412">412,30 €</text>
+      <text x="18" y="124" font-size="12" fill="#6c757d">6 Rechnungen · davon 2 überfällig (88,40 €)</text>
+    </g>
+
+    <!-- Kachel 4 -->
+    <g transform="translate(900,0)">
+      <rect width="300" height="150" rx="10" fill="#fff" stroke="#dee2e6"/>
+      <rect width="300" height="6" rx="3" fill="#f59e0b"/>
+      <text x="18" y="36" font-size="13" fill="#6c757d">Retoure offen</text>
+      <text x="18" y="54" font-size="11" fill="#94a3b8">Ware zurück, Gutschrift/Einlagerung ausständig</text>
+      <text x="18" y="96" font-size="30" font-weight="700" fill="#92400e">2 Aufträge</text>
+      <text x="18" y="124" font-size="12" fill="#6c757d">64,50 € · → Packplatz / Gutschrift</text>
+    </g>
+  </g>
+
+  <text x="40" y="726" font-size="12" fill="#475569">Umsatz in der Buchhaltung kommt nur aus Belegen (Rechnung, Gutschrift, Bon). Die erste Kachel ist „erwarteter Umsatz“ — zählt nicht für Steuer/Buchhaltung.</text>
+  <text x="40" y="746" font-size="12" fill="#475569">Klick auf eine Kachel öffnet die passende, gefilterte Auftragsliste.</text>
+</svg>

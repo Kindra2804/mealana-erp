@@ -74,3 +74,6 @@ Jackys ausdrücklicher Wunsch: diese dürfen zwischen den großen Themen oben op
 - **Update-Mechanismus** — zurückgestellt bis zum Lizenz-Thema, siehe [[project_update_mechanismus]].
 
 **How to apply:** Bei jedem neuen Themenwechsel-Wunsch ("was steht als Nächstes an") zuerst diese Datei konsultieren, bevor eine neue Priorisierung improvisiert wird — die Reihenfolge kommt direkt von Jacky, nicht aus eigener Einschätzung.
+
+## Nächste Session (Jacky, 2026-10-07 festgelegt)
+Belege/Abschluss-Umbau fertig + committed. Als Nächstes der Reihe nach im Detail besprechen: siehe [[project_kasse_naechste_punkte]] (1. Schnellwahl/Divers → Artikelgruppe, 2. Offline-Kasse neu mit vorbereitetem Auftrag, 3. Signatur-Kasse K3 darf nicht als K1 laufen).

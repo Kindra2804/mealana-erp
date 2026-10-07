@@ -11,8 +11,10 @@ $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $auftraege = $db->query("
     SELECT a.id, a.auftrag_nr, a.erstellt_am, a.bruttobetrag, a.kunden_snapshot
     FROM auftraege a
-    WHERE a.lieferstatus IN ('versendet','abgeschlossen','teilgeliefert')
+    WHERE a.lieferstatus IN ('versendet','abgeschlossen','teilgeliefert','retoure_offen')
       AND a.zahlungsstatus != 'storniert'
+      -- reine Kassenverkäufe (K1-…) laufen über die Kasse, JTL-Archiv hat keine Belege im ERP
+      AND a.kanal NOT IN ('kasse', 'jtl_archiv')
     ORDER BY a.erstellt_am DESC
     LIMIT 20
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -45,7 +47,12 @@ require_once __DIR__ . '/../shell_top.php';
         </form>
     </div>
 
-    <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">Zuletzt versendete Aufträge</div>
+    <div style="font-size:12px;color:#93c5fd;margin:-6px 0 16px">
+        Hier: Online- und manuelle Aufträge (auch an der Kasse bezahlte Abholungen — die Rechnungskorrektur bezieht sich dann auf den Kassenbon).
+        Reine Kassenverkäufe (K1-…) bitte an der Kasse zurücknehmen.
+    </div>
+
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">Zuletzt versendete / abgeholte Aufträge</div>
 
     <?php if (empty($auftraege)): ?>
         <div style="color:#555;font-size:14px;text-align:center;padding:30px">Keine versendeten Aufträge</div>

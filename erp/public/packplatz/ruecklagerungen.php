@@ -70,7 +70,7 @@ require_once __DIR__ . '/shell_top.php';
                     </td>
                     <td style="color:#aaa">
                         <?php if ($r['quelle'] === 'gutschrift'): ?>
-                            Gutschrift <?= htmlspecialchars($r['gutschrift_nr'] ?? '') ?>
+                            Rechnungskorrektur <?= htmlspecialchars($r['gutschrift_nr'] ?? '') ?>
                         <?php else: ?>
                             Bon <?= htmlspecialchars($r['bon_nr'] ?? '') ?>
                         <?php endif; ?>

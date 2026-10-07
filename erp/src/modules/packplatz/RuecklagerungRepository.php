@@ -97,6 +97,14 @@ class RuecklagerungRepository
             'artikel_id'  => $artikelId,
             'id'          => $id,
         ]);
+
+        // Eingelagert -> "Retoure offen" am Auftrag kann sich erledigt haben (Belege-Umbau 2026-10-07)
+        $aid = $this->db->prepare("SELECT auftrag_id FROM packplatz_ruecklagerungen WHERE id = ?");
+        $aid->execute([$id]);
+        if ($auftragId = (int)$aid->fetchColumn()) {
+            require_once __DIR__ . '/../auftraege/AuftragAbschluss.php';
+            AuftragAbschluss::pruefe($auftragId, $benutzerId);
+        }
     }
 
     /** Anzahl offener Rücklagerungen — für ein Badge/Hinweis im Packplatz-Menü. */

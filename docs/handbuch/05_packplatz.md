@@ -24,7 +24,16 @@ Aktuell fertig: **Warenausgang** und **Wareneingang**.
 ## Warenausgang — Paket versenden
 
 ### Voraussetzung:
-- Auftrag ist im ERP angelegt und Zahlungsstatus = bezahlt (oder Zahlungsart = Rechnung)
+- Auftrag ist im ERP angelegt und Zahlungsstatus = bezahlt (oder Zahlungsart = Rechnung/Nachnahme)
+
+### Rechnung beim Abschließen (automatisch)
+Beim Abschließen entsteht für **jede Lieferung** automatisch eine (Teil-)Rechnung über genau die verschickten Artikel — egal ob schon bezahlt. Nicht gelieferte Artikel stehen als „Noch ausständig" darunter. Die Rechnung geht per eigener Mail an den Kunden; die Versandmail bekommt den Lieferschein.
+Hat der Kunde **keine E-Mail-Adresse**, erscheint nach dem Abschließen „🖨 Rechnung drucken" — ausdrucken und ins Paket legen.
+Ware, die schon an der Kasse bezahlt wurde (Bon), kommt nicht nochmal auf die Rechnung.
+
+**Welche Aufträge?** Online- und manuelle Aufträge — auch Abholungen, die an der Kasse bezahlt wurden: dort ist der **Kassenbon** der Originalbeleg, die Rechnungskorrektur bezieht sich auf ihn, die Rückzahlung läuft danach im Auftrag über „Rückerstattung buchen" (oder bar an der Kasse). **Reine Kassenverkäufe (K1-…)** werden nur an der Kasse zurückgenommen und erscheinen hier nicht.
+
+**Restbetrag offen:** Ist ein Vorkasse-/PayPal-Auftrag noch nicht voll bezahlt (z.B. nach Umstellung Abholung → Versand), steht rechts „Restbetrag offen: € …" und beim Verpacken kommt die Frage **„Wirklich versenden?"** — mit „Abbrechen" bleibt der Auftrag liegen, bis bezahlt ist.
 - Artikel haben EAN eingetragen (sonst kann der Scanner sie nicht erkennen)
 
 ### Ablauf:
@@ -121,27 +130,27 @@ Wenn nicht alle Artikel lieferbar sind (z.B. einer ist gerade nicht auf Lager):
 
 Zustandsartikel finden: Artikelliste → Filter **Status / Qualität → Zustand (B-Ware)**, oder direkt nach der Nummer mit Anhang suchen.
 
-## Rücklagerungen — Ware aus Kassen-Retoure oder Gutschrift einbuchen
+## Rücklagerungen — Ware aus Kassen-Retoure oder Rechnungskorrektur einbuchen
 
-Wenn an der Kasse eine Retoure verarbeitet wird (egal ob bar oder als Gutschein erstattet, zu einem Auftrag oder als Freitext-Retour) oder im ERP eine Gutschrift mit **"Ware zur Prüfung an den Packplatz"** erstellt wird, ist **nur der finanzielle Ausgleich** erledigt — die Ware ist noch nicht im Lagerbestand. Diese Liste zeigt genau das.
+Wenn an der Kasse eine Retoure verarbeitet wird (egal ob bar oder als Gutschein erstattet, zu einem Auftrag oder als Freitext-Retour) oder im ERP eine Rechnungskorrektur mit **"Ware zur Prüfung an den Packplatz"** erstellt wird, ist **nur der finanzielle Ausgleich** erledigt — die Ware ist noch nicht im Lagerbestand. Diese Liste zeigt genau das.
 
 **Packplatz → Rücklagerungen** (Badge zeigt die Anzahl offener Einträge)
 
-1. Zeile suchen — zeigt Artikel, Menge, Charge und Herkunft (Bon oder Gutschrift, ggf. Auftragsnummer). Bei einer Gutschrift sind Charge und Lager schon aus dem ursprünglichen Verkauf vorbefüllt; wurden mehrere Chargen verkauft, gibt es eine Zeile pro Charge.
+1. Zeile suchen — zeigt Artikel, Menge, Charge und Herkunft (Bon oder Rechnungskorrektur, ggf. Auftragsnummer). Bei einer Rechnungskorrektur sind Charge und Lager schon aus dem ursprünglichen Verkauf vorbefüllt; wurden mehrere Chargen verkauft, gibt es eine Zeile pro Charge.
 2. **Einbuchen** klicken
 3. Ziel-Lager prüfen/wählen
 4. **Zustand der Ware** wählen (siehe Tabelle oben)
 5. Bei chargenpflichtigen Artikeln: **Charge prüfen/eintragen**, sonst lässt sich nicht einbuchen (außer "Defekt")
 6. **✓ Einbuchen** — Eintrag verschwindet aus der Liste
 
-> Anders als bei der normalen Retoure (unten) gibt es hier keine Gutschrift/Mail-Optionen — das ist bereits erledigt, hier geht es nur noch um Prüfung und Einlagerung.
+> Anders als bei der normalen Retoure (unten) gibt es hier keine Korrektur-/Mail-Optionen — das ist bereits erledigt, hier geht es nur noch um Prüfung und Einlagerung.
 
 ## Retoure (Rücksendung per Post)
 
 **Packplatz → Retoure** → Auftrag suchen → Positionen anhaken.
 
 - Pro Position **Menge · Charge · Zustand**. Die Charge ist mit der verkauften vorbefüllt ("verkauft: A123 (3), B456 (2)"). Kamen Stücke aus mehreren Chargen oder in unterschiedlichem Zustand zurück: **＋ Charge** für eine weitere Zeile.
-- **Schutz vor Doppelbuchung:** Es geht nur die Menge, die noch nicht zurückgekommen ist ("max. X"). Wurde schon an der Kasse retourniert oder eine Gutschrift erstellt, steht das an der Position ("↩ 2 schon zurück", "€ 2 gutgeschrieben") — eine Gutschrift ist nur für die noch nicht gutgeschriebene Menge möglich.
+- **Schutz vor Doppelbuchung:** Es geht nur die Menge, die noch nicht zurückgekommen ist ("max. X"). Wurde schon an der Kasse retourniert oder eine Rechnungskorrektur erstellt, steht das an der Position ("↩ 2 schon zurück", "€ 2 gutgeschrieben") — eine Rechnungskorrektur ist nur für die verrechnete, noch nicht korrigierte Menge möglich.
 
 ---
 

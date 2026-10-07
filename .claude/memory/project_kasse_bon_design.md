@@ -286,3 +286,8 @@ Jacky stufte beide als Pflicht vor Live-Gang ein ("mehrere Aufträge" dagegen au
 
 **Why:** Ohne diese beiden Stücke bucht eine Kassen-Retoure Ware, die physisch am Tresen liegt, NIE zurück in den Lagerbestand — das hätte auf Dauer zu einer stillen Bestandsdrift geführt (Kasse sagt "verkauft/retourniert", Lager weiß nichts davon).
 **How to apply:** Nächster Praxis-Test: einmal beide Wege durchklicken (Freitext-Retour ohne Auftrag UND eine echte `versendet`-Retoure mit Auftrag), danach in `packplatz/ruecklagerungen.php` einbuchen und Lagerbestand/Bewegungslog gegenprüfen.
+
+## 2026-10-02 Rückgabe-Bon aus Kundensicht (Jacky)
+Bar-Auszahlung (Bon-Betrag negativ): Druck 80mm + A4 zeigen "RÜCKGABE € 5,00" (ohne Minus) + "Gegeben € 0,00 / Rückgeld € 5,00" (auch alte Bons mit gespeichertem 0/0); Storno-Bons behalten ihr Minus. Kasse speichert bei retourBestaetigen jetzt rueckgeld = Auszahlung (Kassenabschluss nutzt rueckgeld nur bei kombi → kein Doppelabzug). Kundenanzeige abrechnen: "Rückgabe / Gegeben 0 / Rückgeld x". RKSV-Betrag/Signatur unverändert negativ.
+- 2026-10-02: "↩" vor "RÜCKGABE" auf Bon 80mm/A4 kam als "?" (Druck-/PDF-Schrift) → aus bon_druck.php + BonA4Renderer entfernt (Kassen-UI behält ↩). RKSV bei Rückgabe als Gutschein geprüft: Satz-Normal −x, Satz-Null +x, Summe 0 — korrekt (Mehrzweckgutschein-Ausgabe nicht steuerbar).
+- 2026-10-02 A4-Bon Summen: "MwSt gesamt" war brutto(ohne Vorzeichen) − netto → bei Bar-Rückgabe −5 zeigte er 9,17 € MwSt. Jetzt Summe der Steuerbeträge; Gutschein-Kauf/-Ausgabe als eigene Zeile "Gutschein (nicht steuerbar)" statt im Nettobetrag (Gutschein-Rückgabe zeigte Netto +0,63); Rückgabe-Bons Netto/MwSt positiv wie RÜCKGABE; Storno unverändert, Summenzeile heißt jetzt "STORNO" (80mm + A4).

@@ -43,6 +43,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
 .zk-tab th, .zk-tab td { padding-left: 8px; padding-right: 8px; font-size: 13px; }
 </style>
 
+<?php require __DIR__ . '/../includes/offene_werte_kacheln.php'; ?>
+
 <div class="card" style="margin-bottom:16px">
     <div class="card-header">Zeitraum</div>
     <form method="get" style="padding:0 16px 14px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
@@ -124,7 +126,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <thead>
             <tr>
                 <th>Auftrag</th><th>Datum</th><th>Kanal / Zahlungsart</th><th>Status</th>
-                <th class="zk-num">Betrag</th><th class="zk-num">Gutschein</th><th>Zahlungen</th>
+                <th>Belege</th><th class="zk-num">Gutschein</th><th>Zahlungen</th>
                 <th class="zk-num">Offen</th><th>Buchung</th>
             </tr>
         </thead>
@@ -135,8 +137,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <td><?= date('d.m.Y', strtotime($a['erstellt_am'])) ?></td>
                 <td><?= htmlspecialchars($a['kanal']) ?> / <?= htmlspecialchars(ZAHLUNGSART_TEXT[$a['zahlungsart']] ?? $a['zahlungsart']) ?></td>
                 <td><?= htmlspecialchars($a['zahlungsstatus']) ?></td>
-                <td class="zk-num"><strong><?= eur((float)$a['bruttobetrag']) ?></strong>
-                    <?php if ((float)$a['versandkosten'] > 0): ?><div class="zk-klein">inkl. Versand <?= eur((float)$a['versandkosten']) ?></div><?php endif; ?></td>
+                <td style="font-size:12px;min-width:170px">
+                    <?php foreach ($a['belege'] as $b): ?>
+                        <?= htmlspecialchars($b['art'] . ' ' . $b['nr']) ?> — <?= eur((float)$b['betrag']) ?><br>
+                    <?php endforeach; ?>
+                    <?php if ($a['belege']): ?><div class="zk-klein">Summe <?= eur((float)$a['beleg_summe']) ?> · Auftrag <?= eur((float)$a['bruttobetrag']) ?></div>
+                    <?php else: ?><span class="zk-klein">noch kein Beleg · Auftrag <?= eur((float)$a['bruttobetrag']) ?></span><?php endif; ?>
+                    <?php if ($a['nicht_verrechnet']): ?><div class="zk-diff" style="font-size:11px">geliefert, nicht verrechnet</div><?php endif; ?>
+                </td>
                 <td class="zk-num"><?= betragOderStrich((float)$a['gutschein_betrag']) ?>
                     <?php if ($a['gutschein_codes']): ?><div class="zk-klein"><?= htmlspecialchars($a['gutschein_codes']) ?></div><?php endif; ?></td>
                 <td style="font-size:12px;min-width:180px">
@@ -147,8 +155,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php if (!$a['zahlungen']): ?><span class="zk-klein">keine erfasst</span><?php endif; ?>
                 </td>
                 <td class="zk-num <?= $a['auffaellig'] ? 'zk-diff' : '' ?>"><?= betragOderStrich($a['offen']) ?>
-                    <?php if ($a['offen'] < -0.004): ?><div class="zk-klein">Überzahlung</div><?php endif; ?></td>
-                <td style="font-size:12px"><?= $a['konten'] ? kontenText($a['konten']) : '<span class="zk-klein">–</span>' ?></td>
+                    <?php if ($a['offen'] < -0.004): ?><div class="zk-klein">Rückerstattung offen</div><?php endif; ?></td>
+                <td style="font-size:12px"><?= $a['konten'] ? kontenText($a['konten']) : '' ?>
+                    <?php if (abs($a['ueber_bon']) > 0.004): ?><div class="zk-klein"><?= eur($a['ueber_bon']) ?> über Kassenbon (oben)</div><?php endif; ?>
+                    <?php if (!$a['konten'] && abs($a['ueber_bon']) < 0.005): ?><span class="zk-klein">–</span><?php endif; ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if (!$liste['auftraege']): ?>
@@ -158,8 +168,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </table>
     </div>
     <div style="padding:8px 16px;font-size:11px;color:var(--color-text-muted)">
-        Offen = Betrag − Gutschein − Zahlungen. Bei Status „ausstehend" ist ein offener Betrag normal und nicht markiert.
-        Gutschein-Einlösung bei Online-Aufträgen bucht der Export als Umbuchung Bank → 3230.
+        Offen = Belege (Rechnungen + Kassenbons − Rechnungskorrekturen) − Gutschein − Zahlungen; solange noch nicht alles
+        verrechnet ist: Auftragsbetrag − Gutschein − Zahlungen. Negativ = dem Kunden ist Geld zurückzuzahlen.
+        Zahlungen an der Kasse bucht der Export über den Bon, Online-Gutschein-Einlösung als 3230 an Kunde.
     </div>
 </div>
 

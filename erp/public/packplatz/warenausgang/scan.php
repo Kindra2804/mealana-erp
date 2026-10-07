@@ -88,6 +88,21 @@ if ($modus === 'pickliste') {
 $aktuellerAuftrag = $auftraege[0];
 $auftragId        = (int)$aktuellerAuftrag['id'];
 
+// Restbetrag offen (z.B. nach Umstellung Abholung → Versand kamen Versandkosten dazu):
+// vor dem Versand nachfragen -- Babsi entscheidet, ob erst nach Zahlung verschickt wird.
+// Rechnung/Nachnahme werden ohnehin erst nach dem Versand bezahlt -> keine Frage.
+$restOffen = 0.0;
+if (!in_array($aktuellerAuftrag['zahlungsart'], ['rechnung', 'nachnahme'], true)
+    && in_array($aktuellerAuftrag['zahlungsstatus'], ['ausstehend', 'teilbezahlt'], true)) {
+    $ro = $db->prepare("
+        SELECT a.bruttobetrag - a.gutschein_betrag
+             - (SELECT COALESCE(SUM(z.betrag), 0) FROM auftrag_zahlungen z WHERE z.auftrag_id = a.id)
+        FROM auftraege a WHERE a.id = ?
+    ");
+    $ro->execute([$auftragId]);
+    $restOffen = max(0.0, round((float)$ro->fetchColumn(), 2));
+}
+
 // Positionen laden — nur noch offene Restmengen (menge - menge_geliefert)
 $lagerId    = 1; // Packplatz bucht immer aus Standardlager
 $positionen = $db->prepare("
@@ -239,6 +254,12 @@ require_once __DIR__ . '/../shell_top.php';
             <div>💳 <?= htmlspecialchars($aktuellerAuftrag['zahlungsart']) ?>
                 — <?= htmlspecialchars($aktuellerAuftrag['zahlungsstatus']) ?>
             </div>
+            <?php if ($restOffen > 0): ?>
+                <div style="margin:6px 0;padding:6px 10px;background:#0f2a4a;border:1px solid #2563eb;border-radius:6px;color:#93c5fd;font-weight:600">
+                    <span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:#2563eb;color:#fff;text-align:center">!</span>
+                    Restbetrag offen: € <?= number_format($restOffen, 2, ',', '.') ?>
+                </div>
+            <?php endif; ?>
             <div>🚚 <?= htmlspecialchars($aktuellerAuftrag['lieferart']) ?></div>
             <?php if ($lieferAdr): ?>
                 <div style="margin-top:10px;border-top:1px solid #0f3460;padding-top:10px">
@@ -412,10 +433,11 @@ const POSITIONEN = <?= json_encode(array_map(fn($p, $i) => [
 ], $positionen, array_keys($positionen))) ?>;
 const LAGER_ID = <?= $lagerId ?>;
 const AUFTRAG_ID    = <?= $auftragId ?>;
+const REST_OFFEN    = <?= json_encode($restOffen) ?>; // > 0 -> "wirklich versenden?"
 const PICKLISTE_ID  = <?= $pickliste ? $pickliste['id'] : 'null' ?>;
 const IS_VERSAND    = <?= json_encode($aktuellerAuftrag['lieferart'] === 'versand') ?>;
 const IS_ABHOLUNG   = <?= json_encode($aktuellerAuftrag['lieferart'] === 'abholung') ?>;
 </script>
-<script src="<?= BASE_PATH ?>/js/packplatz_scan.js"></script>
+<script src="<?= BASE_PATH ?>/js/packplatz_scan.js?v=<?= filemtime(__DIR__ . '/../../js/packplatz_scan.js') ?>"></script>
 
 <?php require_once __DIR__ . '/../shell_bottom.php'; ?>

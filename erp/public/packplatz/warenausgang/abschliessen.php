@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../../src/core/EasyPakExporter.php';
 require_once __DIR__ . '/../../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../../src/modules/auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../../../src/modules/dokumente/DokumentService.php';
+require_once __DIR__ . '/../../../src/modules/dokumente/RechnungMailService.php';
+require_once __DIR__ . '/../../../src/modules/auftraege/AuftragAbschluss.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
@@ -202,12 +204,8 @@ try {
             : "Versendet — Tracking: {$tracking}");
     $auftragRepo->logStatus($auftragId, ['lieferstatus' => [$auftrag['lieferstatus'], $neuerStatus]], $notizText, $benutzerId);
 
-    // Auto-Abgeschlossen: versendet + bezahlt → abgeschlossen
-    if ($neuerStatus === 'versendet' && ($auftrag['zahlungsstatus'] ?? '') === 'bezahlt') {
-        $db->prepare("UPDATE auftraege SET lieferstatus='abgeschlossen', aktualisiert_am=NOW() WHERE id=?")
-           ->execute([$auftragId]);
-        $auftragRepo->logStatus($auftragId, ['lieferstatus' => ['versendet', 'abgeschlossen']], 'Automatisch abgeschlossen (versendet + bezahlt)', $benutzerId);
-    }
+    // "abgeschlossen" entscheidet AuftragAbschluss erst NACH der Rechnung (weiter unten) —
+    // vorher wurde hier versendet + bezahlt direkt abgeschlossen, auch ohne Rechnung.
 
     // Pickliste abschließen (wenn alle Aufträge versendet)
     if ($picklisteId) {
@@ -215,7 +213,7 @@ try {
             SELECT COUNT(*) FROM pickliste_auftraege pa
             JOIN auftraege a ON a.id = pa.auftrag_id
             WHERE pa.pickliste_id = ?
-              AND a.lieferstatus NOT IN ('versendet','teilgeliefert','abgeschlossen','storniert','abholbereit')
+              AND a.lieferstatus NOT IN ('versendet','teilgeliefert','abgeschlossen','retoure_offen','storniert','abholbereit')
         ");
         $offene->execute([$picklisteId]);
         if ((int)$offene->fetchColumn() === 0) {
@@ -339,40 +337,40 @@ if ($email) {
     $mailerFirma = $firma; // alias für spätere Nutzung
 }
 
-// ─── PDF-Anhang (Rechnung oder Lieferschein) + Auto-Rechnungsmail ─────────────
-$anhaenge        = [];
-$autoRechnungMail = null;
-$rgnRes           = null; // wird unten befüllt wenn Rechnung frisch erstellt wurde
-if ($email && !$isAbholung) {
+// ─── Lieferschein + (Teil-)Rechnung für GENAU diese Lieferung ────────────────
+// Belege-Umbau 2026-10-07: jede Lieferung bekommt ihre Rechnung — unabhängig vom
+// Zahlungsstatus (Rechnungskauf/Nachnahme brauchen sie gerade dann) und auch ohne
+// E-Mail-Adresse (dann zum Ausdrucken). Die Rechnung nimmt automatisch alles Gelieferte,
+// das noch auf keinem Beleg steht — Ware, die schon an der Kasse bezahlt wurde (Bon),
+// fällt dadurch von selbst raus.
+$anhaenge  = [];
+$rechnung  = null;
+if (!$isAbholung) {
+    $dokumentService = new DokumentService();
     try {
-        $dokumentService = new DokumentService();
-        $istBezahlt      = $auftrag['zahlungsstatus'] === 'bezahlt';
-
-        if ($istBezahlt && !$istTeillieferung) {
-            $rgnRes = $dokumentService->holeOderErstelleRechnung($auftragId, $benutzerId);
-            if ($rgnRes['erfolg']) {
-                $anhaenge[] = ['pfad' => $rgnRes['pfad'], 'name' => 'Rechnung_' . $auftrag['auftrag_nr'] . '.pdf'];
-
-                // Rechnung-Mail nur wenn gerade frisch auto-erstellt (kein Doppelversand)
-                if ($rgnRes['neu_erstellt']) {
-                    $rStmt = $db->prepare("SELECT rechnung_nr, bruttobetrag FROM rechnungen WHERE auftrag_id = ? AND storniert = 0 ORDER BY erstellt_am DESC LIMIT 1");
-                    $rStmt->execute([$auftragId]);
-                    $autoRechnungMail = $rStmt->fetch(PDO::FETCH_ASSOC) ?: null;
-                }
-            }
-        } else {
-            $lsResult = $dokumentService->erstelleLieferscheinFuerLieferung($auftragId, $benutzerId, $gelieferteFuerPdf);
-            if ($lsResult['erfolg']) {
-                $anhaenge[] = [
-                    'pfad' => $dokumentService->getDateipfad($auftragId, $lsResult['dateiname']),
-                    'name' => 'Lieferschein_' . $auftrag['auftrag_nr'] . '.pdf',
-                ];
-            }
+        $lsResult = $dokumentService->erstelleLieferscheinFuerLieferung($auftragId, $benutzerId, $gelieferteFuerPdf);
+        if ($lsResult['erfolg']) {
+            $anhaenge[] = [
+                'pfad' => $dokumentService->getDateipfad($auftragId, $lsResult['dateiname']),
+                'name' => 'Lieferschein_' . $auftrag['auftrag_nr'] . '.pdf',
+            ];
         }
     } catch (Throwable $e) {
-        error_log('[VersandPDF] Fehler: ' . $e->getMessage());
+        error_log('[VersandLS] Fehler: ' . $e->getMessage());
+    }
+    try {
+        $rgnRes = $dokumentService->erstelleRechnung($auftragId, $benutzerId, null, $lieferungId ?? null);
+        if ($rgnRes['erfolg']) {
+            $rechnung = $rgnRes;
+        } elseif (empty($rgnRes['nichts_offen'])) {
+            $_SESSION['fehler'] = 'Versand gebucht, aber Rechnung konnte nicht erstellt werden: ' . ($rgnRes['fehler'] ?? '?');
+        }
+    } catch (Throwable $e) {
+        error_log('[VersandRechnung] Fehler: ' . $e->getMessage());
+        $_SESSION['fehler'] = 'Versand gebucht, aber Rechnung konnte nicht erstellt werden: ' . $e->getMessage();
     }
 }
+AuftragAbschluss::pruefe($auftragId, $benutzerId);
 
 // ─── Versandmail ──────────────────────────────────────────────────────────────
 if ($email && !$isAbholung) {
@@ -421,42 +419,21 @@ if ($email && !$isAbholung) {
         error_log('[Versandmail] Fehler: ' . $e->getMessage());
     }
 
-    // Auto-Rechnungsmail: nur wenn Rechnung gerade frisch auto-erstellt wurde
-    if ($autoRechnungMail && $email) {
-        try {
-            $zahlungenRoh = $auftragRepo->findZahlungen($auftragId);
-            $zahlungenMail = array_map(fn($z) => [
-                'buchungsdatum' => date('d.m.Y', strtotime($z['buchungsdatum'])),
-                'betrag'        => (float)$z['betrag'],
-                'notiz'         => $z['notiz'] ?? '',
-            ], $zahlungenRoh);
-            $bezahltGesamt = array_sum(array_column($zahlungenRoh, 'betrag'));
-            $offenerBetrag = (float)$autoRechnungMail['bruttobetrag'] - $bezahltGesamt;
+}
 
-            $mailerR = new Mailer();
-            $mailerR->sendeTemplate(
-                empfaenger:   $email,
-                betreff:      'Ihre Rechnung ' . $autoRechnungMail['rechnung_nr'],
-                templatePfad: 'mails/rechnung_mail.html.twig',
-                variablen: [
-                    'logo_base64'    => $mailerR->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
-                    'anrede'         => $anrede,
-                    'nachname'       => $nachname,
-                    'kunde_name'     => $name,
-                    'auftrag_nummer' => $auftrag['auftrag_nr'],
-                    'rechnung_nr'    => $autoRechnungMail['rechnung_nr'],
-                    'brutto_gesamt'  => (float)$autoRechnungMail['bruttobetrag'],
-                    'faellig_datum'  => date('d.m.Y', strtotime('+14 days')),
-                    'firma_email'    => $firma['mail_from_address'] ?? '',
-                    'zahlungsstatus' => $auftrag['zahlungsstatus'],
-                    'zahlungen'      => $zahlungenMail,
-                    'offener_betrag' => $offenerBetrag,
-                ],
-                anhaenge: [['pfad' => $rgnRes['pfad'], 'name' => $autoRechnungMail['rechnung_nr'] . '.pdf']],
-            );
-        } catch (Throwable $e) {
-            error_log('[AutoRechnungMail] Fehler: ' . $e->getMessage());
-        }
+// ─── Rechnung per Mail nachschicken — ohne E-Mail-Adresse: zum Ausdrucken anbieten ──
+if ($rechnung) {
+    $mailOk = false;
+    try {
+        $mailOk = RechnungMailService::sende((int)$rechnung['rechnung_id']);
+    } catch (Throwable $e) {
+        error_log('[RechnungMail] Fehler: ' . $e->getMessage());
+    }
+    $_SESSION['erfolg'] = 'Versendet — Rechnung ' . $rechnung['rechnung_nr']
+        . ($mailOk ? ' per Mail an den Kunden geschickt.' : ' erstellt (nicht per Mail verschickt — bitte ausdrucken und beilegen).');
+    if (!$mailOk) {
+        $_SESSION['rechnung_drucken'] = BASE_PATH . '/auftraege/dokument_download.php?auftrag_id=' . $auftragId
+            . '&datei=' . urlencode($rechnung['dateiname']);
     }
 }
 

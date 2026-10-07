@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../../src/core/Database.php';
 require_once __DIR__ . '/../../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../../src/modules/packplatz/RetourService.php';
+require_once __DIR__ . '/../../../src/modules/dokumente/DokumentService.php';
 
 $db           = Database::getInstance();
 $lagerService = new LagerService();
@@ -30,6 +31,11 @@ if (!$auftrag) {
     $_SESSION['fehler'] = 'Auftrag nicht gefunden.';
     header('Location: index.php'); exit;
 }
+// Reiner Kassenverkauf (ohne Online-/manuellen Auftrag): Rückgabe läuft an der Kasse
+if (($auftrag['kanal'] ?? '') === 'kasse') {
+    $_SESSION['fehler'] = $auftrag['auftrag_nr'] . ' ist ein Kassenverkauf — Rückgabe bitte an der Kasse (Bon laden bzw. Freitext-Retour).';
+    header('Location: index.php'); exit;
+}
 
 $positionen = $db->prepare("
     SELECT ap.*, a.zustand_vater_id, a.charge_pflicht,
@@ -47,7 +53,8 @@ $positionen = $positionen->fetchAll(PDO::FETCH_ASSOC);
 $retourSvc = new RetourService();
 foreach ($positionen as &$p) {
     $p['offen_physisch'] = max(0, (int)$p['menge'] - (int)$p['menge_retourniert']);
-    $p['offen_gs']       = max(0, (int)$p['menge'] - (int)$p['menge_gutgeschrieben']);
+    // korrigierbar ist nur, was verrechnet ist (Rechnung oder Kassenbon)
+    $p['offen_gs']       = max(0, min((int)$p['menge'], (int)($p['menge_verrechnet'] ?? 0)) - (int)$p['menge_gutgeschrieben']);
     $p['verkauft']       = $p['artikel_id'] ? $retourSvc->verkaufteChargen($auftragId, (int)$p['artikel_id']) : [];
 }
 unset($p);
@@ -56,6 +63,10 @@ unset($p);
 $rechnung = $db->prepare("SELECT id, rechnung_nr FROM rechnungen WHERE auftrag_id = :id AND storniert = 0 ORDER BY id DESC LIMIT 1");
 $rechnung->execute([':id' => $auftragId]);
 $rechnung = $rechnung->fetch(PDO::FETCH_ASSOC);
+// An der Kasse bezahlte Ware: Beleg ist der Kassenbon -> Rechnungskorrektur bezieht sich darauf
+$bonBelege  = (new DokumentService())->kassenbonBelege($auftragId);
+$belegText  = $rechnung ? 'Rg. ' . $rechnung['rechnung_nr'] : ($bonBelege ? implode(', ', array_column($bonBelege, 'nr')) : '');
+$korrekturMoeglich = (bool)($rechnung || $bonBelege);
 
 $alleLager = $lagerService->getAlleLager();
 
@@ -104,7 +115,11 @@ require_once __DIR__ . '/../shell_top.php';
                 <?php if ($rechnung): ?>
                     <div>Rechnung: <span style="color:#4caf50"><?= htmlspecialchars($rechnung['rechnung_nr']) ?></span></div>
                 <?php else: ?>
-                    <div style="color:#ff9800">⚠ Keine Rechnung — GS nicht möglich</div>
+                    <?php if ($bonBelege): ?>
+                        <div>Beleg: <span style="color:#4caf50"><?= htmlspecialchars($belegText) ?></span> <span style="color:#888">(an der Kasse bezahlt)</span></div>
+                    <?php else: ?>
+                        <div style="color:#93c5fd">Noch kein Beleg (Rechnung/Kassenbon) — Rechnungskorrektur nicht möglich</div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -188,11 +203,11 @@ require_once __DIR__ . '/../shell_top.php';
             <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">Ergebnis</div>
             <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
                 <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid #0f3460;border-radius:8px;cursor:pointer;color:#eee" id="lbl-gs">
-                    <input type="radio" name="ergebnis" value="gutschrift" <?= $rechnung ? '' : 'disabled' ?> onchange="ergebnisGewaehlt('gutschrift')"
+                    <input type="radio" name="ergebnis" value="gutschrift" <?= $korrekturMoeglich ? '' : 'disabled' ?> onchange="ergebnisGewaehlt('gutschrift')"
                            style="width:18px;height:18px;accent-color:#e94560" <?= !$rechnung ? '' : '' ?>>
                     <div>
-                        <div style="font-weight:600">Gutschrift erstellen</div>
-                        <div style="font-size:11px;color:#aaa"><?= $rechnung ? 'Rg. ' . htmlspecialchars($rechnung['rechnung_nr']) : 'Keine Rechnung vorhanden'?></div>
+                        <div style="font-weight:600">Rechnungskorrektur erstellen</div>
+                        <div style="font-size:11px;color:#aaa"><?= $korrekturMoeglich ? htmlspecialchars($belegText) : 'Kein Beleg vorhanden' ?></div>
                     </div>
                 </label>
                 <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid #0f3460;border-radius:8px;cursor:pointer;color:#eee">
@@ -214,7 +229,7 @@ require_once __DIR__ . '/../shell_top.php';
             </div>
 
             <div id="gs-bereich" style="display:none;border-top:1px solid #0f3460;padding-top:12px;margin-top:4px">
-                <label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Grund (Gutschrift)</label>
+                <label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Grund (Rechnungskorrektur)</label>
                 <input type="text" name="gs_grund" class="ret-input" style="width:100%" placeholder="z.B. Reklamation, falsche Ware…">
                 <?php if (!Auth::kann('packplatz.gutschrift')): ?>
                 <label style="font-size:12px;color:#aaa;display:block;margin:10px 0 4px">🔒 Manager-PIN (Freigabe nötig)</label>

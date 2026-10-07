@@ -10,6 +10,9 @@ require_once __DIR__ . '/../kunden/KundenService.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
 require_once __DIR__ . '/../gutscheine/GutscheinRepository.php';
 require_once __DIR__ . '/../gutscheine/GutscheinService.php';
+require_once __DIR__ . '/../dokumente/DokumentService.php';
+require_once __DIR__ . '/../dokumente/RechnungMailService.php';
+require_once __DIR__ . '/../auftraege/AuftragAbschluss.php';
 
 /**
  * ShopBestellungSyncService – Phase 3: Bestellungen aus WooCommerce ins ERP.
@@ -32,7 +35,8 @@ class ShopBestellungSyncService
         'pending'    => ['ausstehend', 'neu'],
         'on-hold'    => ['ausstehend', 'neu'],
         'processing' => ['bezahlt', 'in_bearbeitung'],
-        'completed'  => ['bezahlt', 'abgeschlossen'],
+        // completed aus dem Shop heißt nicht "im ERP abgeschlossen" — versendet+verrechnet wird hier entschieden
+        'completed'  => ['bezahlt', 'in_bearbeitung'],
         'cancelled'  => ['storniert', 'storniert'],
         'refunded'   => ['erstattet', null],
     ];
@@ -126,7 +130,7 @@ class ShopBestellungSyncService
      */
     private function sollShopStatus(array $auftrag): ?string
     {
-        $versendet = in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen'], true);
+        $versendet = in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'retoure_offen'], true);
         if ($auftrag['zahlungsstatus'] === 'bezahlt') {
             return $versendet ? 'completed' : 'processing';
         }
@@ -230,7 +234,7 @@ class ShopBestellungSyncService
             SELECT id FROM auftraege
             WHERE shop_id = ? AND kanal = 'woocommerce' AND kanal_auftrag_id IS NOT NULL
               AND lieferstatus <> 'storniert'
-              AND (zahlungsstatus = 'bezahlt' OR lieferstatus IN ('versendet', 'abgeschlossen'))
+              AND (zahlungsstatus = 'bezahlt' OR lieferstatus IN ('versendet', 'abgeschlossen', 'retoure_offen'))
               AND COALESCE(shop_status_gemeldet, '') <> 'completed'
             ORDER BY id
             LIMIT 100
@@ -654,8 +658,17 @@ class ShopBestellungSyncService
         $lieferstatus = (string)$status->fetchColumn();
 
         if ((int)$offen->fetchColumn() === 0 && in_array($lieferstatus, ['neu', 'in_bearbeitung', 'versandbereit'], true)) {
-            $this->auftragService->statusAktualisieren($auftragId, ['lieferstatus' => 'abgeschlossen'],
+            $this->auftragService->statusAktualisieren($auftragId, ['lieferstatus' => 'versendet'],
                 'Nur Gutscheine — per E-Mail zugestellt, nichts zu versenden', $this->jarvisId);
+            // Beleg: Rechnung über den Gutschein-Verkauf (0 %, Mehrzweckgutschein) — Jacky 2026-10-07.
+            // Bei gemischten Bestellungen nimmt die Packplatz-Rechnung die Gutscheine automatisch mit.
+            try {
+                $re = (new DokumentService())->erstelleRechnung($auftragId, $this->jarvisId);
+                if ($re['erfolg']) RechnungMailService::sende((int)$re['rechnung_id']);
+            } catch (Throwable $e) {
+                Logger::log('gutschein.rechnung_fehler', 'auftraege', $auftragId, ['fehler' => $e->getMessage()], $this->jarvisId, 'error');
+            }
+            AuftragAbschluss::pruefe($auftragId, $this->jarvisId);
         }
     }
 

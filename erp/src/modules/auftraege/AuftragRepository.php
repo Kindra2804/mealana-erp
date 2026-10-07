@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../core/Database.php';
+require_once __DIR__ . '/OffeneWerte.php';
 
 /**
  * AuftragRepository – CRUD für Verkaufsaufträge, Positionen, Statuslog und Rechnungen.
@@ -36,10 +37,22 @@ class AuftragRepository
         string $suche = '',
         bool   $mitAbgeschlossenen = false,
         ?string $von = null,
-        ?string $bis = null
+        ?string $bis = null,
+        string $belegFilter = ''
     ): array {
         $where  = ['1=1'];
         $params = [];
+
+        // Kacheln "Offene Werte" (OffeneWerte) -> gleiche Bedingungen wie die Kennzahl
+        $belegBedingungen = [
+            'bestand'          => OffeneWerte::BEDINGUNG_BESTAND,
+            'nicht_verrechnet' => OffeneWerte::BEDINGUNG_NICHT_VERRECHNET,
+            'rechnung_offen'   => OffeneWerte::BEDINGUNG_RECHNUNG_OFFEN,
+        ];
+        if (isset($belegBedingungen[$belegFilter])) {
+            $where[] = '(' . $belegBedingungen[$belegFilter] . ')';
+            $mitAbgeschlossenen = true;
+        }
 
         if ($von !== null && $bis !== null) {
             $where[]       = 'a.erstellt_am BETWEEN :von AND :bis';
@@ -122,8 +135,67 @@ class AuftragRepository
     }
 
     /**
-     * Gibt einen Auftrag anhand ID zurück, inklusive Kundenname.
+     * Belege je Auftrag für die Belege-Spalte der Auftragsliste (Belege-Umbau 2026-10-07):
+     * [auftrag_id => ['ab'|'ls'|'rg'|'gs'|'az'|'bon' => [[nr, datum, url-Teil], ...],
+     *                 'nicht_verrechnet' => bool]]. Gesammelt für viele Aufträge auf einmal.
+     * 'datei' = Dateiname für dokument_download.php, 'bon_id' für Kassenbons.
      */
+    public function findBelegeFuerAuftraege(array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $erg = [];
+        foreach ($ids as $id) {
+            $erg[$id] = ['ab' => [], 'ls' => [], 'rg' => [], 'gs' => [], 'az' => [], 'bon' => [], 'nicht_verrechnet' => false];
+        }
+        $typMap = ['auftragsbestaetigung' => 'ab', 'lieferschein' => 'ls', 'rechnung' => 'rg', 'gutschrift' => 'gs', 'abholzettel' => 'az'];
+
+        foreach (array_chunk($ids, 1000) as $chunk) {
+            $ph = implode(',', $chunk);
+
+            $docs = $this->db->query("
+                SELECT auftrag_id, typ, beleg_nr, dateiname, DATE_FORMAT(erstellt_am, '%d.%m.%Y') AS datum
+                FROM auftrag_dokumente
+                WHERE auftrag_id IN ($ph) AND typ IN ('auftragsbestaetigung','lieferschein','rechnung','gutschrift','abholzettel')
+                ORDER BY id
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($docs as $d) {
+                $erg[(int)$d['auftrag_id']][$typMap[$d['typ']]][] = [
+                    'nr' => $d['beleg_nr'] ?: pathinfo($d['dateiname'], PATHINFO_FILENAME), 'datum' => $d['datum'], 'datei' => $d['dateiname'],
+                ];
+            }
+
+            // Kassenbons: Spiegel-Auftrag (auftrag_id), Web-Auftrag (web_auftrag_id / Sammelabholung)
+            // und Zahlbelege (Bon-Zeile 'zahlung' mit web_auftrag_id)
+            $bons = $this->db->query("
+                SELECT x.aid, b.id, b.bon_nr, DATE_FORMAT(b.erstellt_am, '%d.%m.%Y') AS datum
+                FROM (
+                    SELECT auftrag_id AS aid, id AS bon_id FROM kassen_bons WHERE auftrag_id IN ($ph)
+                    UNION SELECT web_auftrag_id, id FROM kassen_bons WHERE web_auftrag_id IN ($ph)
+                    UNION SELECT auftrag_id, bon_id FROM kassen_bon_auftraege WHERE auftrag_id IN ($ph)
+                    UNION SELECT web_auftrag_id, bon_id FROM kassen_bon_positionen WHERE block = 'zahlung' AND web_auftrag_id IN ($ph)
+                ) x
+                JOIN kassen_bons b ON b.id = x.bon_id AND b.typ = 'verkauf'
+                ORDER BY b.id
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($bons as $b) {
+                $erg[(int)$b['aid']]['bon'][] = ['nr' => $b['bon_nr'], 'datum' => $b['datum'], 'bon_id' => (int)$b['id']];
+            }
+
+            // Ausgeliefert, aber noch auf keinem Beleg (gleiche Regel wie AuftragAbschluss::kriterien)
+            $offen = $this->db->query("
+                SELECT DISTINCT p.auftrag_id
+                FROM auftrag_positionen p
+                JOIN auftraege a ON a.id = p.auftrag_id
+                WHERE p.auftrag_id IN ($ph) AND p.menge > 0
+                  AND a.kanal NOT IN ('kasse', 'jtl_archiv') AND a.lieferstatus <> 'storniert'
+                  AND IF(a.lieferart = 'abholung', CAST(p.menge_abgeholt AS SIGNED) - CAST(p.menge_retourniert AS SIGNED),
+                         p.menge_geliefert) > p.menge_verrechnet
+            ")->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($offen as $aid) $erg[(int)$aid]['nicht_verrechnet'] = true;
+        }
+        return $erg;
+    }
+
     /** Idempotenz-Schlüssel für den Shop-Bestellungs-Sync: existiert dieser Auftrag schon? */
     public function findByShopUndKanalAuftragId(int $shopId, int $kanalAuftragId): array|false
     {
@@ -501,42 +573,6 @@ class AuftragRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Erzeugt eine neue Rechnungsnummer (transaktionssicher) und legt den Rechnungsdatensatz an.
-     */
-    public function insertRechnung(array $data): int
-    {
-        $this->db->beginTransaction();
-
-        $jahr = date('Y');
-        $this->db->prepare("
-            INSERT IGNORE INTO dokument_nummern (typ, praefix, jahr, letzt_nr)
-            VALUES ('rechnung', 'R', :jahr, 0)
-        ")->execute(['jahr' => $jahr]);
-
-        $this->db->prepare("
-            UPDATE dokument_nummern SET letzt_nr = letzt_nr + 1
-            WHERE typ = 'rechnung' AND jahr = :jahr
-        ")->execute(['jahr' => $jahr]);
-
-        $nr = $this->db->prepare("
-            SELECT letzt_nr FROM dokument_nummern WHERE typ = 'rechnung' AND jahr = :jahr
-        ");
-        $nr->execute(['jahr' => $jahr]);
-        $laufNr      = (int)$nr->fetchColumn();
-        $rechnungNr  = 'R-' . $jahr . '-' . str_pad($laufNr, 5, '0', STR_PAD_LEFT);
-
-        $stmt = $this->db->prepare("
-            INSERT INTO rechnungen (rechnung_nr, auftrag_id, nettobetrag, steuerbetrag, bruttobetrag, faellig_am, erstellt_von)
-            VALUES (:rechnung_nr, :auftrag_id, :nettobetrag, :steuerbetrag, :bruttobetrag, :faellig_am, :erstellt_von)
-        ");
-        $stmt->execute(array_merge($data, ['rechnung_nr' => $rechnungNr]));
-        $id = (int)$this->db->lastInsertId();
-
-        $this->db->commit();
-        return $id;
-    }
-
     public function updateHeader(int $id, array $felder): void
     {
         $sets   = [];
@@ -594,16 +630,18 @@ class AuftragRepository
         return $stmt->fetchAll();
     }
 
-    public function insertZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, int $benutzerId): int
+    public function insertZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, int $benutzerId, ?string $zahlungsweg = null, ?int $kassenBonId = null): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
-            VALUES (:auftrag_id, :betrag, :buchungsdatum, :notiz, :erfasst_von)
+            INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, zahlungsweg, kassen_bon_id, notiz, erfasst_von)
+            VALUES (:auftrag_id, :betrag, :buchungsdatum, :zahlungsweg, :kassen_bon_id, :notiz, :erfasst_von)
         ");
         $stmt->execute([
             'auftrag_id'    => $auftragId,
             'betrag'        => $betrag,
             'buchungsdatum' => $buchungsdatum,
+            'zahlungsweg'   => $zahlungsweg,
+            'kassen_bon_id' => $kassenBonId,
             'notiz'         => $notiz,
             'erfasst_von'   => $benutzerId,
         ]);

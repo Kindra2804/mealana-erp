@@ -23,10 +23,10 @@
 
 {% if ergebnis == 'gutschrift' %}
 <div class="hinweis">
-  <strong>Ergebnis: Gutschrift</strong><br>
-  Eine Gutschrift über <strong>€&nbsp;{{ gs_betrag|number_format(2, ',', '.') }}</strong>
-  wurde erstellt{% if gs_nr %} ({{ gs_nr }}){% endif %}.
-  {% if gs_anhang %}Die Gutschrift ist im Anhang beigefügt.{% endif %}
+  <strong>Ergebnis: Rechnungskorrektur</strong><br>
+  Ihre Rechnung wurde um <strong>€&nbsp;{{ gs_betrag|number_format(2, ',', '.') }}</strong>
+  korrigiert{% if gs_nr %} (Rechnungskorrektur {{ gs_nr }}){% endif %} — der Betrag wird Ihnen erstattet.
+  {% if gs_anhang %}Die Rechnungskorrektur ist im Anhang beigefügt.{% endif %}
 </div>
 {% elseif ergebnis == 'ersatz' %}
 <div class="hinweis">

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/Positionsrechnung.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/auftraege/AuftragAbschluss.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -13,7 +14,12 @@ $alle = ($_GET['alle'] ?? '0') === '1';
 // gezielt eingeschränkt) — ein bezahlter, versendeter Auftrag springt durch die Auto-Logik
 // in packplatz/warenausgang/abschliessen.php sofort von 'versendet' auf 'abgeschlossen',
 // der 'versendet'-Zustand ist für diesen (häufigsten) Fall praktisch nicht beobachtbar.
-$basisFilter = "a.lieferstatus != 'storniert'";
+// Komplett zurückgegebene/erstattete Aufträge (keine Position mit Restmenge) bieten an der
+// Kasse nichts mehr — sonst würden sie leer geladen (Jacky 2026-10-02)
+$basisFilter = "a.lieferstatus != 'storniert'
+                AND EXISTS (SELECT 1 FROM auftrag_positionen ap_rest
+                            WHERE ap_rest.auftrag_id = a.id
+                              AND ap_rest.menge > GREATEST(ap_rest.menge_retourniert, ap_rest.menge_gutgeschrieben))";
 
 // Sammelabholung: weitere offene Abholungen desselben Kunden zu einem schon geladenen
 // Auftrag (gleiche kunden_id, bei Gast-Bestellungen ohne Kundenkonto gleiche E-Mail).
@@ -52,7 +58,7 @@ if ($weitereZu) {
     // Rückgaben nicht ohne den "alle"-Umschalter. Archiv-Aufträge bewusst ausgeschlossen,
     // sonst tauchen die immer als "abgeschlossen" markierten JTL-Altaufträge hier auf.
     $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv', 'haendler')
-              AND (a.lieferart = 'abholung' OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen'))";
+              AND (a.lieferart = 'abholung' OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen', 'retoure_offen'))";
 }
 
 $params = $params ?? [];
@@ -93,6 +99,7 @@ $lieferLabels = [
     'kommissioniert'  => 'Gepackt',
     'zurueckgestellt' => 'Zurückgest.',
     'abgeschlossen'   => 'Abgeschl.',
+    'retoure_offen'   => 'Retoure offen',
 ];
 $zahlLabels = [
     'offen'       => 'Unbezahlt',
@@ -112,6 +119,8 @@ foreach ($auftraege as $a) {
     // Positionen
     $pStmt = $db->prepare("
         SELECT p.id, p.artikel_id, p.bezeichnung, p.ean, p.charge,
+               (SELECT artikelnummer FROM artikel WHERE id = p.artikel_id) AS artikelnummer,
+               (SELECT charge_pflicht FROM artikel WHERE id = p.artikel_id) AS charge_pflicht,
                p.menge, p.menge_geliefert, p.menge_abgeholt, GREATEST(p.menge_retourniert, p.menge_gutgeschrieben) AS menge_retourniert,
                p.einzelpreis_netto, p.steuer_prozent, p.rabatt_prozent
         FROM auftrag_positionen p
@@ -136,6 +145,9 @@ foreach ($auftraege as $a) {
             'artikel_id'          => $p['artikel_id'] ? (int)$p['artikel_id'] : null,
             'bezeichnung'         => $p['bezeichnung'],
             'ean'                 => $p['ean'] ?? null,
+            // für die Chargen-Abfrage, wenn die Ware an der Kasse mitgenommen wird
+            'artikelnummer'       => $p['artikelnummer'] ?? null,
+            'charge_pflicht'      => (int)($p['charge_pflicht'] ?? 0),
             'charge'              => $p['charge'] ?? null,
             'menge'               => (float)$p['menge'],
             'menge_geliefert'     => (float)($p['menge_geliefert'] ?? 0),
@@ -148,8 +160,24 @@ foreach ($auftraege as $a) {
         ];
     }
 
+    // Guthaben = mehr bezahlt als der (geänderte) Auftragsbetrag, z.B. nach Umstellung
+    // Versand → Abholung (Versandkosten entfallen). Die Kasse zahlt es bei der Abholung aus.
+    $gh = $db->prepare("
+        SELECT (SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = a.id)
+             + a.gutschein_betrag - a.bruttobetrag
+             - (SELECT COALESCE(SUM(gebuehr), 0) FROM mahnungen WHERE auftrag_id = a.id AND status = 'versendet' AND gebuehr_erlassen_am IS NULL)
+        FROM auftraege a WHERE a.id = ?
+    ");
+    $gh->execute([(int)$a['id']]);
+    $guthaben = $a['zahlungsstatus'] === 'bezahlt' ? max(0.0, round((float)$gh->fetchColumn(), 2)) : 0.0;
+    // Mit Belegen (Rechnung/Korrektur) zählt deren Saldo -- z.B. Stornorechnung inkl. Versand
+    if ($a['zahlungsstatus'] === 'bezahlt' && AuftragAbschluss::saldoAussagekraeftig((int)$a['id'])) {
+        $guthaben = max(0.0, round(-AuftragAbschluss::saldo((int)$a['id']), 2));
+    }
+
     $result[] = [
         'id'                => (int)$a['id'],
+        'guthaben'          => $guthaben,
         'auftrag_nr'        => $a['auftrag_nr'],
         'kunden_name'       => $kundenName,
         'bruttobetrag'      => (float)$a['bruttobetrag'],

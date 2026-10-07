@@ -8,6 +8,8 @@ require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../../src/modules/auftraege/Positionsrechnung.php';
+require_once __DIR__ . '/../../src/modules/auftraege/AuftragAbschluss.php';
+require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
 require_once __DIR__ . '/../../src/modules/lager/LagerService.php';
 require_once __DIR__ . '/../../src/modules/packplatz/RuecklagerungRepository.php';
 require_once __DIR__ . '/../../src/core/Logger.php';
@@ -80,6 +82,8 @@ foreach ($positionen as $p) {
         'retour_von_position_id' => isset($p['retour_von_position_id']) ? (int)$p['retour_von_position_id'] : null,
         'web_auftrag_id'         => !empty($p['web_auftrag_id']) ? (int)$p['web_auftrag_id'] : null,
         'gutschein_empfaenger'   => trim((string)($p['gutschein_empfaenger'] ?? '')) ?: null,
+        'zahlung_auftrag_id'     => !empty($p['zahlung_auftrag_id']) ? (int)$p['zahlung_auftrag_id'] : null,
+        'guthaben'               => !empty($p['guthaben']),
     ];
 }
 
@@ -145,6 +149,78 @@ foreach ($sauberePositionen as &$p) {
 }
 unset($p);
 $gutscheinKaufPositionen = array_values(array_filter($sauberePositionen, fn($p) => $p['block'] === 'gutschein_kauf'));
+
+// ── Zahlbeleg: Zahlung auf eine bestehende Rechnung (Belege-Umbau 2026-10-07) ──
+// 0 % (USt steht schon auf der Rechnung), kein Lager, Betrag höchstens der offene
+// Rechnungsbetrag -- alles serverseitig festgelegt, nicht vom Client übernommen.
+$zahlungPositionen = [];
+foreach ($sauberePositionen as $i => &$p) {
+    if ($p['block'] !== 'zahlung') continue;
+    $aidZ = (int)($p['zahlung_auftrag_id'] ?? 0);
+    $az = Database::getInstance()->prepare("SELECT id, auftrag_nr FROM auftraege WHERE id = ? AND lieferstatus <> 'storniert'");
+    $az->execute([$aidZ]);
+    $zAuftrag = $az->fetch(PDO::FETCH_ASSOC);
+    if (!$zAuftrag) { echo json_encode(['erfolg' => false, 'fehler' => 'Zahlbeleg: Auftrag nicht gefunden.']); exit; }
+    $offenZ = (new DokumentService())->offenerRechnungsbetrag($aidZ);
+    $betragZ = round($p['einzelpreis_brutto'] * $p['menge'], 2);
+    if ($betragZ <= 0 || $betragZ > $offenZ + 0.005) {
+        echo json_encode(['erfolg' => false, 'fehler' => 'Zahlbeleg ' . $zAuftrag['auftrag_nr'] . ': höchstens € '
+            . number_format(max(0, $offenZ), 2, ',', '.') . ' offen.']); exit;
+    }
+    $reNr = Database::getInstance()->prepare("SELECT GROUP_CONCAT(rechnung_nr ORDER BY id SEPARATOR ', ') FROM rechnungen WHERE auftrag_id = ? AND storniert = 0");
+    $reNr->execute([$aidZ]);
+    $p['artikel_id']         = null;
+    $p['menge']              = 1;
+    $p['einzelpreis_brutto'] = $betragZ;
+    $p['steuer_prozent']     = 0;
+    $p['rabatt_prozent']     = 0;
+    $p['kein_lagerabzug']    = true;
+    $p['bezeichnung']        = 'Zahlung zu Auftrag ' . $zAuftrag['auftrag_nr'] . (($r = $reNr->fetchColumn()) ? ' (Rechnung ' . $r . ')' : '');
+    $zahlungPositionen[] = ['auftrag_id' => $aidZ, 'auftrag_nr' => $zAuftrag['auftrag_nr'], 'betrag' => $betragZ];
+}
+unset($p);
+
+// Erstattung "will er nicht" bei vorab bezahlten Abholungen (Retour-Zeile mit web_auftrag_id,
+// aber ohne retour_von_position_id): diese Ware wurde nie übergeben und nie verrechnet --
+// zurückgezahlt wird eine Anzahlung, keine Erlösminderung. Deshalb 0 %, als Rückzahlung
+// (block 'zahlung', negativ). Kassen-Retouren schon verrechneter Ware bleiben 'retour' mit
+// Steuer (wirken wie eine Gutschrift). Belege-Umbau 2026-10-07.
+foreach ($sauberePositionen as &$p) {
+    // Guthaben eines bezahlten Auftrags (mehr bezahlt als der Auftragsbetrag, z.B. Versand →
+    // Abholung umgestellt): höchstens das tatsächliche Guthaben, serverseitig nachgerechnet
+    if ($p['guthaben'] && $p['block'] === 'retour' && !empty($p['web_auftrag_id'])) {
+        $gh = Database::getInstance()->prepare("
+            SELECT a.auftrag_nr, a.zahlungsstatus,
+                   (SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = a.id) + a.gutschein_betrag - a.bruttobetrag
+                   - (SELECT COALESCE(SUM(gebuehr), 0) FROM mahnungen WHERE auftrag_id = a.id AND status = 'versendet' AND gebuehr_erlassen_am IS NULL) AS guthaben
+            FROM auftraege a WHERE a.id = ?
+        ");
+        $gh->execute([(int)$p['web_auftrag_id']]);
+        $ghRow  = $gh->fetch(PDO::FETCH_ASSOC);
+        if ($ghRow && AuftragAbschluss::saldoAussagekraeftig((int)$p['web_auftrag_id'])) {
+            $ghRow['guthaben'] = -AuftragAbschluss::saldo((int)$p['web_auftrag_id']); // Saldo aus Belegen
+        }
+        $betrag = round(abs($p['menge'] * $p['einzelpreis_brutto']), 2);
+        if (!$ghRow || $ghRow['zahlungsstatus'] !== 'bezahlt' || $betrag > round((float)$ghRow['guthaben'], 2) + 0.005) {
+            echo json_encode(['erfolg' => false, 'fehler' => 'Guthaben-Auszahlung: höchstens € '
+                . number_format(max(0, (float)($ghRow['guthaben'] ?? 0)), 2, ',', '.') . ' möglich — bitte Auftrag neu laden.']); exit;
+        }
+        $p['block'] = 'zahlung'; $p['menge'] = -1; $p['einzelpreis_brutto'] = $betrag;
+        $p['rabatt_prozent'] = 0; $p['steuer_prozent'] = 0; $p['artikel_id'] = null; $p['kein_lagerabzug'] = true;
+        $p['bezeichnung'] = 'Rückzahlung Guthaben zu Auftrag ' . $ghRow['auftrag_nr'];
+        continue;
+    }
+    if ($p['block'] === 'retour' && !empty($p['web_auftrag_id']) && empty($p['retour_von_position_id'])) {
+        $p['block']              = 'zahlung';
+        $p['einzelpreis_brutto'] = round($p['einzelpreis_brutto'] * (1 - $p['rabatt_prozent'] / 100), 2);
+        $p['rabatt_prozent']     = 0;
+        $p['steuer_prozent']     = 0;
+        $p['bezeichnung']        = 'Rückzahlung (nicht abgeholt): ' . $p['bezeichnung'];
+        $p['artikel_id']         = null;
+        $p['kein_lagerabzug']    = true;
+    }
+}
+unset($p);
 
 // Bruttobetrag serverseitig aus Positionen neu berechnen (kein Vertrauen auf Client-Wert)
 $serverBrutto = 0;
@@ -301,6 +377,10 @@ if (!$nurAbschliessen) {
         }
         $vorabRetourBetrag += round((float)$wa['auftrag']['bruttobetrag'] - $vorabAuftragAnteil, 2);
     }
+    // Guthaben-Auszahlung (Rückzahlungszeilen) braucht dieselbe Freigabe wie eine Retour-Auszahlung
+    foreach ($sauberePositionen as $bp) {
+        if ($bp['block'] === 'zahlung' && $bp['guthaben']) $vorabRetourBetrag += abs($bp['menge'] * $bp['einzelpreis_brutto']);
+    }
 
     if ($vorabRetourBetrag > 0.005 && !Auth::kann('kasse.auszahlung')) {
         $manager = Auth::pruefeManagerPin((string)($input['manager_pin'] ?? ''));
@@ -332,6 +412,54 @@ foreach ($sauberePositionen as &$bp) {
     }
 }
 unset($bp);
+
+// Ungepackte Auftragsware, die mitgenommen wird, verlässt hier das Lager -> Charge ist bei
+// Chargen-Pflicht Pflicht (Klicktest 2026-10-07: wurde ohne Charge gebucht). bon.php fragt
+// beim Bezahlen nach; das hier ist die nicht umgehbare Sperre.
+$mitnahmeZeilen = array_filter($sauberePositionen, function ($bp) use ($webAuftraege) {
+    $wa = $webAuftraege[$bp['web_auftrag_id'] ?? 0] ?? null;
+    return $bp['block'] === 'auftrag' && $wa && $wa['mitnehmen'] === true && !$wa['im_fach']
+        && !empty($bp['artikel_id']) && $bp['menge'] > 0;
+});
+if ($mitnahmeZeilen) {
+    $cp = Database::getInstance()->prepare("SELECT charge_pflicht FROM artikel WHERE id = ?");
+    foreach ($mitnahmeZeilen as $bp) {
+        $cp->execute([(int)$bp['artikel_id']]);
+        if ((int)$cp->fetchColumn() === 1 && trim((string)($bp['charge'] ?? '')) === '') {
+            echo json_encode(['erfolg' => false, 'fehler' => '„' . $bp['bezeichnung'] . '“ ist chargenpflichtig — bitte beim Bezahlen die Charge wählen.']); exit;
+        }
+    }
+}
+
+/**
+ * Vorab bezahlte, ungepackte Auftragsware wird mitgenommen: sie steht nicht auf dem Bon
+ * (der kassiert nur Unbezahltes), also bucht sie auch KassenService nicht ab -> hier aus dem
+ * Lager buchen, mit der gewählten Charge. Liefert je Auftragsposition die abgebuchte Menge.
+ */
+$bucheVorabBezahlteMitnahme = function (int $aid, string $auftragNr) use ($sauberePositionen, $bonDaten, $benutzerId): array {
+    $lagerSvc = new LagerService();
+    $kassenSvc = new KassenService();
+    $mengen = [];
+    foreach ($sauberePositionen as $bp) {
+        if ($bp['block'] !== 'auftrag' || (int)($bp['web_auftrag_id'] ?? 0) !== $aid || empty($bp['artikel_id']) || $bp['menge'] <= 0) continue;
+        $lagerId = $kassenSvc->lagerFuerArtikel((int)$bp['artikel_id'], (int)($bonDaten['lager_id'] ?? 1));
+        if (!empty($bp['charge']) && !empty($bp['nachzutragen_lagerbestand_id'])) {
+            $lagerSvc->chargeNachtragen((int)$bp['nachzutragen_lagerbestand_id'], $bp['charge'], (float)$bp['menge'], $benutzerId);
+        }
+        $lagerSvc->warenausgang([
+            'artikel_id'  => (int)$bp['artikel_id'],
+            'lager_id'    => $lagerId,
+            'menge'       => (float)$bp['menge'],
+            'charge'      => $bp['charge'] ?: null,
+            'referenz'    => $auftragNr, // Retoure findet die verkaufte Charge über die Auftragsnummer
+            'notiz'       => 'Abholung an der Kasse (vorab bezahlt, mitgenommen)',
+            'benutzer_id' => $benutzerId,
+        ]);
+        $pid = (int)$bp['auftrag_position_id'];
+        $mengen[$pid] = ($mengen[$pid] ?? 0) + (float)$bp['menge'];
+    }
+    return $mengen;
+};
 
 // ── Abholbestätigung per Mail (nach Abholung ohne Bon bzw. nach Bon) ─────────────
 $sendeAbholMail = function (array $auftrag, string $bonNr, array $anhaenge) {
@@ -383,7 +511,8 @@ if ($nurAbschliessen && $webAuftraege) {
             $bonAuftragPos = [];
             foreach ($positionenVon($aid) as $bp) {
                 if (!empty($bp['auftrag_position_id'])) {
-                    $bonAuftragPos[(int)$bp['auftrag_position_id']] = (float)$bp['menge'];
+                    // += : eine Position kann auf mehrere Chargen aufgeteilt sein
+                    $bonAuftragPos[(int)$bp['auftrag_position_id']] = ($bonAuftragPos[(int)$bp['auftrag_position_id']] ?? 0) + (float)$bp['menge'];
                 }
             }
 
@@ -393,8 +522,23 @@ if ($nurAbschliessen && $webAuftraege) {
             // Bezahlt + nichts zu kassieren: Übergabe aus dem Abholfach. Was nicht mitgeht,
             // bleibt im Fach ("holt er später") — keine Lagerbuchung. "Will er nicht" mit
             // Erstattung läuft immer über einen Bon, nie hier.
+            // Ungepackt + "mitgenommen": Ware geht direkt aus dem Regal mit -> abbuchen
+            // (vorher wurde hier nichts gebucht und nichts als abgeholt gezählt, Klicktest 2026-10-07)
+            $ausRegal = (!$wa['im_fach'] && $wa['mitnehmen'] === true)
+                ? $bucheVorabBezahlteMitnahme((int)$aid, $auftrag['auftrag_nr']) : null;
+
             $alleGeliefert = true;
             foreach ($origPosStmt->fetchAll(PDO::FETCH_ASSOC) as $op) {
+                if ($ausRegal !== null) {
+                    $imBon = min((float)($ausRegal[$op['id']] ?? 0), (float)$op['menge'] - (float)$op['menge_abgeholt']);
+                    $abgeholt = (float)$op['menge_abgeholt'] + $imBon;
+                    if ($imBon > 0.001) {
+                        $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = menge_geliefert + ?, menge_abgeholt = ? WHERE id = ?")
+                           ->execute([$imBon, $abgeholt, $op['id']]);
+                    }
+                    if ($abgeholt < (float)$op['menge'] - 0.001) $alleGeliefert = false;
+                    continue;
+                }
                 $fach     = $fachVon($op, $wa['status']);
                 $imBon    = min((float)($bonAuftragPos[$op['id']] ?? 0), $fach);
                 $abgeholt = (float)$op['menge_abgeholt'] + $imBon;
@@ -404,7 +548,8 @@ if ($nurAbschliessen && $webAuftraege) {
                 if ($abgeholt < (float)$op['menge'] - 0.001) $alleGeliefert = false;
             }
 
-            $neuerLieferStatus = $alleGeliefert ? 'abgeschlossen' : 'teilgeliefert';
+            // "abgeschlossen" entscheidet AuftragAbschluss nach der Rechnung (unten)
+            $neuerLieferStatus = $alleGeliefert ? 'versendet' : 'teilgeliefert';
             $db->prepare("UPDATE auftraege SET lieferstatus = ?, aktualisiert_am = NOW() WHERE id = ?")->execute([$neuerLieferStatus, $aid]);
             $repo->logStatus($aid,
                 ['lieferstatus' => [$auftrag['lieferstatus'], $neuerLieferStatus]],
@@ -412,13 +557,26 @@ if ($nurAbschliessen && $webAuftraege) {
                     . (count($webAuftraege) > 1 ? ' (Sammelabholung mit ' . count($webAuftraege) . ' Aufträgen)' : ''),
                 $benutzerId
             );
-            if ($alleGeliefert) $mails[] = $auftrag;
+            $mails[$aid] = ['auftrag' => $auftrag, 'voll' => $alleGeliefert];
         }
         $db->commit();
 
-        // Mails erst nach dem Commit -- ein Mailfehler darf die Abholung nicht zurückrollen
-        foreach ($mails as $auftrag) {
-            try { $sendeAbholMail($auftrag, '', []); } catch (Throwable $eMail) { error_log('[AbholungOhneBon Mail] ' . $eMail->getMessage()); }
+        // Vorab bezahlt + abgeholt: an der Kasse fließt kein Geld -> kein Bon. Beleg ist eine
+        // Rechnung über die übergebene Ware (Belege-Umbau 2026-10-07), A4 an die Abholmail.
+        $dokSvc = new DokumentService();
+        foreach ($mails as $aid => $m) {
+            $anhang = [];
+            try {
+                $re = $dokSvc->erstelleRechnung($aid, $benutzerId);
+                if ($re['erfolg']) $anhang[] = ['pfad' => $re['pfad'], 'name' => 'Rechnung_' . $re['rechnung_nr'] . '.pdf'];
+            } catch (Throwable $eRe) {
+                error_log('[AbholungOhneBon Rechnung] ' . $eRe->getMessage());
+            }
+            AuftragAbschluss::pruefe($aid, $benutzerId);
+            // Mails erst nach dem Commit -- ein Mailfehler darf die Abholung nicht zurückrollen
+            if ($m['voll']) {
+                try { $sendeAbholMail($m['auftrag'], '', $anhang); } catch (Throwable $eMail) { error_log('[AbholungOhneBon Mail] ' . $eMail->getMessage()); }
+            }
         }
 
         echo json_encode(['erfolg' => true, 'auftrag_nr' => implode(', ', $nummern)]);
@@ -569,7 +727,30 @@ if ($bonDaten['zahlungsart'] === 'gutschein') {
     $gutscheinZahlung = ['code' => $gs['code'], 'id' => (int)$gs['id'], 'betrag' => $gsBetrag];
 }
 
+if ($zahlungPositionen && $webAuftraege) {
+    echo json_encode(['erfolg' => false, 'fehler' => 'Rechnung bezahlen bitte als eigenen Bon — nicht zusammen mit einer Abholung oder Retoure.']); exit;
+}
+
 $result = $service->erstelleBon($bonDaten, $bonErstellungPositionen, $benutzerId);
+
+// ── Zahlbeleg: Zahlung am Auftrag buchen (erscheint in der Zahlungsinfo der Rechnung) ──
+if ($result['erfolg'] && $zahlungPositionen) {
+    require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
+    $wegZ = ['bar' => 'bar', 'karte_extern' => 'karte', 'gutschein' => 'gutschein'][$bonDaten['zahlungsart']] ?? 'sonstig';
+    foreach ($zahlungPositionen as $zp) {
+        try {
+            $zr = (new AuftragService())->bucheZahlung($zp['auftrag_id'], $zp['betrag'], date('Y-m-d'),
+                'Zahlbeleg ' . $result['bon_nr'], $wegZ, (int)$result['bon_id']);
+            if (empty($zr['erfolg'])) throw new RuntimeException($zr['fehler'] ?? 'unbekannt');
+        } catch (Throwable $ex) {
+            Logger::log('kasse.zahlbeleg_fehler', 'kassen_bons', (int)$result['bon_id'], [
+                'auftrag_id' => $zp['auftrag_id'], 'fehler' => $ex->getMessage(),
+            ], $benutzerId, 'error');
+            $result['warnungen'][] = 'Zahlbeleg erstellt, aber die Zahlung zu ' . $zp['auftrag_nr']
+                . ' konnte nicht gebucht werden (' . $ex->getMessage() . ') — bitte im Auftrag nachbuchen.';
+        }
+    }
+}
 
 // ── Nach erfolgreichem Bon: Gutschein einlösen bzw. verkaufte Gutscheine ausstellen ──
 // Läuft VOR dem echo, damit die Kasse Codes/PDF-Links direkt in der Antwort bekommt.
@@ -676,7 +857,7 @@ if ($result['erfolg'] && $webAuftraege) {
         // genau wie erstelleBon() das bei der ursprünglichen K1-Erstellung schon macht;
         // vorher fielen sie hier komplett raus, siehe project_kasse_bon_design Memory)
         $extraPositionen = array_values(array_filter($sauberePositionen, fn($bp) =>
-            empty($bp['auftrag_position_id'])
+            empty($bp['auftrag_position_id']) && $bp['block'] !== 'zahlung' // Zahlung/Rückzahlung ist kein Verkauf
         ));
 
         if ($k1AuftragId && !isset($webAuftraege[$k1AuftragId])) {
@@ -787,6 +968,8 @@ if ($result['erfolg'] && $webAuftraege) {
     };
 
     $repo      = new AuftragRepository();
+    // Zahlungsweg für auftrag_zahlungen (Zahlungsinfo auf der Rechnung)
+    $wegBon    = ['bar' => 'bar', 'karte_extern' => 'karte', 'gutschein' => 'gutschein'][$bonDaten['zahlungsart']] ?? 'sonstig';
     $lagerId   = (int)($bonDaten['lager_id'] ?? 1);
     $lagerSvc  = new LagerService();
     $anzahlAuf = count($webAuftraege);
@@ -801,7 +984,7 @@ if ($result['erfolg'] && $webAuftraege) {
         $erstattAuftrag = null;
         foreach ($webAuftraege as $aid => $wa) {
             foreach ($positionenVon($aid) as $bp) {
-                if ($bp['block'] === 'retour') { $erstattAuftrag = $wa['auftrag']; break 2; }
+                if ($bp['block'] === 'retour' || $bp['block'] === 'zahlung') { $erstattAuftrag = $wa['auftrag']; break 2; }
             }
         }
         require_once __DIR__ . '/../../src/modules/gutscheine/GutscheinService.php';
@@ -834,7 +1017,8 @@ if ($result['erfolg'] && $webAuftraege) {
             $bonAuftragPos = [];
             foreach ($eigenePositionen as $bp) {
                 if (!empty($bp['auftrag_position_id'])) {
-                    $bonAuftragPos[(int)$bp['auftrag_position_id']] = $bp['menge'];
+                    // += : eine Position kann auf mehrere Chargen aufgeteilt sein
+                    $bonAuftragPos[(int)$bp['auftrag_position_id']] = ($bonAuftragPos[(int)$bp['auftrag_position_id']] ?? 0) + $bp['menge'];
                 }
             }
 
@@ -880,6 +1064,11 @@ if ($result['erfolg'] && $webAuftraege) {
             $origPosStmt->execute([$aid]);
             $origPositionen = $origPosStmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Vorab bezahlt + ungepackt mitgenommen: steht nicht auf dem Bon -> hier abbuchen
+            if ($warBezahlt && !$istFach && $mitnehmen === true) {
+                $bucheVorabBezahlteMitnahme((int)$aid, $auftrag['auftrag_nr']);
+            }
+
             // menge_geliefert aktualisieren + prüfen ob alle geliefert
             $alleGeliefert = true;
             $verzichtWert  = 0.0; // Bruttowert des Rests, den der Kunde nicht will
@@ -906,6 +1095,14 @@ if ($result['erfolg'] && $webAuftraege) {
                     // Kassen-Retoure = Ware zurück UND erstattet (bar oder Gutschein)
                     $db->prepare("UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + ?, menge_gutgeschrieben = menge_gutgeschrieben + ? WHERE id = ?")
                        ->execute([$retourProPosition[$op['id']], $retourProPosition[$op['id']], $op['id']]);
+                }
+
+                // Unbezahlte Auftragsware, die hier kassiert wird: der Bon ist ihr Beleg —
+                // eine spätere Rechnung (z.B. Packplatz bei "nur Zahlung, Versand folgt")
+                // darf sie nicht nochmal verrechnen.
+                if (!$warBezahlt && $imBon > 0.001) {
+                    $db->prepare("UPDATE auftrag_positionen SET menge_verrechnet = menge_verrechnet + ? WHERE id = ?")
+                       ->execute([(int)round($imBon), $op['id']]);
                 }
 
                 $abgeholt = (float)$op['menge_abgeholt'] + $imBon + $verzicht;
@@ -962,9 +1159,9 @@ if ($result['erfolg'] && $webAuftraege) {
             if (!$warBezahlt) {
                 if ($auftragAnteil > 0.005) {
                     $db->prepare("
-                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
-                        VALUES (?, ?, CURDATE(), ?, ?)
-                    ")->execute([$aid, $auftragAnteil, 'Bezahlt an der Kasse — Bon ' . $bonNr, $benutzerId]);
+                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von, kassen_bon_id, zahlungsweg)
+                        VALUES (?, ?, CURDATE(), ?, ?, ?, ?)
+                    ")->execute([$aid, $auftragAnteil, 'Bezahlt an der Kasse — Bon ' . $bonNr, $benutzerId, $bonId, $wegBon]);
                 }
 
                 // Kumulierte Summe ALLER Zahlungen (nicht nur dieser Transaktion!) entscheidet
@@ -980,7 +1177,8 @@ if ($result['erfolg'] && $webAuftraege) {
                 // über bruttobetrag-auftragAnteil (Retour-Zeilen tragen bewusst keine
                 // auftrag_position_id).
                 foreach ($eigenePositionen as $bp) {
-                    if (($bp['block'] ?? null) === 'retour') {
+                    // auch Rückzahlungen (block zahlung, negativ) -- siehe Umstellung oben
+                    if (($bp['block'] ?? null) === 'retour' || (($bp['block'] ?? null) === 'zahlung' && $bp['menge'] * $bp['einzelpreis_brutto'] < 0)) {
                         $rab = 1 - ($bp['rabatt_prozent'] / 100);
                         $retourBetrag += abs($bp['menge']) * $bp['einzelpreis_brutto'] * $rab;
                     }
@@ -995,18 +1193,18 @@ if ($result['erfolg'] && $webAuftraege) {
                     // davon kann im selben Bon in Extra-Ware geflossen sein, der Rest steckt im
                     // (einen) Gutschein des Bons.
                     $db->prepare("
-                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
-                        VALUES (?, ?, CURDATE(), ?, ?)
+                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von, kassen_bon_id, zahlungsweg)
+                        VALUES (?, ?, CURDATE(), ?, ?, ?, 'gutschein')
                     ")->execute([
                         $aid, -$retourBetrag,
                         'Rückerstattung an der Kasse — Gutschein ' . ($ausgabeGutschein['code'] ?? '(Fehler, siehe Log)') . ' — Bon ' . $bonNr,
-                        $benutzerId,
+                        $benutzerId, $bonId,
                     ]);
                 } elseif ($retourBetrag > 0.005) {
                     $db->prepare("
-                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von)
-                        VALUES (?, ?, CURDATE(), ?, ?)
-                    ")->execute([$aid, -$retourBetrag, 'Rückerstattung bar an der Kasse — Bon ' . $bonNr, $benutzerId]);
+                        INSERT INTO auftrag_zahlungen (auftrag_id, betrag, buchungsdatum, notiz, erfasst_von, kassen_bon_id, zahlungsweg)
+                        VALUES (?, ?, CURDATE(), ?, ?, ?, ?)
+                    ")->execute([$aid, -$retourBetrag, 'Rückerstattung bar an der Kasse — Bon ' . $bonNr, $benutzerId, $bonId, $wegBon]);
                 }
             }
 
@@ -1024,7 +1222,8 @@ if ($result['erfolg'] && $webAuftraege) {
                                  : ($summeBezahltGesamt > 0.005 ? 'teilbezahlt' : $auftrag['zahlungsstatus']);
             }
             if ($istFach || $mitnehmen === true) {
-                $neuerLieferStatus = $alleGeliefert ? 'abgeschlossen' : 'teilgeliefert';
+                // "abgeschlossen" entscheidet AuftragAbschluss (unten, nach Rechnung/Bon)
+                $neuerLieferStatus = $alleGeliefert ? 'versendet' : 'teilgeliefert';
 
                 $db->prepare("
                     UPDATE auftraege
@@ -1064,9 +1263,25 @@ if ($result['erfolg'] && $webAuftraege) {
                    ->execute([$bonId, $aid]);
             }
 
+            // ── Beleg für vorab bezahlte Auftragsware ────────────────────────
+            // Steht nicht auf dem Bon (der kassiert nur Extras/Retouren) -> Rechnung über
+            // die jetzt übergebene Ware. Unbezahlte Ware steht auf dem Bon (verrechnet, s.o.),
+            // dann findet die Rechnung nichts und es entsteht keine.
+            $rechnungAnhang = [];
+            if ($warBezahlt && ($istFach || $mitnehmen === true)) {
+                try {
+                    $re = (new DokumentService())->erstelleRechnung($aid, $benutzerId);
+                    if ($re['erfolg']) $rechnungAnhang[] = ['pfad' => $re['pfad'], 'name' => 'Rechnung_' . $re['rechnung_nr'] . '.pdf'];
+                } catch (Throwable $eRe) {
+                    error_log('[AbholungKasse Rechnung] ' . $eRe->getMessage());
+                }
+            }
+            AuftragAbschluss::pruefe($aid, $benutzerId);
+
             // ── Abholbestätigungs-Mail (nur bei vollständiger Übergabe) ──────
+            // Anhang: Bon als A4 (wenn hier kassiert wurde) und/oder die Rechnung
             if ($alleGeliefert) {
-                $sendeAbholMail($auftrag, $bonNr, $holeBonAnhang());
+                $sendeAbholMail($auftrag, $bonNr, array_merge($rechnungAnhang, $holeBonAnhang()));
             }
         } catch (Throwable $e) {
             error_log('[AbholungKasse ' . ($wa['auftrag']['auftrag_nr'] ?? $aid) . '] ' . $e->getMessage());

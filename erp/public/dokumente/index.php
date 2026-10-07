@@ -77,14 +77,14 @@ $stmt = $db->prepare("
             a.kunden_snapshot AS kunden_snapshot,
             a.lieferstatus AS lieferstatus,
             a.zahlungsstatus AS zahlungsstatus,
-            r.rechnung_nr AS rechnung_nr,
+            COALESCE(r.rechnung_nr, IF(ad.typ = 'gutschrift', ad.beleg_nr, NULL)) AS rechnung_nr,
             r.storniert        AS rechnung_storniert,
             b.formularname     AS erstellt_von_name
         FROM auftrag_dokumente ad
         JOIN auftraege a  ON a.id = ad.auftrag_id
-        LEFT JOIN rechnungen r ON r.auftrag_id = ad.auftrag_id
-                            AND r.storniert = 0
-                            AND ad.typ IN ('rechnung','gutschrift')
+        -- über die Belegnummer, nicht nur den Auftrag: bei Teilrechnungen gibt es mehrere
+        -- Rechnungen je Auftrag, sonst erscheint jede Rechnung mehrfach (Klicktest 2026-10-07)
+        LEFT JOIN rechnungen r ON ad.typ = 'rechnung' AND r.rechnung_nr = ad.beleg_nr
         LEFT JOIN benutzer b ON b.id = ad.erstellt_von
         UNION ALL
         SELECT
@@ -122,7 +122,7 @@ $typen = [
     'auftragsbestaetigung' => 'Auftragsbestätigung',
     'lieferschein'       => 'Lieferschein',
     'rechnung'           => 'Rechnung',
-    'gutschrift'         => 'Gutschrift',
+    'gutschrift'         => 'Rechnungskorrektur',
     'abholzettel'        => 'Abholzettel',
     'mahnung'            => 'Mahnung',
     'kassenbon'          => 'Kassenbon',

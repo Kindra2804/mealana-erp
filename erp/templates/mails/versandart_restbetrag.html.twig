@@ -1,0 +1,30 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>Sehr geehrte/r {{ kunde_name }},</p>
+
+<p>
+  wie besprochen schicken wir Ihnen Ihre Bestellung <strong>{{ auftrag_nummer }}</strong>
+  zu, statt sie zur Abholung bereitzulegen. Dafür kommen Versandkosten von
+  <strong>€&nbsp;{{ versandkosten|number_format(2, ',', '.') }}</strong> dazu.
+</p>
+
+<div class="hinweis">
+  Offener Restbetrag: <strong>€&nbsp;{{ rest|number_format(2, ',', '.') }}</strong><br>
+  Bitte überweisen Sie den Betrag unter Angabe der Bestellnummer <strong>{{ auftrag_nummer }}</strong>.
+  {% if firma_iban %}<br>IBAN: <strong>{{ firma_iban }}</strong>{% if firma_bic %} · BIC: {{ firma_bic }}{% endif %}{% endif %}
+</div>
+
+<p>Sobald der Betrag eingegangen ist, geht Ihr Paket auf die Reise.</p>
+
+<p>
+  Bei Fragen stehen wir Ihnen gerne unter
+  <a href="mailto:{{ firma_email }}" style="color:#2c3e50">{{ firma_email }}</a> zur Verfügung.
+</p>
+
+<p>Mit freundlichen Grüßen<br>Ihr {{ firmenname }}-Team</p>
+{% endblock %}
+
+{% block footer_extra %}
+Auftrag {{ auftrag_nummer }} &bull;
+{% endblock %}

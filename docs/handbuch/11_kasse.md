@@ -131,6 +131,29 @@ Hat ein Kunde mehrere Bestellungen zur Abholung, holt er sie mit **einem** Bon a
 - Auf dem Bon (80 mm und A4) steht jeder Auftrag mit seiner Nummer; bereits bezahlte Aufträge werden als „Abgeholt, bereits bezahlt: …“ genannt.
 - Eine **Retoure** aus einem älteren Auftrag geht nicht im selben Sammel-Bon — dafür einen eigenen Bon machen.
 
+**Belege bei der Abholung** (jede Ware steht auf genau einem Beleg):
+- Hier kassierte Ware → der **Bon** ist die Rechnung; die A4-Version hängt an der Abholmail.
+- Schon vorab bezahlte Ware (Vorkasse/PayPal) → es entsteht automatisch eine **Rechnung**, sie hängt an der Abholmail (zusammen mit dem Bon, falls Extras kassiert wurden).
+- „Will er nicht" bei einem bezahlten Auftrag → Rückzahlung erscheint auf dem Bon als **„Rückzahlung (nicht abgeholt)" mit 0 %** — diese Ware war nie verrechnet, es wird eine Anzahlung zurückgezahlt, kein Umsatz gemindert.
+- **Guthaben** (Kunde hat mehr bezahlt als der Auftrag jetzt kostet, z.B. Versand auf Abholung umgestellt): beim Bezahlen fragt die Kasse automatisch **„Bar auszahlen" oder „Als Gutschein ausstellen"**. Auf dem Bon steht „Rückzahlung Guthaben zu Auftrag …" mit 0 %. Wie jede Auszahlung braucht das ggf. die Manager-PIN.
+
+---
+
+## Rechnung bezahlen (Zahlbeleg)
+
+Ein Kunde zahlt eine **offene Rechnung** (z.B. Rechnungskauf, verschickte Ware) bar oder mit Karte im Geschäft.
+
+1. Menü (☰) → **💶 Rechnung bezahlen**
+2. Rechnungs- oder Auftragsnummer (auch nur ein Teil, z.B. „0045") oder Kundenname eintippen — die Suche läuft beim Tippen. Ein Auftrag mit Abholung, der noch **keine Rechnung** hat (z.B. Zahlart „Rechnung"), wird angezeigt und per Klick ganz normal als Abholung in die Kasse geladen
+3. Treffer anklicken — der offene Betrag ist vorausgefüllt (Teilzahlung möglich, mehr als offen geht nicht)
+4. **+ Hinzufügen** → Zeile „Zahlung zu Auftrag A-… (Rechnung R-…)" mit **0 %** im Bon
+5. Normal bezahlen (bar/Karte)
+
+Der Bon ist ein **Zahlbeleg**: RKSV-signiert, zählt in Kassenbuch und Tagesabschluss, aber **kein neuer Umsatz** — die Umsatzsteuer steht schon auf der Rechnung. Die Zahlung wird beim Auftrag gebucht und erscheint beim Rechnungs-Nachdruck in der Zahlungsinfo („bar an Hauptkasse (Zahlbeleg K1-…)").
+
+- Weitere Artikel dürfen auf demselben Bon sein; eine **Abholung oder Retoure nicht** — dafür einen eigenen Bon.
+- Wird der Zahlbeleg storniert, wird die Zahlung beim Auftrag automatisch zurückgenommen.
+
 ---
 
 ## Bon stornieren

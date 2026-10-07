@@ -77,7 +77,7 @@
       <td style="width:50%; vertical-align:top;">
         <table class="info-raster" style="width:100%; border:1px solid #ccc; border-collapse:collapse;">
           <tr style="background:#f5f5f5;">
-            <td style="border-bottom:1px solid #ccc;">Gutschrift-Nr.:</td>
+            <td style="border-bottom:1px solid #ccc;">{{ gutschrift.art == 'vollstorno' ? 'Storno-Nr.:' : 'Korrektur-Nr.:' }}</td>
             <td style="border-bottom:1px solid #ccc;">{{ gutschrift.nr }}</td>
           </tr>
           <tr>
@@ -85,8 +85,10 @@
             <td style="border-bottom:1px solid #ccc;">{{ gutschrift.datum }}</td>
           </tr>
           <tr style="background:#f5f5f5;">
-            <td style="border-bottom:1px solid #ccc;">Betrifft Rechnung:</td>
-            <td style="border-bottom:1px solid #ccc;">{{ gutschrift.rechnung_nr }}</td>
+            <td style="border-bottom:1px solid #ccc;">Originalbeleg:</td>
+            <td style="border-bottom:1px solid #ccc;">
+              {% for o in gutschrift.originale %}{{ o.nr }} vom {{ o.datum }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+            </td>
           </tr>
           <tr>
             <td style="border-bottom:1px solid #ccc;">Auftrags-Nr.:</td>
@@ -104,13 +106,10 @@
   </table>
 
   {# ── Dokumenttitel ── #}
-  <div class="doc-titel">Gutschrift</div>
+  <div class="doc-titel">{{ gutschrift.art == 'vollstorno' ? 'Stornorechnung' : 'Rechnungskorrektur' }}</div>
   <div class="doc-referenz">
-    {% if gutschrift.art == 'vollstorno' %}
-      Vollstornierung der Rechnung {{ gutschrift.rechnung_nr }}
-    {% else %}
-      Teilgutschrift zu Rechnung {{ gutschrift.rechnung_nr }}
-    {% endif %}
+    {% if gutschrift.art == 'vollstorno' %}Storno{% else %}Korrektur{% endif %}
+    zu {% for o in gutschrift.originale %}{{ o.nr }} vom {{ o.datum }}{% if not loop.last %}, {% endif %}{% endfor %}
     {% if gutschrift.grund %}
        &mdash; {{ gutschrift.grund }}
     {% endif %}
@@ -124,7 +123,7 @@
 
   {# ── Hinweis ── #}
   <div class="dankessatz" style="margin-top:12pt;">
-    Der Gutschriftbetrag von <strong>{{ summen.brutto_gesamt|number_format(2, ',', '.') }} EUR</strong>
+    Der Korrekturbetrag von <strong>{{ (-summen.brutto_gesamt)|number_format(2, ',', '.') }} EUR</strong>
     wird Ihnen {% if auftrag.zahlungsart == 'bar' %}bar ausbezahlt{% else %}auf Ihr Konto rücküberwiesen{% endif %}.
     Bei Fragen stehen wir gerne zur Verfügung.
   </div>

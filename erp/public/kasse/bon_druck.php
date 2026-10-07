@@ -214,7 +214,7 @@ if (!empty($retourPositionen)):
 $retourNummern = array_values(array_unique(array_filter(array_map(fn($p) => $auftragNr[(int)($p['web_auftrag_id'] ?? 0)] ?? null, $retourPositionen))));
 if (!$retourNummern && !empty($bon['web_auftrag_nr']) && count($auftragNr) <= 1) $retourNummern = [$bon['web_auftrag_nr']];
 ?>
-<div class="fett" style="font-size:11px;margin:2px 0">↩ RÜCKGABE<?= $retourNummern ? ' aus Auftrag ' . htmlspecialchars(implode(', ', $retourNummern)) : '' ?></div>
+<div class="fett" style="font-size:11px;margin:2px 0">RÜCKGABE<?= $retourNummern ? ' aus Auftrag ' . htmlspecialchars(implode(', ', $retourNummern)) : '' ?></div>
 <?php foreach ($retourPositionen as $pos):
     $menge  = abs((float)$pos['menge']);
     $preis  = (float)$pos['einzelpreis_brutto'];
@@ -286,8 +286,8 @@ if (!empty($restPositionen)):
 <div class="linie"></div>
 
 <div class="pos-zeile fett" style="font-size:15px">
-  <span><?= $istRetour ? 'RÜCKGABE' : 'GESAMT' ?></span>
-  <span><?= $istRetour ? '-' : '' ?>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
+  <span><?= $bon['typ'] === 'storno' ? 'STORNO' : ($istRetour ? 'RÜCKGABE' : 'GESAMT') ?></span>
+  <span><?= $bon['typ'] === 'storno' ? '-' : '' ?>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
 </div>
 
 <div class="pos-zeile" style="margin-top:4px">
@@ -296,7 +296,16 @@ if (!empty($restPositionen)):
 </div>
 
 <?php if ($bon['zahlungsart'] === 'bar'): ?>
-  <?php if ($bon['gegeben'] !== null): ?>
+  <?php if ($istRetour && $bon['typ'] !== 'storno'): // Auszahlung aus Kundensicht (auch alte Bons mit gespeichertem 0/0) ?>
+  <div class="pos-zeile">
+    <span>Gegeben:</span>
+    <span>€ 0,00</span>
+  </div>
+  <div class="pos-zeile fett">
+    <span>Rückgeld:</span>
+    <span>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
+  </div>
+  <?php elseif ($bon['gegeben'] !== null): ?>
   <div class="pos-zeile">
     <span>Gegeben:</span>
     <span>€ <?= number_format((float)$bon['gegeben'], 2, ',', '.') ?></span>

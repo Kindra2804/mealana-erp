@@ -145,9 +145,10 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
                 sepGesetzt = true;
             }
             return praefix + '<div class="kd-bonzeile">'
-                + '<div class="kd-bonzeile-name">' + esc(z.bezeichnung) + '</div>'
+                + '<div class="kd-bonzeile-name">' + (z.retour ? '↩ ' : '') + esc(z.bezeichnung) + '</div>'
                 + '<div class="kd-bonzeile-menge">' + z.menge + '×</div>'
-                + '<div class="kd-bonzeile-summe">' + (z.bezahlt ? '<span style="font-size:.7em;color:#16a34a;font-weight:600">bezahlt</span>' : '€ ' + fmt(z.summe)) + '</div>'
+                + '<div class="kd-bonzeile-summe">' + (z.bezahlt ? '<span style="font-size:.7em;color:#16a34a;font-weight:600">bezahlt</span>'
+                    : (z.summe < 0 ? '−€ ' + fmt(Math.abs(z.summe)) : '€ ' + fmt(z.summe))) + '</div>'
                 + '</div>';
         }).join('');
 
@@ -156,7 +157,8 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
             +   bildHtml
             +   '<div class="kd-artikel-name">' + esc(p.artikel_name || '') + '</div>'
             +   (p.artikel_variante ? '<div class="kd-artikel-meta">' + esc(p.artikel_variante) + '</div>' : '')
-            +   '<div class="kd-artikel-preis">€ ' + fmt(p.artikel_einzelpreis) + ' / Stk</div>'
+            +   (p.artikel_einzelpreis !== null && p.artikel_einzelpreis !== undefined
+                    ? '<div class="kd-artikel-preis">€ ' + fmt(p.artikel_einzelpreis) + ' / Stk</div>' : '')
             + '</div>'
             + '<div class="kd-rechts">'
             +   '<div class="kd-bonliste">'
@@ -167,7 +169,7 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
             +       (p.bereits_bezahlt > 0
                         ? '<div class="kd-summen-zeile"><span>Bereits bezahlt</span><span>€ ' + fmt(p.bereits_bezahlt) + '</span></div>'
                         : '')
-            +       '<div class="kd-summen-gesamt"><span>' + (p.bereits_bezahlt > 0 ? (p.gesamt < 0 ? 'Rückgabe' : 'Zu zahlen') : 'Gesamt') + '</span><span>€ ' + fmt(Math.abs(p.gesamt)) + '</span></div>'
+            +       '<div class="kd-summen-gesamt"><span>' + (p.gesamt < -0.005 ? 'Rückgabe' : (p.bereits_bezahlt > 0 ? 'Zu zahlen' : 'Gesamt')) + '</span><span>€ ' + fmt(Math.abs(p.gesamt)) + '</span></div>'
             +     '</div>'
             +   '</div>'
             + '</div>'
@@ -175,13 +177,29 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
     }
 
     function abrechnenInhalt(p) {
-        let html = '<div class="kd-abrechnen-label">Zu zahlen</div>'
-            + '<div class="kd-abrechnen-betrag">€ ' + fmt(p.betrag) + '</div>';
-        if (p.gegeben !== null && p.gegeben !== undefined) {
-            html += '<div class="kd-abrechnen-zeile">Gegeben: € ' + fmt(p.gegeben) + '</div>';
+        // Rückgabe als Gutschein: Gutschrift statt Rückgeld
+        if (p.gutschein_ausgabe) {
+            let gs = '<div class="kd-abrechnen-label">Rückerstattung</div>'
+                + '<div class="kd-abrechnen-betrag">€ ' + fmt(Math.abs(p.betrag)) + '</div>'
+                + '<div class="kd-abrechnen-zeile">wird als Gutschein ausgegeben'
+                + (p.gutschein_code ? '<br>Nr. <strong>' + esc(p.gutschein_code) + '</strong>' : '') + '</div>';
+            if (p.abgeschlossen) gs += '<div class="kd-dank">Vielen Dank für Ihren Einkauf!</div>';
+            return gs;
         }
-        if (p.rueckgeld !== null && p.rueckgeld !== undefined) {
-            html += '<div class="kd-abrechnen-zeile kd-abrechnen-rueckgeld">Rückgeld: € ' + fmt(p.rueckgeld) + '</div>';
+        // Auszahlung (Rückgabe): aus Kundensicht nichts gegeben, Betrag als Rückgeld
+        const auszahlung = p.betrag < -0.005;
+        let html = '<div class="kd-abrechnen-label">' + (auszahlung ? 'Rückgabe' : 'Zu zahlen') + '</div>'
+            + '<div class="kd-abrechnen-betrag">€ ' + fmt(Math.abs(p.betrag)) + '</div>';
+        if (auszahlung) {
+            html += '<div class="kd-abrechnen-zeile">Gegeben: € ' + fmt(0) + '</div>'
+                  + '<div class="kd-abrechnen-zeile kd-abrechnen-rueckgeld">Rückgeld: € ' + fmt(Math.abs(p.betrag)) + '</div>';
+        } else {
+            if (p.gegeben !== null && p.gegeben !== undefined) {
+                html += '<div class="kd-abrechnen-zeile">Gegeben: € ' + fmt(p.gegeben) + '</div>';
+            }
+            if (p.rueckgeld !== null && p.rueckgeld !== undefined) {
+                html += '<div class="kd-abrechnen-zeile kd-abrechnen-rueckgeld">Rückgeld: € ' + fmt(p.rueckgeld) + '</div>';
+            }
         }
         if (p.abgeschlossen) {
             html += '<div class="kd-dank">Vielen Dank für Ihren Einkauf!</div>';

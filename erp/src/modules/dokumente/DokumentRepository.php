@@ -21,15 +21,16 @@ class DokumentRepository
     /**
      * Speichert einen Eintrag für ein neu erzeugtes Dokument.
      */
-    public function speichern(int $auftragId, string $typ, string $dateiname, int $benutzerId): int
+    public function speichern(int $auftragId, string $typ, string $dateiname, int $benutzerId, ?string $belegNr = null): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO auftrag_dokumente (auftrag_id, typ, dateiname, erstellt_von, erstellt_am)
-            VALUES (:auftrag_id, :typ, :dateiname, :erstellt_von, NOW())
+            INSERT INTO auftrag_dokumente (auftrag_id, typ, beleg_nr, dateiname, erstellt_von, erstellt_am)
+            VALUES (:auftrag_id, :typ, :beleg_nr, :dateiname, :erstellt_von, NOW())
         ");
         $stmt->execute([
             ':auftrag_id'  => $auftragId,
             ':typ'         => $typ,
+            ':beleg_nr'    => $belegNr,
             ':dateiname'   => $dateiname,
             ':erstellt_von' => $benutzerId,
         ]);

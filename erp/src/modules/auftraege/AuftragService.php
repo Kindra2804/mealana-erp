@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../../core/Mailer.php';
 require_once __DIR__ . '/AuftragRepository.php';
+require_once __DIR__ . '/AuftragAbschluss.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
 require_once __DIR__ . '/Versandsteuer.php';
 
@@ -36,9 +37,16 @@ class AuftragService
         string $suche = '',
         bool   $mitAbgeschlossenen = false,
         ?string $von = null,
-        ?string $bis = null
+        ?string $bis = null,
+        string $belegFilter = ''
     ): array {
-        return $this->repo->findAll($zahlungsstatus, $lieferstatus, $kanal, $suche, $mitAbgeschlossenen, $von, $bis);
+        return $this->repo->findAll($zahlungsstatus, $lieferstatus, $kanal, $suche, $mitAbgeschlossenen, $von, $bis, $belegFilter);
+    }
+
+    /** Belege (AB/LS/RG/GS/AZ/Bon) + "geliefert, nicht verrechnet" für die Auftragsliste. */
+    public function getBelegeFuerAuftraege(array $ids): array
+    {
+        return $this->repo->findBelegeFuerAuftraege($ids);
     }
 
     /** Gibt einen Auftrag anhand ID zurück. */
@@ -202,7 +210,7 @@ class AuftragService
             Logger::log('auftraege.status', 'auftraege', $id, $changes, $benutzerId);
 
             // Reservierungen schließen wenn Auftrag versendet oder abgeschlossen
-            if (isset($changes['lieferstatus']) && in_array($changes['lieferstatus'][1], ['versendet', 'abgeschlossen'])) {
+            if (isset($changes['lieferstatus']) && in_array($changes['lieferstatus'][1], ['versendet', 'abgeschlossen', 'retoure_offen'])) {
                 $this->repo->schliesseReservierungen($id);
             }
         }
@@ -220,7 +228,7 @@ class AuftragService
         if (!$auftrag) {
             return ['erfolg' => false, 'fehler' => ['Auftrag nicht gefunden']];
         }
-        if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen'])) {
+        if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'retoure_offen'])) {
             return ['erfolg' => false, 'fehler' => ['Bereits versendete oder abgeschlossene Aufträge können nicht storniert werden']];
         }
         if ($auftrag['lieferstatus'] === 'storniert') {
@@ -374,6 +382,11 @@ class AuftragService
     {
         $fehler = [];
         if (empty($data['zahlungsart'])) $fehler[] = 'Zahlungsart ist Pflichtfeld';
+        // Jeder bestellende Kunde braucht ein eigenes Kundenkonto (Debitor) — sonst landen
+        // Rechnung und Zahlung in der Buchhaltung ohne Gegenkonto. Nur Kasse/Archiv dürfen ohne.
+        if (empty($data['kunden_id']) && !in_array($data['kanal'] ?? 'manuell', ['kasse', 'jtl_archiv'], true)) {
+            $fehler[] = 'Bitte einen Kunden wählen (oder neu anlegen) — jeder Auftrag braucht ein Kundenkonto für die Buchhaltung';
+        }
         return $fehler;
     }
 
@@ -385,7 +398,7 @@ class AuftragService
             return ['erfolg' => false, 'fehler' => ['Auftrag nicht gefunden']];
         }
 
-        if (in_array($auftragsdaten['lieferstatus'], ['versendet', 'abgeschlossen', 'storniert'])) {
+        if (in_array($auftragsdaten['lieferstatus'], ['versendet', 'abgeschlossen', 'storniert', 'retoure_offen'])) {
             return ['erfolg' => false, 'fehler' => ['Bereits versendete, abgeschlossene oder stornierte Aufträge können nicht bearbeitet werden']];
         }
 
@@ -393,6 +406,21 @@ class AuftragService
         $positionenBerechnet = $this->berechnePositionen($positionen);
         if ($partnerFehler = $this->pruefePartnerware($positionenBerechnet)) {
             return ['erfolg' => false, 'fehler' => $partnerFehler];
+        }
+
+        // Verrechnete Menge (Teilrechnung/Bon) darf nicht wegfallen -- Korrektur dann nur per Gutschrift
+        $neueMengen = [];
+        foreach ($positionenBerechnet as $pos) {
+            $artId = (int)($pos['artikel_id'] ?? 0);
+            $neueMengen[$artId] = ($neueMengen[$artId] ?? 0) + (int)$pos['menge'];
+        }
+        foreach ($this->repo->findPositionen($id) as $p) {
+            if ((int)$p['menge_verrechnet'] > ($neueMengen[(int)$p['artikel_id']] ?? 0)) {
+                return ['erfolg' => false, 'fehler' => [
+                    $p['bezeichnung'] . ': ' . $p['menge_verrechnet'] . ' Stück stehen bereits auf einer Rechnung bzw. einem Bon — '
+                    . 'weniger geht nur über eine Gutschrift.',
+                ]];
+            }
         }
 
         if (empty($positionenBerechnet)) {
@@ -416,6 +444,9 @@ class AuftragService
 
         // Kunden-Wechsel (Laufkunde → Stammkunde oder Korrektur) — nur wenn kein Rechnungs-Lock
         if (array_key_exists('kunden_id', $data)) {
+            if (empty($data['kunden_id']) && $auftragsdaten['kanal'] !== 'kasse') {
+                return ['erfolg' => false, 'fehler' => ['Bitte einen Kunden wählen — jeder Auftrag braucht ein Kundenkonto für die Buchhaltung']];
+            }
             $headerData['kunden_id']       = !empty($data['kunden_id']) ? (int)$data['kunden_id'] : null;
             $headerData['kunden_snapshot'] = !empty($data['kunden_snapshot']) ? json_encode($data['kunden_snapshot'], JSON_UNESCAPED_UNICODE) : null;
         }
@@ -433,9 +464,19 @@ class AuftragService
 
         // 5. Alte menge_geliefert-Werte merken (von Packplatz/Kasse gesetzt, sollen erhalten bleiben)
         $alteGeliefert = [];
+        // Belege-Zähler ebenfalls erhalten -- sonst würde bereits Verrechnetes (Teilrechnung,
+        // Bon) nach dem Bearbeiten nochmal verrechnet (Belege-Umbau 2026-10-07)
+        $alteZaehler = [];
         foreach ($this->repo->findPositionen($id) as $p) {
             if (!empty($p['artikel_id'])) {
                 $alteGeliefert[(int)$p['artikel_id']] = (float)$p['menge_geliefert'];
+                $alteZaehler[(int)$p['artikel_id']] = [
+                    'menge_abgeholt'       => (int)$p['menge_abgeholt'],
+                    'menge_retourniert'    => (int)$p['menge_retourniert'],
+                    'menge_gutgeschrieben' => (int)$p['menge_gutgeschrieben'],
+                    'menge_verrechnet'     => (int)$p['menge_verrechnet'],
+                    'bezeichnung'          => $p['bezeichnung'],
+                ];
             }
         }
 
@@ -458,16 +499,29 @@ class AuftragService
             // die Klartext-bezeichnung bleibt als Fallback erhalten, nur die strukturierte
             // position_konfiguration-Kopplung nicht).
             unset($pos['konfig_wert_ids']);
-            $this->repo->insertPosition(array_merge($pos, [
+            $neuePosId = $this->repo->insertPosition(array_merge($pos, [
                 'auftrag_id'      => $id,
                 'sort_order'      => $i,
                 'menge_geliefert' => $mg,
             ]));
+            if ($artId && isset($alteZaehler[$artId])) {
+                $z = $alteZaehler[$artId];
+                unset($alteZaehler[$artId]); // pro Artikel nur einmal übertragen
+                Database::getInstance()->prepare("
+                    UPDATE auftrag_positionen
+                    SET menge_abgeholt = ?, menge_retourniert = ?, menge_gutgeschrieben = ?, menge_verrechnet = ?
+                    WHERE id = ?
+                ")->execute([
+                    min($z['menge_abgeholt'], (int)$pos['menge']), min($z['menge_retourniert'], (int)$pos['menge']),
+                    min($z['menge_gutgeschrieben'], (int)$pos['menge']), $z['menge_verrechnet'], $neuePosId,
+                ]);
+            }
         }
 
         // 8. Status neu berechnen wenn sich durch Menge-Korrektur Lieferung/Zahlung vervollständigt hat
         if ($irgendetwasGelief && in_array($auftragsdaten['lieferstatus'], ['teilgeliefert', 'abholbereit', 'kommissioniert'])) {
-            $neuerLieferstatus = $alleNeuGeliefert ? 'abgeschlossen' : 'teilgeliefert';
+            // "abgeschlossen" entscheidet AuftragAbschluss (unten, nach dem Zahlungsstatus)
+            $neuerLieferstatus = $alleNeuGeliefert ? 'versendet' : 'teilgeliefert';
             $statusUpdate = ['lieferstatus' => $neuerLieferstatus];
 
             if ($alleNeuGeliefert) {
@@ -504,7 +558,209 @@ class AuftragService
         return $this->repo->findZahlungen($auftragId);
     }
 
-    public function bucheZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz): array
+    /**
+     * Versandart umstellen (Babsi 2026-10-07): Online "Abholung" bestellt, will aber doch
+     * Versand -- oder umgekehrt. Versandkosten anpassen, Beträge + Zahlungsstatus neu,
+     * Positionen/Lager passend zur neuen Lieferart:
+     *   Abholung → Versand: Ware, die gepackt im Abholfach liegt (menge_geliefert − menge_abgeholt),
+     *     wird ins Lager zurückgebucht (Charge aus dem Warenausgang) -> geht normal über den
+     *     Packplatz in den Versand. Status zurück auf "in Bearbeitung".
+     *   Versand → Abholung: schon Verschicktes gilt als übergeben (menge_abgeholt = menge_geliefert).
+     * Kostet es jetzt mehr und war schon bezahlt -> "teilbezahlt" + Mail mit Restbetrag
+     * (Packplatz fragt vor dem Versand nach). Kostet es weniger -> Guthaben, das die Kasse
+     * bei der Abholung bar oder als Gutschein auszahlt.
+     */
+    public function versandartAendern(int $id, string $lieferart, ?int $versandklasseId, float $versandkosten, int $benutzerId): array
+    {
+        $auftrag = $this->repo->findById($id);
+        if (!$auftrag) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden'];
+        if (!in_array($lieferart, ['versand', 'abholung'], true)) return ['erfolg' => false, 'fehler' => 'Ungültige Lieferart'];
+        if (in_array($auftrag['kanal'], ['kasse', 'jtl_archiv', 'haendler'], true)) {
+            return ['erfolg' => false, 'fehler' => 'Für diesen Auftragstyp nicht möglich.'];
+        }
+        if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'retoure_offen', 'storniert'], true)) {
+            return ['erfolg' => false, 'fehler' => 'Der Auftrag ist schon ausgeliefert bzw. storniert — Versandart kann nicht mehr geändert werden.'];
+        }
+        $versandkosten = $lieferart === 'abholung' && $versandkosten < 0 ? 0.0 : round(max(0.0, $versandkosten), 2);
+        $alteKosten    = round((float)$auftrag['versandkosten'], 2);
+        if ($lieferart === $auftrag['lieferart'] && abs($versandkosten - $alteKosten) < 0.005
+            && (int)$versandklasseId === (int)$auftrag['versandklasse_id']) {
+            return ['erfolg' => false, 'fehler' => 'Keine Änderung.'];
+        }
+
+        $db = Database::getInstance();
+        // Versandkosten schon auf einer Rechnung -> nur über Rechnungskorrektur
+        if (abs($versandkosten - $alteKosten) >= 0.005) {
+            $re = $db->prepare("SELECT rechnung_nr FROM rechnungen WHERE auftrag_id = ? AND storniert = 0 AND versandkosten_brutto > 0 LIMIT 1");
+            $re->execute([$id]);
+            if ($nr = $re->fetchColumn()) {
+                return ['erfolg' => false, 'fehler' => "Die Versandkosten stehen schon auf Rechnung $nr — bitte über eine Rechnungskorrektur ändern."];
+            }
+        }
+
+        $positionen = $this->repo->findPositionen($id);
+        $eigeneTx = !$db->inTransaction();
+        if ($eigeneTx) $db->beginTransaction();
+        try {
+            $rueckgebucht = [];
+            if ($auftrag['lieferart'] === 'abholung' && $lieferart === 'versand') {
+                require_once __DIR__ . '/../lager/LagerService.php';
+                require_once __DIR__ . '/../packplatz/RetourService.php';
+                $lager  = new LagerService();
+                $retour = new RetourService();
+                foreach ($positionen as $p) {
+                    $imFach = (int)$p['menge_geliefert'] - (int)$p['menge_abgeholt'];
+                    if ($imFach <= 0 || empty($p['artikel_id'])) continue;
+                    foreach ($retour->verteileAufChargen($retour->verkaufteChargen($id, (int)$p['artikel_id']), $imFach) as $t) {
+                        $lager->wareneingang([
+                            'artikel_id'  => (int)$p['artikel_id'],
+                            'lager_id'    => (int)($t['lager_id'] ?: 1),
+                            'menge'       => $t['menge'],
+                            'charge'      => $t['charge'],
+                            'referenz'    => 'Umstellung auf Versand ' . $auftrag['auftrag_nr'],
+                            'notiz'       => 'Aus dem Abholfach zurück ins Lager (Versandart geändert)',
+                            'benutzer_id' => $benutzerId,
+                        ]);
+                    }
+                    $db->prepare("UPDATE auftrag_positionen SET menge_geliefert = menge_abgeholt WHERE id = ?")->execute([$p['id']]);
+                    $rueckgebucht[] = $imFach . '× ' . $p['bezeichnung'];
+                }
+            } elseif ($auftrag['lieferart'] === 'versand' && $lieferart === 'abholung') {
+                // Schon Verschicktes gilt als übergeben -- liegt nicht im Abholfach
+                $db->prepare("UPDATE auftrag_positionen SET menge_abgeholt = GREATEST(menge_abgeholt, menge_geliefert) WHERE auftrag_id = ?")
+                   ->execute([$id]);
+            }
+
+            // Beträge neu (Positionen unverändert, nur Versand)
+            $summen = $this->berechneSummen($positionen, $versandkosten);
+            $felder = [
+                'lieferart'        => $lieferart,
+                'versandklasse_id' => $lieferart === 'versand' ? $versandklasseId : null,
+                'versandkosten'    => $versandkosten,
+                'nettobetrag'      => $summen['netto'],
+                'steuerbetrag'     => $summen['steuer'],
+                'bruttobetrag'     => $summen['brutto'],
+            ];
+            $neuerLieferstatus = $auftrag['lieferstatus'];
+            if ($lieferart === 'versand' && in_array($auftrag['lieferstatus'], ['abholbereit', 'kommissioniert'], true)) {
+                $neuerLieferstatus = 'in_bearbeitung';
+            }
+
+            // Zahlungsstatus aus Zahlungen + Gutschein gegen den neuen Betrag
+            $bezahlt = $this->repo->getSummeZahlungen($id) + (float)$auftrag['gutschein_betrag'];
+            $gesamt  = round($summen['brutto'] + $this->repo->getOffeneMahngebuehren($id), 2);
+            $neuerZahlungsstatus = $auftrag['zahlungsstatus'];
+            if (in_array($auftrag['zahlungsstatus'], ['ausstehend', 'teilbezahlt', 'bezahlt'], true)) {
+                $neuerZahlungsstatus = $bezahlt >= $gesamt - 0.004 ? 'bezahlt' : ($bezahlt > 0.004 ? 'teilbezahlt' : 'ausstehend');
+            }
+
+            $db->prepare("
+                UPDATE auftraege SET lieferart = ?, versandklasse_id = ?, versandkosten = ?, nettobetrag = ?, steuerbetrag = ?,
+                                     bruttobetrag = ?, lieferstatus = ?, zahlungsstatus = ?, aktualisiert_am = NOW()
+                WHERE id = ?
+            ")->execute([$felder['lieferart'], $felder['versandklasse_id'], $versandkosten, $summen['netto'], $summen['steuer'],
+                         $summen['brutto'], $neuerLieferstatus, $neuerZahlungsstatus, $id]);
+
+            // Reservierungen für die (wieder) offene Ware neu anlegen
+            $this->repo->schliesseReservierungen($id);
+            $offenePos = [];
+            foreach ($this->repo->findPositionen($id) as $p) {
+                $rest = (int)$p['menge'] - (int)$p['menge_geliefert'];
+                if ($rest > 0) $offenePos[] = ['artikel_id' => $p['artikel_id'], 'menge' => $rest];
+            }
+            if ($offenePos) $this->repo->legeReservierungenAn($id, $offenePos, $auftrag['kanal']);
+
+            $arten = ['versand' => 'Versand', 'abholung' => 'Abholung'];
+            $notiz = 'Versandart geändert: ' . $arten[$auftrag['lieferart']] . ' → ' . $arten[$lieferart]
+                . ' · Versandkosten ' . number_format($alteKosten, 2, ',', '.') . ' → ' . number_format($versandkosten, 2, ',', '.') . ' €'
+                . ($rueckgebucht ? ' · aus dem Abholfach zurück ins Lager: ' . implode(', ', $rueckgebucht) : '');
+            $aenderungen = ['lieferart' => [$auftrag['lieferart'], $lieferart], 'versandkosten' => [$alteKosten, $versandkosten]];
+            if ($neuerLieferstatus !== $auftrag['lieferstatus']) $aenderungen['lieferstatus'] = [$auftrag['lieferstatus'], $neuerLieferstatus];
+            if ($neuerZahlungsstatus !== $auftrag['zahlungsstatus']) $aenderungen['zahlungsstatus'] = [$auftrag['zahlungsstatus'], $neuerZahlungsstatus];
+            $this->repo->logStatus($id, $aenderungen, $notiz, $benutzerId);
+
+            if ($eigeneTx) $db->commit();
+        } catch (Throwable $e) {
+            if ($eigeneTx && $db->inTransaction()) $db->rollBack();
+            return ['erfolg' => false, 'fehler' => 'Fehler beim Umstellen: ' . $e->getMessage()];
+        }
+
+        Logger::log('auftraege.versandart_geaendert', 'auftraege', $id, ['von' => $auftrag['lieferart'], 'nach' => $lieferart,
+            'versandkosten' => [$alteKosten, $versandkosten]], $benutzerId);
+
+        $rest    = round($gesamt - $bezahlt, 2);
+        $ergebnis = ['erfolg' => true, 'zahlungsstatus' => $neuerZahlungsstatus, 'rest' => max(0, $rest), 'guthaben' => max(0, -$rest),
+                     'mail' => false];
+
+        // War bezahlt, jetzt Restbetrag offen -> Kunde informieren (Bankdaten im Mail-Layout)
+        if ($auftrag['zahlungsstatus'] === 'bezahlt' && $neuerZahlungsstatus === 'teilbezahlt') {
+            $ergebnis['mail'] = $this->sendeRestbetragMail($id, $rest, $alteKosten, $versandkosten);
+        }
+        return $ergebnis;
+    }
+
+    /** Mail an den Kunden: Versandart geändert, Restbetrag bitte überweisen. */
+    private function sendeRestbetragMail(int $id, float $rest, float $alteKosten, float $neueKosten): bool
+    {
+        try {
+            $auftrag = $this->repo->findById($id);
+            $kunde   = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
+            $email   = trim($kunde['email'] ?? '');
+            if (!$email) return false;
+            $mailer = new Mailer();
+            $mailer->sendeTemplate(
+                empfaenger:   $email,
+                betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' — Versand statt Abholung',
+                templatePfad: 'mails/versandart_restbetrag.html.twig',
+                variablen: [
+                    'logo_base64'    => $mailer->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
+                    'kunde_name'     => trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? '')) ?: ($kunde['firma'] ?? ''),
+                    'auftrag_nummer' => $auftrag['auftrag_nr'],
+                    'versandkosten'  => $neueKosten - $alteKosten,
+                    'rest'           => $rest,
+                    'firma_email'    => Database::getInstance()->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'mail_from_address'")->fetchColumn() ?: '',
+                ],
+            );
+            return true;
+        } catch (Throwable $e) {
+            error_log('[VersandartMail] ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Rückerstattung an den Kunden (z.B. Überweisung nach Stornorechnung/Rechnungskorrektur).
+     * Höchstens das Guthaben aus den Belegen. Danach Zahlungsstatus aus dem Saldo und
+     * Abschluss-Prüfung (Retoure offen -> abgeschlossen). Klicktest 2026-10-07.
+     */
+    public function bucheRueckerstattung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, ?string $zahlungsweg = null): array
+    {
+        $auftrag = $this->repo->findById($auftragId);
+        if (!$auftrag) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden'];
+        if (!AuftragAbschluss::saldoAussagekraeftig($auftragId)) {
+            return ['erfolg' => false, 'fehler' => 'Es ist noch nicht alle ausgelieferte Ware verrechnet — bitte zuerst die Rechnung erstellen.'];
+        }
+        $guthaben = round(-AuftragAbschluss::saldo($auftragId), 2);
+        if ($betrag <= 0 || $betrag > $guthaben + 0.005) {
+            return ['erfolg' => false, 'fehler' => 'Rückerstattung höchstens € ' . number_format(max(0, $guthaben), 2, ',', '.') . ' (Guthaben des Kunden).'];
+        }
+        $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
+        $zahlungsweg ??= self::ZAHLUNGSWEG_AUS_ZAHLUNGSART[$auftrag['zahlungsart']] ?? null;
+        $this->repo->insertZahlung($auftragId, -round($betrag, 2), $buchungsdatum, $notiz ?: 'Rückerstattung', $benutzerId, $zahlungsweg);
+        $this->repo->logStatus($auftragId, [], 'Rückerstattung gebucht: ' . number_format($betrag, 2, ',', '.') . ' €', $benutzerId);
+        AuftragAbschluss::zahlungsstatusAusBelegen($auftragId, $benutzerId);
+        AuftragAbschluss::pruefe($auftragId, $benutzerId);
+        Logger::log('auftraege.rueckerstattung', 'auftraege', $auftragId, ['betrag' => $betrag], $benutzerId);
+        return ['erfolg' => true];
+    }
+
+    /** Zahlungsweg aus der Zahlungsart des Auftrags (Standard, wenn nichts gewählt wurde). */
+    private const ZAHLUNGSWEG_AUS_ZAHLUNGSART = [
+        'vorkasse' => 'ueberweisung', 'rechnung' => 'ueberweisung', 'paypal' => 'paypal',
+        'bar' => 'bar', 'nachnahme' => 'nachnahme', 'gutschein' => 'gutschein',
+    ];
+
+    public function bucheZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, ?string $zahlungsweg = null, ?int $kassenBonId = null): array
     {
         if ($betrag <= 0) {
             return ['erfolg' => false, 'fehler' => 'Betrag muss größer als 0 sein'];
@@ -519,7 +775,8 @@ class AuftragService
         }
 
         $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
-        $this->repo->insertZahlung($auftragId, $betrag, $buchungsdatum, $notiz, $benutzerId);
+        $zahlungsweg ??= self::ZAHLUNGSWEG_AUS_ZAHLUNGSART[$auftrag['zahlungsart']] ?? null;
+        $this->repo->insertZahlung($auftragId, $betrag, $buchungsdatum, $notiz, $benutzerId, $zahlungsweg, $kassenBonId);
 
         $stand = $this->setzeZahlungsstatus($auftrag, $buchungsdatum,
             'Zahlung gebucht: ' . number_format($betrag, 2, ',', '.') . ' €', $benutzerId);
@@ -559,11 +816,8 @@ class AuftragService
         $this->repo->updateStatus($auftragId, $felder);
         $this->repo->logStatus($auftragId, ['zahlungsstatus' => [$auftrag['zahlungsstatus'], $neuerStatus]], $grund, $benutzerId);
 
-        // Auto-Abgeschlossen: bezahlt + bereits versendet → abgeschlossen
-        if ($neuerStatus === 'bezahlt' && $auftrag['lieferstatus'] === 'versendet') {
-            $this->repo->updateStatus($auftragId, ['lieferstatus' => 'abgeschlossen']);
-            $this->repo->logStatus($auftragId, ['lieferstatus' => ['versendet', 'abgeschlossen']], 'Automatisch abgeschlossen (bezahlt + versendet)', $benutzerId);
-        }
+        // "abgeschlossen" nur über die zentrale Prüfung (geliefert + verrechnet + bezahlt)
+        AuftragAbschluss::pruefe($auftragId, $benutzerId);
 
         return ['neuer_status' => $neuerStatus, 'summe' => $summe, 'gesamt' => $gesamt];
     }
