@@ -565,6 +565,18 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-10-07: Belege + Abschluss-Umbau (Teilrechnungen, Zahlbeleg, Rechnungskorrektur)
+
+Details siehe `.claude/memory/project_belege_abschluss.md`. Migrationen 195–200.
+- **Umsatz nur aus Belegen** (Rechnung, Rechnungskorrektur, Bon, Gutschein) — Aufträge sind nur noch "erwarteter Umsatz". KG → Soll-Versteuerung, Buchhaltungsexport bucht Rechnungen am Rechnungsdatum gegen den Debitor.
+- **Teilrechnung pro Lieferung** am Packplatz (nur Versendetes, Ausständiges angeführt, eigene Mail), gemeinsamer Zähler `menge_verrechnet` für Rechnung + Bon (nie beides für dieselbe Ware).
+- **`AuftragAbschluss`** = einzige Stelle für `abgeschlossen`/`retoure_offen` (voll geliefert + belegt + bezahlt/erstattet).
+- **Zahlbeleg an der Kasse** (block `zahlung`, 0 %, RKSV) für offene Rechnungen + Rückzahlungen; erscheint im Rechnungs-Nachdruck.
+- **"Gutschrift" → Rechnungskorrektur / Stornorechnung** mit Minusbeträgen und Bezug auf Originalrechnung/Bon (Nummernkreis GS bleibt).
+- Belege-Spalte + Offene-Werte-Kacheln in Auftragsliste/Dashboard/Zahlungs-Kontrolle, Versandart ändern (Abholung ↔ Versand), Rückerstattung buchen, manuelle Aufträge nur noch mit Kunde (Debitor).
+
+**Für nächste Session vorgemerkt** (siehe `.claude/memory/project_kasse_naechste_punkte.md`, der Reihe nach besprechen): Schnellwahl/Divers → Artikelgruppe, Offline-Kasse neu denken (vorbereiteter Auftrag), Signatur-Kasse K3 darf nicht als K1 laufen.
+
 ## What's Implemented (Stand 2026-07-22, Session 31)
 
 Gratis-Shop-Theme-Basis (WordPress-Konfiguration, kein ERP-Code) + vier Ausbaustufen des Shop-Sync-Moduls. Details siehe `.claude/memory/project_shop_theme.md` und `.claude/memory/project_shop_sync.md`.
