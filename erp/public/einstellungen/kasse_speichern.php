@@ -56,23 +56,27 @@ try {
 
         // Schnellwahl speichern
         $swArtikelIds = $_POST['sw_artikel_id'] ?? [];
+        $swGruppenIds = $_POST['sw_gruppe_id'] ?? [];
         $swLabels     = $_POST['sw_label'] ?? [];
 
         $stmtDel = $db->prepare("DELETE FROM kassen_schnellwahl WHERE kasse_id = ? AND slot = ?");
         $stmtUps = $db->prepare("
-            INSERT INTO kassen_schnellwahl (kasse_id, slot, artikel_id, label)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE artikel_id = VALUES(artikel_id), label = VALUES(label)
+            INSERT INTO kassen_schnellwahl (kasse_id, slot, artikel_id, artikel_gruppe_id, label)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE artikel_id = VALUES(artikel_id),
+                                    artikel_gruppe_id = VALUES(artikel_gruppe_id), label = VALUES(label)
         ");
 
         for ($slot = 1; $slot <= 9; $slot++) {
             $artikelId = (int)($swArtikelIds[$slot] ?? 0) ?: null;
+            // Slot ist Artikel-Taste ODER Gruppen-Taste — Artikel hat Vorrang
+            $gruppeId  = $artikelId === null ? ((int)($swGruppenIds[$slot] ?? 0) ?: null) : null;
             $label     = trim($swLabels[$slot] ?? '') ?: null;
 
-            if ($artikelId === null && $label === null) {
+            if ($artikelId === null && $gruppeId === null && $label === null) {
                 $stmtDel->execute([$id, $slot]);
             } else {
-                $stmtUps->execute([$id, $slot, $artikelId, $label]);
+                $stmtUps->execute([$id, $slot, $artikelId, $gruppeId, $label]);
             }
         }
     }

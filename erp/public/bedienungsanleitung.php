@@ -607,8 +607,14 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Bar</strong></td><td>Gegeben-Betrag eingeben → Rückgeld wird angezeigt</td></tr>
                 <tr><td><strong>Karte extern</strong></td><td>SumUp/Bankomat — Betrag extern bestätigen, hier nur dokumentiert</td></tr>
                 <tr><td><strong>Gutschein</strong></td><td>Code eingeben → Prüfen → Guthaben wird angezeigt; reicht es nicht, Rest bar oder mit Karte (siehe <a href="#gutscheine">Gutscheine</a>)</td></tr>
-                <tr><td><strong>Divers</strong></td><td>Freie Position ohne Stammdaten — Beschreibung + Betrag eingeben</td></tr>
+                <tr><td><strong>Divers</strong></td><td>Freie Position ohne Stammdaten — Artikelgruppe (Kachel) antippen, Preis eintippen</td></tr>
             </table>
+
+            <h3 id="kasse-divers">Freier Artikel (Divers) + Gruppen-Tasten <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Optional Menge vorwählen: Zahl am Numpad + <strong>× Mal</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>+ Artikel</strong> → <strong>Artikelgruppe</strong> als Kachel antippen (= Erlöskonto in der Buchhaltung). Bezeichnung + Steuer werden vorbelegt, beides änderbar.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Preis pro Stück über das Numpad im Dialog eingeben → <strong>✓ Hinzufügen</strong></div></div>
+            <div class="ba-hint">💡 Gelbe Schnellwahl-Tasten sind <strong>Gruppen-Tasten</strong>: öffnen den Dialog mit fertig gewählter Gruppe. Einrichten über ⚙ neben "SCHNELLWAHL". Welche Gruppen als Kachel erscheinen + Standard-Steuer: Buchhaltung → Artikelgruppen.</div>
 
             <h3 id="kasse-abholbereit">Abholbereit+bezahlt — Aufträge übergeben <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Wenn ein ERP-Auftrag auf "Abholbereit" gesetzt und bezahlt ist, erscheint er in der Kasse unter <strong>Offene Auswahl</strong>.</p>

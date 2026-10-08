@@ -8,7 +8,7 @@ $erfolg = $_SESSION['erfolg'] ?? null;
 unset($_SESSION['fehler'], $_SESSION['erfolg']);
 
 $gruppen = $db->query("
-    SELECT id, konto_nr, name, aktiv, sortierung
+    SELECT id, konto_nr, name, aktiv, an_kasse_waehlbar, standard_steuer_prozent, sortierung
     FROM artikel_gruppen
     ORDER BY sortierung, konto_nr
 ")->fetchAll();
@@ -85,6 +85,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <th style="width:60px;text-align:center">Sort.</th>
                 <th style="width:80px;text-align:center">Artikel</th>
                 <th style="width:90px;text-align:center">Versandkl.</th>
+                <th style="width:70px;text-align:center" title="Als Kachel im Divers-Dialog / als Schnellwahl-Gruppe wählbar">Kasse</th>
+                <th style="width:70px;text-align:center" title="Vorbelegter Steuersatz an der Kasse">Steuer</th>
                 <th style="width:70px;text-align:center">Aktiv</th>
                 <th style="width:80px"></th>
             </tr>
@@ -107,6 +109,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <td style="text-align:center">
                     <?php $v = (int)($anzVsk[$g['id']] ?? 0); ?>
                     <span style="color:var(--color-text-muted);font-size:12px"><?= $v ?></span>
+                </td>
+                <td style="text-align:center">
+                    <?= $g['an_kasse_waehlbar'] ? '<span style="color:#16a34a">✓</span>' : '<span style="color:var(--color-text-muted)">–</span>' ?>
+                </td>
+                <td style="text-align:center;font-size:12px;color:var(--color-text-muted)">
+                    <?= $g['standard_steuer_prozent'] !== null ? rtrim(rtrim(number_format((float)$g['standard_steuer_prozent'], 2, ',', ''), '0'), ',') . ' %' : '20 %' ?>
                 </td>
                 <td style="text-align:center">
                     <?= $g['aktiv'] ? '<span style="color:#16a34a">✓</span>' : '<span style="color:#dc2626">✗</span>' ?>
@@ -154,6 +162,31 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                style="width:15px;height:15px">
                         Aktiv
                     </label>
+                </div>
+            </div>
+
+            <div style="border-top:1px solid var(--color-border);padding-top:12px;margin-bottom:12px">
+                <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);margin-bottom:8px">An der Kasse</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                            <input type="checkbox" name="an_kasse_waehlbar" id="f-kasse" value="1" checked
+                                   style="width:15px;height:15px">
+                            Als Kachel wählbar
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Standard-Steuer</label>
+                        <select name="standard_steuer_prozent" id="f-steuer" class="erp-input" style="width:100%">
+                            <option value="">20 % (Normalsatz)</option>
+                            <option value="10">10 %</option>
+                            <option value="13">13 %</option>
+                            <option value="0">0 %</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                    Für "+ Freier Artikel" und Gruppen-Tasten der Schnellwahl — an der Kasse trotzdem änderbar.
                 </div>
             </div>
 

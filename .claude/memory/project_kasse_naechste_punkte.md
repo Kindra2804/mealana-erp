@@ -5,17 +5,17 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ce935b6f-35b1-4ca0-b892-e5d9bc80d6a2
-  modified: 2026-10-08T18:35:03.052Z
+  modified: 2026-10-08T19:09:36.112Z
 ---
 
 Gemerkt am 2026-10-07 abends, Jacky will diese Punkte **der Reihe nach im Detail** durchgehen (erst besprechen, nicht vorab bauen):
 
-1. **Schnellwahl + Divers → Artikelgruppe** — ✅ KONZEPT ABGENOMMEN 2026-10-08, Bau offen:
+1. **Schnellwahl + Divers → Artikelgruppe** — ✅ FERTIG 2026-10-08 (Migration 201 auf Dev, Klicktest Jacky ✅, committed — Migration 201 muss beim nächsten Live-Deploy mit). Gebaut: artikel_gruppen.an_kasse_waehlbar/standard_steuer_prozent (+ UI Buchhaltung → Artikelgruppen), kassen_bon_positionen.artikel_gruppe_id (bon_speichern nur bei artikel_id NULL, Storno kopiert mit), kassen_schnellwahl.artikel_gruppe_id (kasse_edit "oder Gruppen-Taste", gelbe sw-btn.gruppe), Divers-Dialog neu (Kacheln/Steuer-Tasten/Numpad/Mengenvorwahl), ⚙-Link neben SCHNELLWAHL, Export + Kassenabschluss-Gruppenauswertung nutzen COALESCE(bp.gruppe, artikel.gruppe, nur-Divers-Fallback), beide Handbücher. NICHT angepasst: Offline-Kasse (kasse_bon_offline.js) → Punkt 2. Ursprüngliches Konzept:
    - Divers-Dialog neu: Gruppen als **Kacheln** (dynamisch aus `artikel_gruppen`, neue Gruppen erscheinen automatisch, Kacheln umbrechen), Bezeichnung = Gruppenname vorbelegt aber per Tastatur änderbar, Steuer vorbelegt (aus Gruppe) aber änderbar, **eigenes Numpad** für den Preis.
    - Speichern: neue Spalte `kassen_bon_positionen.artikel_gruppe_id`, hat im Buchhaltungs-Export Vorrang vor dem 99-9999-Fallback (heute landet jeder Divers fix auf 4040).
    - `artikel_gruppen` bekommt `an_kasse_waehlbar` (Versand/Mahngebühr/Gutschein/Partner ausblenden) + `standard_steuer_prozent` (z.B. Hefte/Bücher 10 %), pflegbar in Buchhaltung → Artikelgruppen.
    - Schnellwahl-Slot: Typ **Artikel ODER Gruppe**; Gruppen-Taste öffnet Divers-Dialog mit Gruppe/Bezeichnung/Steuer vorbelegt → nur Preis tippen.
-   - **Mengenvorwahl** (Numpad + "× Mal") muss auch für Divers/Gruppen-Taste gelten — heute ignoriert `divHinzufuegen()` sie (fix Menge 1). `getMenge()` nimmt heute nur ganze Zahlen (parseInt) → **Jacky 2026-10-08: Kommamengen sauber mitbauen** (Weitergabe an andere Firmen geplant), für alle Artikel, nicht nur Divers.
+   - **Mengenvorwahl** (Numpad + "× Mal") muss auch für Divers/Gruppen-Taste gelten — heute ignoriert `divHinzufuegen()` sie (fix Menge 1). **Kommamengen: ENTSCHIEDEN 2026-10-08 → beim Stück-Prinzip bleiben** (Jacky wollte erst Komma, nach Analyse verworfen): Kasse/Lager sind dezimal, aber auftrag_positionen/rechnung_positionen/gutschrift_positionen/reservierungen/packplatz_ruecklagerungen sind INT, Meterware ist bewusst als Stück × inhalt_menge gelöst, WooCommerce kennt nur ganze Mengen. Teilmengen-Artikel → wie Meterware über "Inhalt pro Stück". Gilt auch für spätere Weitergabe des ERP.
    - Im Warenkorb bleibt der Preis änderbar (bestehender `preisOverride()`: Zeile wählen, Preis tippen).
    - Schnellwahl-Konfig existiert (Einstellungen → Kassen → Bearbeiten → Karte unten, bei neuer Kasse ausgeblendet), Jacky fand sie nicht → ⚙-Link neben "SCHNELLWAHL" im Kassenschirm (nur mit Einstellungsrecht).
    - Gleich mit lösen: Export füllt Artikel OHNE Gruppe stillschweigend mit der Divers-Gruppe (COALESCE) — Dev-DB 3.803 Artikel ohne Gruppe → Hinweis im Export statt still 4040.

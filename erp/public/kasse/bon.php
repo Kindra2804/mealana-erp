@@ -52,6 +52,7 @@ if ((new InventurService())->gibtEsLaufendeVollinventur($lagerId)) {
 }
 
 $schnellwahl = $svc->getSchnellwahl($kasseId);
+$kassenGruppen = $svc->getKassenGruppen();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -421,6 +422,35 @@ body {
 .sw-btn:active { background: #93c5fd; }
 .sw-btn.leer   { background: #f8fafc; border: 1px dashed #cbd5e1; color: #94a3b8; cursor: default; font-size: 18px; }
 .sw-btn.sonder { background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; }
+/* Gruppen-Taste (freier Preis) — optisch von Artikel-Tasten unterscheidbar */
+.sw-btn.gruppe { background: #fefce8; border: 1.5px solid #fcd34d; color: #92400e; }
+.sw-btn.gruppe:hover { background: #fef3c7; }
+.pos-sw-label a { color: #94a3b8; text-decoration: none; margin-left: 6px; font-size: 11px; }
+.pos-sw-label a:hover { color: #2563eb; }
+
+/* Divers-Dialog: Gruppen-Kacheln, Steuer-Tasten, eigenes Numpad */
+.div-gruppen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.div-gruppen button {
+  flex: 1 1 110px; min-height: 44px; padding: 6px 8px;
+  border-radius: 8px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #334155;
+  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.div-gruppen button.aktiv { background: #2563eb; border-color: #2563eb; color: #fff; }
+.div-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.div-steuer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.div-steuer button {
+  height: 40px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #f8fafc;
+  font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; color: #334155;
+}
+.div-steuer button.aktiv { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+.div-preis { font-size: 26px !important; text-align: right; margin-bottom: 8px; }
+.div-np { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.div-np button {
+  height: 46px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f1f5f9;
+  font-size: 20px; font-weight: 600; font-family: inherit; cursor: pointer; color: #1e293b;
+}
+.div-np button:active { background: #cbd5e1; }
+.div-menge-info { font-size: 14px; font-weight: 600; color: #2563eb; margin-left: 8px; }
 
 /* Numpad */
 .pos-numpad {
@@ -904,7 +934,9 @@ body {
 
     <!-- Schnellwahl -->
     <div class="pos-sw">
-      <div class="pos-sw-label">SCHNELLWAHL</div>
+      <div class="pos-sw-label">SCHNELLWAHL<?php if (Auth::kann('kasse.verwaltung')): ?><a
+           href="<?= BASE_PATH ?>/einstellungen/kasse_edit.php?id=<?= $kasseId ?>#schnellwahl"
+           title="Schnellwahl-Tasten einrichten">⚙</a><?php endif; ?></div>
       <div class="pos-sw-grid" id="sw-grid">
         <!-- Wird per PHP/JS befüllt -->
       </div>
@@ -1094,23 +1126,44 @@ body {
 
 <!-- Divers-Artikel -->
 <div class="ov" id="ov-divers">
-  <div class="ov-box">
-    <div class="ov-title">Freier Preis-Artikel</div>
-    <div class="ov-label">Bezeichnung</div>
-    <input class="ov-input-sm" type="text" id="div-name" placeholder="z.B. Strickberatung"
-           style="margin-bottom:12px" oninput="divPruefen()">
-    <div class="ov-label">Bruttopreis (€)</div>
-    <input class="ov-input" type="number" id="div-preis" step="0.01" min="0"
-           placeholder="0,00" oninput="divPruefen()" style="margin-bottom:12px;font-size:22px">
-    <div class="ov-label">Steuer</div>
-    <select class="ov-input-sm" id="div-steuer" style="margin-bottom:14px">
-      <option value="20">20 %</option>
-      <option value="10">10 %</option>
-      <option value="0">0 %</option>
-    </select>
+  <div class="ov-box" style="max-width:760px">
+    <div class="ov-title" style="margin-bottom:12px">Freier Artikel <span id="div-menge-info" class="div-menge-info"></span></div>
+
+    <!-- Artikelgruppe = Erlöskonto in der Buchhaltung. Kacheln kommen dynamisch aus
+         artikel_gruppen (aktiv + an_kasse_waehlbar), neue Gruppen erscheinen automatisch. -->
+    <div class="ov-label">Artikelgruppe</div>
+    <div class="div-gruppen" id="div-gruppen"></div>
+
+    <div class="div-layout">
+      <div>
+        <div class="ov-label">Bezeichnung</div>
+        <input class="ov-input-sm" type="text" id="div-name" maxlength="300"
+               style="margin-bottom:12px" oninput="divPruefen()">
+        <div class="ov-label">Steuer</div>
+        <div class="div-steuer" id="div-steuer">
+          <button type="button" data-satz="20" onclick="divSteuerSetzen(20)">20 %</button>
+          <button type="button" data-satz="13" onclick="divSteuerSetzen(13)">13 %</button>
+          <button type="button" data-satz="10" onclick="divSteuerSetzen(10)">10 %</button>
+          <button type="button" data-satz="0"  onclick="divSteuerSetzen(0)">0 %</button>
+        </div>
+      </div>
+      <div>
+        <div class="ov-label">Preis pro Stück (€)</div>
+        <input class="ov-input div-preis" type="text" id="div-preis" inputmode="decimal"
+               placeholder="0,00" oninput="divPruefen()"
+               onkeydown="if(event.key==='Enter'&&!document.getElementById('btn-div-ok').disabled)divHinzufuegen()">
+        <div class="div-np">
+          <button type="button" onclick="divNp('7')">7</button><button type="button" onclick="divNp('8')">8</button><button type="button" onclick="divNp('9')">9</button>
+          <button type="button" onclick="divNp('4')">4</button><button type="button" onclick="divNp('5')">5</button><button type="button" onclick="divNp('6')">6</button>
+          <button type="button" onclick="divNp('1')">1</button><button type="button" onclick="divNp('2')">2</button><button type="button" onclick="divNp('3')">3</button>
+          <button type="button" onclick="divNp(',')">,</button><button type="button" onclick="divNp('0')">0</button><button type="button" onclick="divNpBack()">⌫</button>
+        </div>
+      </div>
+    </div>
+
     <div class="ov-grid2">
-      <button class="ov-btn ov-btn-ok" id="btn-div-ok" onclick="divHinzufuegen()" disabled>+ Hinzufügen</button>
       <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-divers')">Abbrechen</button>
+      <button class="ov-btn ov-btn-ok" id="btn-div-ok" onclick="divHinzufuegen()" disabled>✓ Hinzufügen</button>
     </div>
   </div>
 </div>
@@ -1575,6 +1628,8 @@ var LAGER_ID       = <?= $lagerId ?>;
 var AUSGABE_FORMAT = <?= json_encode($kasseInfo['ausgabe_format'] ?? 'fragen') ?>;
 var KASSE_MODUS    = <?= json_encode($modus) ?>;
 var GUTSCHEIN_ARTIKEL_ID = <?= json_encode($gutscheinArtikelId) ?>;
+// Artikelgruppen-Kacheln im Divers-Dialog (aktiv + an_kasse_waehlbar), siehe KassenService::getKassenGruppen()
+var KASSEN_GRUPPEN = <?= json_encode($kassenGruppen) ?>;
 
 // ── Kundenanzeige-Sync ────────────────────────────────────────────────────────
 // Schreibt den aktuellen Anzeige-Zustand für das Kundenanzeige-Tablet (falls eins
@@ -1626,6 +1681,15 @@ var weitereAuftraegePruefenFuer    = null;
             btn.dataset.preis = d.brutto_vk || '0';
             btn.dataset.steuer = d.steuer_prozent || '20';
             btn.onclick = function() { swArtikelLaden(this); };
+        } else if (sw[slot] && sw[slot].artikel_gruppe_id && sw[slot].gruppe_name) {
+            // Gruppen-Taste: freier Preis, Gruppe + Bezeichnung vorbelegt
+            var g = sw[slot];
+            btn.className = 'sw-btn gruppe';
+            btn.textContent = g.anzeige_name;
+            btn.title = 'Freier Preis · ' + g.gruppe_name;
+            btn.onclick = (function(g) {
+                return function() { diversDialog(parseInt(g.artikel_gruppe_id), g.label || g.gruppe_name); };
+            })(g);
         } else {
             btn.className = 'sw-btn leer';
             btn.textContent = '—';
@@ -1831,6 +1895,7 @@ function _artikelEinfuegen(a, menge) {
             konfig_wert_ids:             konfigIds,
             nachzutragen_lagerbestand_id: a._nachtragen_lagerbestand_id || null,
             istDivers:                   !!a.istDivers,
+            artikel_gruppe_id:           a.artikel_gruppe_id || null, // nur Divers: Erlöskonto-Gruppe
             hat_chargen:                 !!a.hat_chargen,
             charge_pflicht:              !!a.charge_pflicht,
             bestand_physisch:            parseFloat(a.bestand_physisch)   || 0,
@@ -2449,31 +2514,105 @@ function bonRabattEntfernen() {
 }
 
 // ── Divers-Artikel ────────────────────────────────────────────────────────────
-function diversDialog() {
+// Ablauf: Gruppe antippen → Bezeichnung + Steuer werden aus der Gruppe vorbelegt
+// (beides per Tastatur änderbar) → Preis über Numpad/Tastatur → Hinzufügen.
+// Mengenvorwahl ("3 × Mal") gilt auch hier. Die Gruppe geht als artikel_gruppe_id
+// mit an den Server und bestimmt das Erlöskonto im Buchhaltungs-Export.
+var divGruppeId      = null;
+var divSteuer        = 20;
+var divNameAutomatik = true; // Bezeichnung = Gruppenname, solange nicht von Hand geändert
+
+// gruppeId/bezeichnung optional: kommen von einer Gruppen-Taste der Schnellwahl
+function diversDialog(gruppeId, bezeichnung) {
+    var box = document.getElementById('div-gruppen');
+    box.innerHTML = '';
+    KASSEN_GRUPPEN.forEach(function(g) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = g.name;
+        b.dataset.id = g.id;
+        b.onclick = function() { divGruppeWaehlen(parseInt(g.id), true); };
+        box.appendChild(b);
+    });
+
+    var start = gruppeId || (KASSEN_GRUPPEN.find(function(g) { return g.ist_standard == 1; }) || KASSEN_GRUPPEN[0] || {}).id;
+    divNameAutomatik = true;
     document.getElementById('div-name').value  = '';
     document.getElementById('div-preis').value = '';
-    document.getElementById('btn-div-ok').disabled = true;
+    divGruppeWaehlen(start ? parseInt(start) : null, true);
+    if (bezeichnung) {
+        document.getElementById('div-name').value = bezeichnung;
+    }
+
+    var menge = getMenge();
+    document.getElementById('div-menge-info').textContent = menge > 1 ? menge + ' ×' : '';
+    divPruefen();
     ov('ov-divers');
-    setTimeout(() => document.getElementById('div-name').focus(), 100);
+    setTimeout(function() { document.getElementById('div-preis').focus(); }, 100);
 }
+
+function divGruppeWaehlen(id, steuerUebernehmen) {
+    divGruppeId = id;
+    var g = KASSEN_GRUPPEN.find(function(x) { return parseInt(x.id) === id; });
+    document.querySelectorAll('#div-gruppen button').forEach(function(b) {
+        b.classList.toggle('aktiv', parseInt(b.dataset.id) === id);
+    });
+    if (g && divNameAutomatik) {
+        document.getElementById('div-name').value = g.name;
+    }
+    if (steuerUebernehmen) {
+        divSteuerSetzen(g && g.standard_steuer_prozent !== null ? parseFloat(g.standard_steuer_prozent) : 20);
+    }
+    divPruefen();
+}
+
+function divSteuerSetzen(satz) {
+    divSteuer = satz;
+    document.querySelectorAll('#div-steuer button').forEach(function(b) {
+        b.classList.toggle('aktiv', parseFloat(b.dataset.satz) === satz);
+    });
+}
+
+function divNp(z) {
+    var inp = document.getElementById('div-preis');
+    if (z === ',' && /[,.]/.test(inp.value)) return;
+    if (/[,.]\d\d$/.test(inp.value)) return; // max. 2 Nachkommastellen
+    inp.value += z;
+    divPruefen();
+}
+function divNpBack() {
+    var inp = document.getElementById('div-preis');
+    inp.value = inp.value.slice(0, -1);
+    divPruefen();
+}
+
+function divPreis() {
+    return parseFloat(document.getElementById('div-preis').value.replace(',', '.')) || 0;
+}
+
 function divPruefen() {
-    var ok = document.getElementById('div-name').value.trim()
-             && parseFloat(document.getElementById('div-preis').value) > 0;
+    // Sobald jemand die Bezeichnung selbst tippt, nicht mehr beim Gruppenwechsel überschreiben
+    var name = document.getElementById('div-name').value.trim();
+    var g = KASSEN_GRUPPEN.find(function(x) { return parseInt(x.id) === divGruppeId; });
+    divNameAutomatik = !name || (g && name === g.name);
+
+    var ok = name && divGruppeId && divPreis() > 0;
     document.getElementById('btn-div-ok').disabled = !ok;
 }
+
 function divHinzufuegen() {
     var name  = document.getElementById('div-name').value.trim();
-    var preis = parseFloat(document.getElementById('div-preis').value) || 0;
-    var steuer = parseFloat(document.getElementById('div-steuer').value) || 20;
-    if (!name || preis <= 0) return;
+    var preis = Math.round(divPreis() * 100) / 100;
+    if (!name || preis <= 0 || !divGruppeId) return;
     var a = {
         id: null, bezeichnung: name, ean: null,
-        brutto_vk: preis, steuer_prozent: steuer,
+        brutto_vk: preis, steuer_prozent: divSteuer,
+        artikel_gruppe_id: divGruppeId,
         bestand_physisch: 0, bestand_reserviert: 0, bestand_verkaufbar: 0,
         ueberverkauf_erlaubt: true, typ: 'artikel', istDivers: true
     };
     ovSchliessen('ov-divers');
-    _artikelEinfuegen(a, 1);
+    _artikelEinfuegen(a, getMenge()); // Mengenvorwahl gilt auch für Divers (bisher fix 1)
 }
 
 // ── Gutschein abfragen (Auskunft ohne Buchung) ────────────────────────────────

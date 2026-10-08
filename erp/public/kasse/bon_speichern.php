@@ -68,6 +68,8 @@ $sauberePositionen = [];
 foreach ($positionen as $p) {
     $sauberePositionen[] = [
         'artikel_id'          => isset($p['artikel_id']) && $p['artikel_id'] ? (int)$p['artikel_id'] : null,
+        // Erlöskonto-Gruppe nur für Divers (ohne artikel_id) — echte Artikel bringen ihre Gruppe selbst mit
+        'artikel_gruppe_id'   => empty($p['artikel_id']) && !empty($p['artikel_gruppe_id']) ? (int)$p['artikel_gruppe_id'] : null,
         'bezeichnung'         => trim($p['bezeichnung'] ?? ''),
         'ean'                 => $p['ean']   ?? null,
         'menge'               => (float)($p['menge'] ?? 1),

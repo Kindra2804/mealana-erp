@@ -330,10 +330,10 @@ class KassenService
             foreach ($positionen as $i => $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, web_auftrag_id, artikel_id, bezeichnung, ean, menge,
+                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
-                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge, :sort)
                 ");
                 $stmt2->execute([
@@ -341,6 +341,7 @@ class KassenService
                     ':block'              => $pos['block']              ?? null,
                     ':web_auftrag_id'     => $pos['web_auftrag_id'] ?? $pos['zahlung_auftrag_id'] ?? null,
                     ':artikel_id'         => $pos['artikel_id']         ?? null,
+                    ':artikel_gruppe_id'  => $pos['artikel_gruppe_id']  ?? null,
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean']                ?? null,
                     ':menge'              => $pos['menge']              ?? 1,
@@ -607,10 +608,10 @@ class KassenService
             foreach ($bon['positionen'] as $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, web_auftrag_id, artikel_id, bezeichnung, ean, menge,
+                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge)
                     VALUES
-                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge)
                 ");
                 $istZahlung = ($pos['block'] ?? null) === 'zahlung';
@@ -619,6 +620,7 @@ class KassenService
                     ':block'              => $istZahlung ? 'zahlung' : null,
                     ':web_auftrag_id'     => $istZahlung ? $pos['web_auftrag_id'] : null,
                     ':artikel_id'         => $pos['artikel_id'],
+                    ':artikel_gruppe_id'  => $pos['artikel_gruppe_id'] ?? null,
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean'],
                     ':menge'              => -abs((float)$pos['menge']),
@@ -956,7 +958,7 @@ class KassenService
             FROM kassen_bon_positionen bp
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             LEFT JOIN artikel a      ON a.id  = bp.artikel_id
-            LEFT JOIN artikel_gruppen ag ON ag.id = a.artikel_gruppe_id
+            LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id)
             WHERE b.kasse_id = :kid AND b.typ = 'verkauf' AND b.storniert = 0
               AND DATE(b.erstellt_am) BETWEEN :von AND :bis
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
@@ -1097,7 +1099,7 @@ class KassenService
             FROM kassen_bon_positionen bp
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             LEFT JOIN artikel a      ON a.id  = bp.artikel_id
-            LEFT JOIN artikel_gruppen ag ON ag.id = a.artikel_gruppe_id
+            LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id)
             WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
               AND b.typ = 'verkauf' AND b.storniert = 0
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
@@ -1408,16 +1410,38 @@ class KassenService
         return (int)($stmt->fetchColumn() ?: 0);
     }
 
+    /**
+     * Artikelgruppen für die Kacheln im Divers-Dialog (+ Auswahl der Gruppen-Tasten
+     * in den Kassen-Einstellungen). 'ist_standard' markiert die Gruppe des
+     * Platzhalters 99-9999 — die ist im Dialog vorausgewählt.
+     */
+    public function getKassenGruppen(): array
+    {
+        $stmt = $this->db->query("
+            SELECT ag.id, ag.konto_nr, ag.name, ag.standard_steuer_prozent,
+                   (ag.id = (SELECT art.artikel_gruppe_id FROM artikel art
+                             WHERE art.artikelnummer = '99-9999' LIMIT 1)) AS ist_standard
+            FROM artikel_gruppen ag
+            WHERE ag.aktiv = 1 AND ag.an_kasse_waehlbar = 1
+            ORDER BY ag.sortierung, ag.konto_nr
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // ── Schnellwahl ───────────────────────────────────────────────────────────
+    // Ein Slot ist entweder Artikel-Taste (artikel_id) oder Gruppen-Taste
+    // (artikel_gruppe_id → öffnet den Divers-Dialog mit vorgewählter Gruppe).
 
     public function getSchnellwahl(int $kasseId): array
     {
         try {
             $stmt = $this->db->prepare("
-                SELECT s.slot, s.artikel_id, s.label,
+                SELECT s.slot, s.artikel_id, s.artikel_gruppe_id, s.label,
                        a.name              AS artikel_name,
                        a.artikelnummer,
-                       COALESCE(s.label, a.name) AS anzeige_name,
+                       ag.name             AS gruppe_name,
+                       ag.standard_steuer_prozent AS gruppe_steuer,
+                       COALESCE(s.label, a.name, ag.name) AS anzeige_name,
                        COALESCE(
                            (SELECT ap.brutto_vk
                             FROM artikel_preise ap
@@ -1434,6 +1458,7 @@ class KassenService
                        sk.satz AS steuer_prozent
                 FROM kassen_schnellwahl s
                 LEFT JOIN artikel a ON a.id = s.artikel_id
+                LEFT JOIN artikel_gruppen ag ON ag.id = s.artikel_gruppe_id AND ag.aktiv = 1
                 LEFT JOIN steuerklassen sk ON sk.id = a.steuerklasse_id
                 WHERE s.kasse_id = :kasse_id
                 ORDER BY s.slot

@@ -24,7 +24,7 @@ if (!$istNeu) {
         exit;
     }
     $stmt = $db->prepare("
-        SELECT ksw.slot, ksw.label, ksw.artikel_id, a.name AS artikel_name,
+        SELECT ksw.slot, ksw.label, ksw.artikel_id, ksw.artikel_gruppe_id, ag.name AS gruppe_name, a.name AS artikel_name,
                (SELECT ac.code FROM artikel_codes ac WHERE ac.artikel_id = a.id AND ac.typ = 'GTIN13' LIMIT 1) AS ean,
                COALESCE(
                    (SELECT ap.brutto_vk FROM artikel_preise ap
@@ -37,6 +37,7 @@ if (!$istNeu) {
                ) AS brutto_vk
         FROM kassen_schnellwahl ksw
         LEFT JOIN artikel a ON a.id = ksw.artikel_id
+        LEFT JOIN artikel_gruppen ag ON ag.id = ksw.artikel_gruppe_id
         WHERE ksw.kasse_id = ?
     ");
     $stmt->execute([$id]);
@@ -46,6 +47,13 @@ if (!$istNeu) {
 }
 
 $lager = $db->query("SELECT id, name FROM lager ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+
+// Für Gruppen-Tasten der Schnellwahl: dieselben Gruppen wie die Kacheln im Divers-Dialog
+$kassenGruppen = $db->query("
+    SELECT id, konto_nr, name FROM artikel_gruppen
+    WHERE aktiv = 1 AND an_kasse_waehlbar = 1
+    ORDER BY sortierung, konto_nr
+")->fetchAll(PDO::FETCH_ASSOC);
 
 $e = $_SESSION['erfolg'] ?? null;
 $f = $_SESSION['fehler'] ?? null;
@@ -154,7 +162,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
     <!-- ── Schnellwahl ── -->
     <?php if (!$istNeu): ?>
-    <div class="card" style="margin-bottom:16px">
+    <div class="card" id="schnellwahl" style="margin-bottom:16px">
         <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
             <span>Schnellwahl-Tasten (9 Slots)</span>
             <span style="font-size:12px;color:var(--color-text-muted)">Slots 1–9 von links oben nach rechts unten</span>
@@ -189,6 +197,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <div style="font-size:12px;color:var(--color-nav);font-weight:600;margin-top:2px">
                                 € <?= number_format((float)$sw['brutto_vk'], 2, ',', '.') ?>
                             </div>
+                        <?php elseif ($sw && $sw['artikel_gruppe_id']): ?>
+                            <div style="font-size:13px;font-weight:600">Gruppen-Taste: <?= htmlspecialchars($sw['gruppe_name'] ?? '?') ?></div>
+                            <div style="font-size:11px;color:var(--color-text-muted)">freier Preis</div>
                         <?php else: ?>
                             <div style="font-size:12px;color:var(--color-text-muted);font-style:italic">Kein Artikel</div>
                         <?php endif; ?>
@@ -201,13 +212,27 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                style="font-size:12px;padding:4px 8px">
                     </div>
 
+                    <!-- Alternativ zum Artikel: Gruppen-Taste (öffnet an der Kasse den Divers-Dialog
+                         mit dieser Gruppe, Preis wird eingetippt) -->
+                    <div class="form-group" style="margin-bottom:8px">
+                        <select name="sw_gruppe_id[<?= $slot ?>]" id="sw-gruppe-id-<?= $slot ?>" class="erp-input"
+                                style="font-size:12px;padding:4px 8px" onchange="swGruppeGewaehlt(<?= $slot ?>, this)">
+                            <option value="">— oder Gruppen-Taste —</option>
+                            <?php foreach ($kassenGruppen as $g): ?>
+                            <option value="<?= $g['id'] ?>" <?= ($sw['artikel_gruppe_id'] ?? null) == $g['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($g['name']) ?> (<?= htmlspecialchars($g['konto_nr']) ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
                     <div style="display:flex;gap:6px">
                         <button type="button" class="btn btn-secondary btn-sm"
                                 onclick="swSuchePanelShow(<?= $slot ?>)"
                                 style="font-size:12px;padding:3px 10px">
                             Artikel wählen
                         </button>
-                        <?php if ($sw && $sw['artikel_id']): ?>
+                        <?php if ($sw && ($sw['artikel_id'] || $sw['artikel_gruppe_id'])): ?>
                         <button type="button" class="btn btn-sm"
                                 style="font-size:12px;padding:3px 10px;background:none;border:1px solid var(--color-border);color:var(--color-danger)"
                                 onclick="swLeeren(<?= $slot ?>)">
@@ -286,6 +311,7 @@ function swArtikelWaehlen(artikelId, name, ean, brutto) {
     const slot = swAktiverSlot;
     const preisStr = '€ ' + brutto.toFixed(2).replace('.', ',');
     document.getElementById('sw-artikel-id-' + slot).value = artikelId;
+    document.getElementById('sw-gruppe-id-' + slot).value  = ''; // Artikel ODER Gruppe
     document.getElementById('sw-info-' + slot).innerHTML =
         `<div style="font-size:13px;font-weight:600">${escHtml(name)}</div>` +
         `<div style="font-size:11px;color:var(--color-text-muted)">${escHtml(ean)}</div>` +
@@ -295,8 +321,18 @@ function swArtikelWaehlen(artikelId, name, ean, brutto) {
 
 function swLeeren(slot) {
     document.getElementById('sw-artikel-id-' + slot).value = '';
+    document.getElementById('sw-gruppe-id-' + slot).value  = '';
     document.getElementById('sw-info-' + slot).innerHTML =
         '<div style="font-size:12px;color:var(--color-text-muted);font-style:italic">Kein Artikel</div>';
+}
+
+// Gruppen-Taste gewählt → einen evtl. gesetzten Artikel entfernen (Slot ist Artikel ODER Gruppe)
+function swGruppeGewaehlt(slot, sel) {
+    if (!sel.value) { swLeeren(slot); return; }
+    document.getElementById('sw-artikel-id-' + slot).value = '';
+    document.getElementById('sw-info-' + slot).innerHTML =
+        `<div style="font-size:13px;font-weight:600">Gruppen-Taste: ${escHtml(sel.options[sel.selectedIndex].text.trim())}</div>` +
+        '<div style="font-size:11px;color:var(--color-text-muted)">freier Preis</div>';
 }
 
 function escHtml(str) {

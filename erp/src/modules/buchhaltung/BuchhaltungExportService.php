@@ -134,6 +134,11 @@ class BuchhaltungExportService
      * auftrag_positionen eine echte artikel_id (siehe KassenService::getDiversArtikelId()) —
      * direkt in kassen_bon_positionen bleibt artikel_id NULL. Für den Export fallen
      * solche Positionen auf dieselbe Artikelgruppe zurück wie der 99-9999-Artikel selbst.
+     *
+     * Reihenfolge seit Migration 201 (2026-10-08): an der Kasse gewählte Gruppe
+     * (bp.artikel_gruppe_id) → Gruppe des Artikels → NUR für Divers ohne Gruppe
+     * (Altbestand) dieser Fallback. Echte Artikel ohne Gruppe fallen NICHT mehr
+     * still hierher, sondern erzeugen einen Hinweis (kein Erlöskonto).
      */
     private function diversesGruppeId(): ?int
     {
@@ -159,7 +164,7 @@ class BuchhaltungExportService
             FROM kassen_bon_positionen bp
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             LEFT JOIN artikel a       ON a.id  = bp.artikel_id
-            LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(a.artikel_gruppe_id, {$diversesGruppeId})
+            LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id, CASE WHEN bp.artikel_id IS NULL THEN {$diversesGruppeId} END)
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND COALESCE(bp.block, '') <> 'zahlung'
               AND NOT (" . self::GEMISCHT_BEDINGUNG . ")
               AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
@@ -226,7 +231,7 @@ class BuchhaltungExportService
                    SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
             FROM kassen_bon_positionen bp
             LEFT JOIN artikel a ON a.id = bp.artikel_id
-            LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(a.artikel_gruppe_id, {$diversesGruppeId})
+            LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id, CASE WHEN bp.artikel_id IS NULL THEN {$diversesGruppeId} END)
             WHERE bp.bon_id = ? AND COALESCE(bp.block, '') <> 'zahlung'
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
         ");

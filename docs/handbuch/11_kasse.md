@@ -44,12 +44,26 @@ Auf eine Position klicken → Rabatt % eingeben → Preis wird neu berechnet.
 
 ## Divers-Artikel (freier Preis)
 
-Für Positionen ohne Stammdatensatz (Sonderpositionen, Spenden, Verpackung):
+Für Positionen ohne Stammdatensatz (Sonderpositionen, Workshops, Messe-Ware):
 
-1. **Divers** klicken
-2. Beschreibung eingeben + Betrag eingeben
-3. Steuerklasse wählen (20% / 10%)
-4. → Wird als freie Position in den Bon eingefügt
+1. Optional zuerst die **Menge** am Numpad tippen + **× Mal** (z.B. `3 × Mal`)
+2. **+ Artikel** (bzw. "+ Freier Artikel") klicken
+3. **Artikelgruppe** als Kachel antippen — sie bestimmt das Erlöskonto in der Buchhaltung.
+   Bezeichnung und Steuersatz werden aus der Gruppe vorbelegt, beides ist änderbar.
+4. **Preis pro Stück** über das Numpad im Dialog (oder die Tastatur) eingeben
+5. **✓ Hinzufügen** → Position landet mit der vorgewählten Menge im Bon
+
+Der Preis bleibt danach im Warenkorb änderbar (Zeile antippen → Preis tippen → Preis).
+
+**Welche Gruppen als Kachel erscheinen**, wird unter Buchhaltung → Artikelgruppen festgelegt
+("Als Kachel wählbar" + "Standard-Steuer"). Neue Gruppen erscheinen automatisch.
+
+### Gruppen-Tasten in der Schnellwahl
+
+Ein Schnellwahl-Slot kann statt eines Artikels auch eine **Gruppe** sein (gelbe Taste).
+Ein Druck öffnet den Dialog mit fertig gewählter Gruppe — nur noch Preis tippen.
+Einrichten: ⚙ neben "SCHNELLWAHL" im Kassenschirm (Recht Kassen-Verwaltung) bzw.
+Einstellungen → Kassen → Bearbeiten → Schnellwahl-Tasten → "oder Gruppen-Taste".
 
 ---
 

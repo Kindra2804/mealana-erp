@@ -10,6 +10,8 @@ function gruppeNeu() {
     document.getElementById('f-name').value     = '';
     document.getElementById('f-sort').value     = '10';
     document.getElementById('f-aktiv').checked  = true;
+    document.getElementById('f-kasse').checked  = true;
+    document.getElementById('f-steuer').value   = '';
     document.getElementById('modal-fehler').textContent = '';
     document.getElementById('gruppe-form').action = window.BASE_PATH + '/buchhaltung/artikel_gruppen_speichern.php';
     btnLoesen.style.display = 'none';
@@ -25,6 +27,8 @@ function gruppeBearbeiten(g) {
     document.getElementById('f-name').value     = g.name;
     document.getElementById('f-sort').value     = g.sortierung;
     document.getElementById('f-aktiv').checked  = g.aktiv == 1;
+    document.getElementById('f-kasse').checked  = g.an_kasse_waehlbar == 1;
+    document.getElementById('f-steuer').value   = g.standard_steuer_prozent === null ? '' : String(parseFloat(g.standard_steuer_prozent));
     document.getElementById('modal-fehler').textContent = '';
     document.getElementById('gruppe-form').action = window.BASE_PATH + '/buchhaltung/artikel_gruppen_speichern.php';
     btnLoesen.style.display = '';
