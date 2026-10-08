@@ -157,8 +157,10 @@ class BuchhaltungExportService
         // Menge MIT Vorzeichen: Retour-Positionen (negative Menge) mindern den Umsatz.
         // Bis 2026-09-30 stand hier ABS(menge) -- eine Kassen-Retoure über -5,00 wurde
         // als +10,00 Umsatz exportiert.
+        // Datum: bei nacherfassten Messe-Belegen (Papier-Messe, Migration 202) zählt das
+        // Datum des händischen Belegs, nicht der Signaturzeitpunkt — richtiger USt-Monat.
         $rows = $this->db->query("
-            SELECT DATE(b.erstellt_am) AS datum, b.zahlungsart,
+            SELECT COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) AS datum, b.zahlungsart,
                    ag.konto_nr, ag.name AS gruppe_name, bp.steuer_prozent,
                    SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
             FROM kassen_bon_positionen bp
@@ -167,7 +169,7 @@ class BuchhaltungExportService
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id, CASE WHEN bp.artikel_id IS NULL THEN {$diversesGruppeId} END)
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND COALESCE(bp.block, '') <> 'zahlung'
               AND NOT (" . self::GEMISCHT_BEDINGUNG . ")
-              AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
+              AND COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
             GROUP BY datum, b.zahlungsart, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
         ")->fetchAll();
 
@@ -219,11 +221,11 @@ class BuchhaltungExportService
     private function gemischteBonsAufteilen(string $von, string $bis, int $diversesGruppeId, array &$buchungen, array &$hinweise): void
     {
         $bons = $this->db->query("
-            SELECT b.id, b.bon_nr, DATE(b.erstellt_am) AS datum, b.zahlungsart, b.bruttobetrag,
+            SELECT b.id, b.bon_nr, COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) AS datum, b.zahlungsart, b.bruttobetrag,
                    b.bar_betrag, b.karten_betrag, b.gutschein_betrag, b.rueckgeld
             FROM kassen_bons b
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND (" . self::GEMISCHT_BEDINGUNG . ")
-              AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
+              AND COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
         ")->fetchAll(PDO::FETCH_ASSOC);
 
         $posStmt = $this->db->prepare("

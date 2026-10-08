@@ -616,6 +616,15 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Preis pro Stück über das Numpad im Dialog eingeben → <strong>✓ Hinzufügen</strong></div></div>
             <div class="ba-hint">💡 Gelbe Schnellwahl-Tasten sind <strong>Gruppen-Tasten</strong>: öffnen den Dialog mit fertig gewählter Gruppe. Einrichten über ⚙ neben "SCHNELLWAHL". Welche Gruppen als Kachel erscheinen + Standard-Steuer: Buchhaltung → Artikelgruppen.</div>
 
+            <h3 id="kasse-papier-messe">Papier-Messe (Strichliste + händische Belege) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Für Messen ohne Gerät/Strom/Internet — und in Deutschland ohne elektronisches Aufzeichnungssystem (keine TSE-Frage). Die elektronische Messe-Kasse gibt es weiterhin daneben.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>🎪 Messe</strong> → Variante <strong>📝 Papier-Messe</strong> → Artikel scannen → Umbuchung → <strong>🖨 Strichliste</strong> drucken</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Auf der Messe: Stricherl machen + <strong>händischen Beleg mit Durchschrift</strong> ausstellen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>↩ Von Messe zurück</strong>: pro Zeile <em>verkauft</em> + <em>zurück</em> eintragen — Schwund rechnet sich selbst (rot = Zählfehler) → <strong>Lager zurückbuchen</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div><strong>Belege nacherfassen</strong> an der Signatur-Kasse: Nr., Datum, Bar/Bankomat, Zeilen Artikelgruppe + Betrag → jeder Beleg wird ein eigener signierter Bon</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div><strong>🖨 Messe-Abschluss</strong> drucken (Belege von–bis, bar/Bankomat, Abgleich mit der Strichliste) und zu den Durchschriften legen</div></div>
+            <div class="ba-hint">💡 Bar-Belege erhöhen den Kassenstand der Kasse, an der nacherfasst wird — Messe-Bargeld einlegen oder als Entnahme buchen. Im Buchhaltungs-Export zählt das Belegdatum. Ein Messe-Auftrag entsteht bewusst nicht (Umsatz kommt über die Belege).</div>
+
             <h3 id="kasse-abholbereit">Abholbereit+bezahlt — Aufträge übergeben <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Wenn ein ERP-Auftrag auf "Abholbereit" gesetzt und bezahlt ist, erscheint er in der Kasse unter <strong>Offene Auswahl</strong>.</p>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Kasse → <strong>Offene Auswahl</strong> → Auftrag wählen</div></div>

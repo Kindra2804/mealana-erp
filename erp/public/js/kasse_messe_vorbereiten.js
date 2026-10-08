@@ -181,12 +181,14 @@ function msvUmbuchungDurchfuehren() {
         if (!confirm('Bei ' + zuHoch.length + ' Artikel(n) übersteigt die Menge den Lagerbestand. Trotzdem umbuchen?')) return;
     }
 
-    const kasseId = document.getElementById('msv-kasse').value;
+    const variante = msvVariante();
+    const kasseId = variante === 'elektronisch' ? document.getElementById('msv-kasse').value : '';
     const lagerId = document.getElementById('msv-lager').value;
     const vonLagerId = document.getElementById('msv-von-lager').value;
 
     const fd = new FormData();
     fd.append('aktion', 'umbuchung_zur_messe');
+    fd.append('variante', variante);
     fd.append('kasse_id', kasseId);
     fd.append('von_lager_id', vonLagerId);
     fd.append('nach_lager_id', lagerId);
@@ -221,3 +223,15 @@ function escHtmlMsv(s) {
     d.textContent = s;
     return d.innerHTML;
 }
+
+// ── Messe-Variante (Papier / elektronisch) ───────────────────────────────────
+// Papier-Messe braucht keine Offline-Kasse → Kassen-Auswahl nur bei "elektronisch".
+function msvVariante() {
+    const r = document.querySelector('input[name="msv-variante"]:checked');
+    return r ? r.value : 'papier';
+}
+function msvVarianteGeaendert() {
+    const feld = document.getElementById('msv-kasse-feld');
+    if (feld) feld.style.display = msvVariante() === 'elektronisch' ? '' : 'none';
+}
+document.addEventListener('DOMContentLoaded', msvVarianteGeaendert);

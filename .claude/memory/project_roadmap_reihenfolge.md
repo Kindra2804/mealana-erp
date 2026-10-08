@@ -77,3 +77,8 @@ Jackys ausdrücklicher Wunsch: diese dürfen zwischen den großen Themen oben op
 
 ## Nächste Session (Jacky, 2026-10-07 festgelegt)
 Belege/Abschluss-Umbau fertig + committed. Als Nächstes der Reihe nach im Detail besprechen: siehe [[project_kasse_naechste_punkte]] (1. Schnellwahl/Divers → Artikelgruppe, 2. Offline-Kasse neu mit vorbereitetem Auftrag, 3. Signatur-Kasse K3 darf nicht als K1 laufen).
+
+
+
+## Nächste Session (Jacky, 2026-10-08 festgelegt)
+Kasse-Punkte 1–3 gebaut + committed/gepusht (Punkt 1 + 3 klickgetestet). **Als Erstes: Klicktest Papier-Messe**, Ablauf in [[project_kasse_naechste_punkte]]. Danach Live-Deploy mit Migration 201+202 einplanen.

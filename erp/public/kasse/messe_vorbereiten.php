@@ -26,6 +26,8 @@ foreach ($kassen as $k) {
     }
 }
 
+$offenePapier = $syncSvc->getOffenePapierMessen();
+
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
 
@@ -43,17 +45,11 @@ require_once __DIR__ . '/shell_top.php';
     <div class="ks-feedback fehler"><?= htmlspecialchars($fehler) ?></div>
   <?php endif; ?>
 
-  <?php if (empty($kassen)): ?>
-    <div class="ks-card">
-      <div class="ks-card-title">Keine Offline-Kasse eingerichtet</div>
-      <p style="font-size:14px;color:#475569;margin-bottom:14px">
-        Bevor Ware ins Messe-Lager umgebucht werden kann, muss unter
-        <strong>Einstellungen → Kassen</strong> eine Kasse mit Modus <strong>„offline“</strong>
-        angelegt werden (z.B. „Messe-Laptop“).
-      </p>
-      <a href="<?= BASE_PATH ?>/einstellungen/index.php?tab=kassen" class="ks-btn ks-btn-primary">Zu den Kassen-Einstellungen</a>
-    </div>
-  <?php elseif (empty($messeLager)): ?>
+  <div style="text-align:right;margin-bottom:10px">
+    <a href="messe_rueckkehr.php" class="ks-btn ks-btn-secondary" style="padding:6px 14px;font-size:13px">↩ Von Messe zurück / Belege nacherfassen</a>
+  </div>
+
+  <?php if (empty($messeLager)): ?>
     <div class="ks-card">
       <div class="ks-card-title">Kein Messe-Lager gefunden</div>
       <p style="font-size:14px;color:#475569">Es existiert kein Lager mit Typ „messe“. Bitte zuerst unter Lager-Verwaltung anlegen.</p>
@@ -62,8 +58,26 @@ require_once __DIR__ . '/shell_top.php';
 
   <div class="ks-card">
     <div class="ks-card-title">1 — Ziel wählen</div>
+
+    <!-- Zwei Messe-Varianten, je nach Art/Größe der Messe -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <label class="msv-variante">
+        <input type="radio" name="msv-variante" value="papier" checked onchange="msvVarianteGeaendert()">
+        <span><strong>📝 Papier-Messe</strong><br>
+          <small>Strichliste + händische Belege — kein Gerät, kein Strom/Internet nötig.
+          Belege werden danach einzeln nacherfasst.</small></span>
+      </label>
+      <label class="msv-variante" <?= empty($kassen) ? 'style="opacity:.5"' : '' ?>>
+        <input type="radio" name="msv-variante" value="elektronisch" <?= empty($kassen) ? 'disabled' : '' ?> onchange="msvVarianteGeaendert()">
+        <span><strong>💻 Elektronische Messe-Kasse</strong><br>
+          <small><?= empty($kassen)
+              ? 'Keine Offline-Kasse eingerichtet (Einstellungen → Kassen, Modus „offline“).'
+              : 'Offline-Kasse mit Signatur am Laptop, Bons werden danach synchronisiert.' ?></small></span>
+      </label>
+    </div>
+
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:4px">
-      <div style="flex:1;min-width:200px">
+      <div style="flex:1;min-width:200px;display:none" id="msv-kasse-feld">
         <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Offline-Kasse</label>
         <select id="msv-kasse" class="ks-select">
           <?php foreach ($kassen as $k): ?>
@@ -118,6 +132,37 @@ require_once __DIR__ . '/shell_top.php';
 
   <?php endif; ?>
 
+  <?php if (!empty($offenePapier)): ?>
+  <div class="ks-card">
+    <div class="ks-card-title">📝 Offene Papier-Messen</div>
+    <table class="ks-table">
+      <thead>
+        <tr><th>Messe-Lager</th><th style="text-align:right">Artikel</th><th>Vorbereitet</th><th></th></tr>
+      </thead>
+      <tbody>
+        <?php foreach ($offenePapier as $s): ?>
+        <tr>
+          <td><?= htmlspecialchars($s['lager_name'] ?? '') ?></td>
+          <td style="text-align:right"><?= (int)$s['artikel_count'] ?></td>
+          <td style="color:#888"><?= date('d.m.Y H:i', strtotime($s['erstellt_am'])) ?></td>
+          <td style="text-align:right;white-space:nowrap">
+            <a href="messe_strichliste.php?sync_id=<?= (int)$s['id'] ?>" target="_blank" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
+              🖨 Strichliste
+            </a>
+            <a href="messe_rueckkehr.php?sync_id=<?= (int)$s['id'] ?>" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
+              Rückkehr →
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:#64748b;margin:10px 0 0">
+      Weitere Artikel können jederzeit nachgebucht werden — sie landen in derselben Papier-Messe, die Strichliste einfach neu drucken.
+    </p>
+  </div>
+  <?php endif; ?>
+
   <?php if (!empty($offeneSyncs)): ?>
   <div class="ks-card">
     <div class="ks-card-title">Bereits vorbereitete Sync-Pakete</div>
@@ -157,6 +202,15 @@ require_once __DIR__ . '/shell_top.php';
     </div>
   </div>
 </div>
+
+<style>
+.msv-variante {
+  flex: 1 1 260px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+  border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; background: #f8fafc;
+}
+.msv-variante:has(input:checked) { border-color: #2563eb; background: #eff6ff; }
+.msv-variante small { color: #64748b; }
+</style>
 
 <script src="<?= BASE_PATH ?>/js/kasse_messe_vorbereiten.js"></script>
 

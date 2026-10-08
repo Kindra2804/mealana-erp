@@ -5,8 +5,17 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ce935b6f-35b1-4ca0-b892-e5d9bc80d6a2
-  modified: 2026-10-08T19:09:36.112Z
+  modified: 2026-10-08T19:31:11.667Z
 ---
+
+## ⏭️ NÄCHSTE SESSION (Jacky 2026-10-08): ALS ERSTES Klicktest Papier-Messe (Punkt 2)
+Alle drei Punkte gebaut + committed/gepusht. Punkte 1 und 3 sind klickgetestet, Punkt 2 nicht. Testablauf (wie am 2026-10-08 an Jacky gegeben):
+1. 🎪 Messe → Papier-Messe: 2–3 Artikel (einer mit Charge) umbuchen → 🖨 Strichliste ansehen
+2. ↩ Von Messe zurück → Papier-Messe: absichtlich Zählfehler (rot, Server lehnt ab) → korrigieren (z.B. mit 10 / verkauft 3 / zurück 6 → Schwund 1), Freitext-Zeile + Zugabe → Lager zurückbuchen → Lager prüfen (Messe-Lager leer, Hauptlager +zurück, Schwund-Bewegung)
+3. Belege nacherfassen: Beleg 1 bar mit 2 Gruppen, Beleg 2 Bankomat (Enter), Beleg 1 doppelt → muss abgelehnt werden, Bon-Vermerk ansehen
+4. 🖨 Messe-Abschluss ansehen
+5. Optional: Belegdatum gestern → Buchhaltungs-Export auf gestern filtern
+Am K1-PC ohne Signatur (oranger Hinweis), echter RKSV-Test am K3-Laptop. Danach: Migration 201+202 beim nächsten Live-Deploy mitnehmen.
 
 Gemerkt am 2026-10-07 abends, Jacky will diese Punkte **der Reihe nach im Detail** durchgehen (erst besprechen, nicht vorab bauen):
 
@@ -26,6 +35,8 @@ Gemerkt am 2026-10-07 abends, Jacky will diese Punkte **der Reihe nach im Detail
    - Rückkehr: Mengen von der Strichliste eingeben (Basis: bestehendes `rueckkehrVerarbeiten()` Mengen-Modus) → **daraus entsteht der Auftrag** (verkauft + Freitext + Schwund 0 €, Info "Belege Nr x–y", Zahlart-Aufteilung bar/Bankomat) → über RKSV/Bankomat abrechnen, Rest zurück ins Hauptlager.
    - OFFEN: Jacky klärt mit Steuerberater ob Sammel-Nacherfassung (ein Auftrag) reicht oder jeder händische Beleg einzeln nacherfasst werden muss (Claude-Einschätzung: eher einzeln).
    - Android/Sunmi V2 als Browser-Offline-Client wäre technisch möglich (bestehender JS/IndexedDB-Client), bewusst zurückgestellt. Heute: Sunmi V2 getrennt vom System, Artikel mühsam händisch gepflegt.
+   - ✅ **GEBAUT 2026-10-08** (Migration 202 auf Dev, nicht committed, Klicktest offen): messe_vorbereiten (Variante papier/elektronisch, Kasse optional), messe_strichliste.php (A4), messe_rueckkehr (Papier-Modus Strich/Zurück/Schwund-auto, Freitext, Liste zurückgebuchter Papier-Messen), messe_belege.php + js/kasse_messe_belege.js (Nacherfassung via MesseSyncService::belegNacherfassen → KassenService::erstelleBon, Kasse aus Arbeitsplatz), messe_abschluss.php (A4), Export nutzt COALESCE(handbeleg_datum, DATE(erstellt_am)) in den 2 Kassen-Umsatzabfragen, rueckkehr_am-Sperre gegen Doppel-Rückbuchung (beide Varianten), beide Handbücher. Offline-JS-Divers-Dialog (elektronische Variante) weiterhin alt.
+   - **KONZEPT FINAL 2026-10-08 (Jacky ok):** KEIN Messe-Auftrag (wäre doppelter Umsatz). Umsatz+RKSV = händische Belege einzeln nacherfasst an der Signatur-Kasse, je Beleg Nr/Datum/Zahlart + Zeilen **Gruppe+Betrag** (Steuer aus Gruppe, änderbar) → je Beleg ein signierter Bon mit Vermerk "Nacherfassung Messe-Beleg Nr X vom ...". Lager = Strichliste: pro Zeile verkauft (Stricherl) + zurück gezählt eingeben → **Schwund automatisch** = mit − verkauft − zurück (negativ = Zählfehler-Warnung). Freitext-Zeilen = Info-Liste. Messe-Abschluss-Blatt: Belege von–bis, Summe bar/Bankomat, Strichliste-Wert vs. Belegsumme = Differenz. Variante "Papier" braucht keine Offline-Kasse (kasse_id optional).
    - Jacky 2026-10-08: **Einzelaufzeichnungspflicht gilt** → bisherige Praxis (ein Auftrag "Belege x–y") war falsch; Rückkehr-Screen muss Belege einzeln erfassen (Nr, Betrag, Zahlart, ggf. Steuersatz).
    - **Später (hinten angestellt):** zweites Gleis = kleine Web-Oberfläche für Sunmi V2 (Vorbild pluson.at von BONit), Login, holt Messe-Liste (Artikel/Preise/Bestand) **nur in eine Richtung**, KEIN Re-Import; Rücklagern manuell wie bei Papier (Fallback wenn Akku/Netz/Papier weg). Sunmi-Drucker (57 mm) ist auf den Geräten als normaler Android-Drucker eingerichtet → normaler Browser-Druckbefehl reicht (Jacky 2026-10-08; pluson ist auch browserbasiert). Jacky freut sich besonders auf "offline-fähig sobald Liste geladen" (PWA/Service Worker), in D = elektronisches System → TSE-Frage wieder offen, also eher nur AT-Messen.
    - Alter Stand siehe [[project_kassen_verwaltung]].

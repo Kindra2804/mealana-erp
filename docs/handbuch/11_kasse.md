@@ -240,3 +240,43 @@ Ist die Signatureinrichtung (BFR) kurz nicht erreichbar, verkauft die Kasse trot
 | Abholbereit-Auftrag nicht in Liste | Auftrag: lieferstatus='abholbereit' UND zahlungsstatus='bezahlt'? |
 | Storno geht nicht | Bon bereits storniert? Bon-Journal prüfen |
 | Lagerbestand nach Bon falsch | Admin: Lager → Bewegungen → Bon-ID suchen → Buchung prüfen |
+
+---
+
+## Messe — Papier-Messe (Strichliste + händische Belege)
+
+Für Messen ohne Gerät/Strom/Internet (und für Deutschland: kein elektronisches
+Aufzeichnungssystem → keine TSE-Frage). Daneben gibt es weiterhin die
+**elektronische Messe-Kasse** (Offline-Kasse mit Signatur am Laptop).
+
+**1. Vorbereiten** — Kasse → 🎪 Messe
+1. Variante **📝 Papier-Messe** wählen, Messe-Lager + Quell-Lager wählen
+2. Artikel scannen, Mengen eintragen → **Umbuchung durchführen**
+3. Unter "Offene Papier-Messen" → **🖨 Strichliste** drucken (nach Artikelgruppe sortiert,
+   mit leeren Freitext-Zeilen). Nachbuchen geht jederzeit — Liste dann neu drucken.
+
+**2. Auf der Messe** — pro Verkauf Stricherl machen und einen **händischen Beleg mit
+Durchschrift** ausstellen (in Österreich Pflicht). Ware ohne Lagerstand / Werbe-Zugaben
+in die Freitext-Zeilen.
+
+**3. Lager zurückbuchen** — 🎪 Messe → ↩ Von Messe zurück → Papier-Messe wählen
+1. Pro Zeile **verkauft** (Summe Stricherl) und gezählt **zurück** eintragen
+2. **Schwund** rechnet sich selbst (mit − verkauft − zurück); rot = Zählfehler, wird nicht gebucht
+3. Freitext-Zeilen übertragen (Info-Liste, keine Buchung)
+4. **✓ Lager zurückbuchen** — geht nur einmal
+
+**4. Belege nacherfassen** — an der **Signatur-Kasse** (Einzelaufzeichnungspflicht)
+1. Pro händischem Beleg: **Beleg-Nr.**, **Belegdatum**, **Bar/Bankomat**
+2. Zeilen **Artikelgruppe + Betrag** (Steuer kommt aus der Gruppe, änderbar)
+3. **Enter** bzw. ✓ Nacherfassen → eigener signierter Bon mit Vermerk
+   „Nacherfassung Messe-Beleg Nr. … vom …". Nr. zählt automatisch weiter.
+4. Bar-Belege erhöhen den Kassenstand dieser Kasse → Messe-Bargeld einlegen
+   oder danach als Entnahme buchen.
+
+Im Buchhaltungs-Export zählt das **Belegdatum** (nicht der Tag der Nacherfassung).
+Ein falsch erfasster Beleg wird im Bon-Journal storniert und kann dann neu erfasst werden.
+
+**5. Messe-Abschluss** — 🖨 Messe-Abschluss drucken und zu den Durchschriften legen:
+Belege von–bis, bar/Bankomat, Lager je Zeile, Abgleich Belegsumme ↔ Strichliste-Wert.
+
+Ein Messe-**Auftrag** entsteht bewusst nicht — der Umsatz kommt allein über die Belege.

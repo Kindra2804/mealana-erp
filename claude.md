@@ -565,6 +565,14 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-10-08: Kasse-Punkte 1–3 (Geräte-Sperre, Artikelgruppe für Divers, Papier-Messe)
+
+Details siehe `.claude/memory/project_kasse_naechste_punkte.md`. Migrationen 201–202.
+- **Signatur-Kasse an Gerät gebunden** (Punkt 3): stiller K1-Fallback in `ArbeitsplatzService::aktuelleKasseId()` entfernt (Ursache: K3-Laptop lief nach Login als K1 → unsignierte Belege). Neue **IP-basierte Geräte-Sperre** `geraetePruefung()`: Host aus `kassen.bfr_url` = das Gerät — Signatur-Kasse nur von dort, dieses Gerät nur als seine Signatur-Kasse. Neu-Binden per Manager-PIN, IP-Wechsel über bestehendes "BFR-URL ändern". Klicktest ✅.
+- **Artikelgruppe für Divers + Schnellwahl** (Punkt 1, Migration 201): Divers-Dialog mit Gruppen-Kacheln/Steuer-Tasten/Numpad, Mengenvorwahl wirkt jetzt; Schnellwahl-Slot = Artikel ODER Gruppen-Taste (⚙ direkt aus dem Kassenschirm); `artikel_gruppen.an_kasse_waehlbar`/`standard_steuer_prozent`; Export + Kassenabschluss buchen auf die gewählte Gruppe, echte Artikel ohne Gruppe → Hinweis statt still 4040. Klicktest ✅. **Entscheidung:** keine Kommamengen, Stück-Prinzip bleibt (Auftrag/Rechnung/Gutschrift-Mengen sind INT).
+- **Papier-Messe** (Punkt 2, Migration 202): zweite Messe-Variante neben der elektronischen Offline-Kasse — Strichliste drucken, Rückkehr mit verkauft/zurück (Schwund automatisch), händische Belege einzeln nacherfassen (signierte Bons, Gruppe + Betrag, Export auf Belegdatum), Messe-Abschluss-Blatt. Kein Messe-Auftrag (wäre doppelter Umsatz). `rueckkehr_am` sperrt doppeltes Zurückbuchen (beide Varianten). **Klicktest offen → nächste Session als Erstes.**
+- Später vorgemerkt: browserbasierte Sunmi-V2-Messekasse (Vorbild pluson.at, nur Liste laden, offline-fähig, kein Re-Import).
+
 ## Update 2026-10-07: Belege + Abschluss-Umbau (Teilrechnungen, Zahlbeleg, Rechnungskorrektur)
 
 Details siehe `.claude/memory/project_belege_abschluss.md`. Migrationen 195–200.

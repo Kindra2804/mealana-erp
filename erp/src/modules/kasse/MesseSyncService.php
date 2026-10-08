@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
+require_once __DIR__ . '/KassenService.php';
 
 class MesseSyncService
 {
@@ -25,10 +26,19 @@ class MesseSyncService
      * werden, welche Charge zurückkommt/verkauft/Schwund ist.
      * Gibt sync_id zurück — wird für Pre-Sync benötigt.
      */
-    public function umbuchungZurMesse(array $positionen, int $vonLagerId, int $nachLagerId, int $kasseId, int $benutzerId): array
+    public function umbuchungZurMesse(array $positionen, int $vonLagerId, int $nachLagerId, ?int $kasseId, int $benutzerId, string $variante = 'elektronisch'): array
     {
         if (empty($positionen)) {
             return ['erfolg' => false, 'fehler' => 'Keine Positionen übergeben.'];
+        }
+        // Papier-Messe (Strichliste + händische Belege) hat kein Gerät → keine Kasse
+        if (!in_array($variante, ['elektronisch', 'papier'], true)) {
+            return ['erfolg' => false, 'fehler' => 'Unbekannte Messe-Variante.'];
+        }
+        if ($variante === 'papier') {
+            $kasseId = null;
+        } elseif (!$kasseId) {
+            return ['erfolg' => false, 'fehler' => 'Für die elektronische Messe bitte eine Offline-Kasse wählen.'];
         }
 
         $lagerSvc = new LagerService();
@@ -39,10 +49,11 @@ class MesseSyncService
             // statt bei jedem "Umbuchung durchführen"-Klick ein neues Sync-Paket anzulegen.
             $stmtFind = $this->db->prepare("
                 SELECT id, sync_token FROM kassen_messe_sync
-                WHERE kasse_id = :kasse_id AND lager_id = :lager_id AND status = 'vorbereitet'
+                WHERE kasse_id <=> :kasse_id AND lager_id = :lager_id AND variante = :variante
+                  AND status = 'vorbereitet' AND rueckkehr_am IS NULL
                 ORDER BY id DESC LIMIT 1
             ");
-            $stmtFind->execute([':kasse_id' => $kasseId, ':lager_id' => $nachLagerId]);
+            $stmtFind->execute([':kasse_id' => $kasseId, ':lager_id' => $nachLagerId, ':variante' => $variante]);
             $bestehend = $stmtFind->fetch();
 
             if ($bestehend) {
@@ -52,12 +63,13 @@ class MesseSyncService
                 $syncToken = bin2hex(random_bytes(16));
                 $stmt = $this->db->prepare("
                     INSERT INTO kassen_messe_sync
-                        (kasse_id, lager_id, typ, status, artikel_count, sync_token, benutzer_id)
+                        (kasse_id, lager_id, typ, variante, status, artikel_count, sync_token, benutzer_id)
                     VALUES
-                        (:kasse_id, :lager_id, 'pre', 'vorbereitet', 0, :token, :uid)
+                        (:kasse_id, :lager_id, 'pre', :variante, 'vorbereitet', 0, :token, :uid)
                 ");
                 $stmt->execute([
                     ':kasse_id' => $kasseId,
+                    ':variante' => $variante,
                     ':lager_id' => $nachLagerId,
                     ':token'    => $syncToken,
                     ':uid'      => $benutzerId,
@@ -389,13 +401,27 @@ class MesseSyncService
      * Wichtig: pro Charge einzeln buchen (nicht pro Artikel zusammengefasst),
      * sonst würde die Rückbuchung die Chargen-Zuordnung im Lagerbestand zerstören.
      */
-    public function rueckkehrVerarbeiten(int $syncId, array $rueckgabe, array $schwund, int $vonLagerId, int $nachLagerId, int $benutzerId): array
+    public function rueckkehrVerarbeiten(int $syncId, array $rueckgabe, array $schwund, int $vonLagerId, int $nachLagerId, int $benutzerId,
+                                         array $strich = [], array $freitext = []): array
     {
         $sync = $this->getSyncById($syncId);
         if (!$sync) return ['erfolg' => false, 'fehler' => 'Sync nicht gefunden.'];
+        if ($sync['rueckkehr_am'] !== null) {
+            return ['erfolg' => false, 'fehler' => 'Diese Messe wurde bereits zurückgebucht (' . date('d.m.Y H:i', strtotime($sync['rueckkehr_am'])) . ').'];
+        }
+
+        // Papier-Messe: verkauft kommt von der Strichliste, Schwund ist der Rest
+        // (mit − verkauft − zurück) und wird HIER berechnet — der vom Client
+        // mitgeschickte Schwund wird ignoriert.
+        $istPapier = $sync['variante'] === 'papier';
 
         $lagerSvc  = new LagerService();
         $schluessel = fn($artId, $charge) => $artId . '|' . ($charge ?? '');
+
+        $strichIdx = [];
+        foreach ($strich as $s) {
+            $strichIdx[$schluessel((int)$s['artikel_id'], $s['charge'] ?? null)] = (float)$s['menge'];
+        }
 
         $rueckIdx  = [];
         foreach ($rueckgabe as $r) {
@@ -415,6 +441,15 @@ class MesseSyncService
                 $key          = $schluessel($artId, $charge);
                 $mengeRueck   = $rueckIdx[$key]   ?? 0.0;
                 $mengeSchwund = $schwundIdx[$key] ?? 0.0;
+                $mengeStrich  = null;
+                if ($istPapier) {
+                    $mengeStrich  = $strichIdx[$key] ?? 0.0;
+                    $mengeSchwund = round((float)$umb['menge_raus'] - $mengeStrich - $mengeRueck, 3);
+                    if ($mengeSchwund < 0) {
+                        throw new RuntimeException('Zählfehler bei „' . $umb['bezeichnung'] . '“'
+                            . ($charge ? ' (Charge ' . $charge . ')' : '') . ': verkauft + zurück ist mehr als mitgenommen.');
+                    }
+                }
 
                 // Rücklagerung: Messe-Lager → Hauptlager (gleiche Charge!)
                 if ($mengeRueck > 0) {
@@ -465,10 +500,41 @@ class MesseSyncService
                 // Umbuchungs-Zeile aktualisieren
                 $this->db->prepare("
                     UPDATE kassen_messe_umbuchungen
-                    SET menge_rueck = :rueck, menge_schwund = :schwund
+                    SET menge_rueck = :rueck, menge_schwund = :schwund, menge_strich = :strich
                     WHERE id = :id
-                ")->execute([':rueck' => $mengeRueck, ':schwund' => $mengeSchwund, ':id' => $umb['id']]);
+                ")->execute([':rueck' => $mengeRueck, ':schwund' => $mengeSchwund, ':strich' => $mengeStrich, ':id' => $umb['id']]);
             }
+
+            // Freitext-Zeilen der Strichliste (Info-Liste, keine Lager-/Umsatzbuchung)
+            if ($istPapier && $freitext) {
+                $stmtFt = $this->db->prepare("
+                    INSERT INTO kassen_messe_freitext (sync_id, bezeichnung, artikel_gruppe_id, menge, einzelpreis, zugabe)
+                    VALUES (:sync_id, :bez, :gruppe, :menge, :preis, :zugabe)
+                ");
+                foreach ($freitext as $ft) {
+                    $bez = trim((string)($ft['bezeichnung'] ?? ''));
+                    if ($bez === '') continue;
+                    $zugabe = !empty($ft['zugabe']);
+                    $stmtFt->execute([
+                        ':sync_id' => $syncId,
+                        ':bez'     => mb_substr($bez, 0, 300),
+                        ':gruppe'  => (int)($ft['artikel_gruppe_id'] ?? 0) ?: null,
+                        ':menge'   => max(1, (int)($ft['menge'] ?? 1)),
+                        ':preis'   => $zugabe ? 0 : max(0, round((float)($ft['einzelpreis'] ?? 0), 2)),
+                        ':zugabe'  => $zugabe ? 1 : 0,
+                    ]);
+                }
+            }
+
+            // Rückkehr erledigt — gegen doppeltes Zurückbuchen (beide Varianten).
+            // Papier-Messe hat keinen Post-Sync, wird daher hier abgeschlossen.
+            $this->db->prepare("
+                UPDATE kassen_messe_sync
+                SET rueckkehr_am = NOW(),
+                    status = IF(variante = 'papier', 'abgeschlossen', status),
+                    abgeschlossen_am = COALESCE(abgeschlossen_am, IF(variante = 'papier', NOW(), NULL))
+                WHERE id = :id
+            ")->execute([':id' => $syncId]);
 
             Logger::log('messe.rueckkehr', 'kassen_messe_sync', $syncId, [
                 'rueckgabe_positionen' => count($rueckgabe),
@@ -482,6 +548,143 @@ class MesseSyncService
             $this->db->rollBack();
             return ['erfolg' => false, 'fehler' => $e->getMessage()];
         }
+    }
+
+    // ── Papier-Messe: händische Belege nacherfassen ──────────────────────────
+
+    /**
+     * Ein händischer Messe-Beleg wird als eigener, signierter Kassen-Bon erfasst
+     * (Einzelaufzeichnungspflicht). Zeilen = Artikelgruppe + Betrag + Steuersatz,
+     * also Divers-Positionen ohne artikel_id → keine Lagerbuchung (das Lager läuft
+     * über die Strichliste). Signiert wird jetzt, Belegdatum/-Nr. werden am Bon
+     * gespeichert; der Buchhaltungs-Export bucht auf das Belegdatum.
+     *
+     * $zeilen: [{artikel_gruppe_id, betrag, steuer_prozent}]
+     */
+    public function belegNacherfassen(int $syncId, int $kasseId, int $lagerId, string $belegNr, string $belegDatum,
+                                      string $zahlungsart, array $zeilen, int $benutzerId): array
+    {
+        $sync = $this->getSyncById($syncId);
+        if (!$sync || $sync['variante'] !== 'papier') {
+            return ['erfolg' => false, 'fehler' => 'Papier-Messe nicht gefunden.'];
+        }
+        $belegNr = trim($belegNr);
+        if ($belegNr === '' || mb_strlen($belegNr) > 30) {
+            return ['erfolg' => false, 'fehler' => 'Bitte die Belegnummer des händischen Belegs angeben.'];
+        }
+        $datum = DateTime::createFromFormat('Y-m-d', $belegDatum);
+        if (!$datum || $datum->format('Y-m-d') !== $belegDatum || $belegDatum > date('Y-m-d')) {
+            return ['erfolg' => false, 'fehler' => 'Ungültiges Belegdatum.'];
+        }
+        if (!in_array($zahlungsart, ['bar', 'karte_extern'], true)) {
+            return ['erfolg' => false, 'fehler' => 'Zahlart muss bar oder Bankomat sein.'];
+        }
+
+        // Stornierte Nacherfassungen zählen nicht — der Beleg darf dann neu erfasst werden
+        $stmtDup = $this->db->prepare("SELECT bon_nr FROM kassen_bons WHERE messe_sync_id = ? AND handbeleg_nr = ? AND storniert = 0");
+        $stmtDup->execute([$syncId, $belegNr]);
+        if ($dup = $stmtDup->fetchColumn()) {
+            return ['erfolg' => false, 'fehler' => "Beleg Nr. $belegNr ist bereits nacherfasst (Bon $dup)."];
+        }
+
+        $gruppen = [];
+        foreach ((new KassenService())->getKassenGruppen() as $g) {
+            $gruppen[(int)$g['id']] = $g['name'];
+        }
+
+        $positionen = [];
+        $summe      = 0.0;
+        foreach ($zeilen as $z) {
+            $gruppeId = (int)($z['artikel_gruppe_id'] ?? 0);
+            $betrag   = round((float)($z['betrag'] ?? 0), 2);
+            $satz     = (float)($z['steuer_prozent'] ?? 20);
+            if ($betrag <= 0) continue;
+            if (!isset($gruppen[$gruppeId])) {
+                return ['erfolg' => false, 'fehler' => 'Bitte für jede Zeile eine Artikelgruppe wählen.'];
+            }
+            if (!in_array($satz, [0.0, 10.0, 13.0, 20.0], true)) {
+                return ['erfolg' => false, 'fehler' => 'Ungültiger Steuersatz.'];
+            }
+            $positionen[] = [
+                'artikel_id'         => null,
+                'artikel_gruppe_id'  => $gruppeId,
+                'bezeichnung'        => $gruppen[$gruppeId] . ' (Messe)',
+                'menge'              => 1,
+                'einzelpreis_brutto' => $betrag,
+                'steuer_prozent'     => $satz,
+                'rabatt_prozent'     => 0,
+            ];
+            $summe += $betrag;
+        }
+        if (!$positionen) {
+            return ['erfolg' => false, 'fehler' => 'Der Beleg hat keine Zeile mit Betrag.'];
+        }
+        $summe = round($summe, 2);
+
+        $notiz = 'Nacherfassung Messe-Beleg Nr. ' . $belegNr . ' vom ' . $datum->format('d.m.Y')
+               . ' (Messe-Nr. ' . $syncId . ')';
+
+        $ergebnis = (new KassenService())->erstelleBon([
+            'kasse_id'      => $kasseId,
+            'lager_id'      => $lagerId,
+            'zahlungsart'   => $zahlungsart,
+            'bruttobetrag'  => $summe,
+            'gegeben'       => $zahlungsart === 'bar' ? $summe : null,
+            'rueckgeld'     => $zahlungsart === 'bar' ? 0 : null,
+            'karten_betrag' => $zahlungsart === 'karte_extern' ? $summe : null,
+            'notiz'         => $notiz,
+        ], $positionen, $benutzerId);
+
+        if (!$ergebnis['erfolg']) {
+            return $ergebnis;
+        }
+
+        $this->db->prepare("
+            UPDATE kassen_bons SET messe_sync_id = :sid, handbeleg_nr = :nr, handbeleg_datum = :dat WHERE id = :id
+        ")->execute([':sid' => $syncId, ':nr' => $belegNr, ':dat' => $belegDatum, ':id' => $ergebnis['bon_id']]);
+
+        Logger::log('messe.beleg_nacherfasst', 'kassen_bons', (int)$ergebnis['bon_id'], [
+            'messe_sync_id' => $syncId, 'handbeleg_nr' => $belegNr, 'betrag' => $summe,
+        ], $benutzerId);
+
+        return $ergebnis + ['summe' => $summe];
+    }
+
+    /** Nacherfasste Belege einer Papier-Messe (nicht stornierte + Stornos zur Info). */
+    public function getNacherfassteBelege(int $syncId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, bon_nr, handbeleg_nr, handbeleg_datum, zahlungsart, bruttobetrag,
+                   storniert, rksv_signatur IS NOT NULL AS signiert, erstellt_am
+            FROM kassen_bons
+            WHERE messe_sync_id = ?
+            ORDER BY handbeleg_datum, CAST(handbeleg_nr AS UNSIGNED), handbeleg_nr
+        ");
+        $stmt->execute([$syncId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Wert laut Strichliste (verkauft × aktueller Standard-VK) + Freitext — für den Abgleich mit den Belegen. */
+    public function getStrichlistenWert(int $syncId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(u.menge_strich * COALESCE(
+                       (SELECT ap.brutto_vk FROM artikel_preise ap
+                        INNER JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
+                        WHERE ap.artikel_id = u.artikel_id
+                          AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
+                          AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= CURDATE())
+                        ORDER BY ap.gueltig_ab DESC LIMIT 1), 0)), 0)
+            FROM kassen_messe_umbuchungen u WHERE u.sync_id = ?
+        ");
+        $stmt->execute([$syncId]);
+        $lager = round((float)$stmt->fetchColumn(), 2);
+
+        $stmt = $this->db->prepare("SELECT COALESCE(SUM(menge * einzelpreis), 0) FROM kassen_messe_freitext WHERE sync_id = ? AND zugabe = 0");
+        $stmt->execute([$syncId]);
+        $freitext = round((float)$stmt->fetchColumn(), 2);
+
+        return ['lager' => $lager, 'freitext' => $freitext, 'gesamt' => round($lager + $freitext, 2)];
     }
 
     // ── Hilfs-Abfragen ────────────────────────────────────────────────────────
@@ -525,6 +728,33 @@ class MesseSyncService
         return $stmt->fetchAll();
     }
 
+    /** Zurückgebuchte Papier-Messen (zuletzt zuerst) — Einstieg für Belege nacherfassen / Abschluss. */
+    public function getZurueckgebuchtePapierMessen(int $limit = 15): array
+    {
+        return $this->db->query("
+            SELECT s.*, l.name AS lager_name,
+                   (SELECT COUNT(*) FROM kassen_bons b WHERE b.messe_sync_id = s.id AND b.storniert = 0) AS beleg_count,
+                   (SELECT COALESCE(SUM(b.bruttobetrag), 0) FROM kassen_bons b WHERE b.messe_sync_id = s.id AND b.storniert = 0) AS beleg_summe
+            FROM kassen_messe_sync s
+            LEFT JOIN lager l ON l.id = s.lager_id
+            WHERE s.variante = 'papier' AND s.rueckkehr_am IS NOT NULL
+            ORDER BY s.rueckkehr_am DESC
+            LIMIT " . max(1, $limit)
+        )->fetchAll();
+    }
+
+    /** Papier-Messen, die vorbereitet, aber noch nicht zurückgebucht sind (Strichliste druckbar). */
+    public function getOffenePapierMessen(): array
+    {
+        return $this->db->query("
+            SELECT s.*, l.name AS lager_name
+            FROM kassen_messe_sync s
+            LEFT JOIN lager l ON l.id = s.lager_id
+            WHERE s.variante = 'papier' AND s.rueckkehr_am IS NULL
+            ORDER BY s.erstellt_am DESC
+        ")->fetchAll();
+    }
+
     /** Post-gesynct (Bons hochgeladen), aber noch nicht zurückgebucht — für die "Von Messe zurück"-Seite. */
     public function getSyncsFuerRueckkehr(): array
     {
@@ -533,7 +763,8 @@ class MesseSyncService
             FROM kassen_messe_sync s
             LEFT JOIN lager l ON l.id = s.lager_id
             LEFT JOIN kassen k ON k.id = s.kasse_id
-            WHERE s.status = 'abgeschlossen'
+            WHERE s.rueckkehr_am IS NULL
+              AND (s.status = 'abgeschlossen' OR s.variante = 'papier')
             ORDER BY s.erstellt_am DESC
         ");
         return $stmt->fetchAll();
