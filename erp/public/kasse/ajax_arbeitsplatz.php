@@ -24,6 +24,12 @@ switch ($aktion) {
         echo json_encode($svc->waehle($modus, $_POST, $sid));
         break;
 
+    // ── Signatur-Gerät per Manager-PIN wieder an seine Kasse binden ─────────────
+    // POST: aktion, manager_pin — welche Kasse, bestimmt der Server allein über die IP
+    case 'signatur_geraet_binden':
+        echo json_encode($svc->bindeSignaturGeraet($_POST['manager_pin'] ?? '', $sid));
+        break;
+
     // ── Kollision per Manager-PIN übernehmen ────────────────────────────────────
     // POST: aktion, arbeitsplatz_id, manager_pin, token (kann leer sein)
     case 'kollision_uebernehmen':

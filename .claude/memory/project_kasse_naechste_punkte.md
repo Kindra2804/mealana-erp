@@ -1,15 +1,41 @@
 ---
 name: project_kasse_naechste_punkte
-description: "Jackys Punkte für die nächste Session (gemerkt 2026-10-07): Schnellwahl/Divers→Artikelgruppe, Offline-Kasse neu denken, Signatur-Kassen-Identität absichern — der Reihe nach im Detail durchgehen"
+description: "Jackys Kasse-Punkte (gemerkt 2026-10-07): 1. Schnellwahl/Divers→Artikelgruppe (Konzept 2026-10-08 abgenommen), 2. Offline-Kasse neu, 3. Signatur-Kassen-Identität absichern — der Reihe nach, erst besprechen, dann bauen"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: ce935b6f-35b1-4ca0-b892-e5d9bc80d6a2
+  modified: 2026-10-08T18:35:03.052Z
 ---
 
-Gemerkt am 2026-10-07 abends, Jacky will diese Punkte beim nächsten Mal **der Reihe nach im Detail** durchgehen (erst besprechen, nicht vorab bauen):
+Gemerkt am 2026-10-07 abends, Jacky will diese Punkte **der Reihe nach im Detail** durchgehen (erst besprechen, nicht vorab bauen):
 
-1. **Schnellwahltasten + Divers an der Kasse** brauchen eine Zuweisungsmöglichkeit für die **Artikelgruppe/Produktgruppe** (Erlöskonto in der Buchhaltung). Nur gemerkt, Details offen.
-2. **Offline-Kasse komplett neu überdenken** — Jacky hat eine Idee mit einem **vorbereiteten Auftrag** (statt des heutigen Messe-Sync-Pakets, siehe [[project_kassen_verwaltung]]).
+1. **Schnellwahl + Divers → Artikelgruppe** — ✅ KONZEPT ABGENOMMEN 2026-10-08, Bau offen:
+   - Divers-Dialog neu: Gruppen als **Kacheln** (dynamisch aus `artikel_gruppen`, neue Gruppen erscheinen automatisch, Kacheln umbrechen), Bezeichnung = Gruppenname vorbelegt aber per Tastatur änderbar, Steuer vorbelegt (aus Gruppe) aber änderbar, **eigenes Numpad** für den Preis.
+   - Speichern: neue Spalte `kassen_bon_positionen.artikel_gruppe_id`, hat im Buchhaltungs-Export Vorrang vor dem 99-9999-Fallback (heute landet jeder Divers fix auf 4040).
+   - `artikel_gruppen` bekommt `an_kasse_waehlbar` (Versand/Mahngebühr/Gutschein/Partner ausblenden) + `standard_steuer_prozent` (z.B. Hefte/Bücher 10 %), pflegbar in Buchhaltung → Artikelgruppen.
+   - Schnellwahl-Slot: Typ **Artikel ODER Gruppe**; Gruppen-Taste öffnet Divers-Dialog mit Gruppe/Bezeichnung/Steuer vorbelegt → nur Preis tippen.
+   - **Mengenvorwahl** (Numpad + "× Mal") muss auch für Divers/Gruppen-Taste gelten — heute ignoriert `divHinzufuegen()` sie (fix Menge 1). `getMenge()` nimmt heute nur ganze Zahlen (parseInt) → **Jacky 2026-10-08: Kommamengen sauber mitbauen** (Weitergabe an andere Firmen geplant), für alle Artikel, nicht nur Divers.
+   - Im Warenkorb bleibt der Preis änderbar (bestehender `preisOverride()`: Zeile wählen, Preis tippen).
+   - Schnellwahl-Konfig existiert (Einstellungen → Kassen → Bearbeiten → Karte unten, bei neuer Kasse ausgeblendet), Jacky fand sie nicht → ⚙-Link neben "SCHNELLWAHL" im Kassenschirm (nur mit Einstellungsrecht).
+   - Gleich mit lösen: Export füllt Artikel OHNE Gruppe stillschweigend mit der Divers-Gruppe (COALESCE) — Dev-DB 3.803 Artikel ohne Gruppe → Hinweis im Export statt still 4040.
+   - Offline-Kasse (`kasse_bon_offline.js`) analog — hängt an Punkt 2.
+2. **Offline-Kasse komplett neu überdenken** — Konzept-Richtung 2026-10-08 (Jackys Idee, von Claude befürwortet): **Variante "Papier-Messe"** NEBEN der bisherigen elektronischen Messekasse (pro Messe wählbar):
+   - Hauptkasse bucht wie bisher ins Messe-Lager → daraus **druckbare Strichliste** (Artikel/Variante/Charge/Preis/mitgenommen, Stricherl-Kästchen, Spalte "zurück") + leere Freitext-Zeilen (Bezeichnung/Gruppe/Preis/Zugabe 0 €).
+   - Vor Ort: händische Belege mit Durchschrift, kein Strom/Internet. Grund: AT-RKSV über Nacherfassung (§131b Abs 2 BAO), in D keine Belegpflicht + kein elektronisches System → keine TSE-Frage.
+   - Rückkehr: Mengen von der Strichliste eingeben (Basis: bestehendes `rueckkehrVerarbeiten()` Mengen-Modus) → **daraus entsteht der Auftrag** (verkauft + Freitext + Schwund 0 €, Info "Belege Nr x–y", Zahlart-Aufteilung bar/Bankomat) → über RKSV/Bankomat abrechnen, Rest zurück ins Hauptlager.
+   - OFFEN: Jacky klärt mit Steuerberater ob Sammel-Nacherfassung (ein Auftrag) reicht oder jeder händische Beleg einzeln nacherfasst werden muss (Claude-Einschätzung: eher einzeln).
+   - Android/Sunmi V2 als Browser-Offline-Client wäre technisch möglich (bestehender JS/IndexedDB-Client), bewusst zurückgestellt. Heute: Sunmi V2 getrennt vom System, Artikel mühsam händisch gepflegt.
+   - Jacky 2026-10-08: **Einzelaufzeichnungspflicht gilt** → bisherige Praxis (ein Auftrag "Belege x–y") war falsch; Rückkehr-Screen muss Belege einzeln erfassen (Nr, Betrag, Zahlart, ggf. Steuersatz).
+   - **Später (hinten angestellt):** zweites Gleis = kleine Web-Oberfläche für Sunmi V2 (Vorbild pluson.at von BONit), Login, holt Messe-Liste (Artikel/Preise/Bestand) **nur in eine Richtung**, KEIN Re-Import; Rücklagern manuell wie bei Papier (Fallback wenn Akku/Netz/Papier weg). Sunmi-Drucker (57 mm) ist auf den Geräten als normaler Android-Drucker eingerichtet → normaler Browser-Druckbefehl reicht (Jacky 2026-10-08; pluson ist auch browserbasiert). Jacky freut sich besonders auf "offline-fähig sobald Liste geladen" (PWA/Service Worker), in D = elektronisches System → TSE-Frage wieder offen, also eher nur AT-Messen.
+   - Alter Stand siehe [[project_kassen_verwaltung]].
 3. **Absicherung der Kassen mit Signatur:** Jacky hat es mehrmals geschafft, die **K3 (mit Signatur) als K1 laufen zu lassen** — darf nicht möglich sein. Kassen-Identität/Arbeitsplatz-Bindung prüfen, siehe [[project_rksv_bfr]].
+   - **Ursache gefunden 2026-10-08:** `ArbeitsplatzService::aktuelleKasseId()` fällt bei ungebundener Session still auf **Kasse 1** zurück (solange K1 kein BFR hat). Nach Login (session_regenerate_id) ist die Session ungebunden, bis kasse/index.php per JS den localStorage-Token schickt → wer direkt/zu schnell in bon.php landet, ist K1 → unsignierter Beleg. Zusätzlich: K1 ist frei wählbar, Laptop kann K1-Token im localStorage haben.
+   - Bau-Reihenfolge (Jacky ok 2026-10-08): 3A → 3B → Punkt 1 → Punkt 2.
+   - ✅ **3A gebaut 2026-10-08** (nicht committed, Klicktest offen): Fallback raus (ArbeitsplatzService), kasse/index.php zeigt ohne Bindung keine Kacheln ("Arbeitsplatz wird erkannt …"), kasse_arbeitsplatz.js lädt nach Bindung neu bzw. zeigt Fehler statt still weiterzulaufen. Restlücke für 3B: Laptop mit K1-Token im localStorage bleibt K1.
+   - 3A Klicktest von Jacky ✅ 2026-10-08 (privates Fenster bietet keine Kasse an, nur Arbeitsplätze — gewollt).
+   - ✅ **3B gebaut 2026-10-08** (nicht committed, Klicktest offen) — **IP-basierte Geräte-Sperre** statt Browser-BFR-Abfrage (CORS blockt, Proxy-Skript zu fragil): Host aus `kassen.bfr_url` = das Gerät. Regel 1: Signatur-Kasse nur von dieser IP. Regel 2: diese IP nur als ihre Signatur-Kasse. `ArbeitsplatzService::geraetePruefung()` greift in aktuelleKasseId(), pruefeZustand() (Status 'gesperrt') und waehle(). Am Signatur-Gerät Neu-Binden per Manager-PIN (`bindeSignaturGeraet`, Kasse kommt nur aus IP). IP-Änderung = bestehendes "BFR-URL ändern" (Recht kasse.verwaltung), Hinweis dort ergänzt. localhost/::1/::ffff: normalisiert. Logik-Test 7/7 ok. Nur Kassenseiten betroffen — Laptop bleibt als ERP/Packplatz nutzbar (Jacky-Anforderung).
+   - Vorschlag: (A) Fallback auf K1 ersatzlos streichen, ungebunden → immer Bindungs-Screen; (B) Geräte-Gegenprobe beim Kassenstart: Browser fragt lokalen BFR `GET 127.0.0.1:8787/state` (RN=Kassen-ID, SC=Signaturkarte) — antwortet ein BFR, muss die Session an genau diese RKSV-Kasse gebunden sein, sonst Sperre. Windows-Hardware-ID / C:\BFR-Ordner sind aus dem Browser NICHT lesbar (Sandbox) → BFR /state ist der einzige Hardware-Anker ohne Zusatzsoftware. CORS/Proxy prüfen (offline-JS nutzt obBfrProxyFetch).
 
 **Why:** Kasse ist RKSV-relevant (falsche Kassen-ID = falsche Signaturkette), Divers/Schnellwahl ohne Gruppe landen falsch im Export.
-**How to apply:** Bei "was als Nächstes" diese drei Punkte zuerst anbieten, Reihenfolge 1→2→3, jeweils erst Konzept mit Jacky.
+**How to apply:** Reihenfolge 1→2→3, jeweils erst Konzept mit Jacky; Punkt 1 ist besprochen und kann gebaut werden.

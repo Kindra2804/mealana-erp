@@ -47,6 +47,20 @@ class ArbeitsplatzRepository
         ")->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * RKSV-aktive Kassen mit hinterlegter BFR-Adresse — Grundlage der Geräte-Sperre
+     * (ArbeitsplatzService::geraetePruefung): der Host aus bfr_url IST das Gerät.
+     */
+    public function findBfrKassen(): array
+    {
+        return $this->db->query("
+            SELECT k.id, k.name, k.kasse_nr, k.bfr_url
+            FROM kassen k
+            WHERE k.aktiv = 1 AND k.bfr_aktiv_seit IS NOT NULL
+              AND k.bfr_url IS NOT NULL AND k.bfr_url <> ''
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function insert(array $daten): int
     {
         $stmt = $this->db->prepare("

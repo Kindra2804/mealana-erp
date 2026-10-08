@@ -29,16 +29,33 @@ function apPruefeZustand() {
     fetch(window.BASE_PATH + '/kasse/ajax_arbeitsplatz.php?' + params.toString())
         .then(function (r) { return r.json(); })
         .then(function (d) {
-            if (d.status === 'unbekannt') {
+            if (d.status === 'gesperrt') {
+                apZeigeGesperrt(d);
+            } else if (d.status === 'unbekannt') {
                 apZeigeAuswahl(d.kassen);
             } else if (d.status === 'kollision') {
                 apZeigeKollision(d.arbeitsplatz, d.andere_session);
+            } else if (d.status === 'gebunden' && !window.AP_KASSE_GEBUNDEN) {
+                // Seite wurde noch ohne Kasse gerendert (Session war ungebunden, z.B.
+                // direkt nach dem Login) — die Bindung steht jetzt, also neu laden.
+                // Nur bei Kassen-Arbeitsplätzen, sonst Endlos-Reload (Lager/Büro haben keine Kasse).
+                if (d.arbeitsplatz && d.arbeitsplatz.kasse_id) {
+                    location.reload();
+                } else {
+                    apWarteText('Dieser Arbeitsplatz („' + ((d.arbeitsplatz && d.arbeitsplatz.name) || '?') + '“) ist keine Kasse.');
+                }
             }
-            // status === 'gebunden' -> nichts zu tun, normale Seite bleibt sichtbar
         })
         .catch(function () {
-            // Netzwerkfehler beim Start blockiert die Kasse nicht — einfach normal weiterlaufen lassen
+            // Bewusst NICHT still weiterlaufen: ohne erkannte Kasse darf nicht kassiert werden
+            // (früher landete man so auf Kasse 1, siehe ArbeitsplatzService::aktuelleKasseId()).
+            apWarteText('Arbeitsplatz konnte nicht erkannt werden (keine Verbindung zum Server). Bitte Seite neu laden.');
         });
+}
+
+function apWarteText(text) {
+    var el = document.getElementById('ap-warte');
+    if (el) el.textContent = text;
 }
 
 // ── Auswahl-Screen ───────────────────────────────────────────────────────────
@@ -98,6 +115,49 @@ function apAuswahlBestaetigen() {
         })
         .catch(function () {
             apZeigeFehler('ap-fehler', 'Netzwerkfehler — bitte erneut versuchen.');
+        });
+}
+
+// ── Geräte-Sperre (siehe ArbeitsplatzService::geraetePruefung) ───────────────
+function apZeigeGesperrt(d) {
+    document.getElementById('ap-gesperrt-text').textContent = d.meldung;
+    apWarteText(d.meldung);
+    // Nur am Signatur-Gerät selbst kann neu gebunden werden — an einem fremden
+    // Gerät gibt's nichts zu "reparieren", dort bleibt nur der Hinweis.
+    var binden = d.grund === 'signatur_geraet' && d.bfr_kasse;
+    document.getElementById('ap-gesperrt-binden').style.display = binden ? 'block' : 'none';
+    document.getElementById('ap-gesperrt-btn').style.display    = binden ? 'inline-block' : 'none';
+    if (binden) {
+        document.getElementById('ap-gesperrt-kasse').textContent = d.bfr_kasse.name + ' (' + d.bfr_kasse.kasse_nr + ')';
+        document.getElementById('ap-gesperrt-pin').value = '';
+        apZeigeFehler('ap-gesperrt-fehler', '');
+    }
+    apOverlayZeigen('ap-ov-gesperrt');
+}
+
+function apSignaturGeraetBinden() {
+    var pin = document.getElementById('ap-gesperrt-pin').value.trim();
+    if (!/^\d{4,6}$/.test(pin)) {
+        apZeigeFehler('ap-gesperrt-fehler', 'PIN muss 4-6 Ziffern haben.');
+        return;
+    }
+
+    var form = new FormData();
+    form.append('aktion', 'signatur_geraet_binden');
+    form.append('manager_pin', pin);
+
+    fetch(window.BASE_PATH + '/kasse/ajax_arbeitsplatz.php', { method: 'POST', body: form })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.erfolg) {
+                localStorage.setItem(AP_TOKEN_KEY, d.geraete_token);
+                location.reload();
+            } else {
+                apZeigeFehler('ap-gesperrt-fehler', d.fehler || 'Unbekannter Fehler.');
+            }
+        })
+        .catch(function () {
+            apZeigeFehler('ap-gesperrt-fehler', 'Netzwerkfehler — bitte erneut versuchen.');
         });
 }
 

@@ -21,7 +21,7 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
     <img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS" style="width:110px;height:auto;display:block">
   </div>
   <div style="font-size:16px;color:#888;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:12px">
-    <span><?= htmlspecialchars($kasseInfo['name'] ?? 'Hauptkasse') ?> · <?= date('d.m.Y') ?></span>
+    <span><?= htmlspecialchars($kasseInfo['name'] ?? 'Keine Kasse zugeordnet') ?> · <?= date('d.m.Y') ?></span>
     <?php if ($istMesse): ?>
       <span style="font-size:12px;font-weight:700;padding:3px 12px;border-radius:12px;background:#fff3e0;color:#e67e22;letter-spacing:.5px">MESSEBETRIEB</span>
     <?php else: ?>
@@ -30,6 +30,14 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
   </div>
 </div>
 
+<?php if ($aktuelleKasseId === null): ?>
+<!-- Noch keine Kasse gebunden: KEINE Kacheln zeigen, sonst könnte man vor Abschluss
+     der Arbeitsplatz-Erkennung (kasse_arbeitsplatz.js) schon in bon.php landen.
+     Die JS-Erkennung lädt die Seite neu, sobald die Bindung steht. -->
+<div id="ap-warte" style="max-width:520px;margin:0 auto;text-align:center;padding:24px;background:#fff;border-radius:12px;color:#64748b;font-size:15px">
+  Arbeitsplatz wird erkannt …
+</div>
+<?php else: ?>
 <div class="ks-kacheln" style="max-width:900px;margin:0 auto">
 
   <a href="<?= BASE_PATH ?>/kasse/bon.php" class="ks-kachel">
@@ -69,6 +77,7 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
   </a>
 
 </div>
+<?php endif; ?>
 
 <div style="text-align:center;margin-top:28px">
   <a href="<?= BASE_PATH ?>/start.php" style="color:#444;font-size:13px;text-decoration:none">→ Startseite</a>
@@ -115,6 +124,25 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
   </div>
 </div>
 
+<!-- Geräte-Sperre: Signatur-Kasse am falschen Gerät / Signatur-Gerät als falsche Kasse -->
+<div id="ap-ov-gesperrt" class="ks-overlay">
+  <div class="ks-overlay-box">
+    <div class="ks-overlay-titel">🔒 Kasse an diesem Gerät gesperrt</div>
+    <p id="ap-gesperrt-text" style="margin:0 0 16px;font-size:14px"></p>
+    <div id="ap-gesperrt-binden" style="display:none">
+      <p style="font-size:13px;margin:0 0 8px">Dieses Gerät mit Manager-PIN wieder als <strong id="ap-gesperrt-kasse"></strong> verbinden:</p>
+      <input type="password" id="ap-gesperrt-pin" inputmode="numeric" pattern="\d{4,6}" maxlength="6"
+             placeholder="PIN" autocomplete="off" class="ks-input" style="max-width:140px;text-align:center;letter-spacing:6px">
+      <div id="ap-gesperrt-fehler" class="ks-feedback fehler" style="display:none;margin-top:8px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+      <a href="<?= BASE_PATH ?>/start.php" style="font-size:12px;color:#64748b;text-decoration:none">→ Zur ERP-Startseite</a>
+      <button type="button" id="ap-gesperrt-btn" class="ks-btn ks-btn-primary" style="display:none" onclick="apSignaturGeraetBinden()">Verbinden</button>
+    </div>
+  </div>
+</div>
+
+<script>window.AP_KASSE_GEBUNDEN = <?= $aktuelleKasseId !== null ? 'true' : 'false' ?>;</script>
 <script src="<?= BASE_PATH ?>/js/kasse_arbeitsplatz.js"></script>
 
 <?php require_once __DIR__ . '/shell_bottom.php'; ?>

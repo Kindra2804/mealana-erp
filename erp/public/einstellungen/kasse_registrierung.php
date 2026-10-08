@@ -68,6 +68,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
         Das kann hier korrigiert werden, ohne eine neue Registrierung zu starten — Kassen-ID,
         Umsatzzähler und Aktiv-seit-Stichtag bleiben dabei unverändert.
     </p>
+    <p style="font-size:13px;margin:0 0 12px">
+        <strong>Geräte-Sperre:</strong> Die IP-Adresse in der BFR-URL bestimmt auch, an welchem Gerät
+        diese Kasse kassieren darf — und dass dieses Gerät nur als diese Kasse läuft. Nach einem
+        Modem-/Netzwechsel genügt es, hier die neue Adresse einzutragen.
+    </p>
     <form method="post" action="kasse_registrierung_speichern.php" style="display:flex;gap:8px;align-items:flex-end">
         <input type="hidden" name="kasse_id" value="<?= $id ?>">
         <input type="hidden" name="aktion" value="bfr_url_aendern">

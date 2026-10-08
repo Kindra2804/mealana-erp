@@ -35,15 +35,21 @@ class ArbeitsplatzService
      *   status='unbekannt'  → kein/unbekannter Token, Auswahl-Screen zeigen (Feld 'kassen')
      *   status='kollision'  → Arbeitsplatz erkannt, aber woanders noch aktiv (Feld 'andere_session')
      *   status='gebunden'   → alles ok, Session ist an den Arbeitsplatz gebunden
+     *   status='gesperrt'   → Geräte-Sperre greift (Felder 'grund', 'meldung', 'bfr_kasse'),
+     *                         siehe geraetePruefung() — VOR Auswahl/Bindung geprüft
      */
     public function pruefeZustand(?string $token, string $sessionId): array
     {
-        $token = $token !== null ? trim($token) : '';
-        if ($token === '') {
-            return $this->auswahlZustand();
+        $token        = $token !== null ? trim($token) : '';
+        $arbeitsplatz = $token !== '' ? $this->repo->findByToken($token) : null;
+
+        $sperre = $this->geraetePruefung(
+            $arbeitsplatz && $arbeitsplatz['kasse_id'] !== null ? (int)$arbeitsplatz['kasse_id'] : null
+        );
+        if ($sperre) {
+            return ['status' => 'gesperrt'] + $sperre;
         }
 
-        $arbeitsplatz = $this->repo->findByToken($token);
         if (!$arbeitsplatz) {
             // Token verweist auf nichts (mehr) — z.B. Arbeitsplatz wurde deaktiviert
             return $this->auswahlZustand();
@@ -86,6 +92,10 @@ class ArbeitsplatzService
             }
             if ($this->repo->findByKasseId($kasseId)) {
                 return ['erfolg' => false, 'fehler' => 'Diese Kasse ist bereits einem anderen Gerät zugeordnet.'];
+            }
+            $sperre = $this->geraetePruefung($kasseId);
+            if ($sperre) {
+                return ['erfolg' => false, 'fehler' => $sperre['meldung']];
             }
 
             $token = self::generiereToken();
@@ -203,23 +213,141 @@ class ArbeitsplatzService
     }
 
     /**
-     * kasse_id für die aktuelle PHP-Session — Ersatz für die bisher hart codierte
-     * `getKasse(1)`. Ohne gebundenen Arbeitsplatz gibt's einen Fallback auf Kasse 1
-     * NUR wenn die (noch) kein aktives BFR hat — sonst wäre ein völlig unbekanntes
-     * Gerät in der Lage, unter der Identität/Signaturkarte einer fremden,
-     * RKSV-registrierten Kasse Belege zu erzeugen. Gibt's dafür keinen sicheren
-     * Fallback, liefert die Methode NULL — der Aufrufer MUSS das behandeln
-     * (auf kasse/index.php umleiten), nicht einfach mit Kasse 1 weitermachen.
+     * kasse_id für die aktuelle PHP-Session — NULL, solange die Session an keinen
+     * Kassen-Arbeitsplatz gebunden ist. Der Aufrufer MUSS das behandeln (auf
+     * kasse/index.php umleiten, dort stellt kasse_arbeitsplatz.js die Bindung her).
+     *
+     * Bis 2026-10-08 gab es hier einen stillen Fallback auf Kasse 1 (solange K1 kein
+     * BFR hatte). Nach jedem Login ist die Session aber kurz ungebunden (neue
+     * Session-ID) — wer in diesem Moment in bon.php landete, kassierte auf dem
+     * Signatur-Laptop (K3) unbemerkt als K1 → unsignierte Belege. Daher: kein
+     * Fallback mehr, jede Kasse wird ausdrücklich über den Arbeitsplatz bestimmt.
      */
     public function aktuelleKasseId(): ?int
     {
         $kasseId = $this->repo->findKasseIdFuerSession(session_id());
-        if ($kasseId !== null) {
-            return $kasseId;
+        // Geräte-Sperre (siehe geraetePruefung): falsches Gerät = keine Kasse →
+        // Aufrufer leitet auf kasse/index.php um, dort wird der Grund angezeigt.
+        if ($kasseId !== null && $this->geraetePruefung($kasseId) !== null) {
+            return null;
+        }
+        return $kasseId;
+    }
+
+    // ── Geräte-Sperre für Signatur-Kassen (RKSV) ─────────────────────────────
+    //
+    // Der Server ruft den BFR einer Signatur-Kasse unter kassen.bfr_url auf (z.B.
+    // http://10.0.0.40:8787). Der Host darin IST also das physische Kassen-Gerät.
+    // Daraus folgen zwei Regeln, geprüft anhand der IP, von der die Anfrage kommt:
+    //   1. Eine Signatur-Kasse darf nur von ihrem BFR-Gerät aus kassieren.
+    //   2. Ein BFR-Gerät darf nur als SEINE Signatur-Kasse kassieren (nie als K1).
+    // Ändert sich die IP (Modemtausch, neue Range), reicht es, unter Einstellungen →
+    // Kassen → RKSV-Registrierung die BFR-URL anzupassen (Recht kasse.verwaltung).
+    // Browser-seitig (localStorage, Hardware-ID, C:\BFR) ist das nicht lösbar: der
+    // Browser darf weder den BFR direkt fragen (CORS) noch Geräte-Infos lesen.
+
+    /**
+     * NULL = alles ok. Sonst ['grund' => 'falsches_geraet'|'signatur_geraet',
+     * 'meldung' => Text, 'bfr_kasse' => die Signatur-Kasse dieses Geräts oder NULL].
+     */
+    public function geraetePruefung(?int $kasseId): ?array
+    {
+        $bfrKassen = $this->repo->findBfrKassen();
+        $ip        = self::clientIp();
+
+        // Regel 2: steht hier ein BFR-Gerät, muss es als genau diese Kasse laufen
+        $hier = $this->bfrKasseFuerIp($bfrKassen, $ip);
+        if ($hier && (int)$hier['id'] !== $kasseId) {
+            return [
+                'grund'     => 'signatur_geraet',
+                'meldung'   => 'Dieses Gerät ist die Signatur-Kasse „' . $hier['name'] . '“ (' . $hier['kasse_nr'] . ') — '
+                             . 'ein Start als andere Kasse ist nicht möglich.',
+                'bfr_kasse' => $hier,
+            ];
         }
 
-        $hauptkasse = $this->kassenService->getKasse(1);
-        return ($hauptkasse && $hauptkasse['bfr_aktiv_seit'] === null) ? 1 : null;
+        // Regel 1: eine Signatur-Kasse nur von ihrem BFR-Gerät aus
+        foreach ($bfrKassen as $k) {
+            if ((int)$k['id'] === $kasseId && !self::ipPasstZuBfrUrl($ip, $k['bfr_url'])) {
+                return [
+                    'grund'     => 'falsches_geraet',
+                    'meldung'   => 'Die Signatur-Kasse „' . $k['name'] . '“ kann nur an ihrem eigenen Gerät betrieben werden ('
+                                 . (parse_url($k['bfr_url'], PHP_URL_HOST) ?: $k['bfr_url']) . ', dieses Gerät: ' . $ip . '). '
+                                 . 'Hat sich die IP geändert (z.B. Modemtausch), bitte unter Einstellungen → Kassen → RKSV-Registrierung die BFR-URL anpassen.',
+                    'bfr_kasse' => null,
+                ];
+            }
+        }
+        return null;
+    }
+
+    private function bfrKasseFuerIp(array $bfrKassen, string $ip): ?array
+    {
+        foreach ($bfrKassen as $k) {
+            if (self::ipPasstZuBfrUrl($ip, $k['bfr_url'])) {
+                return $k;
+            }
+        }
+        return null;
+    }
+
+    /** IP der aktuellen Anfrage, IPv6-Schreibweisen von localhost/IPv4 vereinheitlicht. */
+    private static function clientIp(): string
+    {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        if ($ip === '::1') {
+            return '127.0.0.1';
+        }
+        if (str_starts_with($ip, '::ffff:')) {
+            return substr($ip, 7);
+        }
+        return $ip;
+    }
+
+    private static function ipPasstZuBfrUrl(string $ip, string $bfrUrl): bool
+    {
+        $host = parse_url($bfrUrl, PHP_URL_HOST);
+        if (!$host || $ip === '') {
+            return false;
+        }
+        $host = trim($host, '[]');
+        if (in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
+            // BFR läuft am Server-PC selbst → nur lokale Anfragen sind "dieses Gerät"
+            return $ip === '127.0.0.1';
+        }
+        if (!filter_var($host, FILTER_VALIDATE_IP)) {
+            $host = gethostbyname($host);   // Rechnername statt IP in bfr_url
+        }
+        return $host === $ip;
+    }
+
+    /**
+     * Signatur-Gerät hat seine Bindung verloren (Browser-Speicher geleert, anderer
+     * Browser, oder versehentlich als andere Kasse gewählt): mit Manager-PIN wieder
+     * an SEINE Signatur-Kasse binden. Welche Kasse das ist, bestimmt allein die IP —
+     * nie ein Parameter vom Client.
+     */
+    public function bindeSignaturGeraet(string $pin, string $sessionId): array
+    {
+        $manager = Auth::pruefeManagerPin($pin);
+        if (!$manager) {
+            return ['erfolg' => false, 'fehler' => 'PIN ungültig.'];
+        }
+
+        $hier = $this->bfrKasseFuerIp($this->repo->findBfrKassen(), self::clientIp());
+        if (!$hier) {
+            return ['erfolg' => false, 'fehler' => 'Dieses Gerät ist keiner Signatur-Kasse zugeordnet.'];
+        }
+
+        $token = $this->bindeAnKasseBeiBfrAbschluss((int)$hier['id'], self::generiereToken(), $sessionId);
+
+        Logger::log('manager_override', 'kassen', (int)$hier['id'], [
+            'freigegeben_von' => $manager['id'],
+            'kontext'         => 'signatur_geraet_neu_binden',
+            'ip'              => self::clientIp(),
+        ]);
+
+        return ['erfolg' => true, 'geraete_token' => $token];
     }
 
     /** UUID v4, exakt CHAR(36)-kompatibel. */
