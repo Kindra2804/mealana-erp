@@ -86,7 +86,7 @@ Umsatz kommt **nur aus Belegen** — Kassenbon, Rechnung, Rechnungskorrektur/Sto
 - Zahlbeleg an der Kasse (offene Rechnung bar bezahlt) bzw. Rückzahlung einer Anzahlung: Kassa gegen Kundenkonto, 0 % — die Umsatzsteuer steht schon auf der Rechnung.
 - Versandkosten: eigener Erlös (Artikelgruppe "Versandkosten") mit dem Steuersatz der überwiegenden Leistung.
 - Mahngebühren (Rechnungskunden, Verkauf → Mahnwesen): beim Versand der Mahnung als Forderung — Kundenkonto an Erlöskonto **4890 Mahngebühren** (Artikelgruppe "Mahngebühren", 0 % — nicht umsatzsteuerbar). Erlassene Gebühr wird am Erlassdatum zurückgebucht. Die Kontonummer 4890 ist ein Vorschlag — bitte mit dem Steuerberater abstimmen.
-- Gutscheine laufen über das Anzahlungskonto **3230**: Verkauf = Anzahlung (keine USt), Einlösung = Zahlung vom Konto 3230. Bei Online-Aufträgen wird die Einlösung als 3230 gegen Kundenkonto gebucht.
+- Gutscheine laufen über das Anzahlungskonto **3230**: Verkauf = Anzahlung (keine USt), Einlösung = Zahlung vom Konto 3230. Bei Online-Aufträgen wird die Einlösung als 3230 gegen Kundenkonto gebucht. Kassen-Retoure mit **Erstattung als Gutschein** = Erlös- und USt-Minderung direkt gegen 3230.
 - Gemischte Zahlung an der Kasse (Bar + Karte oder Gutschein + Rest): Der Bon wird **anteilig** aufgeteilt — jede Warengruppe im Verhältnis der Zahlungsanteile auf Kassa, Bank und 3230. Bei Bar + Karte zählt nur der Baranteil abzüglich Rückgeld.
 - Kasse-Aufträge und importierte JTL-Altaufträge sind nicht nochmal im Export (Kassenumsatz steckt schon in den Bons, JTL-Altdaten wurden damals in JTL gebucht).
 

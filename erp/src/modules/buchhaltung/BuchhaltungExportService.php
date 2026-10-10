@@ -90,6 +90,9 @@ class BuchhaltungExportService
     /** Konto-Zeile aus zahlungsart_konten, oder null + Hinweis wenn nicht direkt buchbar. */
     private function zahlungsartKonto(string $zahlungsart): ?array
     {
+        // Kassen-Retoure "Erstattung als Gutschein": statt Geld bekommt der Kunde einen
+        // Gutschein -> Erlösminderung gegen das Gutschein-Konto (3230, Verbindlichkeit)
+        if ($zahlungsart === 'gutschein_ausgabe') $zahlungsart = 'gutschein';
         $stmt = $this->db->prepare("
             SELECT zk.hinweis, k.kontonummer, k.name
             FROM zahlungsart_konten zk
@@ -169,6 +172,9 @@ class BuchhaltungExportService
             LEFT JOIN artikel a       ON a.id  = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id, CASE WHEN bp.artikel_id IS NULL THEN {$diversesGruppeId} END)
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND COALESCE(bp.block, '') <> 'zahlung'
+              -- Erstattung als Gutschein: die Gutschein-Zeile ist die Gegenbuchung auf 3230
+              -- (über die Zahlart), nicht nochmal als eigener Gutschein-Verkauf buchen
+              AND NOT (b.zahlungsart = 'gutschein_ausgabe' AND COALESCE(bp.block, '') = 'gutschein_verkauf')
               AND NOT (" . self::GEMISCHT_BEDINGUNG . ")
               AND COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
             GROUP BY datum, b.kasse_id, messe_id, b.zahlungsart, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ce935b6f-35b1-4ca0-b892-e5d9bc80d6a2
-  modified: 2026-10-10T17:31:34.192Z
+  modified: 2026-10-10T17:38:47.816Z
 ---
 
 ## Klicktest 2026-10-10 (Messe Nr. 2 auf Dev): Schritt 1–2 ok, 2 Funde behoben (nicht committed)
@@ -14,7 +14,7 @@ metadata:
 - Weiter mit Schritt 3 (Belege) ab Doppel-Ablehnung, dann 4–5.
 - Ebenfalls behoben: Bon-Druck (80mm + A4) zeigt "Nacherfassung Messe-Beleg Nr. X vom ..." (handbeleg_nr); LagerService warenausgang/warenSchwund/warenausgangKasse loggen Vorher/Nachher jetzt chargengenau (Auslauf-Prüfung weiter mit Gesamtbestand). Alte Dev-Bewegungen von Messe Nr. 2 bleiben falsch.
 - **Abgelehnt von Jacky 2026-10-10:** VK-Preis beim Umbuchen einfrieren (over-engineered: Messe nutzt eh Aktions-/Messepreise, Abschluss-Differenz ist nur Info) und Bargeld-Zählung bei Rückkehr (Messe-Kassa bezahlt auch Quartier/Sprit/Verpflegung, wird später buchhalterisch umgebucht → Zählung wäre immer zu wenig). Nicht wieder vorschlagen.
-- Klicktest Papier-Messe von Jacky ✅ 2026-10-10. Danach gebaut (nicht committed): Export-Tageslosung je Tag×Kasse×Messe, Belegnr = Bon-Spanne (bonBereiche/nummernSpanne in BuchhaltungExportService), Messe-Belege eigene Losung am Belegdatum; Z-Bon (sammleAbschlussDaten → 'nacherfassungen', abschluss_druck + abschluss_mail) Abschnitt "Davon Nacherfassungen" + "Eigene Kassenbelege"; Bug Bankomat-Bon → Spiegel-Auftrag 'gemischt' behoben (Migration 204 enum 'karte' + Altdaten-UPDATE). Offener Altfund: Bon-Zahlart 'gutschein_ausgabe' (K3 02.10.) ohne Konto im Export.
+- Klicktest Papier-Messe von Jacky ✅ 2026-10-10. Danach gebaut (nicht committed): Export-Tageslosung je Tag×Kasse×Messe, Belegnr = Bon-Spanne (bonBereiche/nummernSpanne in BuchhaltungExportService), Messe-Belege eigene Losung am Belegdatum; Z-Bon (sammleAbschlussDaten → 'nacherfassungen', abschluss_druck + abschluss_mail) Abschnitt "Davon Nacherfassungen" + "Eigene Kassenbelege"; Bug Bankomat-Bon → Spiegel-Auftrag 'gemischt' behoben (Migration 204 enum 'karte' + Altdaten-UPDATE). Altfund 'gutschein_ausgabe' (Kassen-Retoure "Erstattung als Gutschein") behoben 2026-10-10: zahlungsartKonto mappt auf 'gutschein' (3230), gutschein_verkauf-Zeile dieser Bons wird nicht zusätzlich gebucht → Erlös+USt im Soll gegen 3230 (nach Commit 22c5a7c, nicht committed).
 - Gebaut 2026-10-10: optionales Feld "Begründung Differenz" im Messe-Abschluss (Migration 203 auf Dev → beim Live-Deploy mit 201+202 mitnehmen; js/kasse_messe_abschluss.js, ajax 'differenz_begruendung', Druck nur wenn ausgefüllt), beide Handbücher.
 
 ## ⏭️ NÄCHSTE SESSION (Jacky 2026-10-08): ALS ERSTES Klicktest Papier-Messe (Punkt 2)
