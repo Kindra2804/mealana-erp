@@ -104,6 +104,7 @@ $zahlungsArtLabels = [
     'paypal'      => ['label' => 'PayPal',      'class' => 'sc-aktion'],
     'rechnung'    => ['label' => 'Rechnung',  'class' => 'sc-fehlbest'],
     'bar'         => ['label' => 'Bar',    'class' => 'chip-aktiv'],
+    'karte'       => ['label' => 'Karte',  'class' => 'chip-aktiv'],
     'gutschein'   => ['label' => 'Gutschein',    'class' => 'sc-ohnekat'],
     'gemischt'    => ['label' => 'Gemischt',    'class' => 'sc-ohnekat'],
 ];

@@ -188,6 +188,33 @@ function esc(string $v): string { return htmlspecialchars($v); }
   </tfoot>
 </table>
 
+<!-- NACHERFASSUNGEN (Papier-Messe) -->
+<?php $nf = $daten['nacherfassungen'] ?? []; if ($nf): ?>
+<?php $nfSumme = array_sum(array_column($nf, 'brutto')); ?>
+<h2>Davon Nacherfassungen (Papier-Messe)</h2>
+<table>
+  <thead><tr><th>Messe</th><th>Belegdatum</th><th>Hand-Belege</th><th>Bons</th><th class="r">Bar</th><th class="r">Karte</th><th class="r">Summe</th></tr></thead>
+  <tbody>
+    <?php foreach ($nf as $n): ?>
+    <tr>
+      <td>Nr. <?= (int)$n['messe_sync_id'] ?></td>
+      <td><?= date('d.m.Y', strtotime($n['handbeleg_datum'])) ?></td>
+      <td><?= (int)$n['anzahl'] ?> (Nr. <?= esc($n['belege']) ?>)</td>
+      <td style="font-size:9pt"><?= esc($n['bon_nr_von']) ?><?= $n['bon_nr_bis'] !== $n['bon_nr_von'] ? ' – ' . esc($n['bon_nr_bis']) : '' ?></td>
+      <td class="r"><?= eur($n['bar']) ?></td>
+      <td class="r"><?= eur($n['karte']) ?></td>
+      <td class="r"><?= eur($n['brutto']) ?></td>
+    </tr>
+    <?php endforeach; ?>
+  </tbody>
+  <tfoot>
+    <tr><td colspan="6">Summe Nacherfassungen</td><td class="r"><?= eur($nfSumme) ?></td></tr>
+    <tr><td colspan="6">Eigene Kassenbelege dieses Tages (Umsatz gesamt − Nacherfassungen)</td><td class="r"><?= eur($umsatzGes - $nfSumme) ?></td></tr>
+  </tfoot>
+</table>
+<p style="font-size:8.5pt;color:#475569;margin:4px 0 0">Nacherfassungen sind im Umsatz oben enthalten (heute signiert), werden in der Buchhaltung aber zum Belegdatum gebucht.</p>
+<?php endif; ?>
+
 <!-- STEUERAUFSTELLUNG -->
 <?php if (!empty($st)): ?>
 <h2>Steueraufstellung</h2>

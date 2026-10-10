@@ -144,6 +144,11 @@ if (!empty($bon['gutschein_id'])) {
   <span>Kasse:</span>
   <span><?= htmlspecialchars($bon['kasse_nr'] ?? 'K1') ?></span>
 </div>
+<?php if (!empty($bon['handbeleg_nr'])): // Papier-Messe: Nacherfassung eines händischen Belegs (§131b BAO) ?>
+<div class="linie"></div>
+<div class="zentriert fett">NACHERFASSUNG</div>
+<div class="zentriert">Messe-Beleg Nr. <?= htmlspecialchars($bon['handbeleg_nr']) ?> vom <?= date('d.m.Y', strtotime($bon['handbeleg_datum'])) ?></div>
+<?php endif; ?>
 <?php if ($bon['kunden_id']): ?>
 <div class="pos-zeile">
   <span>Kd.-ID:</span>

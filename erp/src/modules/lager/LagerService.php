@@ -286,7 +286,11 @@ class LagerService
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Warenausgang'];
         }
 
-        $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
+        // Vorher/Nachher im Bewegungslog: bei Charge der Bestand DIESER Charge
+        // (wie beim Wareneingang), sonst der Gesamtbestand im Lager
+        $bestandVorher  = $charge !== null
+            ? $this->repo->getBestand($artikelId, $lagerId, $charge)
+            : $this->repo->getTotalBestand($artikelId, $lagerId);
         $this->repo->reduziereBestand($artikelId, $lagerId, $menge, $charge);
         $bestandNachher = max(0.0, $bestandVorher - $menge);
 
@@ -305,7 +309,7 @@ class LagerService
             'benutzer_id'     => $data['benutzer_id'] ?? null,
         ]);
 
-        $this->pruefAuslaufartikelStatus($artikelId, $bestandNachher);
+        $this->pruefAuslaufartikelStatus($artikelId, $this->repo->getTotalBestand($artikelId, $lagerId));
 
         Logger::log('warenausgang.buchen', 'lagerbestand', $bewegungId, [
             'artikel_id'      => $artikelId,
@@ -334,7 +338,11 @@ class LagerService
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Schwundbuchung'];
         }
 
-        $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
+        // Vorher/Nachher im Bewegungslog: bei Charge der Bestand DIESER Charge
+        // (wie beim Wareneingang), sonst der Gesamtbestand im Lager
+        $bestandVorher  = $charge !== null
+            ? $this->repo->getBestand($artikelId, $lagerId, $charge)
+            : $this->repo->getTotalBestand($artikelId, $lagerId);
         $this->repo->reduziereBestand($artikelId, $lagerId, $menge, $charge);
         $bestandNachher = max(0.0, $bestandVorher - $menge);
 
@@ -380,7 +388,9 @@ class LagerService
             return ['erfolg' => false, 'fehler' => 'Ungültige Daten für Warenausgang'];
         }
 
-        $bestandVorher  = $this->repo->getTotalBestand($artikelId, $lagerId);
+        $bestandVorher  = $charge !== null
+            ? $this->repo->getBestand($artikelId, $lagerId, $charge)
+            : $this->repo->getTotalBestand($artikelId, $lagerId);
         $this->repo->reduziereBestandKasse($artikelId, $lagerId, $menge, $charge);
         $bestandNachher = $bestandVorher - $menge; // kein max(0,...) — erlaubt negativ
 
@@ -399,7 +409,7 @@ class LagerService
             'benutzer_id'     => $data['benutzer_id'] ?? null,
         ]);
 
-        $this->pruefAuslaufartikelStatus($artikelId, $bestandNachher);
+        $this->pruefAuslaufartikelStatus($artikelId, $this->repo->getTotalBestand($artikelId, $lagerId));
 
         Logger::log('kasse.warenausgang', 'lagerbestand', $bewegungId, [
             'artikel_id'      => $artikelId,

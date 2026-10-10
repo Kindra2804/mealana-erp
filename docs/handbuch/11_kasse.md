@@ -195,7 +195,7 @@ Zeigt den aktuellen Stand ohne Abschluss — gut für Zwischenkontrollen.
 1. Kasse → **Kassensturz**
 2. **Zählhilfe:** Scheine und Münzen einzeln eingeben → Summe wird berechnet
 3. → **Z-Bon erstellen** — echter Tagesabschluss
-4. Z-Bon wird gedruckt (Zusammenfassung des Tages)
+4. Z-Bon wird gedruckt (Zusammenfassung des Tages). Wurden an diesem Tag Papier-Messe-Belege nacherfasst, zeigt er sie im Abschnitt **Davon Nacherfassungen** (Messe, Belegdatum, Hand-Beleg-Nr., bar/Karte) plus „Eigene Kassenbelege dieses Tages“ — im Buchhaltungs-Export stehen sie am Belegdatum.
 5. Eintrag ins Kassenbuch
 
 > **Nach dem Z-Bon:** Restgeld im Kassenfach lassen (Wechselgeld für nächsten Tag). Überschuss entnehmen.
@@ -278,5 +278,6 @@ Ein falsch erfasster Beleg wird im Bon-Journal storniert und kann dann neu erfas
 
 **5. Messe-Abschluss** — 🖨 Messe-Abschluss drucken und zu den Durchschriften legen:
 Belege von–bis, bar/Bankomat, Lager je Zeile, Abgleich Belegsumme ↔ Strichliste-Wert.
+Die Differenz wird nicht gebucht (Umsatz = Belege) — sie ist nur Info. Woher sie kommt (z.B. "Messe-Rabatt 10 %"), kann im Feld **Begründung Differenz** festgehalten werden — freiwillig, wird nur gedruckt wenn ausgefüllt.
 
 Ein Messe-**Auftrag** entsteht bewusst nicht — der Umsatz kommt allein über die Belege.

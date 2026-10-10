@@ -4,6 +4,9 @@ require_once __DIR__ . '/../../src/modules/kasse/MesseSyncService.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
 
 header('Content-Type: application/json; charset=utf-8');
+// Warnungen nur ins Log — eine ausgegebene Warnung macht das JSON kaputt, der
+// Browser meldet dann "Netzwerkfehler", obwohl der Bon längst gespeichert ist.
+ini_set('display_errors', '0');
 
 $aktion = $_POST['aktion'] ?? $_GET['aktion'] ?? '';
 $svc    = new MesseSyncService();
@@ -89,6 +92,16 @@ switch ($aktion) {
             (string)($_POST['beleg_datum'] ?? ''),
             (string)($_POST['zahlungsart'] ?? ''),
             json_decode($_POST['zeilen'] ?? '[]', true) ?: [],
+            $uid
+        ));
+        break;
+
+    // ── Papier-Messe: Begründung der Differenz (optional) ────────────────────
+    // POST: aktion, sync_id, text
+    case 'differenz_begruendung':
+        echo json_encode($svc->differenzBegruendungSpeichern(
+            (int)($_POST['sync_id'] ?? 0),
+            (string)($_POST['text'] ?? ''),
             $uid
         ));
         break;

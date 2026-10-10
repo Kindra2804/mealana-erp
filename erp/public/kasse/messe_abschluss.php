@@ -70,7 +70,8 @@ $fmtD = fn($d) => $d ? date('d.m.Y', strtotime($d)) : '–';
   .fuss { margin-top: 24px; display: flex; gap: 30px; }
   .fuss div { flex: 1; border-top: 1px solid #000; padding-top: 3px; font-size: 9pt; }
   .knopf { position: fixed; top: 10px; right: 10px; padding: 8px 16px; font-size: 14px; cursor: pointer; }
-  @media print { .knopf { display: none; } }
+  .nur-druck { display: none; }
+  @media print { .knopf, .nur-schirm { display: none; } .nur-druck { display: block; } }
 </style>
 </head>
 <body>
@@ -95,6 +96,19 @@ $fmtD = fn($d) => $d ? date('d.m.Y', strtotime($d)) : '–';
   <div><span>Differenz Belege − Liste</span><strong>€ <?= $fmt($summeGesamt - $wert['gesamt']) ?></strong></div>
 </div>
 <p class="klein" style="margin:4px 0 0">Differenz = Rabatte, Zugaben, Preisänderungen oder Zählfehler. Listenwert zum aktuellen Standard-VK.</p>
+<!-- Begründung der Differenz: freiwillig, am Bildschirm bearbeitbar, im Druck nur wenn ausgefüllt -->
+<div class="nur-schirm" style="margin-top:6px">
+  <label for="diff-begruendung" class="klein">Begründung Differenz (optional):</label>
+  <div style="display:flex;gap:6px;align-items:flex-start;margin-top:2px">
+    <textarea id="diff-begruendung" maxlength="500" rows="2" style="flex:1;font:inherit;padding:4px"
+              placeholder="z.B. Messe-Rabatt 10 %, Stammkunden-Preise …"><?= htmlspecialchars($sync['differenz_begruendung'] ?? '') ?></textarea>
+    <button type="button" id="diff-speichern" data-sync-id="<?= $syncId ?>" style="padding:6px 12px;cursor:pointer">Speichern</button>
+  </div>
+  <span id="diff-status" class="klein"></span>
+</div>
+<?php if (!empty($sync['differenz_begruendung'])): ?>
+<p class="nur-druck" style="margin:4px 0 0"><strong>Begründung Differenz:</strong> <?= nl2br(htmlspecialchars($sync['differenz_begruendung'])) ?></p>
+<?php endif; ?>
 <?php endif; ?>
 
 <table style="margin-top:8px">
@@ -156,5 +170,7 @@ $fmtD = fn($d) => $d ? date('d.m.Y', strtotime($d)) : '–';
   <div>Geprüft / Unterschrift</div>
 </div>
 
+<script>window.BASE_PATH = <?= json_encode(BASE_PATH) ?>;</script>
+<script src="<?= BASE_PATH ?>/js/kasse_messe_abschluss.js"></script>
 </body>
 </html>

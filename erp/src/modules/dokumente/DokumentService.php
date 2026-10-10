@@ -464,6 +464,7 @@ class DokumentService
             'paypal'               => 'per PayPal',
             'nachnahme'            => 'per Nachnahme',
             'bar'                  => 'bar',
+            'karte'                => 'mit Karte',
             default                => 'Zahlung',
         };
     }

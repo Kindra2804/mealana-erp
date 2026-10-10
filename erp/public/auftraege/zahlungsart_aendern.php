@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $id          = (int)($_POST['id'] ?? 0);
 $zahlungsart = $_POST['zahlungsart'] ?? '';
-$erlaubt     = ['vorkasse', 'paypal', 'rechnung', 'bar', 'nachnahme', 'gutschein', 'gemischt'];
+$erlaubt     = ['vorkasse', 'paypal', 'rechnung', 'bar', 'karte', 'nachnahme', 'gutschein', 'gemischt'];
 
 if (!$id || !in_array($zahlungsart, $erlaubt, true)) {
     $_SESSION['fehler'] = 'Ungültige Anfrage.';

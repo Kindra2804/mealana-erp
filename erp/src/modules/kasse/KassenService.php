@@ -424,12 +424,13 @@ class KassenService
                 && ((float)($bonDaten['bar_betrag'] ?? 0) + (float)($bonDaten['karten_betrag'] ?? 0)) > 0;
             $aufZahlungsart = match(true) {
                 ($bonDaten['zahlungsart'] ?? 'bar') === 'bar' => 'bar',
+                ($bonDaten['zahlungsart'] ?? '') === 'karte_extern' => 'karte',
                 ($bonDaten['zahlungsart'] ?? '') === 'gutschein' && !$gsMitRest => 'gutschein',
                 default => 'gemischt',
             };
             $auftragId = null;
             if ($positionen) {
-                $kundenSnapshot = $bonDaten['kunden_id']
+                $kundenSnapshot = !empty($bonDaten['kunden_id'])
                     ? null
                     : json_encode(['name' => 'Laufkunde', 'kundennummer' => '-'], JSON_UNESCAPED_UNICODE);
                 $stmtAuf = $this->db->prepare("
@@ -446,7 +447,7 @@ class KassenService
                 ");
                 $stmtAuf->execute([
                     ':bon_nr'          => $bonNr,
-                    ':kunden_id'       => $bonDaten['kunden_id'] ?: null,
+                    ':kunden_id'       => ($bonDaten['kunden_id'] ?? null) ?: null,
                     ':kunden_snapshot' => $kundenSnapshot,
                     ':zahlungsart'     => $aufZahlungsart,
                     ':netto'           => round($netto, 2),
@@ -1130,6 +1131,37 @@ class KassenService
         $rStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
         $range = $rStmt->fetch();
 
+        // Nacherfassungen (Papier-Messe): heute signiert, gehören aber umsatzmäßig zum
+        // Belegdatum. Eigener Abschnitt, damit ein Prüfer sie mit der Export-Losung des
+        // Belegdatums (Text "Messe N Belege x–y") abgleichen kann. Sie sind in den
+        // Summen oben enthalten (RKSV: Z-Bon = alles, was die Kasse heute signiert hat).
+        $nStmt = $this->db->prepare("
+            SELECT messe_sync_id, handbeleg_datum,
+                   COUNT(*) AS anzahl,
+                   GROUP_CONCAT(handbeleg_nr ORDER BY handbeleg_nr + 0, handbeleg_nr SEPARATOR ', ') AS belege,
+                   MIN(bon_nr) AS bon_nr_von, MAX(bon_nr) AS bon_nr_bis,
+                   SUM(CASE WHEN zahlungsart = 'bar'          THEN bruttobetrag ELSE 0 END) AS bar,
+                   SUM(CASE WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END) AS karte,
+                   SUM(bruttobetrag) AS brutto
+            FROM kassen_bons
+            WHERE kasse_id = :kid AND DATE(erstellt_am) = :datum
+              AND typ = 'verkauf' AND storniert = 0 AND handbeleg_nr IS NOT NULL
+            GROUP BY messe_sync_id, handbeleg_datum
+            ORDER BY handbeleg_datum, messe_sync_id
+        ");
+        $nStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $nacherfassungen = array_map(fn($r) => [
+            'messe_sync_id'   => (int)$r['messe_sync_id'],
+            'handbeleg_datum' => $r['handbeleg_datum'],
+            'anzahl'          => (int)$r['anzahl'],
+            'belege'          => $r['belege'],
+            'bon_nr_von'      => $r['bon_nr_von'],
+            'bon_nr_bis'      => $r['bon_nr_bis'],
+            'bar'             => round((float)$r['bar'], 2),
+            'karte'           => round((float)$r['karte'], 2),
+            'brutto'          => round((float)$r['brutto'], 2),
+        ], $nStmt->fetchAll());
+
         return [
             'datum'          => $datum,
             'kassenstand'    => $kassenstand,
@@ -1138,6 +1170,7 @@ class KassenService
             'artikel_gruppen'=> $artikelGruppen,
             'bon_nr_von'     => $range['bon_nr_von'] ?? null,
             'bon_nr_bis'     => $range['bon_nr_bis'] ?? null,
+            'nacherfassungen'=> $nacherfassungen,
         ];
     }
 

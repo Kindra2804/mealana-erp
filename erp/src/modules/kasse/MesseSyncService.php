@@ -102,7 +102,7 @@ class MesseSyncService
                     'lager_id'    => $vonLagerId,
                     'menge'       => (float)$pos['menge'],
                     'charge'      => $charge,
-                    'referenz'    => 'Messe-Umbuchung Sync #' . $syncId,
+                    'referenz'    => 'Messe Nr. ' . $syncId . ': zur Messe',
                     'benutzer_id' => $benutzerId,
                 ]);
                 // Eingang ins Messe-Lager
@@ -111,7 +111,7 @@ class MesseSyncService
                     'lager_id'    => $nachLagerId,
                     'menge'       => (float)$pos['menge'],
                     'charge'      => $charge,
-                    'referenz'    => 'Messe-Umbuchung Sync #' . $syncId,
+                    'referenz'    => 'Messe Nr. ' . $syncId . ': zur Messe',
                     'benutzer_id' => $benutzerId,
                 ]);
 
@@ -458,7 +458,7 @@ class MesseSyncService
                         'lager_id'    => $vonLagerId,
                         'menge'       => $mengeRueck,
                         'charge'      => $charge,
-                        'referenz'    => 'Messe-Rückkehr Sync #' . $syncId,
+                        'referenz'    => 'Messe Nr. ' . $syncId . ': Rückbuchung',
                         'benutzer_id' => $benutzerId,
                     ]);
                     $lagerSvc->wareneingang([
@@ -466,7 +466,7 @@ class MesseSyncService
                         'lager_id'    => $nachLagerId,
                         'menge'       => $mengeRueck,
                         'charge'      => $charge,
-                        'referenz'    => 'Messe-Rückkehr Sync #' . $syncId,
+                        'referenz'    => 'Messe Nr. ' . $syncId . ': Rückbuchung',
                         'benutzer_id' => $benutzerId,
                     ]);
                 }
@@ -478,7 +478,7 @@ class MesseSyncService
                         'lager_id'    => $vonLagerId,
                         'menge'       => $mengeSchwund,
                         'charge'      => $charge,
-                        'referenz'    => 'Schwund Messe Sync #' . $syncId,
+                        'referenz'    => 'Messe Nr. ' . $syncId . ': Schwund',
                         'benutzer_id' => $benutzerId,
                     ]);
                 }
@@ -492,7 +492,7 @@ class MesseSyncService
                         'lager_id'    => $vonLagerId,
                         'menge'       => $mengeVerkauft,
                         'charge'      => $charge,
-                        'referenz'    => 'Messe-Verkäufe Sync #' . $syncId,
+                        'referenz'    => 'Messe Nr. ' . $syncId . ': verkauft',
                         'benutzer_id' => $benutzerId,
                     ]);
                 }
@@ -627,6 +627,7 @@ class MesseSyncService
         $ergebnis = (new KassenService())->erstelleBon([
             'kasse_id'      => $kasseId,
             'lager_id'      => $lagerId,
+            'kunden_id'     => null,
             'zahlungsart'   => $zahlungsart,
             'bruttobetrag'  => $summe,
             'gegeben'       => $zahlungsart === 'bar' ? $summe : null,
@@ -662,6 +663,20 @@ class MesseSyncService
         ");
         $stmt->execute([$syncId]);
         return $stmt->fetchAll();
+    }
+
+    /** Optionale Begründung der Differenz Belege ↔ Strichliste (leer = keine). */
+    public function differenzBegruendungSpeichern(int $syncId, string $text, int $benutzerId): array
+    {
+        $sync = $this->getSyncById($syncId);
+        if (!$sync || $sync['variante'] !== 'papier') {
+            return ['erfolg' => false, 'fehler' => 'Papier-Messe nicht gefunden.'];
+        }
+        $text = mb_substr(trim($text), 0, 500);
+        $this->db->prepare("UPDATE kassen_messe_sync SET differenz_begruendung = :t WHERE id = :id")
+            ->execute([':t' => $text !== '' ? $text : null, ':id' => $syncId]);
+        Logger::log('messe.differenz_begruendung', 'kassen_messe_sync', $syncId, ['text' => $text], $benutzerId);
+        return ['erfolg' => true];
     }
 
     /** Wert laut Strichliste (verkauft × aktueller Standard-VK) + Freitext — für den Abgleich mit den Belegen. */

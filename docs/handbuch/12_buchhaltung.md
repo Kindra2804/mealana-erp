@@ -80,6 +80,7 @@ Legt fest, welches Konto beim Export für welche Zahlungsart (bar, Bank, PayPal,
 Umsatz kommt **nur aus Belegen** — Kassenbon, Rechnung, Rechnungskorrektur/Stornorechnung. Ein Auftrag allein ist nur „erwarteter Umsatz" und wird nicht gebucht. MEALANA ist eine KG (Soll-Versteuerung): die Umsatzsteuer entsteht mit der Rechnung.
 
 - Kassenbons: Erlös + Umsatzsteuer sofort gegen das Zahlungsmittel-Konto (Kassa/Bank/3230).
+- Kassenbons als **Tageslosung je Kasse**: eine Zeile pro Tag × Kasse × Warengruppe × Steuersatz × Zahlart, Belegnummer = Bon-Spanne (z.B. `K1-2026-000029–000041`) — gegenrechenbar mit dem Z-Bon der Kasse. Nacherfasste Papier-Messe-Belege sind eine eigene Losung am Belegdatum (Text „Messe 2 Belege 1–13“); im Z-Bon stehen sie am Tag der Nacherfassung im Abschnitt „Davon Nacherfassungen“.
 - Rechnungen (auch Teilrechnungen, alle Zahlarten): Erlös + Umsatzsteuer zum **Rechnungsdatum** gegen das Kundenkonto (Debitor). Rechnungskorrekturen und Stornorechnungen genauso mit umgekehrtem Vorzeichen.
 - Zahlungseingänge (Überweisung, PayPal, Nachnahme …): Bank/PayPal gegen Kundenkonto, zum Buchungsdatum — bei Vorkasse also schon vor der Rechnung (Anzahlung), die Rechnung gleicht das Kundenkonto später aus.
 - Zahlbeleg an der Kasse (offene Rechnung bar bezahlt) bzw. Rückzahlung einer Anzahlung: Kassa gegen Kundenkonto, 0 % — die Umsatzsteuer steht schon auf der Rechnung.

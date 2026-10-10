@@ -730,10 +730,12 @@ class LagerRepository
             $params['charge'] = $charge;
         }
 
-        $sql .= " ORDER BY lb.erstellt_am DESC";
+        $sql .= " ORDER BY lb.erstellt_am DESC, lb.id DESC";
 
+        // 20 Rohzeilen: Umlagerungen (Ausgang+Eingang) werden in der Anzeige
+        // zu einer Zeile zusammengefasst, danach bleiben ~10 sichtbar
         if ($charge === null) {
-            $sql .= " LIMIT 10";
+            $sql .= " LIMIT 20";
         }
 
         $stmt = $this->db->prepare($sql);

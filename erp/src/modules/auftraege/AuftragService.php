@@ -757,7 +757,7 @@ class AuftragService
     /** Zahlungsweg aus der Zahlungsart des Auftrags (Standard, wenn nichts gewählt wurde). */
     private const ZAHLUNGSWEG_AUS_ZAHLUNGSART = [
         'vorkasse' => 'ueberweisung', 'rechnung' => 'ueberweisung', 'paypal' => 'paypal',
-        'bar' => 'bar', 'nachnahme' => 'nachnahme', 'gutschein' => 'gutschein',
+        'bar' => 'bar', 'karte' => 'karte', 'nachnahme' => 'nachnahme', 'gutschein' => 'gutschein',
     ];
 
     public function bucheZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, ?string $zahlungsweg = null, ?int $kassenBonId = null): array

@@ -272,6 +272,9 @@ class BonA4Renderer
     <div class="dok-nr"><?= htmlspecialchars($bon['bon_nr']) ?></div>
     <div class="dok-datum"><?= date('d.m.Y H:i', strtotime($bon['erstellt_am'])) ?> Uhr</div>
     <div class="dok-datum" style="margin-top:4px;color:#1e293b">Kasse: <?= htmlspecialchars($bon['kasse_nr'] ?? 'K1') ?></div>
+    <?php if (!empty($bon['handbeleg_nr'])): // Papier-Messe: Nacherfassung eines händischen Belegs ?>
+    <div class="dok-datum" style="margin-top:4px;color:#1e293b;font-weight:600">Nacherfassung Messe-Beleg Nr. <?= htmlspecialchars($bon['handbeleg_nr']) ?> vom <?= date('d.m.Y', strtotime($bon['handbeleg_datum'])) ?></div>
+    <?php endif; ?>
   </div>
 </div>
 

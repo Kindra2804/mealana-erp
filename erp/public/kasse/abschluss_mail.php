@@ -94,6 +94,19 @@ ob_start();
   </tbody>
 </table>
 
+<?php $nf = $daten['nacherfassungen'] ?? []; if ($nf): $nfSumme = array_sum(array_column($nf, 'brutto')); ?>
+<h2>Davon Nacherfassungen (Papier-Messe)</h2>
+<table>
+  <thead><tr><th>Messe</th><th>Belegdatum</th><th>Hand-Belege</th><th class="r">Bar</th><th class="r">Karte</th><th class="r">Summe</th></tr></thead>
+  <tbody>
+    <?php foreach ($nf as $n): ?>
+    <tr><td>Nr. <?= (int)$n['messe_sync_id'] ?></td><td><?= date('d.m.Y', strtotime($n['handbeleg_datum'])) ?></td><td><?= (int)$n['anzahl'] ?> (Nr. <?= esc($n['belege']) ?>)</td><td class="r"><?= eur($n['bar']) ?></td><td class="r"><?= eur($n['karte']) ?></td><td class="r"><?= eur($n['brutto']) ?></td></tr>
+    <?php endforeach; ?>
+    <tr class="total"><td colspan="5">Eigene Kassenbelege dieses Tages</td><td class="r"><?= eur($umsatzGes - $nfSumme) ?></td></tr>
+  </tbody>
+</table>
+<?php endif; ?>
+
 <?php if (!empty($st)): ?>
 <h2>Steueraufstellung</h2>
 <table>

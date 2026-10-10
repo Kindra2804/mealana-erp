@@ -161,6 +161,7 @@ class BuchhaltungExportService
         // Datum des händischen Belegs, nicht der Signaturzeitpunkt — richtiger USt-Monat.
         $rows = $this->db->query("
             SELECT COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) AS datum, b.zahlungsart,
+                   b.kasse_id, COALESCE(b.messe_sync_id, 0) AS messe_id,
                    ag.konto_nr, ag.name AS gruppe_name, bp.steuer_prozent,
                    SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
             FROM kassen_bon_positionen bp
@@ -170,20 +171,70 @@ class BuchhaltungExportService
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND COALESCE(bp.block, '') <> 'zahlung'
               AND NOT (" . self::GEMISCHT_BEDINGUNG . ")
               AND COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
-            GROUP BY datum, b.zahlungsart, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
+            GROUP BY datum, b.kasse_id, messe_id, b.zahlungsart, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
+            ORDER BY datum, b.kasse_id, messe_id
         ")->fetchAll();
 
+        $bereiche = $this->bonBereiche($von, $bis);
         foreach ($rows as $r) {
+            $bereich = $bereiche[$r['datum'] . '|' . $r['kasse_id'] . '|' . $r['messe_id']];
             $this->erloesZeilenAnhaengen(
                 $buchungen, $hinweise,
-                datum: $r['datum'], belegnr: 'Kasse-' . $r['datum'],
+                datum: $r['datum'], belegnr: $bereich['belegnr'],
                 erloesKonto: $r['konto_nr'], gruppeName: $r['gruppe_name'] ?? 'ohne Gruppe',
                 satz: (float)$r['steuer_prozent'], brutto: (float)$r['brutto'],
-                zahlungsart: $r['zahlungsart'], quelle: 'Kasse'
+                zahlungsart: $r['zahlungsart'], quelle: $bereich['quelle']
             );
         }
 
-        $this->gemischteBonsAufteilen($von, $bis, $diversesGruppeId, $buchungen, $hinweise);
+        $this->gemischteBonsAufteilen($von, $bis, $diversesGruppeId, $buchungen, $hinweise, $bereiche);
+    }
+
+    /**
+     * Tageslosung je Tag × Kasse × (Messe): Belegnummer = Bon-Spanne von–bis, damit ein
+     * Prüfer die Export-Zeilen mit dem Z-Bon der Kasse gegenrechnen kann. Nacherfasste
+     * Messe-Belege (Papier-Messe) bekommen eine eigene Losung mit den Handbeleg-Nummern
+     * im Text — sie stehen am Belegdatum im Export, im Z-Bon aber am Tag der Nacherfassung
+     * (dort eigener Abschnitt "Nacherfassungen").
+     *
+     * @return array<string, array{belegnr: string, quelle: string}>  Schlüssel datum|kasse_id|messe_id
+     */
+    private function bonBereiche(string $von, string $bis): array
+    {
+        $rows = $this->db->query("
+            SELECT COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) AS datum, b.kasse_id,
+                   COALESCE(b.messe_sync_id, 0) AS messe_id, k.kasse_nr,
+                   MIN(b.bon_nr) AS von_nr, MAX(b.bon_nr) AS bis_nr,
+                   GROUP_CONCAT(DISTINCT b.handbeleg_nr ORDER BY b.handbeleg_nr + 0, b.handbeleg_nr SEPARATOR ',') AS handbelege
+            FROM kassen_bons b
+            LEFT JOIN kassen k ON k.id = b.kasse_id
+            WHERE b.typ = 'verkauf' AND b.storniert = 0
+              AND COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
+            GROUP BY datum, b.kasse_id, messe_id, k.kasse_nr
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $bereiche = [];
+        foreach ($rows as $r) {
+            $kasse  = $r['kasse_nr'] ?: ('#' . $r['kasse_id']);
+            $hb     = $r['handbelege'] !== null ? explode(',', $r['handbelege']) : [];
+            $hbText = count($hb) > 1 ? reset($hb) . '–' . end($hb) : ($hb[0] ?? '');
+            $quelle = 'Kasse ' . $kasse . ($r['messe_id'] ? ' Messe ' . $r['messe_id'] . ' Belege ' . $hbText : '');
+            $bereiche[$r['datum'] . '|' . $r['kasse_id'] . '|' . $r['messe_id']] = [
+                'belegnr' => $this->nummernSpanne($r['von_nr'], $r['bis_nr']),
+                'quelle'  => $quelle,
+            ];
+        }
+        return $bereiche;
+    }
+
+    /** "K1-2026-000044" + "K1-2026-000045" → "K1-2026-000044–000045" (Belegfeld max. 36 Zeichen). */
+    private function nummernSpanne(string $von, string $bis): string
+    {
+        if ($von === $bis) return $von;
+        $praefix = substr($von, 0, (int)strrpos($von, '-') + 1);
+        return $praefix !== '' && str_starts_with($bis, $praefix)
+            ? $von . '–' . substr($bis, strlen($praefix))
+            : $von . '–' . $bis;
     }
 
     /** Kassenbon mit mehreren Zahlungsmitteln: Bar+Karte (kombi) oder Gutschein + Rest bar/Karte. */
@@ -218,10 +269,11 @@ class BuchhaltungExportService
      * Anteil bekommt den Rundungsrest, damit die Summe exakt stimmt), dann wie normale Bons
      * pro Tag × Gruppe × Satz × Zahlungsart zusammengefasst. Vorher: nur Hinweis "manuell buchen".
      */
-    private function gemischteBonsAufteilen(string $von, string $bis, int $diversesGruppeId, array &$buchungen, array &$hinweise): void
+    private function gemischteBonsAufteilen(string $von, string $bis, int $diversesGruppeId, array &$buchungen, array &$hinweise, array $bereiche): void
     {
         $bons = $this->db->query("
             SELECT b.id, b.bon_nr, COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) AS datum, b.zahlungsart, b.bruttobetrag,
+                   b.kasse_id, COALESCE(b.messe_sync_id, 0) AS messe_id,
                    b.bar_betrag, b.karten_betrag, b.gutschein_betrag, b.rueckgeld
             FROM kassen_bons b
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND (" . self::GEMISCHT_BEDINGUNG . ")
@@ -238,7 +290,7 @@ class BuchhaltungExportService
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
         ");
 
-        $summen = []; // datum|konto|gruppe|satz|zahlungsart => brutto
+        $summen = []; // datum|kasse|messe|konto|gruppe|satz|zahlungsart => brutto
         foreach ($bons as $bon) {
             $bonBrutto = (float)$bon['bruttobetrag'];
             $anteile   = $this->zahlungsAnteile($bon)['anteile'];
@@ -254,20 +306,21 @@ class BuchhaltungExportService
                         ? $rest
                         : round($gruppenBrutto * $anteile[$za] / $bonBrutto, 2);
                     $rest = round($rest - $teil, 2);
-                    $k = implode('|', [$bon['datum'], $p['konto_nr'], $p['gruppe_name'] ?? 'ohne Gruppe', (float)$p['steuer_prozent'], $za]);
+                    $k = implode('|', [$bon['datum'], $bon['kasse_id'], $bon['messe_id'], $p['konto_nr'], $p['gruppe_name'] ?? 'ohne Gruppe', (float)$p['steuer_prozent'], $za]);
                     $summen[$k] = ($summen[$k] ?? 0) + $teil;
                 }
             }
         }
 
         foreach ($summen as $k => $brutto) {
-            [$datum, $konto, $gruppe, $satz, $za] = explode('|', $k);
+            [$datum, $kasseId, $messeId, $konto, $gruppe, $satz, $za] = explode('|', $k);
+            $bereich = $bereiche[$datum . '|' . $kasseId . '|' . $messeId];
             $this->erloesZeilenAnhaengen(
                 $buchungen, $hinweise,
-                datum: $datum, belegnr: 'Kasse-' . $datum,
+                datum: $datum, belegnr: $bereich['belegnr'],
                 erloesKonto: $konto !== '' ? $konto : null, gruppeName: $gruppe,
                 satz: (float)$satz, brutto: round($brutto, 2),
-                zahlungsart: $za, quelle: 'Kasse (Kombi)'
+                zahlungsart: $za, quelle: $bereich['quelle'] . ' (Kombi)'
             );
         }
     }
@@ -511,7 +564,7 @@ class BuchhaltungExportService
         ")->fetchAll();
 
         foreach ($rows as $r) {
-            $za = self::ZAHLUNGSWEG_ZU_ZAHLUNGSART[$r['zahlungsweg'] ?? ''] ?? (in_array($r['zahlungsart'], ['rechnung', 'gemischt'], true) ? 'vorkasse' : $r['zahlungsart']);
+            $za = self::ZAHLUNGSWEG_ZU_ZAHLUNGSART[$r['zahlungsweg'] ?? ''] ?? (in_array($r['zahlungsart'], ['rechnung', 'gemischt'], true) ? 'vorkasse' : ($r['zahlungsart'] === 'karte' ? 'karte_extern' : $r['zahlungsart']));
             $zk = $this->zahlungsartKonto($za)['kontonummer'] ?? null;
             $betrag = round((float)$r['betrag'], 2);
             if (!$r['debitorennummer'] || !$zk) {
@@ -713,7 +766,7 @@ class BuchhaltungExportService
             $ueberBon = 0.0;
             foreach ($zahlungen as $z) {
                 if (!empty($z['kassen_bon_id'])) { $ueberBon += (float)$z['betrag']; continue; }
-                $za = self::ZAHLUNGSWEG_ZU_ZAHLUNGSART[$z['zahlungsweg'] ?? ''] ?? (in_array($a['zahlungsart'], ['rechnung', 'gemischt'], true) ? 'vorkasse' : $a['zahlungsart']);
+                $za = self::ZAHLUNGSWEG_ZU_ZAHLUNGSART[$z['zahlungsweg'] ?? ''] ?? (in_array($a['zahlungsart'], ['rechnung', 'gemischt'], true) ? 'vorkasse' : ($a['zahlungsart'] === 'karte' ? 'karte_extern' : $a['zahlungsart']));
                 $kn = $kontoVon($za);
                 $konten[$kn] = round(($konten[$kn] ?? 0) + (float)$z['betrag'], 2);
             }
