@@ -82,3 +82,10 @@ Belege/Abschluss-Umbau fertig + committed. Als Nächstes der Reihe nach im Detai
 
 ## Nächste Session (Jacky, 2026-10-08 festgelegt)
 Kasse-Punkte 1–3 gebaut + committed/gepusht (Punkt 1 + 3 klickgetestet). **Als Erstes: Klicktest Papier-Messe**, Ablauf in [[project_kasse_naechste_punkte]]. Danach Live-Deploy mit Migration 201+202 einplanen.
+
+## Reihenfolge bis 1.0 (Jacky, 2026-10-10 festgelegt) — ab 2026-10-11 der Reihe nach
+1. **Kassenblock abschließen:** Offline-Kasse (`kasse_bon_offline.js`, elektronische Messe-Variante) bekommt den neuen Divers-Dialog aus Kasse-Punkt 1 (Gruppen-Kacheln, Steuer-Tasten, Numpad, Mengenvorwahl, artikel_gruppe_id). Siehe [[project_kasse_naechste_punkte]].
+2. **Offline-Kasse light (Sunmi V2, Vorbild pluson.at):** ERST durchsprechen, wie Offline geht auch wenn das Gerät zwischendurch geladen wird / Browser zu ist (PWA/Service Worker, IndexedDB-Persistenz, Wiederaufnahme), dann bauen. Vorüberlegungen in [[project_kasse_naechste_punkte]] (Punkt 2 "Später").
+3. **Partner-Modul fertig machen** (Abrechnung offen), siehe [[project_partner_modul]].
+4. **Lizenzserver / Modul-Aktivieren**, siehe [[project_rechte_rollen]].
+5. **Alles durchschauen, was noch offen ist → 1.0 vorbereiten**, siehe [[project_version_1_0_release]]. Jacky-Idee: bei 1.0 auch Dev auf 1.0 heben + neuen Git-Branch beginnen — wird besprochen, wenn es soweit ist.

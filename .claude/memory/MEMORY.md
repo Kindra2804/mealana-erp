@@ -2,9 +2,9 @@
 
 ## Aktuell / Steuerung
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
-- [⏭️ Nächste Session: Klicktest Papier-Messe](project_kasse_naechste_punkte.md) — 2026-10-08 Kasse-Punkte 1–3 gebaut (Geräte-Sperre ✅, Divers-Artikelgruppe ✅, Papier-Messe Klicktest OFFEN → als Erstes)
+- [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — alles gebaut + klickgetestet 2026-10-10, committed (Migr. 201–204 für Live)
 - [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
-- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — bei "was als Nächstes" IMMER hier nachsehen
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — ⏭️ ab 2026-10-11: Kassenblock-Rest → Offline-Kasse light → Partner → Lizenz → 1.0
 - [📋 Offene Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler, Jacky testet bei echter Einrichtung
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
