@@ -125,8 +125,15 @@ class MietfachService
             $fehler[] = 'Mietbetrag muss größer als 0 sein.';
         }
 
+        // Verrechnung monatlich im Voraus (Klärung 2026-10-26): Beginn immer am Monatsersten,
+        // Ende immer am Monatsletzten — dadurch gibt es nie anteilige Monate.
         if (empty($data['mietbeginn'])) {
             $fehler[] = 'Mietbeginn ist Pflichtfeld.';
+        } elseif (!self::istMonatserster($data['mietbeginn'])) {
+            $fehler[] = 'Mietbeginn muss ein Monatserster sein (z.B. 01.' . date('m.Y', strtotime('first day of next month')) . ').';
+        }
+        if (!empty($data['mietende']) && !self::istMonatsletzter($data['mietende'])) {
+            $fehler[] = 'Mietende muss ein Monatsletzter sein.';
         }
 
         if (!empty($fehler)) {
@@ -156,20 +163,43 @@ class MietfachService
     }
 
     /**
-     * Beendet einen Mietvertrag durch Setzen des Enddatums.
-     * Wenn kein Datum angegeben, wird das heutige Datum verwendet.
+     * Beendet einen Mietvertrag (Kündigung immer zum Monatsletzten).
+     * Ohne Datum: Ende des laufenden Monats. Ein schon verrechneter Monat kann nicht
+     * mehr weggekündigt werden — dafür erst die Mietrechnung stornieren/gutschreiben.
      */
     public function vertragBeenden(array $data): array
     {
         $vertragId = (int)($data['vertrag_id'] ?? 0);
-        $mietende  = $data['mietende'] ?? date('Y-m-d');
+        $mietende  = !empty($data['mietende']) ? $data['mietende'] : date('Y-m-t');
 
         if (!$vertragId) {
             return ['erfolg' => false, 'fehler' => ['Vertrags-ID fehlt.']];
         }
+        if (!self::istMonatsletzter($mietende)) {
+            return ['erfolg' => false, 'fehler' => ['Kündigung nur zum Monatsletzten (z.B. ' . date('t.m.Y') . ').']];
+        }
+        $stmt = Database::getInstance()->prepare("SELECT MAX(periode) FROM miet_rechnungen WHERE vertrag_id = ?");
+        $stmt->execute([$vertragId]);
+        $letzte = $stmt->fetchColumn();
+        if ($letzte && $letzte > substr($mietende, 0, 7)) {
+            return ['erfolg' => false, 'fehler' => ['Der Monat ' . date('m/Y', strtotime($letzte . '-01'))
+                . ' ist schon verrechnet — Mietende frühestens ' . date('t.m.Y', strtotime($letzte . '-01'))
+                . ' (oder zuerst die Mietrechnung gutschreiben).']];
+        }
 
         $this->repo->vertragBeenden($vertragId, $mietende);
         return ['erfolg' => true];
+    }
+
+    public static function istMonatserster(string $datum): bool
+    {
+        return (bool)preg_match('/^\d{4}-\d{2}-01$/', $datum);
+    }
+
+    public static function istMonatsletzter(string $datum): bool
+    {
+        $ts = strtotime($datum);
+        return $ts !== false && date('Y-m-d', $ts) === $datum && date('t', $ts) === date('d', $ts);
     }
 
     // -------------------------------------------------------------------------

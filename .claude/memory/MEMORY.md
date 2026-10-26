@@ -42,7 +42,7 @@
 - [Zahlung+Versand ERP → Shop](project_zahlung_erp_an_shop.md) — processing/completed per Cron
 - [Konfigurator-Modul](project_konfigurator_modul.md) — Konfig-Werte auf allen Belegen
 - [Händler-Konsignation](project_haendler_konsignation.md) — Außenlager, Verkaufsmeldung → Netto-Rechnung
-- [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–3 gebaut (Stammdaten, Kasse/Bon, Partner-Konto), ⏭️ Schritt 4 Fachmiete
+- [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–4 gebaut (Stammdaten, Kasse/Bon, Partner-Konto, Fachmiete), ⏭️ Schritt 5 Export/Konten
 - [Sammelabholung](project_sammelabholung_auftraege.md) — mehrere Aufträge an Kasse, Klicktest offen
 - [Packplatz-Modul](project_packplatz.md) — fertig inkl. Teillieferung-Positions-Split
 - [PLC / EasyPak Versand](project_plc_versand.md) — Nachnahme bei Teillieferung gefixt

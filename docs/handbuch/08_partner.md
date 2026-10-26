@@ -41,20 +41,30 @@ Zeigt alle Partner mit Verkaufsart, Mietfächern, Provision (nur Kommission) und
 
 Mietfächer sind physische Einheiten (Regal, Vitrine, Tisch) im Geschäft.
 
-### Mietfach einem Partner zuweisen:
+### Fach vermieten
 
-1. Partner öffnen → Tab **Mietfächer**
-2. **"Mietfach zuweisen"**
-3. Mietfach-Nummer vergeben (z.B. "MF-01")
-4. **Mietbeginn** eingeben
-5. **Monatlicher Mietbetrag** festlegen
-6. → Speichern
+1. **Partner → Mietfächer** → beim freien Fach **Vermieten**
+2. Partner, **Mietbetrag/Monat netto**, MwSt (20 %)
+3. **Mietbeginn = immer ein Monatserster** (vorbelegt: nächster Monatserster), Mietende leer = unbefristet
+4. → Vertrag starten (hat der Partner ein Partner-Lager, wird das Fach dort sofort Lagerplatz)
 
-### Mietfach beenden:
+### Kündigen
 
-1. Partner → Tab Mietfächer → betreffendes Mietfach
-2. **"Mietverhältnis beenden"**
-3. Enddatum eingeben
+**Beenden** beim belegten Fach → Mietende ist **immer ein Monatsletzter** (vorbelegt: Ende des laufenden
+Monats). Ein schon verrechneter Monat kann nicht weggekündigt werden — dann zuerst die Mietrechnung gutschreiben.
+
+### Fachmiete verrechnen
+
+Die Fachmiete ist eine ganz normale Rechnung an den Partner — **nie** mit seinen Verkäufen verrechnet.
+Monatlich **im Voraus**: ab **2 Tage vor Monatsende** wird der Folgemonat verrechnet.
+
+- Karte **Fachmiete verrechnen** auf der Mietfächer-Seite: zeigt, was fällig ist → **Jetzt verrechnen**.
+  Läuft zusätzlich täglich automatisch (`cron/fachmiete.php`, wie das Mahnwesen).
+- Je Partner und Monat **eine Rechnung** mit einer Zeile pro Fach („Fachmiete R1-F1 · November 2026“),
+  Leistungsdatum = Monatserster, Konto 4800 (Gruppe „Fachmiete“, änderbar in Buchhaltung → Artikelgruppen).
+- Beim ersten Mal wird aus den Partnerdaten automatisch ein **Kunde** angelegt (Adresse nötig!).
+- Danach ist es ein normaler Auftrag: Rechnung mailen/drucken, **Zahlung buchen**, an der Kasse
+  „Rechnung bezahlen“, Mahnwesen — alles wie gewohnt. Verpasste Monate werden nachgeholt, nie doppelt.
 
 > Die Vertragshistorie bleibt erhalten — es ist nachvollziehbar wer wann welches Fach hatte.
 
@@ -123,7 +133,7 @@ Partner — wir verwahren es nur, daher gibt es **keine Rechnung und keine Gutsc
 - Reiter **Kontrollliste**: verkaufte Menge × EK je Artikel im Zeitraum (auch als PDF) — zum Abgleich mit
   der Rechnung des Partners. Die Rechnung selbst wird wie ein normaler Einkauf gebucht; ausgezahlt wird hier nichts.
 
-> **Noch nicht gebaut:** Fachmiete-Monatslauf und die Konten im Buchhaltungs-Export (Fremdumsatz/Spenden als Durchlauf statt Erlös).
+> **Noch nicht gebaut:** die Konten im Buchhaltungs-Export (Fremdumsatz/Spenden als Durchlauf statt Erlös).
 
 ---
 

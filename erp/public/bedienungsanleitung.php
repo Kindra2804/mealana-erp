@@ -501,7 +501,8 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Spende</strong></td><td>Durchlauf (z.B. Yarnpride), eigene Kassenlade, Liste bei der Übergabe</td></tr>
             </table>
             <p>Jeder Partner hat genau eine Verkaufsart. Ein <strong>Mietfach</strong> ist zusätzlich bei jeder Verkaufsart möglich — die Fachmiete ist immer eine eigene Rechnung, nie verrechnet. Im Partner-Formular: Adresse (steht am Bon), bei Kommission Provision % (netto) + Lieferant, bei Kleinunternehmern optional ein eigener Bon-Text.</p>
-            <p><strong>Mietfach zuweisen:</strong> Partner öffnen → Tab Mietfächer → "Mietfach zuweisen" → Nummer, Mietbeginn, Monatsbetrag → Speichern. Vertragshistorie bleibt immer erhalten.</p>
+            <p><strong>Fach vermieten:</strong> Partner → Mietfächer → <strong>Vermieten</strong> → Partner, Miete/Monat netto, <strong>Mietbeginn immer Monatserster</strong>. <strong>Kündigen</strong> immer zum Monatsletzten (ein schon verrechneter Monat nicht mehr). Vertragshistorie bleibt erhalten.</p>
+            <p><strong>Fachmiete verrechnen:</strong> normale Rechnung an den Partner, nie mit Verkäufen verrechnet, monatlich im Voraus — ab 2 Tage vor Monatsende für den Folgemonat. Karte <strong>Fachmiete verrechnen</strong> auf der Mietfächer-Seite → <strong>Jetzt verrechnen</strong> (läuft zusätzlich täglich per <code>cron/fachmiete.php</code>). Je Partner und Monat eine Rechnung, eine Zeile pro Fach, Konto 4800. Kunde wird beim ersten Mal aus den Partnerdaten angelegt (Adresse nötig). Danach wie jeder Auftrag: Zahlung buchen, Kasse „Rechnung bezahlen“, Mahnwesen.</p>
 
             <h3 id="partner-lager">Partner-Lager und Partnerware <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Partner → Name anklicken → <strong>Partner-Lager anlegen</strong>. Die gemieteten Fächer werden Lagerplätze im Lager des Partners; neue Mietverträge kommen automatisch dazu.</p>

@@ -5,6 +5,13 @@ require_once __DIR__ . '/../../src/modules/partner/MietfachService.php';
 $service = new MietfachService();
 $faecher = $service->getAllMitStatus();
 
+// Fachmiete: monatlich im Voraus, ab 2 Tage vor Monatsende für den Folgemonat (MietRechnungService)
+require_once __DIR__ . '/../../src/modules/partner/MietRechnungService.php';
+$mietSvc      = new MietRechnungService();
+$mietZiel     = $mietSvc->zielMonat();
+$mietOffen    = $mietSvc->offene();
+$mietErledigt = $mietSvc->getVerrechnet(null, 15);
+
 $pageTitle        = 'Mietfächer';
 $activeModule     = 'partner';
 $actionBarContent = <<<HTML
@@ -104,6 +111,45 @@ function masse_str(array $f): string {
     </table>
 </div>
 
+<!-- Fachmiete verrechnen (auch täglich per cron/fachmiete.php) -->
+<div class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+            <strong style="font-size:14px">Fachmiete verrechnen</strong>
+            <div style="font-size:12px;color:var(--color-text-muted)">Monatlich im Voraus — der Folgemonat ab 2 Tage vor Monatsende. Fällig bis jetzt: <strong><?= date('m/Y', strtotime($mietZiel . '-01')) ?></strong>. Je Partner und Monat eine Rechnung (Verkauf → Aufträge).</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="fachmieteVerrechnen()" <?= $mietOffen ? '' : 'disabled' ?>>Jetzt verrechnen (<?= count($mietOffen) ?>)</button>
+    </div>
+    <?php if ($mietOffen): ?>
+    <table class="erp-table" style="margin-top:10px">
+        <thead><tr><th>PARTNER</th><th style="width:160px">FACH</th><th style="width:110px">MONAT</th><th style="width:120px;text-align:right">NETTO</th></tr></thead>
+        <tbody>
+        <?php foreach ($mietOffen as $o): ?>
+            <tr><td><?= htmlspecialchars($o['vertrag']['partner_name']) ?></td>
+                <td style="font-family:monospace"><?= htmlspecialchars($o['vertrag']['fach_bezeichnung']) ?></td>
+                <td><?= date('m/Y', strtotime($o['periode'] . '-01')) ?></td>
+                <td style="text-align:right">€ <?= number_format((float)$o['vertrag']['mietbetrag_monatlich'], 2, ',', '.') ?></td></tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
+    <?php if ($mietErledigt): ?>
+    <div style="font-size:12px;font-weight:600;margin:14px 0 4px;color:var(--color-text-muted)">ZULETZT VERRECHNET</div>
+    <table class="erp-table">
+        <thead><tr><th>PARTNER</th><th style="width:160px">FACH</th><th style="width:90px">MONAT</th><th style="width:150px">RECHNUNG</th><th style="width:110px;text-align:right">BRUTTO</th><th style="width:110px">ZAHLUNG</th></tr></thead>
+        <tbody>
+        <?php foreach ($mietErledigt as $m): ?>
+            <tr><td><?= htmlspecialchars($m['partner_name']) ?></td>
+                <td style="font-family:monospace"><?= htmlspecialchars($m['fach_bezeichnung']) ?></td>
+                <td><?= date('m/Y', strtotime($m['periode'] . '-01')) ?></td>
+                <td><a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= (int)$m['auftrag_id'] ?>"><?= htmlspecialchars($m['rechnungs_nr']) ?></a></td>
+                <td style="text-align:right">€ <?= number_format((float)$m['betrag_brutto'], 2, ',', '.') ?></td>
+                <td><span class="chip"><?= htmlspecialchars($m['zahlungsstatus'] ?? '–') ?></span></td></tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
+</div>
 <!-- ================================================================
      MODAL: Fach neu anlegen
 ================================================================ -->
@@ -175,7 +221,7 @@ function masse_str(array $f): string {
                 </div>
                 <div style="display:flex;gap:10px">
                     <div style="flex:1;min-width:0">
-                        <label class="erp-label">Mietbetrag/Monat (€) *</label>
+                        <label class="erp-label">Mietbetrag/Monat netto (€) *</label>
                         <input type="number" name="mietbetrag_monatlich" id="v-preis"
                                class="erp-input" style="width:100%;box-sizing:border-box"
                                step="0.01" min="0.01" required>
@@ -189,12 +235,12 @@ function masse_str(array $f): string {
                 </div>
                 <div style="display:flex;gap:10px">
                     <div style="flex:1;min-width:0">
-                        <label class="erp-label">Mietbeginn *</label>
+                        <label class="erp-label">Mietbeginn * (Monatserster)</label>
                         <input type="date" name="mietbeginn" id="v-beginn"
                                class="erp-input" style="width:100%;box-sizing:border-box" required>
                     </div>
                     <div style="flex:1;min-width:0">
-                        <label class="erp-label">Mietende (leer = unbefristet)</label>
+                        <label class="erp-label">Mietende (Monatsletzter, leer = unbefristet)</label>
                         <input type="date" name="mietende" id="v-ende"
                                class="erp-input" style="width:100%;box-sizing:border-box">
                     </div>
@@ -226,7 +272,7 @@ function masse_str(array $f): string {
             <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px">
                 <p id="k-hinweis" style="margin:0;font-size:13px;color:#555"></p>
                 <div>
-                    <label class="erp-label">Mietende (Datum) *</label>
+                    <label class="erp-label">Mietende * (Kündigung immer zum Monatsletzten)</label>
                     <input type="date" name="mietende" id="k-datum"
                            class="erp-input" style="width:100%;box-sizing:border-box" required>
                 </div>

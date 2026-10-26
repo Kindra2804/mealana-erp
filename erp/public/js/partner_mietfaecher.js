@@ -44,11 +44,17 @@ async function fachAktualisieren(e) {
     else             { zeigeBanner(data.fehler.join(' | '), false); }
 }
 
+// Lokales Datum als JJJJ-MM-TT (toISOString würde nach UTC verschieben)
+function datumIso(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 function modalVertragOeffnen(fachId, bezeichnung, standardPreis) {
     document.getElementById('v-fach-id').value = fachId;
     document.getElementById('v-preis').value   = standardPreis > 0 ? standardPreis : '';
     document.getElementById('v-mwst').value    = '20';
-    document.getElementById('v-beginn').value  = new Date().toISOString().slice(0, 10);
+    // Mietbeginn immer Monatserster, Mietende immer Monatsletzter (monatlich im Voraus verrechnet)
+    document.getElementById('v-beginn').value  = datumIso(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1));
     document.getElementById('v-ende').value    = '';
     document.getElementById('v-notiz').value   = '';
     document.getElementById('v-partner').value = '';
@@ -66,7 +72,7 @@ async function vertragSpeichern(e) {
 
 function modalVertragBeendenOeffnen(vertragId, bezeichnung, mieterName) {
     document.getElementById('k-vertrag-id').value = vertragId;
-    document.getElementById('k-datum').value      = new Date().toISOString().slice(0, 10);
+    document.getElementById('k-datum').value      = datumIso(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
     document.getElementById('k-hinweis').textContent =
         'Mietvertrag für "' + bezeichnung + '" (Mieter: ' + mieterName + ') beenden.';
     document.getElementById('modal-kuendigen').style.display = 'block';
@@ -85,3 +91,14 @@ document.addEventListener('keydown', function (e) {
     ['modal-fach-neu', 'modal-fach-bearbeiten', 'modal-vertrag', 'modal-kuendigen']
         .forEach(function (id) { document.getElementById(id).style.display = 'none'; });
 });
+
+// Fachmiete-Lauf (MietRechnungService): je Partner + Monat eine Rechnung
+async function fachmieteVerrechnen() {
+    if (!confirm('Alle fälligen Fachmieten jetzt verrechnen?\nJe Partner und Monat entsteht eine Rechnung.')) return;
+    var res  = await fetch(window.BASE_PATH + '/partner/fachmiete_verrechnen.php', { method: 'POST' });
+    var data = await res.json();
+    var teile = (data.rechnungen || []).map(function (r) { return r.rechnung_nr + ' ' + r.partner + ' (' + r.monat + ')'; });
+    if (data.fehler && data.fehler.length) alert('Fehler:\n' + data.fehler.join('\n') + (teile.length ? '\n\nErstellt:\n' + teile.join('\n') : ''));
+    else zeigeBanner(teile.length + ' Rechnung(en) erstellt.');
+    setTimeout(function () { location.reload(); }, 800);
+}

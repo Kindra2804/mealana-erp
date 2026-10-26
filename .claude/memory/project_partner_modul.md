@@ -162,3 +162,16 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 - UI: detail.php Reiter "Konto & Auszahlung" bzw. "Kontrollliste" (Kommission), js/partner_konto.js; abrechnung_pdf.php + Template partner/abrechnung.html.twig (Verkaufsaufstellung/Spendenliste/Kontrollliste, ?aviso=id = Zahlungsaviso mit Unterschrift bei bar). Zugriffsregeln ergänzt.
 - Test: 22/22 inkl. 3 echte PDFs (visuell geprüft), vollständig aufgeräumt (ZA-Zähler zurück auf 0).
 - ⏭️ Schritt 4 Fachmiete-Monatslauf (Auftrag+Rechnung über partner.kunde_id), dann Schritt 5 Export/Konten.
+
+## Nachträge 2026-10-26 abends (committed 05fdaac, 336b46d)
+- Ware übernehmen/zurückgeben: Suchfeld filtert nach Name/Nummer (auch ohne XP-Präfix)/EAN, Enter = +1.
+- Partner-Artikel ohne Nummer → XPnn-0001 auto; "+ Neuer Artikel" direkt auf der Übernahme-Seite; normale Artikelanlage lehnt Gruppe "Partnerware" ab. Jackys Test-Artikel 27490 "Seife Green Light - verpackt" (ART-1325092016) wurde über die normale Anlage gemacht → ist KEINE Partnerware.
+- **Fachmiete-Antworten Babsi:** Verrechnung im Voraus, anteilig immer wochenweise, Mietdauer immer 4 Wochen, erste Miete 8 Wochen. Detailfragen an Jacky gestellt (Betrag je 4 Wochen? Rechnungszeitpunkt/Vorlauf? Kündigung mitten in verrechneter Periode?).
+
+## ✅ Schritt 4 Fachmiete GEBAUT 2026-10-26 (committed, Klicktest offen)
+- Regeln (Babsi/Jacky): monatlich im Voraus, Rechnung 2 Tage vor Monatsende für den Folgemonat, Mietbeginn immer Monatserster, Kündigung immer zum Monatsletzten → keine Anteile. (Früher Kalenderwochen/4 Wochen — verworfen.)
+- Migration 208: Konto 4800 "Mieterlöse Fachmiete" (Nummer mit Babsi bestätigen!), Artikelgruppe "Fachmiete", Leistungsartikel FACHMIETE (keine Lagerführung, kein Shop), miet_rechnungen + vertrag_id/auftrag_id/rechnung_id + UNIQUE(vertrag_id, periode) (rechnungs_nr-Unique gedroppt), Einstellung fachmiete_vorlauf_tage=2.
+- `MietRechnungService`: zielMonat (Stichtag + Vorlauf + 1 Tag), offene() (alle Monate ab Beginn bis Ziel/Ende ohne Rechnung, holt nach), verrechnen() → je Partner+Monat Auftrag (Kunde automatisch aus Partner, Snapshot Kunde+Rechnungsadresse, Positionen als erbracht + preisbasis netto, lieferstatus abgeschlossen) + Vollrechnung, Leistungsdatum = Monatserster (PDF neu gerendert). MietfachService: Validierung Monatserster/-letzter, Kündigung nicht vor verrechnetem Monat.
+- UI: Karte "Fachmiete verrechnen" auf mietfaecher.php (offen + zuletzt verrechnet), Endpoint fachmiete_verrechnen.php, cron/fachmiete.php (täglich, Task Scheduler noch EINTRAGEN).
+- Test 22/22 + PDF visuell geprüft (erst 3 Fehler gefunden: leerer Empfänger, "Teilrechnung"+"noch ausständig", Leistungsdatum → behoben). Kosmetisch offen: Rechnungsvorlage zeigt "Versandart Selbstabholung"/Abholhinweis/"Danke für Ihre Bestellung".
+- ⏭️ Schritt 5: Buchhaltungs-Export (Fremd/Spende als Durchlauf/Verbindlichkeit statt Erlös, Konten einstellbar).
