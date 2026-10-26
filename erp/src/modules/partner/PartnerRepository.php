@@ -6,8 +6,9 @@ require_once __DIR__ . '/../../core/Database.php';
  * PartnerRepository – CRUD für Partner-Stammdaten
  *
  * Partner sind externe Betriebe oder Personen, die mit MeaLana kooperieren.
- * Typen: "mietfach" (mieten Ausstellungsfach), "kommission" (verkaufen auf Provision),
- *        "spende" (spenden Waren), "beides" (Kommission + Spende).
+ * Verkaufsart (Spalte typ): "fremdrechnung" (Verkauf im Namen + auf Rechnung des Partners),
+ *   "kommission" (eigener Umsatz, Partner fakturiert uns), "spende" (Durchlauf).
+ * Ein Mietfach ist unabhängig von der Verkaufsart möglich.
  *
  * Die aktuelle Anzahl belegter Mietfächer wird per LEFT JOIN
  * aus mietfach_mietvertraege berechnet (aktuelle Verträge = mietende IS NULL
@@ -78,71 +79,50 @@ class PartnerRepository
      * Legt einen neuen Partner an und gibt die neue ID zurück.
      * Fehlende optionale Felder werden mit NULL / Standardwerten befüllt.
      */
+    /** Editierbare Stammdaten-Felder (insert + update) */
+    private const FELDER = [
+        'name', 'strasse', 'plz', 'ort', 'land', 'typ', 'email', 'telefon', 'iban',
+        'uid_nummer', 'zvr_nummer', 'kleinunternehmer', 'ku_text',
+        'kunde_id', 'lieferant_id', 'provisions_satz', 'notiz',
+    ];
+
     public function insert(array $data): int
     {
-        $data['email']                = $data['email']                ?? null;
-        $data['telefon']              = $data['telefon']              ?? null;
-        $data['iban']                 = $data['iban']                 ?? null;
-        $data['uid_nummer']           = $data['uid_nummer']           ?? null;
-        $data['zvr_nummer']           = $data['zvr_nummer']           ?? null;
-        $data['kleinunternehmer']     = $data['kleinunternehmer']     ?? 0;
-        $data['provisions_satz']      = $data['provisions_satz']      ?? 0.00;
-        $data['abrechnungs_modus']    = $data['abrechnungs_modus']    ?? 'getrennt';
-        $data['abrechnungs_beleg_typ']= $data['abrechnungs_beleg_typ']?? 'gutschrift';
-        $data['notiz']                = $data['notiz']                ?? null;
-        $data['aktiv']                = $data['aktiv']                ?? 1;
+        $werte = [];
+        foreach (self::FELDER as $feld) {
+            $werte[$feld] = $data[$feld] ?? null;
+        }
+        $werte['land']             = $werte['land'] ?: 'AT';
+        $werte['kleinunternehmer'] = $werte['kleinunternehmer'] ?? 0;
+        $werte['provisions_satz']  = $werte['provisions_satz'] ?? 0.00;
+        $werte['aktiv']            = $data['aktiv'] ?? 1;
 
-        $stmt = $this->db->prepare('
-            INSERT INTO partner (
-                name, typ, email, telefon, iban,
-                uid_nummer, zvr_nummer, kleinunternehmer,
-                provisions_satz, abrechnungs_modus, abrechnungs_beleg_typ,
-                notiz, aktiv
-            ) VALUES (
-                :name, :typ, :email, :telefon, :iban,
-                :uid_nummer, :zvr_nummer, :kleinunternehmer,
-                :provisions_satz, :abrechnungs_modus, :abrechnungs_beleg_typ,
-                :notiz, :aktiv
-            )
-        ');
-
-        $erlaubteKeys = [
-            'name', 'typ', 'email', 'telefon', 'iban',
-            'uid_nummer', 'zvr_nummer', 'kleinunternehmer',
-            'provisions_satz', 'abrechnungs_modus', 'abrechnungs_beleg_typ',
-            'notiz', 'aktiv',
-        ];
-        $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
+        $spalten = array_keys($werte);
+        $stmt = $this->db->prepare(
+            'INSERT INTO partner (' . implode(', ', $spalten) . ') VALUES (:' . implode(', :', $spalten) . ')'
+        );
+        $stmt->execute($werte);
         return (int) $this->db->lastInsertId();
     }
 
     /** Aktualisiert alle editierbaren Felder eines Partners. */
     public function update(array $data): bool
     {
-        $stmt = $this->db->prepare('
-            UPDATE partner SET
-                name                  = :name,
-                typ                   = :typ,
-                email                 = :email,
-                telefon               = :telefon,
-                iban                  = :iban,
-                uid_nummer            = :uid_nummer,
-                zvr_nummer            = :zvr_nummer,
-                kleinunternehmer      = :kleinunternehmer,
-                provisions_satz       = :provisions_satz,
-                abrechnungs_modus     = :abrechnungs_modus,
-                abrechnungs_beleg_typ = :abrechnungs_beleg_typ,
-                notiz                 = :notiz
-            WHERE id = :id
-        ');
+        $werte = ['id' => (int)$data['id']];
+        $set   = [];
+        foreach (self::FELDER as $feld) {
+            $werte[$feld] = $data[$feld] ?? null;
+            $set[]        = "$feld = :$feld";
+        }
+        $werte['land'] = $werte['land'] ?: 'AT';
 
-        $erlaubteKeys = [
-            'id', 'name', 'typ', 'email', 'telefon', 'iban',
-            'uid_nummer', 'zvr_nummer', 'kleinunternehmer',
-            'provisions_satz', 'abrechnungs_modus', 'abrechnungs_beleg_typ',
-            'notiz',
-        ];
-        $stmt->execute(array_intersect_key($data, array_flip($erlaubteKeys)));
+        $stmt = $this->db->prepare('UPDATE partner SET ' . implode(', ', $set) . ' WHERE id = :id');
+        $stmt->execute($werte);
+
+        // Verkaufsart am Artikel mitziehen (Kasse/Bon/Export lesen artikel.partner_modus)
+        $this->db->prepare('UPDATE artikel SET partner_modus = :typ WHERE partner_id = :id')
+            ->execute(['typ' => $werte['typ'], 'id' => $werte['id']]);
+
         return $stmt->rowCount() > 0;
     }
 

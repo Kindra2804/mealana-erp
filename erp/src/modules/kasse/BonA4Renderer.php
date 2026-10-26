@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/KassenService.php';
+require_once __DIR__ . '/PartnerBon.php';
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/QrCode.php';
 require_once __DIR__ . '/../kunden/KundenRepository.php';
@@ -64,7 +65,11 @@ class BonA4Renderer
         $steuerSumme  = 0;
         $gutscheinSumme = 0; // Gutschein-Kauf/-Ausgabe: nicht steuerbar, eigene Summenzeile
         $zahlungSumme   = 0; // Zahlbeleg: Zahlung auf eine Rechnung, USt steht schon auf der Rechnung
-        foreach ($bon['positionen'] as $p) {
+        // Partnerware (Fremdrechnung/Spende) eigene Abschnitte, nicht in unserer Steuer (PartnerBon)
+        $partnerAbschnitte = PartnerBon::abschnitte($bon['positionen']);
+        $eigenePositionen  = PartnerBon::eigene($bon['positionen']);
+        $partnerSumme      = (float)$bon['fremd_betrag'] + (float)$bon['spende_betrag'];
+        foreach ($eigenePositionen as $p) {
             $rohmenge = (float)$p['menge'];
             // Retour- und Zahlungszeilen (Rückzahlung negativ) behalten ihr Vorzeichen
             $menge    = in_array($p['block'], ['retour', 'zahlung'], true) ? $rohmenge : abs($rohmenge);
@@ -119,7 +124,7 @@ class BonA4Renderer
 
         // Positionen gruppieren
         $posBlocks = [];
-        foreach ($bon['positionen'] as $pos) {
+        foreach ($eigenePositionen as $pos) {
             $posBlocks[$pos['block'] ?? 'normal'][] = $pos;
         }
 
@@ -342,12 +347,13 @@ $renderBlock = function(array $positionen, string $blockLabel = '') use (&$zeile
         $cls = $istRetourZeile ? ' class="retour-zeile"' : '';
         $vorzeichen = $istRetourZeile ? '-' : $stSign;
         $satz = number_format((float)$pos['steuer_prozent'], 0);
+        $satzText = !PartnerBon::istFremd($pos) ? $satz . '% MwSt' : ((float)$pos['steuer_prozent'] == 0 ? 'ohne USt' : 'inkl. ' . $satz . '% USt');
 ?>
     <tr<?= $cls ?>>
       <td><?= $zeilennr ?></td>
       <td>
         <?= htmlspecialchars($pos['bezeichnung']) ?>
-        <div class="pos-sub"><?= $satz ?>% MwSt<?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
+        <div class="pos-sub"><?= $satzText ?><?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
       </td>
       <td class="r"><?= ($istRetourZeile ? '-' : '') . abs($menge) ?></td>
       <td class="r">€ <?= number_format(abs($preis), 2, ',', '.') ?></td>
@@ -378,7 +384,15 @@ if (isset($posBlocks['retour'])) {
 // alles außer Auftrag/Retour (normal, addon, Gutschein verkauft/ausgegeben)
 $rest = array_merge(...array_values(array_diff_key($posBlocks, ['auftrag' => 1, 'retour' => 1])));
 if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftrag']) || isset($posBlocks['retour']) || $vorherBezahlt) ? 'Weitere Positionen' : '');
-?>
+// Partnerware: je Partner ein Abschnitt "im Namen und auf Rechnung von" bzw. "Spende für"
+foreach ($partnerAbschnitte as $ab):
+    $pa = $ab['partner'];
+    $kopf = array_filter([$ab['adresse'], !empty($pa['uid_nummer']) ? 'UID: ' . $pa['uid_nummer'] : null, !empty($pa['zvr_nummer']) ? 'ZVR: ' . $pa['zvr_nummer'] : null]); ?>
+    <tr class="block-header"><td colspan="6"><?= htmlspecialchars(PartnerBon::abschnittTitel($ab)) ?>: <strong><?= htmlspecialchars($pa['name']) ?></strong><?= $kopf ? '<br><span style="font-weight:normal">' . htmlspecialchars(implode(' · ', $kopf)) . '</span>' : '' ?></td></tr>
+<?php $renderBlock($ab['positionen']); ?>
+    <tr><td></td><td colspan="4" style="font-size:8pt;color:#475569"><?= $ab['ku_text'] ? htmlspecialchars($ab['ku_text']) : '' ?></td>
+      <td class="r" style="font-size:8.5pt">Summe € <?= number_format($ab['summe'], 2, ',', '.') ?></td></tr>
+<?php endforeach; ?>
   </tbody>
 </table>
 
@@ -425,6 +439,12 @@ if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftra
   <div class="sum-row sub">
     <span>Gutschein (nicht steuerbar):</span>
     <span>€ <?= number_format($sumVz * $gutscheinSumme, 2, ',', '.') ?></span>
+  </div>
+  <?php endif; ?>
+  <?php if (abs($partnerSumme) > 0.004): ?>
+  <div class="sum-row sub">
+    <span>Partnerware (im fremden Namen / Spende, siehe oben):</span>
+    <span>€ <?= number_format($partnerSumme, 2, ',', '.') ?></span>
   </div>
   <?php endif; ?>
   <div class="sum-row gesamt">
@@ -489,6 +509,8 @@ if ($rest)                         $renderBlock($rest, (isset($posBlocks['auftra
   <?php endif; ?>
   <div style="font-size:8pt;color:#94a3b8">RKSV: <?= htmlspecialchars($bon['rksv_signatur']) ?></div>
 </div>
+<?php elseif ($partnerAbschnitte && !$eigenePositionen): ?>
+<div style="margin-bottom:6mm;font-size:8.5pt;color:#64748b">Verkauf ausschließlich im fremden Namen bzw. Spende — kein Umsatz von <?= htmlspecialchars($firmenname) ?>, daher ohne RKSV-Signatur.</div>
 <?php endif; ?>
 
 <!-- ── FUSSZEILE ── -->

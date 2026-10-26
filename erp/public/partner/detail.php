@@ -39,7 +39,7 @@ if ($artikel) {
 $belege     = $lager && $tab === 'belege' ? $lagerSvc->getBelege($id) : [];
 $bewegungen = $lager && $tab === 'bewegungen' ? $lagerSvc->getBewegungen($id) : [];
 
-$typLabel = ['mietfach' => 'Mietfach', 'kommission' => 'Kommission', 'spende' => 'Spende', 'beides' => 'Mietfach + Kommission'];
+$typLabel = PartnerService::VERKAUFSARTEN;
 $praefix  = PartnerLagerService::nummernPraefix($id);
 
 $pageTitle        = $partner['name'];

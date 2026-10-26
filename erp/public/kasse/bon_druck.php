@@ -25,10 +25,15 @@ $logoPfad = $db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn(
 $logoDateipfad = $logoPfad ? __DIR__ . '/../' . $logoPfad : null;
 $logoBase64 = ($logoDateipfad && file_exists($logoDateipfad)) ? base64_encode(file_get_contents($logoDateipfad)) : '';
 
+// Partnerware (Fremdrechnung/Spende) steht in eigenen Abschnitten und zählt nicht zu
+// unserer Steuer — Steuer-Totale und Positionsblöcke nur aus den eigenen Positionen.
+$partnerAbschnitte = PartnerBon::abschnitte($bon['positionen']);
+$eigenePositionen  = PartnerBon::eigene($bon['positionen']);
+
 // Steuer-Totale berechnen (signed: Retour-Positionen reduzieren, Storno ignoriert Vorzeichen via $stSign)
 $steuerTotale = [];
 $nettoBetrag  = 0;
-foreach ($bon['positionen'] as $p) {
+foreach ($eigenePositionen as $p) {
     $rohmenge   = (float)$p['menge'];
     $menge      = ($p['block'] === 'retour') ? $rohmenge : abs($rohmenge); // Retour signed, sonst abs
     $brutto     = $menge * (float)$p['einzelpreis_brutto'] * (1 - (float)$p['rabatt_prozent'] / 100);
@@ -161,7 +166,7 @@ if (!empty($bon['gutschein_id'])) {
 <?php
 // Positionen nach Block gruppieren
 $posBlocks = [];
-foreach ($bon['positionen'] as $pos) {
+foreach ($eigenePositionen as $pos) {
     $posBlocks[$pos['block'] ?? 'normal'][] = $pos;
 }
 $stSign    = $bon['typ'] === 'storno' ? '-' : '';
@@ -274,6 +279,53 @@ if (!empty($restPositionen)):
 <?php endforeach; ?>
 <?php endif; ?>
 
+<?php if ($partnerAbschnitte && $steuerTotale): ?>
+<div class="linie"></div>
+<!-- Steuertabelle (nur eigener Umsatz) -->
+<?php foreach ($steuerTotale as $k => $st): ?>
+<div class="pos-zeile" style="font-size:10px">
+  <span>Netto <?= $k ?>%</span>
+  <span>€ <?= number_format($st['netto'], 2, ',', '.') ?></span>
+</div>
+<div class="pos-zeile" style="font-size:10px">
+  <span>USt <?= $k ?>%</span>
+  <span>€ <?= number_format($st['steuer'], 2, ',', '.') ?></span>
+</div>
+<?php endforeach; ?>
+<?php $steuerTotale = []; // schon gedruckt ?>
+<?php endif; ?>
+
+<?php // Partnerware: je Partner ein Abschnitt "im Namen und auf Rechnung von" bzw. "Spende für" ?>
+<?php foreach ($partnerAbschnitte as $ab): $pa = $ab['partner']; ?>
+<div class="linie-doppelt"></div>
+<div style="font-size:10px"><?= htmlspecialchars(PartnerBon::abschnittTitel($ab)) ?>:</div>
+<div class="fett" style="font-size:11px"><?= htmlspecialchars($pa['name']) ?></div>
+<?php if ($ab['adresse']): ?><div style="font-size:10px"><?= htmlspecialchars($ab['adresse']) ?></div><?php endif; ?>
+<?php if (!empty($pa['uid_nummer'])): ?><div style="font-size:10px">UID: <?= htmlspecialchars($pa['uid_nummer']) ?></div><?php endif; ?>
+<?php if (!empty($pa['zvr_nummer'])): ?><div style="font-size:10px">ZVR: <?= htmlspecialchars($pa['zvr_nummer']) ?></div><?php endif; ?>
+<?php foreach ($ab['positionen'] as $pos):
+    $menge  = (float)$pos['menge'];
+    $preis  = (float)$pos['einzelpreis_brutto'];
+    $rabatt = (float)$pos['rabatt_prozent'];
+    $gesamt = $menge * $preis * (1 - $rabatt / 100);
+    $vz     = ($stSign || $gesamt < 0) ? '-' : '';
+?>
+<div class="pos-zeile">
+  <span><?= htmlspecialchars(mb_substr($pos['bezeichnung'], 0, 28)) ?></span>
+  <span class="fett"><?= $vz ?>€ <?= number_format(abs($gesamt), 2, ',', '.') ?></span>
+</div>
+<div class="pos-sub">
+  <?= abs($menge) != 1 ? abs($menge) . '× €' . number_format(abs($preis), 2, ',', '.') . ' · ' : '' ?>
+  <?= $ab['modus'] === 'spende' || $ab['ku_text'] ? 'ohne USt' : 'inkl. ' . number_format((float)$pos['steuer_prozent'], 0) . '% USt' ?>
+</div>
+<?php endforeach; ?>
+<?php if ($ab['ku_text']): ?><div style="font-size:9px;margin-top:2px"><?= htmlspecialchars($ab['ku_text']) ?></div><?php endif; ?>
+<div class="pos-zeile" style="font-size:11px">
+  <span>Summe <?= htmlspecialchars(mb_substr($pa['name'], 0, 18)) ?></span>
+  <span><?= ($stSign || $ab['summe'] < 0) ? '-' : '' ?>€ <?= number_format(abs($ab['summe']), 2, ',', '.') ?></span>
+</div>
+<?php endforeach; ?>
+
 <div class="linie"></div>
 
 <!-- Steuertabelle -->
@@ -294,6 +346,13 @@ if (!empty($restPositionen)):
   <span><?= $bon['typ'] === 'storno' ? 'STORNO' : ($istRetour ? 'RÜCKGABE' : 'GESAMT') ?></span>
   <span><?= $bon['typ'] === 'storno' ? '-' : '' ?>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
 </div>
+<?php if ($partnerAbschnitte && $eigenePositionen):
+    $eigenAnteil = (float)$bon['bruttobetrag'] - (float)$bon['fremd_betrag'] - (float)$bon['spende_betrag']; ?>
+<div class="pos-zeile" style="font-size:10px">
+  <span>davon <?= htmlspecialchars($firmenname) ?>:</span>
+  <span><?= $eigenAnteil < 0 ? '-' : '' ?>€ <?= number_format(abs($eigenAnteil), 2, ',', '.') ?></span>
+</div>
+<?php endif; ?>
 
 <div class="pos-zeile" style="margin-top:4px">
   <span>Zahlungsart:</span>
@@ -408,6 +467,9 @@ if (!empty($restPositionen)):
 <div class="zentriert" style="margin:4px 0"><img src="<?= QrCode::dataUri($bon['rksv_qr']) ?>" style="width:120px;height:120px"></div>
 <?php endif; ?>
 <div style="font-size:9px;word-break:break-all"><?= htmlspecialchars($bon['rksv_signatur']) ?></div>
+<?php elseif ($partnerAbschnitte && !$eigenePositionen): ?>
+<div class="linie"></div>
+<div class="zentriert" style="font-size:9px">Verkauf ausschließlich im fremden Namen bzw. Spende —<br>kein Umsatz von <?= htmlspecialchars($firmenname) ?>, daher ohne RKSV-Signatur.</div>
 <?php endif; ?>
 
 <div class="linie"></div>

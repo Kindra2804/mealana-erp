@@ -173,7 +173,7 @@ class PartnerLagerService
         $ean    = trim((string)($data['ean'] ?? '')) ?: null;
         $platz  = !empty($data['stammplatz_id']) ? (int)$data['stammplatz_id'] : null;
         $aktiv  = isset($data['aktiv']) ? (int)!empty($data['aktiv']) : 1;
-        $modus  = $partner['typ'] === 'spende' ? 'spende' : 'kommission';
+        $modus  = $partner['typ']; // artikel.partner_modus = Verkaufsart des Partners
 
         $fehler = [];
         if ($suffix === '' || !preg_match('/^[A-Z0-9][A-Z0-9\-_.]*$/', $suffix)) $fehler[] = 'Artikelnummer (Teil nach ' . self::nummernPraefix($partnerId) . ') fehlt oder enthält Sonderzeichen.';

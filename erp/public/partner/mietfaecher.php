@@ -166,8 +166,8 @@ function masse_str(array $f): string {
                         <?php
                         require_once __DIR__ . '/../../src/modules/partner/PartnerService.php';
                         $partnerListe = (new PartnerService())->getAll(['aktiv' => 1]);
+                        // Mietfach ist bei jeder Verkaufsart möglich (Klärung 2026-10-26)
                         foreach ($partnerListe as $p):
-                            if (!in_array($p['typ'], ['mietfach','kommission','beides'])) continue;
                         ?>
                             <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
                         <?php endforeach; ?>

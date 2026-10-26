@@ -639,9 +639,12 @@ $bonDaten['bruttobetrag'] = round($bruttoBon, 2);
 // Bestellung) darf den lokalen Umsatzzähler DIESER Kasse nie negativ machen — jede Kasse
 // hat ihren eigenen Zähler. Muss vor jeder Buchung laufen (analog storniereBon()), sonst
 // wäre Bargeld schon ausgezahlt und Lager schon korrigiert, bevor der BFR das ablehnt.
-if ($bonDaten['bruttobetrag'] < 0) {
+// Nur der eigene Anteil zählt — Fremdrechnung/Spende läuft nicht über den Zähler (PartnerBon).
+$partnerSummeVorab = PartnerBon::summen(PartnerBon::anreichern($bonErstellungPositionen));
+$eigenVorab        = round($bonDaten['bruttobetrag'] - $partnerSummeVorab['fremd'] - $partnerSummeVorab['spende'], 2);
+if ($eigenVorab < 0) {
     $bfrCheck = new BfrService();
-    if ($bfrCheck->wuerdeUmsatzzaehlerNegativWerden($aktuelleKasseId, $bonDaten['bruttobetrag'])) {
+    if ($bfrCheck->wuerdeUmsatzzaehlerNegativWerden($aktuelleKasseId, $eigenVorab)) {
         echo json_encode([
             'erfolg' => false,
             'fehler' => 'Rückgabe nicht möglich: Der RKSV-Gesamtumsatzzähler dieser Kasse würde dadurch negativ werden. '
@@ -858,8 +861,9 @@ if ($result['erfolg'] && $webAuftraege) {
         // ohne artikel_id — die bekommen beim Einfügen unten den Platzhalter 99-9999,
         // genau wie erstelleBon() das bei der ursprünglichen K1-Erstellung schon macht;
         // vorher fielen sie hier komplett raus, siehe project_kasse_bon_design Memory)
-        $extraPositionen = array_values(array_filter($sauberePositionen, fn($bp) =>
+        $extraPositionen = array_values(array_filter(PartnerBon::anreichern($sauberePositionen), fn($bp) =>
             empty($bp['auftrag_position_id']) && $bp['block'] !== 'zahlung' // Zahlung/Rückzahlung ist kein Verkauf
+            && !PartnerBon::istFremd($bp)                                   // Fremdrechnung/Spende ist nie unser Umsatz
         ));
 
         if ($k1AuftragId && !isset($webAuftraege[$k1AuftragId])) {

@@ -72,6 +72,15 @@ Einstellungen → Kassen → Bearbeiten → Schnellwahl-Tasten → "oder Gruppen
 
 ---
 
+## Partnerware (Mietfach, Kommission, Spende)
+
+Partner-Artikel werden ganz normal gescannt; im Warenkorb steht klein „im Namen von …“ bzw.
+„Spende für …“. Der Kunde zahlt alles auf einem Bon. Fremdrechnung und Spende stehen dort in
+eigenen Abschnitten, werden **nicht** RKSV-signiert und zählen nicht zum eigenen Umsatz;
+Spenden-Bargeld gehört in die Spendenlade. Details siehe **08 — Partner-Modul → Partnerware am Kassenbon**.
+
+---
+
 ## Freitext-Retour (Rückgabe ohne Auftrag)
 
 Für Rückgaben von Artikeln, die **nicht** als Auftrag im ERP existieren (z.B. alte JTL-Verkäufe von vor der Umstellung).

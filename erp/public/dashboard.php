@@ -103,12 +103,12 @@ if (!empty($lieferbereitRaw)) {
     }
 }
 
-// ── Umsatz Kasse HEUTE pro Kasse ────────────────────────────────────────────
+// ── Umsatz Kasse HEUTE pro Kasse (eigener Umsatz: ohne Fremdrechnung/Spende, siehe PartnerBon) ──
 $kassenumsatzHeuteRows = $db->query("
     SELECT k.name, k.kasse_nr, k.aktiv,
            COALESCE(SUM(CASE WHEN b.typ='verkauf' AND b.storniert=0
                              AND DATE(b.erstellt_am)=CURDATE()
-                        THEN b.bruttobetrag ELSE 0 END), 0) AS umsatz_heute
+                        THEN b.bruttobetrag - b.fremd_betrag - b.spende_betrag ELSE 0 END), 0) AS umsatz_heute
     FROM kassen k
     LEFT JOIN kassen_bons b ON b.kasse_id = k.id
     GROUP BY k.id, k.name, k.kasse_nr, k.aktiv
@@ -118,7 +118,7 @@ $kassenumsatzHeuteRows = $db->query("
 $kasseUmsatzHeuteGesamt = array_sum(array_column($kassenumsatzHeuteRows, 'umsatz_heute'));
 
 $kasseUmsatzGestern = (float)$db->query("
-    SELECT COALESCE(SUM(bruttobetrag), 0) FROM kassen_bons
+    SELECT COALESCE(SUM(bruttobetrag - fremd_betrag - spende_betrag), 0) FROM kassen_bons
     WHERE typ='verkauf' AND storniert=0 AND DATE(erstellt_am)=DATE_SUB(CURDATE(),INTERVAL 1 DAY)
 ")->fetchColumn();
 
@@ -169,13 +169,13 @@ $trendHeute = $umsatzGestern > 0
 
 // ── Umsatz Kasse MONAT ───────────────────────────────────────────────────────
 $kasseUmsatzMonat = (float)$db->query("
-    SELECT COALESCE(SUM(bruttobetrag), 0) FROM kassen_bons
+    SELECT COALESCE(SUM(bruttobetrag - fremd_betrag - spende_betrag), 0) FROM kassen_bons
     WHERE typ='verkauf' AND storniert=0
       AND YEAR(erstellt_am)=YEAR(CURDATE()) AND MONTH(erstellt_am)=MONTH(CURDATE())
 ")->fetchColumn();
 
 $kasseUmsatzVormonat = (float)$db->query("
-    SELECT COALESCE(SUM(bruttobetrag), 0) FROM kassen_bons
+    SELECT COALESCE(SUM(bruttobetrag - fremd_betrag - spende_betrag), 0) FROM kassen_bons
     WHERE typ='verkauf' AND storniert=0
       AND YEAR(erstellt_am)=YEAR(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
       AND MONTH(erstellt_am)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))

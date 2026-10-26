@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
 require_once __DIR__ . '/BfrService.php';
+require_once __DIR__ . '/PartnerBon.php';
 require_once __DIR__ . '/../inventur/InventurService.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
 require_once __DIR__ . '/../auftraege/AuftragRepository.php';
@@ -71,6 +72,9 @@ class KassenService
                 a.charge_pflicht,
                 a.ueberverkauf_erlaubt,
                 a.aktiv,
+                -- Partnerware: im Warenkorb kennzeichnen (Fremdrechnung/Spende = eigener Bon-Abschnitt)
+                a.partner_modus,
+                (SELECT pp.name FROM partner pp WHERE pp.id = a.partner_id) AS partner_name,
                 sk.satz               AS steuer_prozent,
                 COALESCE(
                     (SELECT ap.brutto_vk
@@ -285,20 +289,31 @@ class KassenService
             error_log('[BFR-Nullbeleg] ' . $e->getMessage());
         }
 
+        // Partnerware: Fremdrechnung + Spende sind nicht unser Umsatz → nicht in Signatur,
+        // Steuergruppen und Spiegel-Auftrag (Klärung Steuerberatung 2026-10-26, PartnerBon)
+        $positionen   = PartnerBon::anreichern($positionen);
+        $partnerSumme = PartnerBon::summen($positionen);
+        $bruttoGesamt = (float)($bonDaten['bruttobetrag'] ?? 0);
+        $eigenBetrag  = round($bruttoGesamt - $partnerSumme['fremd'] - $partnerSumme['spende'], 2);
+        $hatEigenes   = (bool)PartnerBon::eigene($positionen);
+        $spendeBar    = PartnerBon::spendeBar($partnerSumme['spende'], $bonDaten, $bruttoGesamt);
+
         $this->db->beginTransaction();
         try {
             $bonNr    = $this->naechsteBonNr($kasseId);
-            $steuer   = BfrService::steuerGruppenAusPositionen($positionen);
+            $steuer   = BfrService::steuerGruppenAusPositionen(PartnerBon::eigene($positionen));
 
             $stmt = $this->db->prepare("
                 INSERT INTO kassen_bons
                     (bon_nr, typ, kasse_id, auftrag_id, kunden_id, zahlungsart,
-                     bruttobetrag, gegeben, rueckgeld, bar_betrag, karten_betrag,
+                     bruttobetrag, fremd_betrag, spende_betrag, spende_bar,
+                     gegeben, rueckgeld, bar_betrag, karten_betrag,
                      gutschein_code, gutschein_betrag, benutzer_id, notiz,
                      steuer_a, steuer_b, steuer_c, steuer_d, steuer_e)
                 VALUES
                     (:bon_nr, 'verkauf', :kasse_id, :auftrag_id, :kunden_id, :zahlungsart,
-                     :bruttobetrag, :gegeben, :rueckgeld, :bar_betrag, :karten_betrag,
+                     :bruttobetrag, :fremd_betrag, :spende_betrag, :spende_bar,
+                     :gegeben, :rueckgeld, :bar_betrag, :karten_betrag,
                      :gutschein_code, :gutschein_betrag, :benutzer_id, :notiz,
                      :steuer_a, :steuer_b, :steuer_c, :steuer_d, :steuer_e)
             ");
@@ -309,6 +324,9 @@ class KassenService
                 ':kunden_id'        => $bonDaten['kunden_id']        ?? null,
                 ':zahlungsart'      => $bonDaten['zahlungsart']      ?? 'bar',
                 ':bruttobetrag'     => $bonDaten['bruttobetrag']     ?? 0,
+                ':fremd_betrag'     => $partnerSumme['fremd'],
+                ':spende_betrag'    => $partnerSumme['spende'],
+                ':spende_bar'       => $spendeBar,
                 ':gegeben'          => $bonDaten['gegeben']          ?? null,
                 ':rueckgeld'        => $bonDaten['rueckgeld']        ?? null,
                 ':bar_betrag'       => $bonDaten['bar_betrag']       ?? null,
@@ -330,10 +348,12 @@ class KassenService
             foreach ($positionen as $i => $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, bezeichnung, ean, menge,
+                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
+                         bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
-                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
+                         :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge, :sort)
                 ");
                 $stmt2->execute([
@@ -342,6 +362,8 @@ class KassenService
                     ':web_auftrag_id'     => $pos['web_auftrag_id'] ?? $pos['zahlung_auftrag_id'] ?? null,
                     ':artikel_id'         => $pos['artikel_id']         ?? null,
                     ':artikel_gruppe_id'  => $pos['artikel_gruppe_id']  ?? null,
+                    ':partner_id'         => $pos['partner_id']         ?? null,
+                    ':partner_modus'      => $pos['partner_modus']      ?? null,
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean']                ?? null,
                     ':menge'              => $pos['menge']              ?? 1,
@@ -407,7 +429,8 @@ class KassenService
             // Zahlbeleg-Zeilen (block 'zahlung' = Zahlung auf eine bestehende Rechnung) sind
             // kein Verkauf und gehören nicht in den Spiegel-Auftrag; besteht der Bon nur
             // daraus, gibt es keinen Spiegel-Auftrag (Belege-Umbau 2026-10-07).
-            $positionen = array_values(array_filter($positionen, fn($p) => ($p['block'] ?? null) !== 'zahlung'));
+            // Fremdrechnung/Spende ebenfalls nicht: das ist nie unser Umsatz (PartnerBon).
+            $positionen = array_values(array_filter($positionen, fn($p) => ($p['block'] ?? null) !== 'zahlung' && !PartnerBon::istFremd($p)));
             $netto = 0.0;
             $steuerBetrag = 0.0;
             foreach ($positionen as $p) {
@@ -515,13 +538,15 @@ class KassenService
         // enge Zeitfenster für einen Fehlschlag hier ist der einzige Grund, warum
         // dieser Aufruf noch außerhalb der Transaktion läuft: ein BFR-Problem hier
         // darf den bereits abgeschlossenen Verkauf nicht mehr rückgängig machen.
+        // Signiert wird nur der eigene Umsatz; ein Bon nur mit Fremdrechnung/Spende
+        // bleibt unsigniert (kein Registrierkassenbeleg, siehe Druck).
         $kasseVoll = array_merge($this->getKasse($kasseId) ?? [], ['id' => $kasseId]);
-        if (!empty($kasseVoll['bfr_url'])) {
+        if (!empty($kasseVoll['bfr_url']) && $hatEigenes) {
             try {
                 $bfrSvc->signiereBeleg($bonId, [
                     'bon_nr'       => $bonNr,
                     'erstellt_am'  => date('Y-m-d H:i:s'),
-                    'bruttobetrag' => $bonDaten['bruttobetrag'] ?? 0,
+                    'bruttobetrag' => $eigenBetrag,
                     'steuer_a'     => $steuer['a'], 'steuer_b' => $steuer['b'],
                     'steuer_c'     => $steuer['c'], 'steuer_d' => $steuer['d'], 'steuer_e' => $steuer['e'],
                 ], $kasseVoll);
@@ -549,7 +574,11 @@ class KassenService
         // RKSV-Vorabcheck: der BFR selbst ist funktionsfähig, wir lehnen hier rein aus
         // eigener Business-Logik ab — deshalb den ganzen Storno verhindern statt einen
         // Beleg mit falschem "Sicherheitseinrichtung ausgefallen"-Aufdruck zu drucken.
-        $stornoBetrag = -abs((float)$bon['bruttobetrag']);
+        // Nur der eigene (signierte) Anteil läuft über den Umsatzzähler — Fremdrechnung/Spende
+        // war nie darin (PartnerBon). Ohne eigene Positionen wird auch der Storno nicht signiert.
+        $stornoEigen  = -abs(round((float)$bon['bruttobetrag'] - (float)$bon['fremd_betrag'] - (float)$bon['spende_betrag'], 2));
+        $hatEigenes   = (bool)PartnerBon::eigene($bon['positionen']);
+        $stornoBetrag = $stornoEigen;
         if ($bfrSvc->wuerdeUmsatzzaehlerNegativWerden((int)$bon['kasse_id'], $stornoBetrag)) {
             return ['erfolg' => false, 'fehler' => 'Storno nicht möglich: Der RKSV-Gesamtumsatzzähler würde dadurch negativ werden. Bitte administrativ prüfen.'];
         }
@@ -576,15 +605,15 @@ class KassenService
                 $pos['menge'] = -abs((float)$pos['menge']);
                 return $pos;
             }, $bon['positionen']);
-            $steuer = BfrService::steuerGruppenAusPositionen($stornoPositionen);
+            $steuer = BfrService::steuerGruppenAusPositionen(PartnerBon::eigene($stornoPositionen));
 
             $stmt = $this->db->prepare("
                 INSERT INTO kassen_bons
-                    (bon_nr, typ, kasse_id, zahlungsart, bruttobetrag,
+                    (bon_nr, typ, kasse_id, zahlungsart, bruttobetrag, fremd_betrag, spende_betrag, spende_bar,
                      benutzer_id, storno_von_id, notiz,
                      steuer_a, steuer_b, steuer_c, steuer_d, steuer_e)
                 VALUES
-                    (:bon_nr, 'storno', :kasse_id, :zahlungsart, :bruttobetrag,
+                    (:bon_nr, 'storno', :kasse_id, :zahlungsart, :bruttobetrag, :fremd_betrag, :spende_betrag, :spende_bar,
                      :benutzer_id, :storno_von_id, :notiz,
                      :steuer_a, :steuer_b, :steuer_c, :steuer_d, :steuer_e)
             ");
@@ -593,6 +622,9 @@ class KassenService
                 ':kasse_id'      => $bon['kasse_id'],
                 ':zahlungsart'   => $bon['zahlungsart'],
                 ':bruttobetrag'  => -abs((float)$bon['bruttobetrag']),
+                ':fremd_betrag'  => -(float)$bon['fremd_betrag'],
+                ':spende_betrag' => -(float)$bon['spende_betrag'],
+                ':spende_bar'    => -(float)$bon['spende_bar'],
                 ':benutzer_id'   => $benutzerId,
                 ':storno_von_id' => $bonId,
                 ':notiz'         => 'Storno von ' . $bon['bon_nr'],
@@ -609,10 +641,12 @@ class KassenService
             foreach ($bon['positionen'] as $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, bezeichnung, ean, menge,
+                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
+                         bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge)
                     VALUES
-                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
+                         :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge)
                 ");
                 $istZahlung = ($pos['block'] ?? null) === 'zahlung';
@@ -622,6 +656,8 @@ class KassenService
                     ':web_auftrag_id'     => $istZahlung ? $pos['web_auftrag_id'] : null,
                     ':artikel_id'         => $pos['artikel_id'],
                     ':artikel_gruppe_id'  => $pos['artikel_gruppe_id'] ?? null,
+                    ':partner_id'         => $pos['partner_id'] ?? null,
+                    ':partner_modus'      => $pos['partner_modus'] ?? null,
                     ':bezeichnung'        => $pos['bezeichnung'],
                     ':ean'                => $pos['ean'],
                     ':menge'              => -abs((float)$pos['menge']),
@@ -665,12 +701,12 @@ class KassenService
 
         // BFR-Signatur nach dem Commit, außerhalb der Transaktion — siehe erstelleBon().
         $kasseVoll = array_merge($this->getKasse((int)$bon['kasse_id']) ?? [], ['id' => (int)$bon['kasse_id']]);
-        if (!empty($kasseVoll['bfr_url'])) {
+        if (!empty($kasseVoll['bfr_url']) && $hatEigenes) {
             try {
                 $bfrSvc->signiereBeleg($stornoBonId, [
                     'bon_nr'       => $stornoBonNr,
                     'erstellt_am'  => date('Y-m-d H:i:s'),
-                    'bruttobetrag' => -abs((float)$bon['bruttobetrag']),
+                    'bruttobetrag' => $stornoEigen,
                     'steuer_a'     => $steuer['a'], 'steuer_b' => $steuer['b'],
                     'steuer_c'     => $steuer['c'], 'steuer_d' => $steuer['d'], 'steuer_e' => $steuer['e'],
                 ], $kasseVoll);
@@ -841,6 +877,8 @@ class KassenService
                     WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0)
                     ELSE 0
                 END
+                -- Spenden-Bargeld liegt in der eigenen Spendenlade (PartnerBon::spendeBar)
+                - spende_bar
             ), 0)
             FROM kassen_bons
             WHERE kasse_id = :kid AND typ = 'verkauf' AND storniert = 0
@@ -859,10 +897,15 @@ class KassenService
         $datum = $datum ?: date('Y-m-d');
         $params = [':kid' => $kasseId, ':datum' => $datum];
 
+        // umsatz_gesamt = eigener Umsatz (ohne Fremdrechnung/Spende); die Zahlungsart-Summen
+        // bleiben das, was tatsächlich kassiert wurde (inkl. Partnerware), für den Kassensturz.
         $stmt = $this->db->prepare("
             SELECT
                 COUNT(*)                                          AS anzahl_bons,
-                COALESCE(SUM(bruttobetrag), 0)                   AS umsatz_gesamt,
+                COALESCE(SUM(bruttobetrag - fremd_betrag - spende_betrag), 0) AS umsatz_gesamt,
+                COALESCE(SUM(CASE WHEN storniert = 0 THEN fremd_betrag  ELSE 0 END), 0) AS partner_fremd,
+                COALESCE(SUM(CASE WHEN storniert = 0 THEN spende_betrag ELSE 0 END), 0) AS partner_spende,
+                COALESCE(SUM(CASE WHEN storniert = 0 THEN spende_bar    ELSE 0 END), 0) AS partner_spende_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'bar'           THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern'  THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'     THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
@@ -901,7 +944,9 @@ class KassenService
         $stmt = $this->db->prepare("
             SELECT
                 COUNT(*)                                                                         AS anzahl_bons,
-                COALESCE(SUM(bruttobetrag), 0)                                                   AS umsatz_gesamt,
+                COALESCE(SUM(bruttobetrag - fremd_betrag - spende_betrag), 0)                    AS umsatz_gesamt,
+                COALESCE(SUM(CASE WHEN storniert = 0 THEN fremd_betrag  ELSE 0 END), 0)          AS partner_fremd,
+                COALESCE(SUM(CASE WHEN storniert = 0 THEN spende_betrag ELSE 0 END), 0)          AS partner_spende,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'bar'          THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
                 COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'    THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
@@ -938,7 +983,7 @@ class KassenService
             FROM kassen_bon_positionen bp
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             WHERE b.kasse_id = :kid AND b.typ = 'verkauf' AND b.storniert = 0
-              AND DATE(b.erstellt_am) BETWEEN :von AND :bis
+              AND DATE(b.erstellt_am) BETWEEN :von AND :bis AND " . PartnerBon::SQL_EIGEN . "
             GROUP BY bp.steuer_prozent ORDER BY bp.steuer_prozent DESC
         ");
         $stStmt->execute($params);
@@ -961,7 +1006,7 @@ class KassenService
             LEFT JOIN artikel a      ON a.id  = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id)
             WHERE b.kasse_id = :kid AND b.typ = 'verkauf' AND b.storniert = 0
-              AND DATE(b.erstellt_am) BETWEEN :von AND :bis
+              AND DATE(b.erstellt_am) BETWEEN :von AND :bis AND " . PartnerBon::SQL_EIGEN . "
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
             ORDER BY COALESCE(ag.konto_nr, 'ZZZ'), bp.steuer_prozent DESC
         ");
@@ -1072,7 +1117,7 @@ class KassenService
             FROM kassen_bon_positionen bp
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
-              AND b.typ = 'verkauf' AND b.storniert = 0
+              AND b.typ = 'verkauf' AND b.storniert = 0 AND " . PartnerBon::SQL_EIGEN . "
             GROUP BY bp.steuer_prozent
             ORDER BY bp.steuer_prozent DESC
         ");
@@ -1102,7 +1147,7 @@ class KassenService
             LEFT JOIN artikel a      ON a.id  = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id)
             WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
-              AND b.typ = 'verkauf' AND b.storniert = 0
+              AND b.typ = 'verkauf' AND b.storniert = 0 AND " . PartnerBon::SQL_EIGEN . "
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
             ORDER BY COALESCE(ag.konto_nr, 'ZZZ'), bp.steuer_prozent DESC
         ");
@@ -1162,6 +1207,30 @@ class KassenService
             'brutto'          => round((float)$r['brutto'], 2),
         ], $nStmt->fetchAll());
 
+        // Partnerumsätze (Fremdrechnung + Spende): nicht im Umsatz/RKSV oben, aber kassiert
+        // → für Kassensturz und Weitergabe an den Partner je Partner getrennt ausweisen
+        $pStmt = $this->db->prepare("
+            SELECT bp.partner_id, bp.partner_modus, p.name AS partner_name,
+                   COUNT(DISTINCT b.id) AS anzahl_bons,
+                   SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+            FROM kassen_bon_positionen bp
+            INNER JOIN kassen_bons b ON b.id = bp.bon_id
+            LEFT JOIN partner p ON p.id = bp.partner_id
+            WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
+              AND b.typ = 'verkauf' AND b.storniert = 0
+              AND bp.partner_modus IN ('fremdrechnung', 'spende')
+            GROUP BY bp.partner_id, bp.partner_modus, p.name
+            ORDER BY bp.partner_modus, p.name
+        ");
+        $pStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $partnerUmsaetze = array_map(fn($r) => [
+            'partner_id'   => (int)$r['partner_id'],
+            'partner_name' => $r['partner_name'] ?? ('Partner #' . $r['partner_id']),
+            'modus'        => $r['partner_modus'],
+            'anzahl_bons'  => (int)$r['anzahl_bons'],
+            'brutto'       => round((float)$r['brutto'], 2),
+        ], $pStmt->fetchAll());
+
         return [
             'datum'          => $datum,
             'kassenstand'    => $kassenstand,
@@ -1171,6 +1240,7 @@ class KassenService
             'bon_nr_von'     => $range['bon_nr_von'] ?? null,
             'bon_nr_bis'     => $range['bon_nr_bis'] ?? null,
             'nacherfassungen'=> $nacherfassungen,
+            'partner_umsaetze' => $partnerUmsaetze,
         ];
     }
 
@@ -1545,6 +1615,9 @@ class KassenService
                 a.ist_konfigurierbar,
                 a.ueberverkauf_erlaubt,
                 a.charge_pflicht,
+                -- Partnerware: im Warenkorb kennzeichnen (Fremdrechnung/Spende = eigener Bon-Abschnitt)
+                a.partner_modus,
+                (SELECT pp.name FROM partner pp WHERE pp.id = a.partner_id) AS partner_name,
                 sk.satz             AS steuer_prozent,
                 COALESCE(
                     (SELECT ap.brutto_vk

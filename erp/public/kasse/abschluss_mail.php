@@ -90,9 +90,26 @@ ob_start();
     <tr><td>Gutschein</td><td class="r"><?= eur((float)$kz['umsatz_gs']) ?></td></tr>
     <tr><td>Kombi-Bar</td><td class="r"><?= eur((float)$kz['umsatz_kombi_bar']) ?></td></tr>
     <tr><td>Kombi-Karte</td><td class="r"><?= eur((float)$kz['umsatz_kombi_karte']) ?></td></tr>
-    <tr class="total"><td>Gesamt</td><td class="r"><?= eur($umsatzGes) ?></td></tr>
+    <?php $partnerGes = (float)($kz['partner_fremd'] ?? 0) + (float)($kz['partner_spende'] ?? 0); ?>
+    <?php if (abs($partnerGes) > 0.004): ?>
+    <tr><td>davon Partnerware (kein eigener Umsatz)</td><td class="r"><?= eur($partnerGes) ?></td></tr>
+    <?php endif; ?>
+    <tr class="total"><td><?= abs($partnerGes) > 0.004 ? 'Eigener Umsatz' : 'Gesamt' ?></td><td class="r"><?= eur($umsatzGes) ?></td></tr>
   </tbody>
 </table>
+
+<?php $pu = $daten['partner_umsaetze'] ?? []; if ($pu): ?>
+<h2>Partnerumsätze (im fremden Namen / Spenden)</h2>
+<table>
+  <thead><tr><th>Partner</th><th>Art</th><th>Bons</th><th class="r">Betrag</th></tr></thead>
+  <tbody>
+    <?php foreach ($pu as $p): ?>
+    <tr><td><?= esc($p['partner_name']) ?></td><td><?= $p['modus'] === 'spende' ? 'Spende' : 'Fremdrechnung' ?></td><td><?= (int)$p['anzahl_bons'] ?></td><td class="r"><?= eur($p['brutto']) ?></td></tr>
+    <?php endforeach; ?>
+    <tr class="total"><td colspan="3">Summe (Spende bar in Spendenlade: <?= eur((float)($kz['partner_spende_bar'] ?? 0)) ?>)</td><td class="r"><?= eur(array_sum(array_column($pu, 'brutto'))) ?></td></tr>
+  </tbody>
+</table>
+<?php endif; ?>
 
 <?php $nf = $daten['nacherfassungen'] ?? []; if ($nf): $nfSumme = array_sum(array_column($nf, 'brutto')); ?>
 <h2>Davon Nacherfassungen (Papier-Messe)</h2>

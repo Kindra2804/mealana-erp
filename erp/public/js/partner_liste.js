@@ -8,15 +8,20 @@ function zeigeBanner(msg, ok) {
     setTimeout(function () { b.style.display = 'none'; }, 3000);
 }
 
+// Provision + Lieferant nur bei Kommission, KU-Text nur bei Kleinunternehmer.
+// Ein Mietfach ist bei jeder Verkaufsart zusätzlich möglich (eigene Mietrechnung).
+var TYP_HINWEIS = {
+    fremdrechnung: 'Nie unser Umsatz: eigener Bon-Abschnitt, nicht in der RKSV, keine Provision. Partner bekommt Verkaufsaufstellung + Zahlungsaviso.',
+    kommission:    'Unser Umsatz (normal RKSV). Partner stellt uns Rechnung zum EK (= netto − Provision).',
+    spende:        'Durchlauf: eigener Bon-Abschnitt, Geld in die Spendenlade, Liste bei der Übergabe.'
+};
+
 function typToggle(prefix) {
-    var typ       = document.getElementById(prefix + 'typ').value;
-    var provZeile = document.getElementById(prefix + 'provision-zeile');
-    var belegSel  = document.getElementById(prefix + 'abrechnungs_beleg_typ');
-    if (provZeile) provZeile.style.display = ['kommission', 'beides'].includes(typ) ? '' : 'none';
-    if (belegSel) {
-        var autoMap = { mietfach: 'fremdrechnung', kommission: 'gutschrift', spende: 'info', beides: 'gutschrift' };
-        if (autoMap[typ]) belegSel.value = autoMap[typ];
-    }
+    var typ = document.getElementById(prefix + 'typ').value;
+    var ku  = document.getElementById(prefix + 'kleinunternehmer').checked;
+    document.getElementById(prefix + 'kommission-zeile').style.display = typ === 'kommission' ? 'flex' : 'none';
+    document.getElementById(prefix + 'ku-zeile').style.display         = ku ? '' : 'none';
+    document.getElementById(prefix + 'typ-hinweis').textContent        = TYP_HINWEIS[typ] || '';
 }
 
 function modalNeuOeffnen() {
@@ -39,6 +44,10 @@ function modalBearbeitenOeffnen(p) {
     var chk = function (id, val) { var el = document.getElementById(id); if (el) el.checked = !!parseInt(val); };
     document.getElementById('edit-id').value = p.id;
     set('edit-name',                  p.name);
+    set('edit-strasse',               p.strasse);
+    set('edit-plz',                   p.plz);
+    set('edit-ort',                   p.ort);
+    set('edit-land',                  p.land || 'AT');
     set('edit-typ',                   p.typ);
     set('edit-email',                 p.email);
     set('edit-telefon',               p.telefon);
@@ -46,8 +55,8 @@ function modalBearbeitenOeffnen(p) {
     set('edit-uid_nummer',            p.uid_nummer);
     set('edit-zvr_nummer',            p.zvr_nummer);
     set('edit-provisions_satz',       p.provisions_satz);
-    set('edit-abrechnungs_modus',     p.abrechnungs_modus);
-    set('edit-abrechnungs_beleg_typ', p.abrechnungs_beleg_typ);
+    set('edit-lieferant_id',          p.lieferant_id);
+    set('edit-ku_text',               p.ku_text);
     set('edit-notiz',                 p.notiz);
     chk('edit-kleinunternehmer',      p.kleinunternehmer);
     typToggle('edit-');

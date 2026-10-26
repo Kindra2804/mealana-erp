@@ -494,11 +494,12 @@ require_once __DIR__ . '/includes/shell_top.php';
             <!-- PARTNER -->
             <h2 id="partner">Partner & Mietfächer <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <table class="ba-table">
-                <tr><th>Typ</th><th>Was ist das?</th></tr>
-                <tr><td><strong>Mietfach</strong></td><td>Physischer Platz im Geschäft — Partner verkauft eigene Ware</td></tr>
-                <tr><td><strong>Kommission</strong></td><td>Ware des Partners wird bei uns verkauft — Partner bekommt Anteil</td></tr>
-                <tr><td><strong>Spende</strong></td><td>Überschussware gespendet, Gegenwert protokolliert</td></tr>
+                <tr><th>Verkaufsart</th><th>Was ist das?</th></tr>
+                <tr><td><strong>Fremdrechnung</strong></td><td>Verkauf im Namen und auf Rechnung des Partners — nie unser Umsatz, keine RKSV, keine Provision. Partner bekommt Aufstellung + Zahlungsaviso, keine Rechnung.</td></tr>
+                <tr><td><strong>Kommission</strong></td><td>Unser Umsatz (normal RKSV). Partner stellt uns Rechnung zum EK (= netto − Provision), Buchung wie normaler Einkauf.</td></tr>
+                <tr><td><strong>Spende</strong></td><td>Durchlauf (z.B. Yarnpride), eigene Kassenlade, Liste bei der Übergabe</td></tr>
             </table>
+            <p>Jeder Partner hat genau eine Verkaufsart. Ein <strong>Mietfach</strong> ist zusätzlich bei jeder Verkaufsart möglich — die Fachmiete ist immer eine eigene Rechnung, nie verrechnet. Im Partner-Formular: Adresse (steht am Bon), bei Kommission Provision % (netto) + Lieferant, bei Kleinunternehmern optional ein eigener Bon-Text.</p>
             <p><strong>Mietfach zuweisen:</strong> Partner öffnen → Tab Mietfächer → "Mietfach zuweisen" → Nummer, Mietbeginn, Monatsbetrag → Speichern. Vertragshistorie bleibt immer erhalten.</p>
 
             <h3 id="partner-lager">Partner-Lager und Partnerware <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
@@ -506,6 +507,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Reiter <strong>Artikel</strong>: Partner-Artikel anlegen — Nummer immer <code>XP</code> + Partner-ID (z.B. <code>XP01-SEIFE-LAV</code>), Preis, MwSt, EAN, Fach. Nicht in der normalen Artikelliste, nie im Onlineshop.</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Reiter <strong>Bestand</strong> → <strong>📥 Ware übernehmen</strong> (Mengen eintragen oder scannen) → Übernahmeschein (US-Nr.) zum Unterschreiben. <strong>📤 Rückgabe</strong> → Rückgabeschein (RS-Nr.).</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Die <strong>Kasse</strong> bucht Partner-Artikel automatisch aus dem Partner-Lager ab (Storno zurück dorthin).</div></div>
+            <p><strong>Am Kassenbon</strong> (immer ein Bon, ein Zahlbetrag): <strong>Kommission</strong> = normale Zeile, normal signiert. <strong>Fremdrechnung</strong> = eigener Abschnitt „Verkauft im Namen und auf Rechnung von …“ (Name, Adresse, UID, ggf. KU-Text), nicht signiert, kein eigener Umsatz, Geld bleibt durchlaufend in der Lade. <strong>Spende</strong> = Abschnitt „Spende für …“ (ZVR), nicht signiert, Bar-Anteil kommt in die Spendenlade und zählt nicht zum Kassenstand. Im Warenkorb steht klein „im Namen von …“ / „Spende für …“.</p>
+            <div class="ba-hint">💡 Z-Bon/X-Bon: „Umsatz“ = nur eigener Umsatz; „Kassiert gesamt (inkl. Partnerware)“ + Abschnitt <strong>Partnerumsätze</strong> je Partner. Ein Bon nur mit Partnerware hat keine RKSV-Signatur (steht am Bon).</div>
             <p>Reiter <strong>Bewegungen</strong> zeigt jede Übernahme, jeden Verkauf, jedes Storno und jede Rückgabe; Reiter <strong>Belege &amp; Verkaufsliste</strong> alle Scheine und eine Verkaufsliste als PDF für einen frei wählbaren Zeitraum.</p>
             <p><em>Noch nicht gebaut:</em> Partner-Abrechnung (Gutschrift/Fremdrechnung/Info) und „im Namen und auf Rechnung von“ samt RKSV-Trennung — wird gesondert geplant.</p>
 

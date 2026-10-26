@@ -116,3 +116,41 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 - Bon: Jacky tendiert zu **2 Belegen** (eigener + Partner), kennt aber das Tankstellen-Modell (Vignette "im Namen und auf Rechnung der ASFINAG" auf derselben Rechnung). Offen bis Babsi/Steuerberater antworten.
 - Offene Steuerfrage: Partner ist Kleinunternehmer + wir verkaufen auf Kommission → wir schulden USt, er nicht — wie behandeln?
 - Fragenblatt für Babsi/Steuerberater erstellt (2026-10-01): https://claude.ai/artifact/PCVngy3WkBwTbWQG6axqjA (10 Fragen: Bon 1 vs 2 Belege, RKSV Fremdumsatz, Partnerbeleg-Pflichtangaben, Bargeld/Kassenbuch, Kommission=eigener Umsatz?, Spende eigene Lade, KU+Kommission, KU+Fremdrechnung, Fachmiete/Gegenverrechnung, Konten, Unterlagen). Antworten abwarten BEVOR Abrechnung/Bon/RKSV gebaut wird.
+
+## ✅ Antworten Steuerberatung (Jacky, 2026-10-26) — Grundlage für die Abrechnung
+- **A1 Bon:** EIN Beleg für Kunde+Zahlung (Bankomat). Partnerware in eigenem Abschnitt "Folgende Artikel wurden verkauft im Namen und auf Rechnung von … (Partnerangaben)".
+- **A2 RKSV:** Fremdrechnung (fremder Name/Rechnung) = nie unser Umsatz → NICHT in RKSV. Kommission → normal RKSV, normaler Erlös je Erlösgruppe.
+- **A3** erübrigt sich.
+- **A4 Bargeld:** "Bareingang aus Beleg xx zu Mietfachpartner yy"; später Barausgabe ODER Überweisung an Partner; Tagesabschluss zeigt Partnerumsätze getrennt.
+- **A5** Kommission = eigener Umsatz wie Eigenbestand ✅.
+- **A6** Spende: eigene Aufzeichnung + Liste reicht (keine RKSV).
+- **B7** Provision immer auf NETTO; Preisgestaltung = Vertragssache, nicht Teil von Kasse/ERP.
+- **B8** Partner-Abschnitt am Bon zusätzlich mit Kleinunternehmer-Text des Partners (falls Firma Firmenrechnung braucht).
+- **B9 NIE gegenverrechnen!** Fremdrechnung: wir dürfen KEINE Rechnung/Gutschrift erstellen — Partner bekommt nur Verkaufsaufstellung + ggf. Zahlungsaviso (sein Geld, wir verwahren nur). Fachmiete = normale eigene Ausgangsrechnung an den Partner, unabhängig von Verkäufen.
+- **C10 Konten:** Fachmiete = normale 4er Mieterlöse; Fremdumsätze = keine Erlöse; Kommission = normale Erlöskonten beim VK, später wie Einkauf bei einem Händler.
+- **C11** Unterlagen monatlich vorbereitet, auf Abruf auch untermonatig.
+→ Damit überholt: "Gegenverrechnung"-Modus + Belegtyp-Auswahl Gutschrift/Fremdrechnung/Info aus den Klärungen 2026-10-01.
+
+## Klärung 2 (Jacky 2026-10-26) + Konzept-Entwurf
+- Partner = ENTWEDER Kommission ODER Fremdrechnung (bzw. Spende); Mietfach zusätzlich möglich, unabhängig.
+- Fremdrechnung: KEINE Provision (nur Fachmiete).
+- Kommission: wie normaler Einkauf — Partner schickt Rechnung mit vorab definierten EK (= netto − Provision).
+- Spende: kann an Kasse gescannt/eingegeben werden (Mischeinkauf/Bankomat) — am Bon eigener Abschnitt.
+- Konzept vorgeschlagen (Abnahme ausständig): partner.verkaufsart + Adresse + KU-Text + kunde_id (Miete) + lieferant_id (Kommission); Bon-Abschnitte, RKSV nur Eigen+Kommission, Fremd-Bar in Lade (durchlaufend), Spende-Bar in Spendenlade (nicht Kassenstand); Partner-Konto (Saldo, Aufstellung+Zahlungsaviso, Auszahlung bar/Überweisung, Spendenliste, Kommission-Kontrollliste); Fachmiete-Monatslauf als Auftrag+Rechnung (rechnungen hängen an Aufträgen); Export: Konten einstellbar (Nummern von Babsi). Bau-Reihenfolge 1 Stammdaten → 2 Kasse/Bon → 3 Partner-Konto → 4 Fachmiete → 5 Export. Offline/Messe-Kasse + Aufträge bewusst ohne Partnerware.
+
+## ✅ Schritt 1 Stammdaten GEBAUT 2026-10-26 (nicht committed, Klicktest offen)
+- Konzept von Jacky abgenommen ("ja passt so"). Migration 205 (Dev angewendet): partner.typ = ENUM(fremdrechnung|kommission|spende) (mietfach→fremdrechnung, beides→kommission), + strasse/plz/ort/land, ku_text, kunde_id (Debitor Fachmiete, FK kunden), lieferant_id (Kreditor Kommission, FK lieferanten); abrechnungs_modus + abrechnungs_beleg_typ GEDROPPT; artikel.partner_modus + 'fremdrechnung', per UPDATE synchron mit partner.typ.
+- PartnerService: VERKAUFSARTEN, KU_STANDARDTEXT; aktualisiere() merged mit altem Datensatz (kunde_id bleibt); Provision/Lieferant nur bei Kommission. PartnerRepository::update zieht artikel.partner_modus mit. PartnerLagerService setzt partner_modus = partner.typ. mietfaecher.php: jeder Partner mietbar.
+- liste.php/partner_liste.js: Adresse, Verkaufsart+Hinweistext, Provision+Lieferant (nur Kommission), KU-Text (nur KU), Spalte Ort/"Adresse fehlt". Beide Handbücher.
+- Test: Rollback-Harness 11/11. UI nicht im Browser getestet (keine Login-Daten) → Jacky-Klicktest.
+- Nebenbei: schema_migrations auf Dev fehlten 203+204 (von Hand eingespielt) → nachgetragen. Live-Deploy: 201–205.
+- ⏭️ Nächster Schritt 2: Kasse/Bon (RKSV-Trennung, Bon-Abschnitte, Kassenstand, Z-Bon, Storno/Retoure).
+
+## ✅ Schritt 2 Kasse/Bon GEBAUT 2026-10-26 (committed mit Schritt 1, Klicktest offen)
+- Migration 206: kassen_bon_positionen.partner_id + partner_modus (Snapshot), kassen_bons.fremd_betrag/spende_betrag/spende_bar. Alt-Positionen mit Partnerware → 'kommission' (waren damals signiert).
+- `src/modules/kasse/PartnerBon.php` = zentrale Logik: anreichern() (serverseitig aus artikel+partner; Spende + KU-Fremdrechnung → 0 %), eigene(), summen(), spendeBar(), abschnitte(), SQL_EIGEN.
+- KassenService::erstelleBon: Steuergruppen + Signatur nur eigen (eigenBetrag = brutto − fremd − spende), ohne eigene Positionen KEINE Signatur; Spiegel-Auftrag ohne Fremd/Spende. storniereBon analog (negativ, nur eigen signiert). getKassenstand − spende_bar. Tages-/Periodenkennzahlen: umsatz_gesamt = eigen, + partner_fremd/partner_spende(/_bar); Steuer-/Gruppen-Auswertung nur SQL_EIGEN. sammleAbschlussDaten → partner_umsaetze.
+- bon_speichern: RKSV-Negativcheck mit eigenem Anteil, K1-Extras ohne Fremd. bon_druck (80mm) + BonA4Renderer: Partner-Abschnitte, Steuer nur eigen, "davon MEALANA", Hinweis ohne RKSV bei Nur-Partner-Bon. abschluss_druck/_mail: Partnerumsätze. Dashboard: eigener Umsatz. bon.php: Badge "im Namen von"/"Spende für" (findArtikelByCode/sucheArtikel liefern partner_modus/partner_name).
+- Test: Integrationsskript 22/22 (Mischbon, Nur-Partner-Bon Bankomat, Storno, Kassenstand, Z-Bon, A4+80mm-Render) mit vollständigem Aufräumen. Nicht getestet: echter BFR (K3), Retoure über bon_speichern (HTTP), abschluss_periode zeigt umsatz_gesamt jetzt eigen ohne Partnerzeile.
+- Offen für Schritt 5: BuchhaltungExportService bucht Fremd/Spende noch als Erlös!
+- ⏭️ Schritt 3: Partner-Konto (Saldo, Aufstellung + Zahlungsaviso, Auszahlung bar/Überweisung, Spendenliste, Kontrollliste Kommission).

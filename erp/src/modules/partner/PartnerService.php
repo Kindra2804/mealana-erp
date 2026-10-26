@@ -9,14 +9,24 @@ require_once __DIR__ . '/PartnerRepository.php';
  * Validiert und speichert Partner-Stammdaten.
  * Mietfach-spezifische Logik (Fächer, Verträge) liegt in MietfachService.
  *
- * Partner-Typen und ihre Bedeutung:
- *   "mietfach"   → mietet ein physisches Fach im Laden
- *   "kommission" → verkauft Waren auf Provisionsbasis
- *   "spende"     → spendet Waren (z.B. für Charity-Aktionen)
- *   "beides"     → Kombination aus Kommission und Spende
+ * Verkaufsart (Spalte typ, Klärung Steuerberatung 2026-10-26):
+ *   "fremdrechnung" → Verkauf im Namen + auf Rechnung des Partners: nie unser Umsatz,
+ *                     keine RKSV, keine Provision, keine Rechnung von uns (nur Aufstellung/Aviso)
+ *   "kommission"    → eigener Umsatz; Partner stellt uns Rechnung (EK = netto − Provision)
+ *   "spende"        → Durchlauf (z.B. Yarnpride), eigene Kassenlade
+ * Ein Mietfach ist bei jeder Verkaufsart zusätzlich möglich (eigene Mietrechnung, nie gegenverrechnet).
  */
 class PartnerService
 {
+    public const VERKAUFSARTEN = [
+        'fremdrechnung' => 'Fremdrechnung',
+        'kommission'    => 'Kommission',
+        'spende'        => 'Spende',
+    ];
+
+    /** Steht am Bon im Partner-Abschnitt, wenn der Partner keinen eigenen Text hinterlegt hat */
+    public const KU_STANDARDTEXT = 'Umsatzsteuerbefreit – Kleinunternehmer gem. § 6 Abs. 1 Z 27 UStG';
+
     private PartnerRepository $repo;
 
     public function __construct()
@@ -31,7 +41,7 @@ class PartnerService
     /**
      * Gibt alle Partner zurück, optional gefiltert nach Typ und/oder Aktiv-Status.
      *
-     * @param array $filter z.B. ['typ' => 'mietfach', 'aktiv' => 1]
+     * @param array $filter z.B. ['typ' => 'fremdrechnung', 'aktiv' => 1]
      */
     public function getAll(array $filter = []): array
     {
@@ -74,6 +84,13 @@ class PartnerService
             return ['erfolg' => false, 'fehler' => ['ID fehlt.']];
         }
 
+        $alt = $this->repo->findById((int)$data['id']);
+        if (!$alt) {
+            return ['erfolg' => false, 'fehler' => ['Partner nicht gefunden.']];
+        }
+        // Felder, die das Formular nicht schickt (z.B. kunde_id aus dem Mietlauf), bleiben erhalten
+        $data = array_merge($alt, $data);
+
         $fehler = $this->validiere($data);
         if (!empty($fehler)) {
             return ['erfolg' => false, 'fehler' => $fehler];
@@ -104,9 +121,12 @@ class PartnerService
             $fehler[] = 'Name ist Pflichtfeld.';
         }
 
-        $gueltigeTypen = ['mietfach', 'kommission', 'spende', 'beides'];
-        if (empty($data['typ']) || !in_array($data['typ'], $gueltigeTypen, true)) {
-            $fehler[] = 'Typ muss "mietfach", "kommission", "spende" oder "beides" sein.';
+        if (empty($data['typ']) || !array_key_exists($data['typ'], self::VERKAUFSARTEN)) {
+            $fehler[] = 'Verkaufsart muss Fremdrechnung, Kommission oder Spende sein.';
+        }
+
+        if (!empty($data['land']) && !preg_match('/^[A-Z]{2}$/', $data['land'])) {
+            $fehler[] = 'Land ist ungültig.';
         }
 
         if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
@@ -114,8 +134,9 @@ class PartnerService
         }
 
         if (isset($data['provisions_satz']) && $data['provisions_satz'] !== '') {
-            if (!is_numeric($data['provisions_satz']) || (float)$data['provisions_satz'] < 0) {
-                $fehler[] = 'Provision muss eine Zahl größer oder gleich 0 sein.';
+            $prov = str_replace(',', '.', (string)$data['provisions_satz']);
+            if (!is_numeric($prov) || (float)$prov < 0 || (float)$prov > 100) {
+                $fehler[] = 'Provision muss zwischen 0 und 100 % liegen.';
             }
         }
 
@@ -132,14 +153,27 @@ class PartnerService
      */
     private function bereinige(array $data): array
     {
-        foreach (['email', 'telefon', 'iban', 'uid_nummer', 'zvr_nummer', 'notiz'] as $feld) {
-            if (array_key_exists($feld, $data) && $data[$feld] === '') {
-                $data[$feld] = null;
+        foreach (['strasse', 'plz', 'ort', 'email', 'telefon', 'iban', 'uid_nummer', 'zvr_nummer', 'ku_text', 'notiz'] as $feld) {
+            if (array_key_exists($feld, $data)) {
+                $data[$feld] = trim((string)$data[$feld]) === '' ? null : trim((string)$data[$feld]);
             }
         }
 
         // Checkbox kommt aus Formular nur wenn angehakt → explizit 0 oder 1
         $data['kleinunternehmer'] = !empty($data['kleinunternehmer']) ? 1 : 0;
+        if (!$data['kleinunternehmer']) {
+            $data['ku_text'] = null;
+        }
+
+        // Provision + Kreditor gibt es nur bei Kommission (Fremdrechnung: keine Provision, nur Fachmiete)
+        if (($data['typ'] ?? '') !== 'kommission') {
+            $data['provisions_satz'] = 0;
+            $data['lieferant_id']    = null;
+        } else {
+            $data['provisions_satz'] = (float)str_replace(',', '.', (string)($data['provisions_satz'] ?? 0));
+            $data['lieferant_id']    = !empty($data['lieferant_id']) ? (int)$data['lieferant_id'] : null;
+        }
+        $data['kunde_id'] = !empty($data['kunde_id']) ? (int)$data['kunde_id'] : null;
 
         return $data;
     }

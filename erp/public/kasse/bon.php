@@ -1896,6 +1896,8 @@ function _artikelEinfuegen(a, menge) {
             nachzutragen_lagerbestand_id: a._nachtragen_lagerbestand_id || null,
             istDivers:                   !!a.istDivers,
             artikel_gruppe_id:           a.artikel_gruppe_id || null, // nur Divers: Erlöskonto-Gruppe
+            partner_modus:               a.partner_modus || null,     // nur Anzeige — der Server bestimmt das selbst
+            partner_name:                a.partner_name || null,
             hat_chargen:                 !!a.hat_chargen,
             charge_pflicht:              !!a.charge_pflicht,
             bestand_physisch:            parseFloat(a.bestand_physisch)   || 0,
@@ -2141,6 +2143,10 @@ function renderBon(skipKdSync) {
             var teilHtml = (p.vonAuftrag && p.menge < orig)
                 ? '<span class="bon-row-teil">' + p.menge + ' von ' + orig + ' mitgenommen</span>'
                 : '';
+            // Partnerware: eigener Bon-Abschnitt, kein eigener Umsatz (PartnerBon)
+            if (p.partner_modus === 'fremdrechnung' || p.partner_modus === 'spende') {
+                teilHtml += '<span class="bon-row-teil">' + (p.partner_modus === 'spende' ? 'Spende für ' : 'im Namen von ') + esc(p.partner_name || 'Partner') + '</span>';
+            }
 
             div.innerHTML =
                 '<div class="bon-row-nr">' + (++lfdNr) + '</div>' +

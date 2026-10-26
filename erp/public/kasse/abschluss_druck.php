@@ -175,8 +175,19 @@ function esc(string $v): string { return htmlspecialchars($v); }
     <tr><td>Kombizahlung — Karte-Anteil</td><td class="r"><?= eur((float)$kz['umsatz_kombi_karte']) ?></td></tr>
   </tbody>
   <tfoot>
+    <?php $partnerGes = (float)($kz['partner_fremd'] ?? 0) + (float)($kz['partner_spende'] ?? 0); ?>
+    <?php if (abs($partnerGes) > 0.004): ?>
     <tr>
-      <td>Gesamt (netto Stornos)</td>
+      <td>Kassiert gesamt (inkl. Partnerware)</td>
+      <td class="r"><?= eur($umsatzGes + $partnerGes) ?></td>
+    </tr>
+    <tr style="font-size:9pt">
+      <td>davon Partnerware (kein eigener Umsatz, siehe unten)</td>
+      <td class="r"><?= eur($partnerGes) ?></td>
+    </tr>
+    <?php endif; ?>
+    <tr>
+      <td><?= abs($partnerGes) > 0.004 ? 'Eigener Umsatz (netto Stornos)' : 'Gesamt (netto Stornos)' ?></td>
       <td class="r"><?= eur($umsatzGes) ?></td>
     </tr>
     <?php if ((int)$kz['anzahl_stornos'] > 0): ?>
@@ -213,6 +224,28 @@ function esc(string $v): string { return htmlspecialchars($v); }
   </tfoot>
 </table>
 <p style="font-size:8.5pt;color:#475569;margin:4px 0 0">Nacherfassungen sind im Umsatz oben enthalten (heute signiert), werden in der Buchhaltung aber zum Belegdatum gebucht.</p>
+<?php endif; ?>
+
+<!-- PARTNERUMSÄTZE (Fremdrechnung + Spende, nicht im eigenen Umsatz / nicht RKSV) -->
+<?php $pu = $daten['partner_umsaetze'] ?? []; if ($pu): ?>
+<h2>Partnerumsätze (im fremden Namen / Spenden)</h2>
+<table>
+  <thead><tr><th>Partner</th><th>Art</th><th>Bons</th><th class="r">Betrag</th></tr></thead>
+  <tbody>
+    <?php foreach ($pu as $p): ?>
+    <tr>
+      <td><?= esc($p['partner_name']) ?></td>
+      <td><?= $p['modus'] === 'spende' ? 'Spende' : 'Fremdrechnung' ?></td>
+      <td><?= (int)$p['anzahl_bons'] ?></td>
+      <td class="r"><?= eur($p['brutto']) ?></td>
+    </tr>
+    <?php endforeach; ?>
+  </tbody>
+  <tfoot>
+    <tr><td colspan="3">Summe Partnerumsätze</td><td class="r"><?= eur(array_sum(array_column($pu, 'brutto'))) ?></td></tr>
+  </tfoot>
+</table>
+<p style="font-size:8.5pt;color:#475569;margin:4px 0 0">Fremdrechnung: Geld liegt in der Lade, wird an den Partner weitergegeben. Spende: Bar-Anteil <?= eur((float)($kz['partner_spende_bar'] ?? 0)) ?> liegt in der Spendenlade und ist im Kassenstand nicht enthalten.</p>
 <?php endif; ?>
 
 <!-- STEUERAUFSTELLUNG -->

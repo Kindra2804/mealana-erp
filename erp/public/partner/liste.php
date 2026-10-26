@@ -12,7 +12,12 @@ if ($filterAktiv !== '') $filter['aktiv'] = (int)$filterAktiv;
 
 $partner = $service->getAll($filter);
 
-$pageTitle        = 'Partner';
+// Auswahllisten fürs Formular
+$db          = Database::getInstance();
+$laender     = $db->query("SELECT iso_code, name_de FROM laender ORDER BY iso_code <> 'AT', iso_code <> 'DE', name_de")->fetchAll();
+$lieferanten = $db->query("SELECT id, COALESCE(NULLIF(firma, ''), name) AS name FROM lieferanten WHERE aktiv = 1 ORDER BY 2")->fetchAll();
+
+$pageTitle       = 'Partner';
 $activeModule     = 'partner';
 $actionBarContent = <<<HTML
     <button class="btn btn-primary btn-sm" onclick="modalNeuOeffnen()">+ Neuer Partner</button>
@@ -22,19 +27,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 function typ_chip(string $typ): string {
     return match($typ) {
-        'mietfach'   => '<span class="chip" style="background:#fff8e1;color:#e65100;border:1px solid #ffcc02">Mietfach</span>',
-        'kommission' => '<span class="chip" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9">Kommission</span>',
-        'spende'     => '<span class="chip" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8">Spende</span>',
-        'beides'     => '<span class="chip" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7">Sonderfall</span>',
-        default      => htmlspecialchars($typ),
-    };
-}
-
-function beleg_chip(string $typ): string {
-    return match($typ) {
-        'gutschrift'    => '<span style="font-size:11px;color:#555">Gutschrift</span>',
-        'fremdrechnung' => '<span style="font-size:11px;color:#e67e22">Fremdrechnung</span>',
-        'info'          => '<span style="font-size:11px;color:#888">Info</span>',
+        'fremdrechnung' => '<span class="chip" style="background:#fff8e1;color:#e65100;border:1px solid #ffcc02">Fremdrechnung</span>',
+        'kommission'    => '<span class="chip" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9">Kommission</span>',
+        'spende'        => '<span class="chip" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8">Spende</span>',
         default         => htmlspecialchars($typ),
     };
 }
@@ -44,11 +39,10 @@ function beleg_chip(string $typ): string {
     <div class="filter-bar" style="margin-bottom:16px">
         <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select name="typ" class="erp-select" onchange="this.form.requestSubmit()">
-                <option value=""           <?= $filterTyp === ''           ? 'selected' : '' ?>>Alle Typen</option>
-                <option value="mietfach"   <?= $filterTyp === 'mietfach'   ? 'selected' : '' ?>>Mietfach</option>
-                <option value="kommission" <?= $filterTyp === 'kommission' ? 'selected' : '' ?>>Kommission</option>
-                <option value="spende"     <?= $filterTyp === 'spende'     ? 'selected' : '' ?>>Spende</option>
-                <option value="beides"     <?= $filterTyp === 'beides'     ? 'selected' : '' ?>>Sonderfall</option>
+                <option value="" <?= $filterTyp === '' ? 'selected' : '' ?>>Alle Verkaufsarten</option>
+                <?php foreach (PartnerService::VERKAUFSARTEN as $wert => $label): ?>
+                <option value="<?= $wert ?>" <?= $filterTyp === $wert ? 'selected' : '' ?>><?= $label ?></option>
+                <?php endforeach; ?>
             </select>
             <select name="aktiv" class="erp-select" onchange="this.form.requestSubmit()">
                 <option value="1" <?= $filterAktiv === '1' ? 'selected' : '' ?>>Nur aktive</option>
@@ -65,10 +59,10 @@ function beleg_chip(string $typ): string {
         <thead>
             <tr>
                 <th>NAME</th>
-                <th style="width:140px">TYP</th>
+                <th style="width:140px">VERKAUFSART</th>
                 <th style="width:110px">MIETFÄCHER</th>
                 <th style="width:90px">PROVISION</th>
-                <th style="width:130px">ABRECHNUNG</th>
+                <th style="width:160px">ORT</th>
                 <th style="width:80px">STATUS</th>
                 <th style="width:90px"></th>
             </tr>
@@ -85,7 +79,10 @@ function beleg_chip(string $typ): string {
                         <div style="font-size:11px;color:var(--color-text-muted)"><?= htmlspecialchars($p['email']) ?></div>
                     <?php endif; ?>
                 </td>
-                <td><?= typ_chip($p['typ']) ?></td>
+                <td>
+                    <?= typ_chip($p['typ']) ?>
+                    <?php if ($p['kleinunternehmer']): ?><div style="font-size:11px;color:var(--color-text-muted)">Kleinunternehmer</div><?php endif; ?>
+                </td>
                 <td>
                     <?php $anzahl = (int)($p['aktuelle_faecher'] ?? 0); ?>
                     <?php if ($anzahl > 0): ?>
@@ -98,15 +95,19 @@ function beleg_chip(string $typ): string {
                     <?php endif; ?>
                 </td>
                 <td style="font-size:13px">
-                    <?php if (in_array($p['typ'], ['kommission','beides'])): ?>
+                    <?php if ($p['typ'] === 'kommission'): ?>
                         <?= number_format((float)$p['provisions_satz'], 1) ?>&thinsp;%
-                    <?php elseif ($p['typ'] === 'mietfach'): ?>
-                        <span style="font-size:11px;color:var(--color-text-muted)">Fremdrechnung</span>
                     <?php else: ?>
                         <span style="color:var(--color-text-muted)">–</span>
                     <?php endif; ?>
                 </td>
-                <td><?= beleg_chip($p['abrechnungs_beleg_typ']) ?></td>
+                <td style="font-size:13px">
+                    <?php if ($p['ort']): ?>
+                        <?= htmlspecialchars(trim($p['plz'] . ' ' . $p['ort'])) ?>
+                    <?php else: ?>
+                        <span style="font-size:11px;color:#b45309" title="Adresse wird für Bon und Abrechnung gebraucht">Adresse fehlt</span>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <?php if ($p['aktiv']): ?>
                         <span class="chip chip-aktiv">Aktiv</span>
@@ -141,7 +142,7 @@ function beleg_chip(string $typ): string {
         </div>
         <form id="form-neu" onsubmit="partnerSpeichern(event)">
             <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
-                <?= partnerFormFelder() ?>
+                <?= partnerFormFelder('', $laender, $lieferanten) ?>
             </div>
             <div style="padding:16px 24px;border-top:1px solid #e0e0e0;display:flex;justify-content:flex-end;gap:8px">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="modalNeuSchliessen()">Abbrechen</button>
@@ -163,7 +164,7 @@ function beleg_chip(string $typ): string {
         <form id="form-bearbeiten" onsubmit="partnerAktualisieren(event)">
             <input type="hidden" name="id" id="edit-id">
             <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
-                <?= partnerFormFelder('edit-') ?>
+                <?= partnerFormFelder('edit-', $laender, $lieferanten) ?>
             </div>
             <div style="padding:16px 24px;border-top:1px solid #e0e0e0;display:flex;justify-content:flex-end;gap:8px">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="modalBearbeitenSchliessen()">Abbrechen</button>
@@ -176,21 +177,48 @@ function beleg_chip(string $typ): string {
 <div id="banner" style="display:none;position:fixed;top:16px;right:16px;z-index:2000;padding:10px 18px;border-radius:6px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.2)"></div>
 
 <?php
-function partnerFormFelder(string $prefix = ''): string {
+function partnerFormFelder(string $prefix, array $laender, array $lieferanten): string {
     $p = $prefix;
+    $landOptionen = '';
+    foreach ($laender as $l) {
+        $landOptionen .= '<option value="' . $l['iso_code'] . '">' . htmlspecialchars($l['iso_code'] . ' – ' . $l['name_de']) . '</option>';
+    }
+    $lieferantOptionen = '<option value="">— noch keiner —</option>';
+    foreach ($lieferanten as $l) {
+        $lieferantOptionen .= '<option value="' . (int)$l['id'] . '">' . htmlspecialchars($l['name']) . '</option>';
+    }
+    $kuStandard = htmlspecialchars(PartnerService::KU_STANDARDTEXT);
     return <<<HTML
         <div>
             <label class="erp-label">Name *</label>
             <input type="text" name="name" id="{$p}name" class="erp-input" style="width:100%;box-sizing:border-box" required>
         </div>
         <div>
-            <label class="erp-label">Typ *</label>
+            <label class="erp-label">Straße</label>
+            <input type="text" name="strasse" id="{$p}strasse" class="erp-input" style="width:100%;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:10px">
+            <div style="width:90px">
+                <label class="erp-label">PLZ</label>
+                <input type="text" name="plz" id="{$p}plz" class="erp-input" style="width:100%;box-sizing:border-box">
+            </div>
+            <div style="flex:1;min-width:0">
+                <label class="erp-label">Ort</label>
+                <input type="text" name="ort" id="{$p}ort" class="erp-input" style="width:100%;box-sizing:border-box">
+            </div>
+            <div style="width:150px">
+                <label class="erp-label">Land</label>
+                <select name="land" id="{$p}land" class="erp-select" style="width:100%">{$landOptionen}</select>
+            </div>
+        </div>
+        <div>
+            <label class="erp-label">Verkaufsart *</label>
             <select name="typ" id="{$p}typ" class="erp-select" onchange="typToggle('{$p}')">
-                <option value="mietfach">Mietfach – Fremdrechnung (Quittungsblock des Fachieters)</option>
-                <option value="kommission">Kommission – eigene Abrechnung, Provision</option>
-                <option value="spende">Spende – Durchlaufposten (z.B. Yarnpride)</option>
-                <option value="beides">Sonderfall (Kombination)</option>
+                <option value="fremdrechnung">Fremdrechnung – im Namen und auf Rechnung des Partners</option>
+                <option value="kommission">Kommission – unser Umsatz, Partner stellt uns Rechnung</option>
+                <option value="spende">Spende – Durchlauf (z.B. Yarnpride)</option>
             </select>
+            <div id="{$p}typ-hinweis" style="font-size:11px;color:var(--color-text-muted);margin-top:4px"></div>
         </div>
         <div style="display:flex;gap:10px">
             <div style="flex:1;min-width:0">
@@ -216,31 +244,25 @@ function partnerFormFelder(string $prefix = ''): string {
                 <input type="text" name="zvr_nummer" id="{$p}zvr_nummer" class="erp-input" style="width:100%;box-sizing:border-box">
             </div>
         </div>
-        <div id="{$p}provision-zeile">
-            <label class="erp-label">Provision %</label>
-            <input type="number" name="provisions_satz" id="{$p}provisions_satz"
-                   class="erp-input" step="0.01" min="0" max="100" value="0" style="width:110px">
-        </div>
-        <div style="display:flex;gap:10px">
-            <div style="flex:1;min-width:0">
-                <label class="erp-label">Abrechnungs-Modus</label>
-                <select name="abrechnungs_modus" id="{$p}abrechnungs_modus" class="erp-select">
-                    <option value="getrennt">Getrennt</option>
-                    <option value="gegenverrechnung">Gegenverrechnung</option>
-                </select>
+        <div id="{$p}kommission-zeile" style="display:flex;gap:10px">
+            <div style="width:130px">
+                <label class="erp-label">Provision % (netto)</label>
+                <input type="number" name="provisions_satz" id="{$p}provisions_satz"
+                       class="erp-input" step="0.01" min="0" max="100" value="0" style="width:100%;box-sizing:border-box">
             </div>
             <div style="flex:1;min-width:0">
-                <label class="erp-label">Beleg-Typ</label>
-                <select name="abrechnungs_beleg_typ" id="{$p}abrechnungs_beleg_typ" class="erp-select">
-                    <option value="gutschrift">Gutschrift (MeaLana stellt)</option>
-                    <option value="fremdrechnung">Fremdrechnung (Partner stellt)</option>
-                    <option value="info">Info-Abrechnung</option>
-                </select>
+                <label class="erp-label">Lieferant (stellt uns die Rechnung)</label>
+                <select name="lieferant_id" id="{$p}lieferant_id" class="erp-select" style="width:100%">{$lieferantOptionen}</select>
             </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-            <input type="checkbox" name="kleinunternehmer" id="{$p}kleinunternehmer" value="1">
+            <input type="checkbox" name="kleinunternehmer" id="{$p}kleinunternehmer" value="1" onchange="typToggle('{$p}')">
             <label for="{$p}kleinunternehmer" style="cursor:pointer;font-size:13px">Kleinunternehmer (kein USt-Ausweis)</label>
+        </div>
+        <div id="{$p}ku-zeile">
+            <label class="erp-label">Kleinunternehmer-Text am Bon (leer = Standard)</label>
+            <input type="text" name="ku_text" id="{$p}ku_text" class="erp-input" maxlength="255"
+                   style="width:100%;box-sizing:border-box" placeholder="{$kuStandard}">
         </div>
         <div>
             <label class="erp-label">Notiz</label>
