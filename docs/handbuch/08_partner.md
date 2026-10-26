@@ -67,12 +67,13 @@ Ware eines Partners liegt in einem **eigenen Lager des Partners**, nicht im Lade
 **Einrichten:** Partner → Name anklicken → **Partner-Lager anlegen**. Die gemieteten Fächer werden automatisch Lagerplätze darin (z.B. „Mollramer Seifen Fabrik · R1-F1“). Wird später ein Fach neu vermietet, kommt es beim Start des Mietvertrags automatisch dazu. Wechselt ein Fach den Mieter und liegt dort noch Ware des Vormieters, bleibt es beim Vormieter, bis die Rückgabe gebucht ist.
 
 **Partner-Artikel** (Reiter **Artikel**):
-- Artikelnummer beginnt immer mit `XP` + Partner-ID, z.B. `XP01-SEIFE-LAV` — den Teil dahinter wählt ihr frei. Eigene Artikel dürfen nicht mit „XP“ + Zahl beginnen.
+- Artikelnummer beginnt immer mit `XP` + Partner-ID, z.B. `XP01-SEIFE-LAV` — den Teil dahinter wählt ihr frei; **leer lassen** = automatisch `XP01-0001`, `XP01-0002` … Eigene Artikel dürfen nicht mit „XP“ + Zahl beginnen.
+- Partnerware **nur hier** (oder beim „Ware übernehmen“) anlegen, nie über die normale Artikelanlage — dort wird die Gruppe „Partnerware“ abgelehnt, weil der Artikel sonst keinen Partner, keine XP-Nummer und kein Partner-Lager bekäme.
 - Bezeichnung, Verkaufspreis, MwSt, EAN, Fach.
 - Partnerware steht **nicht** in der normalen Artikelliste (Umschalter „inkl. Partnerware“ zeigt sie zur Ansicht) und geht **nie** in den Onlineshop.
 
 **Ware übernehmen / zurückgeben** (Reiter **Bestand**):
-- **📥 Ware übernehmen** — Mengen eintragen oder ins Suchfeld EAN scannen / Artikelnummer (auch ohne „XP01-“) / Name tippen: die Liste filtert mit, Enter = +1 beim passenden Artikel → **Buchen** → **Übernahmeschein** (US-Nummer) als PDF zum Unterschreiben.
+- **📥 Ware übernehmen** — fehlt ein Artikel noch, **+ Neuer Artikel** legt ihn direkt dort an (Bezeichnung, Preis, MwSt, optional Nummer/EAN/Fach) und setzt ihn mit Menge 1 in die Liste. Sonst: Mengen eintragen oder ins Suchfeld EAN scannen / Artikelnummer (auch ohne „XP01-“) / Name tippen: die Liste filtert mit, Enter = +1 beim passenden Artikel → **Buchen** → **Übernahmeschein** (US-Nummer) als PDF zum Unterschreiben.
 - **📤 Rückgabe an Partner** — höchstens der aktuelle Bestand → **Rückgabeschein** (RS-Nummer).
 
 **Kasse:** Partner-Artikel werden automatisch aus dem Lager ihres Partners abgebucht (Storno bucht dorthin zurück). Eine Rückgabe an der Kasse schlägt beim Einlagern am Packplatz das Partner-Lager vor.

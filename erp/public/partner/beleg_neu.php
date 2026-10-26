@@ -18,6 +18,10 @@ if (!$partner || !$svc->getLager($id)) {
 $artikel = array_values(array_filter($svc->getArtikel($id), fn($a) =>
     $belegTyp === 'uebernahme' ? (int)$a['aktiv'] === 1 : (float)$a['bestand'] > 0
 ));
+// Für "+ Neuer Artikel" direkt beim Übernehmen (gleiches Speichern wie Reiter "Artikel")
+$steuerklassen = Database::getInstance()->query("SELECT id, name, satz FROM steuerklassen ORDER BY satz DESC")->fetchAll(PDO::FETCH_ASSOC);
+$plaetze       = $svc->getPlaetze($id);
+$istKommission = $partner['typ'] === 'kommission';
 
 $belegTitel            = $belegTyp === 'uebernahme' ? '📥 Ware übernehmen' : '📤 Rückgabe an Partner';
 $pageTitle        = $belegTitel . ' — ' . $partner['name'];
@@ -35,6 +39,35 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
     <input type="text" id="scan" class="erp-input" style="margin-top:10px;width:420px" placeholder="EAN scannen oder Nummer/Name tippen → Liste filtert, Enter = +1" autocomplete="off" autofocus>
     <span id="scan-info" style="font-size:12px;color:var(--color-text-muted);margin-left:8px"></span>
+    <?php if ($belegTyp === 'uebernahme'): ?>
+    <button type="button" class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="naToggle()">+ Neuer Artikel</button>
+
+    <!-- Neuer Partner-Artikel ohne Umweg über den Reiter "Artikel": landet sofort mit Menge 1 in der Liste -->
+    <div id="na-box" style="display:none;margin-top:12px;padding:12px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:2;min-width:200px"><label class="erp-label">Bezeichnung *</label>
+                <input type="text" id="na-name" class="erp-input" style="width:100%;box-sizing:border-box" maxlength="200"></div>
+            <div><label class="erp-label">VK brutto *</label><input type="text" id="na-preis" class="erp-input" style="width:90px" placeholder="0,00"></div>
+            <div><label class="erp-label">MwSt</label>
+                <select id="na-steuer" class="erp-select">
+                    <?php foreach ($steuerklassen as $s): ?><option value="<?= $s['id'] ?>"><?= rtrim(rtrim(number_format((float)$s['satz'], 1, ',', ''), '0'), ',') ?> %</option><?php endforeach; ?>
+                </select></div>
+            <div><label class="erp-label">Nummer (leer = auto)</label>
+                <div style="display:flex;align-items:center;gap:3px"><code style="font-size:12px"><?= PartnerLagerService::nummernPraefix($id) ?></code>
+                <input type="text" id="na-suffix" class="erp-input" style="width:100px" maxlength="40"></div></div>
+            <div><label class="erp-label">EAN</label><input type="text" id="na-ean" class="erp-input" style="width:130px" maxlength="20"></div>
+            <div><label class="erp-label">Fach</label>
+                <select id="na-fach" class="erp-select"><option value="">—</option>
+                    <?php foreach ($plaetze as $lp): ?><option value="<?= $lp['id'] ?>"><?= htmlspecialchars($lp['bezeichnung']) ?></option><?php endforeach; ?>
+                </select></div>
+            <?php if ($istKommission): ?>
+            <div><label class="erp-label">EK netto</label><input type="text" id="na-ek" class="erp-input" style="width:80px" placeholder="0,00"></div>
+            <?php endif; ?>
+            <button type="button" class="btn btn-primary btn-sm" onclick="naSpeichern()">Anlegen + in Liste</button>
+        </div>
+        <div id="na-fehler" style="color:var(--color-danger);font-size:12px;min-height:16px;margin-top:6px"></div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <div class="card">
@@ -119,6 +152,56 @@ scan.addEventListener('keydown', function (e) {
     var m = zeile.querySelector('.menge'); m.value = (parseInt(m.value, 10) || 0) + 1;
     zeile.style.background = '#e6f7ee'; zeile.scrollIntoView({ block: 'center' });
 });
+function naToggle() {
+    var box = document.getElementById('na-box');
+    box.style.display = box.style.display === 'none' ? '' : 'none';
+    if (box.style.display === '') {
+        // Gesuchter Text, der nichts gefunden hat, ist meist schon die Bezeichnung
+        if (scan.value.trim() && !document.getElementById('na-name').value) document.getElementById('na-name').value = scan.value.trim();
+        document.getElementById('na-name').focus();
+    }
+}
+function naSpeichern() {
+    var ek = document.getElementById('na-ek');
+    var daten = {
+        partner_id: <?= $id ?>, id: null,
+        nummer_suffix: document.getElementById('na-suffix').value,
+        name: document.getElementById('na-name').value,
+        brutto_vk: document.getElementById('na-preis').value,
+        steuerklasse_id: document.getElementById('na-steuer').value,
+        ean: document.getElementById('na-ean').value,
+        stammplatz_id: document.getElementById('na-fach').value || null,
+        aktiv: 1,
+        ek_netto: ek ? ek.value : ''
+    };
+    fetch(window.BASE_PATH + '/partner/artikel_speichern.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) })
+        .then(function (r) { return r.json(); }).then(function (d) {
+            if (!d.erfolg) { document.getElementById('na-fehler').textContent = (d.fehler || ['Fehler']).join(' '); return; }
+            // Neue Zeile oben einfügen, Menge 1
+            var fach = document.getElementById('na-fach');
+            var tr = document.createElement('tr');
+            tr.dataset.artikel = d.id; tr.dataset.ean = daten.ean.trim(); tr.dataset.nr = d.artikelnummer;
+            tr.dataset.name = daten.name.trim(); tr.dataset.bestand = 0;
+            tr.innerHTML = '<td style="font-family:monospace"></td><td style="font-family:monospace;font-size:12px"></td><td></td>'
+                + '<td><input type="text" class="erp-input charge" style="width:110px" placeholder="optional"></td>'
+                + '<td style="text-align:right">0</td>'
+                + '<td><input type="number" class="erp-input menge" style="width:90px" min="0" step="1" value="1"></td>';
+            tr.children[0].textContent = fach.value ? fach.options[fach.selectedIndex].text : '–';
+            tr.children[1].textContent = d.artikelnummer;
+            tr.children[2].textContent = daten.name.trim() + ' (neu)';
+            tr.style.background = '#e6f7ee';
+            var tbody = document.querySelector('#beleg-tabelle tbody');
+            var leer = tbody.querySelector('tr:not([data-artikel])');
+            if (leer) leer.remove();
+            tbody.insertBefore(tr, tbody.firstChild);
+            zeilen.unshift(tr);
+            ['na-name', 'na-preis', 'na-suffix', 'na-ean'].forEach(function (i) { document.getElementById(i).value = ''; });
+            if (ek) ek.value = '';
+            document.getElementById('na-fehler').textContent = '';
+            document.getElementById('na-box').style.display = 'none';
+            scan.value = ''; scanFiltern(); scan.focus();
+        });
+}
 function belegBuchen() {
     var pos = Array.from(document.querySelectorAll('#beleg-tabelle tbody tr[data-artikel]')).map(function (tr) {
         return { artikel_id: parseInt(tr.dataset.artikel, 10), menge: tr.querySelector('.menge').value, charge: tr.querySelector('.charge').value };

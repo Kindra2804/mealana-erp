@@ -154,10 +154,10 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
     <div style="background:#fff;border-radius:8px;padding:20px;width:460px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
         <div id="pa-titel" style="font-weight:700;font-size:15px;margin-bottom:12px;color:var(--color-nav)">Neuer Artikel</div>
         <input type="hidden" id="pa-id">
-        <label class="erp-label">Artikelnummer *</label>
+        <label class="erp-label">Artikelnummer</label>
         <div style="display:flex;align-items:center;gap:4px;margin-bottom:10px">
             <code style="font-size:14px;padding:6px 8px;background:#f1f5f9;border-radius:4px"><?= $praefix ?></code>
-            <input type="text" id="pa-suffix" class="erp-input" style="flex:1" maxlength="40" placeholder="z.B. SEIFE-LAV">
+            <input type="text" id="pa-suffix" class="erp-input" style="flex:1" maxlength="40" placeholder="leer = automatisch (0001, 0002 …)">
         </div>
         <label class="erp-label">Bezeichnung *</label>
         <input type="text" id="pa-name" class="erp-input" style="width:100%;box-sizing:border-box;margin-bottom:10px" maxlength="200">

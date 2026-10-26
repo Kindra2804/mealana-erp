@@ -618,6 +618,14 @@ class ArtikelService
         }
         if (empty($data['artikel_gruppe_id'])) {
             $fehler[] = 'Artikelgruppe ist Pflichtfeld';
+        } elseif (empty($data['_partnerware']) && !$this->istPartnerArtikel((int)($data['id'] ?? 0))) {
+            // Gruppe "Partnerware" nur über Partner → Artikel: nur dort bekommt der Artikel
+            // seinen Partner, die XP-Nummer und das Partner-Lager (sonst bleibt er Eigenware).
+            $grp = Database::getInstance()->prepare("SELECT konto_nr FROM artikel_gruppen WHERE id = ?");
+            $grp->execute([(int)$data['artikel_gruppe_id']]);
+            if ($grp->fetchColumn() === 'PARTNER') {
+                $fehler[] = 'Partnerware bitte über Partner → Partner öffnen → „Artikel“ (oder direkt beim „Ware übernehmen“) anlegen — nur dort bekommt sie Partner, XP-Nummer und Partner-Lager.';
+            }
         }
 
         $zustand = $data['zustand'] ?? 'neu';

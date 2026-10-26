@@ -171,6 +171,9 @@ class PartnerLagerService
 
         $suffix = strtoupper(trim((string)($data['nummer_suffix'] ?? '')));
         $suffix = preg_replace('/\s+/', '-', $suffix);
+        if ($suffix === '' && empty($data['id'])) {
+            $suffix = $this->naechsteFreieNummer($partnerId); // leer gelassen → XP01-0001, XP01-0002, …
+        }
         $name   = trim((string)($data['name'] ?? ''));
         $brutto = round((float)str_replace(',', '.', (string)($data['brutto_vk'] ?? '0')), 2);
         $stkId  = (int)($data['steuerklasse_id'] ?? 1);
@@ -218,7 +221,7 @@ class PartnerLagerService
             if ($ean) $repo->insertCode($id, 'GTIN13', $ean);
             $this->ekSpeichern($id, $partner, $ek, (float)$steuersatz);
             Logger::log('partner.artikel_bearbeiten', 'artikel', $id, ['partner_id' => $partnerId, 'nummer' => $nummer]);
-            return ['erfolg' => true, 'id' => $id];
+            return ['erfolg' => true, 'id' => $id, 'artikelnummer' => $nummer];
         }
 
         $gruppe = (int)$this->db->query("SELECT id FROM artikel_gruppen WHERE konto_nr = 'PARTNER' LIMIT 1")->fetchColumn();
@@ -253,7 +256,19 @@ class PartnerLagerService
             ->execute([$partnerId, $modus, $platz, $ergebnis['id']]);
         $this->ekSpeichern((int)$ergebnis['id'], $partner, $ek, (float)$steuersatz);
         Logger::log('partner.artikel_anlegen', 'artikel', $ergebnis['id'], ['partner_id' => $partnerId, 'nummer' => $nummer]);
-        return ['erfolg' => true, 'id' => $ergebnis['id']];
+        return ['erfolg' => true, 'id' => $ergebnis['id'], 'artikelnummer' => $nummer];
+    }
+
+    /** Nächste freie laufende Nummer (4-stellig) hinter dem XP-Präfix dieses Partners */
+    private function naechsteFreieNummer(int $partnerId): string
+    {
+        $praefix = self::nummernPraefix($partnerId);
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(MAX(CAST(SUBSTRING(artikelnummer, ?) AS UNSIGNED)), 0)
+            FROM artikel WHERE artikelnummer REGEXP ?
+        ");
+        $stmt->execute([strlen($praefix) + 1, '^' . $praefix . '[0-9]+$']);
+        return str_pad((string)((int)$stmt->fetchColumn() + 1), 4, '0', STR_PAD_LEFT);
     }
 
     /**
