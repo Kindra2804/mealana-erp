@@ -1206,6 +1206,18 @@ Details siehe `.claude/memory/project_datenqualitaet_20260811.md`.
 - Live-Deploy offen: Migrationen 201–204
 - Reihenfolge bis 1.0: Kassenblock-Rest (Offline-Divers) → Offline-Kasse light (Sunmi/pluson) → Partner-Abrechnung → Lizenzserver → 1.0
 
+## Update 2026-10-26: Offline-Divers + Partner-Abrechnung Schritte 1–4
+
+- Offline-Messekasse: Freier Artikel mit Artikelgruppe (Kacheln/Steuer-Tasten/Numpad), Gruppe kommt beim Resync mit
+- Offline-Kasse light verschoben bis das Sunmi zu Hause ist (2 Oberflächen: Tablet quer + Sunmi hoch)
+- Partner-Abrechnung nach Antworten der Steuerberatung (nie gegenverrechnen; Fremdrechnung = nie unser Umsatz, keine RKSV):
+  - Schritt 1 Stammdaten (Migr. 205): Verkaufsart fremdrechnung/kommission/spende, Adresse, KU-Text, Kunde/Lieferant
+  - Schritt 2 Kasse/Bon (Migr. 206, `PartnerBon`): ein Bon, Partner-Abschnitte, Signatur/Steuer/Spiegel-Auftrag nur eigen, Spende-Bargeld nicht im Kassenstand, Z-Bon Partnerumsätze
+  - Schritt 3 Partner-Konto (Migr. 207): Saldo, Auszahlung + Zahlungsaviso ZA-…, Spendenliste, Kontrollliste Kommission (EK beim Lieferanten)
+  - Schritt 4 Fachmiete (Migr. 208): monatlich im Voraus, 2 Tage vor Monatsende, Beginn Monatserster/Ende Monatsletzter, je Partner+Monat eine Rechnung, `cron/fachmiete.php`
+  - Partner-Artikel: Suche beim Übernehmen, Nummer auto XPnn-0001, "+ Neuer Artikel" direkt beim Übernehmen, normale Anlage sperrt Gruppe Partnerware
+- Offen: Schritt 5 Buchhaltungs-Export (Fremd/Spende noch als Erlös!), Konto 4800 + Partner-Konten mit Babsi, Cron eintragen, Klicktests, Live-Deploy Migr. 201–208
+
 ## Commit Convention
 
 ```

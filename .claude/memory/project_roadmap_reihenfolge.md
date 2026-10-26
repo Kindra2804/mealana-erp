@@ -92,3 +92,14 @@ Kasse-Punkte 1–3 gebaut + committed/gepusht (Punkt 1 + 3 klickgetestet). **Als
 
 ## Umstellung 2026-10-26 (Jacky)
 Offline-Kasse light (Punkt 2) verschoben auf einen Tag, an dem das Sunmi V2 zu Hause ist (liegt in der Arbeit) — Oberflächen + Druckertest gleich am Gerät, nicht halbfertig bauen. Bis dahin mit Punkt 3 (Partner-Abrechnung) weiter. Klicktest Offline-Divers macht Jacky später.
+
+## ⏭️ Nächste Session (Jacky 2026-10-26 abends, "fürs nächste Mal merken")
+Partner-Abrechnung Schritte 1–4 gebaut + committed/gepusht (siehe [[project_partner_modul]]). Offen, der Reihe nach:
+1. **Schritt 5 Buchhaltungs-Export:** BuchhaltungExportService bucht Fremdrechnung/Spende noch als ERLÖS → als Verbindlichkeit Partner / Spenden-Durchlauf buchen. Kontonummern von Babsi erfragen (Verbindlichkeit Partner, Spenden-Durchlauf) — sonst erst als einstellbare Platzhalter. Kommission bleibt normaler Erlös je Gruppe (Kommissions-Artikel brauchen dafür eine echte Gruppe statt "Partnerware"/PARTNER).
+2. **Kontonummer 4800** (Mieterlöse Fachmiete) mit Babsi bestätigen.
+3. **Cron eintragen:** cron/fachmiete.php täglich im Task Scheduler (wie mahnwesen.php).
+4. **Kosmetik Mietrechnung:** allgemeine Rechnungsvorlage zeigt "Versandart: Selbstabholung", Abholhinweis, "Vielen Dank für Ihre Bestellung!" — Jacky fragen, ob für Mietrechnungen ausblenden.
+5. **Test-Artikel 27490** "Seife Green Light - verpackt" (ART-1325092016, über normale Anlage gemacht, ist KEINE Partnerware) — Jacky fragen: löschen?
+6. **Klicktests Jacky:** Offline-Divers (Messe), Partner-Stammdaten, Kasse/Bon mit Partnerware (auch K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf + Kündigung.
+7. Live-Deploy: Migrationen 201–208.
+Danach laut Reihenfolge bis 1.0: Offline-Kasse light (wenn Sunmi zu Hause, 2 Oberflächen Tablet quer/Sunmi hoch) → Lizenzserver → 1.0.
