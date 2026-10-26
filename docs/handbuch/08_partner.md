@@ -72,7 +72,7 @@ Ware eines Partners liegt in einem **eigenen Lager des Partners**, nicht im Lade
 - Partnerware steht **nicht** in der normalen Artikelliste (Umschalter „inkl. Partnerware“ zeigt sie zur Ansicht) und geht **nie** in den Onlineshop.
 
 **Ware übernehmen / zurückgeben** (Reiter **Bestand**):
-- **📥 Ware übernehmen** — Mengen eintragen oder EAN scannen (jeder Scan +1) → **Buchen** → **Übernahmeschein** (US-Nummer) als PDF zum Unterschreiben.
+- **📥 Ware übernehmen** — Mengen eintragen oder ins Suchfeld EAN scannen / Artikelnummer (auch ohne „XP01-“) / Name tippen: die Liste filtert mit, Enter = +1 beim passenden Artikel → **Buchen** → **Übernahmeschein** (US-Nummer) als PDF zum Unterschreiben.
 - **📤 Rückgabe an Partner** — höchstens der aktuelle Bestand → **Rückgabeschein** (RS-Nummer).
 
 **Kasse:** Partner-Artikel werden automatisch aus dem Lager ihres Partners abgebucht (Storno bucht dorthin zurück). Eine Rückgabe an der Kasse schlägt beim Einlagern am Packplatz das Partner-Lager vor.

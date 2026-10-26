@@ -33,7 +33,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
             : 'Mengen eintragen, die der Partner wieder mitnimmt (höchstens der aktuelle Bestand).' ?>
         Beim Buchen entsteht ein <?= $belegTyp === 'uebernahme' ? 'Übernahmeschein' : 'Rückgabeschein' ?> zum Unterschreiben.
     </div>
-    <input type="text" id="scan" class="erp-input" style="margin-top:10px;width:320px" placeholder="EAN scannen → springt zur Zeile, +1" autocomplete="off" autofocus>
+    <input type="text" id="scan" class="erp-input" style="margin-top:10px;width:420px" placeholder="EAN scannen oder Nummer/Name tippen → Liste filtert, Enter = +1" autocomplete="off" autofocus>
+    <span id="scan-info" style="font-size:12px;color:var(--color-text-muted);margin-left:8px"></span>
 </div>
 
 <div class="card">
@@ -46,7 +47,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?= $belegTyp === 'uebernahme' ? 'Noch keine aktiven Artikel — zuerst im Reiter „Artikel“ anlegen.' : 'Kein Bestand im Partner-Lager.' ?></td></tr>
         <?php endif; ?>
         <?php foreach ($artikel as $a): ?>
-            <tr data-artikel="<?= (int)$a['id'] ?>" data-ean="<?= htmlspecialchars($a['ean'] ?? '') ?>" data-nr="<?= htmlspecialchars($a['artikelnummer']) ?>" data-bestand="<?= (float)$a['bestand'] ?>">
+            <tr data-artikel="<?= (int)$a['id'] ?>" data-ean="<?= htmlspecialchars($a['ean'] ?? '') ?>" data-nr="<?= htmlspecialchars($a['artikelnummer']) ?>"
+                data-name="<?= htmlspecialchars($a['name']) ?>" data-bestand="<?= (float)$a['bestand'] ?>">
                 <td style="font-family:monospace"><?= htmlspecialchars($a['fach'] ?? '–') ?></td>
                 <td style="font-family:monospace;font-size:12px"><?= htmlspecialchars($a['artikelnummer']) ?></td>
                 <td><?= htmlspecialchars($a['name']) ?></td>
@@ -65,14 +67,55 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <script>
-document.getElementById('scan').addEventListener('keydown', function (e) {
+// Scan/Suche: nur Artikel dieses Partners (die Tabelle enthält nichts anderes).
+// Tippen filtert nach Name, Artikelnummer (mit oder ohne XP-Präfix) und EAN;
+// Enter = +1, wenn der Code exakt passt oder genau eine Zeile übrig ist.
+var PRAEFIX = <?= json_encode(PartnerLagerService::nummernPraefix($id)) ?>;
+var zeilen  = Array.from(document.querySelectorAll('#beleg-tabelle tbody tr[data-artikel]'));
+var scan    = document.getElementById('scan');
+
+function scanNorm(s) { return s.trim().toUpperCase(); }
+function scanExakt(tr, code) {
+    var nr = tr.dataset.nr.toUpperCase();
+    return tr.dataset.ean === code || nr === code || nr === PRAEFIX + code;
+}
+function scanPasst(tr, q) {
+    return tr.dataset.name.toUpperCase().indexOf(q) !== -1
+        || tr.dataset.nr.toUpperCase().indexOf(q) !== -1
+        || (tr.dataset.ean && tr.dataset.ean.indexOf(q) !== -1);
+}
+function scanFiltern() {
+    var q = scanNorm(scan.value), n = 0;
+    zeilen.forEach(function (tr) {
+        var sichtbar = !q || scanPasst(tr, q);
+        tr.style.display = sichtbar ? '' : 'none';
+        if (sichtbar) n++;
+    });
+    document.getElementById('scan-info').textContent = q ? n + ' Treffer' : '';
+    return zeilen.filter(function (tr) { return tr.style.display !== 'none'; });
+}
+
+scan.addEventListener('input', scanFiltern);
+scan.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { scan.value = ''; scanFiltern(); return; }
     if (e.key !== 'Enter') return;
-    var code = this.value.trim(); this.value = '';
+    var code = scanNorm(scan.value);
     if (!code) return;
-    var zeile = Array.from(document.querySelectorAll('#beleg-tabelle tbody tr[data-artikel]'))
-        .find(function (tr) { return tr.dataset.ean === code || tr.dataset.nr.toUpperCase() === code.toUpperCase(); });
-    if (!zeile) { document.getElementById('fehler').textContent = 'Kein Artikel dieses Partners mit „' + code + '“.'; return; }
-    document.getElementById('fehler').textContent = '';
+    var fehler = document.getElementById('fehler');
+    var zeile  = zeilen.find(function (tr) { return scanExakt(tr, code); });
+    if (!zeile) {
+        var treffer = scanFiltern();
+        if (treffer.length === 1) zeile = treffer[0];
+        else {
+            fehler.textContent = treffer.length
+                ? treffer.length + ' Artikel passen — bitte genauer tippen oder die Menge direkt in der Zeile eintragen.'
+                : 'Kein Artikel dieses Partners mit „' + scan.value.trim() + '“.';
+            return;
+        }
+    }
+    fehler.textContent = '';
+    scan.value = '';
+    scanFiltern();
     var m = zeile.querySelector('.menge'); m.value = (parseInt(m.value, 10) || 0) + 1;
     zeile.style.background = '#e6f7ee'; zeile.scrollIntoView({ block: 'center' });
 });
