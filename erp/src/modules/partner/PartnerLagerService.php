@@ -143,6 +143,9 @@ class PartnerLagerService
                    (SELECT ap.brutto_vk FROM artikel_preise ap JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
                     WHERE ap.artikel_id = a.id LIMIT 1) AS brutto_vk,
                    (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
+                   -- Kommission: vereinbarter EK beim verknüpften Lieferanten (Partner stellt uns Rechnung)
+                   (SELECT al.netto_ek FROM artikel_lieferanten al JOIN partner pp ON pp.id = a.partner_id
+                    WHERE al.artikel_id = a.id AND al.lieferant_id = pp.lieferant_id LIMIT 1) AS ek_netto,
                    (SELECT COALESCE(SUM(lb.bestand), 0) FROM lagerbestand lb
                     JOIN lager l ON l.id = lb.lager_id AND l.partner_id = a.partner_id
                     WHERE lb.artikel_id = a.id) AS bestand
@@ -158,7 +161,8 @@ class PartnerLagerService
 
     /**
      * Partner-Artikel anlegen oder ändern (schlankes Formular auf der Partnerseite).
-     * $data: id?, nummer_suffix, name, brutto_vk, steuerklasse_id, ean, stammplatz_id, aktiv
+     * $data: id?, nummer_suffix, name, brutto_vk, steuerklasse_id, ean, stammplatz_id, aktiv,
+     *        ek_netto (nur Kommission: vereinbarter EK, landet in artikel_lieferanten)
      */
     public function artikelSpeichern(int $partnerId, array $data): array
     {
@@ -188,6 +192,11 @@ class PartnerLagerService
             $chk->execute([$platz, $partnerId]);
             if (!$chk->fetchColumn()) $fehler[] = 'Fach gehört nicht zu diesem Partner.';
         }
+        $ekRoh = trim((string)($data['ek_netto'] ?? ''));
+        $ek    = $ekRoh === '' ? null : round((float)str_replace(',', '.', $ekRoh), 4);
+        if ($ek !== null && $partner['typ'] !== 'kommission') $ek = null; // EK gibt es nur bei Kommission
+        if ($ek !== null && $ek < 0) $fehler[] = 'EK darf nicht negativ sein.';
+        if ($ek !== null && empty($partner['lieferant_id'])) $fehler[] = 'Für den EK zuerst beim Partner den Lieferanten hinterlegen (Partner bearbeiten).';
         if ($fehler) return ['erfolg' => false, 'fehler' => $fehler];
 
         $nummer = self::nummernPraefix($partnerId) . $suffix;
@@ -207,6 +216,7 @@ class PartnerLagerService
             $repo->updatePreis($id, $brutto, $netto);
             $repo->deleteCodesByArtikelIdAndType($id, 'GTIN13');
             if ($ean) $repo->insertCode($id, 'GTIN13', $ean);
+            $this->ekSpeichern($id, $partner, $ek, (float)$steuersatz);
             Logger::log('partner.artikel_bearbeiten', 'artikel', $id, ['partner_id' => $partnerId, 'nummer' => $nummer]);
             return ['erfolg' => true, 'id' => $id];
         }
@@ -241,8 +251,30 @@ class PartnerLagerService
 
         $this->db->prepare("UPDATE artikel SET partner_id = ?, partner_modus = ?, stammplatz_id = ? WHERE id = ?")
             ->execute([$partnerId, $modus, $platz, $ergebnis['id']]);
+        $this->ekSpeichern((int)$ergebnis['id'], $partner, $ek, (float)$steuersatz);
         Logger::log('partner.artikel_anlegen', 'artikel', $ergebnis['id'], ['partner_id' => $partnerId, 'nummer' => $nummer]);
         return ['erfolg' => true, 'id' => $ergebnis['id']];
+    }
+
+    /**
+     * Vereinbarter EK eines Kommissions-Artikels beim Lieferanten des Partners
+     * (= wie ein ganz normaler Einkauf). Brutto nur mit USt, wenn der Partner kein
+     * Kleinunternehmer ist. $ek NULL = nichts ändern.
+     */
+    private function ekSpeichern(int $artikelId, array $partner, ?float $ek, float $steuersatz): void
+    {
+        if ($ek === null || empty($partner['lieferant_id'])) return;
+        $brutto = !empty($partner['kleinunternehmer']) ? $ek : round($ek * (1 + $steuersatz / 100), 4);
+        $lid    = (int)$partner['lieferant_id'];
+        $vorh   = $this->db->prepare("SELECT id FROM artikel_lieferanten WHERE artikel_id = ? AND lieferant_id = ?");
+        $vorh->execute([$artikelId, $lid]);
+        if ($alId = $vorh->fetchColumn()) {
+            $this->db->prepare("UPDATE artikel_lieferanten SET netto_ek = ?, brutto_ek = ?, aktiv = 1 WHERE id = ?")
+                ->execute([$ek, $brutto, $alId]);
+        } else {
+            $this->db->prepare("INSERT INTO artikel_lieferanten (artikel_id, lieferant_id, netto_ek, brutto_ek, standard_lieferant, aktiv) VALUES (?, ?, ?, ?, 1, 1)")
+                ->execute([$artikelId, $lid, $ek, $brutto]);
+        }
     }
 
     // ── Übernahme / Rückgabe mit Beleg ────────────────────────────────────────

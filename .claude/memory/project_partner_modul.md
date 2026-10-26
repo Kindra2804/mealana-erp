@@ -154,3 +154,11 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 - Test: Integrationsskript 22/22 (Mischbon, Nur-Partner-Bon Bankomat, Storno, Kassenstand, Z-Bon, A4+80mm-Render) mit vollständigem Aufräumen. Nicht getestet: echter BFR (K3), Retoure über bon_speichern (HTTP), abschluss_periode zeigt umsatz_gesamt jetzt eigen ohne Partnerzeile.
 - Offen für Schritt 5: BuchhaltungExportService bucht Fremd/Spende noch als Erlös!
 - ⏭️ Schritt 3: Partner-Konto (Saldo, Aufstellung + Zahlungsaviso, Auszahlung bar/Überweisung, Spendenliste, Kontrollliste Kommission).
+
+## ✅ Schritt 3 Partner-Konto GEBAUT 2026-10-26 (committed, Klicktest offen)
+- Migration 207: partner_auszahlungen (nummer ZA-…, art bar_kasse|spendenlade|ueberweisung, kassenbuch_id, storniert + storno_kassenbuch_id), dokument_nummern-Typ partner_auszahlung (Präfix ZA).
+- `PartnerKontoService`: getVerkaeufe/getKonto (Saldo = Fremd/Spende-Positionen − Auszahlungen; Spendenlade = spende_bar anteilig − Übergaben), auszahlungBuchen (≤ Saldo, Spendenlade ≤ Inhalt, bar_kasse → Kassenbuch-Entnahme), auszahlungStornieren (Einlage-Gegenbuchung), getKommissionKontrolle (Menge × artikel_lieferanten.netto_ek beim partner.lieferant_id).
+- PartnerLagerService: EK netto für Kommissions-Artikel (ekSpeichern → artikel_lieferanten, brutto nur ohne KU), getArtikel liefert ek_netto. Modal: Feld EK + "aus Provision".
+- UI: detail.php Reiter "Konto & Auszahlung" bzw. "Kontrollliste" (Kommission), js/partner_konto.js; abrechnung_pdf.php + Template partner/abrechnung.html.twig (Verkaufsaufstellung/Spendenliste/Kontrollliste, ?aviso=id = Zahlungsaviso mit Unterschrift bei bar). Zugriffsregeln ergänzt.
+- Test: 22/22 inkl. 3 echte PDFs (visuell geprüft), vollständig aufgeräumt (ZA-Zähler zurück auf 0).
+- ⏭️ Schritt 4 Fachmiete-Monatslauf (Auftrag+Rechnung über partner.kunde_id), dann Schritt 5 Export/Konten.

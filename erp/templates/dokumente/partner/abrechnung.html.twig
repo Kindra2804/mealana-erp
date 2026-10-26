@@ -1,0 +1,143 @@
+{#
+  Partner-Abrechnung (partner/abrechnung_pdf.php, PartnerKontoService), je nach Verkaufsart:
+    fremdrechnung → Verkaufsaufstellung + Zahlungsaviso. Ausdrücklich KEINE Rechnung/Gutschrift:
+                    wir haben im Namen und auf Rechnung des Partners verkauft, das Geld ist seins.
+    spende        → Spendenliste für die Übergabe (Bar-Anteil Spendenlade getrennt)
+    kommission    → Kontrollliste verkaufte Ware × vereinbarter EK (der Partner stellt UNS Rechnung)
+#}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 8.5pt; color: #1a1a1a; padding: 18mm 15mm 20mm 15mm; }
+    .doc-titel { font-size:15pt; font-weight:bold; margin:12pt 0 4pt; }
+    .empfaenger { margin:8pt 0 6pt; font-size:9pt; line-height:1.4; }
+    table.pos { width:100%; border-collapse:collapse; margin-top:10pt; }
+    table.pos th { background:#f1f5f9; text-align:left; font-size:7.5pt; padding:3pt; border-bottom:1px solid #999; }
+    table.pos td { padding:3pt; border-bottom:0.5px solid #ddd; }
+    .r { text-align:right; }
+    .mono { font-family: DejaVu Sans Mono, monospace; font-size:7.5pt; }
+    .summe td { font-weight:bold; border-top:1px solid #333; border-bottom:none; }
+    .box { margin-top:12pt; border:1px solid #333; padding:8pt 10pt; }
+    .box-titel { font-weight:bold; font-size:10pt; margin-bottom:4pt; }
+    table.kz td { padding:2pt 0; }
+    .hinweis { margin-top:10pt; font-size:7.5pt; color:#555; }
+  </style>
+</head>
+<body>
+  {% include '_partials/_header.html.twig' %}
+
+  <div class="empfaenger">
+    <strong>{{ partner.name }}</strong><br>
+    {% if partner.strasse %}{{ partner.strasse }}<br>{% endif %}
+    {% if partner.ort %}{{ partner.plz }} {{ partner.ort }}<br>{% endif %}
+    {% if partner.uid_nummer %}UID: {{ partner.uid_nummer }}<br>{% endif %}
+    {% if partner.zvr_nummer %}ZVR: {{ partner.zvr_nummer }}{% endif %}
+  </div>
+
+  {% set zeitraum = von|date('d.m.Y') ~ ' – ' ~ bis|date('d.m.Y') %}
+
+{% if modus == 'kommission' %}
+  {# ── Kommission: Kontrollliste ─────────────────────────────────────────── #}
+  <div class="doc-titel">Kontrollliste Kommissionsware</div>
+  <div style="color:#444">Zeitraum {{ zeitraum }} · erstellt {{ 'now'|date('d.m.Y H:i') }}</div>
+  <table class="pos">
+    <thead><tr><th style="width:95pt">Artikel-Nr.</th><th>Bezeichnung</th><th class="r" style="width:40pt">Menge</th>
+      <th class="r" style="width:60pt">VK netto</th><th class="r" style="width:55pt">EK netto/Stk</th><th class="r" style="width:60pt">EK gesamt</th></tr></thead>
+    <tbody>
+    {% for z in kontrolle %}
+      <tr>
+        <td class="mono">{{ z.artikelnummer }}</td>
+        <td>{{ z.name }}</td>
+        <td class="r">{{ z.menge|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</td>
+        <td class="r">{{ z.vk_netto|number_format(2, ',', '.') }}</td>
+        <td class="r">{{ z.ek_netto is null ? '—' : z.ek_netto|number_format(2, ',', '.') }}</td>
+        <td class="r">{{ z.ek_summe is null ? 'EK fehlt' : z.ek_summe|number_format(2, ',', '.') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" style="text-align:center;color:#777;padding:12pt">Keine Verkäufe in diesem Zeitraum.</td></tr>
+    {% endfor %}
+    {% if kontrolle|length %}
+      <tr class="summe"><td colspan="3">Summe</td><td class="r">€ {{ vk_netto_summe|number_format(2, ',', '.') }}</td><td></td><td class="r">€ {{ ek_summe|number_format(2, ',', '.') }}</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+  <p class="hinweis">
+    Grundlage für den Abgleich mit der Rechnung von {{ partner.name }}: verkaufte Menge × vereinbarter Einkaufspreis (netto),
+    {% if ku_text %}ohne USt (Kleinunternehmer).{% else %}zuzüglich der USt des Partners.{% endif %}
+    Provision vereinbart: {{ partner.provisions_satz|number_format(2, ',', '.') }} % auf netto.
+    {% if ek_fehlt %}<strong>Bei {{ ek_fehlt }} Artikel(n) ist noch kein EK hinterlegt.</strong>{% endif %}
+    Interne Liste, kein Beleg.
+  </p>
+
+{% else %}
+  {# ── Fremdrechnung / Spende: Aufstellung (+ Aviso) ─────────────────────── #}
+  <div class="doc-titel">{{ modus == 'spende' ? 'Spendenliste' : 'Verkaufsaufstellung' }}{{ aviso ? ' und Zahlungsaviso' : '' }}</div>
+  <div style="color:#444">Zeitraum {{ zeitraum }} · erstellt {{ 'now'|date('d.m.Y H:i') }}</div>
+
+  <table class="pos">
+    <thead><tr><th style="width:72pt">Datum</th><th style="width:85pt">Bon</th><th>Bezeichnung</th>
+      <th class="r" style="width:35pt">Menge</th><th class="r" style="width:50pt">Einzelpreis</th><th class="r" style="width:55pt">Summe</th></tr></thead>
+    <tbody>
+    {% for v in verkaeufe %}
+      <tr>
+        <td style="white-space:nowrap">{{ v.erstellt_am|date('d.m.Y H:i') }}</td>
+        <td class="mono">{{ v.bon_nr }}</td>
+        <td>{{ v.bezeichnung }}{% if v.rabatt_prozent > 0 %} <span style="color:#777">(−{{ v.rabatt_prozent|number_format(0) }} %)</span>{% endif %}</td>
+        <td class="r">{{ v.menge|number_format(3, ',', '')|trim('0', 'right')|trim(',', 'right') }}</td>
+        <td class="r">{{ v.einzelpreis_brutto|number_format(2, ',', '.') }}</td>
+        <td class="r">{{ v.summe|number_format(2, ',', '.') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" style="text-align:center;color:#777;padding:12pt">Keine Verkäufe in diesem Zeitraum.</td></tr>
+    {% endfor %}
+    {% if verkaeufe|length %}
+      <tr class="summe"><td colspan="5">{{ modus == 'spende' ? 'Spenden' : 'Verkäufe' }} im Zeitraum</td><td class="r">€ {{ summe_gesamt|number_format(2, ',', '.') }}</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+  {% if modus == 'spende' and konto.spende_bar_zeitraum %}
+  <p class="hinweis">Davon bar in der Spendenlade: € {{ konto.spende_bar_zeitraum|number_format(2, ',', '.') }} · Rest per Karte (auf unser Konto eingegangen).</p>
+  {% endif %}
+
+  <div class="box">
+    <div class="box-titel">Kontostand bei {{ firma.firmenname ?? 'MEALANA KG' }}</div>
+    <table class="kz" style="width:60%">
+      <tr><td>{{ modus == 'spende' ? 'Spenden' : 'Verkäufe' }} gesamt</td><td class="r">€ {{ konto.verkauf_gesamt|number_format(2, ',', '.') }}</td></tr>
+      <tr><td>bereits ausgezahlt / übergeben</td><td class="r">€ {{ konto.ausgezahlt_gesamt|number_format(2, ',', '.') }}</td></tr>
+      <tr><td><strong>offen (Stand {{ 'now'|date('d.m.Y') }})</strong></td><td class="r"><strong>€ {{ konto.saldo|number_format(2, ',', '.') }}</strong></td></tr>
+    </table>
+  </div>
+
+  {% if aviso %}
+  <div class="box">
+    <div class="box-titel">Zahlungsaviso {{ aviso.nummer }}</div>
+    {% set artText = { 'bar_kasse': 'bar ausbezahlt', 'spendenlade': 'als Inhalt der Spendenlade bar übergeben', 'ueberweisung': 'per Überweisung' ~ (partner.iban ? ' auf IBAN ' ~ partner.iban : '') } %}
+    Am {{ aviso.datum|date('d.m.Y') }} wurden <strong>€ {{ aviso.betrag|number_format(2, ',', '.') }}</strong> {{ artText[aviso.art] }}
+    {% if aviso.zeitraum_von %}für die {{ modus == 'spende' ? 'Spenden' : 'Verkäufe' }} vom {{ aviso.zeitraum_von|date('d.m.Y') }} bis {{ aviso.zeitraum_bis|date('d.m.Y') }}{% endif %}.
+    {% if aviso.notiz %}<br>Notiz: {{ aviso.notiz }}{% endif %}
+    {% if aviso.storniert %}<br><strong style="color:#b91c1c">STORNIERT</strong>{% endif %}
+    {% if aviso.art != 'ueberweisung' %}
+    <table style="width:100%;margin-top:30pt"><tr>
+      <td style="width:50%;font-size:7.5pt;color:#555"><div style="border-top:0.5px solid #333;margin-right:20pt;padding-top:3pt">Übergeben: {{ firma.firmenname ?? 'MEALANA KG' }}</div></td>
+      <td style="width:50%;font-size:7.5pt;color:#555"><div style="border-top:0.5px solid #333;padding-top:3pt">Erhalten: {{ partner.name }}</div></td>
+    </tr></table>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <p class="hinweis">
+    {% if modus == 'spende' %}
+      Spenden für {{ partner.name }}, an unserer Kasse entgegengenommen und 1:1 weitergegeben — kein Umsatz von {{ firma.firmenname ?? 'MEALANA KG' }}.
+    {% else %}
+      Verkauf im Namen und auf Rechnung von {{ partner.name }}{% if ku_text %} ({{ ku_text }}){% endif %}. Diese Aufstellung ist
+      <strong>keine Rechnung und keine Gutschrift</strong> — die Kassenbelege an die Kunden wurden in Ihrem Namen ausgestellt;
+      wir haben die Beträge nur für Sie entgegengenommen. Die Fachmiete wird getrennt verrechnet.
+    {% endif %}
+    Retouren sind mit negativer Menge enthalten, stornierte Bons nicht.
+  </p>
+{% endif %}
+</body>
+</html>

@@ -39,6 +39,22 @@ if ($artikel) {
 $belege     = $lager && $tab === 'belege' ? $lagerSvc->getBelege($id) : [];
 $bewegungen = $lager && $tab === 'bewegungen' ? $lagerSvc->getBewegungen($id) : [];
 
+// Reiter Konto (Fremdrechnung/Spende) bzw. Kontrollliste (Kommission) — PartnerKontoService
+$istKommission = $partner['typ'] === 'kommission';
+$kVon = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['von'] ?? '') ? $_GET['von'] : date('Y-m-01');
+$kBis = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['bis'] ?? '') ? $_GET['bis'] : date('Y-m-d');
+if ($tab === 'konto') {
+    require_once __DIR__ . '/../../src/modules/partner/PartnerKontoService.php';
+    $kontoSvc = new PartnerKontoService();
+    if ($istKommission) {
+        $kontrolle = $kontoSvc->getKommissionKontrolle($id, $kVon, $kBis);
+    } else {
+        $konto        = $kontoSvc->getKonto($id, $kVon, $kBis);
+        $auszahlungen = $kontoSvc->getAuszahlungen($id);
+        $kassen       = Database::getInstance()->query("SELECT id, kasse_nr, name FROM kassen WHERE aktiv = 1 ORDER BY kasse_nr")->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
 $typLabel = PartnerService::VERKAUFSARTEN;
 $praefix  = PartnerLagerService::nummernPraefix($id);
 
@@ -73,6 +89,7 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
     <?= partnerTab('artikel', 'Artikel (' . count($artikel) . ')', $tab, $id) ?>
     <?= partnerTab('bewegungen', 'Bewegungen', $tab, $id) ?>
     <?= partnerTab('belege', 'Belege & Verkaufsliste', $tab, $id) ?>
+    <?= partnerTab('konto', $istKommission ? 'Kontrollliste' : 'Konto & Auszahlung', $tab, $id) ?>
     <?= partnerTab('faecher', 'Mietfächer (' . count($plaetze) . ')', $tab, $id) ?>
 </div>
 
@@ -157,6 +174,18 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
                     <?php foreach ($plaetze as $lp): ?><option value="<?= $lp['id'] ?>"><?= htmlspecialchars($lp['bezeichnung']) ?></option><?php endforeach; ?>
                 </select></div>
         </div>
+        <?php if ($istKommission): ?>
+        <!-- Kommission: vereinbarter EK (der Partner stellt uns Rechnung) → artikel_lieferanten -->
+        <div style="margin-top:10px">
+            <label class="erp-label">EK netto (vereinbart mit dem Partner)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+                <input type="text" id="pa-ek" class="erp-input" style="width:110px" placeholder="0,00">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="paEkVorschlag()"
+                        title="VK netto − <?= number_format((float)$partner['provisions_satz'], 2, ',', '.') ?> % Provision">aus Provision</button>
+                <?php if (empty($partner['lieferant_id'])): ?><span style="font-size:11px;color:var(--color-danger)">Lieferant beim Partner fehlt</span><?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
         <label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:13px"><input type="checkbox" id="pa-aktiv" checked> Aktiv (an der Kasse verkaufbar)</label>
         <div id="pa-fehler" style="color:var(--color-danger);font-size:12px;min-height:16px;margin-top:6px"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
@@ -226,6 +255,121 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
     </table>
 </div>
 
+<?php elseif ($tab === 'konto'): ?>
+<?php $eur = fn($v) => '€ ' . number_format((float)$v, 2, ',', '.'); ?>
+<div class="card" style="margin-bottom:12px">
+    <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="tab" value="konto">
+        Zeitraum von <input type="date" name="von" class="erp-input" value="<?= $kVon ?>">
+        bis <input type="date" name="bis" class="erp-input" value="<?= $kBis ?>">
+        <button class="btn btn-secondary btn-sm">Anzeigen</button>
+        <a class="btn btn-primary btn-sm" target="_blank"
+           href="<?= BASE_PATH ?>/partner/abrechnung_pdf.php?id=<?= $id ?>&von=<?= $kVon ?>&bis=<?= $kBis ?>">📄 <?= $istKommission ? 'Kontrollliste' : ($partner['typ'] === 'spende' ? 'Spendenliste' : 'Verkaufsaufstellung') ?> (PDF)</a>
+    </form>
+</div>
+
+<?php if ($istKommission): ?>
+<div class="card">
+    <?php if (empty($partner['lieferant_id'])): ?>
+        <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:13px">
+            Für den EK fehlt noch der <strong>Lieferant</strong>, der die Rechnung stellt — Partner → ✎ bearbeiten.
+        </div>
+    <?php endif; ?>
+    <p style="font-size:12px;color:var(--color-text-muted);margin-top:0">
+        Kommission ist unser Umsatz. <?= htmlspecialchars($partner['name']) ?> stellt uns eine Rechnung zum vereinbarten EK
+        (netto − <?= number_format((float)$partner['provisions_satz'], 2, ',', '.') ?> % Provision) — diese Liste dient zum Abgleich, gebucht wird die Rechnung wie ein normaler Einkauf.
+    </p>
+    <table class="erp-table">
+        <thead><tr><th style="width:170px">NR.</th><th>ARTIKEL</th><th style="width:80px;text-align:right">MENGE</th>
+            <th style="width:110px;text-align:right">VK NETTO</th><th style="width:110px;text-align:right">EK NETTO/STK</th><th style="width:110px;text-align:right">EK GESAMT</th></tr></thead>
+        <tbody>
+        <?php if (!$kontrolle): ?>
+            <tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);padding:24px">Keine Verkäufe im Zeitraum.</td></tr>
+        <?php endif; ?>
+        <?php foreach ($kontrolle as $z): ?>
+            <tr>
+                <td style="font-family:monospace;font-size:12px"><?= htmlspecialchars($z['artikelnummer']) ?></td>
+                <td><?= htmlspecialchars($z['name']) ?></td>
+                <td style="text-align:right"><?= rtrim(rtrim(number_format((float)$z['menge'], 3, ',', ''), '0'), ',') ?></td>
+                <td style="text-align:right"><?= $eur($z['vk_netto']) ?></td>
+                <td style="text-align:right"><?= $z['ek_netto'] === null ? '<span style="color:var(--color-danger)">fehlt</span>' : $eur($z['ek_netto']) ?></td>
+                <td style="text-align:right;font-weight:600"><?= $z['ek_summe'] === null ? '–' : $eur($z['ek_summe']) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        <?php if ($kontrolle): ?>
+            <tr style="font-weight:700"><td colspan="3">Summe</td>
+                <td style="text-align:right"><?= $eur(array_sum(array_column($kontrolle, 'vk_netto'))) ?></td><td></td>
+                <td style="text-align:right"><?= $eur(array_sum(array_map(fn($z) => (float)($z['ek_summe'] ?? 0), $kontrolle))) ?></td></tr>
+        <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+
+<?php else: ?>
+<?php $istSpende = $partner['typ'] === 'spende'; ?>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px">
+    <div class="card" style="margin:0"><div style="font-size:12px;color:var(--color-text-muted)">OFFEN (wir schulden)</div>
+        <div style="font-size:22px;font-weight:700;color:var(--color-nav)"><?= $eur($konto['saldo']) ?></div>
+        <div style="font-size:11px;color:var(--color-text-muted)"><?= $istSpende ? 'Spenden' : 'Verkäufe' ?> gesamt <?= $eur($konto['verkauf_gesamt']) ?> − ausgezahlt <?= $eur($konto['ausgezahlt_gesamt']) ?></div></div>
+    <div class="card" style="margin:0"><div style="font-size:12px;color:var(--color-text-muted)"><?= $istSpende ? 'SPENDEN' : 'VERKÄUFE' ?> IM ZEITRAUM</div>
+        <div style="font-size:22px;font-weight:700"><?= $eur($konto['verkauf_zeitraum']) ?></div></div>
+    <?php if ($istSpende): ?>
+    <div class="card" style="margin:0"><div style="font-size:12px;color:var(--color-text-muted)">IN DER SPENDENLADE (laut Kasse)</div>
+        <div style="font-size:22px;font-weight:700"><?= $eur($konto['spendenlade_offen']) ?></div>
+        <div style="font-size:11px;color:var(--color-text-muted)">Rest kam per Karte auf unser Konto</div></div>
+    <?php endif; ?>
+</div>
+
+<div class="card" style="margin-bottom:12px">
+    <strong style="font-size:13px"><?= $istSpende ? 'Spenden übergeben' : 'Auszahlung an den Partner' ?></strong>
+    <div style="font-size:12px;color:var(--color-text-muted);margin:2px 0 10px">Erzeugt ein Zahlungsaviso (ZA-Nummer). Für Verkäufe im oben gewählten Zeitraum.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div><label class="erp-label">Betrag €</label>
+            <input type="text" id="az-betrag" class="erp-input" style="width:110px" value="<?= number_format(max(0, (float)$konto['saldo']), 2, ',', '') ?>"></div>
+        <div><label class="erp-label">Datum</label><input type="date" id="az-datum" class="erp-input" value="<?= date('Y-m-d') ?>"></div>
+        <div><label class="erp-label">Art</label>
+            <select id="az-art" class="erp-select" onchange="azArtWechsel()">
+                <?php if ($istSpende): ?><option value="spendenlade">Spendenlade übergeben (bar)</option><?php endif; ?>
+                <option value="ueberweisung">Überweisung<?= $partner['iban'] ? '' : ' (IBAN fehlt!)' ?></option>
+                <option value="bar_kasse">Bar aus der Kasse</option>
+            </select></div>
+        <div id="az-kasse-box" style="display:none"><label class="erp-label">aus Kasse</label>
+            <select id="az-kasse" class="erp-select">
+                <?php foreach ($kassen as $k): ?><option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['kasse_nr'] . ' – ' . $k['name']) ?></option><?php endforeach; ?>
+            </select></div>
+        <div style="flex:1;min-width:160px"><label class="erp-label">Notiz</label><input type="text" id="az-notiz" class="erp-input" style="width:100%;box-sizing:border-box" maxlength="500"></div>
+        <button class="btn btn-primary btn-sm" onclick="azBuchen(<?= $id ?>, '<?= $kVon ?>', '<?= $kBis ?>')">Buchen + Aviso</button>
+    </div>
+    <div id="az-fehler" style="color:var(--color-danger);font-size:12px;min-height:16px;margin-top:6px"></div>
+</div>
+
+<div class="card">
+    <table class="erp-table">
+        <thead><tr><th style="width:130px">AVISO</th><th style="width:100px">DATUM</th><th style="width:110px;text-align:right">BETRAG</th>
+            <th style="width:170px">ART</th><th style="width:170px">FÜR ZEITRAUM</th><th>NOTIZ</th><th style="width:110px">VON</th><th style="width:60px"></th></tr></thead>
+        <tbody>
+        <?php if (!$auszahlungen): ?>
+            <tr><td colspan="8" style="text-align:center;color:var(--color-text-muted);padding:24px">Noch keine Auszahlungen.</td></tr>
+        <?php endif; ?>
+        <?php $artLabel = ['bar_kasse' => 'Bar aus Kasse', 'spendenlade' => 'Spendenlade (bar)', 'ueberweisung' => 'Überweisung']; ?>
+        <?php foreach ($auszahlungen as $a): ?>
+            <tr <?= $a['storniert'] ? 'style="opacity:.5;text-decoration:line-through"' : '' ?>>
+                <td><a href="<?= BASE_PATH ?>/partner/abrechnung_pdf.php?id=<?= $id ?>&aviso=<?= (int)$a['id'] ?>" target="_blank" style="font-family:monospace;font-weight:600"><?= htmlspecialchars($a['nummer']) ?></a></td>
+                <td style="font-size:12px"><?= date('d.m.Y', strtotime($a['datum'])) ?></td>
+                <td style="text-align:right;font-weight:600"><?= $eur($a['betrag']) ?></td>
+                <td style="font-size:12px"><?= $artLabel[$a['art']] ?? $a['art'] ?><?= $a['kasse_nr'] ? ' (' . htmlspecialchars($a['kasse_nr']) . ')' : '' ?></td>
+                <td style="font-size:12px"><?= $a['zeitraum_von'] ? date('d.m.Y', strtotime($a['zeitraum_von'])) . ' – ' . date('d.m.Y', strtotime($a['zeitraum_bis'])) : '–' ?></td>
+                <td style="font-size:12px"><?= htmlspecialchars($a['notiz'] ?? '') ?></td>
+                <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars($a['benutzer_name'] ?? '') ?></td>
+                <td><?php if (!$a['storniert']): ?><button class="btn btn-secondary btn-sm" title="Stornieren" onclick="azStorno(<?= (int)$a['id'] ?>, '<?= htmlspecialchars($a['nummer']) ?>')">↶</button><?php endif; ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+<script src="<?= BASE_PATH ?>/js/partner_konto.js"></script>
+
 <?php elseif ($tab === 'faecher'): ?>
 <div class="card">
     <table class="erp-table">
@@ -269,9 +413,20 @@ function paModal(a) {
     document.getElementById('pa-ean').value    = a ? (a.ean || '') : '';
     document.getElementById('pa-fach').value   = a && a.stammplatz_id ? a.stammplatz_id : '';
     document.getElementById('pa-aktiv').checked = a ? a.aktiv == 1 : true;
+    var ek = document.getElementById('pa-ek');
+    if (ek) ek.value = a && a.ek_netto !== null && a.ek_netto !== undefined ? parseFloat(a.ek_netto).toFixed(2).replace('.', ',') : '';
     document.getElementById('pa-fehler').textContent = '';
     document.getElementById('pa-modal').style.display = 'flex';
     document.getElementById(a ? 'pa-name' : 'pa-suffix').focus();
+}
+// EK-Vorschlag Kommission: VK netto − Provision (Provision immer auf netto, Klärung 2026-10-26)
+function paEkVorschlag() {
+    var brutto = parseFloat(document.getElementById('pa-preis').value.replace(',', '.')) || 0;
+    var sel    = document.getElementById('pa-steuer');
+    var satz   = parseFloat((sel.options[sel.selectedIndex].text.match(/\(([\d,]+) %\)/) || [0, '0'])[1].replace(',', '.')) || 0;
+    var prov   = <?= json_encode((float)$partner['provisions_satz']) ?>;
+    var ek     = brutto / (1 + satz / 100) * (1 - prov / 100);
+    document.getElementById('pa-ek').value = ek.toFixed(2).replace('.', ',');
 }
 function paSpeichern(partnerId) {
     var daten = {
@@ -280,6 +435,7 @@ function paSpeichern(partnerId) {
         brutto_vk: document.getElementById('pa-preis').value, steuerklasse_id: document.getElementById('pa-steuer').value,
         ean: document.getElementById('pa-ean').value, stammplatz_id: document.getElementById('pa-fach').value || null,
         aktiv: document.getElementById('pa-aktiv').checked ? 1 : 0,
+        ek_netto: document.getElementById('pa-ek') ? document.getElementById('pa-ek').value : '',
     };
     fetch(window.BASE_PATH + '/partner/artikel_speichern.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) })
         .then(r => r.json()).then(function (d) {

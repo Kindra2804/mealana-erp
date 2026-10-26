@@ -97,7 +97,32 @@ Im Warenkorb steht bei Partnerware klein „im Namen von …“ bzw. „Spende f
 - Reiter **Bewegungen** — jede Übernahme, jeder Verkauf (mit Bon-Nr.), jedes Storno, jede Rückgabe.
 - Reiter **Belege & Verkaufsliste** — alle Übernahme-/Rückgabescheine; **Verkaufsliste** als PDF für einen frei wählbaren Zeitraum (was wann um wie viel verkauft wurde).
 
-> **Noch nicht gebaut:** Partner-Konto (Saldo, Verkaufsaufstellung + Zahlungsaviso, Auszahlung, Spendenliste, Kontrollliste Kommission), Fachmiete-Monatslauf und die Konten im Buchhaltungs-Export. Bis dahin dient die Verkaufsliste als Grundlage.
+### Partner-Konto und Auszahlung (Fremdrechnung / Spende)
+
+Partner öffnen → Reiter **Konto & Auszahlung**. Das Geld aus Fremdrechnung und Spende gehört dem
+Partner — wir verwahren es nur, daher gibt es **keine Rechnung und keine Gutschrift** von uns.
+
+- **Offen (wir schulden)** = alle Verkäufe an der Kasse − alle Auszahlungen. Bei Spenden zusätzlich
+  **In der Spendenlade**: der bar kassierte Anteil, der noch nicht übergeben wurde (der Rest kam per
+  Karte auf unser Konto).
+- Zeitraum wählen → **📄 Verkaufsaufstellung** bzw. **Spendenliste (PDF)** — monatlich oder jederzeit auf Abruf.
+- **Auszahlung buchen**: Betrag (vorbelegt mit dem offenen Saldo), Datum, Art:
+  - **Überweisung** — nur vermerkt, überweisen über die Bank (IBAN steht am Aviso)
+  - **Bar aus der Kasse** — Kasse wählen; wird als Kassenbuch-Entnahme gebucht
+  - **Spendenlade übergeben** (nur Spende) — höchstens der Inhalt laut Kasse, kein Kassenbuch
+  → es entsteht ein **Zahlungsaviso** (ZA-Nummer) als PDF mit Unterschriftfeldern bei Barübergabe.
+- Mehr als den offenen Saldo kann man nicht auszahlen. Eine falsche Auszahlung mit **↶** stornieren —
+  Bar aus der Kasse wird dabei per Kassenbuch-Einlage zurückgebucht.
+
+### Kommission: EK und Kontrollliste
+
+- Beim Partner (✎) den **Lieferanten** hinterlegen, der uns die Rechnung stellt, und die Provision (auf netto).
+- Beim Partner-Artikel das Feld **EK netto** ausfüllen — **„aus Provision“** rechnet VK netto − Provision vor.
+  Der EK wird wie bei jedem Einkauf beim Lieferanten gespeichert.
+- Reiter **Kontrollliste**: verkaufte Menge × EK je Artikel im Zeitraum (auch als PDF) — zum Abgleich mit
+  der Rechnung des Partners. Die Rechnung selbst wird wie ein normaler Einkauf gebucht; ausgezahlt wird hier nichts.
+
+> **Noch nicht gebaut:** Fachmiete-Monatslauf und die Konten im Buchhaltungs-Export (Fremdumsatz/Spenden als Durchlauf statt Erlös).
 
 ---
 

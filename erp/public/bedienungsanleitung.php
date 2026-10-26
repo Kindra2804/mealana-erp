@@ -206,6 +206,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#kunden">Kunden</a>
             <a href="#partner">Partner & Mietfächer</a>
             <a href="#partner-lager" class="sub">↳ Partner-Lager & Partnerware</a>
+            <a href="#partner-konto" class="sub">↳ Partner-Konto & Auszahlung</a>
             <a href="#buchhaltung">Buchhaltung</a>
             <a href="#buchhaltung-export" class="sub">↳ DATEV/CSV-Export + Zahlungs-Kontrolle</a>
             <a href="#inventur">Inventur</a>
@@ -509,6 +510,13 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Die <strong>Kasse</strong> bucht Partner-Artikel automatisch aus dem Partner-Lager ab (Storno zurück dorthin).</div></div>
             <p><strong>Am Kassenbon</strong> (immer ein Bon, ein Zahlbetrag): <strong>Kommission</strong> = normale Zeile, normal signiert. <strong>Fremdrechnung</strong> = eigener Abschnitt „Verkauft im Namen und auf Rechnung von …“ (Name, Adresse, UID, ggf. KU-Text), nicht signiert, kein eigener Umsatz, Geld bleibt durchlaufend in der Lade. <strong>Spende</strong> = Abschnitt „Spende für …“ (ZVR), nicht signiert, Bar-Anteil kommt in die Spendenlade und zählt nicht zum Kassenstand. Im Warenkorb steht klein „im Namen von …“ / „Spende für …“.</p>
             <div class="ba-hint">💡 Z-Bon/X-Bon: „Umsatz“ = nur eigener Umsatz; „Kassiert gesamt (inkl. Partnerware)“ + Abschnitt <strong>Partnerumsätze</strong> je Partner. Ein Bon nur mit Partnerware hat keine RKSV-Signatur (steht am Bon).</div>
+
+            <h3 id="partner-konto">Partner-Konto, Auszahlung, Kontrollliste <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p><strong>Fremdrechnung/Spende</strong> — Reiter <strong>Konto &amp; Auszahlung</strong>: offener Saldo (Verkäufe − Auszahlungen), bei Spenden auch der Inhalt der Spendenlade. Keine Rechnung/Gutschrift von uns, nur Aufstellung + Zahlungsaviso.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Zeitraum wählen → <strong>📄 Verkaufsaufstellung</strong> bzw. <strong>Spendenliste</strong> (PDF)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Auszahlung buchen</strong>: Betrag, Datum, Art (Überweisung / Bar aus der Kasse = Kassenbuch-Entnahme / Spendenlade übergeben) → <strong>Zahlungsaviso</strong> ZA-… öffnet sich als PDF</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Falsch gebucht? <strong>↶</strong> storniert die Auszahlung (Bar wird per Einlage zurückgebucht)</div></div>
+            <p><strong>Kommission</strong> — beim Partner den Lieferanten hinterlegen, beim Artikel <strong>EK netto</strong> eintragen („aus Provision“ rechnet vor). Reiter <strong>Kontrollliste</strong>: verkaufte Menge × EK zum Abgleich mit der Partner-Rechnung, die wie ein normaler Einkauf gebucht wird.</p>
             <p>Reiter <strong>Bewegungen</strong> zeigt jede Übernahme, jeden Verkauf, jedes Storno und jede Rückgabe; Reiter <strong>Belege &amp; Verkaufsliste</strong> alle Scheine und eine Verkaufsliste als PDF für einen frei wählbaren Zeitraum.</p>
             <p><em>Noch nicht gebaut:</em> Partner-Abrechnung (Gutschrift/Fremdrechnung/Info) und „im Namen und auf Rechnung von“ samt RKSV-Trennung — wird gesondert geplant.</p>
 

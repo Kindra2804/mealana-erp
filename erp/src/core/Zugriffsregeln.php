@@ -254,6 +254,9 @@ final class Zugriffsregeln
             'beleg_buchen.php'       => 'partner.bearbeiten',
             'beleg_pdf.php'          => 'partner.anzeigen',
             'verkaufsliste_pdf.php'  => 'partner.anzeigen',
+            'abrechnung_pdf.php'     => 'partner.anzeigen',
+            'auszahlung_buchen.php'  => 'partner.bearbeiten',
+            'auszahlung_storno.php'  => 'partner.bearbeiten',
         ],
 
         // === Händler-Außenlager (Konsignation) ===
@@ -494,7 +497,7 @@ final class Zugriffsregeln
         'achsen'      => ['achse_sort_tree_ajax.php', 'achse_loeschen_ajax.php', 'achse_aktualisieren_ajax.php', 'achse_speichern_ajax.php', 'sort_ajax.php'],
         'hersteller'  => ['schnell_speichern.php', 'aktualisieren.php', 'speichern.php'],
         'haendler'    => ['aktion.php', 'artikel_ajax.php'],
-        'partner'     => ['lager_anlegen.php', 'artikel_speichern.php', 'beleg_buchen.php', 'vertrag_beenden.php', 'vertrag_speichern.php', 'fach_aktualisieren.php', 'fach_speichern.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
+        'partner'     => ['auszahlung_buchen.php', 'auszahlung_storno.php', 'lager_anlegen.php', 'artikel_speichern.php', 'beleg_buchen.php', 'vertrag_beenden.php', 'vertrag_speichern.php', 'fach_aktualisieren.php', 'fach_speichern.php', 'status_setzen.php', 'aktualisieren.php', 'speichern.php'],
         'auftraege'   => ['zahlung_buchen.php', 'versandart_aendern.php', 'status_ajax.php', 'kunden_ajax.php', 'artikel_ajax.php', 'mahnung_manuell_ajax.php', 'mahnwesen_aktion.php'],
         'kunden'      => ['debitorennummer_ajax.php'],
         'einstellungen' => ['test_mail.php', 'shop_sync_start.php', 'shop_sync_status.php', 'shop_sync_pause.php', 'shop_sync_bilder_ftp_start.php'],
