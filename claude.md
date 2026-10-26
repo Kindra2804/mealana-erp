@@ -1197,6 +1197,15 @@ Details siehe `.claude/memory/project_datenqualitaet_20260811.md`.
 - **Fix:** `erp/scripts/backfill_vater_kind_sync.php` (`--dry-run`-fähig) ruft die bestehende `propagiereZuKindern()` für alle betroffenen Väter auf — kein eigener Feldabgleich, garantiert identisches Ergebnis zum normalen UI-Speichern. Live gelaufen, 0 Abweichungen danach verifiziert.
 - **Separat gefixt:** `artikel/spalten_einstellung_speichern.php` hatte eine eigene, veraltete Spalten-Whitelist ohne `artikelgruppe` — Checkbox ließ sich anhaken, wurde aber nie gespeichert.
 
+## Update 2026-10-10: Papier-Messe Klicktest + Kassen-Tageslosung
+
+- Papier-Messe klickgetestet ✅; Fixes: Nacherfassung "Netzwerkfehler" (PHP-Warning im JSON), Bon-Vermerk "Nacherfassung Messe-Beleg Nr. X", optionale "Begründung Differenz" im Messe-Abschluss (Migration 203)
+- Lagerbewegungen: Umlagerungs-Paare als eine Zeile "A → B", Messe-Referenzen lesbar, Vorher/Nachher chargengenau (LagerService)
+- Buchhaltungs-Export: Kassen-Tageslosung je Tag × Kasse × Messe, Belegnr = Bon-Spanne; Z-Bon mit Abschnitt "Davon Nacherfassungen"; Kassen-Retoure "Erstattung als Gutschein" gegen 3230
+- Auftrag-Zahlart 'karte' (Migration 204) — Bankomat-Bons waren im Spiegel-Auftrag "gemischt"
+- Live-Deploy offen: Migrationen 201–204
+- Reihenfolge bis 1.0: Kassenblock-Rest (Offline-Divers) → Offline-Kasse light (Sunmi/pluson) → Partner-Abrechnung → Lizenzserver → 1.0
+
 ## Commit Convention
 
 ```

@@ -58,6 +58,11 @@ Der Preis bleibt danach im Warenkorb änderbar (Zeile antippen → Preis tippen 
 **Welche Gruppen als Kachel erscheinen**, wird unter Buchhaltung → Artikelgruppen festgelegt
 ("Als Kachel wählbar" + "Standard-Steuer"). Neue Gruppen erscheinen automatisch.
 
+**Elektronische Messe-Kasse (offline):** "➕ Freier Artikel" hat denselben Dialog
+(Gruppen-Kacheln, Steuer-Tasten, Numpad). Die Gruppen werden beim Laden der Offline-Kasse
+mitgenommen — nach Änderungen an den Artikelgruppen die Offline-Kasse **neu laden**.
+Mengenvorwahl und Schnellwahl gibt es offline noch nicht (Menge im Warenkorb mit +/−).
+
 ### Gruppen-Tasten in der Schnellwahl
 
 Ein Schnellwahl-Slot kann statt eines Artikels auch eine **Gruppe** sein (gelbe Taste).

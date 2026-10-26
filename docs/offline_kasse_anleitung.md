@@ -28,7 +28,7 @@ Stand: 2026-07-04 (überarbeitet nach Praxis-Feedback). Betrifft den Messe-Workf
 - **`bfr_lokal_proxy.ps1` starten** (Doppelklick, Fenster den ganzen Tag offen lassen) — ohne das kann die Kasse nicht signieren, siehe Abschnitt unten.
 - Verkäufe wie gewohnt tätigen — Scannen **oder Artikelname eingeben zum Suchen** (ab 2 Zeichen), Zahlart wählen, abschließen
 - Chargenpflichtige Artikel: Dropdown zeigt nur die tatsächlich mitgenommenen Chargen mit noch verfügbarer Menge — kein Verkauf über den mitgenommenen Bestand hinaus möglich
-- Fehlt ein Artikel im Sortiment (vergessen zu scannen o.ä.): **"➕ Freier Artikel"** — Bezeichnung, Preis, Steuersatz frei eintragen
+- Fehlt ein Artikel im Sortiment (vergessen zu scannen o.ä.): **"➕ Freier Artikel"** — Artikelgruppe als Kachel antippen (= Erlöskonto im Buchhaltungs-Export, Bezeichnung + Steuer werden vorbelegt, beides änderbar), Preis über das Numpad. Die Gruppen kommen beim Laden der Offline-Kasse mit; wurde mit einem älteren Stand geladen (keine Kacheln), geht es ohne Gruppe weiter (Export bucht dann auf die Divers-Gruppe)
 - Jeder Verkauf wird direkt gegen das BFR-Gerät signiert (kein Server nötig, Browser spricht das Gerät direkt an)
 - Ist BFR kurz nicht erreichbar: Verkauf läuft trotzdem durch, Beleg zeigt "Sicherheitseinrichtung ausgefallen" und wird später automatisch nachsigniert
 - **Browser stürzt ab / Laptop wird neu gestartet:** Seite kann jetzt auch ohne jede Serververbindung neu geöffnet werden (Service Worker liefert die App-Hülle aus dem Cache), IndexedDB-Daten (Artikel, Chargen, noch nicht hochgeladene Bons) bleiben unverändert erhalten

@@ -2,9 +2,9 @@
 
 ## Aktuell / Steuerung
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
-- [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — alles gebaut + klickgetestet 2026-10-10, committed (Migr. 201–204 für Live)
+- [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
 - [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
-- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — ⏭️ ab 2026-10-11: Kassenblock-Rest → Offline-Kasse light → Partner → Lizenz → 1.0
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — ⏭️ Partner-Abrechnung als Nächstes; Offline-Kasse light erst wenn Sunmi zu Hause (Gerätetest)
 - [📋 Offene Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler, Jacky testet bei echter Einrichtung
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 

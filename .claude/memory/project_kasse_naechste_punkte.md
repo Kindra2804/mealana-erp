@@ -59,3 +59,9 @@ Gemerkt am 2026-10-07 abends, Jacky will diese Punkte **der Reihe nach im Detail
 
 **Why:** Kasse ist RKSV-relevant (falsche Kassen-ID = falsche Signaturkette), Divers/Schnellwahl ohne Gruppe landen falsch im Export.
 **How to apply:** Reihenfolge 1→2→3, jeweils erst Konzept mit Jacky; Punkt 1 ist besprochen und kann gebaut werden.
+
+## 2026-10-26: Kassenblock-Rest (Offline-Divers) gebaut — nicht committed, Klicktest offen
+- Umfang mit Jacky abgestimmt: nur A+B+C. A = preSyncExportieren liefert `gruppen` (KassenService::getKassenGruppen), JS speichert sie in konfig.gruppen. B = neuer Freier-Artikel-Dialog in bon_offline.php/kasse_bon_offline.js (Kacheln, Steuer-Tasten, Numpad, obFreier*-Funktionen). C = postSyncVerarbeiten speichert artikel_gruppe_id (nur bei Divers-Platzhalter 99-9999/leer). SW-Cache v2. Ohne Gruppen (alter Ladestand) geht es weiter wie früher.
+- Bewusst NICHT offline: Schnellwahl-Leiste + Mengenvorwahl → kommt mit Offline-Kasse light.
+- **Jacky-Entscheidung 2026-10-26:** Offline-Kasse light bekommt **2 wählbare Oberflächen**: Tablet Querformat + Sunmi V2 Hochformat (weniger Platz) — nächster Schritt.
+- Klicktest: Messe elektronisch vorbereiten → Offline-Kasse laden → Freier Artikel mit Gruppe "Hefte" (10 % vorbelegt) → Bon → Resync → kassen_bon_positionen.artikel_gruppe_id gesetzt + Export bucht auf das Gruppenkonto.

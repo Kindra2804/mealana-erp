@@ -270,6 +270,8 @@ class MesseSyncService
             'bon_nr_jahr'    => (int)date('Y'),
             'bon_nr_zaehler' => $bonNrStart,
             'divers_artikel_id' => $diversArtikelId,
+            // Gruppen-Kacheln im Divers-Dialog (gleiche Auswahl wie online)
+            'gruppen'        => (new KassenService())->getKassenGruppen(),
         ];
     }
 
@@ -295,6 +297,10 @@ class MesseSyncService
         $bonCount     = 0;
         $umsatz       = 0.0;
         $fehler       = [];
+
+        // Offline-Divers läuft über den Platzhalter 99-9999 → Gruppe nur dort übernehmen
+        // (bei echten Artikeln zählt deren eigene Gruppe, wie online in bon_speichern.php)
+        $diversId = (int)($this->db->query("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1")->fetchColumn() ?: 0);
 
         $this->db->beginTransaction();
         try {
@@ -337,17 +343,20 @@ class MesseSyncService
                 // Positionen
                 $stmtPos = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, artikel_id, bezeichnung, ean, menge,
+                        (bon_id, block, artikel_id, artikel_gruppe_id, bezeichnung, ean, menge,
                          einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
-                        (:bon_id, :block, :artikel_id, :bezeichnung, :ean, :menge,
+                        (:bon_id, :block, :artikel_id, :artikel_gruppe_id, :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge, :sort)
                 ");
                 foreach (($bonDaten['positionen'] ?? []) as $i => $pos) {
+                    $posArtikelId = (int)($pos['artikel_id'] ?? 0);
+                    $istDivers    = !$posArtikelId || $posArtikelId === $diversId;
                     $stmtPos->execute([
                         ':bon_id'             => $bonId,
                         ':block'              => $pos['block']              ?? null,
                         ':artikel_id'         => $pos['artikel_id']         ?? null,
+                        ':artikel_gruppe_id'  => $istDivers && !empty($pos['artikel_gruppe_id']) ? (int)$pos['artikel_gruppe_id'] : null,
                         ':bezeichnung'        => $pos['bezeichnung'],
                         ':ean'                => $pos['ean']                ?? null,
                         ':menge'              => $pos['menge']              ?? 1,

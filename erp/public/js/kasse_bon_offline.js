@@ -125,6 +125,7 @@ async function obVorbereitungLaden() {
             bonNrJahr: data.bon_nr_jahr,
             bonNrZaehler: data.bon_nr_zaehler,
             diversArtikelId: data.divers_artikel_id || null,
+            gruppen: data.gruppen || [], // Kacheln im Freier-Artikel-Dialog
         });
 
         obKonfig  = await obIdbGet('konfig', 'aktuell');
@@ -272,11 +273,92 @@ function obChargeAbbrechen() {
 
 // ── Freier Artikel ───────────────────────────────────────────────────────────
 
+// Ablauf wie online (bon.php diversDialog): Gruppe antippen → Bezeichnung + Steuer
+// aus der Gruppe vorbelegt (beides änderbar) → Preis über Numpad → Hinzufügen.
+// Die Gruppe geht als artikel_gruppe_id mit und bestimmt das Erlöskonto im Export.
+// Gruppen kommen aus den Sync-Daten — wurde die Messe noch mit altem Stand geladen
+// (keine Gruppen), geht es wie früher ohne Gruppe weiter (Export: Divers-Fallback).
+let obFreierGruppeId      = null;
+let obFreierSteuer        = 20;
+let obFreierNameAutomatik = true; // Bezeichnung = Gruppenname, solange nicht von Hand geändert
+
+function obFreierGruppen() {
+    return (obKonfig && obKonfig.gruppen) || [];
+}
+
 function obFreierArtikelOeffnen() {
+    const gruppen = obFreierGruppen();
+    const box = document.getElementById('ob-freier-gruppen');
+    box.innerHTML = '';
+    gruppen.forEach(g => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = g.name;
+        b.dataset.id = g.id;
+        b.onclick = () => obFreierGruppeWaehlen(parseInt(g.id));
+        box.appendChild(b);
+    });
+    document.getElementById('ob-freier-gruppen-block').style.display = gruppen.length ? '' : 'none';
+
+    obFreierNameAutomatik = true;
     document.getElementById('ob-freier-bezeichnung').value = '';
     document.getElementById('ob-freier-preis').value = '';
+    const start = (gruppen.find(g => g.ist_standard == 1) || gruppen[0] || {}).id;
+    obFreierGruppeId = null;
+    obFreierSteuerSetzen(20);
+    if (start) obFreierGruppeWaehlen(parseInt(start));
+
+    obFreierPruefen();
     document.getElementById('ob-freier-overlay').classList.add('aktiv');
-    document.getElementById('ob-freier-bezeichnung').focus();
+    document.getElementById('ob-freier-preis').focus();
+}
+
+function obFreierGruppeWaehlen(id) {
+    obFreierGruppeId = id;
+    const g = obFreierGruppen().find(x => parseInt(x.id) === id);
+    document.querySelectorAll('#ob-freier-gruppen button').forEach(b => {
+        b.classList.toggle('aktiv', parseInt(b.dataset.id) === id);
+    });
+    if (g && obFreierNameAutomatik) {
+        document.getElementById('ob-freier-bezeichnung').value = g.name;
+    }
+    obFreierSteuerSetzen(g && g.standard_steuer_prozent !== null ? parseFloat(g.standard_steuer_prozent) : 20);
+    obFreierPruefen();
+}
+
+function obFreierSteuerSetzen(satz) {
+    obFreierSteuer = satz;
+    document.querySelectorAll('#ob-freier-steuer button').forEach(b => {
+        b.classList.toggle('aktiv', parseFloat(b.dataset.satz) === satz);
+    });
+}
+
+function obFreierNp(z) {
+    const inp = document.getElementById('ob-freier-preis');
+    if (z === ',' && /[,.]/.test(inp.value)) return;
+    if (/[,.]\d\d$/.test(inp.value)) return; // max. 2 Nachkommastellen
+    inp.value += z;
+    obFreierPruefen();
+}
+
+function obFreierNpBack() {
+    const inp = document.getElementById('ob-freier-preis');
+    inp.value = inp.value.slice(0, -1);
+    obFreierPruefen();
+}
+
+function obFreierPreis() {
+    return parseFloat(document.getElementById('ob-freier-preis').value.replace(',', '.')) || 0;
+}
+
+function obFreierPruefen() {
+    // Sobald jemand die Bezeichnung selbst tippt, nicht mehr beim Gruppenwechsel überschreiben
+    const name = document.getElementById('ob-freier-bezeichnung').value.trim();
+    const g = obFreierGruppen().find(x => parseInt(x.id) === obFreierGruppeId);
+    obFreierNameAutomatik = !name || (g && name === g.name);
+
+    const gruppeOk = obFreierGruppeId || !obFreierGruppen().length;
+    document.getElementById('ob-freier-ok').disabled = !(name && gruppeOk && obFreierPreis() > 0);
 }
 
 function obFreierArtikelSchliessen() {
@@ -286,8 +368,8 @@ function obFreierArtikelSchliessen() {
 
 function obFreierArtikelHinzufuegen() {
     const bezeichnung = document.getElementById('ob-freier-bezeichnung').value.trim();
-    const preis       = parseFloat(document.getElementById('ob-freier-preis').value);
-    const steuer      = parseFloat(document.getElementById('ob-freier-steuer').value);
+    const preis       = Math.round(obFreierPreis() * 100) / 100;
+    const steuer      = obFreierSteuer;
 
     if (!bezeichnung || !(preis > 0)) {
         alert('Bitte Bezeichnung und einen Preis größer 0 eingeben.');
@@ -300,6 +382,7 @@ function obFreierArtikelHinzufuegen() {
 
     obWarenkorb.push({
         artikel_id: obKonfig.diversArtikelId,
+        artikel_gruppe_id: obFreierGruppeId,
         bezeichnung: bezeichnung,
         ean: '',
         menge: 1,
@@ -610,6 +693,7 @@ async function obVerkaufAbschliessen() {
         positionen: obWarenkorb.map(z => ({
             block: z.block,
             artikel_id: z.artikel_id,
+            artikel_gruppe_id: z.artikel_gruppe_id || null,
             bezeichnung: z.bezeichnung,
             ean: z.ean,
             menge: z.menge,

@@ -10,7 +10,7 @@
 // die direkte BFR-Signierung) werden bewusst NICHT abgefangen — die müssen
 // entweder wirklich funktionieren oder ehrlich fehlschlagen, kein Fake-Cache.
 
-const CACHE_NAME = 'mealana-messe-kasse-v1';
+const CACHE_NAME = 'mealana-messe-kasse-v2'; // v2: Freier-Artikel-Dialog mit Gruppen
 const APP_SHELL = [
     './bon_offline.php',
     '../js/kasse_bon_offline.js',

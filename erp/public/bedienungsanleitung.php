@@ -616,6 +616,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>+ Artikel</strong> → <strong>Artikelgruppe</strong> als Kachel antippen (= Erlöskonto in der Buchhaltung). Bezeichnung + Steuer werden vorbelegt, beides änderbar.</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Preis pro Stück über das Numpad im Dialog eingeben → <strong>✓ Hinzufügen</strong></div></div>
             <div class="ba-hint">💡 Gelbe Schnellwahl-Tasten sind <strong>Gruppen-Tasten</strong>: öffnen den Dialog mit fertig gewählter Gruppe. Einrichten über ⚙ neben "SCHNELLWAHL". Welche Gruppen als Kachel erscheinen + Standard-Steuer: Buchhaltung → Artikelgruppen.</div>
+            <div class="ba-hint">💡 <strong>Elektronische Messe-Kasse (offline):</strong> "➕ Freier Artikel" hat denselben Dialog. Die Gruppen werden beim Laden der Offline-Kasse mitgenommen — nach Änderungen an den Artikelgruppen neu laden. Mengenvorwahl + Schnellwahl gibt es offline noch nicht (Menge im Warenkorb mit +/−).</div>
 
             <h3 id="kasse-papier-messe">Papier-Messe (Strichliste + händische Belege) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Für Messen ohne Gerät/Strom/Internet — und in Deutschland ohne elektronisches Aufzeichnungssystem (keine TSE-Frage). Die elektronische Messe-Kasse gibt es weiterhin daneben.</p>

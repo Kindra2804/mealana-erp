@@ -78,6 +78,30 @@ $pageTitle = 'Offline-Kasse';
     .ob-overlay.aktiv { display: flex; }
     .ob-overlay-box { background: #fff; border-radius: 14px; padding: 28px; width: 90%; max-width: 420px; max-height: 85vh; overflow-y: auto; }
 
+    /* Freier Artikel: Gruppen-Kacheln, Steuer-Tasten, eigenes Numpad (wie bon.php) */
+    .ob-div-label { font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+    .ob-div-gruppen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .ob-div-gruppen button {
+      flex: 1 1 110px; min-height: 44px; padding: 6px 8px;
+      border-radius: 8px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #334155;
+      font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+    }
+    .ob-div-gruppen button.aktiv { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .ob-div-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .ob-div-steuer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .ob-div-steuer button {
+      height: 40px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #f8fafc;
+      font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; color: #334155;
+    }
+    .ob-div-steuer button.aktiv { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+    .ob-div-preis { font-size: 26px; text-align: right; }
+    .ob-div-np { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .ob-div-np button {
+      height: 46px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f1f5f9;
+      font-size: 20px; font-weight: 600; font-family: inherit; cursor: pointer; color: #1e293b;
+    }
+    .ob-div-np button:active { background: #cbd5e1; }
+
     .ob-quittung { font-family: 'Courier New', monospace; font-size: 13px; }
     .ob-quittung .z { text-align: center; }
     .ob-quittung .b { font-weight: bold; }
@@ -216,24 +240,46 @@ $pageTitle = 'Offline-Kasse';
   </div>
 </div>
 
-<!-- Freier-Artikel-Overlay -->
+<!-- Freier-Artikel-Overlay (gleicher Aufbau wie Divers-Dialog in bon.php).
+     Gruppen-Kacheln kommen aus den Sync-Daten (IndexedDB), nicht vom Server. -->
 <div class="ob-overlay" id="ob-freier-overlay">
-  <div class="ob-overlay-box">
+  <div class="ob-overlay-box" style="max-width:760px">
     <div style="font-weight:700;font-size:15px;margin-bottom:12px">➕ Freier Artikel</div>
-    <label style="font-size:12px;color:#64748b">Bezeichnung</label>
-    <input type="text" id="ob-freier-bezeichnung" class="ob-input" placeholder="z.B. Sonderanfertigung">
-    <label style="font-size:12px;color:#64748b">Preis (brutto)</label>
-    <input type="number" step="0.01" id="ob-freier-preis" class="ob-input" placeholder="0,00">
-    <label style="font-size:12px;color:#64748b">Steuersatz</label>
-    <select id="ob-freier-steuer" class="ob-input">
-      <option value="20">20 %</option>
-      <option value="10">10 %</option>
-      <option value="13">13 %</option>
-      <option value="0">0 %</option>
-    </select>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button type="button" class="ob-btn ob-btn-secondary" style="flex:1" onclick="obFreierArtikelSchliessen()">Abbrechen</button>
-      <button type="button" class="ob-btn ob-btn-primary" style="flex:1" onclick="obFreierArtikelHinzufuegen()">Hinzufügen</button>
+
+    <div id="ob-freier-gruppen-block">
+      <div class="ob-div-label">Artikelgruppe</div>
+      <div class="ob-div-gruppen" id="ob-freier-gruppen"></div>
+    </div>
+
+    <div class="ob-div-layout">
+      <div>
+        <div class="ob-div-label">Bezeichnung</div>
+        <input type="text" id="ob-freier-bezeichnung" class="ob-input" maxlength="300" oninput="obFreierPruefen()">
+        <div class="ob-div-label">Steuer</div>
+        <div class="ob-div-steuer" id="ob-freier-steuer">
+          <button type="button" data-satz="20" onclick="obFreierSteuerSetzen(20)">20 %</button>
+          <button type="button" data-satz="13" onclick="obFreierSteuerSetzen(13)">13 %</button>
+          <button type="button" data-satz="10" onclick="obFreierSteuerSetzen(10)">10 %</button>
+          <button type="button" data-satz="0"  onclick="obFreierSteuerSetzen(0)">0 %</button>
+        </div>
+      </div>
+      <div>
+        <div class="ob-div-label">Preis (brutto, €)</div>
+        <input type="text" id="ob-freier-preis" class="ob-input ob-div-preis" inputmode="decimal" placeholder="0,00"
+               oninput="obFreierPruefen()"
+               onkeydown="if(event.key==='Enter'&&!document.getElementById('ob-freier-ok').disabled)obFreierArtikelHinzufuegen()">
+        <div class="ob-div-np">
+          <button type="button" onclick="obFreierNp('7')">7</button><button type="button" onclick="obFreierNp('8')">8</button><button type="button" onclick="obFreierNp('9')">9</button>
+          <button type="button" onclick="obFreierNp('4')">4</button><button type="button" onclick="obFreierNp('5')">5</button><button type="button" onclick="obFreierNp('6')">6</button>
+          <button type="button" onclick="obFreierNp('1')">1</button><button type="button" onclick="obFreierNp('2')">2</button><button type="button" onclick="obFreierNp('3')">3</button>
+          <button type="button" onclick="obFreierNp(',')">,</button><button type="button" onclick="obFreierNp('0')">0</button><button type="button" onclick="obFreierNpBack()">⌫</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button type="button" class="ob-btn ob-btn-secondary" style="flex:1;padding:12px" onclick="obFreierArtikelSchliessen()">Abbrechen</button>
+      <button type="button" class="ob-btn ob-btn-primary" style="flex:1;padding:12px" id="ob-freier-ok" onclick="obFreierArtikelHinzufuegen()" disabled>✓ Hinzufügen</button>
     </div>
   </div>
 </div>
