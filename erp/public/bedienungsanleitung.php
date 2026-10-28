@@ -571,7 +571,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Firma:</strong> Firmenname, Adresse, Logo — erscheinen auf allen Rechnungen und Dokumenten. Vor dem ersten Druck ausfüllen!</p>
             <p><strong>Abholorte:</strong> Adresse + Öffnungszeiten für Selbstabholung (z.B. Wollboutique) — erscheint auf Abholzettel, Abholmail, Auftragsbestätigung und im Abholhinweis der Rechnung. Jedem Abholort lassen sich Lager zuordnen: beim Packen gilt der Abholort des Lagers, aus dem die Ware kommt (mehrere Lager → das mit den meisten Artikeln), Lager ohne Abholort → <strong>Standard</strong>. Im Auftrag (nur bei Selbstabholung) Feld <strong>Abholort</strong> zum Ändern von Hand. Kein Abholort angelegt → Firmenadresse wie früher.</p>
             <p><strong>Kanäle:</strong> WooCommerce-Shops verwalten (Name, URL, API-Schlüssel, Logo).</p>
-            <p><strong>System:</strong> Preisanzeige in Aufträgen (Brutto/Netto), Kleinunternehmer-Modus, PLC-Polling-Ordner.</p>
+            <p><strong>System:</strong> Preisanzeige in Aufträgen (Brutto/Netto), Kleinunternehmer-Modus, PLC-Polling-Ordner, <strong>Artikelbilder auf Belegen</strong> (je Beleg/Mail ein- und ausschaltbar: Rechnung, Rechnungskorrektur, AB, Lieferschein, Pickliste, Abholzettel, Kassenbon A4, AB-/Abhol-/Versandmail — feste Bildgröße, Kind ohne Bild zeigt das Vaterbild, gilt für neue Belege).</p>
 
             <h3 id="einstellungen-mail">Mail / SMTP <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <table class="ba-table">

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/KassenService.php';
 require_once __DIR__ . '/PartnerBon.php';
+require_once __DIR__ . '/../dokumente/BelegBilder.php';
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/QrCode.php';
 require_once __DIR__ . '/../kunden/KundenRepository.php';
@@ -21,6 +22,8 @@ class BonA4Renderer
         if (!$bon) {
             return null;
         }
+        // Artikelbilder (Einstellung „Kassenbon A4“, siehe BelegBilder) — vor der Aufteilung in Blöcke
+        $bon['positionen'] = BelegBilder::anreichern($bon['positionen'], 'kassenbon_a4');
 
         $db = Database::getInstance();
 
@@ -352,6 +355,7 @@ $renderBlock = function(array $positionen, string $blockLabel = '') use (&$zeile
     <tr<?= $cls ?>>
       <td><?= $zeilennr ?></td>
       <td>
+        <?php if (!empty($pos['bild_base64'])): ?><img src="data:image/jpeg;base64,<?= $pos['bild_base64'] ?>" style="float:left;width:28pt;height:28pt;margin-right:5pt"><?php endif; ?>
         <?= htmlspecialchars($pos['bezeichnung']) ?>
         <div class="pos-sub"><?= $satzText ?><?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
       </td>

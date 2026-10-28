@@ -31,6 +31,7 @@
             {{ pos.menge_versendet }}&thinsp;{{ pos.einheit ?? 'Stk.' }}
         </td>
         <td style="padding:7px 10px;font-size:13px">
+            {% if mit_bild is defined and mit_bild %}{% include 'mails/_artikelbild.html.twig' %}{% endif %}
             {{ pos.bezeichnung }}
             {% if pos.artikelnummer %}
             <br><span style="font-size:11px;color:#999">{{ pos.artikelnummer }}</span>

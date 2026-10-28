@@ -88,7 +88,7 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
 
             // Positionen mit Artikelnummer + Lagerbestand für ÜV-Check
             $pStmt = $db->prepare("
-                SELECT p.id, p.bezeichnung, p.menge,
+                SELECT p.id, p.artikel_id, p.bezeichnung, p.menge,
                        p.einzelpreis_netto, p.gesamtpreis_netto, p.steuer_prozent, p.rabatt_prozent, p.preisbasis,
                        a.artikelnummer,
                        COALESCE(SUM(lb.bestand), 0) AS verfuegbar_bestand
@@ -117,6 +117,7 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
                 $istUv = (float)$pos['verfuegbar_bestand'] < (float)$pos['menge'];
 
                 $positionen[] = [
+                    'artikel_id'        => $pos['artikel_id'],
                     'bezeichnung'       => $pos['bezeichnung'],
                     'menge'             => $pos['menge'],
                     'artikelnummer'     => $pos['artikelnummer'] ?? '',
@@ -157,7 +158,8 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
                     'nachname'       => $nachname,
                     'kunde_name'     => $kundeName,
                     'auftrag_nummer' => $auftrag['auftrag_nr'],
-                    'positionen'     => $positionen,
+                    'positionen'     => BelegBilder::anreichern($positionen, 'mail_auftragsbestaetigung'),
+                    'mit_bild'       => BelegBilder::aktiv('mail_auftragsbestaetigung'),
                     'positionen_uv'  => $positionenUv,
                     'alles_lagernd'  => $allesLagernd,
                     'brutto_gesamt'  => $bruttoGesamt,

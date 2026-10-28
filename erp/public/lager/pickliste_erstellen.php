@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/modules/dokumente/DokumentRepository.php';
 require_once __DIR__ . '/../../src/modules/dokumente/PdfGenerator.php';
+require_once __DIR__ . '/../../src/modules/dokumente/BelegBilder.php';
 require_once __DIR__ . '/../../src/modules/konfigurator/KonfiguratorRepository.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -84,7 +85,7 @@ foreach ($auftraege as $auftrag) {
     unset($pos);
 
     $auftragMitPos              = $auftrag;
-    $auftragMitPos['positionen'] = $positionen;
+    $auftragMitPos['positionen'] = BelegBilder::anreichern($positionen, 'pickliste');
     $auftragMitPos['kunde']      = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
 
     // PL-Nummer und Pickliste in DB
@@ -125,6 +126,7 @@ foreach ($auftraege as $auftrag) {
         'auftraege'          => [$auftragMitPos],
         'barcode'            => $barcode,
         'gesamt_positionen'  => count($positionen),
+        'mit_bild'           => BelegBilder::aktiv('pickliste'),
     ], $dateipfad);
 
     // Status auf 'gedruckt' setzen

@@ -35,7 +35,10 @@
     <tbody>
     {% for pos in positionen %}
     <tr>
-        <td style="padding:7px 10px;font-size:13px">{{ pos.bezeichnung }}</td>
+        <td style="padding:7px 10px;font-size:13px">
+            {% if mit_bild is defined and mit_bild %}{% include 'mails/_artikelbild.html.twig' %}{% endif %}
+            {{ pos.bezeichnung }}
+        </td>
         <td style="text-align:right;padding:7px 10px;font-size:13px">{{ pos.menge_versendet }}</td>
         <td style="text-align:right;padding:7px 10px;font-size:13px;color:#666">{{ pos.einheit }}</td>
     </tr>

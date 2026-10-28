@@ -43,6 +43,7 @@
 - [Konfigurator-Modul](project_konfigurator_modul.md) — Konfig-Werte auf allen Belegen
 - [Händler-Konsignation](project_haendler_konsignation.md) — Außenlager, Verkaufsmeldung → Netto-Rechnung
 - [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–5 gebaut (inkl. Export 2026-10-28), Konten mit Babsi bestätigen
+- [Artikelbilder auf Belegen](project_belege_artikelbilder.md) — Einstellung je Belegtyp, gebaut 2026-10-28 (Migration 211), Mailer bettet Bilder als CID ein
 - [Abholorte](project_abholorte.md) — eigene Abholadressen + Lager-Zuordnung, Wollboutique Bahngasse 13; gebaut 2026-10-28 (Migration 210), Klicktest offen
 - [Sammelabholung](project_sammelabholung_auftraege.md) — mehrere Aufträge an Kasse, Klicktest offen
 - [Packplatz-Modul](project_packplatz.md) — fertig inkl. Teillieferung-Positions-Split

@@ -95,6 +95,7 @@ Damit das System E-Mails senden kann (Auftragsbestätigungen, Mahnungen, Versand
 | **Preisanzeige in Aufträgen** | Brutto oder Netto als Hauptanzeige |
 | **Kleinunternehmer-Modus** | Kein Steuerausweis auf Rechnungen (§ 6 Abs. 1 Z 27 UStG) |
 | **PLC-Polling-Ordner** | Pfad zum Ordner den der Paketdrucker (PLC) überwacht |
+| **Artikelbilder auf Belegen** | Je Beleg/Mail einschaltbar: Rechnung (A4), Rechnungskorrektur, Auftragsbestätigung (PDF), Lieferschein, Pickliste, Abholzettel, Kassenbon A4 · Mails Auftragsbestätigung, Abholung, Versand. Kleines Vorschaubild des Hauptbilds (feste Größe), Kind-Artikel ohne eigenes Bild zeigen das Vaterbild. Gilt für neu erstellte Belege. Standard: Rechnung, Lieferschein, Pickliste, AB-Mail. Kleine 80-mm-Bons nie. |
 
 ### PLC-Ordner konfigurieren:
 

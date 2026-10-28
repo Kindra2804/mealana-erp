@@ -258,6 +258,13 @@ if ($tab === 'system') {
     setSetting($db, 'lieferschein_charge_anzeigen',  $lsChargeAnzeigen);
     setSetting($db, 'download_limit_standard',       $downloadLimit !== '' ? (string)(int)$downloadLimit : '');
 
+    // Artikelbilder je Belegtyp (BelegBilder) — nicht angehakt = aus
+    require_once __DIR__ . '/../../src/modules/dokumente/BelegBilder.php';
+    $belegBilder = (array)($_POST['beleg_bilder'] ?? []);
+    foreach (array_keys(BelegBilder::BELEGE + BelegBilder::MAILS) as $typ) {
+        setSetting($db, 'beleg_bilder_' . $typ, in_array($typ, $belegBilder, true) ? '1' : '0');
+    }
+
     // Mahnwesen (Rechnungskunden) — Tage ganzzahlig, Gebühren mit Komma oder Punkt
     foreach (['mahnung_erinnerung_tage' => 7, 'mahnung_stufe1_tage' => 14, 'mahnung_stufe2_tage' => 14] as $k => $vorgabe) {
         $wert = trim($_POST[$k] ?? '');

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../konfigurator/KonfiguratorRepository.php';
 require_once __DIR__ . '/../gutscheine/GutscheinRepository.php';
 require_once __DIR__ . '/../auftraege/Versandsteuer.php';
 require_once __DIR__ . '/../lager/AbholortService.php';
+require_once __DIR__ . '/BelegBilder.php';
 
 /**
  * DokumentService – Erzeugt PDF-Dokumente für Aufträge.
@@ -287,6 +288,7 @@ class DokumentService
             $ap = $auftragPos[(int)$rp['auftrag_position_id']] ?? [];
             $z  = Positionsrechnung::ausPosition($rp, (float)$rp['menge']);
             $positionen[] = [
+                'artikel_id'         => $rp['artikel_id'],
                 'bezeichnung'        => $rp['bezeichnung'],
                 'artikelnummer'      => $ap['artikelnummer'] ?? '',
                 'konfig_anzeige'     => $ap['konfig_anzeige'] ?? null,
@@ -331,6 +333,7 @@ class DokumentService
 
         $dateiname = $zielDateiname ?? ($rechnung['dateiname'] ?: 'R-' . $daten['auftrag']['auftrag_nr'] . '_' . $rechnung['rechnung_nr'] . '.pdf');
         $dateipfad = $this->storagePfad . '/' . $rechnung['auftrag_id'] . '/' . $dateiname;
+        $daten = $this->mitBildern($daten, 'rechnung');
         $this->pdf->generiere('rechnung/standard.html.twig', $daten, $dateipfad);
         return $dateipfad;
     }
@@ -486,6 +489,7 @@ class DokumentService
         $dateiname = 'AB-' . $daten['auftrag']['auftrag_nr'] . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
 
+        $daten = $this->mitBildern($daten, 'auftragsbestaetigung');
         $this->pdf->generiere('auftragsbestaetigung/standard.html.twig', $daten, $dateipfad);
         $this->repo->speichern($auftragId, 'auftragsbestaetigung', $dateiname, $benutzerId);
 
@@ -504,6 +508,7 @@ class DokumentService
         $dateiname = 'LS-' . $daten['auftrag']['auftrag_nr'] . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
 
+        $daten = $this->mitBildern($daten, 'lieferschein');
         $this->pdf->generiere('lieferschein/standard.html.twig', $daten, $dateipfad);
         $this->repo->speichern($auftragId, 'lieferschein', $dateiname, $benutzerId);
 
@@ -524,6 +529,7 @@ class DokumentService
         $dateiname = 'AZ-' . $daten['auftrag']['auftrag_nr'] . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
 
+        $daten = $this->mitBildern($daten, 'abholzettel');
         $this->pdf->generiere('abholzettel/standard.html.twig', $daten, $dateipfad);
         $this->repo->speichern($auftragId, 'abholzettel', $dateiname, $benutzerId);
 
@@ -715,6 +721,7 @@ class DokumentService
         $dateiname = 'GS-' . $daten['auftrag']['auftrag_nr'] . '_' . $gsNr . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
 
+        $daten = $this->mitBildern($daten, 'gutschrift');
         $this->pdf->generiere('gutschrift/standard.html.twig', $daten, $dateipfad);
         $this->repo->speichern($auftragId, 'gutschrift', $dateiname, $benutzerId, $gsNr);
 
@@ -820,6 +827,7 @@ class DokumentService
         $dateiname = 'LS-' . $daten['auftrag']['auftrag_nr'] . '-' . date('His') . '.pdf';
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
 
+        $daten = $this->mitBildern($daten, 'lieferschein');
         $this->pdf->generiere('lieferschein/standard.html.twig', $daten, $dateipfad);
         $this->repo->speichern($auftragId, 'lieferschein', $dateiname, $benutzerId);
 
@@ -859,6 +867,14 @@ class DokumentService
     private function zeigeChargeAufLieferschein(): bool
     {
         return ($this->repo->ladeFirmaDaten()['lieferschein_charge_anzeigen'] ?? '0') === '1';
+    }
+
+    /** Artikelbilder je Belegtyp (Einstellung, siehe BelegBilder) */
+    private function mitBildern(array $daten, string $typ): array
+    {
+        $daten['mit_bild']   = BelegBilder::aktiv($typ);
+        $daten['positionen'] = BelegBilder::anreichern($daten['positionen'], $typ);
+        return $daten;
     }
 
     private function ladeDaten(int $auftragId): ?array

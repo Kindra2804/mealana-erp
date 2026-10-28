@@ -243,7 +243,7 @@ $gelieferteFuerPdf    = [];  // für DokumentService (menge statt menge_versende
 
 if (!empty($posGescannt)) {
     $stmtDet = $db->prepare("
-        SELECT p.id, p.bezeichnung, p.einzelpreis_netto, p.gesamtpreis_netto,
+        SELECT p.id, p.artikel_id, p.bezeichnung, p.einzelpreis_netto, p.gesamtpreis_netto,
                p.steuer_prozent, p.rabatt_prozent,
                a.artikelnummer, e.kuerzel AS einheit
         FROM auftrag_positionen p
@@ -267,6 +267,7 @@ if (!empty($posGescannt)) {
         $det = $posDetailsById[$pos['id']] ?? [];
 
         $geliefertePositionen[] = [
+            'artikel_id'      => $det['artikel_id'] ?? null,
             'bezeichnung'     => $det['bezeichnung'] ?? ('Pos. ' . ($idx + 1)),
             'artikelnummer'   => $det['artikelnummer'] ?? '',
             'menge_versendet' => $gescannt,
@@ -274,6 +275,7 @@ if (!empty($posGescannt)) {
         ];
 
         $gelieferteFuerPdf[] = [
+            'artikel_id'        => $det['artikel_id'] ?? null,
             'bezeichnung'       => $det['bezeichnung'] ?? ('Pos. ' . ($idx + 1)),
             'artikelnummer'     => $det['artikelnummer'] ?? '',
             'menge'             => $gescannt,
@@ -409,7 +411,8 @@ if ($email && !$isAbholung) {
                 'tracking_url'              => $trackingUrl,
                 'versanddienstleister_label'=> $dlLabels[$versanddienstleister] ?? $versanddienstleister,
                 'ist_teillieferung'         => $istTeillieferung,
-                'positionen'                => $geliefertePositionen,
+                'positionen'                => BelegBilder::anreichern($geliefertePositionen, 'mail_versand'),
+                'mit_bild'                  => BelegBilder::aktiv('mail_versand'),
                 'lieferadresse'             => $lieferAdr,
                 'firma_email'               => $firma['mail_from_address'] ?? '',
             ],
@@ -473,7 +476,8 @@ if ($isAbholung) {
                     'nachname'       => $nachname,
                     'kunde_name'     => $name,
                     'auftrag_nummer' => $auftrag['auftrag_nr'],
-                    'positionen'     => $geliefertePositionen,
+                    'positionen'     => BelegBilder::anreichern($geliefertePositionen, 'mail_abholung'),
+                    'mit_bild'       => BelegBilder::aktiv('mail_abholung'),
                     'abholort'       => $abholort,
                     'firma_email'    => $firma['mail_from_address'] ?? '',
                 ],

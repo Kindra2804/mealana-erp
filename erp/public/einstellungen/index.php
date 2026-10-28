@@ -796,6 +796,28 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             </div>
         </div>
 
+        <?php require_once __DIR__ . '/../../src/modules/dokumente/BelegBilder.php'; ?>
+        <div class="card" style="margin-bottom:12px">
+            <div class="card-header">Artikelbilder auf Belegen</div>
+            <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;font-size:13px">
+                <?php foreach (['PDF-Belege' => BelegBilder::BELEGE, 'Mails' => BelegBilder::MAILS] as $gruppe => $typen): ?>
+                <div>
+                    <div style="font-weight:600;margin-bottom:6px"><?= $gruppe ?></div>
+                    <?php foreach ($typen as $typ => $label): ?>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:5px">
+                        <input type="checkbox" name="beleg_bilder[]" value="<?= $typ ?>" <?= ($rows['beleg_bilder_' . $typ] ?? '0') === '1' ? 'checked' : '' ?>>
+                        <?= htmlspecialchars($label) ?>
+                    </label>
+                    <?php endforeach; ?>
+                </div>
+                <?php endforeach; ?>
+                <div style="grid-column:1/-1;color:var(--color-text-muted);font-size:12px;margin-top:6px">
+                    Kleines Vorschaubild des Hauptbilds vor der Bezeichnung (feste Größe). Kind-Artikel ohne eigenes Bild zeigen das Bild des Vaters.
+                    Gilt für neu erstellte Belege — schon gespeicherte PDFs bleiben, wie sie sind.
+                </div>
+            </div>
+        </div>
+
         <div class="card" style="margin-bottom:12px">
             <div class="card-header">Kundenanzeige</div>
             <div style="padding:16px">

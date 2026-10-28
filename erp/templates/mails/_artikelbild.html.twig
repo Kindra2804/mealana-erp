@@ -1,0 +1,11 @@
+{#
+  Artikelbild links neben der Bezeichnung (Einstellung je Mail, siehe BelegBilder).
+  Feste Größe 48 px; ohne Bild ein leerer Platzhalter, damit die Texte bündig bleiben.
+  Mailer::sende() bettet data:-Bilder als CID ein (sonst blockt z.B. Gmail sie).
+#}
+{% if pos.bild_base64 is defined and pos.bild_base64 %}
+<img src="data:image/jpeg;base64,{{ pos.bild_base64 }}" width="48" height="48" alt=""
+     style="float:left;width:48px;height:48px;margin:0 10px 4px 0;border-radius:4px;border:1px solid #e2e8f0">
+{% else %}
+<span style="float:left;display:inline-block;width:48px;height:48px;margin:0 10px 4px 0"></span>
+{% endif %}

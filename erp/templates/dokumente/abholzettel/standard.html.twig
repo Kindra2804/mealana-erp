@@ -93,6 +93,7 @@
     <thead>
       <tr style="background:#f0f0f0; border-bottom:1px solid #333;">
         <th style="width:22pt; text-align:right; padding:2pt 4pt;">Mge</th>
+        {% if mit_bild ?? false %}<th style="width:38pt; padding:2pt 2pt;"></th>{% endif %}
         <th style="text-align:left; padding:2pt 4pt;">Artikel</th>
         <th style="width:55pt; text-align:right; padding:2pt 4pt;">Preis (Brutto)</th>
       </tr>
@@ -101,6 +102,9 @@
       {% for pos in positionen %}
         <tr style="border-bottom:0.5px solid #ddd;">
           <td style="padding:2pt 4pt; text-align:right; vertical-align:top;">{{ pos.menge }}</td>
+          {% if mit_bild ?? false %}
+          <td style="padding:2pt 2pt; vertical-align:top;">{% if pos.bild_base64 ?? '' %}<img src="data:image/jpeg;base64,{{ pos.bild_base64 }}" style="width:34pt; height:34pt;">{% endif %}</td>
+          {% endif %}
           <td style="padding:2pt 4pt; vertical-align:top;">
             {{ pos.bezeichnung }}
             {% if pos.rabatt_prozent is defined and pos.rabatt_prozent > 0 %}

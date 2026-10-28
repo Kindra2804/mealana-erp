@@ -99,6 +99,7 @@ class Mailer
         $mail->addAddress($empfaenger);
         $mail->isHTML(true);
         $mail->Subject = $betreff;
+        $htmlBody      = self::bilderEinbetten($mail, $htmlBody);
         $mail->Body    = $htmlBody;
         $mail->AltBody = $textBody ?: strip_tags($htmlBody);
 
@@ -109,6 +110,24 @@ class Mailer
         }
 
         $mail->send();
+    }
+
+    /**
+     * data:-Bilder (Logo, Artikelbilder) als eingebettete Bilder (CID) anhängen — Gmail und
+     * viele Webmailer zeigen data:-URIs nicht an. Gleiches Bild = gleiche CID (nur einmal).
+     */
+    public static function bilderEinbetten(PHPMailer $mail, string $html): string
+    {
+        $eingebettet = [];
+        return preg_replace_callback('/src="data:(image\/(?:png|jpe?g|gif));base64,([^"]+)"/', function ($m) use ($mail, &$eingebettet) {
+            $cid = md5($m[2]) . '@mealana';
+            if (!isset($eingebettet[$cid])) {
+                $datei = substr($cid, 0, 12) . ($m[1] === 'image/png' ? '.png' : '.jpg');
+                $mail->addStringEmbeddedImage(base64_decode($m[2]), $cid, $datei, PHPMailer::ENCODING_BASE64, $m[1]);
+                $eingebettet[$cid] = true;
+            }
+            return 'src="cid:' . $cid . '"';
+        }, $html);
     }
 
     /**

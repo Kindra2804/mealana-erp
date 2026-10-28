@@ -10,10 +10,13 @@
     mit_preis   – Boolean: Preis-Spalten anzeigen (false bei Pickliste)
     mit_charge  – Boolean: Charge-Hinweis unter der Bezeichnung anzeigen (Einstellung
                   lieferschein_charge_anzeigen, siehe DokumentService::ladeDaten())
+    mit_bild    – Boolean: Artikelbild-Spalte (Einstellung je Belegtyp, siehe BelegBilder);
+                  pos.bild_base64 = Vorschaubild, '' = Artikel ohne Bild (Spalte bleibt leer)
 #}
 {% set mit_mwst   = mit_mwst   ?? true %}
 {% set mit_preis  = mit_preis  ?? true %}
 {% set mit_charge = mit_charge ?? false %}
+{% set mit_bild   = mit_bild   ?? false %}
 
 <table style="width:100%; border-collapse:collapse; font-size:8.5pt; margin-top:6pt;">
   <thead>
@@ -21,6 +24,7 @@
       <th style="width:22pt;  text-align:left;  padding:3pt 4pt;">Pos</th>
       <th style="width:22pt;  text-align:right; padding:3pt 4pt;">Mge</th>
       <th style="width:52pt;  text-align:left;  padding:3pt 4pt;">Art.Nr.</th>
+      {% if mit_bild %}<th style="width:38pt; padding:3pt 2pt;"></th>{% endif %}
       <th style="            text-align:left;  padding:3pt 4pt;">Bezeichnung</th>
       {% if mit_preis %}
         {% if mit_mwst and not kleinuntern %}
@@ -47,6 +51,13 @@
         <td style="padding:3pt 4pt; vertical-align:top;">{{ loop.index }}</td>
         <td style="padding:3pt 4pt; vertical-align:top; text-align:right;">{{ pos.menge }}</td>
         <td style="padding:3pt 4pt; vertical-align:top;">{{ pos.artikelnummer ?? '' }}</td>
+        {% if mit_bild %}
+          <td style="padding:2pt 2pt; vertical-align:top;">
+            {% if pos.bild_base64 is defined and pos.bild_base64 %}
+              <img src="data:image/jpeg;base64,{{ pos.bild_base64 }}" style="width:34pt; height:34pt;">
+            {% endif %}
+          </td>
+        {% endif %}
         <td style="padding:3pt 4pt; vertical-align:top;">
           {{ pos.bezeichnung }}
           {% if pos.konfig_anzeige %}
