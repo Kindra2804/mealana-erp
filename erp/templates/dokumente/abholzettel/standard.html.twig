@@ -77,6 +77,17 @@
     {% endif %}
   </div>
 
+  {# ── Abholort (Migration 210) — nicht die Firmenadresse, die steht unten im Footer ── #}
+  {% if abholort %}
+    <div style="border:1.5px solid #2563eb; background:#eff6ff; padding:4pt 6pt; margin:6pt 0; font-size:8.5pt;">
+      <div style="font-size:7pt; font-weight:bold; color:#1d4ed8; letter-spacing:0.5pt;">ABHOLUNG BEI</div>
+      <strong>{{ abholort.name }}</strong> &middot; {{ abholort.strasse }} &middot; {{ abholort.plz_ort }}
+      {% if abholort.oeffnungszeiten|length %}
+        <div style="font-size:7.5pt; color:#333; margin-top:1pt;">{{ abholort.oeffnungszeiten|join(' · ') }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
   {# ── Positionen (kompakt, ohne MwSt-Spalte) ── #}
   <table style="width:100%; border-collapse:collapse; font-size:8.5pt; margin:6pt 0;">
     <thead>

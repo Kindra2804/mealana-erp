@@ -168,6 +168,10 @@ function versendeDokumentMail(int $auftragId, string $typ, array $ergebnis): voi
                     'lieferadresse'  => $lieferadresse,
                     'datum_heute'    => date('d.m.Y'),
                     'firma_email'    => $firmaEmail,
+                    // Selbstabholung: wo + Öffnungszeiten (Migration 210)
+                    'abholort'       => ($auftrag['lieferart'] ?? '') === 'abholung'
+                        ? (new AbholortService())->anzeigeFuerAuftrag($auftrag['abholort_id'] ? (int)$auftrag['abholort_id'] : null)
+                        : null,
                 ]
             );
         }

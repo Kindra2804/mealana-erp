@@ -167,6 +167,19 @@
 {% endif %}
 </div>
 
+{% if abholort is defined and abholort %}
+<div style="background:#f9fafb;border:1px solid #e2e8f0;border-radius:6px;padding:14px 16px;font-size:13px;line-height:1.7;margin-top:16px">
+    <div style="font-weight:600;color:#2c3e50">Abholung bei</div>
+    <strong>{{ abholort.name }}</strong>, {{ abholort.strasse }}, {{ abholort.plz_ort }}<br>
+    {% if abholort.oeffnungszeiten|length %}
+    <span style="color:#666">{% for zeile in abholort.oeffnungszeiten %}{{ zeile }}<br>{% endfor %}</span>
+    {% endif %}
+    {% if zahlungsart != 'bar' %}{# bei Barzahlung steht der Satz schon im Zahlungshinweis #}
+    <span style="color:#666">Wir informieren Sie, sobald Ihre Bestellung zur Abholung bereit ist.</span>
+    {% endif %}
+</div>
+{% endif %}
+
 <p style="font-size:13px;color:#555;margin-top:20px">
     Über den weiteren Verlauf Ihrer Bestellung werden wir Sie jeweils gesondert informieren.<br>
     Bei Fragen stehen wir Ihnen gerne unter

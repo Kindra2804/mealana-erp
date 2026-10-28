@@ -439,6 +439,10 @@ if ($rechnung) {
 
 // ─── Abholzettel + Abholmail ─────────────────────────────────────────────────
 if ($isAbholung) {
+    // Abholort aus dem Lager der Ausbuchung (falls nicht schon von Hand gewählt) — vor Zettel + Mail
+    $abholortService = new AbholortService();
+    $abholort = $abholortService->anzeigeFuerAuftrag($abholortService->beimPackenSetzen($auftragId));
+
     $abholAnhaenge = [];
     try {
         $dokumentService = new DokumentService();
@@ -470,10 +474,8 @@ if ($isAbholung) {
                     'kunde_name'     => $name,
                     'auftrag_nummer' => $auftrag['auftrag_nr'],
                     'positionen'     => $geliefertePositionen,
-                    'firma_adresse'  => trim(($firma['strasse'] ?? '') . ' ' . ($firma['hausnummer'] ?? '')),
-                    'firma_plz_ort'  => trim(($firma['plz'] ?? '') . ' ' . ($firma['ort'] ?? '')),
+                    'abholort'       => $abholort,
                     'firma_email'    => $firma['mail_from_address'] ?? '',
-                    'firma_tel'      => $firma['telefon'] ?? '',
                 ],
                 anhaenge: $abholAnhaenge,
             );

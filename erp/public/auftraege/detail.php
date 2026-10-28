@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
 require_once __DIR__ . '/../../src/modules/konfigurator/KonfiguratorRepository.php';
+require_once __DIR__ . '/../../src/modules/lager/AbholortService.php';
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
@@ -412,6 +413,20 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php endif; ?>
             <?php if (($auftrag['lieferart'] ?? '') === 'abholung'): ?>
                 <span class="chip sc-aktion" title="Selbstabholung">🏬 Abholung</span>
+                <?php // Abholort nur bei Selbstabholung (Migration 210); leer = Standard, beim Packen automatisch aus dem Lager
+                      $abholorte = (new AbholortService())->alle();
+                      $abholortAktiv = (int)($auftrag['abholort_id'] ?: ($abholorte[0]['id'] ?? 0)); ?>
+                <?php if ($abholorte && !$istKasse): ?>
+                    <div style="margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px">
+                        <label for="abholort-select" style="color:var(--color-text-muted)">Abholort</label>
+                        <select id="abholort-select" class="erp-select" style="font-size:12px" onchange="abholortSetzen(this.value)"
+                                title="Automatisch aus dem Lager beim Packen, hier von Hand änderbar">
+                            <?php foreach ($abholorte as $ao): ?>
+                                <option value="<?= $ao['id'] ?>" <?= (int)$ao['id'] === $abholortAktiv ? 'selected' : '' ?>><?= htmlspecialchars($ao['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
                 <span class="chip" title="Versand">📦 Versand<?= (float)$auftrag['versandkosten'] > 0 ? ' · ' . number_format((float)$auftrag['versandkosten'], 2, ',', '.') . ' €' : '' ?></span>
             <?php endif; ?>
@@ -896,6 +911,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         'klassen'          => $db->query("SELECT id, name, preis_brutto FROM versandklassen ORDER BY sortierung")->fetchAll(PDO::FETCH_ASSOC),
     ], JSON_UNESCAPED_UNICODE) ?>;
     window.STORNO_URL = '<?= BASE_PATH ?>/auftraege/stornieren.php';
+    window.ABHOLORT_URL = '<?= BASE_PATH ?>/auftraege/abholort_setzen.php';
 
     function toggleAbschnitt(bodyId, header) {
         const body   = document.getElementById(bodyId);

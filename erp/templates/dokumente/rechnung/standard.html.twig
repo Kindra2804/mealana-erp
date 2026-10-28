@@ -213,7 +213,7 @@
     {% else %}
       <strong>Zahlungsziel:</strong> {{ rechnung.faellig }}{% if rechnung.faellig_text %} ({{ rechnung.faellig_text }}){% endif %}
       {% if auftrag.lieferart == 'abholung' and auftrag.kanal != 'haendler' and not ist_fachmiete|default(false) %}
-        <br>Bei Selbstabholung Bezahlung in Bar oder Bankomat möglich.
+        <br>Bei Selbstabholung{% if abholort %} ({{ abholort.name }}, {{ abholort.strasse }}){% endif %} Bezahlung in Bar oder Bankomat möglich.
         Bitte um vorherige Terminvereinbarung!
       {% endif %}
     {% endif %}

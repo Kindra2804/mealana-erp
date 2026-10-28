@@ -44,6 +44,16 @@ function lieferstatusAktualisieren() {
     statusSetzen('lieferstatus', wert, null);
 }
 
+// Abholort (nur bei Selbstabholung) — gilt für Abholzettel, Abholmail und Rechnungshinweis
+async function abholortSetzen(abholortId) {
+    const body = new FormData();
+    body.append('auftrag_id', window.AUFTRAG_ID);
+    body.append('abholort_id', abholortId);
+    const res  = await fetch(window.ABHOLORT_URL, { method: 'POST', body });
+    const data = await res.json();
+    if (!data.erfolg) alert(data.fehler || 'Fehler beim Speichern');
+}
+
 async function trackingSpeichern() {
     const nr = document.getElementById('tracking-nr').value.trim();
     const dl = document.getElementById('versand-dl').value;

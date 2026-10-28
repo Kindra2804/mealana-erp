@@ -37,6 +37,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
     <?php foreach (
         [
             'firma'    => 'Firma',
+            'abholorte' => 'Abholorte',
             'kanaele'  => 'Kanäle',
             'shopsync' => 'Shop-Synchronisierung',
             'mail'     => 'Mail / SMTP',
@@ -1074,6 +1075,94 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         document.getElementById('nummernkreis-modal').style.display = 'flex';
     }
     </script>
+
+<?php elseif ($aktTab === 'abholorte'): ?>
+    <!-- ═══════════ TAB: ABHOLORTE (Migration 210) ═══════════ -->
+    <?php
+    require_once __DIR__ . '/../../src/modules/lager/AbholortService.php';
+    $abholorte = (new AbholortService())->alle();
+    // Nur eigene Lager — Partner-/Händler-Lager sind nie Abholstellen
+    $alleLager = $db->query("SELECT id, name, abholort_id FROM lager WHERE (aktiv = 1 OR aktiv IS NULL) AND lager_beziehung = 'eigen' ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+    $ohneAbholort = array_column(array_filter($alleLager, fn($l) => !$l['abholort_id']), 'name');
+    ?>
+    <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Abholorte (Adresse auf Abholzettel, Abholmail und Rechnung bei Selbstabholung)</span>
+            <button type="button" class="btn btn-primary btn-sm" onclick="abholortBearbeiten(null)">+ Neuer Abholort</button>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 2fr 2fr 60px;gap:12px;padding:10px 16px;font-size:12px;color:var(--color-text-muted);border-bottom:1px solid var(--color-border)">
+            <div>NAME</div><div>ADRESSE</div><div>LAGER</div><div></div>
+        </div>
+        <?php foreach ($abholorte as $ao): ?>
+            <div style="display:grid;grid-template-columns:2fr 2fr 2fr 60px;gap:12px;padding:10px 16px;border-bottom:1px solid var(--color-border);align-items:start;font-size:13px">
+                <div>
+                    <strong><?= $ao['ist_standard'] ? '★ ' : '' ?><?= htmlspecialchars($ao['name']) ?></strong>
+                    <?php if ($ao['ist_standard']): ?><br><span class="chip" style="font-size:10px;background:#dbeafe;color:#1d4ed8">Standard</span><?php endif; ?>
+                </div>
+                <div><?= htmlspecialchars($ao['strasse']) ?><br><?= htmlspecialchars($ao['plz'] . ' ' . $ao['ort']) ?></div>
+                <div>
+                    <?= $ao['lager'] ? htmlspecialchars(implode(', ', array_column($ao['lager'], 'name'))) : '<span style="color:var(--color-text-muted)">—</span>' ?>
+                    <?php if ($ao['ist_standard']): ?><br><span style="font-size:11px;color:var(--color-text-muted)">+ alle Lager ohne eigenen Abholort</span><?php endif; ?>
+                </div>
+                <div style="text-align:right">
+                    <button type="button" class="btn btn-secondary btn-sm" title="Bearbeiten"
+                            onclick='abholortBearbeiten(<?= htmlspecialchars(json_encode($ao + ["lager_ids" => array_map("intval", array_column($ao["lager"], "id"))], JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>)'>✎</button>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <?php if (!$abholorte): ?>
+            <div style="text-align:center;color:var(--color-text-muted);padding:20px">Noch kein Abholort — Abholzettel und Mails zeigen die Firmenadresse.</div>
+        <?php elseif ($ohneAbholort): ?>
+            <div style="padding:10px 16px;font-size:12px;color:var(--color-text-muted);display:flex;align-items:center;gap:8px">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;font-size:12px">!</span>
+                <?= htmlspecialchars(implode(', ', $ohneAbholort)) ?> <?= count($ohneAbholort) === 1 ? 'hat' : 'haben' ?> keinen eigenen Abholort → es gilt <?= htmlspecialchars($abholorte[0]['name']) ?>.
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <div id="abholort-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:8px;padding:24px;width:560px;max-height:90vh;overflow:auto;box-shadow:0 4px 24px rgba(0,0,0,.2)">
+            <div style="font-weight:700;font-size:14px;color:var(--color-nav);margin-bottom:16px" id="ao-titel">Abholort bearbeiten</div>
+            <form method="POST" action="abholort_speichern.php">
+                <input type="hidden" name="id" id="ao-id">
+                <label class="erp-label">Name</label>
+                <input type="text" name="name" id="ao-name" class="erp-input" style="width:100%;margin-bottom:10px" maxlength="100" required>
+                <label class="erp-label">Straße</label>
+                <input type="text" name="strasse" id="ao-strasse" class="erp-input" style="width:100%;margin-bottom:10px" maxlength="150" required>
+                <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;margin-bottom:10px">
+                    <div><label class="erp-label">PLZ</label><input type="text" name="plz" id="ao-plz" class="erp-input" style="width:100%" maxlength="10" required></div>
+                    <div><label class="erp-label">Ort</label><input type="text" name="ort" id="ao-ort" class="erp-input" style="width:100%" maxlength="100" required></div>
+                </div>
+                <label class="erp-label">Telefon <span style="font-weight:400;color:var(--color-text-muted)">(leer = Firmentelefon)</span></label>
+                <input type="text" name="telefon" id="ao-telefon" class="erp-input" style="width:100%;margin-bottom:10px" maxlength="50" placeholder="<?= $s('telefon') ?>">
+                <label class="erp-label">Öffnungszeiten <span style="font-weight:400;color:var(--color-text-muted)">(eine Zeile je Tag/Zeitraum)</span></label>
+                <textarea name="oeffnungszeiten" id="ao-oeffnungszeiten" class="erp-input" style="width:100%;height:auto;min-height:84px;margin-bottom:10px;font-family:inherit" rows="4"></textarea>
+                <label class="erp-label">Hinweis <span style="font-weight:400;color:var(--color-text-muted)">(in der Abholmail)</span></label>
+                <input type="text" name="hinweis" id="ao-hinweis" class="erp-input" style="width:100%;margin-bottom:12px" maxlength="500">
+                <label class="erp-label">Lager</label>
+                <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:12px;font-size:13px">
+                    <?php foreach ($alleLager as $l): ?>
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+                            <input type="checkbox" name="lager_ids[]" value="<?= $l['id'] ?>" class="ao-lager"> <?= htmlspecialchars($l['name']) ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <div style="font-size:11px;color:var(--color-text-muted);margin:-6px 0 12px">Ein Lager gehört zu höchstens einem Abholort — anhaken verschiebt es hierher.</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:18px;cursor:pointer">
+                    <input type="checkbox" name="ist_standard" value="1" id="ao-standard"> Standard-Abholort (gilt für alle Lager ohne eigenen Abholort)
+                </label>
+                <div style="display:flex;gap:8px;justify-content:space-between">
+                    <button type="submit" name="aktion" value="loeschen" id="ao-loeschen" class="btn btn-secondary btn-sm" style="color:var(--color-danger)"
+                            formnovalidate onclick="return confirm('Abholort wirklich löschen?')">Löschen</button>
+                    <div style="display:flex;gap:8px">
+                        <button type="button" onclick="document.getElementById('abholort-modal').style.display='none'" class="btn btn-secondary btn-sm">Abbrechen</button>
+                        <button type="submit" name="aktion" value="speichern" class="btn btn-primary btn-sm">Speichern</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="<?= BASE_PATH ?>/js/einstellungen_abholorte.js?v=<?= filemtime(__DIR__ . '/../js/einstellungen_abholorte.js') ?>"></script>
 
 <?php elseif ($aktTab === 'einheiten'): ?>
     <!-- ═══════════ TAB: EINHEITEN ═══════════ -->

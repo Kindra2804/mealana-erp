@@ -6,6 +6,7 @@ require_once __DIR__ . '/PdfGenerator.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorRepository.php';
 require_once __DIR__ . '/../gutscheine/GutscheinRepository.php';
 require_once __DIR__ . '/../auftraege/Versandsteuer.php';
+require_once __DIR__ . '/../lager/AbholortService.php';
 
 /**
  * DokumentService – Erzeugt PDF-Dokumente für Aufträge.
@@ -911,6 +912,10 @@ class DokumentService
             'kleinuntern' => $kleinuntern,
             'logo_base64' => $logoBase64,
             'datum_heute' => date('d.m.Y'),
+            // Abholort (Migration 210) — nur bei Selbstabholung, sonst null
+            'abholort'    => ($auftrag['lieferart'] ?? '') === 'abholung'
+                ? (new AbholortService())->anzeigeFuerAuftrag($auftrag['abholort_id'] ? (int)$auftrag['abholort_id'] : null)
+                : null,
         ];
     }
 

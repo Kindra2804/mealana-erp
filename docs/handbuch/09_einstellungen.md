@@ -30,6 +30,26 @@ Diese Daten erscheinen auf allen Dokumenten (Rechnung, Lieferschein, Auftragsbes
 
 ---
 
+## Abholorte (Tab: Abholorte)
+
+Wo Kunden ihre Bestellung bei **Selbstabholung** abholen. Die Firmenadresse ist der Firmensitz und bleibt in der Fußzeile der Dokumente. Der Abholort erscheint zusätzlich:
+- auf dem **Abholzettel** (Kasten „Abholung bei“ mit Öffnungszeiten)
+- in der Mail **„liegt zur Abholung bereit“** (Abholadresse, Telefon, Öffnungszeiten, Hinweis)
+- in der **Auftragsbestätigung** bei Abholung
+- im Hinweis „Bei Selbstabholung …“ auf der **Rechnung**
+
+**Felder:** Name, Straße, PLZ/Ort, Telefon (leer = Firmentelefon), Öffnungszeiten (eine Zeile je Tag), Hinweis für die Mail, zugeordnete **Lager**, Haken **Standard**.
+
+**Welcher Abholort gilt?**
+1. Beim Packen am Packplatz: der Abholort des Lagers, aus dem die Ware kommt. Kommt sie aus mehreren Lagern, zählt das Lager mit den meisten Artikeln.
+2. Lager ohne eigenen Abholort (z.B. Privathaus-Keller) → der **Standard-Abholort**.
+3. Im Auftrag (nur bei Selbstabholung) gibt es das Feld **Abholort** zum Ändern von Hand. Eine Handwahl wird beim Packen nicht überschrieben.
+4. Gibt es gar keinen Abholort, steht wie früher die Firmenadresse.
+
+Ein Lager gehört zu höchstens einem Abholort. Anhaken im Fenster verschiebt es zu diesem Abholort. Partner- und Händlerlager stehen nicht zur Auswahl. Löschen geht nur, wenn der Abholort nicht der Standard ist und kein Auftrag ihn verwendet.
+
+---
+
 ## Kanäle / Shops (Tab: Kanäle)
 
 Hier werden WooCommerce-Shops verwaltet:
