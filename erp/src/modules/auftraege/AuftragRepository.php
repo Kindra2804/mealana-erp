@@ -250,6 +250,9 @@ class AuftragRepository
 
     /**
      * Gibt alle Positionen eines Auftrags zurück, mit Artikelname und Hauptbild.
+     * bild_pfad = relativer Pfad unter public/ (uploads/artikel/<id>/<datei>) — bis
+     * 2026-10-28 nur der Dateiname, das Bild in der Auftragsansicht war dadurch kaputt.
+     * Kind-Artikel ohne eigenes Bild bekommen das Hauptbild des Vaters.
      */
     public function findPositionen(int $auftragId): array
     {
@@ -257,11 +260,14 @@ class AuftragRepository
             SELECT
                 p.*,
                 COALESCE(vater.name, art.name) AS artikel_name_aktuell,
-                b.dateiname                     AS bild_pfad
+                (SELECT CONCAT('uploads/artikel/', b.artikel_id, '/', b.dateiname)
+                   FROM artikel_bilder b
+                  WHERE b.artikel_id IN (art.id, art.vaterartikel_id)
+                  ORDER BY b.artikel_id = art.id DESC, b.position, b.id
+                  LIMIT 1)                     AS bild_pfad
             FROM auftrag_positionen p
             JOIN artikel art ON art.id = p.artikel_id
             LEFT JOIN artikel vater ON vater.id = art.vaterartikel_id
-            LEFT JOIN artikel_bilder b ON b.artikel_id = p.artikel_id AND b.position = 0
             WHERE p.auftrag_id = :auftrag_id
             ORDER BY p.sort_order, p.id
         ");
@@ -320,7 +326,9 @@ class AuftragRepository
                     LIMIT 1)                                   AS vk_brutto,
                 (SELECT sk.satz FROM steuerklassen sk WHERE sk.id = a.steuerklasse_id) AS steuer_prozent,
                 (SELECT MIN(c.code) FROM artikel_codes c WHERE c.artikel_id = a.id AND c.typ = 'GTIN13') AS ean,
-                (SELECT dateiname FROM artikel_bilder WHERE artikel_id = a.id AND position = 0 LIMIT 1) AS bild_pfad
+                (SELECT CONCAT('uploads/artikel/', b.artikel_id, '/', b.dateiname) FROM artikel_bilder b
+                  WHERE b.artikel_id IN (a.id, a.vaterartikel_id)
+                  ORDER BY b.artikel_id = a.id DESC, b.position, b.id LIMIT 1) AS bild_pfad
             FROM artikel a
             LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
             WHERE a.aktiv = 1
