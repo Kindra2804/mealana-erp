@@ -96,10 +96,10 @@ Offline-Kasse light (Punkt 2) verschoben auf einen Tag, an dem das Sunmi V2 zu H
 ## ⏭️ Nächste Session (Jacky 2026-10-26 abends, "fürs nächste Mal merken")
 Partner-Abrechnung Schritte 1–4 gebaut + committed/gepusht (siehe [[project_partner_modul]]). Offen, der Reihe nach:
 1. ✅ 2026-10-28 **Schritt 5 Buchhaltungs-Export** gebaut (Migration 209, Details [[project_partner_modul]]). Kommission bucht auf Einstellungs-Konto 4080 statt Gruppen-Konto.
-2. **Kontonummern mit Babsi bestätigen:** 4800 Mieterlöse Fachmiete, 3710 Verrechnung Partner Fremdumsätze, 3720 Durchlaufende Spenden, 4080 Erlöse Kommissionsware.
+2. ✅ 2026-10-28 Kontonummern: keine Freigabe nötig — Babsi ändert sie bei Bedarf selbst im Kontenplan / Export "Partner-Konten" (4800, 3710, 3720, 4080).
 3. ✅ 2026-10-28 Cron "MeaLana Fachmiete" im Task Scheduler (täglich 06:00, Benutzer indy1).
 4. ✅ 2026-10-28 Mietrechnung: Versandart + Abholhinweis ausgeblendet, Dank "für die gute Zusammenarbeit" (Flag ist_fachmiete aus miet_rechnungen in DokumentService::renderRechnung).
 5. ✅ Test-Artikel 27490 gelöscht (2026-10-28).
-6. **Klicktests Jacky:** Offline-Divers (Messe), Partner-Stammdaten, Kasse/Bon mit Partnerware (auch K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf + Kündigung.
-7. Live-Deploy: Migrationen 201–209.
+6. **Klicktests Jacky:** Offline-Divers (Messe), Partner-Stammdaten, Kasse/Bon mit Partnerware (auch K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf + Kündigung, Abholorte (Einstellungen + Auftrag + Abholzettel). Artikelbilder auf Belegen ✅ abgenommen 2026-10-28.
+7. Live-Deploy: Migrationen 201–211.
 Danach laut Reihenfolge bis 1.0: Offline-Kasse light (wenn Sunmi zu Hause, 2 Oberflächen Tablet quer/Sunmi hoch) → Lizenzserver → 1.0.

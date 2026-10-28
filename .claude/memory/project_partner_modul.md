@@ -185,3 +185,7 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 - Handbücher: 12_buchhaltung.md, 08_partner.md, bedienungsanleitung.php (veralteten "Noch nicht gebaut"-Satz ersetzt).
 - Jackys falscher Test-Artikel 27490 gelöscht (2026-10-28).
 - Nachtrag 2026-10-28: Cron fachmiete im Task Scheduler eingetragen; Mietrechnung ohne Versandart/Abholhinweis/Bestell-Dank (ist_fachmiete). Alles committed.
+
+## Stand 2026-10-28 (Jacky)
+- Kontonummern 3710/3720/4080: keine Freigabe nötig — Babsi kann sie bei Bedarf selbst im Kontenplan / Export-Einstellungen "Partner-Konten" ändern.
+- Test-Partner "TEST_Partner_Fix_Check" (Spende) bleibt bewusst in der Dev-DB → für Tests im Dev verwenden, nicht löschen.

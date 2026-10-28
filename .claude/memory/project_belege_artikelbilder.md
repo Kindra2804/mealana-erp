@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 476d92e2-9f11-4d78-aa23-41d250c27a6f
-  modified: 2026-10-28T13:30:27.821Z
+  modified: 2026-10-28T20:17:58.339Z
 ---
 
 Jacky 2026-10-28: Einstellung je Belegtyp "Artikelbilder anzeigen" (Idee Claude, Jacky: "gefällt mir gut"). Entscheidungen: **feste Bildgröße** (nicht einstellbar — sonst bei jeder Vorlagenänderung nachziehen), **kleine 80-mm-Bons nie**, Standard an: Rechnung, Lieferschein, Pickliste, AB-Mail.
@@ -18,4 +18,5 @@ Jacky 2026-10-28: Einstellung je Belegtyp "Artikelbilder anzeigen" (Idee Claude,
 - **Mailer::bilderEinbetten()**: alle data:-Bilder (auch Logo!) werden beim Versand zu CID-Einbettungen — vorher zeigte Gmail das data:-Logo vermutlich nicht.
 - UI: Einstellungen → System → Karte "Artikelbilder auf Belegen" (speichern.php tab system).
 - Tests: Vorschau < 20 KB, 150×150; AB/LS/RG/AZ/Pickliste/Bon A4 als PDF visuell geprüft; Mail-Einbettung (keine data: mehr, CID-Anhänge). Bon A4 mit Bildern wurde 2-seitig (vorher evtl. 1) — beobachten.
+- Jacky 2026-10-28: Auftragsbestätigung mit Bildern angeschaut → passt, Länge unverändert. Echte Mail kommt mit Bildern an → abgenommen.
 - Siehe [[project_dokumente_system]].
