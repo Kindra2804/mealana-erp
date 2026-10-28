@@ -1218,6 +1218,16 @@ Details siehe `.claude/memory/project_datenqualitaet_20260811.md`.
   - Partner-Artikel: Suche beim Übernehmen, Nummer auto XPnn-0001, "+ Neuer Artikel" direkt beim Übernehmen, normale Anlage sperrt Gruppe Partnerware
 - Offen: Schritt 5 Buchhaltungs-Export (Fremd/Spende noch als Erlös!), Konto 4800 + Partner-Konten mit Babsi, Cron eintragen, Klicktests, Live-Deploy Migr. 201–208
 
+## Update 2026-10-28: Partner-Export, Abholorte, Artikelbilder auf Belegen
+
+- Partner Schritt 5 Buchhaltungs-Export (Migr. 209): Kommission → 4080 Erlös; Fremdrechnung → 3710 und Spende → 3720 als Verbindlichkeit/Durchlauf (satz 0), Spende-Bargeld in der Spendenlade nie gebucht; Partner-Auszahlungen 3710/3720 S gegen Kassa/Bank. Konten in Export → "Partner-Konten" wählbar (Babsi ändert bei Bedarf selbst)
+- Fachmiete-Rechnung ohne Versandart/Abholhinweis, eigener Dankessatz; Cron `cron/fachmiete.php` als Windows-Aufgabe "MeaLana Fachmiete" täglich 06:00
+- Abholorte (Migr. 210, `AbholortService`): Tabelle `abholorte` + `lager.abholort_id` + `auftraege.abholort_id`; Wollboutique Bahngasse 13 = Standard. Abholort kommt beim Packen aus dem Lager (meiste Artikel), Handwahl im Auftrag nur bei Selbstabholung; erscheint auf Abholzettel, Abhol-Mail, AB, Rechnung. Einstellungen → Tab Abholorte
+- Fix Auftragsansicht: Artikelbild mit vollem Pfad, Vaterbild als Fallback
+- Artikelbilder auf Belegen (Migr. 211, `BelegBilder`): je Beleg/Mail einschaltbar (Einstellungen → System), feste Größe, 80-mm-Bons nie; `Mailer::bilderEinbetten()` bettet alle data:-Bilder (auch Logo) als CID ein — Gmail-Test ok
+- Test-Partner "TEST_Partner_Fix_Check" bleibt bewusst in der Dev-DB
+- Offen: Klicktests Abholorte/Partner/Fachmiete/Offline-Divers, Live-Deploy Migr. 201–211; nächster Roadmap-Schritt Offline-Kasse light (wenn Sunmi da) → Lizenzserver → 1.0
+
 ## Commit Convention
 
 ```
