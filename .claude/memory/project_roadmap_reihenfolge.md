@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-08-10T10:03:55.006Z
+  modified: 2026-10-28T11:43:44.304Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -95,11 +95,11 @@ Offline-Kasse light (Punkt 2) verschoben auf einen Tag, an dem das Sunmi V2 zu H
 
 ## ⏭️ Nächste Session (Jacky 2026-10-26 abends, "fürs nächste Mal merken")
 Partner-Abrechnung Schritte 1–4 gebaut + committed/gepusht (siehe [[project_partner_modul]]). Offen, der Reihe nach:
-1. **Schritt 5 Buchhaltungs-Export:** BuchhaltungExportService bucht Fremdrechnung/Spende noch als ERLÖS → als Verbindlichkeit Partner / Spenden-Durchlauf buchen. Kontonummern von Babsi erfragen (Verbindlichkeit Partner, Spenden-Durchlauf) — sonst erst als einstellbare Platzhalter. Kommission bleibt normaler Erlös je Gruppe (Kommissions-Artikel brauchen dafür eine echte Gruppe statt "Partnerware"/PARTNER).
-2. **Kontonummer 4800** (Mieterlöse Fachmiete) mit Babsi bestätigen.
-3. **Cron eintragen:** cron/fachmiete.php täglich im Task Scheduler (wie mahnwesen.php).
-4. **Kosmetik Mietrechnung:** allgemeine Rechnungsvorlage zeigt "Versandart: Selbstabholung", Abholhinweis, "Vielen Dank für Ihre Bestellung!" — Jacky fragen, ob für Mietrechnungen ausblenden.
-5. **Test-Artikel 27490** "Seife Green Light - verpackt" (ART-1325092016, über normale Anlage gemacht, ist KEINE Partnerware) — Jacky fragen: löschen?
+1. ✅ 2026-10-28 **Schritt 5 Buchhaltungs-Export** gebaut (Migration 209, Details [[project_partner_modul]]). Kommission bucht auf Einstellungs-Konto 4080 statt Gruppen-Konto.
+2. **Kontonummern mit Babsi bestätigen:** 4800 Mieterlöse Fachmiete, 3710 Verrechnung Partner Fremdumsätze, 3720 Durchlaufende Spenden, 4080 Erlöse Kommissionsware.
+3. ✅ 2026-10-28 Cron "MeaLana Fachmiete" im Task Scheduler (täglich 06:00, Benutzer indy1).
+4. ✅ 2026-10-28 Mietrechnung: Versandart + Abholhinweis ausgeblendet, Dank "für die gute Zusammenarbeit" (Flag ist_fachmiete aus miet_rechnungen in DokumentService::renderRechnung).
+5. ✅ Test-Artikel 27490 gelöscht (2026-10-28).
 6. **Klicktests Jacky:** Offline-Divers (Messe), Partner-Stammdaten, Kasse/Bon mit Partnerware (auch K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf + Kündigung.
-7. Live-Deploy: Migrationen 201–208.
+7. Live-Deploy: Migrationen 201–209.
 Danach laut Reihenfolge bis 1.0: Offline-Kasse light (wenn Sunmi zu Hause, 2 Oberflächen Tablet quer/Sunmi hoch) → Lizenzserver → 1.0.

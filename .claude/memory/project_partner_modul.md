@@ -175,3 +175,13 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 - UI: Karte "Fachmiete verrechnen" auf mietfaecher.php (offen + zuletzt verrechnet), Endpoint fachmiete_verrechnen.php, cron/fachmiete.php (täglich, Task Scheduler noch EINTRAGEN).
 - Test 22/22 + PDF visuell geprüft (erst 3 Fehler gefunden: leerer Empfänger, "Teilrechnung"+"noch ausständig", Leistungsdatum → behoben). Kosmetisch offen: Rechnungsvorlage zeigt "Versandart Selbstabholung"/Abholhinweis/"Danke für Ihre Bestellung".
 - ⏭️ Schritt 5: Buchhaltungs-Export (Fremd/Spende als Durchlauf/Verbindlichkeit statt Erlös, Konten einstellbar).
+
+## ✅ Schritt 5 Buchhaltungs-Export GEBAUT 2026-10-28 (nicht committed, Klicktest offen)
+- Migration 209 (Dev angewendet): Konten 4080 "Erlöse Kommissionsware" (erloes), 3710 "Verrechnung Partner Fremdumsätze", 3720 "Durchlaufende Spenden" (verbindlichkeit) + system_einstellungen konto_partner_kommission/_fremd/_spende. Nummern = Vorschläge, mit Babsi bestätigen.
+- BuchhaltungExportService: partnerKonten()/partnerSql() — Kassenbon-Positionen nach partner_modus: fremd → 3710 ohne USt, spende → 3720 ohne USt (Bar-Anteil spende_bar = Spendenlade wird NICHT gebucht, Faktor kürzt), kommission → 4080 + USt. zahlungsAnteile zieht spende_bar vom Baranteil ab (gemischte Bons + Kontrollliste). Block 6 partnerAuszahlungen: 3710/3720 Soll an Kassa (bar_kasse) bzw. Bank (ueberweisung); spendenlade + storniert nicht. Nicht-numerisches Konto (Platzhalter 'PARTNER') → Hinweis statt Exportzeile. Leeres Partner-Konto → Hinweis.
+- Gruppe "Partnerware" behält konto_nr 'PARTNER' (dient als Kennung in ArtikelService/PartnerLagerService) — Kommission-Konto kommt aus der Einstellung, nicht aus der Gruppe.
+- UI: export.php Karte "Partner-Konten" (Selects aus Kontenplan nach Typ), export_einstellungen_speichern.php speichert nur mitgeschickte Felder.
+- Test: Rollback-Skript 10/10 (bar/Karte/Kombi mit Spende, Kommission, Auszahlungen) + Leer-Konto-Fall; Export auf echten Daten Jan–Okt vorher/nachher identisch (Hash).
+- Handbücher: 12_buchhaltung.md, 08_partner.md, bedienungsanleitung.php (veralteten "Noch nicht gebaut"-Satz ersetzt).
+- Jackys falscher Test-Artikel 27490 gelöscht (2026-10-28).
+- Nachtrag 2026-10-28: Cron fachmiete im Task Scheduler eingetragen; Mietrechnung ohne Versandart/Abholhinweis/Bestell-Dank (ist_fachmiete). Alles committed.

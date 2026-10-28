@@ -25,6 +25,12 @@ require_once __DIR__ . '/../auftraege/Versandsteuer.php';
  * 4. Zahlungseingänge außerhalb der Kasse (alle Zahlarten) + Online-Gutschein-Einlösungen:
  *    Bank/PayPal/3230 an Kundenkonto, am Buchungsdatum.
  * 5. Mahngebühren.
+ * 6. Auszahlungen an Partner (Fremdrechnung/Spende): Verbindlichkeit an Kassa/Bank.
+ *
+ * Partnerware an der Kasse (Schritt 5 Partner-Abrechnung, Klärung Steuerberatung C10):
+ * Fremdrechnung und Spende sind KEIN Erlös → Verrechnungskonto Partner bzw. Durchlaufende
+ * Spenden, ohne USt; Kommission ist normaler Erlös (eigenes Konto). Konten siehe
+ * partnerKonten(), einstellbar unter Buchhaltung → Export.
  *
  * Kassenbons mit mehreren Zahlungsmitteln (kombi, Gutschein + Rest) werden seit
  * 2026-09-30 anteilig auf Kassa/Bank/3230 aufgeteilt (gemischteBonsAufteilen). Zum
@@ -69,6 +75,7 @@ class BuchhaltungExportService
         $this->rechnungenUndGutschriften($von, $bis, $buchungen, $hinweise);
         $this->zahlungseingaenge($von, $bis, $buchungen, $hinweise);
         $this->mahngebuehren($von, $bis, $buchungen, $hinweise);
+        $this->partnerAuszahlungen($von, $bis, $buchungen, $hinweise);
 
         // DATEV & übliche Buchungsformate erwarten immer einen POSITIVEN Betrag —
         // die Soll/Haben-Kennung trägt das Vorzeichen. Retouren/Gutschriften können
@@ -151,6 +158,56 @@ class BuchhaltungExportService
         return (int)$stmt->fetchColumn() ?: null;
     }
 
+    /**
+     * Konten für Partnerware (system_einstellungen, Migration 209). Leer = nicht eingestellt
+     * → die Positionen landen als Hinweis "manuell buchen" statt im Export.
+     *
+     * @return array{kommission: ?string, fremd: ?string, spende: ?string}
+     */
+    private function partnerKonten(): array
+    {
+        static $konten = null;
+        if ($konten === null) {
+            $werte = $this->db->query("
+                SELECT schluessel, wert FROM system_einstellungen
+                WHERE schluessel IN ('konto_partner_kommission', 'konto_partner_fremd', 'konto_partner_spende')
+            ")->fetchAll(PDO::FETCH_KEY_PAIR);
+            $konten = [
+                'kommission' => trim($werte['konto_partner_kommission'] ?? '') ?: null,
+                'fremd'      => trim($werte['konto_partner_fremd'] ?? '') ?: null,
+                'spende'     => trim($werte['konto_partner_spende'] ?? '') ?: null,
+            ];
+        }
+        return $konten;
+    }
+
+    /**
+     * SQL-Ausdrücke je Bon-Position (Alias bp, b, ag, pa = partner): Konto, Bezeichnung und
+     * Steuersatz nach partner_modus. Fremdrechnung/Spende tragen hier keine USt — sie ist,
+     * falls ausgewiesen, die des Partners. 'faktor' kürzt Spende-Positionen um den Bar-Anteil,
+     * der in der Spendenlade liegt (kassen_bons.spende_bar) und nie unser Geld war.
+     */
+    private function partnerSql(): array
+    {
+        $k = array_map(fn($v) => $v !== null ? $this->db->quote($v) : 'NULL', $this->partnerKonten());
+        $name = "COALESCE(pa.name, CONCAT('Partner #', bp.partner_id))";
+        return [
+            'konto'  => "CASE bp.partner_modus WHEN 'kommission' THEN {$k['kommission']} WHEN 'fremdrechnung' THEN {$k['fremd']}
+                         WHEN 'spende' THEN {$k['spende']} ELSE ag.konto_nr END",
+            'gruppe' => "CASE bp.partner_modus WHEN 'kommission' THEN CONCAT('Kommission ', $name)
+                         WHEN 'fremdrechnung' THEN CONCAT('Fremdumsatz ', $name) WHEN 'spende' THEN CONCAT('Spende ', $name) ELSE ag.name END",
+            'satz'   => "CASE WHEN bp.partner_modus IN ('fremdrechnung', 'spende') THEN 0 ELSE bp.steuer_prozent END",
+            'faktor' => "CASE WHEN bp.partner_modus = 'spende' AND b.spende_betrag <> 0 THEN 1 - b.spende_bar / b.spende_betrag ELSE 1 END",
+        ];
+    }
+
+    /** Fremdrechnung/Spende-Konten: Durchlauf, kein Erlös (Text ohne "Erlös") */
+    private function istPartnerDurchlauf(string $konto): bool
+    {
+        $k = $this->partnerKonten();
+        return $konto === $k['fremd'] || $konto === $k['spende'];
+    }
+
     // ── Block 1a: Kassenbons ─────────────────────────────────────────────────
 
     private function kassenbonUmsaetze(string $von, string $bis, array &$buchungen, array &$hinweise): void
@@ -162,33 +219,36 @@ class BuchhaltungExportService
         // als +10,00 Umsatz exportiert.
         // Datum: bei nacherfassten Messe-Belegen (Papier-Messe, Migration 202) zählt das
         // Datum des händischen Belegs, nicht der Signaturzeitpunkt — richtiger USt-Monat.
+        $ps = $this->partnerSql();
         $rows = $this->db->query("
             SELECT COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) AS datum, b.zahlungsart,
                    b.kasse_id, COALESCE(b.messe_sync_id, 0) AS messe_id,
-                   ag.konto_nr, ag.name AS gruppe_name, bp.steuer_prozent,
-                   SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+                   {$ps['konto']} AS buch_konto, {$ps['gruppe']} AS buch_gruppe, {$ps['satz']} AS buch_satz,
+                   SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100) * {$ps['faktor']}) AS brutto
             FROM kassen_bon_positionen bp
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             LEFT JOIN artikel a       ON a.id  = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id, CASE WHEN bp.artikel_id IS NULL THEN {$diversesGruppeId} END)
+            LEFT JOIN partner pa ON pa.id = bp.partner_id
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND COALESCE(bp.block, '') <> 'zahlung'
               -- Erstattung als Gutschein: die Gutschein-Zeile ist die Gegenbuchung auf 3230
               -- (über die Zahlart), nicht nochmal als eigener Gutschein-Verkauf buchen
               AND NOT (b.zahlungsart = 'gutschein_ausgabe' AND COALESCE(bp.block, '') = 'gutschein_verkauf')
               AND NOT (" . self::GEMISCHT_BEDINGUNG . ")
               AND COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
-            GROUP BY datum, b.kasse_id, messe_id, b.zahlungsart, ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
+            GROUP BY datum, b.kasse_id, messe_id, b.zahlungsart, buch_konto, buch_gruppe, buch_satz
             ORDER BY datum, b.kasse_id, messe_id
         ")->fetchAll();
 
         $bereiche = $this->bonBereiche($von, $bis);
         foreach ($rows as $r) {
+            if (abs((float)$r['brutto']) < 0.005) continue; // z.B. Spende ganz bar → Spendenlade
             $bereich = $bereiche[$r['datum'] . '|' . $r['kasse_id'] . '|' . $r['messe_id']];
             $this->erloesZeilenAnhaengen(
                 $buchungen, $hinweise,
                 datum: $r['datum'], belegnr: $bereich['belegnr'],
-                erloesKonto: $r['konto_nr'], gruppeName: $r['gruppe_name'] ?? 'ohne Gruppe',
-                satz: (float)$r['steuer_prozent'], brutto: (float)$r['brutto'],
+                erloesKonto: $r['buch_konto'], gruppeName: $r['buch_gruppe'] ?? 'ohne Gruppe',
+                satz: (float)$r['buch_satz'], brutto: (float)$r['brutto'],
                 zahlungsart: $r['zahlungsart'], quelle: $bereich['quelle']
             );
         }
@@ -251,18 +311,21 @@ class BuchhaltungExportService
      * kombi speichert den GEGEBENEN Barbetrag (Rückgeld separat) -> Rückgeld abziehen;
      * Gutschein + Rest bar speichert den Rest schon netto. Eine Differenz zum Bon-Betrag
      * (z.B. Rundung, Altdaten) wird dem Baranteil zugeschlagen und als 'differenz' gemeldet.
+     * Bar bezahlte Spende (spende_bar) liegt in der Spendenlade, nicht in der Kassa → aus
+     * Baranteil und Bon-Betrag heraus.
      *
      * @return array{anteile: array<string,float>, differenz: float}  Schlüssel = Zahlungsart für zahlungsart_konten
      */
     public function zahlungsAnteile(array $bon): array
     {
-        $bar = (float)($bon['bar_betrag'] ?? 0) - ($bon['zahlungsart'] === 'kombi' ? (float)($bon['rueckgeld'] ?? 0) : 0);
+        $spendeBar = (float)($bon['spende_bar'] ?? 0);
+        $bar = (float)($bon['bar_betrag'] ?? 0) - ($bon['zahlungsart'] === 'kombi' ? (float)($bon['rueckgeld'] ?? 0) : 0) - $spendeBar;
         $anteile = array_filter([
             'bar'          => round($bar, 2),
             'karte_extern' => round((float)($bon['karten_betrag'] ?? 0), 2),
             'gutschein'    => $bon['zahlungsart'] === 'gutschein' ? round((float)($bon['gutschein_betrag'] ?? 0), 2) : 0.0,
         ], fn($v) => abs($v) > 0.004);
-        $differenz = round((float)$bon['bruttobetrag'] - array_sum($anteile), 2);
+        $differenz = round((float)$bon['bruttobetrag'] - $spendeBar - array_sum($anteile), 2);
         if (abs($differenz) > 0.004) {
             $anteile['bar'] = round(($anteile['bar'] ?? 0) + $differenz, 2);
         }
@@ -280,25 +343,28 @@ class BuchhaltungExportService
         $bons = $this->db->query("
             SELECT b.id, b.bon_nr, COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) AS datum, b.zahlungsart, b.bruttobetrag,
                    b.kasse_id, COALESCE(b.messe_sync_id, 0) AS messe_id,
-                   b.bar_betrag, b.karten_betrag, b.gutschein_betrag, b.rueckgeld
+                   b.bar_betrag, b.karten_betrag, b.gutschein_betrag, b.rueckgeld, b.spende_bar
             FROM kassen_bons b
             WHERE b.typ = 'verkauf' AND b.storniert = 0 AND (" . self::GEMISCHT_BEDINGUNG . ")
               AND COALESCE(b.handbeleg_datum, DATE(b.erstellt_am)) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
         ")->fetchAll(PDO::FETCH_ASSOC);
 
+        $ps = $this->partnerSql();
         $posStmt = $this->db->prepare("
-            SELECT ag.konto_nr, ag.name AS gruppe_name, bp.steuer_prozent,
-                   SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+            SELECT {$ps['konto']} AS buch_konto, {$ps['gruppe']} AS buch_gruppe, {$ps['satz']} AS buch_satz,
+                   SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100) * {$ps['faktor']}) AS brutto
             FROM kassen_bon_positionen bp
+            JOIN kassen_bons b ON b.id = bp.bon_id
             LEFT JOIN artikel a ON a.id = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id, CASE WHEN bp.artikel_id IS NULL THEN {$diversesGruppeId} END)
+            LEFT JOIN partner pa ON pa.id = bp.partner_id
             WHERE bp.bon_id = ? AND COALESCE(bp.block, '') <> 'zahlung'
-            GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
+            GROUP BY buch_konto, buch_gruppe, buch_satz
         ");
 
         $summen = []; // datum|kasse|messe|konto|gruppe|satz|zahlungsart => brutto
         foreach ($bons as $bon) {
-            $bonBrutto = (float)$bon['bruttobetrag'];
+            $bonBrutto = (float)$bon['bruttobetrag'] - (float)$bon['spende_bar'];
             $anteile   = $this->zahlungsAnteile($bon)['anteile'];
             if (abs($bonBrutto) < 0.005 || !$anteile) continue;
 
@@ -312,13 +378,14 @@ class BuchhaltungExportService
                         ? $rest
                         : round($gruppenBrutto * $anteile[$za] / $bonBrutto, 2);
                     $rest = round($rest - $teil, 2);
-                    $k = implode('|', [$bon['datum'], $bon['kasse_id'], $bon['messe_id'], $p['konto_nr'], $p['gruppe_name'] ?? 'ohne Gruppe', (float)$p['steuer_prozent'], $za]);
+                    $k = implode('|', [$bon['datum'], $bon['kasse_id'], $bon['messe_id'], $p['buch_konto'], $p['buch_gruppe'] ?? 'ohne Gruppe', (float)$p['buch_satz'], $za]);
                     $summen[$k] = ($summen[$k] ?? 0) + $teil;
                 }
             }
         }
 
         foreach ($summen as $k => $brutto) {
+            if (abs($brutto) < 0.005) continue;
             [$datum, $kasseId, $messeId, $konto, $gruppe, $satz, $za] = explode('|', $k);
             $bereich = $bereiche[$datum . '|' . $kasseId . '|' . $messeId];
             $this->erloesZeilenAnhaengen(
@@ -348,8 +415,10 @@ class BuchhaltungExportService
         float $satz, float $brutto, string $zahlungsart, string $quelle
     ): void {
         $satz = $this->echterSatz($satz);
-        if (!$erloesKonto) {
-            $hinweise[] = "$quelle $datum: Position(en) ohne Artikelgruppe (kein Erlöskonto) — € " . number_format($brutto, 2, ',', '.') . " manuell prüfen";
+        // Nicht-numerisch = Platzhalter, z.B. Gruppe "Partnerware" (konto_nr 'PARTNER') an
+        // einer Position ohne Partner-Snapshot — nie als Konto in den Export schreiben
+        if (!$erloesKonto || !ctype_digit($erloesKonto)) {
+            $hinweise[] = "$quelle $datum: $gruppeName ohne Konto (Artikelgruppe bzw. Partner-Konten unter Buchhaltung → Export) — € " . number_format($brutto, 2, ',', '.') . " manuell prüfen";
             return;
         }
 
@@ -367,9 +436,11 @@ class BuchhaltungExportService
             'datum' => $datum, 'belegnr' => $belegnr, 'konto' => $erloesKonto, 'gegenkonto' => $gegenkonto,
             'betrag' => $netto, 'soll_haben' => 'H', 'satz' => $satz,
             // Gutschein-Verkauf ist kein Erlös, sondern erhaltene Anzahlung (Konto 3230)
-            'text' => ($erloesKonto === ($this->zahlungsartKonto('gutschein')['kontonummer'] ?? null)
-                ? "Gutschein-Verkauf (Anzahlung) $quelle ($zahlungsart)"
-                : "Erlös $gruppeName $quelle ($zahlungsart)"),
+            'text' => match (true) {
+                $erloesKonto === ($this->zahlungsartKonto('gutschein')['kontonummer'] ?? null) => "Gutschein-Verkauf (Anzahlung) $quelle ($zahlungsart)",
+                $this->istPartnerDurchlauf($erloesKonto) => "$gruppeName $quelle ($zahlungsart)",
+                default => "Erlös $gruppeName $quelle ($zahlungsart)",
+            },
         ];
 
         if (abs($steuer) > 0.004) { // auch negativ (Retoure mindert USt)
@@ -517,7 +588,7 @@ class BuchhaltungExportService
                                 string $gruppe, float $satz, float $netto, float $steuer, ?string $gsKonto): void
     {
         $netto = round($netto, 2); $steuer = round($steuer, 2);
-        if (!$konto) {
+        if (!$konto || !ctype_digit($konto)) {
             $hinweise[] = "$label {$b['nr']}: $gruppe ohne Erlöskonto — € " . number_format($netto + $steuer, 2, ',', '.') . " manuell buchen";
             return;
         }
@@ -635,6 +706,43 @@ class BuchhaltungExportService
         }
     }
 
+    // ── Block 6: Auszahlungen an Partner (Fremdrechnung / Spende) ───────────
+
+    /**
+     * Auszahlung = das verwahrte Geld geht an den Partner: Verrechnungskonto Partner bzw.
+     * Durchlaufende Spenden (Soll) an Kassa (bar aus der Kasse) oder Bank (Überweisung).
+     * Übergaben aus der Spendenlade werden nicht gebucht — deren Inhalt war nie gebucht.
+     * Stornierte Auszahlungen fallen ganz weg (wie stornierte Bons).
+     */
+    private function partnerAuszahlungen(string $von, string $bis, array &$buchungen, array &$hinweise): void
+    {
+        $stmt = $this->db->prepare("
+            SELECT pa.nummer, pa.datum, pa.betrag, pa.art, p.name, p.typ
+            FROM partner_auszahlungen pa
+            JOIN partner p ON p.id = pa.partner_id
+            WHERE pa.storniert = 0 AND pa.art <> 'spendenlade' AND pa.datum BETWEEN ? AND ?
+            ORDER BY pa.datum, pa.id
+        ");
+        $stmt->execute([$von, $bis]);
+
+        $konten = $this->partnerKonten();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $betrag = round((float)$r['betrag'], 2);
+            $konto  = $r['typ'] === 'spende' ? $konten['spende'] : ($r['typ'] === 'fremdrechnung' ? $konten['fremd'] : null);
+            $gegen  = $this->zahlungsartKonto($r['art'] === 'bar_kasse' ? 'bar' : 'vorkasse')['kontonummer'] ?? null;
+            if (!$konto || !$gegen) {
+                $hinweise[] = "Partner-Auszahlung {$r['nummer']} ({$r['name']}): " . (!$konto ? 'kein Partner-Konto für ' . $r['typ'] : 'kein Kassa-/Bankkonto')
+                    . " — € " . number_format($betrag, 2, ',', '.') . " manuell buchen";
+                continue;
+            }
+            $buchungen[] = [
+                'datum' => $r['datum'], 'belegnr' => $r['nummer'], 'konto' => $konto,
+                'gegenkonto' => $gegen, 'betrag' => $betrag, 'soll_haben' => 'S', 'satz' => null,
+                'text' => ($r['typ'] === 'spende' ? 'Spendenübergabe' : 'Auszahlung') . " an {$r['name']} ({$r['nummer']})",
+            ];
+        }
+    }
+
     /** Wert der zurückgenommenen Ware (wie auftraege/detail.php, solange noch nicht alles verrechnet ist). */
     private function retourWert(int $auftragId): float
     {
@@ -669,7 +777,7 @@ class BuchhaltungExportService
         // Kassenbons
         $bons = $this->db->query("
             SELECT b.id, b.bon_nr, b.erstellt_am, b.zahlungsart, b.bruttobetrag, b.gegeben, b.rueckgeld,
-                   b.bar_betrag, b.karten_betrag, b.gutschein_betrag, b.gutschein_code,
+                   b.bar_betrag, b.karten_betrag, b.gutschein_betrag, b.gutschein_code, b.spende_bar,
                    (SELECT ROUND(SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)), 2)
                       FROM kassen_bon_positionen bp WHERE bp.bon_id = b.id) AS positionen_summe
             FROM kassen_bons b
@@ -684,7 +792,8 @@ class BuchhaltungExportService
             if ($gemischt) {
                 ['anteile' => $anteile, 'differenz' => $differenz] = $this->zahlungsAnteile($b);
             } else {
-                $anteile   = [$b['zahlungsart'] => round((float)$b['bruttobetrag'], 2)];
+                // bar bezahlte Spende liegt in der Spendenlade, nicht auf der Kassa
+                $anteile   = array_filter([$b['zahlungsart'] => round((float)$b['bruttobetrag'] - (float)$b['spende_bar'], 2)], fn($v) => abs($v) > 0.004);
                 $differenz = 0.0;
             }
             $posDifferenz = round((float)$b['bruttobetrag'] - (float)$b['positionen_summe'], 2);

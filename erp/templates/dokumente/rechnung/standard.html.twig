@@ -120,12 +120,14 @@
               {{ zahlungsarten[auftrag.zahlungsart] ?? auftrag.zahlungsart }}
             </td>
           </tr>
+          {% if not ist_fachmiete|default(false) %}
           <tr>
             <td style="border-bottom:1px solid #ccc;">Versandart:</td>
             <td style="border-bottom:1px solid #ccc;">
               {% if auftrag.kanal == 'haendler' %}Kommissionsware (Verkaufsmeldung){% else %}{{ auftrag.lieferart == 'abholung' ? 'Selbstabholung' : 'Versand' }}{% endif %}
             </td>
           </tr>
+          {% endif %}
           {% if auftrag.bearbeiter_name %}
           <tr>
             <td>Bearbeiter:</td>
@@ -210,14 +212,14 @@
       <strong>Bereits bezahlt — vielen Dank!</strong>
     {% else %}
       <strong>Zahlungsziel:</strong> {{ rechnung.faellig }}{% if rechnung.faellig_text %} ({{ rechnung.faellig_text }}){% endif %}
-      {% if auftrag.lieferart == 'abholung' and auftrag.kanal != 'haendler' %}
+      {% if auftrag.lieferart == 'abholung' and auftrag.kanal != 'haendler' and not ist_fachmiete|default(false) %}
         <br>Bei Selbstabholung Bezahlung in Bar oder Bankomat möglich.
         Bitte um vorherige Terminvereinbarung!
       {% endif %}
     {% endif %}
   </div>
 
-  <div class="dankessatz">Vielen Dank für Ihre Bestellung!</div>
+  <div class="dankessatz">{{ ist_fachmiete|default(false) ? 'Vielen Dank für die gute Zusammenarbeit!' : 'Vielen Dank für Ihre Bestellung!' }}</div>
 
   {# ── Seiten-Footer (fixiert) ── #}
   {% include '_partials/_footer.html.twig' %}

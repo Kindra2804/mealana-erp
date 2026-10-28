@@ -133,7 +133,12 @@ Partner — wir verwahren es nur, daher gibt es **keine Rechnung und keine Gutsc
 - Reiter **Kontrollliste**: verkaufte Menge × EK je Artikel im Zeitraum (auch als PDF) — zum Abgleich mit
   der Rechnung des Partners. Die Rechnung selbst wird wie ein normaler Einkauf gebucht; ausgezahlt wird hier nichts.
 
-> **Noch nicht gebaut:** die Konten im Buchhaltungs-Export (Fremdumsatz/Spenden als Durchlauf statt Erlös).
+### Buchhaltungs-Export
+
+Der Export (Buchhaltung → DATEV/CSV-Export) bucht Partnerware getrennt: Fremdrechnung auf das
+Verrechnungskonto Partner (3710), Spenden auf Durchlaufende Spenden (3720, nur der unbar bezahlte Teil),
+Kommission als Erlös (4080), Auszahlungen gegen Kassa/Bank. Konten einstellbar unter **Partner-Konten**
+auf der Export-Seite — Details im Buchhaltungs-Handbuch.
 
 ---
 

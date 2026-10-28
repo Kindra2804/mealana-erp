@@ -88,6 +88,12 @@ Umsatz kommt **nur aus Belegen** — Kassenbon, Rechnung, Rechnungskorrektur/Sto
 - Mahngebühren (Rechnungskunden, Verkauf → Mahnwesen): beim Versand der Mahnung als Forderung — Kundenkonto an Erlöskonto **4890 Mahngebühren** (Artikelgruppe "Mahngebühren", 0 % — nicht umsatzsteuerbar). Erlassene Gebühr wird am Erlassdatum zurückgebucht. Die Kontonummer 4890 ist ein Vorschlag — bitte mit dem Steuerberater abstimmen.
 - Gutscheine laufen über das Anzahlungskonto **3230**: Verkauf = Anzahlung (keine USt), Einlösung = Zahlung vom Konto 3230. Bei Online-Aufträgen wird die Einlösung als 3230 gegen Kundenkonto gebucht. Kassen-Retoure mit **Erstattung als Gutschein** = Erlös- und USt-Minderung direkt gegen 3230.
 - Gemischte Zahlung an der Kasse (Bar + Karte oder Gutschein + Rest): Der Bon wird **anteilig** aufgeteilt — jede Warengruppe im Verhältnis der Zahlungsanteile auf Kassa, Bank und 3230. Bei Bar + Karte zählt nur der Baranteil abzüglich Rückgeld.
+- **Partnerware an der Kasse** (siehe Partner-Handbuch) — Konten einstellbar auf der Export-Seite unter **Partner-Konten**:
+  - **Fremdrechnung** ist kein Erlös: Kassa/Bank an **3710 Verrechnung Partner Fremdumsätze**, ohne USt (eine ausgewiesene USt gehört dem Partner). Text „Fremdumsatz <Partner>“.
+  - **Spende**: Bank (bzw. 3230) an **3720 Durchlaufende Spenden**. Der bar bezahlte Teil liegt in der Spendenlade und wird **nicht** gebucht — dafür reicht die Spendenliste.
+  - **Kommission** ist eigener Umsatz: Erlös auf **4080 Erlöse Kommissionsware** + USt. Die Rechnung des Partners an uns wird wie ein normaler Einkauf gebucht.
+  - **Auszahlungen** an Partner (Partner-Konto): 3710/3720 an Kassa (bar aus der Kasse) bzw. Bank (Überweisung). Übergaben aus der Spendenlade werden nicht gebucht, stornierte Auszahlungen fallen weg.
+  - Die Nummern 3710/3720/4080 sind Vorschläge — bitte mit dem Steuerberater abstimmen. Ist ein Partner-Konto leer, landen die Beträge als Hinweis „manuell buchen“.
 - Kasse-Aufträge und importierte JTL-Altaufträge sind nicht nochmal im Export (Kassenumsatz steckt schon in den Bons, JTL-Altdaten wurden damals in JTL gebucht).
 
 ### Zahlungs-Kontrolle

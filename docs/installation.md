@@ -204,6 +204,7 @@ Einloggen → **Einstellungen → Firma**. Firmenname, Adresse, UID-Nummer, IBAN
 |---|---|---|
 | `erp\cron\bfr_nachsignierung.php` | alle 5 Minuten | RKSV-Nachsignierung offener Kassenbelege (nur relevant wenn Kasse+RKSV aktiv genutzt wird) |
 | `erp\cron\mahnwesen.php` | täglich, 06:00 Uhr | Zahlungserinnerungen (14 Tage) + Auto-Stornierung (30 Tage) |
+| `erp\cron\fachmiete.php` | täglich, 06:00 Uhr | Fachmiete-Rechnungen für den Folgemonat (ab 2 Tage vor Monatsende), verpasste Monate werden nachgeholt |
 
 Einrichtung z.B. per `schtasks` oder GUI (Aufgabenplanung), Programm: `C:\xampp\php\php.exe`, Argument: voller Pfad zum jeweiligen Skript.
 

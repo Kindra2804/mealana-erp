@@ -10,8 +10,10 @@ unset($_SESSION['fehler'], $_SESSION['erfolg']);
 
 $einstellungen = $db->query("
     SELECT schluessel, wert FROM system_einstellungen
-    WHERE schluessel IN ('datev_berater_nr', 'datev_mandant_nr', 'datev_wj_beginn', 'datev_sachkontenlaenge')
+    WHERE schluessel IN ('datev_berater_nr', 'datev_mandant_nr', 'datev_wj_beginn', 'datev_sachkontenlaenge',
+                         'konto_partner_kommission', 'konto_partner_fremd', 'konto_partner_spende')
 ")->fetchAll(PDO::FETCH_KEY_PAIR);
+$konten = $db->query("SELECT kontonummer, name, typ FROM kontenplan WHERE aktiv = 1 ORDER BY kontonummer")->fetchAll(PDO::FETCH_ASSOC);
 
 $von = $_GET['von'] ?? date('Y-m-01');
 $bis = $_GET['bis'] ?? date('Y-m-t');
@@ -61,6 +63,34 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php if (empty($einstellungen['datev_berater_nr']) || empty($einstellungen['datev_mandant_nr'])): ?>
         <span style="font-size:12px;color:#c2410c;margin-left:8px">⚠ Ohne Berater-/Mandanten-Nr. ist der DATEV-Export nicht vollständig — CSV-Export funktioniert trotzdem.</span>
         <?php endif; ?>
+    </form>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+    <div class="card-header">Partner-Konten (Partnerware an der Kasse)</div>
+    <form method="post" action="<?= BASE_PATH ?>/buchhaltung/export_einstellungen_speichern.php" style="padding:0 16px 14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:10px">
+            <?php foreach ([
+                'konto_partner_kommission' => ['Kommission (Erlös)', 'erloes', 'Eigener Umsatz, mit USt'],
+                'konto_partner_fremd'      => ['Fremdrechnung (Verrechnung Partner)', 'verbindlichkeit', 'Kein Erlös, ohne USt — Geld gehört dem Partner'],
+                'konto_partner_spende'     => ['Spende (Durchlauf)', 'verbindlichkeit', 'Bar in der Spendenlade wird nicht gebucht'],
+            ] as $schluessel => [$label, $typ, $hilfe]): ?>
+            <div class="form-group">
+                <label class="form-label"><?= $label ?></label>
+                <select name="<?= $schluessel ?>" class="erp-input" style="width:100%">
+                    <option value="">— nicht buchen (Hinweis) —</option>
+                    <?php foreach ($konten as $k): if ($k['typ'] !== $typ) continue; ?>
+                    <option value="<?= htmlspecialchars($k['kontonummer']) ?>" <?= ($einstellungen[$schluessel] ?? '') === $k['kontonummer'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($k['kontonummer'] . ' ' . $k['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px"><?= $hilfe ?></div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <button type="submit" class="btn btn-secondary btn-sm">Partner-Konten speichern</button>
+        <span style="font-size:12px;color:var(--color-text-muted);margin-left:8px">Kontonummern sind Vorschläge — mit der Buchhaltung abstimmen. Neue Konten unter Buchhaltung → Kontenplan.</span>
     </form>
 </div>
 

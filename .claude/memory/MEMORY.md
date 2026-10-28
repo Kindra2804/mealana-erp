@@ -4,7 +4,7 @@
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
 - [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
-- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — ⏭️ Partner Schritt 5 Export + 6 offene Punkte (Abschnitt "Nächste Session 2026-10-26"); Offline-Kasse light erst mit Sunmi
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — ✅ Partner Schritt 5 Export; offen: Konten mit Babsi, Cron, Klicktests (Abschnitt "Nächste Session 2026-10-26"); Offline-Kasse light erst mit Sunmi
 - [📋 Offene Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler, Jacky testet bei echter Einrichtung
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
@@ -42,7 +42,7 @@
 - [Zahlung+Versand ERP → Shop](project_zahlung_erp_an_shop.md) — processing/completed per Cron
 - [Konfigurator-Modul](project_konfigurator_modul.md) — Konfig-Werte auf allen Belegen
 - [Händler-Konsignation](project_haendler_konsignation.md) — Außenlager, Verkaufsmeldung → Netto-Rechnung
-- [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–4 gebaut (Stammdaten, Kasse/Bon, Partner-Konto, Fachmiete), ⏭️ Schritt 5 Export/Konten
+- [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–5 gebaut (inkl. Export 2026-10-28), Konten mit Babsi bestätigen
 - [Sammelabholung](project_sammelabholung_auftraege.md) — mehrere Aufträge an Kasse, Klicktest offen
 - [Packplatz-Modul](project_packplatz.md) — fertig inkl. Teillieferung-Positions-Split
 - [PLC / EasyPak Versand](project_plc_versand.md) — Nachnahme bei Teillieferung gefixt
