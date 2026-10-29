@@ -12,8 +12,15 @@ if ($aktuelleKasseId === null) {
 }
 $kasseInfo   = $service->getKasse($aktuelleKasseId);
 $kasseId     = (int)($kasseInfo['id'] ?? 1);
-$kennzahlen  = $service->getTagesKennzahlen($kasseId);
+// Heute ab dem letzten Z-Bon (nach einem Z-Bon nur, was der nächste Z-Bon enthalten wird)
+[$offenVon, $offenBis] = $service->zBereich($kasseId, date('Y-m-d'));
+$kennzahlen  = $service->getTagesKennzahlen($kasseId, date('Y-m-d'), $offenVon, $offenBis);
+$partnerUmsaetze = $service->getPartnerUmsaetze($kasseId, $kennzahlen['datum'], $offenVon, $offenBis);
+$nachZBon    = substr($offenVon, 11) !== '00:00:00';
 $kassenstand = $service->getKassenstand($kasseId);
+// Z-Bons laufen in Tagesreihenfolge — offene frühere Tage zuerst abschließen
+$offeneZTage = $service->offeneZTage($kasseId, date('Y-m-d'));
+$letzterZTag = $service->letzterZTag($kasseId);
 
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
@@ -49,7 +56,7 @@ function eur(float $v): string { return '€ ' . number_format($v, 2, ',', '.');
       </div>
     </div>
     <div class="ks-card" style="text-align:center">
-      <div style="font-size:12px;color:#888;margin-bottom:4px">Umsatz heute</div>
+      <div style="font-size:12px;color:#888;margin-bottom:4px"><?= $nachZBon ? 'Umsatz seit Z-Bon' : 'Umsatz heute' ?></div>
       <div style="font-size:28px;font-weight:900;color:#e67e22">
         <?= eur((float)$kennzahlen['umsatz_gesamt']) ?>
       </div>
@@ -66,19 +73,43 @@ function eur(float $v): string { return '€ ' . number_format($v, 2, ',', '.');
 
   <!-- Aufschlüsselung nach Zahlungsart -->
   <div class="ks-card">
-    <div class="ks-card-title">Umsatz nach Zahlungsart — <?= htmlspecialchars($kennzahlen['datum']) ?></div>
+    <div class="ks-card-title">Umsatz nach Zahlungsart — <?= date('d.m.Y', strtotime($kennzahlen['datum'])) ?><?= $nachZBon ? ' · seit Z-Bon um ' . date('H:i', strtotime($offenVon)) . ' Uhr' : '' ?></div>
     <table class="ks-table">
       <thead><tr><th>Zahlungsart</th><th style="text-align:right">Betrag</th></tr></thead>
       <tbody>
         <tr><td>Bar</td><td style="text-align:right;font-weight:700"><?= eur((float)$kennzahlen['umsatz_bar'] + (float)$kennzahlen['umsatz_kombi_bar']) ?></td></tr>
         <tr><td>Karte (extern)</td><td style="text-align:right;font-weight:700"><?= eur((float)$kennzahlen['umsatz_karte'] + (float)$kennzahlen['umsatz_kombi_karte']) ?></td></tr>
         <tr><td>Gutschein</td><td style="text-align:right;font-weight:700"><?= eur((float)$kennzahlen['umsatz_gs']) ?></td></tr>
+        <?php $partnerGes = (float)$kennzahlen['partner_fremd'] + (float)$kennzahlen['partner_spende']; ?>
+        <?php if ($partnerUmsaetze): ?>
         <tr style="border-top:2px solid #1a3a5c">
-          <td><strong>Gesamt (netto Stornos)</strong></td>
+          <td><strong>Kassiert gesamt (inkl. Partnerware)</strong></td>
+          <td style="text-align:right;font-weight:700"><?= eur((float)$kennzahlen['umsatz_gesamt'] + $partnerGes) ?></td>
+        </tr>
+        <?php foreach ($partnerUmsaetze as $pu): ?>
+        <tr style="font-size:13px;color:#888">
+          <td>− <?= $pu['modus'] === 'spende' ? 'Spende' : 'Fremdrechnung' ?>: <?= htmlspecialchars($pu['partner_name']) ?> (<?= $pu['anzahl_bons'] ?> Bon<?= $pu['anzahl_bons'] === 1 ? '' : 's' ?>)</td>
+          <td style="text-align:right"><?= eur(-$pu['brutto']) ?></td>
+        </tr>
+        <?php endforeach; ?>
+        <?php endif; ?>
+        <tr style="border-top:2px solid #1a3a5c">
+          <td><strong><?= $partnerUmsaetze ? 'Eigener Umsatz' : 'Gesamt' ?></strong></td>
           <td style="text-align:right;font-weight:900;font-size:16px;color:#e67e22">
             <?= eur((float)$kennzahlen['umsatz_gesamt']) ?>
           </td>
         </tr>
+        <?php if ((int)$kennzahlen['anzahl_stornos'] > 0): ?>
+        <tr style="font-size:13px;color:#e74c3c">
+          <td>Stornierte Bons (<?= (int)$kennzahlen['anzahl_stornos'] ?>) — oben nicht enthalten</td>
+          <td style="text-align:right"><?= eur(abs((float)$kennzahlen['storniert_betrag'])) ?></td>
+        </tr>
+        <?php endif; ?>
+        <?php if ((float)$kennzahlen['partner_spende_bar'] > 0.004): ?>
+        <tr style="font-size:12px;color:#888">
+          <td colspan="2">Spende bar <?= eur((float)$kennzahlen['partner_spende_bar']) ?> liegt in der Spendenlade, nicht im Kassenstand.</td>
+        </tr>
+        <?php endif; ?>
       </tbody>
     </table>
   </div>
@@ -146,8 +177,16 @@ function eur(float $v): string { return '€ ' . number_format($v, 2, ',', '.');
         <form method="post" action="kassensturz_speichern.php" onsubmit="return confirm('Tagesabschluss wirklich durchführen?')">
           <input type="hidden" name="aktion" value="z_bon">
           <input type="hidden" name="kasse_id" value="<?= $kasseId ?>">
+          <?php if ($offeneZTage): ?>
+          <div style="font-size:12px;color:#e67e22;margin-bottom:8px">
+            <strong>!</strong> Noch ohne Z-Bon: <?= implode(', ', array_map(fn($d) => date('d.m.Y', strtotime($d)), $offeneZTage)) ?>
+            — bitte der Reihe nach abschließen (sonst passiert das automatisch um Mitternacht).
+          </div>
+          <?php endif; ?>
           <label style="font-size:11px;color:#888;display:block;margin-bottom:3px">Für Tag (leer = heute — z.B. nachträglich nach Messe-Upload)</label>
-          <input type="date" name="datum" class="ks-input" style="margin-bottom:8px" max="<?= date('Y-m-d') ?>">
+          <input type="date" name="datum" class="ks-input" style="margin-bottom:8px" max="<?= date('Y-m-d') ?>"
+                 <?= $letzterZTag ? 'min="' . date('Y-m-d', strtotime($letzterZTag . ' +1 day')) . '"' : '' ?>
+                 value="<?= $offeneZTage[0] ?? '' ?>">
           <button type="submit" class="ks-btn ks-btn-primary" style="width:100%">🔒 Z-Bon / Tagesabschluss</button>
         </form>
       </div>

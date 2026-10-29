@@ -22,7 +22,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 function status_badge(array $f): string {
     if (!$f['aktiv']) {
-        return '<span class="chip" style="background:#f5f5f5;color:#999">Inaktiv</span>';
+        // Inaktiv sperrt nur neue Vermietungen — ein laufender Vertrag wird weiter verrechnet
+        return '<span class="chip" style="background:#f5f5f5;color:#999">Inaktiv</span>'
+             . ($f['vertrag_id'] ? '<br><span style="font-size:10px;color:#e65100">noch vermietet</span>' : '');
     }
     if (!$f['vertrag_id']) {
         return '<span class="chip chip-aktiv" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7">● Frei</span>';
@@ -321,7 +323,7 @@ function fachFormFelder(string $prefix = ''): string {
             </div>
         </div>
         <div>
-            <label class="erp-label">Standard-Mietpreis/Monat (€)</label>
+            <label class="erp-label">Standard-Mietpreis/Monat netto (€)</label>
             <input type="number" name="standard_preis" id="{$p}preis"
                    class="erp-input" style="width:140px;box-sizing:border-box"
                    step="0.01" min="0" placeholder="0.00">
@@ -335,6 +337,7 @@ function fachFormFelder(string $prefix = ''): string {
             <input type="checkbox" name="aktiv" id="{$p}aktiv" value="1" checked>
             <label for="{$p}aktiv" style="cursor:pointer;font-size:13px">Fach aktiv (vermietbar)</label>
         </div>
+        <div id="{$p}aktiv-hinweis" style="display:none;font-size:12px;color:#555;background:#eef4fb;border:1px solid #c9dcf0;border-radius:4px;padding:8px 10px"></div>
     HTML;
 }
 ?>

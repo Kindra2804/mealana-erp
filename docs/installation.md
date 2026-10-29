@@ -205,8 +205,9 @@ Einloggen → **Einstellungen → Firma**. Firmenname, Adresse, UID-Nummer, IBAN
 | `erp\cron\bfr_nachsignierung.php` | alle 5 Minuten | RKSV-Nachsignierung offener Kassenbelege (nur relevant wenn Kasse+RKSV aktiv genutzt wird) |
 | `erp\cron\mahnwesen.php` | täglich, 06:00 Uhr | Zahlungserinnerungen (14 Tage) + Auto-Stornierung (30 Tage) |
 | `erp\cron\fachmiete.php` | täglich, 06:00 Uhr | Fachmiete-Rechnungen für den Folgemonat (ab 2 Tage vor Monatsende), verpasste Monate werden nachgeholt |
+| `erp\cron\z_bon_auto.php` | täglich, 00:05 Uhr | Fehlende Z-Bons (Tagesabschluss) **aller Kassen** der Reihe nach nachholen — nur einmal am Server einrichten, nicht pro Kasse |
 
-Einrichtung z.B. per `schtasks` oder GUI (Aufgabenplanung), Programm: `C:\xampp\php\php.exe`, Argument: voller Pfad zum jeweiligen Skript.
+Einrichtung z.B. per `schtasks` oder GUI (Aufgabenplanung), Programm: `C:\xampp\php\php.exe`, Argument: voller Pfad zum jeweiligen Skript. Am Server "Unabhängig von der Benutzeranmeldung ausführen" wählen (braucht Admin-Rechte) und "Aufgabe so schnell wie möglich nach einem verpassten Start ausführen" anhaken — sonst laufen die Skripte nur, solange jemand angemeldet ist.
 
 ---
 

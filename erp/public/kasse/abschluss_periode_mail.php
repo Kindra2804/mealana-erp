@@ -117,7 +117,7 @@ ob_start();
     <tr><td>Kombi-Bar</td><td class="r"><?= eur2((float)$kz['umsatz_kombi_bar']) ?></td></tr>
     <tr><td>Kombi-Karte</td><td class="r"><?= eur2((float)$kz['umsatz_kombi_karte']) ?></td></tr>
     <?php if ((int)$kz['anzahl_stornos'] > 0): ?>
-    <tr style="color:#dc2626"><td>Stornos (<?= (int)$kz['anzahl_stornos'] ?>)</td><td class="r">−<?= eur2(abs((float)$kz['storniert_betrag'])) ?></td></tr>
+    <tr style="color:#dc2626"><td>Stornierte Bons (<?= (int)$kz['anzahl_stornos'] ?>) — oben nicht enthalten</td><td class="r"><?= eur2(abs((float)$kz['storniert_betrag'])) ?></td></tr>
     <?php endif; ?>
     <tr class="total"><td>Gesamt</td><td class="r"><?= eur2($umsatzGes) ?></td></tr>
   </tbody>

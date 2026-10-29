@@ -96,8 +96,15 @@ require_once __DIR__ . '/shell_top.php';
                  class="ks-btn ks-btn-secondary" style="padding:5px 10px;font-size:12px" title="Als A4-Rechnung anzeigen/drucken">A4</a>
             <?php endif; ?>
             <?php if ($bon['typ'] === 'verkauf' && !$bon['storniert']): ?>
+              <?php // Storno nur am selben Tag, solange der Bon auf keinem Z-Bon steht — sonst Retoure
+                    $stornoSperre = $service->stornoSperrgrund($kasseId, $bon['erstellt_am']); ?>
+              <?php if ($stornoSperre): ?>
+              <button type="button" class="ks-btn ks-btn-secondary" style="padding:5px 10px;font-size:12px;opacity:.5;cursor:not-allowed"
+                      title="<?= htmlspecialchars($stornoSperre) ?>" disabled>Storno</button>
+              <?php else: ?>
               <button type="button" class="ks-btn ks-btn-danger" style="padding:5px 10px;font-size:12px"
                       onclick="stornoStarten(<?= $bon['id'] ?>)">Storno</button>
+              <?php endif; ?>
             <?php endif; ?>
           </td>
         </tr>

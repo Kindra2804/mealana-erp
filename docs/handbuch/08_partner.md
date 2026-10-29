@@ -48,6 +48,12 @@ Mietfächer sind physische Einheiten (Regal, Vitrine, Tisch) im Geschäft.
 3. **Mietbeginn = immer ein Monatserster** (vorbelegt: nächster Monatserster), Mietende leer = unbefristet
 4. → Vertrag starten (hat der Partner ein Partner-Lager, wird das Fach dort sofort Lagerplatz)
 
+### Fach bearbeiten
+
+Der **Standard-Mietpreis** ist netto (Vorschlag beim Vermieten). **Fach aktiv** abhaken sperrt das Fach nur
+für neue Vermietungen — ein laufender Vertrag wird weiter verrechnet (das Bearbeiten-Fenster weist darauf hin).
+Zum Beenden **Kündigen** verwenden.
+
 ### Kündigen
 
 **Beenden** beim belegten Fach → Mietende ist **immer ein Monatsletzter** (vorbelegt: Ende des laufenden
@@ -61,7 +67,7 @@ Monatlich **im Voraus**: ab **2 Tage vor Monatsende** wird der Folgemonat verrec
 - Karte **Fachmiete verrechnen** auf der Mietfächer-Seite: zeigt, was fällig ist → **Jetzt verrechnen**.
   Läuft zusätzlich täglich automatisch (`cron/fachmiete.php`, wie das Mahnwesen).
 - Je Partner und Monat **eine Rechnung** mit einer Zeile pro Fach („Fachmiete R1-F1 · November 2026“),
-  Leistungsdatum = Monatserster, Konto 4800 (Gruppe „Fachmiete“, änderbar in Buchhaltung → Artikelgruppen).
+  eigener Nummernkreis **MR-** (Einstellungen → Nummernkreise), Leistungsdatum = Monatserster, Konto 4800 (Gruppe „Fachmiete“, änderbar in Buchhaltung → Artikelgruppen).
 - Beim ersten Mal wird aus den Partnerdaten automatisch ein **Kunde** angelegt (Adresse nötig!).
 - Danach ist es ein normaler Auftrag: Rechnung mailen/drucken, **Zahlung buchen**, an der Kasse
   „Rechnung bezahlen“, Mahnwesen — alles wie gewohnt. Verpasste Monate werden nachgeholt, nie doppelt.

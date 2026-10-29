@@ -984,15 +984,15 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
     ];
     $dokNummern = $db->query("SELECT * FROM dokument_nummern ORDER BY typ, jahr DESC")->fetchAll(PDO::FETCH_ASSOC);
 
-    $kassenBonStand = $db->query("
-        SELECT k.id, k.kasse_nr, k.name,
-               COUNT(kb.id) AS anzahl_heuer
-        FROM kassen k
-        LEFT JOIN kassen_bons kb ON kb.kasse_id = k.id AND YEAR(kb.erstellt_am) = YEAR(CURDATE())
-        WHERE k.aktiv = 1
-        GROUP BY k.id, k.kasse_nr, k.name
-        ORDER BY k.kasse_nr
-    ")->fetchAll(PDO::FETCH_ASSOC);
+    // Verkauf/Storno: Zähler je Kasse+Jahr; Z-Bon: eigener Kreis je Kasse (KassenService)
+    require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
+    $kassenSvc = new KassenService();
+    $kassenBonStand = $db->query("SELECT id, kasse_nr, name FROM kassen WHERE aktiv = 1 ORDER BY kasse_nr")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($kassenBonStand as &$kb) {
+        $kb['letzte_nr']  = $kassenSvc->letzteBelegLaufnummer((int)$kb['id'], (int)date('Y'));
+        $kb['naechste_z'] = $kassenSvc->naechsteZBonNr((int)$kb['id']);
+    }
+    unset($kb);
     ?>
 
     <div class="card" style="margin-bottom:12px">
@@ -1036,16 +1036,19 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
     <div class="card">
         <div class="card-header">Kassenbon-Nummernkreise (nicht konfigurierbar)</div>
         <div style="padding:12px 16px;font-size:12px;color:var(--color-text-muted)">
-            Kassenbons laufen über einen eigenen Mechanismus (Format <code>Kassennummer-Jahr-Laufnummer</code>,
-            pro Kasse und Jahr gezählt) — kein fester Nummernkreis-Datensatz, daher hier nur zur Übersicht:
+            Kassenbons laufen über einen eigenen Mechanismus — kein fester Nummernkreis-Datensatz, daher hier nur zur Übersicht.
+            Verkauf/Storno: <code>Kassennummer-Jahr-Laufnummer</code> je Kasse und Jahr.
+            Z-Bon: eigener Kreis <code>Kassennummer-Z-Laufnummer</code> je Kasse, durchlaufend ohne Jahr.
+            X-Bons haben keine Nummer (nur Kasse + Zeitpunkt).
         </div>
         <table class="erp-table" style="width:100%">
             <thead>
                 <tr>
                     <th>Kasse</th>
                     <th>Name</th>
-                    <th style="width:160px">Bons heuer</th>
-                    <th style="width:200px">Nächste Nummer wäre</th>
+                    <th style="width:160px">Letzte Belegnr. heuer</th>
+                    <th style="width:200px">Nächster Bon wäre</th>
+                    <th style="width:160px">Nächster Z-Bon wäre</th>
                 </tr>
             </thead>
             <tbody>
@@ -1053,10 +1056,11 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 <tr>
                     <td><code><?= htmlspecialchars($kb['kasse_nr']) ?></code></td>
                     <td><?= htmlspecialchars($kb['name']) ?></td>
-                    <td><?= (int) $kb['anzahl_heuer'] ?></td>
+                    <td><?= (int) $kb['letzte_nr'] ?></td>
                     <td style="font-family:monospace;color:var(--color-text-muted)">
-                        <?= htmlspecialchars($kb['kasse_nr']) ?>-<?= date('Y') ?>-<?= str_pad((string)($kb['anzahl_heuer'] + 1), 6, '0', STR_PAD_LEFT) ?>
+                        <?= htmlspecialchars($kb['kasse_nr']) ?>-<?= date('Y') ?>-<?= str_pad((string)($kb['letzte_nr'] + 1), 6, '0', STR_PAD_LEFT) ?>
                     </td>
+                    <td style="font-family:monospace;color:var(--color-text-muted)"><?= htmlspecialchars($kb['naechste_z']) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

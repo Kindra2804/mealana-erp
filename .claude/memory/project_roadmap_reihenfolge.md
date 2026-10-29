@@ -103,3 +103,9 @@ Partner-Abrechnung Schritte 1–4 gebaut + committed/gepusht (siehe [[project_pa
 6. **Klicktests Jacky:** Offline-Divers (Messe), Partner-Stammdaten, Kasse/Bon mit Partnerware (auch K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf + Kündigung, Abholorte (Einstellungen + Auftrag + Abholzettel). Artikelbilder auf Belegen ✅ abgenommen 2026-10-28.
 7. Live-Deploy: Migrationen 201–211.
 Danach laut Reihenfolge bis 1.0: Offline-Kasse light (wenn Sunmi zu Hause, 2 Oberflächen Tablet quer/Sunmi hoch) → Lizenzserver → 1.0.
+
+## ⏭️ Nächste Session (nach 2026-10-29)
+2026-10-29: erste Klicktest-Runde (Mietfach, Z-Bon, Nummernkreise) — alles gefixt + committed/gepusht, Details [[project_klicktest_fixes_20261029]]. Offen, der Reihe nach:
+1. **Restliche Klicktests** aus Punkt 6 oben: Offline-Divers (Messe), Partner-Stammdaten, Kasse/Bon mit Partnerware (auch K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf (→ jetzt MR-Nummer prüfen) + Kündigung, Abholorte. Dazu neu: Storno-Sperre im Bon-Journal.
+2. **Live-Deploy Migrationen 201–213** + am Server Windows-Aufgaben Fachmiete und Z-Bon automatisch ("unabhängig von Anmeldung", Admin).
+3. Danach laut Reihenfolge bis 1.0: Offline-Kasse light (wenn Sunmi zu Hause) → Lizenzserver → 1.0.

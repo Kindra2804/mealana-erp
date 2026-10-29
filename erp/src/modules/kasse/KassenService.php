@@ -559,6 +559,26 @@ class KassenService
     }
 
     /**
+     * Bon-Storno nur am selben Tag und nur, solange der Bon auf keinem Z-Bon steht (Jacky 2026-10-29,
+     * RKSV): ein späterer Storno stünde in keinem bzw. einem fremden Z-Bon. Bons nach dem Z-Bon
+     * (Kunde nach Ladenschluss) bleiben stornierbar bis zum nächsten Z-Bon.
+     * Danach läuft es als normale Retoure an der Kasse. Rückgabe: Sperrgrund oder null.
+     */
+    public function stornoSperrgrund(int $kasseId, string $bonErstelltAm): ?string
+    {
+        $bonTag = date('Y-m-d', strtotime($bonErstelltAm));
+        if ($bonTag !== date('Y-m-d')) {
+            return 'Storno nur am selben Tag möglich — der Bon ist vom ' . date('d.m.Y', strtotime($bonTag))
+                 . '. Bitte als Retoure an der Kasse buchen.';
+        }
+        $letzterBis = $this->letzterZBis($kasseId);
+        if ($letzterBis !== null && $bonErstelltAm < $letzterBis) {
+            return 'Der Bon steht schon auf einem Z-Bon — Storno nicht mehr möglich. Bitte als Retoure an der Kasse buchen.';
+        }
+        return null;
+    }
+
+    /**
      * Storniert einen Bon: markiert Original als storniert, bucht Lagen zurück,
      * erstellt Storno-Bon mit negativen Beträgen.
      */
@@ -568,6 +588,8 @@ class KassenService
         if (!$bon) return ['erfolg' => false, 'fehler' => 'Bon nicht gefunden.'];
         if ($bon['storniert']) return ['erfolg' => false, 'fehler' => 'Bon ist bereits storniert.'];
         if ($bon['typ'] !== 'verkauf') return ['erfolg' => false, 'fehler' => 'Nur Verkaufsbons können storniert werden.'];
+        $sperre = $this->stornoSperrgrund((int)$bon['kasse_id'], $bon['erstellt_am']);
+        if ($sperre) return ['erfolg' => false, 'fehler' => $sperre];
 
         $bfrSvc = new BfrService();
 
@@ -741,18 +763,55 @@ class KassenService
 
     // ── Bon-Nr generieren ─────────────────────────────────────────────────────
 
+    /**
+     * Belegnummer für Verkauf (ohne Präfix) bzw. Storno ('S'): ein Zähler je Kasse und Jahr.
+     * X-/Z-Bons zählen NICHT mit (eigene Nummern, siehe naechsteZBonNr/xBonKennung) —
+     * sonst entstünden Lücken in den Verkaufsbelegen.
+     */
     public function naechsteBonNr(int $kasseId = 1, string $prefix = ''): string
     {
-        $jahr = date('Y');
+        $jahr = (int)date('Y');
+        $n = $this->letzteBelegLaufnummer($kasseId, $jahr) + 1;
+        return $this->kassenNr($kasseId) . ($prefix ? '-' . $prefix : '') . '-' . $jahr . '-' . str_pad($n, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Höchste vergebene Laufnummer der Verkaufs-/Stornobelege einer Kasse im Jahr.
+     * MAX statt COUNT: früher zählten X-/Z-Bons mit, deren Nummern sind schon verbraucht.
+     * Auch Startwert für die Offline-Messekasse (MesseSyncService).
+     */
+    public function letzteBelegLaufnummer(int $kasseId, int $jahr): int
+    {
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) FROM kassen_bons
-            WHERE kasse_id = :kasse_id AND YEAR(erstellt_am) = :jahr
+            SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(bon_nr, '-', -1) AS UNSIGNED)), 0) FROM kassen_bons
+            WHERE kasse_id = :kasse_id AND YEAR(erstellt_am) = :jahr AND typ IN ('verkauf', 'storno')
         ");
         $stmt->execute([':kasse_id' => $kasseId, ':jahr' => $jahr]);
-        $n = (int)$stmt->fetchColumn() + 1;
+        return (int)$stmt->fetchColumn();
+    }
+
+    /** Z-Bon: eigener, fortlaufender Nummernkreis je Kasse ohne Jahr — K1-Z-00001 */
+    public function naechsteZBonNr(int $kasseId): string
+    {
+        $nr   = $this->kassenNr($kasseId);
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(bon_nr, '-', -1) AS UNSIGNED)), 0) FROM kassen_bons
+            WHERE kasse_id = :kasse_id AND typ = 'z_bon'
+        ");
+        $stmt->execute([':kasse_id' => $kasseId]);
+        return $nr . '-Z-' . str_pad((int)$stmt->fetchColumn() + 1, 5, '0', STR_PAD_LEFT);
+    }
+
+    /** X-Bon: keine Nummer aus einem Zähler, nur eine Kennung aus Kasse + Zeitpunkt */
+    public function xBonKennung(int $kasseId): string
+    {
+        return $this->kassenNr($kasseId) . '-X-' . date('Ymd-His');
+    }
+
+    private function kassenNr(int $kasseId): string
+    {
         $kasse = $this->getKasse($kasseId);
-        $nr = $kasse ? $kasse['kasse_nr'] : 'K' . $kasseId;
-        return $nr . ($prefix ? '-' . $prefix : '') . '-' . $jahr . '-' . str_pad($n, 6, '0', STR_PAD_LEFT);
+        return $kasse ? $kasse['kasse_nr'] : 'K' . $kasseId;
     }
 
     // ── Bon laden ─────────────────────────────────────────────────────────────
@@ -860,12 +919,14 @@ class KassenService
     // ── Kassenstand ───────────────────────────────────────────────────────────
 
     /** Kassenstand = Summe aller Kassenbucheinträge + Barumsatz heute */
-    public function getKassenstand(int $kasseId): float
+    /** $bisZeitpunkt (exklusiv, 'Y-m-d H:i:s'): Kassenstand zu diesem Zeitpunkt (Z-Bon-Ende), null = jetzt */
+    public function getKassenstand(int $kasseId, ?string $bisZeitpunkt = null): float
     {
+        $bis = $bisZeitpunkt ?: '9999-12-31';
         $kb = $this->db->prepare("
-            SELECT COALESCE(SUM(betrag), 0) FROM kassenbuch WHERE kasse_id = :kid
+            SELECT COALESCE(SUM(betrag), 0) FROM kassenbuch WHERE kasse_id = :kid AND erstellt_am < :bis
         ");
-        $kb->execute([':kid' => $kasseId]);
+        $kb->execute([':kid' => $kasseId, ':bis' => $bis]);
         $kassenbuch = (float)$kb->fetchColumn();
 
         $bar = $this->db->prepare("
@@ -881,9 +942,9 @@ class KassenService
                 - spende_bar
             ), 0)
             FROM kassen_bons
-            WHERE kasse_id = :kid AND typ = 'verkauf' AND storniert = 0
+            WHERE kasse_id = :kid AND typ = 'verkauf' AND storniert = 0 AND erstellt_am < :bis
         ");
-        $bar->execute([':kid' => $kasseId]);
+        $bar->execute([':kid' => $kasseId, ':bis' => $bis]);
         $barumsatz = (float)$bar->fetchColumn();
 
         return $kassenbuch + $barumsatz;
@@ -892,30 +953,35 @@ class KassenService
     // ── X-Bon / Z-Bon ────────────────────────────────────────────────────────
 
     /** Tagesübersicht: Umsatz, Anzahl Bons, Aufschlüsselung nach Zahlungsart */
-    public function getTagesKennzahlen(int $kasseId, ?string $datum = null): array
+    public function getTagesKennzahlen(int $kasseId, ?string $datum = null, ?string $von = null, ?string $bis = null): array
     {
         $datum = $datum ?: date('Y-m-d');
-        $params = [':kid' => $kasseId, ':datum' => $datum];
+        // Zeitraum: ganzer Tag, oder (Z-Bon) ab dem vorigen Z-Bon dieses Tages — siehe zBereich()
+        $params = [':kid' => $kasseId,
+                   ':von' => $von ?: $datum . ' 00:00:00',
+                   ':bis' => $bis ?: date('Y-m-d', strtotime($datum . ' +1 day')) . ' 00:00:00'];
 
         // umsatz_gesamt = eigener Umsatz (ohne Fremdrechnung/Spende); die Zahlungsart-Summen
         // bleiben das, was tatsächlich kassiert wurde (inkl. Partnerware), für den Kassensturz.
+        // Stornierte Bons zählen nirgends mit (wie Kassenstand, Steuer, Buchhaltungs-Export) —
+        // storniert_betrag/anzahl_stornos nur zur Info. Bis 2026-10-29 fehlte der Filter hier.
         $stmt = $this->db->prepare("
             SELECT
-                COUNT(*)                                          AS anzahl_bons,
-                COALESCE(SUM(bruttobetrag - fremd_betrag - spende_betrag), 0) AS umsatz_gesamt,
+                COUNT(CASE WHEN storniert = 0 THEN 1 END)        AS anzahl_bons,
+                COALESCE(SUM(CASE WHEN storniert = 0 THEN bruttobetrag - fremd_betrag - spende_betrag ELSE 0 END), 0) AS umsatz_gesamt,
                 COALESCE(SUM(CASE WHEN storniert = 0 THEN fremd_betrag  ELSE 0 END), 0) AS partner_fremd,
                 COALESCE(SUM(CASE WHEN storniert = 0 THEN spende_betrag ELSE 0 END), 0) AS partner_spende,
                 COALESCE(SUM(CASE WHEN storniert = 0 THEN spende_bar    ELSE 0 END), 0) AS partner_spende_bar,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'bar'           THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern'  THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'     THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0) - COALESCE(rueckgeld, 0) WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_bar,
-                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_karte,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'bar'           THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'karte_extern'  THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'gutschein'     THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0) - COALESCE(rueckgeld, 0) WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_bar,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0) AS umsatz_kombi_karte,
                 COALESCE(SUM(CASE WHEN storniert = 1                 THEN bruttobetrag ELSE 0 END), 0) AS storniert_betrag,
                 COUNT(CASE WHEN storniert = 1 THEN 1 END)         AS anzahl_stornos
             FROM kassen_bons
             WHERE kasse_id = :kid
-              AND DATE(erstellt_am) = :datum
+              AND erstellt_am >= :von AND erstellt_am < :bis
               AND typ = 'verkauf'
         ");
         $stmt->execute($params);
@@ -927,7 +993,7 @@ class KassenService
                 COALESCE(SUM(CASE WHEN typ = 'einlage'   THEN betrag ELSE 0 END), 0) AS einlagen,
                 COALESCE(SUM(CASE WHEN typ = 'entnahme'  THEN betrag ELSE 0 END), 0) AS entnahmen
             FROM kassenbuch
-            WHERE kasse_id = :kid AND DATE(erstellt_am) = :datum
+            WHERE kasse_id = :kid AND erstellt_am >= :von AND erstellt_am < :bis
         ");
         $kb->execute($params);
         $kassenbuch = $kb->fetch();
@@ -943,15 +1009,15 @@ class KassenService
         // Umsatz + Zahlungsarten
         $stmt = $this->db->prepare("
             SELECT
-                COUNT(*)                                                                         AS anzahl_bons,
-                COALESCE(SUM(bruttobetrag - fremd_betrag - spende_betrag), 0)                    AS umsatz_gesamt,
+                COUNT(CASE WHEN storniert = 0 THEN 1 END)                                        AS anzahl_bons,
+                COALESCE(SUM(CASE WHEN storniert = 0 THEN bruttobetrag - fremd_betrag - spende_betrag ELSE 0 END), 0)                    AS umsatz_gesamt,
                 COALESCE(SUM(CASE WHEN storniert = 0 THEN fremd_betrag  ELSE 0 END), 0)          AS partner_fremd,
                 COALESCE(SUM(CASE WHEN storniert = 0 THEN spende_betrag ELSE 0 END), 0)          AS partner_spende,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'bar'          THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'gutschein'    THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
-                COALESCE(SUM(CASE WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0) - COALESCE(rueckgeld, 0) WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0)     AS umsatz_kombi_bar,
-                COALESCE(SUM(CASE WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0)  AS umsatz_kombi_karte,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'bar'          THEN bruttobetrag ELSE 0 END), 0) AS umsatz_bar,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END), 0) AS umsatz_karte,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'gutschein'    THEN COALESCE(gutschein_betrag, bruttobetrag) ELSE 0 END), 0) AS umsatz_gs,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart = 'kombi' THEN COALESCE(bar_betrag, 0) - COALESCE(rueckgeld, 0) WHEN zahlungsart = 'gutschein' THEN COALESCE(bar_betrag, 0) ELSE 0 END), 0)     AS umsatz_kombi_bar,
+                COALESCE(SUM(CASE WHEN storniert = 1 THEN 0 WHEN zahlungsart IN ('kombi', 'gutschein') THEN COALESCE(karten_betrag, 0) ELSE 0 END), 0)  AS umsatz_kombi_karte,
                 COALESCE(SUM(CASE WHEN storniert = 1                THEN bruttobetrag ELSE 0 END), 0) AS storniert_betrag,
                 COUNT(CASE WHEN storniert = 1 THEN 1 END)                                        AS anzahl_stornos,
                 MIN(DATE(erstellt_am))                                                           AS datum_von,
@@ -1048,7 +1114,7 @@ class KassenService
     public function erstelleXBon(int $kasseId, int $benutzerId, ?string $datum = null): array
     {
         $daten = $this->sammleAbschlussDaten($kasseId, $datum);
-        $bonNr = $this->naechsteBonNr($kasseId, 'X');
+        $bonNr = $this->xBonKennung($kasseId);
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
@@ -1078,8 +1144,12 @@ class KassenService
      */
     public function erstelleZBon(int $kasseId, int $benutzerId, ?string $datum = null): array
     {
+        $datum = $datum ?: date('Y-m-d');
+        $sperre = $this->zReihenfolgeFehler($kasseId, $datum);
+        if ($sperre) return ['erfolg' => false, 'fehler' => $sperre];
+
         $daten = $this->sammleAbschlussDaten($kasseId, $datum);
-        $bonNr = $this->naechsteBonNr($kasseId, 'Z');
+        $bonNr = $this->naechsteZBonNr($kasseId);
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
@@ -1104,11 +1174,107 @@ class KassenService
         return ['erfolg' => true, 'bon_nr' => $bonNr, 'abschluss_id' => $abschlussId, 'kennzahlen' => $daten['kennzahlen'], 'kassenstand' => $daten['kassenstand']];
     }
 
+    /**
+     * Z-Bons einer Kasse laufen streng in Tagesreihenfolge: ein später nachgeholter Z-Bon für
+     * einen früheren Tag hätte sonst eine höhere Nummer als der des Folgetags.
+     * Jeder Z-Bon deckt den Zeitraum seit dem vorigen Z-Bon ab (zBereich) — kommt nach dem
+     * Z-Bon am selben Tag noch ein Kunde, gibt es einen zweiten Z-Bon für diesen Tag.
+     * Erlaubt ist ein Z-Bon für $datum, wenn kein früherer Tag mit offenen Buchungen wartet
+     * und (am Tag des letzten Z-Bons) seither neu gebucht wurde. Rückgabe: Fehlertext oder null.
+     */
+    public function zReihenfolgeFehler(int $kasseId, string $datum): ?string
+    {
+        if ($datum > date('Y-m-d')) return 'Ein Z-Bon für einen zukünftigen Tag ist nicht möglich.';
+        $letzter = $this->letzterZTag($kasseId);
+        if ($letzter !== null && $datum < $letzter) {
+            return 'Für diese Kasse gibt es schon einen Z-Bon vom ' . date('d.m.Y', strtotime($letzter))
+                 . ' — ein Z-Bon für einen früheren Tag ist nicht mehr möglich.';
+        }
+        $offen = $this->offeneZTage($kasseId, $datum);
+        if ($offen) {
+            return 'Zuerst die früheren Tage abschließen (Z-Bon der Reihe nach): '
+                 . implode(', ', array_map(fn($d) => date('d.m.Y', strtotime($d)), $offen)) . '.';
+        }
+        if ($datum === $letzter && !$this->hatOffeneBuchungen($kasseId, $datum)) {
+            return 'Für den ' . date('d.m.Y', strtotime($datum)) . ' gibt es bereits einen Z-Bon — seither wurde nichts mehr gebucht.';
+        }
+        return null;
+    }
+
+    /** Datum des letzten Z-Bons der Kasse (Y-m-d) oder null */
+    public function letzterZTag(int $kasseId): ?string
+    {
+        $stmt = $this->db->prepare("SELECT MAX(datum) FROM kassen_abschluesse WHERE kasse_id = ? AND typ = 'z'");
+        $stmt->execute([$kasseId]);
+        return $stmt->fetchColumn() ?: null;
+    }
+
+    /** Ende des vom letzten Z-Bon abgedeckten Zeitraums (exklusiv) oder null — alles davor ist abgeschlossen */
+    public function letzterZBis(int $kasseId): ?string
+    {
+        $stmt = $this->db->prepare("SELECT MAX(bis_zeitpunkt) FROM kassen_abschluesse WHERE kasse_id = ? AND typ = 'z'");
+        $stmt->execute([$kasseId]);
+        return $stmt->fetchColumn() ?: null;
+    }
+
+    /**
+     * Zeitraum [von, bis) eines Z-/X-Bons für $datum: ab dem Ende des letzten Z-Bons (frühestens
+     * Tagesbeginn), bis jetzt bzw. Tagesende bei nachträglichen Z-Bons.
+     */
+    public function zBereich(int $kasseId, string $datum): array
+    {
+        $tagBeginn  = $datum . ' 00:00:00';
+        $tagEnde    = date('Y-m-d', strtotime($datum . ' +1 day')) . ' 00:00:00';
+        $letzterBis = $this->letzterZBis($kasseId);
+        $von = $letzterBis && $letzterBis > $tagBeginn ? $letzterBis : $tagBeginn;
+        // +1 s: ein Bon in derselben Sekunde gehört noch dazu (bis ist exklusiv)
+        $bis = min(date('Y-m-d H:i:s', time() + 1), $tagEnde);
+        return [min($von, $bis), $bis];
+    }
+
+    /** Gibt es an $datum Buchungen, die noch auf keinem Z-Bon stehen? */
+    public function hatOffeneBuchungen(int $kasseId, string $datum): bool
+    {
+        [$von, $bis] = $this->zBereich($kasseId, $datum);
+        $stmt = $this->db->prepare("
+            SELECT 1 FROM kassen_bons
+            WHERE kasse_id = ? AND typ IN ('verkauf', 'storno') AND erstellt_am >= ? AND erstellt_am < ?
+            LIMIT 1
+        ");
+        $stmt->execute([$kasseId, $von, $bis]);
+        return (bool)$stmt->fetchColumn();
+    }
+
+    /**
+     * Tage vor $vorDatum mit Buchungen, die noch auf keinem Z-Bon stehen, älteste zuerst
+     * (= noch abzuschließen). Enthält auch den Tag des letzten Z-Bons, wenn danach noch gebucht wurde.
+     */
+    public function offeneZTage(int $kasseId, string $vorDatum): array
+    {
+        $letzterBis = $this->letzterZBis($kasseId);
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT DATE(erstellt_am) FROM kassen_bons
+            WHERE kasse_id = :kid AND typ IN ('verkauf', 'storno')
+              AND erstellt_am >= :ab AND erstellt_am < :vor
+            ORDER BY 1
+        ");
+        $stmt->execute([
+            ':kid' => $kasseId,
+            ':ab'  => $letzterBis ?: '1970-01-01',
+            ':vor' => $vorDatum,
+        ]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     private function sammleAbschlussDaten(int $kasseId, ?string $datum = null): array
     {
         $datum       = $datum ?: date('Y-m-d');
-        $kennzahlen  = $this->getTagesKennzahlen($kasseId, $datum);
-        $kassenstand = $this->getKassenstand($kasseId);
+        // Zeitraum ab dem vorigen Z-Bon (2. Z-Bon am selben Tag deckt nur die Buchungen danach)
+        [$von, $bis] = $this->zBereich($kasseId, $datum);
+        $kennzahlen  = $this->getTagesKennzahlen($kasseId, $datum, $von, $bis);
+        // Kassenstand zum Ende des Zeitraums (nachträglicher Z-Bon: Ende jenes Tages)
+        $kassenstand = $this->getKassenstand($kasseId, $bis);
+        $zp = [':kid' => $kasseId, ':von' => $von, ':bis' => $bis];
 
         // Steueraufstellung aus Bon-Positionen
         $stStmt = $this->db->prepare("
@@ -1116,12 +1282,12 @@ class KassenService
                    SUM(ABS(bp.menge) * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
             FROM kassen_bon_positionen bp
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
-            WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
+            WHERE b.kasse_id = :kid AND b.erstellt_am >= :von AND b.erstellt_am < :bis
               AND b.typ = 'verkauf' AND b.storniert = 0 AND " . PartnerBon::SQL_EIGEN . "
             GROUP BY bp.steuer_prozent
             ORDER BY bp.steuer_prozent DESC
         ");
-        $stStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $stStmt->execute($zp);
         $steuerRohdaten = $stStmt->fetchAll();
         $steuerTabelle = [];
         foreach ($steuerRohdaten as $r) {
@@ -1146,12 +1312,12 @@ class KassenService
             INNER JOIN kassen_bons b ON b.id = bp.bon_id
             LEFT JOIN artikel a      ON a.id  = bp.artikel_id
             LEFT JOIN artikel_gruppen ag ON ag.id = COALESCE(bp.artikel_gruppe_id, a.artikel_gruppe_id)
-            WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
+            WHERE b.kasse_id = :kid AND b.erstellt_am >= :von AND b.erstellt_am < :bis
               AND b.typ = 'verkauf' AND b.storniert = 0 AND " . PartnerBon::SQL_EIGEN . "
             GROUP BY ag.id, ag.konto_nr, ag.name, bp.steuer_prozent
             ORDER BY COALESCE(ag.konto_nr, 'ZZZ'), bp.steuer_prozent DESC
         ");
-        $agStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $agStmt->execute($zp);
         $artikelGruppen = [];
         foreach ($agStmt->fetchAll() as $r) {
             $brutto = (float)$r['brutto'];
@@ -1171,9 +1337,9 @@ class KassenService
         $rStmt = $this->db->prepare("
             SELECT MIN(bon_nr) AS bon_nr_von, MAX(bon_nr) AS bon_nr_bis
             FROM kassen_bons
-            WHERE kasse_id = :kid AND DATE(erstellt_am) = :datum AND typ = 'verkauf'
+            WHERE kasse_id = :kid AND erstellt_am >= :von AND erstellt_am < :bis AND typ = 'verkauf'
         ");
-        $rStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $rStmt->execute($zp);
         $range = $rStmt->fetch();
 
         // Nacherfassungen (Papier-Messe): heute signiert, gehören aber umsatzmäßig zum
@@ -1189,12 +1355,12 @@ class KassenService
                    SUM(CASE WHEN zahlungsart = 'karte_extern' THEN bruttobetrag ELSE 0 END) AS karte,
                    SUM(bruttobetrag) AS brutto
             FROM kassen_bons
-            WHERE kasse_id = :kid AND DATE(erstellt_am) = :datum
+            WHERE kasse_id = :kid AND erstellt_am >= :von AND erstellt_am < :bis
               AND typ = 'verkauf' AND storniert = 0 AND handbeleg_nr IS NOT NULL
             GROUP BY messe_sync_id, handbeleg_datum
             ORDER BY handbeleg_datum, messe_sync_id
         ");
-        $nStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
+        $nStmt->execute($zp);
         $nacherfassungen = array_map(fn($r) => [
             'messe_sync_id'   => (int)$r['messe_sync_id'],
             'handbeleg_datum' => $r['handbeleg_datum'],
@@ -1207,32 +1373,12 @@ class KassenService
             'brutto'          => round((float)$r['brutto'], 2),
         ], $nStmt->fetchAll());
 
-        // Partnerumsätze (Fremdrechnung + Spende): nicht im Umsatz/RKSV oben, aber kassiert
-        // → für Kassensturz und Weitergabe an den Partner je Partner getrennt ausweisen
-        $pStmt = $this->db->prepare("
-            SELECT bp.partner_id, bp.partner_modus, p.name AS partner_name,
-                   COUNT(DISTINCT b.id) AS anzahl_bons,
-                   SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
-            FROM kassen_bon_positionen bp
-            INNER JOIN kassen_bons b ON b.id = bp.bon_id
-            LEFT JOIN partner p ON p.id = bp.partner_id
-            WHERE b.kasse_id = :kid AND DATE(b.erstellt_am) = :datum
-              AND b.typ = 'verkauf' AND b.storniert = 0
-              AND bp.partner_modus IN ('fremdrechnung', 'spende')
-            GROUP BY bp.partner_id, bp.partner_modus, p.name
-            ORDER BY bp.partner_modus, p.name
-        ");
-        $pStmt->execute([':kid' => $kasseId, ':datum' => $datum]);
-        $partnerUmsaetze = array_map(fn($r) => [
-            'partner_id'   => (int)$r['partner_id'],
-            'partner_name' => $r['partner_name'] ?? ('Partner #' . $r['partner_id']),
-            'modus'        => $r['partner_modus'],
-            'anzahl_bons'  => (int)$r['anzahl_bons'],
-            'brutto'       => round((float)$r['brutto'], 2),
-        ], $pStmt->fetchAll());
+        $partnerUmsaetze = $this->getPartnerUmsaetze($kasseId, $datum, $von, $bis);
 
         return [
             'datum'          => $datum,
+            'von'            => $von,
+            'bis'            => $bis,
             'kassenstand'    => $kassenstand,
             'kennzahlen'     => $kennzahlen,
             'steuer'         => $steuerTabelle,
@@ -1244,11 +1390,42 @@ class KassenService
         ];
     }
 
+    /**
+     * Partnerumsätze eines Tages (Fremdrechnung + Spende) je Partner: nicht im eigenen Umsatz/RKSV,
+     * aber kassiert → für Kassensturz, X-/Z-Bon und Weitergabe an den Partner.
+     */
+    public function getPartnerUmsaetze(int $kasseId, string $datum, ?string $von = null, ?string $bis = null): array
+    {
+        $pStmt = $this->db->prepare("
+            SELECT bp.partner_id, bp.partner_modus, p.name AS partner_name,
+                   COUNT(DISTINCT b.id) AS anzahl_bons,
+                   SUM(bp.menge * bp.einzelpreis_brutto * (1 - bp.rabatt_prozent / 100)) AS brutto
+            FROM kassen_bon_positionen bp
+            INNER JOIN kassen_bons b ON b.id = bp.bon_id
+            LEFT JOIN partner p ON p.id = bp.partner_id
+            WHERE b.kasse_id = :kid AND b.erstellt_am >= :von AND b.erstellt_am < :bis
+              AND b.typ = 'verkauf' AND b.storniert = 0
+              AND bp.partner_modus IN ('fremdrechnung', 'spende')
+            GROUP BY bp.partner_id, bp.partner_modus, p.name
+            ORDER BY bp.partner_modus, p.name
+        ");
+        $pStmt->execute([':kid' => $kasseId,
+                         ':von' => $von ?: $datum . ' 00:00:00',
+                         ':bis' => $bis ?: date('Y-m-d', strtotime($datum . ' +1 day')) . ' 00:00:00']);
+        return array_map(fn($r) => [
+            'partner_id'   => (int)$r['partner_id'],
+            'partner_name' => $r['partner_name'] ?? ('Partner #' . $r['partner_id']),
+            'modus'        => $r['partner_modus'],
+            'anzahl_bons'  => (int)$r['anzahl_bons'],
+            'brutto'       => round((float)$r['brutto'], 2),
+        ], $pStmt->fetchAll());
+    }
+
     private function speichereAbschluss(int $bonId, int $kasseId, int $benutzerId, string $typ, array $daten): int
     {
         $stmt = $this->db->prepare("
-            INSERT INTO kassen_abschluesse (bon_id, kasse_id, kassierer_id, typ, datum, kassenstand, daten)
-            VALUES (:bon_id, :kasse_id, :kassierer_id, :typ, :datum, :kassenstand, :daten)
+            INSERT INTO kassen_abschluesse (bon_id, kasse_id, kassierer_id, typ, datum, bis_zeitpunkt, kassenstand, daten)
+            VALUES (:bon_id, :kasse_id, :kassierer_id, :typ, :datum, :bis_zeitpunkt, :kassenstand, :daten)
         ");
         $stmt->execute([
             ':bon_id'      => $bonId,
@@ -1256,6 +1433,7 @@ class KassenService
             ':kassierer_id'=> $benutzerId ?: null,
             ':typ'         => $typ,
             ':datum'       => $daten['datum'],
+            ':bis_zeitpunkt' => $daten['bis'],
             ':kassenstand' => $daten['kassenstand'],
             ':daten'       => json_encode($daten, JSON_UNESCAPED_UNICODE),
         ]);

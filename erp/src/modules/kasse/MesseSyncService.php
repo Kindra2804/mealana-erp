@@ -244,15 +244,10 @@ class MesseSyncService
         $stmtSw->execute([':id' => $sync['kasse_id']]);
         $schnellwahl = $stmtSw->fetchAll();
 
-        // Startzähler für die Offline-Belegnummerierung: Anzahl bereits vorhandener
-        // Bons dieser Kasse im laufenden Jahr (gleiche Logik wie KassenService::naechsteBonNr()),
-        // damit der Offline-Client lückenlos weiterzählen kann statt Kollisionen zu riskieren.
-        $stmtCount = $this->db->prepare("
-            SELECT COUNT(*) FROM kassen_bons
-            WHERE kasse_id = :kasse_id AND YEAR(erstellt_am) = :jahr
-        ");
-        $stmtCount->execute([':kasse_id' => $sync['kasse_id'], ':jahr' => date('Y')]);
-        $bonNrStart = (int)$stmtCount->fetchColumn();
+        // Startzähler für die Offline-Belegnummerierung: höchste vergebene Belegnummer dieser
+        // Kasse im laufenden Jahr (gleiche Logik wie KassenService::naechsteBonNr(), X-/Z-Bons
+        // zählen nicht mit), damit der Offline-Client lückenlos weiterzählen kann.
+        $bonNrStart = (new KassenService())->letzteBelegLaufnummer((int)$sync['kasse_id'], (int)date('Y'));
 
         // Divers-Platzhalter (99-9999) für "Freier Artikel" — gleicher Mechanismus wie online
         $diversArtikelId = (int)($this->db->query("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1")->fetchColumn() ?: 0);

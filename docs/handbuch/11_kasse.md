@@ -194,6 +194,10 @@ Wenn ein Bon fehlerhaft war:
 4. Storno-Bon wird gedruckt
 5. Lagerabgang wird automatisch rückgebucht
 
+**Nur am selben Tag und solange der Bon auf keinem Z-Bon steht:** Ein Bon vom Vortag oder ein Bon, der schon in einem Z-Bon enthalten ist, lässt sich nicht mehr stornieren — der Storno-Knopf ist grau. Bons nach dem Z-Bon (Kunde nach Ladenschluss) bleiben bis zum nächsten Z-Bon stornierbar. Dann die Ware als normale **Retoure** an der Kasse buchen. Grund: RKSV — ein späterer Storno stünde in keinem Z-Bon.
+
+**RKSV:** Der Storno erzeugt einen eigenen Storno-Bon (`K1-S-…`) mit Minusbeträgen. Er wird wie ein Verkaufsbon vom BFR signiert und senkt den Umsatzzähler. Ausnahme: Ein Bon nur mit Partnerware (Fremdrechnung/Spende) war nie signiert — sein Storno auch nicht.
+
 > Nur der Kassierer oder Admin darf Bons stornieren!
 
 ---
@@ -213,6 +217,21 @@ Zeigt den aktuellen Stand ohne Abschluss — gut für Zwischenkontrollen.
 5. Eintrag ins Kassenbuch
 
 > **Nach dem Z-Bon:** Restgeld im Kassenfach lassen (Wechselgeld für nächsten Tag). Überschuss entnehmen.
+
+**Nummern:** Z-Bons haben je Kasse einen eigenen, durchlaufenden Nummernkreis ohne Jahr: `K1-Z-00001`, `K1-Z-00002` … X-Bons haben keine Nummer, nur eine Kennung aus Kasse und Zeitpunkt (`K1-X-20261029-201343`). Beide verbrauchen keine Verkaufsbeleg-Nummern — die Verkaufsbons (`K1-2026-000049`) laufen lückenlos.
+
+**Reihenfolge:** Z-Bons einer Kasse gehen nur der Reihe nach, damit die Z-Nummern zur Tagesreihenfolge passen:
+- Gibt es frühere Tage mit Umsatz ohne Z-Bon, zeigt der Kassensturz sie an und schlägt den ältesten vor — erst diese abschließen.
+- Für einen Tag vor dem letzten Z-Bon ist kein Z-Bon mehr möglich.
+- Der nachträgliche Z-Bon zeigt den Kassenstand am Ende jenes Tages.
+
+**Kunde nach dem Z-Bon:** Wird nach dem Z-Bon am selben Tag noch gebucht, gibt es einen **zweiten Z-Bon für diesen Tag** — er enthält nur die Buchungen seit dem ersten (am Ausdruck steht „Zeitraum: ab … Uhr“). Der Kassensturz zeigt nach einem Z-Bon nur noch diese neuen Buchungen („seit Z-Bon um …“). Macht ihn niemand, holt ihn der automatische Z-Bon um Mitternacht nach.
+
+**Messe-Umsätze:** Papier-Messe-Belege, die z.B. am Montag nacherfasst werden, gehören in den Z-Bon des Nacherfassungstags (dort „Davon Nacherfassungen“) — ein Z-Bon vom Samstag im Laden bleibt unberührt. Die elektronische Offline-Messekasse ist eine eigene Kasse mit eigenen Z-Bons je Messetag (die Bons sind an diesen Tagen signiert).
+
+**Automatischer Z-Bon:** Hat an einem Tag mit Umsatz niemand einen Z-Bon gemacht, erstellt ihn das System um Mitternacht (Benutzer Jarvis, `cron/z_bon_auto.php`, Windows-Aufgabe täglich 00:05). Ohne Zählung — der Kassenstand ist der rechnerische.
+
+> **A4-Druck X-/Z-Bon:** Die Ränder sind fix eingebaut, die Einstellung „Ränder“ im Druckdialog spielt keine Rolle (dort steht vom 80-mm-Bon oft „Keine“).
 
 ---
 
@@ -252,7 +271,7 @@ Ist die Signatureinrichtung (BFR) kurz nicht erreichbar, verkauft die Kasse trot
 | Chargen-Dialog erscheint nicht | Artikel hat charge_pflicht=1? Lagerbestand vorhanden? |
 | Bon wird nicht gedruckt | 80mm Drucker als Standarddrucker gesetzt? Browser-Druckdialog erlaubt? |
 | Abholbereit-Auftrag nicht in Liste | Auftrag: lieferstatus='abholbereit' UND zahlungsstatus='bezahlt'? |
-| Storno geht nicht | Bon bereits storniert? Bon-Journal prüfen |
+| Storno geht nicht | Bon bereits storniert? Bon vom Vortag oder schon auf einem Z-Bon? → als Retoure buchen |
 | Lagerbestand nach Bon falsch | Admin: Lager → Bewegungen → Bon-ID suchen → Buchung prüfen |
 
 ---

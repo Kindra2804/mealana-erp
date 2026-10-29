@@ -143,7 +143,8 @@ class MietRechnungService
             $auftragSvc->statusAktualisieren($auftragId, ['lieferstatus' => 'abgeschlossen'], 'Fachmiete — keine Lieferung', $benutzerId);
 
             $dokSvc = new DokumentService();
-            $r = $dokSvc->erstelleVollrechnung($auftragId, $benutzerId);
+            // Eigener Nummernkreis MR (Einstellungen → Nummernkreise), nicht der allgemeine R-Kreis
+            $r = $dokSvc->erstelleVollrechnung($auftragId, $benutzerId, 'mietrechnung');
             if (empty($r['erfolg'])) throw new RuntimeException($r['fehler'] ?? 'Rechnung konnte nicht erstellt werden.');
             // Leistungsdatum = Beginn des Mietmonats (nicht der Erstellungstag) → PDF neu rendern
             $this->db->prepare("UPDATE rechnungen SET leistungsdatum = ? WHERE id = ?")->execute([$periode . '-01', $r['rechnung_id']]);

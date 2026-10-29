@@ -33,6 +33,17 @@ function modalFachBearbeitenOeffnen(f) {
     set('fb-preis',       f.standard_preis);
     set('fb-notiz',       f.notiz);
     document.getElementById('fb-aktiv').checked = parseInt(f.aktiv) === 1;
+    // Hinweis bei belegtem Fach: "inaktiv" sperrt nur neue Vermietungen
+    var hinweis = document.getElementById('fb-aktiv-hinweis');
+    if (f.vertrag_id) {
+        hinweis.innerHTML = '<strong style="color:#1a5fa8">!</strong> Derzeit vermietet an <strong></strong>'
+            + (f.mietende ? ' bis ' + f.mietende.split('-').reverse().join('.') : ' (unbefristet)')
+            + '. Inaktiv sperrt nur neue Vermietungen — der laufende Vertrag wird weiter verrechnet. Zum Beenden „Kündigen“ verwenden.';
+        hinweis.querySelector('strong + strong').textContent = f.mieter_name || '';
+        hinweis.style.display = 'block';
+    } else {
+        hinweis.style.display = 'none';
+    }
     document.getElementById('modal-fach-bearbeiten').style.display = 'block';
 }
 

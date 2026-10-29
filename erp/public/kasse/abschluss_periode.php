@@ -255,7 +255,7 @@ require_once __DIR__ . '/shell_top.php';
         <tr><td>Kombizahlung — Bar-Anteil</td><td class="r"><?= eur((float)$kz['umsatz_kombi_bar']) ?></td></tr>
         <tr><td>Kombizahlung — Karte-Anteil</td><td class="r"><?= eur((float)$kz['umsatz_kombi_karte']) ?></td></tr>
         <?php if ((int)$kz['anzahl_stornos'] > 0): ?>
-        <tr style="color:#dc2626"><td>davon storniert (<?= (int)$kz['anzahl_stornos'] ?> Bon/s)</td><td class="r">−<?= eur(abs((float)$kz['storniert_betrag'])) ?></td></tr>
+        <tr style="color:#dc2626"><td>Stornierte Bons (<?= (int)$kz['anzahl_stornos'] ?>) — oben nicht enthalten</td><td class="r"><?= eur(abs((float)$kz['storniert_betrag'])) ?></td></tr>
         <?php endif; ?>
       </tbody>
       <tfoot><tr><td>Gesamt</td><td class="r"><?= eur($umsatzGes) ?></td></tr></tfoot>

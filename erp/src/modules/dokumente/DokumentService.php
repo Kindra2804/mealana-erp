@@ -58,7 +58,8 @@ class DokumentService
      * Rückgabe: erfolg, rechnung_id, rechnung_nr, dateiname, pfad, bruttobetrag, offen.
      * erfolg=false + nichts_offen=true heißt: es gab nichts zu verrechnen (kein Fehler).
      */
-    public function erstelleRechnung(int $auftragId, int $benutzerId, ?array $mengen = null, ?int $lieferungId = null): array
+    public function erstelleRechnung(int $auftragId, int $benutzerId, ?array $mengen = null, ?int $lieferungId = null,
+                                     string $nummernkreis = 'rechnung'): array
     {
         $daten = $this->ladeDaten($auftragId);
         if (!$daten) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden.'];
@@ -98,7 +99,7 @@ class DokumentService
         $eigeneTx = !$this->db->inTransaction();
         if ($eigeneTx) $this->db->beginTransaction();
         try {
-            $rechnungsNr = $this->repo->naechsteNummer('rechnung', (int)date('Y'));
+            $rechnungsNr = $this->repo->naechsteNummer($nummernkreis, (int)date('Y'));
             $dateiname   = 'R-' . $auftrag['auftrag_nr'] . '_' . $rechnungsNr . '.pdf';
 
             // faellig_am ist die Basis fürs Mahnwesen (Erinnerung/Mahnstufen ab Fälligkeit)
@@ -167,11 +168,11 @@ class DokumentService
      * Vollrechnung über alle noch nicht verrechneten Mengen, unabhängig von der
      * Auslieferung -- für Händler-Verkaufsmeldungen und reine Gutschein-Bestellungen.
      */
-    public function erstelleVollrechnung(int $auftragId, int $benutzerId): array
+    public function erstelleVollrechnung(int $auftragId, int $benutzerId, string $nummernkreis = 'rechnung'): array
     {
         $stmt = $this->db->prepare("SELECT id, menge - menge_verrechnet FROM auftrag_positionen WHERE auftrag_id = ?");
         $stmt->execute([$auftragId]);
-        return $this->erstelleRechnung($auftragId, $benutzerId, $stmt->fetchAll(PDO::FETCH_KEY_PAIR));
+        return $this->erstelleRechnung($auftragId, $benutzerId, $stmt->fetchAll(PDO::FETCH_KEY_PAIR), null, $nummernkreis);
     }
 
     /**

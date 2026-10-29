@@ -43,7 +43,10 @@ function esc(string $v): string { return htmlspecialchars($v); }
   <meta charset="UTF-8">
   <title><?= $typLabel ?> — <?= $datum ?></title>
   <style>
-    @page { size: A4 portrait; margin: 14mm 18mm; }
+    /* Ränder unabhängig vom Druckdialog (dort steht nach dem 80-mm-Bon oft "Ränder: Keine"):
+       @page ohne Rand, seitlich Body-Padding, oben/unten wiederholte thead/tfoot-Abstandhalter
+       des Druckrahmens — die wiederholt der Browser auf jeder Seite */
+    @page { size: A4 portrait; margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; background: #fff; }
 
@@ -55,7 +58,18 @@ function esc(string $v): string { return htmlspecialchars($v); }
       .al-gruen { background: #16a34a; color: #fff; }
       .al-sec   { background: #e2e8f0; color: #1e293b; }
     }
-    @media print { .aktions-leiste { display: none !important; } }
+    @media print {
+      .aktions-leiste { display: none !important; }
+      body { padding: 0 18mm; }
+    }
+    @media screen { .dr-abstand { display: none; } }
+    table.druckrahmen { margin: 0; }
+    .druckrahmen > thead > tr > td, .druckrahmen > tfoot > tr > td,
+    .druckrahmen > tbody > tr > td { padding: 0; border: 0; background: none; }
+    .dr-abstand { height: 14mm; }
+    /* Keine Überschrift allein am Seitenende, keine zerschnittenen Zeilen/Kästen */
+    h2 { break-after: avoid; page-break-after: avoid; }
+    tr, .kachel, .kassenstand-box, .z-banner, .kopf { break-inside: avoid; page-break-inside: avoid; }
 
     .kopf { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10mm; border-bottom: 3px solid #1e3a5f; padding-bottom: 6mm; }
     .firma-name { font-size: 17pt; font-weight: 800; color: #1e3a5f; }
@@ -108,6 +122,11 @@ function esc(string $v): string { return htmlspecialchars($v); }
   <a class="al-btn al-sec" href="abschluss_liste.php">📋 Abschluss-Archiv</a>
 </div>
 
+<table class="druckrahmen">
+<thead><tr><td><div class="dr-abstand"></div></td></tr></thead>
+<tfoot><tr><td><div class="dr-abstand"></div></td></tr></tfoot>
+<tbody><tr><td>
+
 <?php if ($istZ): ?>
 <div class="z-banner">🔒 TAGESABSCHLUSS — TAG ABGESCHLOSSEN</div>
 <?php endif; ?>
@@ -132,6 +151,10 @@ function esc(string $v): string { return htmlspecialchars($v); }
     <div class="dok-bon"><?= esc($a['bon_nr']) ?></div>
     <div class="dok-info">Kasse: <?= esc($a['kasse_nr'] ?? '') ?> — <?= esc($a['kasse_name'] ?? '') ?></div>
     <div class="dok-info">Datum: <?= $datum ?></div>
+    <?php // Zweiter Z-Bon am selben Tag: deckt nur die Buchungen seit dem vorigen ab
+    if (!empty($daten['von']) && substr($daten['von'], 11) !== '00:00:00'): ?>
+    <div class="dok-info">Zeitraum: ab <?= date('H:i:s', strtotime($daten['von'])) ?> Uhr (nach vorigem Z-Bon)</div>
+    <?php endif; ?>
     <div class="dok-info">Erstellt: <?= $erstelltAm ?> Uhr</div>
     <div class="dok-info">Kassierer: <?= esc($a['kassierer_name'] ?? '—') ?></div>
     <?php if ($daten['bon_nr_von'] ?? null): ?>
@@ -187,12 +210,12 @@ function esc(string $v): string { return htmlspecialchars($v); }
     </tr>
     <?php endif; ?>
     <tr>
-      <td><?= abs($partnerGes) > 0.004 ? 'Eigener Umsatz (netto Stornos)' : 'Gesamt (netto Stornos)' ?></td>
+      <td><?= abs($partnerGes) > 0.004 ? 'Eigener Umsatz' : 'Gesamt' ?></td>
       <td class="r"><?= eur($umsatzGes) ?></td>
     </tr>
     <?php if ((int)$kz['anzahl_stornos'] > 0): ?>
     <tr style="font-size:9pt;color:#dc2626">
-      <td>davon storniert (<?= (int)$kz['anzahl_stornos'] ?> Bon/s)</td>
+      <td>Stornierte Bons (<?= (int)$kz['anzahl_stornos'] ?>) — oben nicht enthalten</td>
       <td class="r"><?= eur(abs((float)$kz['storniert_betrag'])) ?></td>
     </tr>
     <?php endif; ?>
@@ -338,6 +361,9 @@ function esc(string $v): string { return htmlspecialchars($v); }
   <span><?= esc($konfig['firmenname'] ?? '') ?><?= !empty($konfig['firma_uid']) ? ' · UID: ' . esc($konfig['firma_uid']) : '' ?></span>
   <span><?= $typLabel ?> · <?= $datum ?> · <?= esc($a['bon_nr']) ?></span>
 </div>
+
+</td></tr></tbody>
+</table>
 
 <script>
 var ABSCHLUSS_ID = <?= $id ?>;

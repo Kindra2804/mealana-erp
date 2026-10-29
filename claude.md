@@ -1228,6 +1228,18 @@ Details siehe `.claude/memory/project_datenqualitaet_20260811.md`.
 - Test-Partner "TEST_Partner_Fix_Check" bleibt bewusst in der Dev-DB
 - Offen: Klicktests Abholorte/Partner/Fachmiete/Offline-Divers, Live-Deploy Migr. 201–211; nächster Roadmap-Schritt Offline-Kasse light (wenn Sunmi da) → Lizenzserver → 1.0
 
+## Update 2026-10-29: Klicktest-Runde Mietfach / Z-Bon / Nummernkreise
+
+Details siehe `.claude/memory/project_klicktest_fixes_20261029.md`. Migrationen 212–213.
+- Mietfach-Modal: Standard-Mietpreis "netto", Hinweis bei belegtem Fach (inaktiv sperrt nur neue Vermietungen, Vertrag läuft weiter). Mietrechnung nutzt jetzt den eigenen Nummernkreis MR (`erstelleRechnung(..., $nummernkreis)`); Händler HL/HR/HS waren schon richtig
+- Z-Bon: eigener Nummernkreis je Kasse `K1-Z-00001` (ohne Jahr), X-Bon ohne Nummer (`K1-X-JJJJMMTT-HHMMSS`), Verkaufszähler zählt nur noch Verkauf/Storno (MAX statt COUNT) → keine Lücken mehr. Migration 212 hat bestehende Z/X umbenannt
+- Z-Bon deckt einen **Zeitraum** ab (seit dem vorigen Z-Bon, `kassen_abschluesse.bis_zeitpunkt`, Migration 213, `KassenService::zBereich()`): strikt in Tagesreihenfolge, zweiter Z-Bon am selben Tag bei Buchungen nach dem ersten, nachträglicher Z-Bon mit Kassenstand am Ende des Zeitraums
+- `cron/z_bon_auto.php`: Jarvis holt fehlende Z-Bons aller Kassen um 00:05 nach (Windows-Aufgabe "MeaLana Z-Bon automatisch", einmal pro Server)
+- Bon-Storno nur am selben Tag und solange der Bon auf keinem Z-Bon steht (`stornoSperrgrund`), sonst Retoure — RKSV
+- **Bugfix:** Tages-/Periodenkennzahlen zählten stornierte Bons in Umsatz + Zahlungsarten mit (Kassenstand/Steuer/Export nicht). Kassensturz zeigt jetzt Kassiert gesamt → Partner (Fremdrechnung/Spende) → Eigener Umsatz + stornierte Bons
+- A4-Druck X/Z-Bon: Ränder unabhängig vom Druckdialog ("Ränder: Keine" vom 80-mm-Bon) per Druckrahmen-Tabelle, keine Überschrift allein am Seitenende
+- Offen: restliche Klicktests, Live-Deploy Migr. 201–213 + Windows-Aufgaben am Server
+
 ## Commit Convention
 
 ```
