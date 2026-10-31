@@ -249,7 +249,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     </div>
                     <div class="form-group" style="margin:0">
                         <label class="form-label">Nummernkreis-Kürzel</label>
-                        <input type="text" name="neu_nr_kuerzel" class="erp-input" maxlength="5" pattern="[A-Za-z0-9]{0,5}" placeholder="leer = Hauptshop" style="text-transform:uppercase">
+                        <input type="text" name="neu_nr_kuerzel" class="erp-input erp-input-kuerzel" maxlength="5" pattern="[A-Za-z0-9]{0,5}" placeholder="z.B. SOW (leer = Hauptshop)" style="width:100%;box-sizing:border-box">
                     </div>
                     <div></div>
                 </div>
@@ -319,12 +319,12 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     </div>
                     <?php $kuerzelGesperrt = !empty($shopAuftraege[$shop['id']]); ?>
                     <div class="form-group" style="margin:0">
-                        <label class="form-label">Nummernkreis-Kürzel</label>
-                        <input type="text" name="nr_kuerzel" class="erp-input" maxlength="5" pattern="[A-Za-z0-9]{0,5}" placeholder="leer = Hauptshop"
-                               value="<?= htmlspecialchars($shop['nr_kuerzel'] ?? '') ?>" style="text-transform:uppercase"
+                        <label class="form-label">Nr.-Kürzel</label>
+                        <input type="text" name="nr_kuerzel" class="erp-input erp-input-kuerzel" maxlength="5" pattern="[A-Za-z0-9]{0,5}" placeholder="leer"
+                               value="<?= htmlspecialchars($shop['nr_kuerzel'] ?? '') ?>" style="width:100%;max-width:110px;box-sizing:border-box"
                                <?= $kuerzelGesperrt ? 'disabled title="Gesperrt: Der Kanal hat bereits Aufträge, die Nummernfolge darf sich nicht mehr ändern."' : '' ?>>
                         <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">
-                            <?= $kuerzelGesperrt ? 'gesperrt (Aufträge vorhanden)' : 'z.B. SOW → R-SOW-' . date('Y') . '-00001' ?>
+                            <?= ($shop['nr_kuerzel'] ?? '') === '' ? 'Hauptshop' : 'R-' . htmlspecialchars($shop['nr_kuerzel']) . '-…' ?><?= $kuerzelGesperrt ? ' · gesperrt' : '' ?>
                         </div>
                     </div>
                     <div></div>
@@ -996,7 +996,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         'abrechnung'   => 'Abrechnung (Partner)',
         'pickliste'    => 'Pickliste',
     ];
-    $dokNummern = $db->query("SELECT * FROM dokument_nummern ORDER BY typ, jahr DESC")->fetchAll(PDO::FETCH_ASSOC);
+    $dokNummern = $db->query("SELECT * FROM dokument_nummern ORDER BY typ, kuerzel, jahr DESC")->fetchAll(PDO::FETCH_ASSOC);
 
     // Verkauf/Storno: Zähler je Kasse+Jahr; Z-Bon: eigener Kreis je Kasse (KassenService)
     require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
@@ -1015,6 +1015,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             <thead>
                 <tr>
                     <th>Typ</th>
+                    <th style="width:90px">Shop-Kürzel</th>
                     <th style="width:80px">Jahr</th>
                     <th style="width:100px">Präfix</th>
                     <th style="width:120px">Letzte Nr.</th>
@@ -1026,22 +1027,23 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             <?php foreach ($dokNummern as $dn): ?>
                 <tr>
                     <td><?= htmlspecialchars($nummernTypLabels[$dn['typ']] ?? $dn['typ']) ?></td>
+                    <td><?= $dn['kuerzel'] !== '' ? '<code>' . htmlspecialchars($dn['kuerzel']) . '</code>' : '<span style="color:var(--color-text-muted)">–</span>' ?></td>
                     <td><?= (int) $dn['jahr'] ?></td>
                     <td><code><?= htmlspecialchars($dn['praefix']) ?></code></td>
                     <td><?= (int) $dn['letzt_nr'] ?></td>
                     <td style="font-family:monospace;color:var(--color-text-muted)">
-                        <?= htmlspecialchars($dn['praefix']) ?>-<?= (int) $dn['jahr'] ?>-<?= str_pad((string)($dn['letzt_nr'] + 1), 5, '0', STR_PAD_LEFT) ?>
+                        <?= htmlspecialchars($dn['praefix']) ?>-<?= $dn['kuerzel'] !== '' ? htmlspecialchars($dn['kuerzel']) . '-' : '' ?><?= (int) $dn['jahr'] ?>-<?= str_pad((string)($dn['letzt_nr'] + 1), 5, '0', STR_PAD_LEFT) ?>
                     </td>
                     <td>
                         <button class="btn btn-secondary btn-sm"
-                            onclick="nummernkreisBearbeiten(<?= $dn['id'] ?>, '<?= htmlspecialchars($nummernTypLabels[$dn['typ']] ?? $dn['typ'], ENT_QUOTES) ?>', <?= (int) $dn['jahr'] ?>, '<?= htmlspecialchars($dn['praefix'], ENT_QUOTES) ?>', <?= (int) $dn['letzt_nr'] ?>)">
+                            onclick="nummernkreisBearbeiten(<?= $dn['id'] ?>, '<?= htmlspecialchars(($nummernTypLabels[$dn['typ']] ?? $dn['typ']) . ($dn['kuerzel'] !== '' ? ' ' . $dn['kuerzel'] : ''), ENT_QUOTES) ?>', <?= (int) $dn['jahr'] ?>, '<?= htmlspecialchars($dn['praefix'], ENT_QUOTES) ?>', <?= (int) $dn['letzt_nr'] ?>)">
                             ✏ Bearbeiten
                         </button>
                     </td>
                 </tr>
             <?php endforeach; ?>
             <?php if (empty($dokNummern)): ?>
-                <tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);padding:20px">Noch keine Nummernkreise angelegt — werden automatisch beim ersten Beleg des jeweiligen Jahres erstellt.</td></tr>
+                <tr><td colspan="7" style="text-align:center;color:var(--color-text-muted);padding:20px">Noch keine Nummernkreise angelegt — werden automatisch beim ersten Beleg des jeweiligen Jahres erstellt.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>

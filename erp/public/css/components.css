@@ -164,6 +164,10 @@
     width: 220px;
 }
 
+/* Nummernkreis-Kürzel (Einstellungen → Kanäle): Eingabe groß, Platzhalter normal */
+.erp-input-kuerzel { text-transform: uppercase; }
+.erp-input-kuerzel::placeholder { text-transform: none; }
+
 .erp-textarea {
     padding: 6px var(--space-sm);
     border: 1px solid var(--color-border);
