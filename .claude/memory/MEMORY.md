@@ -9,7 +9,7 @@
 - [📋 Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler ✅ bestanden 2026-10-30
 - [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; 2026-10-30 Grundmodul inkl. Verkauf 790, Gutscheine 190, Dropshipping 190
 - [🚀 Soft-Go-Live Sockenwolle](project_soft_golive_sockenwolle.md) — 1.0 live nur mit SOW (JTL→Woo), MeaLana zuletzt; Kürzel je Shop gebaut 2026-10-31 (Migr. 214), Live-Deploy offen
-- [Dropshipping-Modul](project_dropshipping.md) — eigenes Modul 190 €, nicht gebaut, JTL-Ablauf als Basis
+- [Dropshipping-Modul](project_dropshipping.md) — nur Lang Yarns über Händlerportal, Jackys Antworten + angepasster Plan 2026-10-31, Bau nächste Session
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
 ## User + Feedback
