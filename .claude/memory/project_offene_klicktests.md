@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 1c9e550a-0e72-4363-9039-913d77dd7e1e
-  modified: 2026-10-02T13:49:13.481Z
+  modified: 2026-10-30T09:27:05.089Z
 ---
 
 Checkliste "A" vom 2026-10-02. **A1 Sammelabholung (1–13) und A2 Retouren (14–20) hat Jacky am 2026-10-02 getestet** (dabei gefundene Fehler alle behoben: Teilabholung bezahlt/unbezahlt mit "später/will er nicht", Abholfach, Liste erstattet/Gutschrift, Kundenanzeige-Zahlbetrag, Bon parken — siehe [[project_sammelabholung_auftraege]], [[project_kundenanzeige_modul]]).
@@ -34,5 +34,7 @@ Checkliste "A" vom 2026-10-02. **A1 Sammelabholung (1–13) und A2 Retouren (14�
 | 33 | Verkaufsmeldung „verkauft“ | Rechnung **netto**, Text „Kommissionsware“ |
 | 34 | Verkaufsmeldung „Restbestand“ + Schwund | Schwund ausgebucht, nicht verrechnet |
 | 35 | Rücknahme | Ware zurück im eigenen Lager |
+
+**✅ 2026-10-30: Jacky hat 21–35 getestet, alles hat gepasst.**
 
 **How to apply:** Bei Fehlern aus diesen Tests wie bei A1/A2 vorgehen (Daten prüfen, Ursache finden, beheben, Testdaten aufräumen).

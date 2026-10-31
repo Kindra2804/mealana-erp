@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/OffeneWerte.php';
+require_once __DIR__ . '/../dokumente/DokumentRepository.php';
 
 /**
  * AuftragRepository – CRUD für Verkaufsaufträge, Positionen, Statuslog und Rechnungen.
@@ -160,7 +161,9 @@ class AuftragRepository
             ")->fetchAll(PDO::FETCH_ASSOC);
             foreach ($docs as $d) {
                 $erg[(int)$d['auftrag_id']][$typMap[$d['typ']]][] = [
-                    'nr' => $d['beleg_nr'] ?: pathinfo($d['dateiname'], PATHINFO_FILENAME), 'datum' => $d['datum'], 'datei' => $d['dateiname'],
+                    'nr' => $d['beleg_nr'] ?: pathinfo($d['dateiname'], PATHINFO_FILENAME),
+                    'datum' => $d['datum'],
+                    'datei' => $d['dateiname'],
                 ];
             }
 
@@ -352,23 +355,12 @@ class AuftragRepository
         $eigeneTransaktion = !$this->db->inTransaction();
         if ($eigeneTransaktion) $this->db->beginTransaction();
 
-        $jahr = date('Y');
-        $this->db->prepare("
-            INSERT IGNORE INTO dokument_nummern (typ, praefix, jahr, letzt_nr)
-            VALUES ('auftrag', 'A', :jahr, 0)
-        ")->execute(['jahr' => $jahr]);
+        $jahr = (int)date('Y');
 
-        $this->db->prepare("
-            UPDATE dokument_nummern SET letzt_nr = letzt_nr + 1
-            WHERE typ = 'auftrag' AND jahr = :jahr
-        ")->execute(['jahr' => $jahr]);
+        $dokRepo = new DokumentRepository();
+        $kuerzel = $dokRepo->kuerzelFuerShop($data['shop_id'] ?? null);
 
-        $nr = $this->db->prepare("
-            SELECT letzt_nr FROM dokument_nummern WHERE typ = 'auftrag' AND jahr = :jahr
-        ");
-        $nr->execute(['jahr' => $jahr]);
-        $laufNr     = (int)$nr->fetchColumn();
-        $auftragNr  = 'A-' . $jahr . '-' . str_pad($laufNr, 5, '0', STR_PAD_LEFT);
+        $auftragNr = $dokRepo->naechsteNummer('auftrag', $jahr, $kuerzel);
 
         $stmt = $this->db->prepare("
             INSERT INTO auftraege (
@@ -622,7 +614,7 @@ class AuftragRepository
     public function setMengeGeliefert(int $positionId, float $menge): void
     {
         $this->db->prepare("UPDATE auftrag_positionen SET menge_geliefert = ? WHERE id = ?")
-                 ->execute([$menge, $positionId]);
+            ->execute([$menge, $positionId]);
     }
 
     public function findZahlungen(int $auftragId): array

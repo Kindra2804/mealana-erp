@@ -57,6 +57,11 @@ Hier werden WooCommerce-Shops verwaltet:
 - **Shop hinzufügen:** Name, URL, API-Schlüssel
 - **Logo je Shop** hochladen
 - Shops können aktiv/inaktiv geschaltet werden
+- **Nummernkreis-Kürzel:** Jeder Shop außer dem Hauptshop bekommt ein eigenes Kürzel (z.B. `SOW`, `BIO`) und damit **eigene, fortlaufende Nummern** für Aufträge, Rechnungen und Rechnungskorrekturen: `A-SOW-2026-00001`, `R-SOW-2026-00001`, `GS-SOW-2026-00001`.
+  - **Leer = Hauptshop** (MeaLana): Nummern ohne Kürzel (`R-2026-00001`). Telefon-, Händler- und Kassen-Aufträge laufen ebenfalls im Hauptshop-Kreis.
+  - Laden-Belege bekommen nie ein Kürzel: Kassenbon, Z-Bon, Mietrechnung (MR), Partner- und Händler-Belege.
+  - Erlaubt sind nur Buchstaben und Ziffern, höchstens 5 Zeichen. Zwei Shops können nicht dasselbe Kürzel haben.
+  - **Gesperrt, sobald der Shop den ersten Auftrag hat**, damit die Nummernfolge durchgehend bleibt.
 
 ---
 

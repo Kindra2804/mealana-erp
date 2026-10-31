@@ -1240,6 +1240,17 @@ Details siehe `.claude/memory/project_klicktest_fixes_20261029.md`. Migrationen 
 - A4-Druck X/Z-Bon: Ränder unabhängig vom Druckdialog ("Ränder: Keine" vom 80-mm-Bon) per Druckrahmen-Tabelle, keine Überschrift allein am Seitenende
 - Offen: restliche Klicktests, Live-Deploy Migr. 201–213 + Windows-Aufgaben am Server
 
+## Update 2026-10-31: Modulgespräch, Soft-Go-Live-Plan, Nummernkreis-Kürzel je Shop
+
+Details siehe `.claude/memory/project_soft_golive_sockenwolle.md`, `project_lizenzierung_preise.md`, `project_dropshipping.md`.
+- Entscheidungen 30.10.: Grundmodul inkl. Verkauf 790 €, Gutscheine + Dropshipping je eigenes Modul 190 €. Soft-Go-Live: 1.0 live nur mit Sockenwolle-online (Shop JTL→Woo), Rest bleibt vorerst auf JTL, MeaLana zuletzt
+- Reihenfolge: Kürzel ✅ → Dropshipping → Lizenzserver → 1.0-Check → Woo-Shop Sockenwolle + Soft-Go-Live
+- **Nummernkreis-Kürzel (Migr. 214):** `shops.nr_kuerzel` (BIO/SOW, '' = Hauptshop MeaLana) + `dokument_nummern.kuerzel` NOT NULL DEFAULT '' (bewusst nicht NULL, sonst greift der UNIQUE `typ,kuerzel,jahr` nicht). Eigener Zähler je Shop: `A-SOW-2026-00001`, `R-SOW-…`, `GS-SOW-…`
+- `DokumentRepository::naechsteNummer($typ, $jahr, $kuerzel = '')` (Präfix aus eigener Kürzel-Zeile, sonst Hauptshop-Zeile) + `kuerzelFuerShop(?int)`. `AuftragRepository::insert()` hat kein hartes 'A-' mehr. Rechnung nur bei `$nummernkreis === 'rechnung'` mit Kürzel (MR bleibt ohne), GS mit Kürzel. Laden-Belege (Bon, Z-Bon, MR, Partner, Händler) nie
+- Einstellungen → Kanäle: Feld „Nummernkreis-Kürzel“ (A-Z/0-9, max. 5, eindeutig), gesperrt ab dem ersten Auftrag des Shops (auch serverseitig geprüft)
+- JTL-Formate kollidieren nicht (MeaLana `R-40550102026`, Bio `R-BIO-xxMMJJ`, Sockenwolle `R-SW-xxMMJJ`)
+- Offen: Live-Deploy Migr. 201–214
+
 ## Commit Convention
 
 ```

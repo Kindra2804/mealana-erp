@@ -95,6 +95,7 @@ Filter oben:
 6. → **Auftrag speichern**
 
 > Das System generiert automatisch eine Auftragsnummer (A-2026-00001).
+> Aufträge aus einem Shop mit Nummernkreis-Kürzel bekommen das Kürzel dazu (z.B. A-SOW-2026-00001), ebenso deren Rechnungen und Rechnungskorrekturen. Siehe Einstellungen → Kanäle.
 
 ---
 

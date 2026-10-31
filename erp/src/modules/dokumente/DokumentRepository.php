@@ -71,29 +71,40 @@ class DokumentRepository
      * Nächste fortlaufende Nummer für einen Dokumenttyp, transaktionssicher.
      * typ-Werte: 'auftrag' (A-), 'rechnung' (R-), 'ab' (AB-), 'gutschrift' (GS-), 'anz' (ANZ-)
      */
-    public function naechsteNummer(string $typ, int $jahr): string
+    public function naechsteNummer(string $typ, int $jahr, string $kuerzel = ''): string
     {
-        // Zeile für dieses Jahr anlegen falls noch nicht vorhanden
+        // Präfix holen: eigene Kürzel-Zeile bevorzugt, sonst Hauptshop-Zeile ('') desselben Typs
+        $finden = $this->db->prepare("
+            SELECT praefix FROM dokument_nummern WHERE typ = :typ
+            ORDER BY kuerzel = :kuerzel DESC, jahr DESC
+            LIMIT 1
+        ");
+        $finden->execute([':typ' => $typ, ':kuerzel' => $kuerzel]);
+        $praefix = $finden->fetchColumn() ?: strtoupper($typ[0]);
+
+        // Zeile für dieses Jahr + Kürzel anlegen, falls noch nicht vorhanden (UNIQUE typ/kuerzel/jahr)
         $this->db->prepare("
-            INSERT IGNORE INTO dokument_nummern (typ, praefix, jahr, letzt_nr)
-            SELECT typ, praefix, :jahr, 0 FROM dokument_nummern
-            WHERE typ = :typ AND jahr = (SELECT MAX(jahr) FROM dokument_nummern WHERE typ = :typ2)
-        ")->execute([':typ' => $typ, ':jahr' => $jahr, ':typ2' => $typ]);
+            INSERT IGNORE INTO dokument_nummern (typ, kuerzel, praefix, jahr, letzt_nr)
+            VALUES (:typ, :kuerzel, :praefix, :jahr, 0)
+        ")->execute([':typ' => $typ, ':kuerzel' => $kuerzel, ':praefix' => $praefix, ':jahr' => $jahr]);
 
         $this->db->prepare("
             UPDATE dokument_nummern SET letzt_nr = letzt_nr + 1
-            WHERE typ = :typ AND jahr = :jahr
-        ")->execute([':typ' => $typ, ':jahr' => $jahr]);
+            WHERE typ = :typ AND kuerzel = :kuerzel AND jahr = :jahr
+        ")->execute([':typ' => $typ, ':kuerzel' => $kuerzel, ':jahr' => $jahr]);
 
         $row = $this->db->prepare("
-            SELECT letzt_nr, praefix FROM dokument_nummern WHERE typ = :typ AND jahr = :jahr
+            SELECT letzt_nr, praefix, kuerzel FROM dokument_nummern WHERE typ = :typ AND kuerzel = :kuerzel AND jahr = :jahr
         ");
-        $row->execute([':typ' => $typ, ':jahr' => $jahr]);
+        $row->execute([':typ' => $typ, ':kuerzel' => $kuerzel, ':jahr' => $jahr]);
         $data = $row->fetch(PDO::FETCH_ASSOC);
 
         $nr     = (int)($data['letzt_nr'] ?? 1);
         $prefix = $data['praefix'] ?? strtoupper($typ[0]);
 
+        if ($kuerzel) {
+            return $prefix . '-' . $kuerzel . '-' . $jahr . '-' . str_pad($nr, 5, '0', STR_PAD_LEFT);
+        }
         return $prefix . '-' . $jahr . '-' . str_pad($nr, 5, '0', STR_PAD_LEFT);
     }
 
@@ -110,5 +121,20 @@ class DokumentRepository
             $einstellungen[$row['schluessel']] = $row['wert'];
         }
         return $einstellungen;
+    }
+
+    /**
+     * Nummernkreis-Kürzel eines Shops (z.B. 'SOW'); '' für Hauptshop, Kasse und Aufträge ohne Shop.
+     */
+    public function kuerzelFuerShop(?int $shopId): string
+    {
+        if ($shopId) {
+            $stmt =  $this->db->prepare("
+            SELECT nr_kuerzel FROM shops WHERE id = :shop_id
+            ");
+            $stmt->execute([':shop_id' => $shopId]);
+            return $stmt->fetchColumn() ?: '';
+        }
+        return '';
     }
 }

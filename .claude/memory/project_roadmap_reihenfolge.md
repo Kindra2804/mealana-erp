@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 3c350eb2-8eb3-43e3-bac5-de17c4ce7718
-  modified: 2026-10-28T11:43:44.304Z
+  modified: 2026-10-30T09:27:03.845Z
 ---
 
 ## Festgelegte Reihenfolge (Jacky, 2026-07-10)
@@ -109,3 +109,21 @@ Danach laut Reihenfolge bis 1.0: Offline-Kasse light (wenn Sunmi zu Hause, 2 Obe
 1. **Restliche Klicktests** aus Punkt 6 oben: Offline-Divers (Messe), Partner-Stammdaten, Kasse/Bon mit Partnerware (auch K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf (→ jetzt MR-Nummer prüfen) + Kündigung, Abholorte. Dazu neu: Storno-Sperre im Bon-Journal.
 2. **Live-Deploy Migrationen 201–213** + am Server Windows-Aufgaben Fachmiete und Z-Bon automatisch ("unabhängig von Anmeldung", Admin).
 3. Danach laut Reihenfolge bis 1.0: Offline-Kasse light (wenn Sunmi zu Hause) → Lizenzserver → 1.0.
+
+## ✅ 2026-10-30 Klicktests alle bestanden
+Jacky: Partner-Stammdaten, Kasse/Bon mit Partnerware (inkl. K3 mit echter Signatur), Partner-Konto/Auszahlung/Aviso, Ware übernehmen mit Suche + "Neuer Artikel", Fachmiete-Lauf (MR-Nummer) + Kündigung, Abholorte, Lagerplätze + Händler 21–35, Storno-Sperre — "hat alles gepasst". Nicht genannt und damit noch offen: Offline-Divers (Messe). Sunmi noch in der Firma → am 2026-10-30 stattdessen die Lizenzierung besprochen.
+
+## 🆕 2026-10-31: Ergebnisse Modulgespräch Jacky + Babsi (30.10.)
+- Modulschnitt/Preise: Grundmodul (inkl. Verkauf, ohne Gutscheine) 790 €, Gutscheine 190 €, Dropshipping 190 € → [[project-lizenzierung-preise]]
+- **Neu zu bauen:** Dropshipping-Modul → [[project-dropshipping]]
+- **Soft-Go-Live-Plan:** 1.0 live nur mit Sockenwolle-online (Shop JTL→Woo, eigener Woo-Shop im SOW-Look), Rest bleibt auf JTL, MeaLana zuletzt → [[project-soft-golive-sockenwolle]]
+- **Neu vor dem Go-Live nötig:** Nummernkreis-Kürzel je Shop (A-SOW-/R-SOW-…), heute nicht vorhanden
+- Reihenfolge bis 1.0 dadurch offen: wo kommen Nummernkreis-Kürzel, Dropshipping und der SOW-Woo-Shop hin (vor/nach Lizenzserver)? → Jacky fragen
+
+## ⏭️ Reihenfolge bis 1.0 + Soft-Go-Live (Jacky 2026-10-31 festgelegt)
+1. ✅ 2026-10-31 **Nummernkreis-Kürzel je Shop** gebaut + committed (Migr. 214), siehe [[project-soft-golive-sockenwolle]]
+2. **Dropshipping-Modul**, siehe [[project-dropshipping]]
+3. **Lizenzserver / Modul-Aktivieren**, siehe [[project-lizenzierung-preise]]
+4. **Alles nochmal durchgehen → bereit für 1.0?**, siehe [[project-version-1-0-release]]
+5. Wenn ja: **Woo-Shop Sockenwolle bauen + Soft-Go-Live**
+Daneben weiter offen: Live-Deploy 201–213, Offline-Kasse light (wenn Sunmi zu Hause), Klicktest Offline-Divers.

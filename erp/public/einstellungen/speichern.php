@@ -35,6 +35,22 @@ function uploadFehlerText(int $code): string
 $db  = Database::getInstance();
 $tab = $_POST['tab'] ?? '';
 
+/**
+ * Prüft ein Nummernkreis-Kürzel (A-Z/0-9, max. 5, '' = Hauptshop) und ob ein anderer Shop es schon nutzt.
+ * Liefert den Fehlertext oder null, wenn das Kürzel verwendet werden darf.
+ */
+function pruefeNrKuerzel(PDO $db, string $kuerzel, int $shopId = 0): ?string
+{
+    if (!preg_match('/^[A-Z0-9]{0,5}$/', $kuerzel)) {
+        return 'Nummernkreis-Kürzel: nur Buchstaben und Ziffern, höchstens 5 Zeichen.';
+    }
+    if ($kuerzel === '') return null;
+    $stmt = $db->prepare("SELECT name FROM shops WHERE nr_kuerzel = ? AND id <> ?");
+    $stmt->execute([$kuerzel, $shopId]);
+    $andererShop = $stmt->fetchColumn();
+    return $andererShop ? "Nummernkreis-Kürzel '$kuerzel' wird schon von „{$andererShop}“ verwendet." : null;
+}
+
 function setSetting(PDO $db, string $key, string $value): void
 {
     $db->prepare("INSERT INTO system_einstellungen (schluessel, wert) VALUES (:k, :v)
@@ -129,7 +145,7 @@ if ($tab === 'kanaele_update') {
         exit;
     }
 
-    $stmt = $db->prepare("SELECT slug FROM shops WHERE id = ?");
+    $stmt = $db->prepare("SELECT slug, nr_kuerzel FROM shops WHERE id = ?");
     $stmt->execute([$shopId]);
     $shop = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$shop) {
@@ -169,8 +185,27 @@ if ($tab === 'kanaele_update') {
            ->execute([$name, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null, $subMarke, $istAktiv, $shopId]);
     }
 
-    if ($logoFehler) {
-        $_SESSION['fehler'] = [$logoFehler];
+    // Nummernkreis-Kürzel: gesperrte Felder schickt der Browser nicht mit; die Sperre
+    // (Kanal hat schon Aufträge) wird hier trotzdem nochmal geprüft
+    $fehler = $logoFehler ? [$logoFehler] : [];
+    if (isset($_POST['nr_kuerzel'])) {
+        $kuerzel = strtoupper(trim($_POST['nr_kuerzel']));
+        if ($kuerzel !== $shop['nr_kuerzel']) {
+            $anzAuftraege = $db->prepare("SELECT COUNT(*) FROM auftraege WHERE shop_id = ?");
+            $anzAuftraege->execute([$shopId]);
+            $kuerzelFehler = $anzAuftraege->fetchColumn() > 0
+                ? 'Nummernkreis-Kürzel nicht geändert: der Kanal hat bereits Aufträge.'
+                : pruefeNrKuerzel($db, $kuerzel, $shopId);
+            if ($kuerzelFehler) {
+                $fehler[] = $kuerzelFehler;
+            } else {
+                $db->prepare("UPDATE shops SET nr_kuerzel = ? WHERE id = ?")->execute([$kuerzel, $shopId]);
+            }
+        }
+    }
+
+    if ($fehler) {
+        $_SESSION['fehler'] = $fehler;
     } else {
         $_SESSION['erfolg'] = 'Kanal gespeichert.';
     }
@@ -188,8 +223,15 @@ if ($tab === 'kanaele_neu') {
     $wpUsername  = trim($_POST['neu_wp_username'] ?? '');
     $wpAppPasswd = trim($_POST['neu_wp_app_password'] ?? '');
 
+    $nrKuerzel   = strtoupper(trim($_POST['neu_nr_kuerzel'] ?? ''));
+
     if (!$slug || !$name) {
         $_SESSION['fehler'] = 'Slug und Name sind Pflichtfelder.';
+        header('Location: index.php?tab=kanaele');
+        exit;
+    }
+    if ($kuerzelFehler = pruefeNrKuerzel($db, $nrKuerzel)) {
+        $_SESSION['fehler'] = $kuerzelFehler;
         header('Location: index.php?tab=kanaele');
         exit;
     }
@@ -209,8 +251,8 @@ if ($tab === 'kanaele_neu') {
     }
 
     try {
-        $db->prepare("INSERT INTO shops (slug, name, logo_pfad, wc_url, wc_key, wc_secret, wp_username, wp_app_password, sub_marke, ist_aktiv) VALUES (?,?,?,?,?,?,?,?,0,1)")
-           ->execute([$slug, $name, $logoPfad, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null]);
+        $db->prepare("INSERT INTO shops (slug, nr_kuerzel, name, logo_pfad, wc_url, wc_key, wc_secret, wp_username, wp_app_password, sub_marke, ist_aktiv) VALUES (?,?,?,?,?,?,?,?,?,0,1)")
+           ->execute([$slug, $nrKuerzel, $name, $logoPfad, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null]);
         $_SESSION[$logoFehler ? 'fehler' : 'erfolg'] = $logoFehler ? [$logoFehler] : 'Kanal angelegt.';
     } catch (PDOException $e) {
         $_SESSION['fehler'] = 'Slug bereits vorhanden.';

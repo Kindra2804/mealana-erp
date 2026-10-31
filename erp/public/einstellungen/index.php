@@ -11,6 +11,8 @@ $rows = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAl
 
 // Shops laden
 $shops = $db->query("SELECT * FROM shops ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+// Nummernkreis-Kürzel ist ab dem ersten Auftrag des Shops gesperrt (sonst bricht die fortlaufende Nummernfolge)
+$shopAuftraege = $db->query("SELECT shop_id, COUNT(*) FROM auftraege WHERE shop_id IS NOT NULL GROUP BY shop_id")->fetchAll(PDO::FETCH_KEY_PAIR);
 
 $e    = $_SESSION['erfolg'] ?? null;
 $f    = $_SESSION['fehler'] ?? null;
@@ -245,7 +247,10 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         <label class="form-label">WordPress Application-Passwort</label>
                         <input type="password" name="neu_wp_app_password" class="erp-input" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" autocomplete="off">
                     </div>
-                    <div></div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">Nummernkreis-Kürzel</label>
+                        <input type="text" name="neu_nr_kuerzel" class="erp-input" maxlength="5" pattern="[A-Za-z0-9]{0,5}" placeholder="leer = Hauptshop" style="text-transform:uppercase">
+                    </div>
                     <div></div>
                 </div>
             </form>
@@ -312,7 +317,16 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         <label class="form-label">WordPress Application-Passwort</label>
                         <input type="password" name="wp_app_password" class="erp-input" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" value="<?= htmlspecialchars($shop['wp_app_password'] ?? '') ?>" autocomplete="off">
                     </div>
-                    <div></div>
+                    <?php $kuerzelGesperrt = !empty($shopAuftraege[$shop['id']]); ?>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">Nummernkreis-Kürzel</label>
+                        <input type="text" name="nr_kuerzel" class="erp-input" maxlength="5" pattern="[A-Za-z0-9]{0,5}" placeholder="leer = Hauptshop"
+                               value="<?= htmlspecialchars($shop['nr_kuerzel'] ?? '') ?>" style="text-transform:uppercase"
+                               <?= $kuerzelGesperrt ? 'disabled title="Gesperrt: Der Kanal hat bereits Aufträge, die Nummernfolge darf sich nicht mehr ändern."' : '' ?>>
+                        <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">
+                            <?= $kuerzelGesperrt ? 'gesperrt (Aufträge vorhanden)' : 'z.B. SOW → R-SOW-' . date('Y') . '-00001' ?>
+                        </div>
+                    </div>
                     <div></div>
                 </div>
             </form>

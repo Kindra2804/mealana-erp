@@ -58,9 +58,13 @@ class DokumentService
      * Rückgabe: erfolg, rechnung_id, rechnung_nr, dateiname, pfad, bruttobetrag, offen.
      * erfolg=false + nichts_offen=true heißt: es gab nichts zu verrechnen (kein Fehler).
      */
-    public function erstelleRechnung(int $auftragId, int $benutzerId, ?array $mengen = null, ?int $lieferungId = null,
-                                     string $nummernkreis = 'rechnung'): array
-    {
+    public function erstelleRechnung(
+        int $auftragId,
+        int $benutzerId,
+        ?array $mengen = null,
+        ?int $lieferungId = null,
+        string $nummernkreis = 'rechnung'
+    ): array {
         $daten = $this->ladeDaten($auftragId);
         if (!$daten) return ['erfolg' => false, 'fehler' => 'Auftrag nicht gefunden.'];
         $auftrag = $daten['auftrag'];
@@ -88,8 +92,11 @@ class DokumentService
             ]);
         }
         if (!$rePos) {
-            return ['erfolg' => false, 'nichts_offen' => true,
-                    'fehler' => 'Keine ausgelieferte, noch nicht verrechnete Ware — es gibt nichts zu verrechnen.'];
+            return [
+                'erfolg' => false,
+                'nichts_offen' => true,
+                'fehler' => 'Keine ausgelieferte, noch nicht verrechnete Ware — es gibt nichts zu verrechnen.'
+            ];
         }
 
         $versand = $this->versandNochOffen($auftrag) ? (float)$auftrag['versandkosten'] : 0.0;
@@ -99,7 +106,8 @@ class DokumentService
         $eigeneTx = !$this->db->inTransaction();
         if ($eigeneTx) $this->db->beginTransaction();
         try {
-            $rechnungsNr = $this->repo->naechsteNummer($nummernkreis, (int)date('Y'));
+            $kuerzel = $nummernkreis === 'rechnung' ? $this->repo->kuerzelFuerShop($daten['auftrag']['shop_id']) : '';
+            $rechnungsNr = $this->repo->naechsteNummer($nummernkreis, (int)date('Y'), $kuerzel);
             $dateiname   = 'R-' . $auftrag['auftrag_nr'] . '_' . $rechnungsNr . '.pdf';
 
             // faellig_am ist die Basis fürs Mahnwesen (Erinnerung/Mahnstufen ab Fälligkeit)
@@ -130,9 +138,18 @@ class DokumentService
             $verrechnetStmt = $this->db->prepare("UPDATE auftrag_positionen SET menge_verrechnet = menge_verrechnet + ? WHERE id = ?");
             foreach ($rePos as $p) {
                 $posStmt->execute([
-                    $rechnungId, $p['id'], $p['artikel_id'] ?: null, $p['bezeichnung'], $p['menge'],
-                    $p['einzelpreis_netto'], $p['steuer_prozent'], $p['rabatt_prozent'] ?? 0,
-                    $p['preisbasis'] ?? 'brutto', $p['gesamtpreis_netto'], $p['zeile_steuer'], $p['gesamtpreis_brutto'],
+                    $rechnungId,
+                    $p['id'],
+                    $p['artikel_id'] ?: null,
+                    $p['bezeichnung'],
+                    $p['menge'],
+                    $p['einzelpreis_netto'],
+                    $p['steuer_prozent'],
+                    $p['rabatt_prozent'] ?? 0,
+                    $p['preisbasis'] ?? 'brutto',
+                    $p['gesamtpreis_netto'],
+                    $p['zeile_steuer'],
+                    $p['gesamtpreis_brutto'],
                 ]);
                 $verrechnetStmt->execute([$p['menge'], $p['id']]);
             }
@@ -258,8 +275,10 @@ class DokumentService
         ");
         $stmt->execute([$auftragId]);
         return array_values(array_filter(
-            array_map(fn($r) => ['bezeichnung' => $r['bezeichnung'], 'artikelnummer' => $r['artikelnummer'] ?? '', 'menge' => (int)$r['rest']],
-                $stmt->fetchAll(PDO::FETCH_ASSOC)),
+            array_map(
+                fn($r) => ['bezeichnung' => $r['bezeichnung'], 'artikelnummer' => $r['artikelnummer'] ?? '', 'menge' => (int)$r['rest']],
+                $stmt->fetchAll(PDO::FETCH_ASSOC)
+            ),
             fn($r) => $r['menge'] > 0
         ));
     }
@@ -322,7 +341,7 @@ class DokumentService
             'leistungsdatum'  => date('d.m.Y', strtotime($rechnung['leistungsdatum'] ?: $rechnung['erstellt_am'])),
             'faellig'         => $rechnung['faellig_am'] ? date('d.m.Y', strtotime($rechnung['faellig_am'])) : '',
             'faellig_text'    => $faelligText === null ? '' : ($faelligText === 0 ? 'sofort' : $faelligText . ' Tage'),
-            'ist_teilrechnung'=> $ausstaendig || (int)$anzahlRechnungen->fetchColumn() > 1,
+            'ist_teilrechnung' => $ausstaendig || (int)$anzahlRechnungen->fetchColumn() > 1,
             'ausstaendig'     => $ausstaendig,
         ];
         $daten['zahlungsinfo'] = $this->zahlungsInfo($rechnungId);
@@ -435,7 +454,7 @@ class DokumentService
                            FROM kassen_bon_positionen bp JOIN kassen_bons b ON b.id = bp.bon_id AND b.typ = 'verkauf' AND b.storniert = 0
                            WHERE bp.web_auftrag_id = ? AND bp.block IN ('auftrag', 'retour')");
         $rechnungen  = $q("SELECT COALESCE(SUM(bruttobetrag), 0) FROM rechnungen WHERE auftrag_id = ?") + $bons;
-        $gutschriften= $q("SELECT COALESCE(SUM(bruttobetrag), 0) FROM gutschriften WHERE auftrag_id = ?");
+        $gutschriften = $q("SELECT COALESCE(SUM(bruttobetrag), 0) FROM gutschriften WHERE auftrag_id = ?");
         $zahlungen   = $q("SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = ?");
         $gutscheine  = $q("SELECT COALESCE(-SUM(betrag), 0) FROM gutschein_transaktionen WHERE auftrag_id = ? AND betrag < 0");
         $mahn        = $q("SELECT COALESCE(SUM(gebuehr), 0) FROM mahnungen WHERE auftrag_id = ? AND status = 'versendet' AND gebuehr_erlassen_am IS NULL");
@@ -626,7 +645,8 @@ class DokumentService
         $bonBelege = $this->kassenbonBelege($auftragId);
         if (!$rechnung && !$bonBelege) return ['erfolg' => false, 'fehler' => 'Zu diesem Auftrag gibt es keinen Beleg (Rechnung oder Kassenbon).'];
 
-        $gsNr = $this->repo->naechsteNummer('gutschrift', (int)date('Y'));
+        $kuerzel = $this->repo->kuerzelFuerShop($daten['auftrag']['shop_id']);
+        $gsNr = $this->repo->naechsteNummer('gutschrift', (int)date('Y'), $kuerzel);
 
         // GS-Positionen und Summen bestimmen. Vollstorno kreditiert nur das, was noch NICHT
         // gutgeschrieben wurde (menge - menge_gutgeschrieben; zählt Kasse, Packplatz-Retoure
@@ -712,7 +732,9 @@ class DokumentService
             'steuer_gesamt' => -$gsSummen['steuer_gesamt'],
             'brutto_gesamt' => -$gsSummen['brutto_gesamt'],
             'versand'       => $gsSummen['versand'] ? array_merge($gsSummen['versand'], [
-                'netto' => -$gsSummen['versand']['netto'], 'steuer' => -$gsSummen['versand']['steuer'], 'brutto' => -$gsSummen['versand']['brutto'],
+                'netto' => -$gsSummen['versand']['netto'],
+                'steuer' => -$gsSummen['versand']['steuer'],
+                'brutto' => -$gsSummen['versand']['brutto'],
             ]) : null,
         ]);
         // Auf einer Gutschrift (Rechnungskorrektur) keine Gutschein-Zahlungszeilen
@@ -731,8 +753,19 @@ class DokumentService
             INSERT INTO gutschriften (gutschrift_nr, auftrag_id, rechnung_id, art, grund,
                                       nettobetrag, steuerbetrag, bruttobetrag, versandkosten_brutto, dateiname, erstellt_von)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ")->execute([$gsNr, $auftragId, $rechnungId ?: null, $gsArt, $grund ?: null,
-                     $gsSummen['netto_gesamt'], $gsSummen['steuer_gesamt'], $gsSummen['brutto_gesamt'], $gsVersand, $dateiname, $benutzerId]);
+        ")->execute([
+            $gsNr,
+            $auftragId,
+            $rechnungId ?: null,
+            $gsArt,
+            $grund ?: null,
+            $gsSummen['netto_gesamt'],
+            $gsSummen['steuer_gesamt'],
+            $gsSummen['brutto_gesamt'],
+            $gsVersand,
+            $dateiname,
+            $benutzerId
+        ]);
         $gutschriftId = (int)$this->db->lastInsertId();
         $gsPosStmt = $this->db->prepare("
             INSERT INTO gutschrift_positionen
@@ -742,9 +775,18 @@ class DokumentService
         ");
         foreach ($gsPosi as $p) {
             $gsPosStmt->execute([
-                $gutschriftId, $p['id'], $p['artikel_id'] ?: null, $p['bezeichnung'], (int)$p['menge'],
-                $p['einzelpreis_netto'], $p['steuer_prozent'], $p['rabatt_prozent'] ?? 0, $p['preisbasis'] ?? 'brutto',
-                $p['gesamtpreis_netto'], round($p['gesamtpreis_brutto'] - $p['gesamtpreis_netto'], 2), $p['gesamtpreis_brutto'],
+                $gutschriftId,
+                $p['id'],
+                $p['artikel_id'] ?: null,
+                $p['bezeichnung'],
+                (int)$p['menge'],
+                $p['einzelpreis_netto'],
+                $p['steuer_prozent'],
+                $p['rabatt_prozent'] ?? 0,
+                $p['preisbasis'] ?? 'brutto',
+                $p['gesamtpreis_netto'],
+                round($p['gesamtpreis_brutto'] - $p['gesamtpreis_netto'], 2),
+                $p['gesamtpreis_brutto'],
             ]);
         }
 
@@ -808,8 +850,13 @@ class DokumentService
         AuftragAbschluss::zahlungsstatusAusBelegen($auftragId, $benutzerId);
         AuftragAbschluss::pruefe($auftragId, $benutzerId);
 
-        return ['erfolg' => true, 'dateiname' => $dateiname, 'gs_nr' => $gsNr, 'gutschrift_id' => $gutschriftId,
-                'bruttobetrag' => $gsSummen['brutto_gesamt']];
+        return [
+            'erfolg' => true,
+            'dateiname' => $dateiname,
+            'gs_nr' => $gsNr,
+            'gutschrift_id' => $gutschriftId,
+            'bruttobetrag' => $gsSummen['brutto_gesamt']
+        ];
     }
 
     /**
@@ -887,7 +934,7 @@ class DokumentService
         $firma      = $this->repo->ladeFirmaDaten();
         $kunde      = $this->decodeSnapshot($auftrag['kunden_snapshot'] ?? '{}');
         $lieferadr  = $this->decodeSnapshot($auftrag['lieferadresse_snapshot'] ?? '{}');
-        $rechnungadr= $this->decodeSnapshot($auftrag['rechnungsadresse_snapshot'] ?? '{}');
+        $rechnungadr = $this->decodeSnapshot($auftrag['rechnungsadresse_snapshot'] ?? '{}');
 
         // Händler-Rechnungen (kanal 'haendler') immer mit Netto-Preisen, auch ohne UID
         $istB2B      = !empty($kunde['uid_nummer']) || ($auftrag['kanal'] ?? '') === 'haendler';
@@ -1057,8 +1104,11 @@ class DokumentService
         $stmt = $this->db->prepare("SELECT * FROM shops WHERE id = :id");
         $stmt->execute([':id' => $shopId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: [
-            'id' => 1, 'slug' => 'mealana', 'name' => 'MEALANA KG',
-            'logo_pfad' => 'img/logos/mealana.png', 'sub_marke' => 0,
+            'id' => 1,
+            'slug' => 'mealana',
+            'name' => 'MEALANA KG',
+            'logo_pfad' => 'img/logos/mealana.png',
+            'sub_marke' => 0,
         ];
     }
 
