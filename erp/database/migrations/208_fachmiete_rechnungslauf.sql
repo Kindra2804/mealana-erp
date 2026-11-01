@@ -24,7 +24,7 @@ SELECT 'FACHMIETE', 'Fachmiete',
        (SELECT id FROM artikel_typen WHERE code = 'STANDARD' LIMIT 1),
        (SELECT id FROM artikel_gruppen WHERE name = 'Fachmiete' LIMIT 1),
        (SELECT id FROM steuerklassen WHERE satz = 20 ORDER BY id LIMIT 1),
-       (SELECT id FROM einheiten WHERE name LIKE 'St%ck' ORDER BY id LIMIT 1),
+       (SELECT id FROM einheiten WHERE name LIKE 'St%ck' OR kuerzel = 'Stk' ORDER BY id LIMIT 1),
        1, 1
 WHERE NOT EXISTS (SELECT 1 FROM artikel WHERE artikelnummer = 'FACHMIETE');
 

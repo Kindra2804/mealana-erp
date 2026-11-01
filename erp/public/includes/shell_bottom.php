@@ -20,9 +20,14 @@ $erpStufeFarben = ['info' => 'var(--color-success)', 'warn' => 'var(--color-warn
     <?php endif ?>
 </div>
 <div class="erp-statusbar">
-    <span>👤 Karl</span>
-    <span>📦 Ladengeschäft</span>
-    <span>🕐 Sync: 14:23</span>
+    <?php
+    // Letzter Shop-Abgleich (nur wenn ein aktiver Shop schon synchronisiert hat)
+    $erpLetzterSync = Database::getInstance()->query("SELECT MAX(bestellungen_letzter_sync) FROM shops WHERE ist_aktiv = 1")->fetchColumn();
+    ?>
+    <span>👤 <?= htmlspecialchars($_SESSION['benutzer']['formularname'] ?? '') ?></span>
+    <?php if ($erpLetzterSync): ?>
+        <span>🕐 Shop-Sync: <?= date(date('Y-m-d', strtotime($erpLetzterSync)) === date('Y-m-d') ? 'H:i' : 'd.m. H:i', strtotime($erpLetzterSync)) ?></span>
+    <?php endif; ?>
     <span>v<?= htmlspecialchars(APP_VERSION) ?></span>
 </div>
 </div>

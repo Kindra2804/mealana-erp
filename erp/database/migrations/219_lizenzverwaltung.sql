@@ -12,21 +12,26 @@
 -- Preise netto lt. Jacky 2026-11-01, BFR = Fremdartikel (nur weiterverrechnet, keine Lizenz).
 
 -- Artikeltyp, Kategorie, Erlöskonto/Artikelgruppe (Konto in Buchhaltung → Artikelgruppen änderbar)
+-- Kategorie, Konto, Artikelgruppe und die Lizenz-Artikel nur in der NAHTLOS/MeaLana-Installation (verkauft die
+-- Lizenzen) — Kunden-Installationen bekommen nur den Artikeltyp und die (leeren) Lizenz-Tabellen.
 INSERT INTO artikel_typen (code, name, teilbar, hat_varianten, hat_lagerstand, ist_download, ist_set, ist_gutschein, sortierung, aktiv)
 SELECT 'LIZENZ', 'Lizenz', 0, 0, 0, 0, 0, 0, 8, 1
 WHERE NOT EXISTS (SELECT 1 FROM artikel_typen WHERE code = 'LIZENZ');
 
 INSERT INTO kategorien (parent_id, name, sortierung, aktiv)
 SELECT NULL, 'Lizenzen', 990, 1
-WHERE NOT EXISTS (SELECT 1 FROM kategorien WHERE name = 'Lizenzen' AND parent_id IS NULL);
+WHERE NOT EXISTS (SELECT 1 FROM kategorien WHERE name = 'Lizenzen' AND parent_id IS NULL)
+  AND EXISTS (SELECT 1 FROM system_einstellungen WHERE schluessel = 'firmenname' AND wert LIKE 'MEALANA%');
 
 INSERT INTO kontenplan (kontonummer, name, typ, aktiv)
 SELECT '4600', 'Erlöse Software-Lizenzen', 'erloes', 1
-WHERE NOT EXISTS (SELECT 1 FROM kontenplan WHERE kontonummer = '4600');
+WHERE NOT EXISTS (SELECT 1 FROM kontenplan WHERE kontonummer = '4600')
+  AND EXISTS (SELECT 1 FROM system_einstellungen WHERE schluessel = 'firmenname' AND wert LIKE 'MEALANA%');
 
 INSERT INTO artikel_gruppen (name, konto_nr, aktiv, an_kasse_waehlbar, sortierung)
 SELECT 'Lizenzen', '4600', 1, 0, 98
-WHERE NOT EXISTS (SELECT 1 FROM artikel_gruppen WHERE name = 'Lizenzen');
+WHERE NOT EXISTS (SELECT 1 FROM artikel_gruppen WHERE name = 'Lizenzen')
+  AND EXISTS (SELECT 1 FROM system_einstellungen WHERE schluessel = 'firmenname' AND wert LIKE 'MEALANA%');
 
 -- Welches Lizenz-Modul ein Artikel freischaltet: Modul-Code (Lizenz::MODULE), 'kasse+'/'shop+' =
 -- eine weitere Kasse/ein weiterer Shop je Stück, 'wartung' = Wartung um Menge × 1 Jahr verlängern
@@ -62,10 +67,11 @@ SELECT t.artikelnummer, t.name,
        (SELECT id FROM artikel_typen WHERE code = 'LIZENZ' LIMIT 1),
        (SELECT id FROM artikel_gruppen WHERE name = 'Lizenzen' LIMIT 1),
        (SELECT id FROM steuerklassen WHERE satz = 20 ORDER BY id LIMIT 1),
-       (SELECT id FROM einheiten WHERE name LIKE 'St%ck' ORDER BY id LIMIT 1),
+       (SELECT id FROM einheiten WHERE name LIKE 'St%ck' OR kuerzel = 'Stk' ORDER BY id LIMIT 1),
        1, t.modul, 1
 FROM tmp_lizenz_artikel t
-WHERE NOT EXISTS (SELECT 1 FROM artikel a WHERE a.artikelnummer = t.artikelnummer);
+WHERE NOT EXISTS (SELECT 1 FROM artikel a WHERE a.artikelnummer = t.artikelnummer)
+  AND EXISTS (SELECT 1 FROM system_einstellungen WHERE schluessel = 'firmenname' AND wert LIKE 'MEALANA%');
 
 INSERT INTO artikel_kategorien (artikel_id, kategorie_id)
 SELECT a.id, (SELECT id FROM kategorien WHERE name = 'Lizenzen' AND parent_id IS NULL LIMIT 1)
@@ -73,9 +79,10 @@ FROM artikel a JOIN tmp_lizenz_artikel t ON t.artikelnummer = a.artikelnummer
 WHERE NOT EXISTS (SELECT 1 FROM artikel_kategorien ak WHERE ak.artikel_id = a.id);
 
 INSERT INTO artikel_preise (artikel_id, kundengruppen_id, brutto_vk, netto_vk)
-SELECT a.id, (SELECT MIN(id) FROM kundengruppen), ROUND(t.netto * 1.2, 2), t.netto
+SELECT a.id, (SELECT id FROM kundengruppen ORDER BY ist_standard DESC, id LIMIT 1), ROUND(t.netto * 1.2, 2), t.netto
 FROM artikel a JOIN tmp_lizenz_artikel t ON t.artikelnummer = a.artikelnummer
-WHERE NOT EXISTS (SELECT 1 FROM artikel_preise p WHERE p.artikel_id = a.id);
+WHERE NOT EXISTS (SELECT 1 FROM artikel_preise p WHERE p.artikel_id = a.id)
+  AND EXISTS (SELECT 1 FROM kundengruppen);   -- frische Installation ohne Kundengruppen: Preise später
 
 DROP TEMPORARY TABLE tmp_lizenz_artikel;
 

@@ -30,12 +30,14 @@ ALTER TABLE auftraege
     ADD COLUMN abholort_id INT UNSIGNED NULL AFTER lieferart,
     ADD CONSTRAINT fk_auftrag_abholort FOREIGN KEY (abholort_id) REFERENCES abholorte (id) ON DELETE SET NULL;
 
--- Erster Abholort: Wollboutique, Standard, mit dem Ladengeschäft
+-- Erster Abholort: Wollboutique, Standard, mit dem Ladengeschäft — NUR in der MeaLana-Installation
+-- (frische Installationen anderer Firmen legen ihre Abholorte im Einrichtungs-Assistenten an)
 INSERT INTO abholorte (name, strasse, plz, ort, oeffnungszeiten, hinweis, ist_standard)
 SELECT 'Mealana Wollboutique', 'Bahngasse 13', '2700', 'Wiener Neustadt',
        'Mo, Mi – Fr: 09:00 – 12:00 und 14:00 – 18:00 Uhr\nDi: 09:00 – 12:00 und 14:00 – 16:00 Uhr\nSa: 09:00 – 13:00 Uhr',
        'Bitte Abholzettel oder diese E-Mail mitbringen.', 1
-WHERE NOT EXISTS (SELECT 1 FROM abholorte);
+WHERE NOT EXISTS (SELECT 1 FROM abholorte)
+  AND EXISTS (SELECT 1 FROM system_einstellungen WHERE schluessel = 'firmenname' AND wert LIKE 'MEALANA%');
 
 UPDATE lager SET abholort_id = (SELECT id FROM abholorte WHERE ist_standard = 1 ORDER BY id LIMIT 1)
 WHERE typ = 'ladengeschaeft' AND lager_beziehung = 'eigen' AND abholort_id IS NULL;

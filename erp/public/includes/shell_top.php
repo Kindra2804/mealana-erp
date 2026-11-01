@@ -109,6 +109,9 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
 
 // Lizenz: Menüpunkt eines nicht gekauften Moduls ausgegraut mit Schloss (bleibt klickbar → Lese-Seite oder Hinweis)
 require_once __DIR__ . '/../../src/core/Lizenz.php';
+// Einrichtungs-Assistent: Superadmin sieht, wie viele Schritte (je Lizenz) noch offen sind
+require_once __DIR__ . '/../../src/modules/einrichtung/OnboardingService.php';
+$einrichtungOffen = Auth::kann('lizenz.verwalten') ? OnboardingService::anzahlOffen() : 0;
 $lzSperre = fn(string $href): string => Lizenz::linkGesperrt($href)
     ? ' style="opacity:.45" title="Modul nicht lizenziert"'
     : '';
@@ -166,6 +169,9 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
                         <?php endif; ?>
                         <?php if (Auth::kann('lizenz.verwalten')): ?>
                             <a href="<?= BASE_PATH ?>/lizenz/index.php" class="erp-nav-more-item">🔑 Lizenzverwaltung</a>
+                            <?php if ($einrichtungOffen): ?>
+                                <a href="<?= BASE_PATH ?>/einrichtung/index.php" class="erp-nav-more-item">🛠 Einrichtung (<?= $einrichtungOffen ?> offen)</a>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -369,6 +375,12 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
         </aside>
         <script src="<?= BASE_PATH ?>/js/shell.js"></script>
         <main class="erp-main">
+            <?php if ($einrichtungOffen && basename(dirname($_SERVER['SCRIPT_FILENAME'])) !== 'einrichtung'): ?>
+                <div style="margin-bottom:10px;padding:6px 12px;font-size:12px;border-left:3px solid #2563eb;background:var(--color-surface,#fff)">
+                    Einrichtung: noch <?= $einrichtungOffen ?> Schritt<?= $einrichtungOffen > 1 ? 'e' : '' ?> offen.
+                    <a href="<?= BASE_PATH ?>/einrichtung/index.php">← zum Assistenten</a>
+                </div>
+            <?php endif; ?>
             <?php if (Lizenz::wartungAbgelaufen() && Auth::kann('lizenz.verwalten')): ?>
                 <div style="margin-bottom:10px;padding:6px 12px;font-size:12px;border-left:3px solid #2563eb;background:var(--color-surface,#fff)">
                     Wartung abgelaufen seit <?= date('d.m.Y', strtotime(Lizenz::wartungBis())) ?> — das ERP läuft weiter, neue Updates gibt es erst nach Verlängerung.

@@ -12,7 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $passwort = $_POST['passwort'] ?? '';
     if (Auth::login($username, $passwort)) {
-        header('Location: ' . BASE_PATH . '/start.php');
+        // Superadmin: Einrichtungs-Assistent nach jeder Anmeldung, solange (je nach Lizenz) noch etwas offen ist
+        require_once __DIR__ . '/../src/modules/einrichtung/OnboardingService.php';
+        $ziel = ($_SESSION['benutzer']['rolle_rang'] ?? 0) >= 100 && OnboardingService::anzahlOffen() > 0 ? '/einrichtung/index.php' : '/start.php';
+        header('Location: ' . BASE_PATH . $ziel);
         exit;
     } else {
         $_SESSION['fehler'] = 'Ungültige Anmeldedaten!';

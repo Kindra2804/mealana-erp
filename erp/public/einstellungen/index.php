@@ -70,7 +70,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 <div class="form-group" style="grid-column:1/-1">
                     <label class="form-label">Firmenname *</label>
                     <input type="text" name="firmenname" class="erp-input" style="max-width:400px"
-                        value="<?= $s('firmenname', 'MEALANA KG') ?>" required>
+                        value="<?= $s('firmenname') ?>" required>
                 </div>
 
                 <div class="form-group" style="grid-column:1/3">

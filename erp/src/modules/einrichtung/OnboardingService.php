@@ -46,7 +46,7 @@ class OnboardingService
             'info' => trim($w('firmenname') . ($w('uid_nummer') ? ' · ' . $w('uid_nummer') : ($w('steuernummer') ? ' · St.Nr. ' . $w('steuernummer') : ''))),
             'link' => null];
         $s['superadmin'] = ['titel' => 'Superadmin', 'pflicht' => true, 'erledigt' => $flag('superadmin'),
-            'info' => 'eigener Name, E-Mail und Passwort', 'link' => null];
+            'info' => $flag('superadmin') ? 'eigenes Konto: ' . ($_SESSION['benutzer']['formularname'] ?? '') : 'eigener Name, E-Mail und Passwort', 'link' => null];
         $s['lizenz'] = ['titel' => 'Lizenz', 'pflicht' => true,
             'erledigt' => $lizenz['status'] === 'aktiv' || ($lizenz['status'] === 'keine' && $flag('lizenz')),
             'info' => match ($lizenz['status']) {
@@ -82,7 +82,7 @@ class OnboardingService
         if (Lizenz::hat('shop')) {
             $shops = $zahl("SELECT COUNT(*) FROM shops WHERE wc_url IS NOT NULL AND wc_url <> ''");
             $s['shop'] = ['titel' => 'Shop', 'pflicht' => false, 'erledigt' => $shops > 0,
-                'info' => $shops > 0 ? $shops . ' Kanal/Kanäle' : 'Kanal mit Adresse anlegen, Schlüssel später',
+                'info' => $shops > 0 ? $shops . ($shops > 1 ? ' Kanäle' : ' Kanal') : 'Kanal mit Adresse anlegen, Schlüssel später',
                 'link' => '/einstellungen/index.php?tab=kanaele'];
             $abholorte = $zahl("SELECT COUNT(*) FROM abholorte");
             $s['abholorte'] = ['titel' => 'Abholorte', 'pflicht' => false, 'erledigt' => $abholorte > 0 || $flag('abholorte'),
