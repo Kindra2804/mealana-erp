@@ -56,4 +56,37 @@ class Firmenlogo
         $mime = mime_content_type($datei) ?: 'image/png';
         return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($datei));
     }
+
+    /**
+     * Logo-Upload (Hauptlogo: $slug 'firma', Kanal: dessen Slug) nach public/img/logos/ — liefert den relativen Pfad.
+     * @throws RuntimeException mit verständlichem Grund (Größe, Format, Schreibrechte)
+     */
+    public static function hochladen(array $file, string $slug): string
+    {
+        if ($file['size'] > 2 * 1024 * 1024) {
+            throw new RuntimeException('Datei zu groß (max. 2 MB).');
+        }
+
+        $ext    = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $erlaubt = ['png', 'jpg', 'jpeg', 'webp'];
+        if (!in_array($ext, $erlaubt)) {
+            throw new RuntimeException('Nicht unterstütztes Dateiformat (' . $ext . ') — erlaubt: PNG, JPG, WEBP.');
+        }
+
+        $zielDir = __DIR__ . '/../../public/img/logos/';
+        if (!is_dir($zielDir) && !mkdir($zielDir, 0755, true) && !is_dir($zielDir)) {
+            throw new RuntimeException('Zielordner für Logos konnte nicht angelegt werden (Schreibrechte prüfen).');
+        }
+        if (!is_writable($zielDir)) {
+            throw new RuntimeException('Zielordner für Logos ist nicht beschreibbar (Schreibrechte prüfen).');
+        }
+
+        $dateiname = 'logo_' . preg_replace('/[^a-z0-9\-]/', '', $slug) . '.' . $ext;
+        $zielPfad  = $zielDir . $dateiname;
+        if (!move_uploaded_file($file['tmp_name'], $zielPfad)) {
+            throw new RuntimeException('Datei konnte nicht gespeichert werden (Schreibrechte prüfen).');
+        }
+
+        return 'img/logos/' . $dateiname;
+    }
 }

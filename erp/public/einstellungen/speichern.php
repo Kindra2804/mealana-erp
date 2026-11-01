@@ -66,31 +66,8 @@ function setSetting(PDO $db, string $key, string $value): void
  */
 function speichereShopLogo(array $file, string $slug): string
 {
-    if ($file['size'] > 2 * 1024 * 1024) {
-        throw new RuntimeException('Datei zu groß (max. 2 MB).');
-    }
-
-    $ext    = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $erlaubt = ['png', 'jpg', 'jpeg', 'webp'];
-    if (!in_array($ext, $erlaubt)) {
-        throw new RuntimeException('Nicht unterstütztes Dateiformat (' . $ext . ') — erlaubt: PNG, JPG, WEBP.');
-    }
-
-    $zielDir = __DIR__ . '/../img/logos/';
-    if (!is_dir($zielDir) && !mkdir($zielDir, 0755, true) && !is_dir($zielDir)) {
-        throw new RuntimeException('Zielordner für Logos konnte nicht angelegt werden (Schreibrechte prüfen).');
-    }
-    if (!is_writable($zielDir)) {
-        throw new RuntimeException('Zielordner für Logos ist nicht beschreibbar (Schreibrechte prüfen).');
-    }
-
-    $dateiname = 'logo_' . preg_replace('/[^a-z0-9\-]/', '', $slug) . '.' . $ext;
-    $zielPfad  = $zielDir . $dateiname;
-    if (!move_uploaded_file($file['tmp_name'], $zielPfad)) {
-        throw new RuntimeException('Datei konnte nicht gespeichert werden (Schreibrechte prüfen).');
-    }
-
-    return 'img/logos/' . $dateiname;
+    require_once __DIR__ . '/../../src/core/Firmenlogo.php';
+    return Firmenlogo::hochladen($file, $slug);
 }
 
 // ─── TAB: FIRMA ─────────────────────────────────────────────────────────────

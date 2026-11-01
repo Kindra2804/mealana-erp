@@ -241,6 +241,19 @@ class Auth
         }
         $verzeichnis = ltrim(str_replace('\\', '/', substr($scriptDir, strlen($publicRoot))), '/');
 
+        // Einrichtung: ohne die Pflicht-Schritte (Firma, Superadmin, Lizenz, Steuer, Lager) nur der Assistent
+        require_once __DIR__ . '/../modules/einrichtung/OnboardingService.php';
+        if (!OnboardingService::seiteFrei($verzeichnis, $datei) && !OnboardingService::pflichtErledigtGecacht()) {
+            if (Zugriffsregeln::istJsonEndpunkt($verzeichnis, $datei)) {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['erfolg' => false, 'fehler' => 'Die Einrichtung ist noch nicht abgeschlossen.']);
+                exit;
+            }
+            header('Location: ' . BASE_PATH . '/einrichtung/index.php');
+            exit;
+        }
+
         // Lizenz: Seite gehört zu einem nicht gekauften Modul (Lese-Seiten bleiben erreichbar)
         if (!Lizenz::seiteErlaubt($verzeichnis, $datei)) {
             $modul = Lizenz::modulFuerSeite($verzeichnis, $datei);
