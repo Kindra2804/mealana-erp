@@ -83,3 +83,6 @@ JTL-Import: sehr speziell, später entscheiden (evtl. zeitlich begrenzte Freisch
 - Dev: Generator aktiv; **Hauslizenz neu = L-100001-19 Ausgabe 1** (eingespielt, Datei in D:/ERP/lizenz_schluessel/ausgestellt/), alte L-2026-0001 gelöscht. → Für Live diese Datei verwenden.
 - Offen: Kunden-Paket/Deploy-Skript muss tools/ + src/modules/lizenzgenerator/ weglassen (beim Update-Mechanismus berücksichtigen).
 
+## ✅ Klicktest Lizenz (Jacky 2026-11-01): passt
+Lizenzdatei aus Testauftrag erstellt (L-100002-16 "Sabine Indra", nur Steuernummer, Kasse 2). Manipulationstest mit genau dieser Datei: Kassen/Name/Steuernummer/Wartung/Modul/Hauslizenz geändert → alle abgelehnt. Offen nur noch: Live-Deploy (Migr. 201–219 + Hauslizenz L-100001-19_A1.lic sofort einspielen, Generator auf Live NICHT einschalten) und privaten Schlüssel sichern.
+
