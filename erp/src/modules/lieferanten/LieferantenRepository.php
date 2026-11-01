@@ -63,6 +63,7 @@ class LieferantenRepository
                    l.website, l.email, l.telefon,
                    l.zahlungsziel_tage, l.skonto_prozent, l.skonto_tage,
                    l.mindestbestellwert, l.standard_lieferkosten, l.lieferzeit_tage, l.lieferbedingung,
+                   l.dropshipping_aktiv, l.dropship_pauschale,
                    l.iban, l.bic, l.bank_name, l.kontoinhaber,
                    l.interne_notizen, l.aktiv, l.erstellt_am, l.geaendert_am
             FROM lieferanten l
@@ -111,6 +112,7 @@ class LieferantenRepository
                  website, email, telefon,
                  zahlungsziel_tage, skonto_prozent, skonto_tage,
                  mindestbestellwert, standard_lieferkosten, lieferzeit_tage, lieferbedingung,
+                 dropshipping_aktiv, dropship_pauschale,
                  iban, bic, bank_name, kontoinhaber,
                  interne_notizen, aktiv)
             VALUES
@@ -119,6 +121,7 @@ class LieferantenRepository
                  :website, :email, :telefon,
                  :zahlungsziel_tage, :skonto_prozent, :skonto_tage,
                  :mindestbestellwert, :standard_lieferkosten, :lieferzeit_tage, :lieferbedingung,
+                 :dropshipping_aktiv, :dropship_pauschale,
                  :iban, :bic, :bank_name, :kontoinhaber,
                  :interne_notizen, :aktiv)
         ");
@@ -151,6 +154,8 @@ class LieferantenRepository
                 standard_lieferkosten = :standard_lieferkosten,
                 lieferzeit_tage       = :lieferzeit_tage,
                 lieferbedingung       = :lieferbedingung,
+                dropshipping_aktiv    = :dropshipping_aktiv,
+                dropship_pauschale    = :dropship_pauschale,
                 iban                  = :iban,
                 bic                   = :bic,
                 bank_name             = :bank_name,
@@ -211,6 +216,8 @@ class LieferantenRepository
             'standard_lieferkosten' => $n('standard_lieferkosten'),
             'lieferzeit_tage'       => $n('lieferzeit_tage'),
             'lieferbedingung'       => $n('lieferbedingung'),
+            'dropshipping_aktiv'    => !empty($data['dropshipping_aktiv']) ? 1 : 0,
+            'dropship_pauschale'    => $n('dropship_pauschale'),
             'iban'                  => $n('iban'),
             'bic'                   => $n('bic'),
             'bank_name'             => $n('bank_name'),

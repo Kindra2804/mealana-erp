@@ -198,6 +198,25 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <div class="card" style="margin-bottom:12px">
+    <h3 style="margin:0 0 6px">Dropshipping</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:#666">Lieferant schickt direkt an den Kunden (Strecke). Gilt für alle Artikel dieses Lieferanten — einzelne Artikel können in der Artikel-Lieferanten-Zuordnung ausgenommen werden.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px 16px;align-items:end">
+        <div>
+            <input type="hidden" name="dropshipping_aktiv" value="0">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+                <input type="checkbox" name="dropshipping_aktiv" value="1" <?= !empty($formdata['dropshipping_aktiv']) ? 'checked' : '' ?>>
+                Dropshipping möglich
+            </label>
+        </div>
+        <div>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Pauschale pro Lieferung (€ netto)</label>
+            <input type="number" name="dropship_pauschale" class="erp-input" style="width:100%" min="0" step="0.01" placeholder="z.B. 11,00"
+                   value="<?= htmlspecialchars($formdata['dropship_pauschale'] ?? '') ?>">
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:12px">
     <h3 style="margin:0 0 14px">Bankverbindung</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px 16px">
         <div>

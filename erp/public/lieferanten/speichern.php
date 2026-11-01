@@ -15,6 +15,7 @@ $lieferantenData = array_intersect_key($data, array_flip([
     'website', 'email', 'telefon',
     'zahlungsziel_tage', 'skonto_prozent', 'skonto_tage',
     'mindestbestellwert', 'standard_lieferkosten', 'lieferzeit_tage', 'lieferbedingung',
+    'dropshipping_aktiv', 'dropship_pauschale',
     'iban', 'bic', 'bank_name', 'kontoinhaber',
     'interne_notizen', 'aktiv',
 ]));

@@ -59,6 +59,8 @@ class BestellungRepository
                 b.rechnung_nummer,
                 b.rechnung_betrag,
                 b.notiz,
+                b.typ,
+                b.auftrag_id,
                 l.name AS lieferant_name,
                 COUNT(bp.id)                                                   AS anzahl_positionen,
                 SUM(bp.menge_bestellt * COALESCE(bp.ek_preis, 0))              AS gesamt_ek,
@@ -70,7 +72,7 @@ class BestellungRepository
             WHERE " . implode(' AND ', $where) . "
             GROUP BY b.id, b.status, b.bestelldatum, b.erwartet_am, b.lieferzeit_text,
                      b.ab_nummer, b.ls_nummer, b.rechnung_nummer, b.rechnung_betrag, b.notiz,
-                     l.name
+                     b.typ, b.auftrag_id, l.name
             ORDER BY b.bestelldatum DESC
         ");
         $stmt->execute($params);

@@ -35,7 +35,8 @@ $statusLabels = [
 ];
 $sl = $statusLabels[$bestellung['status']] ?? ['label' => $bestellung['status'], 'class' => ''];
 
-$kannWareneingang = in_array($bestellung['status'], ['offen', 'teilgeliefert']);
+$istDropship      = ($bestellung['typ'] ?? 'normal') === 'dropshipping';
+$kannWareneingang = in_array($bestellung['status'], ['offen', 'teilgeliefert']) && !$istDropship;
 $istAbgeschlossen = in_array($bestellung['status'], ['erledigt', 'storniert']);
 
 // Aktivitäten
@@ -53,7 +54,10 @@ $aktivitaeten = $stmt->fetchAll();
 $pageTitle    = $nr;
 $activeModule = 'einkauf';
 $actionBarContent = '<a href="' . BASE_PATH . '/bestellungen/liste.php" class="btn btn-secondary btn-sm">← Liste</a>';
-if (!$istAbgeschlossen) {
+// Dropship-Bestellung: Versand + Storno laufen über den Auftrag (Reservierungen, Rechnung an den Kunden)
+if ($istDropship) {
+    $actionBarContent .= ' <a href="' . BASE_PATH . '/auftraege/detail.php?id=' . (int)$bestellung['auftrag_id'] . '" class="btn btn-primary btn-sm">Zum Auftrag →</a>';
+} elseif (!$istAbgeschlossen) {
     $actionBarContent .= ' <a href="' . BASE_PATH . '/bestellungen/bearbeiten.php?id=' . $id . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
     $actionBarContent .= ' <a href="' . BASE_PATH . '/wareneingang/detail.php?bestellung_id=' . $id . '" class="btn btn-primary btn-sm">Wareneingang →</a>';
     $actionBarContent .= '<div class="actionbar-sep"></div><div class="actionbar-right"><form method="post" action="' . BASE_PATH . '/bestellungen/stornieren.php" onsubmit="return confirm(\'Bestellung stornieren?\')"><input type="hidden" name="id" value="' . $id . '"><button type="submit" class="btn btn-danger btn-sm">Stornieren</button></form></div>';
@@ -99,6 +103,24 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
     <?php endif; ?>
 </div>
 
+<?php if ($istDropship):
+    $dsAuftragNr = $db->prepare("SELECT auftrag_nr FROM auftraege WHERE id = ?");
+    $dsAuftragNr->execute([(int)$bestellung['auftrag_id']]);
+    $dsAuftragNr = $dsAuftragNr->fetchColumn();
+    $dsPauschale = (float)($bestellung['dropship_pauschale'] ?? 0); ?>
+<div class="card" style="margin-bottom:12px;border-left:3px solid #2563eb;font-size:13px">
+    <strong>Dropshipping</strong> für Auftrag
+    <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= (int)$bestellung['auftrag_id'] ?>"><?= htmlspecialchars($dsAuftragNr ?: '?') ?></a>
+    — der Lieferant schickt direkt an den Kunden, kein Wareneingang.
+    Bestellt im Händlerportal; „Versendet + Tracking“ und Storno im Auftrag.
+    <div style="margin-top:6px">
+        Erwartete Lieferanten-Rechnung: EK € <?= number_format($gesamtEk, 2, ',', '.') ?>
+        + Pauschale € <?= number_format($dsPauschale, 2, ',', '.') ?>
+        = <strong>€ <?= number_format($gesamtEk + $dsPauschale, 2, ',', '.') ?> netto</strong>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Positionen -->
 <div class="card" style="margin-bottom:12px">
     <strong style="font-size:13px;display:block;margin-bottom:10px">Positionen</strong>
@@ -135,7 +157,8 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
     </table>
 </div>
 
-<!-- Bestellung an Lieferant -->
+<!-- Bestellung an Lieferant (nicht bei Dropshipping — dort wird im Portal bestellt) -->
+<?php if (!$istDropship): ?>
 <div class="card" style="margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <strong style="font-size:13px">Bestellung an Lieferant</strong>
@@ -172,6 +195,8 @@ $gesamtEk = array_sum(array_map(fn($p) => $p['menge_bestellt'] * ($p['ek_preis']
         </table>
     <?php endif; ?>
 </div>
+
+<?php endif; ?>
 
 <!-- Rechnung -->
 <div class="card" style="margin-bottom:12px">

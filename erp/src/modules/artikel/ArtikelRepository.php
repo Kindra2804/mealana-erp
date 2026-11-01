@@ -1269,8 +1269,11 @@ class ArtikelRepository
             al.lieferzeit_tage,
             al.mindestabnahme,
             al.standard_lieferant,
+            al.brutto_ek,
+            al.dropshipping,
             al.aktiv,
-            l.name AS lieferant_name
+            l.name AS lieferant_name,
+            l.dropshipping_aktiv AS lieferant_dropshipping
         FROM artikel_lieferanten al
         JOIN lieferanten l ON l.id = al.lieferant_id
         WHERE al.artikel_id = :artikel_id

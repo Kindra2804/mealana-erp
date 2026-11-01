@@ -157,6 +157,10 @@ require_once __DIR__ . '/../shell_top.php';
                       JOIN picklisten pl ON pl.id = pa.pickliste_id
                       WHERE pl.status IN ('offen','gedruckt')
                   )
+                  AND a.id NOT IN (   -- Dropshipping: Lieferant schickt direkt
+                      SELECT auftrag_id FROM bestellungen
+                      WHERE typ = 'dropshipping' AND status <> 'storniert' AND auftrag_id IS NOT NULL
+                  )
                 ORDER BY erstellt_am ASC
                 LIMIT 10
             ")->fetchAll(PDO::FETCH_ASSOC);

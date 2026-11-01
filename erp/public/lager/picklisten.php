@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/dropshipping/DropshippingService.php';
 
 $db = Database::getInstance();
 
@@ -21,6 +22,10 @@ $auftraegeRaw = $db->query("
           SELECT pa.auftrag_id FROM pickliste_auftraege pa
           JOIN picklisten pl ON pl.id = pa.pickliste_id
           WHERE pl.status IN ('offen','gedruckt')
+      )
+      AND a.id NOT IN (   -- Dropshipping: Lieferant schickt direkt, nichts zu packen
+          SELECT auftrag_id FROM bestellungen
+          WHERE typ = 'dropshipping' AND status <> 'storniert' AND auftrag_id IS NOT NULL
       )
     ORDER BY a.erstellt_am ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -46,6 +51,9 @@ foreach ($auftraegeRaw as $a) {
     if (empty($a['positionen'])) continue;
     $auftraege[]     = $a;
 }
+
+// Hinweis "Strecke möglich": ganzer Auftrag per Dropshipping lieferbar (nur Info, Entscheidung im Auftrag)
+$streckeMoeglich = array_flip((new DropshippingService())->streckeBereitIds());
 
 // ── Lagerbestand laden ──────────────────────────────────────────────────────
 $bestand = $db->query("
@@ -245,6 +253,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php endif; ?>
                         <?php if ($a['lieferart'] === 'abholung'): ?>
                             <span class="pl-badge" style="background:#f1f5f9;color:#475569">🏪 Abholung</span>
+                        <?php endif; ?>
+                        <?php if (isset($streckeMoeglich[$a['id']])): ?>
+                            <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $a['id'] ?>" target="_blank"
+                               class="pl-badge" style="background:#dbeafe;color:#1e40af;text-decoration:none"
+                               title="Ganzer Auftrag kann per Dropshipping vom Lieferanten direkt verschickt werden — im Auftrag bestellen"
+                               onclick="event.stopPropagation()">Strecke möglich</a>
                         <?php endif; ?>
                     </div>
                     <div style="font-size:12px;color:var(--color-text-muted);margin-top:3px">

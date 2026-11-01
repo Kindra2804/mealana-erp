@@ -60,7 +60,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $offen   = (float)$b['gesamt_bestellt'] - (float)$b['gesamt_eingegangen'];
                 ?>
                     <tr>
-                        <td><a href="<?= BASE_PATH ?>/bestellungen/detail.php?id=<?= $b['id'] ?>" style="font-weight:600"><?= htmlspecialchars($nr) ?></a></td>
+                        <td><a href="<?= BASE_PATH ?>/bestellungen/detail.php?id=<?= $b['id'] ?>" style="font-weight:600"><?= htmlspecialchars($nr) ?></a>
+                            <?php if ($b['typ'] === 'dropshipping'): ?><span class="chip chip-auslauf" style="margin-left:4px" title="Lieferant schickt direkt an den Kunden">Strecke</span><?php endif; ?></td>
                         <td><?= htmlspecialchars($b['lieferant_name']) ?></td>
                         <td><?= date('d.m.Y', strtotime($b['bestelldatum'])) ?></td>
                         <td><?= $b['erwartet_am'] ? date('d.m.Y', strtotime($b['erwartet_am'])) : ($b['lieferzeit_text'] ? htmlspecialchars($b['lieferzeit_text']) : '—') ?></td>
@@ -69,7 +70,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <td><span class="chip <?= $sl['class'] ?>"><?= $sl['label'] ?></span></td>
                         <td>
                             <a href="<?= BASE_PATH ?>/bestellungen/detail.php?id=<?= $b['id'] ?>" class="btn btn-secondary btn-sm">Detail</a>
-                            <?php if (in_array($b['status'], ['offen','teilgeliefert'])): ?>
+                            <?php if (in_array($b['status'], ['offen','teilgeliefert']) && $b['typ'] !== 'dropshipping'): ?>
                                 <a href="<?= BASE_PATH ?>/wareneingang/detail.php?bestellung_id=<?= $b['id'] ?>" class="btn btn-primary btn-sm">Wareneingang</a>
                             <?php endif; ?>
                         </td>

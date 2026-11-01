@@ -82,7 +82,7 @@ if ($saldoAusBelegen) {
 }
 
 $lieferungen = $db->prepare("
-    SELECT al.id, al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung,
+    SELECT al.id, al.tracking_nr, al.versanddienstleister, al.versand_datum, al.ist_teillieferung, al.bestellung_id,
            b.formularname AS benutzer
     FROM auftrag_lieferungen al
     LEFT JOIN benutzer b ON b.id = al.benutzer_id
@@ -517,6 +517,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <?php else: ?>
                                 <span style="font-size:10px;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:10px">Vollständig</span>
                             <?php endif; ?>
+                            <?php if (!empty($lf['bestellung_id'])): ?>
+                                <span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:10px" title="Lieferant hat direkt an den Kunden geschickt">Strecke</span>
+                            <?php endif; ?>
                         </td>
                         <td style="padding:5px 0;font-size:11px;color:var(--color-text-muted)">
                             <?php foreach (($lieferungPositionenNachLieferung[$lf['id']] ?? []) as $lp): ?>
@@ -576,6 +579,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </div>
     <?php endif; ?>
 </div>
+
+<?php // Dropshipping (Strecke) — Karte erscheint nur, wenn möglich oder schon bestellt
+require __DIR__ . '/_dropshipping_karte.php'; ?>
 
 <!-- Positionen -->
 <div class="card" style="margin-bottom:12px">

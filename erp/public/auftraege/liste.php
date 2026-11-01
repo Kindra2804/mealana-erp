@@ -66,7 +66,14 @@ switch ($zeitraum) {
 $jahrVon = (int)date('Y', strtotime((Database::getInstance()->query("SELECT MIN(erstellt_am) FROM auftraege")->fetchColumn()) ?: $heute));
 $jahrBis = (int)date('Y');
 
-$auftraege = $service->getAll($filterZahlung, $filterLieferung, $filterKanal, $suche, $mitAbgeschlossenen, $von, $bis, $belegFilter);
+// Dropshipping-Filter sind keine echten Lieferstatus -> Auftrags-IDs vorab ermitteln
+$nurIds = null;
+if (in_array($filterLieferung, ['strecke_bereit', 'strecke_bestellt'], true)) {
+    require_once __DIR__ . '/../../src/modules/dropshipping/DropshippingService.php';
+    $dsService = new DropshippingService();
+    $nurIds = $filterLieferung === 'strecke_bereit' ? $dsService->streckeBereitIds() : $dsService->streckeBestelltIds();
+}
+$auftraege = $service->getAll($filterZahlung, $nurIds === null ? $filterLieferung : '', $filterKanal, $suche, $mitAbgeschlossenen, $von, $bis, $belegFilter, $nurIds);
 // JTL-Archiv hat keine Belege im ERP -> nicht abfragen (bei "Alle Zeiträume" ~39.000 Aufträge)
 $belege    = $service->getBelegeFuerAuftraege(array_column(array_filter($auftraege, fn($a) => $a['kanal'] !== 'jtl_archiv'), 'id'));
 
@@ -159,6 +166,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <option value="retoure_offen" <?= $filterLieferung === 'retoure_offen'   ? 'selected' : '' ?>>Retoure offen</option>
         <option value="kommissioniert" <?= $filterLieferung === 'kommissioniert' ? 'selected' : '' ?>>Kommissioniert</option>
         <option value="abholbereit" <?= $filterLieferung === 'abholbereit'    ? 'selected' : '' ?>>Abholbereit</option>
+        <option value="strecke_bereit" <?= $filterLieferung === 'strecke_bereit' ? 'selected' : '' ?>>Dropshipping: Strecke bereit</option>
+        <option value="strecke_bestellt" <?= $filterLieferung === 'strecke_bestellt' ? 'selected' : '' ?>>Dropshipping: bestellt, Tracking offen</option>
     </select>
     <select class="erp-select" style="font-size:13px" id="filter-kanal">
         <option value="">Alle Kanäle</option>

@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../../src/modules/auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../../../src/modules/dokumente/DokumentService.php';
 require_once __DIR__ . '/../../../src/modules/dokumente/RechnungMailService.php';
 require_once __DIR__ . '/../../../src/modules/auftraege/AuftragAbschluss.php';
+require_once __DIR__ . '/../../../src/modules/auftraege/VersandMail.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
@@ -376,52 +377,7 @@ AuftragAbschluss::pruefe($auftragId, $benutzerId);
 
 // ─── Versandmail ──────────────────────────────────────────────────────────────
 if ($email && !$isAbholung) {
-    $trackingUrlBase = [
-        'post_at' => 'https://www.post.at/sv/sendungsdetails?snr=',
-        'dhl'     => 'https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=',
-        'dpd'     => 'https://tracking.dpd.de/status/de_DE/parcel/',
-        'gls'     => 'https://gls-group.eu/track/',
-        'manuell' => '',
-    ];
-    $dlLabels = [
-        'post_at' => 'Österreichische Post',
-        'dhl'     => 'DHL',
-        'dpd'     => 'DPD',
-        'gls'     => 'GLS',
-        'manuell' => 'Paketdienst',
-    ];
-    $baseUrl     = $trackingUrlBase[$versanddienstleister] ?? '';
-    $trackingUrl = $baseUrl ? $baseUrl . urlencode($tracking) : '';
-    $betreff     = $istTeillieferung
-        ? 'Teillieferung zu Auftrag ' . $auftrag['auftrag_nr'] . ' versendet'
-        : 'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde versendet';
-    try {
-        $mailer = new Mailer();
-        $mailer->sendeTemplate(
-            empfaenger:   $email,
-            betreff:      $betreff,
-            templatePfad: 'mails/versandbestaetigung.html.twig',
-            variablen: [
-                'logo_base64'               => $mailer->ladeShopLogo((int)($auftrag['shop_id'] ?? 1)),
-                'anrede'                    => $anrede,
-                'nachname'                  => $nachname,
-                'kunde_name'                => $name,
-                'auftrag_nummer'            => $auftrag['auftrag_nr'],
-                'tracking'                  => $tracking,
-                'tracking_url'              => $trackingUrl,
-                'versanddienstleister_label'=> $dlLabels[$versanddienstleister] ?? $versanddienstleister,
-                'ist_teillieferung'         => $istTeillieferung,
-                'positionen'                => BelegBilder::anreichern($geliefertePositionen, 'mail_versand'),
-                'mit_bild'                  => BelegBilder::aktiv('mail_versand'),
-                'lieferadresse'             => $lieferAdr,
-                'firma_email'               => $firma['mail_from_address'] ?? '',
-            ],
-            anhaenge: $anhaenge,
-        );
-    } catch (Throwable $e) {
-        error_log('[Versandmail] Fehler: ' . $e->getMessage());
-    }
-
+    VersandMail::sende($auftrag, $tracking, $versanddienstleister, $istTeillieferung, $geliefertePositionen, $anhaenge);
 }
 
 // ─── Rechnung per Mail nachschicken — ohne E-Mail-Adresse: zum Ausdrucken anbieten ──

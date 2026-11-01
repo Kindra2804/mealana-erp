@@ -38,9 +38,10 @@ class AuftragService
         bool   $mitAbgeschlossenen = false,
         ?string $von = null,
         ?string $bis = null,
-        string $belegFilter = ''
+        string $belegFilter = '',
+        ?array $nurIds = null
     ): array {
-        return $this->repo->findAll($zahlungsstatus, $lieferstatus, $kanal, $suche, $mitAbgeschlossenen, $von, $bis, $belegFilter);
+        return $this->repo->findAll($zahlungsstatus, $lieferstatus, $kanal, $suche, $mitAbgeschlossenen, $von, $bis, $belegFilter, $nurIds);
     }
 
     /** Belege (AB/LS/RG/GS/AZ/Bon) + "geliefert, nicht verrechnet" für die Auftragsliste. */

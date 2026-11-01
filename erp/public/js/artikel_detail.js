@@ -256,12 +256,14 @@ function liefModalOeffnen(alId) {
         document.getElementById('lief-lz').value = tr.dataset.lz;
         document.getElementById('lief-mba').value = tr.dataset.mba;
         document.getElementById('lief-standard').checked = tr.dataset.standard;
+        document.getElementById('lief-dropship').value = tr.dataset.dropship;
     } else {
         ['lief-lieferant-id', 'lief-artnr', 'lief-ek', 'lief-brutto-ek', 'lief-waehrung',
             'lief-vpe', 'lief-vpe-ean', 'lief-lz', 'lief-mba'].forEach(id => {
                 document.getElementById(id).value = '';
             });
         document.getElementById('lief-standard').checked = false;
+        document.getElementById('lief-dropship').value = '';
     }
     document.getElementById('lief-backdrop').style.display = 'flex';
 }

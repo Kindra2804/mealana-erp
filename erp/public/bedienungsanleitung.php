@@ -203,6 +203,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#verkauf">Aufträge & Verkauf</a>
             <a href="#mahnwesen" class="sub">↳ Mahnwesen</a>
             <a href="#haendler" class="sub">↳ Händler-Außenlager</a>
+            <a href="#dropshipping" class="sub">↳ Dropshipping (Strecke)</a>
             <a href="#kunden">Kunden</a>
             <a href="#partner">Partner & Mietfächer</a>
             <a href="#partner-lager" class="sub">↳ Partner-Lager & Partnerware</a>
@@ -484,6 +485,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>🧾 Verkauf melden</strong> — „was verkauft wurde“ oder „was noch da ist“; Preise korrigierbar, Schwund-Spalte wird nicht verrechnet → Auftrag + Rechnung (netto + USt), erst dann Lagerabbuchung.</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>↩ Rücknahme</strong> (HR) zurück ins eigene Lager, <strong>⚠ Schwund</strong> (HS, Grund Pflicht).</div></div>
             <p>Verschiedene Lieferpreise: die älteste Lieferung wird zuerst verrechnet. Zahlung, Mahnung und Export laufen über den normalen Auftrag.</p>
+
+            <h3 id="dropshipping">Dropshipping (Strecke) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Der Lieferant (derzeit nur <strong>Lang Yarns</strong>) schickt direkt an den Kunden, ohne Packplatz und ohne Lagerbuchung. <strong>Nur wenn der ganze Auftrag per Strecke geht</strong>, sonst normal bestellen und gemeinsam verschicken. Nicht bei Abholung, Nachnahme oder Kassen-Aufträgen.</p>
+            <p>Einrichten: Lieferant bearbeiten → Karte <strong>Dropshipping</strong> (Haken + Pauschale pro Lieferung, derzeit 11 € netto). Einzelne Artikel ausnehmen: Artikel → Lieferanten → ✏️ → „Dropshipping (Strecke)“.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Auftragsliste → Lieferung <strong>Dropshipping: Strecke bereit</strong> (bezahlt oder Zahlungsart Rechnung) → Auftrag öffnen → <strong>Per Dropshipping bestellen</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Im <strong>Lang-Händlerportal</strong> bestellen: Adresse + Artikel aus der Karte kopieren (⧉). Als E-Mail <strong>unsere</strong> Adresse angeben, dann kommt die Versandmail zu uns.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Versandmail von Lang da → Filter <strong>Dropshipping: bestellt, Tracking offen</strong> → Auftrag → Tracking eintragen → <strong>Versendet + Tracking</strong>. Rechnung + Versandmail gehen an den Kunden.</div></div>
+            <div class="ba-hint">💡 Lang kann nicht liefern → in der Karte <strong>Dropship-Bestellung stornieren</strong>, dann läuft der Auftrag normal über den Packplatz. Lang-Rechnung (IGL, 10 Tage netto) = EK + Pauschale, in der Strecke-Bestellung unter Einkauf erfassen. Retouren kommen zu uns (normaler Ablauf). In der Pickliste zeigt das Badge <strong>Strecke möglich</strong> nur einen Hinweis: lagernde Ware normal packen, Exoten über das Badge im Auftrag bestellen.</div>
 
             <h2 id="kunden">Kunden <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Privat- und Geschäftskunden verwalten. Datenschutz-sensible Felder sind AES-256-verschlüsselt gespeichert (DSGVO-konform).</p>

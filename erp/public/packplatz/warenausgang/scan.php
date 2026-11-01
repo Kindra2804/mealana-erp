@@ -69,6 +69,14 @@ if ($modus === 'pickliste') {
         header('Location: index.php');
         exit;
     }
+    // Dropshipping: der Lieferant schickt direkt an den Kunden — hier nichts zu packen
+    $dsStmt = $db->prepare("SELECT 1 FROM bestellungen WHERE auftrag_id = ? AND typ = 'dropshipping' AND status <> 'storniert' LIMIT 1");
+    $dsStmt->execute([$aId]);
+    if ($dsStmt->fetchColumn()) {
+        $_SESSION['fehler'] = "Auftrag {$auftrag['auftrag_nr']} geht per Dropshipping — der Lieferant verschickt, Versand im Auftrag eintragen.";
+        header('Location: index.php');
+        exit;
+    }
     $auftraege = [$auftrag];
 
     // Pickliste automatisch erkennen, auch wenn der Auftrag über "Direkt verpacken"

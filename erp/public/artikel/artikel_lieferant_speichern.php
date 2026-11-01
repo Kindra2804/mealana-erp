@@ -20,6 +20,8 @@ $vpe_ean = strlen($vpe_ean) > 0 ? $vpe_ean : null;
 $lieferzeit_tage = (int) ($_POST['lieferzeit_tage'] ?? 0);
 $mindestabnahme = (float) ($_POST['mindestabnahme'] ?? 0);
 $standard_lieferant = (int) ($_POST['standard_lieferant'] ?? 0);
+// Dropshipping: '' = wie beim Lieferanten (NULL), sonst 0/1 als Ausnahme
+$dropshipping = ($_POST['dropshipping'] ?? '') === '' ? null : (int) $_POST['dropshipping'];
 // ... weitere Felder einlesen
 
 if (!$artikel_id || !$lieferant_id) {
@@ -41,7 +43,8 @@ if ($al_id) {
             vpe_ean = :vpe_ean,
             lieferzeit_tage = :lieferzeit_tage,
             mindestabnahme = :mindestabnahme,
-            standard_lieferant = :standard_lieferant
+            standard_lieferant = :standard_lieferant,
+            dropshipping = :dropshipping
         WHERE id = :al_id
     ");
 
@@ -57,6 +60,7 @@ if ($al_id) {
         'lieferzeit_tage' => $lieferzeit_tage,
         'mindestabnahme' => $mindestabnahme,
         'standard_lieferant' => $standard_lieferant,
+        'dropshipping' => $dropshipping,
         'al_id' => $al_id
     ]);
     Logger::log('artikel.lieferant.bearbeiten', 'artikel_lieferanten', $al_id, ['artikel_id' => $artikel_id, 'lieferant_id' => $lieferant_id]);
@@ -74,7 +78,8 @@ if ($al_id) {
         vpe_ean,
         lieferzeit_tage,
         mindestabnahme,
-        standard_lieferant
+        standard_lieferant,
+        dropshipping
         ) VALUES (
         :artikel_id,
         :lieferant_id,
@@ -86,7 +91,8 @@ if ($al_id) {
         :vpe_ean,
         :lieferzeit_tage,
         :mindestabnahme,
-        :standard_lieferant)
+        :standard_lieferant,
+        :dropshipping)
     ");
 
     $stmt->execute([
@@ -101,6 +107,7 @@ if ($al_id) {
         'lieferzeit_tage' => $lieferzeit_tage,
         'mindestabnahme' => $mindestabnahme,
         'standard_lieferant' => $standard_lieferant,
+        'dropshipping' => $dropshipping,
     ]);
     Logger::log('artikel.lieferant.anlegen', 'artikel_lieferanten', $artikel_id, ['lieferant_id' => $lieferant_id]);
 }

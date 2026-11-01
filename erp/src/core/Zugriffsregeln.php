@@ -295,6 +295,7 @@ final class Zugriffsregeln
             'mahnung_manuell_ajax.php'  => 'auftraege.bearbeiten',
             'mahnwesen.php'             => 'auftraege.anzeigen',
             'mahnwesen_aktion.php'      => 'auftraege.bearbeiten',
+            'dropshipping_aktion.php'   => 'auftraege.bearbeiten',
         ],
 
         // === Dokumentenarchiv (nur Lesen, reine Übersicht) ===

@@ -1826,6 +1826,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <th>LZ</th>
                             <th>MindBestMg.</th>
                             <th>Std.</th>
+                            <th title="Dropshipping (Strecke): Lieferant schickt direkt an den Kunden">Strecke</th>
                             <th>AKTION</th>
                         </tr>
                     </thead>
@@ -1842,6 +1843,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 data-lz="<?= $l['lieferzeit_tage'] ?? '' ?>"
                                 data-mba="<?= $l['mindestabnahme'] ?? '' ?>"
                                 data-standard="<?= $l['standard_lieferant'] ? '1' : '' ?>"
+                                data-dropship="<?= $l['dropshipping'] === null ? '' : (int)$l['dropshipping'] ?>"
                                 <?= !$l['aktiv'] ? 'class="row-inaktiv"' : '' ?>>
                                 <td><?= htmlspecialchars($l['lieferant_name']) ?></td>
                                 <td><?= htmlspecialchars($l['artikelnummer_lieferant'] ?? '–') ?></td>
@@ -1853,6 +1855,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <td><?= $l['lieferzeit_tage'] ?? '-' ?></td>
                                 <td><?= $l['mindestabnahme'] ?? '-' ?></td>
                                 <td><?= $l['standard_lieferant'] ? '⭐' : '' ?></td>
+                                <td><?php
+                                    $dsEffektiv = $l['dropshipping'] === null ? (int)$l['lieferant_dropshipping'] : (int)$l['dropshipping'];
+                                    echo $dsEffektiv ? 'ja' : '–';
+                                    if ($l['dropshipping'] !== null && (int)$l['dropshipping'] !== (int)$l['lieferant_dropshipping']) {
+                                        echo ' <span style="font-size:11px;color:var(--color-text-muted)">(abweichend)</span>';
+                                    }
+                                ?></td>
                                 <td class="aktionen">
                                     <button class="btn btn-secondary btn-sm" onclick="liefModalOeffnen(<?= $l['id'] ?>)">✏️</button>
                                     <a href="delete.php?id=<?= $l['id'] ?>"
@@ -2066,6 +2075,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div class="form-row">
                     <label class="form-label">Ist Standardlieferant</label>
                     <input type="checkbox" name="standard_lieferant" id="lief-standard" value="1">
+                </div>
+                <div class="form-row">
+                    <label class="form-label">Dropshipping (Strecke)</label>
+                    <select class="erp-select" style="width:100%" name="dropshipping" id="lief-dropship">
+                        <option value="">wie beim Lieferanten</option>
+                        <option value="1">ja</option>
+                        <option value="0">nein – ausgenommen</option>
+                    </select>
                 </div>
                 <div style="display:flex; gap:var(--space-sm); justify-content:flex-end; margin-top:var(--space-sm)">
                     <button type="button" class="btn btn-primary btn-sm" onclick="liefSpeichern()">Übernehmen</button>

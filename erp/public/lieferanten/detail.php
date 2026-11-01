@@ -218,6 +218,14 @@ foreach ($tabs as $key => $label):
                 € <?= number_format($guthabenSaldo, 2, ',', '.') ?>
             </div>
         </div>
+        <div>
+            <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;margin-bottom:2px">Dropshipping</div>
+            <div>
+                <?php if (!empty($lieferant['dropshipping_aktiv'])): ?>
+                    Ja<?= $lieferant['dropship_pauschale'] !== null ? ' · Pauschale € ' . number_format((float)$lieferant['dropship_pauschale'], 2, ',', '.') . ' netto/Lieferung' : '' ?>
+                <?php else: ?>–<?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
 

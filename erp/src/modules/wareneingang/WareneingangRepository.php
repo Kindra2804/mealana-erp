@@ -47,6 +47,7 @@ class WareneingangRepository
             JOIN  lieferanten l ON l.id = b.lieferant_id
             LEFT JOIN bestellung_positionen bp ON bp.bestellung_id = b.id AND bp.gestrichen = 0
             WHERE b.status IN ('offen', 'teilgeliefert')
+              AND b.typ = 'normal'   -- Dropship-Bestellungen kommen nie ins Lager
             GROUP BY b.id, b.status, b.bestelldatum, b.erwartet_am, l.name
             ORDER BY b.bestelldatum ASC
         ");
@@ -105,6 +106,7 @@ class WareneingangRepository
             JOIN  bestellung_positionen bp
                 ON bp.bestellung_id = b.id AND bp.artikel_id = :artikel_id
             WHERE b.status IN ('offen', 'teilgeliefert')
+              AND b.typ = 'normal'   -- Dropship-Bestellungen kommen nie ins Lager
               AND bp.gestrichen = 0
               AND bp.menge_eingegangen < bp.menge_bestellt
             ORDER BY b.bestelldatum ASC

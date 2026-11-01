@@ -1,6 +1,6 @@
 ---
 name: project-dropshipping
-description: "Dropshipping-Modul (eigenes Lizenzmodul 190 €, entschieden 2026-10-30) — Referenz-Check + Konzeptentwurf 2026-10-31, Bau nächste Session; offene Fragen an Jacky unten"
+description: "Dropshipping-Modul (Lizenzmodul 190 €) — GEBAUT 2026-11-01 (Migr. 215), Klicktest Jacky offen, nicht committed; Plan/Entscheidungen unten"
 metadata:
   node_type: memory
   type: project
@@ -10,7 +10,19 @@ metadata:
 
 Entschieden im Modulgespräch Jacky + Babsi am 2026-10-30: Dropshipping (Lieferant liefert direkt an den Endkunden, Streckengeschäft) wird ein **eigenes Lizenzmodul um 190 €**, siehe [[project-lizenzierung-preise]]. Vorgabe Jacky: JTL-Ablauf als Basis, gerne verbessern.
 
-Stand 2026-10-31: Referenz-Check + Konzeptentwurf gemacht, **noch nichts gebaut**. Bau = nächste Session (Jacky 2026-10-31). Reihenfolge danach: Lizenzserver → 1.0-Check, siehe [[project-roadmap-reihenfolge]].
+## ✅ Stand 2026-11-01: gebaut, Klicktest offen
+- Migration 215: `lieferanten.dropshipping_aktiv` + `dropship_pauschale`; `artikel_lieferanten.dropshipping` (NULL=wie Lieferant, 0=ausgenommen, 1=ja — Jacky weiß nicht, ob alle Lang-Artikel gehen, deshalb beides); `bestellungen.typ/auftrag_id/lieferadresse_snapshot/dropship_pauschale`; `auftrag_lieferungen.bestellung_id`. Lieferant 36 "Lang Garn & Wolle GmbH" auf REO-Daten des Herstellers Lang Yarns korrigiert (Korschenbroich DE, eu_igl, 10 Tage) — auch in der Migration, Live bekommt es beim Deploy
+- Migration 214 war auf Dev eingespielt, aber nicht in schema_migrations vermerkt → nachgetragen
+- Code: `src/modules/dropshipping/DropshippingService.php` (pruefen/bestellen/stornieren/versendetMelden/streckeBereitIds), Karte `public/auftraege/_dropshipping_karte.php` + `dropshipping_aktion.php` + `js/dropshipping.js`; Versandmail als `src/modules/auftraege/VersandMail.php` herausgelöst (Packplatz nutzt sie jetzt auch)
+- Auftragsliste Filter Lieferung: "Strecke bereit" / "bestellt, Tracking offen"; ausgeblendet in Pickliste, Packplatz-Direktliste, Scan gesperrt, Wareneingang (b.typ='normal'); Bestellungen-Liste/Detail zeigen "Strecke" + Link zum Auftrag, kein PDF/Wareneingang
+- Reservierungen werden beim Bestellen geschlossen, beim Storno wieder geöffnet; Versendet: kein Lieferschein (Lang-Layout), Rechnung + Versandmail an den Kunden wie beim Packplatz
+- Kunden-Lieferadresse: erste Adresse mit Straße (Liefer → Rechnung → Kunde)
+- Service-Test mit Wegwerfauftrag ok (bestellen/doppelt/storno/neu bestellen/ohne Tracking), aufgeräumt; **"Versendet + Tracking" noch nie echt durchgelaufen → Klicktest Jacky** (verbraucht Rechnungsnummer)
+- Pickliste: Badge "Strecke möglich" (Link zum Auftrag), nur Info. Jacky 2026-11-01: Strecke ist für Exoten-Garne, die selten bestellt werden; häufige Artikel bestellen wir selbst und verschicken sie, also ist es ok, dass mögliche Strecken-Aufträge in der Pickliste bleiben
+- Handbücher: docs/handbuch/15_dropshipping.md + bedienungsanleitung.php #dropshipping
+- Offen: Lizenz-Sperre kommt mit Lizenzserver; Wareneinsatz-Buchung mit Steuerberatung; Lang-Importer ganz zum Schluss
+
+Reihenfolge danach: Lizenzserver → 1.0-Check, siehe [[project-roadmap-reihenfolge]].
 
 ## Referenz-Check (2026-10-31)
 **JTL-Wawi** (Claude-Wissen, offizielle Guide-Seiten nur teilweise gefunden → mit Jackys JTL-Praxis abgleichen):

@@ -24,6 +24,7 @@
 | [12 Buchhaltung](12_buchhaltung.md) | Kontenplan, Kreditoren/Lieferantenrechnungen, DATEV/CSV-Export |
 | [13 Inventur](13_inventur.md) *(in Arbeit)* | Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen |
 | [14 Gutscheine](14_gutscheine.md) | Gutschein-Artikel, Verkauf/Einlösung an der Kasse, Teileinlösung, Storno |
+| [15 Dropshipping](15_dropshipping.md) | Strecke über Lang Yarns: bestellen im Portal, Versendet + Tracking, Lieferanten-Rechnung |
 
 ---
 

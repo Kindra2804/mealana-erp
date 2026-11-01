@@ -39,10 +39,16 @@ class AuftragRepository
         bool   $mitAbgeschlossenen = false,
         ?string $von = null,
         ?string $bis = null,
-        string $belegFilter = ''
+        string $belegFilter = '',
+        ?array $nurIds = null
     ): array {
         $where  = ['1=1'];
         $params = [];
+
+        // Vorab ermittelte Auftrags-IDs (z.B. Dropshipping-Filter "Strecke bereit")
+        if ($nurIds !== null) {
+            $where[] = empty($nurIds) ? '0=1' : 'a.id IN (' . implode(',', array_map('intval', $nurIds)) . ')';
+        }
 
         // Kacheln "Offene Werte" (OffeneWerte) -> gleiche Bedingungen wie die Kennzahl
         $belegBedingungen = [
