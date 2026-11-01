@@ -155,6 +155,26 @@ Ein neuer Superadmin lässt sich **nur mit einem Übergabe-Schlüssel von NAHTLO
 
 ---
 
+## Updates (··· → 🔄 Updates, nur Superadmin)
+
+Updates kommen als Paket `nahtlos-x.y.z.zip` von NAHTLOS (Download-Link). Einspielen kann der Superadmin selbst — oder NAHTLOS als gebuchte Dienstleistung.
+
+1. **Paket hochladen** → wird nur geprüft: Signatur von NAHTLOS, neuer als die installierte Version, innerhalb der Wartung. Angezeigt wird „Was ist neu“.
+2. **Bestätigen**, dass die Kassen abgeschlossen sind und gerade niemand arbeitet → **Update jetzt einspielen**. Dauert etwa eine Minute; Seite nicht schließen.
+3. Das ERP **sichert vorher die Datenbank** (ohne erfolgreiche Sicherung kein Update) und die bisherigen Programmdateien, setzt den **Wartungsmodus** (Mitarbeiter sehen „Update läuft“), kopiert die neuen Dateien und spielt die Datenbank-Änderungen ein.
+4. Danach: „✓ Version x eingespielt“ + **Was ist neu**.
+
+| Situation | Was tun |
+|-----------|---------|
+| Update fehlgeschlagen | **↩ Sicherung zurückspielen** — Dateien und Datenbank stehen wieder wie vorher, Wartungsmodus aus |
+| Nach dem Update stimmt etwas nicht | Im Verlauf beim letzten Update **↩ Zurückspielen** — **alles, was seit dem Update erfasst wurde, geht verloren** (Belege, Aufträge …). Im Zweifel zuerst NAHTLOS fragen |
+| „Wartung abgelaufen“ | Pakete, die nach dem Wartungsende erschienen sind, werden abgelehnt — Wartung verlängern |
+| Testversion (ohne Lizenz) | keine Updates |
+
+Nie überschrieben werden Datenbank-Zugang, Schlüssel, Belege/Storage, Uploads und Logos. Sicherungen liegen unter `erp/storage/updates/` (alte bei Bedarf löschen).
+
+---
+
 ## Häufige Probleme
 
 | Problem | Lösung |

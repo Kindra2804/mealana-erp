@@ -221,6 +221,17 @@ Die eigentliche FinanzOnline-Anmeldung und der Startbeleg laufen **nicht** über
 
 ---
 
+## 13a. Updates
+
+Ab 1.0 kommen Änderungen nur noch als signiertes Paket (`nahtlos-x.y.z.zip`) über **··· → 🔄 Updates** (Handbuch Kapitel 09). Voraussetzungen, bei XAMPP schon erfüllt:
+- `mysqldump` + `mysql` im MariaDB-Ordner (`C:\xampp\mysql\bin`) — ohne Datenbank-Sicherung verweigert das ERP das Update
+- `upload_max_filesize` / `post_max_size` mindestens 40M (XAMPP-Standard)
+- Apache darf in `erp\` schreiben (Programmdateien werden ersetzt)
+
+`git pull` oder Kopieren von Hand bitte nicht mehr verwenden — sonst fehlen Sicherung, Prüfung und Verlauf.
+
+---
+
 ## 14. Sicherheits-Checkliste vor dem ersten "scharfen" Betrieb
 
 - [ ] `erp\public\test.php` löschen, falls vorhanden (Debug-Datei, nicht für den Echtbetrieb gedacht)

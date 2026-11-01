@@ -19,7 +19,7 @@ $neuHtml = function (string $md): string {
     $zeilen = array_filter(array_map('trim', explode("\n", $md)));
     $html = '';
     foreach ($zeilen as $z) {
-        $z = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', htmlspecialchars(ltrim($z, '-* ')));
+        $z = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', htmlspecialchars(preg_replace('/^[-*]\s+/', '', $z)));
         $html .= '<li>' . $z . '</li>';
     }
     return '<ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">' . $html . '</ul>';
