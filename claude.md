@@ -1251,6 +1251,19 @@ Details siehe `.claude/memory/project_soft_golive_sockenwolle.md`, `project_lize
 - JTL-Formate kollidieren nicht (MeaLana `R-40550102026`, Bio `R-BIO-xxMMJJ`, Sockenwolle `R-SW-xxMMJJ`)
 - Offen: Live-Deploy Migr. 201–214
 
+## Update 2026-11-01: Dropshipping, Lizenzserver, Paperless, 1.0-Check (Onboarding, Update-Weg)
+
+Details in `.claude/memory/` (project_dropshipping, project_lizenzierung_preise, project_paperless_rechnung_modul, project_1_0_check, project_update_mechanismus). Migrationen 215–222.
+- **Dropshipping** (215): Strecke über Lieferanten (Lang Yarns), Karte im Auftrag, „Strecke möglich“ in der Pickliste. Klicktest „Versendet + Tracking“ offen.
+- **Lizenzserver** (216–219): `src/core/Lizenz.php` (ECDSA-signierte .lic, Module/Mengen/Wartung, Schloss im Menü), Superadmin-Übergabe, Generator nur mit Schlüsseldatei (`src/modules/lizenzgenerator/`, `tools/lizenz/`). Hauslizenz L-100001-19.
+- **Paperless** (220): Belegseite `beleg-portal/` läuft auf beleg.mealana.at (SQLite/MySQL, API-Schlüssel), Kasse „📱 Beleg per QR“, „Ohne Druck“ entfernt, nicht gescannte Belege nach 60 s gelöscht. Klicktest ✅.
+- **Hauptlogo** aus den Firmendaten: `src/core/Firmenlogo.php` (vorher immer `shops.id=1`).
+- **Einrichtungs-Assistent** (221): `src/modules/einrichtung/OnboardingService.php`, `public/einrichtung/` — Pflicht Firma/Superadmin/Lizenz/Steuer/Lager sperrt das ERP, empfohlen je Lizenz; Login-Weiterleitung, Banner, ··· → Einrichtung.
+- **Update-Weg** (222): `tools/paket/bauen.php <version>` (signiertes ZIP über PharData, „Was ist neu“ aus `docs/versionen/<v>.md`), `src/core/Migrator.php`, `src/modules/update/UpdateService.php`, ··· → 🔄 Updates (DB-Sicherung Pflicht, Wartungsmodus, Zurückspielen). Ab 1.0 kein `git pull` mehr auf Live.
+- **Funde aus der frischen Testinstallation** (Baseline 123 + Migrationen): 208/219 Einheit „Stk“, Baseline ohne Kundengruppen, MeaLana-Abholort + Lizenzartikel in jeder Installation (jetzt nur bei MEALANA), Fußleiste mit festen Platzhaltern, „MEALANA KG“ als Formular-Vorgabe — alles behoben bzw. für die Baseline 1.0 notiert.
+- **Entscheidungen:** Steuerprofil (KU/EA/Ist) → 1.1 vor dem ersten Fremdkunden; Live wird komplett neu aufgesetzt (Shops: indra-design → sockenwolle-online → bio-wolle → MeaLana zuletzt); Offline-Kasse light nach 1.0.
+- **Nächste Session:** Live-Server + indra-design-Shop zurücksetzen, frisch installieren, Onboarding mit Babsi, Backup-Strategie direkt am Live-Server.
+
 ## Commit Convention
 
 ```
