@@ -192,9 +192,9 @@ Unter Windows/XAMPP ist das i.d.R. automatisch der Fall (kein IIS-Berechtigungsm
 
 ---
 
-## 11. Firmenstammdaten erfassen
+## 11. Einrichtungs-Assistent
 
-Einloggen → **Einstellungen → Firma**. Firmenname, Adresse, UID-Nummer, IBAN/BIC ausfüllen — **bevor** die erste Rechnung erstellt wird (steht so auch im Handbuch, Kapitel 09).
+Mit dem in Schritt 8 angelegten Superadmin einloggen → der **Einrichtungs-Assistent** startet automatisch (Firma, eigenes Passwort, Lizenz, Steuer, Lager, danach je Lizenz Benutzer/Mail/Kasse/Shop). Ideal gemeinsam mit dem Kunden durchgehen. Danach unter **Einstellungen → Firma** noch IBAN/BIC ergänzen — **bevor** die erste Rechnung erstellt wird (Handbuch, Kapitel 09).
 
 ---
 

@@ -1,5 +1,26 @@
 # 09 — Einstellungen
 
+## Einrichtungs-Assistent (erster Start)
+
+Bei einer neuen Installation führt der Assistent (`/einrichtung/`) durch die Einrichtung. Nur der **Superadmin** kann ihn bearbeiten.
+
+| Schritt | Pflicht? | Was |
+|---------|----------|-----|
+| 1 Firma | ✓ | Name, Adresse, UID **oder** Steuernummer, Hauptlogo |
+| 2 Superadmin | ✓ | eigener Name, Benutzername, E-Mail, **eigenes Passwort** (das Startpasswort aus der Installation gilt danach nicht mehr) |
+| 3 Lizenz | ✓ | .lic einspielen **oder** „Ohne Lizenz weiter (nur Grundmodul)“ |
+| 4 Steuer | ✓ | bestätigen: regelbesteuert · Bilanz · Soll (Kleinunternehmer/E-A-Rechnung folgen mit 1.1) |
+| 5 Lager | ✓ | „Standardlager“ wird automatisch angelegt, umbenennen über „ändern“ |
+| 6 Benutzer | empfohlen | Mitarbeiter mit eigenen Rollen — oder „Ich arbeite allein“ |
+| 7 Mail | empfohlen | SMTP, Test-Mail, Mailversand aktiv |
+| 8 Kasse | nur mit Kassen-Lizenz | Kasse anlegen (RKSV später) |
+| 9 Shop + Abholorte | nur mit Shop-Lizenz | Kanal mit Adresse; Abholort — oder „Keine Selbstabholung“ |
+
+- **Solange ein Pflicht-Schritt fehlt**, führt jede Seite zum Assistenten. Mitarbeiter sehen nur „Einrichtung läuft noch“.
+- **Nach jeder Anmeldung** des Superadmins öffnet sich der Assistent, solange noch etwas offen ist („Später — weiter zum ERP“). Im ERP zeigt ein Hinweis oben und ··· → **🛠 Einrichtung (x offen)** den Weg zurück.
+- **Lizenz-Upgrade** (z.B. Kasse dazu): die neuen Schritte sind automatisch offen, der Assistent kommt wieder.
+- „Erledigt“ wird an den echten Daten erkannt (z.B. mindestens eine aktive Kasse) — sind alle Schritte erledigt, verschwindet der Assistent.
+
 ## Navigation
 
 Oben rechts: ⚙ Einstellungen
