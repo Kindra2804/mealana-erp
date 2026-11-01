@@ -151,11 +151,13 @@ class UpdateService
         $wurzel = self::wurzel();
         $neu = [];
         try {
-            $alt = new PharData("$ordner/dateien.zip", 0, null, Phar::ZIP);
+            // Als Ordner, nicht als ZIP: Kopieren dauert Sekunden, PharData-Packen über eine Minute
             foreach (array_keys($m['dateien']) as $rel) {
-                if (is_file("$wurzel/$rel")) $alt->addFile("$wurzel/$rel", $rel); else $neu[] = $rel;
+                if (!is_file("$wurzel/$rel")) { $neu[] = $rel; continue; }
+                $ziel = "$ordner/dateien/$rel";
+                if (!is_dir(dirname($ziel))) mkdir(dirname($ziel), 0755, true);
+                if (!copy("$wurzel/$rel", $ziel)) throw new RuntimeException("Konnte $rel nicht sichern.");
             }
-            unset($alt);
             file_put_contents("$ordner/neue_dateien.json", json_encode($neu, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
         } catch (Throwable $e) {
             $ende('fehlgeschlagen', 'Datei-Sicherung fehlgeschlagen: ' . $e->getMessage());
@@ -203,10 +205,20 @@ class UpdateService
 
         self::wartung(true, $v['version_von']);
         try {
-            if (is_file("$ordner/dateien.zip")) {
-                $alt = new PharData("$ordner/dateien.zip");
-                $alt->extractTo($wurzel, null, true);
-                unset($alt);
+            // WICHTIG: Zurückgespielt wird mit dem Code der NEUEN Version (das Update hat ihn schon kopiert) —
+            // das Sicherungsformat (Ordner dateien/, neue_dateien.json, datenbank.sql) darf sich deshalb nie ändern.
+            if (!is_dir("$ordner/dateien") && is_file("$ordner/neue_dateien.json")
+                && count(json_decode((string)file_get_contents("$ordner/neue_dateien.json"), true) ?: []) === 0) {
+                throw new RuntimeException('Datei-Sicherung fehlt (Ordner dateien/).');
+            }
+            if (is_dir("$ordner/dateien")) {
+                $basis = strlen("$ordner/dateien") + 1;
+                $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$ordner/dateien", FilesystemIterator::SKIP_DOTS));
+                foreach ($it as $f) {
+                    $rel = strtr(substr($f->getPathname(), $basis), '\\', '/');
+                    if (!is_dir(dirname("$wurzel/$rel"))) mkdir(dirname("$wurzel/$rel"), 0755, true);
+                    if (!copy($f->getPathname(), "$wurzel/$rel")) throw new RuntimeException("Konnte $rel nicht zurückkopieren.");
+                }
             }
             foreach (json_decode((string)@file_get_contents("$ordner/neue_dateien.json"), true) ?: [] as $rel) {
                 if (!self::geschuetzt($rel) && !str_contains($rel, '..')) @unlink("$wurzel/$rel");
