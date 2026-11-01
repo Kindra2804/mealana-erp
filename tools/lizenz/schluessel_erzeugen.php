@@ -3,7 +3,7 @@
 //   php tools/lizenz/schluessel_erzeugen.php
 // Privat → D:\ERP\lizenz_schluessel\ (NICHT ins Repo, unbedingt sichern!)
 // Öffentlich → erp/config/lizenz_public.pem (geht mit jedem ERP mit)
-require __DIR__ . '/LizenzSigner.php';
+require __DIR__ . '/../../erp/src/modules/lizenzgenerator/LizenzSigner.php';
 
 $privatPfad = LizenzSigner::PRIVAT_STANDARD;
 $publicPfad = __DIR__ . '/../../erp/config/lizenz_public.pem';

@@ -3,7 +3,7 @@
 // VORHER Identität prüfen: schriftliche Anfrage vom Inhaber/Geschäftsführer!
 //   php tools/lizenz/uebergabe_ausstellen.php --nr=U-2026-0001 --firma="MEALANA KG" --uid=ATU68078304
 //   [--steuernr=…] [--tage=7] [--datei=uebergabe.key.txt]
-require __DIR__ . '/LizenzSigner.php';
+require __DIR__ . '/../../erp/src/modules/lizenzgenerator/LizenzSigner.php';
 
 $o = getopt('', ['nr:', 'firma:', 'uid::', 'steuernr::', 'tage::', 'datei::']);
 if (empty($o['nr']) || empty($o['firma'])) {

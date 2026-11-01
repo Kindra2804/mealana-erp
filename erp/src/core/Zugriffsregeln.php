@@ -415,6 +415,10 @@ final class Zugriffsregeln
         'lizenz' => [
             'index.php'     => 'lizenz.verwalten',
             'hochladen.php' => 'lizenz.verwalten',
+            // Generator (nur mit Schlüsseldatei aktiv, prüft LizenzGenerator::aktiv() selbst)
+            'generator.php'  => 'lizenz.verwalten',
+            'ausstellen.php' => 'lizenz.verwalten',
+            'datei.php'      => 'lizenz.verwalten',
         ],
 
         // === Einstellungen ===

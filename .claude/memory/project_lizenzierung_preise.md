@@ -50,12 +50,12 @@ JTL-Import: sehr speziell, später entscheiden (evtl. zeitlich begrenzte Freisch
 
 ## ✅ Lizenz-Bau Schritt 1 GEBAUT 2026-11-01 (nicht committed bis Jacky sagt)
 - **Technik geändert:** ECDSA P-256 über OpenSSL statt Ed25519/sodium (sodium in XAMPP nicht aktiv, OpenSSL überall da → Kunden müssen nichts einschalten). Lizenzdatei = JSON {daten: JSON-Text, signatur: base64}, signiert wird der daten-Text.
-- Privater Schlüssel: `D:/ERP/lizenz_schluessel/nahtlos_lizenz_privat.pem` (außerhalb Repo, .gitignore *privat*.pem) — **Jacky muss ihn sichern, Verlust = keine neuen Lizenzen**. Öffentlich: `erp/config/lizenz_public.pem` (im Repo). Ausgestellte Dateien: `D:/ERP/lizenz_schluessel/ausgestellt/` (L-2026-0001 = MEALANA KG Hauslizenz, alle Module, Kasse/Shop 99, Wartung unbegrenzt — auf Dev eingespielt).
+- Privater Schlüssel: `D:/ERP/lizenz_schluessel/nahtlos_lizenz_privat.pem` (außerhalb Repo, .gitignore *privat*.pem) — **Jacky muss ihn sichern, Verlust = keine neuen Lizenzen**. Öffentlich: `erp/config/lizenz_public.pem` (im Repo). Ausgestellte Dateien: `D:/ERP/lizenz_schluessel/ausgestellt/` (alte L-2026-0001 ersetzt durch L-100001-19, siehe Schritt 4).
 - Migration 216 `lizenz_dateien` (Historie, eine aktiv). `src/core/Lizenz.php`: MODULE (Codes+Preise), SEITEN (Pfad→Modul) + LESEND (Lese-Seiten), hat/anzahl/status/wartungBis/wartungAbgelaufen/seiteErlaubt/linkGesperrt, pruefeInhalt (Signatur + Firma normalisiert + UID bzw. Steuernummer), einspielen. Auth::pruefeSeite sperrt → `lizenz/nicht_lizenziert.php` bzw. JSON 403. Menü (shell_top) ausgegraut + 🔒 über dieselbe Tabelle. `public/lizenz/index.php` + `hochladen.php` (lizenz.verwalten = Superadmin), Menüpunkt ··· → 🔑 Lizenzverwaltung aktiv.
 - Inline: Kassen-Anzahl (kasse_speichern), Shop-Anzahl beim Aktivieren (einstellungen/speichern), Shop-Cron (nur lizenzierte Anzahl, älteste zuerst), PLC-Export (abschliessen), Dropshipping (Karte, Listenfilter, Pickliste-Badge).
 - Werkzeuge (nicht im ERP-Ordner): `tools/lizenz/LizenzSigner.php`, `schluessel_erzeugen.php` (verweigert, wenn Schlüssel existiert), `ausstellen.php` (CLI, --haus).
 - Tests: 23/23 Logik (Haus, manipuliert, fremde Firma, Schreibweise egal, eingeschränkt inkl. abgelaufene Wartung, keine Lizenz) + Render mit eingeschränkter Lizenz in der DB (danach Hauslizenz wiederhergestellt).
-- **⚠ Live-Deploy:** mit Migration 216 MUSS gleich die Hauslizenz L-2026-0001 auf Live eingespielt werden, sonst läuft Live nur mit Grundmodul (Kasse gesperrt!). Live-Firmendaten müssen "MEALANA KG" + ATU68078304 sein.
+- **⚠ Live-Deploy:** mit Migration 216 MUSS gleich die Hauslizenz **L-100001-19_A1.lic** auf Live eingespielt werden, sonst läuft Live nur mit Grundmodul (Kasse gesperrt!). Live-Firmendaten müssen "MEALANA KG" + ATU68078304 sein.
 - Offen in Schritt 1 (bewusst später): Gutschein-VERKAUF an Kasse/Shop ohne Modul, Konfigurator-Reiter im Artikel noch sichtbar (nur Ajax gesperrt), Profi-Inventur (Mehrzähler) noch nicht an lagerplaetze gekoppelt, Kundenanzeige-Link in Kassen-Einstellungen.
 - Nächste Schritte: 2 Hinweise (Wartung abgelaufen oben in der Kasse, Zertifikat "gültig bis" + Warnung, UID-Warnung RKSV) → 3 Superadmin-Übergabe → 4 Generator-UI im ERP → 5 Klicktest.
 
@@ -72,4 +72,14 @@ JTL-Import: sehr speziell, später entscheiden (evtl. zeitlich begrenzte Freisch
 - `src/modules/benutzer/SuperadminUebergabe.php` (pruefeSchluessel, durchfuehren: Ziel bestehend/neu, jeder alte Superadmin → rolle:<id> oder deaktivieren, sonst Abbruch; Log warn), Seite `public/superadmin_uebergabe.php` ohne Login, Link auf login.php.
 - Werkzeug `tools/lizenz/uebergabe_ausstellen.php --nr --firma --uid [--tage=7]`.
 - Test 12/12 (gültig, fremde Firma, abgelaufen, Typ-Verwechslung, ohne Entscheidung → Rollback, Übergabe, einmalig) mit Sicherung/Wiederherstellung der echten Superadmin-Konten; Seite gerendert.
+
+## ✅ Lizenz-Bau Schritt 4 GEBAUT 2026-11-01 (Generator im ERP)
+- **Lizenznummer** (Jacky 2026-11-01): `L-PPNNNN-CC`, PP Produkt (10 = NAHTLOS ERP), NNNN fortlaufend ab 1, CC Prüfziffer mod 97 (IBAN-Art). Fest je Kundeninstallation, jede neue Datei = Ausgabe 1,2,3 (steht in der Datei + Lizenzverwaltung). Version bewusst NICHT in der Nummer.
+- Migration 219: Artikeltyp LIZENZ, Kategorie "Lizenzen", Artikelgruppe "Lizenzen" (Konto 4600 "Erlöse Software-Lizenzen", Platzhalter → Steuerberatung), `artikel.lizenz_modul` (Code | kasse+ | shop+ | wartung), 18 Artikel LZ-* + BFR-SIGNATUR 189 + BFR-SERVICE-JAHR 95,88 (ohne Shop, ohne Lager, Preise netto KG1), Tabellen `lizenz_kunden` + `lizenz_ausgaben`, Einstellung `lizenz_privat_schluessel_pfad`.
+- `erp/src/modules/lizenzgenerator/` (LizenzSigner hierher verschoben, LizenzGenerator: vorschlag aus Auftrag/Lizenzkunde, ausstellen, Nummer/Prüfziffer). `Lizenz::generatorAktiv()` = Ordner vorhanden + Schlüsseldatei → beim Kunden Ordner weglassen (Seiten sind abgesichert). Einschalten: `tools/lizenz/generator_aktivieren.php` (bewusst kein Feld in den Einstellungen, damit Kunden nichts sehen). Anleitung `tools/lizenz/README.md` (nicht im Kunden-Handbuch).
+- UI: Lizenzverwaltung → Button "Lizenzkunden / Lizenzen ausstellen" → `lizenz/generator.php` (Liste, Historie, Download), `ausstellen.php` (aus Auftrag / neue Ausgabe / frei; Hauslizenz-Haken), `datei.php`; Auftrag-Detail Button "🔑 Lizenzdatei erstellen" bei Lizenz-Positionen.
+- Wartungs-Vorschlag: neue Lizenz = 1. Jahr inkl. + gekaufte LZ-WARTUNG-Jahre; bestehend = ab laufender Wartung (sonst ab heute) + Jahre.
+- Test 16/16 (Vorschlag, Kasse 1+2, Wartung, Ausgabe 2 mit Shop, Signatur, fremde Firma, Hauslizenz) mit Aufräumen; Seiten gerendert.
+- Dev: Generator aktiv; **Hauslizenz neu = L-100001-19 Ausgabe 1** (eingespielt, Datei in D:/ERP/lizenz_schluessel/ausgestellt/), alte L-2026-0001 gelöscht. → Für Live diese Datei verwenden.
+- Offen: Kunden-Paket/Deploy-Skript muss tools/ + src/modules/lizenzgenerator/ weglassen (beim Update-Mechanismus berücksichtigen).
 

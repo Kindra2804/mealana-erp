@@ -4,7 +4,7 @@
 //   php tools/lizenz/ausstellen.php --nr=L-2026-0002 --firma="Muster e.U." --steuernr=12/345 \
 //        --module=kasse:2,shop:1,gutscheine --wartung=2027-11-01 --datei=muster.lic
 // --haus = Hauslizenz: alle Module (Kasse/Shop je 99), Wartung unbegrenzt
-require __DIR__ . '/LizenzSigner.php';
+require __DIR__ . '/../../erp/src/modules/lizenzgenerator/LizenzSigner.php';
 require __DIR__ . '/../../erp/src/core/Lizenz.php';
 
 $o = getopt('', ['nr:', 'firma:', 'uid::', 'steuernr::', 'module::', 'wartung::', 'haus', 'datei::']);

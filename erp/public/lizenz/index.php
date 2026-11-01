@@ -32,6 +32,9 @@ $statusText = [
 
 $pageTitle    = 'Lizenzverwaltung';
 $activeModule = 'einstellungen';
+// Generator (Lizenzen an Kunden ausstellen) nur in der eigenen Installation mit Schlüsseldatei
+$actionBarContent = Lizenz::generatorAktiv()
+    ? '<a href="generator.php" class="btn btn-primary btn-sm">🔑 Lizenzkunden / Lizenzen ausstellen</a>' : '';
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
@@ -51,7 +54,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php endif; ?>
             <?php if ($daten): ?>
                 <div style="margin-top:8px;font-size:13px;display:grid;grid-template-columns:auto auto;gap:2px 14px">
-                    <span style="color:var(--color-text-muted)">Lizenz-Nr.</span><span><?= htmlspecialchars($daten['lizenz_nr']) ?><?= !empty($daten['hauslizenz']) ? ' · Hauslizenz' : '' ?></span>
+                    <span style="color:var(--color-text-muted)">Lizenz-Nr.</span><span><?= htmlspecialchars($daten['lizenz_nr']) ?><?= !empty($daten['ausgabe']) ? ' · Ausgabe ' . (int)$daten['ausgabe'] : '' ?><?= !empty($daten['hauslizenz']) ? ' · Hauslizenz' : '' ?></span>
                     <span style="color:var(--color-text-muted)">Lizenziert für</span><span><?= htmlspecialchars($daten['firma']) ?> · <?= htmlspecialchars($daten['uid'] ?: $daten['steuernummer']) ?></span>
                     <span style="color:var(--color-text-muted)">Ausgestellt am</span><span><?= date('d.m.Y', strtotime($daten['ausgestellt_am'])) ?></span>
                     <span style="color:var(--color-text-muted)">Wartung bis</span>

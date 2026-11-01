@@ -247,6 +247,18 @@ class Lizenz
         return preg_replace('/[^a-z0-9äöüß]/u', '', mb_strtolower((string)$s));
     }
 
+    /**
+     * Lizenz-Generator (nur in Jackys eigener Installation): Ordner vorhanden UND Schlüsseldatei
+     * eingetragen. Beim Kunden fehlt der Ordner src/modules/lizenzgenerator/ → immer false.
+     */
+    public static function generatorAktiv(): bool
+    {
+        $datei = __DIR__ . '/../modules/lizenzgenerator/LizenzGenerator.php';
+        if (!is_file($datei)) return false;
+        require_once $datei;
+        return LizenzGenerator::aktiv();
+    }
+
     /** Nur für Tests/nach dem Einspielen: Cache leeren */
     public static function neuLaden(): void
     {

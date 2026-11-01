@@ -207,6 +207,10 @@ $actionBarContent = '<a href="' . BASE_PATH . '/auftraege/liste.php" class="btn 
 if (!$istGesperrt) {
     $actionBarContent .= '<a href="' . BASE_PATH . '/auftraege/bearbeiten.php?id=' . $auftrag['id'] . '" class="btn btn-secondary btn-sm">Bearbeiten</a>';
 }
+// Lizenzverkauf (nur in der eigenen Installation mit Lizenz-Generator)
+if (!$istStorniert && Lizenz::generatorAktiv() && (new LizenzGenerator())->auftragHatLizenz((int)$auftrag['id'])) {
+    $actionBarContent .= '<a href="' . BASE_PATH . '/lizenz/ausstellen.php?auftrag_id=' . $auftrag['id'] . '" class="btn btn-primary btn-sm">🔑 Lizenzdatei erstellen</a>';
+}
 if (!$istStorniert) {
     $actionBarContent .= '<div class="actionbar-sep"></div><div class="actionbar-right"><button type="button" class="btn btn-danger btn-sm" onclick="storniereAuftrag()">Stornieren</button></div>';
 }

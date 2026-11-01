@@ -2,7 +2,8 @@
 /**
  * LizenzSigner — Lizenzdateien ausstellen (Ebene 2, nur bei Jacky)
  *
- * Gehört NICHT zum ERP beim Kunden. Der private Schlüssel liegt als Datei außerhalb
+ * Gehört NICHT zum ERP beim Kunden (Ordner lizenzgenerator/ beim Kunden-Paket weglassen).
+ * Ohne den privaten Schlüssel ist der Code wertlos. Der Schlüssel liegt als Datei außerhalb
  * des Repos (Standard: D:\ERP\lizenz_schluessel\nahtlos_lizenz_privat.pem) und kommt nie in
  * eine Datenbank. Format der Datei siehe erp/src/core/Lizenz.php.
  */
