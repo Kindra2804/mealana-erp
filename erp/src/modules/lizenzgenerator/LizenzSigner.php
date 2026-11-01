@@ -43,6 +43,16 @@ class LizenzSigner
         return self::signiereText(json_encode($daten, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $privatPfad);
     }
 
+    /**
+     * Update-Paket: signiertes Manifest (Version, Datum, „Was ist neu“, SHA-256 je Datei).
+     * typ 'update_paket' — eine Lizenzdatei kann damit nie als Manifest durchgehen und umgekehrt.
+     */
+    public static function signierePaket(array $manifest, string $privatPfad = self::PRIVAT_STANDARD): string
+    {
+        $daten = ['format' => 1, 'typ' => 'update_paket'] + $manifest;
+        return self::signiereText(json_encode($daten, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $privatPfad);
+    }
+
     private static function signiereText(string $text, string $privatPfad): string
     {
         if (!is_file($privatPfad)) throw new RuntimeException("Privater Schlüssel nicht gefunden: $privatPfad");

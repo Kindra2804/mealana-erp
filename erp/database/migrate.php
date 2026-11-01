@@ -24,85 +24,65 @@
  * damit man den Fehler beheben kann, bevor spätere Migrationen draufbauen.
  */
 
-$migrationsDir = __DIR__ . '/migrations';
-$command       = $argv[1] ?? 'run';
+require_once __DIR__ . '/../src/core/Migrator.php';
 
-$config = require __DIR__ . '/../config/database.php';
-$dsn    = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
-
-$pdo = new PDO($dsn, $config['username'], $config['password'], [
-    PDO::ATTR_ERRMODE                => PDO::ERRMODE_EXCEPTION,
-    PDO::MYSQL_ATTR_MULTI_STATEMENTS => true,
-]);
-
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-        id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
-        dateiname      VARCHAR(255) NOT NULL,
-        angewendet_am  DATETIME NOT NULL,
-        PRIMARY KEY (id),
-        UNIQUE KEY uq_dateiname (dateiname)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-");
-
-$dateien = glob($migrationsDir . '/*.sql');
-sort($dateien);
-
-$angewendet    = $pdo->query("SELECT dateiname FROM schema_migrations")->fetchAll(PDO::FETCH_COLUMN);
-$angewendetSet = array_flip($angewendet);
-$offen         = array_values(array_filter($dateien, fn($pfad) => !isset($angewendetSet[basename($pfad)])));
+$command  = $argv[1] ?? 'run';
+$migrator = new Migrator();
+$offen    = $migrator->offen();
 
 if ($command === 'status') {
-    echo count($angewendet) . " Migration(en) angewendet, " . count($offen) . " offen.\n";
+    echo count($migrator->angewendet()) . " Migration(en) angewendet, " . count($offen) . " offen.
+";
     foreach ($offen as $pfad) {
-        echo "  offen: " . basename($pfad) . "\n";
+        echo "  offen: " . basename($pfad) . "
+";
     }
     exit(0);
 }
 
 if ($command === 'bootstrap') {
     if (empty($offen)) {
-        echo "Nichts zu tun — alle Migrationen sind bereits vermerkt.\n";
+        echo "Nichts zu tun — alle Migrationen sind bereits vermerkt.
+";
         exit(0);
     }
-    echo count($offen) . " Migration(en) werden als 'bereits angewendet' vermerkt, OHNE sie auszuführen.\n";
-    echo "Nur fortfahren, wenn die Datenbank nachweislich schon exakt diesen Stand hat!\n";
+    echo count($offen) . " Migration(en) werden als 'bereits angewendet' vermerkt, OHNE sie auszuführen.
+";
+    echo "Nur fortfahren, wenn die Datenbank nachweislich schon exakt diesen Stand hat!
+";
     echo "Fortfahren? (j/n): ";
-    $antwort = trim(fgets(STDIN));
-    if (strtolower($antwort) !== 'j') {
-        echo "Abgebrochen.\n";
+    if (strtolower(trim(fgets(STDIN))) !== 'j') {
+        echo "Abgebrochen.
+";
         exit(1);
     }
-    $insertStmt = $pdo->prepare("INSERT INTO schema_migrations (dateiname, angewendet_am) VALUES (:d, NOW())");
-    foreach ($offen as $pfad) {
-        $insertStmt->execute(['d' => basename($pfad)]);
-        echo "  vermerkt: " . basename($pfad) . "\n";
+    foreach ($migrator->alsAngewendetVermerken() as $name) {
+        echo "  vermerkt: $name
+";
     }
-    echo "Fertig.\n";
+    echo "Fertig.
+";
     exit(0);
 }
 
 if (empty($offen)) {
-    echo "Alles aktuell — keine offenen Migrationen.\n";
+    echo "Alles aktuell — keine offenen Migrationen.
+";
     exit(0);
 }
 
-echo count($offen) . " offene Migration(en) werden angewendet:\n";
-$insertStmt = $pdo->prepare("INSERT INTO schema_migrations (dateiname, angewendet_am) VALUES (:d, NOW())");
-
-foreach ($offen as $pfad) {
-    $name = basename($pfad);
-    echo "  -> $name ... ";
-    try {
-        $pdo->exec(file_get_contents($pfad));
-        $insertStmt->execute(['d' => $name]);
-        echo "OK\n";
-    } catch (PDOException $e) {
-        echo "FEHLER\n";
-        fwrite(STDERR, "Migration '$name' fehlgeschlagen: " . $e->getMessage() . "\n");
-        fwrite(STDERR, "Abbruch. Bereits erfolgreich angewendete Migrationen bleiben vermerkt; '$name' wurde NICHT vermerkt.\n");
-        exit(1);
-    }
+echo count($offen) . " offene Migration(en) werden angewendet:
+";
+$erg = $migrator->ausfuehren(function (string $name, ?string $fehler) {
+    echo "  -> $name ... " . ($fehler === null ? "OK" : "FEHLER") . "
+";
+});
+if (!$erg['erfolg']) {
+    fwrite(STDERR, "Migration '{$erg['fehler_datei']}' fehlgeschlagen: {$erg['fehler']}
+");
+    fwrite(STDERR, "Abbruch. Bereits erfolgreich angewendete Migrationen bleiben vermerkt; '{$erg['fehler_datei']}' wurde NICHT vermerkt.
+");
+    exit(1);
 }
-
-echo "Fertig — alle offenen Migrationen angewendet.\n";
+echo "Fertig — alle offenen Migrationen angewendet.
+";
