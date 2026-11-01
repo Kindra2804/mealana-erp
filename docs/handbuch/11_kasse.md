@@ -40,6 +40,37 @@ Auf eine Position klicken → Rabatt % eingeben → Preis wird neu berechnet.
 → Bon wird gedruckt (80mm Thermodrucker)  
 → Lagerabgang wird automatisch gebucht
 
+> **Kein „Ohne Druck“ mehr:** Wegen der Belegerteilungspflicht bekommt jeder Kunde einen Beleg, entweder auf Papier oder per QR-Code (Paperless, siehe unten).
+
+---
+
+## Beleg per QR-Code (Paperless)
+
+Seit 1. Oktober 2026 darf der Beleg auch digital übergeben werden, z.B. per QR-Code, den der Kunde vor Ort mit dem Handy scannt (BMF, Pressemeldung 29.09.2026). Eigenes Lizenz-Modul **Paperless**.
+
+**Ablauf an der Kasse:**
+
+1. Nach der Zahlung im Ausgabe-Dialog **📱 Beleg per QR** wählen
+2. Der A4-Bon wird als PDF auf die Belegseite (z.B. `beleg.mealana.at`) geladen, der QR-Code erscheint groß im Kassenfenster und auf der Kundenanzeige
+3. Kunde scannt → Seite mit Logo, Bon-Nr., Betrag und **Beleg herunterladen (PDF)**
+4. Die Kasse sieht nach (alle 2 Sekunden) → **✓ Beleg abgerufen**, das Fenster schließt sich von selbst
+5. Scannt der Kunde nicht (kein Handy, Akku leer …) → **🖨 Trotzdem drucken** oder **📄 A4**
+
+| Situation | Verhalten |
+|-----------|-----------|
+| Kasse fix auf 80mm oder A4 eingestellt | Mit Paperless kommt trotzdem der Dialog: der eingestellte Druck **oder** QR |
+| Offline-/Messe-Kasse | Immer Druck (kein QR) |
+| Belegseite nicht erreichbar | Hinweis im Fenster → drucken |
+
+> **Aufbewahrung auf der Belegseite:** nicht abgerufene Belege 24 Stunden, abgerufene 30 Tage. Danach sind sie gelöscht, der Kunde soll das PDF am Handy speichern. Gespeichert werden nur Beleg-Daten, keine Kundendaten. Im ERP bleibt der Bon wie immer vollständig.
+
+**Einrichten (einmalig):**
+
+1. Belegseite (Ordner `beleg-portal` aus dem Programmpaket) per FTP auf eine Subdomain laden, z.B. `beleg.mealana.at` (mit HTTPS). Anleitung: `beleg-portal/README.md`
+2. Dort `config.example.php` → `config.php` kopieren, API-Schlüssel und Datenbank eintragen
+3. ERP: **Einstellungen → System → Paperless**: Adresse der Belegseite + **denselben** API-Schlüssel (🎲 Erzeugen hilft) → **Verbindung testen** → Speichern
+4. Optional: **Einstellungen → System → Kundenanzeige → „Beleg-QR auf der Kundenanzeige zeigen“** einschalten
+
 ---
 
 ## Divers-Artikel (freier Preis)

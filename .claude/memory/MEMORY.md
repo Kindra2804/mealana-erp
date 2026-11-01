@@ -4,7 +4,7 @@
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
 - [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
-- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-10-31: Kürzel ✅ → Dropshipping ✅ gebaut (Klicktest) → Lizenzserver ✅ (Schritte 1–4 + Klicktest 2026-11-01) → Paperless → 1.0-Check → Woo-SOW + Soft-Go-Live; offen nebenbei Live-Deploy 201–219 + Hauslizenz L-100001-19
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-10-31: Kürzel ✅ → Dropshipping ✅ gebaut (Klicktest) → Lizenzserver ✅ (Schritte 1–4 + Klicktest 2026-11-01) → Paperless ✅ gebaut 2026-11-01 (Klicktest auf beleg.mealana.at offen) → 1.0-Check → Woo-SOW + Soft-Go-Live; offen nebenbei Live-Deploy 201–219 + Hauslizenz L-100001-19
 - [Klicktest-Fixes 2026-10-29](project_klicktest_fixes_20261029.md) — Mietfach/MR-Nummernkreis/Z-Bon eigener Kreis K1-Z-00001 (Migr. 212)+Reihenfolge+Auto-Cron/A4-Ränder gebaut, Kassensturz Partner/Stornos, Storno nur am selben Tag vor Z
 - [📋 Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler ✅ bestanden 2026-10-30
 - [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; Grundmodul 790 inkl. Verkauf+Packplatz; 2026-11-01 Lizenz-Bau-Entscheidungen 1–8 (nur Grundmodul ohne Lizenz, Schloss, Zertifikat-Warnung)
@@ -53,7 +53,7 @@
 - [Sammelabholung](project_sammelabholung_auftraege.md) — mehrere Aufträge an Kasse, Klicktest offen
 - [Packplatz-Modul](project_packplatz.md) — fertig inkl. Teillieferung-Positions-Split
 - [PLC / EasyPak Versand](project_plc_versand.md) — Nachnahme bei Teillieferung gefixt
-- [Paperless-Rechnung (geplant)](project_paperless_rechnung_modul.md) — QR statt Papier, mit Shop-Server
+- [Paperless — Beleg per QR](project_paperless_rechnung_modul.md) — gebaut 2026-11-01 (beleg-portal/ + Migr. 220 + Kasse/Kundenanzeige), „Ohne Druck“ entfernt; Klicktest + Subdomain offen
 
 ## Kasse / RKSV
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign, Doppel-Gutschrift-Sperre, A4-Bon

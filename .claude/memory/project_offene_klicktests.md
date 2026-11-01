@@ -38,3 +38,6 @@ Checkliste "A" vom 2026-10-02. **A1 Sammelabholung (1–13) und A2 Retouren (14�
 **✅ 2026-10-30: Jacky hat 21–35 getestet, alles hat gepasst.**
 
 **How to apply:** Bei Fehlern aus diesen Tests wie bei A1/A2 vorgehen (Daten prüfen, Ursache finden, beheben, Testdaten aufräumen).
+
+## Paperless — Beleg per QR (gebaut 2026-11-01)
+Gemeinsamer Klicktest auf der echten Subdomain beleg.mealana.at, Ablauf siehe [[project-paperless-rechnung-modul]] („Offen Klicktest“).

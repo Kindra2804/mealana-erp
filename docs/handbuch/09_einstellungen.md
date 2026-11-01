@@ -101,6 +101,8 @@ Damit das System E-Mails senden kann (Auftragsbestätigungen, Mahnungen, Versand
 | **Kleinunternehmer-Modus** | Kein Steuerausweis auf Rechnungen (§ 6 Abs. 1 Z 27 UStG) |
 | **PLC-Polling-Ordner** | Pfad zum Ordner den der Paketdrucker (PLC) überwacht |
 | **Artikelbilder auf Belegen** | Je Beleg/Mail einschaltbar: Rechnung (A4), Rechnungskorrektur, Auftragsbestätigung (PDF), Lieferschein, Pickliste, Abholzettel, Kassenbon A4 · Mails Auftragsbestätigung, Abholung, Versand. Kleines Vorschaubild des Hauptbilds (feste Größe), Kind-Artikel ohne eigenes Bild zeigen das Vaterbild. Gilt für neu erstellte Belege. Standard: Rechnung, Lieferschein, Pickliste, AB-Mail. Kleine 80-mm-Bons nie. |
+| **Kundenanzeige** | Willkommenstext; **Beleg-QR auf der Kundenanzeige zeigen** (Paperless: QR links neben dem Betrag, nach dem Abruf ein ✓; aus = QR nur am Kassenbildschirm) |
+| **Paperless — Beleg per QR-Code** | Adresse der Belegseite (z.B. `https://beleg.mealana.at`) + API-Schlüssel (gleicher Wert wie in `config.php` der Belegseite; 🎲 Erzeugen, gespeicherter Schlüssel wird nur bei Neueingabe überschrieben) + **Verbindung testen**. Ablauf an der Kasse: [11 Kasse](11_kasse.md) |
 
 ### PLC-Ordner konfigurieren:
 

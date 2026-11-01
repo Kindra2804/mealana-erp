@@ -218,6 +218,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#benutzer">Benutzer & Rechte</a>
             <a href="#kasse">Kasse</a>
             <a href="#kasse-bon" class="sub">↳ Bon erstellen</a>
+            <a href="#kasse-paperless" class="sub">↳ Beleg per QR (Paperless)</a>
             <a href="#kasse-abholbereit" class="sub">↳ Abholbereit / Aufträge</a>
             <a href="#kasse-sammelabholung" class="sub">↳ Sammelabholung</a>
             <a href="#kasse-rechnung-bezahlen" class="sub">↳ Rechnung bezahlen (Zahlbeleg)</a>
@@ -581,7 +582,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Abholorte:</strong> Adresse + Öffnungszeiten für Selbstabholung (z.B. Wollboutique) — erscheint auf Abholzettel, Abholmail, Auftragsbestätigung und im Abholhinweis der Rechnung. Jedem Abholort lassen sich Lager zuordnen: beim Packen gilt der Abholort des Lagers, aus dem die Ware kommt (mehrere Lager → das mit den meisten Artikeln), Lager ohne Abholort → <strong>Standard</strong>. Im Auftrag (nur bei Selbstabholung) Feld <strong>Abholort</strong> zum Ändern von Hand. Kein Abholort angelegt → Firmenadresse wie früher.</p>
             <p><strong>Kanäle:</strong> WooCommerce-Shops verwalten (Name, URL, API-Schlüssel, Logo, Nummernkreis-Kürzel).</p>
             <p><strong>Nummernkreis-Kürzel:</strong> Jeder Shop außer dem Hauptshop bekommt ein Kürzel (z.B. SOW, BIO) und damit eigene, fortlaufende Nummern für Aufträge, Rechnungen und Rechnungskorrekturen (A-SOW-2026-00001, R-SOW-2026-00001, GS-SOW-2026-00001). Leer = Hauptshop (MeaLana), Nummern ohne Kürzel; auch Telefon-, Händler- und Kassen-Aufträge laufen dort. Laden-Belege (Kassenbon, Z-Bon, Mietrechnung, Partner-/Händler-Belege) bekommen nie ein Kürzel. Nur Buchstaben/Ziffern, max. 5 Zeichen, je Shop verschieden. Gesperrt, sobald der Shop den ersten Auftrag hat.</p>
-            <p><strong>System:</strong> Preisanzeige in Aufträgen (Brutto/Netto), Kleinunternehmer-Modus, PLC-Polling-Ordner, <strong>Artikelbilder auf Belegen</strong> (je Beleg/Mail ein- und ausschaltbar: Rechnung, Rechnungskorrektur, AB, Lieferschein, Pickliste, Abholzettel, Kassenbon A4, AB-/Abhol-/Versandmail — feste Bildgröße, Kind ohne Bild zeigt das Vaterbild, gilt für neue Belege).</p>
+            <p><strong>System:</strong> Preisanzeige in Aufträgen (Brutto/Netto), Kleinunternehmer-Modus, PLC-Polling-Ordner, <strong>Artikelbilder auf Belegen</strong> (je Beleg/Mail ein- und ausschaltbar: Rechnung, Rechnungskorrektur, AB, Lieferschein, Pickliste, Abholzettel, Kassenbon A4, AB-/Abhol-/Versandmail — feste Bildgröße, Kind ohne Bild zeigt das Vaterbild, gilt für neue Belege), Kundenanzeige (Willkommenstext, Beleg-QR anzeigen), <strong>Paperless</strong> (Adresse der Belegseite + API-Schlüssel, Verbindung testen — siehe <a href="#kasse-paperless">Beleg per QR</a>).</p>
 
             <p><strong>Lizenz</strong> (··· → 🔑 Lizenzverwaltung, nur Superadmin): Module, erlaubte und verwendete Kassen/Shops, Wartung bis; Lizenzdatei (.lic) von NAHTLOS einspielen — gilt nur für Firmenname + UID aus dem Tab Firma. Ohne Lizenz nur Grundmodul. Nicht lizenzierte Module sind im Menü ausgegraut mit 🔒, vorhandene Daten bleiben lesbar (Bon-Journal, Z-Bons, Belege), verkaufte Gutscheine immer einlösbar. Wartung abgelaufen = Programm läuft weiter, nur keine neuen Updates.</p>
             <p><strong>Superadmin-Übergabe</strong> (Login-Seite, ohne Anmeldung): nur mit Übergabe-Schlüssel von NAHTLOS (schriftliche Anfrage vom Inhaber/Geschäftsführung, gilt ~7 Tage, einmal, nur für diese Firma). Neuen Superadmin wählen oder anlegen, bisherige herabstufen oder deaktivieren (nie löschen); deren Anmeldungen enden beim nächsten Klick.</p>
@@ -639,6 +640,17 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td><strong>Gutschein</strong></td><td>Code eingeben → Prüfen → Guthaben wird angezeigt; reicht es nicht, Rest bar oder mit Karte (siehe <a href="#gutscheine">Gutscheine</a>)</td></tr>
                 <tr><td><strong>Divers</strong></td><td>Freie Position ohne Stammdaten — Artikelgruppe (Kachel) antippen, Preis eintippen</td></tr>
             </table>
+
+            <div class="ba-hint">💡 Kein „Ohne Druck“ mehr (Belegerteilungspflicht): jeder Kunde bekommt einen Beleg, auf Papier oder per QR-Code.</div>
+
+            <h3 id="kasse-paperless">Beleg per QR-Code (Paperless) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Seit 1.10.2026 darf der Beleg digital übergeben werden, z.B. per QR-Code, den der Kunde vor Ort scannt (BMF, 29.09.2026). Eigenes Lizenz-Modul <strong>Paperless</strong>.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Nach der Zahlung <strong>📱 Beleg per QR</strong> wählen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Der A4-Bon geht als PDF auf die Belegseite (z.B. beleg.mealana.at), der QR-Code erscheint im Kassenfenster und auf der Kundenanzeige</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Kunde scannt → <strong>✓ Beleg abgerufen</strong>, das Fenster schließt sich selbst</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Scannt der Kunde nicht → <strong>🖨 Trotzdem drucken</strong> bzw. <strong>📄 A4</strong></div></div>
+            <div class="ba-hint">💡 Kasse fix auf 80mm/A4: mit Paperless kommt trotzdem der Dialog (eingestellter Druck oder QR). Offline-/Messe-Kasse: immer Druck. Auf der Belegseite: nicht abgerufen 24 h, abgerufen 30 Tage, nur Beleg-Daten, keine Kundendaten.</div>
+            <div class="ba-hint">💡 <strong>Einrichten:</strong> Ordner <code>beleg-portal</code> per FTP auf eine Subdomain (HTTPS), dort <code>config.php</code> aus <code>config.example.php</code> anlegen → Einstellungen → System → <strong>Paperless</strong>: Adresse + gleicher API-Schlüssel → <strong>Verbindung testen</strong>. QR auf der Kundenanzeige: Einstellungen → System → Kundenanzeige → „Beleg-QR auf der Kundenanzeige zeigen“.</div>
 
             <h3 id="kasse-divers">Freier Artikel (Divers) + Gruppen-Tasten <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Optional Menge vorwählen: Zahl am Numpad + <strong>× Mal</strong></div></div>
