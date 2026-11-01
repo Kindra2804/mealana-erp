@@ -1,10 +1,11 @@
 ---
 name: project-paperless-rechnung-modul
-description: "Lizenz-Modul Paperless (99 €): Beleg per QR an der Kasse — Feindesign 2026-11-01 abgenommen, Bau läuft (Schritt 1 Belegseite fertig), eigene Seite beleg.<domain> statt Woo"
+description: "Lizenz-Modul Paperless (99 €): Beleg per QR an der Kasse — Feindesign 2026-11-01 abgenommen, Bau läuft (Schritt 1 Belegseite + 2 ERP-Upload fertig), eigene Seite beleg.<domain> statt Woo"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 1018675b-06b0-4bee-b923-24fdc5ebd59a
+  modified: 2026-11-01T15:39:56.247Z
 ---
 
 ## Idee (Jacky, 2026-07-07)
@@ -33,5 +34,7 @@ Bestätigt: die Druckoption `Keiner` verstößt bereits jetzt gegen die Belegert
 
 ## Bau
 - ✅ Schritt 1 (2026-11-01): Ordner `beleg-portal/` im Repo (index.php Abrufseite, api.php test/upload/status mit Header X-Nahtlos-Schluessel, lib.php, config.example.php, .htaccess sperrt config/lib/daten, robots noindex, README). config.php + daten/* in .gitignore. Lokal mit php -S getestet: falscher Schlüssel, keine PDF, Upload mit Logo, Status vorher/nachher, Abrufseite, Download byte-gleich, Aufräumen 24 h + 30 Tage (29 bleibt, 31 weg).
-- Offen: 2 ERP-Einstellungen + Upload (PaperlessService, PDF wie bon_speichern holeBonAnhang), 3 Kasse (Ohne Druck raus, QR-Overlay + Polling, Kundenanzeige, Fallback Druck, Lizenz paperless), 4 Handbücher + Klicktest; Jacky: Subdomain + FTP-Upload + config.php.
+- ✅ Schritt 2 (2026-11-01): Migration 220 (kassen_bons.paperless_token/_url/_hochgeladen_am/_abgerufen_am, Settings paperless_url/_schluessel); `src/modules/kasse/PaperlessService.php` (verfuegbar = Lizenz + URL + Schlüssel, test, hochladen idempotent mit Logo Shop 1 nur wenn kassen.bon_logo, abgerufen); `BonA4Renderer::pdfSpeichern()` (auch Abholmail); Einstellungen → System → Karte Paperless (🎲 Schlüssel erzeugen, nur bei Neueingabe gespeichert) + einstellungen/paperless_test.php. Test 14/14 gegen lokale Belegseite.
+- Jacky 2026-11-01: Belegseite beim Klicktest gleich direkt auf beleg.mealana.at (bleibt für Live); beim Live-Gang nicht leeren nötig (niemand hat die Test-QRs, nach 30 Tagen eh weg).
+- Offen: 3 Kasse (Ohne Druck raus, QR-Overlay + Polling, Kundenanzeige, Fallback Druck, Lizenz paperless), 4 Handbücher + Klicktest; Jacky: Subdomain + FTP-Upload + config.php.
 

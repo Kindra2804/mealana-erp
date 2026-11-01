@@ -854,6 +854,57 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             </div>
         </div>
 
+        <?php $ppSchluessel = $rows['paperless_schluessel'] ?? ''; ?>
+        <div class="card" style="margin-bottom:12px">
+            <div class="card-header">Paperless — Beleg per QR-Code<?= Lizenz::hat('paperless') ? '' : ' <span style="font-weight:400;color:var(--color-text-muted)">(🔒 nicht lizenziert)</span>' ?></div>
+            <div style="padding:16px">
+                <div style="display:grid;grid-template-columns:minmax(0,360px) minmax(0,360px);gap:12px">
+                    <div class="form-group">
+                        <label class="form-label">Adresse der Belegseite</label>
+                        <input type="url" name="paperless_url" id="pp-url" class="erp-input" style="width:100%"
+                            value="<?= $s('paperless_url') ?>" placeholder="https://beleg.mealana.at">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">API-Schlüssel <?= $ppSchluessel !== '' ? '<span style="font-weight:400;color:var(--color-text-muted)">(gespeichert, endet auf …' . htmlspecialchars(substr($ppSchluessel, -4)) . ')</span>' : '' ?></label>
+                        <div style="display:flex;gap:6px">
+                            <input type="text" name="paperless_schluessel" id="pp-schluessel" class="erp-input" style="flex:1;font-family:monospace;font-size:12px"
+                                autocomplete="off" placeholder="<?= $ppSchluessel !== '' ? 'leer lassen = unverändert' : 'Schlüssel eintragen oder erzeugen' ?>">
+                            <button type="button" class="btn btn-sm" onclick="ppSchluesselErzeugen()" title="Zufälligen Schlüssel erzeugen">🎲 Erzeugen</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                    <button type="button" class="btn btn-sm" id="pp-test-btn" onclick="ppTesten()">Verbindung testen</button>
+                    <span id="pp-test-ergebnis" style="font-size:13px"></span>
+                </div>
+                <div style="color:var(--color-text-muted);font-size:12px;margin-top:10px">
+                    Der Kunde scannt an der Kasse einen QR-Code und lädt den A4-Bon als PDF herunter, statt einen Papierbon zu bekommen.
+                    Die Belegseite (Ordner <code>beleg-portal</code>) läuft am eigenen Webspace; dort in <code>config.php</code> denselben
+                    API-Schlüssel eintragen. Gespeichert werden nur Beleg-Daten, keine Kundendaten. Nicht abgerufene Belege werden nach 24 h gelöscht,
+                    abgerufene nach 30 Tagen.
+                </div>
+            </div>
+        </div>
+        <script>
+        function ppSchluesselErzeugen() {
+            const b = new Uint8Array(32);
+            crypto.getRandomValues(b);
+            document.getElementById('pp-schluessel').value = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+        }
+        function ppTesten() {
+            const btn = document.getElementById('pp-test-btn'), res = document.getElementById('pp-test-ergebnis');
+            const fd = new FormData();
+            fd.append('url', document.getElementById('pp-url').value);
+            fd.append('schluessel', document.getElementById('pp-schluessel').value);
+            btn.disabled = true; res.style.color = 'var(--color-text-muted)'; res.textContent = 'Prüfe …';
+            fetch('paperless_test.php', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(d => { res.style.color = d.erfolg ? 'var(--color-success)' : 'var(--color-danger)'; res.textContent = d.meldung; })
+                .catch(() => { res.style.color = 'var(--color-danger)'; res.textContent = 'Verbindungsfehler.'; })
+                .finally(() => { btn.disabled = false; });
+        }
+        </script>
+
         <div style="display:flex;justify-content:flex-end">
             <button type="submit" class="btn btn-primary">System-Einstellungen speichern</button>
         </div>

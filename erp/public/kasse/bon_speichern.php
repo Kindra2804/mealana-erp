@@ -948,23 +948,10 @@ if ($result['erfolg'] && $webAuftraege) {
         $bonAnhang = [];
         if (!$bonId) return $bonAnhang;
         try {
-            require_once __DIR__ . '/../../vendor/autoload.php';
             require_once __DIR__ . '/../../src/modules/kasse/BonA4Renderer.php';
 
-            $htmlA4 = BonA4Renderer::render((int)$bonId, fuerPdf: true);
-            if ($htmlA4 !== null) {
-                $opt = new \Dompdf\Options();
-                $opt->set('defaultFont', 'DejaVu Sans');
-                $opt->set('isRemoteEnabled', false);
-                $dom = new \Dompdf\Dompdf($opt);
-                $dom->loadHtml($htmlA4, 'UTF-8');
-                $dom->setPaper('A4', 'portrait');
-                $dom->render();
-
-                $bonDir = __DIR__ . '/../../storage/bons/';
-                if (!is_dir($bonDir)) mkdir($bonDir, 0755, true);
-                $bonPdfPfad = $bonDir . $bonId . '.pdf';
-                file_put_contents($bonPdfPfad, $dom->output());
+            $bonPdfPfad = BonA4Renderer::pdfSpeichern((int)$bonId);
+            if ($bonPdfPfad !== null) {
                 $bonAnhang = [['pfad' => $bonPdfPfad, 'name' => 'Kassenbon_' . $bonNr . '.pdf']];
             }
         } catch (Throwable $ePdf) {

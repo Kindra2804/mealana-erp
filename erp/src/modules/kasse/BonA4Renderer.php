@@ -14,6 +14,27 @@ require_once __DIR__ . '/../kunden/KundenRepository.php';
  */
 class BonA4Renderer
 {
+    /** A4-Bon als PDF nach storage/bons/{id}.pdf — für Abholmail und Paperless. Liefert den Pfad oder null. */
+    public static function pdfSpeichern(int $bonId): ?string
+    {
+        require_once __DIR__ . '/../../../vendor/autoload.php';
+        $html = self::render($bonId, fuerPdf: true);
+        if ($html === null) return null;
+        $opt = new \Dompdf\Options();
+        $opt->set('defaultFont', 'DejaVu Sans');
+        $opt->set('isRemoteEnabled', false);
+        $dom = new \Dompdf\Dompdf($opt);
+        $dom->loadHtml($html, 'UTF-8');
+        $dom->setPaper('A4', 'portrait');
+        $dom->render();
+
+        $dir = __DIR__ . '/../../../storage/bons/';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $pfad = $dir . $bonId . '.pdf';
+        file_put_contents($pfad, $dom->output());
+        return $pfad;
+    }
+
     /** @param bool $fuerPdf true = ohne Druck-/Schließen-Buttons (für Dompdf-Anhang) */
     public static function render(int $bonId, bool $fuerPdf = false): ?string
     {

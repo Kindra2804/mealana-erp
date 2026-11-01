@@ -312,6 +312,11 @@ if ($tab === 'system') {
     setSetting($db, 'lieferschein_charge_anzeigen',  $lsChargeAnzeigen);
     setSetting($db, 'download_limit_standard',       $downloadLimit !== '' ? (string)(int)$downloadLimit : '');
 
+    // Paperless — Schlüssel nur bei Neueingabe überschreiben (wie SMTP-Passwort)
+    setSetting($db, 'paperless_url', rtrim(trim($_POST['paperless_url'] ?? ''), '/'));
+    $ppSchluessel = trim($_POST['paperless_schluessel'] ?? '');
+    if ($ppSchluessel !== '') setSetting($db, 'paperless_schluessel', $ppSchluessel);
+
     // Artikelbilder je Belegtyp (BelegBilder) — nicht angehakt = aus
     require_once __DIR__ . '/../../src/modules/dokumente/BelegBilder.php';
     $belegBilder = (array)($_POST['beleg_bilder'] ?? []);
