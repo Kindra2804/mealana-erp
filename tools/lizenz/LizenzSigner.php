@@ -26,6 +26,35 @@ class LizenzSigner
     }
 
     /**
+     * Superadmin-Übergabe-Schlüssel: einmalig (nonce), gebunden an Firma + UID/Steuernummer,
+     * gültig $tage Tage. Vorher Identität prüfen (schriftlich vom Inhaber/Geschäftsführer)!
+     */
+    public static function signiereUebergabe(string $nr, string $firma, string $uid, string $steuernr, int $tage = 7,
+                                             string $privatPfad = self::PRIVAT_STANDARD): string
+    {
+        if ($uid === '' && $steuernr === '') throw new InvalidArgumentException('UID oder Steuernummer ist Pflicht.');
+        $daten = [
+            'format' => 1, 'typ' => 'superadmin_uebergabe', 'schluessel_nr' => $nr,
+            'firma' => $firma, 'uid' => $uid, 'steuernummer' => $steuernr,
+            'nonce' => bin2hex(random_bytes(16)),
+            'ausgestellt_am' => date('Y-m-d'), 'gueltig_bis' => date('Y-m-d', strtotime(sprintf('%+d days', $tage))),
+        ];
+        return self::signiereText(json_encode($daten, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $privatPfad);
+    }
+
+    private static function signiereText(string $text, string $privatPfad): string
+    {
+        if (!is_file($privatPfad)) throw new RuntimeException("Privater Schlüssel nicht gefunden: $privatPfad");
+        $key = openssl_pkey_get_private(file_get_contents($privatPfad));
+        if (!$key) throw new RuntimeException('Privater Schlüssel ungültig.');
+        if (!openssl_sign($text, $sig, $key, OPENSSL_ALGO_SHA256)) {
+            throw new RuntimeException('Signieren fehlgeschlagen: ' . openssl_error_string());
+        }
+        return json_encode(['daten' => $text, 'signatur' => base64_encode($sig)],
+                           JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
      * Signiert die Lizenzdaten. Pflicht: lizenz_nr, firma, uid oder steuernummer, module.
      * Rückgabe: Inhalt der Lizenzdatei (JSON-Text).
      */
@@ -37,20 +66,11 @@ class LizenzSigner
         if (empty($daten['uid']) && empty($daten['steuernummer'])) {
             throw new InvalidArgumentException('UID oder Steuernummer ist Pflicht.');
         }
-        $daten = ['format' => 1, 'ausgestellt_am' => date('Y-m-d')] + $daten + [
+        $daten = ['format' => 1, 'typ' => 'lizenz', 'ausgestellt_am' => date('Y-m-d')] + $daten + [
             'uid' => '', 'steuernummer' => '', 'wartung_bis' => null, 'hauslizenz' => false,
         ];
         $daten['module']['grundmodul'] = 1;
 
-        if (!is_file($privatPfad)) throw new RuntimeException("Privater Schlüssel nicht gefunden: $privatPfad");
-        $key = openssl_pkey_get_private(file_get_contents($privatPfad));
-        if (!$key) throw new RuntimeException('Privater Schlüssel ungültig.');
-
-        $text = json_encode($daten, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if (!openssl_sign($text, $sig, $key, OPENSSL_ALGO_SHA256)) {
-            throw new RuntimeException('Signieren fehlgeschlagen: ' . openssl_error_string());
-        }
-        return json_encode(['daten' => $text, 'signatur' => base64_encode($sig)],
-                           JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return self::signiereText(json_encode($daten, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $privatPfad);
     }
 }

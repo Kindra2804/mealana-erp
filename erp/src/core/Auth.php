@@ -55,6 +55,7 @@ class Auth
             // Passwort-Hash niemals in die Session schreiben
             unset($user['passwort']);
             $_SESSION['benutzer'] = $user;
+            $_SESSION['angemeldet_am'] = time();   // für benutzer.sitzung_ungueltig_ab (Superadmin-Übergabe)
 
             $id = $user['id'];
 
@@ -148,6 +149,15 @@ class Auth
         $db = Database::getInstance();
         $stmt = $db->prepare("UPDATE sessions SET letzte_aktivitaet = NOW() WHERE id = :id");
         $stmt->execute(['id' => session_id()]);
+
+        // Anmeldung beenden, wenn der Benutzer seither deaktiviert/umgestellt wurde
+        // (z.B. abgelöster Superadmin, siehe SuperadminUebergabe)
+        $stmt = $db->prepare("SELECT aktiv, UNIX_TIMESTAMP(sitzung_ungueltig_ab) FROM benutzer WHERE id = :id");
+        $stmt->execute(['id' => $_SESSION['benutzer']['id']]);
+        [$aktiv, $ungueltigAb] = $stmt->fetch(PDO::FETCH_NUM) ?: [0, null];
+        if (!$aktiv || ($ungueltigAb !== null && (int)$ungueltigAb >= (int)($_SESSION['angemeldet_am'] ?? 0))) {
+            self::logout();
+        }
     }
 
     /**

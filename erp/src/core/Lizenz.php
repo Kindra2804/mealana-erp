@@ -160,37 +160,51 @@ class Lizenz
 
     // ── Prüfung ───────────────────────────────────────────────────────────────
 
-    /** Prüft eine Lizenzdatei (Text) gegen Signatur und Firmendaten, ohne sie zu speichern */
-    public static function pruefeInhalt(string $inhalt): array
+    /**
+     * Prüft nur die Signatur einer signierten Datei (Lizenz oder Superadmin-Übergabe).
+     * Rückgabe: ['daten' => array|null, 'fehler' => ?string]
+     */
+    public static function pruefeSignatur(string $inhalt): array
     {
         $datei = json_decode($inhalt, true);
         if (!is_array($datei) || !isset($datei['daten'], $datei['signatur'])) {
-            return ['status' => 'ungueltig', 'daten' => null, 'fehler' => 'Keine gültige Lizenzdatei.'];
+            return ['daten' => null, 'fehler' => 'Keine gültige Datei von NAHTLOS.'];
         }
-
         $pubPfad = __DIR__ . '/../../config/lizenz_public.pem';
         $pub = is_file($pubPfad) ? openssl_pkey_get_public(file_get_contents($pubPfad)) : false;
         if (!$pub) {
-            return ['status' => 'ungueltig', 'daten' => null, 'fehler' => 'Öffentlicher Lizenzschlüssel fehlt (config/lizenz_public.pem).'];
+            return ['daten' => null, 'fehler' => 'Öffentlicher Lizenzschlüssel fehlt (config/lizenz_public.pem).'];
         }
         $sig = base64_decode((string)$datei['signatur'], true);
         if ($sig === false || openssl_verify((string)$datei['daten'], $sig, $pub, OPENSSL_ALGO_SHA256) !== 1) {
-            return ['status' => 'ungueltig', 'daten' => null, 'fehler' => 'Signatur ungültig — die Datei wurde verändert oder stammt nicht von NAHTLOS.'];
+            return ['daten' => null, 'fehler' => 'Signatur ungültig — die Datei wurde verändert oder stammt nicht von NAHTLOS.'];
         }
-
         $daten = json_decode((string)$datei['daten'], true);
-        if (!is_array($daten) || empty($daten['lizenz_nr']) || !is_array($daten['module'] ?? null)) {
-            return ['status' => 'ungueltig', 'daten' => null, 'fehler' => 'Lizenzdaten unvollständig.'];
-        }
+        return is_array($daten) ? ['daten' => $daten, 'fehler' => null] : ['daten' => null, 'fehler' => 'Daten unlesbar.'];
+    }
 
+    /** Passen Firmenname + UID (bzw. Steuernummer) einer signierten Datei zu dieser Installation? */
+    public static function firmaPasst(array $daten): bool
+    {
         $firma = self::firmendaten();
-        $passt = self::norm($daten['firma'] ?? '') === self::norm($firma['firmenname']);
-        if ($passt) {
-            $passt = !empty($daten['uid'])
-                ? self::norm($daten['uid']) === self::norm($firma['uid_nummer'])
-                : (!empty($daten['steuernummer']) && self::norm($daten['steuernummer']) === self::norm($firma['steuernummer']));
+        if (self::norm($daten['firma'] ?? '') !== self::norm($firma['firmenname'])) return false;
+        return !empty($daten['uid'])
+            ? self::norm($daten['uid']) === self::norm($firma['uid_nummer'])
+            : (!empty($daten['steuernummer']) && self::norm($daten['steuernummer']) === self::norm($firma['steuernummer']));
+    }
+
+    /** Prüft eine Lizenzdatei (Text) gegen Signatur und Firmendaten, ohne sie zu speichern */
+    public static function pruefeInhalt(string $inhalt): array
+    {
+        $sig = self::pruefeSignatur($inhalt);
+        if (!$sig['daten']) {
+            return ['status' => 'ungueltig', 'daten' => null, 'fehler' => $sig['fehler']];
         }
-        if (!$passt) {
+        $daten = $sig['daten'];
+        if (($daten['typ'] ?? 'lizenz') !== 'lizenz' || empty($daten['lizenz_nr']) || !is_array($daten['module'] ?? null)) {
+            return ['status' => 'ungueltig', 'daten' => null, 'fehler' => 'Das ist keine Lizenzdatei.'];
+        }
+        if (!self::firmaPasst($daten)) {
             return ['status' => 'falsche_firma', 'daten' => $daten,
                     'fehler' => 'Die Lizenz gilt für „' . ($daten['firma'] ?? '?') . '“ (' . ($daten['uid'] ?: ($daten['steuernummer'] ?? '')) . ') — '
                               . 'Firmenname/UID in den Einstellungen stimmen nicht überein.'];

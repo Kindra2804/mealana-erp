@@ -120,6 +120,16 @@ Damit das System E-Mails senden kann (Auftragsbestätigungen, Mahnungen, Versand
 - **Wartung abgelaufen:** das Programm läuft unverändert weiter, nur neue Updates gehen nicht mehr
 - Mehr Kassen/Shops als lizenziert: neue lassen sich nicht aktivieren, bestehende laufen weiter (RKSV-Kassen darf man nicht einfach abschalten)
 
+### Superadmin-Übergabe
+
+Ein neuer Superadmin lässt sich **nur mit einem Übergabe-Schlüssel von NAHTLOS** festlegen. Das ist z.B. nötig, wenn der bisherige nicht mehr verfügbar ist und niemand mehr in die Lizenzverwaltung kommt.
+
+1. Schriftliche Anfrage vom Inhaber bzw. der Geschäftsführung an NAHTLOS, die den Schlüssel ausstellt. Er gilt nur für diese Firma, ca. 7 Tage und nur einmal
+2. Login-Seite → **Superadmin-Übergabe** (funktioniert ohne Anmeldung) → Schlüssel hochladen oder einfügen
+3. Neuen Superadmin wählen (bestehender Benutzer) oder neu anlegen
+4. Jeden bisherigen Superadmin **herabstufen** (Rolle wählen) oder **deaktivieren**. Gelöscht wird nie (Protokolle, Belege)
+5. Ihre laufenden Anmeldungen enden beim nächsten Klick, die Übergabe steht im Aktivitäten-Log
+
 ---
 
 ## Häufige Probleme

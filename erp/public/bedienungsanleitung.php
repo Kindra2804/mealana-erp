@@ -584,6 +584,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>System:</strong> Preisanzeige in Aufträgen (Brutto/Netto), Kleinunternehmer-Modus, PLC-Polling-Ordner, <strong>Artikelbilder auf Belegen</strong> (je Beleg/Mail ein- und ausschaltbar: Rechnung, Rechnungskorrektur, AB, Lieferschein, Pickliste, Abholzettel, Kassenbon A4, AB-/Abhol-/Versandmail — feste Bildgröße, Kind ohne Bild zeigt das Vaterbild, gilt für neue Belege).</p>
 
             <p><strong>Lizenz</strong> (··· → 🔑 Lizenzverwaltung, nur Superadmin): Module, erlaubte und verwendete Kassen/Shops, Wartung bis; Lizenzdatei (.lic) von NAHTLOS einspielen — gilt nur für Firmenname + UID aus dem Tab Firma. Ohne Lizenz nur Grundmodul. Nicht lizenzierte Module sind im Menü ausgegraut mit 🔒, vorhandene Daten bleiben lesbar (Bon-Journal, Z-Bons, Belege), verkaufte Gutscheine immer einlösbar. Wartung abgelaufen = Programm läuft weiter, nur keine neuen Updates.</p>
+            <p><strong>Superadmin-Übergabe</strong> (Login-Seite, ohne Anmeldung): nur mit Übergabe-Schlüssel von NAHTLOS (schriftliche Anfrage vom Inhaber/Geschäftsführung, gilt ~7 Tage, einmal, nur für diese Firma). Neuen Superadmin wählen oder anlegen, bisherige herabstufen oder deaktivieren (nie löschen); deren Anmeldungen enden beim nächsten Klick.</p>
 
             <h3 id="einstellungen-mail">Mail / SMTP <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <table class="ba-table">

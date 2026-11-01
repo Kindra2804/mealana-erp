@@ -123,6 +123,7 @@ unset($_SESSION['fehler']);
             <button type="submit">Anmelden</button>
         </form>
         <a href="<?= BASE_PATH ?>/passwort_vergessen.php" style="display:block;text-align:center;margin-top:16px;font-size:13px;color:#4a7cb5;text-decoration:none">Passwort vergessen?</a>
+        <a href="<?= BASE_PATH ?>/superadmin_uebergabe.php" style="display:block;text-align:center;margin-top:6px;font-size:11px;color:#9aa5b1;text-decoration:none">Superadmin-Übergabe (mit Schlüssel von NAHTLOS)</a>
     </div>
 </body>
 </html>

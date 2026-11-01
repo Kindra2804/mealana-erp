@@ -66,3 +66,10 @@ JTL-Import: sehr speziell, später entscheiden (evtl. zeitlich begrenzte Freisch
 - ERP: dezenter Wartungshinweis oben im Inhalt nur für lizenz.verwalten.
 - Getestet: Logik (30/61 Tage, abgelaufen, Wartung weg, Kasse ohne RKSV) per Rollback; Registrierungsseite gerendert. Banner in der echten Kasse noch nicht im Browser angesehen → Klicktest.
 
+## ✅ Lizenz-Bau Schritt 3 GEBAUT 2026-11-01 (Superadmin-Übergabe)
+- Migration 218: `superadmin_uebergaben` (nonce UNIQUE = einmalig) + `benutzer.sitzung_ungueltig_ab`. Auth: Login merkt `$_SESSION['angemeldet_am']`, heartbeat() beendet Anmeldung, wenn Benutzer inaktiv ODER sitzung_ungueltig_ab >= angemeldet_am (**neu: auch deaktivierte Benutzer fliegen jetzt beim nächsten Klick raus**).
+- Lizenz.php: pruefeSignatur() + firmaPasst() herausgezogen; Lizenzdateien tragen typ 'lizenz' (fehlt = lizenz), Übergabe-Schlüssel typ 'superadmin_uebergabe' — gegenseitig nicht verwechselbar.
+- `src/modules/benutzer/SuperadminUebergabe.php` (pruefeSchluessel, durchfuehren: Ziel bestehend/neu, jeder alte Superadmin → rolle:<id> oder deaktivieren, sonst Abbruch; Log warn), Seite `public/superadmin_uebergabe.php` ohne Login, Link auf login.php.
+- Werkzeug `tools/lizenz/uebergabe_ausstellen.php --nr --firma --uid [--tage=7]`.
+- Test 12/12 (gültig, fremde Firma, abgelaufen, Typ-Verwechslung, ohne Entscheidung → Rollback, Übergabe, einmalig) mit Sicherung/Wiederherstellung der echten Superadmin-Konten; Seite gerendert.
+
