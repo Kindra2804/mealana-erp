@@ -189,3 +189,7 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 ## Stand 2026-10-28 (Jacky)
 - Kontonummern 3710/3720/4080: keine Freigabe nötig — Babsi kann sie bei Bedarf selbst im Kontenplan / Export-Einstellungen "Partner-Konten" ändern.
 - Test-Partner "TEST_Partner_Fix_Check" (Spende) bleibt bewusst in der Dev-DB → für Tests im Dev verwenden, nicht löschen.
+
+## ✅ 2026-11-01: Steuer-Info je Partner am Bon (Babsi)
+Fremdrechnung-Partner, der KEIN Kleinunternehmer ist → am Bon (80mm + A4) eigene USt-Aufstellung "Steuer-Info in Vertretung für …" (Satz/Netto/USt/Brutto), getrennt von "Steuer-Info eigene Umsätze". Kleinunternehmer → an derselben Stelle der KU-Hinweis statt Tabelle. Rechnung in `PartnerBon::steuerAufstellung()`, Abschnitt-Feld `steuer`. Getestet mit Bon 215 (Mollramer) + KU-Simulation per Rollback. Aufträge/Rechnungen haben keine Partnerware → nur Bon betroffen.
+

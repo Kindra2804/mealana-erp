@@ -109,7 +109,10 @@ class PartnerBon
     /**
      * Abschnitte für den Druck: fremde Positionen je Partner, mit Kopfdaten.
      * Rückgabe: [['partner' => [...], 'modus' => 'fremdrechnung'|'spende',
-     *            'ku_text' => ?string, 'positionen' => [...], 'summe' => float], …]
+     *            'ku_text' => ?string, 'positionen' => [...], 'summe' => float,
+     *            'steuer' => [['satz', 'netto', 'steuer', 'brutto'], …]], …]
+     * 'steuer' nur bei Fremdrechnung eines Partners, der KEIN Kleinunternehmer ist
+     * (Babsi 2026-11-01: der Kunde braucht die USt-Aufstellung des Partners), sonst leer.
      */
     public static function abschnitte(array $positionen): array
     {
@@ -129,6 +132,7 @@ class PartnerBon
         $abschnitte = [];
         foreach ($gruppen as $pid => $pos) {
             $pa = $partner[$pid] ?? ['name' => 'Partner #' . $pid, 'kleinunternehmer' => 0];
+            $mitSteuer = $pos[0]['partner_modus'] === 'fremdrechnung' && empty($pa['kleinunternehmer']);
             $abschnitte[] = [
                 'partner'    => $pa,
                 'modus'      => $pos[0]['partner_modus'],
@@ -136,9 +140,33 @@ class PartnerBon
                 'ku_text'    => !empty($pa['kleinunternehmer']) ? ($pa['ku_text'] ?: PartnerService::KU_STANDARDTEXT) : null,
                 'positionen' => $pos,
                 'summe'      => round(array_sum(array_map([self::class, 'zeilenBrutto'], $pos)), 2),
+                'steuer'     => $mitSteuer ? self::steuerAufstellung($pos) : [],
             ];
         }
         return $abschnitte;
+    }
+
+    /** USt-Aufstellung je Satz (Brutto mit Vorzeichen wie zeilenBrutto, Satz absteigend) */
+    public static function steuerAufstellung(array $positionen): array
+    {
+        $saetze = [];
+        foreach ($positionen as $p) {
+            $satz   = (float)($p['steuer_prozent'] ?? 0);
+            $key    = number_format($satz, 2, '.', '');
+            $brutto = self::zeilenBrutto($p);
+            $saetze[$key] ??= ['satz' => $satz, 'netto' => 0.0, 'steuer' => 0.0, 'brutto' => 0.0];
+            $netto = $satz > 0 ? $brutto / (1 + $satz / 100) : $brutto;
+            $saetze[$key]['netto']  += $netto;
+            $saetze[$key]['steuer'] += $brutto - $netto;
+            $saetze[$key]['brutto'] += $brutto;
+        }
+        krsort($saetze, SORT_NUMERIC);
+        return array_values(array_map(fn($s) => [
+            'satz'   => $s['satz'],
+            'netto'  => round($s['netto'], 2),
+            'steuer' => round($s['steuer'], 2),
+            'brutto' => round($s['brutto'], 2),
+        ], $saetze));
     }
 
     /** Überschrift eines Partner-Abschnitts */

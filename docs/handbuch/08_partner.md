@@ -102,7 +102,7 @@ Im Warenkorb steht bei Partnerware klein „im Namen von …“ bzw. „Spende f
 | Verkaufsart | Am Bon | RKSV / Umsatz | Geld |
 |---|---|---|---|
 | **Kommission** | normale Zeile | normal signiert, eigener Umsatz | normal |
-| **Fremdrechnung** | eigener Abschnitt „Verkauft im Namen und auf Rechnung von …“ mit Name, Adresse, UID — bei Kleinunternehmern „ohne USt“ + KU-Text | **nicht** signiert, **kein** eigener Umsatz | bleibt in der Lade (durchlaufend), wird an den Partner weitergegeben |
+| **Fremdrechnung** | eigener Abschnitt „Verkauft im Namen und auf Rechnung von …“ mit Name, Adresse, UID + eigener **Steuer-Info** des Partners (Satz/Netto/USt/Brutto) — bei Kleinunternehmern „ohne USt“ + KU-Text als Steuer-Info | **nicht** signiert, **kein** eigener Umsatz | bleibt in der Lade (durchlaufend), wird an den Partner weitergegeben |
 | **Spende** | eigener Abschnitt „Spende für …“ mit ZVR | **nicht** signiert, kein Umsatz | Bar-Anteil kommt in die **Spendenlade** und zählt nicht zum Kassenstand |
 
 - Unter „GESAMT“ steht bei Mischbons „davon MEALANA € …“ (= signierter Anteil).

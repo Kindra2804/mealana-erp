@@ -401,8 +401,11 @@ foreach ($partnerAbschnitte as $ab):
 </table>
 
 <!-- ── STEUERAUFSTELLUNG ── -->
+<?php // Fremdrechnung: Partner mit USt → Tabelle, Kleinunternehmer → KU-Hinweis an derselben Stelle
+$partnerMitSteuer = array_values(array_filter($partnerAbschnitte, fn($ab) => !empty($ab['steuer']) || ($ab['modus'] === 'fremdrechnung' && $ab['ku_text']))); ?>
 <?php if (count($steuerTotale) > 0): ?>
 <div class="steuer-box">
+  <?php if ($partnerMitSteuer): ?><div style="font-size:8pt;font-weight:600;margin-bottom:2px">Steuer-Info eigene Umsätze</div><?php endif; ?>
   <table>
     <thead><tr><th>Steuersatz</th><th class="r">Netto</th><th class="r">USt</th><th class="r">Brutto</th></tr></thead>
     <tbody>
@@ -418,6 +421,29 @@ foreach ($partnerAbschnitte as $ab):
   </table>
 </div>
 <?php endif; ?>
+<?php // USt-Aufstellung je Partner mit Fremdrechnung, der kein Kleinunternehmer ist
+foreach ($partnerMitSteuer as $ab): ?>
+<div class="steuer-box">
+  <div style="font-size:8pt;font-weight:600;margin-bottom:2px">Steuer-Info in Vertretung für <?= htmlspecialchars($ab['partner']['name']) ?></div>
+  <?php if (!$ab['steuer']): ?>
+  <div style="font-size:8pt"><?= htmlspecialchars($ab['ku_text']) ?></div>
+  <?php else: ?>
+  <table>
+    <thead><tr><th>Steuersatz</th><th class="r">Netto</th><th class="r">USt</th><th class="r">Brutto</th></tr></thead>
+    <tbody>
+    <?php foreach ($ab['steuer'] as $pst): ?>
+      <tr>
+        <td><?= number_format($pst['satz'], 0) ?> %</td>
+        <td class="r">€ <?= number_format($pst['netto'], 2, ',', '.') ?></td>
+        <td class="r">€ <?= number_format($pst['steuer'], 2, ',', '.') ?></td>
+        <td class="r">€ <?= number_format($pst['brutto'], 2, ',', '.') ?></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+  <?php endif; ?>
+</div>
+<?php endforeach; ?>
 
 <!-- ── SUMMEN ── -->
 <div class="summen">

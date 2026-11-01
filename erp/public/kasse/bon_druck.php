@@ -319,16 +319,29 @@ if (!empty($restPositionen)):
   <?= $ab['modus'] === 'spende' || $ab['ku_text'] ? 'ohne USt' : 'inkl. ' . number_format((float)$pos['steuer_prozent'], 0) . '% USt' ?>
 </div>
 <?php endforeach; ?>
-<?php if ($ab['ku_text']): ?><div style="font-size:9px;margin-top:2px"><?= htmlspecialchars($ab['ku_text']) ?></div><?php endif; ?>
+<?php if ($ab['ku_text']): // Kleinunternehmer: Hinweis statt USt-Aufstellung ?><div style="font-size:9px;margin-top:2px"><?= $ab['modus'] === 'fremdrechnung' ? 'Steuer-Info: ' : '' ?><?= htmlspecialchars($ab['ku_text']) ?></div><?php endif; ?>
 <div class="pos-zeile" style="font-size:11px">
   <span>Summe <?= htmlspecialchars(mb_substr($pa['name'], 0, 18)) ?></span>
   <span><?= ($stSign || $ab['summe'] < 0) ? '-' : '' ?>€ <?= number_format(abs($ab['summe']), 2, ',', '.') ?></span>
 </div>
+<?php if ($ab['steuer']): // USt-Aufstellung des Partners (nicht Kleinunternehmer) ?>
+<div style="font-size:9px;margin-top:3px">Steuer-Info <?= htmlspecialchars(mb_substr($pa['name'], 0, 22)) ?>:</div>
+<div class="pos-zeile" style="font-size:9px"><span>Satz&nbsp;&nbsp;Netto&nbsp;&nbsp;USt</span><span>Brutto</span></div>
+<?php foreach ($ab['steuer'] as $pst): $pvz = ($stSign || $pst['brutto'] < 0) ? '-' : ''; ?>
+<div class="pos-zeile" style="font-size:9px">
+  <span><?= number_format($pst['satz'], 0) ?>%&nbsp;&nbsp;<?= $pvz . number_format(abs($pst['netto']), 2, ',', '.') ?>&nbsp;&nbsp;<?= $pvz . number_format(abs($pst['steuer']), 2, ',', '.') ?></span>
+  <span><?= $pvz ?>€ <?= number_format(abs($pst['brutto']), 2, ',', '.') ?></span>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
 <?php endforeach; ?>
 
 <div class="linie"></div>
 
 <!-- Steuertabelle -->
+<?php if ($steuerTotale && array_filter(array_column($partnerAbschnitte, 'steuer'))): ?>
+<div style="font-size:9px">Steuer-Info eigene Umsätze:</div>
+<?php endif; ?>
 <?php foreach ($steuerTotale as $k => $st): ?>
 <div class="pos-zeile" style="font-size:10px">
   <span>Netto <?= $k ?>%</span>
