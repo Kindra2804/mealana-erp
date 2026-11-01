@@ -5,6 +5,8 @@ metadata:
   type: project
 ---
 
+**Update 2026-11-01:** Live wird komplett neu auf 1.0 aufgesetzt; zuerst indra-design.at als Sub-Shop (Woo zurücksetzen, gemeinsam), dann sockenwolle-online, dann bio-wolle, MeaLana zuletzt — siehe [[project-1-0-check]].
+
 **Plan (Modulgespräch 2026-10-30):**
 - Sobald V1.0 steht ([[project-version-1-0-release]]), wird sie am Live-Server eingespielt. **Soft-Go-Live nur mit den Daten von Sockenwolle-online** (reduzierter Artikelstamm).
 - Der Shop **sockenwolle-online.at wechselt von JTL auf WooCommerce**. Alles, was über Sockenwolle-online kommt, läuft ab dann im ERP. Alle anderen Kanäle bleiben vorübergehend auf JTL. **MeaLana wird als letzter Shop umgestellt.**
