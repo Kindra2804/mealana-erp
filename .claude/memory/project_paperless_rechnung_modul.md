@@ -1,6 +1,6 @@
 ---
 name: project-paperless-rechnung-modul
-description: "Geplantes, extra buchbares Lizenz-Modul: Rechnung als QR-Code statt Papierbeleg, nur bei mind. 1 aktivem Shop buchbar — Konzept von Jacky 2026-07-07, Feindesign steht noch aus"
+description: "Lizenz-Modul Paperless (99 €): Beleg per QR an der Kasse — Feindesign 2026-11-01 abgenommen, Bau läuft (Schritt 1 Belegseite fertig), eigene Seite beleg.<domain> statt Woo"
 metadata: 
   node_type: memory
   type: project
@@ -24,3 +24,14 @@ Bestätigt: die Druckoption `Keiner` verstößt bereits jetzt gegen die Belegert
 **Why:** Barbara/Kunden wollen vermutlich zunehmend papierlose Belege; Lizenzmodell soll das als Zusatzfeature verkaufbar machen, nicht als Standard.
 
 **How to apply:** Zeitliche Einordnung (Jacky, 2026-07-07): Paperless-Rechnung + Kundenanzeige ([[project_kundenanzeige_modul]]) sind beides Kassen-Themen — sollen NACH erfolgreichem BFR-Hardware-Test eingeschoben werden, vorausgesetzt es gibt für die Kasse dann keine weiteren offenen Punkte außer BFR. Das "Keiner"-Ausblenden selbst ist aber ein **Blocker vor dem ersten produktiven Kasseneinsatz**, unabhängig davon ob das volle Modul bis dahin fertig ist — im Zweifel reicht auch ein Minimal-Fix (Option einfach entfernen), bis das Modul selbst dran ist.
+
+## ✅ Feindesign abgenommen (Jacky 2026-11-01) — gilt vor dem alten Konzept oben
+- **Rechtslage:** seit 1.10.2026 digitaler Beleg erlaubt, BMF-Pressemeldung 29.09.2026 (https://www.bmf.gv.at/presse/pressemeldungen/2026/september-2026/digitaler-beleg.html): „mit einem Endgerät vor Ort ausgelesen … etwa in Form eines QR-Codes“; Belegerteilungspflicht bleibt, Kontrollschwerpunkt bargeldintensive Branchen. Keine Angaben zu Abrufdauer/Datenschutz.
+- **Ablauf Kasse:** nach Zahlung „📱 Beleg per QR“ statt „✕ Ohne Druck fertig“ (das fliegt für ALLE raus, Belegerteilungspflicht). A4-Bon-PDF (mit RKSV-QR) hochladen → QR auf Kundenanzeige bzw. groß im Kassenfenster → Kasse fragt Status ab → „✓ Beleg abgerufen“, sonst „trotzdem drucken“. Offline/Messe → Druck.
+- **Hosting (Jacky-Idee):** NICHT WooCommerce (Laufkunden/DSGVO), sondern eigene kleine Seite **beleg.<domain>** (MeaLana: beleg.mealana.at, selber Hoster wie WordPress). DB: SQLite ODER WordPress-DB mit Präfix nahtlos_ (beides in config.php). Logo = Logo der Kasse/des Bons (wird beim Upload mitgeschickt).
+- Aufbewahrung: nicht abgerufen 24 h, abgerufen 30 Tage; Aufräumen bei jedem Aufruf (kein Cron).
+
+## Bau
+- ✅ Schritt 1 (2026-11-01): Ordner `beleg-portal/` im Repo (index.php Abrufseite, api.php test/upload/status mit Header X-Nahtlos-Schluessel, lib.php, config.example.php, .htaccess sperrt config/lib/daten, robots noindex, README). config.php + daten/* in .gitignore. Lokal mit php -S getestet: falscher Schlüssel, keine PDF, Upload mit Logo, Status vorher/nachher, Abrufseite, Download byte-gleich, Aufräumen 24 h + 30 Tage (29 bleibt, 31 weg).
+- Offen: 2 ERP-Einstellungen + Upload (PaperlessService, PDF wie bon_speichern holeBonAnhang), 3 Kasse (Ohne Druck raus, QR-Overlay + Polling, Kundenanzeige, Fallback Druck, Lizenz paperless), 4 Handbücher + Klicktest; Jacky: Subdomain + FTP-Upload + config.php.
+

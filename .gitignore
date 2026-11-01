@@ -47,3 +47,8 @@ erp/public/uploads/downloads/
 # Lizenz: privater Schlüssel gehört NIE ins Repo (liegt unter D:\ERP\lizenz_schluessel\)
 *.key
 *privat*.pem
+
+# Belegseite: echte Konfiguration + Belege nie ins Repo
+beleg-portal/config.php
+beleg-portal/daten/*
+!beleg-portal/daten/.htaccess
