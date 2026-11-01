@@ -35,3 +35,13 @@ metadata:
 
 ## ✅ Update-Weg gebaut 2026-11-01 → [[project-update-mechanismus]]
 Nächster Punkt laut Reihenfolge: **Backup** ([[project-backup-strategie]]), dann Baseline 1.0.
+
+## ⏭️ Nächste Session (Jacky 2026-11-01 abends: „morgen mit frischem Kopf“)
+Reset Woo-Shop indra-design.at + Live-DB, frisch einspielen, **Backup-Strategie direkt am Live-Server** — gemeinsam. Vorbereitung/Checkliste:
+1. Vorher am Live-Server: alles sichern (DB-Dump + erp-Ordner), auch wenn die Daten nur Test sind.
+2. Installationsweg heute: Baseline (Stand 123) + Migrationen 124–222 — auf frischer DB getestet (DB mit **utf8mb4_general_ci**!). Danach von Hand Kundengruppe „Endkunden“ (ist_standard=1, typ endkunde) anlegen, solange die Baseline 1.0 sie noch nicht enthält. ODER vorher Baseline 1.0 schneiden — mit Jacky entscheiden (Vorschlag: zuerst Baseline 1.0 bauen, dann Live direkt damit = echte Startlinie).
+3. Superadmin per `create_admin.php`, dann Einrichtungs-Assistent mit Babsi (Firma MEALANA KG/ATU68078304, Hauptlogo, Hauslizenz L-100001-19_A1.lic, Steuer, Lager, Benutzer, Mail, Kasse, Shop indra-design, Abholort Wollboutique von Hand).
+4. Paperless: URL https://beleg.mealana.at + Schlüssel aus beleg-portal/config.php, Kundenanzeige-Haken.
+5. Generator NICHT auf Live aktivieren; Lizenzartikel (LZ-*) auf Live nicht nötig (Verkauf aus Dev) — sonst Skript in tools/lizenz/.
+6. Backup-Strategie: Speicherort klären ([[project-backup-strategie]]), Windows-Aufgabe mysqldump + Ordner, Test-Wiederherstellung.
+7. Danach: Cronjobs/Windows-Aufgaben am Server prüfen (Shop-Sync, Fachmiete, Z-Bon-Auto, Lagerwert).
