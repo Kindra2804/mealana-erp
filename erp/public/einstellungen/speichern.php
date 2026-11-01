@@ -105,26 +105,18 @@ if ($tab === 'firma') {
         setSetting($db, $feld, trim($_POST[$feld] ?? ''));
     }
 
-    // Logo für den Hauptshop — bewusst NICHT an einen fixen Slug wie 'mealana'
-    // gebunden (das würde bei jeder Weitergabe an einen anderen Betrieb falsch
-    // sein), sondern an den ERSTEN angelegten Kanal (kleinste id). Jeder Fehlercode
+    // Hauptlogo (Kasse, Laden-Belege, Kanäle ohne eigenes Logo). Jeder Fehlercode
     // außer "keine Datei ausgewählt" muss gemeldet werden, sonst scheitert der
     // Upload lautlos.
     if (!empty($_FILES['logo_datei']) && $_FILES['logo_datei']['error'] !== UPLOAD_ERR_NO_FILE) {
         if ($_FILES['logo_datei']['error'] !== UPLOAD_ERR_OK) {
             $_SESSION['fehler'] = ['Logo nicht übernommen: ' . uploadFehlerText($_FILES['logo_datei']['error'])];
         } else {
-            $shopRow = $db->query("SELECT id, slug FROM shops ORDER BY id LIMIT 1")->fetch();
-            if (!$shopRow) {
-                $_SESSION['fehler'] = ['Logo nicht übernommen: Es ist noch kein Kanal angelegt (Tab "Kanäle" → "+ Kanal hinzufügen").'];
-            } else {
-                try {
-                    $pfad = speichereShopLogo($_FILES['logo_datei'], $shopRow['slug']);
-                    $db->prepare("UPDATE shops SET logo_pfad = ? WHERE id = ?")->execute([$pfad, $shopRow['id']]);
-                    setSetting($db, 'logo_pfad', $pfad);
-                } catch (RuntimeException $e) {
-                    $_SESSION['fehler'] = ['Logo nicht übernommen: ' . $e->getMessage()];
-                }
+            // Hauptlogo gehört zur Firma, nicht zu einem Kanal (siehe Firmenlogo) — Kanal-Logos: Tab „Kanäle“
+            try {
+                setSetting($db, 'logo_pfad', speichereShopLogo($_FILES['logo_datei'], 'firma'));
+            } catch (RuntimeException $e) {
+                $_SESSION['fehler'] = ['Logo nicht übernommen: ' . $e->getMessage()];
             }
         }
     }

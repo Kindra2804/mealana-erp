@@ -24,7 +24,7 @@ Diese Daten erscheinen auf allen Dokumenten (Rechnung, Lieferschein, Auftragsbes
 - Telefon, Fax, E-Mail, Website
 - UID-Nummer, Steuernummer
 - Bankverbindung (Name, IBAN, BIC)
-- **Logo:** Bild hochladen (wird oben links auf PDFs angezeigt)
+- **Hauptlogo:** Bild hochladen — erscheint auf Kassenbons, Kundenanzeige, Paperless-Beleg, Partner-/Händler-Belegen, Lieferanten-Bestellungen und bei allen Kanälen ohne eigenes Logo. Braucht keinen Kanal.
 
 > **Wichtig:** Diese Felder müssen ausgefüllt sein bevor die ersten Rechnungen erstellt werden!
 
@@ -55,7 +55,7 @@ Ein Lager gehört zu höchstens einem Abholort. Anhaken im Fenster verschiebt es
 Hier werden WooCommerce-Shops verwaltet:
 
 - **Shop hinzufügen:** Name, URL, API-Schlüssel
-- **Logo je Shop** hochladen
+- **Logo je Shop** hochladen (für Aufträge, Rechnungen und Mails dieses Shops; leer = Hauptlogo)
 - Shops können aktiv/inaktiv geschaltet werden
 - **Nummernkreis-Kürzel:** Jeder Shop außer dem Hauptshop bekommt ein eigenes Kürzel (z.B. `SOW`, `BIO`) und damit **eigene, fortlaufende Nummern** für Aufträge, Rechnungen und Rechnungskorrekturen: `A-SOW-2026-00001`, `R-SOW-2026-00001`, `GS-SOW-2026-00001`.
   - **Leer = Hauptshop** (MeaLana): Nummern ohne Kürzel (`R-2026-00001`). Telefon-, Händler- und Kassen-Aufträge laufen ebenfalls im Hauptshop-Kreis.

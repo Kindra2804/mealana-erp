@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../core/Firmenlogo.php';
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
@@ -451,8 +452,7 @@ class HaendlerService
         $kunde = (new KundenService())->getById((int)$beleg['kunde_id']);
         $adresse = $this->adresse((int)$beleg['kunde_id'], 'lieferung');
         $firma = (new DokumentRepository())->ladeFirmaDaten();
-        $logo  = $this->db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn() ?: 'img/logos/logo_mealana.png';
-        $pfad  = __DIR__ . '/../../../public/' . $logo;
+        $pfad  = Firmenlogo::datei(Firmenlogo::haupt()) ?? '';
         $summeNetto = 0.0; $summeVk = 0.0;
         foreach ($beleg['positionen'] as $p) { $summeNetto += $p['menge'] * $p['preis_netto']; $summeVk += $p['menge'] * (float)$p['vk_brutto']; }
         return [

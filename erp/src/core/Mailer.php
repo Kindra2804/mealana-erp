@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/Firmenlogo.php';
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/Database.php';
@@ -28,14 +29,9 @@ class Mailer
      * Lädt das Shop-Logo als Base64-String (für Mail-Templates).
      * Aufrufer übergeben den Wert als 'logo_base64' in den Template-Variablen.
      */
-    public function ladeShopLogo(int $shopId = 1): string
+    public function ladeShopLogo(int $shopId = 0): string
     {
-        $db   = Database::getInstance();
-        $stmt = $db->prepare("SELECT logo_pfad FROM shops WHERE id = ?");
-        $stmt->execute([$shopId]);
-        $pfadRel = $stmt->fetchColumn() ?: 'img/logo.png';
-        $pfad    = __DIR__ . '/../../public/' . $pfadRel;
-        return file_exists($pfad) ? base64_encode(file_get_contents($pfad)) : '';
+        return Firmenlogo::base64(Firmenlogo::fuerShop($shopId));   // 0 = Hauptlogo
     }
 
     /**

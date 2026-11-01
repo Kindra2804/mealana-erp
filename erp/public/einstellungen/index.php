@@ -167,15 +167,13 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         </div>
 
         <div class="card" style="margin-bottom:12px">
-            <div class="card-header">Hauptlogo (erscheint auf Dokumenten oben links)</div>
+            <div class="card-header">Hauptlogo (Kasse, Laden-Belege und alle Kanäle ohne eigenes Logo)</div>
             <div style="padding:16px;display:flex;align-items:center;gap:24px">
                 <?php
-                // Hauptlogo = erster angelegter Kanal (kleinste id), nicht an einen
-                // fixen Slug gebunden — $shops ist bereits "ORDER BY id" geladen.
-                $logoShop = $shops[0] ?? null;
-                $logoPfad = $logoShop['logo_pfad'] ?? '';
+                require_once __DIR__ . '/../../src/core/Firmenlogo.php';
+                $logoPfad = Firmenlogo::haupt() ?? '';
                 ?>
-                <?php if ($logoPfad && file_exists(__DIR__ . '/../' . $logoPfad)): ?>
+                <?php if ($logoPfad): ?>
                     <img src="<?= BASE_PATH ?>/<?= htmlspecialchars($logoPfad) ?>" style="max-height:60px;max-width:200px;border:1px solid var(--color-border);border-radius:4px;padding:4px">
                 <?php else: ?>
                     <div style="width:200px;height:60px;border:2px dashed var(--color-border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-text-muted)">Kein Logo</div>

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../core/Firmenlogo.php';
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/DokumentRepository.php';
@@ -570,8 +571,7 @@ class DokumentService
 
         $firma = $this->repo->ladeFirmaDaten();
         $shop  = $this->ladeShop((int)($gutschein['shop_id'] ?? 1));
-        $logoPfad   = __DIR__ . '/../../../public/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
-        $logoBase64 = file_exists($logoPfad) ? base64_encode(file_get_contents($logoPfad)) : '';
+        $logoBase64 = Firmenlogo::base64(Firmenlogo::fuerShop((int)($gutschein['shop_id'] ?? 0)));
 
         $hintergrundBase64 = null;
         if (!empty($gutschein['hintergrundbild_pfad'])) {
@@ -958,8 +958,7 @@ class DokumentService
         $kleinuntern = ($firma['kleinunternehmer'] ?? '0') === '1';
 
         $shop       = $this->ladeShop((int)($auftrag['shop_id'] ?? 1));
-        $logoPfad   = __DIR__ . '/../../../public/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
-        $logoBase64 = file_exists($logoPfad) ? base64_encode(file_get_contents($logoPfad)) : '';
+        $logoBase64 = Firmenlogo::base64(Firmenlogo::fuerShop((int)($auftrag['shop_id'] ?? 0)));
 
         return [
             'firma'       => $firma,
@@ -1107,7 +1106,7 @@ class DokumentService
             'id' => 1,
             'slug' => 'mealana',
             'name' => 'MEALANA KG',
-            'logo_pfad' => 'img/logos/mealana.png',
+            'logo_pfad' => null,
             'sub_marke' => 0,
         ];
     }

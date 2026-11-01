@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../src/core/Firmenlogo.php';
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/kasse/KassenService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
@@ -17,13 +18,8 @@ $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE sc
 $firmenname = $konfig['firmenname'] ?? 'MeaLana';
 $firmaUid   = $konfig['firma_uid'] ?? '';
 
-// Logo — Kasse ist nicht shop-gebunden, nimmt bewusst Shop 1 (Ladengeschäft) als physische
-// Filiale, gleicher logo_pfad-Mechanismus wie bei den normalen Web-Auftrag-Dokumenten.
-$logoPfad = $db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn();
-// bon_druck.php liegt schon in erp/public/kasse/ (eine Ebene höher als BonA4Renderer.php),
-// daher nur ein "../" bis zur public-Wurzel nötig.
-$logoDateipfad = $logoPfad ? __DIR__ . '/../' . $logoPfad : null;
-$logoBase64 = ($logoDateipfad && file_exists($logoDateipfad)) ? base64_encode(file_get_contents($logoDateipfad)) : '';
+// Logo — Kasse ist nicht shop-gebunden → Hauptlogo aus den Firmendaten
+$logoBase64 = Firmenlogo::base64(Firmenlogo::haupt());
 
 // Partnerware (Fremdrechnung/Spende) steht in eigenen Abschnitten und zählt nicht zu
 // unserer Steuer — Steuer-Totale und Positionsblöcke nur aus den eigenen Positionen.

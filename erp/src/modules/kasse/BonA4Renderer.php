@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../core/Firmenlogo.php';
 
 require_once __DIR__ . '/KassenService.php';
 require_once __DIR__ . '/PartnerBon.php';
@@ -53,12 +54,8 @@ class BonA4Renderer
         $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE schluessel IN ('" . implode("','", $keys) . "')")->fetchAll(PDO::FETCH_KEY_PAIR);
         $firmenname = $konfig['firmenname'] ?? 'MeaLana';
 
-        // Logo — Kasse ist nicht shop-gebunden, nimmt bewusst Shop 1 (Ladengeschäft) als
-        // physische Filiale. Gleicher logo_pfad-Mechanismus wie bei den normalen Web-Auftrag-
-        // Dokumenten (DokumentService::ladeDaten()), dort schon funktionierend.
-        $logoPfad = $db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn();
-        $logoDateipfad = $logoPfad ? __DIR__ . '/../../../public/' . $logoPfad : null;
-        $logoBase64 = ($logoDateipfad && file_exists($logoDateipfad)) ? base64_encode(file_get_contents($logoDateipfad)) : '';
+        // Logo — Kasse ist nicht shop-gebunden → Hauptlogo aus den Firmendaten
+        $logoBase64 = Firmenlogo::base64(Firmenlogo::haupt());
 
         // Kundendaten (wenn Stammkunde) — Name/Adresse sind AES-verschlüsselt,
         // deshalb über KundenRepository (entschlüsselt), keine rohe SQL-Abfrage.

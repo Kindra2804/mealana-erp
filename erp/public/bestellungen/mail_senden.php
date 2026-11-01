@@ -29,7 +29,7 @@ try {
     $nummer = BestellungService::bestellnummer($bestellungId, (new BestellungService())->getById($bestellungId)['bestelldatum']);
 
     $mailer     = new Mailer();
-    $logoBase64 = $mailer->ladeShopLogo(1);
+    $logoBase64 = $mailer->ladeShopLogo(0);   // Lieferanten-Bestellung: Hauptlogo
     $dateipfad  = $service->getDateipfad($bestellungId, $dokument['dateiname']);
 
     $mailer->sendeTemplate(

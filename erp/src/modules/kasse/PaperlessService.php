@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../core/Firmenlogo.php';
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Lizenz.php';
@@ -122,11 +123,10 @@ class PaperlessService
         return false;
     }
 
-    /** Logo wie am Bon (Shop 1 = Ladengeschäft, siehe BonA4Renderer) als data-URI, max. ~290 KB */
+    /** Logo wie am Bon (Hauptlogo, siehe Firmenlogo) als data-URI, max. ~290 KB */
     private static function logoDataUri(): string
     {
-        $pfad = Database::getInstance()->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn();
-        $datei = $pfad ? __DIR__ . '/../../../public/' . $pfad : null;
+        $datei = Firmenlogo::datei(Firmenlogo::haupt());
         if (!$datei || !is_file($datei) || filesize($datei) > 290000) return '';
         $mime = mime_content_type($datei) ?: '';
         if (!in_array($mime, ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true)) return '';

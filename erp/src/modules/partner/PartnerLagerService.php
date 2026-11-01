@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../core/Firmenlogo.php';
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
@@ -436,8 +437,6 @@ class PartnerLagerService
     {
         require_once __DIR__ . '/../dokumente/DokumentRepository.php';
         $firma = (new DokumentRepository())->ladeFirmaDaten();
-        $logo  = $this->db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetchColumn() ?: 'img/logos/logo_mealana.png';
-        $pfad  = __DIR__ . '/../../../public/' . $logo;
-        return ['firma' => $firma, 'logo_base64' => file_exists($pfad) ? base64_encode(file_get_contents($pfad)) : ''];
+        return ['firma' => $firma, 'logo_base64' => Firmenlogo::base64(Firmenlogo::haupt())];
     }
 }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../src/core/Firmenlogo.php';
 // Bewusst OHNE auth_check.php — Kiosk-Tablet neben der Kasse, nie eingeloggt.
 require_once __DIR__ . '/../../config/bootstrap.php';
 require_once __DIR__ . '/../../src/core/Database.php';
@@ -33,8 +34,7 @@ if ($willkommenstext === '') {
     $willkommenstext = 'Herzlich willkommen bei ' . $firmenname . '!';
 }
 
-$shop = $db->query("SELECT logo_pfad FROM shops WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
-$logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
+$logoUrl = BASE_PATH . '/' . (Firmenlogo::haupt() ?? 'img/logos/kein_logo.png');   // fehlt → onerror blendet aus
 ?>
 <!DOCTYPE html>
 <html lang="de">
