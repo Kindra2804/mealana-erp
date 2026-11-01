@@ -1636,7 +1636,7 @@ require __DIR__ . '/_hinweise.php'; ?>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="ov-btn ov-btn-sec" id="btn-qr-80mm" onclick="belegQrDrucken('80mm')">🖨 Trotzdem drucken</button>
       <button class="ov-btn ov-btn-sec" id="btn-qr-a4" onclick="belegQrDrucken('a4')">📄 A4</button>
-      <button class="ov-btn ov-btn-prim" id="btn-qr-fertig" style="display:none" onclick="belegQrFertig()">✓ Fertig</button>
+      <button class="ov-btn ov-btn-prim" id="btn-qr-fertig" onclick="belegQrFertig()">✓ Fertig</button>
     </div>
   </div>
 </div>
@@ -1661,7 +1661,9 @@ var KASSEN_GRUPPEN = <?= json_encode($kassenGruppen) ?>;
 // Schreibt den aktuellen Anzeige-Zustand für das Kundenanzeige-Tablet (falls eins
 // angeschlossen ist). Fire-and-forget, kein Warten auf Antwort — darf den
 // Kassiervorgang nie verzögern oder blockieren.
+var _kdSeq = 0;   // zählt jeden Kundenanzeige-Stand (Paperless: zeigt sie noch „unseren“ QR?)
 function kdSync(zustand, payload) {
+    _kdSeq++;
     var body = new FormData();
     body.append('kasse_id', KASSE_ID);
     body.append('zustand', zustand);
@@ -2903,45 +2905,53 @@ function ausgabeNachZahlung(bonId, bonNr) {
 }
 
 // ── Paperless: Beleg per QR ───────────────────────────────────────────────────
-// A4-Bon hochladen → QR in der Kasse + auf der Kundenanzeige, alle 2 s nachsehen ob abgerufen.
-// Nicht abgerufen → „Trotzdem drucken“ (Belegerteilungspflicht, kein Schließen ohne Beleg).
-var _qrBonId = null, _qrTimer = null, _qrStart = 0, _qrBild = '';
+// A4-Bon hochladen → QR im Kassenfenster + auf der Kundenanzeige. Das Fenster blockiert nicht
+// („✓ Fertig“ jederzeit). Im Hintergrund wird 60 s nachgesehen, ob der Kunde abruft. Danach — oder
+// sobald der nächste Kunde zahlt bzw. doch gedruckt wird — wird der Beleg auf der Belegseite gelöscht
+// (die meisten nehmen keinen Beleg mit, nur abgerufene bleiben 30 Tage).
+var PAPERLESS_SEKUNDEN = 60;
+var _qr = null;   // { bonId, bild, start, timer, kdSeq }
+
+function qrFensterOffen() { return document.getElementById('ov-beleg-qr').classList.contains('offen'); }
 
 function belegPerQr() {
-    _qrBonId = _letzterBonId;
+    var bonId = _letzterBonId;
     _letzterBonId = null;
     document.getElementById('ov-ausgabe').classList.remove('offen');
-    if (!_qrBonId) return;
+    if (!bonId) return;
+    belegQrAbschliessen(false);   // vom vorigen Kunden noch offen → jetzt beenden
+    var q = _qr = { bonId: bonId, bild: '', start: Date.now(), timer: null, kdSeq: 0 };
     var bild = document.getElementById('beleg-qr-bild'), status = document.getElementById('beleg-qr-status');
     document.getElementById('beleg-qr-nr').textContent = _letzteBonNr ? 'Bon-Nr.: ' + _letzteBonNr : '';
     bild.innerHTML = '<span style="color:#64748b">Beleg wird hochgeladen …</span>';
     status.textContent = '';
     status.style.color = '#64748b';
-    document.getElementById('btn-qr-fertig').style.display = 'none';
     document.getElementById('btn-qr-80mm').style.display = AUSGABE_FORMAT === 'a4'   ? 'none' : '';
     document.getElementById('btn-qr-a4').style.display   = AUSGABE_FORMAT === '80mm' ? 'none' : '';
     ov('ov-beleg-qr');
 
     var fd = new FormData();
     fd.append('aktion', 'hochladen');
-    fd.append('bon_id', _qrBonId);
+    fd.append('bon_id', bonId);
     fetch('<?= BASE_PATH ?>/kasse/ajax_paperless.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(function(d) {
+            if (_qr !== q) return;   // inzwischen beendet
             if (!d.erfolg) {
                 bild.innerHTML = '<span style="font-size:48px">⚠</span>';
                 status.style.color = '#dc2626';
                 status.textContent = (d.fehler || 'Upload fehlgeschlagen') + ' — bitte drucken.';
                 return;
             }
-            _qrBild = d.qr;
+            q.bild  = d.qr;
+            q.start = Date.now();
             bild.innerHTML = '<img src="' + d.qr + '" alt="QR-Code Beleg" style="width:260px;height:260px">';
-            status.textContent = 'Bitte QR-Code mit dem Handy scannen …';
-            kdBelegQr(false);
-            _qrStart = Date.now();
-            _qrTimer = setInterval(belegQrStatus, 2000);
+            status.textContent = 'Bitte QR-Code mit dem Handy scannen … (' + PAPERLESS_SEKUNDEN + ' s)';
+            kdBelegQr(q, false);
+            q.timer = setInterval(belegQrStatus, 2000);
         })
         .catch(function() {
+            if (_qr !== q) return;
             bild.innerHTML = '<span style="font-size:48px">⚠</span>';
             status.style.color = '#dc2626';
             status.textContent = 'Belegseite nicht erreichbar — bitte drucken.';
@@ -2949,53 +2959,71 @@ function belegPerQr() {
 }
 
 function belegQrStatus() {
-    if (!_qrBonId) { belegQrStopp(); return; }
-    var laufzeit = Date.now() - _qrStart;
-    if (laufzeit > 600000) { belegQrStopp(); }   // nach 10 Minuten nicht mehr nachfragen
-    if (laufzeit > 60000) {
-        document.getElementById('beleg-qr-status').textContent = 'Noch nicht abgerufen — scannen lassen oder trotzdem drucken.';
+    var q = _qr;
+    if (!q) return;
+    var rest = PAPERLESS_SEKUNDEN - Math.floor((Date.now() - q.start) / 1000);
+    if (rest <= 0) { belegQrAbschliessen(false); return; }
+    if (qrFensterOffen()) {
+        document.getElementById('beleg-qr-status').textContent = 'Bitte QR-Code mit dem Handy scannen … (' + rest + ' s)';
     }
-    fetch('<?= BASE_PATH ?>/kasse/ajax_paperless.php?aktion=status&bon_id=' + _qrBonId)
+    fetch('<?= BASE_PATH ?>/kasse/ajax_paperless.php?aktion=status&bon_id=' + q.bonId)
         .then(r => r.json())
-        .then(function(d) {
-            if (!d.abgerufen || !_qrBonId) return;
-            belegQrStopp();
-            var status = document.getElementById('beleg-qr-status');
-            status.style.color = '#16a34a';
-            status.textContent = '✓ Beleg abgerufen';
-            document.getElementById('btn-qr-80mm').style.display = 'none';
-            document.getElementById('btn-qr-a4').style.display = 'none';
-            document.getElementById('btn-qr-fertig').style.display = '';
-            kdBelegQr(true);
-            setTimeout(function() { if (document.getElementById('ov-beleg-qr').classList.contains('offen')) belegQrFertig(); }, 2500);
-        })
+        .then(function(d) { if (d.abgerufen && _qr === q) belegQrAbgerufen(q); })
         .catch(function() { /* nächster Versuch in 2 s */ });
 }
 
-function belegQrStopp() {
-    if (_qrTimer) { clearInterval(_qrTimer); _qrTimer = null; }
+function belegQrAbgerufen(q) {
+    clearInterval(q.timer);
+    _qr = null;
+    if (q.kdSeq === _kdSeq) kdBelegQr(q, true);   // Kundenanzeige zeigt noch diesen QR → ✓
+    if (!qrFensterOffen()) { feedback('✓ Beleg per QR abgerufen', 'ok'); return; }
+    var status = document.getElementById('beleg-qr-status');
+    status.style.color = '#16a34a';
+    status.textContent = '✓ Beleg abgerufen';
+    document.getElementById('btn-qr-80mm').style.display = 'none';
+    document.getElementById('btn-qr-a4').style.display = 'none';
+    setTimeout(function() { if (!_qr && qrFensterOffen()) ovSchliessen('ov-beleg-qr'); }, 2500);
 }
 
+// Ende ohne Scan: Fenster zu, QR von der Kundenanzeige, Beleg auf der Belegseite löschen.
+// kdLassen = true, wenn gleich danach ohnehin ein neuer Kundenanzeige-Stand kommt (nächste Zahlung).
+function belegQrAbschliessen(kdLassen) {
+    var q = _qr;
+    if (!q) return;
+    _qr = null;
+    if (q.timer) clearInterval(q.timer);
+    if (qrFensterOffen()) ovSchliessen('ov-beleg-qr');
+    if (!kdLassen && q.kdSeq && q.kdSeq === _kdSeq) kdSync('idle', {});
+    if (!q.bild) return;   // nie hochgeladen
+    var fd = new FormData();
+    fd.append('aktion', 'verwerfen');
+    fd.append('bon_id', q.bonId);
+    fetch('<?= BASE_PATH ?>/kasse/ajax_paperless.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(function(d) { if (d.abgerufen) feedback('✓ Beleg per QR abgerufen', 'ok'); })
+        .catch(function() { /* Belegseite löscht nach 24 h selbst */ });
+}
+
+// „✓ Fertig“: Kasse frei — Abruf läuft im Hintergrund bis zum Ende der 60 s weiter
 function belegQrFertig() {
-    belegQrStopp();
-    _qrBonId = null;
+    if (_qr && !_qr.timer) { belegQrAbschliessen(false); return; }   // Upload fehlgeschlagen/läuft noch nicht
     ovSchliessen('ov-beleg-qr');
 }
 
 function belegQrDrucken(format) {
-    var id = _qrBonId;
-    belegQrStopp();
-    _qrBonId = null;
-    ovSchliessen('ov-beleg-qr');
-    if (_kdAbschluss) kdSync('abrechnen', _kdAbschluss);   // QR von der Kundenanzeige nehmen
-    if (!id) return;
-    window.open('<?= BASE_PATH ?>/kasse/' + (format === '80mm' ? 'bon_druck.php' : 'bon_a4.php') + '?id=' + id, '_blank');
+    var q = _qr;
+    if (!q) return;
+    if (_kdAbschluss && q.kdSeq && q.kdSeq === _kdSeq) kdSync('abrechnen', _kdAbschluss);   // QR weg, Betrag bleibt
+    belegQrAbschliessen(false);
+    window.open('<?= BASE_PATH ?>/kasse/' + (format === '80mm' ? 'bon_druck.php' : 'bon_a4.php') + '?id=' + q.bonId, '_blank');
 }
 
-function kdBelegQr(abgerufen) {
+function kdBelegQr(q, abgerufen) {
     if (!_kdAbschluss) return;
-    kdSync('abrechnen', Object.assign({}, _kdAbschluss, { beleg_qr: _qrBild, beleg_abgerufen: abgerufen }));
+    kdSync('abrechnen', Object.assign({}, _kdAbschluss, { beleg_qr: q.bild, beleg_abgerufen: abgerufen }));
+    q.kdSeq = _kdSeq;
 }
+
 
 function ausgabeOeffnen(format) {
     ovSchliessen('ov-ausgabe');
@@ -3823,6 +3851,7 @@ function bonSpeichern(zahlDaten) {
         document.getElementById('spinner').classList.remove('offen');
         if (d.erfolg) {
             _bfrFehlschlagAnzahl = 0;
+            belegQrAbschliessen(true);   // offener Beleg-QR des vorigen Kunden
             if (_istGutscheinAusgabe) {
                 // Rückgabe als Gutschein: kein Rückgeld, sondern Gutschrift (Code folgt, siehe
                 // zeigeGutscheinAusgabeErgebnis)

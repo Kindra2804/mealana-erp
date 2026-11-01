@@ -16,10 +16,11 @@ Endgerät vor Ort ausgelesen … etwa in Form eines QR-Codes“ (BMF-Pressemeldu
 4. Im ERP „Verbindung testen“: zeigt Datenbank und ob der Ordner `daten/` beschreibbar ist
 
 ## Aufbewahrung
-Nicht abgerufene Belege werden nach 24 h gelöscht, abgerufene nach 30 Tagen (einstellbar in config.php).
+Nicht gescannte Belege löscht die Kasse sofort nach 60 Sekunden (bzw. beim nächsten Kunden oder bei Druck,
+Aktion `verwerfen`). Sicherheitsnetz: nicht abgerufene nach 24 h, abgerufene nach 30 Tagen (einstellbar in config.php).
 Das Aufräumen läuft bei jedem Aufruf mit, ein Cron am Webspace ist nicht nötig.
 
 ## Dateien
 - `index.php`: Abrufseite (`?t=…`) und PDF-Download
-- `api.php`: Schnittstelle fürs ERP (Header `X-Nahtlos-Schluessel`): test, upload, status
+- `api.php`: Schnittstelle fürs ERP (Header `X-Nahtlos-Schluessel`): test, upload, status, verwerfen
 - `lib.php`, `config.php`: per `.htaccess` gesperrt; `daten/`: PDFs + SQLite-Datei, gesperrt

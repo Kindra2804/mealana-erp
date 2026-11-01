@@ -18,6 +18,8 @@ if ($aktion === 'hochladen' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $erg = PaperlessService::hochladen($bonId);
     if ($erg['erfolg']) $erg['qr'] = QrCode::dataUri($erg['url'], 360);
     echo json_encode($erg);
+} elseif ($aktion === 'verwerfen' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    echo json_encode(['erfolg' => true, 'abgerufen' => PaperlessService::verwerfen($bonId)]);
 } elseif ($aktion === 'status') {
     echo json_encode(['erfolg' => true, 'abgerufen' => PaperlessService::abgerufen($bonId)]);
 } else {

@@ -880,8 +880,8 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 <div style="color:var(--color-text-muted);font-size:12px;margin-top:10px">
                     Der Kunde scannt an der Kasse einen QR-Code und lädt den A4-Bon als PDF herunter, statt einen Papierbon zu bekommen.
                     Die Belegseite (Ordner <code>beleg-portal</code>) läuft am eigenen Webspace; dort in <code>config.php</code> denselben
-                    API-Schlüssel eintragen. Gespeichert werden nur Beleg-Daten, keine Kundendaten. Nicht abgerufene Belege werden nach 24 h gelöscht,
-                    abgerufene nach 30 Tagen.
+                    API-Schlüssel eintragen. Gespeichert werden nur Beleg-Daten, keine Kundendaten. Nicht gescannte Belege löscht die Kasse nach 60 Sekunden
+                    (Sicherheitsnetz 24 h), abgerufene bleiben 30 Tage.
                 </div>
             </div>
         </div>

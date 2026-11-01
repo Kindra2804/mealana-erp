@@ -246,9 +246,9 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
                     render(data);
 
                     if (data.zustand === 'abrechnen' && data.payload && data.payload.abgeschlossen) {
-                        // Beleg-QR: stehen lassen bis zum Abruf (max. 3 min), danach kurz das ✓
+                        // Beleg-QR: stehen lassen bis zum Abruf (Kasse räumt nach 60 s ab, hier Sicherheitsnetz 70 s), danach kurz das ✓
                         const p = data.payload;
-                        const dauer = p.beleg_qr ? (p.beleg_abgerufen ? 8000 : 180000) : 30000;
+                        const dauer = p.beleg_qr ? (p.beleg_abgerufen ? 8000 : 70000) : 30000;
                         abrechnenTimer = setTimeout(function() {
                             localIdleOverride = true;
                             renderIdle();

@@ -54,7 +54,10 @@ Seit 1. Oktober 2026 darf der Beleg auch digital übergeben werden, z.B. per QR-
 2. Der A4-Bon wird als PDF auf die Belegseite (z.B. `beleg.mealana.at`) geladen, der QR-Code erscheint groß im Kassenfenster und auf der Kundenanzeige
 3. Kunde scannt → Seite mit Logo, Bon-Nr., Betrag und **Beleg herunterladen (PDF)**
 4. Die Kasse sieht nach (alle 2 Sekunden) → **✓ Beleg abgerufen**, das Fenster schließt sich von selbst
-5. Scannt der Kunde nicht (kein Handy, Akku leer …) → **🖨 Trotzdem drucken** oder **📄 A4**
+5. Will der Kunde ihn nicht → **✓ Fertig**: die Kasse ist sofort frei, der QR bleibt bis zu 60 Sekunden auf der Kundenanzeige
+6. Will der Kunde doch Papier → **🖨 Trotzdem drucken** oder **📄 A4**
+
+**Nicht gescannt?** Nach **60 Sekunden** – oder sobald der nächste Kunde zahlt bzw. doch gedruckt wird – wird der Beleg auf der Belegseite **sofort gelöscht**, der QR verschwindet. Scannt der Kunde noch rechtzeitig, kommt auch bei geschlossenem Fenster die Meldung „✓ Beleg per QR abgerufen“.
 
 | Situation | Verhalten |
 |-----------|-----------|
@@ -62,7 +65,7 @@ Seit 1. Oktober 2026 darf der Beleg auch digital übergeben werden, z.B. per QR-
 | Offline-/Messe-Kasse | Immer Druck (kein QR) |
 | Belegseite nicht erreichbar | Hinweis im Fenster → drucken |
 
-> **Aufbewahrung auf der Belegseite:** nicht abgerufene Belege 24 Stunden, abgerufene 30 Tage. Danach sind sie gelöscht, der Kunde soll das PDF am Handy speichern. Gespeichert werden nur Beleg-Daten, keine Kundendaten. Im ERP bleibt der Bon wie immer vollständig.
+> **Aufbewahrung auf der Belegseite:** nicht abgerufene Belege werden nach den 60 Sekunden gelöscht (Sicherheitsnetz: spätestens nach 24 Stunden, z.B. wenn die Kasse mittendrin geschlossen wurde), abgerufene bleiben 30 Tage. Danach sind sie gelöscht, der Kunde soll das PDF am Handy speichern. Gespeichert werden nur Beleg-Daten, keine Kundendaten. Im ERP bleibt der Bon wie immer vollständig.
 
 **Einrichten (einmalig):**
 

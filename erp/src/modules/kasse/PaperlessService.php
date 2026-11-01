@@ -97,6 +97,31 @@ class PaperlessService
         return true;
     }
 
+    /**
+     * Nicht gescannt (60 s vorbei, nächster Kunde, doch gedruckt) → auf der Belegseite sofort löschen,
+     * Link am Bon entfernen (ein späterer QR lädt neu hoch). Liefert true, falls er doch noch abgerufen wurde.
+     */
+    public static function verwerfen(int $bonId): bool
+    {
+        $db   = Database::getInstance();
+        $stmt = $db->prepare("SELECT paperless_token, paperless_abgerufen_am FROM kassen_bons WHERE id = ?");
+        $stmt->execute([$bonId]);
+        $bon = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$bon || !$bon['paperless_token']) return false;
+        if ($bon['paperless_abgerufen_am']) return true;
+
+        $k   = self::konfig();
+        $erg = self::anfrage('verwerfen', ['t' => $bon['paperless_token']], null, $k['url'], $k['schluessel']);
+        if (!empty($erg['abgerufen'])) {
+            $db->prepare("UPDATE kassen_bons SET paperless_abgerufen_am = NOW() WHERE id = ?")->execute([$bonId]);
+            return true;
+        }
+        // Belegseite nicht erreichbar → dort räumt die 24-h-Regel auf; hier trotzdem lösen
+        $db->prepare("UPDATE kassen_bons SET paperless_token = NULL, paperless_url = NULL, paperless_hochgeladen_am = NULL WHERE id = ?")
+           ->execute([$bonId]);
+        return false;
+    }
+
     /** Logo wie am Bon (Shop 1 = Ladengeschäft, siehe BonA4Renderer) als data-URI, max. ~290 KB */
     private static function logoDataUri(): string
     {

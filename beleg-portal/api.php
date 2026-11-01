@@ -3,6 +3,7 @@
 //   GET  api.php?aktion=test            → Verbindung + Datenbank prüfen
 //   POST api.php?aktion=upload          → PDF + Bon-Nr./Betrag/Datum/Firma/Logo, Antwort: token + url
 //   GET  api.php?aktion=status&t=TOKEN  → {abgerufen: true|false}
+//   GET  api.php?aktion=verwerfen&t=TOKEN → nicht abgerufenen Beleg sofort löschen, {abgerufen: true|false}
 require __DIR__ . '/lib.php';
 
 bp_api_pruefen();
@@ -50,6 +51,22 @@ try {
         case 'status':
             $b = bp_beleg((string)($_GET['t'] ?? ''));
             bp_json(['erfolg' => (bool)$b, 'abgerufen' => $b !== null && $b['abgerufen_am'] !== null, 'abgerufen_am' => $b['abgerufen_am'] ?? null]);
+
+        case 'verwerfen':
+            // Kunde hat nicht gescannt (60 s vorbei / nächster Kunde / doch gedruckt) → sofort löschen.
+            // Nur wenn noch nicht abgerufen — sonst bleibt er (30 Tage) und die Antwort sagt das.
+            $token = (string)($_GET['t'] ?? '');
+            $b = bp_beleg($token);
+            if ($b && $b['abgerufen_am'] === null) {
+                $del = bp_db()->prepare("DELETE FROM " . bp_tabelle() . " WHERE token = ? AND abgerufen_am IS NULL");
+                $del->execute([$token]);
+                if ($del->rowCount() > 0) {
+                    @unlink(bp_pdf_pfad($token));
+                    bp_json(['erfolg' => true, 'abgerufen' => false]);
+                }
+                $b = bp_beleg($token);   // in genau diesem Moment abgerufen
+            }
+            bp_json(['erfolg' => true, 'abgerufen' => $b !== null && $b['abgerufen_am'] !== null]);
 
         default:
             bp_json(['erfolg' => false, 'fehler' => 'Unbekannte Aktion.'], 400);
