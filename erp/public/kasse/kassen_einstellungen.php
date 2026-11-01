@@ -81,9 +81,9 @@ require_once __DIR__ . '/shell_top.php';
       <label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:6px">BON-AUSGABEFORMAT</label>
       <div style="display:flex;flex-direction:column;gap:8px">
         <?php foreach ([
-            'fragen' => ['🖨 / 📄  Nach jeder Zahlung fragen', 'Auswahl-Dialog: 80mm Bon · A4 Rechnung · Ohne Druck'],
-            '80mm'   => ['🖨  Immer 80mm Thermobondruck', 'Direkt drucken, kein Dialog — z.B. Messe-Kasse'],
-            'a4'     => ['📄  Immer A4-Rechnung', 'Öffnet A4-PDF — z.B. reine B2B-Kasse'],
+            'fragen' => ['🖨 / 📄  Nach jeder Zahlung fragen', 'Auswahl-Dialog: 80mm Bon · A4 Rechnung (· Beleg per QR mit Paperless)'],
+            '80mm'   => ['🖨  Immer 80mm Thermobondruck', 'Direkt drucken, kein Dialog — z.B. Messe-Kasse (mit Paperless: 80mm oder QR)'],
+            'a4'     => ['📄  Immer A4-Rechnung', 'Öffnet A4-PDF — z.B. reine B2B-Kasse (mit Paperless: A4 oder QR)'],
         ] as $val => [$label, $desc]): ?>
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1.5px solid <?= ($k['ausgabe_format'] ?? 'fragen') === $val ? '#2563eb' : '#e2e8f0' ?>;background:<?= ($k['ausgabe_format'] ?? 'fragen') === $val ? '#eff6ff' : '#fff' ?>">
           <input type="radio" name="ausgabe_format" value="<?= $val ?>" <?= ($k['ausgabe_format'] ?? 'fragen') === $val ? 'checked' : '' ?> style="margin-top:2px">

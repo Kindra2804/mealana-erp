@@ -23,6 +23,9 @@ $kasseId   = (int)($kasseInfo['id']            ?? 1);
 $lagerName = $kasseInfo['lager_name']          ?? 'Hauptlager';
 $rksvId    = $kasseInfo['rksv_kassen_id']      ?? null;
 $modus     = $kasseInfo['modus']               ?? 'online';
+// Paperless: „Beleg per QR“ nur mit Lizenz + eingerichteter Belegseite (offline/Messe immer Druck)
+require_once __DIR__ . '/../../src/modules/kasse/PaperlessService.php';
+$paperless = $modus !== 'offline' && PaperlessService::verfuegbar();
 
 // Gutschein-Ausgabe bei Retoure (statt Bar-Auszahlung) braucht einen echten
 // Artikel mit freiem Preis, genau wie der bestehende Divers-Artikel (99-9999) --
@@ -1613,8 +1616,27 @@ require __DIR__ . '/_hinweise.php'; ?>
       <button class="ov-btn" id="btn-ausgabe-a4"
               style="background:#2563eb;color:#fff;font-size:15px;padding:14px"
               onclick="ausgabeOeffnen('a4')">📄 A4 Rechnung öffnen</button>
-      <button class="ov-btn ov-btn-sec" style="padding:12px"
-              onclick="ovSchliessen('ov-ausgabe')">✕ Ohne Druck fertig</button>
+      <?php if ($paperless): ?>
+      <button class="ov-btn" id="btn-ausgabe-qr"
+              style="background:#16a34a;color:#fff;font-size:15px;padding:14px"
+              onclick="belegPerQr()">📱 Beleg per QR</button>
+      <?php endif; ?>
+      <!-- Kein „Ohne Druck“: Belegerteilungspflicht — Papier oder QR -->
+    </div>
+  </div>
+</div>
+
+<!-- ── Paperless: Beleg per QR-Code ──────────────────────────────────────── -->
+<div class="ov" id="ov-beleg-qr">
+  <div class="ov-box" style="max-width:440px;text-align:center">
+    <div class="ov-title" style="text-align:center;margin-bottom:4px">📱 Beleg per QR-Code</div>
+    <div id="beleg-qr-nr" style="font-size:13px;color:#64748b;margin-bottom:14px"></div>
+    <div id="beleg-qr-bild" style="min-height:260px;display:flex;align-items:center;justify-content:center"></div>
+    <div id="beleg-qr-status" style="font-size:15px;font-weight:600;margin:12px 0 18px;color:#64748b"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="ov-btn ov-btn-sec" id="btn-qr-80mm" onclick="belegQrDrucken('80mm')">🖨 Trotzdem drucken</button>
+      <button class="ov-btn ov-btn-sec" id="btn-qr-a4" onclick="belegQrDrucken('a4')">📄 A4</button>
+      <button class="ov-btn ov-btn-prim" id="btn-qr-fertig" style="display:none" onclick="belegQrFertig()">✓ Fertig</button>
     </div>
   </div>
 </div>
@@ -1630,6 +1652,7 @@ var KASSE_ID       = <?= $kasseId ?>;
 var LAGER_ID       = <?= $lagerId ?>;
 var AUSGABE_FORMAT = <?= json_encode($kasseInfo['ausgabe_format'] ?? 'fragen') ?>;
 var KASSE_MODUS    = <?= json_encode($modus) ?>;
+var PAPERLESS      = <?= json_encode($paperless) ?>;
 var GUTSCHEIN_ARTIKEL_ID = <?= json_encode($gutscheinArtikelId) ?>;
 // Artikelgruppen-Kacheln im Divers-Dialog (aktiv + an_kasse_waehlbar), siehe KassenService::getKassenGruppen()
 var KASSEN_GRUPPEN = <?= json_encode($kassenGruppen) ?>;
@@ -2859,16 +2882,119 @@ var _letzterBonId = null;
 var _istGutscheinAusgabe = false; // true zwischen retourAlsGutschein() und der Server-Antwort
 var _gutscheinAusgabeBetrag = 0;  // Betrag dieses Gutscheins — für die Kundenanzeige
 
+var _letzteBonNr  = '';
+var _kdAbschluss  = null;  // letzter „abgeschlossen“-Stand der Kundenanzeige — für den Beleg-QR daneben
+
 function ausgabeNachZahlung(bonId, bonNr) {
     _letzterBonId = bonId;
-    // Offline oder fix konfiguriert: direkt ausgeben ohne Dialog
+    _letzteBonNr  = bonNr || '';
     var format = AUSGABE_FORMAT;
     if (KASSE_MODUS === 'offline') format = '80mm';
-    if (format === '80mm') { ausgabeOeffnen('80mm'); return; }
-    if (format === 'a4')   { ausgabeOeffnen('a4');   return; }
-    // 'fragen': Auswahl-Overlay zeigen
+    // Ohne Paperless + fix konfiguriert: direkt drucken ohne Dialog.
+    // Mit Paperless immer fragen (Papier oder QR) — bei festem Format nur dieser Druck-Knopf.
+    if (!PAPERLESS) {
+        if (format === '80mm') { ausgabeOeffnen('80mm'); return; }
+        if (format === 'a4')   { ausgabeOeffnen('a4');   return; }
+    }
+    document.getElementById('btn-ausgabe-80mm').style.display = format === 'a4'   ? 'none' : '';
+    document.getElementById('btn-ausgabe-a4').style.display   = format === '80mm' ? 'none' : '';
     document.getElementById('ov-ausgabe-nr').textContent = bonNr ? 'Bon-Nr.: ' + bonNr : '';
     ov('ov-ausgabe');
+}
+
+// ── Paperless: Beleg per QR ───────────────────────────────────────────────────
+// A4-Bon hochladen → QR in der Kasse + auf der Kundenanzeige, alle 2 s nachsehen ob abgerufen.
+// Nicht abgerufen → „Trotzdem drucken“ (Belegerteilungspflicht, kein Schließen ohne Beleg).
+var _qrBonId = null, _qrTimer = null, _qrStart = 0, _qrBild = '';
+
+function belegPerQr() {
+    _qrBonId = _letzterBonId;
+    _letzterBonId = null;
+    document.getElementById('ov-ausgabe').classList.remove('offen');
+    if (!_qrBonId) return;
+    var bild = document.getElementById('beleg-qr-bild'), status = document.getElementById('beleg-qr-status');
+    document.getElementById('beleg-qr-nr').textContent = _letzteBonNr ? 'Bon-Nr.: ' + _letzteBonNr : '';
+    bild.innerHTML = '<span style="color:#64748b">Beleg wird hochgeladen …</span>';
+    status.textContent = '';
+    status.style.color = '#64748b';
+    document.getElementById('btn-qr-fertig').style.display = 'none';
+    document.getElementById('btn-qr-80mm').style.display = AUSGABE_FORMAT === 'a4'   ? 'none' : '';
+    document.getElementById('btn-qr-a4').style.display   = AUSGABE_FORMAT === '80mm' ? 'none' : '';
+    ov('ov-beleg-qr');
+
+    var fd = new FormData();
+    fd.append('aktion', 'hochladen');
+    fd.append('bon_id', _qrBonId);
+    fetch('<?= BASE_PATH ?>/kasse/ajax_paperless.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(function(d) {
+            if (!d.erfolg) {
+                bild.innerHTML = '<span style="font-size:48px">⚠</span>';
+                status.style.color = '#dc2626';
+                status.textContent = (d.fehler || 'Upload fehlgeschlagen') + ' — bitte drucken.';
+                return;
+            }
+            _qrBild = d.qr;
+            bild.innerHTML = '<img src="' + d.qr + '" alt="QR-Code Beleg" style="width:260px;height:260px">';
+            status.textContent = 'Bitte QR-Code mit dem Handy scannen …';
+            kdBelegQr(false);
+            _qrStart = Date.now();
+            _qrTimer = setInterval(belegQrStatus, 2000);
+        })
+        .catch(function() {
+            bild.innerHTML = '<span style="font-size:48px">⚠</span>';
+            status.style.color = '#dc2626';
+            status.textContent = 'Belegseite nicht erreichbar — bitte drucken.';
+        });
+}
+
+function belegQrStatus() {
+    if (!_qrBonId) { belegQrStopp(); return; }
+    var laufzeit = Date.now() - _qrStart;
+    if (laufzeit > 600000) { belegQrStopp(); }   // nach 10 Minuten nicht mehr nachfragen
+    if (laufzeit > 60000) {
+        document.getElementById('beleg-qr-status').textContent = 'Noch nicht abgerufen — scannen lassen oder trotzdem drucken.';
+    }
+    fetch('<?= BASE_PATH ?>/kasse/ajax_paperless.php?aktion=status&bon_id=' + _qrBonId)
+        .then(r => r.json())
+        .then(function(d) {
+            if (!d.abgerufen || !_qrBonId) return;
+            belegQrStopp();
+            var status = document.getElementById('beleg-qr-status');
+            status.style.color = '#16a34a';
+            status.textContent = '✓ Beleg abgerufen';
+            document.getElementById('btn-qr-80mm').style.display = 'none';
+            document.getElementById('btn-qr-a4').style.display = 'none';
+            document.getElementById('btn-qr-fertig').style.display = '';
+            kdBelegQr(true);
+            setTimeout(function() { if (document.getElementById('ov-beleg-qr').classList.contains('offen')) belegQrFertig(); }, 2500);
+        })
+        .catch(function() { /* nächster Versuch in 2 s */ });
+}
+
+function belegQrStopp() {
+    if (_qrTimer) { clearInterval(_qrTimer); _qrTimer = null; }
+}
+
+function belegQrFertig() {
+    belegQrStopp();
+    _qrBonId = null;
+    ovSchliessen('ov-beleg-qr');
+}
+
+function belegQrDrucken(format) {
+    var id = _qrBonId;
+    belegQrStopp();
+    _qrBonId = null;
+    ovSchliessen('ov-beleg-qr');
+    if (_kdAbschluss) kdSync('abrechnen', _kdAbschluss);   // QR von der Kundenanzeige nehmen
+    if (!id) return;
+    window.open('<?= BASE_PATH ?>/kasse/' + (format === '80mm' ? 'bon_druck.php' : 'bon_a4.php') + '?id=' + id, '_blank');
+}
+
+function kdBelegQr(abgerufen) {
+    if (!_kdAbschluss) return;
+    kdSync('abrechnen', Object.assign({}, _kdAbschluss, { beleg_qr: _qrBild, beleg_abgerufen: abgerufen }));
 }
 
 function ausgabeOeffnen(format) {
@@ -3700,14 +3826,16 @@ function bonSpeichern(zahlDaten) {
             if (_istGutscheinAusgabe) {
                 // Rückgabe als Gutschein: kein Rückgeld, sondern Gutschrift (Code folgt, siehe
                 // zeigeGutscheinAusgabeErgebnis)
+                _kdAbschluss = null;
                 kdSync('abrechnen', { betrag: -_gutscheinAusgabeBetrag, gutschein_ausgabe: true, gutschein_code: null, abgeschlossen: true });
             } else {
-                kdSync('abrechnen', {
+                _kdAbschluss = {
                     betrag:       g,
                     gegeben:      (zahlDaten.gegeben !== undefined ? zahlDaten.gegeben : null),
                     rueckgeld:    (zahlDaten.rueckgeld !== undefined ? zahlDaten.rueckgeld : null),
                     abgeschlossen: true
-                });
+                };
+                kdSync('abrechnen', _kdAbschluss);
             }
             _resetKasseState();
             (d.warnungen || []).forEach(w => feedback('⚠ ' + w, 'fehler'));

@@ -845,9 +845,9 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     <input type="checkbox" name="kundenanzeige_qr_aktiv" value="1" style="margin-top:2px"
                         <?= ($rows['kundenanzeige_qr_aktiv'] ?? '0') === '1' ? 'checked' : '' ?>>
                     <div>
-                        <div style="font-weight:600">QR-Code beim Bezahlen anzeigen</div>
+                        <div style="font-weight:600">Beleg-QR auf der Kundenanzeige zeigen</div>
                         <div style="color:var(--color-text-muted);font-size:12px;margin-top:2px">
-                            Platzhalter bis zum Paperless-Rechnung-Modul — zeigt schon jetzt das geteilte Layout (QR links, Betrag rechts) statt der zentrierten Ansicht.
+                            Paperless: wählt die Kasse „📱 Beleg per QR“, erscheint der QR-Code links neben dem Betrag, nach dem Abruf ein ✓. Aus = QR nur am Kassenbildschirm.
                         </div>
                     </div>
                 </label>

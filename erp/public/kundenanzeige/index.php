@@ -84,8 +84,9 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
     .kd-summen-zeile { display:flex; justify-content:space-between; font-size:16px; color:#94a3b8; padding:2px 4px; }
     .kd-summen-gesamt { display:flex; justify-content:space-between; font-size:30px; font-weight:800; padding:10px 4px 0; }
 
-    .kd-qr-platzhalter { width:220px; height:220px; border:3px dashed #475569; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:60px; margin-bottom:20px; color:#64748b; }
-    .kd-qr-hinweis { font-size:16px; color:#94a3b8; text-align:center; max-width:280px; }
+    .kd-qr-bild { width:300px; height:300px; background:#fff; border-radius:12px; padding:8px; margin-bottom:20px; image-rendering:pixelated; }
+    .kd-qr-ok { width:220px; height:220px; border-radius:50%; background:#16a34a; color:#fff; display:flex; align-items:center; justify-content:center; font-size:110px; margin-bottom:20px; }
+    .kd-qr-hinweis { font-size:20px; color:#94a3b8; text-align:center; max-width:320px; }
 
     /* ── Zustand: Abrechnen zentriert ── */
     .kd-abrechnen-zentriert { width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; }
@@ -207,16 +208,17 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
         return html;
     }
 
+    // Paperless: nach der Zahlung schickt die Kasse den Beleg-QR mit (beleg_qr), links neben dem Betrag
     function renderAbrechnen(p, qrAktiv) {
-        if (!qrAktiv) {
+        if (!qrAktiv || !p.beleg_qr) {
             root.innerHTML = '<div class="kd-abrechnen-zentriert">' + abrechnenInhalt(p) + '</div>';
             return;
         }
+        const links = p.beleg_abgerufen
+            ? '<div class="kd-qr-ok">✓</div><div class="kd-qr-hinweis">Beleg abgerufen — bitte speichern Sie ihn am Handy</div>'
+            : '<img class="kd-qr-bild" src="' + esc(p.beleg_qr) + '" alt="QR-Code"><div class="kd-qr-hinweis">Ihr Beleg: QR-Code mit dem Handy scannen</div>';
         root.innerHTML = '<div class="kd-split">'
-            + '<div class="kd-links">'
-            +   '<div class="kd-qr-platzhalter">▦</div>'
-            +   '<div class="kd-qr-hinweis">Bon/Rechnung per QR-Code abholen<br><small>(folgt mit dem Paperless-Rechnung-Modul)</small></div>'
-            + '</div>'
+            + '<div class="kd-links">' + links + '</div>'
             + '<div class="kd-rechts"><div class="kd-abrechnen-zentriert" style="gap:14px">' + abrechnenInhalt(p) + '</div></div>'
             + '</div>';
     }
@@ -244,10 +246,13 @@ $logoUrl = BASE_PATH . '/' . ($shop['logo_pfad'] ?? 'img/logos/mealana.png');
                     render(data);
 
                     if (data.zustand === 'abrechnen' && data.payload && data.payload.abgeschlossen) {
+                        // Beleg-QR: stehen lassen bis zum Abruf (max. 3 min), danach kurz das ✓
+                        const p = data.payload;
+                        const dauer = p.beleg_qr ? (p.beleg_abgerufen ? 8000 : 180000) : 30000;
                         abrechnenTimer = setTimeout(function() {
                             localIdleOverride = true;
                             renderIdle();
-                        }, 30000);
+                        }, dauer);
                     }
                 }
                 // Unverändert seit letztem Poll → nichts tun, aktuelle Anzeige bleibt (inkl. evtl. lokaler Idle-Übersteuerung)

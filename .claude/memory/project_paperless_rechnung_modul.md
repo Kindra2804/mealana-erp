@@ -1,6 +1,6 @@
 ---
 name: project-paperless-rechnung-modul
-description: "Lizenz-Modul Paperless (99 €): Beleg per QR an der Kasse — Feindesign 2026-11-01 abgenommen, Bau läuft (Schritt 1 Belegseite + 2 ERP-Upload fertig), eigene Seite beleg.<domain> statt Woo"
+description: "Lizenz-Modul Paperless (99 €): Beleg per QR an der Kasse — Feindesign 2026-11-01 abgenommen, Bau läuft (Schritte 1–3 fertig, Handbücher+Klicktest offen), eigene Seite beleg.<domain> statt Woo"
 metadata: 
   node_type: memory
   type: project
@@ -36,5 +36,6 @@ Bestätigt: die Druckoption `Keiner` verstößt bereits jetzt gegen die Belegert
 - ✅ Schritt 1 (2026-11-01): Ordner `beleg-portal/` im Repo (index.php Abrufseite, api.php test/upload/status mit Header X-Nahtlos-Schluessel, lib.php, config.example.php, .htaccess sperrt config/lib/daten, robots noindex, README). config.php + daten/* in .gitignore. Lokal mit php -S getestet: falscher Schlüssel, keine PDF, Upload mit Logo, Status vorher/nachher, Abrufseite, Download byte-gleich, Aufräumen 24 h + 30 Tage (29 bleibt, 31 weg).
 - ✅ Schritt 2 (2026-11-01): Migration 220 (kassen_bons.paperless_token/_url/_hochgeladen_am/_abgerufen_am, Settings paperless_url/_schluessel); `src/modules/kasse/PaperlessService.php` (verfuegbar = Lizenz + URL + Schlüssel, test, hochladen idempotent mit Logo Shop 1 nur wenn kassen.bon_logo, abgerufen); `BonA4Renderer::pdfSpeichern()` (auch Abholmail); Einstellungen → System → Karte Paperless (🎲 Schlüssel erzeugen, nur bei Neueingabe gespeichert) + einstellungen/paperless_test.php. Test 14/14 gegen lokale Belegseite.
 - Jacky 2026-11-01: Belegseite beim Klicktest gleich direkt auf beleg.mealana.at (bleibt für Live); beim Live-Gang nicht leeren nötig (niemand hat die Test-QRs, nach 30 Tagen eh weg).
-- Offen: 3 Kasse (Ohne Druck raus, QR-Overlay + Polling, Kundenanzeige, Fallback Druck, Lizenz paperless), 4 Handbücher + Klicktest; Jacky: Subdomain + FTP-Upload + config.php.
+- ✅ Schritt 3 (2026-11-01): Kasse bon.php — „✕ Ohne Druck fertig“ entfernt (für alle); mit Paperless (Lizenz+Konfig, nicht offline) Knopf „📱 Beleg per QR“ und Auswahl-Dialog IMMER (bei festem Format 80mm/A4 nur dieser Druckknopf + QR; ohne Paperless wie bisher direkt drucken). Overlay ov-beleg-qr: Upload → QR 260px, Status alle 2 s (kasse/ajax_paperless.php aktion=hochladen|status), nach 60 s Hinweis, nach 10 min Polling-Ende; abgerufen → ✓ + Auto-Schließen 2,5 s; kein Schließen ohne Beleg, nur „Trotzdem drucken“/A4. Kundenanzeige: Zustand abrechnen + payload beleg_qr/beleg_abgerufen (keine Migration), nur wenn Setting kundenanzeige_qr_aktiv (umbenannt „Beleg-QR auf der Kundenanzeige zeigen“, Default 0 → beim Klicktest einschalten!); Anzeige bleibt 3 min bzw. 8 s nach ✓. Tests: Playwright-Harness 21/21 + echte Kundenanzeige-Screenshots.
+- Offen: 4 Handbücher + Klicktest; Jacky: Subdomain + FTP-Upload + config.php.
 
