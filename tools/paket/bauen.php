@@ -13,6 +13,7 @@
 
 $repo = realpath(__DIR__ . '/../..');
 require_once $repo . '/erp/src/modules/lizenzgenerator/LizenzSigner.php';
+require_once $repo . '/erp/src/modules/update/UpdateService.php';   // GESCHUETZT: was beim Kunden nie überschrieben wird
 
 $version = $argv[1] ?? '';
 $ziel    = 'D:/ERP/pakete';
@@ -83,6 +84,10 @@ $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($bau, Filesys
 foreach ($it as $f) {
     $rel = str_replace('\\', '/', substr($f->getPathname(), strlen($bau) + 1));
     if (str_starts_with($rel, 'docs/') && !array_filter($nurDocs, fn($d) => str_starts_with($rel, $d))) {
+        unlink($f->getPathname());
+        continue;
+    }
+    if (UpdateService::geschuetzt($rel)) {   // Konfiguration/Belege/Uploads der Installation gehören nie ins Paket
         unlink($f->getPathname());
         continue;
     }

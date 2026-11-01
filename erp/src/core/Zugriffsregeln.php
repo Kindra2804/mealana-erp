@@ -421,6 +421,12 @@ final class Zugriffsregeln
             'datei.php'      => 'lizenz.verwalten',
         ],
 
+        // === Updates (nur Superadmin) ===
+        'update' => [
+            'index.php'  => 'lizenz.verwalten',
+            'aktion.php' => 'lizenz.verwalten',
+        ],
+
         // === Einstellungen ===
         'einstellungen' => [
             'index.php'                       => 'einstellungen.anzeigen',

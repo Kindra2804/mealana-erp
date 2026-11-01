@@ -241,6 +241,22 @@ class Auth
         }
         $verzeichnis = ltrim(str_replace('\\', '/', substr($scriptDir, strlen($publicRoot))), '/');
 
+        // Update läuft (Wartungsmodus): nur der Superadmin arbeitet weiter, alle anderen sehen einen Hinweis
+        if (is_file(__DIR__ . '/../../storage/wartung.json') && ($_SESSION['benutzer']['rolle_rang'] ?? 0) < 100) {
+            http_response_code(503);
+            if (Zugriffsregeln::istJsonEndpunkt($verzeichnis, $datei)) {
+                header('Content-Type: application/json');
+                echo json_encode(['erfolg' => false, 'fehler' => 'Update läuft — bitte in ein paar Minuten noch einmal versuchen.']);
+            } else {
+                echo '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><meta http-equiv="refresh" content="30"><title>Update läuft</title></head>'
+                   . '<body style="font-family:sans-serif;background:#1e2a38;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">'
+                   . '<div style="background:#fff;border-radius:12px;padding:32px 36px;max-width:420px;text-align:center">'
+                   . '<div style="font-size:32px">🔄</div><h2>Update läuft</h2><p style="color:#64748b">Das ERP wird gerade aktualisiert. '
+                   . 'Die Seite lädt sich alle 30 Sekunden neu und geht weiter, sobald das Update fertig ist.</p></div></body></html>';
+            }
+            exit;
+        }
+
         // Einrichtung: ohne die Pflicht-Schritte (Firma, Superadmin, Lizenz, Steuer, Lager) nur der Assistent
         require_once __DIR__ . '/../modules/einrichtung/OnboardingService.php';
         if (!OnboardingService::seiteFrei($verzeichnis, $datei) && !OnboardingService::pflichtErledigtGecacht()) {
