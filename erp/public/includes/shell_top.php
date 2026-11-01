@@ -107,6 +107,13 @@ $sidebarItems = match ($activeModule ?? '') {
 // $currentPath = $_SERVER['PHP_SELF'] ?? '';
 $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
 
+// Lizenz: Menüpunkt eines nicht gekauften Moduls ausgegraut mit Schloss (bleibt klickbar → Lese-Seite oder Hinweis)
+require_once __DIR__ . '/../../src/core/Lizenz.php';
+$lzSperre = fn(string $href): string => Lizenz::linkGesperrt($href)
+    ? ' style="opacity:.45" title="Modul nicht lizenziert"'
+    : '';
+$lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span style="filter:grayscale(1);font-size:.85em">🔒</span>' : '';
+
 ?>
 
 
@@ -140,7 +147,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <a href="<?= BASE_PATH ?>/packplatz/retoure/index.php" class="erp-nav-link <?= ($activeModule ?? '') === 'retouren'    ? 'active' : '' ?>">Retouren</a>
                 <div class="erp-nav-divider"></div>
                 <a href="<?= BASE_PATH ?>/bestellungen/liste.php" class="erp-nav-link <?= in_array($activeModule ?? '', ['einkauf', 'lieferanten']) ? 'active' : '' ?>">Einkauf</a>
-                <a href="<?= BASE_PATH ?>/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>">Partner</a>
+                <a href="<?= BASE_PATH ?>/partner/liste.php" class="erp-nav-link <?= ($activeModule ?? '') === 'partner'     ? 'active' : '' ?>"<?= $lzSperre(BASE_PATH . '/partner/liste.php') ?>>Partner<?= $lzSchloss(BASE_PATH . '/partner/liste.php') ?></a>
                 <a href="<?= BASE_PATH ?>/buchhaltung/artikel_gruppen.php" class="erp-nav-link <?= ($activeModule ?? '') === 'buchhaltung' ? 'active' : '' ?>">Buchhaltung</a>
             </div>
             <div class="erp-nav-icons">
@@ -149,7 +156,7 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                 <div class="erp-nav-more" id="erp-nav-more-wrap">
                     <button class="erp-nav-icon erp-nav-more-btn" onclick="erpNavMoreToggle()" title="Weitere Bereiche">···</button>
                     <div class="erp-nav-more-menu" id="erp-nav-more-menu">
-                        <a href="<?= BASE_PATH ?>/kasse/bon.php" class="erp-nav-more-item">🛒 Kasse</a>
+                        <a href="<?= BASE_PATH ?>/kasse/bon.php" class="erp-nav-more-item"<?= $lzSperre(BASE_PATH . '/kasse/bon.php') ?>>🛒 Kasse<?= $lzSchloss(BASE_PATH . '/kasse/bon.php') ?></a>
                         <a href="<?= BASE_PATH ?>/packplatz/index.php" class="erp-nav-more-item">📦 Packplatz</a>
                         <div class="erp-nav-more-sep"></div>
                         <a href="<?= BASE_PATH ?>/benutzer/liste.php" class="erp-nav-more-item">👤 Benutzerverwaltung</a>
@@ -157,8 +164,8 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                         <?php if (Auth::kann('system.log')): ?>
                             <a href="<?= BASE_PATH ?>/admin/aktivitaeten.php" class="erp-nav-more-item">📜 Aktivitäten-Log</a>
                         <?php endif; ?>
-                        <?php if (Auth::kann('api.zugriff')): ?>
-                            <a href="#" class="erp-nav-more-item erp-nav-more-item-disabled" title="Kommt bald">🔑 Lizenzverwaltung</a>
+                        <?php if (Auth::kann('lizenz.verwalten')): ?>
+                            <a href="<?= BASE_PATH ?>/lizenz/index.php" class="erp-nav-more-item">🔑 Lizenzverwaltung</a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -198,8 +205,8 @@ $currentPath = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
                             ? 'active'
                             : (($item['href'] !== '#' && $currentPath === $item['href']) ? 'active' : '');
                         ?>
-                        <a href="<?= $item['href'] ?>" class="erp-sidebar-item <?= $isActive ?>">
-                            <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>
+                        <a href="<?= $item['href'] ?>" class="erp-sidebar-item <?= $isActive ?>"<?= $lzSperre($item['href']) ?>>
+                            <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?><?= $lzSchloss($item['href']) ?>
                             <?php if (!empty($item['badge'])): ?>
                                 <span class="badge" style="margin-left:auto"><?= (int)$item['badge'] ?></span>
                             <?php endif; ?>

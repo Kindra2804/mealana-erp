@@ -162,6 +162,17 @@ if ($tab === 'kanaele_update') {
     $wpAppPasswd = trim($_POST['wp_app_password'] ?? '');
     $subMarke = isset($_POST['sub_marke']) && $_POST['sub_marke'] === '1' ? 1 : 0;
     $istAktiv = isset($_POST['ist_aktiv']) && $_POST['ist_aktiv'] === '1' ? 1 : 0;
+    // Lizenz: Anzahl aktiver Shops — darüber hinaus bleibt der Shop inaktiv
+    if ($istAktiv && !(int)$shop['ist_aktiv']) {
+        require_once __DIR__ . '/../../src/core/Lizenz.php';
+        $aktiveShops = (int)$db->query("SELECT COUNT(*) FROM shops WHERE ist_aktiv = 1")->fetchColumn();
+        if ($aktiveShops >= Lizenz::anzahl('shop')) {
+            $istAktiv = 0;
+            $lizenzHinweis = Lizenz::hat('shop')
+                ? 'Shop nicht aktiviert: die Lizenz erlaubt ' . Lizenz::anzahl('shop') . ' aktive(n) Shop(s).'
+                : 'Shop nicht aktiviert: das Modul Shop-Anbindung ist nicht lizenziert.';
+        }
+    }
 
     $logoPfad = null;
     $logoFehler = null;
@@ -188,6 +199,7 @@ if ($tab === 'kanaele_update') {
     // Nummernkreis-Kürzel: gesperrte Felder schickt der Browser nicht mit; die Sperre
     // (Kanal hat schon Aufträge) wird hier trotzdem nochmal geprüft
     $fehler = $logoFehler ? [$logoFehler] : [];
+    if (!empty($lizenzHinweis)) $fehler[] = $lizenzHinweis;
     if (isset($_POST['nr_kuerzel'])) {
         $kuerzel = strtoupper(trim($_POST['nr_kuerzel']));
         if ($kuerzel !== $shop['nr_kuerzel']) {

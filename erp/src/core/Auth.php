@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Zugriffsregeln.php';
+require_once __DIR__ . '/Lizenz.php';
 require_once __DIR__ . '/logger.php';
 
 /**
@@ -230,7 +231,20 @@ class Auth
         }
         $verzeichnis = ltrim(str_replace('\\', '/', substr($scriptDir, strlen($publicRoot))), '/');
 
-        $benoetigt = Zugriffsregeln::benoetigteBerechtigung($verzeichnis, $datei);
+        // Lizenz: Seite gehört zu einem nicht gekauften Modul (Lese-Seiten bleiben erreichbar)
+        if (!Lizenz::seiteErlaubt($verzeichnis, $datei)) {
+            $modul = Lizenz::modulFuerSeite($verzeichnis, $datei);
+            if (Zugriffsregeln::istJsonEndpunkt($verzeichnis, $datei)) {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['erfolg' => false, 'fehler' => 'Modul „' . Lizenz::label($modul) . '“ ist nicht lizenziert.']);
+                exit;
+            }
+            header('Location: ' . BASE_PATH . '/lizenz/nicht_lizenziert.php?modul=' . urlencode($modul));
+            exit;
+        }
+
+        $benoetigt =Zugriffsregeln::benoetigteBerechtigung($verzeichnis, $datei);
         if ($benoetigt === null || self::kann($benoetigt)) {
             return;
         }

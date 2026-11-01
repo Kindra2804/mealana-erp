@@ -2,6 +2,7 @@
 // Dropshipping-Karte in der Auftrags-Detailseite (eingebunden aus detail.php, braucht $auftrag).
 // Zeigt nur etwas, wenn der Auftrag per Strecke gehen kann oder schon per Strecke bestellt ist.
 if (!isset($auftrag)) exit;
+if (!Lizenz::hat('dropshipping')) return;   // Modul nicht lizenziert → keine Karte
 require_once __DIR__ . '/../../src/modules/dropshipping/DropshippingService.php';
 
 $dsService    = new DropshippingService();

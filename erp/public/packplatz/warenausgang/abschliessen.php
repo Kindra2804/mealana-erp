@@ -311,7 +311,8 @@ if (($auftrag['zahlungsart'] ?? '') === 'nachnahme') {
 
 // ─── EasyPak XML → PLC-Ordner ────────────────────────────────────────────────
 $plcOrdner = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel='plc_polling_ordner'")->fetchColumn();
-if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand' && $versanddienstleister === 'post_at') {
+if ($plcOrdner && is_dir($plcOrdner) && $auftrag['lieferart'] === 'versand' && $versanddienstleister === 'post_at'
+    && Lizenz::hat('plc')) {
     try {
         $exporter = new EasyPakExporter($db);
         $exporter->exportiere($auftragId, $gewicht, $plcOrdner, $nachnahmeBetrag);

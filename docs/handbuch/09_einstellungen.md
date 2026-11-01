@@ -111,6 +111,17 @@ Damit das System E-Mails senden kann (Auftragsbestätigungen, Mahnungen, Versand
 
 ---
 
+## Lizenz (··· → 🔑 Lizenzverwaltung, nur Superadmin)
+
+- Zeigt, welche Module lizenziert sind, wie viele Kassen/Shops erlaubt und in Verwendung sind und bis wann die **Wartung** läuft
+- **Lizenzdatei einspielen:** `.lic`-Datei von NAHTLOS hochladen (oder Inhalt einfügen). Sie gilt nur für Firmenname + UID (ersatzweise Steuernummer) aus dem Tab **Firma**. Groß-/Kleinschreibung und Leerzeichen sind egal
+- **Ohne Lizenz** läuft nur das Grundmodul (Artikel, Kunden, Verkauf, Lager, Picklisten, Packplatz, Einkauf, Buchhaltungs-Grundlagen)
+- **Nicht lizenzierte Module** stehen im Menü ausgegraut mit 🔒. Was schon da ist, bleibt lesbar: Bon-Journal, Z-Bons, Kassenbuch, Partner- und Händler-Belege. Verkaufte Gutscheine lassen sich immer einlösen
+- **Wartung abgelaufen:** das Programm läuft unverändert weiter, nur neue Updates gehen nicht mehr
+- Mehr Kassen/Shops als lizenziert: neue lassen sich nicht aktivieren, bestehende laufen weiter (RKSV-Kassen darf man nicht einfach abschalten)
+
+---
+
 ## Häufige Probleme
 
 | Problem | Lösung |

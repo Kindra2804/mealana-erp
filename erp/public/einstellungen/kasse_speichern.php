@@ -30,6 +30,18 @@ if ($istNeu && $kasseNr !== '') {
     if ($stmt->fetch()) $fehler[] = 'Kassennummer bereits vergeben.';
 }
 
+// Lizenz: Anzahl aktiver Kassen (Offline-/Messe-Kassen zählen mit)
+if ($aktiv) {
+    require_once __DIR__ . '/../../src/core/Lizenz.php';
+    $stmt = $db->prepare("SELECT COUNT(*) FROM kassen WHERE aktiv = 1 AND id <> ?");
+    $stmt->execute([$id]);
+    if ((int)$stmt->fetchColumn() >= Lizenz::anzahl('kasse')) {
+        $fehler[] = Lizenz::hat('kasse')
+            ? 'Die Lizenz erlaubt ' . Lizenz::anzahl('kasse') . ' aktive Kasse(n) — für eine weitere Kasse die Lizenz erweitern.'
+            : 'Das Modul Kasse ist nicht lizenziert.';
+    }
+}
+
 if ($fehler) {
     $_SESSION['fehler'] = implode(' ', $fehler);
     header('Location: kasse_edit.php' . ($istNeu ? '?neu=1' : '?id=' . $id));

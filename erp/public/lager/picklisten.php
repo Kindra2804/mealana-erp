@@ -53,7 +53,7 @@ foreach ($auftraegeRaw as $a) {
 }
 
 // Hinweis "Strecke möglich": ganzer Auftrag per Dropshipping lieferbar (nur Info, Entscheidung im Auftrag)
-$streckeMoeglich = array_flip((new DropshippingService())->streckeBereitIds());
+$streckeMoeglich = Lizenz::hat('dropshipping') ? array_flip((new DropshippingService())->streckeBereitIds()) : [];
 
 // ── Lagerbestand laden ──────────────────────────────────────────────────────
 $bestand = $db->query("

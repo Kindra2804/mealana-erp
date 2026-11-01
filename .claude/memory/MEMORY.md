@@ -7,7 +7,7 @@
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-10-31: Kürzel ✅ → Dropshipping ✅ gebaut (Klicktest) → Lizenzserver → 1.0-Check → Woo-SOW + Soft-Go-Live; offen nebenbei Live-Deploy 201–215
 - [Klicktest-Fixes 2026-10-29](project_klicktest_fixes_20261029.md) — Mietfach/MR-Nummernkreis/Z-Bon eigener Kreis K1-Z-00001 (Migr. 212)+Reihenfolge+Auto-Cron/A4-Ränder gebaut, Kassensturz Partner/Stornos, Storno nur am selben Tag vor Z
 - [📋 Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler ✅ bestanden 2026-10-30
-- [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; 2026-10-30 Grundmodul inkl. Verkauf 790, Gutscheine 190, Dropshipping 190
+- [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; Grundmodul 790 inkl. Verkauf+Packplatz; 2026-11-01 Lizenz-Bau-Entscheidungen 1–8 (nur Grundmodul ohne Lizenz, Schloss, Zertifikat-Warnung)
 - [🚀 Soft-Go-Live Sockenwolle](project_soft_golive_sockenwolle.md) — 1.0 live nur mit SOW (JTL→Woo), MeaLana zuletzt; Kürzel je Shop gebaut 2026-10-31 (Migr. 214), Live-Deploy offen
 - [Dropshipping-Modul](project_dropshipping.md) — gebaut 2026-11-01 (Migr. 215), Klicktest Jacky offen, noch nicht committed
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
@@ -17,6 +17,7 @@
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — erklären, selbst schreiben lassen
 - [Feedback: End-of-Day Updates](feedback_eod.md) — CLAUDE.md am Tagesende aktualisieren
 - [Feedback: Memory-Backup bei Commit](feedback_memory_backup_bei_commit.md) — Memory nach .claude/memory/ im Repo syncen bei commit/push
+- [Feedback: Commit je Schritt](feedback_commit_je_schritt.md) — bei mehrstufigen Bauten nach jedem fertigen Schritt committen+pushen, ohne zu fragen
 - [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Referenz-Check große WAWIs + MeaLana-Extras
 - [Feedback: CSS-Strategie](feedback_css_strategie.md) — inline style jetzt, extern beim Refactor
 - [Feedback: Design-Workflow](feedback_design_workflow.md) — ASCII → SVG → HTML, SVG für Barbara
@@ -65,7 +66,8 @@
 ## Buchhaltung / Statistik
 - [Buchhaltungsmodul](project_buchhaltung.md) — Export (3230/4090/Kombi-Bons), Zahlungs-Kontrolle, Kontenplan
 - [Statistik Konzept](project_statistik.md) — Lagerwert gebaut (Migration 192), Cron eintragen
-- [Kleinunternehmer-Modus](project_kleinunternehmer.md) — globaler Schalter
+- [Kleinunternehmer-Modus](project_kleinunternehmer.md) — globaler Schalter (wirkt nur auf PDF-Belege, siehe Steuerprofil)
+- [⚖️ Steuerprofil-Audit](project_steuerprofil.md) — 2026-11-01: KU halb, Bilanz/EA + Soll/Ist fehlen, Export fest KG/Soll → Punkt für 1.0-Check
 - [🟢 BUG: Versand nicht im Betrag](bug_versand_nicht_im_betrag.md) — behoben 2026-09-30
 
 ## Artikel / Lager

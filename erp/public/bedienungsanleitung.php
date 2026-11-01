@@ -583,6 +583,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Nummernkreis-Kürzel:</strong> Jeder Shop außer dem Hauptshop bekommt ein Kürzel (z.B. SOW, BIO) und damit eigene, fortlaufende Nummern für Aufträge, Rechnungen und Rechnungskorrekturen (A-SOW-2026-00001, R-SOW-2026-00001, GS-SOW-2026-00001). Leer = Hauptshop (MeaLana), Nummern ohne Kürzel; auch Telefon-, Händler- und Kassen-Aufträge laufen dort. Laden-Belege (Kassenbon, Z-Bon, Mietrechnung, Partner-/Händler-Belege) bekommen nie ein Kürzel. Nur Buchstaben/Ziffern, max. 5 Zeichen, je Shop verschieden. Gesperrt, sobald der Shop den ersten Auftrag hat.</p>
             <p><strong>System:</strong> Preisanzeige in Aufträgen (Brutto/Netto), Kleinunternehmer-Modus, PLC-Polling-Ordner, <strong>Artikelbilder auf Belegen</strong> (je Beleg/Mail ein- und ausschaltbar: Rechnung, Rechnungskorrektur, AB, Lieferschein, Pickliste, Abholzettel, Kassenbon A4, AB-/Abhol-/Versandmail — feste Bildgröße, Kind ohne Bild zeigt das Vaterbild, gilt für neue Belege).</p>
 
+            <p><strong>Lizenz</strong> (··· → 🔑 Lizenzverwaltung, nur Superadmin): Module, erlaubte und verwendete Kassen/Shops, Wartung bis; Lizenzdatei (.lic) von NAHTLOS einspielen — gilt nur für Firmenname + UID aus dem Tab Firma. Ohne Lizenz nur Grundmodul. Nicht lizenzierte Module sind im Menü ausgegraut mit 🔒, vorhandene Daten bleiben lesbar (Bon-Journal, Z-Bons, Belege), verkaufte Gutscheine immer einlösbar. Wartung abgelaufen = Programm läuft weiter, nur keine neuen Updates.</p>
+
             <h3 id="einstellungen-mail">Mail / SMTP <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <table class="ba-table">
                 <tr><th>Feld</th><th>Beispiel</th></tr>

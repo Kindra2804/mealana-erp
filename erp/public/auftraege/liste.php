@@ -166,8 +166,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <option value="retoure_offen" <?= $filterLieferung === 'retoure_offen'   ? 'selected' : '' ?>>Retoure offen</option>
         <option value="kommissioniert" <?= $filterLieferung === 'kommissioniert' ? 'selected' : '' ?>>Kommissioniert</option>
         <option value="abholbereit" <?= $filterLieferung === 'abholbereit'    ? 'selected' : '' ?>>Abholbereit</option>
+        <?php if (Lizenz::hat('dropshipping')): ?>
         <option value="strecke_bereit" <?= $filterLieferung === 'strecke_bereit' ? 'selected' : '' ?>>Dropshipping: Strecke bereit</option>
         <option value="strecke_bestellt" <?= $filterLieferung === 'strecke_bestellt' ? 'selected' : '' ?>>Dropshipping: bestellt, Tracking offen</option>
+        <?php endif; ?>
     </select>
     <select class="erp-select" style="font-size:13px" id="filter-kanal">
         <option value="">Alle Kanäle</option>

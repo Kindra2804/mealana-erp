@@ -40,7 +40,21 @@ $artikelSync      = new ShopSyncService();
 $bestellungSync   = new ShopBestellungSyncService();
 $gutscheinService = new GutscheinService();
 
+// Lizenz: ohne Modul Shop kein Abgleich, sonst nur so viele Shops wie lizenziert (älteste zuerst)
+require_once __DIR__ . '/../src/core/Lizenz.php';
+$lizenzShops = Lizenz::anzahl('shop');
+if ($lizenzShops === 0) {
+    echo "Shop-Abgleich übersprungen -- Modul Shop-Anbindung nicht lizenziert
+";
+    exit(0);
+}
+$shopNr = 0;
 foreach ($repo->findAktiveShops() as $shop) {
+    if (++$shopNr > $lizenzShops) {
+        echo "[{$shop['slug']}] übersprungen -- Lizenz erlaubt {$lizenzShops} Shop(s)
+";
+        continue;
+    }
     if ((int)$shop['sync_pausiert'] === 1) {
         // Bewusst vom Betreiber über die "Shop-Synchronisierung"-Seite pausiert
         // (Migration 157) -- anders als bulk_import_aktiv kein Selbst-Reset,

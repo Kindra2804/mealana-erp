@@ -411,6 +411,12 @@ final class Zugriffsregeln
             'aktivitaeten.php' => 'system.log',
         ],
 
+        // === Lizenz (nur Superadmin; nicht_lizenziert.php ist für alle) ===
+        'lizenz' => [
+            'index.php'     => 'lizenz.verwalten',
+            'hochladen.php' => 'lizenz.verwalten',
+        ],
+
         // === Einstellungen ===
         'einstellungen' => [
             'index.php'                       => 'einstellungen.anzeigen',
