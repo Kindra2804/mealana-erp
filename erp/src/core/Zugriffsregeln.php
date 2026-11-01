@@ -431,6 +431,7 @@ final class Zugriffsregeln
             'kasse_speichern.php'               => 'kasse.verwaltung',
             'kasse_registrierung.php'           => 'kasse.verwaltung',
             'kasse_registrierung_speichern.php' => 'kasse.verwaltung',
+            'kasse_zertifikat_speichern.php'    => 'kasse.verwaltung',
         ],
 
         // === Buchhaltung ===

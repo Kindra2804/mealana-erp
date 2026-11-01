@@ -261,6 +261,13 @@ Ist die Signatureinrichtung (BFR) kurz nicht erreichbar, verkauft die Kasse trot
 - **Kasse → 🔏 RKSV** zeigt offene und vergangene Störungen (Ausfall-Historie)
 - Für Admins/Technik: dort verlinkt "Rohdaten-Protokoll" — zeigt exakt, was an BFR geschickt wurde und was zurückkam (für Fehlermeldungen an den BFR-Hersteller)
 
+## Hinweisleiste oben in der Kasse
+
+- **Gelb:** Das Signaturzertifikat läuft in den nächsten 60 Tagen ab, also rechtzeitig eine neue Signaturkarte bestellen
+- **Rot:** Das Signaturzertifikat ist abgelaufen (dann kann nicht mehr gültig signiert werden), oder die **Wartung ist abgelaufen** (die Kasse läuft weiter, aber es kommen keine Updates mehr, auch keine gesetzlichen Anpassungen)
+- Das Ablaufdatum des Zertifikats steht unter Einstellungen → Kassen → Kasse → RKSV-Registrierung → **Zertifikat gültig bis**. Vorgabe ist *gemeldet + 5 Jahre*; steht auf der Karte ein anderes Datum, dort anpassen
+- Ohne **UID-Nummer** in den Firmendaten ist keine RKSV-Registrierung mit dem BFR möglich (die Registrierungsseite weist darauf hin)
+
 ---
 
 ## Häufige Probleme

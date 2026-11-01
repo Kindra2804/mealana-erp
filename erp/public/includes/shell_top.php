@@ -369,3 +369,9 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
         </aside>
         <script src="<?= BASE_PATH ?>/js/shell.js"></script>
         <main class="erp-main">
+            <?php if (Lizenz::wartungAbgelaufen() && Auth::kann('lizenz.verwalten')): ?>
+                <div style="margin-bottom:10px;padding:6px 12px;font-size:12px;border-left:3px solid #2563eb;background:var(--color-surface,#fff)">
+                    Wartung abgelaufen seit <?= date('d.m.Y', strtotime(Lizenz::wartungBis())) ?> — das ERP läuft weiter, neue Updates gibt es erst nach Verlängerung.
+                    <a href="<?= BASE_PATH ?>/lizenz/index.php">Lizenzverwaltung</a>
+                </div>
+            <?php endif; ?>

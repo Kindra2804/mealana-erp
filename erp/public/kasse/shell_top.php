@@ -212,4 +212,5 @@
   </div>
   <div class="ks-user">👤 <?= htmlspecialchars($_SESSION['benutzer']['formularname'] ?? '') ?></div>
 </div>
+<?php require __DIR__ . '/_hinweise.php'; ?>
 <div class="ks-main">

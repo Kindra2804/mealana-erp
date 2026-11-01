@@ -845,8 +845,11 @@ body {
   </div>
 </div>
 
+<?php // Hinweise (Wartung, Signaturzertifikat) — je Zeile 36px, die Kassenfläche wird entsprechend kleiner
+require __DIR__ . '/_hinweise.php'; ?>
+
 <!-- ── HAUPTLAYOUT ────────────────────────────────────────────────────────── -->
-<div class="pos-layout">
+<div class="pos-layout"<?= $ksHinweise ? ' style="height:calc(100vh - ' . (50 + 36 * count($ksHinweise)) . 'px)"' : '' ?>>
 
   <!-- ── LINKE SPALTE ───────────────────────────────────────────────────── -->
   <div class="pos-links">

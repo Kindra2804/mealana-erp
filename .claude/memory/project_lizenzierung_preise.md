@@ -59,3 +59,10 @@ JTL-Import: sehr speziell, später entscheiden (evtl. zeitlich begrenzte Freisch
 - Offen in Schritt 1 (bewusst später): Gutschein-VERKAUF an Kasse/Shop ohne Modul, Konfigurator-Reiter im Artikel noch sichtbar (nur Ajax gesperrt), Profi-Inventur (Mehrzähler) noch nicht an lagerplaetze gekoppelt, Kundenanzeige-Link in Kassen-Einstellungen.
 - Nächste Schritte: 2 Hinweise (Wartung abgelaufen oben in der Kasse, Zertifikat "gültig bis" + Warnung, UID-Warnung RKSV) → 3 Superadmin-Übergabe → 4 Generator-UI im ERP → 5 Klicktest.
 
+## ✅ Lizenz-Bau Schritt 2 GEBAUT 2026-11-01 (Hinweise)
+- `src/modules/kasse/KassenHinweise.php` + Partial `public/kasse/_hinweise.php` (in kasse/shell_top.php + bon.php; bon.php verkleinert .pos-layout um 36px je Zeile, Zeile nowrap mit Tooltip): rot "Wartung abgelaufen!", Signaturzertifikat gelb ab 60 Tage vorher / rot abgelaufen — nur Kassen mit bfr_aktiv_seit.
+- Migration 217 `bfr_kassen_registrierungen.zertifikat_gueltig_bis` (NULL = gemeldet + 5 Jahre, berechnet). Formular in "Aktive RKSV-Registrierung" → `einstellungen/kasse_zertifikat_speichern.php` (kasse.verwaltung).
+- UID-Warnung (blaues !) auf der Registrierungsseite, wenn Firmen-UID leer.
+- ERP: dezenter Wartungshinweis oben im Inhalt nur für lizenz.verwalten.
+- Getestet: Logik (30/61 Tage, abgelaufen, Wartung weg, Kasse ohne RKSV) per Rollback; Registrierungsseite gerendert. Banner in der echten Kasse noch nicht im Browser angesehen → Klicktest.
+

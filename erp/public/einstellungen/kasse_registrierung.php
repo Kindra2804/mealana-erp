@@ -18,6 +18,8 @@ if (!$kasse) {
     exit;
 }
 
+require_once __DIR__ . '/../../src/modules/kasse/KassenHinweise.php';
+$firmaUid = (string)$db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'uid_nummer'")->fetchColumn();
 $service = new BfrService();
 $status  = $service->registrierungsStatus($id);
 $entwurf = $status['entwurf'];
@@ -40,6 +42,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="card" style="border-left:3px solid var(--color-danger);margin-bottom:12px;padding:10px 16px;color:var(--color-danger)"><?= htmlspecialchars($fehler) ?></div>
 <?php endif; ?>
 
+<?php if (trim($firmaUid) === ''): ?>
+<div class="card" style="border-left:3px solid #2563eb;margin-bottom:12px;padding:10px 16px">
+    <strong style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#2563eb;color:#fff;text-align:center;line-height:18px;font-size:12px">!</strong>
+    In den Firmendaten ist keine <strong>UID-Nummer</strong> eingetragen. Eine RKSV-Registrierung mit dem BFR
+    (Signaturkarte) ist nur mit UID möglich, nicht mit der Steuernummer — zuerst Einstellungen → Firma ergänzen.
+</div>
+<?php endif; ?>
+
 <?php if ($abgeschlossen && !$entwurf): ?>
 <!-- Aktive, abgeschlossene Registrierung — gesperrt -->
 <div class="card" style="margin-bottom:16px">
@@ -55,6 +65,20 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div><div style="color:var(--color-text-muted);font-size:11px;text-transform:uppercase">Kasse gemeldet</div><?= date('d.m.Y H:i', strtotime($abgeschlossen['kasse_gemeldet_am'])) ?></div>
         <div><div style="color:var(--color-text-muted);font-size:11px;text-transform:uppercase">Startbeleg geprüft</div><?= date('d.m.Y H:i', strtotime($abgeschlossen['startbeleg_geprueft_am'])) ?></div>
     </div>
+    <?php $zertBis = $abgeschlossen['zertifikat_gueltig_bis'] ?: date('Y-m-d', strtotime($abgeschlossen['zertifikat_gemeldet_am'] . ' +5 years')); ?>
+    <form method="post" action="kasse_zertifikat_speichern.php" style="padding:0 16px 14px;display:flex;gap:10px;align-items:end;flex-wrap:wrap;font-size:13px">
+        <input type="hidden" name="kasse_id" value="<?= $id ?>">
+        <input type="hidden" name="registrierung_id" value="<?= (int)$abgeschlossen['id'] ?>">
+        <div>
+            <label style="display:block;color:var(--color-text-muted);font-size:11px;text-transform:uppercase;margin-bottom:3px">Zertifikat gültig bis</label>
+            <input type="date" name="zertifikat_gueltig_bis" class="erp-input" value="<?= htmlspecialchars($zertBis) ?>">
+        </div>
+        <button type="submit" class="btn btn-secondary btn-sm">Speichern</button>
+        <span style="color:var(--color-text-muted);font-size:12px">
+            <?= $abgeschlossen['zertifikat_gueltig_bis'] ? 'Eingetragenes Datum.' : 'Vorgabe: gemeldet + 5 Jahre — bei abweichendem Datum auf der Karte anpassen.' ?>
+            Die Kasse warnt <?= KassenHinweise::VORLAUF_TAGE ?> Tage vorher.
+        </span>
+    </form>
     <?php if ($abgeschlossen['startbeleg_inhalt']): ?>
     <div style="padding:0 16px 16px;font-size:11px;font-family:monospace;word-break:break-all;color:var(--color-text-muted)">
         Startbeleg: <?= htmlspecialchars($abgeschlossen['startbeleg_inhalt']) ?>

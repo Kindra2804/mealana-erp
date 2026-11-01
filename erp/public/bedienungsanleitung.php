@@ -622,6 +622,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p>Das Point-of-Sale-System für das Ladengeschäft. Eigene Oberfläche, optimiert für Touchscreen und Barcode-Scanner.</p>
             <p><strong>Adresse:</strong> <code>http://localhost<?= BASE_PATH ?>/kasse/</code></p>
 
+            <p><strong>Hinweisleiste oben:</strong> gelb = Signaturzertifikat läuft in 60 Tagen ab (neue Karte bestellen), rot = Zertifikat abgelaufen oder <strong>Wartung abgelaufen</strong> (Kasse läuft weiter, keine Updates mehr). Ablaufdatum: Einstellungen → Kassen → RKSV-Registrierung → „Zertifikat gültig bis“ (Vorgabe gemeldet + 5 Jahre). RKSV mit BFR nur mit UID-Nummer in den Firmendaten.</p>
+
             <h3 id="kasse-bon">Bon erstellen — Normaler Verkauf <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>EAN scannen</strong> — Barcode-Scanner auf Ware richten → Artikel erscheint sofort im Warenkorb<br><small>Oder: Lupe-Symbol → Namenssuche (Name/Artikelnummer eintippen)</small></div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Bei <strong>Varianten-Artikeln</strong> (z.B. DROPS Lima mit Farben) öffnet sich automatisch ein Auswahlfeld → Variante wählen</div></div>
