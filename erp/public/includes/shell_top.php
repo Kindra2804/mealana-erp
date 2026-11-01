@@ -169,6 +169,7 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
                         <?php endif; ?>
                         <?php if (Auth::kann('lizenz.verwalten')): ?>
                             <a href="<?= BASE_PATH ?>/lizenz/index.php" class="erp-nav-more-item">🔑 Lizenzverwaltung</a>
+                            <a href="<?= BASE_PATH ?>/update/index.php" class="erp-nav-more-item">🔄 Updates</a>
                             <?php if ($einrichtungOffen): ?>
                                 <a href="<?= BASE_PATH ?>/einrichtung/index.php" class="erp-nav-more-item">🛠 Einrichtung (<?= $einrichtungOffen ?> offen)</a>
                             <?php endif; ?>
