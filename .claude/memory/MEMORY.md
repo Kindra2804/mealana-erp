@@ -4,6 +4,9 @@
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
 - [✅ 1.0-Check](project_1_0_check.md) — 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (nächste Migration 223, Kürzel indra-design = IND) → Live neu + Backup
+- [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben Kork/Creme + MeaLana-Navy, Jost, Snippets
+- [🏷️ Indra-Sortiment + Preise](project_indra_sortiment.md) — Motivcodes W/A/K/N/P/S/C, Preisliste, Untersetzer = Motiv-Vater × Material, Schilder nur als Motive (Konfigurator später)
+- [💡 Newsletter + Slider aus dem ERP](project_newsletter_slider_ideen.md) — Idee 2026-11-04, noch offen; Live-Neuaufsatz erst ab KW 46 (Babsi)
 - [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
 - [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-10-31: Kürzel ✅ → Dropshipping ✅ gebaut (Klicktest) → Lizenzserver ✅ (Schritte 1–4 + Klicktest 2026-11-01) → Paperless ✅ (Klicktest 2026-11-01, beleg.mealana.at) → 1.0-Check → Woo-SOW + Soft-Go-Live; Live wird neu auf 1.0 aufgesetzt (kein Deploy 201–220)
 - [Klicktest-Fixes 2026-10-29](project_klicktest_fixes_20261029.md) — Mietfach/MR-Nummernkreis/Z-Bon eigener Kreis K1-Z-00001 (Migr. 212)+Reihenfolge+Auto-Cron/A4-Ränder gebaut, Kassensturz Partner/Stornos, Storno nur am selben Tag vor Z

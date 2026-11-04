@@ -604,7 +604,10 @@ class ShopSyncRepository
     {
         $stmt = $this->db->prepare("
             SELECT
-                at.hat_lagerstand,
+                -- „Keine Lagerbestandsführung“ am Artikel (z. B. auf Bestellung gefertigte
+                -- Schilder) zählt wie ein Artikeltyp ohne Lagerstand -- gleiche Regel wie an
+                -- der Kasse (bon_speichern.php), sonst wäre der Artikel im Shop „ausverkauft“.
+                (at.hat_lagerstand = 1 AND COALESCE(a.keine_lagerbestandsfuehrung, 0) = 0) AS hat_lagerstand,
                 a.ueberverkauf_erlaubt,
                 COALESCE(SUM(CASE WHEN l.id IS NOT NULL THEN lb.bestand ELSE 0 END), 0) AS gesamtbestand,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
@@ -613,7 +616,7 @@ class ShopSyncRepository
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
             LEFT JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ != 'messe'
             WHERE a.id = :artikel_id
-            GROUP BY a.id, at.hat_lagerstand, a.ueberverkauf_erlaubt
+            GROUP BY a.id, at.hat_lagerstand, a.keine_lagerbestandsfuehrung, a.ueberverkauf_erlaubt
         ");
         $stmt->execute(['artikel_id' => $artikelId]);
         return $stmt->fetch() ?: ['hat_lagerstand' => 0, 'ueberverkauf_erlaubt' => 0, 'gesamtbestand' => 0, 'reserviert' => 0];

@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 11cd53c7-877f-4fd4-89a6-5f721bd74ce1
+  modified: 2026-11-04T10:12:31.418Z
 ---
 
 ## Status: GEPLANT (Stand 2026-07-03), bis dahin nur manuelle Sicherungen
@@ -25,6 +26,11 @@ Besprochen direkt nach dem ersten Live-Server-Setup (siehe [[project_installatio
 Nicht zwingend zusätzlich nötig — die AES-256-GCM-verschlüsselten Kundenfelder sind im DB-Dump schon Chiffretext, ein gestohlener Dump allein bringt ohne den Key nichts. Zwei offene Punkte dazu:
 - Nicht Feld-für-Feld verifiziert, ob wirklich *alles* Sensible (z.B. Lieferanten-IBAN, eigene EK-Preise/Handelsspannen — geschäftlich brisant, kein DSGVO-Thema) von der Verschlüsselung erfasst ist.
 - Der Schutz gilt nur, solange `encryption.php` wirklich getrennt vom DB-Backup bleibt (siehe Tabelle oben).
+
+## Update 2026-11-04: Live-Server-Fakten
+- Live-ERP liegt am Server unter **C:\ERP\mealana** (nicht D:).
+- Sicherungsziel **E:\ERP-Sicherung** = eigene Festplatte, wird auf die NAS gespiegelt (→ 2 Medien, aber gleicher Standort).
+- Vollsicherung vor 1.0-Neuaufsatz: E:\ERP-Sicherung\2026-11-04_vor_1.0\ (mealana_erp_live.sql per --result-file, Ordner 90,6 MB / 2323 Dateien, aufgaben.txt = schtasks-Liste). Keys separat auf USB.
 
 ## Speicherort — noch offen, Jacky evaluiert
 

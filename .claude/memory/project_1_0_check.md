@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ef009f0b-163c-454c-9dcc-cdd9cc4fc4bf
-  modified: 2026-11-04T09:33:49.395Z
+  modified: 2026-11-04T12:26:02.393Z
 ---
 
 **Entscheidungen Jacky 2026-11-01:**
@@ -45,6 +45,12 @@ Nächster Punkt laut Reihenfolge: **Backup** ([[project-backup-strategie]]), dan
 - Migrationsdateien 004–222 gelöscht (.gitkeep bleibt, UpdateService prüft den Ordner), nächste = **223**. VERSION 1.0.0, docs/versionen/1.0.0.md, installation.md Schritt 7.
 - Test: Import identisch zur Quelle, Onboarding-Browsertest 18/18, Seitenrundgang ohne PHP-Fehler, Nummern inkl. A-IND-2026-00001 per Rollback geprüft. Testinstallation im Scratchpad dieser Session (DB b10_test, php -S :8097).
 - Plan Live: Sichern → indra-design Woo zurücksetzen (Produkte/Kategorien/Bestellungen/Kunden weg, Theme/Plugins/Snippets bleiben, neue API-Keys) → Live-ERP neu mit Baseline 1.0 → Assistent mit Babsi → Kanäle: Hauptkanal = MeaLana (ohne Kürzel, ohne Keys), indra-design mit IND → Paperless → Cron-Aufgaben → tägliches Backup.
+
+## ✅ indra-design.at zurückgesetzt 2026-11-04
+- Sicherungen vorher: Live-ERP (E:\ERP-Sicherung\2026-11-04_vor_1.0), Plesk-Sicherung WP+DB (Jacky), UpdraftPlus 3,43 GB lokal bei Jacky. UpdraftPlus bleibt installiert, die Sicherungen am Server sind gelöscht.
+- Gelöscht: 1.813 Produkte, 245 Kategorien, 38 Attribute, 18.879 Medien (Logo 93 + Favicon 94 bleiben), 7 Bestellungen, 8 Gutscheine, 5 Seiten, 1 Beitrag, 7 Menüs, Plugins Akismet/Smart Swatches/Stripe. Woo-REST-Schlüssel „MeaLana ERP Dev-Sync“ + App-Passwort „Bildersync“ widerrufen. **Dev shops.id=1 hat sync_pausiert=1** (zeigt noch auf indra-design, die Schlüssel sind ungültig).
+- Übrig: Seiten Shop/Cart/Checkout/My account + 8 Rechtsseiten, Theme Blocksy, Elementor, Germanized, PayPal, Yoast, Jetpack, WP Super Cache. Offen fürs Design: Seitentitel steht noch auf „MEALANA“, Logo/Favicon sind noch MeaLana, die 7 MeaLana-WPCode-Snippets (Bar bei Abholung, Mindestabnahme, Konfigurator, Gutscheine, Zahlungsmail, Swatch-Scroll, Variations-Schwellwert) prüfen.
+- Lehre: Medien per REST einzeln ~1,7 s (WP-Boot), parallel bremst der Server → temporäres WPCode-PHP-Snippet mit eigenem REST-Endpoint (400/Aufruf) war in Minuten fertig. WPCode-Typ beim Anlegen per `.wpcode-code-type[data-code-type=php]` wählen, sonst wird das Snippet als CSS gespeichert. Helfer `.claude-browser-tools/wp_lib.js` (Login + Cookie-Nonce-REST).
 
 ## ⏭️ Nächste Session (Jacky 2026-11-01 abends: „morgen mit frischem Kopf“)
 Reset Woo-Shop indra-design.at + Live-DB, frisch einspielen, **Backup-Strategie direkt am Live-Server** — gemeinsam. Vorbereitung/Checkliste:
