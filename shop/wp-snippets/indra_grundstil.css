@@ -1,0 +1,64 @@
+/* Schrift Jost lokal (SIL Open Font License) – kein Abruf von Google-Servern */
+@font-face { font-family: "IndraJost"; font-style: normal; font-weight: 300 700; font-display: swap; src: url(/wp-content/uploads/2026/11/jost-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "IndraJost"; font-style: normal; font-weight: 300 700; font-display: swap; src: url(/wp-content/uploads/2026/11/jost-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IndraJost"; font-style: italic; font-weight: 300 700; font-display: swap; src: url(/wp-content/uploads/2026/11/jost-italic-latin-ext.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "IndraJost"; font-style: italic; font-weight: 300 700; font-display: swap; src: url(/wp-content/uploads/2026/11/jost-italic-latin.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+/* INDRA DESIGN – Grundstil (Claude 2026-11-04). Farben: Navy #1d4076, Sky #98cce9, Creme #f7f2ea, Kork #8a6340 */
+/* Leiste oben */
+[data-header] [data-row*="top"] { background: #1d4076 !important; --height: 36px; }
+[data-header] [data-row*="top"] .ct-header-text, [data-header] [data-row*="top"] .ct-header-text p { color: #fff; font-size: 13px; letter-spacing: .04em; margin: 0; }
+[data-header] [data-row*="top"] .ct-header-text strong { font-weight: 500; }
+@media (max-width: 689px) { [data-header] [data-row*="top"] .ct-header-text p { font-size: 11px; letter-spacing: 0; } }
+/* Kopfzeile + Menü */
+[data-header] [data-row*="middle"] { background: #fff; border-bottom: 1px solid #efe5d6; }
+[data-header] [data-id="menu"] > ul > li > a { text-transform: uppercase; letter-spacing: .16em; font-size: 13.5px; font-weight: 500; color: #1f1d1b; }
+[data-header] [data-id="menu"] > ul > li > a:hover, [data-header] [data-id="menu"] > ul > li.current-menu-item > a { color: #1d4076; }
+/* Buttons */
+.button, button.button, .wp-element-button, .wp-block-button__link, input[type="submit"], button[type="submit"] {
+  border-radius: 2px !important; text-transform: uppercase; letter-spacing: .12em; font-weight: 500; }
+.wp-block-button.is-style-outline .wp-block-button__link { border-color: #1d4076; color: #1d4076; }
+/* Überschriften-Zusatz (kleine Versalien in Korkfarbe) */
+.indra-kicker { font-size: 14px !important; font-weight: 500; letter-spacing: .24em; text-transform: uppercase; color: #8a6340 !important; margin-bottom: 14px !important; }
+/* Fußzeile dunkel */
+.ct-footer, .ct-footer [data-row] { background: #1f1d1b !important; color: #e8e2d8; }
+.ct-footer [data-row*="bottom"] { background: #171513 !important; border-top: 1px solid #2c2926; }
+.ct-footer a { color: #e8e2d8; } .ct-footer a:hover { color: #98cce9; }
+.ct-footer .widget-title { color: #98cce9; text-transform: uppercase; letter-spacing: .16em; font-size: 13px; font-weight: 500; }
+.ct-footer .widget_nav_menu li { margin-bottom: 6px; }
+.indra-footer-marke img { margin-bottom: 16px; } .indra-footer-marke p { font-size: 14px; line-height: 1.7; }
+/* Kacheln + Vorteile auf der Startseite */
+.indra-kachel { background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: transform .2s; }
+.indra-kachel:hover { transform: translateY(-3px); }
+.indra-kachel figure { margin: 0 !important; } .indra-kachel img { aspect-ratio: 1; object-fit: cover; width: 100%; }
+.indra-kachel .indra-kachel-text { padding: 14px 18px 18px; }
+.indra-vorteil { background: #e3f1fa; border-radius: 4px; padding: 28px !important; text-align: center; }
+/* Startseite: Hero bündig mit dem Seitenraster, kein Abstand oben */
+.home [data-vertical-spacing*="top"] { padding-top: 0 !important; }
+.indra-hero .wp-block-cover__inner-container { width: 100% !important; max-width: 1290px; margin-inline: auto; padding-inline: 40px; }
+.indra-kachel h3 { font-size: 20px; hyphens: auto; margin: 0; } .indra-kachel h3 a { color: #1f1d1b; }
+.ct-footer-copyright, .ct-footer-copyright p { color: #bdb5aa; font-size: 14px; }
+/* Handy: Text oben, Untersetzer darunter */
+@media (max-width: 689px) {
+  .indra-hero { min-height: 720px !important; align-items: flex-start !important; }
+  .indra-hero .wp-block-cover__image-background { top: auto !important; bottom: 0 !important; height: 310px !important; object-position: 78% 50% !important; }
+  .indra-hero .wp-block-cover__inner-container { padding: 34px 22px 0 !important; }
+  .indra-hero h1 { font-size: 40px !important; }
+}
+.indra-footer-marke p { color: #bdb5aa; }
+/* Kategorie-Kacheln gleich hoch (auch bei zweizeiligem Text) */
+.wp-block-columns:has(.indra-kachel) { align-items: stretch !important; }
+.wp-block-column:has(> .indra-kachel) { display: flex; flex-direction: column; }
+.indra-kachel { flex: 1 1 auto; display: flex; flex-direction: column; }
+.indra-kachel .indra-kachel-text { flex: 1 1 auto; }
+/* Kachel-Text zentriert (Jacky 2026-11-04) */
+.indra-kachel .indra-kachel-text { text-align: center; display: flex; flex-direction: column; justify-content: flex-start; }
+.indra-kachel .indra-kachel-text h3 { margin-top: auto !important; padding-top: 6px; }
+.indra-kachel .indra-kachel-text p, .indra-kachel h3 { text-align: center !important; }
+
+/* Header: Menü bricht bei Platzmangel in 2 Zeilen um, statt zu überlappen (Jacky 2026-11-04) */
+[data-header] [data-row*="middle"] [data-column="middle"] { flex: 1 1 auto; min-width: 0; justify-content: flex-start; padding: 0 28px; }
+[data-header] #header-menu-1 { width: 100%; height: auto !important; }
+[data-header] #header-menu-1 > ul.menu { flex-wrap: wrap; row-gap: 2px; height: auto !important; }
+[data-header] #header-menu-1 > ul.menu > li > a { height: auto !important; padding-top: 6px; padding-bottom: 6px; }
+[data-header] #header-menu-1 .more-items-container { display: none !important; }
+[data-header] [data-device="desktop"] [data-row*="middle"] > .ct-container { grid-template-columns: auto 1fr auto !important; height: auto !important; min-height: 96px; padding-top: 8px; padding-bottom: 8px; }

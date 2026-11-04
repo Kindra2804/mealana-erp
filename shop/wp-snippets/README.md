@@ -76,6 +76,7 @@ hier abgelegt.
   Variation Swatches Customization" ist dort explizit Pro-only) — CSS-Lösung war der kostenlose Weg.
 
 - **`indra_weihnacht_4fuer12.php`** (nur indra-design.at, WPCode 34685) — Weihnachtsanhänger
+- **`indra_grundstil.css`** (nur indra-design.at, WPCode-CSS 34236 „INDRA DESIGN – Grundstil“) — Farben, Header/Menü (Menü bricht bei Platzmangel 2-zeilig um), Footer, Startseiten-Kacheln. Arbeitskopie liegt in `.claude-browser-tools/`, hochladen mit `wp_css_update.js`, danach **WP Super Cache leeren** (`wp_cache_leeren.js`) — sonst liefert die gecachte Startseite noch das alte CSS/Menü.
   (Woo-Kategorie `weihnachtsanhaenger`) 3,50 €/Stk., je 4 Stück auch gemischt 12 €. Der Rabatt wird
   anteilig in die Positionspreise gerechnet (keine negative Gebühr), damit der ERP-Bestellimport die
   Preise 1:1 übernimmt. Hinweis-Box auf der Produktseite; der Text-Hinweis im Warenkorb erscheint nur

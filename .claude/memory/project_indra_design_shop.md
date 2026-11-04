@@ -44,3 +44,6 @@ Stand 2026-11-04 (zurückgesetzt, siehe [[project-1-0-check]]):
 - ERP unter IndraDesign 420: **Saisonales 433** (Woo 8784) → **Weihnachten 431** (früher „Weihnachtsanhänger“, Woo 8781, Slug bleibt `weihnachtsanhaenger` → 4-für-12-Snippet 34685 greift weiter); **Sonstiges 434** (Woo 8783) = Kraut und Rüben ohne eigene Unterkategorie, darin die Dosen. Kategorie „Dosen“ 432 / Woo 8782 gelöscht.
 - Menüs 8722 (Haupt) + 8723 (Shop): Saisonales + Sonstiges nach Klebepads. Hauptmenü ist damit voll → „Über uns“ rutscht ins Blocksy-„MEHR“.
 - Später (Jacky): Saison-Kategorien mit Zeitraum „sichtbar von/bis“ ins ERP (Ostern, Muttertag …), siehe [[project_preise]].
+- **Header 2026-11-04:** einzeilig (Logo | Menü | Suche+Warenkorb), Menü bricht per CSS (Snippet 34236, Abschnitt „Menü bricht … 2 Zeilen um“) linksbündig in 2 Zeilen um — Jackys Wunsch, NICHT Logo-oben-Menü-unten. Blocksy-Menü hat `data-responsive="no"`.
+- **WP Super Cache** leert sich bei Menü- und CSS-Snippet-Änderungen NICHT → danach `node wp_cache_leeren.js` (Einstellungen → WP Super Cache → Cache leeren). Sonst zeigt die Startseite das alte Menü.
+- Temporäre Snippets 34691/34692 (Theme-Mods) und „Theme-Datei lesen“ sind deaktiviert; können in WPCode gelöscht werden.
