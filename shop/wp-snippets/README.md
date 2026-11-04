@@ -75,6 +75,12 @@ hier abgelegt.
   mit der Pro-Version des Plugins möglich** (live geprüft, "Individual Product Basis Attribute
   Variation Swatches Customization" ist dort explizit Pro-only) — CSS-Lösung war der kostenlose Weg.
 
+- **`indra_weihnacht_4fuer12.php`** (nur indra-design.at, WPCode 34685) — Weihnachtsanhänger
+  (Woo-Kategorie `weihnachtsanhaenger`) 3,50 €/Stk., je 4 Stück auch gemischt 12 €. Der Rabatt wird
+  anteilig in die Positionspreise gerechnet (keine negative Gebühr), damit der ERP-Bestellimport die
+  Preise 1:1 übernimmt. Hinweis-Box auf der Produktseite; der Text-Hinweis im Warenkorb erscheint nur
+  im klassischen Warenkorb (Block-Warenkorb zeigt stattdessen „Spare x €“ je Position).
+
 ## Bei einem weiteren Shop einspielen
 
 1. Datei hier öffnen, Inhalt (ohne die `<?php`-Kopfzeile — WPCode fügt sie selbst hinzu) in ein
