@@ -42,6 +42,8 @@ class ShopSyncService
     private PreisService $preisService;
     private KonfiguratorService $konfiguratorService;
     private int $jarvisId;
+    /** Im aktuellen syncShop()-Lauf Kategorien angelegt/geändert → danach in WooCommerce neu zählen. */
+    private bool $kategorienGeaendert = false;
     private int $standardKgId;
 
     /** @var array<int,array<string,int>> shopId => [einheit_slug => wc_unit_id], siehe findeEinheitId() */
@@ -188,6 +190,7 @@ class ShopSyncService
                     // schon von Hand gelöscht o.ä. -- Verknüpfung trotzdem lösen
                 }
                 $this->repo->loeseKategorieZuweisung($wurzelId, (int)$shop['id']);
+                $this->kategorienGeaendert = true;
             }
         }
 
@@ -242,6 +245,20 @@ class ShopSyncService
                 ], $this->jarvisId, 'error');
             }
         }
+
+        // Kategorien angelegt/umgehängt → WooCommerce-Produktzähler neu berechnen, sonst
+        // fehlen Oberkategorien ohne eigene Produkte im Shop (Zähler 0)
+        if ($this->kategorienGeaendert && !$rateLimitiert) {
+            try {
+                $client->zaehleKategorienNeu();
+            } catch (Throwable $e) {
+                Logger::log('shop.kategorie_sync_fehler', 'shops', (int)$shop['id'], [
+                    'shop'   => $shop['slug'],
+                    'fehler' => 'Neuzählen der Kategorien: ' . $e->getMessage(),
+                ], $this->jarvisId, 'warn');
+            }
+        }
+        $this->kategorienGeaendert = false;
 
         // Gleiches Muster nochmal für Hersteller (GPSR-Kontaktbeschreibung) --
         // bereits angelegte Hersteller-Terms, deren Adress-/REO-Daten sich seit
@@ -658,6 +675,7 @@ class ShopSyncService
                     || strtotime($kategorie['aktualisiert_am']) > strtotime($vorhandeneZuweisung['synced_at']);
 
                 if ($mussAktualisieren) {
+                    $this->kategorienGeaendert = true;
                     $client->aktualisiereKategorie((string)$wcKategorieId, [
                         'name'        => $kategorie['name'],
                         'description' => $kategorie['beschreibung'] ?? '',
@@ -671,6 +689,7 @@ class ShopSyncService
                 $wcParentId = $wcKategorieId;
                 continue;
             }
+            $this->kategorienGeaendert = true;
             $wcKategorie = $client->erstelleKategorie([
                 'name'        => $kategorie['name'],
                 'description' => $kategorie['beschreibung'] ?? '',

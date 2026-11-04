@@ -49,3 +49,5 @@ Stand 2026-11-04 (zurückgesetzt, siehe [[project-1-0-check]]):
 - Temporäre Snippets 34691/34692 (Theme-Mods) und „Theme-Datei lesen“ sind deaktiviert; können in WPCode gelöscht werden.
 - **Startseite 2026-11-04:** 7 Kategorie-Kacheln in 2 `wp:columns`-Blöcken mit Klasse `indra-kacheln` (4 + 3 mittig, CSS gibt jeder Kachel ¼ Breite). Neue Kacheln Saisonales (Bild 34695 Schaf XM-S02) + Sonstiges (34696 Dose DO-02). Neue Kategorie = neue Spalte in Reihe 2 ergänzen.
 - **Mobilmenü:** Menü-Platz `menu_mobile` war leer → jetzt „Indra Hauptmenü“ 8722 (menu_1 + menu_mobile). Optik ist noch Blocksy-Standard (dunkles Overlay, fette weiße Schrift) — evtl. später an Indra-Stil anpassen.
+- **Kategorie-Zähler (2026-11-04):** Oberkategorie ohne eigene Produkte (Saisonales → Weihnachten) fehlte auf /shop/, weil Woo-Zähler nach REST-Umhängen veraltet. Fix im ERP-Sync: nach angelegten/geänderten Kategorien `WooCommerceClient::zaehleKategorienNeu()` (Woo-Tool recount_terms). REST-Feld `count` bleibt 0 (nur eigene Produkte) — Anzeige nutzt eigene Term-Meta.
+- WP Super Cache: auch /shop/ bleibt nach Sync-Änderungen gecacht, bis der Cache abläuft oder geleert wird.

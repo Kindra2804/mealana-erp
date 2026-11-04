@@ -221,6 +221,16 @@ class WooCommerceClient
         return $this->request('PUT', '/products/categories/' . $externeId, [], $daten);
     }
 
+    /**
+     * WooCommerce-Werkzeug "Begriffe neu zählen": Nach neu angelegten/umgehängten Kategorien
+     * stimmen die gespeicherten Produktzähler der Oberkategorien nicht -- eine Oberkategorie
+     * ohne eigene Produkte (z.B. Saisonales → Weihnachten) zählt dann 0 und fehlt im Shop.
+     */
+    public function zaehleKategorienNeu(): array
+    {
+        return $this->request('PUT', '/system_status/tools/recount_terms', [], [], 120);
+    }
+
     /** Kategorie endgültig löschen (WordPress hängt evtl. Unterkategorien eine Ebene höher). */
     public function loescheKategorie(string $externeId): array
     {
