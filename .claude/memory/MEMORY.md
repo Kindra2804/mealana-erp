@@ -19,7 +19,7 @@
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — erklären, selbst schreiben lassen
-- [Feedback: End-of-Day Updates](feedback_eod.md) — CLAUDE.md am Tagesende aktualisieren
+- [Feedback: End-of-Day Updates](feedback_eod.md) — claude.md am Tagesende aktualisieren; im Repo heißt sie **claude.md (klein)** → `git add claude.md`
 - [Feedback: Memory-Backup bei Commit](feedback_memory_backup_bei_commit.md) — Memory nach .claude/memory/ im Repo syncen bei commit/push
 - [Feedback: Commit je Schritt](feedback_commit_je_schritt.md) — bei mehrstufigen Bauten nach jedem fertigen Schritt committen+pushen, ohne zu fragen
 - [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Referenz-Check große WAWIs + MeaLana-Extras

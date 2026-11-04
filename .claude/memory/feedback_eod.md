@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 19d72ef3-0a51-4231-ba3f-eb2443d7edfb
+  modified: 2026-11-04T21:33:38.824Z
 ---
 
 Am Ende jedes Arbeitstages CLAUDE.md mit aktuellem Stand aktualisieren und Karl kurz rückmelden was geändert wurde.
@@ -19,3 +20,5 @@ Am Ende jedes Arbeitstages CLAUDE.md mit aktuellem Stand aktualisieren und Karl 
 - Memory-Dateien (project_status.md) aktualisieren
 - Kurze Rückmeldung geben
 - Vollautomatisch ohne Trigger nicht möglich
+- **Dateiname im Repo: `claude.md` (klein!)** unter `D:\ERP\mealana\claude.md`. Windows öffnet sie auch als `CLAUDE.md`, aber Git unterscheidet: `git add CLAUDE.md` erfasst sie NICHT → immer `git add claude.md` verwenden. (Jacky 2026-11-04: „schreibst du fast jeden Tag“.)
+- Memory-Sync ins Repo: `.claude/memory/` (siehe [[feedback_memory_backup_bei_commit]]).
