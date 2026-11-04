@@ -43,11 +43,11 @@ New-Item -ItemType SymbolicLink -Path "C:\xampp\htdocs\mealana" -Target "D:\ERP\
 ### Database
 
 ```powershell
-# Create database from SQL schema (in phpMyAdmin or command line)
-# File: erp/database/mealana_erp.sql
-
-# Seeding: Hersteller, Steuerklassen, Kundengruppen, Lager (in migrations/)
+# Neuinstallation: DB mit utf8mb4_general_ci anlegen, dann erp/database/baseline_schema.sql einspielen
+# (Version 1.0 = Stand Migration 222 inkl. Stammdaten), danach create_admin.php — siehe docs/installation.md
 ```
+
+**Ab 1.0 (Baseline-Schnitt 2026-11-04):** `migrations/` ist leer, alle 004–222 stecken in der Baseline. Neue Migrationen beginnen bei **223**. Dev hat die alten Dateinamen weiter in `schema_migrations` (harmlos).
 
 ### View & Test
 
