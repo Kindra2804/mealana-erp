@@ -173,6 +173,24 @@ class ShopSyncService
         // ganzen Shop-Durchlauf -- der betroffene Artikel wird dann eben ohne diese
         // Kategorie synct (findWcKategorieIds liefert einfach eine ID weniger).
         $bereitsVersucht = [];
+
+        // Wurzelkategorie (shops.wurzel_kategorie_id) gibt es im Shop selbst nicht. War sie
+        // früher schon angelegt, den Term löschen -- die Unterkategorien werden über
+        // findFaelligeKategorien() (synced_at beim Speichern der Einstellung geleert) nach oben gehängt.
+        $wurzelId = $this->repo->findWurzelKategorieId((int)$shop['id']);
+        if ($wurzelId !== null) {
+            $bereitsVersucht[$wurzelId] = true;
+            $wurzelZuweisung = $this->repo->findKategorieShopZuweisung($wurzelId, (int)$shop['id']);
+            if ($wurzelZuweisung && $wurzelZuweisung['externe_kategorie_id']) {
+                try {
+                    $client->loescheKategorie((string)$wurzelZuweisung['externe_kategorie_id']);
+                } catch (Throwable $e) {
+                    // schon von Hand gelöscht o.ä. -- Verknüpfung trotzdem lösen
+                }
+                $this->repo->loeseKategorieZuweisung($wurzelId, (int)$shop['id']);
+            }
+        }
+
         foreach ($faelligeArtikel as $row) {
             if ($rateLimitiert) break;
             foreach ($this->repo->findKategorieIdsFuerArtikel((int)$row['artikel_id']) as $kategorieId) {
@@ -625,7 +643,9 @@ class ShopSyncService
     private function syncKategorieMitVorfahren(WooCommerceClient $client, int $kategorieId, int $shopId): void
     {
         $wcParentId = 0;
-        foreach ($this->repo->findKategorieMitVorfahren($kategorieId) as $kategorie) {
+        // Pfad ohne Wurzelkategorie des Shops (shops.wurzel_kategorie_id) -- deren Unterkategorien
+        // hängen im Shop direkt oben (parent 0)
+        foreach ($this->repo->findKategoriePfadFuerShop($kategorieId, $shopId) as $kategorie) {
             $vorhandeneZuweisung = $this->repo->findKategorieShopZuweisung((int)$kategorie['id'], $shopId);
             if ($vorhandeneZuweisung && $vorhandeneZuweisung['externe_kategorie_id']) {
                 $wcKategorieId = (int)$vorhandeneZuweisung['externe_kategorie_id'];

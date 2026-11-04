@@ -704,7 +704,10 @@ class ShopSyncRepository
         $stmt->execute(['artikel_id' => $artikelId, 'shop_id' => $shopId, 'shop_id2' => $shopId]);
 
         $ergebnis = [];
+        $wurzelId = $this->findWurzelKategorieId($shopId);
         foreach ($stmt->fetchAll() as $row) {
+            // Die Wurzelkategorie selbst gibt es in diesem Shop nicht (siehe findKategoriePfadFuerShop)
+            if ((int)$row['kategorie_id'] === $wurzelId) continue;
             if (!$this->istKategoriePfadAusgeschlossen((int)$row['kategorie_id'], $shopId)) {
                 $ergebnis[] = $row['externe_kategorie_id'];
             }
@@ -961,6 +964,43 @@ class ShopSyncRepository
             if (!$row) break;
             array_unshift($pfad, $row);
             $aktuelleId = $row['parent_id'] !== null ? (int)$row['parent_id'] : null;
+        }
+        return $pfad;
+    }
+
+    /** WooCommerce-Verknüpfung einer Kategorie lösen (Zeile bleibt, z.B. für den Ausschluss-Schalter). */
+    public function loeseKategorieZuweisung(int $kategorieId, int $shopId): void
+    {
+        $this->db->prepare("UPDATE kategorie_shops SET externe_kategorie_id = NULL, synced_at = NULL, bild_pfad_synced = NULL, bild_external_id = NULL WHERE kategorie_id = :k AND shop_id = :s")
+            ->execute(['k' => $kategorieId, 's' => $shopId]);
+    }
+
+    /** Wurzelkategorie des Shops (shops.wurzel_kategorie_id, Migration 223) oder null = voller Baum. */
+    public function findWurzelKategorieId(int $shopId): ?int
+    {
+        static $cache = [];
+        if (!array_key_exists($shopId, $cache)) {
+            $stmt = $this->db->prepare("SELECT wurzel_kategorie_id FROM shops WHERE id = :id");
+            $stmt->execute(['id' => $shopId]);
+            $wert = $stmt->fetchColumn();
+            $cache[$shopId] = $wert ? (int)$wert : null;
+        }
+        return $cache[$shopId];
+    }
+
+    /**
+     * Pfad wie findKategorieMitVorfahren(), aber so, wie er in DIESEM Shop aussieht:
+     * Hat der Shop eine Wurzelkategorie und liegt sie im Pfad, fallen sie und alles
+     * darüber weg -- ihre Unterkategorien werden im Shop zu Hauptkategorien.
+     * Kategorien außerhalb des Wurzel-Asts behalten ihren vollen Pfad.
+     */
+    public function findKategoriePfadFuerShop(int $kategorieId, int $shopId): array
+    {
+        $pfad = $this->findKategorieMitVorfahren($kategorieId);
+        $wurzelId = $this->findWurzelKategorieId($shopId);
+        if ($wurzelId === null) return $pfad;
+        foreach ($pfad as $i => $kat) {
+            if ((int)$kat['id'] === $wurzelId) return array_slice($pfad, $i + 1);
         }
         return $pfad;
     }

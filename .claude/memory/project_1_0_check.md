@@ -42,7 +42,7 @@ Nächster Punkt laut Reihenfolge: **Backup** ([[project-backup-strategie]]), dan
 ## ✅ Baseline 1.0 geschnitten 2026-11-04 (Jacky: „ja“, indra-design-Kürzel **IND**)
 - Quelle = frische DB (alte Baseline 123 + 124–222), NICHT Dev → keine Firmendaten. Struktur = Dev (nur Kommentar-Mojibake auf Dev).
 - Ergänzt: Kundengruppen Endkunden (Standard) + Händler; **7 Haupt-Nummernkreise** (A/R/GS/LS/MR/AB/PL) — fehlten in der alten Baseline, Fallback wäre 1. Buchstabe gewesen (L-, G-, abrechnung = A- kollidiert mit Auftrag!); Einheit „Stück“ + Paar/Packung/Rolle/Strang/Bollen/Spiel/Liter/Zentimeter.
-- Migrationsdateien 004–222 gelöscht (.gitkeep bleibt, UpdateService prüft den Ordner), nächste = **223**. VERSION 1.0.0, docs/versionen/1.0.0.md, installation.md Schritt 7.
+- Migrationsdateien 004–222 gelöscht (.gitkeep bleibt, UpdateService prüft den Ordner), nächste = **223** → vergeben 2026-11-04 an `223_shop_wurzelkategorie.sql`, nächste **224**. VERSION 1.0.0, docs/versionen/1.0.0.md, installation.md Schritt 7.
 - Test: Import identisch zur Quelle, Onboarding-Browsertest 18/18, Seitenrundgang ohne PHP-Fehler, Nummern inkl. A-IND-2026-00001 per Rollback geprüft. Testinstallation im Scratchpad dieser Session (DB b10_test, php -S :8097).
 - Plan Live: Sichern → indra-design Woo zurücksetzen (Produkte/Kategorien/Bestellungen/Kunden weg, Theme/Plugins/Snippets bleiben, neue API-Keys) → Live-ERP neu mit Baseline 1.0 → Assistent mit Babsi → Kanäle: Hauptkanal = MeaLana (ohne Kürzel, ohne Keys), indra-design mit IND → Paperless → Cron-Aufgaben → tägliches Backup.
 

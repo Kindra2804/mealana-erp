@@ -3,7 +3,7 @@
 ## Aktuell / Steuerung
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
-- [✅ 1.0-Check](project_1_0_check.md) — 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (nächste Migration 223, Kürzel indra-design = IND) → Live neu + Backup
+- [✅ 1.0-Check](project_1_0_check.md) — 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Migration 223 = Shop-Wurzelkategorie, nächste 224; Kürzel indra-design = IND) → Live neu + Backup
 - [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben Kork/Creme + MeaLana-Navy, Jost, Snippets
 - [🏷️ Indra-Sortiment + Preise](project_indra_sortiment.md) — Motivcodes W/A/K/N/P/S/C, Preisliste, Untersetzer = Motiv-Vater × Material, Schilder nur als Motive (Konfigurator später)
 - [💡 Newsletter + Slider aus dem ERP](project_newsletter_slider_ideen.md) — Idee 2026-11-04, noch offen; Live-Neuaufsatz erst ab KW 46 (Babsi)
@@ -77,7 +77,7 @@
 ## Artikel / Lager
 - [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale + Bilder fertig
 - [Merkmale-Modul Design](project_merkmale.md) — 2 Ebenen, Modal
-- [Preise-Modul Design](project_preise.md) — Effektivpreis, Aktionen, Grundpreis
+- [Preise-Modul Design](project_preise.md) — Effektivpreis, Aktionen, Grundpreis; TODO X-für-Y gemischt + BOGOF (Kasse+Shop)
 - [Aktions-Modul](project_aktionen_modul.md) — fertig
 - [Bilder-Modul](project_bilder_modul.md) — fertig, Logo-Bugkette gelöst
 - [Spalten-Picker](project_spalten_picker.md) — Kind-Zeilen-Parität

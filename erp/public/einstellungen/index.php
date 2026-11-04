@@ -11,6 +11,8 @@ $rows = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAl
 
 // Shops laden
 $shops = $db->query("SELECT * FROM shops ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+// Auswahl für "Kategorien im Shop ab": Hauptkategorien (Sub-Marken hängen dort als eigener Ast)
+$wurzelAuswahl = $db->query("SELECT id, name FROM kategorien WHERE parent_id IS NULL AND aktiv = 1 ORDER BY sortierung, name")->fetchAll(PDO::FETCH_ASSOC);
 // Nummernkreis-Kürzel ist ab dem ersten Auftrag des Shops gesperrt (sonst bricht die fortlaufende Nummernfolge)
 $shopAuftraege = $db->query("SELECT shop_id, COUNT(*) FROM auftraege WHERE shop_id IS NOT NULL GROUP BY shop_id")->fetchAll(PDO::FETCH_KEY_PAIR);
 
@@ -326,6 +328,21 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         </div>
                     </div>
                     <div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr 1fr 120px auto;gap:12px;align-items:end;margin-top:10px">
+                    <div></div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">Kategorien im Shop ab</label>
+                        <select name="wurzel_kategorie_id" class="erp-input">
+                            <option value="">— ganzer Kategoriebaum —</option>
+                            <?php foreach ($wurzelAuswahl as $kat): ?>
+                                <option value="<?= $kat['id'] ?>" <?= (int)$shop['wurzel_kategorie_id'] === (int)$kat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($kat['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div style="grid-column:span 3;font-size:11px;color:var(--color-text-muted)">
+                        Für Sub-Marken-Shops: Die gewählte Kategorie selbst erscheint im Shop nicht, ihre Unterkategorien werden dort zu Hauptkategorien (eine Ebene weniger in Menü und Brotkrümeln). Wirkt beim nächsten Sync-Lauf.
+                    </div>
                 </div>
             </form>
         <?php endforeach; ?>

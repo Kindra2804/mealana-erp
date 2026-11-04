@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: e92b8de5-2100-45b7-b6b1-0eeacfcb09d5
+  modified: 2026-11-04T20:18:29.946Z
 ---
 
 Stand: 2026-06-14
@@ -182,6 +183,15 @@ Muss die vollständige Preisstruktur mit übernehmen:
 **Umsetzung:** Relevant erst beim Shop-Modul / Warenkorb-Logik. Die Staffelpreise-Tabelle selbst braucht keine Änderung — nur die Preisberechnung im Warenkorb muss bei `staffel_kinder_zusammen=1` die Gesamtmenge aller Kinder des gleichen Vaters summieren.
 
 **Why:** In bisheriger WAWI war das nicht abbildbar → Staffeln galten nur pro SKU, nicht pro Produktfamilie. Hauptfall bei MeaLana sind Zubehörartikel mit Varianten (Motive, Farben) wo Mengenrabatt über alle Varianten gelten soll.
+
+## TODO: Mengen-Aktionen über Artikelgruppen (X für Y, BOGOF) — notiert 2026-11-04
+
+Jacky erinnert sich, das (zusammen mit BOGOF) schon mal besprochen zu haben; schriftlich war nur der Abschnitt oben (Staffel über Kinder eines Vaters) festgehalten.
+- **X für Y gemischt** über eine frei wählbare Gruppe (Kategorie/Artikelliste), nicht nur Kinder eines Vaters. Erster echter Fall: Indra-Weihnachtsanhänger 3,50 €/Stk, 4 für 12 € gemischt.
+- **BOGOF / 3 für 2** — billigstes Stück gratis bzw. N+1.
+- Muss in **Kasse UND Shop** gleich rechnen; Rabatt in die Positionspreise einrechnen (ERP-Import übernimmt Positionspreise, Fees nur für Gutscheine).
+- Übergangslösung im Shop: WPCode-Snippet 34685 (Kategorie `weihnachtsanhaenger`, hart codiert). Kasse: händisch rabattieren.
+- **How to apply:** als Erweiterung des Aktions-Moduls planen ([[project_aktionen_modul]]). Jacky 2026-11-04: fix einbauen, Bau nach dem Soft-Launch mit den ersten Shops, **spätestens bevor die Kasse aufs ERP umgestellt wird**. Einsatz: Kleinkram (Anhänger, Zubehör), evtl. Spinnfasern.
 
 ## Offene Frage (noch nicht entschieden)
 - `grundpreis_bezugseinheit` fehlt noch auf `artikel` — brauchen wir ein explizites Feld dafür oder reicht `inhalt_einheit` als Bezugseinheit? (Bei Garn fast immer 'g', aber bei Meter-Ware wäre es 'm')

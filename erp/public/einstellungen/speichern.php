@@ -165,6 +165,14 @@ if ($tab === 'kanaele_update') {
            ->execute([$name, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null, $subMarke, $istAktiv, $shopId]);
     }
 
+    // Wurzelkategorie: bei Änderung alle Kategorien dieses Shops neu übertragen,
+    // damit WooCommerce die neue Oberkategorie (parent) bekommt
+    $wurzelNeu = (int)($_POST['wurzel_kategorie_id'] ?? 0) ?: null;
+    if ($wurzelNeu !== ($shop['wurzel_kategorie_id'] !== null ? (int)$shop['wurzel_kategorie_id'] : null)) {
+        $db->prepare("UPDATE shops SET wurzel_kategorie_id = ? WHERE id = ?")->execute([$wurzelNeu, $shopId]);
+        $db->prepare("UPDATE kategorie_shops SET synced_at = NULL WHERE shop_id = ? AND externe_kategorie_id IS NOT NULL")->execute([$shopId]);
+    }
+
     // Nummernkreis-Kürzel: gesperrte Felder schickt der Browser nicht mit; die Sperre
     // (Kanal hat schon Aufträge) wird hier trotzdem nochmal geprüft
     $fehler = $logoFehler ? [$logoFehler] : [];

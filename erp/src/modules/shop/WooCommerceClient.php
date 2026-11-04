@@ -221,6 +221,12 @@ class WooCommerceClient
         return $this->request('PUT', '/products/categories/' . $externeId, [], $daten);
     }
 
+    /** Kategorie endgültig löschen (WordPress hängt evtl. Unterkategorien eine Ebene höher). */
+    public function loescheKategorie(string $externeId): array
+    {
+        return $this->request('DELETE', '/products/categories/' . $externeId, ['force' => 'true']);
+    }
+
     /**
      * Alle globalen Attribute des Shops (z.B. "Farbe", "Nadelstärke").
      * Wird VOR erstelleAttribut() abgefragt, um Duplikate zu vermeiden --

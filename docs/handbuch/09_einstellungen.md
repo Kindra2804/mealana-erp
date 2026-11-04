@@ -83,6 +83,8 @@ Hier werden WooCommerce-Shops verwaltet:
   - Laden-Belege bekommen nie ein Kürzel: Kassenbon, Z-Bon, Mietrechnung (MR), Partner- und Händler-Belege.
   - Erlaubt sind nur Buchstaben und Ziffern, höchstens 5 Zeichen. Zwei Shops können nicht dasselbe Kürzel haben.
   - **Gesperrt, sobald der Shop den ersten Auftrag hat**, damit die Nummernfolge durchgehend bleibt.
+- **Kategorien im Shop ab:** Für Sub-Marken-Shops (z.B. indra-design.at = Kategorie „IndraDesign“). Die gewählte Kategorie erscheint in diesem Shop nicht, ihre Unterkategorien werden dort zu Hauptkategorien — eine Ebene weniger in Menü und Brotkrümeln (Start › Shop › Schilder statt Start › Shop › IndraDesign › Schilder). Im Hauptshop leer lassen (= ganzer Kategoriebaum). Wirkt beim nächsten Sync-Lauf; Links, die im Shop von Hand auf die alten Kategorie-Adressen gesetzt wurden (z.B. Kacheln auf der Startseite), müssen angepasst werden.
+  - Nicht verwechseln mit der **Shop-Sichtbarkeit** an der Kategorie: die blendet die Kategorie samt allen Unterkategorien in einem Shop ganz aus.
 
 ---
 
