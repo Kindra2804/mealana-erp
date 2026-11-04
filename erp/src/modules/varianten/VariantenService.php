@@ -212,6 +212,7 @@ class VariantenService
                 'vaterartikel_id'        => $vater['id'],
                 'hat_eigenen_lagerstand' => (int) $hatEigenenLagerstand,
                 'hersteller_id'          => $vater['hersteller_id'],
+                'artikel_gruppe_id'      => $vater['artikel_gruppe_id'],
                 'steuerklasse_id'        => $vater['steuerklasse_id'],
                 'artikeltyp_id'          => $vater['artikeltyp_id'],
                 'einheit_id'             => $vater['einheit_id'],

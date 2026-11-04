@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ef009f0b-163c-454c-9dcc-cdd9cc4fc4bf
-  modified: 2026-11-04T14:26:38.967Z
+  modified: 2026-11-04T15:42:43.617Z
 ---
 
 Quelle: Jackys „Motivmappe“ (PDF, älterer Stand, die neuen Motive fehlen) + Preisliste 24.10.2025, beide 2026-11-04 im Chat.
@@ -29,6 +29,7 @@ Quelle: Jackys „Motivmappe“ (PDF, älterer Stand, die neuen Motive fehlen) +
 - **✅ Im Dev angelegt 2026-11-04** (Backup vorher: D:\ERP\backups\mealana_erp_vor_indra_import_20261104.sql), Skripte im Scratchpad-Ordner indra_import/ dieser Session (daten.php = Zuordnung Foto→Motiv, bilder.php, import.php mit --schreiben, idempotent):
   - Artikelnummern `ID-U-<Motiv>` (Untersetzer, Achse **Material** id 67: KO10 Kork rund Ø 10 € 6 · KLS/KLB Kunstleder schwarz/braun 10×10 € 6 · SC10 Schiefer 10×10 € 9), `ID-SA-<Motiv>` (Achse **Lederfarbe** id 68, € 5,50), `ID-KP-<Motiv>` Klebepads € 4, `ID-SET-<A..I>` € 40, Schilder `ID-W02`–`ID-W21` (€ 15, personalisiert W12/13/14/19/20 € 25, keine_lagerbestandsfuehrung=1).
   - 45 Väter + 66 Kinder + 36 Einzelartikel, 173 Bilder (1600² JPG; Kork kreisrund freigestellt auf Creme). Kategorien unter IndraDesign: 421 umbenannt in „Schilder“, 423 in „Schlüsselanhänger“, neu 429 „Untersetzer-Sets“, 430 „Klebepads“.
-  - Neue Codes: A55–A68 Sprüche, A69–A76 Klebepads, K19–K26. **K23** „Masche für Masche zum Glück“ (Herz) hat denselben Text wie K08, aber eine andere Grafik. **K01/K02** (eckig, Kaffee/Tee) gibt es nur in Leder/Schiefer.
+  - Neue Codes (nach Umnummerierung): A49–A62 Sprüche, A63–A70 Klebepads, K19–K26. **K23** „Masche für Masche zum Glück“ (Herz) hat denselben Text wie K08, aber eine andere Grafik. **K01/K02** (eckig, Kaffee/Tee) gibt es nur in Leder/Schiefer.
   - Nicht importiert: die älteren Fotos (Fertige Untersetzer 2025, Kork-Renderings), Metallkarten. W06 und W09–W21 haben noch kein Bild. Lagerbestand = 0 (Startinventur kommt später).
 - Im Dev existiert bereits `ID-W01` Holzschild „Wollzimmer“ (€ 15), Hersteller „IndraDesign“ (id 76), Kategorie „IndraDesign“ (420) mit Holzschilder 421, Untersetzer 422, Anhänger 423.
+- **Konfigurator auf alle Schilder (2026-11-04):** Die Konfiguration von ID-W01 (9 Achsen, 41 Werte, 4 Bedingungen, Aufpreise Ø20 +5 / 25 +10 / 30 +15 / 38 +23, Holz +5, Furnier +5, zweifarbig/Glitzer +0,50) mit `indra_import/konfig_kopieren.php` auf W02–W21 übertragen (ist_konfigurierbar=1). Backup davor: D:\ERP\backups\vor_konfig_kopie_20261104.sql. Die Konfiguration liegt **je Artikel** → eine spätere Standard-Änderung (Farben/Hintergründe) muss auf alle 21 Schilder. Idee für das ERP: Knopf „Konfiguration von Artikel X übernehmen“ (gibt es noch nicht).

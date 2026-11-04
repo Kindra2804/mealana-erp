@@ -435,6 +435,8 @@ class VariantenRepository
             INSERT INTO artikel (
                 artikelnummer,
                 name,
+                hersteller_id,
+                artikel_gruppe_id,
                 steuerklasse_id,
                 artikeltyp_id,
                 vaterartikel_id,
@@ -445,6 +447,8 @@ class VariantenRepository
             VALUES (
                 :artikelnummer,
                 :name,
+                :hersteller_id,
+                :artikel_gruppe_id,
                 :steuerklasse_id,
                 :artikeltyp_id,
                 :vaterartikel_id,
@@ -454,9 +458,13 @@ class VariantenRepository
             )
         ");
 
+        // Hersteller + Artikelgruppe vom Vater übernehmen (Gruppe = Erlöskonto an Kasse/Export;
+        // bis 2026-11-04 blieben beide bei generierten Kindern leer)
         $stmt->execute([
             'artikelnummer' => $kind['artikelnummer'],
             'name' => $kind['name'],
+            'hersteller_id' => $kind['hersteller_id'] ?? null,
+            'artikel_gruppe_id' => $kind['artikel_gruppe_id'] ?? null,
             'steuerklasse_id' => $kind['steuerklasse_id'],
             'artikeltyp_id' => $kind['artikeltyp_id'],
             'vaterartikel_id' => $kind['vaterartikel_id'],
