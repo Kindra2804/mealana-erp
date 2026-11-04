@@ -47,3 +47,5 @@ Stand 2026-11-04 (zurückgesetzt, siehe [[project-1-0-check]]):
 - **Header 2026-11-04:** einzeilig (Logo | Menü | Suche+Warenkorb), Menü bricht per CSS (Snippet 34236, Abschnitt „Menü bricht … 2 Zeilen um“) linksbündig in 2 Zeilen um — Jackys Wunsch, NICHT Logo-oben-Menü-unten. Blocksy-Menü hat `data-responsive="no"`.
 - **WP Super Cache** leert sich bei Menü- und CSS-Snippet-Änderungen NICHT → danach `node wp_cache_leeren.js` (Einstellungen → WP Super Cache → Cache leeren). Sonst zeigt die Startseite das alte Menü.
 - Temporäre Snippets 34691/34692 (Theme-Mods) und „Theme-Datei lesen“ sind deaktiviert; können in WPCode gelöscht werden.
+- **Startseite 2026-11-04:** 7 Kategorie-Kacheln in 2 `wp:columns`-Blöcken mit Klasse `indra-kacheln` (4 + 3 mittig, CSS gibt jeder Kachel ¼ Breite). Neue Kacheln Saisonales (Bild 34695 Schaf XM-S02) + Sonstiges (34696 Dose DO-02). Neue Kategorie = neue Spalte in Reihe 2 ergänzen.
+- **Mobilmenü:** Menü-Platz `menu_mobile` war leer → jetzt „Indra Hauptmenü“ 8722 (menu_1 + menu_mobile). Optik ist noch Blocksy-Standard (dunkles Overlay, fette weiße Schrift) — evtl. später an Indra-Stil anpassen.

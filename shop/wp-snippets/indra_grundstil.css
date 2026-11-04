@@ -62,3 +62,9 @@
 [data-header] #header-menu-1 > ul.menu > li > a { height: auto !important; padding-top: 6px; padding-bottom: 6px; }
 [data-header] #header-menu-1 .more-items-container { display: none !important; }
 [data-header] [data-device="desktop"] [data-row*="middle"] > .ct-container { grid-template-columns: auto 1fr auto !important; height: auto !important; min-height: 96px; padding-top: 8px; padding-bottom: 8px; }
+
+/* Startseite: Kategorie-Kacheln in Reihen zu 4, letzte Reihe mittig, gleiche Breite (2026-11-04) */
+@media (min-width: 782px) {
+  .wp-block-columns.indra-kacheln { gap: 2em !important; justify-content: center; }
+  .wp-block-columns.indra-kacheln > .wp-block-column { flex: 0 0 calc(25% - 1.5em) !important; }
+}
