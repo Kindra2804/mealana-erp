@@ -47,7 +47,7 @@ New-Item -ItemType SymbolicLink -Path "C:\xampp\htdocs\mealana" -Target "D:\ERP\
 # (Version 1.0 = Stand Migration 222 inkl. Stammdaten), danach create_admin.php — siehe docs/installation.md
 ```
 
-**Ab 1.0 (Baseline-Schnitt 2026-11-04):** `migrations/` ist leer, alle 004–222 stecken in der Baseline. Neue Migrationen beginnen bei **223**. Dev hat die alten Dateinamen weiter in `schema_migrations` (harmlos).
+**Ab 1.0 (Baseline-Schnitt 2026-11-04):** `migrations/` ist leer, alle 004–222 stecken in der Baseline. Neue Migrationen beginnen bei **223** (223 = Shop-Wurzelkategorie, nächste **224**). Dev hat die alten Dateinamen weiter in `schema_migrations` (harmlos).
 
 ### View & Test
 
@@ -564,6 +564,17 @@ $result = $service->wareneingang([
 // lagerbestand: Updated stock + charge info
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
+
+## Update 2026-11-04: indra-design.at Sortiment + Shop-Kategorien
+
+Details siehe `.claude/memory/project_indra_design_shop.md`, `project_indra_sortiment.md`, `project_preise.md`.
+- **Sortiment (Dev, Kanal 4):** 22 Weihnachtsanhänger `ID-XM-*` (3,50 €, Pappel) + 2 Metalldosen `ID-DO-*` (7,90 €, Kleinserie); Schilder-Fotos; Motivkatalog November 2026 (33 Seiten, E-Codes = runde Kork-Labels).
+- **Shop-Snippet 34685** „4 für 12 € gemischt“ für Kategorie `weihnachtsanhaenger` — Rabatt in den Positionspreisen (ERP-Import übernimmt Positionspreise). Kopie `shop/wp-snippets/`.
+- **Migration 223 `shops.wurzel_kategorie_id`** — Einstellungen → Kanäle „Kategorien im Shop ab“: Wurzel wird im Shop nicht angelegt (Term gelöscht), Unterkategorien = Hauptkategorien. indra-design = IndraDesign 420. **Auf Live nach Neuaufsatz setzen!** Nicht verwechseln mit Shop-Sichtbarkeit (blendet ganzen Ast aus).
+- **Sync zählt Woo-Kategorien neu** (`WooCommerceClient::zaehleKategorienNeu()`), wenn Kategorien angelegt/geändert wurden — sonst fehlen Oberkategorien ohne eigene Produkte.
+- ERP-Kategorien unter IndraDesign: Saisonales 433 → Weihnachten 431; Sonstiges 434 (Kraut und Rüben, z.B. Dosen).
+- Shop: Menü bricht 2-zeilig um, Mobilmenü = Hauptmenü, Startseite 7 Kacheln (4+3). **WP Super Cache nach Menü-/CSS-Änderungen leeren.**
+- **Vorgemerkt:** Mengen-Aktionen „X für Y gemischt“ + BOGOF in Kasse und Shop (nach Soft-Launch, spätestens vor Kassen-Umstellung aufs ERP); Saison-Kategorien mit Zeitraum „sichtbar von/bis“.
 
 ## Update 2026-10-08: Kasse-Punkte 1–3 (Geräte-Sperre, Artikelgruppe für Divers, Papier-Messe)
 
