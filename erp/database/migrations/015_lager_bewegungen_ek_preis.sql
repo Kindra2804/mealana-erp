@@ -1,1 +1,0 @@
-ALTER TABLE `lager_bewegungen` ADD COLUMN `ek_preis` DECIMAL(10,4) NULL AFTER `lieferant_id`

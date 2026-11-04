@@ -1,9 +1,0 @@
-CREATE TABLE varianten_achsen (
-    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    name VARCHAR(50) NOT NULL,
-    code VARCHAR(30) NOT NULL UNIQUE,
-    darstellungsform VARCHAR(30) NOT NULL,
-    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
-    erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
-);

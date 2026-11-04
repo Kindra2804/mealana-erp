@@ -1,2 +1,0 @@
-ALTER TABLE artikel
-    ADD COLUMN charge_pflicht TINYINT(1) NOT NULL DEFAULT 0;

@@ -1,14 +1,14 @@
 # MeaLana ERP — Installationsanleitung
 
 **Zielgruppe:** Wer eine neue Instanz aufsetzt — der Server-Admin bei einer Neuinstallation, aber auch ein Tester/Interessent, der die Software einmal ausprobieren will.
-**Stand:** 2026-07-09
+**Stand:** 2026-11-04 (Version 1.0)
 **Umgebung:** Windows + XAMPP (Apache, MariaDB, PHP). Auf Linux läuft dasselbe Prinzip mit Apache/Nginx + PHP-FPM statt XAMPP — die Schritte 4–14 sind identisch.
 
 ---
 
-## Vorab: Was diese Anleitung NICHT abdeckt
+## Vorab
 
-Es gibt (Stand heute) **keinen Installer und kein Migrations-Skript** — die Einrichtung ist ein manueller, aber gut abgrenzbarer Ablauf. Wer die Software öfter weitergeben will, sollte diesen Prozess irgendwann automatisieren (ein `migrate.php`, das alle SQL-Dateien der Reihe nach einspielt, wäre der naheliegende erste Schritt). Für jetzt: der manuelle Weg unten funktioniert zuverlässig, dauert aber ca. 30–45 Minuten.
+Es gibt keinen grafischen Installer — die Einrichtung ist ein manueller, aber gut abgrenzbarer Ablauf (ca. 30–45 Minuten). Danach führt der Einrichtungs-Assistent im Browser durch die Firmendaten (Schritt 11), spätere Versionen kommen über ··· → Updates (Schritt 13a).
 
 ---
 
@@ -123,33 +123,24 @@ return [
 
 ## 7. Datenbank-Schema einspielen
 
-Es gibt jetzt ein Migrations-Tool: `erp\database\migrate.php`. Für eine **neue** Installation reicht das aber allein nicht — Hintergrund: Die Migrationsdateien beginnen bei `004_...sql` (001–003 existieren nicht mehr/nie versioniert), setzen also schon einige Basis-Tabellen (u.a. `artikel`) voraus, die in keiner Migrationsdatei erzeugt werden. Ein reines Abspielen von `004` bis `104` auf einer wirklich leeren Datenbank bricht deshalb mitten drin ab (getestet — Fehler ab Migration `006`, Foreign Key auf eine nie erzeugte Tabelle).
+`baseline_schema.sql` enthält den kompletten Stand von Version 1.0: alle Tabellen **plus** die universellen System-Stammdaten — Rollen/Berechtigungen, Artikeltypen, Artikelgruppen, Einheiten, Steuerklassen + Konten, Kontenplan, Länder, Zahlungsbedingungen, Versandklassen, Kundengruppen (Endkunden = Standard, Händler), Nummernkreise (A, R, GS, LS, MR, AB, PL …) sowie die fixen Seed-Datensätze Jarvis-Systembenutzer, Diverses-Artikel `99-9999`, Fachmiete, Laufkunde und ein neutraler Kanal "Hauptkanal". **Keine** Geschäfts-/Testdaten wie Artikel, Kunden, Kategorien oder Hersteller.
 
-**Deshalb der zuverlässige Weg — Baseline-Dump + Migrations-Tracker:**
-
-1. Baseline importieren (enthält alle 94 Tabellen im aktuellen Endstand, **plus** die universellen System-Stammdaten, die keiner Installation fehlen dürfen — Rollen/Berechtigungen, Artikeltypen, Einheiten, Steuerklassen, Länder, Zahlungsbedingungen, Standard-Versandklassen sowie die fixen Seed-Datensätze Jarvis-Systembenutzer, Diverses-Artikel `99-9999`, Laufkunde und ein neutraler Standard-Shop-Kanal "Hauptkanal". **Keine** Geschäfts-/Testdaten wie echte Artikel, Kunden, Kategorien oder Hersteller):
+1. Baseline importieren (Datenbank aus Schritt 4 muss mit `utf8mb4_general_ci` angelegt sein):
    ```powershell
    C:\xampp\mysql\bin\mysql.exe -u root mealana_erp < "D:\ERP\mealana\erp\database\baseline_schema.sql"
    ```
-2. Den Migrations-Tracker "scharf schalten" (trägt alle vorhandenen Migrationsdateien als *bereits enthalten* ein, ohne sie nochmal auszuführen — die Baseline hat ihren Inhalt ja schon):
+2. Kontrolle:
    ```powershell
    cd D:\ERP\mealana\erp\database
-   C:\xampp\php\php.exe migrate.php bootstrap
-   ```
-   (Mit `j` bestätigen.)
-3. Kontrolle:
-   ```powershell
    C:\xampp\php\php.exe migrate.php status
    ```
-   sollte `103 Migration(en) angewendet, 0 offen` zeigen.
+   sollte `0 Migration(en) angewendet, 0 offen` zeigen — alle Migrationen bis 222 stecken in der Baseline, der Ordner `migrations\` ist bei 1.0 leer.
 
-**Ab jetzt, für jede künftige neue Migration (124, 125, ...):** einfach `php migrate.php` ohne Argumente aufrufen — es wendet automatisch nur die noch fehlenden Dateien an, egal ob auf Dev oder Live. Kein manuelles Zählen mehr nötig.
+**Spätere Versionen** bringen neue Migrationen (ab `223_...sql`) mit. Die spielt das Update unter ··· → Updates automatisch ein; per Kommandozeile geht es mit `php migrate.php` (wendet nur die noch fehlenden Dateien an).
 
-⚠️ **Nicht** `schema_current.sql` verwenden — das ist ein Snapshot der echten MeaLana-Produktivdaten (Kunden, Firmenname, Admin-Zugang). `baseline_schema.sql` enthält nur universelle System-Stammdaten, keine Geschäftsdaten, und ist dafür extra angelegt.
+⚠️ **Nicht** `schema_current.sql` verwenden — das ist ein Snapshot der echten MeaLana-Produktivdaten. `baseline_schema.sql` enthält nur universelle System-Stammdaten.
 
-**Update 2026-07-09:** Frischer Baseline-Schnitt (Stand nach Migration 123) samt Aufräumen — reine Seed-Migrationen, deren Effekt jetzt Teil der Baseline ist, wurden gelöscht: `005` (Rollen/Berechtigungen-Erstseed inkl. des alten fest verdrahteten Admin-Accounts, siehe Anhang B), `011`, `013`, `032`, `046`, `064`, `078`, `097`, `105`, `109`, `110`. Grund: Der alte Baseline+Bootstrap-Weg importierte zwar die Tabellenstruktur, aber `bootstrap` führt Migrationen 004+ nie wirklich aus — jede reine Stammdaten-Migration in diesem Bereich (Rollen, Artikeltypen, Einheiten, Steuerklassen, Länder, ...) wurde bei einer echten Neuinstallation stillschweigend übersprungen. Die neue Baseline enthält diese Stammdaten jetzt direkt.
-
-*Für Technik-Interessierte:* `migrate.php` unterstützt auch `php migrate.php status` (zeigt offene Migrationen ohne etwas zu tun) — nützlich um vor einem Live-Deploy kurz zu prüfen, was sich seit dem letzten Mal geändert hat.
+*Geschichte:* Baseline-Schnitte 2026-07-09 (Stand 123) und 2026-11-04 (Version 1.0, Stand 222). Beim 1.0-Schnitt wurde die Baseline aus einer frischen Installation (alte Baseline + alle Migrationen) erzeugt, nicht aus einer Arbeits-Datenbank, damit keine Firmendaten hineinrutschen.
 
 ---
 
@@ -165,7 +156,6 @@ C:\xampp\php\php.exe create_admin.php
 Fragt nacheinander Benutzername, Anzeigename und Passwort ab und legt den Benutzer inkl. Rolle `superadmin` an.
 
 ⚠️ Bewusst **kein** fix eingebauter Admin-Account mit gleichbleibendem Passwort über alle Installationen hinweg — das wäre ein geteilter Generalschlüssel für jede Installation gleichzeitig. Jede Installation bekommt ihr eigenes, frei gewähltes Admin-Passwort.
-Danach ggf. die passende Rolle zuweisen (siehe `benutzer_rollen`-Tabelle, seedet in Migration 005 die Rollen `superadmin`/`admin`/`mitarbeiter`).
 
 ---
 

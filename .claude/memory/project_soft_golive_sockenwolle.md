@@ -2,8 +2,13 @@
 name: project-soft-golive-sockenwolle
 description: "Soft-Go-Live-Plan (Jacky + Babsi 2026-10-30): V1.0 live nur mit Sockenwolle-online (reduzierter Artikelstamm, Shop JTL→Woo), Rest bleibt vorerst auf JTL, MeaLana zuletzt; Nummernkreise brauchen Shop-Kürzel (nicht gebaut)"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: ef009f0b-163c-454c-9dcc-cdd9cc4fc4bf
+  modified: 2026-11-04T09:19:49.825Z
 ---
+
+**🔀 Planänderung 2026-11-04 (Jacky):** Soft-Go-Live startet mit **indra-design.at** statt sockenwolle-online. Dort läuft derzeit der MeaLana-Demoshop → wird zurückgesetzt und ist der erste echte Shop an der Live-1.0. SOW kommt danach. Siehe [[project-1-0-check]].
 
 **Update 2026-11-01:** Live wird komplett neu auf 1.0 aufgesetzt; zuerst indra-design.at als Sub-Shop (Woo zurücksetzen, gemeinsam), dann sockenwolle-online, dann bio-wolle, MeaLana zuletzt — siehe [[project-1-0-check]].
 
