@@ -141,8 +141,13 @@
     .nahtlos-slider--startseite .nahtlos-slider__spur { height: auto; display: grid; }
     .nahtlos-slider--startseite .nahtlos-slide { position: relative; grid-area: 1 / 1; flex-direction: column; align-items: stretch; }
     .nahtlos-slider--startseite .nahtlos-slide__bild { position: relative; aspect-ratio: 4 / 3; }
-    .nahtlos-slider--startseite .nahtlos-slide--fertig .nahtlos-slide__bild { aspect-ratio: auto; }
-    .nahtlos-slider--startseite .nahtlos-slide--fertig .nahtlos-slide__bild img { height: auto; }
+    /* Fertiges Bild oder eigenes Handy-Bild: im echten Format zeigen (Empfehlung quadratisch) */
+    .nahtlos-slider--startseite .nahtlos-slide--fertig .nahtlos-slide__bild,
+    .nahtlos-slider--startseite .nahtlos-slide--mobilbild .nahtlos-slide__bild { aspect-ratio: auto; }
+    .nahtlos-slider--startseite .nahtlos-slide--fertig .nahtlos-slide__bild img,
+    .nahtlos-slider--startseite .nahtlos-slide--mobilbild .nahtlos-slide__bild img { height: auto; }
+    .nahtlos-slider--startseite .nahtlos-slide--fertig .nahtlos-slide__bild picture,
+    .nahtlos-slider--startseite .nahtlos-slide--mobilbild .nahtlos-slide__bild picture { position: relative; inset: auto; }
     .nahtlos-slider--startseite .nahtlos-slide::before { display: none; }
     /* Ohne eigenes Handy-Bild: Ausschnitt zur Bildseite gegenüber dem Text (dort stehen meist die Produkte) */
     .nahtlos-slider--startseite .nahtlos-slide--links .nahtlos-slide__bild img { object-position: 80% 50%; }

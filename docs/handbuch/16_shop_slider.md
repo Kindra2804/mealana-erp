@@ -25,7 +25,7 @@ Die Kategorie-Banner erscheinen ohne Platzhalter automatisch oben auf der jeweil
 | **Wo** | *Startseite* (Hero-Slider) oder *Kategorieseite* (dann die Kategorie wählen) |
 | **Art** | *Bild + Text*: Text und Buttons legt der Shop über das Bild, scharf und von Google lesbar. *Fertiges Bild*: der Text ist schon im Bild (z. B. aus Canva), die ganze Slide ist ein Link |
 | **Bild Desktop** | Querformat, ideal **1920 × 700 px**. Wichtiges nicht ganz an den Rand, der Shop schneidet je nach Bildschirm etwas ab |
-| **Bild Handy** | optional, Hochformat ca. 900 × 1100 px. Ohne eigenes Bild wird das Desktop-Bild zugeschnitten. Am Handy steht der Text **unter** dem Bild |
+| **Bild Handy** | optional, quadratisch ca. 1080 × 1080 px, wird am Handy in seinem Format gezeigt. Ohne eigenes Bild wird das Desktop-Bild auf 4:3 zugeschnitten (Ausschnitt zur Seite gegenüber dem Text). Am Handy steht der Text **unter** dem Bild |
 | **Kleiner Titel / Titel / Text** | Kleiner Titel = Zeile in Großbuchstaben über der Überschrift |
 | **Button 1 / 2** | Beschriftung + Ziel: Kategorie, Artikel, Hersteller oder eigene Adresse (`https://…` oder `/seite/`). Button 1 ist der farbige Hauptbutton, Button 2 ein Textlink |
 | **Text-Position** | links, Mitte oder rechts, je nachdem, wo das Bild „Platz“ hat |

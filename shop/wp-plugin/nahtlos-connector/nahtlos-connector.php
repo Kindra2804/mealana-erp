@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       NAHTLOS Connector
  * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider der Startseite und Banner auf Kategorieseiten, gepflegt im ERP.
- * Version:           1.1.1
+ * Version:           1.2.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -29,7 +29,7 @@
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.1.1';
+const NAHTLOS_VERSION = '1.2.0';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
@@ -211,7 +211,7 @@ function nahtlos_slider_html(array $slides, string $art): string
     <section class="nahtlos-slider nahtlos-slider--<?php echo esc_attr($art); ?>" aria-roledescription="carousel" aria-label="<?php esc_attr_e('Aktuelles', 'nahtlos-connector'); ?>" data-intervall="<?php echo $intervall; ?>">
         <div class="nahtlos-slider__spur">
         <?php foreach ($slides as $i => $s):
-            $klassen = 'nahtlos-slide nahtlos-slide--' . $s['text_position'] . ' nahtlos-slide--' . $s['schrift'] . ($s['art'] === 'fertiges_bild' ? ' nahtlos-slide--fertig' : '') . ($i === $erster ? ' ist-aktiv' : '') . ($sichtbar($s) ? '' : ' ist-geplant');
+            $klassen = 'nahtlos-slide nahtlos-slide--' . $s['text_position'] . ' nahtlos-slide--' . $s['schrift'] . ($s['art'] === 'fertiges_bild' ? ' nahtlos-slide--fertig' : '') . ($s['bild_mobil'] ? ' nahtlos-slide--mobilbild' : '') . ($i === $erster ? ' ist-aktiv' : '') . ($sichtbar($s) ? '' : ' ist-geplant');
             $bild = '<picture>'
                 . ($s['bild_mobil'] ? '<source media="(max-width: 767px)" srcset="' . esc_url($s['bild_mobil']['url']) . '">' : '')
                 . '<img src="' . esc_url($s['bild']['url']) . '" alt="' . esc_attr($s['alt']) . '"' . ($i === $erster ? ' fetchpriority="high"' : ' loading="lazy"') . ' decoding="async">'

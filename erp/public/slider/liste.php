@@ -233,7 +233,7 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
           <div class="sl-bild-feld"><img id="sl-bild-desktop-vorschau" alt=""><input type="file" name="bild_desktop" accept="image/jpeg,image/png,image/webp"></div>
         </div>
         <div class="sl-feld">
-          <label>Bild Handy <span style="font-weight:400">(optional, Hochformat ca. 900 × 1100 px)</span></label>
+          <label>Bild Handy <span style="font-weight:400">(optional, quadratisch ca. 1080 × 1080 px)</span></label>
           <div class="sl-bild-feld"><img id="sl-bild-mobil-vorschau" alt=""><input type="file" name="bild_mobil" accept="image/jpeg,image/png,image/webp">
             <label id="sl-mobil-weg" style="font-size:12px;white-space:nowrap"><input type="checkbox" name="bild_mobil_entfernen" value="1"> entfernen</label></div>
         </div>
