@@ -26,6 +26,6 @@ Start 2026-11-05: Während Live noch nicht steht, gestalten wir Logo und Layout 
 
 **✅ Logo als Vektor fertig 2026-11-05** (Commit 0e23cbc): `shop/branding/sockenwolle/` (SVG creme/transparent/weiß, Favicon-Socke, PNG 1600 + Favicon 512, README mit Farben, `logo_bauen.py`). Schrift Andika Regular (SIL OFL) mit Kontur 52 Einheiten als Pfade.
 
-**Idee Jacky 2026-11-05: Startseiten-Kacheln aus dem ERP pflegen** (heute statische Gutenberg-Spalten, nur im WP-Editor änderbar). Vorschlag: dritte Position „kachel“ im Slider-Modul (Bild, Titel, Untertitel, Ziel, Sortierung, Zeitraum, Kopieren), Shortcode `[nahtlos_kacheln]`. Danach eigener Punkt **Menü aus dem ERP** (WP-Menüs sind heute von Hand gebaut; SOW braucht Hersteller automatisch im Menü). Wartet auf Jackys Go.
+**Idee Jacky 2026-11-05: Startseiten-Kacheln aus dem ERP pflegen** (heute statische Gutenberg-Spalten, nur im WP-Editor änderbar). Vorschlag: dritte Position „kachel“ im Slider-Modul (Bild, Titel, Untertitel, Ziel, Sortierung, Zeitraum, Kopieren), Shortcode `[nahtlos_kacheln]`. Danach eigener Punkt **Menü aus dem ERP** (WP-Menüs sind heute von Hand gebaut; SOW braucht Hersteller automatisch im Menü). Kacheln ✅ gebaut 2026-11-05 (siehe [[project-newsletter-slider-ideen]]). Menü aus dem ERP noch offen.
 
 **How to apply:** Reihenfolge Logo → Startseiten-Layout (ASCII → SVG → HTML, [[feedback-design-workflow]]) → Slider-Modul im ERP ([[project-newsletter-slider-ideen]]). Das fertige Logo als Vektor ausliefern (Schrift in Pfade umwandeln).
