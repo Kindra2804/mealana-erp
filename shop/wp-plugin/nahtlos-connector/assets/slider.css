@@ -197,4 +197,4 @@
 .nahtlos-kachel__kicker { font-size: .8rem; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--ns-kicker, inherit); opacity: .85; margin-bottom: 6px; }
 .nahtlos-kachel__titel { margin-top: auto; font-size: 1.25rem; line-height: 1.25; hyphens: auto; }
 @media (max-width: 999px) { .nahtlos-kachel { flex-basis: calc(33.333% - 1.4em); } }
-@media (max-width: 767px) { .nahtlos-kacheln { gap: 14px; } .nahtlos-kachel { flex-basis: calc(50% - 7px); } .nahtlos-kachel__text { padding: 10px 10px 14px; } .nahtlos-kachel__titel { font-size: 1.05rem; } }
+@media (max-width: 767px) { .nahtlos-kacheln { gap: 14px; } .nahtlos-kachel { flex-basis: calc(50% - 7px); } .nahtlos-kachel__text { padding: 10px 10px 14px; } .nahtlos-kachel__kicker { font-size: .68rem; letter-spacing: .1em; } .nahtlos-kachel__titel { font-size: 1.05rem; } }

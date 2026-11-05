@@ -85,7 +85,7 @@ class SliderService
         if ($kachel && empty($d['titel'])) $f[] = 'Der Titel der Kachel fehlt.';
         if ($kachel && empty($d['button1_ziel_typ'])) $f[] = 'Bitte wählen, wohin die Kachel führt.';
         if (($d['position'] ?? '') === 'kategorie' && empty($d['kategorie_id'])) $f[] = 'Bitte die Kategorie wählen, auf deren Seite das Banner erscheint.';
-        if (!in_array($d['art'] ?? '', ['gestaltet', 'fertiges_bild'], true)) $f[] = 'Ungültige Art.';
+        if (!$kachel && !in_array($d['art'] ?? '', ['gestaltet', 'fertiges_bild'], true)) $f[] = 'Ungültige Art.'; // Kachel hat keine Art
         if (empty($d['bezeichnung'])) $f[] = 'Bitte einen Titel oder eine Bezeichnung eingeben.';
         if (($d['art'] ?? '') === 'gestaltet' && empty($d['titel'])) $f[] = 'Der Titel fehlt.';
 

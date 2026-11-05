@@ -68,3 +68,7 @@
   .wp-block-columns.indra-kacheln { gap: 2em !important; justify-content: center; }
   .wp-block-columns.indra-kacheln > .wp-block-column { flex: 0 0 calc(25% - 1.5em) !important; }
 }
+
+/* NAHTLOS-Kacheln aus dem ERP ([nahtlos_kacheln], Plugin 1.3.0): kleine Zeile in Kork-Braun wie bisher */
+.nahtlos-kacheln { --ns-kicker: #8a6340; }
+.nahtlos-kachel__titel { color: #1f1d1b; }

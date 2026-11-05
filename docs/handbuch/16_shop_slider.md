@@ -1,6 +1,6 @@
-# 16 Shop-Slider
+# 16 Shop-Slider und Kacheln
 
-Der große Bildwechsler oben auf der Startseite des Shops (Hero-Slider) und die Banner oben auf Kategorieseiten werden **im ERP gepflegt**, nicht in WordPress. Jeder Shop hat seine eigenen Slides.
+Der große Bildwechsler oben auf der Startseite des Shops (Hero-Slider), die **Kategorie-Kacheln** auf der Startseite und die Banner oben auf Kategorieseiten werden **im ERP gepflegt**, nicht in WordPress. Jeder Shop hat seine eigenen.
 
 Menü: **Artikel → Shop-Slider** (Recht „Slider verwalten“, haben Admin, Assistent und Manager).
 
@@ -9,7 +9,7 @@ Menü: **Artikel → Shop-Slider** (Recht „Slider verwalten“, haben Admin, A
 ## Einmalig im Shop einrichten
 
 1. WordPress-Plugin **NAHTLOS Connector** installieren und aktivieren (Datei aus dem Repo `shop/wp-plugin/nahtlos-connector/`, als ZIP hochladen)
-2. Auf der Startseite den Platzhalter **`[nahtlos_slider]`** dort einfügen, wo der Slider stehen soll (Block „Shortcode“)
+2. Auf der Startseite den Platzhalter **`[nahtlos_slider]`** dort einfügen, wo der Slider stehen soll, und **`[nahtlos_kacheln]`** dort, wo die Kacheln stehen sollen (jeweils Block „Shortcode“)
 3. Im ERP muss beim Shop die WordPress-Anmeldung eingetragen sein (Einstellungen → Kanäle → WP-Benutzer + Application-Password, wie für den Bilder-Upload)
 
 Die Kategorie-Banner erscheinen ohne Platzhalter automatisch oben auf der jeweiligen Kategorieseite.
@@ -37,10 +37,28 @@ Kategorie-, Artikel- und Hersteller-Ziele zeigen nur, was es im Shop schon gibt.
 
 ---
 
+## Kacheln
+
+Kacheln sind die Bild-Karten auf der Startseite, die in eine Kategorie (oder zu einem Artikel, Hersteller, einer Seite) führen.
+
+**+ Neue Slide** → bei *Wo* **Kachel (Startseite)** wählen. Das Fenster zeigt dann nur, was eine Kachel braucht:
+
+| Feld | Bedeutung |
+|---|---|
+| **Bild** | quadratisch, ca. 800 × 800 px. **Leer lassen** und als Ziel eine Kategorie wählen → das Kategoriebild aus dem ERP wird genommen |
+| **Kleiner Titel** | Zeile über dem Titel, z. B. „Kork · Schiefer · Leder“ |
+| **Titel** | z. B. „Untersetzer“ |
+| **Ziel** | wohin ein Klick auf die Kachel führt |
+
+Am Computer stehen 4 Kacheln nebeneinander (eine angefangene Reihe wird mittig gesetzt), am Tablet 3, am Handy 2. Zeitraum und „solange Aktion läuft“ funktionieren wie bei den Slides, z. B. eine Weihnachts-Kachel nur im Dezember.
+
+---
+
 ## Liste
 
 - **Status:** ● sichtbar · ◷ geplant (Zeitraum beginnt später) · abgelaufen · ○ aus · *Bild fehlt*
-- **Reihenfolge:** am Griff ≡ ziehen (nur innerhalb derselben Gruppe)
+- **Gruppen:** Startseite (Hero-Slider), Kacheln auf der Startseite, Banner auf Kategorieseiten
+- **Reihenfolge:** am Griff ≡ ziehen (nur innerhalb derselben Gruppe), gilt auch für die Kacheln
 - **Kopieren:** auch in einen anderen Shop. Die Kopie ist zuerst ausgeschaltet
 - **Wechsel alle … Sekunden:** gilt für alle Slider des Shops
 
