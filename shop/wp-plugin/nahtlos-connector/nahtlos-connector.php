@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       NAHTLOS Connector
  * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider der Startseite und Banner auf Kategorieseiten, gepflegt im ERP.
- * Version:           1.0.0
+ * Version:           1.0.3
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -15,7 +15,9 @@
  *    (Anmeldung mit WordPress-Application-Password, Recht manage_woocommerce).
  *    Bilder hat das ERP vorher in die Mediathek geladen, hier stehen nur deren IDs/URLs.
  *  - Das Plugin speichert die Liste in der Option nahtlos_slider und zeigt Slides nur
- *    innerhalb von von/bis an (Shop-Zeitzone). Das ERP ist vom Shop aus nicht erreichbar,
+ *    innerhalb von von/bis an. von/bis kommen als ISO-8601 mit Zeitzone (z. B.
+ *    2026-12-01T00:00:00+01:00) und werden als Unix-Zeit gespeichert — unabhängig davon,
+ *    welche Zeitzone in WordPress eingestellt ist (indra-design.at läuft auf UTC). Das ERP ist vom Shop aus nicht erreichbar,
  *    darum muss die Zeitsteuerung hier passieren.
  *  - Zu jedem künftigen Wechselzeitpunkt wird ein WP-Cron-Ereignis geplant, das den
  *    Seiten-Cache leert (WP Super Cache u. a.) — sonst käme z. B. die Weihnachts-Slide
@@ -26,7 +28,7 @@
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.0.0';
+const NAHTLOS_VERSION = '1.0.3';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
@@ -68,7 +70,11 @@ function nahtlos_slider_empfangen(WP_REST_Request $request)
     }
 
     $text = fn($v, $max = 200) => $v === null ? '' : mb_substr(sanitize_text_field((string)$v), 0, $max);
-    $zeit = fn($v) => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $v) ? $v : null;
+    // ISO-8601 mit Zeitzone → Unix-Zeit; ohne Zeitzone gilt die WordPress-Zeitzone
+    $zeit = function ($v) {
+        if (!is_string($v) || $v === '') return null;
+        try { return (new DateTimeImmutable($v, wp_timezone()))->getTimestamp(); } catch (Exception $e) { return null; }
+    };
     $bild = fn($b) => is_array($b) && !empty($b['url']) ? ['id' => (int)($b['id'] ?? 0), 'url' => esc_url_raw($b['url'])] : null;
 
     $slides = [];
@@ -127,7 +133,7 @@ function nahtlos_wechsel_planen(array $slides): int
         foreach (['von', 'bis'] as $k) {
             if (!$s[$k]) continue;
             // bis = letzte sichtbare Sekunde → eine Sekunde später wechseln
-            $ts = (new DateTimeImmutable($s[$k], wp_timezone()))->getTimestamp() + ($k === 'bis' ? 1 : 0);
+            $ts = (int)$s[$k] + ($k === 'bis' ? 1 : 0);
             if ($ts > $jetzt) $zeiten[$ts] = true;
         }
     }
@@ -152,12 +158,12 @@ function nahtlos_cache_leeren(): void
 function nahtlos_aktuelle_slides(string $position, ?int $kategorie = null): array
 {
     $daten = get_option(NAHTLOS_OPTION_SLIDER, ['slides' => []]);
-    $jetzt = current_time('mysql');
+    $jetzt = time();
     return array_values(array_filter($daten['slides'] ?? [], function ($s) use ($position, $kategorie, $jetzt) {
         if ($s['position'] !== $position) return false;
         if ($position === 'kategorie' && (int)$s['kategorie'] !== (int)$kategorie) return false;
-        if ($s['von'] && $s['von'] > $jetzt) return false;
-        if ($s['bis'] && $s['bis'] < $jetzt) return false;
+        if ($s['von'] && (int)$s['von'] > $jetzt) return false;
+        if ($s['bis'] && (int)$s['bis'] < $jetzt) return false;
         return true;
     }));
 }
@@ -215,7 +221,8 @@ function nahtlos_slider_html(array $slides, string $art): string
                     <div class="nahtlos-slide__bild"><?php echo $bild; ?></div>
                     <div class="nahtlos-slide__inhalt">
                         <?php if ($s['kicker']): ?><p class="nahtlos-slide__kicker"><?php echo esc_html($s['kicker']); ?></p><?php endif; ?>
-                        <h2 class="nahtlos-slide__titel"><?php echo esc_html($s['titel']); ?></h2>
+                        <?php $tag = $art === 'startseite' && $i === 0 ? 'h1' : 'h2'; // erste Startseiten-Slide = Seitenüberschrift ?>
+                        <<?php echo $tag; ?> class="nahtlos-slide__titel"><?php echo esc_html($s['titel']); ?></<?php echo $tag; ?>>
                         <?php if ($s['text']): ?><p class="nahtlos-slide__text"><?php echo nl2br(esc_html($s['text'])); ?></p><?php endif; ?>
                         <?php if ($s['buttons']): ?>
                             <div class="nahtlos-slide__buttons">

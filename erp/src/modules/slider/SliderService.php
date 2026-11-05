@@ -373,8 +373,9 @@ class SliderService
             'bild'          => $bilder['desktop'],
             'bild_mobil'    => $bilder['mobil'],
             'alt'           => $s['alt_text'] ?: ($s['titel'] ?: $s['bezeichnung']),
-            'von'           => $von,
-            'bis'           => $bis,
+            // mit Zeitzone, damit der Shop unabhängig von seiner WP-Zeitzone richtig umschaltet
+            'von'           => $von !== null ? date('c', strtotime($von)) : null,
+            'bis'           => $bis !== null ? date('c', strtotime($bis)) : null,
         ];
     }
 
