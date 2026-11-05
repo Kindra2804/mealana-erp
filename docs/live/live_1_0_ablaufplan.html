@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Live 1.0 – Ablaufplan</title>
+<style>
+@page{size:A4;margin:16mm 15mm 16mm 15mm}
+*{box-sizing:border-box}
+body{font-family:"Segoe UI",Arial,sans-serif;font-size:10.5pt;line-height:1.42;color:#1f2937;margin:0}
+h1{font-size:20pt;color:#1d4076;margin:0 0 2pt}
+.sub{color:#64748b;margin-bottom:10pt}
+h2{font-size:13pt;color:#fff;background:#1d4076;padding:5pt 9pt;border-radius:4pt;margin:16pt 0 6pt;page-break-after:avoid}
+h2 small{font-weight:400;font-size:9.5pt;opacity:.85;margin-left:6pt}
+h3{font-size:11pt;color:#1d4076;margin:10pt 0 4pt;page-break-after:avoid}
+table{width:100%;border-collapse:collapse;margin:4pt 0 6pt}
+td,th{border:1px solid #cbd5e1;padding:3.5pt 6pt;vertical-align:top;text-align:left}
+th{background:#eef4fa;font-size:9.5pt}
+.ck{width:18pt;text-align:center;font-size:12pt;color:#1d4076}
+.wer{width:34pt;text-align:center;font-weight:700;color:#1d4076;white-space:nowrap}
+tr{page-break-inside:avoid}
+.hinweis{background:#fff7e6;border-left:4pt solid #e3a83a;padding:5pt 9pt;margin:6pt 0;page-break-inside:avoid}
+.wichtig{background:#fdecea;border-left:4pt solid #c0392b;padding:5pt 9pt;margin:6pt 0;page-break-inside:avoid}
+.info{background:#eef7fc;border-left:4pt solid #98cce9;padding:5pt 9pt;margin:6pt 0;page-break-inside:avoid}
+code{font-family:Consolas,monospace;font-size:9pt;background:#f1f5f9;padding:0 2pt;border-radius:2pt}
+.ueber td{font-size:10pt}
+.notiz{border-bottom:1px dotted #94a3b8;height:16pt}
+ul{margin:3pt 0 3pt 16pt;padding:0}li{margin:1.5pt 0}
+.neue-seite{page-break-before:always}
+</style></head><body>
+
+<h1>Live 1.0 – Ablaufplan &amp; Checkliste</h1>
+<div class="sub">MeaLana ERP · für Jacky &amp; Babsi · Stand 05.11.2026 · <b>J</b> = Jacky, <b>B</b> = Babsi, <b>J+B</b> = gemeinsam</div>
+
+<div class="info"><b>Worum es geht:</b> Das Live-ERP am Server wird komplett neu auf Version 1.0 aufgesetzt (die bisherigen Live-Daten waren nur Testdaten). Danach richtet ihr es gemeinsam mit dem Einrichtungs-Assistenten ein und hängt als ersten Shop <b>indra-design.at</b> an. Sockenwolle-online, bio-wolle und MeaLana folgen später, einer nach dem anderen.</div>
+
+<h3>Überblick</h3>
+<table class="ueber">
+<tr><th style="width:24pt">Teil</th><th>Was</th><th style="width:40pt">Wer</th><th style="width:62pt">Dauer ca.</th><th style="width:70pt">Wann</th></tr>
+<tr><td>A</td><td>Vorbereiten: Entscheidungen, Unterlagen, Shop aufräumen</td><td>J+B</td><td>1–2 Std.</td><td>vorher</td></tr>
+<tr><td>B</td><td>Alles sichern</td><td>J</td><td>30 Min.</td><td>Live-Tag</td></tr>
+<tr><td>C</td><td>Live-ERP neu installieren</td><td>J</td><td>1–2 Std.</td><td>Live-Tag</td></tr>
+<tr><td>D</td><td>Einrichtungs-Assistent (Onboarding)</td><td>J+B</td><td>1 Std.</td><td>Live-Tag</td></tr>
+<tr><td>E</td><td>Shop indra-design anbinden</td><td>J</td><td>1–2 Std.</td><td>Live-Tag</td></tr>
+<tr><td>F</td><td>Automatik &amp; tägliche Sicherung einrichten</td><td>J</td><td>1 Std.</td><td>Live-Tag</td></tr>
+<tr><td>G</td><td>Probelauf (einmal alles durchspielen)</td><td>J+B</td><td>1 Std.</td><td>Live-Tag / Tag danach</td></tr>
+</table>
+
+<h2>A · Vorbereiten <small>vor dem Live-Tag</small></h2>
+
+<h3>A1 · Entscheidungen</h3>
+<table>
+<tr><td class="ck">☐</td><td class="wer">J+B</td><td><b>Wie kommen die indra-Artikel ins Live-ERP?</b> Sie wurden im Dev-ERP angelegt, der Shop hängt an den Dev-Nummern.<br>
+① <b>Empfohlen:</b> Artikel aus dem Dev-ERP exportieren und im Live-ERP importieren, die Produkte im Shop vorher leeren — das Live-ERP legt sie dann sauber neu an (mit Bildern).<br>
+② Artikel samt Shop-Zuordnung 1:1 übernehmen (aufwendiger, nur nötig, wenn Shop-Links erhalten bleiben müssen — der Shop ist noch nicht offiziell offen).<br>
+Entscheidung: ☐ ① &nbsp; ☐ ② &nbsp; <span class="notiz" style="display:inline-block;width:180pt"></span></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J+B</td><td><b>Startbestand:</b> Der Dev-Testbestand (je 1 Stück) wird <b>nicht</b> übernommen. Echte Mengen kommen per Startinventur. Wann zählen wir? <span class="notiz" style="display:inline-block;width:150pt"></span></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Live-Tag festlegen</b> (ruhiger Tag, Geschäft geschlossen oder wenig los): <span class="notiz" style="display:inline-block;width:150pt"></span></td></tr>
+</table>
+
+<h3>A2 · Unterlagen für den Assistenten bereitlegen (Babsi)</h3>
+<table>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Firmendaten: MEALANA KG, Adresse, Telefon, E-Mail, UID <b>ATU68078304</b>, Firmenbuch, <b>IBAN/BIC</b></td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Hauptlogo als Bilddatei (für Rechnungen, Lieferscheine, Mails)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Liste der Mitarbeiter: Name, wer darf was (Kasse, Packplatz, Büro, Chef) — jede Person bekommt einen eigenen Zugang</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Lizenzdatei <code>L-100001-19_A1.lic</code></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Zugangsdaten für den Mailversand (Postfach, Server, Port, Passwort)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Kassen: Adresse/Kennung des RKSV-Geräts (BFR) je Kasse</td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Abholort Wollboutique: Bahngasse 13, 2700 Wiener Neustadt, Öffnungszeiten, Hinweistext für die Abholmail</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Paperless (Beleg per QR): Adresse <code>https://beleg.mealana.at</code> + Schlüssel aus <code>beleg-portal/config.php</code></td></tr>
+</table>
+
+<h3>A3 · Technik vorbereiten (Jacky)</h3>
+<table>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Programm-Paket bauen</b> (mit Claude): aktueller Stand = 1.0 + Migrationen 223–228 (Widerruf, Slider, Menü, Wurzelkategorie …). Das Paket enthält alles inkl. <code>vendor</code>, nichts von Hand kopieren.</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>indra-design aufräumen:</b> Testbestellungen #34748 und #34751 samt Widerrufsanträgen löschen (sonst holt das Live-ERP sie als echte Aufträge). Bei Entscheidung ① zusätzlich die Produkte im Shop leeren.</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>hosttech:</b> Ressourcennutzung anschauen — sind die CPU-Fehler seit der neuen robots.txt weniger? Benachrichtigung unter <i>Optionen</i> einschalten. Falls nicht besser: getarnten Scraper melden bzw. größeres Paket anfragen.</td></tr>
+</table>
+
+<h2>B · Alles sichern <small>Live-Tag, als Erstes</small></h2>
+<table>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Datenbank des alten Live-ERP sichern (<code>mysqldump</code>) nach <code>E:\ERP-Sicherung\&lt;Datum&gt;_vor_live_1.0\</code></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Ordner <code>C:\ERP\mealana</code> komplett dorthin kopieren</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><code>erp\config\encryption.php</code> + <code>database.php</code> <b>getrennt</b> auf USB-Stick (gehört zur alten Sicherung)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Plesk-Sicherung von indra-design.at (WordPress + Datenbank)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Windows-Aufgaben notieren (<code>schtasks /query</code>) — vor allem die alten ERP-Aufgaben</td></tr>
+</table>
+<div class="wichtig"><b>Ohne Sicherung kein nächster Schritt.</b> Kurz prüfen, ob die .sql-Datei Inhalt hat (Größe &gt; 0).</div>
+
+<h2>C · Live-ERP neu installieren <small>Jacky am Server · Anleitung: docs/installation.md</small></h2>
+<table>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Alte ERP-Aufgaben pausieren</b> (Aufgabenplanung) — damit nichts gegen die halbfertige Installation läuft</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Alte Datenbank umbenennen bzw. stehen lassen als <code>mealana_erp_alt</code> (erst löschen, wenn alles läuft)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Neue Datenbank <code>mealana_erp</code> anlegen — <b>Zeichensatz utf8mb4_general_ci</b> (Schritt 4)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Programm-Paket nach <code>C:\ERP\mealana</code> entpacken (alter Ordner ist gesichert)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><code>config\database.php</code> anlegen, <code>config\encryption.php</code> <b>neu erzeugen</b> (neuer Schlüssel) — sofort zusätzlich auf USB sichern (Schritt 6)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Grundgerüst einspielen: <code>baseline_schema.sql</code> (Schritt 7)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Neuere Änderungen einspielen: <code>php migrate.php</code> → sollte <b>6 Migrationen (223–228)</b> anwenden, danach <code>migrate.php status</code> = 0 offen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Ersten Chef-Zugang anlegen: <code>php create_admin.php</code> (Schritt 8)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Im Browser öffnen, Anmeldung klappt → weiter mit D</td></tr>
+</table>
+
+<h2>D · Einrichtungs-Assistent <small>Jacky + Babsi gemeinsam</small></h2>
+<div class="info">Der Assistent startet nach der ersten Anmeldung von selbst und kommt so lange wieder, bis alles erledigt ist. Babsi klickt, Jacky schaut zu — so seht ihr, wie es sich für einen neuen Kunden anfühlt. Was auffällt, gleich notieren.</div>
+<table>
+<tr><th class="ck"></th><th class="wer">Wer</th><th>Schritt</th><th style="width:150pt">Notiz</th></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td><b>Firma</b>: Name, Adresse, UID, Hauptlogo</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td><b>Eigenes Passwort</b> für den Chef-Zugang</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Lizenz</b>: Datei <code>L-100001-19_A1.lic</code> hochladen</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td><b>Steuer</b> bestätigen</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td><b>Lager</b> (Standardlager wird automatisch angelegt; Namen prüfen, z. B. „Ladengeschäft“)</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td><b>Benutzer</b> für alle Mitarbeiter mit passender Rolle</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Mail</b>: Versand einrichten und Testmail schicken</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Kasse</b>: Kassen anlegen, RKSV-Gerät eintragen</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Shop</b>: Hauptkanal = MeaLana (vorerst ohne Shop-Zugang); indra-design kommt in Teil E</td><td></td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td><b>Abholort</b> Wollboutique mit Öffnungszeiten</td><td></td></tr>
+</table>
+<h3>Gleich danach in den Einstellungen</h3>
+<table>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Einstellungen → Firma: <b>IBAN/BIC</b> eintragen — <b>bevor</b> die erste Rechnung entsteht</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Paperless: Adresse + Schlüssel eintragen, Haken „auf der Kundenanzeige zeigen“</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Lizenz-Verkaufsfunktion (Generator) <b>nicht</b> einschalten — die gehört nur ins Dev-ERP</td></tr>
+</table>
+
+<h2>E · Shop indra-design.at anbinden <small>Jacky</small></h2>
+<table>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Dev-ERP vom Shop trennen:</b> im Dev-ERP den Kanal indra-design pausieren — sonst schreiben zwei ERPs in denselben Shop!</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Im Shop (WooCommerce → Einstellungen → Erweitert → REST-API) einen <b>neuen Schlüssel</b> „Live-ERP“ (Lesen/Schreiben) anlegen, beim Benutzer ein <b>Anwendungspasswort</b> erzeugen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Live-ERP → Einstellungen → Kanäle: indra-design anlegen (Adresse, Schlüssel, Anwendungspasswort, Kürzel <b>IND</b>, Logo) und <b>„Kategorien im Shop ab: IndraDesign“</b> wählen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Indra-Artikel ins Live-ERP (laut Entscheidung A1), Bilder prüfen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Abgleich starten, im Shop prüfen: Produkte, Kategorien, Preise, Bilder, Bestand</td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Startseite: Slider, Kacheln und Menü im ERP anlegen und übertragen (Plugin NAHTLOS Connector 1.6.0 ist schon im Shop)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>PayPal im Shop mit dem Live-Konto verbinden</td></tr>
+</table>
+<h3>Shop-Checkliste (bei indra-design schon erledigt — Vorlage für die nächsten Shops)</h3>
+<table>
+<tr><td class="ck">☑</td><td>Germanized ab 4.0: Widerrufsbutton „überall anzeigen“, Kontakt-E-Mail, Link in „Mein Konto“; Gewährleistungs-Info aktiv</td></tr>
+<tr><td class="ck">☑</td><td>WP Mail SMTP (Versand über das eigene Postfach)</td></tr>
+<tr><td class="ck">☑</td><td>Blocksy Companion + Konto-Symbol im Kopf; Datenschutz-Häkchen beim Registrieren</td></tr>
+<tr><td class="ck">☑</td><td>Zeitzone Wien; deutsche Datenschutz-Texte; „Schon Kunde? Hier anmelden“ an der Kasse</td></tr>
+<tr><td class="ck">☐</td><td><b>robots.txt</b> mit Sperre für Filterseiten (Woo: <code>?filter_</code>, <code>?orderby=</code>, <code>?min_price=</code>, <code>?add-to-cart=</code>) — Claude schreibt sie</td></tr>
+</table>
+
+<h2>F · Automatik &amp; tägliche Sicherung <small>Jacky am Server</small></h2>
+<div class="info">Aufgabenplanung: Programm <code>C:\xampp\php\php.exe</code>, Argument = voller Pfad zum Skript in <code>C:\ERP\mealana\erp\cron\</code>. Immer „Unabhängig von der Benutzeranmeldung ausführen“ und „verpassten Start nachholen“ anhaken.</div>
+<table>
+<tr><th class="ck"></th><th>Skript</th><th style="width:120pt">Wann</th><th>Wofür</th></tr>
+<tr><td class="ck">☐</td><td><code>shop_sync.php</code></td><td>alle 15 Minuten</td><td>Bestellungen, Bestand, Status, Widerrufe mit den Shops abgleichen</td></tr>
+<tr><td class="ck">☐</td><td><code>bfr_nachsignierung.php</code></td><td>alle 5 Minuten</td><td>RKSV: offene Kassenbelege nachsignieren</td></tr>
+<tr><td class="ck">☐</td><td><code>z_bon_auto.php</code></td><td>täglich 00:05</td><td>fehlende Tagesabschlüsse aller Kassen</td></tr>
+<tr><td class="ck">☐</td><td><code>mahnwesen.php</code></td><td>täglich 06:00</td><td>Zahlungserinnerungen, Auto-Storno</td></tr>
+<tr><td class="ck">☐</td><td><code>gutschein_versand.php</code></td><td>täglich 06:00</td><td>Gutscheine zum gewünschten Datum verschicken</td></tr>
+<tr><td class="ck">☐</td><td><code>fachmiete.php</code></td><td>täglich 06:00</td><td>Rechnungen für Mietfächer</td></tr>
+<tr><td class="ck">☐</td><td><code>lagerwert.php</code></td><td>täglich 23:30</td><td>Lagerwert zum Monatsende festhalten</td></tr>
+<tr><td class="ck">☐</td><td colspan="3">Alte Aufgaben aus dem früheren Live-ERP löschen (nicht doppelt laufen lassen)</td></tr>
+</table>
+<h3>Tägliche Sicherung</h3>
+<table>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Windows-Aufgabe täglich (z. B. 22:00): Datenbank-Sicherung (<code>mysqldump</code>) nach <code>E:\ERP-Sicherung\</code> (wird auf die NAS gespiegelt), alte Sicherungen nach z. B. 30 Tagen löschen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Bilder &amp; Logos (<code>erp\public\uploads</code>, <code>erp\public\img</code>) mindestens vierteljährlich mitsichern</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><code>encryption.php</code> <b>nie</b> neben der Datenbank-Sicherung ablegen — eigener USB-Stick / Tresor</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Einmal Wiederherstellen üben</b> (Sicherung in eine Test-Datenbank einspielen) — eine Sicherung zählt erst, wenn sie einmal zurückgespielt wurde</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Später: zweite Kopie außer Haus (Cloud oder Proxmox zu Hause) — Brand/Diebstahl</td></tr>
+</table>
+
+<h2>G · Probelauf <small>gemeinsam, danach Testdaten stornieren</small></h2>
+<table>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Testbestellung auf indra-design → kommt im ERP an (A-IND-…), Bestätigungsmail kommt beim Kunden an</td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Packen am Packplatz bzw. Abholung an der Kasse → Shop zeigt „abgeschlossen“, Mail an den Kunden</td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Widerruf über den Button → im ERP unter Verkauf → Widerrufe → bestätigen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">B</td><td>Kasse: Bon mit RKSV-Signatur, QR-Beleg (Paperless) auf dem Handy öffnen, Z-Bon</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Rechnung als PDF: Logo, IBAN, Adresse stimmen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Am nächsten Morgen: Sind die Aufgaben gelaufen? Ist die Sicherung da? (Aktivitäten-Leiste unten im ERP)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J+B</td><td>Testaufträge stornieren, Testbons laut Kassen-Regeln behandeln</td></tr>
+</table>
+
+<h2>Danach (nicht am Live-Tag)</h2>
+<ul>
+<li><b>Startinventur</b> für die indra-Artikel (und später je Shop) — echte Mengen statt Testbestand</li>
+<li><b>Sockenwolle-online</b> als WooCommerce-Shop aufbauen (Logo + Startseite sind fertig), robots.txt, Shop-Checkliste, dann anbinden; JTL-Shop abdrehen</li>
+<li><b>bio-wolle</b> (Logo + Startseite fertig) · <b>MeaLana</b> zuletzt (Entwurf liegt bei Babsi)</li>
+<li>Ein paar Tage nach dem Start: Hosting-Last prüfen (alle Shops teilen sich ein Paket)</li>
+<li>Version 1.1: Steuerprofil (vor dem ersten Fremdkunden)</li>
+</ul>
+
+<div class="hinweis"><b>Wenn etwas schiefgeht:</b> Nichts überstürzen. Die Sicherung aus Teil B ist der Rückweg: alter Ordner + alte Datenbank zurück, alte Aufgaben wieder einschalten. Claude ist bei jedem Schritt dabei — einfach den Teil und die Fehlermeldung nennen.</div>
+
+<h3>Notizen</h3>
+<div class="notiz"></div><div class="notiz"></div><div class="notiz"></div><div class="notiz"></div><div class="notiz"></div>
+</body></html>
