@@ -191,6 +191,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-bilder" class="sub">↳ Bilder</a>
             <a href="#artikel-merkmale" class="sub">↳ Merkmale</a>
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
+            <a href="#artikel-slider" class="sub">↳ Shop-Slider</a>
             <a href="#lager">Lager</a>
             <a href="#lager-lagerplaetze" class="sub">↳ Lagerplätze</a>
             <a href="#lager-lagerwert" class="sub">↳ Lagerwert</a>
@@ -327,6 +328,14 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td>4 — niedrigste</td><td>Standard-Preis</td><td>Artikel → Preise → Standard-KG</td></tr>
             </table>
             <p><strong>Aktionen</strong> gelten für ganze Kategorien und laufen zeitlich begrenzt. Sie werden täglich um 0:00 Uhr automatisch aktiviert/deaktiviert (Cronjob).</p>
+
+            <h3 id="artikel-slider">Shop-Slider <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Artikel → <strong>Shop-Slider</strong>. Den großen Bildwechsler auf der Startseite und Banner oben auf Kategorieseiten pflegt ihr hier, je Shop eigene Slides.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>+ Neue Slide</strong> → Startseite oder Kategorieseite, <em>Bild + Text</em> (Text kommt live über das Bild) oder <em>Fertiges Bild</em> (z. B. aus Canva, ganze Slide ist ein Link). Bild Desktop ideal 1920 × 700 px, Handy-Bild optional.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Titel, Text, bis zu 2 Buttons (Ziel: Kategorie, Artikel, Hersteller oder Adresse), Text-Position und helle/dunkle Schrift. Die Vorschau zeigt das Ergebnis.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Sichtbar:</strong> immer, im Zeitraum (von/bis) oder solange eine Preis-Aktion läuft. Reihenfolge per Ziehen am ≡, Kopieren auch in einen anderen Shop (Kopie startet ausgeschaltet).</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div><strong>An Shop übertragen</strong> bringt alles online. Ein- und Ausblenden nach Datum macht der Shop danach selbst, auch wenn das ERP aus ist.</div></div>
+            <p>Voraussetzung im Shop: WordPress-Plugin <strong>NAHTLOS Connector</strong> aktiv und auf der Startseite der Platzhalter <code>[nahtlos_slider]</code>. Details: Handbuch Kapitel 16.</p>
 
             <!-- LAGER -->
             <h2 id="lager">Lager <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

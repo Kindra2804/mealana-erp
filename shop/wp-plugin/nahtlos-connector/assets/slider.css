@@ -1,0 +1,162 @@
+/* NAHTLOS Connector – Hero-Slider + Kategorie-Banner
+   Farben/Schrift kommen vom Theme (Blocksy-Palette), nur Fallbacks sind hier fest. */
+
+.nahtlos-slider {
+    --ns-akzent: var(--theme-palette-color-1, #1d4076);
+    --ns-hoehe: clamp(420px, 36.5vw, 640px);
+    position: relative;
+    overflow: hidden;
+    margin: 0 0 2rem;
+}
+.nahtlos-slider--startseite { width: 100vw; margin-left: calc(50% - 50vw); }
+.nahtlos-slider--kategorie { --ns-hoehe: clamp(220px, 22vw, 360px); border-radius: 6px; }
+
+.nahtlos-slider__spur { position: relative; height: var(--ns-hoehe); }
+
+.nahtlos-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .8s ease, visibility 0s linear .8s;
+}
+.nahtlos-slide.ist-aktiv { opacity: 1; visibility: visible; transition: opacity .8s ease; z-index: 1; }
+
+.nahtlos-slide__bild, .nahtlos-slide__bild picture { position: absolute; inset: 0; display: block; }
+.nahtlos-slide__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Schleier hinter dem Text, damit er auf jedem Bild lesbar bleibt */
+.nahtlos-slide:not(.nahtlos-slide--fertig)::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.nahtlos-slide--dunkel { --ns-schleier: rgba(255, 255, 255, .6); color: #1f1d1b; }
+.nahtlos-slide--hell   { --ns-schleier: rgba(0, 0, 0, .45); color: #fff; }
+.nahtlos-slide--links::before  { background: linear-gradient(90deg, var(--ns-schleier) 0, transparent 62%); }
+.nahtlos-slide--rechts::before { background: linear-gradient(270deg, var(--ns-schleier) 0, transparent 62%); }
+.nahtlos-slide--mitte::before  { background: radial-gradient(ellipse at center, var(--ns-schleier) 0, transparent 72%); }
+
+.nahtlos-slide__inhalt {
+    position: relative;
+    z-index: 2;
+    width: min(560px, 44%);
+    margin: 0 7.5%;
+}
+.nahtlos-slide--mitte .nahtlos-slide__inhalt { margin: 0 auto; text-align: center; width: min(720px, 70%); }
+.nahtlos-slide--rechts .nahtlos-slide__inhalt { margin-left: auto; }
+
+.nahtlos-slide__kicker {
+    font-size: .8rem;
+    font-weight: 500;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    margin: 0 0 1rem;
+    opacity: .85;
+}
+.nahtlos-slide__titel {
+    font-size: clamp(1.8rem, 3.6vw, 3.6rem);
+    line-height: 1.08;
+    font-weight: 400;
+    margin: 0 0 1.1rem;
+    color: inherit;
+}
+.nahtlos-slider--kategorie .nahtlos-slide__titel { font-size: clamp(1.4rem, 2.4vw, 2.4rem); }
+.nahtlos-slide__text { font-size: clamp(1rem, 1.25vw, 1.2rem); line-height: 1.6; font-weight: 300; margin: 0 0 1.8rem; max-width: 30em; }
+.nahtlos-slide--mitte .nahtlos-slide__text { margin-left: auto; margin-right: auto; }
+
+.nahtlos-slide__buttons { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; }
+.nahtlos-slide--mitte .nahtlos-slide__buttons { justify-content: center; }
+.nahtlos-slider .nahtlos-btn {
+    display: inline-block;
+    padding: 1rem 2rem;
+    background: var(--ns-akzent);
+    color: #fff;
+    font-size: .9rem;
+    font-weight: 500;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 2px;
+    transition: filter .2s;
+}
+.nahtlos-slider .nahtlos-btn:hover { filter: brightness(1.15); color: #fff; }
+.nahtlos-slider .nahtlos-link {
+    color: inherit;
+    font-size: .9rem;
+    font-weight: 500;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-bottom: 2px solid currentColor;
+    padding-bottom: 3px;
+}
+.nahtlos-slide--hell .nahtlos-btn { background: #fff; color: #1f1d1b; }
+.nahtlos-slide--hell .nahtlos-btn:hover { color: #1f1d1b; }
+
+/* Pfeile + Punkte */
+.nahtlos-slider__pfeil {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    transform: translateY(-50%);
+    width: 46px;
+    height: 46px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .75);
+    color: #1f1d1b;
+    font-size: 30px;
+    line-height: 1;
+    padding: 0 0 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .25s, background .2s;
+}
+.nahtlos-slider:hover .nahtlos-slider__pfeil, .nahtlos-slider__pfeil:focus-visible { opacity: 1; }
+.nahtlos-slider__pfeil:hover { background: #fff; }
+.nahtlos-slider__pfeil--zurueck { left: 18px; }
+.nahtlos-slider__pfeil--weiter { right: 18px; }
+
+.nahtlos-slider__punkte { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 3; display: flex; gap: 10px; }
+.nahtlos-slider__punkt {
+    width: 30px;
+    height: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .7);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .08);
+    cursor: pointer;
+}
+.nahtlos-slider__punkt.ist-aktiv { background: var(--ns-akzent); }
+
+/* Handy: Bild oben, Text darunter auf hellem Grund — kein Text über zu kleinem Bild */
+@media (max-width: 767px) {
+    .nahtlos-slider--startseite { --ns-hoehe: auto; }
+    .nahtlos-slider--startseite .nahtlos-slider__spur { height: auto; display: grid; }
+    .nahtlos-slider--startseite .nahtlos-slide { position: relative; grid-area: 1 / 1; flex-direction: column; align-items: stretch; }
+    .nahtlos-slider--startseite .nahtlos-slide__bild { position: relative; aspect-ratio: 4 / 3; }
+    .nahtlos-slider--startseite .nahtlos-slide--fertig .nahtlos-slide__bild { aspect-ratio: auto; }
+    .nahtlos-slider--startseite .nahtlos-slide--fertig .nahtlos-slide__bild img { height: auto; }
+    .nahtlos-slider--startseite .nahtlos-slide::before { display: none; }
+    .nahtlos-slider--startseite .nahtlos-slide__inhalt,
+    .nahtlos-slider--startseite .nahtlos-slide--mitte .nahtlos-slide__inhalt {
+        width: auto;
+        margin: 0;
+        padding: 1.6rem 1.4rem 3.2rem;
+        text-align: left;
+        color: inherit;
+        background: var(--theme-palette-color-7, #f7f2ea);
+    }
+    .nahtlos-slider--startseite .nahtlos-slide--hell .nahtlos-slide__inhalt { color: #1f1d1b; }
+    .nahtlos-slider--startseite .nahtlos-slide--hell .nahtlos-btn { background: var(--ns-akzent); color: #fff; }
+    .nahtlos-slider--startseite .nahtlos-slide__buttons { justify-content: flex-start; }
+    .nahtlos-slider--startseite .nahtlos-slider__punkte { bottom: 14px; }
+    .nahtlos-slider--startseite .nahtlos-slider__punkt { background: rgba(0, 0, 0, .18); }
+    .nahtlos-slider--startseite .nahtlos-slider__punkt.ist-aktiv { background: var(--ns-akzent); }
+    .nahtlos-slider__pfeil { display: none; }
+    .nahtlos-slider--kategorie .nahtlos-slide__inhalt { width: auto; margin: 0 1.2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nahtlos-slide, .nahtlos-slide.ist-aktiv { transition: none; }
+}
