@@ -6,6 +6,7 @@
 - [✅ 1.0-Check](project_1_0_check.md) — 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Migration 223 = Shop-Wurzelkategorie, nächste 224; Kürzel indra-design = IND) → Live neu + Backup
 - [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben, Snippets; 2026-11-04: Wurzelkategorie (Migr. 223, auf Live setzen!), Saisonales/Sonstiges, Menü 2-zeilig, 7 Kacheln, Woo-Recount im Sync, Super Cache leeren
 - [🧦 Sockenwolle Logo + Layout](project_sow_shop_design.md) — Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün; Babsi tendiert zu Logo A Weinrot, Startseiten-Entwurf gebaut → dann Vektor
+- [🧭 Shop-Menü aus dem ERP](project_shop_menue.md) — 2026-11-05 gebaut (Migr. 226, Plugin 1.4.0), live auf indra-design; Hersteller-Spalten erst mit SOW echt testen
 - [🏷️ Indra-Sortiment + Preise](project_indra_sortiment.md) — Motivcodes W/A/K/N/P/S/C/E, Preisliste, Untersetzer = Motiv-Vater × Material; 2026-11-04 Weihnachtsanhänger XM (3,50 / 4 für 12) + Dosen DO (7,90), Katalog Nov 2026
 - [💡 Newsletter + Slider aus dem ERP](project_newsletter_slider_ideen.md) — Slider ✅ gebaut 2026-11-05 (Migr. 224 + WP-Plugin NAHTLOS Connector), Plugin 1.3.1 live auf indra-design (3 Slides + 7 Kacheln, Migr. 225); Newsletter offen; Live-Neuaufsatz ab KW 46
 - [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
