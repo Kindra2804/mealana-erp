@@ -91,7 +91,7 @@ class SliderRepository
             LEFT JOIN kategorien k ON k.id = s.kategorie_id
             LEFT JOIN aktionen a   ON a.id = s.aktion_id
             WHERE s.shop_id = :shop
-            ORDER BY s.position = 'kategorie', k.name, s.sortierung, s.id
+            ORDER BY FIELD(s.position, 'startseite', 'kachel', 'kategorie'), k.name, s.sortierung, s.id
         ");
         $stmt->execute(['shop' => $shopId]);
         return $stmt->fetchAll();
@@ -191,7 +191,7 @@ class SliderRepository
     /** Alle Kategorien mit Elternteil (für Pfadanzeige), unabhängig vom Shop. */
     public function findAlleKategorien(): array
     {
-        return $this->db->query("SELECT id, name, parent_id FROM kategorien")->fetchAll(PDO::FETCH_UNIQUE);
+        return $this->db->query("SELECT id, name, parent_id, bild_pfad FROM kategorien")->fetchAll(PDO::FETCH_UNIQUE);
     }
 
     /** Hersteller, die im Shop als Filter-Begriff angelegt sind (Shop noch leer: alle). */
@@ -244,6 +244,23 @@ class SliderRepository
         $stmt->execute(['id' => $id, 'shop' => $shopId]);
         $wert = $stmt->fetchColumn();
         return $wert !== false && $wert !== null && $wert !== '' ? (string)$wert : null;
+    }
+
+    /** WP-Medien-ID des Kategoriebilds im Shop (vom Kategorie-Sync hochgeladen) oder null. */
+    public function findKategorieBildWpId(int $kategorieId, int $shopId): ?int
+    {
+        $stmt = $this->db->prepare("SELECT bild_external_id FROM kategorie_shops WHERE kategorie_id = :k AND shop_id = :s");
+        $stmt->execute(['k' => $kategorieId, 's' => $shopId]);
+        $id = $stmt->fetchColumn();
+        return $id ? (int)$id : null;
+    }
+
+    /** Bild-Pfad der Kategorie im ERP (für die Vorschau in der Liste) oder null. */
+    public function findKategorieBildPfad(int $kategorieId): ?string
+    {
+        $stmt = $this->db->prepare("SELECT bild_pfad FROM kategorien WHERE id = :id");
+        $stmt->execute(['id' => $kategorieId]);
+        return $stmt->fetchColumn() ?: null;
     }
 
     /** Aktionen für die Auswahl „solange Aktion läuft“ (mit Zeitraum aus den Aktionskategorien). */

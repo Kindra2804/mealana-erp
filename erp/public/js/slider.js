@@ -77,16 +77,27 @@ function zeigeBild(variante, url) {
 // ── Felder je nach Auswahl ein-/ausblenden ─────────────────────────────────
 
 function sliderSichtbarkeit() {
-    const fertig = radioWert('art') === 'fertiges_bild';
+    const kachel = radioWert('position') === 'kachel';
+    const fertig = !kachel && radioWert('art') === 'fertiges_bild';
     const sichtbar = radioWert('sichtbar');
     slForm.querySelectorAll('.nur-gestaltet').forEach(el => { el.style.display = fertig ? 'none' : ''; });
     slForm.querySelectorAll('.nur-fertig').forEach(el => { el.style.display = fertig ? '' : 'none'; });
     slForm.querySelectorAll('.nur-zeitraum').forEach(el => { el.style.display = sichtbar === 'zeitraum' ? '' : 'none'; });
     slForm.querySelectorAll('.nur-aktion').forEach(el => { el.style.display = sichtbar === 'aktion' ? '' : 'none'; });
     document.getElementById('sl-kat-feld').style.visibility = radioWert('position') === 'kategorie' ? 'visible' : 'hidden';
+    // Kachel: nur Bild, kleine Zeile, Titel, Ziel
+    slForm.querySelectorAll('.ohne-kachel').forEach(el => {
+        if (kachel) el.style.display = 'none';
+        else if (!el.classList.contains('nur-gestaltet') && !el.classList.contains('nur-fertig')) el.style.display = '';
+    });
+    slForm.querySelectorAll('.nur-kachel').forEach(el => { el.style.display = kachel ? '' : 'none'; });
+    document.getElementById('sl-bild-label').innerHTML = kachel
+        ? 'Bild <span style="font-weight:400">(quadratisch ca. 800 × 800 px — leer lassen = Kategoriebild)</span>'
+        : 'Bild Desktop <span style="font-weight:400">(ideal 1920 × 700 px, Querformat)</span>';
     document.getElementById('sl-titel-label').textContent = fertig ? 'Titel (nur intern, optional)' : 'Titel';
-    document.getElementById('sl-buttons-titel').textContent = fertig ? 'Link (Klick auf das Bild führt zu …)' : 'Buttons';
-    $('.sl-btn-label-1').textContent = fertig ? 'Ziel' : 'Button 1 (Hauptbutton)';
+    document.getElementById('sl-buttons-titel').textContent = kachel ? 'Ziel (Klick auf die Kachel führt zu …)'
+        : fertig ? 'Link (Klick auf das Bild führt zu …)' : 'Buttons';
+    $('.sl-btn-label-1').textContent = (fertig || kachel) ? 'Ziel' : 'Button 1 (Hauptbutton)';
     sliderVorschau();
 }
 
@@ -128,9 +139,17 @@ function sliderArtikelSuche(n, q) {
 // ── Live-Vorschau ─────────────────────────────────────────────────────────
 
 function sliderVorschau() {
+    // Kachel-Vorschau: eigenes Bild, sonst Bild der Ziel-Kategorie
+    const kv = document.getElementById('sl-kachel-vorschau');
+    const katId = feld('button1_ziel_typ').value === 'kategorie' ? feld('button1_kategorie').value : '';
+    const kBild = slBildUrl.desktop || (katId && SLIDER.kategorieBilder[katId]) || '';
+    $('.bild', kv).style.backgroundImage = kBild ? `url("${kBild}")` : '';
+    $('.kk', kv).textContent = feld('kicker').value;
+    $('.kt', kv).textContent = feld('titel').value || 'Titel der Kachel';
+
     const v = document.getElementById('sl-vorschau');
     const fertig = radioWert('art') === 'fertiges_bild';
-    v.className = `sl-vorschau ${radioWert('text_position') || 'links'} ${radioWert('schrift') || 'dunkel'} ${fertig ? 'fertig' : ''}`;
+    v.className = `sl-vorschau ohne-kachel ${radioWert('text_position') || 'links'} ${radioWert('schrift') || 'dunkel'} ${fertig ? 'fertig' : ''}`;
     v.style.backgroundImage = slBildUrl.desktop ? `url("${slBildUrl.desktop}")` : '';
     const t = $('.sl-vtext', v);
     t.style.display = fertig ? 'none' : '';
@@ -155,6 +174,7 @@ slForm.addEventListener('input', e => {
 });
 slForm.addEventListener('change', e => {
     if (e.target.type === 'radio') sliderSichtbarkeit();
+    if (e.target.tagName === 'SELECT') sliderVorschau();
     if (e.target.type === 'file') {
         const variante = e.target.name === 'bild_mobil' ? 'mobil' : 'desktop';
         const datei = e.target.files[0];

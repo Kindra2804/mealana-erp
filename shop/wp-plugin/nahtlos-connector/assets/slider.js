@@ -3,6 +3,12 @@
     'use strict';
     var ruhig = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Kacheln: dieselbe Zeitsteuerung wie die Slides (Seite kann aus dem Cache kommen)
+    document.querySelectorAll('.nahtlos-kachel').forEach(function (k) {
+        var jetzt = Date.now() / 1000, von = +k.dataset.von || 0, bis = +k.dataset.bis || 0;
+        if ((von && von > jetzt) || (bis && bis < jetzt)) k.remove(); else k.classList.remove('ist-geplant');
+    });
+
     document.querySelectorAll('.nahtlos-slider').forEach(function (slider) {
         // Zeitsteuerung im Browser: die Seite kann aus dem Cache kommen, darum hier nach der
         // Uhrzeit filtern (data-von/-bis = Unix-Zeit, 0 = offen). Unsichtbare Slides + Punkte entfernen.

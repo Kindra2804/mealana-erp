@@ -174,3 +174,27 @@
 @media (prefers-reduced-motion: reduce) {
     .nahtlos-slide, .nahtlos-slide.ist-aktiv { transition: none; }
 }
+
+/* ── Kategorie-Kacheln [nahtlos_kacheln] ─────────────────────────────────── */
+.nahtlos-kacheln { display: flex; flex-wrap: wrap; justify-content: center; gap: 2em; margin: 0 0 2rem; }
+.nahtlos-kachel {
+    flex: 0 0 calc(25% - 1.5em);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+    color: inherit;
+    text-decoration: none;
+    transition: transform .2s, box-shadow .2s;
+}
+.nahtlos-kachel:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0, 0, 0, .08); color: inherit; }
+.nahtlos-kachel.ist-geplant { display: none; }
+.nahtlos-kachel__bild { display: block; aspect-ratio: 1; overflow: hidden; }
+.nahtlos-kachel__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nahtlos-kachel__text { flex: 1 1 auto; display: flex; flex-direction: column; padding: 14px 18px 18px; text-align: center; }
+.nahtlos-kachel__kicker { font-size: .8rem; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--ns-kicker, inherit); opacity: .85; margin-bottom: 6px; }
+.nahtlos-kachel__titel { margin-top: auto; font-size: 1.25rem; line-height: 1.25; hyphens: auto; }
+@media (max-width: 999px) { .nahtlos-kachel { flex-basis: calc(33.333% - 1.4em); } }
+@media (max-width: 767px) { .nahtlos-kacheln { gap: 14px; } .nahtlos-kachel { flex-basis: calc(50% - 7px); } .nahtlos-kachel__text { padding: 10px 10px 14px; } .nahtlos-kachel__titel { font-size: 1.05rem; } }

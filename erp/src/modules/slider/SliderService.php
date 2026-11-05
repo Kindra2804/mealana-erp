@@ -80,7 +80,10 @@ class SliderService
     {
         $f = [];
         if (empty($d['shop_id']) || !$this->repo->findShop((int)$d['shop_id'])) $f[] = 'Bitte einen Shop wählen.';
-        if (!in_array($d['position'] ?? '', ['startseite', 'kategorie'], true)) $f[] = 'Ungültige Position.';
+        if (!in_array($d['position'] ?? '', ['startseite', 'kategorie', 'kachel'], true)) $f[] = 'Ungültige Position.';
+        $kachel = ($d['position'] ?? '') === 'kachel';
+        if ($kachel && empty($d['titel'])) $f[] = 'Der Titel der Kachel fehlt.';
+        if ($kachel && empty($d['button1_ziel_typ'])) $f[] = 'Bitte wählen, wohin die Kachel führt.';
         if (($d['position'] ?? '') === 'kategorie' && empty($d['kategorie_id'])) $f[] = 'Bitte die Kategorie wählen, auf deren Seite das Banner erscheint.';
         if (!in_array($d['art'] ?? '', ['gestaltet', 'fertiges_bild'], true)) $f[] = 'Ungültige Art.';
         if (empty($d['bezeichnung'])) $f[] = 'Bitte einen Titel oder eine Bezeichnung eingeben.';
@@ -89,8 +92,8 @@ class SliderService
         foreach ([1, 2] as $n) {
             $text = $d["button{$n}_text"] ?? null;
             $typ  = $d["button{$n}_ziel_typ"] ?? null;
-            // Bei fertigem Bild ist Button 1 der Link der ganzen Slide (ohne Text)
-            $brauchtZiel = $text !== null || ($n === 1 && ($d['art'] ?? '') === 'fertiges_bild' && $typ !== null);
+            // Bei fertigem Bild und bei Kacheln ist Button 1 der Link der ganzen Fläche (ohne Text)
+            $brauchtZiel = $text !== null || ($n === 1 && self::linkOhneText($d) && $typ !== null);
             if (!$brauchtZiel) continue;
             if (!in_array($typ, self::ZIEL_TYPEN, true)) { $f[] = "Button $n: bitte ein Ziel wählen."; continue; }
             if ($typ === 'url') {
@@ -113,17 +116,30 @@ class SliderService
         return $f;
     }
 
+    /** Ganze Fläche ist der Link (Button 1 ohne Beschriftung): fertiges Bild und Kachel. */
+    private static function linkOhneText(array $d): bool
+    {
+        return ($d['art'] ?? '') === 'fertiges_bild' || ($d['position'] ?? '') === 'kachel';
+    }
+
     /** Felder leeren, die zur gewählten Variante nicht passen (keine Altlasten in der DB). */
     private function normalisiere(array $d): array
     {
         if ($d['position'] !== 'kategorie') $d['kategorie_id'] = null;
+        if ($d['position'] === 'kachel') {
+            // Kachel: Bild, kleine Zeile, Titel, Ziel — sonst nichts
+            $d['art'] = 'gestaltet';
+            $d['text'] = $d['button1_text'] = $d['button2_text'] = $d['button2_ziel_typ'] = $d['button2_ziel_id'] = $d['button2_url'] = null;
+            $d['text_position'] = 'mitte';
+            $d['schrift'] = 'dunkel';
+        }
         if ($d['art'] === 'fertiges_bild') {
             $d['kicker'] = $d['text'] = $d['button2_text'] = $d['button2_ziel_typ'] = $d['button2_ziel_id'] = $d['button2_url'] = null;
             $d['button1_text'] = null;
         }
         foreach ([1, 2] as $n) {
             $typ = $d["button{$n}_ziel_typ"] ?? null;
-            $ohneText = ($d["button{$n}_text"] ?? null) === null && !($n === 1 && $d['art'] === 'fertiges_bild');
+            $ohneText = ($d["button{$n}_text"] ?? null) === null && !($n === 1 && self::linkOhneText($d));
             if ($typ === null || $ohneText) {
                 $d["button{$n}_ziel_typ"] = $d["button{$n}_ziel_id"] = $d["button{$n}_url"] = null;
                 continue;
@@ -250,13 +266,19 @@ class SliderService
     public static function status(array $s): string
     {
         if (!$s['ist_aktiv']) return 'aus';
-        if (!$s['bild_desktop']) return 'kein_bild';
+        if (!$s['bild_desktop'] && !self::nimmtKategoriebild($s)) return 'kein_bild';
         [$von, $bis] = self::zeitraum($s);
         if ($s['sichtbar'] === 'aktion' && (!$s['aktion_id'] || !$s['aktion_gestartet'])) return 'aus';
         $jetzt = time();
         if ($bis !== null && strtotime($bis) < $jetzt) return 'abgelaufen';
         if ($von !== null && strtotime($von) > $jetzt) return 'geplant';
         return 'sichtbar';
+    }
+
+    /** Kachel ohne eigenes Bild, die auf eine Kategorie zeigt: nimmt beim Übertragen das Kategoriebild. */
+    public static function nimmtKategoriebild(array $s): bool
+    {
+        return $s['position'] === 'kachel' && !$s['bild_desktop'] && $s['button1_ziel_typ'] === 'kategorie' && $s['button1_ziel_id'];
     }
 
     /** [von, bis] als 'Y-m-d H:i:s' oder null, bei Aktion aus dem Aktionszeitraum. */
@@ -332,7 +354,17 @@ class SliderService
         }
 
         $bilder = [];
+        if (self::nimmtKategoriebild($s)) {
+            $wpId = $this->repo->findKategorieBildWpId((int)$s['button1_ziel_id'], $shopId);
+            if ($wpId === null) {
+                $hinweise[] = "„{$s['bezeichnung']}“: kein eigenes Bild, und die Kategorie hat im Shop kein Bild — nicht übertragen.";
+                return null;
+            }
+            $s['bild_desktop'] = null;
+            $bilder['desktop'] = ['id' => $wpId, 'url' => null]; // URL ermittelt das Plugin aus der Mediathek
+        }
         foreach (['desktop', 'mobil'] as $variante) {
+            if (isset($bilder[$variante])) continue;
             $datei = $s['bild_' . $variante];
             if (!$datei) { $bilder[$variante] = null; continue; }
             if ($s["bild_{$variante}_synced"] !== $datei || !$s["bild_{$variante}_wp_id"]) {

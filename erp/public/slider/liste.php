@@ -33,6 +33,13 @@ foreach ($shop ? $repo->findShopKategorien($shopId) : [] as $k) {
     $kategorien[] = ['id' => (int)$k['id'], 'name' => $pfad((int)$k['id'])];
 }
 usort($kategorien, fn($a, $b) => strcmp($a['name'], $b['name']));
+// Kategoriebilder (ERP) für die Kachel-Vorschau: id => URL
+$kategorieBilder = [];
+foreach ($kategorien as $k) {
+    if (!empty($alleKat[$k['id']]['bild_pfad'])) {
+        $kategorieBilder[$k['id']] = BASE_PATH . '/uploads/kategorien/' . $k['id'] . '/' . $alleKat[$k['id']]['bild_pfad'];
+    }
+}
 $hersteller = $shop ? $repo->findShopHersteller($shopId) : [];
 $aktionen   = $repo->findAktionen();
 
@@ -40,6 +47,10 @@ $aktionen   = $repo->findAktionen();
 $slidesJs = [];
 foreach ($slides as $s) {
     $s['status'] = SliderService::status($s);
+    $s['kategorie_bild_url'] = null;
+    if (SliderService::nimmtKategoriebild($s) && ($kb = $repo->findKategorieBildPfad((int)$s['button1_ziel_id']))) {
+        $s['kategorie_bild_url'] = BASE_PATH . '/uploads/kategorien/' . (int)$s['button1_ziel_id'] . '/' . $kb;
+    }
     foreach ([1, 2] as $n) {
         $s["button{$n}_artikel_name"] = $s["button{$n}_ziel_typ"] === 'artikel' && $s["button{$n}_ziel_id"]
             ? $repo->findArtikelName((int)$s["button{$n}_ziel_id"]) : null;
@@ -59,7 +70,7 @@ $statusInfo = [
     'aus'        => ['○ aus',       '#888',    '#f5f5f5'],
     'kein_bild'  => ['Bild fehlt',  '#b45309', '#fef3c7'],
 ];
-$gruppen = ['startseite' => [], 'kategorie' => []];
+$gruppen = ['startseite' => [], 'kachel' => [], 'kategorie' => []];
 foreach ($slides as $s) $gruppen[$s['position']][] = $s;
 ?>
 
@@ -69,6 +80,11 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
     .sl-stand { font-size:12px; color:var(--color-text-muted) }
     .sl-offen { background:#fef3c7; color:#92400e; border-radius:10px; padding:2px 10px; font-size:12px; font-weight:600 }
     .sl-thumb { width:110px; height:42px; object-fit:cover; border-radius:3px; background:#eee; display:block }
+    .sl-thumb.quadrat { width:52px; height:52px }
+    .sl-kachel-vorschau { width:220px; background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.12); text-align:center }
+    .sl-kachel-vorschau .bild { aspect-ratio:1; background:#eee center/cover no-repeat }
+    .sl-kachel-vorschau .kk { font-size:10px; letter-spacing:.2em; text-transform:uppercase; opacity:.7; padding:12px 12px 0 }
+    .sl-kachel-vorschau .kt { font-size:17px; padding:4px 12px 14px }
     .sl-pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; white-space:nowrap }
     .sl-griff { cursor:grab; color:#aaa; font-size:16px; width:24px; user-select:none }
     tr.sl-drag { opacity:.4 }
@@ -154,7 +170,7 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
         </p>
     <?php endif; ?>
 
-    <?php foreach (['startseite' => 'Startseite (Hero-Slider)', 'kategorie' => 'Banner auf Kategorieseiten'] as $pos => $ueberschrift): ?>
+    <?php foreach (['startseite' => 'Startseite (Hero-Slider)', 'kachel' => 'Kacheln auf der Startseite', 'kategorie' => 'Banner auf Kategorieseiten'] as $pos => $ueberschrift): ?>
         <?php if (!$gruppen[$pos]) continue; ?>
         <div class="sl-gruppe"><?= $ueberschrift ?></div>
         <table class="erp-table">
@@ -172,7 +188,9 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
             ?>
                 <tr data-id="<?= $s['id'] ?>" data-gruppe="<?= $pos . '-' . (int)$s['kategorie_id'] ?>" class="<?= $s['ist_aktiv'] ? '' : 'row-inaktiv' ?>">
                     <td class="sl-griff" title="Ziehen zum Sortieren">≡</td>
-                    <td><?php if ($s['bild_desktop']): ?><img class="sl-thumb" src="<?= BASE_PATH ?>/uploads/slider/<?= $s['id'] ?>/<?= htmlspecialchars($s['bild_desktop']) ?>" alt=""><?php else: ?><span class="sl-thumb"></span><?php endif; ?></td>
+                    <td><?php if ($s['bild_desktop']): ?><img class="sl-thumb<?= $pos === 'kachel' ? ' quadrat' : '' ?>" src="<?= BASE_PATH ?>/uploads/slider/<?= $s['id'] ?>/<?= htmlspecialchars($s['bild_desktop']) ?>" alt="">
+                        <?php elseif (!empty($slidesJs[$s['id']]['kategorie_bild_url'])): ?><img class="sl-thumb quadrat" src="<?= htmlspecialchars($slidesJs[$s['id']]['kategorie_bild_url']) ?>" alt="" title="Kategoriebild">
+                        <?php else: ?><span class="sl-thumb"></span><?php endif; ?></td>
                     <td>
                         <a href="#" onclick="sliderBearbeiten(<?= $s['id'] ?>);return false" style="font-weight:600;color:var(--color-nav);text-decoration:none"><?= htmlspecialchars($s['bezeichnung']) ?></a>
                         <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">
@@ -210,6 +228,7 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
           <label>Wo erscheint die Slide?</label>
           <div class="sl-wahl">
             <label><input type="radio" name="position" value="startseite"> Startseite</label>
+            <label><input type="radio" name="position" value="kachel"> Kachel (Startseite)</label>
             <label><input type="radio" name="position" value="kategorie"> Kategorieseite</label>
           </div>
         </div>
@@ -219,7 +238,7 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
             <?php foreach ($kategorien as $k): ?><option value="<?= $k['id'] ?>"><?= htmlspecialchars($k['name']) ?></option><?php endforeach; ?>
           </select>
         </div>
-        <div class="sl-feld voll">
+        <div class="sl-feld voll ohne-kachel">
           <label>Art</label>
           <div class="sl-wahl">
             <label><input type="radio" name="art" value="gestaltet"> Bild + Text (Text wird im Shop über das Bild gelegt)</label>
@@ -229,10 +248,10 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
 
         <div class="sl-abschnitt">Bilder</div>
         <div class="sl-feld">
-          <label>Bild Desktop <span style="font-weight:400">(ideal 1920 × 700 px, Querformat)</span></label>
+          <label id="sl-bild-label">Bild Desktop <span style="font-weight:400">(ideal 1920 × 700 px, Querformat)</span></label>
           <div class="sl-bild-feld"><img id="sl-bild-desktop-vorschau" alt=""><input type="file" name="bild_desktop" accept="image/jpeg,image/png,image/webp"></div>
         </div>
-        <div class="sl-feld">
+        <div class="sl-feld ohne-kachel">
           <label>Bild Handy <span style="font-weight:400">(optional, quadratisch ca. 1080 × 1080 px)</span></label>
           <div class="sl-bild-feld"><img id="sl-bild-mobil-vorschau" alt=""><input type="file" name="bild_mobil" accept="image/jpeg,image/png,image/webp">
             <label id="sl-mobil-weg" style="font-size:12px;white-space:nowrap"><input type="checkbox" name="bild_mobil_entfernen" value="1"> entfernen</label></div>
@@ -251,7 +270,7 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
           <label id="sl-titel-label">Titel</label>
           <input type="text" name="titel" maxlength="150">
         </div>
-        <div class="sl-feld voll nur-gestaltet">
+        <div class="sl-feld voll nur-gestaltet ohne-kachel">
           <label>Text (optional)</label>
           <textarea name="text" maxlength="400"></textarea>
         </div>
@@ -262,10 +281,10 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
 
         <div class="sl-abschnitt" id="sl-buttons-titel">Buttons</div>
         <?php foreach ([1, 2] as $n): ?>
-        <div class="sl-feld voll <?= $n === 2 ? 'nur-gestaltet' : '' ?>">
+        <div class="sl-feld voll <?= $n === 2 ? 'nur-gestaltet ohne-kachel' : '' ?>">
           <label class="sl-btn-label-<?= $n ?>"><?= $n === 1 ? 'Button 1 (Hauptbutton)' : 'Button 2 (optional, als Textlink)' ?></label>
           <div class="sl-button-zeile">
-            <input type="text" name="button<?= $n ?>_text" maxlength="60" placeholder="Beschriftung" class="nur-gestaltet">
+            <input type="text" name="button<?= $n ?>_text" maxlength="60" placeholder="Beschriftung" class="nur-gestaltet ohne-kachel">
             <select name="button<?= $n ?>_ziel_typ" data-n="<?= $n ?>" onchange="sliderZielTyp(<?= $n ?>)">
               <option value="">– kein Ziel –</option><option value="kategorie">Kategorie</option><option value="artikel">Artikel</option>
               <option value="hersteller">Hersteller</option><option value="url">Adresse (URL)</option>
@@ -284,8 +303,8 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
         </div>
         <?php endforeach; ?>
 
-        <div class="sl-abschnitt nur-gestaltet">Darstellung</div>
-        <div class="sl-feld nur-gestaltet">
+        <div class="sl-abschnitt nur-gestaltet ohne-kachel">Darstellung</div>
+        <div class="sl-feld nur-gestaltet ohne-kachel">
           <label>Text-Position</label>
           <div class="sl-wahl">
             <label><input type="radio" name="text_position" value="links"> links</label>
@@ -293,7 +312,7 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
             <label><input type="radio" name="text_position" value="rechts"> rechts</label>
           </div>
         </div>
-        <div class="sl-feld nur-gestaltet">
+        <div class="sl-feld nur-gestaltet ohne-kachel">
           <label>Schrift</label>
           <div class="sl-wahl">
             <label><input type="radio" name="schrift" value="dunkel"> dunkel (für helle Bilder)</label>
@@ -323,7 +342,8 @@ foreach ($slides as $s) $gruppen[$s['position']][] = $s;
 
         <div class="sl-abschnitt">Vorschau <span style="font-weight:400;text-transform:none;letter-spacing:0">(Schrift und Farben im Shop wie im Shop-Design)</span></div>
         <div class="voll">
-          <div class="sl-vorschau" id="sl-vorschau">
+          <div class="sl-kachel-vorschau nur-kachel" id="sl-kachel-vorschau"><div class="bild"></div><div class="kk"></div><div class="kt"></div></div>
+          <div class="sl-vorschau ohne-kachel" id="sl-vorschau">
             <div class="sl-vtext"><div class="sl-vkicker"></div><div class="sl-vtitel"></div><div class="sl-vbeschr"></div><div class="sl-vbtns"></div></div>
           </div>
         </div>
@@ -357,6 +377,8 @@ const SLIDER = {
     basis: <?= json_encode(BASE_PATH) ?>,
     shopId: <?= $shopId ?>,
     slides: <?= json_encode($slidesJs, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+    // Kategoriebilder für die Kachel-Vorschau (Kachel ohne eigenes Bild nimmt das Kategoriebild)
+    kategorieBilder: <?= json_encode((object)$kategorieBilder, JSON_UNESCAPED_UNICODE) ?>,
 };
 </script>
 <script src="<?= BASE_PATH ?>/js/slider.js"></script>

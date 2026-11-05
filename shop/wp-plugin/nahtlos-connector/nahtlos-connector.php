@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       NAHTLOS Connector
  * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider der Startseite und Banner auf Kategorieseiten, gepflegt im ERP.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -23,13 +23,13 @@
  *    auch kein WP-Cron (Test 2026-11-05: Slide erschien nicht). Darum liefert die Seite
  *    künftige Slides schon mit (versteckt, mit data-von/-bis), und der Browser blendet
  *    nach der Uhrzeit ein/aus (slider.js). Das geplante Cache-Leeren bleibt als Zusatz.
- *  - Ausgabe: Shortcode [nahtlos_slider] (Startseite) und automatisch oben auf
- *    Kategorieseiten (Woo-Kategorie mit eigenen Banner-Slides).
+ *  - Ausgabe: Shortcode [nahtlos_slider] (Startseite), [nahtlos_kacheln] (Kategorie-Kacheln)
+ *    und automatisch oben auf Kategorieseiten (Woo-Kategorie mit eigenen Banner-Slides).
  */
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.2.0';
+const NAHTLOS_VERSION = '1.3.0';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
@@ -76,7 +76,13 @@ function nahtlos_slider_empfangen(WP_REST_Request $request)
         if (!is_string($v) || $v === '') return null;
         try { return (new DateTimeImmutable($v, wp_timezone()))->getTimestamp(); } catch (Exception $e) { return null; }
     };
-    $bild = fn($b) => is_array($b) && !empty($b['url']) ? ['id' => (int)($b['id'] ?? 0), 'url' => esc_url_raw($b['url'])] : null;
+    // Bild: URL vom ERP-Upload, oder nur Medien-ID (Kategoriebild aus der Mediathek) → URL hier ermitteln
+    $bild = function ($b) {
+        if (!is_array($b)) return null;
+        $id = (int)($b['id'] ?? 0);
+        $url = !empty($b['url']) ? esc_url_raw($b['url']) : ($id ? (string)wp_get_attachment_image_url($id, 'large') : '');
+        return $url ? ['id' => $id, 'url' => $url] : null;
+    };
 
     $slides = [];
     foreach ($daten['slides'] as $s) {
@@ -93,7 +99,7 @@ function nahtlos_slider_empfangen(WP_REST_Request $request)
         }
         $slides[] = [
             'id'            => (int)($s['id'] ?? 0),
-            'position'      => ($s['position'] ?? '') === 'kategorie' ? 'kategorie' : 'startseite',
+            'position'      => in_array($s['position'] ?? '', ['kategorie', 'kachel'], true) ? $s['position'] : 'startseite',
             'kategorie'     => isset($s['kategorie']) ? (int)$s['kategorie'] : null,
             'art'           => ($s['art'] ?? '') === 'fertiges_bild' ? 'fertiges_bild' : 'gestaltet',
             'kicker'        => $text($s['kicker'] ?? '', 80),
@@ -173,6 +179,10 @@ function nahtlos_aktuelle_slides(string $position, ?int $kategorie = null): arra
 add_shortcode('nahtlos_slider', function ($atts) {
     $atts = shortcode_atts(['position' => 'startseite'], $atts);
     return nahtlos_slider_html(nahtlos_aktuelle_slides($atts['position'] === 'kategorie' ? 'kategorie' : 'startseite'), 'startseite');
+});
+
+add_shortcode('nahtlos_kacheln', function () {
+    return nahtlos_kacheln_html(nahtlos_aktuelle_slides('kachel'));
 });
 
 // Banner oben auf Kategorieseiten (nur wenn es für diese Kategorie Slides gibt)
@@ -256,11 +266,31 @@ function nahtlos_slider_html(array $slides, string $art): string
 
 // CSS/JS schon im <head> laden, wo der Slider erscheinen kann (sonst kurz ungestylt)
 add_action('wp_enqueue_scripts', function () {
+    $inhalt = is_singular() ? (string)get_post_field('post_content', get_queried_object_id()) : '';
     if (is_front_page() || (function_exists('is_product_category') && is_product_category())
-        || (is_singular() && has_shortcode((string)get_post_field('post_content', get_queried_object_id()), 'nahtlos_slider'))) {
+        || has_shortcode($inhalt, 'nahtlos_slider') || has_shortcode($inhalt, 'nahtlos_kacheln')) {
         nahtlos_assets();
     }
 });
+
+/** Kategorie-Kacheln: Bild, kleine Zeile, Titel; die ganze Kachel ist der Link. Zeitsteuerung wie beim Slider (slider.js). */
+function nahtlos_kacheln_html(array $kacheln): string
+{
+    if (!$kacheln) return '';
+    nahtlos_assets();
+    $jetzt = time();
+    $html = '<div class="nahtlos-kacheln">';
+    foreach ($kacheln as $k) {
+        $link = $k['buttons'] ? nahtlos_ziel_url($k['buttons'][0]) : '';
+        $geplant = $k['von'] && (int)$k['von'] > $jetzt ? ' ist-geplant' : '';
+        $html .= '<a class="nahtlos-kachel' . $geplant . '" href="' . esc_url($link ?: '#') . '" data-von="' . (int)$k['von'] . '" data-bis="' . (int)$k['bis'] . '">'
+            . '<span class="nahtlos-kachel__bild"><img src="' . esc_url($k['bild']['url']) . '" alt="' . esc_attr($k['alt']) . '" loading="lazy" decoding="async"></span>'
+            . '<span class="nahtlos-kachel__text">'
+            . ($k['kicker'] ? '<span class="nahtlos-kachel__kicker">' . esc_html($k['kicker']) . '</span>' : '')
+            . '<span class="nahtlos-kachel__titel">' . esc_html($k['titel']) . '</span></span></a>';
+    }
+    return $html . '</div>';
+}
 
 function nahtlos_assets(): void
 {
