@@ -3,7 +3,7 @@
 ## Aktuell / Steuerung
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
-- [✅ 1.0-Check](project_1_0_check.md) — 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Migration 223 = Shop-Wurzelkategorie, nächste 224; Kürzel indra-design = IND) → Live neu + Backup
+- [✅ 1.0-Check](project_1_0_check.md) — 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Kürzel indra-design = IND) → Live neu + Backup; ⚠️ Hosting-Limits: ein Konto für alle Shops, CPU dauerhaft am Limit, 508-Fehler (2026-11-05) → vor Live klären
 - [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben, Snippets; 2026-11-04: Wurzelkategorie (Migr. 223, auf Live setzen!), Saisonales/Sonstiges, Menü 2-zeilig, 7 Kacheln, Woo-Recount im Sync, Super Cache leeren
 - [🧦 Sockenwolle Logo + Layout](project_sow_shop_design.md) — Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün; Logo fertig: Schrift A Weinrot + Babsis rote Norweger-Socke (Vektor, 2026-11-05)
 - [🌿 bio-wolle Logo + Startseite](project_bio_wolle_shop_design.md) — ✅ 2026-11-05 Logo 1b Tanne hell #3b6b52 als Vektor (shop/branding/bio-wolle/), Startseiten-Entwurf Desktop+Handy; wartet auf Babsis Feedback
