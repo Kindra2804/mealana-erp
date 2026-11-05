@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       NAHTLOS Connector
  * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider der Startseite und Banner auf Kategorieseiten, gepflegt im ERP.
- * Version:           1.0.3
+ * Version:           1.1.1
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -19,16 +19,17 @@
  *    2026-12-01T00:00:00+01:00) und werden als Unix-Zeit gespeichert — unabhängig davon,
  *    welche Zeitzone in WordPress eingestellt ist (indra-design.at läuft auf UTC). Das ERP ist vom Shop aus nicht erreichbar,
  *    darum muss die Zeitsteuerung hier passieren.
- *  - Zu jedem künftigen Wechselzeitpunkt wird ein WP-Cron-Ereignis geplant, das den
- *    Seiten-Cache leert (WP Super Cache u. a.) — sonst käme z. B. die Weihnachts-Slide
- *    erst Stunden später.
+ *  - Seiten-Cache (WP Super Cache): gecachte Aufrufe starten WordPress gar nicht, also
+ *    auch kein WP-Cron (Test 2026-11-05: Slide erschien nicht). Darum liefert die Seite
+ *    künftige Slides schon mit (versteckt, mit data-von/-bis), und der Browser blendet
+ *    nach der Uhrzeit ein/aus (slider.js). Das geplante Cache-Leeren bleibt als Zusatz.
  *  - Ausgabe: Shortcode [nahtlos_slider] (Startseite) und automatisch oben auf
  *    Kategorieseiten (Woo-Kategorie mit eigenen Banner-Slides).
  */
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.0.3';
+const NAHTLOS_VERSION = '1.1.1';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
@@ -154,7 +155,7 @@ function nahtlos_cache_leeren(): void
     do_action('litespeed_purge_all');                                             // LiteSpeed Cache
 }
 
-/** Slides einer Position, die jetzt sichtbar sind (Shop-Zeitzone). */
+/** Slides einer Position, die noch nicht abgelaufen sind (künftige inklusive, siehe Kopf). */
 function nahtlos_aktuelle_slides(string $position, ?int $kategorie = null): array
 {
     $daten = get_option(NAHTLOS_OPTION_SLIDER, ['slides' => []]);
@@ -162,7 +163,6 @@ function nahtlos_aktuelle_slides(string $position, ?int $kategorie = null): arra
     return array_values(array_filter($daten['slides'] ?? [], function ($s) use ($position, $kategorie, $jetzt) {
         if ($s['position'] !== $position) return false;
         if ($position === 'kategorie' && (int)$s['kategorie'] !== (int)$kategorie) return false;
-        if ($s['von'] && (int)$s['von'] > $jetzt) return false;
         if ($s['bis'] && (int)$s['bis'] < $jetzt) return false;
         return true;
     }));
@@ -202,32 +202,36 @@ function nahtlos_slider_html(array $slides, string $art): string
     $daten = get_option(NAHTLOS_OPTION_SLIDER, []);
     $intervall = (int)($daten['intervall'] ?? 6);
     $mehrere = count($slides) > 1;
+    $jetzt = time();
+    $sichtbar = fn($s) => !$s['von'] || (int)$s['von'] <= $jetzt;
+    $erster = 0; // erste jetzt sichtbare Slide = aktiv (+ h1 auf der Startseite)
+    foreach ($slides as $i => $s) { if ($sichtbar($s)) { $erster = $i; break; } }
 
     ob_start(); ?>
     <section class="nahtlos-slider nahtlos-slider--<?php echo esc_attr($art); ?>" aria-roledescription="carousel" aria-label="<?php esc_attr_e('Aktuelles', 'nahtlos-connector'); ?>" data-intervall="<?php echo $intervall; ?>">
         <div class="nahtlos-slider__spur">
         <?php foreach ($slides as $i => $s):
-            $klassen = 'nahtlos-slide nahtlos-slide--' . $s['text_position'] . ' nahtlos-slide--' . $s['schrift'] . ($s['art'] === 'fertiges_bild' ? ' nahtlos-slide--fertig' : '') . ($i === 0 ? ' ist-aktiv' : '');
+            $klassen = 'nahtlos-slide nahtlos-slide--' . $s['text_position'] . ' nahtlos-slide--' . $s['schrift'] . ($s['art'] === 'fertiges_bild' ? ' nahtlos-slide--fertig' : '') . ($i === $erster ? ' ist-aktiv' : '') . ($sichtbar($s) ? '' : ' ist-geplant');
             $bild = '<picture>'
                 . ($s['bild_mobil'] ? '<source media="(max-width: 767px)" srcset="' . esc_url($s['bild_mobil']['url']) . '">' : '')
-                . '<img src="' . esc_url($s['bild']['url']) . '" alt="' . esc_attr($s['alt']) . '"' . ($i === 0 ? ' fetchpriority="high"' : ' loading="lazy"') . ' decoding="async">'
+                . '<img src="' . esc_url($s['bild']['url']) . '" alt="' . esc_attr($s['alt']) . '"' . ($i === $erster ? ' fetchpriority="high"' : ' loading="lazy"') . ' decoding="async">'
                 . '</picture>';
             $link = $s['buttons'] ? nahtlos_ziel_url($s['buttons'][0]) : '';
         ?>
-            <div class="<?php echo esc_attr($klassen); ?>" role="group" aria-roledescription="slide" aria-label="<?php echo ($i + 1) . ' / ' . count($slides); ?>"<?php echo $i ? ' aria-hidden="true"' : ''; ?>>
+            <div class="<?php echo esc_attr($klassen); ?>" role="group" aria-roledescription="slide" aria-label="<?php echo ($i + 1) . ' / ' . count($slides); ?>" data-von="<?php echo (int)$s['von']; ?>" data-bis="<?php echo (int)$s['bis']; ?>"<?php echo $i !== $erster ? ' aria-hidden="true"' : ''; ?>>
                 <?php if ($s['art'] === 'fertiges_bild'): ?>
                     <?php echo $link ? '<a class="nahtlos-slide__bild" href="' . esc_url($link) . '">' . $bild . '</a>' : '<div class="nahtlos-slide__bild">' . $bild . '</div>'; ?>
                 <?php else: ?>
                     <div class="nahtlos-slide__bild"><?php echo $bild; ?></div>
                     <div class="nahtlos-slide__inhalt">
                         <?php if ($s['kicker']): ?><p class="nahtlos-slide__kicker"><?php echo esc_html($s['kicker']); ?></p><?php endif; ?>
-                        <?php $tag = $art === 'startseite' && $i === 0 ? 'h1' : 'h2'; // erste Startseiten-Slide = Seitenüberschrift ?>
+                        <?php $tag = $art === 'startseite' && $i === $erster ? 'h1' : 'h2'; // erste Startseiten-Slide = Seitenüberschrift ?>
                         <<?php echo $tag; ?> class="nahtlos-slide__titel"><?php echo esc_html($s['titel']); ?></<?php echo $tag; ?>>
                         <?php if ($s['text']): ?><p class="nahtlos-slide__text"><?php echo nl2br(esc_html($s['text'])); ?></p><?php endif; ?>
                         <?php if ($s['buttons']): ?>
                             <div class="nahtlos-slide__buttons">
                             <?php foreach ($s['buttons'] as $n => $btn): $url = nahtlos_ziel_url($btn); if (!$url || $btn['text'] === '') continue; ?>
-                                <a class="<?php echo $n === 0 ? 'nahtlos-btn wp-element-button' : 'nahtlos-link'; ?>" href="<?php echo esc_url($url); ?>"<?php echo $i ? ' tabindex="-1"' : ''; ?>><?php echo esc_html($btn['text']); ?></a>
+                                <a class="<?php echo $n === 0 ? 'nahtlos-btn wp-element-button' : 'nahtlos-link'; ?>" href="<?php echo esc_url($url); ?>"<?php echo $i !== $erster ? ' tabindex="-1"' : ''; ?>><?php echo esc_html($btn['text']); ?></a>
                             <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
@@ -241,7 +245,7 @@ function nahtlos_slider_html(array $slides, string $art): string
             <button type="button" class="nahtlos-slider__pfeil nahtlos-slider__pfeil--weiter" aria-label="<?php esc_attr_e('Nächste Slide', 'nahtlos-connector'); ?>">&#8250;</button>
             <div class="nahtlos-slider__punkte">
                 <?php foreach ($slides as $i => $s): ?>
-                    <button type="button" class="nahtlos-slider__punkt<?php echo $i === 0 ? ' ist-aktiv' : ''; ?>" aria-label="<?php echo esc_attr(sprintf(__('Slide %d', 'nahtlos-connector'), $i + 1)); ?>"></button>
+                    <button type="button" class="nahtlos-slider__punkt<?php echo ($i === $erster ? ' ist-aktiv' : '') . ($sichtbar($s) ? '' : ' ist-geplant'); ?>" aria-label="<?php echo esc_attr(sprintf(__('Slide %d', 'nahtlos-connector'), $i + 1)); ?>"></button>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>

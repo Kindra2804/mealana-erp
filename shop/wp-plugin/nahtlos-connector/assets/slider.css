@@ -24,6 +24,7 @@
     visibility: hidden;
     transition: opacity .8s ease, visibility 0s linear .8s;
 }
+.nahtlos-slide.ist-geplant, .nahtlos-slider__punkt.ist-geplant { display: none; } /* ohne JS: künftige Slides nie zeigen */
 .nahtlos-slide.ist-aktiv { opacity: 1; visibility: visible; transition: opacity .8s ease; z-index: 1; }
 
 .nahtlos-slide__bild, .nahtlos-slide__bild picture { position: absolute; inset: 0; display: block; }
@@ -130,6 +131,9 @@
     cursor: pointer;
 }
 .nahtlos-slider__punkt.ist-aktiv { background: var(--ns-akzent); }
+/* Dunkle Slide (helle Schrift) aktiv: weiße Punkte statt Akzentfarbe */
+.nahtlos-slider:has(.nahtlos-slide--hell.ist-aktiv) .nahtlos-slider__punkt.ist-aktiv { background: #fff; }
+.nahtlos-slider:has(.nahtlos-slide--hell.ist-aktiv) .nahtlos-slider__punkt:not(.ist-aktiv) { background: rgba(255, 255, 255, .35); }
 
 /* Handy: Bild oben, Text darunter auf hellem Grund — kein Text über zu kleinem Bild */
 @media (max-width: 767px) {

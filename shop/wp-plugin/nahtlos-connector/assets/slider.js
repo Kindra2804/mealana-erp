@@ -4,11 +4,34 @@
     var ruhig = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     document.querySelectorAll('.nahtlos-slider').forEach(function (slider) {
+        // Zeitsteuerung im Browser: die Seite kann aus dem Cache kommen, darum hier nach der
+        // Uhrzeit filtern (data-von/-bis = Unix-Zeit, 0 = offen). Unsichtbare Slides + Punkte entfernen.
+        var jetzt = Date.now() / 1000;
+        var allePunkte = slider.querySelectorAll('.nahtlos-slider__punkt');
+        slider.querySelectorAll('.nahtlos-slide').forEach(function (s, i) {
+            var von = +s.dataset.von || 0, bis = +s.dataset.bis || 0;
+            if ((von && von > jetzt) || (bis && bis < jetzt)) {
+                s.remove();
+                if (allePunkte[i]) allePunkte[i].remove();
+            } else {
+                s.classList.remove('ist-geplant');
+                if (allePunkte[i]) allePunkte[i].classList.remove('ist-geplant');
+            }
+        });
         var slides = slider.querySelectorAll('.nahtlos-slide');
-        if (slides.length < 2) return;
+        if (!slides.length) { slider.remove(); return; }
+        if (!slider.querySelector('.nahtlos-slide.ist-aktiv')) slides[0].classList.add('ist-aktiv');
+        if (slides.length < 2) {
+            slides[0].setAttribute('aria-hidden', 'false');
+            slides[0].querySelectorAll('a').forEach(function (a) { a.tabIndex = 0; });
+            slider.querySelectorAll('.nahtlos-slider__pfeil, .nahtlos-slider__punkte').forEach(function (el) { el.remove(); });
+            return;
+        }
         var punkte = slider.querySelectorAll('.nahtlos-slider__punkt');
         var intervall = (parseInt(slider.dataset.intervall, 10) || 6) * 1000;
         var aktiv = 0, timer = null, pausiert = false;
+        slides.forEach(function (s, i) { if (s.classList.contains('ist-aktiv')) aktiv = i; });
+        zeige(aktiv); // Zustand nach dem Filtern vereinheitlichen (aria, Tabulator, Punkte)
 
         function zeige(nr) {
             nr = (nr + slides.length) % slides.length;

@@ -51,7 +51,7 @@ Kategorie-, Artikel- und Hersteller-Ziele zeigen nur, was es im Shop schon gibt.
 Änderungen gehen erst mit **An Shop übertragen** online. Bis dahin steht oben „Änderungen noch nicht übertragen“.
 
 - Bilder werden dabei in die WordPress-Mediathek geladen (nur neue oder geänderte)
-- **Zeitsteuerung macht der Shop selbst.** Eine Weihnachts-Slide von 1.12. bis 6.1. kann man also schon im November übertragen. Sie erscheint pünktlich und verschwindet wieder, auch wenn das ERP nicht läuft. Der Seiten-Cache wird zu diesen Zeitpunkten automatisch geleert
+- **Zeitsteuerung macht der Shop selbst.** Eine Weihnachts-Slide von 1.12. bis 6.1. kann man also schon im November übertragen. Sie erscheint pünktlich und verschwindet wieder, auch wenn das ERP nicht läuft. Die Seite enthält kommende Slides schon (versteckt), und der Browser blendet sie zur Uhrzeit ein. Das klappt auch, wenn die Seite aus dem Zwischenspeicher (Cache) kommt
 - Slides mit „solange Aktion läuft“ überträgt der nächtliche Abgleich einmal täglich neu, falls sich der Aktionszeitraum geändert hat (nur wenn keine anderen Änderungen offen sind)
 - Hinweise nach dem Übertragen: z. B. „Kategorie ist noch nicht im Shop“. Diese Slide oder dieser Button wird dann weggelassen
 
