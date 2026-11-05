@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../src/modules/auftraege/AuftragService.php';
 require_once __DIR__ . '/../../src/modules/dokumente/DokumentService.php';
 require_once __DIR__ . '/../../src/modules/konfigurator/KonfiguratorRepository.php';
 require_once __DIR__ . '/../../src/modules/lager/AbholortService.php';
+require_once __DIR__ . '/../../src/modules/shop/WiderrufService.php';
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
@@ -106,6 +107,12 @@ if (!empty($lieferungen)) {
     foreach ($lpStmt->fetchAll(PDO::FETCH_ASSOC) as $lp) {
         $lieferungPositionenNachLieferung[$lp['lieferung_id']][] = $lp;
     }
+}
+
+// Offener Widerruf aus dem Shop: Antrag (widerrufene Artikel) live aus dem Shop holen
+$widerrufAntrag = null; $widerrufFehler = null;
+if (($auftrag['widerruf_status'] ?? null) === 'beantragt') {
+    ['antrag' => $widerrufAntrag, 'fehler' => $widerrufFehler] = (new WiderrufService())->offenerAntrag((int)$auftrag['id']);
 }
 
 $erfolg = $_SESSION['erfolg'] ?? null;
@@ -235,20 +242,50 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <?php endif; ?>
 
 <?php if (!empty($auftrag['widerruf_status'])): // Widerrufsbutton im Shop (Migration 227) ?>
+    <?php $wBeantragt = $auftrag['widerruf_status'] === 'beantragt'; ?>
     <div class="card" style="border-left:4px solid var(--color-danger);margin-bottom:12px;padding:12px 16px">
-        <strong style="color:var(--color-danger)">
-            <?= $auftrag['widerruf_status'] === 'widerrufen' ? 'Widerrufen' : 'Widerruf beantragt' ?>
-        </strong>
+        <strong style="color:var(--color-danger)"><?= $wBeantragt ? 'Widerruf beantragt' : 'Widerrufen' ?></strong>
         — der Kunde hat am <?= date('d.m.Y, H:i', strtotime($auftrag['widerruf_am'])) ?> Uhr über den Widerrufsbutton im Shop widerrufen.
-        <div style="margin-top:6px;color:var(--color-text-muted)">
-            Der Auftrag ist am Packplatz und für die Abholung an der Kasse gesperrt.
-            <?php if ($auftrag['widerruf_status'] === 'beantragt'): ?>
-                Bitte im Shop entscheiden (WooCommerce → Bestellung → Widerruf bestätigen oder ablehnen).
-                Noch nicht versendet: Auftrag hier stornieren. Schon versendet: Retoure abwarten.
-            <?php else: ?>
-                Noch nicht versendet: Auftrag hier stornieren. Schon versendet: Retoure abwarten.
+        <?php if ($wBeantragt): ?>
+            <?php if ($widerrufAntrag): ?>
+                <div style="margin-top:8px">
+                    <?= $widerrufAntrag['teilweise'] ? '<strong>Teilwiderruf</strong> — nur diese Artikel:' : 'Widerrufen werden <strong>alle Artikel</strong>:' ?>
+                    <?= htmlspecialchars(implode(', ', array_map(fn($p) => ($p['menge'] + 0) . '× ' . $p['name'] . ($p['sku'] ? ' (' . $p['sku'] . ')' : ''), $widerrufAntrag['positionen']))) ?>
+                </div>
+            <?php elseif ($widerrufFehler): ?>
+                <div style="margin-top:8px;color:var(--color-danger)">Antrag konnte nicht aus dem Shop geladen werden: <?= htmlspecialchars($widerrufFehler) ?></div>
             <?php endif; ?>
-        </div>
+            <div style="margin-top:6px;color:var(--color-text-muted)">
+                Der Auftrag ist am Packplatz und für die Abholung an der Kasse gesperrt, bis hier entschieden ist.
+                <?php if ($widerrufAntrag && $widerrufAntrag['teilweise']): ?>
+                    Teilwiderruf: bitte <strong>zuerst</strong> die genannten Positionen über „Bearbeiten“ aus dem Auftrag nehmen, dann bestätigen.
+                <?php elseif (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'retoure_offen'], true)): ?>
+                    Die Ware ist schon versendet: nach dem Bestätigen die Retoure abwarten.
+                <?php else: ?>
+                    Bestätigen storniert den Auftrag und gibt die Ware frei.
+                <?php endif; ?>
+                Der Kunde bekommt die Entscheidung vom Shop per Mail.
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;flex-wrap:wrap">
+                <form method="post" action="<?= BASE_PATH ?>/auftraege/widerruf_aktion.php"
+                      onsubmit="return confirm('Widerruf bestätigen? Der Kunde bekommt eine Bestätigung per Mail.')">
+                    <input type="hidden" name="auftrag_id" value="<?= (int)$auftrag['id'] ?>">
+                    <input type="hidden" name="aktion" value="bestaetigen">
+                    <button type="submit" class="btn btn-primary btn-sm">✓ Widerruf bestätigen</button>
+                </form>
+                <form method="post" action="<?= BASE_PATH ?>/auftraege/widerruf_aktion.php" style="display:flex;gap:6px;align-items:flex-start"
+                      onsubmit="return confirm('Widerruf ablehnen? Der Grund geht per Mail an den Kunden.')">
+                    <input type="hidden" name="auftrag_id" value="<?= (int)$auftrag['id'] ?>">
+                    <input type="hidden" name="aktion" value="ablehnen">
+                    <input type="text" name="grund" required placeholder="Grund der Ablehnung (geht an den Kunden)" style="width:320px" class="form-control">
+                    <button type="submit" class="btn btn-secondary btn-sm">Ablehnen</button>
+                </form>
+            </div>
+        <?php else: ?>
+            <div style="margin-top:6px;color:var(--color-text-muted)">
+                Widerruf bestätigt. <?= $auftrag['lieferstatus'] === 'storniert' ? 'Der Auftrag ist storniert.' : 'Ware schon versendet: Retoure abwarten und am Packplatz einlagern.' ?>
+            </div>
+        <?php endif; ?>
     </div>
 <?php endif; ?>
 

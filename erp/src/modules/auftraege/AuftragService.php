@@ -223,7 +223,8 @@ class AuftragService
      * Storniert einen Auftrag.
      * Bereits versendete oder abgeschlossene Aufträge können nicht mehr storniert werden.
      */
-    public function stornieren(int $id, ?string $notiz = null): array
+    /** $kundenMail = false: keine Storno-Mail (z. B. Widerruf -- der Shop hat den Kunden schon informiert) */
+    public function stornieren(int $id, ?string $notiz = null, bool $kundenMail = true): array
     {
         $auftrag = $this->repo->findById($id);
         if (!$auftrag) {
@@ -248,7 +249,9 @@ class AuftragService
         $this->repo->schliesseReservierungen($id);
 
         Logger::log('auftraege.stornieren', 'auftraege', $id);
-        $this->sendeStornoMail($auftrag, $notiz);
+        if ($kundenMail) {
+            $this->sendeStornoMail($auftrag, $notiz);
+        }
         return ['erfolg' => true];
     }
 

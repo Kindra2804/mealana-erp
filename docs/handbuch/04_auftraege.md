@@ -175,13 +175,19 @@ Der Shop-Abgleich holt das ins ERP:
 - Er ist **gesperrt**: nicht auf Picklisten, nicht am Packplatz (auch nicht per Scan), nicht zur Abholung an der Kasse. Retouren bereits versendeter Ware gehen an der Kasse weiterhin.
 - Das ERP meldet keinen Status mehr an den Shop, damit der Widerruf dort nicht überschrieben wird.
 
-**So geht's weiter:**
+**So geht's weiter (alles im ERP, ohne Anmeldung im Shop):**
 
-1. Im Shop (WooCommerce → Bestellung) den Widerruf **bestätigen** oder **ablehnen**.
-2. Bestätigt → im ERP steht **„Widerrufen“**.
-   - Noch nicht versendet: Auftrag im ERP **stornieren** (Ware wird zurückgebucht).
-   - Schon versendet: Retoure abwarten und wie gewohnt am Packplatz einlagern.
-3. Abgelehnt → die Sperre im ERP verschwindet beim nächsten Abgleich von selbst.
+Im Auftrag steht, welche Artikel der Kunde widerruft (alle oder nur einzelne = Teilwiderruf). Darunter zwei Buttons:
+
+1. **✓ Widerruf bestätigen**
+   - Alles widerrufen, noch nicht versendet → der Auftrag wird **automatisch storniert**, die Ware ist wieder frei.
+   - Schon versendet → Auftrag bleibt, **Retoure abwarten** und wie gewohnt am Packplatz einlagern.
+   - **Teilwiderruf** → **zuerst** die genannten Positionen über „Bearbeiten“ aus dem Auftrag nehmen, dann bestätigen. Danach ist der Auftrag wieder frei für den Rest.
+2. **Ablehnen** → Grund eintragen (geht an den Kunden). Der Auftrag ist wieder frei.
+
+Die Mail an den Kunden („Widerruf bestätigt“ bzw. „Dein Widerruf wurde abgelehnt“) verschickt der Shop. Das ERP schickt beim Storno durch einen Widerruf **keine** eigene Storno-Mail, damit der Kunde nicht zwei bekommt.
+
+> Technisch: Das ERP ruft dafür das Plugin **NAHTLOS Connector** (ab Version 1.5.0) im Shop auf. Fehlt es, kommt eine Fehlermeldung im Auftrag.
 
 > Die Germanized-Einstellungen liegen unter WooCommerce → Einstellungen → Germanized → Allgemein → Widerrufsbutton (überall anzeigen, Kontakt-E-Mail, Link in „Mein Konto“).
 

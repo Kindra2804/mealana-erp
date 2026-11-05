@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       NAHTLOS Connector
- * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider, Kategorie-Kacheln, Kategorie-Banner und Hauptmenü, gepflegt im ERP.
- * Version:           1.4.0
+ * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider, Kategorie-Kacheln, Kategorie-Banner und Hauptmenü, gepflegt im ERP; Widerrufe (Germanized) aus dem ERP bestätigen/ablehnen.
+ * Version:           1.5.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -29,7 +29,7 @@
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.4.0';
+const NAHTLOS_VERSION = '1.5.0';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
@@ -66,7 +66,111 @@ add_action('rest_api_init', function () {
         'permission_callback' => $berechtigt,
         'callback'            => 'nahtlos_menue_empfangen',
     ]);
+
+    // Widerrufe (Germanized-Widerrufsbutton) — das ERP entscheidet, der Shop führt aus
+    register_rest_route('nahtlos/v1', '/widerruf/(?P<bestellung>\d+)', [
+        'methods'             => 'GET',
+        'permission_callback' => $berechtigt,
+        'callback'            => 'nahtlos_widerruf_lesen',
+    ]);
+    register_rest_route('nahtlos/v1', '/widerruf/(?P<bestellung>\d+)/(?P<aktion>bestaetigen|ablehnen)', [
+        'methods'             => 'POST',
+        'permission_callback' => $berechtigt,
+        'callback'            => 'nahtlos_widerruf_entscheiden',
+    ]);
 });
+
+// ── Widerrufe (Germanized ≥ 4.0, Paket eu-order-withdrawal-button) ─────────
+//
+// Der Kunde widerruft über den Widerrufsbutton; Germanized legt dazu einen eigenen Antrag
+// (Typ shop_order_withdraw, Eltern = Bestellung) an und setzt die Bestellung auf
+// „Widerruf ausstehend“. Babsi entscheidet im ERP; das ERP ruft hier auf, und wir nutzen
+// GENAU die Germanized-Funktionen der Backend-Buttons: Status der Bestellung, Bestand im
+// Shop, Antrag erledigt, Mail an den Kunden („Widerruf bestätigt“ / „…abgelehnt“).
+
+function nahtlos_widerruf_verfuegbar(): bool
+{
+    return function_exists('eu_owb_get_order_withdrawals')
+        && function_exists('eu_owb_order_confirm_withdrawal_request')
+        && function_exists('eu_owb_order_reject_withdrawal_request');
+}
+
+/** Ein Antrag als einfaches Array für das ERP. */
+function nahtlos_widerruf_daten($antrag): array
+{
+    $datum = fn($d) => $d ? $d->format('c') : null;
+    $positionen = [];
+    foreach ($antrag->get_items() as $item) {
+        $produkt = $item->get_product();
+        $positionen[] = [
+            'bestell_position' => (int)$item->get_parent_id(),   // ID der Position in der Bestellung (line_items[].id)
+            'name'             => $item->get_name(),
+            'sku'              => $produkt ? $produkt->get_sku() : '',
+            'menge'            => (float)$item->get_quantity(),
+        ];
+    }
+    return [
+        'id'          => $antrag->get_id(),
+        'nummer'      => $antrag->get_withdrawal_number(),
+        'status'      => preg_replace('/^(wc-)?owb-/', '', $antrag->get_status()),  // requested / confirmed / rejected
+        'teilweise'   => (bool)$antrag->is_partial(),
+        'eingegangen' => $datum($antrag->get_date_received()),
+        'bestaetigt'  => $datum($antrag->get_date_confirmed()),
+        'abgelehnt'   => $datum($antrag->get_date_rejected()),
+        'grund'       => (string)$antrag->get_rejection_reason(),
+        'email'       => (string)$antrag->get_email(),
+        'positionen'  => $positionen,
+    ];
+}
+
+function nahtlos_widerruf_lesen(WP_REST_Request $request)
+{
+    if (!nahtlos_widerruf_verfuegbar()) {
+        return new WP_Error('nahtlos_kein_widerruf', 'Germanized-Widerrufsbutton nicht aktiv.', ['status' => 501]);
+    }
+    $bestellung = wc_get_order((int)$request['bestellung']);
+    if (!$bestellung) {
+        return new WP_Error('nahtlos_keine_bestellung', 'Bestellung nicht gefunden.', ['status' => 404]);
+    }
+    return [
+        'bestellung' => $bestellung->get_id(),
+        'status'     => $bestellung->get_status(),
+        'antraege'   => array_map('nahtlos_widerruf_daten', eu_owb_get_order_withdrawals($bestellung)),
+    ];
+}
+
+function nahtlos_widerruf_entscheiden(WP_REST_Request $request)
+{
+    if (!nahtlos_widerruf_verfuegbar()) {
+        return new WP_Error('nahtlos_kein_widerruf', 'Germanized-Widerrufsbutton nicht aktiv.', ['status' => 501]);
+    }
+    $bestellung = wc_get_order((int)$request['bestellung']);
+    if (!$bestellung) {
+        return new WP_Error('nahtlos_keine_bestellung', 'Bestellung nicht gefunden.', ['status' => 404]);
+    }
+    $offen = eu_owb_get_order_withdrawals($bestellung, ['status' => 'requested']);
+    if (empty($offen)) {
+        return new WP_Error('nahtlos_kein_offener_widerruf', 'Kein offener Widerruf zu dieser Bestellung.', ['status' => 409]);
+    }
+    $antrag = $offen[0];
+
+    if ($request['aktion'] === 'bestaetigen') {
+        $ok = eu_owb_order_confirm_withdrawal_request($antrag);
+    } else {
+        $grund = sanitize_textarea_field((string)($request->get_param('grund') ?? ''));
+        $ok = eu_owb_order_reject_withdrawal_request($antrag, $grund);
+    }
+    if (!$ok) {
+        return new WP_Error('nahtlos_widerruf_fehler', 'Germanized hat die Entscheidung nicht angenommen.', ['status' => 500]);
+    }
+    $antrag = eu_owb_get_withdrawal($antrag->get_id());
+    $bestellung = wc_get_order($bestellung->get_id());
+    return [
+        'bestellung' => $bestellung->get_id(),
+        'status'     => $bestellung->get_status(),
+        'antrag'     => $antrag ? nahtlos_widerruf_daten($antrag) : null,
+    ];
+}
 
 // ── Hauptmenü aus dem ERP ─────────────────────────────────────────────────
 //
