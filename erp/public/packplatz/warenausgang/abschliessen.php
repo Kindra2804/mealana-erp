@@ -41,6 +41,12 @@ if (!$auftrag) {
     exit;
 }
 
+if (!empty($auftrag['widerruf_status'])) {   // Widerruf aus dem Shop (Migration 227)
+    $_SESSION['fehler'] = "Auftrag {$auftrag['auftrag_nr']}: Widerruf beantragt — nicht abgeschlossen.";
+    header('Location: index.php');
+    exit;
+}
+
 $isAbholung = ($auftrag['lieferart'] ?? '') === 'abholung';
 if (!$isAbholung && !$tracking) {
     $_SESSION['fehler'] = 'Trackingnummer fehlt.';

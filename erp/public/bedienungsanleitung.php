@@ -480,6 +480,13 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p>Auftrag öffnen → <strong>Zahlung buchen</strong> → Betrag, Datum und <strong>Zahlungsweg</strong> (Überweisung/PayPal/Nachnahme/Sonstige — steht dann in der Zahlungsinfo der Rechnung) → Zahlungsstatus wechselt auf "bezahlt" bzw. "teilbezahlt".</p>
             <div class="ba-warn">⚠ Bar- oder Kartenzahlung nicht hier buchen, sondern an der Kasse: Menü → <strong>💶 Rechnung bezahlen</strong> (RKSV-Zahlbeleg).</div>
 
+            <h3 id="widerruf">Widerruf aus dem Shop (Widerrufsbutton) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Seit 19.06.2026 Pflicht (EU-RL 2023/2673). Germanized setzt die Shop-Bestellung nach einem Klick auf „Vertrag widerrufen“ auf <strong>„Widerruf ausstehend“</strong>. Der Abgleich markiert den Auftrag im ERP mit <strong>„Widerruf beantragt“</strong> (Liste: <strong>WIDERRUF</strong>) und <strong>sperrt</strong> ihn für Pickliste, Packplatz und Abholung an der Kasse. Das ERP meldet dann keinen Status mehr an den Shop.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Im Shop (WooCommerce → Bestellung) den Widerruf bestätigen oder ablehnen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Bestätigt → „Widerrufen“: noch nicht versendet = Auftrag stornieren, schon versendet = Retoure abwarten</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Abgelehnt → die Sperre verschwindet beim nächsten Abgleich von selbst</div></div>
+            <div class="ba-hint">💡 Retouren bereits versendeter Ware gehen an der Kasse weiterhin. Germanized-Einstellungen: WooCommerce → Einstellungen → Germanized → Allgemein → Widerrufsbutton.</div>
+
             <h3 id="mahnwesen">Mahnwesen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Der Cronjob läuft täglich.</p>
             <table class="ba-table">

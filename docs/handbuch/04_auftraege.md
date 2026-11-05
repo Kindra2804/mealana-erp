@@ -165,6 +165,28 @@ Positionen und Stammdaten können geändert werden, solange der Auftrag noch nic
 
 ---
 
+## Widerruf aus dem Shop (Widerrufsbutton) {#widerruf}
+
+Seit 19.06.2026 muss jeder Online-Shop einen **Widerrufsbutton** haben (EU-Richtlinie 2023/2673). In den WooCommerce-Shops macht das Germanized (ab Version 4.0): Der Kunde klickt „Vertrag widerrufen“, die Bestellung bekommt im Shop den Status **„Widerruf ausstehend“**.
+
+Der Shop-Abgleich holt das ins ERP:
+
+- Der Auftrag bekommt einen roten Hinweis **„Widerruf beantragt“** (in der Liste: Kennzeichen **WIDERRUF**).
+- Er ist **gesperrt**: nicht auf Picklisten, nicht am Packplatz (auch nicht per Scan), nicht zur Abholung an der Kasse. Retouren bereits versendeter Ware gehen an der Kasse weiterhin.
+- Das ERP meldet keinen Status mehr an den Shop, damit der Widerruf dort nicht überschrieben wird.
+
+**So geht's weiter:**
+
+1. Im Shop (WooCommerce → Bestellung) den Widerruf **bestätigen** oder **ablehnen**.
+2. Bestätigt → im ERP steht **„Widerrufen“**.
+   - Noch nicht versendet: Auftrag im ERP **stornieren** (Ware wird zurückgebucht).
+   - Schon versendet: Retoure abwarten und wie gewohnt am Packplatz einlagern.
+3. Abgelehnt → die Sperre im ERP verschwindet beim nächsten Abgleich von selbst.
+
+> Die Germanized-Einstellungen liegen unter WooCommerce → Einstellungen → Germanized → Allgemein → Widerrufsbutton (überall anzeigen, Kontakt-E-Mail, Link in „Mein Konto“).
+
+---
+
 ## Mahnwesen
 
 Der Cronjob `cron/mahnwesen.php` läuft täglich.

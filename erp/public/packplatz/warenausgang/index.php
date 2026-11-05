@@ -22,6 +22,7 @@ $kommissioniert = $db->query("
     FROM auftraege
     WHERE lieferstatus = 'kommissioniert'
       AND zahlungsstatus NOT IN ('storniert')
+      AND widerruf_status IS NULL
     ORDER BY aktualisiert_am DESC
     LIMIT 20
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -152,6 +153,7 @@ require_once __DIR__ . '/../shell_top.php';
                 FROM auftraege a
                 WHERE lieferstatus IN ('neu','in_bearbeitung','versandbereit','teilgeliefert')
                   AND zahlungsstatus NOT IN ('storniert')
+                  AND widerruf_status IS NULL   -- Widerruf aus dem Shop (Migration 227)
                   AND a.id NOT IN (
                       SELECT pa.auftrag_id FROM pickliste_auftraege pa
                       JOIN picklisten pl ON pl.id = pa.pickliste_id

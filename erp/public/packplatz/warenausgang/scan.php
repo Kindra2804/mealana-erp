@@ -45,6 +45,14 @@ if ($modus === 'pickliste') {
     }
     $in = implode(',', array_map('intval', $auftragIds));
     $auftraege = $db->query("SELECT * FROM auftraege WHERE id IN ({$in}) ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+    // Widerruf aus dem Shop (Migration 227): diese Aufträge der Pickliste überspringen
+    $widerrufNr = array_column(array_filter($auftraege, fn($a) => !empty($a['widerruf_status'])), 'auftrag_nr');
+    $auftraege  = array_values(array_filter($auftraege, fn($a) => empty($a['widerruf_status'])));
+    if (empty($auftraege)) {
+        $_SESSION['fehler'] = 'Widerruf beantragt, nicht packen: ' . implode(', ', $widerrufNr);
+        header('Location: index.php');
+        exit;
+    }
 } else {
     // Einzelner Auftrag
     if (!empty($_GET['auftrag_id'])) {
@@ -66,6 +74,12 @@ if ($modus === 'pickliste') {
     $auftrag = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$auftrag) {
         $_SESSION['fehler'] = 'Auftrag nicht gefunden.';
+        header('Location: index.php');
+        exit;
+    }
+    // Widerruf aus dem Shop (Migration 227): nicht packen, bis im Auftrag entschieden ist
+    if (!empty($auftrag['widerruf_status'])) {
+        $_SESSION['fehler'] = "Auftrag {$auftrag['auftrag_nr']}: Widerruf beantragt — nicht packen. Bitte im Auftrag klären.";
         header('Location: index.php');
         exit;
     }

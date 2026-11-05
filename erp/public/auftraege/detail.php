@@ -234,6 +234,24 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 <?php endif; ?>
 
+<?php if (!empty($auftrag['widerruf_status'])): // Widerrufsbutton im Shop (Migration 227) ?>
+    <div class="card" style="border-left:4px solid var(--color-danger);margin-bottom:12px;padding:12px 16px">
+        <strong style="color:var(--color-danger)">
+            <?= $auftrag['widerruf_status'] === 'widerrufen' ? 'Widerrufen' : 'Widerruf beantragt' ?>
+        </strong>
+        — der Kunde hat am <?= date('d.m.Y, H:i', strtotime($auftrag['widerruf_am'])) ?> Uhr über den Widerrufsbutton im Shop widerrufen.
+        <div style="margin-top:6px;color:var(--color-text-muted)">
+            Der Auftrag ist am Packplatz und für die Abholung an der Kasse gesperrt.
+            <?php if ($auftrag['widerruf_status'] === 'beantragt'): ?>
+                Bitte im Shop entscheiden (WooCommerce → Bestellung → Widerruf bestätigen oder ablehnen).
+                Noch nicht versendet: Auftrag hier stornieren. Schon versendet: Retoure abwarten.
+            <?php else: ?>
+                Noch nicht versendet: Auftrag hier stornieren. Schon versendet: Retoure abwarten.
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
+
 <!-- Kopf-Übersicht -->
 <div class="card" style="margin-bottom:12px">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:16px;padding:16px">

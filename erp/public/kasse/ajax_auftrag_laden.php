@@ -36,6 +36,7 @@ if ($weitereZu) {
         exit;
     }
     $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv', 'haendler') AND a.lieferart = 'abholung'
+              AND a.widerruf_status IS NULL
               AND (a.lieferstatus IN ('neu', 'in_bearbeitung', 'kommissioniert', 'versandbereit', 'abholbereit', 'zurueckgestellt')
                    OR (a.lieferstatus = 'teilgeliefert' AND EXISTS (SELECT 1 FROM auftrag_positionen ap
                         WHERE ap.auftrag_id = a.id AND ap.menge > ap.menge_abgeholt)))
@@ -51,14 +52,16 @@ if ($weitereZu) {
     $q = '';
 } elseif ($alle) {
     // Alle offenen (nicht abgeschlossenen) Aufträge (nicht Kassen-Bons, nicht Archiv)
-    $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv', 'haendler') AND a.lieferstatus != 'abgeschlossen'";
+    $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv', 'haendler') AND a.lieferstatus != 'abgeschlossen'
+              AND (a.widerruf_status IS NULL OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'retoure_offen'))";
 } else {
     // Abholung-Aufträge (jeder Status) ODER versendet/teilgeliefert/abgeschlossen
     // (Retouren-Kandidaten) unabhängig von der Lieferart — sonst findet das Personal
     // Rückgaben nicht ohne den "alle"-Umschalter. Archiv-Aufträge bewusst ausgeschlossen,
     // sonst tauchen die immer als "abgeschlossen" markierten JTL-Altaufträge hier auf.
     $where = $basisFilter . " AND a.kanal NOT IN ('kasse', 'jtl_archiv', 'haendler')
-              AND (a.lieferart = 'abholung' OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen', 'retoure_offen'))";
+              AND ((a.lieferart = 'abholung' AND a.widerruf_status IS NULL)
+                   OR a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen', 'retoure_offen'))";
 }
 
 $params = $params ?? [];

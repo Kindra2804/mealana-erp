@@ -22,6 +22,16 @@ if (empty($auftragIds)) {
 
 $db         = Database::getInstance();
 $repo       = new DokumentRepository();
+
+// Widerruf aus dem Shop (Migration 227): solche Aufträge nie auf eine Pickliste
+$wPlatzhalter = implode(',', array_fill(0, count($auftragIds), '?'));
+$wStmt = $db->prepare("SELECT auftrag_nr FROM auftraege WHERE id IN ($wPlatzhalter) AND widerruf_status IS NOT NULL");
+$wStmt->execute(array_values($auftragIds));
+if ($widerrufen = $wStmt->fetchAll(PDO::FETCH_COLUMN)) {
+    $_SESSION['fehler'] = 'Widerruf beantragt, nicht packen: ' . implode(', ', $widerrufen);
+    header('Location: ' . BASE_PATH . '/lager/picklisten.php');
+    exit;
+}
 $benutzerId = (int)($_SESSION['benutzer']['id'] ?? 0);
 
 $ersteller = $db->prepare("SELECT formularname FROM benutzer WHERE id = :id");

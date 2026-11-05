@@ -41,6 +41,16 @@ class ShopBestellungSyncService
         'refunded'   => ['erstattet', null],
     ];
 
+    /**
+     * Widerrufsbutton (Germanized ≥ 4.0, EU-RL 2023/2673): eigene WC-Status → auftraege.widerruf_status
+     * (Migration 227). Zahlungs-/Lieferstatus bleiben dabei unverändert -- der Auftrag wird nur
+     * markiert und an Packplatz/Kasse gesperrt, entschieden wird im ERP bzw. im Shop.
+     */
+    private const WIDERRUF_STATUS = [
+        'pending-wdraw' => 'beantragt',
+        'withdrawn'     => 'widerrufen',
+    ];
+
     private ShopSyncRepository $repo;
     private AuftragRepository $auftragRepo;
     private AuftragService $auftragService;
@@ -170,6 +180,11 @@ class ShopBestellungSyncService
         $ziel    = $this->sollShopStatus($auftrag);
         $bekannt = $auftrag['shop_status_gemeldet'] ?? null;
         $neu     = $ziel !== null && (self::SHOP_STATUS_RANG[$ziel] ?? 0) > (self::SHOP_STATUS_RANG[$bekannt] ?? 0);
+        // Widerruf läuft: Status im Shop nicht anfassen (würde „Widerruf ausstehend“/„Widerrufen“
+        // überschreiben). Notizen gehen weiterhin raus.
+        if (!empty($auftrag['widerruf_status'])) {
+            $neu = false;
+        }
 
         if (!$neu && $interneNotiz === null && $kundenNotiz === null) {
             return ['gemeldet' => false, 'ziel' => $ziel, 'fehler' => null]; // nichts zu tun
@@ -236,6 +251,7 @@ class ShopBestellungSyncService
               AND lieferstatus <> 'storniert'
               AND (zahlungsstatus = 'bezahlt' OR lieferstatus IN ('versendet', 'abgeschlossen', 'retoure_offen'))
               AND COALESCE(shop_status_gemeldet, '') <> 'completed'
+              AND widerruf_status IS NULL
             ORDER BY id
             LIMIT 100
         ");
@@ -321,7 +337,9 @@ class ShopBestellungSyncService
 
     private function verarbeiteBestellung(array $order, int $shopId): void
     {
-        $mapping = self::STATUS_MAP[$order['status']] ?? null;
+        $widerruf = self::WIDERRUF_STATUS[$order['status']] ?? null;
+        // Bestellung, die schon vor dem ersten Abruf widerrufen wurde: wie "in Wartestellung" anlegen + markieren
+        $mapping = $widerruf !== null ? self::STATUS_MAP['on-hold'] : (self::STATUS_MAP[$order['status']] ?? null);
         if ($mapping === null) {
             // failed/checkout-draft/trash/unbekannt -- kein echter Auftrag
             return;
@@ -329,7 +347,16 @@ class ShopBestellungSyncService
         [$zahlungsstatus, $lieferstatus] = $mapping;
 
         $bestehender = $this->auftragRepo->findByShopUndKanalAuftragId($shopId, (int)$order['id']);
+        if ($bestehender && $widerruf !== null) {
+            $this->setzeWiderruf((int)$bestehender['id'], $bestehender, $widerruf, $order);
+            return;
+        }
         if ($bestehender) {
+            // Widerruf im Shop abgelehnt/zurückgenommen (Status wieder normal) → Markierung weg.
+            // 'widerrufen' bleibt: bestätigt ist bestätigt, auch wenn danach storniert/erstattet wird.
+            if (($bestehender['widerruf_status'] ?? null) === 'beantragt') {
+                $this->setzeWiderruf((int)$bestehender['id'], $bestehender, null, $order);
+            }
             $this->aktualisiereBestehenden((int)$bestehender['id'], $bestehender, $zahlungsstatus, $lieferstatus, $order, $shopId);
             return;
         }
@@ -368,6 +395,39 @@ class ShopBestellungSyncService
         // Bestellabschluss nicht mehr, ein erneuter Poll würde sonst doppelt buchen.
         $this->verarbeiteGutscheinEinloesungen($order, $auftragId);
         $this->verarbeiteGutscheinKauf($order, $auftragId, $shopId, $zahlungsstatus);
+
+        if ($widerruf !== null) {
+            $this->setzeWiderruf($auftragId, ['widerruf_status' => null], $widerruf, $order);
+        }
+    }
+
+    /**
+     * Widerruf-Markierung am Auftrag setzen/entfernen (null = entfernen), mit Statuslog + Logger.
+     * widerruf_am = Zeitpunkt der Statusänderung im Shop (date_modified_gmt → ERP-Ortszeit) beim
+     * ersten Widerruf-Status; bleibt beim Wechsel beantragt → widerrufen erhalten.
+     */
+    private function setzeWiderruf(int $auftragId, array $vorher, ?string $neu, array $order): void
+    {
+        // date_modified_gmt ist eindeutig UTC (date_modified hängt von der WP-Zeitzone ab) → in ERP-Ortszeit
+        $zeit = !empty($order['date_modified_gmt']) ? date('Y-m-d H:i:s', strtotime($order['date_modified_gmt'] . ' UTC')) : date('Y-m-d H:i:s');
+        $alt = $vorher['widerruf_status'] ?? null;
+        if ($alt === $neu) {
+            return;
+        }
+        Database::getInstance()->prepare("
+            UPDATE auftraege
+            SET widerruf_status = ?,
+                widerruf_am = IF(? IS NULL, NULL, COALESCE(widerruf_am, ?))
+            WHERE id = ?
+        ")->execute([$neu, $neu, $zeit, $auftragId]);
+
+        $notiz = match ($neu) {
+            'beantragt'  => 'Widerruf im Shop beantragt (Widerrufsbutton) -- Auftrag gesperrt',
+            'widerrufen' => 'Widerruf im Shop bestätigt',
+            default      => 'Widerruf im Shop abgelehnt bzw. zurückgenommen -- Sperre aufgehoben',
+        };
+        $this->auftragRepo->logStatus($auftragId, ['widerruf_status' => [$alt, $neu]], $notiz, $this->jarvisId);
+        Logger::log('shop.widerruf', 'auftraege', $auftragId, ['von' => $alt, 'nach' => $neu], $this->jarvisId);
     }
 
     /**
