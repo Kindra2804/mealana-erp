@@ -1,0 +1,18 @@
+/* NAHTLOS Connector – Hauptmenü: „Alle Hersteller“ als großes Aufklappfeld in Spalten (nur Desktop) */
+@media (min-width: 1000px) {
+    .menu-item.nahtlos-spalten > .sub-menu {
+        width: min(860px, 80vw) !important;
+        columns: 4;
+        column-gap: 28px;
+        padding: 18px 22px !important;
+    }
+    .menu-item.nahtlos-spalten > .sub-menu > li {
+        break-inside: avoid;
+        width: auto !important;
+    }
+    .menu-item.nahtlos-spalten > .sub-menu > li > a {
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
+        white-space: nowrap;
+    }
+}

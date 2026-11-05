@@ -153,6 +153,9 @@ foreach ($repo->findAktiveShops() as $shop) {
 try {
     require_once __DIR__ . '/../src/modules/slider/SliderService.php';
     (new SliderService())->cronUebertrage($jarvisId, function (string $zeile) { echo $zeile . "\n"; });
+    // Shop-Menü: neu übertragen, wenn sich Kategorien geändert haben (Unterkategorien automatisch)
+    require_once __DIR__ . '/../src/modules/slider/MenueService.php';
+    (new MenueService())->cronUebertrage($jarvisId, function (string $zeile) { echo $zeile . "\n"; });
 } catch (Throwable $e) {
     Logger::log('slider.cron_fehler', null, null, ['fehler' => $e->getMessage()], $jarvisId, 'error');
     echo "Slider-Übertragung abgebrochen: {$e->getMessage()}\n";

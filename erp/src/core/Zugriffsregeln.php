@@ -101,6 +101,8 @@ final class Zugriffsregeln
             'slide_speichern.php' => 'slider.verwalten',
             'slide_aktion.php'    => 'slider.verwalten',
             'artikel_suche.php'   => 'slider.verwalten',
+            'menue.php'           => 'slider.verwalten',
+            'menue_aktion.php'    => 'slider.verwalten',
         ],
 
         // === Preis-Aktionen (Sale/Lieferanten-Aktionen) — Tab unter Artikel ===
@@ -520,7 +522,7 @@ final class Zugriffsregeln
             'preis_loeschen.php', 'staffelpreis_loeschen.php', 'staffelpreis_speichern.php',
             'uvp_speichern.php', 'preis_speichern.php',
         ],
-        'slider'      => ['slide_speichern.php', 'slide_aktion.php', 'artikel_suche.php'],
+        'slider'      => ['slide_speichern.php', 'slide_aktion.php', 'artikel_suche.php', 'menue_aktion.php'],
         'aktionen'    => [
             'aktion_speichern.php', 'aktion_preise_speichern.php', 'aktion_artikel_laden.php',
             'aktion_loeschen.php', 'aktion_starten_ajax.php', 'aktion_kategorie_ajax.php',

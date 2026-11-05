@@ -192,6 +192,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-merkmale" class="sub">↳ Merkmale</a>
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
             <a href="#artikel-slider" class="sub">↳ Shop-Slider & Kacheln</a>
+            <a href="#artikel-menue" class="sub">↳ Shop-Menü</a>
             <a href="#lager">Lager</a>
             <a href="#lager-lagerplaetze" class="sub">↳ Lagerplätze</a>
             <a href="#lager-lagerwert" class="sub">↳ Lagerwert</a>
@@ -337,6 +338,12 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">4</div><div><strong>An Shop übertragen</strong> bringt alles online. Ein- und Ausblenden nach Datum macht der Shop danach selbst, auch wenn das ERP aus ist.</div></div>
             <p><strong>Kacheln</strong> (Bild-Karten auf der Startseite): bei <em>Wo</em> „Kachel (Startseite)“ wählen → Bild (quadratisch, leer = Kategoriebild), kleiner Titel, Titel, Ziel. Am Computer 4 je Reihe, am Handy 2.</p>
             <p>Voraussetzung im Shop: WordPress-Plugin <strong>NAHTLOS Connector</strong> aktiv und auf der Startseite die Platzhalter <code>[nahtlos_slider]</code> und <code>[nahtlos_kacheln]</code>. Details: Handbuch Kapitel 16.</p>
+
+            <h3 id="artikel-menue">Shop-Menü <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Artikel → <strong>Shop-Menü</strong>: das Hauptmenü je Shop, höchstens 3 Ebenen. Footer-Menüs bleiben in WordPress.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Leeres Menü: <strong>Aus Kategoriebaum vorschlagen</strong> legt die Hauptkategorien an (je mit Unterkategorien automatisch).</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Menüpunkte zeigen auf eine <strong>Kategorie</strong> (optional Unterkategorien automatisch), <strong>Alle Hersteller</strong> (automatisch, in Spalten), einen Hersteller, Artikel oder eine Adresse. „Nur zeigen, wenn Artikel drin sind“ z. B. für Sale.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Sortieren am ≡, „+ Unterpunkt“ für die nächste Ebene, dann <strong>An Shop übertragen</strong>.</div></div>
 
             <!-- LAGER -->
             <h2 id="lager">Lager <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

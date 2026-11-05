@@ -27,6 +27,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '💲', 'label' => 'Preise / Aktionen', 'href' => BASE_PATH . '/aktionen/liste.php'],
         ['icon' => '🏭', 'label' => 'Hersteller',       'href' => BASE_PATH . '/hersteller/liste.php'],
         ['icon' => '🖼', 'label' => 'Shop-Slider',      'href' => BASE_PATH . '/slider/liste.php', 'recht' => 'slider.verwalten'],
+        ['icon' => '🧭', 'label' => 'Shop-Menü',        'href' => BASE_PATH . '/slider/menue.php', 'recht' => 'slider.verwalten'],
     ],
     'lager' => [
         ['icon' => '📦', 'label' => 'Übersicht',          'href' => BASE_PATH . '/lager/uebersicht.php'],

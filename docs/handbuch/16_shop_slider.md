@@ -1,4 +1,4 @@
-# 16 Shop-Slider und Kacheln
+# 16 Shop-Slider, Kacheln und Menü
 
 Der große Bildwechsler oben auf der Startseite des Shops (Hero-Slider), die **Kategorie-Kacheln** auf der Startseite und die Banner oben auf Kategorieseiten werden **im ERP gepflegt**, nicht in WordPress. Jeder Shop hat seine eigenen.
 
@@ -74,3 +74,26 @@ Am Computer stehen 4 Kacheln nebeneinander (eine angefangene Reihe wird mittig g
 - Hinweise nach dem Übertragen: z. B. „Kategorie ist noch nicht im Shop“. Diese Slide oder dieser Button wird dann weggelassen
 
 **Fehlermeldung „Plugin nicht installiert“:** NAHTLOS Connector im WordPress unter Plugins aktivieren.
+
+---
+
+## Shop-Menü
+
+Das **Hauptmenü** des Shops (oben bzw. das Handy-Menü) wird im ERP gepflegt: **Artikel → Shop-Menü**, gleiches Recht wie der Slider. Footer-Menüs (Informationen, Rechtliches) bleiben in WordPress.
+
+**Schnellstart:** Bei leerem Menü **Aus Kategoriebaum vorschlagen** → legt die Hauptkategorien des Shops an, je mit „Unterkategorien automatisch“. Danach umbenennen, sortieren, ergänzen.
+
+| Menüpunkt zeigt auf | Verhalten |
+|---|---|
+| **Kategorie** | optional **Unterkategorien automatisch**: neue Unterkategorien kommen von selbst ins Menü (beim Übertragen; der nächtliche Abgleich überträgt neu, wenn sich Kategorien geändert haben) |
+| **Alle Hersteller (automatisch)** | der Shop listet alle Hersteller, die Artikel haben, auf Wunsch **in Spalten** (großes Aufklappfeld) |
+| **Hersteller / Artikel** | ein bestimmtes Ziel |
+| **Adresse** | `/seite/` oder `https://…`, z. B. „Über uns“ |
+
+- **Bezeichnung** leer lassen = Name der Kategorie/des Herstellers/Artikels
+- **nur zeigen, wenn Artikel drin sind** (Kategorie, Hersteller): z. B. „Sale“ erscheint nur, solange es Sale-Artikel gibt. Das prüft der Shop bei jedem Aufruf
+- **Höchstens 3 Ebenen.** „+ Unterpunkt“ hängt einen Punkt darunter, im Fenster kann man den übergeordneten Punkt ändern
+- **Reihenfolge:** am Griff ≡ ziehen (innerhalb derselben Ebene)
+- **Löschen** löscht die Unterpunkte mit
+
+**An Shop übertragen** baut im Shop das WordPress-Menü „NAHTLOS Hauptmenü“ und setzt es als Hauptmenü ein. Welche Stelle im Theme das ist, steht unten unter *Technik: Menü-Ort im Theme* (Blocksy: `menu_1` oben, `menu_mobile` Handy). Das vorherige, von Hand gebaute Menü bleibt in WordPress erhalten (Design → Menüs) und kann jederzeit wieder eingesetzt werden.

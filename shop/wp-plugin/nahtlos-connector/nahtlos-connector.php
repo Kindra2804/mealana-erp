@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       NAHTLOS Connector
- * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider der Startseite und Banner auf Kategorieseiten, gepflegt im ERP.
- * Version:           1.3.1
+ * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider, Kategorie-Kacheln, Kategorie-Banner und Hauptmenü, gepflegt im ERP.
+ * Version:           1.4.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -29,7 +29,7 @@
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.3.1';
+const NAHTLOS_VERSION = '1.4.0';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
@@ -60,7 +60,144 @@ add_action('rest_api_init', function () {
             'callback'            => fn() => get_option(NAHTLOS_OPTION_SLIDER, ['slides' => []]),
         ],
     ]);
+
+    register_rest_route('nahtlos/v1', '/menue', [
+        'methods'             => 'POST',
+        'permission_callback' => $berechtigt,
+        'callback'            => 'nahtlos_menue_empfangen',
+    ]);
 });
+
+// ── Hauptmenü aus dem ERP ─────────────────────────────────────────────────
+//
+// Das ERP schickt eine flache Liste (schluessel/eltern). Daraus entsteht das echte WP-Menü
+// „NAHTLOS Hauptmenü“ (bei jeder Übertragung komplett neu befüllt) an den Theme-Orten aus „orte“.
+// Dynamisch bei jedem Seitenaufruf (Filter wp_nav_menu_objects):
+//  - „Alle Hersteller“: Unterpunkte = alle pa_hersteller-Begriffe mit Artikeln (CSS-Klasse für Spalten)
+//  - „nur wenn Artikel drin“: Punkt samt Unterpunkten weg, solange die Kategorie/der Hersteller leer ist
+
+const NAHTLOS_MENUE_NAME = 'NAHTLOS Hauptmenü';
+
+function nahtlos_menue_empfangen(WP_REST_Request $request)
+{
+    $daten = $request->get_json_params();
+    if (!is_array($daten) || !isset($daten['punkte']) || !is_array($daten['punkte'])) {
+        return new WP_Error('nahtlos_ungueltig', 'Menüpunkte fehlen', ['status' => 400]);
+    }
+
+    $menue = wp_get_nav_menu_object(NAHTLOS_MENUE_NAME);
+    $menueId = $menue ? (int)$menue->term_id : (int)wp_create_nav_menu(NAHTLOS_MENUE_NAME);
+    if (!$menueId) return new WP_Error('nahtlos_menue', 'Menü konnte nicht angelegt werden', ['status' => 500]);
+
+    // Bisherige Einträge entfernen, dann in ERP-Reihenfolge neu anlegen
+    foreach ((array)wp_get_nav_menu_items($menueId, ['post_status' => 'any']) as $alt) {
+        wp_delete_post($alt->ID, true);
+    }
+    $dbIds = [];
+    $pos = 0;
+    $fehler = [];
+    foreach ($daten['punkte'] as $p) {
+        $schluessel = sanitize_key($p['schluessel'] ?? '');
+        $eltern = isset($p['eltern']) ? sanitize_key((string)$p['eltern']) : '';
+        $titel = sanitize_text_field((string)($p['titel'] ?? ''));
+        $klassen = [];
+        if (!empty($p['nur_mit_artikeln'])) $klassen[] = 'nahtlos-nur-mit-artikeln';
+        $args = [
+            'menu-item-title'     => $titel,
+            'menu-item-status'    => 'publish',
+            'menu-item-position'  => ++$pos,
+            'menu-item-parent-id' => $eltern && isset($dbIds[$eltern]) ? $dbIds[$eltern] : 0,
+        ];
+        switch ($p['typ'] ?? '') {
+            case 'kategorie':
+            case 'hersteller':
+                $tax = $p['typ'] === 'kategorie' ? 'product_cat' : 'pa_hersteller';
+                $args += ['menu-item-type' => 'taxonomy', 'menu-item-object' => $tax, 'menu-item-object-id' => (int)$p['ziel']];
+                break;
+            case 'produkt':
+                $args += ['menu-item-type' => 'post_type', 'menu-item-object' => 'product', 'menu-item-object-id' => (int)$p['ziel']];
+                break;
+            case 'url':
+                $ziel = (string)($p['ziel'] ?? '');
+                $args += ['menu-item-type' => 'custom', 'menu-item-url' => str_starts_with($ziel, '/') ? home_url($ziel) : esc_url_raw($ziel)];
+                break;
+            case 'hersteller_alle':
+                $args += ['menu-item-type' => 'custom', 'menu-item-url' => '#'];
+                $klassen[] = 'nahtlos-hersteller-alle';
+                if (!empty($p['spalten'])) $klassen[] = 'nahtlos-spalten';
+                break;
+            default:
+                continue 2;
+        }
+        $args['menu-item-classes'] = implode(' ', $klassen);
+        $id = wp_update_nav_menu_item($menueId, 0, $args);
+        if (is_wp_error($id)) { $fehler[] = $titel . ': ' . $id->get_error_message(); continue; }
+        $dbIds[$schluessel] = (int)$id;
+    }
+
+    // An die Theme-Orte hängen (z. B. Blocksy menu_1); unbekannte Orte melden
+    $orte = get_nav_menu_locations();
+    $bekannt = array_keys(get_registered_nav_menus());
+    $unbekannt = [];
+    foreach ((array)($daten['orte'] ?? []) as $ort) {
+        $ort = sanitize_key($ort);
+        if (in_array($ort, $bekannt, true)) $orte[$ort] = $menueId; else $unbekannt[] = $ort;
+    }
+    set_theme_mod('nav_menu_locations', $orte);
+    nahtlos_cache_leeren();
+
+    return ['erfolg' => !$fehler, 'menue_id' => $menueId, 'punkte' => count($dbIds), 'fehler' => $fehler,
+            'unbekannte_orte' => $unbekannt, 'theme_orte' => $bekannt];
+}
+
+add_filter('wp_nav_menu_objects', function ($items) {
+    $hatUnsere = false;
+    foreach ($items as $it) {
+        if (array_intersect(['nahtlos-hersteller-alle', 'nahtlos-nur-mit-artikeln'], (array)$it->classes)) { $hatUnsere = true; break; }
+    }
+    if (!$hatUnsere) return $items;
+
+    // 1. „nur wenn Artikel drin“: leere Kategorien/Hersteller samt Unterpunkten entfernen
+    $weg = [];
+    foreach ($items as $it) {
+        if (!in_array('nahtlos-nur-mit-artikeln', (array)$it->classes, true) || $it->type !== 'taxonomy') continue;
+        $term = get_term((int)$it->object_id, $it->object);
+        if (!$term || is_wp_error($term) || (int)$term->count === 0) $weg[(int)$it->db_id] = true;
+    }
+    do {
+        $neu = 0;
+        foreach ($items as $it) {
+            if (!isset($weg[(int)$it->db_id]) && isset($weg[(int)$it->menu_item_parent])) { $weg[(int)$it->db_id] = true; $neu++; }
+        }
+    } while ($neu);
+    $items = array_values(array_filter($items, fn($it) => !isset($weg[(int)$it->db_id])));
+
+    // 2. „Alle Hersteller“: Hersteller mit Artikeln als Unterpunkte einfügen (ohne Hersteller: Punkt weg)
+    $ergebnis = [];
+    foreach ($items as $it) {
+        if (!in_array('nahtlos-hersteller-alle', (array)$it->classes, true)) { $ergebnis[] = $it; continue; }
+        $terms = get_terms(['taxonomy' => 'pa_hersteller', 'hide_empty' => true, 'orderby' => 'name']);
+        if (is_wp_error($terms) || !$terms) continue;
+        $it->classes[] = 'menu-item-has-children';
+        $ergebnis[] = $it;
+        foreach ($terms as $t) {
+            $url = get_term_link($t);
+            if (is_wp_error($url)) continue;
+            $k = clone $it;
+            $k->ID = $k->db_id = 2000000000 + (int)$t->term_id; // virtuelle ID, kollidiert nicht mit echten Beiträgen
+            $k->menu_item_parent = (string)$it->db_id;
+            $k->title = $t->name;
+            $k->url = $url;
+            $k->type = 'taxonomy';
+            $k->object = 'pa_hersteller';
+            $k->object_id = (int)$t->term_id;
+            $k->classes = ['menu-item', 'nahtlos-hersteller'];
+            $k->current = is_tax('pa_hersteller', $t->term_id);
+            $ergebnis[] = $k;
+        }
+    }
+    return $ergebnis;
+}, 20);
 
 /** Nimmt die Slide-Liste vom ERP an, bereinigt sie und ersetzt den bisherigen Stand komplett. */
 function nahtlos_slider_empfangen(WP_REST_Request $request)
@@ -265,6 +402,11 @@ function nahtlos_slider_html(array $slides, string $art): string
 }
 
 // CSS/JS schon im <head> laden, wo der Slider erscheinen kann (sonst kurz ungestylt)
+// Menü-CSS (Hersteller in Spalten) auf allen Seiten — das Menü ist überall
+add_action('wp_enqueue_scripts', function () {
+    wp_enqueue_style('nahtlos-menue', plugin_dir_url(__FILE__) . 'assets/menue.css', [], NAHTLOS_VERSION);
+});
+
 add_action('wp_enqueue_scripts', function () {
     $inhalt = is_singular() ? (string)get_post_field('post_content', get_queried_object_id()) : '';
     if (is_front_page() || (function_exists('is_product_category') && is_product_category())

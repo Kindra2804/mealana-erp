@@ -25,7 +25,7 @@
 | [13 Inventur](13_inventur.md) *(in Arbeit)* | Lagerplätze, Inventur-Lauf starten/pausieren/fortsetzen |
 | [14 Gutscheine](14_gutscheine.md) | Gutschein-Artikel, Verkauf/Einlösung an der Kasse, Teileinlösung, Storno |
 | [15 Dropshipping](15_dropshipping.md) | Strecke über Lang Yarns: bestellen im Portal, Versendet + Tracking, Lieferanten-Rechnung |
-| [16 Shop-Slider und Kacheln](16_shop_slider.md) | Hero-Slider, Kategorie-Kacheln der Startseite und Kategorie-Banner je Shop pflegen, zeitgesteuert, an den Shop übertragen |
+| [16 Shop-Slider, Kacheln und Menü](16_shop_slider.md) | Hero-Slider, Kategorie-Kacheln, Kategorie-Banner und Hauptmenü je Shop pflegen, an den Shop übertragen |
 
 ---
 
