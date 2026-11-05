@@ -189,6 +189,19 @@ Die Mail an den Kunden („Widerruf bestätigt“ bzw. „Dein Widerruf wurde ab
 
 > Technisch: Das ERP ruft dafür das Plugin **NAHTLOS Connector** (ab Version 1.5.0) im Shop auf. Fehlt es, kommt eine Fehlermeldung im Auftrag.
 
+### Widerrufe ohne Zuordnung (Verkauf → Widerrufe)
+
+Widerruft jemand **ohne Kundenkonto** über die Seite „Vertrag widerrufen“ und die Bestellnummer stimmt nicht (oder fehlt, oder die E-Mail ist eine andere), findet der Shop keine Bestellung. Der Antrag wird trotzdem gespeichert, der Kunde bekommt seine Eingangsbestätigung — aber kein Auftrag wird gesperrt.
+
+Solche Anträge sammelt **Verkauf → Widerrufe** (Zähler im Menü und Hinweis im Dashboard, aktualisiert alle 15 Minuten):
+
+- Oben **Ohne Zuordnung**: Name, E-Mail und was der Kunde als Vertrag angegeben hat. Darunter schlägt das ERP passende Aufträge vor (gleiche E-Mail, Name oder Nummer, letzte 120 Tage).
+  - **Zuordnen** (beim Vorschlag oder per Auftragsnummer) → der Auftrag wird gesperrt und öffnet sich; dort wie oben **bestätigen oder ablehnen**.
+  - **Ablehnen** mit Grund, wenn der Antrag zu keiner Shop-Bestellung gehört (z. B. im Laden gekauft, Spam). Der Grund geht an den Kunden.
+- Unten **Entscheidung offen**: alle gesperrten Aufträge mit „Widerruf beantragt“.
+
+> Zuordnen geht nur zu Bestellungen aus demselben Shop. Braucht das Plugin NAHTLOS Connector ab 1.6.0.
+
 > Die Germanized-Einstellungen liegen unter WooCommerce → Einstellungen → Germanized → Allgemein → Widerrufsbutton (überall anzeigen, Kontakt-E-Mail, Link in „Mein Konto“).
 
 ---

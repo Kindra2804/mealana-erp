@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       NAHTLOS Connector
  * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider, Kategorie-Kacheln, Kategorie-Banner und Hauptmenü, gepflegt im ERP; Widerrufe (Germanized) aus dem ERP bestätigen/ablehnen.
- * Version:           1.5.0
+ * Version:           1.6.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -29,7 +29,7 @@
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.5.0';
+const NAHTLOS_VERSION = '1.6.0';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
@@ -78,6 +78,17 @@ add_action('rest_api_init', function () {
         'permission_callback' => $berechtigt,
         'callback'            => 'nahtlos_widerruf_entscheiden',
     ]);
+    // Alle offenen Anträge (auch ohne zugeordnete Bestellung) + Zuordnen/Ablehnen über die Antrags-ID
+    register_rest_route('nahtlos/v1', '/widerrufe/offen', [
+        'methods'             => 'GET',
+        'permission_callback' => $berechtigt,
+        'callback'            => 'nahtlos_widerrufe_offen',
+    ]);
+    register_rest_route('nahtlos/v1', '/widerrufe/(?P<antrag>\d+)/(?P<aktion>zuordnen|ablehnen)', [
+        'methods'             => 'POST',
+        'permission_callback' => $berechtigt,
+        'callback'            => 'nahtlos_widerrufsantrag_aktion',
+    ]);
 });
 
 // ── Widerrufe (Germanized ≥ 4.0, Paket eu-order-withdrawal-button) ─────────
@@ -111,6 +122,11 @@ function nahtlos_widerruf_daten($antrag): array
     }
     return [
         'id'          => $antrag->get_id(),
+        'bestellung'  => (int)$antrag->get_parent_id(),           // 0 = keiner Bestellung zugeordnet
+        'verifiziert' => (bool)$antrag->has_verified_email(),     // E-Mail passt zur Bestellung
+        'name'        => trim($antrag->get_first_name() . ' ' . $antrag->get_last_name()),
+        'angaben'     => (string)$antrag->get_contract_identification(),   // was der Kunde als Vertrag angegeben hat
+        'info'        => (string)$antrag->get_additional_information(),
         'nummer'      => $antrag->get_withdrawal_number(),
         'status'      => preg_replace('/^(wc-)?owb-/', '', $antrag->get_status()),  // requested / confirmed / rejected
         'teilweise'   => (bool)$antrag->is_partial(),
@@ -550,3 +566,78 @@ function nahtlos_assets(): void
 
 // Beim Deaktivieren geplante Wechsel entfernen (die Slides selbst bleiben gespeichert)
 register_deactivation_hook(__FILE__, fn() => wp_unschedule_hook('nahtlos_slider_wechsel'));
+
+/**
+ * Offene Anträge (Status requested). „ungeklaert“ = Germanized hat die Bestellung NICHT umgestellt,
+ * weil keine Bestellung gefunden wurde oder die E-Mail nicht zur Bestellung passt
+ * (eu_owb_withdrawal_request_needs_manual_verification) -- die sieht das ERP nur über diese Liste.
+ */
+function nahtlos_widerrufe_offen()
+{
+    if (!nahtlos_widerruf_verfuegbar()) {
+        return new WP_Error('nahtlos_kein_widerruf', 'Germanized-Widerrufsbutton nicht aktiv.', ['status' => 501]);
+    }
+    $antraege = wc_get_orders(['type' => 'shop_order_withdraw', 'status' => ['wc-owb-requested'], 'limit' => -1]);
+    $liste = [];
+    foreach ($antraege as $antrag) {
+        $d = nahtlos_widerruf_daten($antrag);
+        $d['ungeklaert'] = function_exists('eu_owb_withdrawal_request_needs_manual_verification')
+            ? (bool)eu_owb_withdrawal_request_needs_manual_verification($antrag)
+            : !$d['bestellung'];
+        $liste[] = $d;
+    }
+    return ['antraege' => $liste];
+}
+
+/**
+ * zuordnen: Antrag einer Bestellung zuordnen (vom ERP geprüft → gilt als verifiziert) und die
+ *           Bestellung auf „Widerruf ausstehend“ setzen -- wie bei einem direkt zugeordneten Antrag.
+ *           Danach läuft alles wie gewohnt (Abgleich → Bestätigen/Ablehnen im Auftrag).
+ * ablehnen: auch ohne Bestellung möglich (z. B. Laden-Kauf, Spam); Grund geht an den Kunden.
+ */
+function nahtlos_widerrufsantrag_aktion(WP_REST_Request $request)
+{
+    if (!nahtlos_widerruf_verfuegbar()) {
+        return new WP_Error('nahtlos_kein_widerruf', 'Germanized-Widerrufsbutton nicht aktiv.', ['status' => 501]);
+    }
+    $antrag = eu_owb_get_withdrawal((int)$request['antrag']);
+    if (!$antrag || !$antrag->has_status('requested')) {
+        return new WP_Error('nahtlos_kein_offener_antrag', 'Kein offener Widerrufsantrag mit dieser Nummer.', ['status' => 409]);
+    }
+
+    if ($request['aktion'] === 'ablehnen') {
+        $grund = sanitize_textarea_field((string)($request->get_param('grund') ?? ''));
+        if (!eu_owb_order_reject_withdrawal_request($antrag, $grund)) {
+            return new WP_Error('nahtlos_widerruf_fehler', 'Germanized hat die Ablehnung nicht angenommen.', ['status' => 500]);
+        }
+        return ['antrag' => nahtlos_widerruf_daten(eu_owb_get_withdrawal($antrag->get_id()))];
+    }
+
+    $bestellung = wc_get_order((int)$request->get_param('bestellung'));
+    if (!$bestellung || $bestellung->get_type() !== 'shop_order') {
+        return new WP_Error('nahtlos_keine_bestellung', 'Bestellung nicht gefunden.', ['status' => 404]);
+    }
+    $vorhanden = eu_owb_get_order_withdrawals($bestellung, ['status' => 'requested']);
+    foreach ($vorhanden as $w) {
+        if ($w->get_id() !== $antrag->get_id()) {
+            return new WP_Error('nahtlos_schon_offen', 'Zu dieser Bestellung gibt es schon einen offenen Widerruf.', ['status' => 409]);
+        }
+    }
+    $antrag->set_parent_id($bestellung->get_id());   // Germanized übernimmt Bestellnummer, Positionen, Original-Status
+    $antrag->set_has_verified_email(true);           // im ERP geprüft
+    $antrag->add_order_note('Im ERP der Bestellung #' . $bestellung->get_order_number() . ' zugeordnet.');
+    $antrag->save();
+
+    $hinweis = sprintf('Widerrufsantrag %s im ERP zugeordnet (Kunde hatte angegeben: %s).', $antrag->get_id(), $antrag->get_contract_identification() ?: '—');
+    if ($bestellung->has_status('pending-wdraw')) {
+        $bestellung->add_order_note($hinweis);
+        $bestellung->save();
+    } else {
+        $bestellung->update_status('pending-wdraw', $hinweis);
+    }
+    return [
+        'bestellung' => $bestellung->get_id(),
+        'status'     => wc_get_order($bestellung->get_id())->get_status(),
+        'antrag'     => nahtlos_widerruf_daten(eu_owb_get_withdrawal($antrag->get_id())),
+    ];
+}

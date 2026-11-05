@@ -458,7 +458,7 @@ class WooCommerceClient
         }
         $daten = json_decode($antwort, true);
         if ($httpCode === 404 && ($daten['code'] ?? '') === 'rest_no_route') {
-            throw new RuntimeException('Das WordPress-Plugin „NAHTLOS Connector“ ist im Shop nicht installiert oder nicht aktiviert.');
+            throw new RuntimeException('Das WordPress-Plugin „NAHTLOS Connector“ ist im Shop nicht installiert, nicht aktiviert oder zu alt für diese Funktion.');
         }
         if ($httpCode >= 400) {
             throw new RuntimeException("Shop-Fehler ($httpCode): " . ($daten['message'] ?? mb_substr(strip_tags($antwort), 0, 200)));

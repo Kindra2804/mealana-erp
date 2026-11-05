@@ -50,6 +50,12 @@ $sidebarItems = match ($activeModule ?? '') {
          'badge' => ($activeModule ?? '') === 'verkauf'
              ? (int)Database::getInstance()->query("SELECT COUNT(*) FROM mahnungen WHERE status = 'vorgeschlagen'")->fetchColumn()
              : 0],
+        // Badge = Widerrufe aus den Shops: ungeklärt (Cron-Zähler je Shop) + Entscheidung offen
+        ['icon' => '↩', 'label' => 'Widerrufe',           'href' => BASE_PATH . '/auftraege/widerrufe.php',
+         'badge' => ($activeModule ?? '') === 'verkauf'
+             ? (int)Database::getInstance()->query("SELECT (SELECT COALESCE(SUM(widerrufe_ungeklaert), 0) FROM shops WHERE ist_aktiv = 1)
+                                                         + (SELECT COUNT(*) FROM auftraege WHERE widerruf_status = 'beantragt')")->fetchColumn()
+             : 0],
         ['icon' => '🎁', 'label' => 'Gutscheine',         'href' => BASE_PATH . '/gutscheine/liste.php'],
         ['icon' => '🏬', 'label' => 'Händler',            'href' => BASE_PATH . '/haendler/liste.php'],
     ],

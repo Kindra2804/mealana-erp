@@ -288,6 +288,10 @@ $forderungen14bis29 = (int)$db->query("
 // Mahnungen zur Freigabe (Rechnungskunden, Verkauf → Mahnwesen)
 $mahnungenAktiv = (int)$db->query("SELECT COUNT(*) FROM mahnungen WHERE status = 'vorgeschlagen'")->fetchColumn();
 
+// Widerrufe aus den Shops: ungeklärt (Cron-Zähler) + Entscheidung offen (Verkauf → Widerrufe)
+$widerrufeOffen = (int)$db->query("SELECT (SELECT COALESCE(SUM(widerrufe_ungeklaert), 0) FROM shops WHERE ist_aktiv = 1)
+                                        + (SELECT COUNT(*) FROM auftraege WHERE widerruf_status = 'beantragt')")->fetchColumn();
+
 // ── Offene Lieferantenrechnungen (Kreditoren) ───────────────────────────────
 // offener_betrag = Rechnungsbetrag minus Summe aller Zahlungen (Überweisung + Guthaben-
 // Verrechnung, siehe bestellung_zahlungen) — analog zu den offenen Kunden-Forderungen oben.
@@ -593,6 +597,11 @@ require_once __DIR__ . '/includes/shell_top.php';
         <?php if ($mahnungenAktiv > 0): ?>
         <div style="margin-bottom:4px">
             <a href="<?= BASE_PATH ?>/auftraege/mahnwesen.php" class="db-chip db-chip-amber" style="text-decoration:none">✉ Mahnungen zur Freigabe: <?= $mahnungenAktiv ?></a>
+        </div>
+        <?php endif; ?>
+        <?php if ($widerrufeOffen > 0): ?>
+        <div style="margin-bottom:4px">
+            <a href="<?= BASE_PATH ?>/auftraege/widerrufe.php" class="db-chip db-chip-red" style="text-decoration:none">↩ Widerrufe offen: <?= $widerrufeOffen ?></a>
         </div>
         <?php endif; ?>
         <div style="margin-top:8px">

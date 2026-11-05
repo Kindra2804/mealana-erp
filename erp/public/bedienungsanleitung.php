@@ -486,7 +486,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>✓ Widerruf bestätigen</strong> — nicht versendet: Auftrag wird automatisch storniert · schon versendet: Retoure abwarten · Teilwiderruf: zuerst die Positionen über „Bearbeiten“ herausnehmen, dann bestätigen</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Ablehnen</strong> — Grund eintragen (geht an den Kunden), der Auftrag ist wieder frei</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Die Mail an den Kunden schickt der Shop; das ERP schickt dabei keine eigene Storno-Mail</div></div>
-            <div class="ba-hint">💡 Retouren bereits versendeter Ware gehen an der Kasse weiterhin. Germanized-Einstellungen: WooCommerce → Einstellungen → Germanized → Allgemein → Widerrufsbutton. Benötigt das Plugin NAHTLOS Connector ab 1.5.0 im Shop.</div>
+            <p><strong>Ohne Zuordnung:</strong> Widerruft jemand ohne Kundenkonto mit falscher/fehlender Bestellnummer oder anderer E-Mail, findet der Shop keine Bestellung. Solche Anträge stehen unter <strong>Verkauf → Widerrufe</strong> (Zähler im Menü, Hinweis im Dashboard) mit Vorschlägen passender Aufträge (E-Mail, Name, Nummer). <strong>Zuordnen</strong> → Auftrag wird gesperrt, dort bestätigen/ablehnen · <strong>Ablehnen</strong> mit Grund, wenn es keine Shop-Bestellung ist. Darunter: alle Aufträge mit offener Entscheidung.</p>
+            <div class="ba-hint">💡 Retouren bereits versendeter Ware gehen an der Kasse weiterhin. Germanized-Einstellungen: WooCommerce → Einstellungen → Germanized → Allgemein → Widerrufsbutton. Benötigt das Plugin NAHTLOS Connector im Shop (Entscheiden ab 1.5.0, ohne Zuordnung ab 1.6.0).</div>
 
             <h3 id="mahnwesen">Mahnwesen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Der Cronjob läuft täglich.</p>

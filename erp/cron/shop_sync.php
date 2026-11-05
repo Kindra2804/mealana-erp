@@ -29,6 +29,7 @@ require_once __DIR__ . '/../src/core/logger.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncRepository.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncService.php';
 require_once __DIR__ . '/../src/modules/shop/ShopBestellungSyncService.php';
+require_once __DIR__ . '/../src/modules/shop/WiderrufService.php';
 require_once __DIR__ . '/../src/modules/gutscheine/GutscheinService.php';
 
 $jarvisId = (int)Database::getInstance()
@@ -38,6 +39,7 @@ $jarvisId = (int)Database::getInstance()
 $repo             = new ShopSyncRepository();
 $artikelSync      = new ShopSyncService();
 $bestellungSync   = new ShopBestellungSyncService();
+$widerrufService  = new WiderrufService();
 $gutscheinService = new GutscheinService();
 
 // Lizenz: ohne Modul Shop kein Abgleich, sonst nur so viele Shops wie lizenziert (älteste zuerst)
@@ -116,6 +118,12 @@ foreach ($repo->findAktiveShops() as $shop) {
             'fehler'   => $e->getMessage(),
         ], $jarvisId, 'error');
         echo "[{$shop['slug']}] Bestellungs-Sync abgebrochen: {$e->getMessage()}\n";
+    }
+
+    // Ungeklärte Widerrufe (Gast-Widerruf ohne passende Bestellung) zählen -- Plugin >= 1.6.0, sonst still übersprungen
+    $ungeklaert = $widerrufService->zaehleUngeklaerte($shop);
+    if ($ungeklaert) {
+        echo "[{$shop['slug']}] Widerrufe ohne Zuordnung: {$ungeklaert}\n";
     }
 
     // ERP → Shop: Zahlungs-/Versandstand melden (z.B. am Packplatz versendet, an der
