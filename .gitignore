@@ -44,6 +44,9 @@ erp/public/uploads/kategorien/
 
 # Download-Artikel-Dateien (lokal hochgeladen, ggf. urheberrechtlich geschützt)
 erp/public/uploads/downloads/
+
+# Shop-Slider-Bilder (lokal hochgeladen, instanzspezifisch)
+erp/public/uploads/slider/
 # Lizenz: privater Schlüssel gehört NIE ins Repo (liegt unter D:\ERP\lizenz_schluessel\)
 *.key
 *privat*.pem
