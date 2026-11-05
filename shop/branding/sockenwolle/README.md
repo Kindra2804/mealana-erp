@@ -1,6 +1,6 @@
 # Logo Sockenwolle-online
 
-Entwurf von Babsi (2026-11-05), Farbvariante **A Weinrot**, als Vektor nachgebaut.
+Entwurf von Babsi (2026-11-05): Schrift in Farbvariante **A Weinrot**, Socken nach Babsis Canva-Entwurf (kräftiges Rot, Norweger-Band, helle Ferse und Spitze mit Lachs-Rand), alles als Vektor nachgebaut.
 
 | Datei | Wofür |
 |---|---|
@@ -17,8 +17,9 @@ Entwurf von Babsi (2026-11-05), Farbvariante **A Weinrot**, als Vektor nachgebau
 | | Hex |
 |---|---|
 | Schrift (Weinrot) | `#8e3438` |
-| Socken (Terrakotta) | `#d4693f` |
-| Muster, Ferse, Spitze | `#f6e6cf` |
+| Socken (Rot) | `#f23d39` |
+| Muster, Ferse, Spitze | `#f4e5d4` |
+| Rand von Ferse und Spitze (Lachs) | `#ef8a72` |
 | Faden | `#cbb48f` |
 | Hintergrund (Creme) | `#fdf8f2` |
 

@@ -575,7 +575,7 @@ Details siehe `.claude/memory/project_newsletter_slider_ideen.md`, `project_shop
 - **Cron `shop_sync.php`:** überträgt täglich Aktions-Slides neu und das Menü, wenn sich Kategorien geändert haben.
 - **Live auf indra-design.at:** Startseite 34243 mit 3 Slides + 7 Kacheln, Menü an menu_1 + menu_mobile (altes „Indra Hauptmenü“ 8722 noch vorhanden). Hersteller-Spalten + „nur mit Artikeln“ erst per Stub getestet → echt mit SOW testen.
 - **Live-Neuaufsatz:** Migrationen 224–226 mitnehmen; Slides/Kacheln neu übertragen (Bilder hängen an Dev-Medien-IDs).
-- **SOW-Logo:** Vektor Variante A Weinrot in `shop/branding/sockenwolle/` (Andika in Pfade, `logo_bauen.py`), Startseiten-Entwurf gebaut. Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün. Babsi hat am Nachmittag eine eigene Canva-Version geschickt (`Logo für Sockenwolle online.svg`, Socken als eingebettete Rasterbilder) → Entscheidung offen.
+- **SOW-Logo:** Vektor Variante A Weinrot in `shop/branding/sockenwolle/` (Andika in Pfade, `logo_bauen.py`), Startseiten-Entwurf gebaut. Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün. Final: Schrift A Weinrot + Babsis rote Norweger-Socke aus ihrem Canva-Entwurf, als Vektor nachgezeichnet.
 
 ## Update 2026-11-04: indra-design.at Sortiment + Shop-Kategorien
 
