@@ -423,6 +423,49 @@ class WooCommerceClient
      *        echte Duplikate anzulegen, aber eben als Fehler statt als Erfolg).
      * @throws RuntimeException bei HTTP-Fehler oder Verbindungsproblem
      */
+    /**
+     * Aufruf des eigenen WP-Plugins „NAHTLOS Connector“ (/wp-json/nahtlos/v1/...),
+     * authentifiziert per WordPress-Application-Password (wie der Medien-Upload).
+     * Genutzt vom Shop-Slider (SliderService::uebertrage()).
+     *
+     * @throws RuntimeException bei fehlendem App-Passwort, HTTP-Fehler oder Verbindungsproblem;
+     *         404 (rest_no_route) heißt: Plugin nicht installiert/aktiviert
+     */
+    public function connector(string $methode, string $pfad, ?array $body = null): array
+    {
+        if (!$this->wpUsername || !$this->wpAppPassword) {
+            throw new RuntimeException('Kein WordPress-Application-Password für diesen Shop hinterlegt');
+        }
+        $ch = curl_init($this->siteUrl . '/wp-json/nahtlos/v1/' . ltrim($pfad, '/'));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_USERAGENT      => self::USER_AGENT,
+            CURLOPT_CUSTOMREQUEST  => $methode,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_USERPWD        => $this->wpUsername . ':' . $this->wpAppPassword,
+        ]);
+        if ($body !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
+        }
+        $antwort  = curl_exec($ch);
+        $fehler   = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($antwort === false) {
+            throw new RuntimeException("Verbindung zum Shop fehlgeschlagen: $fehler");
+        }
+        $daten = json_decode($antwort, true);
+        if ($httpCode === 404 && ($daten['code'] ?? '') === 'rest_no_route') {
+            throw new RuntimeException('Das WordPress-Plugin „NAHTLOS Connector“ ist im Shop nicht installiert oder nicht aktiviert.');
+        }
+        if ($httpCode >= 400) {
+            throw new RuntimeException("Shop-Fehler ($httpCode): " . ($daten['message'] ?? mb_substr(strip_tags($antwort), 0, 200)));
+        }
+        return $daten ?? [];
+    }
+
     private function request(string $methode, string $pfad, array $query = [], ?array $body = null, int $timeoutSekunden = 20): array
     {
         $query['consumer_key'] = $this->key;

@@ -94,6 +94,15 @@ final class Zugriffsregeln
             'achse_loeschen_ajax.php'       => 'varianten.loeschen',
         ],
 
+        // === Shop-Slider (Startseite + Kategorie-Banner, Migration 224) — unter Artikel ===
+        'slider' => [
+            'index.php'           => 'slider.verwalten',
+            'liste.php'           => 'slider.verwalten',
+            'slide_speichern.php' => 'slider.verwalten',
+            'slide_aktion.php'    => 'slider.verwalten',
+            'artikel_suche.php'   => 'slider.verwalten',
+        ],
+
         // === Preis-Aktionen (Sale/Lieferanten-Aktionen) — Tab unter Artikel ===
         'aktionen' => [
             'index.php'                    => 'artikel.anzeigen',
@@ -511,6 +520,7 @@ final class Zugriffsregeln
             'preis_loeschen.php', 'staffelpreis_loeschen.php', 'staffelpreis_speichern.php',
             'uvp_speichern.php', 'preis_speichern.php',
         ],
+        'slider'      => ['slide_speichern.php', 'slide_aktion.php', 'artikel_suche.php'],
         'aktionen'    => [
             'aktion_speichern.php', 'aktion_preise_speichern.php', 'aktion_artikel_laden.php',
             'aktion_loeschen.php', 'aktion_starten_ajax.php', 'aktion_kategorie_ajax.php',

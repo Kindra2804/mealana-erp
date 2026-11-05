@@ -43,6 +43,7 @@ class Lizenz
     private const SEITEN = [
         'kasse'         => ['*' => 'kasse', 'ajax_kundenanzeige_sync.php' => 'kundenanzeige', 'ajax_konfigurator.php' => 'konfigurator'],
         'kundenanzeige' => ['*' => 'kundenanzeige'],
+        'slider'        => ['*' => 'shop'],
         'gutscheine'    => ['*' => 'gutscheine'],
         'partner'       => ['*' => 'partner'],
         'haendler'      => ['*' => 'haendler'],
