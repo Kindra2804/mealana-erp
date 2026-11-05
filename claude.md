@@ -565,6 +565,18 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-05: Shop-Slider, Kacheln + Hauptmenü aus dem ERP, SOW-Logo
+
+Details siehe `.claude/memory/project_newsletter_slider_ideen.md`, `project_shop_menue.md`, `project_sow_shop_design.md`. Handbuch `docs/handbuch/16_shop_slider.md` + `bedienungsanleitung.php` (#artikel-slider, #artikel-menue).
+- **Grundsatz:** Das ERP ist die einzige Quelle der Wahrheit für Slider, Kacheln und Hauptmenü, je Shop (indra-design, SOW, MeaLana, bio-wolle). Footer-Menüs bleiben in WordPress.
+- **Migration 224 `shop_slides`** (Startseite + Kategorie-Banner; Bild und Text getrennt oder „Fertiges Bild“; Desktop- und Handy-Bild; Sichtbarkeit immer/Zeitraum/solange Aktion läuft) + Recht `slider.verwalten`. **225:** Position `kachel` (Startseiten-Kacheln). **226 `shop_menue_punkte`** (max. 3 Ebenen; Typen kategorie, hersteller_alle, hersteller, artikel, url; Unterkategorien automatisch, nur wenn Artikel drin, Hersteller in Spalten). Nächste Migration: **227**.
+- **Code:** `src/modules/slider/` (Slider- + Menue-Repository/-Service), `public/slider/` (liste, index, menue, *_aktion), JS `slider.js` + `slider_menue.js`. Menü: Artikel → 🖼 Shop-Slider / 🧭 Shop-Menü. `WooCommerceClient::connector()` meldet 404 als „Plugin nicht installiert“.
+- **WP-Plugin „NAHTLOS Connector“ 1.4.0** (`shop/wp-plugin/nahtlos-connector/`): REST `nahtlos/v1/status|slider|menue`, Shortcodes `[nahtlos_slider]` + `[nahtlos_kacheln]`, Kategorie-Banner, Menü „NAHTLOS Hauptmenü“ mit dynamischem Filter (Hersteller, leere Punkte weg). Zeitsteuerung im Browser, weil WP Super Cache ohne WP-Cron ausliefert.
+- **Cron `shop_sync.php`:** überträgt täglich Aktions-Slides neu und das Menü, wenn sich Kategorien geändert haben.
+- **Live auf indra-design.at:** Startseite 34243 mit 3 Slides + 7 Kacheln, Menü an menu_1 + menu_mobile (altes „Indra Hauptmenü“ 8722 noch vorhanden). Hersteller-Spalten + „nur mit Artikeln“ erst per Stub getestet → echt mit SOW testen.
+- **Live-Neuaufsatz:** Migrationen 224–226 mitnehmen; Slides/Kacheln neu übertragen (Bilder hängen an Dev-Medien-IDs).
+- **SOW-Logo:** Vektor Variante A Weinrot in `shop/branding/sockenwolle/` (Andika in Pfade, `logo_bauen.py`), Startseiten-Entwurf gebaut. Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün. Babsi hat am Nachmittag eine eigene Canva-Version geschickt (`Logo für Sockenwolle online.svg`, Socken als eingebettete Rasterbilder) → Entscheidung offen.
+
 ## Update 2026-11-04: indra-design.at Sortiment + Shop-Kategorien
 
 Details siehe `.claude/memory/project_indra_design_shop.md`, `project_indra_sortiment.md`, `project_preise.md`.
