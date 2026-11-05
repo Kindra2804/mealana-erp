@@ -27,4 +27,9 @@ Jacky 2026-11-04: Newsletter und Slider sollen ins ERP. Ziel: **ERP als Single P
 
 **Neubewertung Versand (Claude):** Bei 1.600 Empfängern im Monat ist **eigener Versand realistisch**: gedrosselt per Cron in Paketen über das Mail-Konto des Shops, mit SPF/DKIM/DMARC. Keine Kosten, kein Auftragsverarbeiter. Vorher die Versandlimits von Hostech prüfen. Ein Dienst wie Brevo bleibt die Ausweichlösung. Anmeldung mit Double-Opt-in und die Abmeldung laufen über das WP-Connector-Plugin, das ERP holt sie per Polling.
 
+**✅ Slider GEBAUT 2026-11-05** (Commits 2b5bf41, 2f17052, 6b8b5ea), Jackys Entscheidungen: Bild + Text getrennt und zusätzlich „Fertiges Bild“, Autoplay mit Pfeilen, Menü Artikel → Shop-Slider (Recht slider.verwalten), Kategorie-Banner gleich mitgebaut.
+- ERP: Migration 224 (`shop_slides` + shops.slider_intervall_sek/_uebertragen_am/_fehler/_geaendert + Recht), `src/modules/slider/`, `public/slider/`, `js/slider.js`. Slides auch für Shops ohne Anbindung vorbereitbar (SOW). Kopieren in andere Shops, Kopie ist aus. Übertragen nur per Klick, der Cron überträgt Aktions-Slides täglich neu, aber nur wenn nichts offen ist.
+- WP-Plugin `shop/wp-plugin/nahtlos-connector/` 1.0.0: REST nahtlos/v1/status + slider, Shortcode `[nahtlos_slider]`, Kategorie-Banner über woocommerce_before_main_content, Cache-Leeren per WP-Cron zu von/bis. Lokal mit WP-Stub getestet, ERP-Klicktest 13/13 ok (Skript `.claude-browser-tools/slider_erp_test.js`).
+- **Offen:** Plugin auf indra-design.at installieren (Jacky fragen) + Startseiten-Cover durch den Shortcode ersetzen, echter End-to-End-Test, Klicktest Jacky/Babsi, Migration 224 auf Live.
+
 **How to apply:** Vor dem Bauen [[feedback-modul-vorgehen]] (Referenz-Check) + [[feedback-scope-ohne-bedarf]]. Theme-Kontext: [[project-shop-theme]], Sync-Mechanik: [[project-shop-sync]].
