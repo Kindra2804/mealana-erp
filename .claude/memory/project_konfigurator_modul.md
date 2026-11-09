@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: bf21b7a8-0044-4fd4-869f-1ae811833787
-  modified: 2026-08-29T11:51:38.007Z
+  modified: 2026-11-09T15:44:30.893Z
 ---
 
 ## 🟢 BEHOBEN 2026-08-29: Erste echte Testbestellung verlor 5 von 7 Konfigurationswerten
@@ -165,6 +165,15 @@ Nicht Teil des `mealana-erp`-Git-Repos — WordPress/WooCommerce-Code (WPCode-Pl
 - `woocommerce_checkout_create_order_line_item` — schreibt `_mealana_konfig`-JSON (genau das Schema, das `ShopBestellungSyncService::leseKonfigurationAusLineItem()` erwartet: `{version,werte,preis_brutto}`) + Klartext-Achse-Keys ohne Unterstrich (für Kunde/Admin) auf die Bestellzeile
 
 **Noch nicht gemacht:** kein echter End-to-End-Test (Produktseite ansehen, Warenkorb, Checkout) — bewusst nicht während Jacky abwesend war, da erste unerprobte Live-Storefront-Änderung. Vor Aktivierung: Produktseite von Testartikel 27473 (`/product/holzschild-wollzimmer/`) ansehen, Options-Picker durchklicken, Preis prüfen, dann Testbestellung + ERP-Sync-Rücklauf verifizieren.
+
+## Idee 2026-11-09: Fertige Schilder (Messe) + Fertigungsschein — besprochen, noch nichts gebaut
+Jacky will vorproduzierte Schilder im ERP „durchkonfigurieren“ → Artikelnummer aus Kürzeln (z.B. S-15-01-ge-gn-gl-mg-hg-P-Andreas) → normaler Lagerartikel im Shop. Bestellt ein Kunde genau diese Kombi → vorhandenes nehmen, sonst Sonderanfertigung. Dazu Fertigungsschein (wie Abholzettel) für die Laserwerkstatt.
+Befund: Konfigurator kennt KEINE Freitext-Achse (Name/Personalisierung) — wäre Voraussetzung für „P-Name“. Werte haben noch kein Kürzel-Feld. Vorschlag: 1) Fertigungsschein (klein), 2) Freitext-Achse, 3) Kürzel + „Fertiges Schild anlegen“, 4) Treffer-Erkennung im ERP, 5) optional Shop-Live-Hinweis „sofort lieferbar“. **Entscheidungen 2026-11-09:**
+- Design-Kürzel = Katalognummer des Layouts (am Layout-Artikel, keine Auswahl-Achse).
+- Personalisierte Schilder NICHT als fertige Shop-Artikel. Zwei Personalisierungs-Arten: (1) gelastertes Metallfeld, aufgeschraubt; (2) Name separat gelastert, auf Hintergrund geklebt. Personalisierung kostet Aufpreis + max. Breite (→ Zeichenbegrenzung, evtl. einstellbar) — Details klärt Jacky, wenn es so weit ist.
+- Shop-Live-Hinweis (e) wird nicht gebaut. Bausteine bis inkl. d **zeitnah nach Go-Live**.
+- Kürzel je Wert zusammen mit der Rohmaterial-Verknüpfung/-Ampel bauen (Ampel noch nicht ausgewertet).
+- Reihenfolge nach Go-Live: Fertigungsschein → Kürzel + Rohmaterial → Freitext-Achse Personalisierung → „Fertiges Schild anlegen“ → Treffer-Erkennung.
 
 ## Offen
 - WooCommerce-Anbindung: offizielle "Product Add-ons"-Erweiterung ist kostenpflichtig — überholt durch die Selbstbau-Entscheidung (s.o.), reine Historie.

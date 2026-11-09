@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ef009f0b-163c-454c-9dcc-cdd9cc4fc4bf
-  modified: 2026-11-04T12:26:02.393Z
+  modified: 2026-11-09T19:16:44.573Z
 ---
 
 **Entscheidungen Jacky 2026-11-01:**
@@ -71,6 +71,11 @@ Alle Domains liegen auf **einem Server/Konto** (185.229.88.64): mealana.at (JTL)
 - ✅ 2026-11-05 abends: robots.txt auf sockenwolle-online.at und mealana.at von Jacky angepasst (Filter für alle gesperrt, ClaudeBot: Crawl-delay 10 + alle `?`-URLs und `__` gesperrt), online geprüft. **Offen:** in 1–3 Tagen Ressourcennutzung (CPU-Fehler) und ein neues Zugriffsprotokoll vergleichen; getarnten Scraper ggf. bei hosttech melden.
 - Früherer Schritt: Zugriffsprotokoll (`access_ssl_log`) von sockenwolle-online.at und mealana.at aus Plesk → `import/` (gitignored) → auswerten (Top-User-Agents/IPs/URLs je Stunde) → Bots sperren (robots.txt, Imunify). Früher: Im Schnappschuss den Reiter **HTTP-Abfragen** um ca. 3 Uhr nachts ansehen (welche Domain, welche URLs: Bots/Crawler am JTL-Shop? xmlrpc/wp-login-Angriffe? Cron?). Danach z. B. Bots drosseln (robots.txt/Crawl-Delay, Imunify/Firewall), WP-Cron auf echten Cron umstellen, Last je Shop prüfen.
 - **Für Live:** Wenn drei Woo-Shops + MeaLana + beleg.mealana.at auf einem Konto laufen und das ERP alle 15 Min. alle Shops abfragt (Bestellungen, Bestand, Widerrufe), reicht das Paket vermutlich nicht → bei hosttech nach einem **größeren Paket** bzw. **getrennten Konten** fragen (Limits je Shop). Bis dahin beim Testen schonend arbeiten (wenig wp-admin-Logins per Skript, keine Sync-Läufe von Hand direkt hintereinander).
+
+## ✅ Antworten Teil A (Jacky 2026-11-09)
+- A1: Indra-Artikel per **Export/Import** (①). Startbestand: Artikel liegen bei Jacky → durchzählen und mit echtem Bestand einbuchen, die wenigen in der Firma manuell. Live-Tag: **2026-11-10 abends** (Babsi bis 16:00), Shop darf zur Not kurz leer sein.
+- A2: Firmendaten/Logo/Abholort/Paperless (beleg@mealana.at für alle Kassen) aus Dev bekannt. Benutzer: Jacky Superadmin, Babsi Admin, Eva + Killian Kassier, **Kiara Kassier + Packplatz** (ein Benutzer = eine Rolle → Packplatz-Rolle + Kasse-Rechte in der Matrix bzw. später). **Kassen vorerst keine** (Start vermutlich 2027-01-01). Mail: indra-design + mealana haben Zugangsdaten, jeder Shop bekommt bestellung@.
+- A3: Testbestellungen im Woo-Papierkorb (Sync überspringt trash; Germanized-Widerrufsanträge extra prüfen). Hosting-Log schickt Jacky.
 
 ## 📋 Ablaufplan Live 1.0 für Jacky + Babsi (2026-11-05)
 `docs/live/Live_1.0_Ablaufplan.pdf` (+ HTML-Quelle), 5 Seiten zum Ausdrucken: A Vorbereiten (Entscheidung indra-Artikel: ① Dev-Export → Live-Import + Woo-Produkte leeren [empfohlen] oder ② 1:1 mit Mapping; Unterlagen; Paket bauen = 1.0 + Migrationen 223–228; Testbestellungen #34748/#34751 in indra-design löschen; hosttech prüfen) → B Sichern → C Neuinstallation (Baseline + migrate.php = 6 Migrationen, neuer encryption-Schlüssel) → D Assistent mit Babsi → E indra-design anbinden (**Dev-Kanal indra-design vorher pausieren!**, neue Woo-Keys, Kürzel IND, Kategorien ab IndraDesign) → F 7 Cron-Aufgaben (shop_sync 15 min, bfr 5 min, z_bon 00:05, mahnwesen/gutschein_versand/fachmiete 06:00, lagerwert 23:30) + tägliche Sicherung + Test-Wiederherstellung → G Probelauf. Jacky geht ihn nach dem Veranstaltungs-Wochenende mit Babsi durch. Hinweis: installation.md listet shop_sync, gutschein_versand und lagerwert bei Schritt 12 noch nicht.

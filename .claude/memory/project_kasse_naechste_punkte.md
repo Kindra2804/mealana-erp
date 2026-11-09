@@ -5,8 +5,11 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ce935b6f-35b1-4ca0-b892-e5d9bc80d6a2
-  modified: 2026-10-10T17:38:47.816Z
+  modified: 2026-11-09T15:44:34.249Z
 ---
+
+## 2026-11-09: Sunmi-Gerät ist bei Jacky
+Die Oberfläche der Offline-Kasse für den Sunmi (Hochformat) kann jederzeit gebaut und am echten Gerät getestet werden. Zeitpunkt: nach Go-Live, wenn der erste Shop läuft.
 
 ## Klicktest 2026-10-10 (Messe Nr. 2 auf Dev): Schritt 1–2 ok, 2 Funde behoben (nicht committed)
 - Bug "Netzwerkfehler" beim Beleg nacherfassen: PHP-Warning `kunden_id` in KassenService::erstelleBon (display_errors=On) zerschoss JSON — Bons 187/188 WURDEN angelegt. Fix: null-safe in KassenService + kunden_id=>null in belegNacherfassen + ajax_messe.php display_errors=0.
