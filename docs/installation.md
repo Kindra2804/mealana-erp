@@ -305,3 +305,24 @@ Ersetzt Port-Forwarding direkt auf die Anwendung — nur ein einziger WireGuard-
 **Typische Stolpersteine (beide beim Ersteinsatz aufgetreten):**
 - Ping/Verbindung timeout trotz sichtbarem Datenverkehr in der WireGuard-App → Windows-Firewall blockt ICMP/TCP auf dem neuen virtuellen Adapter standardmäßig (siehe Firewall-Befehle oben).
 - Router-Modelle ohne eigenes "VPN"-Menü sind kein Problem — WireGuard läuft komplett als Software auf dem Server, der Router muss nur einen einzelnen UDP-Port stur weiterleiten (klassische Portweiterleitung reicht).
+
+## Anhang D — Daten von einem ERP in ein anderes übertragen
+
+Mit `erp/scripts/datentransfer.php` lassen sich Stammdaten von einem NAHTLOS-ERP in ein anderes übernehmen, z. B. die Artikel eines Shops aus einer Test-Installation in die Live-Installation.
+
+**Was übertragen werden kann** (frei kombinierbar über `--teile=`): `kategorien` (ganzer Baum oder ein Ast), `hersteller`, `artikel` (mit Codes, Preisen, Bildern, Kategorien, Varianten/Konfigurator, Merkmalen, Lieferanten-Zuordnung, Shop-Zuweisung), `slider` und `menue` eines Kanals.
+**Nicht übertragen werden:** Lagerbestand, Aufträge, Kunden, Zugangsdaten, WooCommerce-IDs (das Ziel legt im Shop alles neu an).
+
+```powershell
+# im Quell-ERP: Paket erstellen
+php scripts/datentransfer.php export --teile=kategorien,artikel,slider,menue --shop=IND --datei=C:\transfer\indra.tar
+
+# im Ziel-ERP: zuerst Datenbank sichern, dann Probelauf (ändert nichts), dann echt
+php scripts/datentransfer.php import --datei=C:\transfer\indra.tar --probelauf
+php scripts/datentransfer.php import --datei=C:\transfer\indra.tar
+```
+
+- Der Kanal muss im Ziel **vorher** angelegt sein (gleicher Slug oder gleiches Kürzel), sonst werden Shop-Zuweisungen, Slider und Menü ausgelassen.
+- Vorhandenes wird nie überschrieben: Kategorien, Hersteller und Achsen werden über den Namen wiederverwendet, Artikel mit gleicher Artikelnummer bleiben unverändert. Ein zweiter Lauf legt nichts doppelt an.
+- Steuerklassen und Artikeltypen müssen im Ziel existieren (sind in jeder Installation vorhanden). Fehlende Artikelgruppen, Versandklassen und Einheiten werden angelegt; fehlende Lieferanten/Kundengruppen werden mit Hinweis ausgelassen.
+- Alles läuft in einer Transaktion: bei einem Fehler bleibt das Ziel unverändert.

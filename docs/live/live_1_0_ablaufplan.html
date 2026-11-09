@@ -49,7 +49,7 @@ ul{margin:3pt 0 3pt 16pt;padding:0}li{margin:1.5pt 0}
 <tr><td class="ck">☐</td><td class="wer">J+B</td><td><b>Wie kommen die indra-Artikel ins Live-ERP?</b> Sie wurden im Dev-ERP angelegt, der Shop hängt an den Dev-Nummern.<br>
 ① <b>Empfohlen:</b> Artikel aus dem Dev-ERP exportieren und im Live-ERP importieren, die Produkte im Shop vorher leeren — das Live-ERP legt sie dann sauber neu an (mit Bildern).<br>
 ② Artikel samt Shop-Zuordnung 1:1 übernehmen (aufwendiger, nur nötig, wenn Shop-Links erhalten bleiben müssen — der Shop ist noch nicht offiziell offen).<br>
-Entscheidung: ☐ ① &nbsp; ☐ ② &nbsp; <span class="notiz" style="display:inline-block;width:180pt"></span></td></tr>
+Entscheidung: ☑ ① (09.11.: Export/Import mit <code>scripts/datentransfer.php</code>, ganzer Kategoriebaum)</td></tr>
 <tr><td class="ck">☐</td><td class="wer">J+B</td><td><b>Startbestand:</b> Der Dev-Testbestand (je 1 Stück) wird <b>nicht</b> übernommen. Echte Mengen kommen per Startinventur. Wann zählen wir? <span class="notiz" style="display:inline-block;width:150pt"></span></td></tr>
 <tr><td class="ck">☐</td><td class="wer">J</td><td><b>Live-Tag festlegen</b> (ruhiger Tag, Geschäft geschlossen oder wenig los): <span class="notiz" style="display:inline-block;width:150pt"></span></td></tr>
 </table>
@@ -122,8 +122,10 @@ Entscheidung: ☐ ① &nbsp; ☐ ② &nbsp; <span class="notiz" style="display:i
 <table>
 <tr><td class="ck">☐</td><td class="wer">J</td><td><b>Dev-ERP vom Shop trennen:</b> im Dev-ERP den Kanal indra-design pausieren — sonst schreiben zwei ERPs in denselben Shop!</td></tr>
 <tr><td class="ck">☐</td><td class="wer">J</td><td>Im Shop (WooCommerce → Einstellungen → Erweitert → REST-API) einen <b>neuen Schlüssel</b> „Live-ERP“ (Lesen/Schreiben) anlegen, beim Benutzer ein <b>Anwendungspasswort</b> erzeugen</td></tr>
-<tr><td class="ck">☐</td><td class="wer">J</td><td>Live-ERP → Einstellungen → Kanäle: indra-design anlegen (Adresse, Schlüssel, Anwendungspasswort, Kürzel <b>IND</b>, Logo) und <b>„Kategorien im Shop ab: IndraDesign“</b> wählen</td></tr>
-<tr><td class="ck">☐</td><td class="wer">J</td><td>Indra-Artikel ins Live-ERP (laut Entscheidung A1), Bilder prüfen</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td>Live-ERP → Einstellungen → Kanäle: indra-design anlegen — <b>Slug genau <code>indra-design</code></b>, Kürzel <b>IND</b>, Adresse, Schlüssel, Anwendungspasswort. Logo und „Kategorien im Shop ab“ noch <b>leer lassen</b> (bringt der Import mit)</td></tr>
+<tr><td class="ck">☐</td><td class="wer">J</td><td><b>Indra-Daten übertragen</b> (Kategoriebaum, Artikel mit Bildern/Preisen/Konfigurator, Slider, Kacheln, Menü — ohne Bestand):<br>
+im <b>Dev</b>: <code>php scripts/datentransfer.php export --teile=kategorien,artikel,slider,menue --shop=IND --datei=…/indra.tar</code><br>
+Paket auf den Server kopieren, im <b>Live</b> (DB-Sicherung vorher!): <code>php scripts/datentransfer.php import --datei=…/indra.tar --probelauf</code>, Zahlen prüfen (185 Artikel, 345 Kategorien, 10 Slides, 8 Menüpunkte), dann ohne <code>--probelauf</code>. Danach im Kanal kontrollieren: Logo + „Kategorien im Shop ab: IndraDesign“ gesetzt</td></tr>
 <tr><td class="ck">☐</td><td class="wer">J</td><td>Abgleich starten, im Shop prüfen: Produkte, Kategorien, Preise, Bilder, Bestand</td></tr>
 <tr><td class="ck">☐</td><td class="wer">B</td><td>Startseite: Slider, Kacheln und Menü im ERP anlegen und übertragen (Plugin NAHTLOS Connector 1.6.0 ist schon im Shop)</td></tr>
 <tr><td class="ck">☐</td><td class="wer">J</td><td>PayPal im Shop mit dem Live-Konto verbinden</td></tr>
@@ -173,6 +175,7 @@ Entscheidung: ☐ ① &nbsp; ☐ ② &nbsp; <span class="notiz" style="display:i
 <h2>Danach (nicht am Live-Tag)</h2>
 <ul>
 <li><b>Startinventur</b> für die indra-Artikel (und später je Shop) — echte Mengen statt Testbestand</li>
+<li><b>Mail-Absender je Shop</b> im ERP bauen (Claude): Rechnungen und Mails eines Shops kommen von dessen eigener Adresse (bestellung@…); je Domain SPF/DKIM/DMARC prüfen — <b>vor</b> Sockenwolle-online</li>
 <li><b>Sockenwolle-online</b> als WooCommerce-Shop aufbauen (Logo + Startseite sind fertig), robots.txt, Shop-Checkliste, dann anbinden; JTL-Shop abdrehen</li>
 <li><b>bio-wolle</b> (Logo + Startseite fertig) · <b>MeaLana</b> zuletzt (Entwurf liegt bei Babsi)</li>
 <li>Ein paar Tage nach dem Start: Hosting-Last prüfen (alle Shops teilen sich ein Paket)</li>
