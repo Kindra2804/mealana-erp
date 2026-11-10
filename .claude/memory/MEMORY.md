@@ -120,7 +120,7 @@
 
 ## Infrastruktur / UI
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — MySQL-Absturz 2026-08-29 behoben
-- [Backup-Strategie](project_backup_strategie.md) — tägl. DB-Dump am Live seit 2026-11-10 (E:RP-Sicherung	aeglich), Außer-Haus offen
+- [Backup-Strategie](project_backup_strategie.md) — tägl. DB-Dump am Live seit 2026-11-10 (E:\ERP-Sicherung\taeglich), Außer-Haus offen
 - [Installationsanleitung](project_installationsanleitung.md) — Baseline-Neuschnitt
 - [🔄 Update-Weg](project_update_mechanismus.md) — gebaut 2026-11-01: tools/paket/bauen.php + ··· → Updates (DB-Sicherung Pflicht, Zurückspielen); später Online-„Update verfügbar“
 - [Whitelabel/Branding](project_whitelabel_branding.md) — NAHTLOS-Logo
