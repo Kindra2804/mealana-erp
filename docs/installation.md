@@ -304,6 +304,12 @@ Ersetzt Port-Forwarding direkt auf die Anwendung — nur ein einziger WireGuard-
 
 **Typische Stolpersteine (beide beim Ersteinsatz aufgetreten):**
 - Ping/Verbindung timeout trotz sichtbarem Datenverkehr in der WireGuard-App → Windows-Firewall blockt ICMP/TCP auf dem neuen virtuellen Adapter standardmäßig (siehe Firewall-Befehle oben).
+- Ping geht, aber der Browser meldet „Zeitüberschreitung“ (2026-11-10, nach dem Hinzufügen eines Peers am Server) → Windows hat den Server-Tunnel-Adapter als **„Öffentliches Netzwerk“** eingestuft, Apache ist aber nur für private Netze freigegeben. Prüfen und beheben (Admin-PowerShell am Server):
+  ```powershell
+  Get-NetConnectionProfile | Select InterfaceAlias, NetworkCategory
+  Set-NetConnectionProfile -InterfaceAlias "wg-erp-server" -NetworkCategory Private
+  ```
+- „Allgemeiner Fehler“ beim Ping am Client → Problem am Client selbst (Tunnel-Adapter nicht fertig eingerichtet, z. B. wegen eines halb installierten Windows-Updates) → Neustart, Tunnel wieder aktivieren.
 - Router-Modelle ohne eigenes "VPN"-Menü sind kein Problem — WireGuard läuft komplett als Software auf dem Server, der Router muss nur einen einzelnen UDP-Port stur weiterleiten (klassische Portweiterleitung reicht).
 
 ## Anhang D — Daten von einem ERP in ein anderes übertragen
