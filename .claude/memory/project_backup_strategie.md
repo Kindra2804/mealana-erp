@@ -47,3 +47,7 @@ XAMPP/MariaDB (10.4.32, lokale Dev-Maschine) startete nicht mehr: InnoDB-Redo-Lo
 
 **Why:** Zeigt, dass "manuelle Sicherung bei Bedarf" in der Praxis nicht passiert — es gab schlicht keine, als sie gebraucht wurde.
 **How to apply:** Falls Jacky das Thema nochmal aufschiebt, diesen Vorfall als konkretes Beispiel nennen dürfen, warum wenigstens ein simples tägliches `mysqldump`-Script (auch ohne fertige Proxmox-Lösung) schon jetzt Sinn hätte — ersetzt nicht die spätere 3-2-1-Lösung, wäre aber besser als nichts.
+
+## ✅ Update 2026-11-10: Einfache tägliche DB-Sicherung am Live (Übergangslösung)
+`C:\ERP\sicherung_taeglich.bat` → mysqldump `mealana_erp` nach `E:\ERP-Sicherung\taeglich\mealana_erp_<yyyy-MM-dd_HHmm>.sql`, Protokoll `protokoll.txt`, löscht Dumps älter als 30 Tage. Aufgabe `NAHTLOS\Sicherung taeglich` 23:45, /ru SYSTEM. Testlauf-Ergebnis noch von Jacky bestätigen lassen.
+Offen bleibt: Bilder quartalsweise, Kopie außer Haus (Proxmox/Cloud), Test-Wiederherstellung.

@@ -565,6 +565,19 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-10: Live-Tag 1.0 — Live-ERP neu, indra-design angebunden
+
+Details in `.claude/memory/project_1_0_check.md` (Abschnitte „Live-Tag 2026-11-10“), `project_infrastruktur.md`, `project_backup_strategie.md`.
+- **Paket `nahtlos-1.0.1.zip`** (`D:\ERP\pakete\`, Commit 811e738): Baseline 1.0 + Migrationen 223–228 + Datentransfer. „Was ist neu“ in `docs/versionen/1.0.1.md`.
+- **Live-ERP neu installiert** (C:\ERP\mealana, neue DB `mealana_erp`, alte als `mealana_erp_alt`, neuer encryption-Schlüssel), Assistent mit Babsi, Hauslizenz L-100001-19.
+- **indra-design.at:** vorher geleert (119 Produkte, Kategorien, Attribute, 249 Produktbilder; Skript `.claude-browser-tools/wp_shop_leeren.js`), **Dev-Kanal 4 pausiert**, Dev-Zugänge widerrufen; Indra-Artikel per `scripts/datentransfer.php` (185 Artikel, 345 Kategorien, Slider, Menü) ins Live-ERP, neuer Woo-Schlüssel + App-Passwort „NAHTLOS ERP Live“, Komplettabgleich → **119 Produkte / 66 Varianten** im Shop.
+- **Hosting-Fehler beim ersten Abgleich:** Batch 50 → 502 (nginx) / 503 → Woo legte trotzdem an, ERP meldete „doppelte Artikelnummer“. Lösung: „Fehler abgleichen“ + Batch 10. Ein per Task-Manager beendeter Komplettabgleich hinterlässt `shops.bulk_import_aktiv = 1` → per SQL zurücksetzen.
+- **Shop zeigt vorerst nur Schilder:** „Nicht vorrätige Artikel ausblenden“ = ja und noch kein Startbestand im Live-ERP — kein Fehler.
+- **Cron am Live** (Aufgabenplanung-Ordner „NAHTLOS“, /ru SYSTEM): Shop-Sync 15 min, Mahnwesen/Gutschein-Versand/Fachmiete 06:00–06:10, Lagerwert 23:30, **Sicherung täglich 23:45** (`C:\ERP\sicherung_taeglich.bat` → `E:\ERP-Sicherung\taeglich`, 30 Tage). BFR + Z-Bon erst beim Kassenstart.
+- **WireGuard:** Babsis Laptop = 10.13.13.4; neue Stolpersteine in `docs/installation.md` Anhang C (Server-Adapter „Öffentlich“ → Private setzen; „Allgemeiner Fehler“ = Client/AllowedIPs).
+- **Für 1.0.2 gesammelt:** Superadmin-Schritt doppelt nach create_admin.php, „Passwort anzeigen“, Steuer-Knopf „Standard speichern + weiter“, Abbrechen-Knopf für den Komplettabgleich, Abgleich bei 502/503 automatisch warten + per SKU prüfen.
+- **Nächste Schritte:** Startbestand einbuchen, Testlauf der Sicherung bestätigen, Test-Wiederherstellung, Paperless/IBAN/Mail-Einstellungen fertig, Hosting-Paket vor SOW klären.
+
 ## Update 2026-11-05: Shop-Slider, Kacheln + Hauptmenü aus dem ERP, SOW-Logo
 
 Details siehe `.claude/memory/project_newsletter_slider_ideen.md`, `project_shop_menue.md`, `project_sow_shop_design.md`. Handbuch `docs/handbuch/16_shop_slider.md` + `bedienungsanleitung.php` (#artikel-slider, #artikel-menue).

@@ -80,3 +80,26 @@ Alle Domains liegen auf **einem Server/Konto** (185.229.88.64): mealana.at (JTL)
 ## 📋 Ablaufplan Live 1.0 für Jacky + Babsi (2026-11-05)
 `docs/live/Live_1.0_Ablaufplan.pdf` (+ HTML-Quelle), 5 Seiten zum Ausdrucken: A Vorbereiten (Entscheidung indra-Artikel: ① Dev-Export → Live-Import + Woo-Produkte leeren [empfohlen] oder ② 1:1 mit Mapping; Unterlagen; Paket bauen = 1.0 + Migrationen 223–228; Testbestellungen #34748/#34751 in indra-design löschen; hosttech prüfen) → B Sichern → C Neuinstallation (Baseline + migrate.php = 6 Migrationen, neuer encryption-Schlüssel) → D Assistent mit Babsi → E indra-design anbinden (**Dev-Kanal indra-design vorher pausieren!**, neue Woo-Keys, Kürzel IND, Kategorien ab IndraDesign) → F 7 Cron-Aufgaben (shop_sync 15 min, bfr 5 min, z_bon 00:05, mahnwesen/gutschein_versand/fachmiete 06:00, lagerwert 23:30) + tägliche Sicherung + Test-Wiederherstellung → G Probelauf. Jacky geht ihn nach dem Veranstaltungs-Wochenende mit Babsi durch. Hinweis: installation.md listet shop_sync, gutschein_versand und lagerwert bei Schritt 12 noch nicht.
 
+
+## ✅ Live-Tag 2026-11-10 abends (Teil 1)
+- **Paket gebaut:** `D:\ERP\pakete\nahtlos-1.0.1.zip` (Commit 811e738, Baseline 1.0 + Migr. 223–228 + datentransfer.php, ohne tools/Lizenzgenerator/Configs). 1.0.0-Zip vom 04.11. ist veraltet (ohne 223–228).
+- **Dev-Kanal 4 indra-design pausiert** (sync_pausiert=1) — hatte bis 17:46 noch gesynct. Dev-woo_ids für indra-design sind jetzt ungültig.
+- **indra-design.at geleert** (Skript `.claude-browser-tools/wp_shop_leeren.js`, Probelauf ohne `--los`): 119 Produkte, 8 Kategorien (Uncategorized bleibt), 12 Attribute, 249 Produktbilder. Übrig: 39 Medien (Logos, Kacheln, Kopf), 0 Bestellungen, keine Kunden außer den 2 Admins. Startseite geprüft: alle Bilder laden; Kacheln verlinken bis zum Import auf gelöschte Kategorien.
+- Noch offen am Woo: alter Woo-Schlüssel „NAHTLOS ERP Dev (indra-design, Test)“ + App-Passwort „NAHTLOS ERP Dev Bildersync“ → beim Anbinden des Live-ERP widerrufen und neu anlegen.
+
+## 📝 Funde Live-Assistent 2026-11-10 (Babsi + Jacky) → Version 1.0.2
+1. Superadmin-Schritt fühlt sich doppelt an, wenn man den Zugang selbst per create_admin.php angelegt hat → Knopf „Passt so“ oder Frage in create_admin.php „für dich selbst?“.
+2. Superadmin-Passwortfelder: **„Passwort anzeigen“** (Auge) zum Vergleichen/Vertippen.
+3. Schritt Steuer: Knopftext „Passt schon …“ → **„Standard speichern + weiter“** (kommt sowieso neu mit dem Steuerprofil 1.1, trotzdem ändern).
+Sonst: Assistent lief bei Babsi ohne Probleme durch.
+
+## ⚠️ Erster Live-Sync indra-design 2026-11-10 ~23 Uhr: Hosting-Fehler bestätigt
+- Komplettabgleich Batch 50: **502 Bad Gateway (nginx)** auf Woo-Batch mit 42 neuen Produkten → Woo hat trotzdem angelegt, ERP hielt es für Fehler → Folgeläufe „Ungültige oder doppelte Artikelnummer“ (42×). Bilder: **503 capacity problems**.
+- Lösung: „Fehler abgleichen“ (Reconcile per SKU) + Komplettabgleich mit **Batch 10**. Im Shop waren nach dem Lauf 114/119 Produkte angelegt.
+- Hinweis: „Automatischen Sync pausieren“ stoppt nur den Cron, NICHT den laufenden Komplettabgleich (der bricht erst bei 0 Erfolgen ab) → Prozess php.exe beenden.
+- Idee für später: Komplettabgleich bei 502/503/504 automatisch wie Rate-Limit behandeln (warten + kleiner werden + vor Neuanlage per SKU prüfen); Live-Cron mit kleiner Batch-Größe. **Vor SOW (>1.000 Artikel) Hosting-Paket bei hosttech klären.**
+
+## ✅ Live-Cron-Aufgaben 2026-11-10 (Server, Ordner „NAHTLOS“ in der Aufgabenplanung, /ru SYSTEM)
+Shop-Sync 15 min · Mahnwesen 06:00 · Gutschein-Versand 06:05 · Fachmiete 06:10 · Lagerwert 23:30. Alte Aufgaben (inkl. alte BFR-Nachsignierung) gelöscht.
+**Beim Kassenstart (vorauss. 2027-01-01) nachziehen:** `NAHTLOS\BFR-Nachsignierung` (alle 5 min, cron\bfr_nachsignierung.php) + `NAHTLOS\Z-Bon automatisch` (00:05, cron\z_bon_auto.php), gleiche schtasks-Form.
+Offen: tägliche Sicherung (DB-Dump + storage/uploads) + Test-Wiederherstellung; Startbestand einbuchen (bis dahin zeigt indra-design nur die Schilder, „Nicht vorrätige ausblenden“ = ja).
