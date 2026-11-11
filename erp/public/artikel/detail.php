@@ -845,6 +845,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <?= ($artikel['ist_konfigurierbar'] ?? 0) ? 'checked' : '' ?>>
                         Konfigurierbar (Kunde stellt Optionen zusammen, statt vorgegebener Kombinationen)
                     </label>
+                    <?php if ($artikel['ist_konfigurierbar'] ?? 0): ?>
+                        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                            <a href="<?= BASE_PATH ?>/konfigurator/fertiges_schild.php?layout=<?= (int) $artikel['id'] ?>" class="btn btn-primary btn-sm">🪧 Fertiges Schild anlegen / einbuchen</a>
+                            <a href="<?= BASE_PATH ?>/konfigurator/bausteine.php" class="btn btn-secondary btn-sm">🧩 Schild-Bausteine</a>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Lagerbestand Card -->

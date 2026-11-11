@@ -142,6 +142,24 @@ Wenn ein Artikel nicht mehr nachbestellt wird:
 
 ---
 
+## Konfigurator: Schild-Bausteine und fertige Schilder
+
+**Artikel → Schild-Bausteine:** Jeder Wert der Schild-Layouts bekommt hier **einmal für alle Layouts**:
+- **Kürzel** – Baustein der Artikelnummer fertiger Schilder (Buchstaben/Ziffern, max. 12 Zeichen, je Achse eindeutig).
+- **Rohmaterial** – Artikelnummer des Lagerartikels (z.B. Filzplatte rot). Die Ampel zeigt den Bestand (grün / gelb ≤ Mindestbestand / rot leer).
+
+Rohmaterial leer → im Shop ist der Wert ausgegraut („derzeit nicht verfügbar“) und wird auch serverseitig abgelehnt; an der Kasse nur Hinweis „Material leer“. Nach dem Einbuchen von Material gibt der nächste Sync den Wert frei.
+
+**Fertiges Schild anlegen / einbuchen** (im Layout-Artikel, Karte „Konfigurator“):
+1. Werte des gebauten Schilds wählen, Menge + Lager, beim ersten Mal die Kategorie (z.B. „Fertige Schilder“, wird gemerkt).
+2. Artikelnummer = Layout-Nummer + Kürzel, z.B. `ID-W01-20-2F-BL-WS-FI-TU` (max. 30 Zeichen).
+3. Gibt es die Kombination schon → **nur einbuchen** (und wieder aktivieren). Neu → eigener Lagerartikel mit Hersteller, Gruppe, Steuer, Shop-Kanälen vom Layout und dem Konfigurator-Preis.
+4. Foto des fertigen Schilds danach im Artikel hochladen.
+
+Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), aber nur, wenn er in seiner Achse der einzige ohne Kürzel ist.
+
+---
+
 ## Häufige Probleme
 
 | Problem | Lösung |

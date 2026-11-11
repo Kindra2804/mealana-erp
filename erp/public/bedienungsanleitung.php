@@ -346,6 +346,15 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Sortieren am ≡, „+ Unterpunkt“ für die nächste Ebene, dann <strong>An Shop übertragen</strong>.</div></div>
 
             <!-- LAGER -->
+            <h3 id="artikel-schilder">Konfigurator: Schild-Bausteine &amp; fertige Schilder <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p><strong>Artikel → Schild-Bausteine:</strong> Jeder Wert der Schild-Layouts (Durchmesser, Farben, Hintergrund …) bekommt hier <strong>einmal für alle Layouts</strong> ein <strong>Kürzel</strong> und optional ein <strong>Rohmaterial</strong> (Artikelnummer des Lagerartikels, z.B. Filzplatte rot). Die Ampel zeigt den Materialbestand.</p>
+            <div class="ba-hint">💡 Rohmaterial mit Bestand 0: Im Shop ist der Wert ausgegraut („derzeit nicht verfügbar“) und kann nicht bestellt werden, an der Kasse erscheint nur ein Hinweis „Material leer“. Sobald wieder Material eingebucht ist, gibt der nächste Sync den Wert frei.</div>
+            <p><strong>Fertiges Schild anlegen:</strong> Im Layout-Artikel (Reiter Varianten, Karte Konfigurator) → „Fertiges Schild anlegen / einbuchen“. Werte des gebauten Schilds wählen, Menge und Lager, beim ersten Mal die Kategorie (z.B. „Fertige Schilder“, wird gemerkt).</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Die Artikelnummer entsteht aus Layout-Nummer + Kürzeln, z.B. <code>ID-W01-20-2F-BL-WS-FI-TU</code> (höchstens 30 Zeichen).</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Gibt es die Kombination schon, wird <strong>nur eingebucht</strong> (und der Artikel wieder aktiviert) — kein doppelter Artikel.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Ein neuer Artikel übernimmt Hersteller, Gruppe, Steuer und Shop-Kanäle vom Layout; Preis = Konfigurator-Preis. Foto des fertigen Schilds danach im Artikel hochladen.</div></div>
+            <div class="ba-hint">💡 Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“) — aber nur, wenn er in seiner Achse der einzige ohne Kürzel ist. Sonst meldet die Vorschau, welches Kürzel fehlt.</div>
+
             <h2 id="lager">Lager <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Das Lager-Modul verwaltet Bestände und Bewegungen. Zwei Lager: <strong>Standardlager</strong> und <strong>Lager Messe</strong>.</p>
             <p>Bestand = <strong>Ist</strong> (physisch vorhanden) − <strong>Reserviert</strong> (für offene Aufträge) = <strong>Verfügbar</strong> (kann noch verkauft werden).</p>
