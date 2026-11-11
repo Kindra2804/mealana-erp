@@ -59,7 +59,7 @@
 - [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — gemeinsame Zähler retourniert/gutgeschrieben
 - [Gutschein-Modul](project_gutscheine.md) — fertig; wartet auf Babsis Motiv-Vorlagen
 - [Zahlung+Versand ERP → Shop](project_zahlung_erp_an_shop.md) — processing/completed per Cron
-- [Konfigurator-Modul](project_konfigurator_modul.md) — Konfig-Werte auf allen Belegen
+- [Konfigurator-Modul](project_konfigurator_modul.md) — Konfig-Werte auf allen Belegen; 2026-11-11 Schild-Bausteine + fertige Schilder gebaut (Migr. 232), Picker-Snippet für indra beim 1.0.4-Rollout
 - [Händler-Konsignation](project_haendler_konsignation.md) — Außenlager, Verkaufsmeldung → Netto-Rechnung
 - [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–5 gebaut (inkl. Export 2026-10-28), Konten änderbar durch Babsi, TEST_Partner_Fix_Check bleibt für Dev-Tests
 - [Artikelbilder auf Belegen](project_belege_artikelbilder.md) — Einstellung je Belegtyp, gebaut 2026-10-28 (Migration 211), Mail-Test ok
