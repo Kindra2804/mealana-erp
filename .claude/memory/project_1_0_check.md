@@ -103,3 +103,13 @@ Sonst: Assistent lief bei Babsi ohne Probleme durch.
 Shop-Sync 15 min · Mahnwesen 06:00 · Gutschein-Versand 06:05 · Fachmiete 06:10 · Lagerwert 23:30. Alte Aufgaben (inkl. alte BFR-Nachsignierung) gelöscht.
 **Beim Kassenstart (vorauss. 2027-01-01) nachziehen:** `NAHTLOS\BFR-Nachsignierung` (alle 5 min, cron\bfr_nachsignierung.php) + `NAHTLOS\Z-Bon automatisch` (00:05, cron\z_bon_auto.php), gleiche schtasks-Form.
 Offen: tägliche Sicherung (DB-Dump + storage/uploads) + Test-Wiederherstellung; Startbestand einbuchen (bis dahin zeigt indra-design nur die Schilder, „Nicht vorrätige ausblenden“ = ja).
+
+## ✅ 2026-11-11: Überlastung im Shop-Abgleich gebaut (Commit 5093cf2, für Paket 1.0.2)
+- `ServerUeberlastetException` (502/503/504/508 + curl-Timeout) ist Unterklasse von RateLimitException → jeder Lauf (Cron + Komplettabgleich) hält an. Batch-Senden überlastet → Zeilen 'error' (Stand unklar); neue Artikel mit Status error werden vor dem Anlegen per SKU gesucht (`findeVorhandeneIdBeiUnklaremStand`, Log `shop.sync_sku_gefunden`).
+- komplettabgleich.php: Pause 60→120→…→600 s, WC-Batch halbieren bis 5, Abbruch nach 6× in Folge, Stopp per „Automatischen Sync pausieren“ (nur Wechsel während des Laufs), WC-Batch ≤ UI-Limit, Schluss zeigt echten Fehlerstand.
+- Fix: „ohne Bilder“ lief endlos (findFaelligeArtikel/zaehleFaellige mit `$mitBildern`).
+- Test: Fake-Woo `scratchpad/fakewoo/router.php` (php -S :8099, modus.json = Anzahl 502 je Batch-Art), Test-Kanal testueberlast danach gelöscht, Dev-Backup D:\ERP\backups\mealana_erp_vor_ueberlastungstest_20261111.sql.
+- ✅ **Paket gebaut 2026-11-11:** `D:/ERP/pakete/nahtlos-1.0.2.zip` (Commit e97322f, 2.081 Dateien, 8,3 MB, Migr. 229 wiederholbar mit IF NOT EXISTS). ✅ **Auf Live eingespielt 2026-11-11** (Jacky). Absender je Kanal je Shop eintragen.
+- **Hosting (Jacky 2026-11-11):** Die Woo-Shops bekommen voraussichtlich eigene Server, die Limits sollten dann kaum noch eine Rolle spielen. Genaue Antwort von hosttech kommt.
+
+**2026-11-11 Lücke beim SOW-Import:** Die 1.0-Baseline hat nur Sondergruppen (Messe/Workshops/Partner/Mahn/Fachmiete). Die Warengruppen + Gutscheine 3230 + Versandkosten 4090 fehlen auf Live, sodass der JTL-Import keine Gruppe zur Auswahl hatte. Behelf: `erp/database/artikelgruppen_mealana.sql` (INSERT IGNORE). Für 1.0.x: im Onboarding/JTL-Import warnen, wenn keine Warengruppe existiert; Gutscheine+Versandkosten evtl. in die Baseline (der Export sucht sie über den Namen).
