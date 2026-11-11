@@ -51,6 +51,7 @@ class Lizenz
         'lager'         => ['lagerplaetze.php' => 'lagerplaetze', 'lagerplaetze_aktualisieren.php' => 'lagerplaetze', 'lagerplaetze_etiketten.php' => 'lagerplaetze',
                             'lagerplaetze_serie.php' => 'lagerplaetze', 'lagerplaetze_speichern.php' => 'lagerplaetze', 'lagerplaetze_status_setzen.php' => 'lagerplaetze'],
         'artikel'       => ['konfigurator_ajax.php' => 'konfigurator'],
+        'konfigurator'  => ['*' => 'konfigurator'],
         'auftraege'     => ['dropshipping_aktion.php' => 'dropshipping'],
         'einstellungen' => ['shop_sync_start.php' => 'shop', 'shop_sync_pause.php' => 'shop', 'shop_sync_reconcile_start.php' => 'shop',
                             'shop_sync_bilder_ftp_start.php' => 'shop', 'shop_sync_bilder_export_start.php' => 'shop'],

@@ -10,6 +10,8 @@ require_once __DIR__ . '/../../core/Database.php';
  * noch nie synced (`sync_status='pending'`), zuletzt fehlgeschlagen, oder der
  * Artikel wurde seit dem letzten Sync geändert (`artikel.aktualisiert_am`).
  */
+require_once __DIR__ . '/../konfigurator/KonfigBausteineService.php';
+
 class ShopSyncRepository
 {
     private PDO $db;
@@ -171,6 +173,8 @@ class ShopSyncRepository
                       SELECT 1 FROM reservierungen r
                       WHERE r.artikel_id = a.id AND r.geaendert_am > ash.synced_at
                   )
+                  -- Konfigurator: Rohmaterial-Bestand oder Bausteine geändert (Migr. 232)
+                  " . KonfigBausteineService::syncFaelligSql() . "
               )
             ORDER BY COALESCE(a.vaterartikel_id, a.id), (a.vaterartikel_id IS NOT NULL)
             LIMIT :limit
@@ -224,6 +228,8 @@ class ShopSyncRepository
                       SELECT 1 FROM reservierungen r
                       WHERE r.artikel_id = a.id AND r.geaendert_am > ash.synced_at
                   )
+                  -- Konfigurator: Rohmaterial-Bestand oder Bausteine geändert (Migr. 232)
+                  " . KonfigBausteineService::syncFaelligSql() . "
               )
         ");
         $stmt->bindValue('shop_id', $shopId, PDO::PARAM_INT);

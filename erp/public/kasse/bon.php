@@ -2036,10 +2036,14 @@ function konfigRenderAchsen() {
         html += '<div class="ov-label" style="margin-top:10px">' + esc(achse.name) + '</div><div>';
         achse.werte.forEach(function(w) {
             var gewaehlt = konfigAuswahl[achse.achse_id] === w.wert_id;
+            // Rohmaterial leer (Migration 232): an der Kasse nur Hinweis, Auswahl bleibt möglich
+            var ohneMaterial = w.verfuegbar === false;
             html += '<div class="kind-chip konfig-wert-chip' + (gewaehlt ? ' gewaehlt' : '') + '" '
+                  + (ohneMaterial ? 'style="opacity:.6;border-style:dashed" title="Material leer: ' + esc(w.rohmaterial || '') + '" ' : '')
                   + 'onclick="konfigWertGewaehlt(' + achse.achse_id + ',' + w.wert_id + ')">'
                   + esc(w.wert)
                   + (w.wert_aufpreis > 0 ? '<span class="kind-chip-sub">+€ ' + fmt(w.wert_aufpreis) + '</span>' : '')
+                  + (ohneMaterial ? '<span class="kind-chip-sub" style="color:#c2410c">Material leer</span>' : '')
                   + '</div>';
         });
         html += '</div>';

@@ -128,6 +128,12 @@ final class Zugriffsregeln
         ],
 
         // === Lager (Standorte, Übersicht, Picklisten, Chargen-Nachtrag) ===
+        // === Konfigurator: Schild-Bausteine + fertige Schilder (Migr. 232) ===
+        'konfigurator' => [
+            'bausteine.php'                  => 'artikel.bearbeiten',
+            'fertiges_schild.php'            => 'artikel.anlegen',
+        ],
+
         'lager' => [
             'uebersicht.php'                 => 'bestand.anzeigen',
             'wareneingang.php'                => 'wareneingang.buchen',
@@ -135,6 +141,7 @@ final class Zugriffsregeln
             'variante_suche.php'               => 'bestand.anzeigen',
             'nachtrag_liste.php'               => 'bestand.anzeigen',
             'nachtrag_speichern.php'           => 'bestand.korrigieren',
+            'jtl_abgleich.php'                 => 'bestand.korrigieren',   // JTL-Parallelbetrieb (Migr. 231)
             'chargen_nachverfolgung.php'       => 'bestand.anzeigen',
             'artikel_suche_ajax.php'           => 'bestand.anzeigen',
             'chargen_fuer_artikel_ajax.php'    => 'bestand.anzeigen',

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/KonfiguratorRepository.php';
+require_once __DIR__ . '/KonfigBausteineService.php';
 require_once __DIR__ . '/../varianten/VariantenRepository.php';
 require_once __DIR__ . '/../varianten/VariantenService.php';
 require_once __DIR__ . '/../achsen/AchsenRepository.php';
@@ -85,6 +86,9 @@ class KonfiguratorService
             $achsenById[(int)$a['achse_id']] = $a;
         }
 
+        // Rohmaterial-Verfügbarkeit je Wert (Migration 232): leer = im Shop ausgegraut, Kasse Hinweis
+        $verfuegbarkeit = (new KonfigBausteineService())->verfuegbarkeit($artikelId);
+
         $ergebnis = [];
         foreach ($dimensionen as $dim) {
             $achseId = (int)$dim['achse_id'];
@@ -103,6 +107,8 @@ class KonfiguratorService
                     'wert'          => $w['wert'],
                     'wert_zusatz'   => $w['wert_zusatz'] ?? null,
                     'wert_aufpreis' => (float)($w['aufpreis'] ?? 0),
+                    'verfuegbar'    => $verfuegbarkeit[(int)$w['id']]['verfuegbar'] ?? true,
+                    'rohmaterial'   => $verfuegbarkeit[(int)$w['id']]['rohmaterial'] ?? null,
                 ], $dim['werte']),
             ];
         }
@@ -252,6 +258,7 @@ class KonfiguratorService
                     'term_id'         => $wertZuweisung ? (int)$wertZuweisung['externe_term_id'] : null,
                     'wert_aufpreis'   => $wert['wert_aufpreis'],
                     'gesamt_aufpreis' => round($achse['achsen_aufpreis'] + $wert['wert_aufpreis'], 2),
+                    'verfuegbar'      => $wert['verfuegbar'],   // false = Rohmaterial leer -> im Shop ausgegraut
                 ];
             }
 

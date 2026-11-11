@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS jtl_abgleich_laeufe (
     erstellt_am          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_jal_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Schnappschüsse je Lauf: 'export' = ERP-Bestand beim Export, 'basis' = JTL-Bestand beim Import.
 -- charge '' = ohne Charge (lagerbestand.charge IS NULL). Nur Zeilen mit Bestand <> 0.
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS jtl_abgleich_bestand (
     PRIMARY KEY (lauf_id, art, artikel_id, lager_id, charge),
     KEY idx_jab_artikel (artikel_id),
     CONSTRAINT fk_jab_lauf FOREIGN KEY (lauf_id) REFERENCES jtl_abgleich_laeufe (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Welche ERP-Artikel gehören zum Abgleich (= standen in der letzten JTL-Datei, auch mit Bestand 0).
 -- Artikel, die es nur im ERP gibt (z.B. indra-design), stehen hier nie und bleiben unberührt.
@@ -49,4 +49,4 @@ CREATE TABLE IF NOT EXISTS jtl_abgleich_umfang (
     lauf_id    INT UNSIGNED NOT NULL,
     PRIMARY KEY (artikel_id),
     CONSTRAINT fk_jau_artikel FOREIGN KEY (artikel_id) REFERENCES artikel (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

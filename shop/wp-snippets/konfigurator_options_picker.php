@@ -1,7 +1,7 @@
 <?php
 /**
  * WPCode-Snippet #34170 auf indra-design.at (WordPress/WooCommerce, NICHT Teil der PHP-Autoload-Kette des ERP).
- * Export-Datum: 2026-08-29. Quelle der Wahrheit bleibt WPCode (wp-admin) --
+ * Export-Datum: 2026-08-29; 2026-11-11 um Verfuegbarkeit (ERP 1.0.4, Migr. 232) ergaenzt. Quelle der Wahrheit bleibt WPCode (wp-admin) --
  * diese Datei ist eine manuell aktualisierte Kopie fuers Repo, kein automatischer Sync.
  */
 
@@ -66,7 +66,10 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 		echo '<option value="">Bitte wählen…</option>';
 		foreach ( $achse['werte'] as $wert ) {
 			$aufpreisText = $wert['gesamt_aufpreis'] > 0 ? ' (+' . number_format( $wert['gesamt_aufpreis'], 2, ',', '.' ) . ' €)' : '';
-			echo '<option value="' . (int) $wert['wert_id'] . '" data-aufpreis="' . esc_attr( $wert['gesamt_aufpreis'] ) . '">' . esc_html( $wert['label'] . $aufpreisText ) . '</option>';
+			// ERP 1.0.4 (Migr. 232): Rohmaterial leer -> sichtbar, aber nicht waehlbar
+			$nichtVerfuegbar = isset( $wert['verfuegbar'] ) && $wert['verfuegbar'] === false;
+			echo '<option value="' . (int) $wert['wert_id'] . '" data-aufpreis="' . esc_attr( $wert['gesamt_aufpreis'] ) . '"' . ( $nichtVerfuegbar ? ' disabled' : '' ) . '>'
+				. esc_html( $wert['label'] . $aufpreisText . ( $nichtVerfuegbar ? ' – derzeit nicht verfügbar' : '' ) ) . '</option>';
 		}
 		echo '</select>';
 		echo '</div>';
@@ -141,6 +144,23 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 	</script>
 	<?php
 }, 25 );
+
+/** ERP 1.0.4: Werte mit leerem Rohmaterial auch serverseitig ablehnen (disabled im Browser ist kein Schutz). */
+add_filter( 'woocommerce_add_to_cart_validation', function ( $ok, $product_id ) {
+	$matrix = mealana_konfig_matrix( $product_id );
+	if ( ! $ok || ! $matrix || empty( $_POST['mealana_konfig_werte'] ) ) return $ok;
+	$werte = json_decode( wp_unslash( $_POST['mealana_konfig_werte'] ), true );
+	$wertIds = is_array( $werte ) ? array_map( 'intval', $werte ) : array();
+	foreach ( $matrix['achsen'] as $achse ) {
+		foreach ( $achse['werte'] as $wert ) {
+			if ( isset( $wert['verfuegbar'] ) && $wert['verfuegbar'] === false && in_array( (int) $wert['wert_id'], $wertIds, true ) ) {
+				wc_add_notice( sprintf( '„%s: %s“ ist derzeit leider nicht verfügbar. Bitte eine andere Auswahl treffen.', $achse['name'], $wert['label'] ), 'error' );
+				return false;
+			}
+		}
+	}
+	return $ok;
+}, 10, 2 );
 
 /** Gewaehlte Werte + serverseitig berechneten Preis am Warenkorb-Item speichern (Client-Preis wird verworfen). */
 add_filter( 'woocommerce_add_cart_item_data', function ( $cart_item_data, $product_id ) {
