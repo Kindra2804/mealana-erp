@@ -461,8 +461,24 @@ class JtlVaterKindImportService
      */
     private function fuegeKategorieHinzu(int $artikelId, int $kategorieId): void
     {
-        $bestehendeIds = array_column($this->artikelService->getKategorienFuerArtikel($artikelId), 'id');
-        $neueIds       = array_values(array_unique(array_merge($bestehendeIds, [$kategorieId])));
+        // 0 = keine feste Import-Kategorie (nur Zuordnung aus den JTL-Kategorien, siehe ergaenzeKategorien())
+        if ($kategorieId <= 0) return;
+        $this->ergaenzeKategorien($artikelId, [$kategorieId]);
+    }
+
+    /**
+     * Hängt mehrere Kategorien an einen Artikel an, ohne bestehende zu entfernen (gleiches Prinzip
+     * wie fuegeKategorieHinzu). Für die Kategorie-Zuordnungstabelle im JTL-Import (Migration 230):
+     * jtl_import_commit.php ruft das nach dem Import je Vater/normalem Artikel mit den zugeordneten
+     * ERP-Kategorien auf. Kinder übernehmen die Liste automatisch über saveKategorien().
+     */
+    public function ergaenzeKategorien(int $artikelId, array $kategorieIds): void
+    {
+        $kategorieIds = array_filter(array_map('intval', $kategorieIds), fn($id) => $id > 0);
+        if (!$kategorieIds) return;
+        $bestehendeIds = array_map('intval', array_column($this->artikelService->getKategorienFuerArtikel($artikelId), 'id'));
+        $neueIds       = array_values(array_unique(array_merge($bestehendeIds, $kategorieIds)));
+        if (count($neueIds) === count($bestehendeIds)) return;   // nichts Neues
         $this->artikelService->saveKategorien($artikelId, $neueIds);
     }
 

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/modules/import/JtlVaterKindImportService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/import/ImportKategorieZuordnung.php';
 
 $service = new ArtikelService();
 $db      = Database::getInstance();
@@ -14,14 +15,22 @@ $alleArtikeltypen = $service->getAllArtikelTypen();
  *  (z.B. mehrere "Zubehör" unter verschiedenen Hauptkategorien) unterscheidbar bleiben. */
 function renderKategorieOptionen(array $knoten, int $tiefe = 0): void
 {
+    echo kategorieOptionenHtml($knoten, $tiefe);
+}
+
+/** Wie renderKategorieOptionen(), aber als String -- die Zuordnungstabelle braucht die Liste je Zeile (einmal bauen, je Zeile nur „selected“ setzen). */
+function kategorieOptionenHtml(array $knoten, int $tiefe = 0): string
+{
+    $html = '';
     foreach ($knoten as $k) {
-        $praefix = str_repeat('— ', $tiefe);
-        echo '<option value="' . $k['id'] . '">' . htmlspecialchars($praefix . $k['name']) . '</option>';
+        $html .= '<option value="' . $k['id'] . '">' . htmlspecialchars(str_repeat('— ', $tiefe) . $k['name']) . '</option>';
         if (!empty($k['kinder'])) {
-            renderKategorieOptionen($k['kinder'], $tiefe + 1);
+            $html .= kategorieOptionenHtml($k['kinder'], $tiefe + 1);
         }
     }
+    return $html;
 }
+$alleShops = $db->query("SELECT id, name, nr_kuerzel FROM shops ORDER BY id")->fetchAll();
 $alleArtikelgruppen = $db->query("
     SELECT id, konto_nr, name FROM artikel_gruppen WHERE aktiv = 1 ORDER BY sortierung, konto_nr
 ")->fetchAll();
@@ -65,12 +74,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_stammdaten']['t
     // daher nicht mehr global für den ganzen Import bindend.
     $artikeltypStandard      = trim($_POST['artikeltyp_code'] ?? '');
     $artikelGruppeIdStandard = (int) ($_POST['artikel_gruppe_id'] ?? 0);
+    $katZuordnen = isset($_POST['kategorien_zuordnen']);
+    $kanalShopId = (int) ($_POST['kanal_shop_id'] ?? 0);
 
-    if ($kategorieId <= 0) {
-        $fehler[] = 'Bitte eine Kategorie auswählen.';
+    if ($kategorieId <= 0 && !$katZuordnen) {
+        $fehler[] = 'Bitte eine feste Kategorie auswählen oder „Kategorien aus JTL zuordnen“ anhaken.';
     } else {
         $importService = new JtlVaterKindImportService();
         $mitKindern     = $importService->parseMitKindern($_FILES['csv_stammdaten']['tmp_name']);
+        // Kategorien-CSV (optional, Jackys „Eigener Export“ mit KategorieIDs + Kategorien): Die
+        // Ameise-Stammdaten haben keine Kategorie-Spalten -- über die Artikelnummer dazuholen.
+        $katDateiZeilen = 0;
+        if (!empty($_FILES['csv_kategorien']['tmp_name'])) {
+            foreach (JtlCsvReader::lese($_FILES['csv_kategorien']['tmp_name']) as $katRow) {
+                $nr = trim((string)($katRow['Artikelnummer'] ?? ''));
+                if ($nr === '' || !isset($mitKindern[$nr])) continue;
+                $mitKindern[$nr]['KategorieIDs'] = $katRow['KategorieIDs'] ?? '';
+                $mitKindern[$nr]['Kategorien']   = $katRow['Kategorien'] ?? '';
+                $katDateiZeilen++;
+            }
+        }
+        if ($katZuordnen && $katDateiZeilen === 0
+            && !array_filter($mitKindern, fn($r) => trim((string)($r['KategorieIDs'] ?? '')) !== '')) {
+            $fehler[] = 'Für „Kategorien aus JTL zuordnen“ fehlen die Kategorien: Die Stammdaten-CSV hat keine Spalten KategorieIDs/Kategorien '
+                . 'und es wurde keine passende Kategorien-CSV (Eigener Export) hochgeladen — oder deren Artikelnummern passen nicht zur Stammdaten-CSV.';
+        }
         // Variationskombinationen-CSV ist optional -- fehlt sie (z.B. Kategorie besteht
         // nur aus normalen Artikeln ohne jede Vater/Kind-Variante), gibt es einfach keine
         // Väter/Kinder zu erkennen, die Stammdaten-Zeilen laufen komplett über den
@@ -80,7 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_stammdaten']['t
             : [];
         $vorschauDaten  = $importService->baueVorschau($mitKindern, $kombisProVater);
 
-        if (empty($vorschauDaten['vaeter']) && empty($vorschauDaten['normale'])) {
+        if ($fehler) {
+            // z.B. Kategorien fehlen -- Formular mit Meldung erneut zeigen, keine Vorschau
+        } elseif (empty($vorschauDaten['vaeter']) && empty($vorschauDaten['normale'])) {
             if ($vorschauDaten['vater_ohne_kombidatei_anzahl'] > 0) {
                 // Stammdaten wurden erkannt (Väter gefunden), aber KEINE ihrer Artikelnummern
                 // kommt in der Kombinationen-Datei vor -- typischerweise weil die falsche
@@ -101,6 +131,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_stammdaten']['t
             $_SESSION['jtl_import_kategorie_id']      = $kategorieId;
             $_SESSION['jtl_import_artikeltyp_standard']      = $artikeltypStandard;
             $_SESSION['jtl_import_artikel_gruppe_id_standard'] = $artikelGruppeIdStandard;
+            $_SESSION['jtl_import_kanal_shop_id'] = $kanalShopId;
+
+            // Kategorie-Zuordnung (Migration 230): JTL-Kategorien je Import-Artikel -- beim Vater
+            // zählen die Kategorien der Kinder-Zeilen mit (JTL hängt Unterkategorien oft nur an die Kinder).
+            $katJeNr = [];
+            $relevanteZeilen = [];
+            foreach ($vorschauDaten['vaeter'] as $v) {
+                $ids = ImportKategorieZuordnung::idsAusZeile($mitKindern[$v['artikelnummer']] ?? []);
+                if (isset($mitKindern[$v['artikelnummer']])) $relevanteZeilen[] = $mitKindern[$v['artikelnummer']];
+                foreach ($v['kinder'] as $k) {
+                    $ids = array_merge($ids, ImportKategorieZuordnung::idsAusZeile($mitKindern[$k['artikelnummer']] ?? []));
+                    if (isset($mitKindern[$k['artikelnummer']])) $relevanteZeilen[] = $mitKindern[$k['artikelnummer']];
+                }
+                $katJeNr[$v['artikelnummer']] = array_values(array_unique($ids));
+            }
+            foreach ($vorschauDaten['normale'] as $n) {
+                $katJeNr[$n['artikelnummer']] = ImportKategorieZuordnung::idsAusZeile($mitKindern[$n['artikelnummer']] ?? []);
+                if (isset($mitKindern[$n['artikelnummer']])) $relevanteZeilen[] = $mitKindern[$n['artikelnummer']];
+            }
+            $_SESSION['jtl_import_kat_zuordnen'] = $katZuordnen;
+            $_SESSION['jtl_import_kat_je_nr']    = $katZuordnen ? $katJeNr : [];
+            $_SESSION['jtl_import_kat_liste']    = $katZuordnen ? ImportKategorieZuordnung::sammle($relevanteZeilen) : [];
             $vorschau = $vorschauDaten;
         }
     }
@@ -121,7 +173,8 @@ $artikelGruppeIdStandard = (int) ($_SESSION['jtl_import_artikel_gruppe_id_standa
 if (isset($_GET['neu'])) {
     unset($_SESSION['jtl_import_vorschau'], $_SESSION['jtl_import_vorschau_normale'], $_SESSION['jtl_import_einheiten_unbekannt'],
           $_SESSION['jtl_import_verwaiste_kinder'], $_SESSION['jtl_import_vater_ohne_kombidatei'],
-          $_SESSION['jtl_import_kategorie_id'], $_SESSION['jtl_import_artikeltyp_standard'], $_SESSION['jtl_import_artikel_gruppe_id_standard']);
+          $_SESSION['jtl_import_kategorie_id'], $_SESSION['jtl_import_artikeltyp_standard'], $_SESSION['jtl_import_artikel_gruppe_id_standard'],
+          $_SESSION['jtl_import_kat_zuordnen'], $_SESSION['jtl_import_kat_je_nr'], $_SESSION['jtl_import_kat_liste'], $_SESSION['jtl_import_kanal_shop_id']);
     header('Location: jtl_import.php');
     exit;
 }
@@ -151,8 +204,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <p style="color:var(--color-text-muted);margin:0 0 16px">
         Legt aus zwei JTL-Exporten (Stammdaten "mit Kindern" + "Variationskombinationen") neue Vater-Artikel
         mit ihren Kind-Varianten inkl. erkannter Achsen an. Erkennt außerdem "normale" Einzelartikel in
-        derselben Stammdaten-CSV (kein Vater, kein Kind) und legt sie separat an. Die Kategorie gilt für
-        den kompletten Import-Durchlauf. Artikeltyp/Artikelgruppe hier sind nur eine Vorauswahl zum
+        derselben Stammdaten-CSV (kein Vater, kein Kind) und legt sie separat an. Kategorien: entweder
+        <strong>aus JTL zuordnen</strong> (mit der Kategorien-CSV aus dem Eigenen Export — die Kontrollliste zeigt jede
+        JTL-Kategorie, du wählst die ERP-Kategorie, die Wahl wird gemerkt) und/oder eine feste Kategorie für den ganzen
+        Durchlauf. Optional wird ein Shop-Kanal gleich eingeschaltet. Artikeltyp/Artikelgruppe hier sind nur eine Vorauswahl zum
         Vorbefüllen — da gemischte Kategorien Väter/Artikel mit unterschiedlichem Artikeltyp oder
         Artikelgruppe enthalten können (z.B. Garn + Zubehör in derselben Kategorie), lässt sich das
         pro Artikel in der Kontrollliste noch ändern.
@@ -174,10 +229,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     style="border:1px solid var(--color-border);padding:6px 10px;border-radius:4px;width:100%">
             </div>
 
+            <div style="grid-column:1/-1">
+                <label class="erp-label">Kategorien-CSV (optional — „Eigener Export“ mit den Spalten Artikelnummer, KategorieIDs, Kategorien)</label>
+                <input type="file" name="csv_kategorien" accept=".csv,text/csv"
+                    style="border:1px solid var(--color-border);padding:6px 10px;border-radius:4px;width:100%">
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">Die Ameise-Stammdaten enthalten keine Kategorien. Die Kategorien-CSV wird über die Artikelnummer dazugeholt; sie darf auch mehr Artikel enthalten (z.B. der ganze Shop).</div>
+            </div>
+            <div style="grid-column:1/-1;background:var(--color-bg-subtle,#f8fafc);border:1px solid var(--color-border);border-radius:6px;padding:10px 12px">
+                <label style="font-size:13px;cursor:pointer;display:flex;gap:8px;align-items:flex-start">
+                    <input type="checkbox" name="kategorien_zuordnen" value="1" checked style="margin-top:3px">
+                    <span><strong>Kategorien aus JTL zuordnen</strong> — die Kontrollliste zeigt alle JTL-Kategorien dieses Exports,
+                    du wählst je Zeile die passende ERP-Kategorie. Die Wahl wird gemerkt und beim nächsten Import vorausgefüllt.</span>
+                </label>
+            </div>
             <div>
-                <label class="erp-label">Kategorie *</label>
-                <select name="kategorie_id" class="erp-select" style="width:100%" required>
-                    <option value="">– wählen –</option>
+                <label class="erp-label">Feste Kategorie für alle (optional)</label>
+                <select name="kategorie_id" class="erp-select" style="width:100%">
+                    <option value="">– keine –</option>
                     <?php renderKategorieOptionen($kategorienBaum); ?>
                 </select>
             </div>
@@ -198,6 +266,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <option value="<?= $g['id'] ?>"><?= htmlspecialchars($g['konto_nr'] . ' — ' . $g['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+            <div>
+                <label class="erp-label">Shop-Kanal einschalten (optional)</label>
+                <select name="kanal_shop_id" class="erp-select" style="width:100%">
+                    <option value="0">– keinen –</option>
+                    <?php foreach ($alleShops as $sh): ?>
+                        <option value="<?= (int)$sh['id'] ?>"><?= htmlspecialchars($sh['name'] . ($sh['nr_kuerzel'] ? ' (' . $sh['nr_kuerzel'] . ')' : '')) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">Alle importierten Artikel (auch schon vorhandene) samt Kindern werden für diesen Shop aktiv.</div>
             </div>
         </div>
 
@@ -243,6 +321,59 @@ $anzahlKinder         = array_sum(array_map(fn($v) => count($v['kinder']), $vaet
     <?php endif; ?>
 
     <form method="POST" action="jtl_import_commit.php">
+    <?php
+    $katListe = $_SESSION['jtl_import_kat_liste'] ?? [];
+    if (!empty($_SESSION['jtl_import_kat_zuordnen']) && $katListe):
+        $gemerkt = (new ImportKategorieZuordnung())->lade(array_map('strval', array_keys($katListe)));
+        $optHtml = kategorieOptionenHtml($kategorienBaum);
+        $offen   = count(array_diff_key($katListe, $gemerkt));
+    ?>
+        <div style="border:1px solid var(--color-border);border-radius:6px;margin-bottom:20px">
+            <div style="padding:10px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--color-border)">
+                <strong>Kategorie-Zuordnung</strong>
+                <span style="font-size:12px;color:var(--color-text-muted)"><?= count($katListe) ?> JTL-Kategorien in diesem Export · <?= $offen ?> noch nie zugeordnet</span>
+                <input type="search" id="kat-filter" placeholder="Filtern …" class="erp-input" style="margin-left:auto;max-width:220px">
+            </div>
+            <div style="font-size:12px;color:var(--color-text-muted);padding:8px 14px">
+                Je JTL-Kategorie die ERP-Kategorie wählen. „– nicht zuordnen –“ = diese JTL-Kategorie wird ignoriert.
+                Gleichnamige JTL-Kategorien (z.B. aus verschiedenen Zweigen) erkennst du an „zusammen mit“ und den Beispielen.
+                Väter bekommen die Kategorien ihrer Kinder-Zeilen mit dazu. Bestehende Kategorien eines Artikels bleiben erhalten.
+            </div>
+            <table class="erp-table" id="kat-tabelle">
+                <thead><tr><th style="width:70px">JTL-ID</th><th>JTL-Kategorie</th><th style="width:60px">Zeilen</th><th>zusammen mit / Beispiele</th><th style="width:300px">ERP-Kategorie</th></tr></thead>
+                <tbody>
+                <?php foreach ($katListe as $fid => $kat):
+                    $sel  = $gemerkt[(string)$fid] ?? null;
+                    $opts = $sel ? str_replace('value="' . $sel . '"', 'value="' . $sel . '" selected', $optHtml) : $optHtml;
+                ?>
+                    <tr data-text="<?= htmlspecialchars(mb_strtolower($kat['name'] . ' ' . implode(' ', $kat['mit']) . ' ' . implode(' ', $kat['beispiele']))) ?>">
+                        <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars((string)$fid) ?></td>
+                        <td><strong><?= htmlspecialchars($kat['name']) ?></strong><?= $sel === null ? ' <span style="background:#fffbeb;color:#b45309;padding:1px 6px;border-radius:4px;font-size:11px">neu</span>' : '' ?></td>
+                        <td><?= (int)$kat['anzahl'] ?></td>
+                        <td style="font-size:12px">
+                            <?php if ($kat['mit']): ?><div>zusammen mit: <?= htmlspecialchars(implode(', ', $kat['mit'])) ?></div><?php endif; ?>
+                            <div style="color:var(--color-text-muted)"><?= htmlspecialchars(implode(' · ', $kat['beispiele'])) ?></div>
+                        </td>
+                        <td>
+                            <select name="kat_zuordnung[<?= htmlspecialchars((string)$fid) ?>]" class="erp-select" style="width:100%">
+                                <option value="0">– nicht zuordnen –</option>
+                                <?= $opts ?>
+                            </select>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <script>
+            document.getElementById('kat-filter').addEventListener('input', function () {
+                const q = this.value.trim().toLowerCase();
+                document.querySelectorAll('#kat-tabelle tbody tr').forEach(tr => {
+                    tr.style.display = !q || tr.dataset.text.includes(q) ? '' : 'none';
+                });
+            });
+        </script>
+    <?php endif; ?>
     <?php if (!empty($einheitenUnbekannt)): ?>
         <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:12px 16px;margin-bottom:20px">
             <strong>Einheiten-Mapping nötig</strong> — diese Verkaufseinheiten aus der CSV entsprechen keiner bestehenden Einheit:

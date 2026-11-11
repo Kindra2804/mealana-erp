@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/import/JtlVaterKindImportService.php';
+require_once __DIR__ . '/../../src/modules/import/ImportKategorieZuordnung.php';
+require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || (empty($_SESSION['jtl_import_vorschau']) && empty($_SESSION['jtl_import_vorschau_normale']))) {
     header('Location: jtl_import.php');
@@ -70,11 +72,49 @@ $ergebnisseNormale = $importService->fuehreNormaleImportDurch(
     $korrekturenNormale
 );
 
+// ── Kategorie-Zuordnung aus JTL (Migration 230) + Shop-Kanal ────────────────────────────────
+// Ergebnisse tragen die (ggf. korrigierte) Artikelnummer -- zurück auf die Original-Nummer der
+// Vorschau, unter der die JTL-Kategorien gemerkt sind.
+$katZuordnungAnzahl = 0;
+$kanalAnzahl        = 0;
+$kanalShopId        = (int) ($_SESSION['jtl_import_kanal_shop_id'] ?? 0);
+$katJeNr            = $_SESSION['jtl_import_kat_je_nr'] ?? [];
+$wahl               = [];
+if (!empty($_SESSION['jtl_import_kat_zuordnen'])) {
+    $katListe = $_SESSION['jtl_import_kat_liste'] ?? [];
+    foreach ($_POST['kat_zuordnung'] ?? [] as $fremdId => $katId) {
+        if (isset($katListe[$fremdId])) $wahl[(string)$fremdId] = (int)$katId;
+    }
+    (new ImportKategorieZuordnung())->speichere($wahl, array_map(fn($k) => $k['name'], $katListe));
+}
+$origNr = [];   // korrigierte Nummer => Original-Nummer
+foreach ($korrekturen as $orig => $k)        $origNr[$k['artikelnummer']] = $orig;
+foreach ($korrekturenNormale as $orig => $k) $origNr[$k['artikelnummer']] = $orig;
+
+$shopRepo = $kanalShopId > 0 ? new ShopSyncRepository() : null;
+foreach (array_merge($ergebnisse, $ergebnisseNormale) as $e) {
+    if (empty($e['erfolg']) || empty($e['id'])) continue;
+    $orig = $origNr[$e['artikelnummer']] ?? $e['artikelnummer'];
+    if ($wahl) {
+        $katIds = array_filter(array_map(fn($fid) => $wahl[(string)$fid] ?? 0, $katJeNr[$orig] ?? []));
+        if ($katIds) {
+            $importService->ergaenzeKategorien((int)$e['id'], $katIds);
+            $katZuordnungAnzahl++;
+        }
+    }
+    if ($shopRepo) {
+        $shopRepo->upsertZuweisung((int)$e['id'], $kanalShopId, true);   // samt Kindern
+        $kanalAnzahl++;
+    }
+}
+
 unset(
     $_SESSION['jtl_import_vorschau'], $_SESSION['jtl_import_vorschau_normale'], $_SESSION['jtl_import_einheiten_unbekannt'],
     $_SESSION['jtl_import_verwaiste_kinder'], $_SESSION['jtl_import_vater_ohne_kombidatei'],
     $_SESSION['jtl_import_kategorie_id'], $_SESSION['jtl_import_artikeltyp_standard'],
-    $_SESSION['jtl_import_artikel_gruppe_id_standard']
+    $_SESSION['jtl_import_artikel_gruppe_id_standard'],
+    $_SESSION['jtl_import_kat_zuordnen'], $_SESSION['jtl_import_kat_je_nr'], $_SESSION['jtl_import_kat_liste'],
+    $_SESSION['jtl_import_kanal_shop_id']
 );
 
 $vaterErfolgAnzahl = count(array_filter($ergebnisse, fn($e) => $e['erfolg']));
@@ -109,6 +149,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php endif; ?>
         <?php if ($normalFehlerAnzahl > 0): ?>
             · <span style="color:#dc2626"><?= $normalFehlerAnzahl ?> normale Artikel mit Fehler</span>
+        <?php endif; ?>
+        <?php if ($wahl): ?>
+            <div style="font-size:13px;margin-top:4px">Kategorien aus JTL zugeordnet bei <?= $katZuordnungAnzahl ?> Artikeln (<?= count(array_filter($wahl)) ?> von <?= count($wahl) ?> JTL-Kategorien zugeordnet, Wahl gemerkt).</div>
+        <?php endif; ?>
+        <?php if ($kanalShopId > 0): ?>
+            <div style="font-size:13px;margin-top:4px">Shop-Kanal eingeschaltet bei <?= $kanalAnzahl ?> Artikeln (samt Kindern) — der nächste Shop-Sync überträgt sie.</div>
         <?php endif; ?>
     </div>
 
