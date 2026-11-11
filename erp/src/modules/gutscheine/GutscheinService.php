@@ -351,7 +351,7 @@ class GutscheinService
         $dokumentService = new DokumentService();
         $pdfPfad = $dokumentService->erstelleGutscheinPdf($gutscheinId);
 
-        $mailer = new Mailer();
+        $mailer = (new Mailer())->fuerShop((int)($gutschein['shop_id'] ?? 0));
         $mailer->sendeTemplate(
             $zielEmail,
             'Dein Gutschein von MEALANA',

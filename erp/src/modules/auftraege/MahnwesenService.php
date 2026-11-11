@@ -214,7 +214,7 @@ class MahnwesenService
         $mailFehler = null;
         if ($email) {
             try {
-                (new Mailer())->sendeTemplate(
+                $this->mailer((int)$m['auftrag_id'])->sendeTemplate(
                     empfaenger:   $email,
                     betreff:      "$titel zu Rechnung " . $stand['rechnung']['rechnung_nr'],
                     templatePfad: 'mails/mahnwesen/mahnung.html.twig',
@@ -268,6 +268,14 @@ class MahnwesenService
 
         Logger::log('mahnwesen.gebuehr_erlassen', 'auftraege', (int)$m['auftrag_id'], ['gebuehr' => (float)$m['gebuehr']], $benutzerId);
         return ['erfolg' => true];
+    }
+
+    /** Mailer mit dem Absender des Kanals, aus dem der Auftrag stammt. */
+    private function mailer(int $auftragId): Mailer
+    {
+        $stmt = $this->db->prepare("SELECT shop_id FROM auftraege WHERE id = ?");
+        $stmt->execute([$auftragId]);
+        return (new Mailer())->fuerShop((int)$stmt->fetchColumn());
     }
 
     private function ladeMahnung(int $id): ?array
@@ -371,7 +379,7 @@ class MahnwesenService
         $mailFehler = null;
         if ($email) {
             try {
-                (new Mailer())->sendeTemplate(
+                $this->mailer($auftragId)->sendeTemplate(
                     empfaenger:  $email,
                     betreff:     'Zahlungserinnerung: Auftrag ' . $auftrag['auftrag_nr'],
                     templatePfad: 'mails/mahnwesen/erinnerung.html.twig',
@@ -453,7 +461,7 @@ class MahnwesenService
         $mailFehler = null;
         if ($email) {
             try {
-                (new Mailer())->sendeTemplate(
+                $this->mailer($auftragId)->sendeTemplate(
                     empfaenger:  $email,
                     betreff:     'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde storniert',
                     templatePfad: 'mails/mahnwesen/stornierung.html.twig',

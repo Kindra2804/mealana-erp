@@ -23,7 +23,9 @@ if (!$an) {
 }
 
 try {
-    $mailer = new Mailer();
+    // shop_id > 0: mit dem Absender/SMTP dieses Kanals testen (Einstellungen → Mail → Absender je Kanal)
+    $mailer = (new Mailer())->fuerShop((int)($_POST['shop_id'] ?? 0));
+    $abs    = $mailer->absender();
     $mailer->sende(
         empfaenger: $an,
         betreff:    'MeaLana ERP — Test-Mail',
@@ -31,7 +33,7 @@ try {
         textBody:   'Die SMTP-Konfiguration funktioniert korrekt.',
         erzwinge:   true   // Bypass mail_aktiv-Check beim Test
     );
-    echo json_encode(['erfolg' => true, 'meldung' => 'Test-Mail gesendet an: ' . $an]);
+    echo json_encode(['erfolg' => true, 'meldung' => 'Test-Mail gesendet an: ' . $an . ' (Absender ' . $abs['adresse'] . ' über ' . $abs['smtp'] . ')']);
 } catch (Throwable $e) {
     echo json_encode(['erfolg' => false, 'meldung' => 'SMTP-Fehler: ' . $e->getMessage()]);
 }

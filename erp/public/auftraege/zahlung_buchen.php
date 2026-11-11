@@ -126,7 +126,7 @@ try {
 
     $buchungsDatumFormatiert = date('d.m.Y', strtotime($buchungsdatum));
 
-    $mailer = new Mailer();
+    $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0));
     $mailer->sendeTemplate(
         empfaenger:   $email,
         betreff:      'Ihre Zahlung für Bestellung ' . $auftrag['auftrag_nr'] . ' vom ' . $buchungsDatumFormatiert . ' ist eingegangen',

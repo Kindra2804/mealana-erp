@@ -627,6 +627,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             </table>
             <p><strong>Test-Mail:</strong> E-Mail-Adresse eingeben → "Test-Mail senden" → Postfach prüfen.</p>
             <div class="ba-hint">💡 "Mail aktiv = Nein": System protokolliert intern, sendet aber nichts. Gut zum Testen.</div>
+            <p><strong>Absender je Kanal:</strong> Unten im Tab den Shop aufklappen → Absender-Name, Absender-Adresse und den SMTP-Zugang <em>dieses</em> Postfachs eintragen → Speichern → oben Test-Adresse eintragen → beim Kanal „Test“. Alle Mails zu Aufträgen dieses Shops (Bestätigung, Rechnung, Versand, Zahlung, Mahnung, Retoure, Abholung, Gutschein) gehen dann unter der Shop-Adresse hinaus, mit Kontakt-Adresse, Website, Logo und „Ihr …-Team“ des Shops. Leere Felder = Standard; SMTP-Host leer = Standard-Server. Kasse, Lieferanten- und Passwort-Mails bleiben beim Standard.</p>
+            <div class="ba-hint">💡 Je Domain SPF/DKIM/DMARC prüfen (mail-tester.com), sonst landen die Mails im Spam.</div>
 
             <!-- LIEFERANTEN -->
             <h2 id="lieferanten">Lieferanten <span class="ba-badge ba-badge-fertig">Fertig</span></h2>

@@ -10,7 +10,7 @@
 <p>Guten Tag{% if kunde_name %} {{ kunde_name }}{% endif %},</p>
 {% endif %}
 
-<p>vielen Dank für Ihre Bestellung bei {{ firmenname }}!</p>
+<p>vielen Dank für Ihre Bestellung bei {{ marke }}!</p>
 
 {# ── Status-Nachricht ────────────────────────────────────────────────────── #}
 {% if alles_lagernd is defined and alles_lagernd %}
@@ -190,7 +190,7 @@
 
 <p style="font-size:13px;margin-top:16px">
     Mit freundlichen Grüßen,<br>
-    Ihr {{ firmenname }}-Team
+    Ihr {{ marke }}-Team
 </p>
 
 {% endblock %}

@@ -472,7 +472,7 @@ $sendeAbholMail = function (array $auftrag, string $bonNr, array $anhaenge) {
     if ($firma === null) {
         $firma = Database::getInstance()->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-    $mailer = new Mailer();
+    $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0));
     $mailer->sendeTemplate(
         empfaenger:   $email,
         betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' — Vielen Dank für Ihren Einkauf!',

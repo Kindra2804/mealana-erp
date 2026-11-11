@@ -114,7 +114,8 @@ if ($tab === 'kanaele_update') {
         exit;
     }
 
-    $stmt = $db->prepare("SELECT slug, nr_kuerzel FROM shops WHERE id = ?");
+    // ist_aktiv wird unten für die Lizenzprüfung gebraucht (fehlte → jeder aktive Shop galt als „neu aktiviert“)
+    $stmt = $db->prepare("SELECT slug, nr_kuerzel, ist_aktiv FROM shops WHERE id = ?");
     $stmt->execute([$shopId]);
     $shop = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$shop) {
@@ -268,6 +269,41 @@ if ($tab === 'mail') {
     }
 
     $_SESSION['erfolg'] = 'SMTP-Einstellungen gespeichert.';
+    header('Location: index.php?tab=mail');
+    exit;
+}
+
+// ─── TAB: MAIL → Absender je Kanal (Migration 229) ───────────────────────────
+if ($tab === 'mail_kanal') {
+    $shopId = (int)($_POST['shop_id'] ?? 0);
+    $leer   = fn(string $k) => ($v = trim((string)($_POST[$k] ?? ''))) === '' ? null : $v;
+
+    $adresse = $leer('mail_from_address');
+    if ($adresse !== null && !filter_var($adresse, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['fehler'] = 'Absender-Adresse ist keine gültige E-Mail-Adresse.';
+        header('Location: index.php?tab=mail');
+        exit;
+    }
+    $host = $leer('mail_smtp_host');
+    $enc  = $_POST['mail_smtp_encryption'] ?? 'tls';
+    $enc  = in_array($enc, ['tls', 'ssl', ''], true) ? $enc : 'tls';
+
+    // Ohne SMTP-Host gilt der Standard-Server → alle SMTP-Felder leeren (auch das Passwort)
+    $smtp = $host === null
+        ? ['mail_smtp_host' => null, 'mail_smtp_port' => null, 'mail_smtp_user' => null, 'mail_smtp_encryption' => null]
+        : ['mail_smtp_host' => $host, 'mail_smtp_port' => (int)($_POST['mail_smtp_port'] ?? 0) ?: null,
+           'mail_smtp_user' => $leer('mail_smtp_user'), 'mail_smtp_encryption' => $enc];
+
+    $felder = ['mail_from_name' => $leer('mail_from_name'), 'mail_from_address' => $adresse] + $smtp;
+    $neuesPasswort = (string)($_POST['mail_smtp_pass'] ?? '');
+    if ($host === null)            $felder['mail_smtp_pass'] = null;
+    elseif ($neuesPasswort !== '') $felder['mail_smtp_pass'] = $neuesPasswort;   // leer = beibehalten
+
+    $set = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($felder)));
+    $stmt = $db->prepare("UPDATE shops SET $set WHERE id = :id");
+    $stmt->execute($felder + ['id' => $shopId]);
+
+    $_SESSION['erfolg'] = 'Absender des Kanals gespeichert.';
     header('Location: index.php?tab=mail');
     exit;
 }

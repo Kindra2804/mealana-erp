@@ -277,7 +277,7 @@ class AuftragService
             $db     = Database::getInstance();
             $konfig = $db->query("SELECT schluessel, wert FROM system_einstellungen WHERE schluessel IN ('firma_email')")->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            $mailer = new Mailer();
+            $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0));
             $mailer->sendeTemplate(
                 $email,
                 'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde storniert',
@@ -711,7 +711,7 @@ class AuftragService
             $kunde   = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
             $email   = trim($kunde['email'] ?? '');
             if (!$email) return false;
-            $mailer = new Mailer();
+            $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0));
             $mailer->sendeTemplate(
                 empfaenger:   $email,
                 betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' — Versand statt Abholung',

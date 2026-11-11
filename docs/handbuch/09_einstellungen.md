@@ -114,6 +114,20 @@ Damit das System E-Mails senden kann (Auftragsbestätigungen, Mahnungen, Versand
 
 > **Mail aktiv = Nein:** Das System protokolliert intern dass eine Mail gesendet worden wäre, sendet aber nichts. Nützlich zum Testen ohne echte Mails zu senden.
 
+### Absender je Kanal
+
+Jeder Shop kann seine Kundenmails unter der eigenen Adresse verschicken, z. B. `bestellung@sockenwolle-online.at` statt der Hauptadresse.
+
+1. Unten im Tab Mail/SMTP bei **Absender je Kanal** den Shop aufklappen
+2. Absender-Name (z. B. `Sockenwolle-Online`) und Absender-Adresse eintragen
+3. SMTP-Host, Port, Benutzer, Passwort und Verschlüsselung **dieses Postfachs** eintragen (die meisten Mailserver erlauben nur die eigene Adresse als Absender)
+4. **Speichern**, dann oben die Test-Adresse eintragen und beim Kanal **Test** drücken
+
+- Leere Felder = Standard von oben. SMTP-Host leer = Standard-Server (Benutzer und Passwort des Kanals werden dabei gelöscht).
+- Gilt für alle Mails zu einem Auftrag dieses Shops: Auftragsbestätigung, Rechnung, Rechnungskorrektur, Versand, Zahlung, Erinnerung/Mahnung, Retoure, Abholung, Gutschein. In der Mail stehen dann auch Kontakt-Adresse, Website, Logo und „Ihr …-Team“ des Shops. Kontoinhaber und Fußzeile bleiben die Firma.
+- Kasse, Lieferanten-Bestellungen und Passwort-Mails bleiben beim Standard-Absender.
+- Je Domain SPF/DKIM/DMARC prüfen (z. B. mail-tester.com), sonst landen die Mails im Spam.
+
 ---
 
 ## System-Einstellungen (Tab: System)

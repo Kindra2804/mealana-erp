@@ -695,16 +695,90 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
         <div id="test-mail-result" style="padding:0 16px 12px;font-size:13px;min-height:20px"></div>
     </div>
 
+    <!-- Absender je Kanal (Migration 229): leere Felder = Standard von oben -->
+    <div class="card" style="margin-top:12px">
+        <div class="card-header">Absender je Kanal</div>
+        <div style="padding:12px 16px 4px;font-size:12px;color:var(--color-text-muted)">
+            Kundenmails eines Auftrags (Auftragsbestätigung, Rechnung, Versand, Zahlung, Mahnung, Retoure, Abholung)
+            gehen unter dem Absender des Kanals hinaus, aus dem der Auftrag stammt. Die Kontakt-Adresse und die Website
+            in der Mail werden dann ebenfalls die des Shops. <strong>Leere Felder = Standard von oben.</strong>
+            Ein eigener SMTP-Server wird nur verwendet, wenn beim Kanal ein SMTP-Host steht. Die meisten Mailserver
+            erlauben nur die eigene Adresse als Absender, deshalb je Shop-Adresse meist auch deren Zugang eintragen.
+            Den Test oben (Empfänger-Feld) mit dem Knopf „Test“ je Kanal schicken.
+        </div>
+        <?php foreach ($shops as $shop):
+            $eigenSmtp = trim((string)($shop['mail_smtp_host'] ?? '')) !== '';
+            $absAdr    = trim((string)($shop['mail_from_address'] ?? ''));
+        ?>
+            <details style="border-top:1px solid var(--color-border)">
+                <summary style="padding:10px 16px;cursor:pointer;font-size:13px">
+                    <strong><?= htmlspecialchars($shop['name']) ?></strong>
+                    <span style="color:var(--color-text-muted)">
+                        — <?= $absAdr !== '' ? htmlspecialchars(($shop['mail_from_name'] ?? '') . ' <' . $absAdr . '>') : 'Standard-Absender' ?>
+                        · SMTP: <?= $eigenSmtp ? htmlspecialchars($shop['mail_smtp_host']) : 'Standard' ?>
+                    </span>
+                </summary>
+                <form method="post" action="speichern.php" style="padding:4px 16px 14px">
+                    <input type="hidden" name="tab" value="mail_kanal">
+                    <input type="hidden" name="shop_id" value="<?= (int)$shop['id'] ?>">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                        <div class="form-group">
+                            <label class="form-label">Absender-Name</label>
+                            <input type="text" name="mail_from_name" class="erp-input" maxlength="100" value="<?= htmlspecialchars($shop['mail_from_name'] ?? '') ?>" placeholder="<?= $s('mail_from_name', 'MEALANA KG') ?>">
+                        </div>
+                        <div class="form-group" style="grid-column:2/4">
+                            <label class="form-label">Absender-Adresse</label>
+                            <input type="email" name="mail_from_address" class="erp-input" maxlength="190" value="<?= htmlspecialchars($absAdr) ?>" placeholder="<?= $s('mail_from_address') ?>">
+                        </div>
+                        <div class="form-group" style="grid-column:1/3">
+                            <label class="form-label">SMTP-Host (leer = Standard)</label>
+                            <input type="text" name="mail_smtp_host" class="erp-input" value="<?= htmlspecialchars($shop['mail_smtp_host'] ?? '') ?>" placeholder="<?= $s('mail_smtp_host') ?>">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Port</label>
+                            <input type="number" name="mail_smtp_port" class="erp-input" value="<?= htmlspecialchars((string)($shop['mail_smtp_port'] ?? '')) ?>" placeholder="587" style="width:100px">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Benutzername</label>
+                            <input type="text" name="mail_smtp_user" class="erp-input" value="<?= htmlspecialchars($shop['mail_smtp_user'] ?? '') ?>" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Passwort</label>
+                            <input type="password" name="mail_smtp_pass" class="erp-input" autocomplete="new-password"
+                                placeholder="<?= ($shop['mail_smtp_pass'] ?? '') !== '' ? '(gespeichert — leer lassen zum Beibehalten)' : '' ?>">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Verschlüsselung</label>
+                            <select name="mail_smtp_encryption" class="erp-select">
+                                <?php foreach (['tls' => 'TLS (Port 587)', 'ssl' => 'SSL (Port 465)', '' => 'Keine'] as $val => $lbl): ?>
+                                    <option value="<?= $val ?>" <?= ($shop['mail_smtp_encryption'] ?? 'tls') === $val ? 'selected' : '' ?>><?= $lbl ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+                        <span id="test-mail-result-<?= (int)$shop['id'] ?>" style="font-size:13px;margin-right:auto"></span>
+                        <button type="button" class="btn btn-secondary btn-sm" id="test-mail-btn-<?= (int)$shop['id'] ?>" onclick="testMail(<?= (int)$shop['id'] ?>)">Test</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
+                    </div>
+                </form>
+            </details>
+        <?php endforeach; ?>
+    </div>
+
     <script>
-        function testMail() {
-            const btn = document.getElementById('test-mail-btn');
-            const res = document.getElementById('test-mail-result');
+        // shopId 0 = Standard-Absender; sonst Absender des Kanals (gespeicherter Stand, vorher speichern)
+        function testMail(shopId = 0) {
+            const btn = document.getElementById(shopId ? 'test-mail-btn-' + shopId : 'test-mail-btn');
+            const res = document.getElementById(shopId ? 'test-mail-result-' + shopId : 'test-mail-result');
+            const label = btn.textContent;
             const an = document.getElementById('test-empfaenger').value.trim();
             btn.disabled = true;
             btn.textContent = 'Sende...';
             res.textContent = '';
             const body = new FormData();
             body.append('test_empfaenger', an);
+            body.append('shop_id', shopId);
             fetch('test_mail.php', {
                     method: 'POST',
                     body
@@ -714,13 +788,13 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                     res.style.color = d.erfolg ? 'var(--color-success)' : 'var(--color-danger)';
                     res.textContent = d.meldung;
                     btn.disabled = false;
-                    btn.textContent = 'Test-Mail senden';
+                    btn.textContent = label;
                 })
                 .catch(() => {
                     res.style.color = 'var(--color-danger)';
                     res.textContent = 'Verbindungsfehler.';
                     btn.disabled = false;
-                    btn.textContent = 'Test-Mail senden';
+                    btn.textContent = label;
                 });
         }
     </script>
