@@ -107,10 +107,14 @@ class ShopSyncRepository
      * ORDER BY stellt sicher, dass ein Vater IMMER vor seinen eigenen Kindern
      * kommt (Gruppierung nach vaterartikel_id/eigener id, dann Kind nach Vater).
      */
-    public function findFaelligeArtikel(int $shopId, int $limit = 20): array
+    public function findFaelligeArtikel(int $shopId, int $limit = 20, bool $mitBildern = true): array
     {
+        // Ohne Bilder (Komplettabgleich „ohne Bilder“): offene Bilder machen einen Artikel NICHT fällig --
+        // sie werden in diesem Lauf ja nie übertragen, der Artikel bliebe sonst ewig fällig und der
+        // Komplettabgleich liefe endlos im Kreis (Fund 2026-11-11 beim Überlastungstest).
+        $bilderBedingung = $mitBildern ? '' : 'AND 0';
         $stmt = $this->db->prepare("
-            SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
+            SELECT ash.id AS artikel_shop_id, ash.external_id, ash.sync_status, a.id AS artikel_id,
                    a.vaterartikel_id, a.artikelnummer, a.name, a.kurzbeschreibung,
                    a.beschreibung, a.aktiv, a.hersteller_id, a.ist_hervorgehoben,
                    a.ist_konfigurierbar, a.ist_gutschein, ash_vater.external_id AS vater_external_id
@@ -150,6 +154,7 @@ class ShopSyncRepository
                              ON abs.bild_id = ab.id AND abs.shop_id = ash.shop_id
                       WHERE ab.artikel_id = a.id
                         AND (abs.id IS NULL OR abs.sync_status IN ('pending', 'error'))
+                        $bilderBedingung
                   )
                   -- Gleiches Muster wie bei Bildern: eine Lagerbuchung/Reservierung
                   -- ändert `lagerbestand.geaendert_am`/`reservierungen.geaendert_am`,
@@ -184,8 +189,9 @@ class ShopSyncRepository
      * aktiv ist (können nicht sync'en, sollen aber sichtbar bleiben statt
      * wieder stillschweigend zu verschwinden -- siehe findFaelligeArtikel()).
      */
-    public function zaehleFaellige(int $shopId): array
+    public function zaehleFaellige(int $shopId, bool $mitBildern = true): array
     {
+        $bilderBedingung = $mitBildern ? '' : 'AND 0';   // wie findFaelligeArtikel()
         $stmt = $this->db->prepare("
             SELECT
                 SUM(CASE WHEN a.vaterartikel_id IS NULL THEN 1 ELSE 0 END) AS vaeter,
@@ -207,6 +213,7 @@ class ShopSyncRepository
                              ON abs.bild_id = ab.id AND abs.shop_id = ash.shop_id
                       WHERE ab.artikel_id = a.id
                         AND (abs.id IS NULL OR abs.sync_status IN ('pending', 'error'))
+                        $bilderBedingung
                   )
                   OR EXISTS (
                       SELECT 1 FROM lagerbestand lb
@@ -1078,7 +1085,7 @@ class ShopSyncRepository
     public function findKuerzlichDeaktivierte(int $shopId, int $limit = 50): array
     {
         $stmt = $this->db->prepare("
-            SELECT ash.id AS artikel_shop_id, ash.external_id, a.id AS artikel_id,
+            SELECT ash.id AS artikel_shop_id, ash.external_id, ash.sync_status, a.id AS artikel_id,
                    a.vaterartikel_id, ash_vater.external_id AS vater_external_id
             FROM artikel_shops ash
             JOIN artikel a ON a.id = ash.artikel_id

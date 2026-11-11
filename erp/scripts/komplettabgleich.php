@@ -49,6 +49,15 @@ const FALLBACK_WARTEZEIT_SEKUNDEN = 90;
 // Upload-Zeit + 0,4s Pause, siehe WooCommerceClient::MEDIEN_UPLOAD_PAUSE_SEKUNDEN).
 const FORTSCHRITT_SCHRITT = 5;
 
+// Server überlastet (502/503/504/508/Zeitüberschreitung, siehe ServerUeberlastetException):
+// warten (60 s, dann doppelt so lang, max. 10 Min.), WooCommerce-Batch halbieren (min. 5) und
+// weitermachen. Nach so vielen Überlastungen IN FOLGE ohne einen einzigen Erfolg dazwischen
+// aufgeben -- dann ist der Server ernsthaft am Limit, der 15-Minuten-Cron macht später weiter.
+const UEBERLASTUNG_ERSTE_PAUSE_SEKUNDEN = 60;
+const UEBERLASTUNG_MAX_PAUSE_SEKUNDEN   = 600;
+const UEBERLASTUNG_MIN_BATCH            = 5;
+const UEBERLASTUNG_MAX_IN_FOLGE         = 6;
+
 $shopSlug      = $argv[1] ?? null;
 $limit         = isset($argv[2]) ? (int)$argv[2] : 200;
 $mitBildern    = ($argv[3] ?? '') !== 'ohne-bilder';
@@ -80,23 +89,32 @@ $repo->setBulkImportAktiv((int)$shop['id'], true);
 echo "Komplettabgleich für '{$shop['slug']}' gestartet (Batch-Größe: $limit"
     . ($mitBildern ? '' : ', ohne Bilder') . ")\n";
 
-function druckeFaelligkeit(ShopSyncRepository $repo, int $shopId): void
+function druckeFaelligkeit(ShopSyncRepository $repo, int $shopId, bool $mitBildern = true): void
 {
-    $z = $repo->zaehleFaellige($shopId);
+    $z = $repo->zaehleFaellige($shopId, $mitBildern);
     echo "  Fällig: {$z['vaeter']} Väter/Standalone, {$z['kinder']} Kinder, {$z['bilder']} Bilder"
         . ($z['abzumelden'] > 0 ? ", {$z['abzumelden']} zum Abmelden (Entwurf)" : "")
         . ($z['blockierte_kinder'] > 0 ? " -- {$z['blockierte_kinder']} Kinder warten auf ihren Vater (Kanal dort nicht aktiv)" : "")
         . "\n";
 }
 
-druckeFaelligkeit($repo, (int)$shop['id']);
+druckeFaelligkeit($repo, (int)$shop['id'], $mitBildern);
 
 try {
     $service = new ShopSyncService();
-    if ($batchGroesse !== null) {
-        $service->setBatchGroesse($batchGroesse);
-        echo "WC-Batch-Größe auf $batchGroesse gesetzt.\n";
-    }
+    // Ohne Angabe: WooCommerce-Batch nie größer als das Fälligkeits-Limit (UI "Batch 10" → wirklich 10er-Pakete)
+    $service->setBatchGroesse($batchGroesse ?? min($service->getBatchGroesse(), max(1, $limit)));
+    echo "WC-Batch-Größe: {$service->getBatchGroesse()}\n";
+
+    // „Automatischen Sync pausieren“ während des Laufs = Komplettabgleich nach dem aktuellen Durchlauf beenden.
+    // Nur ein WECHSEL auf pausiert zählt (wer schon pausiert startet, will den Abgleich trotzdem).
+    $pausiertBeimStart = (int)$shop['sync_pausiert'] === 1;
+    $pausiertJetzt = function () use ($shop): bool {
+        $st = Database::getInstance()->prepare('SELECT sync_pausiert FROM shops WHERE id = ?');
+        $st->execute([(int)$shop['id']]);
+        return (int)$st->fetchColumn() === 1;
+    };
+    $ueberlastungenInFolge = 0;
 
     $gesamtErfolg = 0;
     $gesamtFehler = 0;
@@ -129,7 +147,32 @@ try {
 
         echo "[Durchlauf $durchlauf] {$ergebnis['erfolg']} erfolgreich, {$ergebnis['fehler']} Fehler"
             . ($ergebnis['rate_limitiert'] ? " -- Rate-Limit erkannt\n" : "\n");
-        druckeFaelligkeit($repo, (int)$shop['id']);
+        druckeFaelligkeit($repo, (int)$shop['id'], $mitBildern);
+
+        if (!$pausiertBeimStart && $pausiertJetzt()) {
+            echo "  Automatischer Sync wurde pausiert -- Komplettabgleich wird beendet.\n";
+            break;
+        }
+
+        if (!empty($ergebnis['ueberlastet'])) {
+            // Ein Durchlauf mit Erfolgen vor der Überlastung zählt als neue Serie
+            $ueberlastungenInFolge = $ergebnis['erfolg'] > 0 ? 1 : $ueberlastungenInFolge + 1;
+            if ($ueberlastungenInFolge > UEBERLASTUNG_MAX_IN_FOLGE) {
+                echo "  Server " . UEBERLASTUNG_MAX_IN_FOLGE . "x in Folge überlastet -- Abbruch. Der automatische Sync macht später weiter.\n";
+                break;
+            }
+            $alt = $service->getBatchGroesse();
+            $service->setBatchGroesse(max(UEBERLASTUNG_MIN_BATCH, intdiv($alt, 2)));
+            $wartezeit = $ergebnis['retry_after']
+                ?? min(UEBERLASTUNG_MAX_PAUSE_SEKUNDEN, UEBERLASTUNG_ERSTE_PAUSE_SEKUNDEN * 2 ** ($ueberlastungenInFolge - 1));
+            echo "  Server überlastet ({$ueberlastungenInFolge}. Mal in Folge) -- Pause {$wartezeit}s, WC-Batch $alt → {$service->getBatchGroesse()}."
+                . " Unklare neue Artikel werden vor dem Neuanlegen per Artikelnummer gesucht.\n";
+            sleep($wartezeit);
+            continue;
+        }
+        if ($ergebnis['erfolg'] > 0) {
+            $ueberlastungenInFolge = 0;
+        }
 
         if ($ergebnis['rate_limitiert']) {
             $wartezeit = $ergebnis['retry_after'] ?? FALLBACK_WARTEZEIT_SEKUNDEN;
@@ -157,10 +200,15 @@ try {
         echo "  Batch komplett ohne Fortschritt (0 erfolgreich, 0 Fehler) -- versuche nochmal, bevor ich abbreche...\n";
     }
 
-    echo "\nFertig nach $durchlauf Durchläufen: $gesamtErfolg erfolgreich, $gesamtFehler Fehler insgesamt.\n";
-    if ($gesamtFehler > 0) {
-        echo "Hinweis: $gesamtFehler Fehler stehen noch offen -- Details im Aktivitäten-Log ('shop.sync_fehler' u.ä.).\n";
-    }
+    echo "\nFertig nach $durchlauf Durchläufen: $gesamtErfolg erfolgreich, $gesamtFehler Fehlversuche unterwegs.\n";
+    // Fehlversuche (z.B. nach einem 502) werden meist im nächsten Durchlauf aufgelöst -- entscheidend
+    // ist, was JETZT noch auf Fehler steht.
+    $offenStmt = Database::getInstance()->prepare("SELECT COUNT(*) FROM artikel_shops WHERE shop_id = ? AND aktiv = 1 AND sync_status = 'error'");
+    $offenStmt->execute([(int)$shop['id']]);
+    $nochOffen = (int)$offenStmt->fetchColumn();
+    echo $nochOffen > 0
+        ? "Hinweis: $nochOffen Artikel stehen noch auf Fehler -- Details im Aktivitäten-Log ('shop.sync_fehler' u.ä.), ggf. „Fehler abgleichen“.\n"
+        : "Keine Artikel mit Fehler offen.\n";
 
     // Wie der 15-Minuten-Cron: nach den Artikeln auch Bestellungen abholen und
     // Gutschein-Coupons abgleichen -- sonst wirkt "Komplettabgleich starten" für

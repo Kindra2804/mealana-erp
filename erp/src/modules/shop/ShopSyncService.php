@@ -75,8 +75,16 @@ class ShopSyncService
     /** Für Tests mit unterschiedlichen Batch-Größen (siehe komplettabgleich.php) -- betrifft nur diesen einen Service-Lauf. */
     public function setBatchGroesse(int $groesse): void
     {
-        $this->batchGroesse = $groesse;
+        $this->batchGroesse = max(1, $groesse);
     }
+
+    public function getBatchGroesse(): int
+    {
+        return $this->batchGroesse;
+    }
+
+    /** true = der letzte syncShop() wurde wegen Server-Überlastung angehalten (nicht wegen 429), siehe protokolliereRateLimit(). */
+    private bool $ueberlastet = false;
 
     public function __construct()
     {
@@ -155,6 +163,7 @@ class ShopSyncService
         // wie der Server selbst verlangt, statt blind zu raten.
         $rateLimitiert = false;
         $retryAfterSekunden = null;
+        $this->ueberlastet = false;
 
         // Aktionskategorien (kategorien.ist_aktions_kategorie) sind nur sichtbar,
         // solange ihre Aktion tatsächlich läuft -- Start/Ende passiert rein über
@@ -167,7 +176,7 @@ class ShopSyncService
             $this->repo->markiereAktionskategorieUebergang((int)$kategorieId, (int)$shop['id']);
         }
 
-        $faelligeArtikel = $this->repo->findFaelligeArtikel((int)$shop['id'], $limit);
+        $faelligeArtikel = $this->repo->findFaelligeArtikel((int)$shop['id'], $limit, $mitBildern);
 
         // Kategorien MÜSSEN vor den Artikeln in WooCommerce existieren, sonst kann der
         // Artikel-Payload weiter unten (baueProduktPayload → findWcKategorieIds) keine
@@ -383,6 +392,9 @@ class ShopSyncService
                         $this->syncHerstellerFuerArtikel($client, (int)$row['hersteller_id'], (int)$shop['id']);
                     }
                     $payload = $this->baueProduktPayload($client, $row, (int)$shop['id']);
+                    if (!$row['external_id']) {
+                        $row['external_id'] = $this->findeVorhandeneIdBeiUnklaremStand($client, $row, null);
+                    }
                     if ($row['external_id']) {
                         $payload['id'] = (int)$row['external_id'];
                         $update[] = $payload;
@@ -439,6 +451,12 @@ class ShopSyncService
                     $rateLimitiert = true;
                     $retryAfterSekunden = $e->retryAfterSekunden;
                     $this->protokolliereRateLimit($shop, $e);
+                    // Überlastung (502/503/504/508/Timeout) beim Senden: Woo hat den Batch evtl. trotzdem
+                    // ausgeführt → Zeilen als 'error' markieren, damit der nächste Lauf neue Artikel erst per
+                    // SKU sucht statt sie doppelt anzulegen (siehe findeVorhandeneIdBeiUnklaremStand()).
+                    if ($e instanceof ServerUeberlastetException) {
+                        $this->markiereBatchAlsUnklar(array_merge($createRows, $updateRows), $shop, $e, $fehler);
+                    }
                 } catch (Throwable $e) {
                     // z.B. Timeout (siehe WooCommerceClient::BATCH_TIMEOUT_SEKUNDEN) --
                     // KEIN sicheres "also nicht angelegt": WooCommerce verarbeitet
@@ -518,6 +536,9 @@ class ShopSyncService
                                 $this->syncBilderFuerArtikel($client, (int)$row['artikel_id'], (int)$shop['id']);
                             }
                             $payload = $this->baueVariationPayload($client, $row, (int)$shop['id'], $vaterId);
+                            if (!$row['external_id']) {
+                                $row['external_id'] = $this->findeVorhandeneIdBeiUnklaremStand($client, $row, (string)$vaterExternalId);
+                            }
                             if ($row['external_id']) {
                                 $payload['id'] = (int)$row['external_id'];
                                 $update[] = $payload;
@@ -561,6 +582,12 @@ class ShopSyncService
                             $rateLimitiert = true;
                             $retryAfterSekunden = $e->retryAfterSekunden;
                             $this->protokolliereRateLimit($shop, $e);
+                            // Überlastung (502/503/504/508/Timeout) beim Senden: Woo hat den Batch evtl. trotzdem
+                            // ausgeführt → Zeilen als 'error' markieren, damit der nächste Lauf neue Artikel erst per
+                            // SKU sucht statt sie doppelt anzulegen (siehe findeVorhandeneIdBeiUnklaremStand()).
+                            if ($e instanceof ServerUeberlastetException) {
+                                $this->markiereBatchAlsUnklar(array_merge($createRows, $updateRows), $shop, $e, $fehler);
+                            }
                         } catch (Throwable $e) {
                             $this->markiereBatchAlsUnklar(array_merge($createRows, $updateRows), $shop, $e, $fehler);
                         }
@@ -573,6 +600,7 @@ class ShopSyncService
             'erfolg'         => $erfolg,
             'fehler'         => $fehler,
             'rate_limitiert' => $rateLimitiert,
+            'ueberlastet'    => $this->ueberlastet,
             'retry_after'    => $retryAfterSekunden,
         ];
     }
@@ -602,6 +630,33 @@ class ShopSyncService
         $this->repo->markiereSynced((int)$row['artikel_shop_id'], (string)$ergebnis['id']);
         $erfolg++;
         return (string)$ergebnis['id'];
+    }
+
+    /**
+     * Neuer Artikel (ohne external_id), dessen letzter Versuch mit Fehler endete: Vor dem erneuten
+     * Anlegen per SKU im Shop nachsehen -- nach einem 502/Timeout hat WooCommerce ihn oft trotzdem
+     * angelegt, ein zweites 'create' scheitert dann an der doppelten Artikelnummer (Live-Sync
+     * indra-design 2026-11-10). Nur bei sync_status 'error', damit der Normalfall (pending) keinen
+     * Zusatz-Request kostet. Ein Treffer läuft im selben Batch als 'update' (= wird danach 'synced').
+     *
+     * @param ?string $vaterExternalId null = Vater/Standalone, sonst Variation unter diesem Produkt
+     * @return ?string gefundene external_id oder null (= wirklich neu anlegen)
+     * @throws RateLimitException weitergereicht, damit der Lauf wie überall anhält
+     */
+    private function findeVorhandeneIdBeiUnklaremStand(WooCommerceClient $client, array $row, ?string $vaterExternalId): ?string
+    {
+        if (($row['sync_status'] ?? '') !== 'error' || trim((string)$row['artikelnummer']) === '') {
+            return null;
+        }
+        $id = $vaterExternalId === null
+            ? $client->sucheProduktNachSku($row['artikelnummer'])
+            : $client->sucheVariationNachSku($vaterExternalId, $row['artikelnummer']);
+        if ($id === null) return null;
+        Logger::log('shop.sync_sku_gefunden', 'artikel', (int)$row['artikel_id'], [
+            'external_id' => $id,
+            'hinweis'     => 'Nach unklarem Fehler bereits im Shop vorhanden -- wird aktualisiert statt neu angelegt',
+        ], $this->jarvisId, 'info');
+        return (string)$id;
     }
 
     /**
@@ -642,6 +697,7 @@ class ShopSyncService
      */
     private function protokolliereRateLimit(array $shop, RateLimitException $e): void
     {
+        $this->ueberlastet = $e instanceof ServerUeberlastetException;
         $wartehinweis = $e->retryAfterSekunden !== null
             ? sprintf(' (Server nennt Retry-After: %d Sekunden = %.1f Minuten)', $e->retryAfterSekunden, $e->retryAfterSekunden / 60)
             : '';

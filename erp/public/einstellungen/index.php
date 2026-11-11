@@ -604,6 +604,12 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
             502 vom Hosting hat WooCommerce das Objekt oft trotzdem fertig angelegt, nur unsere
             Rückmeldung ist nicht angekommen. Echte Treffer werden automatisch nachgetragen, alles
             andere bleibt unangetastet für einen erneuten Sync-Versuch.
+            <br><br>
+            <strong>Server überlastet (502/503/504/508 oder Zeitüberschreitung)?</strong> Der Komplettabgleich wartet
+            von selbst (1 Min., dann 2, 4 … bis 10 Min.), halbiert die Paketgröße und sucht neue Artikel mit
+            unklarem Stand vor dem erneuten Anlegen per Artikelnummer im Shop, damit nichts doppelt angelegt wird.
+            Nach 6 Überlastungen in Folge gibt er auf, der automatische Sync macht später weiter.
+            „Automatischen Sync pausieren“ beendet einen laufenden Komplettabgleich nach dem aktuellen Durchlauf.
         </div>
     </div>
 

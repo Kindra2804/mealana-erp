@@ -16,6 +16,20 @@ class RateLimitException extends RuntimeException
 }
 
 /**
+ * Server überlastet (HTTP 502/503/504 von nginx/Apache, 508 = CloudLinux-Ressourcenlimit des
+ * Hosting-Kontos) oder Zeitüberschreitung. Wie ein Rate-Limit betrifft das die ganze Verbindung
+ * -- Unterklasse, damit alle bestehenden Rate-Limit-Stellen den Lauf sauber anhalten.
+ * Unterschied: Bei einem Schreib-Request (Batch, Medien-Upload) ist UNKLAR, ob der Server ihn
+ * trotzdem ausgeführt hat (Fund Live-Sync indra-design 2026-11-10: 502 auf einen Batch mit
+ * 42 neuen Produkten, Woo hatte alle angelegt → Folgeläufe „doppelte Artikelnummer“).
+ * Siehe ShopSyncService (Zeilen als 'error' markieren, vor dem Neuanlegen per SKU suchen)
+ * und scripts/komplettabgleich.php (warten + Batch verkleinern).
+ */
+class ServerUeberlastetException extends RateLimitException
+{
+}
+
+/**
  * HTTP 404 auf ein bekanntes WC-Objekt (z.B. ein Achsenwert-Term, dessen
  * externe_term_id in der ERP-DB noch auf ein längst gelöschtes/verschobenes
  * WooCommerce-Objekt zeigt -- Fund 2026-07-31, siehe
@@ -382,17 +396,22 @@ class WooCommerceClient
 
         $rohantwort = curl_exec($ch);
         $fehler = curl_error($ch);
+        $fehlerNr = curl_errno($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerGroesse = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
         if ($rohantwort === false) {
+            if ($fehlerNr === CURLE_OPERATION_TIMEDOUT) {
+                throw new ServerUeberlastetException("WordPress-Medien-Upload: Zeitüberschreitung ($fehler)");
+            }
             throw new RuntimeException("WordPress-Medien-Upload fehlgeschlagen: $fehler");
         }
 
         $header  = substr($rohantwort, 0, $headerGroesse);
         $antwort = substr($rohantwort, $headerGroesse);
 
+        $this->pruefeUeberlastung($httpCode, $header, $antwort);
         if ($httpCode === 429) {
             throw new RateLimitException(
                 'Rate-Limit vom Hosting/Server erreicht (nicht WordPress selbst): ' . trim($antwort),
@@ -487,17 +506,22 @@ class WooCommerceClient
 
         $rohantwort = curl_exec($ch);
         $fehler = curl_error($ch);
+        $fehlerNr = curl_errno($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $headerGroesse = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
         if ($rohantwort === false) {
+            if ($fehlerNr === CURLE_OPERATION_TIMEDOUT) {
+                throw new ServerUeberlastetException("WooCommerce: Zeitüberschreitung nach {$timeoutSekunden}s ($fehler)");
+            }
             throw new RuntimeException("WooCommerce-Verbindung fehlgeschlagen: $fehler");
         }
 
         $header  = substr($rohantwort, 0, $headerGroesse);
         $antwort = substr($rohantwort, $headerGroesse);
 
+        $this->pruefeUeberlastung($httpCode, $header, $antwort);
         if ($httpCode === 429) {
             throw new RateLimitException(
                 'Rate-Limit vom Hosting/Server erreicht (nicht WooCommerce selbst): ' . trim($antwort),
@@ -516,6 +540,20 @@ class WooCommerceClient
         }
 
         return $daten ?? [];
+    }
+
+    /** HTTP-Codes, bei denen der Server (bzw. das Hosting-Konto) überlastet ist statt die Anfrage abzulehnen. */
+    private const UEBERLASTET_CODES = [502, 503, 504, 508];
+
+    /** @throws ServerUeberlastetException bei 502/503/504/508 */
+    private function pruefeUeberlastung(int $httpCode, string $header, string $antwort): void
+    {
+        if (in_array($httpCode, self::UEBERLASTET_CODES, true)) {
+            throw new ServerUeberlastetException(
+                "Shop-Server überlastet (HTTP $httpCode): " . mb_substr(trim(strip_tags($antwort)), 0, 150),
+                $this->leseRetryAfterSekunden($header)
+            );
+        }
     }
 
     /**
