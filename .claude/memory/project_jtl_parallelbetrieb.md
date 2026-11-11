@@ -19,3 +19,6 @@ Jacky hat in JTL mehrere „eigene Exporte“ mit SQL (viele AS/CASE). Herkunft 
 
 **Why:** Ein reiner absoluter JTL→ERP-Import würde die SOW-Verkäufe täglich überschreiben. Darum zuerst ERP→JTL.
 **How to apply:** Offene Klärungen siehe Gespräch 2026-11-11 (Ameise-Importmodus relativ/absolut, Lager-Zuordnung, Chargen, wo Wareneingänge gebucht werden). Basis-Skript: [[project_jtl_kunden_auftraege_import]] (jtl_eigener_export_import.php: lager_id=1 und Lieferant 33 fest verdrahtet → für Live anpassen). Siehe auch [[project_sow_umstellung]], [[project_1_0_check]].
+
+**Fakt 2026-11-11 (August-Export geprüft):** Ein leeres „Warenlager“ im eigenen Export bedeutet **Bestand 0**. Die SQL hängt tWarenLagerEingang nur bei fAnzahlAktuell > 0 an; alle 22.978 Zeilen ohne Lager haben Bestand 0. Der Bestand liegt praktisch komplett im Lager „Ladengeschäft“ (3.588 Zeilen), „Mealana-Hauptlager“ hat 1 Zeile. Die frühere Deutung „Export deckt das Hauptlager nicht ab“ war falsch. Folge für den Abgleich: Ein Artikel, der in der Datei nicht vorkommt, hat Bestand 0 → mit Plausibilitätsprüfung arbeiten, falls die Datei gefiltert oder abgeschnitten ist.
+Jackys SQL-Exporte in JTL: „Komplettexport_JackyERP“ und „CargenArtikelLager_JackyERP_2“ (Bestand je Artikel/Lager/Lagerplatz/Charge aus tWarenLagerEingang.fAnzahlAktuell).
