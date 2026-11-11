@@ -90,3 +90,21 @@ hier abgelegt.
    Taxonomie-Namen in `hersteller_menue.php` falls abweichend).
 3. Erst inaktiv speichern, testen, dann aktivieren — gleiches Vorsichtsmuster wie beim
    Erstaufbau auf indra-design.at.
+
+## sockenwolle-online.at (Aufbau 2026-11-11)
+
+WPCode-IDs auf sockenwolle-online.at (eigene Nummerierung, nicht mit indra-design verwechseln):
+
+| WPCode-ID | Titel | Quelle hier |
+|---|---|---|
+| 25 | SOW: Wartungsseite (Umbau) — 503 + Retry-After für alle Nicht-Redakteure. **Zum Live-Schalten deaktivieren.** | (nur in WPCode) |
+| 34 | ERP: Zahlung/Versand ohne doppelte Shop-Mail | `erp_zahlung_ohne_shop_mail.php` |
+| 35 | Ausverkauft statt Weiterlesen | `ausverkauft_statt_weiterlesen.php` |
+| 36 | Leere Kategorien im Menü ausblenden | `leere_kategorien_ausblenden.php` |
+| 37 | Variations-Schwellwert 1000 | `variations_threshold_anheben.php` |
+| 38 | Swatch-Container scrollen (CSS über wp_head) | `swatch_container_scroll.css` |
+| 52 | SOCKENWOLLE – Grundstil (CSS über wp_head) | `sow_grundstil.css` |
+| 39 | TEMP Claude Theme-Aufbau (deaktiviert, kann gelöscht werden) | – |
+
+Blocksy schreibt sein CSS auf SOW in die Datei `uploads/blocksy/css/global.css` → nach Theme-Mod-Änderungen per Code
+`do_action('blocksy:dynamic-css:refresh-caches')` auslösen, sonst bleibt die alte Datei.

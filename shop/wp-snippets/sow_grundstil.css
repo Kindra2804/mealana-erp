@@ -1,0 +1,40 @@
+/* SOCKENWOLLE-ONLINE – Grundstil (Claude 2026-11-11). Weinrot #8e3438, Koralle #c8574a, Rosé #e9b8ad, Senf #d9a441, Creme #fdf8f2, Espresso #3b2a26 */
+@font-face { font-family: "SowNunito"; font-style: normal; font-weight: 200 1000; font-display: swap; src: url(/wp-content/uploads/2026/11/nunito-latin-ext-wght-normal.woff2) format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "SowNunito"; font-style: normal; font-weight: 200 1000; font-display: swap; src: url(/wp-content/uploads/2026/11/nunito-latin-wght-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+body { background: #fdf8f2; }
+/* Leiste oben */
+[data-header] [data-row*="top"] { background: #8e3438 !important; --height: 36px; }
+[data-header] [data-row*="top"] .ct-header-text, [data-header] [data-row*="top"] .ct-header-text p { color: #fff; font-size: 13.5px; letter-spacing: .03em; margin: 0; font-weight: 600; }
+@media (max-width: 689px) { [data-header] [data-row*="top"] .ct-header-text p { font-size: 12px; letter-spacing: 0; } }
+/* Kopfzeile + Menü */
+[data-header] [data-row*="middle"] { background: #fff; border-bottom: 1px solid #f4e5d4; }
+[data-header] [data-id="menu"] > ul > li > a { font-size: 15px; font-weight: 700; color: #3b2a26; }
+[data-header] [data-id="menu"] > ul > li > a:hover, [data-header] [data-id="menu"] > ul > li.current-menu-item > a { color: #8e3438; }
+/* Menü bricht bei Platzmangel in 2 Zeilen um (wie indra-design) */
+[data-header] [data-row*="middle"] [data-column="middle"] { flex: 1 1 auto; min-width: 0; justify-content: flex-start; padding: 0 28px; }
+[data-header] #header-menu-1 { width: 100%; height: auto !important; }
+[data-header] #header-menu-1 > ul.menu { flex-wrap: wrap; row-gap: 2px; height: auto !important; }
+[data-header] #header-menu-1 > ul.menu > li > a { height: auto !important; padding-top: 6px; padding-bottom: 6px; }
+[data-header] #header-menu-1 .more-items-container { display: none !important; }
+[data-header] [data-device="desktop"] [data-row*="middle"] > .ct-container { grid-template-columns: auto 1fr auto !important; height: auto !important; min-height: 96px; padding-top: 8px; padding-bottom: 8px; }
+/* Buttons: weich gerundet */
+.button, button.button, .wp-element-button, .wp-block-button__link, input[type="submit"], button[type="submit"] { border-radius: 999px !important; font-weight: 700; }
+.wp-block-button.is-style-outline .wp-block-button__link { border-color: #8e3438; color: #8e3438; }
+.sow-kicker { font-size: 14px !important; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #c8574a !important; margin-bottom: 12px !important; }
+/* Preise + Sale */
+.price, .woocommerce-Price-amount { color: #8e3438; }
+.onsale { background: #c8574a !important; color: #fff !important; border-radius: 999px; }
+/* Fußzeile Espresso */
+.ct-footer, .ct-footer [data-row] { background: #3b2a26 !important; color: #f4e5d4; }
+.ct-footer [data-row*="bottom"] { background: #2e211e !important; border-top: 1px solid #4a3631; }
+.ct-footer a { color: #f4e5d4; } .ct-footer a:hover { color: #e9b8ad; }
+.ct-footer .widget-title { color: #e9b8ad; text-transform: uppercase; letter-spacing: .14em; font-size: 13px; font-weight: 800; }
+.ct-footer .widget_nav_menu li { margin-bottom: 6px; }
+.sow-footer-marke img { margin-bottom: 16px; } .sow-footer-marke p { font-size: 14px; line-height: 1.7; color: #d9c7b8; }
+.ct-footer-copyright, .ct-footer-copyright p { color: #c9b5a6; font-size: 14px; }
+/* NAHTLOS-Kacheln aus dem ERP */
+.nahtlos-kacheln { --ns-kicker: #c8574a; }
+.nahtlos-kachel__titel { color: #3b2a26; }
+.home [data-vertical-spacing*="top"] { padding-top: 0 !important; }
+/* Social-Icons in der Fußzeile hell */
+.ct-footer [data-id="socials"] svg, .ct-footer .ct-social-box svg { fill: #e9b8ad !important; } .ct-footer .ct-social-box a:hover svg { fill: #fff !important; }
