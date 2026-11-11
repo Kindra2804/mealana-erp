@@ -132,6 +132,7 @@ final class Zugriffsregeln
         'konfigurator' => [
             'bausteine.php'                  => 'artikel.bearbeiten',
             'fertiges_schild.php'            => 'artikel.anlegen',
+            'optionen_uebertragen.php'       => 'artikel.bearbeiten',
         ],
 
         'lager' => [

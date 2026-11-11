@@ -156,6 +156,8 @@ Rohmaterial leer → im Shop ist der Wert ausgegraut („derzeit nicht verfügba
 3. Gibt es die Kombination schon → **nur einbuchen** (und wieder aktivieren). Neu → eigener Lagerartikel mit Hersteller, Gruppe, Steuer, Shop-Kanälen vom Layout und dem Konfigurator-Preis.
 4. Foto des fertigen Schilds danach im Artikel hochladen.
 
+**Optionen auf andere Layouts übertragen** (im fertig gepflegten Layout, Karte „Konfigurator“): Ziel-Layouts anhaken → **Probelauf** → „Jetzt übertragen“. Die Ziele bekommen dieselben Achsen, Werte, Reihenfolge, Aufpreise und Bedingungen. Gleichnamige Werte werden aktualisiert (Shop-Verknüpfung bleibt), fehlende angelegt, überzählige entfernt. Der Grundpreis je Layout bleibt. Werte, die schon in Aufträgen stehen, bleiben erhalten und werden in der Liste gemeldet.
+
 Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), aber nur, wenn er in seiner Achse der einzige ohne Kürzel ist.
 
 ---

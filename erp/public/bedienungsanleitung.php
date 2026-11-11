@@ -353,6 +353,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Die Artikelnummer entsteht aus Layout-Nummer + Kürzeln, z.B. <code>ID-W01-20-2F-BL-WS-FI-TU</code> (höchstens 30 Zeichen).</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Gibt es die Kombination schon, wird <strong>nur eingebucht</strong> (und der Artikel wieder aktiviert) — kein doppelter Artikel.</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Ein neuer Artikel übernimmt Hersteller, Gruppe, Steuer und Shop-Kanäle vom Layout; Preis = Konfigurator-Preis. Foto des fertigen Schilds danach im Artikel hochladen.</div></div>
+            <p><strong>Optionen auf andere Layouts übertragen:</strong> Im fertig gepflegten Layout (Karte Konfigurator) → „Optionen auf andere Layouts übertragen“ → Ziel-Layouts anhaken → <strong>Probelauf</strong> → „Jetzt übertragen“. Die Ziele bekommen dieselben Achsen, Werte, Reihenfolge, Aufpreise und Bedingungen; gleichnamige Werte werden aktualisiert, überzählige entfernt. Der Grundpreis je Layout bleibt. Werte, die schon in Aufträgen stehen, bleiben erhalten und werden gemeldet.</p>
             <div class="ba-hint">💡 Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“) — aber nur, wenn er in seiner Achse der einzige ohne Kürzel ist. Sonst meldet die Vorschau, welches Kürzel fehlt.</div>
 
             <h2 id="lager">Lager <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
