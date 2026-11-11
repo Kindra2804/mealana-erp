@@ -8,7 +8,7 @@
 CREATE TABLE IF NOT EXISTS import_kategorie_zuordnung (
     id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
     quelle        VARCHAR(20)  NOT NULL DEFAULT 'jtl',
-    fremd_id      VARCHAR(50)  NOT NULL COMMENT 'Kategorie-ID im Quellsystem (JTL KategorieIDs)',
+    fremd_id      VARCHAR(255) NOT NULL COMMENT 'JTL-Kategorie-ID (Eigener Export) oder voller Pfad „Ebene 1 › Ebene 2 › …“ (Ameise Artikelkategorien)',
     fremd_name    VARCHAR(255) NOT NULL DEFAULT '',
     kategorie_id  INT UNSIGNED NULL DEFAULT NULL COMMENT 'ERP-Kategorie, NULL = nicht zuordnen',
     geaendert_am  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

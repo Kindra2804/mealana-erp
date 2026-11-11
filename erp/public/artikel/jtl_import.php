@@ -84,14 +84,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_stammdaten']['t
         $mitKindern     = $importService->parseMitKindern($_FILES['csv_stammdaten']['tmp_name']);
         // Kategorien-CSV (optional, Jackys „Eigener Export“ mit KategorieIDs + Kategorien): Die
         // Ameise-Stammdaten haben keine Kategorie-Spalten -- über die Artikelnummer dazuholen.
+        // Zwei Formate:
+        //  a) Eigener Export: je Artikel EINE Zeile mit KategorieIDs + Kategorien (pipe-getrennt, paarweise)
+        //  b) Ameise „Artikelkategorien“: je Artikel UND Kategorie eine Zeile mit „Kategorie Ebene 1..10“
+        //     → der volle Pfad („Wolle und Garne › Zusammensetzung › 100% Schurwolle“) ist eindeutig und
+        //     wird selbst als Kennung verwendet (fremd_id), Name = Pfad. Gleiche Weiterverarbeitung wie a).
         $katDateiZeilen = 0;
         if (!empty($_FILES['csv_kategorien']['tmp_name'])) {
+            $pfadeJeNr = [];
             foreach (JtlCsvReader::lese($_FILES['csv_kategorien']['tmp_name']) as $katRow) {
                 $nr = trim((string)($katRow['Artikelnummer'] ?? ''));
                 if ($nr === '' || !isset($mitKindern[$nr])) continue;
-                $mitKindern[$nr]['KategorieIDs'] = $katRow['KategorieIDs'] ?? '';
-                $mitKindern[$nr]['Kategorien']   = $katRow['Kategorien'] ?? '';
+                if (array_key_exists('Kategorie Ebene 1', $katRow)) {
+                    $teile = [];
+                    for ($ebene = 1; $ebene <= 10; $ebene++) {
+                        $t = trim((string)($katRow["Kategorie Ebene $ebene"] ?? ''));
+                        if ($t === '') break;
+                        $teile[] = str_replace('|', '/', $t);
+                    }
+                    if ($teile) $pfadeJeNr[$nr][implode(' › ', $teile)] = true;
+                } else {
+                    $mitKindern[$nr]['KategorieIDs'] = $katRow['KategorieIDs'] ?? '';
+                    $mitKindern[$nr]['Kategorien']   = $katRow['Kategorien'] ?? '';
+                }
                 $katDateiZeilen++;
+            }
+            foreach ($pfadeJeNr as $nr => $pfade) {
+                $liste = implode('|', array_map(fn($p) => mb_substr($p, 0, 255), array_keys($pfade)));
+                $mitKindern[$nr]['KategorieIDs'] = $liste;   // Pfad = Kennung
+                $mitKindern[$nr]['Kategorien']   = $liste;   // Pfad = Anzeigename
             }
         }
         if ($katZuordnen && $katDateiZeilen === 0
@@ -230,10 +251,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
             </div>
 
             <div style="grid-column:1/-1">
-                <label class="erp-label">Kategorien-CSV (optional — „Eigener Export“ mit den Spalten Artikelnummer, KategorieIDs, Kategorien)</label>
+                <label class="erp-label">Kategorien-CSV (optional — Ameise-Export „Artikelkategorien“ mit Kategorie Ebene 1–10, oder Eigener Export mit KategorieIDs/Kategorien)</label>
                 <input type="file" name="csv_kategorien" accept=".csv,text/csv"
                     style="border:1px solid var(--color-border);padding:6px 10px;border-radius:4px;width:100%">
-                <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">Die Ameise-Stammdaten enthalten keine Kategorien. Die Kategorien-CSV wird über die Artikelnummer dazugeholt; sie darf auch mehr Artikel enthalten (z.B. der ganze Shop).</div>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">Die Ameise-Stammdaten enthalten keine Kategorien. Die Kategorien-CSV wird über die Artikelnummer dazugeholt; sie darf auch mehr Artikel enthalten (z.B. alle Artikel). Beim Artikelkategorien-Export ist der volle Pfad die Kennung.</div>
             </div>
             <div style="grid-column:1/-1;background:var(--color-bg-subtle,#f8fafc);border:1px solid var(--color-border);border-radius:6px;padding:10px 12px">
                 <label style="font-size:13px;cursor:pointer;display:flex;gap:8px;align-items:flex-start">
@@ -347,7 +368,7 @@ $anzahlKinder         = array_sum(array_map(fn($v) => count($v['kinder']), $vaet
                     $opts = $sel ? str_replace('value="' . $sel . '"', 'value="' . $sel . '" selected', $optHtml) : $optHtml;
                 ?>
                     <tr data-text="<?= htmlspecialchars(mb_strtolower($kat['name'] . ' ' . implode(' ', $kat['mit']) . ' ' . implode(' ', $kat['beispiele']))) ?>">
-                        <td style="font-size:12px;color:var(--color-text-muted)"><?= htmlspecialchars((string)$fid) ?></td>
+                        <td style="font-size:12px;color:var(--color-text-muted)"><?= (string)$fid === $kat['name'] ? 'Pfad' : htmlspecialchars((string)$fid) ?></td>
                         <td><strong><?= htmlspecialchars($kat['name']) ?></strong><?= $sel === null ? ' <span style="background:#fffbeb;color:#b45309;padding:1px 6px;border-radius:4px;font-size:11px">neu</span>' : '' ?></td>
                         <td><?= (int)$kat['anzahl'] ?></td>
                         <td style="font-size:12px">
