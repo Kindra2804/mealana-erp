@@ -22,3 +22,11 @@ Jacky hat in JTL mehrere „eigene Exporte“ mit SQL (viele AS/CASE). Herkunft 
 
 **Fakt 2026-11-11 (August-Export geprüft):** Ein leeres „Warenlager“ im eigenen Export bedeutet **Bestand 0**. Die SQL hängt tWarenLagerEingang nur bei fAnzahlAktuell > 0 an; alle 22.978 Zeilen ohne Lager haben Bestand 0. Der Bestand liegt praktisch komplett im Lager „Ladengeschäft“ (3.588 Zeilen), „Mealana-Hauptlager“ hat 1 Zeile. Die frühere Deutung „Export deckt das Hauptlager nicht ab“ war falsch. Folge für den Abgleich: Ein Artikel, der in der Datei nicht vorkommt, hat Bestand 0 → mit Plausibilitätsprüfung arbeiten, falls die Datei gefiltert oder abgeschnitten ist.
 Jackys SQL-Exporte in JTL: „Komplettexport_JackyERP“ und „CargenArtikelLager_JackyERP_2“ (Bestand je Artikel/Lager/Lagerplatz/Charge aus tWarenLagerEingang.fAnzahlAktuell).
+
+**Entscheidungen 2026-11-11 (später am Tag):**
+- JTL-Ameise „Preise/Bestände (QuickSync)“ hat die Option „Eigenen Lagerbestand aktualisieren = Neuen und alten Lagerbestand addieren“, bucht also relativ. Damit funktioniert die Reihenfolge ERP→JTL, dann JTL→ERP. Spalten: Artikelnummer, Lagername, Charge, Lagerbestand; windows-1252, Semikolon. **Jacky testet noch** an einem JTL-Artikel mit Charge, ob negative Werte gehen und ob die Charge-Spalte beim Abziehen die richtige Charge trifft (-1, dann +1).
+- Lager in ERP und JTL gleich: „Ladengeschäft“.
+- SOW-Verkauf ohne Charge → in der Exportdatei von der ältesten Charge mit Bestand abziehen (wie LS-POS).
+- Wareneingänge in der Parallelzeit in JTL. Die **Inventur will Jacky im ERP machen** (mehrere Zähler parallel, ohne Papier).
+- **Konzept-Änderung:** Der Export basiert nicht auf Lagerbewegungen, sondern auf „ERP-Bestand jetzt minus Schnappschuss beim letzten Abgleich“, je Artikel/Lager/Charge. So kommen auch Inventur-Differenzen und Chargen-Umverteilungen mit (die erzeugen keine Bewegung je Charge). Der JTL-Import setzt ERP = JTL + (ERP jetzt − Export-Schnappschuss), bucht die Differenz als „Korrektur durch JTL-Lagerstandsabgleich“ und setzt einen neuen Schnappschuss. Sperre: Import nur nach bestätigtem Export. Plausibilitätsprüfung: Mehr als ~10 % der Artikel würden auf 0 gehen → Stopp mit Vorschau.
+- Schlanke JTL-SQL „Lagerabgleich_ERP“ (nur Bestand > 0, Artikelnummer/WarenlagerID/Warenlager/Lagerplatz/Charge/BestandAktuell) vorgeschlagen.
