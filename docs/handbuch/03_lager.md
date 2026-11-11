@@ -126,6 +126,23 @@ Ware zwischen Lagern verschieben — z.B. Standardlager → Messe-Lager.
 
 ---
 
+## JTL-Abgleich (Parallelbetrieb)
+
+Solange der MeaLana-Shop und der Laden noch in JTL buchen und SOW im ERP, gleichen wir die Bestände **mindestens einmal täglich** ab: **Lager → JTL-Abgleich**. Immer zuerst Schritt 1, dann Schritt 2.
+
+1. **ERP → JTL:** „Export erstellen“ → Datei herunterladen → JTL-Ameise → Artikel → *Preise/Bestände (QuickSync)*. Trennzeichen Semikolon, Encoding windows-1252, Kopfzeile; Spalten Artikelnummer, Lagername, Charge, Lagerbestand; Importoption „Nur vorhandene Artikel aktualisieren“; **„Eigenen Lagerbestand aktualisieren“ = „Neuen und alten Lagerbestand addieren“**. Danach im ERP **„In JTL eingespielt“** klicken.
+2. **JTL → ERP:** In JTL den eigenen Export **„Lagerabgleich_ERP“** ausführen (SQL: `docs/jtl/Lagerabgleich_ERP.sql`, alle Artikel auch mit Bestand 0) → hochladen → Vorschau prüfen → „Abgleich buchen“. Abweichungen (= Verkäufe im Laden und auf mealana.at) werden als Lagerbewegung „Korrektur durch JTL-Lagerstandsabgleich“ gebucht.
+
+- **Sperre:** Schritt 2 geht nicht, solange ERP-Änderungen offen sind, die noch nicht exportiert und bestätigt wurden.
+- **Nichts geht verloren:** Was zwischen Export und Import im ERP passiert, rechnet das ERP auf den JTL-Stand drauf und schickt es mit dem nächsten Export.
+- **Ohne Charge:** SOW-Verkäufe ohne Charge gehen in der Exportdatei zuerst vom chargenlosen Bestand, dann von der ältesten Charge ab (wie LS-POS).
+- **Erstabgleich:** Beim ersten Mal entfällt Schritt 1; die JTL-Datei setzt den Startbestand.
+- **Nur JTL-Artikel:** Abgeglichen werden nur Artikel, die in der JTL-Datei stehen. Reine ERP-Artikel (z.B. indra-design) bleiben unberührt.
+- **Plausibilitätsprüfung:** Würden mehr als 10 % der Artikel mit Bestand auf 0 fallen, muss man ausdrücklich bestätigen, dass die Datei vollständig ist.
+- **Inventur im ERP:** direkt vorher abgleichen; die Differenzen gehen mit dem nächsten Export nach JTL.
+
+---
+
 ## Wichtige Hinweise
 
 > **Bestände nie direkt in der Datenbank ändern!** Immer über den Wareneingang oder die Storno-Funktion im Auftragsmodul. Direkte DB-Änderungen zerstören das Bewegungsprotokoll.

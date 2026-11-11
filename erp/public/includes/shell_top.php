@@ -38,6 +38,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '🗄️', 'label' => 'Lagerverwaltung',    'href' => BASE_PATH . '/lager/verwaltung.php'],
         ['icon' => '📍', 'label' => 'Lagerplätze',         'href' => BASE_PATH . '/lager/lagerplaetze.php'],
         ['icon' => '🔢', 'label' => 'Inventur',            'href' => BASE_PATH . '/inventur/liste.php'],
+        ['icon' => '🔁', 'label' => 'JTL-Abgleich',        'href' => BASE_PATH . '/lager/jtl_abgleich.php'],
         ['icon' => '💶', 'label' => 'Lagerwert',           'href' => BASE_PATH . '/lager/lagerwert.php', 'recht' => 'buchhaltung.anzeigen'],
     ],
     'verkauf' => [

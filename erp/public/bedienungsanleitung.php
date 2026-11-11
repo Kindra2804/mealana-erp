@@ -363,6 +363,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-hint">💡 Kachel „Artikel ohne EK“ → Link zur Artikelliste mit Filter „Kein EK (mit Bestand)“ zum Nachpflegen.</div>
             <p>Automatisch festgehalten am <strong>Monatsende</strong> (Cronjob <code>cron/lagerwert.php</code>) sowie bei <strong>Start und Abschluss jeder Inventur</strong>. Je Stichtag gibt es eine CSV mit der bewerteten Bestandsliste.</p>
 
+            <h3 id="lager-jtl-abgleich">JTL-Abgleich (Parallelbetrieb) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Solange der MeaLana-Shop und der Laden noch in JTL buchen und SOW im ERP, werden die Bestände mindestens einmal täglich abgeglichen: Lager → JTL-Abgleich. <strong>Immer zuerst Schritt 1, dann Schritt 2.</strong></p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>ERP → JTL:</strong> „Export erstellen“, Datei herunterladen, in der JTL-Ameise unter Artikel → Preise/Bestände (QuickSync) einspielen (Semikolon, windows-1252, „Eigenen Lagerbestand aktualisieren“ = „Neuen und alten Lagerbestand addieren“). Danach „In JTL eingespielt“ klicken.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>JTL → ERP:</strong> In JTL den eigenen Export „Lagerabgleich_ERP“ ausführen (alle Artikel, auch mit Bestand 0), hochladen, Vorschau prüfen, „Abgleich buchen“. Abweichungen werden als Lagerbewegung „Korrektur durch JTL-Lagerstandsabgleich“ gebucht.</div></div>
+            <p>Schritt 2 ist gesperrt, solange es ERP-Änderungen gibt, die noch nicht exportiert und bestätigt sind. Was zwischen Export und Import im ERP verkauft wird, geht nicht verloren: Es kommt mit dem nächsten Export nach JTL. Verkäufe ohne Charge werden in der Exportdatei von der ältesten Charge abgezogen.</p>
+            <div class="ba-hint">💡 Beim allerersten Mal (Erstabgleich) gibt es keinen Schritt 1: Die JTL-Datei setzt den Startbestand. Artikel, die es nur im ERP gibt (z.B. indra-design), bleiben immer unberührt. Würde ein Abgleich mehr als 10 % der Artikel mit Bestand auf 0 setzen, muss man die Vollständigkeit der Datei ausdrücklich bestätigen.</div>
+            <div class="ba-hint">💡 Inventur im ERP geht auch im Parallelbetrieb: direkt vorher einen Abgleich machen; die Inventur-Differenzen gehen mit dem nächsten Export nach JTL.</div>
+
             <h3 id="lager-wareneingang">Wareneingang <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Lager → Wareneingang</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Artikel suchen oder EAN scannen</div></div>
