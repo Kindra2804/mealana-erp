@@ -565,6 +565,17 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-11: SOW-Shop aufgebaut, Artikelimport Live, 1.0.2–1.0.4 (JTL-Abgleich, Schild-Bausteine)
+
+Details in `.claude/memory/project_sow_umstellung.md`, `project_jtl_parallelbetrieb.md`, `project_konfigurator_modul.md`, `project_1_0_check.md`.
+- **sockenwolle-online.at (WordPress neu):** Woo, Germanized, Blocksy (Weinrot), WPCode, WP Mail SMTP (shop@sockenwolle-online.at), NAHTLOS Connector 1.6.0; Einstellungen und Rechtsseiten von indra übernommen; hinter Wartungsseite (Snippet 25, beim Go-Live abschalten). PHP memory_limit 512M nötig.
+- **SOW-Artikel ins Live-ERP importiert** (89 Väter, 1.289 Kinder, 122 Einzelartikel, Kanal SOW). Stolpersteine: fehlende Warengruppen (`erp/database/artikelgruppen_mealana.sql`), Stammdaten ohne Kinderzeilen, **max_input_vars = 1000 schneidet das Import-Formular still ab** → Live auf 20000, Sperre gebaut. Skript `scripts/import_zuruecknehmen.php` (--shop=slug|keiner --seit).
+- **Entscheidung Parallelbetrieb:** MeaLana-Shop + Laden bleiben vorerst auf JTL, SOW im ERP. **Lager → JTL-Abgleich** (Migration 231): Schritt 1 ERP→JTL als Ameise-QuickSync-Datei („Neuen und alten Lagerbestand addieren“, Delta = ERP jetzt minus JTL-Basis je Artikel/Lager/Charge; ohne Charge zuerst chargenlos, dann älteste Charge), Schritt 2 JTL→ERP (eigener Export `docs/jtl/Lagerabgleich_ERP.sql`, Ziel = JTL + ERP-Änderungen seit dem Export, Korrekturbewegungen). Sperren, Plausibilitätsprüfung, nur Artikel aus der JTL-Datei. Erstabgleich = Startbestand.
+- **Konfigurator (Migration 232):** Artikel → Schild-Bausteine (Kürzel + Rohmaterial zentral je Achse/Wert, Ampel; Material leer → im Shop ausgegraut, Kasse Hinweis); „Fertiges Schild anlegen / einbuchen“ (Artikelnummer aus Kürzeln, max. 30 Zeichen, gleiche Kombination = derselbe Artikel); „Optionen auf andere Layouts übertragen“ (Abgleich über Wert-Text, Bedingungen umgeschlüsselt, Probelauf). Picker-Snippet 34170 auf indra-design aktualisiert.
+- **Pakete:** 1.0.2 (Mail je Kanal, Überlastung), 1.0.3 (Kategorie-Zuordnung beim JTL-Import, Migr. 230), **1.0.4 live** (Migr. 231 + 232). Nächste Migration: **233**.
+- **bio-wolle gesichert:** `import/bio_jtl_urls/UEBERSICHT.md` (168 alte Adressen) für spätere 301-Weiterleitungen; darf abgeschaltet werden.
+- **Nächste Schritte:** JTL-Export „Lagerabgleich_ERP“ anlegen + Erstabgleich (Jacky); **2026-11-12 SOW-Startseite laut Entwurf + ERP-Hauptmenü**; Weiterleitungen SOW (`import/sow_jtl_urls/`), PayPal, Go-Live SOW. Später: Preisschilder-Modul (`project_preisschilder.md`).
+
 ## Update 2026-11-10: Live-Tag 1.0 — Live-ERP neu, indra-design angebunden
 
 Details in `.claude/memory/project_1_0_check.md` (Abschnitte „Live-Tag 2026-11-10“), `project_infrastruktur.md`, `project_backup_strategie.md`.
