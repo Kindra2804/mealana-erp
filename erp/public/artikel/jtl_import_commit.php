@@ -9,6 +9,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || (empty($_SESSION['jtl_import_vorsch
     exit;
 }
 
+// 2026-11-11 (SOW-Import Live): Die Kontrollliste hat ein Feld je Vater/Kind/Kategorie-Zeile -- bei
+// großen Importen mehrere tausend. PHP verwirft alles über max_input_vars (Standard 1000) STILL;
+// die hinteren Artikel kamen dann ohne Artikeltyp/-gruppe an ("nicht ausgewählt"). Das letzte Feld
+// des Formulars ist "formular_vollstaendig" -- fehlt es, wurde abgeschnitten -> nichts anlegen.
+if (($_POST['formular_vollstaendig'] ?? '') !== '1') {
+    $_SESSION['fehler'] = 'Import NICHT ausgeführt: Das Formular kam abgeschnitten an (zu viele Felder für PHP). '
+        . 'In der php.ini max_input_vars erhöhen (z.B. max_input_vars = 20000, aktuell ' . (int) ini_get('max_input_vars')
+        . '), Apache neu starten und die Seite neu laden — die eingelesenen Dateien bleiben erhalten.';
+    header('Location: jtl_import.php');
+    exit;
+}
+
 $vorschauVaeter  = $_SESSION['jtl_import_vorschau'] ?? [];
 $vorschauNormale = $_SESSION['jtl_import_vorschau_normale'] ?? [];
 $kategorieId     = (int) ($_SESSION['jtl_import_kategorie_id'] ?? 0);

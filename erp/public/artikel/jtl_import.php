@@ -65,6 +65,10 @@ function renderArtikeltypGruppeFelder(string $namePrefix, array $alleArtikeltype
 
 $vorschau = null;
 $fehler   = [];
+if (!empty($_SESSION['fehler'])) { // z.B. abgeschnittenes Formular aus jtl_import_commit.php
+    $fehler = (array) $_SESSION['fehler'];
+    unset($_SESSION['fehler']);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_stammdaten']['tmp_name'])) {
     $kategorieId  = (int) ($_POST['kategorie_id'] ?? 0);
@@ -534,6 +538,8 @@ $anzahlKinder         = array_sum(array_map(fn($v) => count($v['kinder']), $vaet
     <?php endif; ?>
 
         <div style="margin-top:16px">
+            <?php // Muss das LETZTE Feld bleiben: fehlt es beim Commit, hat PHP (max_input_vars) das Formular abgeschnitten ?>
+            <input type="hidden" name="formular_vollstaendig" value="1">
             <button type="submit" class="btn btn-primary btn-sm">Import starten</button>
             <a href="jtl_import.php?neu=1" class="btn btn-secondary btn-sm">Abbrechen</a>
         </div>
