@@ -18,7 +18,9 @@
  * Aufruf:
  *   php scripts/import_zuruecknehmen.php --shop=sockenwolle-online --seit="2026-11-11 00:00"
  *   php scripts/import_zuruecknehmen.php --shop=sockenwolle-online --seit="2026-11-11 00:00" --ausfuehren
- * --shop = slug oder Name des Shops (Teil genügt, muss eindeutig sein).
+ *   php scripts/import_zuruecknehmen.php --shop=keiner --seit="2026-11-11 00:00"
+ * --shop = slug oder Name des Shops (Teil genügt, muss eindeutig sein) oder "keiner" =
+ *          Artikel ohne jeden Shop-Kanal (Import ohne "Kanal einschalten").
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -34,24 +36,37 @@ $seit = date('Y-m-d H:i:s', strtotime($opt['seit']));
 $db = Database::getInstance();
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$st = $db->prepare("SELECT id, slug, name FROM shops WHERE slug = :s OR name = :s OR slug LIKE :l OR name LIKE :l");
-$st->execute(['s' => $opt['shop'], 'l' => '%' . $opt['shop'] . '%']);
-$shops = $st->fetchAll(PDO::FETCH_ASSOC);
-if (count($shops) !== 1) {
-    fwrite(STDERR, count($shops) . " Shops passen zu \"{$opt['shop']}\": " . implode(', ', array_column($shops, 'slug')) . " -- bitte eindeutig angeben.\n");
-    exit(1);
+$ohneKanal = mb_strtolower($opt['shop']) === 'keiner';
+if ($ohneKanal) {
+    // Import ohne "Kanal einschalten": Artikel, die KEINEM Shop zugewiesen sind
+    $shop = ['id' => 0, 'slug' => 'keiner', 'name' => 'ohne Shop-Kanal'];
+    $st = $db->prepare("
+        SELECT a.id, a.artikelnummer, a.name, a.ist_vater FROM artikel a
+        WHERE a.vaterartikel_id IS NULL AND a.erstellt_am >= :seit
+          AND NOT EXISTS (SELECT 1 FROM artikel_shops s WHERE s.artikel_id = a.id)
+        ORDER BY a.artikelnummer");
+    $st->execute(['seit' => $seit]);
+} else {
+    $st = $db->prepare("SELECT id, slug, name FROM shops WHERE slug = :s OR name = :s OR slug LIKE :l OR name LIKE :l");
+    $st->execute(['s' => $opt['shop'], 'l' => '%' . $opt['shop'] . '%']);
+    $shops = $st->fetchAll(PDO::FETCH_ASSOC);
+    if (count($shops) !== 1) {
+        fwrite(STDERR, count($shops) . " Shops passen zu \"{$opt['shop']}\": " . implode(', ', array_column($shops, 'slug')) . " -- bitte eindeutig angeben.
+");
+        exit(1);
+    }
+    $shop = $shops[0];
+    // Väter + normale Artikel: seit $seit angelegt und für den Shop eingeschaltet
+    $st = $db->prepare("
+        SELECT a.id, a.artikelnummer, a.name, a.ist_vater FROM artikel a
+        WHERE a.vaterartikel_id IS NULL AND a.erstellt_am >= :seit
+          AND EXISTS (SELECT 1 FROM artikel_shops s WHERE s.artikel_id = a.id AND s.shop_id = :shop)
+        ORDER BY a.artikelnummer");
+    $st->execute(['seit' => $seit, 'shop' => $shop['id']]);
 }
-$shop = $shops[0];
-
-// Väter + normale Artikel: seit $seit angelegt und für den Shop eingeschaltet
-$st = $db->prepare("
-    SELECT a.id, a.artikelnummer, a.name, a.ist_vater FROM artikel a
-    WHERE a.vaterartikel_id IS NULL AND a.erstellt_am >= :seit
-      AND EXISTS (SELECT 1 FROM artikel_shops s WHERE s.artikel_id = a.id AND s.shop_id = :shop)
-    ORDER BY a.artikelnummer");
-$st->execute(['seit' => $seit, 'shop' => $shop['id']]);
 $haupt = $st->fetchAll(PDO::FETCH_ASSOC);
-if (!$haupt) { echo "Keine Artikel für Shop {$shop['slug']} seit $seit gefunden.\n"; exit(0); }
+if (!$haupt) { echo "Keine Artikel für Shop {$shop['slug']} seit $seit gefunden.
+"; exit(0); }
 
 $hauptIds = array_map('intval', array_column($haupt, 'id'));
 $kinderIds = array_map('intval', $db->query("SELECT id FROM artikel WHERE vaterartikel_id IN (" . implode(',', $hauptIds) . ")")->fetchAll(PDO::FETCH_COLUMN));
