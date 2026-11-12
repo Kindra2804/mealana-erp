@@ -11,7 +11,7 @@ require_once __DIR__ . '/PflegeSymbole.php';
 /**
  * PreisschildService – Preisschilder aus Artikeldaten (Jacky + Babsi 2026-11-12, Entwurf D:\ERP\preisschilder_mockup.svg).
  *
- * Vorlage "messe": 8 Schilder je A4 (2 x 4, je 95 x 68 mm, Rand für den Drucker), eines je Garnqualität:
+ * Vorlage "messe": 8 Schilder je A4 (2 x 4, je 95 x 60 mm, Rand für den Drucker), eines je Garnqualität:
  *   Name, Hersteller, Zusammensetzung, Gewicht/Lauflänge, Nadelstärke (kleinste–größte), Preis,
  *   Grundpreis (Garn immer je kg, wie im Shop), optional "statt"-Preis (Aktion / Messepreis) und QR zum Shop.
  *

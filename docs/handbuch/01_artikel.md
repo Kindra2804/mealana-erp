@@ -192,7 +192,7 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 
 ## Preisschilder drucken
 
-**Messe-Schild** (8 pro A4, je 95 × 68 mm): Name, Hersteller, Zusammensetzung, Gewicht/Lauflänge, Nadelstärke, Preis und Grundpreis. Eines je **Garnqualität**: Wählt man Farben, werden sie zu ihrem Vater zusammengefasst. Die Texte kommen aus den **Merkmalen** (siehe oben), fehlt etwas, steht in der Auswahl „keine Merkmale“.
+**Messe-Schild** (8 pro A4, je 95 × 60 mm, wie die alte Vorlage): Name, Hersteller, Zusammensetzung, Gewicht/Lauflänge, Nadelstärke, Preis und Grundpreis. Eines je **Garnqualität**: Wählt man Farben, werden sie zu ihrem Vater zusammengefasst. Die Texte kommen aus den **Merkmalen** (siehe oben), fehlt etwas, steht in der Auswahl „keine Merkmale“.
 
 **Wo:**
 - **Messe:** Kasse → Messe vorbereiten → bei der Messe (Papier-Messe oder Sync-Paket) auf **🏷 Preisschilder**. Alle zugebuchten Qualitäten sind schon angehakt.
@@ -210,7 +210,7 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 >
 > Jeder Druck wird gemerkt (Datum, Preis). Daraus kommt später die Liste „Schilder veraltet“.
 
-**Laden-Schild** (gleiches Raster, 8 pro A4): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
+**Laden-Schild** (8 pro A4, je 95 × 68 mm): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
 - Farbiger Streifen in der **Hausfarbe** (MeaLana-Blau, Sockenwolle-Weinrot, bio-wolle-Grün oder grau), Name in derselben Farbe.
 - Zusammensetzung, Lauflänge, Nadelstärke in mm, Maschenprobe, **Pflegesymbole** (Merkmal „Pflege“), optional **mit Bild** (erstes Artikelbild, sonst eines der Farben).
 - **Badges** oben rechts, automatisch:
