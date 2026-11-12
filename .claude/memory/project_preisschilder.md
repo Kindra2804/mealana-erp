@@ -1,6 +1,6 @@
 ---
 name: project_preisschilder
-description: "Preisschilder-Werkstatt komplett 2026-11-12: Messe, Laden, Aufsteller, IVAR, Anhänger + Strickstücke, Schilder veraltet, Merkmal-Massenaktion (Migr. 233–235); Live offen mit Paket 1.0.9"
+description: "Preisschilder-Werkstatt komplett 2026-11-12: Messe, Laden, Aufsteller, IVAR, Anhänger + Strickstücke, Schilder veraltet, Merkmal-Massenaktion (Migr. 233–235); Paket nahtlos-1.0.9.zip gebaut 2026-11-12 (Commit 83aa61b), Live-Einspielen + Merkmal-Import offen"
 metadata:
   node_type: memory
   type: project
