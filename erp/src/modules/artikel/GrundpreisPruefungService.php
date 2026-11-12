@@ -136,7 +136,11 @@ class GrundpreisPruefungService
             $an      = !empty($z['grundpreis_anzeigen']) ? 1 : 0;
 
             if (!isset($typen[$typId])) { $fehler[] = "$nr: Artikeltyp fehlt."; continue; }
-            if ($einheit !== '' && !in_array($einheit, self::EINHEITEN, true)) { $fehler[] = "$nr: Einheit „$einheit“ ist nicht erlaubt."; continue; }
+            if ($einheit !== '' && !in_array($einheit, self::EINHEITEN, true)) {
+                // z. B. „Stk.“ aus JTL: ohne Grundpreis bedeutungslos → leeren; mit Grundpreis ein Fehler
+                if (!$an) $einheit = '';
+                else { $fehler[] = "{$nr}: Einheit „{$einheit}“ kennt der Shop nicht (g, kg, ml, l, m, cm)."; continue; }
+            }
             if ($an) {
                 if ($menge === null || $menge <= 0 || $einheit === '') { $fehler[] = "$nr: Für den Grundpreis braucht es Inhalt und Einheit."; continue; }
                 if ($bezug === null || $bezug <= 0) $bezug = $typen[$typId] === 'GARN' ? 100 : null; // wie ArtikelService::wendeGrundpreisDefaultAn()

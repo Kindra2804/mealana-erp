@@ -73,7 +73,8 @@ function gpMeldung(text, fehler) {
 
 async function gpSenden(daten) {
     const r = await fetch(`${GP.basis}/artikel/grundpreise_speichern.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) });
-    try { return await r.json(); } catch { return { erfolg: false, fehler: ['Antwort des Servers nicht lesbar (' + r.status + ')'] }; }
+    const text = await r.text();
+    try { return JSON.parse(text); } catch { return { erfolg: false, fehler: ['Antwort des Servers nicht lesbar (' + r.status + '): ' + text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)] }; }
 }
 
 async function gpSpeichern() {
@@ -97,7 +98,7 @@ async function gpVererben() {
     const m = gpMarkierte(); if (!m.length) return;
     if (document.querySelector('.gp-tab tr.ist-geaendert')) { gpMeldung('Bitte zuerst die Änderungen speichern (Speichern vererbt ohnehin).', true); return; }
     const d = await gpSenden({ aktion: 'vererben', ids: m.map(tr => +tr.dataset.id) });
-    if (!d.erfolg) { gpMeldung((d.fehler || ['Fehler']).join('<br>'), true); return; }
+    if (!d.erfolg) { gpMeldung((d.fehler || ['Fehler']).map(f => f.replace(/</g, '&lt;')).join('<br>'), true); return; }
     gpMeldung(`✓ ${d.gespeichert} Väter an ihre Kinder vererbt – Shop-Abgleich vorgemerkt. Liste wird neu geladen …`);
     setTimeout(() => location.reload(), 1500);
 }
