@@ -497,26 +497,71 @@ function merkmalWaehlen(merkmalId, mehrfach, werte, gesetzteIds) {
     document.getElementById('merk-modal-titel').textContent = 'Merkmal wählen';
     const liste = document.getElementById('merk-modal-liste');
     liste.innerHTML = '';
-    werte.forEach(function (w) {
-        const label = document.createElement('label');
-        label.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;font-size:13px';
-        const input = document.createElement('input');
-        input.type = mehrfach ? 'checkbox' : 'radio';
-        input.name = 'merk-auswahl';
-        input.value = w.id;
-        input.checked = gesetzteIds.includes(w.id);
-        label.appendChild(input);
-        label.appendChild(document.createTextNode(w.wert));
-        liste.appendChild(label);
-    });
+    // Einzelwert: "keine Angabe" zum Entfernen
+    if (!mehrfach) liste.appendChild(merkmalOption({ id: 0, wert: '– keine Angabe –' }, false, !gesetzteIds.length));
+    werte.forEach(function (w) { liste.appendChild(merkmalOption(w, mehrfach, gesetzteIds.includes(w.id))); });
+
+    const suche = document.getElementById('merk-suche');
+    suche.value = '';
+    merkmalSuchen();
     document.getElementById('merk-backdrop').style.display = 'flex';
+    if (werte.length > 10) suche.focus();
+}
+
+function merkmalOption(w, mehrfach, checked) {
+    const label = document.createElement('label');
+    label.className = 'merk-option';
+    label.dataset.text = w.wert.toLowerCase();
+    label.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer;font-size:13px';
+    const input = document.createElement('input');
+    input.type = mehrfach ? 'checkbox' : 'radio';
+    input.name = 'merk-auswahl';
+    input.value = w.id;
+    input.checked = checked;
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(w.wert));
+    return label;
+}
+
+// Suchfeld im Auswahlfenster: filtert die Werte; ohne Treffer kann der Text als neuer Wert angelegt werden
+function merkmalSuchen() {
+    const q = document.getElementById('merk-suche').value.trim().toLowerCase();
+    let treffer = 0, exakt = false;
+    document.querySelectorAll('#merk-modal-liste .merk-option').forEach(function (l) {
+        const passt = !q || l.dataset.text.includes(q);
+        l.style.display = passt ? 'flex' : 'none';
+        if (passt) treffer++;
+        if (l.dataset.text === q) exakt = true;
+    });
+    const neu = document.getElementById('merk-neu');
+    neu.style.display = q && !exakt ? 'block' : 'none';
+    neu.textContent = '+ „' + document.getElementById('merk-suche').value.trim() + '“ als neuen Wert anlegen';
+}
+
+function merkmalWertAnlegen() {
+    if (!_merkmalAktuell) return;
+    const wert = document.getElementById('merk-suche').value.trim();
+    if (!wert) return;
+    fetch('merkmal_ajax.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'wert_neu', merkmal_id: _merkmalAktuell.merkmalId, wert: wert })
+    }).then(r => r.json()).then(function (d) {
+        if (!d.erfolg) { showFlash(d.fehler || 'Fehler', 'fehler'); return; }
+        const w = { id: d.id, wert: d.wert };
+        _merkmalAktuell.werte.push(w);
+        const opt = merkmalOption(w, _merkmalAktuell.mehrfach, true);
+        document.getElementById('merk-modal-liste').appendChild(opt);
+        document.getElementById('merk-suche').value = '';
+        merkmalSuchen();
+        opt.scrollIntoView({ block: 'nearest' });
+    });
 }
 function merkmalModalSchliessen() { document.getElementById('merk-backdrop').style.display = 'none'; }
 
 function merkmalUebernehmen() {
     if (!_merkmalAktuell) return;
     const mid = _merkmalAktuell.merkmalId;
-    const gewaehlte = [...document.querySelectorAll('input[name="merk-auswahl"]:checked')].map(i => parseInt(i.value));
+    const gewaehlte = [...document.querySelectorAll('input[name="merk-auswahl"]:checked')].map(i => parseInt(i.value)).filter(v => v > 0);
     const wertMap = {};
     _merkmalAktuell.werte.forEach(function (w) { wertMap[w.id] = w.wert; });
     const chipsDiv = document.getElementById('merk-chips-' + mid);
@@ -525,6 +570,7 @@ function merkmalUebernehmen() {
         const span = document.createElement('span');
         span.className = 'chip chip-aktiv';
         span.style.fontSize = '12px';
+        span.style.textTransform = 'none';
         span.textContent = wertMap[wid] || wid;
         chipsDiv.appendChild(span);
         const inp = document.createElement('input');
@@ -555,7 +601,7 @@ function merkmaleSpeichern(artikelId) {
     })
         .then(r => r.json())
         .then(function (d) {
-            if (d.erfolg) { showFlash('Merkmale gespeichert', 'erfolg'); }
+            if (d.erfolg) { showFlash(d.kinder ? 'Merkmale gespeichert und an ' + d.kinder + ' Kind-Artikel übernommen' : 'Merkmale gespeichert', 'erfolg'); }
             else { showFlash(d.fehler || 'Fehler beim Speichern', 'fehler'); }
         });
 }

@@ -3,9 +3,11 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/merkmale/MerkmalService.php';
 
 $repo     = new MerkmaleRepository();
 $merkmale = $repo->findAllMitWerten();
+$nutzung  = (new MerkmalService())->nutzung();   // wert_id => Anzahl Artikel
 $artikelService = new ArtikelService();
 $db       = Database::getInstance();
 $artikeltypen = $db->query("SELECT id, name FROM artikel_typen ORDER BY name")->fetchAll();
@@ -71,10 +73,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
             <!-- Werte -->
             <div style="margin-top:var(--space-sm);padding-top:var(--space-sm);border-top:1px solid var(--color-border)">
+                <?php if (count($m['werte']) > 12): ?>
+                    <input type="text" class="erp-input" style="width:100%;margin-bottom:6px" placeholder="<?= count($m['werte']) ?> Werte durchsuchen…" oninput="werteFiltern(<?= $m['id'] ?>, this.value)">
+                <?php endif; ?>
                 <div id="werte-<?= $m['id'] ?>">
                     <?php foreach ($m['werte'] as $wi => $w): ?>
-                        <div class="mw-zeile" id="wert-<?= $w['id'] ?>" style="display:flex;align-items:center;gap:var(--space-sm);padding:3px 0">
-                            <span style="font-size:13px;flex:1"><?= htmlspecialchars($w['wert']) ?></span>
+                        <?php $n = (int)($nutzung[$w['id']] ?? 0); ?>
+                        <div class="mw-zeile" id="wert-<?= $w['id'] ?>" data-merkmal="<?= $m['id'] ?>" data-wert="<?= htmlspecialchars($w['wert']) ?>" data-n="<?= $n ?>" style="display:flex;align-items:center;gap:var(--space-sm);padding:3px 0">
+                            <span style="font-size:13px;flex:1"><?= htmlspecialchars($w['wert']) ?>
+                                <span style="font-size:11px;color:<?= $n ? 'var(--color-text-muted)' : '#d97706' ?>;margin-left:6px"><?= $n ? $n . ' Artikel' : 'unbenutzt' ?></span>
+                            </span>
                             <div style="display:flex;gap:2px">
                                 <?php if ($wi > 0): ?>
                                     <button class="btn btn-secondary btn-xs" onclick="wertSort(<?= $w['id'] ?>, 'hoch')">▲</button>
@@ -83,6 +91,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <button class="btn btn-secondary btn-xs" onclick="wertSort(<?= $w['id'] ?>, 'runter')">▼</button>
                                 <?php endif; ?>
                                 <button class="btn btn-secondary btn-xs" onclick="wertBearbeiten(<?= $w['id'] ?>, <?= htmlspecialchars(json_encode($w['wert'])) ?>)">✏️</button>
+                                <?php if (count($m['werte']) > 1): ?>
+                                    <button class="btn btn-secondary btn-xs" title="Mit einem anderen Wert zusammenführen" onclick="wertZusammenfuehren(<?= $w['id'] ?>)">⇢</button>
+                                <?php endif; ?>
                                 <button class="btn btn-danger btn-xs" onclick="wertLoeschen(<?= $w['id'] ?>, <?= htmlspecialchars(json_encode($w['wert'])) ?>)">✕</button>
                             </div>
                         </div>
@@ -138,6 +149,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
             <button class="btn btn-secondary" onclick="merkmalModalSchliessen()">Abbrechen</button>
             <button class="btn btn-primary" id="mf-btn-speichern" onclick="merkmalSpeichern()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Werte zusammenführen -->
+<div id="zf-backdrop" class="modal-backdrop" style="display:none" onclick="zfSchliessen()">
+    <div class="modal" style="max-width:480px" onclick="event.stopPropagation()">
+        <div class="modal-header">Werte zusammenführen</div>
+        <p style="font-size:13px;margin:var(--space-sm) 0">
+            „<strong id="zf-quelle"></strong>“ (<span id="zf-anzahl"></span>) wird bei allen Artikeln ersetzt durch:
+        </p>
+        <input type="text" id="zf-suche" class="erp-input" style="width:100%;margin-bottom:6px" placeholder="Zielwert suchen…" oninput="zfFiltern()">
+        <select id="zf-ziel" class="erp-select" size="10" style="width:100%;height:220px"></select>
+        <p style="font-size:12px;color:var(--color-text-muted);margin-top:6px">Der alte Wert wird danach gelöscht. Das lässt sich nicht rückgängig machen.</p>
+        <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-sm)">
+            <button class="btn btn-secondary" onclick="zfSchliessen()">Abbrechen</button>
+            <button class="btn btn-primary" id="zf-btn" onclick="zfAusfuehren()">Zusammenführen</button>
         </div>
     </div>
 </div>

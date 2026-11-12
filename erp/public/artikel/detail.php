@@ -1794,7 +1794,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <?php $w = array_filter($m['werte'], fn($v) => $v['id'] == $wid);
                                     $w = reset($w); ?>
                                     <?php if ($w): ?>
-                                        <span class="chip chip-aktiv" style="font-size:12px"><?= htmlspecialchars($w['wert']) ?></span>
+                                        <span class="chip chip-aktiv" style="font-size:12px;text-transform:none"><?= htmlspecialchars($w['wert']) ?></span>
                                         <input type="hidden" name="merk[<?= $m['id'] ?>][]" value="<?= $wid ?>">
                                     <?php endif; ?>
                                 <?php endforeach; ?>
@@ -1802,13 +1802,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <span style="font-size:12px;color:var(--color-text-muted)">–</span>
                                 <?php endif; ?>
                             </div>
-                            <?php if (!empty($m['werte'])): ?>
+                            <?php if (in_array($m['slug'] ?? '', ['lauflaenge_bereich', 'maschenprobe_10cm'], true)): ?>
+                                <span style="font-size:11px;color:var(--color-text-muted)">wird automatisch aus <?= $m['slug'] === 'lauflaenge_bereich' ? '„Gewicht/Länge“' : '„Maschenprobe“' ?> gesetzt</span>
+                            <?php else: ?>
                                 <button type="button" class="btn btn-secondary btn-sm"
                                     onclick="merkmalWaehlen(<?= $m['id'] ?>, <?= (int)$m['mehrfach_auswahl'] ?>, <?= htmlspecialchars(json_encode($m['werte'])) ?>, <?= htmlspecialchars(json_encode($gesetzteWerteIds)) ?>)">
                                     Wählen
                                 </button>
-                            <?php else: ?>
-                                <a href="<?= BASE_PATH ?>/artikel/merkmale_verwalten.php" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px">Werte konfigurieren →</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1816,6 +1816,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
                 <div style="margin-top:var(--space-md)">
                     <button type="button" class="btn btn-primary btn-sm" onclick="merkmaleSpeichern(<?= $id ?>)">💾 Merkmale speichern</button>
+                    <?php if (count($kinder) > 0): ?>
+                        <span style="font-size:12px;color:var(--color-text-muted);margin-left:8px">Wird beim Speichern an alle Kind-Artikel übernommen.</span>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>
@@ -2347,6 +2350,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div id="merk-backdrop" class="modal-backdrop" style="display:none" onclick="merkmalModalSchliessen()">
         <div class="modal" style="max-width:420px;max-height:70vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
             <div class="modal-header" id="merk-modal-titel">Merkmal wählen</div>
+            <div style="padding:var(--space-sm) var(--space-sm) 0">
+                <input type="text" id="merk-suche" class="erp-input" style="width:100%" placeholder="Suchen oder neuen Wert eintippen…" oninput="merkmalSuchen()"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();if(document.getElementById('merk-neu').style.display==='block')merkmalWertAnlegen();}">
+                <button type="button" id="merk-neu" class="btn btn-secondary btn-sm" style="display:none;margin-top:6px;width:100%;text-align:left" onclick="merkmalWertAnlegen()"></button>
+            </div>
             <div id="merk-modal-liste" style="overflow-y:auto;flex:1;padding:var(--space-sm)"></div>
             <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;padding:var(--space-sm);border-top:1px solid var(--color-border)">
                 <button class="btn btn-secondary" onclick="merkmalModalSchliessen()">Abbrechen</button>

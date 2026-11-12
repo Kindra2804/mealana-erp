@@ -84,8 +84,66 @@ function wertBearbeiten(id, wertAlt) {
     });
 }
 
+// Werte-Liste eines Merkmals durchsuchen (ab 13 Werten eingeblendet)
+function werteFiltern(merkmalId, q) {
+    q = q.trim().toLowerCase();
+    document.querySelectorAll('#werte-' + merkmalId + ' .mw-zeile').forEach(function (z) {
+        z.style.display = !q || z.dataset.wert.toLowerCase().includes(q) ? 'flex' : 'none';
+    });
+}
+
+// Werte zusammenführen: Quellwert geht in einem anderen Wert desselben Merkmals auf
+var _zfQuelle = null;
+function wertZusammenfuehren(id) {
+    var zeile = document.getElementById('wert-' + id);
+    _zfQuelle = id;
+    document.getElementById('zf-quelle').textContent = zeile.dataset.wert;
+    var n = parseInt(zeile.dataset.n, 10);
+    document.getElementById('zf-anzahl').textContent = n === 1 ? '1 Artikel' : n + ' Artikel';
+    var sel = document.getElementById('zf-ziel');
+    sel.innerHTML = '';
+    var andere = Array.from(document.querySelectorAll('.mw-zeile[data-merkmal="' + zeile.dataset.merkmal + '"]'))
+        .filter(function (z) { return z !== zeile; })
+        .sort(function (a, b) { return a.dataset.wert.localeCompare(b.dataset.wert, 'de'); });
+    andere.forEach(function (z) {
+        var o = document.createElement('option');
+        o.value = z.id.replace('wert-', '');
+        o.textContent = z.dataset.wert + '  (' + z.dataset.n + ')';
+        o.dataset.text = z.dataset.wert.toLowerCase();
+        o.dataset.orig = z.dataset.wert;
+        sel.appendChild(o);
+    });
+    document.getElementById('zf-suche').value = '';
+    document.getElementById('zf-btn').disabled = false;
+    document.getElementById('zf-backdrop').style.display = 'flex';
+    document.getElementById('zf-suche').focus();
+}
+function zfFiltern() {
+    var q = document.getElementById('zf-suche').value.trim().toLowerCase();
+    var erster = null;
+    document.querySelectorAll('#zf-ziel option').forEach(function (o) {
+        var passt = !q || o.dataset.text.includes(q);
+        o.hidden = !passt;
+        if (passt && !erster) erster = o;
+    });
+    if (erster) erster.selected = true;
+}
+function zfSchliessen() { document.getElementById('zf-backdrop').style.display = 'none'; }
+function zfAusfuehren() {
+    var sel = document.getElementById('zf-ziel');
+    if (!sel.value) { alert('Bitte einen Zielwert wählen'); return; }
+    var zielText = sel.options[sel.selectedIndex].dataset.orig;
+    if (!confirm('„' + document.getElementById('zf-quelle').textContent + '“ wirklich in „' + zielText + '“ zusammenführen?')) return;
+    document.getElementById('zf-btn').disabled = true;
+    ajax('wert_zusammenfuehren', { quelle_id: _zfQuelle, ziel_id: parseInt(sel.value, 10) }).then(function (d) {
+        if (d.erfolg) reload();
+        else { alert(d.fehler || 'Fehler'); document.getElementById('zf-btn').disabled = false; }
+    });
+}
+
 function wertLoeschen(id, wert) {
-    if (!confirm('Wert „' + wert + '" löschen?')) return;
+    var n = parseInt((document.getElementById('wert-' + id) || {}).dataset ? document.getElementById('wert-' + id).dataset.n : 0, 10) || 0;
+    if (!confirm('Wert „' + wert + '" löschen?' + (n ? '\n\nAchtung: ' + n + ' Artikel verlieren diesen Wert. Zum Umstellen lieber „⇢ Zusammenführen“ nehmen.' : ''))) return;
     ajax('wert_loeschen', { id: id }).then(function (d) {
         if (d.erfolg) reload(); else alert(d.fehler);
     });

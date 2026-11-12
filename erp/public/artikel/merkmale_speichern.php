@@ -1,8 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
-require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
+require_once __DIR__ . '/../../src/modules/merkmale/MerkmalService.php';
 require_once __DIR__ . '/../../src/core/Logger.php';
-require_once __DIR__ . '/../../src/core/Database.php';
 
 header('Content-Type: application/json');
 
@@ -15,28 +14,11 @@ if (!$artikelId) {
     exit;
 }
 
-$db = Database::getInstance();
-
 try {
-    $db->beginTransaction();
-
-    $db->prepare("DELETE FROM artikel_merkmale WHERE artikel_id = :aid")->execute(['aid' => $artikelId]);
-
-    $stmt = $db->prepare("INSERT INTO artikel_merkmale (artikel_id, merkmal_id, merkmal_wert_id) VALUES (:aid, :mid, :wid)");
-    foreach ($merkmale as $merkmalId => $wertIds) {
-        foreach ($wertIds as $wertId) {
-            $stmt->execute([
-                'aid' => $artikelId,
-                'mid' => (int)$merkmalId,
-                'wid' => (int)$wertId,
-            ]);
-        }
-    }
-
-    $db->commit();
-    Logger::log('artikel.merkmale_aktualisieren', 'artikel', $artikelId, ['merkmal_count' => count($merkmale)]);
-    echo json_encode(['erfolg' => true]);
+    // Speichert, leitet "Lauflänge je 100 g" ab und vererbt bei einem Vater an alle Kinder
+    $kinder = (new MerkmalService())->speichern($artikelId, $merkmale);
+    Logger::log('artikel.merkmale_aktualisieren', 'artikel', $artikelId, ['merkmal_count' => count($merkmale), 'an_kinder' => $kinder]);
+    echo json_encode(['erfolg' => true, 'kinder' => $kinder]);
 } catch (Exception $e) {
-    $db->rollBack();
     echo json_encode(['fehler' => $e->getMessage()]);
 }

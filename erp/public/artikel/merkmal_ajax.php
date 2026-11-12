@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
+require_once __DIR__ . '/../../src/modules/merkmale/MerkmalService.php';
+require_once __DIR__ . '/../../src/core/Logger.php';
 
 header('Content-Type: application/json');
 
@@ -71,6 +73,15 @@ try {
             if (!$id) throw new Exception('Ungültige ID');
             $repo->deleteWert($id);
             echo json_encode(['erfolg' => true]);
+            break;
+
+        case 'wert_zusammenfuehren':
+            $quelle = (int)($input['quelle_id'] ?? 0);
+            $ziel   = (int)($input['ziel_id'] ?? 0);
+            if (!$quelle || !$ziel) throw new Exception('Ungültige Daten');
+            $n = (new MerkmalService())->zusammenfuehren($quelle, $ziel);
+            Logger::log('merkmal.werte_zusammenfuehren', 'merkmal_werte', $ziel, ['quelle_id' => $quelle, 'artikel' => $n]);
+            echo json_encode(['erfolg' => true, 'artikel' => $n]);
             break;
 
         case 'wert_sort':

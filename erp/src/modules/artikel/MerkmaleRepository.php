@@ -63,7 +63,7 @@ class MerkmaleRepository
     {
         if ($artikeltypId === null) {
             $stmt = $this->db->query("
-                SELECT m.id, m.name, m.mehrfach_auswahl, m.filterbar
+                SELECT m.id, m.name, m.slug, m.mehrfach_auswahl, m.filterbar
                 FROM merkmale m
                 WHERE m.aktiv = 1
                   AND NOT EXISTS (SELECT 1 FROM merkmal_artikeltypen WHERE merkmal_id = m.id)
@@ -71,7 +71,7 @@ class MerkmaleRepository
             ");
         } else {
             $stmt = $this->db->prepare("
-                SELECT m.id, m.name, m.mehrfach_auswahl, m.filterbar
+                SELECT m.id, m.name, m.slug, m.mehrfach_auswahl, m.filterbar
                 FROM merkmale m
                 WHERE m.aktiv = 1
                   AND (

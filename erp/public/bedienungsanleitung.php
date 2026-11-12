@@ -318,8 +318,24 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-hint">💡 Erlaubte Formate: JPG, PNG, GIF, WebP. Das Original wird vor der Verkleinerung gespeichert.</div>
 
             <h3 id="artikel-merkmale">Merkmale <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
-            <p>Merkmale sind technische Eigenschaften (Nadelstärke, Material …). Sie erscheinen im Shop als Produktattribute.</p>
-            <p>Artikel-Detail → Tab <strong>Merkmale</strong> → Merkmal wählen → Wert eingeben oder auswählen → Speichern.</p>
+            <p>Merkmale sind technische Eigenschaften (Nadelstärke, Material …). Sie erscheinen im Shop als Produktattribute, bei Garnen auch auf den Preisschildern.</p>
+            <table class="ba-table">
+                <tr><th>Merkmal</th><th>Wofür</th><th>Beispiel</th></tr>
+                <tr><td>Wollqualität</td><td>Shop-Filter (mehrere möglich)</td><td>Schurwollmischung, Sockenwolle</td></tr>
+                <tr><td>Zusammensetzung</td><td>genauer Wert fürs Schild</td><td>75% Schurwolle, 25% Polyamid</td></tr>
+                <tr><td>Gewicht/Länge</td><td>genauer Wert fürs Schild</td><td>50 g = 125 m</td></tr>
+                <tr><td>Lauflänge je 100 g</td><td>Shop-Filter, <strong>automatisch</strong> aus Gewicht/Länge</td><td>151–250 m</td></tr>
+                <tr><td>Nadelstärke</td><td>Shop-Filter (mehrere möglich)</td><td>3, 3,5, 3-3,5</td></tr>
+                <tr><td>Maschenprobe</td><td>genauer Wert fürs Schild</td><td>10 x 10 cm = 21 M x 28 R</td></tr>
+                <tr><td>Maschenprobe/10 cm</td><td>Shop-Filter, <strong>automatisch</strong> aus der Maschenprobe</td><td>21–25 M</td></tr>
+                <tr><td>Garngruppe</td><td>Shop-Filter nach Drops-Garngruppen A–F</td><td>B 22 - 20 Maschen</td></tr>
+                <tr><td>Auszeichnung</td><td>Badges am Schild</td><td>BIO, GOTS, Handgefärbt</td></tr>
+                <tr><td>Pflege</td><td>Pflegesymbole am Schild (mehrere)</td><td>Handwäsche, Nicht bleichen</td></tr>
+            </table>
+            <p><strong>Setzen:</strong> Artikel-Detail → Tab <strong>Merkmale</strong> → <strong>Wählen</strong> → suchen und anhaken. Fehlt ein Wert: eintippen und „… als neuen Wert anlegen“. Bei Einzelwerten entfernt „– keine Angabe –“ den Wert. Danach <strong>Merkmale speichern</strong>.</p>
+            <div class="ba-hint">💡 Beim <strong>Vater-Artikel</strong> gespeichert, übernehmen alle Farben dieselben Merkmale. Am besten immer beim Vater pflegen.</div>
+            <p><strong>Werte aufräumen</strong> (Artikel → Merkmale): Neben jedem Wert steht, wie viele Artikel ihn nutzen. Doppelte Schreibweise (z.B. „Acryl“ / „Polyacryl“)? Beim falschen auf <strong>⇢</strong>, richtigen Wert suchen, <strong>Zusammenführen</strong> — alle Artikel werden umgestellt, der falsche Wert gelöscht.</p>
+            <p><strong>Aus JTL übernehmen:</strong> JTL-Ameise-Export „Artikelmerkmale“, am Server <code>php scripts/jtl_merkmale_import.php &lt;datei.csv&gt; --dry-run</code> (Probelauf), danach ohne <code>--dry-run</code>. Der Bericht liegt neben der CSV; der Import ist wiederholbar.</p>
 
             <h3 id="artikel-preise">Preise & Aktionen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Preis-Priorität (höchste gewinnt):</p>

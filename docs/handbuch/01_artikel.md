@@ -100,12 +100,33 @@ Varianten-Artikel bestehen aus:
 
 ## Merkmale (technische Eigenschaften)
 
-Merkmale sind zusätzliche Eigenschaften eines Artikels (z.B. Nadelstärke, Fadenstärke, Material).
+Merkmale sind zusätzliche Eigenschaften eines Artikels. Bei Garnen kommen sie auch auf die Preisschilder.
 
+| Merkmal | Wofür | Beispiel |
+|---|---|---|
+| Wollqualität | Shop-Filter (mehrere möglich) | Schurwollmischung, Sockenwolle |
+| Zusammensetzung | genauer Wert fürs Schild | 75% Schurwolle, 25% Polyamid |
+| Gewicht/Länge | genauer Wert fürs Schild | 50 g = 125 m |
+| Lauflänge je 100 g | Shop-Filter, **wird automatisch** aus Gewicht/Länge gesetzt | 151–250 m |
+| Nadelstärke | Shop-Filter (mehrere möglich), Schild zeigt kleinste–größte | 3, 3,5, 3-3,5 |
+| Maschenprobe | genauer Wert fürs Schild | 10 x 10 cm = 21 M x 28 R |
+| Maschenprobe/10 cm | Shop-Filter (klassische Abstufung), **wird automatisch** aus der Maschenprobe gesetzt | 21–25 M |
+| Garngruppe | Shop-Filter nach Drops-Garngruppen A–F | B 22 - 20 Maschen |
+| Auszeichnung | Badges am Schild | BIO, GOTS, Handgefärbt |
+| Pflege | Pflegesymbole am Schild (mehrere) | Handwäsche, Nicht bleichen |
+
+**Merkmale setzen:**
 1. Artikel-Detailseite → Tab **Merkmale**
-2. Merkmal auswählen (aus der globalen Liste)
-3. Wert eingeben oder aus vorhandenen Werten wählen
-4. Speichern
+2. Beim Merkmal auf **Wählen** klicken
+3. Im Fenster suchen und anhaken. Gibt es den Wert noch nicht, einfach eintippen und **„… als neuen Wert anlegen“** klicken. Bei Einzelwerten entfernt **„– keine Angabe –“** den Wert.
+4. **Merkmale speichern**
+
+> Beim **Vater-Artikel** gespeichert, übernehmen alle Farben (Kind-Artikel) dieselben Merkmale. Am besten immer beim Vater pflegen.
+
+**Werte aufräumen (Artikel → Merkmale):** Neben jedem Wert steht, wie viele Artikel ihn nutzen („unbenutzt“ in Orange). Gibt es denselben Wert in zwei Schreibweisen (z.B. „Acryl“ und „Polyacryl“), beim falschen auf **⇢** klicken, den richtigen Wert suchen und **Zusammenführen**: Alle Artikel bekommen den richtigen Wert, der falsche wird gelöscht. Bei vielen Werten gibt es ein Suchfeld über der Liste.
+
+**Aus JTL übernehmen:** In der JTL-Ameise den Export „Artikelmerkmale“ ziehen und am Server einspielen:
+`php scripts/jtl_merkmale_import.php <datei.csv> --dry-run` (Probelauf, zeigt nur an), danach ohne `--dry-run`. Der Bericht (nicht gefundene Artikel, Farben mit abweichenden Werten) liegt neben der CSV. Der Import ist wiederholbar; Pflege und Handgefärbt werden nicht überschrieben.
 
 > Merkmale werden im WooCommerce-Shop als Produktattribute angezeigt.
 
