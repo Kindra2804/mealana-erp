@@ -122,3 +122,5 @@ ul.products li.product > .price-unit { font-weight: 400; font-size: 13px; }
 /* Überschriften in Fraunces (Entwurf), Text Nunito */
 h1, h2, h3, .entry-title, .page-title, .woocommerce-products-header__title, .bio-kopfzeile h2, .nahtlos-slide__titel { font-family: "BioFraunces", Georgia, serif !important; font-weight: 600 !important; letter-spacing: -.005em; }
 p.footer-info.vat-info { background: #1d3a2c; color: #b7c6bb; margin: 0; padding: 18px 16px 0; font-size: 13px; text-align: center; }
+/* Bio: 6 Kacheln → 3 pro Reihe (Desktop) */
+@media (min-width: 1000px) { .nahtlos-kachel { flex-basis: calc(33.333% - 15px); } }
