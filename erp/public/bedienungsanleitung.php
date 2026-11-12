@@ -400,6 +400,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Start bei Feld</strong> 1–8 (1 2 / 3 4 / 5 6 / 7 8 von oben links) für angefangene Blätter, optional <strong>Messepreis</strong> (% billiger, wird mit „statt“ gedruckt) und <strong>QR</strong> „Farbe nicht da? Online bestellen“ zu einem Shop, Schnittlinien an/aus → <strong>🖨 Drucken</strong>.</div></div>
             <div class="ba-hint">💡 Grundpreis bei Garn immer <strong>je kg</strong> (gesetzliche Bezugsmenge), wie im Shop. Unterschiedliche Farbpreise → „ab“. Laufende Aktionen erscheinen mit „statt“. Jeder Druck wird gemerkt (Datum, Preis, Texte, Badges).</div>
             <p><strong>Schilder veraltet</strong> (Artikel → 🔁 Schilder veraltet, Hinweis auch am Dashboard): gedruckte Laden-Schilder, deren Preis, Aktion, Grundpreis, Texte oder Badges sich geändert haben oder deren Artikel inaktiv ist, mit Grund (z.B. „Preis 3,20 → 3,75 · weg: NEU“). Haken → <strong>Ausgewählte nachdrucken</strong>, oder <strong>ist erledigt</strong> ohne Druck. Messe-Schilder sind ausgeblendet („auch Messe-Schilder zeigen“).</p>            <p><strong>Laden-Schild</strong> (8 pro A4, je 95 × 68 mm): oben auf <strong>🏪 Laden-Schild</strong> umschalten, die Auswahl bleibt. Streifen und Name in der <strong>Hausfarbe</strong> (MeaLana-Blau, Sockenwolle-Weinrot, bio-wolle-Grün, grau), dazu Zusammensetzung, Lauflänge, Nadel in mm, Maschenprobe, <strong>Pflegesymbole</strong> (Merkmal „Pflege“) und optional <strong>mit Bild</strong>.</p>
+            <p><strong>Weitere Vorlagen</strong> (oben auf der Druckseite umschalten):</p>
+            <table class="ba-table">
+                <tr><th>Vorlage</th><th>Format</th><th>Besonderheit</th></tr>
+                <tr><td>⛺ Tischaufsteller</td><td>A4 quer, 2 Stück</td><td>In der Mitte falten, steht als Zelt; beide Seiten gleich. Großer QR „Alle x Farben ansehen &amp; bestellen“</td></tr>
+                <tr><td>📏 IVAR-Streifen</td><td>40 × 150 mm, 5 pro A4</td><td>Für die Seite der IVAR-Regale; Preis und QR unten</td></tr>
+                <tr><td>🔖 Anhänger</td><td>50 × 90 mm, 12 pro A4</td><td>Loch zum Anbinden, Strichcode der Artikelnummer; fertige Schilder mit Größe und Aufbau</td></tr>
+            </table>
+            <p><strong>Anhänger ohne Artikel</strong> (Babsis Strickstücke): Druckseite → „✂ Anhänger ohne Artikel“ → „+ Neuer Anhänger“ (Kopfzeile, Name, Material, Größe, Zusatz, Preis, Badge, Pflegesymbole) → Speichern. Zum Drucken anhaken, Anzahl wählen → „Angehakte drucken“. Verkaufte Stücke ausblenden.</p>
             <table class="ba-table">
                 <tr><th>Badge</th><th>Wann</th></tr>
                 <tr><td>AKTION −x %</td><td>Aktion oder SALE läuft (mit „statt“ und „Aktion bis …“)</td></tr>
