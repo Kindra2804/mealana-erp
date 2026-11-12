@@ -29,6 +29,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '🧹', 'label' => 'GPSR-Texte',       'href' => BASE_PATH . '/artikel/gpsr_texte.php', 'recht' => 'artikel.bearbeiten'],
         ['icon' => '🏭', 'label' => 'Hersteller',       'href' => BASE_PATH . '/hersteller/liste.php'],
         ['icon' => '🧩', 'label' => 'Schild-Bausteine', 'href' => BASE_PATH . '/konfigurator/bausteine.php'],
+        ['icon' => '🖨', 'label' => 'Preisschilder',    'href' => BASE_PATH . '/schilder/auswahl.php'],
         ['icon' => '🖼', 'label' => 'Shop-Slider',      'href' => BASE_PATH . '/slider/liste.php', 'recht' => 'slider.verwalten'],
         ['icon' => '🧭', 'label' => 'Shop-Menü',        'href' => BASE_PATH . '/slider/menue.php', 'recht' => 'slider.verwalten'],
     ],

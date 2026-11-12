@@ -1,6 +1,6 @@
 ---
 name: project_preisschilder
-description: "Preisschilder-Werkstatt — Entwurf 1 (D:\ERP\preisschilder_mockup.svg) wartet auf Babsi; Merkmal-Grundlage gebaut 2026-11-12 (Migr. 233 + JTL-Merkmal-Import), Live offen; nächster Schritt Messe-Schild"
+description: "Preisschilder-Werkstatt — Entwurf 1 von Babsi freigegeben; Messe-Schild gebaut 2026-11-12 (Migr. 234), Merkmale neu (Migr. 233); Live offen (1.0.9); nächste Stufe Laden-Schild"
 metadata:
   node_type: memory
   type: project
@@ -19,6 +19,8 @@ metadata:
 - **D IVAR-Streifen** (Ikea IVAR auf Messen, seitlich am Holm), 40×150 mm (IVAR-Holm 44 mm, gemessen 2026-11-12).
 - **E Anhänger mit Loch** 50×90: für ausgestellte Schilder (mit Code 128) und **Babsis Strickstücke** (nicht im ERP → eigene Freitext-Maske mit Pflegesymbolen, damit sie immer gleich aussehen).
 - **F „Schilder veraltet“**: ERP merkt sich je gedrucktem Schild den Preis/Badge-Stand; Preis-/Aktions-/Auslaufänderung → Liste + Dashboard-Kachel, „Alle nachdrucken“ (für Babsi/Praktikanten).
+
+**Stufe A Messe-Schild — gebaut 2026-11-12 (Babsi: GO für Entwurf 1):** `src/modules/schilder/PreisschildService.php` (VORLAGEN, schildArtikel Kind->Vater, artikelAusMesse, daten, pdf), Vorlage `templates/dokumente/preisschild/messe.html.twig` (8/A4, 95×68 mm, Rand 10/12,5 mm), Seiten `public/schilder/auswahl.php` (?sync_id / POST ids[], Start-Feld, Messepreis %, QR-Shop nur wenn shops.wc_url gesetzt, Schnitt) + `drucken.php`. Einstiege: Messe vorbereiten (🏷 je Papier-Messe/Sync-Paket), Artikelliste Massenaktion, Sidebar Artikel → Preisschilder. **Migration 234 `preisschild_drucke`** (artikel_id, vorlage, preis, statt_preis, merkmale JSON) = Grundlage für F „Schilder veraltet“. QR-Link: wc_url/?post_type=product&p=external_id. Dev hat keine wc_url → QR nur per CLI getestet. Nächste Stufen: B Laden-Schild (Badges, Pflegesymbole, Bild), F veraltet-Liste, dann C/D/E. Nächste Migration 235.
 
 **Merkmale (Grundlage der Garn-Schilder) — gebaut 2026-11-12, Migration 233, Commit siehe git log:**
 - Slugs: wollqualitaet, zusammensetzung, gewicht_laenge, lauflaenge_bereich (auto), nadelstaerke (mehrfach), maschenprobe, maschenprobe_10cm (auto, Babsi: bleibt neben Drops-Garngruppe), garngruppe, auszeichnung (BIO/GOTS/Handgefärbt -> Badges), pflege (mehrfach, merkmal_werte.symbol = Pflegesymbol-Schlüssel). Code spricht Merkmale immer über slug an.

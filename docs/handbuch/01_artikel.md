@@ -190,6 +190,27 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 
 ---
 
+## Preisschilder drucken
+
+**Messe-Schild** (8 pro A4, je 95 × 68 mm): Name, Hersteller, Zusammensetzung, Gewicht/Lauflänge, Nadelstärke, Preis und Grundpreis. Eines je **Garnqualität**: Wählt man Farben, werden sie zu ihrem Vater zusammengefasst. Die Texte kommen aus den **Merkmalen** (siehe oben), fehlt etwas, steht in der Auswahl „keine Merkmale“.
+
+**Wo:**
+- **Messe:** Kasse → Messe vorbereiten → bei der Messe (Papier-Messe oder Sync-Paket) auf **🏷 Preisschilder**. Alle zugebuchten Qualitäten sind schon angehakt.
+- **Beliebige Artikel:** Artikelliste → Häkchen setzen → Aktion **🏷 Preisschilder drucken** → Ausführen.
+- Artikel → **🖨 Preisschilder** (Seitenleiste) erklärt beide Wege.
+
+**Auf der Auswahlseite:**
+1. Häkchen prüfen (Alle/Keine). Die Spalte „Zuletzt gedruckt“ zeigt, wann und mit welchem Preis das Schild zuletzt gedruckt wurde, „Preis geändert“ = Nachdruck nötig.
+2. **Start bei Feld** 1–8: Felder sind von oben links nummeriert (1 2 / 3 4 / 5 6 / 7 8), damit ein angefangenes Blatt aufgebraucht wird.
+3. **Messepreis** (optional): „x % billiger“ auf den Normalpreis. Das Schild zeigt „statt € …“ und den Messepreis in Rot. Läuft eine günstigere Aktion, gilt die.
+4. **QR „Farbe nicht da? Online bestellen“** (optional): Shop wählen. Der QR führt zur Artikelseite in diesem Shop und erscheint nur bei Artikeln, die dort online sind.
+5. **Schnittlinien** an/aus → **🖨 Drucken**. Das PDF öffnet in einem neuen Tab.
+
+> Der **Grundpreis** steht bei Garn immer **je kg** (gesetzliche Bezugsmenge in Österreich), wie im Shop. Haben die Farben unterschiedliche Preise, steht „ab“ davor. Laufende Aktionen werden mit „statt“ gedruckt.
+>
+> Jeder Druck wird gemerkt (Datum, Preis). Daraus kommt später die Liste „Schilder veraltet“.
+---
+
 ## Häufige Probleme
 
 | Problem | Lösung |

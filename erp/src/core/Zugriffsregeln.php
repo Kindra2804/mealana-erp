@@ -138,6 +138,10 @@ final class Zugriffsregeln
             'optionen_uebertragen.php'       => 'artikel.bearbeiten',
             'kuvert_etikett.php'             => 'artikel.anzeigen',
         ],
+        'schilder' => [
+            'auswahl.php'                    => 'artikel.anzeigen',
+            'drucken.php'                    => 'artikel.anzeigen',
+        ],
 
         'lager' => [
             'uebersicht.php'                 => 'bestand.anzeigen',

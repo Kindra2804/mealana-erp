@@ -149,6 +149,9 @@ require_once __DIR__ . '/shell_top.php';
             <a href="messe_strichliste.php?sync_id=<?= (int)$s['id'] ?>" target="_blank" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
               🖨 Strichliste
             </a>
+            <a href="<?= BASE_PATH ?>/schilder/auswahl.php?sync_id=<?= (int)$s['id'] ?>" target="_blank" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
+              🏷 Preisschilder
+            </a>
             <a href="messe_rueckkehr.php?sync_id=<?= (int)$s['id'] ?>" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
               Rückkehr →
             </a>
@@ -177,7 +180,10 @@ require_once __DIR__ . '/shell_top.php';
           <td><?= htmlspecialchars($s['lager_name'] ?? '') ?></td>
           <td style="text-align:right"><?= (int)$s['artikel_count'] ?></td>
           <td style="color:#888"><?= date('d.m.Y H:i', strtotime($s['erstellt_am'])) ?></td>
-          <td>
+          <td style="text-align:right;white-space:nowrap">
+            <a href="<?= BASE_PATH ?>/schilder/auswahl.php?sync_id=<?= (int)$s['id'] ?>" target="_blank" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
+              🏷 Preisschilder
+            </a>
             <a href="bon_offline.php?sync_id=<?= (int)$s['id'] ?>" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
               Offline-Kasse laden →
             </a>

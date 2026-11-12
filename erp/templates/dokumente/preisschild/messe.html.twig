@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# Messe-Schild (PreisschildService): 8 je A4, 2 x 4 Felder zu 95 x 68 mm, 10 mm Rand links/rechts,
+   12,5 mm oben/unten -- damit nichts im nicht bedruckbaren Druckerrand landet.
+   Feste mm-Positionen, damit Dompdf jedes Feld exakt setzt. #}
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #111; }
+  .seite { position: relative; width: 210mm; height: 296mm; page-break-after: always; overflow: hidden; }
+  .seite.letzte { page-break-after: auto; }
+  .feld { position: absolute; width: 95mm; height: 68mm; overflow: hidden; }
+  .feld.rahmen { border: 0.2mm solid #bbb; }
+  .titel { position: absolute; left: 4mm; top: 3.5mm; width: 87mm; font-size: 20pt; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+  .titel.mittel { font-size: 16pt; top: 4.5mm; }
+  .titel.klein  { font-size: 12.5pt; top: 5.5mm; }
+  .hersteller { position: absolute; left: 4mm; top: 13mm; font-size: 10.5pt; }
+  .info { position: absolute; left: 4mm; top: 21mm; width: 87mm; font-size: 8pt; line-height: 1.4; }
+  .preisblock { position: absolute; right: 4mm; bottom: 3.5mm; width: 62mm; text-align: right; }
+  .statt { font-size: 9pt; color: #777; text-decoration: line-through; }
+  .preis { font-size: 26pt; line-height: 1.05; }
+  .preis.aktion { color: #c0392b; font-weight: bold; }
+  .preis .ab { font-size: 13pt; }
+  .gp { font-size: 8.5pt; margin-top: 0.5mm; }
+  .qr { position: absolute; left: 3mm; bottom: 3mm; width: 17mm; height: 17mm; }
+  .qr-text { position: absolute; left: 21mm; bottom: 4mm; font-size: 6.5pt; color: #777; line-height: 1.3; }
+</style>
+</head>
+<body>
+{% for seite in seiten %}
+<div class="seite{% if loop.last %} letzte{% endif %}">
+  {% for s in seite %}
+    {% set spalte = (loop.index0 % 2) %}
+    {% set zeile = (loop.index0 // 2) %}
+    <div class="feld{% if schnitt %} rahmen{% endif %}" style="left: {{ 10 + spalte * 95 }}mm; top: {{ 12.5 + zeile * 68 }}mm;">
+    {% if s %}
+      <div class="titel {{ s.titel_klasse }}">{{ s.titel }}</div>
+      {% if s.hersteller %}<div class="hersteller">{{ s.hersteller }}</div>{% endif %}
+      <div class="info">
+        {% if s.zusammensetzung %}Zusammensetzung: {{ s.zusammensetzung }}<br>{% endif %}
+        {% if s.lauflaenge %}{{ s.lauflaenge }}<br>{% endif %}
+        {% if s.nadel %}{{ s.nadel }}{% endif %}
+      </div>
+      {% if s.qr %}
+        <img class="qr" src="{{ s.qr }}">
+        <div class="qr-text">Farbe nicht da?<br>Online bestellen</div>
+      {% endif %}
+      <div class="preisblock">
+        {% if s.preis is not null %}
+          {% if s.statt %}<div class="statt">statt € {{ s.statt|euroformat }}</div>{% endif %}
+          <div class="preis{% if s.statt %} aktion{% endif %}">{% if s.ab %}<span class="ab">ab </span>{% endif %}€ {{ s.preis|euroformat }}</div>
+          {% if s.grundpreis %}<div class="gp">{{ s.grundpreis }}</div>{% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endfor %}
+</body>
+</html>

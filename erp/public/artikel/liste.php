@@ -566,6 +566,7 @@ $actionBarContent = <<<HTML
         <option value="kanal_zuweisen">Kanal zuweisen</option>
         <option value="kanal_neu_synchronisieren">Erneut synchronisieren (Shop)</option>
         <option value="lagerplatz_zuweisen">Lagerplatz zuweisen</option>
+        <option value="preisschilder">🏷 Preisschilder drucken</option>
         <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
@@ -1102,6 +1103,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         if (aktion === 'lagerplatz_zuweisen') {
             bulkLpOeffnen(ids);
+            return;
+        }
+
+        if (aktion === 'preisschilder') {
+            // Auswahlseite im neuen Tab (Farben werden dort zu ihrer Garnqualität zusammengefasst)
+            const f = document.createElement('form');
+            f.method = 'post'; f.action = window.BASE_PATH + '/schilder/auswahl.php'; f.target = '_blank';
+            ids.forEach(function (id) { const i = document.createElement('input'); i.type = 'hidden'; i.name = 'ids[]'; i.value = id; f.appendChild(i); });
+            document.body.appendChild(f); f.submit(); f.remove();
             return;
         }
 
