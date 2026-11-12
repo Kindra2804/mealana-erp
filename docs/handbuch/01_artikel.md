@@ -156,6 +156,13 @@ Rohmaterial leer → im Shop ist der Wert ausgegraut („derzeit nicht verfügba
 3. Gibt es die Kombination schon → **nur einbuchen** (und wieder aktivieren). Neu → eigener Lagerartikel mit Hersteller, Gruppe, Steuer, Shop-Kanälen vom Layout und dem Konfigurator-Preis.
 4. Foto des fertigen Schilds danach im Artikel hochladen.
 
+**Kuvert-Etikett drucken** (A4 mit 2 Etiketten je 210 × 148 mm, zum Aufkleben auf Kuvert/Tüte/Karton):
+- Links das Bild, rechts Name, Größe (Ø), Aufbau, Preis und die **Artikelnummer als Strichcode**. Die Kasse findet den Artikel über diesen Strichcode, ein EAN ist nicht nötig.
+- **Wo:** nach dem Anlegen/Einbuchen in der grünen Meldung · 🖨 je Zeile bei „Fertige Schilder aus diesem Layout“ · im fertigen Schild oben „🖨 Kuvert-Etikett“ · **mehrere auf einmal:** Artikelliste → Kategorie „Fertige Schilder“ → Häkchen setzen (oder alle) → Aktion „🖨 Kuvert-Etiketten drucken“ → Ausführen.
+- Im Fenster wählen: **Oben** (neues Blatt) oder **Unten** (obere Hälfte des Blatts ist schon verbraucht) und ob die **Schnittlinie** gedruckt wird (wird gemerkt). Das PDF öffnet in einem neuen Tab.
+- Preis = Standardpreis (kein Aktionspreis). Kein eigenes Foto → Foto des Layouts. Vater-Artikel und Layouts selbst bekommen kein Etikett (werden übersprungen).
+- Scanner tippt „ß“ statt „-“? Das gleicht die Kasse automatisch aus (Scanner mit US-Tastaturbelegung).
+
 **Optionen auf andere Layouts übertragen** (im fertig gepflegten Layout, Karte „Konfigurator“): Ziel-Layouts anhaken → **Probelauf** → „Jetzt übertragen“. Die Ziele bekommen dieselben Achsen, Werte, Reihenfolge, Aufpreise und Bedingungen. Gleichnamige Werte werden aktualisiert (Shop-Verknüpfung bleibt), fehlende angelegt, überzählige entfernt. Der Grundpreis je Layout bleibt. Werte, die schon in Aufträgen stehen, bleiben erhalten und werden in der Liste gemeldet.
 
 Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), aber nur, wenn er in seiner Achse der einzige ohne Kürzel ist.

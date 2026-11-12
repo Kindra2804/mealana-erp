@@ -338,6 +338,16 @@ $weRueckkehrInput = $istKind
 
 $kanalPanelHtml = renderKanalPanelZeilen($kanaeleFuerArtikel);
 
+// Kuvert-Etikett (js/kuvert_etikett.js) -- vorerst nur bei fertigen Schildern (Migr. 232)
+$kuvertKnopf = '';
+$kuvertSt = Database::getInstance()->prepare("SELECT 1 FROM konfig_fertige_artikel WHERE artikel_id = ?");
+$kuvertSt->execute([(int) $artikel['id']]);
+if ($kuvertSt->fetchColumn()) {
+    $kuvertKnopf = '<div class="actionbar-sep"></div>'
+        . '<button type="button" class="btn btn-secondary btn-sm" onclick="kuvertEtikettDialog([' . (int) $artikel['id'] . '])">🖨 Kuvert-Etikett</button>'
+        . '<script src="' . BASE_PATH . '/js/kuvert_etikett.js"></script>';
+}
+
 $actionBarContent = <<<HTML
 <div class="actionbar-left">
     <button form="stammdaten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
@@ -352,6 +362,7 @@ $actionBarContent = <<<HTML
             <div id="kanal-panel-inhalt">{$kanalPanelHtml}</div>
         </div>
     </div>
+    {$kuvertKnopf}
 </div>
 <span id="unsaved-banner" class="unsaved-indicator">ungespeicherte Änderungen</span>
 <div class="actionbar-right">

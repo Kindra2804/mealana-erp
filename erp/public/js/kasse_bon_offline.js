@@ -154,7 +154,12 @@ function obScannen(code) {
     if (!code) return;
     const fb = document.getElementById('ob-scan-feedback');
 
-    const treffer = obArtikel.find(a => a.ean === code || a.artikelnummer === code || String(a.id) === code);
+    // Scanner mit US-Belegung: "ß" statt "-", Y/Z vertauscht (Artikelnummern mit "-", z.B. Kuvert-Etikett)
+    const gross = s => String(s || '').toUpperCase();
+    const korr  = gross(code).replace(/[ßẞ?]/g, '-');
+    const yz    = korr.replace(/[YZ]/g, c => (c === 'Y' ? 'Z' : 'Y'));
+    const treffer = obArtikel.find(a => a.ean === code || a.artikelnummer === code || String(a.id) === code)
+        || obArtikel.find(a => a.artikelnummer && (gross(a.artikelnummer) === korr || gross(a.artikelnummer) === yz));
     if (!treffer) {
         fb.textContent = 'Nicht gefunden: ' + code + ' — ggf. Artikelname eingeben zum Suchen, oder "➕ Freier Artikel" nutzen.';
         fb.style.color = '#dc2626';

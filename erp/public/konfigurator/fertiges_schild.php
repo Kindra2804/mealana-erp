@@ -25,6 +25,7 @@ if (($_POST['aktion'] ?? '') === 'anlegen') {
         $_SESSION['erfolg'] = ($erg['neu'] ? 'Fertiges Schild ' . $erg['artikelnummer'] . ' angelegt' : 'Vorhandenes Schild ' . $erg['artikelnummer'] . ' gefunden')
             . ($erg['menge'] > 0 ? ' und ' . rtrim(rtrim(number_format($erg['menge'], 3, ',', ''), '0'), ',') . ' Stk. eingebucht.' : '.');
         $_SESSION['fertig_letzte_auswahl'] = $_POST['wert'] ?? [];
+        $_SESSION['fertig_letzter_artikel'] = (int) $erg['artikel_id'];   // -> Knopf "Kuvert-Etikett drucken"
     } catch (Throwable $e) {
         $_SESSION['fehler'] = [$e->getMessage()];
         $_SESSION['fertig_letzte_auswahl'] = $_POST['wert'] ?? [];
@@ -42,7 +43,8 @@ if (!$layout || empty($layout['ist_konfigurierbar'])) {
 $fehler  = $_SESSION['fehler'] ?? [];
 $erfolg  = $_SESSION['erfolg'] ?? null;
 $auswahl = array_map('intval', $_SESSION['fertig_letzte_auswahl'] ?? []);
-unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['fertig_letzte_auswahl']);
+$letzterArtikel = (int) ($_SESSION['fertig_letzter_artikel'] ?? 0);
+unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['fertig_letzte_auswahl'], $_SESSION['fertig_letzter_artikel']);
 
 $konfiguration = (new KonfiguratorService())->getKonfiguration($layoutId);
 $vorhandene    = $service->vorhandene($layoutId);
@@ -76,7 +78,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </div>
 <?php endif; ?>
 <?php if ($erfolg): ?>
-    <div class="card" style="border-left:4px solid var(--color-success);margin-bottom:12px"><p style="margin:0;color:var(--color-success)"><?= htmlspecialchars($erfolg) ?></p></div>
+    <div class="card" style="border-left:4px solid var(--color-success);margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <p style="margin:0;color:var(--color-success);flex:1"><?= htmlspecialchars($erfolg) ?></p>
+        <?php if ($letzterArtikel): ?>
+            <button type="button" class="btn btn-primary btn-sm" onclick="kuvertEtikettDialog([<?= $letzterArtikel ?>])">🖨 Kuvert-Etikett drucken</button>
+        <?php endif; ?>
+    </div>
 <?php endif; ?>
 
 <div style="display:grid;grid-template-columns:minmax(320px,1fr) minmax(320px,1fr);gap:12px;align-items:start">
@@ -119,15 +126,17 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php if (!$vorhandene): ?>
         <p style="font-size:13px;color:var(--color-text-muted);margin:0">Noch keine.</p>
     <?php else: ?>
-        <table class="erp-table" style="font-size:13px"><thead><tr><th>Artikelnummer</th><th>Name</th><th style="text-align:right">Bestand</th></tr></thead><tbody>
+        <table class="erp-table" style="font-size:13px"><thead><tr><th>Artikelnummer</th><th>Name</th><th style="text-align:right">Bestand</th><th></th></tr></thead><tbody>
         <?php foreach ($vorhandene as $f): ?>
             <tr style="<?= $f['aktiv'] ? '' : 'opacity:.55' ?>"><td><a href="<?= $basePath ?>/artikel/detail.php?id=<?= (int) $f['id'] ?>"><?= htmlspecialchars($f['artikelnummer']) ?></a></td>
-                <td><?= htmlspecialchars($f['name']) ?></td><td style="text-align:right"><?= rtrim(rtrim(number_format((float) $f['bestand'], 3, ',', '.'), '0'), ',') ?></td></tr>
+                <td><?= htmlspecialchars($f['name']) ?></td><td style="text-align:right"><?= rtrim(rtrim(number_format((float) $f['bestand'], 3, ',', '.'), '0'), ',') ?></td>
+                <td style="text-align:right"><button type="button" class="btn btn-secondary btn-sm" title="Kuvert-Etikett drucken" onclick="kuvertEtikettDialog([<?= (int) $f['id'] ?>])">🖨</button></td></tr>
         <?php endforeach; ?></tbody></table>
     <?php endif; ?>
 </div>
 </div>
 
+<script src="<?= BASE_PATH ?>/js/kuvert_etikett.js"></script>
 <script>
 (function () {
     var form = document.getElementById('fs-form'), box = document.getElementById('fs-vorschau'), knopf = document.getElementById('fs-knopf');

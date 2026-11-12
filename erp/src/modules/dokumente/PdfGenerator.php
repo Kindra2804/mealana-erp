@@ -39,6 +39,20 @@ class PdfGenerator
      */
     public function generiere(string $template, array $daten, string $dateipfad): void
     {
+        $verzeichnis = dirname($dateipfad);
+        if (!is_dir($verzeichnis)) {
+            mkdir($verzeichnis, 0755, true);
+        }
+
+        file_put_contents($dateipfad, $this->alsString($template, $daten));
+    }
+
+    /**
+     * Wie generiere(), liefert das PDF aber als String zurück (ohne Datei) --
+     * z.B. für Etiketten, die nur angezeigt/gedruckt und nicht abgelegt werden.
+     */
+    public function alsString(string $template, array $daten): string
+    {
         $html = $this->twig->render($template, $daten);
 
         $optionen = new \Dompdf\Options();
@@ -52,12 +66,7 @@ class PdfGenerator
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $verzeichnis = dirname($dateipfad);
-        if (!is_dir($verzeichnis)) {
-            mkdir($verzeichnis, 0755, true);
-        }
-
-        file_put_contents($dateipfad, $dompdf->output());
+        return $dompdf->output();
     }
 
     /**

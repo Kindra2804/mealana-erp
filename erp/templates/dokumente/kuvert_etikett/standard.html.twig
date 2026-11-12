@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# Kuvert-Etikett: A4 mit 2 Hälften je 210 x 148,5 mm (KuvertEtikettService). Feste mm-Positionen,
+   damit Dompdf jede Hälfte exakt auf ihre Blatthälfte setzt. #}
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #1a1a1a; }
+  .seite { position: relative; width: 210mm; height: 296mm; page-break-after: always; overflow: hidden; }
+  .seite.letzte { page-break-after: auto; }
+  .haelfte { position: absolute; left: 0; width: 210mm; height: 148mm; }
+  .oben  { top: 0; }
+  .unten { top: 148.5mm; }
+  .bild { position: absolute; left: 10mm; top: 12mm; width: 94mm; height: 124mm;
+          border: 0.3mm solid #e2ddd5; border-radius: 2mm; text-align: center; }
+  .bild img { width: 90mm; height: 90mm; margin-top: 17mm; }
+  .bild .ohne { margin-top: 58mm; font-size: 10pt; color: #999; }
+  .rechts { position: absolute; left: 112mm; top: 12mm; width: 88mm; height: 124mm; }
+  .titel { font-size: 19pt; font-weight: bold; line-height: 1.15; }
+  .groesse { font-size: 22pt; font-weight: bold; text-align: center; margin-top: 3mm; }
+  .trenner { border-top: 0.3mm solid #bbb; margin: 4mm 0 3mm; }
+  table.aufbau { border-collapse: collapse; font-size: 10.5pt; line-height: 1.45; }
+  table.aufbau td { vertical-align: top; padding: 0; }
+  table.aufbau td.achse { color: #777; padding-right: 4mm; white-space: nowrap; }
+  .unterteil { position: absolute; left: 0; bottom: 0; width: 88mm; text-align: center; }
+  .preis { font-size: 26pt; font-weight: bold; margin-bottom: 3mm; }
+  .barcode { width: 76mm; height: 15mm; } {# Rest = Ruhezone links/rechts für den Scanner #}
+  .nummer { font-family: DejaVu Sans Mono, monospace; font-size: 10pt; margin-top: 1mm; }
+  .schnitt { position: absolute; left: 0; top: 148.25mm; width: 210mm; border-top: 0.3mm dashed #999; }
+  .schnitt span { position: absolute; left: 96mm; top: -2.2mm; background: #fff; padding: 0 2mm; font-size: 7pt; color: #999; }
+</style>
+</head>
+<body>
+{% for seite in seiten %}
+<div class="seite{% if loop.last %} letzte{% endif %}">
+  {% for e in seite %}
+    {% if e %}
+    <div class="haelfte {{ loop.first ? 'oben' : 'unten' }}">
+      <div class="bild">
+        {% if e.bild_base64 %}
+          <img src="data:image/jpeg;base64,{{ e.bild_base64 }}">
+        {% else %}
+          <div class="ohne">kein Bild</div>
+        {% endif %}
+      </div>
+      <div class="rechts">
+        <div class="titel">{{ e.titel }}</div>
+        {% if e.groesse %}<div class="groesse">{{ e.groesse }}</div>{% endif %}
+        {% if e.aufbau %}
+          <div class="trenner"></div>
+          <table class="aufbau">
+            {% for z in e.aufbau %}<tr><td class="achse">{{ z.achse }}</td><td>{{ z.wert }}</td></tr>{% endfor %}
+          </table>
+        {% endif %}
+        <div class="unterteil">
+          {% if e.preis is not null %}<div class="preis">€ {{ e.preis|euroformat }}</div>{% endif %}
+          <img class="barcode" style="width: {{ e.barcode_breite }}mm" src="data:image/png;base64,{{ e.barcode }}">
+          <div class="nummer">{{ e.artikelnummer }}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+  {% if schnittlinie %}<div class="schnitt"><span>✂ hier schneiden</span></div>{% endif %}
+</div>
+{% endfor %}
+</body>
+</html>

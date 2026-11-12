@@ -85,12 +85,13 @@ class BelegBilder
         return $bilder;
     }
 
-    /** Quadratisches Vorschaubild (weißer Rand) als Base64-JPEG, null wenn das Original fehlt */
-    public static function vorschau(int $artikelId, string $dateiname): ?string
+    /** Quadratisches Vorschaubild (weißer Rand) als Base64-JPEG, null wenn das Original fehlt.
+     *  $pixel: Kantenlänge (Belege 150, Kuvert-Etikett größer) -- steht im Cache-Namen. */
+    public static function vorschau(int $artikelId, string $dateiname, int $pixel = self::PIXEL): ?string
     {
         $datei    = basename($dateiname);
         $original = __DIR__ . '/../../../public/uploads/artikel/' . $artikelId . '/' . $datei;
-        $cache    = __DIR__ . '/../../../storage/bild_vorschau/' . $artikelId . '/' . pathinfo($datei, PATHINFO_FILENAME) . '_' . self::PIXEL . '.jpg';
+        $cache    = __DIR__ . '/../../../storage/bild_vorschau/' . $artikelId . '/' . pathinfo($datei, PATHINFO_FILENAME) . '_' . $pixel . '.jpg';
 
         if (!is_file($cache)) {
             if (!is_file($original)) return null;
@@ -98,11 +99,11 @@ class BelegBilder
             if (!$quelle) return null;
 
             $w = imagesx($quelle); $h = imagesy($quelle);
-            $faktor = min(self::PIXEL / $w, self::PIXEL / $h, 1);
+            $faktor = min($pixel / $w, $pixel / $h, 1);
             $nw = max(1, (int)round($w * $faktor)); $nh = max(1, (int)round($h * $faktor));
-            $ziel = imagecreatetruecolor(self::PIXEL, self::PIXEL);
+            $ziel = imagecreatetruecolor($pixel, $pixel);
             imagefill($ziel, 0, 0, imagecolorallocate($ziel, 255, 255, 255)); // auch für transparente PNGs
-            imagecopyresampled($ziel, $quelle, intdiv(self::PIXEL - $nw, 2), intdiv(self::PIXEL - $nh, 2), 0, 0, $nw, $nh, $w, $h);
+            imagecopyresampled($ziel, $quelle, intdiv($pixel - $nw, 2), intdiv($pixel - $nh, 2), 0, 0, $nw, $nh, $w, $h);
 
             if (!is_dir(dirname($cache))) mkdir(dirname($cache), 0775, true);
             imagejpeg($ziel, $cache, 80);

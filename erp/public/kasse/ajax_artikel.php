@@ -27,6 +27,17 @@ if (strlen($code) < 1) {
 
 $artikel = $service->findArtikelByCode($code, $lagerId);
 
+// Scanner mit US-Tastaturbelegung tippen am deutschen PC "ß" statt "-" und vertauschen Y/Z.
+// EANs sind reine Ziffern (fällt nie auf), Artikelnummern wie bei fertigen Schildern
+// (Kuvert-Etikett, Code 128) enthalten aber "-" -> tolerant nachsuchen (wie Gutscheine).
+if (!$artikel) {
+    $korr = strtoupper(str_replace(['ß', 'ẞ', '?'], '-', $code));
+    if ($korr !== strtoupper($code)) $artikel = $service->findArtikelByCode($korr, $lagerId);
+    if (!$artikel && strpbrk($korr, 'YZ') !== false) {
+        $artikel = $service->findArtikelByCode(strtr($korr, ['Y' => 'Z', 'Z' => 'Y']), $lagerId);
+    }
+}
+
 if (!$artikel) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Artikel nicht gefunden: ' . $code]);
     exit;

@@ -566,6 +566,7 @@ $actionBarContent = <<<HTML
         <option value="kanal_zuweisen">Kanal zuweisen</option>
         <option value="kanal_neu_synchronisieren">Erneut synchronisieren (Shop)</option>
         <option value="lagerplatz_zuweisen">Lagerplatz zuweisen</option>
+        <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
     <div class="actionbar-sep"></div>
@@ -1104,6 +1105,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             return;
         }
 
+        if (aktion === 'kuvert_etikett') {
+            kuvertEtikettDialog(ids);   // js/kuvert_etikett.js -- PDF im neuen Tab, nichts wird geändert
+            return;
+        }
+
         fetch('massenupdate.php', {
                 method: 'POST',
                 headers: {
@@ -1197,6 +1203,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     })();
 </script>
 
+<script src="<?= BASE_PATH ?>/js/kuvert_etikett.js"></script>
 <!-- Bulk-Kategorie Modal -->
 <!-- Massenaktion: Lagerplatz zuweisen (Väter geben den Platz an alle Varianten weiter) -->
 <div id="bulk-lp-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">

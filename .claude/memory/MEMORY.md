@@ -26,6 +26,7 @@
 - [Dropshipping-Modul](project_dropshipping.md) — gebaut 2026-11-01 (Migr. 215), Klicktest Jacky offen, noch nicht committed
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
+- [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + Live offen
 - [🏷️ Preisschilder (Idee)](project_preisschilder.md) — Vorlagen, Mehrfachauswahl, mehrere je A4, Bild/Preis/kg-Preis/Barcode; Messelager mit einem Klick
 
 ## User + Feedback

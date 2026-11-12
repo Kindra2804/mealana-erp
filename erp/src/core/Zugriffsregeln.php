@@ -136,6 +136,7 @@ final class Zugriffsregeln
             'bausteine.php'                  => 'artikel.bearbeiten',
             'fertiges_schild.php'            => 'artikel.anlegen',
             'optionen_uebertragen.php'       => 'artikel.bearbeiten',
+            'kuvert_etikett.php'             => 'artikel.anzeigen',
         ],
 
         'lager' => [
