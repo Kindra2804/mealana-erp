@@ -107,7 +107,7 @@ class GrundpreisPruefungService
         if ($an && (float)$z['grundpreis_bezugsmenge'] <= 0 && !($garn && $einheit === 'g')) $f[] = 'Bezugsmenge fehlt';
         if ($einheit === 'kg' && $menge >= 10) $f[] = rtrim(rtrim(number_format($menge, 3, ',', ''), '0'), ',') . ' kg – wohl g?';
         if ($einheit === 'g' && $menge > 0 && ($menge < 1 || $menge > 5000)) $f[] = 'Inhalt unplausibel';
-        if ($einheit !== '' && !in_array($einheit, self::EINHEITEN, true)) $f[] = "Einheit „{$z['inhalt_einheit']}“ kennt der Shop nicht";
+        if ($an && $einheit !== '' && !in_array($einheit, self::EINHEITEN, true)) $f[] = "Einheit „{$z['inhalt_einheit']}“ kennt der Shop nicht";
         if ($an && !$garn && in_array($einheit, ['g', 'kg'], true) && $z['typ_code'] === 'STANDARD') $f[] = 'Typ Standard – Wolle? (Garn rechnet je kg)';
         return $f;
     }
