@@ -106,3 +106,13 @@ ul.products .ct-woo-card-actions { margin-top: 12px; }
   ul.products .ct-woo-card-actions .button { padding: 8px 12px; font-size: 13px; }
   .nahtlos-kachel__kicker { font-size: .6rem; letter-spacing: .06em; }
 }
+/* Produktkarten wie indra-design: Titel max. 2 Zeilen (feste Höhe) → Button → Preis + Angaben */
+ul.products li.product { display: flex; flex-direction: column; }
+ul.products li.product > figure { order: 0; }
+ul.products li.product > .woocommerce-loop-product__title { order: 1; min-height: calc(2 * 1.35em); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; }
+ul.products li.product > .ct-woo-card-actions { order: 2; margin: 0 0 12px; }
+ul.products li.product > .price { order: 3; font-weight: 700; }
+ul.products li.product > .price-unit { order: 4; }
+ul.products li.product > .wc-gzd-additional-info:not(.price-unit) { order: 5; }
+ul.products li.product > *:not(figure):not(.woocommerce-loop-product__title):not(.ct-woo-card-actions):not(.price):not(.wc-gzd-additional-info) { order: 6; }
+ul.products li.product > .price-unit { font-weight: 400; font-size: 13px; }
