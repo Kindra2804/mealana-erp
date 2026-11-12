@@ -721,6 +721,7 @@ class JtlVaterKindImportService
                 );
 
                 $this->artikelService->kopiereVaterRelationenZuKindern($vaterId, $kombiResult['ids'], $preisAnpassungenNeu);
+                $vaterVoll = $this->artikelRepo->findById($vaterId); // Vater nach save() inkl. Grundpreis-Default
 
                 // Pro Kind die echten JTL-Werte (Preis/Maße/UVP/Einheit) statt der Vater-Vererbung setzen --
                 // ABER NUR bei Kindern, die in diesem Lauf wirklich neu angelegt wurden. Ein bereits
@@ -758,9 +759,17 @@ class JtlVaterKindImportService
                         UPDATE artikel SET
                             gewicht_artikel = :gewicht, breite = :breite, hoehe = :hoehe, laenge = :laenge,
                             uvp = :uvp, einheit_id = :einheit_id, charge_pflicht = :charge_pflicht,
-                            hersteller_id = :hersteller_id, ist_auslaufartikel = :ist_auslauf
+                            hersteller_id = :hersteller_id, ist_auslaufartikel = :ist_auslauf,
+                            inhalt_menge = :inhalt_menge, inhalt_einheit = :inhalt_einheit,
+                            grundpreis_bezugsmenge = :gp_bezug, grundpreis_anzeigen = :gp_an
                         WHERE id = :id
                     ")->execute([
+                        // Grundpreis-Angaben vom Vater (gemeinsames Feld, im Shop zählt das Kind) --
+                        // fehlten bis 2026-11-12, dann stand im Shop „0,00 €/kg“ (SOW-Umstieg)
+                        'inhalt_menge'   => $vaterVoll['inhalt_menge'] ?? null,
+                        'inhalt_einheit' => $vaterVoll['inhalt_einheit'] ?? null,
+                        'gp_bezug'       => $vaterVoll['grundpreis_bezugsmenge'] ?? null,
+                        'gp_an'          => (int)($vaterVoll['grundpreis_anzeigen'] ?? 0),
                         'gewicht'        => $orig['gewicht_artikel'],
                         'breite'         => $orig['breite'],
                         'hoehe'          => $orig['hoehe'],

@@ -100,6 +100,16 @@ Für einzelne Artikel einen Aktionspreis schnell setzen — überschreibt alles 
 
 ---
 
+## Grundpreise prüfen (Artikel → Grundpreise)
+
+Liste aller Vater- und Einzelartikel mit **Inhalt, Einheit, Bezugsmenge, Grundpreis anzeigen** und einer Vorschau, wie der Shop den Grundpreis zeigt.
+
+1. **Filtern:** Kanal, Artikeltyp, Suche. Standard ist **nur Problemfälle**: Inhalt fehlt, „100 kg – wohl g?“, Garn ohne Grundpreis, Kinder weichen vom Vater ab, Einheit unbekannt.
+2. **Ändern:** direkt in der Zeile oder Zeilen markieren → **Für markierte setzen** bzw. Schnellknöpfe **Garn 50 g / 100 g / 150 g**, **kein Grundpreis**.
+3. **Speichern:** Die Angaben gehen an alle Kinder (wie beim Speichern eines Vaters) und werden für den Shop-Abgleich vorgemerkt. **Markierte an Kinder vererben** gibt die Vater-Angaben unverändert weiter (z. B. nach einem JTL-Import).
+
+Garn mit Einheit **g** zeigt der Shop immer **je 1 kg** (Preisauszeichnungsgesetz).
+
 ## Häufige Probleme
 
 | Problem | Lösung |

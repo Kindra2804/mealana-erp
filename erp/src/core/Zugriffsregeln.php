@@ -50,6 +50,8 @@ final class Zugriffsregeln
             'variante_bearbeiten.php'       => 'artikel.bearbeiten',
             'variante_aktualisieren.php'    => 'artikel.bearbeiten',
             'massenupdate.php'              => 'artikel.bearbeiten',
+            'grundpreise.php'               => 'artikel.bearbeiten',
+            'grundpreise_speichern.php'     => 'artikel.bearbeiten',
             'spalten_einstellung_speichern.php' => 'artikel.bearbeiten',
             'seo_speichern.php'             => 'artikel.bearbeiten',
             'merkmal_ajax.php'              => 'artikel.bearbeiten',
@@ -528,7 +530,7 @@ final class Zugriffsregeln
             'merkmal_ajax.php', 'achsen_zuweisen_ajax.php', 'kategorie_sort_ajax.php', 'ean_check.php',
             'kategorie_neu.php', 'kategorie_loeschen_ajax.php', 'artikel_vater_suche.php',
             'preis_loeschen.php', 'staffelpreis_loeschen.php', 'staffelpreis_speichern.php',
-            'uvp_speichern.php', 'preis_speichern.php',
+            'uvp_speichern.php', 'preis_speichern.php', 'grundpreise_speichern.php',
         ],
         'slider'      => ['slide_speichern.php', 'slide_aktion.php', 'artikel_suche.php', 'menue_aktion.php'],
         'aktionen'    => [

@@ -193,6 +193,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
             <a href="#artikel-slider" class="sub">↳ Shop-Slider & Kacheln</a>
             <a href="#artikel-menue" class="sub">↳ Shop-Menü</a>
+            <a href="#artikel-grundpreise" class="sub">↳ Grundpreise prüfen</a>
             <a href="#lager">Lager</a>
             <a href="#lager-lagerplaetze" class="sub">↳ Lagerplätze</a>
             <a href="#lager-lagerwert" class="sub">↳ Lagerwert</a>
@@ -344,6 +345,13 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Leeres Menü: <strong>Aus Kategoriebaum vorschlagen</strong> legt die Hauptkategorien an (je mit Unterkategorien automatisch).</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Menüpunkte zeigen auf eine <strong>Kategorie</strong> (optional Unterkategorien automatisch), <strong>Alle Hersteller</strong> (automatisch, in Spalten), einen Hersteller, Artikel oder eine Adresse. „Nur zeigen, wenn Artikel drin sind“ z. B. für Sale.</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Sortieren am ≡, „+ Unterpunkt“ für die nächste Ebene, dann <strong>An Shop übertragen</strong>.</div></div>
+
+            <h3 id="artikel-grundpreise">Grundpreise prüfen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Artikel → <strong>Grundpreise</strong>: alle Vater- und Einzelartikel mit Inhalt, Einheit, Bezugsmenge und „Grundpreis anzeigen“ – und daneben, <strong>wie es der Shop zeigt</strong> (z. B. „79,50 € / kg · enthält 0,1 kg“).</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Filter: Kanal (z. B. nur sockenwolle-online), Artikeltyp, Suche. Standard: <strong>nur Problemfälle</strong> – Inhalt fehlt, „100 kg – wohl g?“, Garn ohne Grundpreis, Kinder weichen vom Vater ab.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Werte direkt in der Zeile ändern – oder Zeilen markieren und oben <strong>„Für markierte setzen“</strong> bzw. die Schnellknöpfe <strong>Garn 50 g / 100 g / 150 g</strong> oder „kein Grundpreis“ (Nadeln, Bücher).</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Änderungen speichern</strong>: Die Angaben gehen an alle Kinder (wie beim Speichern eines Vaters), der Shop-Abgleich überträgt sie. „Markierte an Kinder vererben“ gibt die Vater-Angaben ohne Änderung weiter.</div></div>
+            <div class="ba-hint">💡 Garn mit Einheit g zeigt der Shop immer je 1 kg (Preisauszeichnungsgesetz) – die Bezugsmenge ist dabei egal.</div>
 
             <!-- LAGER -->
             <h3 id="artikel-schilder">Konfigurator: Schild-Bausteine &amp; fertige Schilder <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
