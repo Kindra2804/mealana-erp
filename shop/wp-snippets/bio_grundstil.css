@@ -124,3 +124,13 @@ h1, h2, h3, .entry-title, .page-title, .woocommerce-products-header__title, .bio
 p.footer-info.vat-info { background: #1d3a2c; color: #b7c6bb; margin: 0; padding: 18px 16px 0; font-size: 13px; text-align: center; }
 /* Bio: 6 Kacheln → 3 pro Reihe (Desktop) */
 @media (min-width: 1000px) { .nahtlos-kachel { flex-basis: calc(33.333% - 15px); } }
+/* Bio-Startseite: Siegel-Reihe + GOTS-Liste */
+.bio-siegel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 30px 0; border-bottom: 1px solid #e3e1d6; margin-bottom: 10px; }
+.bio-siegel__punkt { display: flex; gap: 12px; align-items: center; }
+.bio-siegel__punkt svg { flex: 0 0 44px; width: 44px; height: 44px; padding: 10px; border-radius: 50%; background: #dbe8df; fill: none; stroke: #3b6b52; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bio-siegel__punkt b { display: block; color: #2a2e26; font-size: 15px; } .bio-siegel__punkt span { display: block; color: #6d7369; font-size: 13.5px; line-height: 1.35; }
+.bio-liste { list-style: none; margin: 0 0 18px; padding: 0; font-size: 15px; } .bio-liste li { padding: 7px 0 7px 26px; border-bottom: 1px solid #a9bdb0; position: relative; line-height: 1.45; }
+.bio-liste li::before { content: ""; position: absolute; left: 4px; top: 13px; width: 10px; height: 10px; border-radius: 0 60% 0 60%; background: #3b6b52; }
+#gots { scroll-margin-top: 140px; }
+@media (max-width: 999px) { .bio-siegel { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .bio-siegel { grid-template-columns: 1fr; gap: 12px; padding: 22px 0; } }
