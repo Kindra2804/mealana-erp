@@ -565,6 +565,18 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-12 (Abend): Kuvert-Etikett, Merkmale neu, Preisschilder-Werkstatt, Paket 1.0.9
+
+Details in `.claude/memory/project_kuvert_etikett.md`, `project_preisschilder.md`. Migrationen **233–235**, nächste **236**.
+- **Kuvert-Etikett** für fertige Schilder (A4, 2 × 210 × 148 mm): Bild, Aufbau, Preis, Artikelnummer als Code 128 (`KuvertEtikettService`, `konfigurator/kuvert_etikett.php`). Kasse sucht scan-tolerant (ß/? → -, Y↔Z, online + offline).
+- **Merkmale neu (Migr. 233):** Slugs wollqualitaet, zusammensetzung, gewicht_laenge, lauflaenge_bereich (auto), nadelstaerke, maschenprobe, maschenprobe_10cm (auto, Babsi: bleibt neben Drops-Garngruppe), garngruppe, auszeichnung (BIO/GOTS/Handgefärbt), pflege (`merkmal_werte.symbol`). `MerkmalService`: Vater vererbt an Kinder, Bereiche ableiten, Werte zusammenführen, Massenaktion „Merkmal setzen“. Auswahlfenster mit Suche + neuer Wert.
+- **JTL-Merkmal-Import:** `php scripts/jtl_merkmale_import.php <Artikelmerkmale.csv> [--dry-run]` (Ameise-Export). Dev: 9.753 von 11.893 Artikeln, 9 Väter mit uneinheitlichen Farben; JTL-„Pflegeanleitung“ (Garnnamen) ignoriert. **Live noch nicht gelaufen.**
+- **Preisschilder** (`src/modules/schilder/`, `public/schilder/`, Vorlagen `templates/dokumente/preisschild/`): Messe-Schild (8/A4, 95 × 60 mm wie die alte Vorlage, Messepreis %, QR), Laden-Schild (Hausfarbe, Bild, Pflegesymbole `PflegeSymbole.php`, Badges Aktion/Auslauf/Letzte Chance/Neu/Handgefärbt/BIO/GOTS), Tischaufsteller (A4 quer, Klappkarte, großer QR), IVAR-Streifen (40 × 150 mm), Anhänger (50 × 90 mm, Code 128) + **Anhänger ohne Artikel** für Babsis Strickstücke (Migr. 235, `strickstuecke.php`). Grundpreis bei Garn immer je kg. Einstiege: Messe vorbereiten (🏷), Artikelliste-Massenaktion, Artikel → Preisschilder.
+- **Druckprotokoll (Migr. 234 `preisschild_drucke`) + „Schilder veraltet“** (`schilder/veraltet.php`, Dashboard-Hinweis): Preis/Aktion/Texte/Badges geändert → nachdrucken oder „ist erledigt“; Messe-Schilder standardmäßig ausgeblendet.
+- `PdfGenerator::alsString(..., 'landscape')` neu; `BelegBilder::vorschau(..., $pixel)`.
+- **Paket `nahtlos-1.0.9.zip`** gebaut (Commit 83aa61b). Beim Bau: Git-Index wegen CRLF aufgefrischt (kein Inhalt geändert), `erp/VERSION` war in Git noch 1.0.0 → jetzt 1.0.9.
+- **Nächste Schritte:** 1.0.9 auf Live einspielen, dort Merkmal-Import (erst `--dry-run`), Pflegesymbole per Massenaktion pflegen; Scanner-Test Kuvert-Etikett; weiterhin offen von heute früh: Testbestellungen SOW + Bio, Wartung aus, Startbestand.
+
 ## Update 2026-11-12: SOW-Startseite + 301, bio-wolle.at komplett aufgebaut, 1.0.5–1.0.8
 
 Details in `.claude/memory/project_sow_umstellung.md`, `project_bio_wolle_aufbau.md`, `project_update_mechanismus.md`.
