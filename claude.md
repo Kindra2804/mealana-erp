@@ -565,6 +565,17 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-12: SOW-Startseite + 301, bio-wolle.at komplett aufgebaut, 1.0.5–1.0.8
+
+Details in `.claude/memory/project_sow_umstellung.md`, `project_bio_wolle_aufbau.md`, `project_update_mechanismus.md`.
+- **SOW:** Startseite (Seite 3532), Menü/Slides/Kacheln im Live-ERP (Claude per Tunnel 10.13.13.1, Benutzer „Jarvis extern“), Kategorie-Basis `/kategorie/`, 301 + robots (Snippet 3533), Produktkarten wie indra. Füllmenge „50 g“ statt „0,05 kg“ (Snippet `fuellmenge_in_gramm.php`, auch Bio).
+- **bio-wolle.at (WordPress neu, eigener Server):** Plugins/Einstellungen/Rechtsseiten/Steuern/Versand von SOW, Blocksy in Tanne hell, Nunito + Fraunces lokal, Fußband (Gewährleistung klein + Popover, Widerruf überall), SMTP shop@bio-wolle.at, Komplettabgleich (20 Väter), ERP-Menü, 6 Kacheln, Hero-Slide, Startseite nach Entwurf (`shop/wp-snippets/bio_startseite_inhalt.html`), 301 für 164 alte JTL-Adressen (Snippet 1108). Bank + PayPal von Jacky.
+- **Wartung:** Beide Shops hinter 503-Wartungsseite (SOW Snippet 25, Bio Snippet 1109); Go-Live = Snippet deaktivieren. Offen: Testbestellung je Shop.
+- **indra-design:** Gewährleistungsetikett klein im dunklen Fußband.
+- **Pakete:** 1.0.5 (Artikel → Grundpreise, Import vererbt Grundpreis-Felder), 1.0.6 (Fix „Stk.“/JSON), 1.0.7 (Bilder nach EXIF-Drehung ausrichten), **1.0.8** (Artikel → GPSR-Texte: JTL-GPSR-Blöcke aus Beschreibungen entfernen, ~2.700 Artikel, mit Sicherung). Keine Migration; nächste weiter **233**.
+- **Auf der Liste (Update-Weg, vor Kunden):** veraltete Dateien beim Update entfernen; „Was ist neu“ inkl. Zwischenversionen.
+- **Nächste Schritte:** Jacky: 1.0.8 auf Live, GPSR-Texte prüfen/entfernen (Adressen hatnut/Sonstige nachtragen), Testbestellungen SOW + Bio, dann Wartung aus. Neue Session: Schilder + Preisschilder-Modul (`project_preisschilder.md`).
+
 ## Update 2026-11-11: SOW-Shop aufgebaut, Artikelimport Live, 1.0.2–1.0.4 (JTL-Abgleich, Schild-Bausteine)
 
 Details in `.claude/memory/project_sow_umstellung.md`, `project_jtl_parallelbetrieb.md`, `project_konfigurator_modul.md`, `project_1_0_check.md`.

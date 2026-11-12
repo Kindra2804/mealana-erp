@@ -24,3 +24,7 @@ metadata:
 - Testumgebung: scratchpad nahtlos_test (update_vorbereiten.sh, update_test.php, Browser-Test), DB nahtlos_test.
 
 **How to apply:** MeaLana-Live ab 1.0 nur noch über Pakete aktualisieren (vorher dort testen, dann Kunden). Verwandt: [[project-1-0-check]], [[project-lizenzierung-preise]].
+
+**Klarstellung 2026-11-12:** Versionen können übersprungen werden (1.0.0 → 1.0.8 geht): Paket = kompletter Stand, Migrator holt fehlende Migrationen über schema_migrations nach, Prüfung nur „neuer als installiert“ + Lizenz/Wartungsdatum.
+**TODO (Jacky: „kommt auf die Liste“, vor Verkauf an Kunden):** Update löscht keine Dateien → beim Einspielen in erp/src + erp/public Programmdateien entfernen, die nicht mehr im Manifest stehen (Uploads, storage, geschützte Pfade ausnehmen; vorher in die Datei-Sicherung). Sonst bleiben entfernte Seiten über ihre URL erreichbar.
+**TODO 2 (Jacky 2026-11-12, auf die Liste):** „Was ist neu“ bei Sprüngen über mehrere Versionen auch für alle Zwischenversionen zeigen. Machbar: bauen.php nimmt alle docs/versionen/*.md ins signierte Manifest (nicht nur die eigene), die Update-Seite zeigt alle Einträge mit Version > installiert, neueste oben.

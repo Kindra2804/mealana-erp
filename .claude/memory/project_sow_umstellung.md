@@ -2,7 +2,10 @@
 name: project-sow-umstellung
 description: "sockenwolle-online JTL → Woo (Start 2026-11-11): Ablauf A Shop umstellen / B Artikel per JTL-Import mit Kategorie-Zuordnungstabelle (Migr. 230), Entscheidung: keine Wurzelkategorie je Shop"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: 450f5684-1786-448a-83f3-3d027746006f
+  modified: 2026-11-12T07:00:18.943Z
 ---
 
 **Start 2026-11-11.** Stand: auf sockenwolle-online.at läuft noch JTL (vom Wawi schon getrennt). Artikel kommen per **frischem JTL-Export** (nicht per Datentransfer aus Dev).
@@ -34,4 +37,19 @@ metadata:
 
 **Stand Abend 2026-11-11:** SOW-Artikel auf Live importiert (89 Väter, 1.289 Kinder, 122 Einzelartikel, Kanal SOW). Gefundene Stolpersteine, alle gelöst: fehlende Warengruppen (artikelgruppen_mealana.sql), Stammdaten ohne Kinderzeilen, max_input_vars=1000 auf Live (→ 20000, Sperre im Import gebaut). Startbestand kommt über den JTL-Abgleich (Erstabgleich, siehe [[project_jtl_parallelbetrieb]]), sobald 1.0.4 live ist.
 **Für 2026-11-12 eingeplant:** SOW-Startseite fertig bauen wie im Entwurf: Hero-Slider, „Schnell finden nach Stärke“-Knöpfe (4-fach/6-fach/8-fach), Kacheln „Beliebte Kategorien“, „Neu eingetroffen“, Hersteller-Band, Willkommen-Text + Box Wollboutique, 3 Vorteils-Boxen. Dazu das ERP-Shop-Menü (Hersteller, Stärke, Zusammensetzung, Farbe, Sparpakete, Nadeln & Zubehör, Bücher/Anleitungen, Sale %). Die Artikel sollten dann schon im Shop sein.
+**✅ 2026-11-12 vormittags gebaut (Go-Live heute geplant):**
+- **Live-ERP-Zugang für Claude:** Jackys WireGuard-Tunnel, `http://10.13.13.1/mealana/`, Benutzer `claude` (Rolle Assistent, Anzeigename „Jarvis extern“), Zugang in `import/zugang Live ERP.txt`, Helfer `.claude-browser-tools/live_lib.js` (Login → ctx.request auf menue_aktion.php/slide_speichern.php). SOW = **Shop 3** im Live-ERP.
+- **Shop-Menü** (Live-ERP Punkte #17–58, Orte menu_1+menu_mobile): Hersteller (alle, Spalten), Stärke (4/6/8-fach + 5–5,5), Zusammensetzung, Farbe, Sparpakete, Nadeln & Zubehör (mit Zubehör-Unterpunkten), Bücher/Anleitungen; Unterpunkte explizit mit „nur mit Artikeln“ (zählt in WP auch Artikel ohne Bestand). Sale fehlt noch. Skript `live_sow_menue.js`.
+- Blocksy: Menü in die **untere Kopfzeile** verschoben (header_placements via Temp-Snippet 39, danach wieder aus), sonst klappt Blocksy Punkte in „Mehr“. Theme-Mods-Sicherung `sow_mods_20261112.json`.
+- **Slides** 21 (Allgemein) + 22 (Weihnachten, bis 24.12.) und **8 Kacheln** 23–30 im Live-ERP, Bilder aus Produktfotos gerendert (Scratchpad Session 450f5684 `sow_hero/`, hero.html/kachel.html). Startseite = Seite **3532** (`sow_startseite_inhalt.html`, `sow_startseite_bauen.js`), Stil im Grundstil-Snippet 52.
+- Produktkarten: Preis vor Button, Woo-Preissuffix „inkl. MWSt.“ entfernt (Germanized zeigt es), 2 Spalten am Handy. Germanized-Widerrufsbutton + EU-Gewährleistungsetikett als Band unter der Fußzeile (Etikett 130 px, Germanized setzt min-width).
+- **301 + robots.txt:** WPCode-Snippet **3533** (`shop/wp-snippets/sow_weiterleitungen_robots.php`), 94 JTL-Adressen, `…__…`-Filter → Grundseite. Yoast entfernt die WP-Standardzeilen (User-agent + wp-admin) aus robots.txt → eigener Block ohne wp-admin-Zeilen.
+- Woo `hide_out_of_stock = yes` → ohne Startbestand sind nur 57 von 211 Artikeln sichtbar.
+- **Offen für Go-Live (Jacky):** Erstabgleich JTL → Live-ERP (Startbestand), **Bankkonto für Vorkasse fehlt** (Woo → Zahlungen → Vorkasse), PayPal verbinden, Testbestellung; dann Claude: Snippet 25 (Wartung) aus, Woo-Sichtbarkeit Live, Cache. Kategorie-Basis heißt `product-category` (englisch) — vor Go-Live entscheiden, ob `produkt-kategorie`/`kategorie`.
+
+**2026-11-12 mittags:** Kategorie-Basis auf `/kategorie/` umgestellt (Startseite, 301-Snippet 3533 inkl. `/product-category/…` → `/kategorie/…`). Produktkarten wie indra-design: Titel max. 2 Zeilen → Button → Preis/Grundpreis/Angaben (CSS-order im Grundstil). **Grundpreis-Fehler gefunden:** JTL-Import setzte bei Kindern keine Grundpreis-Felder (Shop „0,00 €/kg“); JTL-Daten selbst teils „100 kg“ (99 Zeilen in der SOW-Datei, GP dort aus, ERP-Garn-Default schaltet ihn ein) bzw. leer. → **1.0.5 gebaut** (Commit e6023bd, `D:/ERP/pakete/nahtlos-1.0.5.zip`): Artikel → **Grundpreise** (`public/artikel/grundpreise.php`, `GrundpreisPruefungService`, Problemfälle, Massenbearbeitung, Speichern = propagiereZuKindern + markiereFuerErneutenSync) + Import-Fix (Kinder bekommen Vater-Grundpreis). Getestet auf Dev mit ZZTEST-Daten (aufgeräumt). **Offen:** Jacky spielt 1.0.5 auf Live ein (Superadmin), dann SOW-Grundpreise korrigieren (Kanal-Filter SOW).
+
 **bio-wolle gesichert 2026-11-11:** `import/bio_jtl_urls/` (UEBERSICHT.md, alle_urls.tsv, urls.txt): 168 Adressen = 48 aus der Sitemap, 20 Inhaltsseiten, 94 Filterseiten, 5 technische. Der Durchlauf ohne Filter-Kombinationen (`A__B`) ist vollständig. Jacky darf bio-wolle abschalten und mit Woo vorbereiten (neue Server erst Ende November).
+
+**Stand 2026-11-12 abends:** 1.0.5–1.0.8 gebaut (1.0.6 live, 1.0.7/1.0.8 bei Jacky). Grundpreise: 15 Väter kg→g, 12× „Stk.“ geleert, 86 Problemfälle für Jacky+Babsi. Weihnachtsanhänger-Texte (22 ID-XM) ohne alten Preissatz. Füllmenge in Gramm (Snippet 3535). Bank + PayPal eingetragen. Offen für Go-Live: Testbestellung (wartet auf Babsi), dann Snippet 25 aus + Cache. Bio parallel fertig, siehe [[project-bio-wolle-aufbau]].
+
