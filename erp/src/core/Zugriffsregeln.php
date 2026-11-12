@@ -52,6 +52,7 @@ final class Zugriffsregeln
             'massenupdate.php'              => 'artikel.bearbeiten',
             'grundpreise.php'               => 'artikel.bearbeiten',
             'grundpreise_speichern.php'     => 'artikel.bearbeiten',
+            'gpsr_texte.php'                => 'artikel.bearbeiten',
             'spalten_einstellung_speichern.php' => 'artikel.bearbeiten',
             'seo_speichern.php'             => 'artikel.bearbeiten',
             'merkmal_ajax.php'              => 'artikel.bearbeiten',

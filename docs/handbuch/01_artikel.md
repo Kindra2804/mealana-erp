@@ -170,3 +170,14 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 | Bild lädt nicht hoch | Dateiformat prüfen (JPG/PNG/GIF/WebP) · Dateigröße max. 10 MB |
 | Kind-Artikel hat falschen Preis | Vater-Preis ändern → wird automatisch an Kinder propagiert |
 | EAN wird als "schon vorhanden" abgelehnt | EAN ist einem anderen Artikel zugeordnet — suchen und bereinigen |
+
+## GPSR-Texte bereinigen (Artikel → GPSR-Texte)
+
+Aus JTL stehen bei vielen Artikeln (KnitPro, TOPP, Addi, ProLana …) die Herstellerangaben „Kontaktinformation / Verantwortliche Person gem. Art. 19 EU GPSR“ in der Beschreibung. Im Shop stand das doppelt: Die Pflichtangaben zeigt der Shop ohnehin im Reiter **Produktsicherheit** aus den Hersteller-Stammdaten.
+
+1. Seite öffnen: Sie zeigt die Zahl der betroffenen Artikel (nach Hersteller) und ob danach eigener Text bleibt. Es wird noch nichts geändert.
+2. Steht oben ein blaues **!** „Adresse fehlt“: zuerst unter Artikel → Hersteller die Adresse nachtragen.
+3. **„GPSR-Texte bei … Artikeln entfernen“** schneidet ab der ersten GPSR-Überschrift ab (Väter und Kinder, Lang- und Kurzbeschreibung) und merkt die Artikel für den Shop-Abgleich vor.
+
+Die alten Texte werden vorher in `erp/storage/gpsr_sicherung/` gesichert (JSON mit Artikelnummer und altem Text).
+

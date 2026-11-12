@@ -194,6 +194,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-slider" class="sub">↳ Shop-Slider & Kacheln</a>
             <a href="#artikel-menue" class="sub">↳ Shop-Menü</a>
             <a href="#artikel-grundpreise" class="sub">↳ Grundpreise prüfen</a>
+            <a href="#artikel-gpsr-texte" class="sub">↳ GPSR-Texte bereinigen</a>
             <a href="#lager">Lager</a>
             <a href="#lager-lagerplaetze" class="sub">↳ Lagerplätze</a>
             <a href="#lager-lagerwert" class="sub">↳ Lagerwert</a>
@@ -352,6 +353,13 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Werte direkt in der Zeile ändern – oder Zeilen markieren und oben <strong>„Für markierte setzen“</strong> bzw. die Schnellknöpfe <strong>Garn 50 g / 100 g / 150 g</strong> oder „kein Grundpreis“ (Nadeln, Bücher).</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Änderungen speichern</strong>: Die Angaben gehen an alle Kinder (wie beim Speichern eines Vaters), der Shop-Abgleich überträgt sie. „Markierte an Kinder vererben“ gibt die Vater-Angaben ohne Änderung weiter.</div></div>
             <div class="ba-hint">💡 Garn mit Einheit g zeigt der Shop immer je 1 kg (Preisauszeichnungsgesetz) – die Bezugsmenge ist dabei egal.</div>
+
+            <h3 id="artikel-gpsr-texte">GPSR-Texte bereinigen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Artikel → <strong>GPSR-Texte</strong>: Aus JTL stehen bei vielen Artikeln (KnitPro, TOPP, Addi, ProLana …) die Herstellerangaben „Kontaktinformation / Verantwortliche Person gem. Art. 19 EU GPSR“ in der Beschreibung. Im Shop stand das doppelt – die Pflichtangaben zeigt der Shop ohnehin im Reiter <strong>Produktsicherheit</strong> aus den Hersteller-Stammdaten.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Seite öffnen: Sie zeigt, wie viele Artikel betroffen sind, nach Hersteller, und ob danach eigener Text bleibt. Es wird noch nichts geändert.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Steht oben ein blaues <strong>!</strong> „Adresse fehlt“: zuerst unter Artikel → Hersteller die Adresse nachtragen.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>„GPSR-Texte bei … Artikeln entfernen“</strong>: schneidet ab der ersten GPSR-Überschrift ab (Väter und Kinder, Lang- und Kurzbeschreibung) und merkt die Artikel für den Shop-Abgleich vor.</div></div>
+            <div class="ba-hint">💡 Die alten Texte werden vorher in <code>erp/storage/gpsr_sicherung/</code> gesichert (JSON mit Artikelnummer und altem Text).</div>
 
             <!-- LAGER -->
             <h3 id="artikel-schilder">Konfigurator: Schild-Bausteine &amp; fertige Schilder <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
