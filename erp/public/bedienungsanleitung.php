@@ -399,7 +399,16 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Häkchen prüfen. „Zuletzt gedruckt“ zeigt Datum und Preis des letzten Drucks, „Preis geändert“ heißt nachdrucken.</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Start bei Feld</strong> 1–8 (1 2 / 3 4 / 5 6 / 7 8 von oben links) für angefangene Blätter, optional <strong>Messepreis</strong> (% billiger, wird mit „statt“ gedruckt) und <strong>QR</strong> „Farbe nicht da? Online bestellen“ zu einem Shop, Schnittlinien an/aus → <strong>🖨 Drucken</strong>.</div></div>
             <div class="ba-hint">💡 Grundpreis bei Garn immer <strong>je kg</strong> (gesetzliche Bezugsmenge), wie im Shop. Unterschiedliche Farbpreise → „ab“. Laufende Aktionen erscheinen mit „statt“. Jeder Druck wird gemerkt (für die spätere Liste „Schilder veraltet“).</div>
-            <h2 id="lager">Lager <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
+            <p><strong>Laden-Schild</strong> (gleiches Raster): oben auf <strong>🏪 Laden-Schild</strong> umschalten, die Auswahl bleibt. Streifen und Name in der <strong>Hausfarbe</strong> (MeaLana-Blau, Sockenwolle-Weinrot, bio-wolle-Grün, grau), dazu Zusammensetzung, Lauflänge, Nadel in mm, Maschenprobe, <strong>Pflegesymbole</strong> (Merkmal „Pflege“) und optional <strong>mit Bild</strong>.</p>
+            <table class="ba-table">
+                <tr><th>Badge</th><th>Wann</th></tr>
+                <tr><td>AKTION −x %</td><td>Aktion oder SALE läuft (mit „statt“ und „Aktion bis …“)</td></tr>
+                <tr><td>AUSLAUF</td><td>Auslaufartikel (beim Vater: alle aktiven Farben)</td></tr>
+                <tr><td>LETZTE CHANCE</td><td>Auslauf und höchstens 3 Stück im eigenen Lager (ohne Messe)</td></tr>
+                <tr><td>NEU</td><td>jünger als 60 Tage (nicht bei Auslauf)</td></tr>
+                <tr><td>HANDGEFÄRBT / BIO / GOTS</td><td>Merkmal „Auszeichnung“ am Artikel</td></tr>
+            </table>
+            <div class="ba-hint">💡 Die Spalte <strong>Badges</strong> in der Auswahl zeigt vorab, was gedruckt wird. „keine Pflege“ = Pflegesymbole fehlen noch.</div>            <h2 id="lager">Lager <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Das Lager-Modul verwaltet Bestände und Bewegungen. Zwei Lager: <strong>Standardlager</strong> und <strong>Lager Messe</strong>.</p>
             <p>Bestand = <strong>Ist</strong> (physisch vorhanden) − <strong>Reserviert</strong> (für offene Aufträge) = <strong>Verfügbar</strong> (kann noch verkauft werden).</p>
             <div class="ba-warn">⚠ Bestände nie direkt in der Datenbank ändern! Immer über Wareneingang oder Storno. Direkte Änderungen zerstören das Bewegungsprotokoll.</div>

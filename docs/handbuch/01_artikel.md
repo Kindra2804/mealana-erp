@@ -209,7 +209,21 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 > Der **Grundpreis** steht bei Garn immer **je kg** (gesetzliche Bezugsmenge in Österreich), wie im Shop. Haben die Farben unterschiedliche Preise, steht „ab“ davor. Laufende Aktionen werden mit „statt“ gedruckt.
 >
 > Jeder Druck wird gemerkt (Datum, Preis). Daraus kommt später die Liste „Schilder veraltet“.
----
+
+**Laden-Schild** (gleiches Raster, 8 pro A4): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
+- Farbiger Streifen in der **Hausfarbe** (MeaLana-Blau, Sockenwolle-Weinrot, bio-wolle-Grün oder grau), Name in derselben Farbe.
+- Zusammensetzung, Lauflänge, Nadelstärke in mm, Maschenprobe, **Pflegesymbole** (Merkmal „Pflege“), optional **mit Bild** (erstes Artikelbild, sonst eines der Farben).
+- **Badges** oben rechts, automatisch:
+
+| Badge | Wann |
+|---|---|
+| AKTION −x % | Aktion oder SALE läuft (mit „statt“ und „Aktion bis …“) |
+| AUSLAUF | Artikel ist Auslaufartikel (beim Vater: alle aktiven Farben) |
+| LETZTE CHANCE | Auslauf und höchstens 3 Stück im eigenen Lager (ohne Messe) |
+| NEU | Artikel jünger als 60 Tage (nicht bei Auslauf) |
+| HANDGEFÄRBT / BIO / GOTS | Merkmal „Auszeichnung“ am Artikel |
+
+- In der Auswahl zeigt die Spalte **Badges**, was gedruckt wird; „keine Pflege“ heißt: Pflegesymbole fehlen noch.---
 
 ## Häufige Probleme
 

@@ -5,6 +5,8 @@ require_once __DIR__ . '/../../core/QrCode.php';
 require_once __DIR__ . '/../dokumente/PdfGenerator.php';
 require_once __DIR__ . '/../preise/PreisService.php';
 require_once __DIR__ . '/../preise/PreisRepository.php';
+require_once __DIR__ . '/../dokumente/BelegBilder.php';
+require_once __DIR__ . '/PflegeSymbole.php';
 
 /**
  * PreisschildService – Preisschilder aus Artikeldaten (Jacky + Babsi 2026-11-12, Entwurf D:\ERP\preisschilder_mockup.svg).
@@ -19,11 +21,29 @@ require_once __DIR__ . '/../preise/PreisRepository.php';
  * - Haben die Farben verschiedene Preise, steht "ab" vor dem Preis.
  * - Jeder Druck wird in preisschild_drucke protokolliert (für "Schilder veraltet").
  *
+ * Vorlage "laden": gleiches Raster, dazu Hausfarben-Streifen, optional Bild, Maschenprobe, Pflegesymbole
+ *   und Badges: AKTION -x % (mit "statt" und "bis"), AUSLAUF, LETZTE CHANCE (Auslauf + Bestand <= 3),
+ *   NEU (angelegt vor < 60 Tagen), BIO / GOTS / HANDGEFÄRBT (Merkmal "Auszeichnung").
+ *
  * Merkmale werden über ihren slug gelesen (Migration 233).
  */
 class PreisschildService
 {
-    public const VORLAGEN = ['messe' => ['name' => 'Messe-Schild', 'je_seite' => 8]];
+    public const VORLAGEN = [
+        'messe' => ['name' => 'Messe-Schild', 'je_seite' => 8],
+        'laden' => ['name' => 'Laden-Schild', 'je_seite' => 8],
+    ];
+    /** Hausfarben für den Streifen am Laden-Schild */
+    public const HAUSFARBEN = [
+        'mealana' => ['MeaLana-Blau', '#1d4076'],
+        'sow'     => ['Sockenwolle-Weinrot', '#8e3438'],
+        'bio'     => ['bio-wolle-Grün', '#3b6b52'],
+        'grau'    => ['Neutral (grau)', '#555555'],
+    ];
+    private const NEU_TAGE = 60;
+    private const LETZTE_CHANCE_BIS = 3;
+    private const BADGE_FARBEN = ['aktion' => '#c0392b', 'auslauf' => '#e67e22', 'letzte' => '#8e1b1b', 'neu' => '#1f7a8c',
+                                  'bio' => '#3b6b52', 'gots' => '#3b6b52', 'handgefaerbt' => '#7d3c98'];
 
     private PDO $db;
     private PreisService $preise;
@@ -74,7 +94,7 @@ class PreisschildService
     {
         $erg = [];
         foreach ($schildIds as $id) {
-            $d = $this->daten($id, []);
+            $d = $this->daten($id, ['vorlage' => $vorlage]);
             if (!$d) continue;
             $st = $this->db->prepare("SELECT preis, statt_preis, gedruckt_am FROM preisschild_drucke
                                       WHERE artikel_id = ? AND vorlage = ? ORDER BY gedruckt_am DESC, id DESC LIMIT 1");
@@ -91,6 +111,8 @@ class PreisschildService
     public function pdf(string $vorlage, array $schildIds, array $opt, ?int $benutzerId): string
     {
         if (!isset(self::VORLAGEN[$vorlage])) throw new InvalidArgumentException('Unbekannte Vorlage.');
+        $opt['vorlage'] = $vorlage;
+        if ($vorlage !== 'messe') $opt['messe_prozent'] = 0;
         $jeSeite = self::VORLAGEN[$vorlage]['je_seite'];
 
         $schilder = [];
@@ -107,6 +129,7 @@ class PreisschildService
         $pdf = (new PdfGenerator())->alsString("preisschild/$vorlage.html.twig", [
             'seiten'  => array_chunk($felder, $jeSeite),
             'schnitt' => !empty($opt['schnitt']),
+            'farbe'   => (self::HAUSFARBEN[$opt['farbe'] ?? ''] ?? self::HAUSFARBEN['mealana'])[1],
         ]);
 
         $log = $this->db->prepare("INSERT INTO preisschild_drucke (artikel_id, vorlage, preis, statt_preis, merkmale, benutzer_id) VALUES (?, ?, ?, ?, ?, ?)");
@@ -121,7 +144,7 @@ class PreisschildService
     {
         $st = $this->db->prepare("
             SELECT a.id, a.artikelnummer, a.name, a.inhalt_menge, a.inhalt_einheit, a.grundpreis_bezugsmenge,
-                   a.grundpreis_anzeigen, t.code AS typ, h.name AS hersteller
+                   a.grundpreis_anzeigen, a.ist_auslaufartikel, a.erstellt_am, t.code AS typ, h.name AS hersteller
             FROM artikel a
             JOIN artikel_typen t ON t.id = a.artikeltyp_id
             LEFT JOIN hersteller h ON h.id = a.hersteller_id
@@ -131,7 +154,7 @@ class PreisschildService
         if (!$a) return null;
 
         $m = $this->merkmale($id);
-        [$preis, $statt, $ab] = $this->preis($id, (float) ($opt['messe_prozent'] ?? 0));
+        [$preis, $statt, $ab, $bis] = $this->preis($id, (float) ($opt['messe_prozent'] ?? 0));
 
         $titel = $a['name'];
         $d = [
@@ -151,6 +174,21 @@ class PreisschildService
         ];
         $d['protokoll'] = ['zusammensetzung' => $d['zusammensetzung'], 'lauflaenge' => $d['lauflaenge'],
                            'nadel' => $d['nadel'], 'grundpreis' => $d['grundpreis']];
+
+        if (($opt['vorlage'] ?? '') === 'laden' || !empty($opt['mit_badges'])) {
+            $symbole = $this->symbole($id);
+            $d['badges']      = $this->badges($a, $id, $preis, $statt, $symbole['auszeichnung'] ?? []);
+            $d['aktion_bis']  = $statt && $bis ? date('d.m.Y', strtotime($bis)) : '';
+            $d['lauf_kurz']   = preg_replace('/\s*=\s*/u', ' / ', $m['gewicht_laenge'][0] ?? '');
+            $d['nadel_mm']    = $d['nadel'] ? preg_replace('/^Nadelstärke /u', '', $d['nadel']) . ' mm' : '';
+            $d['maschen']     = $this->maschenText($m['maschenprobe'][0] ?? '');
+            $d['pflege']      = array_values(array_filter(array_map([PflegeSymbole::class, 'dataUri'], $symbole['pflege'] ?? [])));
+            $d['bild']        = !empty($opt['mit_bild']) ? $this->bild($id) : '';
+            $d['protokoll']['badges'] = array_column($d['badges'], 'text');
+            // Titel neben den Badges hat nur 56 mm, ohne Badges 85 mm (15 / 12,5 / 10,5 pt)
+            $len = mb_strlen($titel); [$g1, $g2] = $d['badges'] ? [15, 20] : [24, 30];
+            $d['titel_klasse'] = $len > $g2 ? 'klein' : ($len > $g1 ? 'mittel' : '');
+        }
         return $d;
     }
 
@@ -183,9 +221,9 @@ class PreisschildService
             $eff = $this->preise->getEffektiverPreis((int) $k, $this->standardKg);
             if ($eff['brutto_vk'] === null) continue;
             $std = $this->preisRepo->findStandardPreis((int) $k);
-            $preise[(int) $k] = ['eff' => (float) $eff['brutto_vk'], 'std' => $std ? (float) $std['brutto_vk'] : (float) $eff['brutto_vk']];
+            $preise[(int) $k] = ['eff' => (float) $eff['brutto_vk'], 'std' => $std ? (float) $std['brutto_vk'] : (float) $eff['brutto_vk'], 'bis' => $eff['bis'] ?? null];
         }
-        if (!$preise) return [null, null, false];
+        if (!$preise) return [null, null, false, null];
 
         // Vater-eigener Preis hat Vorrang, sonst die günstigste Farbe
         $basis = $preise[$id] ?? null;
@@ -198,7 +236,80 @@ class PreisschildService
         $preis = $basis['eff'];
         if ($messeProzent > 0) $preis = min($preis, round($basis['std'] * (1 - $messeProzent / 100), 2));
         $statt = $preis < $basis['std'] - 0.004 ? $basis['std'] : null;
-        return [round($preis, 2), $statt, $ab];
+        return [round($preis, 2), $statt, $ab, $basis['bis']];
+    }
+
+    /** slug => [symbol-Schlüssel] für Merkmale mit Symbol (Pflege, Auszeichnung) */
+    private function symbole(int $id): array
+    {
+        $st = $this->db->prepare("
+            SELECT m.slug, w.symbol FROM artikel_merkmale am
+            JOIN merkmale m ON m.id = am.merkmal_id AND m.aktiv = 1 AND m.slug IN ('pflege', 'auszeichnung')
+            JOIN merkmal_werte w ON w.id = am.merkmal_wert_id
+            WHERE am.artikel_id = ? AND w.symbol IS NOT NULL ORDER BY w.sort_order");
+        $st->execute([$id]);
+        $erg = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $z) $erg[$z['slug']][] = $z['symbol'];
+        return $erg;
+    }
+
+    /** Badges in Anzeige-Reihenfolge: [text, farbe, rahmen(bool)] */
+    private function badges(array $a, int $id, ?float $preis, ?float $statt, array $auszeichnung): array
+    {
+        $b = [];
+        if ($statt && $preis !== null) {
+            $b[] = ['text' => 'AKTION −' . round((1 - $preis / $statt) * 100) . ' %', 'farbe' => self::BADGE_FARBEN['aktion'], 'rahmen' => false];
+        }
+        if ($this->istAuslauf($a, $id)) {
+            $letzte = $this->bestand($id) <= self::LETZTE_CHANCE_BIS;
+            $b[] = $letzte ? ['text' => 'LETZTE CHANCE', 'farbe' => self::BADGE_FARBEN['letzte'], 'rahmen' => false]
+                           : ['text' => 'AUSLAUF', 'farbe' => self::BADGE_FARBEN['auslauf'], 'rahmen' => false];
+        } elseif ($a['erstellt_am'] && strtotime($a['erstellt_am']) >= strtotime('-' . self::NEU_TAGE . ' days')) {
+            $b[] = ['text' => 'NEU', 'farbe' => self::BADGE_FARBEN['neu'], 'rahmen' => false];
+        }
+        foreach (['handgefaerbt' => 'HANDGEFÄRBT', 'bio' => 'BIO', 'gots' => 'GOTS'] as $sym => $text) {
+            if (in_array($sym, $auszeichnung, true)) $b[] = ['text' => $text, 'farbe' => self::BADGE_FARBEN[$sym], 'rahmen' => $sym === 'gots'];
+        }
+        return $b;
+    }
+
+    /** Auslauf: der Artikel selbst, oder alle aktiven Farben eines Vaters */
+    private function istAuslauf(array $a, int $id): bool
+    {
+        if ($a['ist_auslaufartikel']) return true;
+        $st = $this->db->prepare("SELECT COUNT(*) AS n, SUM(ist_auslaufartikel) AS a FROM artikel WHERE vaterartikel_id = ? AND aktiv = 1");
+        $st->execute([$id]);
+        $k = $st->fetch(PDO::FETCH_ASSOC);
+        return $k['n'] > 0 && (int) $k['a'] === (int) $k['n'];
+    }
+
+    /** Bestand des Artikels und seiner Farben in eigenen Lagern (ohne Messe) */
+    private function bestand(int $id): float
+    {
+        $st = $this->db->prepare("
+            SELECT COALESCE(SUM(lb.bestand), 0) FROM lagerbestand lb
+            JOIN lager l ON l.id = lb.lager_id AND l.typ <> 'messe'
+            WHERE lb.artikel_id = ? OR lb.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = ?)");
+        $st->execute([$id, $id]);
+        return (float) $st->fetchColumn();
+    }
+
+    /** "10 x 10 cm = 21 M x 28 R" -> "21 M x 28 R / 10 cm" */
+    private function maschenText(string $w): string
+    {
+        return preg_match('/=\s*(.+)$/u', $w, $t) ? trim($t[1]) . ' / 10 cm' : $w;
+    }
+
+    /** Erstes Bild des Artikels (sonst einer Farbe), als JPEG-Base64 */
+    private function bild(int $id): string
+    {
+        $st = $this->db->prepare("
+            SELECT b.artikel_id, b.dateiname FROM artikel_bilder b
+            WHERE b.artikel_id = ? OR b.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = ?)
+            ORDER BY b.artikel_id = ? DESC, b.position, b.id LIMIT 1");
+        $st->execute([$id, $id, $id]);
+        $b = $st->fetch(PDO::FETCH_ASSOC);
+        return $b ? (BelegBilder::vorschau((int) $b['artikel_id'], $b['dateiname'], 400) ?? '') : '';
     }
 
     /** "1 kg = 55,00 €" -- Garn in Gramm immer je kg (AT-Grundpreisverordnung), sonst die gespeicherte Bezugsmenge */

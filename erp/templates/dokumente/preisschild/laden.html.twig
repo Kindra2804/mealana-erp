@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# Laden-Schild (PreisschildService): gleiches Raster wie das Messe-Schild (8 je A4, 95 x 68 mm),
+   dazu Hausfarben-Streifen, Badges oben rechts, optional Bild, Pflegesymbole unten links. #}
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #111; }
+  .seite { position: relative; width: 210mm; height: 296mm; page-break-after: always; overflow: hidden; }
+  .seite.letzte { page-break-after: auto; }
+  .feld { position: absolute; width: 95mm; height: 68mm; overflow: hidden; }
+  .feld.rahmen { border: 0.2mm solid #bbb; }
+  .streifen { position: absolute; left: 0; top: 0; width: 2.5mm; height: 68mm; }
+  .titel { position: absolute; left: 6mm; top: 3.5mm; width: 56mm; font-size: 15pt; font-weight: bold; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+  .titel.mittel { font-size: 12.5pt; top: 4mm; }
+  .titel.klein  { font-size: 10.5pt; top: 4.5mm; }
+  .titel.breit  { width: 85mm; }
+  .hersteller { position: absolute; left: 6mm; top: 11mm; font-size: 8.5pt; color: #555; }
+  .badges { position: absolute; right: 3mm; top: 3mm; width: 32mm; text-align: right; line-height: 1; }
+  .badge { display: inline-block; font-size: 6.3pt; font-weight: bold; color: #fff; padding: 0.8mm 1.8mm; border-radius: 2mm; margin: 0 0 1mm 1mm; letter-spacing: 0.2pt; }
+  .badge.rahmen { background: #fff; border: 0.3mm solid; padding: 0.5mm 1.5mm; }
+  .bild { position: absolute; left: 6mm; top: 18mm; width: 25mm; height: 25mm; }
+  .info { position: absolute; left: 6mm; top: 18mm; width: 85mm; font-size: 7.5pt; line-height: 1.45; }
+  .info.mit-bild { left: 34mm; width: 57mm; }
+  .info .label { color: #888; }
+  .zus { margin-bottom: 1mm; }
+  .pflege { position: absolute; left: 6mm; bottom: 7.5mm; }
+  .pflege img { width: 6mm; height: 5.2mm; margin-right: 0.6mm; }
+  .bis { position: absolute; left: 6mm; bottom: 3mm; font-size: 6.5pt; color: #888; }
+  .preisblock { position: absolute; right: 4mm; bottom: 3mm; width: 44mm; text-align: right; }
+  .statt { font-size: 8.5pt; color: #777; text-decoration: line-through; }
+  .preis { font-size: 22pt; font-weight: bold; line-height: 1.05; }
+  .preis.aktion { color: #c0392b; }
+  .preis .ab { font-size: 11pt; font-weight: normal; }
+  .gp { font-size: 7.5pt; margin-top: 0.5mm; }
+</style>
+</head>
+<body>
+{% for seite in seiten %}
+<div class="seite{% if loop.last %} letzte{% endif %}">
+  {% for s in seite %}
+    {% set spalte = (loop.index0 % 2) %}
+    {% set zeile = (loop.index0 // 2) %}
+    <div class="feld{% if schnitt %} rahmen{% endif %}" style="left: {{ 10 + spalte * 95 }}mm; top: {{ 12.5 + zeile * 68 }}mm;">
+    {% if s %}
+      <div class="streifen" style="background: {{ farbe }};"></div>
+      <div class="titel {{ s.titel_klasse }}{% if not s.badges %} breit{% endif %}" style="color: {{ farbe }};">{{ s.titel }}</div>
+      {% if s.hersteller %}<div class="hersteller">{{ s.hersteller }}</div>{% endif %}
+      {% if s.badges %}
+        <div class="badges">{% for b in s.badges %}<span class="badge{% if b.rahmen %} rahmen{% endif %}" style="{% if b.rahmen %}color: {{ b.farbe }}; border-color: {{ b.farbe }};{% else %}background: {{ b.farbe }};{% endif %}">{{ b.text }}</span>{% endfor %}</div>
+      {% endif %}
+      {% if s.bild %}<img class="bild" src="data:image/jpeg;base64,{{ s.bild }}">{% endif %}
+      <div class="info{% if s.bild %} mit-bild{% endif %}">
+        {% if s.zusammensetzung %}<div class="zus">{{ s.zusammensetzung }}</div>{% endif %}
+        {% if s.lauf_kurz %}<span class="label">Lauflänge</span> {{ s.lauf_kurz }}<br>{% endif %}
+        {% if s.nadel_mm %}<span class="label">Nadel</span> {{ s.nadel_mm }}<br>{% endif %}
+        {% if s.maschen %}<span class="label">Maschenprobe</span> {{ s.maschen }}{% endif %}
+      </div>
+      {% if s.pflege %}<div class="pflege">{% for p in s.pflege %}<img src="{{ p }}">{% endfor %}</div>{% endif %}
+      {% if s.aktion_bis %}<div class="bis">Aktion bis {{ s.aktion_bis }}</div>{% endif %}
+      <div class="preisblock">
+        {% if s.preis is not null %}
+          {% if s.statt %}<div class="statt">statt € {{ s.statt|euroformat }}</div>{% endif %}
+          <div class="preis{% if s.statt %} aktion{% endif %}">{% if s.ab %}<span class="ab">ab </span>{% endif %}€ {{ s.preis|euroformat }}</div>
+          {% if s.grundpreis %}<div class="gp">{{ s.grundpreis }}</div>{% endif %}
+        {% endif %}
+      </div>
+    {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endfor %}
+</body>
+</html>

@@ -13,6 +13,8 @@ try {
         'schnitt'       => !empty($_POST['schnitt']),
         'messe_prozent' => max(0, min(90, (float) str_replace(',', '.', (string) ($_POST['messe_prozent'] ?? 0)))),
         'qr_shop_id'    => (int) ($_POST['qr_shop_id'] ?? 0) ?: null,
+        'farbe'         => (string) ($_POST['farbe'] ?? 'mealana'),
+        'mit_bild'      => !empty($_POST['mit_bild']),
     ], (int) ($_SESSION['benutzer']['id'] ?? 0) ?: null);
 } catch (Throwable $e) {
     http_response_code(400);

@@ -1,6 +1,6 @@
 ---
 name: project_preisschilder
-description: "Preisschilder-Werkstatt — Entwurf 1 von Babsi freigegeben; Messe-Schild gebaut 2026-11-12 (Migr. 234), Merkmale neu (Migr. 233); Live offen (1.0.9); nächste Stufe Laden-Schild"
+description: "Preisschilder-Werkstatt — Messe- + Laden-Schild gebaut 2026-11-12 (Migr. 233/234), Live offen (1.0.9); nächste: Massenaktion Merkmal setzen, Schilder veraltet, Aufsteller/IVAR/Anhänger"
 metadata:
   node_type: memory
   type: project
@@ -19,6 +19,8 @@ metadata:
 - **D IVAR-Streifen** (Ikea IVAR auf Messen, seitlich am Holm), 40×150 mm (IVAR-Holm 44 mm, gemessen 2026-11-12).
 - **E Anhänger mit Loch** 50×90: für ausgestellte Schilder (mit Code 128) und **Babsis Strickstücke** (nicht im ERP → eigene Freitext-Maske mit Pflegesymbolen, damit sie immer gleich aussehen).
 - **F „Schilder veraltet“**: ERP merkt sich je gedrucktem Schild den Preis/Badge-Stand; Preis-/Aktions-/Auslaufänderung → Liste + Dashboard-Kachel, „Alle nachdrucken“ (für Babsi/Praktikanten).
+
+**Stufe B Laden-Schild — gebaut 2026-11-12:** Vorlage `preisschild/laden.html.twig`, Umschalten auf auswahl.php (POST vorlage, Auswahl bleibt), HAUSFARBEN (mealana #1d4076, sow #8e3438, bio #3b6b52, grau), mit_bild (BelegBilder 400 px), `PflegeSymbole.php` (15 SVGs nach ISO-3758-Grundformen, Schlüssel = merkmal_werte.symbol), Badges: AKTION −x % (statt+bis), AUSLAUF (Vater: alle Farben), LETZTE CHANCE (Auslauf + Bestand ≤ 3 ohne Messe), NEU (< 60 Tage), HANDGEFÄRBT/BIO/GOTS (Merkmal auszeichnung). Titelgröße passt sich an Badges an. Offen: Massenaktion „Merkmal setzen“ (Pflege schnell für viele Väter), F veraltet-Liste, C/D/E.
 
 **Stufe A Messe-Schild — gebaut 2026-11-12 (Babsi: GO für Entwurf 1):** `src/modules/schilder/PreisschildService.php` (VORLAGEN, schildArtikel Kind->Vater, artikelAusMesse, daten, pdf), Vorlage `templates/dokumente/preisschild/messe.html.twig` (8/A4, 95×68 mm, Rand 10/12,5 mm), Seiten `public/schilder/auswahl.php` (?sync_id / POST ids[], Start-Feld, Messepreis %, QR-Shop nur wenn shops.wc_url gesetzt, Schnitt) + `drucken.php`. Einstiege: Messe vorbereiten (🏷 je Papier-Messe/Sync-Paket), Artikelliste Massenaktion, Sidebar Artikel → Preisschilder. **Migration 234 `preisschild_drucke`** (artikel_id, vorlage, preis, statt_preis, merkmale JSON) = Grundlage für F „Schilder veraltet“. QR-Link: wc_url/?post_type=product&p=external_id. Dev hat keine wc_url → QR nur per CLI getestet. Nächste Stufen: B Laden-Schild (Badges, Pflegesymbole, Bild), F veraltet-Liste, dann C/D/E. Nächste Migration 235.
 
