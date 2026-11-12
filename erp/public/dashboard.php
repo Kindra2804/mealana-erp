@@ -630,6 +630,16 @@ require_once __DIR__ . '/includes/shell_top.php';
 <!-- ── MITTLERE REIHE: Kanal-Umsatz + Monatsvergleich ──────────────────────── -->
 <?php $offeneWerteKompakt = true; require __DIR__ . '/includes/offene_werte_kacheln.php'; ?>
 
+<?php // Preisschilder, die nicht mehr stimmen (10 Min. zwischengespeichert)
+if (Auth::kann('artikel.anzeigen')) {
+    require_once __DIR__ . '/../src/modules/schilder/PreisschildService.php';
+    try { $schilderVeraltet = (new PreisschildService())->anzahlVeraltetGemerkt(); } catch (Throwable $e) { $schilderVeraltet = 0; }
+    if ($schilderVeraltet > 0): ?>
+    <a href="<?= BASE_PATH ?>/schilder/veraltet.php" class="db-card" style="display:block;margin-bottom:16px;text-decoration:none;font-size:13px;color:#b45309">
+        🔁 <strong><?= $schilderVeraltet ?> Preisschild<?= $schilderVeraltet === 1 ? '' : 'er' ?></strong> im Laden stimm<?= $schilderVeraltet === 1 ? 't' : 'en' ?> nicht mehr (Preis, Aktion oder Badges geändert) → nachdrucken
+    </a>
+<?php endif; } ?>
+
 <div class="db-grid-mid">
 
     <!-- Umsatz Heute nach Kanal (Detail) -->

@@ -142,6 +142,7 @@ final class Zugriffsregeln
         'schilder' => [
             'auswahl.php'                    => 'artikel.anzeigen',
             'drucken.php'                    => 'artikel.anzeigen',
+            'veraltet.php'                   => 'artikel.anzeigen',
         ],
 
         'lager' => [

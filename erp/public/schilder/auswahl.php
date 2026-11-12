@@ -40,7 +40,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 <div style="padding:var(--space-md);max-width:1100px">
 
-<?php if (!$zeilen): ?>
+<?php if (!$zeilen): $veraltet = $svc->anzahlVeraltetGemerkt(); ?>
+    <?php if ($veraltet): ?>
+        <a href="veraltet.php" class="card" style="display:block;margin-bottom:var(--space-sm);font-size:13px;color:#b45309;text-decoration:none">🔁 <strong><?= $veraltet ?> Laden-Schild<?= $veraltet === 1 ? '' : 'er' ?></strong> stimm<?= $veraltet === 1 ? 't' : 'en' ?> nicht mehr → anzeigen und nachdrucken</a>
+    <?php endif; ?>
     <div class="card" style="font-size:13px;line-height:1.6">
         <strong>Noch keine Artikel gewählt.</strong><br>
         So kommen Artikel hierher:<br>

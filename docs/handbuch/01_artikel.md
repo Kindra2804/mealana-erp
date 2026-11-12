@@ -214,8 +214,12 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 
 > Der **Grundpreis** steht bei Garn immer **je kg** (gesetzliche Bezugsmenge in Österreich), wie im Shop. Haben die Farben unterschiedliche Preise, steht „ab“ davor. Laufende Aktionen werden mit „statt“ gedruckt.
 >
-> Jeder Druck wird gemerkt (Datum, Preis). Daraus kommt später die Liste „Schilder veraltet“.
+> Jeder Druck wird gemerkt (Datum, Preis, Texte, Badges).
 
+**Schilder veraltet** (Artikel → 🔁 Schilder veraltet, auch als Hinweis am Dashboard): alle gedruckten Laden-Schilder, bei denen sich seither **Preis, Aktion, Grundpreis, Texte oder Badges** geändert haben oder deren Artikel inaktiv ist. In der Spalte „Was hat sich geändert“ steht der Grund (z.B. „Preis 3,20 → 3,75 · weg: NEU“).
+- Haken setzen → **🖨 Ausgewählte nachdrucken** öffnet die Druckseite mit genau diesen Schildern. Nach dem Druck verschwinden sie aus der Liste.
+- **✓ ist erledigt**: ohne Druck abhaken (Schild abgenommen oder von Hand korrigiert).
+- Messe-Schilder werden je Messe neu gedruckt und sind deshalb ausgeblendet. „auch Messe-Schilder zeigen“ blendet sie ein.
 **Laden-Schild** (8 pro A4, je 95 × 68 mm): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
 - Farbiger Streifen in der **Hausfarbe** (MeaLana-Blau, Sockenwolle-Weinrot, bio-wolle-Grün oder grau), Name in derselben Farbe.
 - Zusammensetzung, Lauflänge, Nadelstärke in mm, Maschenprobe, **Pflegesymbole** (Merkmal „Pflege“), optional **mit Bild** (erstes Artikelbild, sonst eines der Farben).

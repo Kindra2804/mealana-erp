@@ -134,9 +134,92 @@ class PreisschildService
 
         $log = $this->db->prepare("INSERT INTO preisschild_drucke (artikel_id, vorlage, preis, statt_preis, merkmale, benutzer_id) VALUES (?, ?, ?, ?, ?, ?)");
         foreach ($schilder as $s) {
-            $log->execute([$s['id'], $vorlage, $s['preis'], $s['statt'], json_encode($s['protokoll'], JSON_UNESCAPED_UNICODE), $benutzerId]);
+            $proto = $s['protokoll'] + (!empty($opt['messe_prozent']) ? ['messe_prozent' => (float) $opt['messe_prozent']] : []);
+            $log->execute([$s['id'], $vorlage, $s['preis'], $s['statt'], json_encode($proto, JSON_UNESCAPED_UNICODE), $benutzerId]);
         }
+        unset($_SESSION['schilder_veraltet']);
         return $pdf;
+    }
+
+    /**
+     * "Schilder veraltet": je Artikel und Vorlage der letzte Druck, der nicht mehr zum aktuellen Stand passt
+     * (Preis, statt-Preis/Aktion, Grundpreis, Texte, Badges) oder dessen Artikel inaktiv ist.
+     * @param string[] $vorlagen
+     * @return array Zeilen: id, artikelnummer, titel, vorlage, gedruckt_am, gruende[]
+     */
+    public function veraltete(array $vorlagen): array
+    {
+        $vorlagen = array_values(array_intersect($vorlagen, array_keys(self::VORLAGEN)));
+        if (!$vorlagen) return [];
+        $in = implode(',', array_map(fn($v) => $this->db->quote($v), $vorlagen));
+        $drucke = $this->db->query("
+            SELECT d.*, a.aktiv FROM preisschild_drucke d
+            JOIN (SELECT MAX(id) AS mid FROM preisschild_drucke WHERE vorlage IN ($in) GROUP BY artikel_id, vorlage) x ON x.mid = d.id
+            JOIN artikel a ON a.id = d.artikel_id
+            ORDER BY d.vorlage, d.gedruckt_am")->fetchAll(PDO::FETCH_ASSOC);
+
+        $erg = [];
+        foreach ($drucke as $d) {
+            $proto = json_decode((string) $d['merkmale'], true) ?: [];
+            $jetzt = $this->daten((int) $d['artikel_id'], ['vorlage' => $d['vorlage'], 'messe_prozent' => $proto['messe_prozent'] ?? 0]);
+            if (!$jetzt) continue;
+            $gruende = [];
+            $eur = fn($v) => number_format((float) $v, 2, ',', '.');
+            if (!$d['aktiv']) $gruende[] = 'Artikel ist inaktiv – Schild abnehmen?';
+            if ($jetzt['preis'] === null) {
+                $gruende[] = 'kein Preis mehr';
+            } elseif ($d['preis'] === null || abs((float) $d['preis'] - $jetzt['preis']) > 0.004) {
+                $gruende[] = 'Preis ' . ($d['preis'] === null ? '–' : $eur($d['preis'])) . ' → ' . $eur($jetzt['preis']);
+            }
+            if ($d['statt_preis'] && !$jetzt['statt'])      $gruende[] = 'Aktion beendet';
+            elseif (!$d['statt_preis'] && $jetzt['statt'])  $gruende[] = 'Aktion läuft jetzt';
+            foreach (['grundpreis' => 'Grundpreis', 'zusammensetzung' => 'Zusammensetzung', 'lauflaenge' => 'Lauflänge', 'nadel' => 'Nadelstärke'] as $k => $name) {
+                if ($k === 'grundpreis' && $gruende && str_starts_with(end($gruende), 'Preis')) continue;   // folgt aus dem Preis
+                if (array_key_exists($k, $proto) && $proto[$k] !== $jetzt['protokoll'][$k]) $gruende[] = "$name geändert";
+            }
+            if (array_key_exists('badges', $proto) && isset($jetzt['protokoll']['badges'])) {
+                $neu = array_diff($jetzt['protokoll']['badges'], $proto['badges']);
+                $weg = array_diff($proto['badges'], $jetzt['protokoll']['badges']);
+                // AKTION −x % ändert sich mit dem Preis; schon über "Preis" abgedeckt
+                $neu = array_filter($neu, fn($b) => !str_starts_with($b, 'AKTION'));
+                $weg = array_filter($weg, fn($b) => !str_starts_with($b, 'AKTION'));
+                if ($neu) $gruende[] = 'neu: ' . implode(', ', $neu);
+                if ($weg) $gruende[] = 'weg: ' . implode(', ', $weg);
+            }
+            if (!$gruende) continue;
+            $erg[] = ['id' => (int) $d['artikel_id'], 'artikelnummer' => $jetzt['artikelnummer'], 'titel' => $jetzt['titel'],
+                      'vorlage' => $d['vorlage'], 'gedruckt_am' => $d['gedruckt_am'], 'gruende' => $gruende];
+        }
+        return $erg;
+    }
+
+    /** Anzahl veralteter Laden-Schilder, 10 Minuten in der Sitzung zwischengespeichert (Dashboard) */
+    public function anzahlVeraltetGemerkt(): int
+    {
+        $c = $_SESSION['schilder_veraltet'] ?? null;
+        if (!$c || $c['bis'] < time()) {
+            $c = ['n' => count($this->veraltete(['laden'])), 'bis' => time() + 600];
+            $_SESSION['schilder_veraltet'] = $c;
+        }
+        return (int) $c['n'];
+    }
+
+    /**
+     * "Ist erledigt" ohne Druck (z.B. Schild abgenommen oder von Hand korrigiert): merkt den aktuellen Stand.
+     */
+    public function alsAktuellMarkieren(array $ids, string $vorlage, ?int $benutzerId): int
+    {
+        if (!isset(self::VORLAGEN[$vorlage])) throw new InvalidArgumentException('Unbekannte Vorlage.');
+        $log = $this->db->prepare("INSERT INTO preisschild_drucke (artikel_id, vorlage, preis, statt_preis, merkmale, benutzer_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $n = 0;
+        foreach (array_unique(array_map('intval', $ids)) as $id) {
+            $d = $this->daten($id, ['vorlage' => $vorlage]);
+            if (!$d) continue;
+            $log->execute([$id, $vorlage, $d['preis'], $d['statt'], json_encode($d['protokoll'] + ['markiert' => true], JSON_UNESCAPED_UNICODE), $benutzerId]);
+            $n++;
+        }
+        unset($_SESSION['schilder_veraltet']);
+        return $n;
     }
 
     /** Alle Daten eines Schilds; null, wenn es den Artikel nicht gibt */
