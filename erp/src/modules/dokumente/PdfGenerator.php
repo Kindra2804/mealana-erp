@@ -51,7 +51,7 @@ class PdfGenerator
      * Wie generiere(), liefert das PDF aber als String zurück (ohne Datei) --
      * z.B. für Etiketten, die nur angezeigt/gedruckt und nicht abgelegt werden.
      */
-    public function alsString(string $template, array $daten): string
+    public function alsString(string $template, array $daten, string $ausrichtung = 'portrait'): string
     {
         $html = $this->twig->render($template, $daten);
 
@@ -63,7 +63,7 @@ class PdfGenerator
 
         $dompdf = new \Dompdf\Dompdf($optionen);
         $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper('A4', $ausrichtung === 'landscape' ? 'landscape' : 'portrait');
         $dompdf->render();
 
         return $dompdf->output();

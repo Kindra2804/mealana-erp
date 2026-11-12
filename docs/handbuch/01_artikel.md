@@ -220,7 +220,18 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 - Haken setzen → **🖨 Ausgewählte nachdrucken** öffnet die Druckseite mit genau diesen Schildern. Nach dem Druck verschwinden sie aus der Liste.
 - **✓ ist erledigt**: ohne Druck abhaken (Schild abgenommen oder von Hand korrigiert).
 - Messe-Schilder werden je Messe neu gedruckt und sind deshalb ausgeblendet. „auch Messe-Schilder zeigen“ blendet sie ein.
-**Laden-Schild** (8 pro A4, je 95 × 68 mm): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
+
+**Weitere Vorlagen** (oben auf der Druckseite umschalten, die Auswahl bleibt):
+
+| Vorlage | Format | Besonderheit |
+|---|---|---|
+| ⛺ Tischaufsteller | A4 quer, 2 Stück | In der Mitte falten, steht als Zelt; beide Seiten gleich (obere Hälfte steht im Ausdruck auf dem Kopf). Großer QR „Alle x Farben ansehen & bestellen“ |
+| 📏 IVAR-Streifen | 40 × 150 mm, 5 pro A4 | Für die Seite der IVAR-Regale (Holm 44 mm); unten Preis und QR |
+| 🔖 Anhänger | 50 × 90 mm, 12 pro A4 | Mit Loch zum Anbinden und Strichcode der Artikelnummer (Kasse). Fertige Schilder zeigen Größe und Aufbau |
+
+Tischaufsteller und IVAR-Streifen haben dieselben Badges, Pflegesymbole und Hausfarben wie das Laden-Schild; der QR führt zur Artikelseite im gewählten Shop.
+
+**Anhänger ohne Artikel** (z.B. Babsis Strickstücke): Druckseite → **✂ Anhänger ohne Artikel** → **+ Neuer Anhänger**: Kopfzeile (Vorgabe „handgestrickt von Babsi“), Name, Material, Größe, Zusatz, Preis, Badge (Vorgabe „UNIKAT“) und Pflegesymbole anhaken → Speichern. Die Anhänger bleiben gespeichert: anhaken, **Anzahl** wählen → **🖨 Angehakte drucken**. Verkaufte Stücke **ausblenden** (lassen sich wieder einblenden).**Laden-Schild** (8 pro A4, je 95 × 68 mm): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
 - Farbiger Streifen in der **Hausfarbe** (MeaLana-Blau, Sockenwolle-Weinrot, bio-wolle-Grün oder grau), Name in derselben Farbe.
 - Zusammensetzung, Lauflänge, Nadelstärke in mm, Maschenprobe, **Pflegesymbole** (Merkmal „Pflege“), optional **mit Bild** (erstes Artikelbild, sonst eines der Farben).
 - **Badges** oben rechts, automatisch:

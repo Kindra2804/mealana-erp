@@ -33,7 +33,7 @@ class PflegeSymbole
         $p       = "<text x=\"15\" y=\"16\" font-family=\"DejaVu Sans, Arial\" font-size=\"11\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#111\">P</text>";
 
         $inhalt = match ($symbol) {
-            'handwaesche'      => $bottich . "<path d=\"M11 18 V13 M13.5 18 V11.5 M16 18 V12 M18.5 18 V13.5 M11 16 Q11 19.5 14.5 19.5 H17 Q19.5 19.5 19.5 16.5\" $s stroke-width=\"1.3\"/>",
+            'handwaesche'      => $bottich . "<path d=\"M11 18 V13 M13.5 18 V11.5 M16 18 V12 M18.5 18 V13.5 M11 16 Q11 19.5 14.5 19.5 H17 Q19.5 19.5 19.5 16.5\" " . str_replace('1.7', '1.3', $s) . "/>",
             'wasch30'          => $bottich . $zahl('30'),
             'wasch30_schon'    => $bottich . $zahl('30') . $balken,
             'wasch40'          => $bottich . $zahl('40'),

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# Anhänger mit Loch (PreisschildService): 12 je A4 (4 x 3), je 50 x 90 mm, 5 mm Rand links, 13,5 mm oben.
+   Artikel: Name, Untertitel (Hersteller bzw. Größe beim fertigen Schild), bis 4 Zeilen, Preis, Strichcode.
+   Freitext (Babsis Strickstücke): Kopfzeile, Titel, Material/Größe/Zusatz, Pflegesymbole, Preis, Badge. #}
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #111; }
+  .seite { position: relative; width: 210mm; height: 296mm; page-break-after: always; overflow: hidden; }
+  .seite.letzte { page-break-after: auto; }
+  .karte { position: absolute; width: 50mm; height: 90mm; overflow: hidden; text-align: center; }
+  .karte.rahmen { border: 0.2mm solid #bbb; border-radius: 3mm; }
+  .loch { position: absolute; left: 22.5mm; top: 4mm; width: 5mm; height: 5mm; border: 0.3mm solid #aaa; border-radius: 2.5mm; }
+  .oben { position: absolute; left: 3mm; top: 12mm; width: 44mm; }
+  .kopf { font-size: 7pt; font-style: italic; margin-bottom: 1mm; }
+  .titel { font-size: 12pt; font-weight: bold; line-height: 1.12; }
+  .titel.mittel { font-size: 10.5pt; }
+  .titel.klein  { font-size: 9pt; }
+  .unter { font-size: 7.5pt; color: #555; margin-top: 1mm; }
+  .zeilen { font-size: 6.8pt; line-height: 1.4; margin-top: 2.5mm; }
+  .pflege { margin-top: 2mm; }
+  .pflege-t { font-size: 6pt; color: #888; margin-top: 2mm; }
+  .pflege img { width: 5mm; height: 4.4mm; margin: 0 0.3mm; }
+  .unten { position: absolute; left: 3mm; bottom: 4mm; width: 44mm; }
+  .preis { font-size: 17pt; font-weight: bold; }
+  .badge { display: inline-block; font-size: 6.5pt; font-weight: bold; border: 0.3mm solid; border-radius: 1.8mm; padding: 0.4mm 2mm; margin-top: 1.5mm; }
+  .barcode { width: 38mm; height: 9mm; margin-top: 2mm; }
+  .nummer { font-family: DejaVu Sans Mono, monospace; font-size: 6pt; }
+</style>
+</head>
+<body>
+{% for seite in seiten %}
+<div class="seite{% if loop.last %} letzte{% endif %}">
+  {% for s in seite %}
+    {% set spalte = (loop.index0 % 4) %}
+    {% set zeile = (loop.index0 // 4) %}
+    <div class="karte{% if schnitt %} rahmen{% endif %}" style="left: {{ 5 + spalte * 50 }}mm; top: {{ 13.5 + zeile * 90 }}mm;">
+    {% if s %}
+      <div class="loch"></div>
+      <div class="oben">
+        {% if s.kopfzeile is defined and s.kopfzeile %}<div class="kopf" style="color: {{ farbe }};">{{ s.kopfzeile }}</div>{% endif %}
+        <div class="titel {{ s.titel_klasse }}" style="color: {{ farbe }};">{{ s.titel }}</div>
+        {% if s.untertitel %}<div class="unter">{{ s.untertitel }}</div>{% endif %}
+        {% if s.zeilen %}<div class="zeilen">{% for z in s.zeilen %}{{ z }}<br>{% endfor %}</div>{% endif %}
+        {% if s.pflege is defined and s.pflege %}
+          {% if s.frei is defined %}<div class="pflege-t">Pflege</div>{% endif %}
+          <div class="pflege">{% for p in s.pflege %}<img src="{{ p }}">{% endfor %}</div>
+        {% endif %}
+      </div>
+      <div class="unten">
+        {% if s.preis is not null %}<div class="preis">{% if s.ab %}<span style="font-size:9pt;font-weight:normal">ab </span>{% endif %}€ {{ s.preis|euroformat }}</div>{% endif %}
+        {% if s.badge is defined and s.badge %}<div class="badge" style="color: {{ farbe }}; border-color: {{ farbe }};">{{ s.badge }}</div>{% endif %}
+        {% if s.barcode %}
+          <img class="barcode" src="data:image/png;base64,{{ s.barcode }}">
+          <div class="nummer">{{ s.artikelnummer }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endfor %}
+</body>
+</html>

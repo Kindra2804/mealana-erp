@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# IVAR-Streifen (PreisschildService): 5 je A4, je 40 x 150 mm (IVAR-Holm 44 mm), 5 mm Rand links,
+   15 mm oben. Inhalt mittig untereinander, QR unten. #}
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #111; }
+  .seite { position: relative; width: 210mm; height: 296mm; page-break-after: always; overflow: hidden; }
+  .seite.letzte { page-break-after: auto; }
+  .streifen { position: absolute; top: 15mm; width: 40mm; height: 150mm; overflow: hidden; text-align: center; }
+  .streifen.rahmen { border: 0.2mm solid #bbb; }
+  .band { position: absolute; left: 0; top: 0; width: 40mm; height: 2.5mm; }
+  .oben { position: absolute; left: 3mm; top: 6mm; width: 34mm; }
+  .titel { font-size: 13pt; font-weight: bold; line-height: 1.12; }
+  .hersteller { font-size: 7.5pt; color: #555; margin-top: 1mm; }
+  .badge { display: inline-block; font-size: 6pt; font-weight: bold; color: #fff; padding: 0.6mm 1.5mm; border-radius: 1.8mm; margin: 1.5mm 0.5mm 0; }
+  .badge.rahmen { background: #fff; border: 0.3mm solid; padding: 0.3mm 1.2mm; }
+  .info { font-size: 7pt; line-height: 1.4; margin-top: 3mm; }
+  .pflege { margin-top: 2mm; }
+  .pflege img { width: 5mm; height: 4.4mm; margin: 0 0.3mm; }
+  .unten { position: absolute; left: 3mm; bottom: 4mm; width: 34mm; }
+  .linie { border-top: 0.3mm solid #ddd; margin-bottom: 2mm; }
+  .statt { font-size: 7.5pt; color: #777; text-decoration: line-through; }
+  .preis { font-size: 18pt; font-weight: bold; line-height: 1.05; }
+  .preis.aktion { color: #c0392b; }
+  .preis .ab { font-size: 9pt; font-weight: normal; }
+  .gp { font-size: 6.5pt; margin-top: 0.5mm; }
+  .qr { width: 26mm; height: 26mm; margin-top: 3mm; }
+  .qr-text { font-size: 6pt; color: #777; }
+</style>
+</head>
+<body>
+{% for seite in seiten %}
+<div class="seite{% if loop.last %} letzte{% endif %}">
+  {% for s in seite %}
+    <div class="streifen{% if schnitt %} rahmen{% endif %}" style="left: {{ 5 + loop.index0 * 40 }}mm;">
+    {% if s %}
+      <div class="band" style="background: {{ farbe }};"></div>
+      <div class="oben">
+        <div class="titel" style="color: {{ farbe }};">{{ s.titel }}</div>
+        {% if s.hersteller %}<div class="hersteller">{{ s.hersteller }}</div>{% endif %}
+        {% for b in s.badges|slice(0, 3) %}<span class="badge{% if b.rahmen %} rahmen{% endif %}" style="{% if b.rahmen %}color: {{ b.farbe }}; border-color: {{ b.farbe }};{% else %}background: {{ b.farbe }};{% endif %}">{{ b.text }}</span>{% endfor %}
+        <div class="info">
+          {% if s.zusammensetzung %}{{ s.zusammensetzung }}<br>{% endif %}
+          {% if s.lauf_kurz %}{{ s.lauf_kurz }}<br>{% endif %}
+          {% if s.nadel_mm %}Nadel {{ s.nadel_mm }}{% endif %}
+        </div>
+        {% if s.pflege %}<div class="pflege">{% for p in s.pflege %}<img src="{{ p }}">{% endfor %}</div>{% endif %}
+      </div>
+      <div class="unten">
+        <div class="linie"></div>
+        {% if s.preis is not null %}
+          {% if s.statt %}<div class="statt">€ {{ s.statt|euroformat }}</div>{% endif %}
+          <div class="preis{% if s.statt %} aktion{% endif %}">{% if s.ab %}<span class="ab">ab </span>{% endif %}€ {{ s.preis|euroformat }}</div>
+          {% if s.grundpreis %}<div class="gp">{{ s.grundpreis }}</div>{% endif %}
+        {% endif %}
+        {% if s.qr %}
+          <img class="qr" src="{{ s.qr }}">
+          <div class="qr-text">{% if s.farben > 1 %}alle {{ s.farben }} Farben online{% else %}online bestellen{% endif %}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endfor %}
+</body>
+</html>

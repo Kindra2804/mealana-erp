@@ -15,6 +15,8 @@ try {
         'qr_shop_id'    => (int) ($_POST['qr_shop_id'] ?? 0) ?: null,
         'farbe'         => (string) ($_POST['farbe'] ?? 'mealana'),
         'mit_bild'      => !empty($_POST['mit_bild']),
+        'frei_ids'      => (array) ($_POST['frei_ids'] ?? []),
+        'frei_anzahl'   => array_map('intval', (array) ($_POST['frei_anzahl'] ?? [])),
     ], (int) ($_SESSION['benutzer']['id'] ?? 0) ?: null);
 } catch (Throwable $e) {
     http_response_code(400);

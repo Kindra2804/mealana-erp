@@ -143,6 +143,7 @@ final class Zugriffsregeln
             'auswahl.php'                    => 'artikel.anzeigen',
             'drucken.php'                    => 'artikel.anzeigen',
             'veraltet.php'                   => 'artikel.anzeigen',
+            'strickstuecke.php'              => 'artikel.anzeigen',
         ],
 
         'lager' => [

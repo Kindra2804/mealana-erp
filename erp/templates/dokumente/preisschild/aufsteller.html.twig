@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# Tischaufsteller (PreisschildService): A4 quer, 2 Klappkarten nebeneinander (je 148,5 x 210 mm).
+   Jede Karte wird in der Mitte (105 mm) gefaltet und steht als Zelt: die obere Hälfte ist um 180° gedreht,
+   damit beide Seiten aufrecht lesbar sind. 8 mm Innenrand für den Drucker. #}
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #111; }
+  .seite { position: relative; width: 297mm; height: 209mm; page-break-after: always; overflow: hidden; }
+  .seite.letzte { page-break-after: auto; }
+  .karte { position: absolute; top: 0; width: 148.5mm; height: 209mm; }
+  .seite-a { position: absolute; left: 0; top: 104.5mm; width: 148.5mm; height: 104.5mm; }
+  .seite-b { position: absolute; left: 0; top: 0; width: 148.5mm; height: 104.5mm; transform: rotate(180deg); }
+  .falz { position: absolute; left: 0; top: 104.5mm; width: 148.5mm; border-top: 0.2mm dashed #bbb; }
+  .falz span { position: absolute; right: 8mm; top: -2.2mm; background: #fff; padding: 0 1.5mm; font-size: 6pt; color: #aaa; }
+  .schnitt { position: absolute; left: 148.5mm; top: 0; height: 209mm; border-left: 0.2mm dashed #bbb; }
+  .band { position: absolute; left: 8mm; top: 7mm; width: 132.5mm; height: 1.5mm; }
+  .titel { position: absolute; left: 8mm; top: 12mm; width: 132mm; font-size: 22pt; font-weight: bold; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+  .titel.mittel { font-size: 18pt; top: 13mm; }
+  .titel.klein  { font-size: 14pt; top: 14mm; }
+  .titel.qr { width: 84mm; }
+  .hersteller { position: absolute; left: 8mm; top: 23mm; font-size: 10.5pt; color: #555; }
+  .links { position: absolute; left: 8mm; top: 30mm; width: 84mm; }
+  .links.breit { width: 132mm; }
+  .badge { display: inline-block; font-size: 7pt; font-weight: bold; color: #fff; padding: 0.8mm 2mm; border-radius: 2mm; margin: 0 1mm 1.5mm 0; }
+  .badge.rahmen { background: #fff; border: 0.3mm solid; padding: 0.5mm 1.7mm; }
+  .info { font-size: 9pt; line-height: 1.45; margin-top: 1mm; }
+  .pflege { margin-top: 2mm; }
+  .pflege img { width: 7mm; height: 6mm; margin-right: 1mm; }
+  .preisblock { position: absolute; left: 8mm; bottom: 8mm; width: 84mm; }
+  .statt { font-size: 10pt; color: #777; text-decoration: line-through; }
+  .preis { font-size: 30pt; font-weight: bold; line-height: 1.05; }
+  .preis.aktion { color: #c0392b; }
+  .preis .ab { font-size: 14pt; font-weight: normal; }
+  .gp { font-size: 9pt; margin-top: 0.5mm; }
+  .qrbox { position: absolute; right: 8mm; top: 12mm; width: 44mm; height: 84mm; background: #f3f5f8; border-radius: 3mm; text-align: center; }
+  .qrbox img { width: 38mm; height: 38mm; margin-top: 4mm; }
+  .qrbox .t1 { font-size: 10pt; font-weight: bold; margin-top: 2mm; line-height: 1.25; }
+  .qrbox .t2 { font-size: 7pt; color: #777; margin-top: 2mm; }
+</style>
+</head>
+<body>
+{% macro seite(s, farbe) %}
+  <div class="band" style="background: {{ farbe }};"></div>
+  <div class="titel {{ s.titel_klasse }}{% if s.qr %} qr{% endif %}" style="color: {{ farbe }};">{{ s.titel }}</div>
+  {% if s.hersteller %}<div class="hersteller">{{ s.hersteller }}</div>{% endif %}
+  <div class="links{% if not s.qr %} breit{% endif %}">
+    {% for b in s.badges %}<span class="badge{% if b.rahmen %} rahmen{% endif %}" style="{% if b.rahmen %}color: {{ b.farbe }}; border-color: {{ b.farbe }};{% else %}background: {{ b.farbe }};{% endif %}">{{ b.text }}</span>{% endfor %}
+    <div class="info">
+      {% if s.zusammensetzung %}{{ s.zusammensetzung }}<br>{% endif %}
+      {% if s.lauf_kurz %}{{ s.lauf_kurz }}{% endif %}{% if s.lauf_kurz and s.nadel_mm %} · {% endif %}{% if s.nadel_mm %}Nadel {{ s.nadel_mm }}{% endif %}
+    </div>
+    {% if s.pflege %}<div class="pflege">{% for p in s.pflege %}<img src="{{ p }}">{% endfor %}</div>{% endif %}
+  </div>
+  <div class="preisblock">
+    {% if s.preis is not null %}
+      {% if s.statt %}<div class="statt">statt € {{ s.statt|euroformat }}{% if s.aktion_bis %} · bis {{ s.aktion_bis }}{% endif %}</div>{% endif %}
+      <div class="preis{% if s.statt %} aktion{% endif %}">{% if s.ab %}<span class="ab">ab </span>{% endif %}€ {{ s.preis|euroformat }}</div>
+      {% if s.grundpreis %}<div class="gp">{{ s.grundpreis }}</div>{% endif %}
+    {% endif %}
+  </div>
+  {% if s.qr %}
+    <div class="qrbox">
+      <img src="{{ s.qr }}">
+      <div class="t1" style="color: {{ farbe }};">{% if s.farben > 1 %}Alle {{ s.farben }} Farben{% else %}Online{% endif %}<br>ansehen &amp; bestellen</div>
+      {% if s.qr_url_text %}<div class="t2">{{ s.qr_url_text }}</div>{% endif %}
+    </div>
+  {% endif %}
+{% endmacro %}
+{% for seite in seiten %}
+<div class="seite{% if loop.last %} letzte{% endif %}">
+  {% for s in seite %}
+    <div class="karte" style="left: {{ loop.index0 * 148.5 }}mm;">
+    {% if s %}
+      <div class="seite-b">{{ _self.seite(s, farbe) }}</div>
+      <div class="seite-a">{{ _self.seite(s, farbe) }}</div>
+      <div class="falz"><span>falten</span></div>
+    {% endif %}
+    </div>
+  {% endfor %}
+  {% if schnitt %}<div class="schnitt"></div>{% endif %}
+</div>
+{% endfor %}
+</body>
+</html>

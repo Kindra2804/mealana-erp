@@ -7,6 +7,7 @@ require_once __DIR__ . '/../preise/PreisService.php';
 require_once __DIR__ . '/../preise/PreisRepository.php';
 require_once __DIR__ . '/../dokumente/BelegBilder.php';
 require_once __DIR__ . '/PflegeSymbole.php';
+require_once __DIR__ . '/../konfigurator/KuvertEtikettService.php';
 
 /**
  * PreisschildService – Preisschilder aus Artikeldaten (Jacky + Babsi 2026-11-12, Entwurf D:\ERP\preisschilder_mockup.svg).
@@ -25,13 +26,22 @@ require_once __DIR__ . '/PflegeSymbole.php';
  *   und Badges: AKTION -x % (mit "statt" und "bis"), AUSLAUF, LETZTE CHANCE (Auslauf + Bestand <= 3),
  *   NEU (angelegt vor < 60 Tagen), BIO / GOTS / HANDGEFÄRBT (Merkmal "Auszeichnung").
  *
+ * Vorlage "aufsteller": Klappkarte (A4 quer, 2 Stück, je 148 x 105 mm Seite, obere Hälfte gedreht -> steht als Zelt),
+ *   großer QR "Alle Farben ansehen". "ivar": schmaler Streifen 40 x 150 mm (5 je A4) für die IVAR-Regale.
+ * Vorlage "anhaenger": 50 x 90 mm mit Loch (12 je A4), Strichcode der Artikelnummer; fertige Schilder mit Aufbau
+ *   (KuvertEtikettService), dazu Freitext-Anhänger (Tabelle anhaenger_freitext, Babsis Strickstücke).
+ *
  * Merkmale werden über ihren slug gelesen (Migration 233).
  */
 class PreisschildService
 {
+    /** optionen: was die Auswahlseite anbietet (messepreis, qr, farbe, bild); quer = A4 Querformat */
     public const VORLAGEN = [
-        'messe' => ['name' => 'Messe-Schild', 'je_seite' => 8],
-        'laden' => ['name' => 'Laden-Schild', 'je_seite' => 8],
+        'messe'      => ['name' => 'Messe-Schild',     'symbol' => '🎪', 'je_seite' => 8,  'optionen' => ['messepreis', 'qr']],
+        'laden'      => ['name' => 'Laden-Schild',     'symbol' => '🏪', 'je_seite' => 8,  'optionen' => ['farbe', 'bild']],
+        'aufsteller' => ['name' => 'Tischaufsteller',  'symbol' => '⛺', 'je_seite' => 2,  'optionen' => ['farbe', 'qr'], 'quer' => true],
+        'ivar'       => ['name' => 'IVAR-Streifen',    'symbol' => '📏', 'je_seite' => 5,  'optionen' => ['farbe', 'qr']],
+        'anhaenger'  => ['name' => 'Anhänger',         'symbol' => '🔖', 'je_seite' => 12, 'optionen' => ['farbe']],
     ];
     /** Hausfarben für den Streifen am Laden-Schild */
     public const HAUSFARBEN = [
@@ -112,7 +122,9 @@ class PreisschildService
     {
         if (!isset(self::VORLAGEN[$vorlage])) throw new InvalidArgumentException('Unbekannte Vorlage.');
         $opt['vorlage'] = $vorlage;
-        if ($vorlage !== 'messe') $opt['messe_prozent'] = 0;
+        $optionen = self::VORLAGEN[$vorlage]['optionen'];
+        if (!in_array('messepreis', $optionen, true)) $opt['messe_prozent'] = 0;
+        if (!in_array('qr', $optionen, true)) $opt['qr_shop_id'] = null;
         $jeSeite = self::VORLAGEN[$vorlage]['je_seite'];
 
         $schilder = [];
@@ -120,20 +132,30 @@ class PreisschildService
             $d = $this->daten((int) $id, $opt);
             if ($d) $schilder[] = $d;
         }
-        if (!$schilder) throw new RuntimeException('Keine passenden Artikel gefunden.');
+        // Freitext-Anhänger (nur Vorlage anhaenger) -- werden nicht protokolliert
+        $frei = [];
+        if ($vorlage === 'anhaenger') {
+            foreach (array_unique(array_map('intval', (array) ($opt['frei_ids'] ?? []))) as $fid) {
+                $d = $this->freitextDaten($fid);
+                for ($i = 0; $d && $i < max(1, (int) ($opt['frei_anzahl'][$fid] ?? 1)); $i++) $frei[] = $d;
+            }
+        }
+        if (!$schilder && !$frei) throw new RuntimeException('Keine passenden Artikel gefunden.');
+        $felderDaten = array_merge($schilder, $frei);
 
         $start = max(1, min($jeSeite, (int) ($opt['start'] ?? 1)));
-        $felder = array_merge(array_fill(0, $start - 1, null), $schilder);
+        $felder = array_merge(array_fill(0, $start - 1, null), $felderDaten);
         while (count($felder) % $jeSeite) $felder[] = null;
 
         $pdf = (new PdfGenerator())->alsString("preisschild/$vorlage.html.twig", [
             'seiten'  => array_chunk($felder, $jeSeite),
             'schnitt' => !empty($opt['schnitt']),
             'farbe'   => (self::HAUSFARBEN[$opt['farbe'] ?? ''] ?? self::HAUSFARBEN['mealana'])[1],
-        ]);
+        ], !empty(self::VORLAGEN[$vorlage]['quer']) ? 'landscape' : 'portrait');
 
         $log = $this->db->prepare("INSERT INTO preisschild_drucke (artikel_id, vorlage, preis, statt_preis, merkmale, benutzer_id) VALUES (?, ?, ?, ?, ?, ?)");
         foreach ($schilder as $s) {
+            if (!empty($s['frei'])) continue;
             $proto = $s['protokoll'] + (!empty($opt['messe_prozent']) ? ['messe_prozent' => (float) $opt['messe_prozent']] : []);
             $log->execute([$s['id'], $vorlage, $s['preis'], $s['statt'], json_encode($proto, JSON_UNESCAPED_UNICODE), $benutzerId]);
         }
@@ -258,7 +280,7 @@ class PreisschildService
         $d['protokoll'] = ['zusammensetzung' => $d['zusammensetzung'], 'lauflaenge' => $d['lauflaenge'],
                            'nadel' => $d['nadel'], 'grundpreis' => $d['grundpreis']];
 
-        if (($opt['vorlage'] ?? '') === 'laden' || !empty($opt['mit_badges'])) {
+        if (in_array($opt['vorlage'] ?? '', ['laden', 'aufsteller', 'ivar'], true) || !empty($opt['mit_badges'])) {
             $symbole = $this->symbole($id);
             $d['badges']      = $this->badges($a, $id, $preis, $statt, $symbole['auszeichnung'] ?? []);
             $d['aktion_bis']  = $statt && $bis ? date('d.m.Y', strtotime($bis)) : '';
@@ -268,11 +290,64 @@ class PreisschildService
             $d['pflege']      = array_values(array_filter(array_map([PflegeSymbole::class, 'dataUri'], $symbole['pflege'] ?? [])));
             $d['bild']        = !empty($opt['mit_bild']) ? $this->bild($id) : '';
             $d['protokoll']['badges'] = array_column($d['badges'], 'text');
+            $k = $this->db->prepare("SELECT COUNT(*) FROM artikel WHERE vaterartikel_id = ? AND aktiv = 1");
+            $k->execute([$id]);
+            $d['farben'] = (int) $k->fetchColumn();
+            $d['qr_url_text'] = $d['qr'] ? $this->shopDomain((int) $opt['qr_shop_id']) : '';
             // Titel neben den Badges hat nur 56 mm, ohne Badges 85 mm (15 / 12,5 / 10,5 pt)
             $len = mb_strlen($titel); [$g1, $g2] = $d['badges'] ? [15, 20] : [24, 30];
             $d['titel_klasse'] = $len > $g2 ? 'klein' : ($len > $g1 ? 'mittel' : '');
         }
+        if (($opt['vorlage'] ?? '') === 'anhaenger') {
+            $d['barcode'] = (new PdfGenerator())->barcodeAlsBase64($a['artikelnummer']);
+            $d['untertitel'] = $d['hersteller'];
+            $d['zeilen'] = array_values(array_filter([$d['zusammensetzung'], $d['lauflaenge'], $d['nadel']]));
+            $istFertig = $this->db->prepare("SELECT 1 FROM konfig_fertige_artikel WHERE artikel_id = ?");
+            $istFertig->execute([$id]);
+            $fertig = $istFertig->fetchColumn() ? (new KuvertEtikettService())->etikett($id) : null;
+            if ($fertig && $fertig['aufbau']) {   // fertiges Schild aus dem Konfigurator
+                $d['titel'] = $fertig['titel'];
+                $d['untertitel'] = $fertig['groesse'];
+                $d['zeilen'] = array_map(fn($z) => $z['wert'], array_slice($fertig['aufbau'], 0, 4));
+            }
+            $d['titel_klasse'] = mb_strlen($d['titel']) > 22 ? 'klein' : (mb_strlen($d['titel']) > 15 ? 'mittel' : '');
+        }
         return $d;
+    }
+
+    /** Daten eines Freitext-Anhängers (Tabelle anhaenger_freitext) im selben Format wie daten() */
+    public function freitextDaten(int $id): ?array
+    {
+        $st = $this->db->prepare("SELECT * FROM anhaenger_freitext WHERE id = ?");
+        $st->execute([$id]);
+        $f = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$f) return null;
+        $pflege = json_decode((string) $f['pflege'], true) ?: [];
+        return [
+            'frei'         => true,
+            'kopfzeile'    => $f['kopfzeile'],
+            'titel'        => $f['titel'],
+            'titel_klasse' => mb_strlen($f['titel']) > 22 ? 'klein' : (mb_strlen($f['titel']) > 15 ? 'mittel' : ''),
+            'untertitel'   => '',
+            'zeilen'       => array_values(array_filter([$f['material'], $f['groesse'] ? 'Größe ' . $f['groesse'] : '', $f['zusatz']])),
+            'pflege'       => array_values(array_filter(array_map([PflegeSymbole::class, 'dataUri'], $pflege))),
+            'preis'        => $f['preis'] !== null ? (float) $f['preis'] : null,
+            'statt'        => null,
+            'ab'           => false,
+            'grundpreis'   => '',
+            'badge'        => $f['badge'],
+            'barcode'      => '',
+            'artikelnummer'=> '',
+        ];
+    }
+
+    /** "https://www.sockenwolle-online.at/" -> "sockenwolle-online.at" */
+    private function shopDomain(int $shopId): string
+    {
+        $st = $this->db->prepare("SELECT wc_url FROM shops WHERE id = ?");
+        $st->execute([$shopId]);
+        $host = parse_url((string) $st->fetchColumn(), PHP_URL_HOST) ?: '';
+        return preg_replace('/^www\./', '', $host);
     }
 
     /** slug => [werte] aller aktiven Merkmale eines Artikels */
