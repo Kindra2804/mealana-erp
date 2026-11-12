@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/HerstellerRepository.php';
+require_once __DIR__ . '/../artikel/BildVerarbeitung.php';
 
 /**
  * HerstellerService – Geschäftslogik für Hersteller
@@ -242,6 +243,10 @@ class HerstellerService
         if (!$src) {
             throw new RuntimeException('Bildformat konnte nicht verarbeitet werden.');
         }
+        // Handyfotos: EXIF-Drehung anwenden, danach Maße neu lesen
+        $src    = BildVerarbeitung::richteAus($src, $datei['tmp_name'], $typ === IMAGETYPE_JPEG ? 'image/jpeg' : '');
+        $breite = imagesx($src);
+        $hoehe  = imagesy($src);
 
         // Skalierung: max. 200×200, niemals vergrößern (scale <= 1.0)
         $max   = 200;

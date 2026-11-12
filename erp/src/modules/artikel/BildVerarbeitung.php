@@ -26,6 +26,7 @@ class BildVerarbeitung
         };
 
         if ($quelle === false) return false;
+        $quelle = self::richteAus($quelle, $tmpPfad, $mimeTyp);
 
         $breite = imagesx($quelle);
         $hoehe  = imagesy($quelle);
@@ -64,5 +65,30 @@ class BildVerarbeitung
         } else {
             return false;
         }
+    }
+
+    /**
+     * Dreht/spiegelt ein JPEG nach seinem EXIF-Vermerk „Orientation“ (2026-11-12).
+     *
+     * Handys speichern die Pixel immer in Sensor-Lage und vermerken die Drehung nur in EXIF.
+     * GD ignoriert diesen Vermerk, und beim Neu-Speichern geht er verloren → hochkant
+     * fotografierte Bilder lagen dann um 90° verdreht im ERP und im Shop.
+     * Ohne exif-Erweiterung oder ohne Vermerk bleibt das Bild unverändert.
+     */
+    public static function richteAus(\GdImage $bild, string $pfad, string $mimeTyp): \GdImage
+    {
+        if ($mimeTyp !== 'image/jpeg' || !function_exists('exif_read_data')) return $bild;
+        $exif = @exif_read_data($pfad);
+        $o = (int)($exif['Orientation'] ?? 1);
+        if ($o <= 1 || $o > 8) return $bild;
+
+        $drehung = match ($o) { 3, 4 => 180, 5, 6 => -90, 7, 8 => 90, default => 0 }; // imagerotate: Grad gegen den Uhrzeigersinn
+        if ($drehung !== 0) {
+            $gedreht = imagerotate($bild, $drehung, 0);
+            if ($gedreht !== false) { imagedestroy($bild); $bild = $gedreht; }
+        }
+        if (in_array($o, [2, 5, 7], true)) imageflip($bild, IMG_FLIP_HORIZONTAL);
+        if ($o === 4) imageflip($bild, IMG_FLIP_HORIZONTAL); // 180° + waagrecht = senkrecht spiegeln
+        return $bild;
     }
 }
