@@ -206,6 +206,63 @@ class MerkmalService
         }
     }
 
+    /**
+     * Massenaktion "Merkmal setzen" (Artikelliste): ein Merkmal bei vielen Artikeln auf einmal.
+     * Ein Vater nimmt seine Farben mit (nur dieses Merkmal, die übrigen bleiben unberührt).
+     * @param string $modus ersetzen | hinzufuegen | entfernen (entfernen ohne Werte = Merkmal ganz weg)
+     * @return array ['artikel' => Anzahl gewählte, 'gesamt' => inkl. Farben]
+     */
+    public function massenSetzen(array $artikelIds, int $merkmalId, array $wertIds, string $modus): array
+    {
+        if (!in_array($modus, ['ersetzen', 'hinzufuegen', 'entfernen'], true)) throw new InvalidArgumentException('Unbekannte Aktion.');
+        $st = $this->db->prepare("SELECT slug, mehrfach_auswahl FROM merkmale WHERE id = ? AND aktiv = 1");
+        $st->execute([$merkmalId]);
+        $merkmal = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$merkmal) throw new InvalidArgumentException('Merkmal nicht gefunden.');
+
+        $wertIds = array_values(array_unique(array_filter(array_map('intval', $wertIds))));
+        if ($wertIds) {
+            $in = implode(',', $wertIds);
+            $passend = (int) $this->db->query("SELECT COUNT(*) FROM merkmal_werte WHERE merkmal_id = $merkmalId AND id IN ($in)")->fetchColumn();
+            if ($passend !== count($wertIds)) throw new InvalidArgumentException('Werte passen nicht zum Merkmal.');
+        }
+        if ($modus !== 'entfernen' && !$wertIds) throw new InvalidArgumentException('Bitte mindestens einen Wert wählen.');
+        if (!$merkmal['mehrfach_auswahl']) {
+            if (count($wertIds) > 1) throw new InvalidArgumentException('Bei diesem Merkmal ist nur ein Wert erlaubt.');
+            if ($modus === 'hinzufuegen') $modus = 'ersetzen';
+        }
+
+        // Gewählte Artikel + Farben der gewählten Väter
+        $ids = array_values(array_unique(array_filter(array_map('intval', $artikelIds))));
+        if (!$ids) throw new InvalidArgumentException('Keine Artikel gewählt.');
+        $in = implode(',', $ids);
+        $ziele = $this->db->query("SELECT id FROM artikel WHERE id IN ($in) OR vaterartikel_id IN ($in)")->fetchAll(PDO::FETCH_COLUMN);
+        $zielIn = implode(',', array_map('intval', $ziele));
+
+        $eigeneTx = !$this->db->inTransaction();
+        if ($eigeneTx) $this->db->beginTransaction();
+        try {
+            if ($modus === 'ersetzen' || ($modus === 'entfernen' && !$wertIds)) {
+                $this->db->exec("DELETE FROM artikel_merkmale WHERE merkmal_id = $merkmalId AND artikel_id IN ($zielIn)");
+            } elseif ($modus === 'entfernen') {
+                $this->db->exec("DELETE FROM artikel_merkmale WHERE merkmal_id = $merkmalId AND artikel_id IN ($zielIn)
+                                 AND merkmal_wert_id IN (" . implode(',', $wertIds) . ")");
+            }
+            if ($modus !== 'entfernen') {
+                $ins = $this->db->prepare("INSERT IGNORE INTO artikel_merkmale (artikel_id, merkmal_id, merkmal_wert_id) VALUES (?, ?, ?)");
+                foreach ($ziele as $a) foreach ($wertIds as $w) $ins->execute([(int) $a, $merkmalId, $w]);
+            }
+            if (in_array($merkmal['slug'], ['gewicht_laenge', 'maschenprobe'], true)) {
+                foreach ($ziele as $a) $this->bereicheAbleiten((int) $a);
+            }
+            if ($eigeneTx) $this->db->commit();
+        } catch (Throwable $e) {
+            if ($eigeneTx) $this->db->rollBack();
+            throw $e;
+        }
+        return ['artikel' => count($ids), 'gesamt' => count($ziele)];
+    }
+
     /** Wie viele Artikel nutzen die Werte eines Merkmals? wert_id => Anzahl */
     public function nutzung(): array
     {

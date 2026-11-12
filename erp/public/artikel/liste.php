@@ -566,6 +566,7 @@ $actionBarContent = <<<HTML
         <option value="kanal_zuweisen">Kanal zuweisen</option>
         <option value="kanal_neu_synchronisieren">Erneut synchronisieren (Shop)</option>
         <option value="lagerplatz_zuweisen">Lagerplatz zuweisen</option>
+        <option value="merkmal_setzen">Merkmal setzen (z.B. Pflege)</option>
         <option value="preisschilder">🏷 Preisschilder drucken</option>
         <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
     </select>
@@ -1106,6 +1107,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             return;
         }
 
+        if (aktion === 'merkmal_setzen') {
+            merkmalMassenDialog(ids);   // js/merkmal_massen.js
+            return;
+        }
+
         if (aktion === 'preisschilder') {
             // Auswahlseite im neuen Tab (Farben werden dort zu ihrer Garnqualität zusammengefasst)
             const f = document.createElement('form');
@@ -1214,6 +1220,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </script>
 
 <script src="<?= BASE_PATH ?>/js/kuvert_etikett.js"></script>
+<script src="<?= BASE_PATH ?>/js/merkmal_massen.js"></script>
 <!-- Bulk-Kategorie Modal -->
 <!-- Massenaktion: Lagerplatz zuweisen (Väter geben den Platz an alle Varianten weiter) -->
 <div id="bulk-lp-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">

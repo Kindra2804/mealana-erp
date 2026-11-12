@@ -27,7 +27,7 @@
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
 - [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + Live offen
-- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — Messe- ✅ + Laden-Schild ✅ 2026-11-12 (schilder/auswahl.php), Merkmale neu (Migr. 233/234); Live offen (1.0.9); nächste: Merkmal-Massenaktion, veraltet-Liste; nächste Migr. 235
+- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — Messe- ✅ + Laden-Schild ✅ 2026-11-12 (schilder/auswahl.php), Merkmale neu (Migr. 233/234); Live offen (1.0.9); Merkmal-Massenaktion ✅; nächste: veraltet-Liste; nächste Migr. 235
 
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit

@@ -123,6 +123,12 @@ Merkmale sind zusätzliche Eigenschaften eines Artikels. Bei Garnen kommen sie a
 
 > Beim **Vater-Artikel** gespeichert, übernehmen alle Farben (Kind-Artikel) dieselben Merkmale. Am besten immer beim Vater pflegen.
 
+**Viele Artikel auf einmal (z.B. Pflegesymbole):** Artikelliste → Garnqualitäten (Väter) anhaken → Aktion **„Merkmal setzen (z.B. Pflege)“** → Ausführen. Im Fenster das Merkmal wählen (Pflege ist vorgewählt), Werte anhaken (Suchfeld hilft) und:
+- **hinzufügen**: ergänzt die Werte, vorhandene bleiben
+- **ersetzen**: nur noch die gewählten Werte
+- **entfernen**: nimmt die angehakten Werte weg (nichts angehakt = Merkmal ganz weg)
+
+Gewählte Väter nehmen alle ihre Farben mit, die übrigen Merkmale bleiben unberührt.
 **Werte aufräumen (Artikel → Merkmale):** Neben jedem Wert steht, wie viele Artikel ihn nutzen („unbenutzt“ in Orange). Gibt es denselben Wert in zwei Schreibweisen (z.B. „Acryl“ und „Polyacryl“), beim falschen auf **⇢** klicken, den richtigen Wert suchen und **Zusammenführen**: Alle Artikel bekommen den richtigen Wert, der falsche wird gelöscht. Bei vielen Werten gibt es ein Suchfeld über der Liste.
 
 **Aus JTL übernehmen:** In der JTL-Ameise den Export „Artikelmerkmale“ ziehen und am Server einspielen:

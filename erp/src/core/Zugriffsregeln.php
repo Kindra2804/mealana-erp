@@ -57,6 +57,7 @@ final class Zugriffsregeln
             'seo_speichern.php'             => 'artikel.bearbeiten',
             'merkmal_ajax.php'              => 'artikel.bearbeiten',
             'merkmale_speichern.php'        => 'artikel.bearbeiten',
+            'merkmal_massen.php'            => 'artikel.bearbeiten',
             'bild_ajax.php'                 => 'artikel.bearbeiten',
             'bild_upload.php'               => 'artikel.bearbeiten',
             'kategorie_bearbeiten_ajax.php' => 'artikel.bearbeiten',
@@ -528,7 +529,7 @@ final class Zugriffsregeln
             'ajax_bon_stornieren.php', 'ajax_kundenanzeige_sync.php',
         ],
         'artikel'     => [
-            'lagerplatz_speichern.php',
+            'lagerplatz_speichern.php', 'merkmal_massen.php',
             'bild_upload.php', 'bulk_kategorie_speichern.php', 'bild_ajax.php', 'bild_loeschen.php',
             'kategorie_bild_upload.php', 'kategorie_bild_loeschen.php',
             'sale_override_loeschen.php', 'sale_override_speichern.php', 'kategorie_erstellen.php',
