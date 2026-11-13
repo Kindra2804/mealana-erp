@@ -2,7 +2,8 @@
 /**
  * WPCode-Snippet #34170 auf indra-design.at (WordPress/WooCommerce, NICHT Teil der PHP-Autoload-Kette des ERP).
  * Export-Datum: 2026-08-29; 2026-11-11 um Verfuegbarkeit (ERP 1.0.4, Migr. 232) ergaenzt;
- * 2026-11-13 Shop-Uebersicht "Konfiguration waehlen" + Ablehnen ohne Konfiguration. Quelle der Wahrheit bleibt WPCode (wp-admin) --
+ * 2026-11-13 Shop-Uebersicht "Konfiguration waehlen" + Ablehnen ohne Konfiguration;
+ * 2026-11-13 Personalisierung: Werte mit texteingabe (ERP Migr. 236) verlangen einen Text. Quelle der Wahrheit bleibt WPCode (wp-admin) --
  * diese Datei ist eine manuell aktualisierte Kopie fuers Repo, kein automatischer Sync.
  */
 
@@ -48,6 +49,31 @@ function mealana_konfig_berechne_preis( array $matrix, array $gewaehlteWertIds )
 	return array( 'brutto' => $brutto, 'beschreibung' => implode( ' · ', $beschreibung ) );
 }
 
+/**
+ * Personalisierung (ERP Migr. 236): prueft die Texte zu Werten mit texteingabe.
+ * Rueckgabe: array( 'texte' => array( achse_id => Text ), 'fehler' => string|null ).
+ */
+function mealana_konfig_texte_pruefen( array $matrix, array $wertIds, $texteRoh ) {
+	$texteRoh = is_array( $texteRoh ) ? $texteRoh : array();
+	$texte = array();
+	foreach ( $matrix['achsen'] as $achse ) {
+		if ( ! empty( $achse['bedingung'] ) && ! in_array( (int) $achse['bedingung']['wert_id'], $wertIds, true ) ) continue;
+		foreach ( $achse['werte'] as $wert ) {
+			if ( empty( $wert['texteingabe'] ) || ! in_array( (int) $wert['wert_id'], $wertIds, true ) ) continue;
+			$max  = ! empty( $wert['max_zeichen'] ) ? (int) $wert['max_zeichen'] : 30;
+			$text = trim( sanitize_text_field( (string) ( $texteRoh[ $achse['achse_id'] ] ?? '' ) ) );
+			if ( $text === '' ) {
+				return array( 'texte' => array(), 'fehler' => sprintf( 'Bitte bei „%s“ den gewünschten Text eingeben.', $achse['name'] ) );
+			}
+			if ( mb_strlen( $text ) > $max ) {
+				return array( 'texte' => array(), 'fehler' => sprintf( 'Der Text bei „%s“ darf höchstens %d Zeichen haben.', $achse['name'], $max ) );
+			}
+			$texte[ (int) $achse['achse_id'] ] = $text;
+		}
+	}
+	return array( 'texte' => $texte, 'fehler' => null );
+}
+
 /** Options-Picker unterhalb der Preisanzeige, oberhalb des "In den Warenkorb"-Buttons. */
 add_action( 'woocommerce_before_add_to_cart_button', function () {
 	global $product;
@@ -69,14 +95,19 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 			$aufpreisText = $wert['gesamt_aufpreis'] > 0 ? ' (+' . number_format( $wert['gesamt_aufpreis'], 2, ',', '.' ) . ' €)' : '';
 			// ERP 1.0.4 (Migr. 232): Rohmaterial leer -> sichtbar, aber nicht waehlbar
 			$nichtVerfuegbar = isset( $wert['verfuegbar'] ) && $wert['verfuegbar'] === false;
-			echo '<option value="' . (int) $wert['wert_id'] . '" data-aufpreis="' . esc_attr( $wert['gesamt_aufpreis'] ) . '"' . ( $nichtVerfuegbar ? ' disabled' : '' ) . '>'
+			$textAttr = ! empty( $wert['texteingabe'] ) ? ' data-text="1" data-max="' . (int) ( $wert['max_zeichen'] ?: 30 ) . '"' : '';
+			echo '<option value="' . (int) $wert['wert_id'] . '" data-aufpreis="' . esc_attr( $wert['gesamt_aufpreis'] ) . '"' . $textAttr . ( $nichtVerfuegbar ? ' disabled' : '' ) . '>'
 				. esc_html( $wert['label'] . $aufpreisText . ( $nichtVerfuegbar ? ' – derzeit nicht verfügbar' : '' ) ) . '</option>';
 		}
 		echo '</select>';
+		// Personalisierung: Textfeld erscheint, wenn ein Wert mit data-text gewaehlt ist
+		echo '<input type="text" class="mealana-konfig-text" data-achse-id="' . (int) $achse['achse_id'] . '" style="display:none;width:100%;max-width:320px;padding:6px;margin-top:6px" autocomplete="off">';
+		echo '<div class="mealana-konfig-text-info" style="display:none;font-size:12px;opacity:.7;margin-top:2px"></div>';
 		echo '</div>';
 	}
 	echo '<div id="mealana-konfig-preis" style="font-size:20px;font-weight:700;margin:12px 0">' . wc_price( $matrix['basis_brutto'] ) . '</div>';
 	echo '<input type="hidden" name="mealana_konfig_werte" id="mealana-konfig-werte-input" value="">';
+	echo '<input type="hidden" name="mealana_konfig_texte" id="mealana-konfig-texte-input" value="">';
 	echo '</div>';
 	?>
 	<script>
@@ -91,6 +122,7 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 		var selects = wrap.querySelectorAll('.mealana-konfig-select');
 		var preisEl = document.getElementById('mealana-konfig-preis');
 		var inputEl = document.getElementById('mealana-konfig-werte-input');
+		var texteEl = document.getElementById('mealana-konfig-texte-input');
 		var addBtn  = document.querySelector('.single_add_to_cart_button');
 		var basis   = parseFloat(wrap.dataset.basis) || 0;
 
@@ -115,9 +147,39 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 			});
 		}
 
+		// Personalisierung: Textfeld je Achse zeigen, wenn der gewaehlte Wert data-text hat
+		function textfelderAktualisieren() {
+			wrap.querySelectorAll('.mealana-konfig-achse').forEach(function (div) {
+				var sel  = div.querySelector('.mealana-konfig-select');
+				var feld = div.querySelector('.mealana-konfig-text');
+				var info = div.querySelector('.mealana-konfig-text-info');
+				if (!sel || !feld) return;
+				var opt = sel.selectedOptions[0];
+				var an  = div.style.display !== 'none' && opt && opt.dataset.text === '1';
+				feld.style.display = an ? '' : 'none';
+				info.style.display = an ? '' : 'none';
+				if (an) {
+					var max = parseInt(opt.dataset.max, 10) || 30;
+					feld.maxLength = max;
+					feld.placeholder = 'Ihr Text (max. ' + max + ' Zeichen)';
+					if (feld.value.length > max) feld.value = feld.value.slice(0, max);
+					info.textContent = feld.value.length + ' / ' + max + ' Zeichen';
+				}
+			});
+		}
+
+		function texte() {
+			var t = {};
+			wrap.querySelectorAll('.mealana-konfig-text').forEach(function (feld) {
+				if (feld.style.display !== 'none' && feld.value.trim()) t[feld.dataset.achseId] = feld.value.trim();
+			});
+			return t;
+		}
+
 		function preisAktualisieren() {
 			var summe = 0;
 			var vollstaendig = true;
+			textfelderAktualisieren();
 			wrap.querySelectorAll('.mealana-konfig-achse').forEach(function (div) {
 				if (div.style.display === 'none') return;
 				var sel = div.querySelector('.mealana-konfig-select');
@@ -126,12 +188,19 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 				} else if (sel) {
 					vollstaendig = false;
 				}
+				var feld = div.querySelector('.mealana-konfig-text');
+				if (feld && feld.style.display !== 'none' && !feld.value.trim()) vollstaendig = false;
 			});
 			var gesamt = basis + summe;
 			preisEl.textContent = gesamt.toFixed(2).replace('.', ',') + ' €';
 			if (addBtn) addBtn.disabled = !vollstaendig;
 			inputEl.value = JSON.stringify(auswahl());
+			texteEl.value = JSON.stringify(texte());
 		}
+
+		wrap.querySelectorAll('.mealana-konfig-text').forEach(function (feld) {
+			feld.addEventListener('input', preisAktualisieren);
+		});
 
 		selects.forEach(function (s) {
 			s.addEventListener('change', function () {
@@ -193,6 +262,12 @@ add_filter( 'woocommerce_add_to_cart_validation', function ( $ok, $product_id ) 
 			}
 		}
 	}
+	$texteRoh = empty( $_POST['mealana_konfig_texte'] ) ? array() : json_decode( wp_unslash( $_POST['mealana_konfig_texte'] ), true );
+	$pruefung = mealana_konfig_texte_pruefen( $matrix, $wertIds, $texteRoh );
+	if ( $pruefung['fehler'] ) {
+		wc_add_notice( $pruefung['fehler'], 'error' );
+		return false;
+	}
 	return $ok;
 }, 10, 2 );
 
@@ -207,10 +282,12 @@ add_filter( 'woocommerce_add_cart_item_data', function ( $cart_item_data, $produ
 	$wertIds = array_values( array_map( 'intval', $werte ) );
 	$ergebnis = mealana_konfig_berechne_preis( $matrix, $wertIds );
 
+	$texteRoh = empty( $_POST['mealana_konfig_texte'] ) ? array() : json_decode( wp_unslash( $_POST['mealana_konfig_texte'] ), true );
 	$cart_item_data['mealana_konfig'] = array(
 		'wert_ids'     => $wertIds,
 		'preis_brutto' => $ergebnis['brutto'],
 		'beschreibung' => $ergebnis['beschreibung'],
+		'texte'        => mealana_konfig_texte_pruefen( $matrix, $wertIds, $texteRoh )['texte'],   // Personalisierung
 	);
 	// Sorgt dafuer, dass zwei unterschiedlich konfigurierte Produkte nie zu einer Zeile verschmelzen
 	$cart_item_data['unique_key'] = md5( microtime() . wp_rand() );
@@ -240,6 +317,9 @@ add_filter( 'woocommerce_get_item_data', function ( $item_data, $cart_item ) {
 				$item_data[] = array( 'key' => $achse['name'], 'value' => $wert['label'] );
 			}
 		}
+		if ( ! empty( $cart_item['mealana_konfig']['texte'][ $achse['achse_id'] ] ) ) {
+			$item_data[] = array( 'key' => $achse['name'] . ' – Text', 'value' => $cart_item['mealana_konfig']['texte'][ $achse['achse_id'] ] );
+		}
 	}
 	return $item_data;
 }, 10, 2 );
@@ -258,6 +338,7 @@ add_action( 'woocommerce_checkout_create_order_line_item', function ( $item, $ca
 		'version'      => 1,
 		'werte'        => $values['mealana_konfig']['wert_ids'],
 		'preis_brutto' => $values['mealana_konfig']['preis_brutto'],
+		'texte'        => $values['mealana_konfig']['texte'] ?? array(),
 	) ) );
 
 	foreach ( $matrix['achsen'] as $achse ) {
@@ -265,6 +346,10 @@ add_action( 'woocommerce_checkout_create_order_line_item', function ( $item, $ca
 			if ( in_array( (int) $wert['wert_id'], $values['mealana_konfig']['wert_ids'], true ) ) {
 				$item->add_meta_data( $achse['name'], $wert['label'] );
 			}
+		}
+		// Personalisierungstext als eigene Klartext-Zeile -> ERP uebernimmt ihn in konfig_freitext
+		if ( ! empty( $values['mealana_konfig']['texte'][ $achse['achse_id'] ] ) ) {
+			$item->add_meta_data( $achse['name'] . ' – Text', $values['mealana_konfig']['texte'][ $achse['achse_id'] ] );
 		}
 	}
 }, 10, 4 );

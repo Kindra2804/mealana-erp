@@ -29,6 +29,7 @@ class KonfigBausteineService
                    COUNT(DISTINCT w.artikel_id) AS layouts,
                    MIN(aa.sort_order) AS achse_sort, MIN(w.sort_order) AS wert_sort,
                    kb.kuerzel, kb.rohmaterial_artikel_id, COALESCE(kb.nur_intern, 0) AS nur_intern,
+                   COALESCE(kb.texteingabe, 0) AS texteingabe, kb.max_zeichen,
                    ra.artikelnummer AS roh_nr, ra.name AS roh_name
             FROM varianten_achse_werte w
             JOIN artikel a        ON a.id = w.artikel_id AND a.ist_konfigurierbar = 1
@@ -36,7 +37,7 @@ class KonfigBausteineService
             LEFT JOIN artikel_achsen aa ON aa.artikel_id = w.artikel_id AND aa.achse_id = w.achse_id
             LEFT JOIN konfig_bausteine kb ON kb.achse_id = w.achse_id AND kb.wert = w.wert
             LEFT JOIN artikel ra  ON ra.id = kb.rohmaterial_artikel_id
-            GROUP BY w.achse_id, ac.name, w.wert, kb.kuerzel, kb.rohmaterial_artikel_id, kb.nur_intern, ra.artikelnummer, ra.name
+            GROUP BY w.achse_id, ac.name, w.wert, kb.kuerzel, kb.rohmaterial_artikel_id, kb.nur_intern, kb.texteingabe, kb.max_zeichen, ra.artikelnummer, ra.name
             ORDER BY achse_sort, ac.name, wert_sort, w.wert
         ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -89,14 +90,21 @@ class KonfigBausteineService
                 if ((int) $ra['ist_vater'] === 1) { $fehler[] = "„{$wert}“: „{$rohNr}“ ist ein Vater-Artikel — bitte die konkrete Variante angeben."; continue; }
                 $rohId = (int) $ra['id'];
             }
-            $daten[] = [$achseId, $wert, $kuerzel !== '' ? $kuerzel : null, $rohId, !empty($e['intern']) ? 1 : 0];
+            $maxRoh = trim((string) ($e['max_zeichen'] ?? ''));
+            if ($maxRoh !== '' && (!ctype_digit($maxRoh) || (int) $maxRoh < 1 || (int) $maxRoh > 200)) {
+                $fehler[] = "„{$wert}“: max. Zeichen bitte als Zahl von 1 bis 200.";
+                continue;
+            }
+            $daten[] = [$achseId, $wert, $kuerzel !== '' ? $kuerzel : null, $rohId, !empty($e['intern']) ? 1 : 0,
+                        !empty($e['text']) ? 1 : 0, $maxRoh !== '' ? (int) $maxRoh : null];
         }
         if ($fehler) return $fehler;
 
         $up = $this->db->prepare("
-            INSERT INTO konfig_bausteine (achse_id, wert, kuerzel, rohmaterial_artikel_id, nur_intern) VALUES (?, ?, ?, ?, ?)
+            INSERT INTO konfig_bausteine (achse_id, wert, kuerzel, rohmaterial_artikel_id, nur_intern, texteingabe, max_zeichen)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE kuerzel = VALUES(kuerzel), rohmaterial_artikel_id = VALUES(rohmaterial_artikel_id),
-                                    nur_intern = VALUES(nur_intern)");
+                                    nur_intern = VALUES(nur_intern), texteingabe = VALUES(texteingabe), max_zeichen = VALUES(max_zeichen)");
         $this->db->beginTransaction();
         try {
             foreach ($daten as $d) $up->execute($d);
@@ -160,6 +168,22 @@ class KonfigBausteineService
             WHERE w.artikel_id = ?");
         $st->execute([$artikelId]);
         return array_fill_keys(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN)), true);
+    }
+
+    /** Standard-Länge für Personalisierungstexte, wenn beim Baustein nichts eingetragen ist. */
+    public const MAX_ZEICHEN_STANDARD = 30;
+
+    /**
+     * Werte eines Layouts mit Texteingabe (Personalisierung, Migr. 236): [wert_id => max. Zeichen].
+     */
+    public function textWerte(int $artikelId): array
+    {
+        $st = $this->db->prepare("
+            SELECT w.id, COALESCE(kb.max_zeichen, " . self::MAX_ZEICHEN_STANDARD . ") FROM varianten_achse_werte w
+            JOIN konfig_bausteine kb ON kb.achse_id = w.achse_id AND kb.wert = w.wert AND kb.texteingabe = 1
+            WHERE w.artikel_id = ?");
+        $st->execute([$artikelId]);
+        return array_map('intval', $st->fetchAll(PDO::FETCH_KEY_PAIR));
     }
 
     /** Kürzel je wert_id eines Layouts: [wert_id => kuerzel|null]. */

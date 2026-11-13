@@ -175,6 +175,7 @@ Wenn ein Artikel nicht mehr nachbestellt wird:
 - **Kürzel** – Baustein der Artikelnummer fertiger Schilder (Buchstaben/Ziffern, max. 12 Zeichen, je Achse eindeutig).
 - **Rohmaterial** – Artikelnummer des Lagerartikels (z.B. Filzplatte rot). Die Ampel zeigt den Bestand (grün / gelb ≤ Mindestbestand / rot leer).
 - **nur intern** – der Wert kommt nicht in den Shop, ist aber beim Anlegen fertiger Schilder und an der Kasse wählbar (z.B. „Sonderlackierung“ mit +5 € Aufpreis im Layout).
+- **Text / max.** – Personalisierung: Wählt der Kunde diesen Wert, muss er einen Text eingeben (höchstens „max.“ Zeichen, leer = 30). Beispiel: Achse „Personalisierung“ mit „nein, danke“ / „Metallfeld“ (+10 €) / „Name aufgeklebt“ (+10 €), bei den beiden letzten „Text“ anhaken. Der Text erscheint im Shop als Pflichtfeld, im Warenkorb, in der Bestellung und im ERP-Auftrag (Pickliste, Rechnung). An der Kasse gibt es dasselbe Textfeld, der Text steht dann in der Bon-Zeile.
 
 Rohmaterial leer → im Shop ist der Wert ausgegraut („derzeit nicht verfügbar“) und wird auch serverseitig abgelehnt; an der Kasse nur Hinweis „Material leer“. Nach dem Einbuchen von Material gibt der nächste Sync den Wert frei.
 

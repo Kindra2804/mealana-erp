@@ -88,6 +88,8 @@ class KonfiguratorService
 
         // Rohmaterial-Verfügbarkeit je Wert (Migration 232): leer = im Shop ausgegraut, Kasse Hinweis
         $verfuegbarkeit = (new KonfigBausteineService())->verfuegbarkeit($artikelId);
+        // Personalisierung (Migr. 236): Werte mit Pflicht-Texteingabe + max. Zeichen
+        $textWerte = (new KonfigBausteineService())->textWerte($artikelId);
 
         $ergebnis = [];
         foreach ($dimensionen as $dim) {
@@ -109,6 +111,8 @@ class KonfiguratorService
                     'wert_aufpreis' => (float)($w['aufpreis'] ?? 0),
                     'verfuegbar'    => $verfuegbarkeit[(int)$w['id']]['verfuegbar'] ?? true,
                     'rohmaterial'   => $verfuegbarkeit[(int)$w['id']]['rohmaterial'] ?? null,
+                    'texteingabe'   => isset($textWerte[(int)$w['id']]),
+                    'max_zeichen'   => $textWerte[(int)$w['id']] ?? null,
                 ], $dim['werte']),
             ];
         }
@@ -262,6 +266,8 @@ class KonfiguratorService
                     'wert_aufpreis'   => $wert['wert_aufpreis'],
                     'gesamt_aufpreis' => round($achse['achsen_aufpreis'] + $wert['wert_aufpreis'], 2),
                     'verfuegbar'      => $wert['verfuegbar'],   // false = Rohmaterial leer -> im Shop ausgegraut
+                    'texteingabe'     => $wert['texteingabe'],  // true = Kunde muss Text eingeben (Personalisierung)
+                    'max_zeichen'     => $wert['max_zeichen'],
                 ];
             }
 

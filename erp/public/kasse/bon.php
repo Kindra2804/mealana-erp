@@ -1900,12 +1900,14 @@ function _artikelEinfuegen(a, menge) {
     var chargeNeu    = a._gewaehltCharge !== undefined ? a._gewaehltCharge : (a.fifo_charge || null);
     var konfigIds    = a._konfig_wert_ids || null;
     var konfigJson   = JSON.stringify((konfigIds || []).slice().sort());
+    var konfigText   = a._konfig_text || '';   // Personalisierung: andere Texte nie zusammenführen
     // Gleiche Charge UND gleiche Konfigurator-Auswahl: zusammenführen; sonst neue Zeile
     // (zwei unterschiedlich konfigurierte Schilder dürfen nie zu einer Menge verschmelzen)
     var idx = warenkorb.findIndex(p =>
         p.artikel_id == a.id && !p.istDivers && !p.vonAuftrag
         && (p.charge || null) === (chargeNeu || null)
         && JSON.stringify((p.konfig_wert_ids || []).slice().sort()) === konfigJson
+        && (p.konfig_text || '') === konfigText
     );
     if (idx >= 0 && a.id) {
         warenkorb[idx].menge += menge;
@@ -1921,6 +1923,7 @@ function _artikelEinfuegen(a, menge) {
             rabatt_prozent:              0,
             charge:                      chargeNeu,
             konfig_wert_ids:             konfigIds,
+            konfig_text:                 konfigText,
             nachzutragen_lagerbestand_id: a._nachtragen_lagerbestand_id || null,
             istDivers:                   !!a.istDivers,
             artikel_gruppe_id:           a.artikel_gruppe_id || null, // nur Divers: Erlöskonto-Gruppe
@@ -2015,10 +2018,12 @@ function artikelVollstaendigHinzufuegen(kurz) {
 var konfigAktuellerArtikel = null;  // { id, bezeichnung, artikelnummer, ean, konfiguration: [...] }
 var konfigAuswahl          = {};    // achse_id -> wert_id
 var konfigLetzteBerechnung = null;  // letzte erfolgreiche Antwort von ajax_konfigurator.php
+var konfigTexte            = {};    // achse_id -> Personalisierungstext (Werte mit texteingabe, Migr. 236)
 
 function zeigeKonfiguratorAuswahl(a) {
     konfigAktuellerArtikel = a;
     konfigAuswahl = {};
+    konfigTexte = {};
     konfigLetzteBerechnung = null;
     document.getElementById('konfig-titel').textContent = a.bezeichnung + ' — Optionen wählen';
     document.getElementById('konfig-fehler').textContent = '';
@@ -2047,8 +2052,44 @@ function konfigRenderAchsen() {
                   + '</div>';
         });
         html += '</div>';
+        // Personalisierung: gewählter Wert verlangt einen Text
+        var tw = konfigTextWert(achse);
+        if (tw) {
+            html += '<input type="text" class="ov-input" maxlength="' + tw.max_zeichen + '" placeholder="Text (max. ' + tw.max_zeichen + ' Zeichen)" '
+                  + 'value="' + esc(konfigTexte[achse.achse_id] || '') + '" style="margin-top:6px;width:100%" '
+                  + 'oninput="konfigTexte[' + achse.achse_id + '] = this.value; konfigKnopfPruefen()">';
+        }
     });
     document.getElementById('konfig-achsen').innerHTML = html;
+}
+
+/** Gewählter Wert dieser Achse, falls er eine Texteingabe verlangt, sonst null. */
+function konfigTextWert(achse) {
+    var wid = konfigAuswahl[achse.achse_id];
+    var w = (achse.werte || []).find(function (x) { return x.wert_id === wid; });
+    return (w && w.texteingabe) ? w : null;
+}
+
+/** Sichtbare Achsen mit Text-Wert, aber leerem Text -> Liste der Achsennamen. */
+function konfigTexteFehlen() {
+    return (konfigAktuellerArtikel.konfiguration || []).filter(function (achse) {
+        if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) return false;
+        return konfigTextWert(achse) && !(konfigTexte[achse.achse_id] || '').trim();
+    }).map(function (achse) { return achse.name; });
+}
+
+function konfigKnopfPruefen() {
+    var vollstaendig = (konfigAktuellerArtikel.konfiguration || []).every(function(achse) {
+        if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) return true;
+        return konfigAuswahl[achse.achse_id] !== undefined;
+    });
+    var fehlt = konfigTexteFehlen();
+    var ok = !!(konfigLetzteBerechnung && konfigLetzteBerechnung.erfolg);
+    document.getElementById('btn-konfig-ok').disabled = !(ok && vollstaendig && !fehlt.length);
+    if (ok) {
+        document.getElementById('konfig-fehler').textContent = !vollstaendig ? 'Bitte alle Optionen wählen'
+            : (fehlt.length ? 'Bitte Text eingeben: ' + fehlt.join(', ') : '');
+    }
 }
 
 function konfigWertGewaehlt(achseId, wertId) {
@@ -2081,9 +2122,8 @@ function konfigPreisAktualisieren() {
         var btn    = document.getElementById('btn-konfig-ok');
         if (d.erfolg) {
             document.getElementById('konfig-preis').textContent = '€ ' + fmt(d.brutto);
-            fehlEl.textContent = vollstaendig ? '' : 'Bitte alle Optionen wählen';
-            btn.disabled = !vollstaendig;
             konfigLetzteBerechnung = d;
+            konfigKnopfPruefen();
         } else {
             document.getElementById('konfig-preis').textContent = '€ 0,00';
             fehlEl.textContent = (d.fehler || []).join(', ');
@@ -2100,12 +2140,20 @@ function konfigPreisAktualisieren() {
 
 function konfigBestaetigen() {
     if (!konfigLetzteBerechnung || !konfigLetzteBerechnung.erfolg) return;
+    if (konfigTexteFehlen().length) return;
     var a = konfigAktuellerArtikel;
     var d = konfigLetzteBerechnung;
+    // Personalisierungstexte in die Bezeichnung (Bon, Auftrag, Rechnung) übernehmen
+    var texte = (a.konfiguration || []).filter(function (achse) {
+        return konfigTextWert(achse) && (konfigTexte[achse.achse_id] || '').trim()
+            && !(achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id);
+    }).map(function (achse) { return achse.name + ' Text: „' + konfigTexte[achse.achse_id].trim() + '“'; });
+    var konfigText = texte.join(' · ');
     ovSchliessen('ov-konfigurator');
     artikelHinzufuegen({
         id:                  a.id,
-        bezeichnung:         a.bezeichnung + ' (' + d.beschreibung + ')',
+        bezeichnung:         a.bezeichnung + ' (' + d.beschreibung + (konfigText ? ' · ' + konfigText : '') + ')',
+        _konfig_text:        konfigText,
         artikelnummer:       a.artikelnummer,
         ean:                 a.ean,
         brutto_vk:           d.brutto,

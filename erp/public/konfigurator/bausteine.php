@@ -57,6 +57,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <li><strong>Kürzel</strong> — Baustein der Artikelnummer fertiger Schilder (z.B. <code>ID-W01-20-2F-RT-WS-FI-RT-GL</code>). Leer = kommt nicht in die Nummer (z.B. „nein, Danke“).</li>
         <li><strong>Rohmaterial</strong> — Artikelnummer des Lagerartikels (z.B. Filzplatte rot). Bestand 0 → der Wert ist im Shop ausgegraut, an der Kasse erscheint ein Hinweis.</li>
         <li><strong>nur intern</strong> — der Wert erscheint nicht im Shop, ist aber beim Anlegen fertiger Schilder und an der Kasse wählbar (z.B. „Sonderlackierung“).</li>
+        <li><strong>Text</strong> — wählt man diesen Wert, muss ein Text eingegeben werden (Personalisierung, z.B. „Metallfeld“). <strong>max.</strong> = höchstens so viele Zeichen (leer = 30).</li>
     </ul>
     <p style="margin:6px 0 0;color:var(--color-text-muted)"><?= count($zeilen) ?> Werte · <?= $ohneKuerzel ?> ohne Kürzel · <?= $leer ?> mit leerem Rohmaterial</p>
 </div>
@@ -69,13 +70,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div class="card" style="margin-bottom:12px">
         <h3 style="margin:0 0 8px"><?= htmlspecialchars($g['name']) ?></h3>
         <table class="erp-table" style="font-size:13px">
-            <thead><tr><th>Wert</th><th style="width:70px;text-align:right">Layouts</th><th style="width:110px">Kürzel</th><th style="width:200px">Rohmaterial (Artikelnummer)</th><th>Material</th><th style="width:80px;text-align:center" title="Nicht im Shop, nur beim Anlegen fertiger Schilder und an der Kasse">nur intern</th></tr></thead>
+            <thead><tr><th>Wert</th><th style="width:70px;text-align:right">Layouts</th><th style="width:110px">Kürzel</th><th style="width:200px">Rohmaterial (Artikelnummer)</th><th>Material</th><th style="width:80px;text-align:center" title="Nicht im Shop, nur beim Anlegen fertiger Schilder und an der Kasse">nur intern</th><th style="width:60px;text-align:center" title="Kunde gibt einen Text ein (Personalisierung)">Text</th><th style="width:70px" title="Höchstens so viele Zeichen (leer = 30)">max.</th></tr></thead>
             <tbody>
             <?php foreach ($g['werte'] as $w):
                 $key = $achseId . '|' . $w['wert'];
                 $k = $eingabe[$key]['kuerzel'] ?? ($w['kuerzel'] ?? '');
                 $r = $eingabe[$key]['rohmaterial'] ?? ($w['roh_nr'] ?? '');
-                $intern = $eingabe !== null ? !empty($eingabe[$key]['intern']) : (bool) $w['nur_intern']; ?>
+                $intern = $eingabe !== null ? !empty($eingabe[$key]['intern']) : (bool) $w['nur_intern'];
+                $text   = $eingabe !== null ? !empty($eingabe[$key]['text']) : (bool) $w['texteingabe'];
+                $max    = $eingabe[$key]['max_zeichen'] ?? ($w['max_zeichen'] ?? ''); ?>
                 <tr>
                     <td><?= htmlspecialchars($w['wert']) ?></td>
                     <td style="text-align:right;color:var(--color-text-muted)"><?= (int) $w['layouts'] ?></td>
@@ -88,6 +91,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                         <?php else: ?><span style="color:var(--color-text-muted)">–</span><?php endif; ?>
                     </td>
                     <td style="text-align:center"><input type="checkbox" name="b[<?= htmlspecialchars($key) ?>][intern]" value="1" <?= $intern ? 'checked' : '' ?>></td>
+                    <td style="text-align:center"><input type="checkbox" name="b[<?= htmlspecialchars($key) ?>][text]" value="1" <?= $text ? 'checked' : '' ?>></td>
+                    <td><input type="number" name="b[<?= htmlspecialchars($key) ?>][max_zeichen]" value="<?= htmlspecialchars((string) $max) ?>" min="1" max="200" class="erp-select" style="width:100%" placeholder="30"></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
