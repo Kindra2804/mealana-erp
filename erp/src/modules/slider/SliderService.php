@@ -421,6 +421,7 @@ class SliderService
     public function cronUebertrage(int $systemBenutzerId, ?callable $log = null): void
     {
         foreach ($this->repo->findShops() as $shop) {
+            if ((int)$shop['sync_pausiert'] === 1) continue; // pausierter Shop: der Cron schreibt nichts hinein
             $faellig = (int)$shop['slider_geaendert'] === 0
                 && $shop['slider_uebertragen_am'] !== null
                 && date('Y-m-d', strtotime($shop['slider_uebertragen_am'])) < date('Y-m-d')

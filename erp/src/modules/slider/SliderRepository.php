@@ -35,7 +35,7 @@ class SliderRepository
     {
         return $this->db->query("
             SELECT id, name, slug, wc_url, wc_key, wc_secret, wp_username, wp_app_password,
-                   slider_intervall_sek, slider_uebertragen_am, slider_fehler, slider_geaendert
+                   slider_intervall_sek, slider_uebertragen_am, slider_fehler, slider_geaendert, sync_pausiert
             FROM shops
             WHERE ist_aktiv = 1
             ORDER BY id

@@ -225,6 +225,7 @@ class MenueService
     public function cronUebertrage(int $systemBenutzerId, ?callable $log = null): void
     {
         foreach ($this->shopRepo->findShops() as $shop) {
+            if ((int)$shop['sync_pausiert'] === 1) continue; // pausierter Shop: der Cron schreibt nichts hinein
             $stand = $this->repo->findShopStand((int)$shop['id']);
             if (!$stand || !$stand['menue_uebertragen_am'] || (int)$stand['menue_geaendert'] === 1) continue;
             $auto = array_filter($this->repo->findByShop((int)$shop['id']), fn($p) => $p['unterkategorien_auto'] && $p['ist_aktiv']);
