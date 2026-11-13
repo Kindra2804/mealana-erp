@@ -293,13 +293,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     }
                     $zl = $zahlungsLabels[$zStatus] ?? ['label' => $zStatus, 'class' => ''];
                     $ll = $lieferLabels[$a['lieferstatus']]     ?? ['label' => $a['lieferstatus'],   'class' => ''];
+                    if (!empty($a['retoure_erwartet'])) $ll = ['label' => 'Retoure erwartet', 'class' => 'chip-auslauf'];
                     $kl = $kanalLabels[$a['kanal']]             ?? ['label' => $a['kanal'],          'class' => ''];
                     // WooCommerce: echten Shop-Namen zeigen (Mealana/Bio-Wolle/Sockenwolle)
                     // statt des generischen "WooCommerce"-Labels -- wie in Einstellungen → Kanäle.
                     if ($a['kanal'] === 'woocommerce' && !empty($a['shop_name'])) {
                         $kl = ['label' => $a['shop_name'], 'class' => $kl['class']];
                     }
-                    $istErledigt = ($a['lieferstatus'] === 'abgeschlossen' && in_array($a['zahlungsstatus'], ['bezahlt', 'erstattet'], true))
+                    $istErledigt = empty($a['retoure_erwartet']) && ($a['lieferstatus'] === 'abgeschlossen' && in_array($a['zahlungsstatus'], ['bezahlt', 'erstattet'], true))
                         || ($a['lieferstatus'] === 'storniert' && in_array($a['zahlungsstatus'], ['storniert', 'erstattet'], true));
                 ?>
                     <tr<?= $istErledigt ? ' style="opacity:0.55;background:var(--color-bg-secondary)"' : '' ?>>

@@ -26,6 +26,14 @@ class OffeneWerte
     private const BASIS = "a.kanal NOT IN ('kasse', 'jtl_archiv') AND a.lieferstatus <> 'storniert' AND p.menge > 0";
 
     /** EXISTS-Bedingungen je Kachel (für den Filter in der Auftragsliste, Alias a = auftraege) */
+    /** Widerruf bei schon versendeter Ware bestätigt, Rechnungskorrektur seit der Bestätigung noch nicht erstellt
+     *  (Packplatz → „Erwartete Retouren“, Auftragsliste „Retoure erwartet“; Jacky 2026-11-13). */
+    public const BEDINGUNG_RETOURE_ERWARTET = "a.widerruf_status = 'widerrufen'
+        AND a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen', 'retoure_offen')
+        AND a.zahlungsstatus <> 'storniert'
+        AND NOT EXISTS (SELECT 1 FROM gutschriften g WHERE g.auftrag_id = a.id
+            AND g.erstellt_am >= (SELECT MAX(l.erstellt_am) FROM auftrag_statuslog l
+                                  WHERE l.auftrag_id = a.id AND l.notiz LIKE '%iderruf bestätigt%'))";
     public const BEDINGUNG_BESTAND = "a.kanal NOT IN ('kasse','jtl_archiv') AND a.lieferstatus NOT IN ('storniert','abgeschlossen')
         AND EXISTS (SELECT 1 FROM auftrag_positionen p WHERE p.auftrag_id = a.id AND p.menge > 0
                     AND p.menge - IF(a.lieferart = 'abholung', p.menge_abgeholt, p.menge_geliefert) > 0)";

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../../src/core/Database.php';
+require_once __DIR__ . '/../../../src/modules/auftraege/OffeneWerte.php';
 
 $db = Database::getInstance();
 
@@ -26,10 +27,7 @@ $erwartet = $db->query("
     FROM auftraege a
     JOIN auftrag_statuslog w ON w.id = (SELECT MAX(l.id) FROM auftrag_statuslog l
                                         WHERE l.auftrag_id = a.id AND l.notiz LIKE '%iderruf bestätigt%')
-    WHERE a.widerruf_status = 'widerrufen'
-      AND a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen', 'retoure_offen')
-      AND a.zahlungsstatus <> 'storniert'
-      AND NOT EXISTS (SELECT 1 FROM gutschriften g WHERE g.auftrag_id = a.id AND g.erstellt_am >= w.erstellt_am)
+    WHERE " . OffeneWerte::BEDINGUNG_RETOURE_ERWARTET . "
     ORDER BY w.erstellt_am
 ")->fetchAll(PDO::FETCH_ASSOC);
 
