@@ -1,7 +1,8 @@
 <?php
 /**
  * WPCode-Snippet #34170 auf indra-design.at (WordPress/WooCommerce, NICHT Teil der PHP-Autoload-Kette des ERP).
- * Export-Datum: 2026-08-29; 2026-11-11 um Verfuegbarkeit (ERP 1.0.4, Migr. 232) ergaenzt. Quelle der Wahrheit bleibt WPCode (wp-admin) --
+ * Export-Datum: 2026-08-29; 2026-11-11 um Verfuegbarkeit (ERP 1.0.4, Migr. 232) ergaenzt;
+ * 2026-11-13 Shop-Uebersicht "Konfiguration waehlen" + Ablehnen ohne Konfiguration. Quelle der Wahrheit bleibt WPCode (wp-admin) --
  * diese Datei ist eine manuell aktualisierte Kopie fuers Repo, kein automatischer Sync.
  */
 
@@ -145,12 +146,45 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 	<?php
 }, 25 );
 
-/** ERP 1.0.4: Werte mit leerem Rohmaterial auch serverseitig ablehnen (disabled im Browser ist kein Schutz). */
+/*
+ * 2026-11-13: Shop-Übersicht -- konfigurierbare Produkte haben dort keinen Direkt-Kauf-Knopf, sondern
+ * "Konfiguration wählen" (Link auf die Produktseite), wie WooCommerce es bei variablen Produkten macht.
+ * Vorher landete das Layout per AJAX-Klick ganz ohne Auswahl im Warenkorb.
+ */
+add_filter( 'woocommerce_product_supports', function ( $unterstuetzt, $feature, $product ) {
+	if ( $feature === 'ajax_add_to_cart' && $product && mealana_konfig_matrix( $product->get_id() ) ) return false;
+	return $unterstuetzt;
+}, 10, 3 );
+
+add_filter( 'woocommerce_product_add_to_cart_url', function ( $url, $product ) {
+	return ( $product && mealana_konfig_matrix( $product->get_id() ) ) ? get_permalink( $product->get_id() ) : $url;
+}, 10, 2 );
+
+add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
+	return ( $product && mealana_konfig_matrix( $product->get_id() ) ) ? 'Konfiguration wählen' : $text;
+}, 10, 2 );
+
+/** Store-API (Block-Warenkorb/-Kacheln): ohne Konfiguration ablehnen. Die Store-API kennt kein Auswahlfeld. */
+add_action( 'woocommerce_store_api_validate_add_to_cart', function ( $product ) {
+	if ( $product && mealana_konfig_matrix( $product->get_id() ) && class_exists( '\Automattic\WooCommerce\StoreApi\Exceptions\RouteException' ) ) {
+		throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException( 'mealana_konfig_fehlt', 'Bitte das Schild zuerst auf der Produktseite konfigurieren.', 400 );
+	}
+}, 10, 1 );
+
+/**
+ * Serverseitige Prüfung beim In-den-Warenkorb-Legen:
+ * - ohne Konfiguration (Direkt-Link ?add-to-cart=, alter AJAX-Knopf) -> ablehnen (2026-11-13)
+ * - ERP 1.0.4: Werte mit leerem Rohmaterial ablehnen (disabled im Browser ist kein Schutz).
+ */
 add_filter( 'woocommerce_add_to_cart_validation', function ( $ok, $product_id ) {
 	$matrix = mealana_konfig_matrix( $product_id );
-	if ( ! $ok || ! $matrix || empty( $_POST['mealana_konfig_werte'] ) ) return $ok;
-	$werte = json_decode( wp_unslash( $_POST['mealana_konfig_werte'] ), true );
-	$wertIds = is_array( $werte ) ? array_map( 'intval', $werte ) : array();
+	if ( ! $ok || ! $matrix ) return $ok;
+	$werte = empty( $_POST['mealana_konfig_werte'] ) ? null : json_decode( wp_unslash( $_POST['mealana_konfig_werte'] ), true );
+	if ( ! is_array( $werte ) || empty( $werte ) ) {
+		wc_add_notice( sprintf( 'Bitte „%s“ zuerst konfigurieren.', get_the_title( $product_id ) ), 'error' );
+		return false;
+	}
+	$wertIds = array_map( 'intval', $werte );
 	foreach ( $matrix['achsen'] as $achse ) {
 		foreach ( $achse['werte'] as $wert ) {
 			if ( isset( $wert['verfuegbar'] ) && $wert['verfuegbar'] === false && in_array( (int) $wert['wert_id'], $wertIds, true ) ) {
