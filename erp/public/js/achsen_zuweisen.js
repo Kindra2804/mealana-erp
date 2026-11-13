@@ -273,8 +273,12 @@ function bedingungAchsenAktualisieren() {
         sel.value = (current && checkedIds.indexOf(String(current)) !== -1) ? current : '';
         sel.dataset.built = '1';
 
+        // Beim Neuaufbau (Achse an-/abgehakt) den bisher gewählten Wert-Text behalten -- vorher wurde hier
+        // null übergeben und JEDE Bedingung sprang beim nächsten Speichern still auf den ersten Wert
+        // (Fund 2026-11-13: "Filz-Farben wenn Hintergrund = Moosgummi" nach Hinzufügen einer Achse).
         var wertSel = document.getElementById('bed-wert-' + ownId);
-        bedingungWertAktualisieren(ownId, erstmalig && wertSel ? wertSel.dataset.initial : null);
+        var wertText = wertSel ? (erstmalig ? wertSel.dataset.initial : wertSel.value) : null;
+        bedingungWertAktualisieren(ownId, wertText);
     });
 }
 
