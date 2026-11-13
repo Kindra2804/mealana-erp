@@ -208,3 +208,14 @@ Jackys Entscheidungen: Kürzel + Rohmaterial **zentral je Achse + Wert-Text** (T
 - **indra-design 2026-11-13 (Jackys OK):** Picker 34170 aktualisiert (Sicherung der alten Fassung im Session-Scratchpad), neues Snippet **35285** „Unterkategorien getrennt über den Produkten“ (Repo `shop/wp-snippets/unterkategorien_getrennt.php`, Gerüst über woocommerce_product_loop_start, sonst fählt Blocksys data-products). Geprüft: Kategorie Schilder + Wollzimmer-Produktseite. SOW + bio-wolle haben das Unterkategorien-Snippet noch nicht.
 - **indra 2026-11-13 (2):** Snippet **35286** „Kategorie Schilder: nur direkte Produkte“ (parse_tax_query include_children=false nur für Slug schilder; Repo `kategorie_nur_direkte_produkte.php`) → Schilder zeigt 21 Layouts, fertige nur unter Fertige Schilder. Picker zeigt „ab … €“ (Grundpreis + günstigster Wert je Achse ohne Bedingung). SOW 3537 + bio 1111 haben „Unterkategorien getrennt“, wirkt dort aber erst, wenn Woo-Kategorieanzeige auf „Unterkategorien und Produkte“ steht (derzeit Standard = nur Produkte).
 - **SOW + bio 2026-11-13:** woocommerce_category_archive_display = both gesetzt (Jackys Wunsch). Blocksy hat im Customizer KEIN Woo-Feld dafür → über options.php mit page_options = nur diese Option gespeichert. Shopseite (woocommerce_shop_page_display) dort unverändert (Standard).
+
+## Plattenmaß-Prüfung (Plan 2026-11-13, Migr. 239 – Jacky schreibt sie selbst)
+Problem: welche Größe × Material-Kombi geht überhaupt (Filz nur A4, Moosgummi je Farbe A2 oder A4, Pappel 3 mm ~400×400 aber ungenau).
+Entscheidungen Jacky:
+- Schilder sind alle rund; mit Aufhängung als Rechteck: 150×159, 200×209, 250×259, 380×389 (immer +9 mm).
+- Moosgummi/Filz-Schichten sind volle Größe inkl. Aufhängung → gleich behandeln wie Holz.
+- Konfigurator-Holz immer 3 mm; 4 mm nur Sonder (ohne Rückwand, über „nur intern“), 2 mm = Maschenmarkierer (kein Konfigurator).
+- Nur „passt / passt nicht“ bauen, KEINE Ausbeute-Rechnung: Jacky verschachtelt von Hand (aus 400×400 real 2×20 + 2×15).
+- Plattenmaß = nutzbares (sicheres) Maß, nicht Nennmaß.
+Plan: konfig_bausteine.schild_breite_mm/schild_hoehe_mm (an Größen-Werten), artikel.platte_breite_mm/platte_hoehe_mm (an Rohmaterial). Passt, wenn Schild auf Platte passt (auch um 90° gedreht). Shop graut aus wie `verfuegbar`, serverseitig in berechnePreis nochmal prüfen.
+Bekannte Lücke: 38 cm mit Rückwand braucht 2 Platten, Ampel prüft nur Bestand > 0 → erst mit Stückliste.
