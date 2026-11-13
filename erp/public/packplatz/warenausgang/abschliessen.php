@@ -428,7 +428,7 @@ if ($isAbholung) {
             $firma = $db->query("SELECT schluessel, wert FROM system_einstellungen")->fetchAll(PDO::FETCH_KEY_PAIR);
         }
         try {
-            $mailerAb = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0));
+            $mailerAb = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0))->fuerPartnerAuftrag($auftrag);
             $mailerAb->sendeTemplate(
                 empfaenger:   $email,
                 betreff:      'Ihre Bestellung ' . $auftrag['auftrag_nr'] . ' liegt zur Abholung bereit',

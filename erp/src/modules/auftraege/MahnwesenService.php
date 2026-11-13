@@ -275,7 +275,7 @@ class MahnwesenService
     {
         $stmt = $this->db->prepare("SELECT shop_id FROM auftraege WHERE id = ?");
         $stmt->execute([$auftragId]);
-        return (new Mailer())->fuerShop((int)$stmt->fetchColumn());
+        return (new Mailer())->fuerShop((int)$stmt->fetchColumn())->fuerPartnerAuftrag(['id' => $auftragId]);
     }
 
     private function ladeMahnung(int $id): ?array

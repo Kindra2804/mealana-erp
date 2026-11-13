@@ -107,7 +107,7 @@ class DokumentService
         $eigeneTx = !$this->db->inTransaction();
         if ($eigeneTx) $this->db->beginTransaction();
         try {
-            $kuerzel = $nummernkreis === 'rechnung' ? $this->repo->kuerzelFuerShop($daten['auftrag']['shop_id']) : '';
+            $kuerzel = $nummernkreis === 'rechnung' ? $this->belegKuerzel($daten['auftrag']) : '';
             $rechnungsNr = $this->repo->naechsteNummer($nummernkreis, (int)date('Y'), $kuerzel);
             $dateiname   = 'R-' . $auftrag['auftrag_nr'] . '_' . $rechnungsNr . '.pdf';
 
@@ -645,7 +645,7 @@ class DokumentService
         $bonBelege = $this->kassenbonBelege($auftragId);
         if (!$rechnung && !$bonBelege) return ['erfolg' => false, 'fehler' => 'Zu diesem Auftrag gibt es keinen Beleg (Rechnung oder Kassenbon).'];
 
-        $kuerzel = $this->repo->kuerzelFuerShop($daten['auftrag']['shop_id']);
+        $kuerzel = $this->belegKuerzel($daten['auftrag']);
         $gsNr = $this->repo->naechsteNummer('gutschrift', (int)date('Y'), $kuerzel);
 
         // GS-Positionen und Summen bestimmen. Vollstorno kreditiert nur das, was noch NICHT
@@ -960,6 +960,17 @@ class DokumentService
         $shop       = $this->ladeShop((int)($auftrag['shop_id'] ?? 1));
         $logoBase64 = Firmenlogo::base64(Firmenlogo::fuerShop((int)($auftrag['shop_id'] ?? 0)));
 
+        // Partner-Auftrag (Migration 237): Aussteller ist der Partner -- Kopf, Fußzeile, Bank, KU-Text.
+        // Das Logo bleibt das des Shops (z.B. Indra-Design); "Ein Unternehmen der MEALANA KG" entfällt.
+        $kuText = null;
+        if (!empty($auftrag['partner_id']) && ($partner = $this->partnerDaten((int)$auftrag['partner_id']))) {
+            $firma       = array_merge($firma, $partner['firma']);
+            $kleinuntern = $partner['kleinunternehmer'];
+            $kuText      = $partner['ku_text'];
+            $shop['name'] = $partner['firma']['firmenname'];
+            $shop['sub_marke'] = 0;
+        }
+
         return [
             'firma'       => $firma,
             'shop'        => $shop,
@@ -973,6 +984,7 @@ class DokumentService
             'gutschein_summe'     => $gutscheinSumme,
             'ist_b2b'     => $istB2B,
             'kleinuntern' => $kleinuntern,
+            'ku_text'     => $kuText,
             'logo_base64' => $logoBase64,
             'datum_heute' => date('d.m.Y'),
             // Abholort (Migration 210) — nur bei Selbstabholung, sonst null
@@ -1047,6 +1059,52 @@ class DokumentService
      * Rechnung wie AuftragService, damit Rechnung und Auftragsbetrag übereinstimmen).
      * Bis 2026-09-30 wurde der Versand nur angezeigt, aber nicht mitgerechnet.
      */
+    /**
+     * Nummernkreis-Kürzel eines Belegs: Partner-Auftrag -> Kürzel des Partners (R-INDRA-…),
+     * sonst das des Shops (R-SOW-…) bzw. leer (Hauptshop).
+     */
+    private function belegKuerzel(array $auftrag): string
+    {
+        if (!empty($auftrag['partner_id'])) {
+            $st = $this->db->prepare("SELECT nr_kuerzel FROM partner WHERE id = ?");
+            $st->execute([(int)$auftrag['partner_id']]);
+            $k = (string)$st->fetchColumn();
+            if ($k === '') throw new RuntimeException('Der Partner dieses Auftrags hat kein Nummernkreis-Kürzel (Partner → bearbeiten).');
+            return $k;
+        }
+        return $this->repo->kuerzelFuerShop($auftrag['shop_id'] ?? null);
+    }
+
+    /** Firmendaten eines Partners in der Form von system_einstellungen (für Kopf/Fußzeile der Belege). */
+    private function partnerDaten(int $partnerId): ?array
+    {
+        $st = $this->db->prepare("
+            SELECT p.*, l.name_de AS land_name FROM partner p LEFT JOIN laender l ON l.iso_code = p.land COLLATE utf8mb4_general_ci WHERE p.id = ?");
+        $st->execute([$partnerId]);
+        $p = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$p) return null;
+        return [
+            'firma' => [
+                'firmenname'   => $p['name'],
+                'strasse'      => $p['strasse'] ?? '',
+                'plz'          => $p['plz'] ?? '',
+                'ort'          => $p['ort'] ?? '',
+                'land'         => $p['land_name'] ?: 'Österreich',
+                'telefon'      => $p['telefon'] ?? '',
+                'fax'          => '',
+                'email'        => $p['email'] ?? '',
+                'website'      => $p['website'] ?? '',
+                'uid_nummer'   => $p['uid_nummer'] ?? '',
+                'steuernummer' => $p['steuernummer'] ?? '',
+                'iban'         => $p['iban'] ?? '',
+                'bic'          => $p['bic'] ?? '',
+                'bank_name'    => $p['bank_name'] ?? '',
+            ],
+            'kleinunternehmer' => (bool)$p['kleinunternehmer'],
+            'ku_text'          => $p['kleinunternehmer'] ? ($p['ku_text'] ?: null) : null,
+        ];
+    }
+
     /** Partner-Auftrag einer Kleinunternehmerin (Migration 237): Belege ohne USt, auch der Versand. */
     private function ohneUst(int $auftragId): bool
     {

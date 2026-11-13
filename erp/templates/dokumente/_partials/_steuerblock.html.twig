@@ -92,7 +92,7 @@
         {% if kleinuntern %}
           <tr>
             <td colspan="2" style="font-size:7.5pt; color:#555; padding-top:4pt;">
-              Kein Steuerausweis gemäß § 6 Abs. 1 Z 27 UStG (Kleinunternehmerregelung).
+              {{ ku_text is defined and ku_text ? ku_text : 'Kein Steuerausweis gemäß § 6 Abs. 1 Z 27 UStG (Kleinunternehmerregelung).' }}
             </td>
           </tr>
         {% endif %}

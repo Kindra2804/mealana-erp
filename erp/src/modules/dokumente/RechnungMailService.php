@@ -39,7 +39,7 @@ class RechnungMailService
         $name   = trim(($kunde['vorname'] ?? '') . ' ' . ($kunde['nachname'] ?? '')) ?: ($kunde['firma'] ?? $email);
         $firmaEmail = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'mail_from_address'")->fetchColumn() ?: '';
 
-        $mailer = (new Mailer())->fuerShop((int)($r['shop_id'] ?? 0));
+        $mailer = (new Mailer())->fuerShop((int)($r['shop_id'] ?? 0))->fuerPartnerAuftrag(['id' => (int)$r['auftrag_id']]);
         $mailer->sendeTemplate(
             empfaenger:   $email,
             betreff:      'Ihre Rechnung ' . $r['rechnung_nr'],

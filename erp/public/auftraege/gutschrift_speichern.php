@@ -101,7 +101,7 @@ function versendeGutschriftMail(
         $aStmt->execute([':id' => $auftragId]);
         $auftrag = $aStmt->fetch(PDO::FETCH_ASSOC);
         if (!$auftrag) return;
-        $mailer->fuerShop((int)($auftrag['shop_id'] ?? 0));   // Absender des Kanals
+        $mailer->fuerShop((int)($auftrag['shop_id'] ?? 0))->fuerPartnerAuftrag($auftrag);   // Absender des Kanals
 
         $kunde = json_decode($auftrag['kunden_snapshot'] ?? '{}', true) ?: [];
         $email = trim($kunde['email'] ?? '');

@@ -11,6 +11,8 @@ class Mailer
     private array $config;
     /** Absender/SMTP des Kanals (shops-Zeile) oder null = globaler Standard. Siehe fuerShop(). */
     private ?array $shop = null;
+    /** Partner-Auftrag (Migration 237): Firmenname/Kontakt/Bank in den Mails = Partner. Siehe fuerPartnerAuftrag(). */
+    private ?array $partner = null;
 
     public function __construct()
     {
@@ -44,6 +46,29 @@ class Mailer
         ");
         $stmt->execute([$shopId]);
         $this->shop = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        return $this;
+    }
+
+    /**
+     * Partner-Auftrag (Migration 237): Firmenname, Telefon, Website und Bankdaten in Kopf/Fußzeile der Mail
+     * kommen vom Partner (Verkauf in dessen Namen). $auftrag = Zeile aus auftraege (partner_id oder id genügt).
+     * Ohne Partner bleibt alles wie bisher.
+     */
+    public function fuerPartnerAuftrag(array $auftrag): self
+    {
+        $this->partner = null;
+        $db = Database::getInstance();
+        $pid = $auftrag['partner_id'] ?? null;
+        if ($pid === null && (!empty($auftrag['id']) || !empty($auftrag['auftrag_id']))) {
+            $st = $db->prepare("SELECT partner_id FROM auftraege WHERE id = ?");
+            $st->execute([(int)($auftrag['auftrag_id'] ?? $auftrag['id'])]);
+            $pid = $st->fetchColumn() ?: null;
+        }
+        if ($pid) {
+            $st = $db->prepare("SELECT * FROM partner WHERE id = ?");
+            $st->execute([(int)$pid]);
+            $this->partner = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
         return $this;
     }
 
@@ -223,6 +248,19 @@ class Mailer
             }
             if ($kanalName !== '') $vars['marke'] = $kanalName;
             if ($vars['logo_base64'] === '') $vars['logo_base64'] = $this->ladeShopLogo((int)$this->shop['id']);
+        }
+
+        // Partner-Auftrag: rechtliche Firma = Partner (Name, Kontakt, Bankverbindung für Vorkasse)
+        if ($this->partner) {
+            $p = $this->partner;
+            $vars['firmenname'] = $p['name'];
+            if (!empty($p['telefon'])) $vars['firma_tel'] = $p['telefon'];
+            if (!empty($p['website'])) $vars['firma_web'] = (str_starts_with($p['website'], 'http') ? '' : 'https://') . $p['website'];
+            if (!empty($p['iban'])) {
+                $vars['firma_iban'] = $p['iban'];
+                $vars['firma_bic']  = $p['bic'] ?? '';
+                $vars['firma_bank'] = $p['bank_name'] ?? '';
+            }
         }
 
         $htmlBody = $twig->render($templatePfad, $vars);

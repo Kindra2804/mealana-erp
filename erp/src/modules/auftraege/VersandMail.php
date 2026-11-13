@@ -63,7 +63,7 @@ class VersandMail
             : 'Ihr Auftrag ' . $auftrag['auftrag_nr'] . ' wurde versendet';
 
         try {
-            $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0));
+            $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0))->fuerPartnerAuftrag($auftrag);
             $mailer->sendeTemplate(
                 empfaenger:   $email,
                 betreff:      $betreff,

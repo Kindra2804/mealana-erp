@@ -198,7 +198,7 @@ if ($mailSenden) {
             if (!empty($kd['firma'])) $kdName = $kd['firma'];
             if (!$kdName) $kdName = $kd['name'] ?? '';
 
-            $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0));
+            $mailer = (new Mailer())->fuerShop((int)($auftrag['shop_id'] ?? 0))->fuerPartnerAuftrag($auftrag);
             $anhaenge = [];
             if ($gsPfad && file_exists($gsPfad)) {
                 $anhaenge[] = ['pfad' => $gsPfad, 'name' => basename($gsPfad)];
