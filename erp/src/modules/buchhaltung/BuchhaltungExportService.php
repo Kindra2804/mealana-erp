@@ -511,16 +511,19 @@ class BuchhaltungExportService
         $zeitraum = " BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis);
         $belege = $this->db->query("
             SELECT 'rechnung' AS art, r.id, r.rechnung_nr AS nr, DATE(r.erstellt_am) AS datum,
-                   r.versandkosten_brutto, a.auftrag_nr, k.debitorennummer, a.id AS auftrag_id
+                   r.versandkosten_brutto, a.auftrag_nr, k.debitorennummer, a.id AS auftrag_id, a.partner_id, pa.name AS partner_name
             FROM rechnungen r
             JOIN auftraege a ON a.id = r.auftrag_id
             LEFT JOIN kunden k ON k.id = a.kunden_id
+            LEFT JOIN partner pa ON pa.id = a.partner_id
             WHERE a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ") AND DATE(r.erstellt_am) $zeitraum
             UNION ALL
-            SELECT 'gutschrift', g.id, g.gutschrift_nr, DATE(g.erstellt_am), g.versandkosten_brutto, a.auftrag_nr, k.debitorennummer, a.id
+            SELECT 'gutschrift', g.id, g.gutschrift_nr, DATE(g.erstellt_am), g.versandkosten_brutto, a.auftrag_nr, k.debitorennummer, a.id,
+                   a.partner_id, pa.name
             FROM gutschriften g
             JOIN auftraege a ON a.id = g.auftrag_id
             LEFT JOIN kunden k ON k.id = a.kunden_id
+            LEFT JOIN partner pa ON pa.id = a.partner_id
             WHERE a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ") AND DATE(g.erstellt_am) $zeitraum
         ")->fetchAll();
 
@@ -549,6 +552,25 @@ class BuchhaltungExportService
         foreach ($belege as $b) {
             $vz    = $b['art'] === 'gutschrift' ? -1 : 1;
             $label = $b['art'] === 'gutschrift' ? 'Gutschrift' : 'Rechnung';
+
+            // Partner-Auftrag (Migration 237): der Beleg ist der des Partners (z.B. R-INDRA-…), kein Erlös der KG.
+            // Nur die Versandkosten gehören der KG -- Gegenverrechnung mit dem Partner (Jacky 2026-11-13):
+            // Verrechnungskonto Partner an Versanderlös + USt (KG-Leistung, Standardsatz).
+            if (!empty($b['partner_id'])) {
+                if ((float)$b['versandkosten_brutto'] > 0) {
+                    $fremd = $this->partnerKonten()['fremd'];
+                    if (!$fremd) {
+                        $hinweise[] = "$label {$b['nr']} ({$b['partner_name']}): kein Partner-Konto Fremdrechnung eingestellt — Versand € "
+                            . number_format((float)$b['versandkosten_brutto'], 2, ',', '.') . " manuell buchen";
+                        continue;
+                    }
+                    $v = Versandsteuer::aufteilen((float)$b['versandkosten_brutto'], []);
+                    $this->belegZeile($buchungen, $hinweise, ['debitorennummer' => $fremd] + $b, $label, $this->versandKonto(),
+                        'Versandkosten (Gegenverrechnung ' . $b['partner_name'] . ')', (float)$v['satz'], $vz * $v['netto'], $vz * $v['steuer'], null);
+                }
+                continue;
+            }
+
             if (!$b['debitorennummer']) {
                 $hinweise[] = "$label {$b['nr']} ({$b['datum']}, Auftrag {$b['auftrag_nr']}): Kunde ohne Debitorennummer — manuell buchen";
                 continue;
@@ -624,14 +646,14 @@ class BuchhaltungExportService
         $zeitraum = " BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis);
         $rows = $this->db->query("
             SELECT z.buchungsdatum AS datum, z.betrag, z.zahlungsweg, a.zahlungsart, a.auftrag_nr, k.debitorennummer,
-                   'zahlung' AS quelle
+                   'zahlung' AS quelle, a.partner_id
             FROM auftrag_zahlungen z
             JOIN auftraege a ON a.id = z.auftrag_id
             LEFT JOIN kunden k ON k.id = a.kunden_id
             WHERE z.kassen_bon_id IS NULL AND a.kanal NOT IN (" . self::AUSGESCHLOSSENE_KANAELE . ")
               AND z.buchungsdatum $zeitraum
             UNION ALL
-            SELECT DATE(t.erstellt_am), -t.betrag, 'gutschein', a.zahlungsart, a.auftrag_nr, k.debitorennummer, 'gutschein'
+            SELECT DATE(t.erstellt_am), -t.betrag, 'gutschein', a.zahlungsart, a.auftrag_nr, k.debitorennummer, 'gutschein', a.partner_id
             FROM gutschein_transaktionen t
             JOIN auftraege a ON a.id = t.auftrag_id
             LEFT JOIN kunden k ON k.id = a.kunden_id
@@ -644,6 +666,16 @@ class BuchhaltungExportService
             $za = self::ZAHLUNGSWEG_ZU_ZAHLUNGSART[$r['zahlungsweg'] ?? ''] ?? (in_array($r['zahlungsart'], ['rechnung', 'gemischt'], true) ? 'vorkasse' : ($r['zahlungsart'] === 'karte' ? 'karte_extern' : $r['zahlungsart']));
             $zk = $this->zahlungsartKonto($za)['kontonummer'] ?? null;
             $betrag = round((float)$r['betrag'], 2);
+            // Partner-Auftrag (Migration 237): das Geld (auch ein eingelöster KG-Gutschein) gehört dem Partner
+            // -> Verrechnungskonto Partner statt Kundenkonto (Auszahlung später Block 6)
+            if (!empty($r['partner_id'])) {
+                $r['debitorennummer'] = $this->partnerKonten()['fremd'];
+                if (!$r['debitorennummer']) {
+                    $hinweise[] = "Zahlung {$r['auftrag_nr']} ({$r['datum']}): Partner-Auftrag, aber kein Partner-Konto Fremdrechnung eingestellt — € "
+                        . number_format($betrag, 2, ',', '.') . " manuell buchen";
+                    continue;
+                }
+            }
             if (!$r['debitorennummer'] || !$zk) {
                 $hinweise[] = "Zahlung {$r['auftrag_nr']} ({$r['datum']}): " . (!$zk ? "kein Konto für '$za'" : 'Kunde ohne Debitorennummer')
                     . " — € " . number_format($betrag, 2, ',', '.') . " manuell buchen";

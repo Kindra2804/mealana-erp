@@ -310,7 +310,9 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px">
     <div class="card" style="margin:0"><div style="font-size:12px;color:var(--color-text-muted)">OFFEN (wir schulden)</div>
         <div style="font-size:22px;font-weight:700;color:var(--color-nav)"><?= $eur($konto['saldo']) ?></div>
-        <div style="font-size:11px;color:var(--color-text-muted)"><?= $istSpende ? 'Spenden' : 'Verkäufe' ?> gesamt <?= $eur($konto['verkauf_gesamt']) ?> − ausgezahlt <?= $eur($konto['ausgezahlt_gesamt']) ?></div></div>
+        <div style="font-size:11px;color:var(--color-text-muted)"><?= $istSpende ? 'Spenden' : 'Verkäufe' ?> gesamt <?= $eur($konto['verkauf_gesamt']) ?>
+            <?php if ($konto['online_gesamt'] != 0 || $konto['versand_gesamt'] != 0): ?> + online bezahlt <?= $eur($konto['online_gesamt']) ?> − Versand (Gegenverrechnung) <?= $eur($konto['versand_gesamt']) ?><?php endif; ?>
+            − ausgezahlt <?= $eur($konto['ausgezahlt_gesamt']) ?></div></div>
     <div class="card" style="margin:0"><div style="font-size:12px;color:var(--color-text-muted)"><?= $istSpende ? 'SPENDEN' : 'VERKÄUFE' ?> IM ZEITRAUM</div>
         <div style="font-size:22px;font-weight:700"><?= $eur($konto['verkauf_zeitraum']) ?></div></div>
     <?php if ($istSpende): ?>
