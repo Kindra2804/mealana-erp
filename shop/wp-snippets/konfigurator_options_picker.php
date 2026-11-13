@@ -50,6 +50,29 @@ function mealana_konfig_berechne_preis( array $matrix, array $gewaehlteWertIds )
 }
 
 /**
+ * 2026-11-13: Preisanzeige "ab …" bei konfigurierbaren Produkten (Uebersicht + Produktseite), wie bei Varianten.
+ * Mindestpreis = Grundpreis + guenstigster verfuegbarer Wert jeder Achse OHNE Bedingung (bedingte Achsen
+ * lassen sich vermeiden). Ohne jeden Aufpreis bleibt die normale Anzeige.
+ */
+add_filter( 'woocommerce_get_price_html', function ( $html, $product ) {
+	if ( ! $product || $html === '' ) return $html;
+	$matrix = mealana_konfig_matrix( $product->get_id() );
+	if ( ! $matrix ) return $html;
+	$mindest = (float) $matrix['basis_brutto'];
+	$aufpreisMoeglich = false;
+	foreach ( $matrix['achsen'] as $achse ) {
+		$preise = array();
+		foreach ( $achse['werte'] as $wert ) {
+			if ( (float) $wert['gesamt_aufpreis'] > 0 ) $aufpreisMoeglich = true;
+			if ( ! isset( $wert['verfuegbar'] ) || $wert['verfuegbar'] !== false ) $preise[] = (float) $wert['gesamt_aufpreis'];
+		}
+		if ( empty( $achse['bedingung'] ) && $preise ) $mindest += min( $preise );
+	}
+	if ( ! $aufpreisMoeglich ) return $html;
+	return '<span class="nahtlos-ab">ab </span>' . wc_price( $mindest ) . $product->get_price_suffix();
+}, 20, 2 );
+
+/**
  * Personalisierung (ERP Migr. 236): prueft die Texte zu Werten mit texteingabe.
  * Rueckgabe: array( 'texte' => array( achse_id => Text ), 'fehler' => string|null ).
  */
