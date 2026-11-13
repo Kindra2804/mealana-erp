@@ -23,9 +23,9 @@ add_action( 'woocommerce_before_shop_loop', function () {
 	if ( ! function_exists( 'woocommerce_maybe_show_product_subcategories' ) ) return;
 	$kategorien = woocommerce_maybe_show_product_subcategories( '' );
 	if ( trim( $kategorien ) === '' ) return;
-	$spalten = (int) wc_get_loop_prop( 'columns', 4 );
+	// Gerüst über WooCommerce selbst, damit das Theme (Blocksy: data-products="type-1") sein Raster setzt
 	echo '<div class="nahtlos-unterkategorien" style="clear:both">';
-	echo '<ul class="products columns-' . $spalten . '">' . $kategorien . '</ul>';
+	echo woocommerce_product_loop_start( false ) . $kategorien . woocommerce_product_loop_end( false );
 	echo '</div>';
 	echo '<hr class="nahtlos-kat-trenner" style="clear:both;border:0;border-top:1px solid rgba(0,0,0,.15);margin:8px 0 32px">';
 }, 40 );
