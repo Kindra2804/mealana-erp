@@ -28,6 +28,19 @@
   .preis { font-size: 26pt; font-weight: bold; margin-bottom: 3mm; }
   .barcode { width: 76mm; height: 15mm; } {# Rest = Ruhezone links/rechts für den Scanner #}
   .nummer { font-family: DejaVu Sans Mono, monospace; font-size: 10pt; margin-top: 1mm; }
+  {# Dichte-Stufen (KuvertEtikettService::mitStufe): langer Titel + viele Achsen liefen sonst in den Preis #}
+  .s1 .titel { font-size: 16pt; }
+  .s1 .groesse { font-size: 18pt; margin-top: 2mm; }
+  .s1 .trenner { margin: 3mm 0 2mm; }
+  .s1 table.aufbau { font-size: 9.5pt; line-height: 1.4; }
+  .s1 .preis { font-size: 22pt; margin-bottom: 2mm; }
+  .s1 .barcode { height: 13mm; }
+  .s2 .titel { font-size: 14pt; line-height: 1.1; }
+  .s2 .groesse { font-size: 15pt; margin-top: 1.5mm; }
+  .s2 .trenner { margin: 2.5mm 0 1.5mm; }
+  .s2 table.aufbau { font-size: 8.5pt; line-height: 1.35; }
+  .s2 .preis { font-size: 20pt; margin-bottom: 1.5mm; }
+  .s2 .barcode { height: 12mm; }
   .schnitt { position: absolute; left: 0; top: 148.25mm; width: 210mm; border-top: 0.3mm dashed #999; }
   .schnitt span { position: absolute; left: 96mm; top: -2.2mm; background: #fff; padding: 0 2mm; font-size: 7pt; color: #999; }
 </style>
@@ -37,7 +50,7 @@
 <div class="seite{% if loop.last %} letzte{% endif %}">
   {% for e in seite %}
     {% if e %}
-    <div class="haelfte {{ loop.first ? 'oben' : 'unten' }}">
+    <div class="haelfte {{ loop.first ? 'oben' : 'unten' }} s{{ e.stufe|default(0) }}">
       <div class="bild">
         {% if e.bild_base64 %}
           <img src="data:image/jpeg;base64,{{ e.bild_base64 }}">
