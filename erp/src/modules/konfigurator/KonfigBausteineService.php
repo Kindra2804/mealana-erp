@@ -86,8 +86,14 @@ class KonfigBausteineService
             if ($rohNr !== '') {
                 $artikelNrStmt->execute([$rohNr]);
                 $ra = $artikelNrStmt->fetch(PDO::FETCH_ASSOC);
-                if (!$ra) { $fehler[] = "„{$wert}“: Rohmaterial-Artikelnummer „{$rohNr}“ gibt es nicht."; continue; }
-                if ((int) $ra['ist_vater'] === 1) { $fehler[] = "„{$wert}“: „{$rohNr}“ ist ein Vater-Artikel — bitte die konkrete Variante angeben."; continue; }
+                if (!$ra) {
+                    $fehler[] = "„{$wert}“: Rohmaterial-Artikelnummer „{$rohNr}“ gibt es nicht.";
+                    continue;
+                }
+                if ((int) $ra['ist_vater'] === 1) {
+                    $fehler[] = "„{$wert}“: „{$rohNr}“ ist ein Vater-Artikel — bitte die konkrete Variante angeben.";
+                    continue;
+                }
                 $rohId = (int) $ra['id'];
             }
             $maxRoh = trim((string) ($e['max_zeichen'] ?? ''));
@@ -95,8 +101,15 @@ class KonfigBausteineService
                 $fehler[] = "„{$wert}“: max. Zeichen bitte als Zahl von 1 bis 200.";
                 continue;
             }
-            $daten[] = [$achseId, $wert, $kuerzel !== '' ? $kuerzel : null, $rohId, !empty($e['intern']) ? 1 : 0,
-                        !empty($e['text']) ? 1 : 0, $maxRoh !== '' ? (int) $maxRoh : null];
+            $daten[] = [
+                $achseId,
+                $wert,
+                $kuerzel !== '' ? $kuerzel : null,
+                $rohId,
+                !empty($e['intern']) ? 1 : 0,
+                !empty($e['text']) ? 1 : 0,
+                $maxRoh !== '' ? (int) $maxRoh : null
+            ];
         }
         if ($fehler) return $fehler;
 
@@ -122,12 +135,14 @@ class KonfigBausteineService
         $ids = array_values(array_unique(array_map('intval', $artikelIds)));
         if (!$ids) return [];
         $out = [];
-        foreach ($this->db->query("
+        foreach (
+            $this->db->query("
             SELECT lb.artikel_id, SUM(lb.bestand) AS bestand, MAX(COALESCE(lb.mindestbestand, 0)) AS mindest
             FROM lagerbestand lb
             JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ <> 'messe'
             WHERE lb.artikel_id IN (" . implode(',', $ids) . ")
-            GROUP BY lb.artikel_id") as $r) {
+            GROUP BY lb.artikel_id") as $r
+        ) {
             $out[(int) $r['artikel_id']] = ['bestand' => (float) $r['bestand'], 'mindest' => (float) $r['mindest']];
         }
         return $out;
@@ -195,6 +210,16 @@ class KonfigBausteineService
             WHERE w.artikel_id = ?");
         $st->execute([$artikelId]);
         return array_map(fn($k) => $k !== null ? (string) $k : null, $st->fetchAll(PDO::FETCH_KEY_PAIR));
+    }
+
+    /** Prüfen ob Schild auf Platte passt (normal oder gedreht) */
+    public static function passtAufPlatte(?int $schildB, ?int $schildH, ?int $platteB, ?int $platteH): bool
+    {
+        if ($schildB === null || $schildH === null || $platteB === null || $platteH === null) {
+            return true;
+        }
+
+        return (($schildB <= $platteB && $schildH <= $platteH) || ($schildB <= $platteH && $schildH <= $platteB));
     }
 
     /**
