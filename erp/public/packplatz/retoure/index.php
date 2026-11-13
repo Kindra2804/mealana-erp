@@ -19,6 +19,20 @@ $auftraege = $db->query("
     LIMIT 20
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+// Erwartete Retouren: Widerruf (ganz/teilweise) bei schon versendeter Ware bestätigt, noch keine
+// Rechnungskorrektur seit der Bestätigung (WiderrufService::bestaetigen)
+$erwartet = $db->query("
+    SELECT a.id, a.auftrag_nr, a.kunden_snapshot, a.bruttobetrag, w.notiz, w.erstellt_am AS bestaetigt_am
+    FROM auftraege a
+    JOIN auftrag_statuslog w ON w.id = (SELECT MAX(l.id) FROM auftrag_statuslog l
+                                        WHERE l.auftrag_id = a.id AND l.notiz LIKE '%iderruf bestätigt%')
+    WHERE a.widerruf_status = 'widerrufen'
+      AND a.lieferstatus IN ('versendet', 'teilgeliefert', 'abgeschlossen', 'retoure_offen')
+      AND a.zahlungsstatus <> 'storniert'
+      AND NOT EXISTS (SELECT 1 FROM gutschriften g WHERE g.auftrag_id = a.id AND g.erstellt_am >= w.erstellt_am)
+    ORDER BY w.erstellt_am
+")->fetchAll(PDO::FETCH_ASSOC);
+
 $pageTitle = 'Retoure';
 $backUrl   = BASE_PATH . '/packplatz/index.php';
 $headerSub = 'Retoure';
@@ -51,6 +65,27 @@ require_once __DIR__ . '/../shell_top.php';
         Hier: Online- und manuelle Aufträge (auch an der Kasse bezahlte Abholungen — die Rechnungskorrektur bezieht sich dann auf den Kassenbon).
         Reine Kassenverkäufe (K1-…) bitte an der Kasse zurücknehmen.
     </div>
+
+    <?php if ($erwartet): ?>
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#fbbf24">↩ Erwartete Retouren (Widerruf bestätigt)</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+    <?php foreach ($erwartet as $e):
+        $kd = json_decode($e['kunden_snapshot'] ?? '{}', true) ?: [];
+        $kdName = trim(($kd['vorname'] ?? '') . ' ' . ($kd['nachname'] ?? '')) ?: ($kd['name'] ?? '');
+        $artikel = preg_match('/\((.*)\)/s', (string)$e['notiz'], $m) ? $m[1] : '';
+    ?>
+        <a href="detail.php?auftrag_id=<?= (int)$e['id'] ?>"
+           style="background:#2a2410;border:2px solid #fbbf24;border-radius:10px;padding:14px 18px;text-decoration:none;color:#eee;display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <div>
+                <div style="font-size:18px;font-weight:700"><?= htmlspecialchars($e['auftrag_nr']) ?></div>
+                <div style="font-size:13px;color:#fcd34d;margin-top:3px"><?= htmlspecialchars($artikel ?: 'ganze Bestellung') ?></div>
+                <div style="font-size:12px;color:#aaa;margin-top:2px"><?= htmlspecialchars($kdName ?: '—') ?> · Widerruf bestätigt <?= date('d.m.Y', strtotime($e['bestaetigt_am'])) ?></div>
+            </div>
+            <div style="font-size:16px;font-weight:700;color:#aaa;white-space:nowrap"><?= number_format((float)$e['bruttobetrag'], 2, ',', '.') ?> €</div>
+        </a>
+    <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:#e94560">Zuletzt versendete / abgeholte Aufträge</div>
 

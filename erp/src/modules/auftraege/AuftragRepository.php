@@ -69,7 +69,9 @@ class AuftragRepository
 
         // Erledigte (lieferung=abgeschlossen UND zahlung=bezahlt/erstattet) standardmäßig ausblenden
         if (!$mitAbgeschlossenen && $lieferstatus === '' && $zahlungsstatus === '') {
+            // ebenso stornierte (nichts bezahlt bzw. alles erstattet) -- blieben sonst für immer „offen“ (Shop-Test 2026-11-13)
             $where[] = "NOT (a.lieferstatus = 'abgeschlossen' AND a.zahlungsstatus IN ('bezahlt', 'erstattet'))";
+            $where[] = "NOT (a.lieferstatus = 'storniert' AND a.zahlungsstatus IN ('storniert', 'erstattet'))";
         }
 
         if ($zahlungsstatus === 'ueberbezahlt') {

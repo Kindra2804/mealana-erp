@@ -69,6 +69,15 @@ class WiderrufService
         $teilweise = !empty($antrag['teilweise']);
         $artikel   = implode(', ', array_map(fn($p) => ($p['menge'] + 0) . '× ' . $p['name'], $antrag['positionen'] ?? []));
 
+        $versendet = in_array($auftrag['lieferstatus'], ['versendet', 'teilgeliefert', 'abgeschlossen', 'retoure_offen'], true);
+        if ($teilweise && $versendet) {
+            // Ware ist schon beim Kunden: Markierung bleibt, Packplatz → Retoure zeigt den Auftrag unter
+            // „Erwartete Retouren (Widerruf)“, bis die Rechnungskorrektur erstellt ist (Shop-Test 2026-11-13)
+            $this->setze($auftragId, 'widerrufen', 'Teilwiderruf bestätigt (' . $artikel . ') -- Retoure erwartet', $benutzerId);
+            return ['erfolg' => true, 'text' => 'Teilwiderruf bestätigt, der Kunde bekommt die Bestätigung per Mail. '
+                . 'Die Ware ist schon beim Kunden: Retoure abwarten (' . $artikel . ') und am Packplatz → Retoure zurücknehmen '
+                . '(steht dort unter „Erwartete Retouren“).'];
+        }
         if ($teilweise) {
             $this->setze($auftragId, null, 'Teilwiderruf bestätigt (' . $artikel . ') -- Sperre aufgehoben', $benutzerId);
             return ['erfolg' => true, 'text' => 'Teilwiderruf bestätigt, der Kunde bekommt die Bestätigung per Mail. '
@@ -79,7 +88,7 @@ class WiderrufService
 
         if (in_array($auftrag['lieferstatus'], ['versendet', 'abgeschlossen', 'retoure_offen', 'storniert'], true)) {
             return ['erfolg' => true, 'text' => 'Widerruf bestätigt, der Kunde bekommt die Bestätigung per Mail. '
-                . 'Die Ware ist schon unterwegs: Retoure abwarten und am Packplatz einlagern.'];
+                . 'Die Ware ist schon beim Kunden: Retoure abwarten und am Packplatz → Retoure zurücknehmen (steht dort unter „Erwartete Retouren“).'];
         }
         $storno = (new AuftragService())->stornieren($auftragId, 'Widerruf bestätigt', false);
         if (!$storno['erfolg']) {

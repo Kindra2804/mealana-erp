@@ -299,7 +299,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     if ($a['kanal'] === 'woocommerce' && !empty($a['shop_name'])) {
                         $kl = ['label' => $a['shop_name'], 'class' => $kl['class']];
                     }
-                    $istErledigt = $a['lieferstatus'] === 'abgeschlossen' && in_array($a['zahlungsstatus'], ['bezahlt', 'erstattet'], true);
+                    $istErledigt = ($a['lieferstatus'] === 'abgeschlossen' && in_array($a['zahlungsstatus'], ['bezahlt', 'erstattet'], true))
+                        || ($a['lieferstatus'] === 'storniert' && in_array($a['zahlungsstatus'], ['storniert', 'erstattet'], true));
                 ?>
                     <tr<?= $istErledigt ? ' style="opacity:0.55;background:var(--color-bg-secondary)"' : '' ?>>
                         <td>
