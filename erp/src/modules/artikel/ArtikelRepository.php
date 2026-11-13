@@ -103,7 +103,9 @@ class ArtikelRepository
      */
     public function findAll(array $filter, int $limit = 25, int $offset = 0): array
     {
-        $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
+        // Fertige Schilder (konfig_fertige_artikel) hängen eingeklappt unter ihrem Layout (Jacky 2026-11-13)
+        $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL',
+                       'NOT EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_top WHERE kf_top.artikel_id = a.id)'];
         $having = '';
 
         $sortMap = [
@@ -171,6 +173,8 @@ class ArtikelRepository
                         )
                     )
                     OR a.id IN (" . $this->holeOriginalIdsZuZustandsartikeln("z.artikelnummer LIKE " . $this->db->quote('%' . $term . '%')) . ")
+                    OR EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_s{$i} JOIN artikel fa_s{$i} ON fa_s{$i}.id = kf_s{$i}.artikel_id
+                               WHERE kf_s{$i}.layout_artikel_id = a.id AND (fa_s{$i}.name LIKE :{$key} OR fa_s{$i}.artikelnummer LIKE :{$key}))
                 )";
                 $params[$key] = '%' . $term . '%';
             }
@@ -257,7 +261,9 @@ class ArtikelRepository
                 e.kuerzel AS einheit_kuerzel,
                 ap.brutto_vk,
                 al_std.netto_ek AS standard_ek,
-                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand,
+                -- + Bestand der fertigen Schilder eines Layouts (hängen in der Liste darunter); Unterabfrage über
+                -- idx_kfa_layout statt Join-Erweiterung (Join-Kreuzung hatte schon einmal einen 120-s-Timeout)
+                COALESCE(SUM(lb.bestand), 0) + (SELECT COALESCE(SUM(lbf.bestand), 0) FROM konfig_fertige_artikel kf_b JOIN lagerbestand lbf ON lbf.artikel_id = kf_b.artikel_id WHERE kf_b.layout_artikel_id = a.id) AS gesamtbestand,
                 (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl,
                 (SELECT lp_s.bezeichnung FROM lagerplaetze lp_s WHERE lp_s.id = a.stammplatz_id) AS stammplatz,
                 (SELECT lp_n.bezeichnung FROM lagerplaetze lp_n WHERE lp_n.id = a.nachfuellplatz_id) AS nachfuellplatz,
@@ -323,7 +329,9 @@ class ArtikelRepository
      */
     public function countAll(array $filter): int
     {
-        $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL'];
+        // Fertige Schilder (konfig_fertige_artikel) hängen eingeklappt unter ihrem Layout (Jacky 2026-11-13)
+        $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL',
+                       'NOT EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_top WHERE kf_top.artikel_id = a.id)'];
         $having = '';
 
         $params = [];
@@ -379,6 +387,8 @@ class ArtikelRepository
                         )
                     )
                     OR a.id IN (" . $this->holeOriginalIdsZuZustandsartikeln("z.artikelnummer LIKE " . $this->db->quote('%' . $term . '%')) . ")
+                    OR EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_s{$i} JOIN artikel fa_s{$i} ON fa_s{$i}.id = kf_s{$i}.artikel_id
+                               WHERE kf_s{$i}.layout_artikel_id = a.id AND (fa_s{$i}.name LIKE :{$key} OR fa_s{$i}.artikelnummer LIKE :{$key}))
                 )";
                 $params[$key] = '%' . $term . '%';
             }
@@ -442,7 +452,7 @@ class ArtikelRepository
             SELECT COUNT(*) FROM (
                 SELECT
                 a.id,
-                COALESCE(SUM(lb.bestand), 0) AS gesamtbestand
+                COALESCE(SUM(lb.bestand), 0) + (SELECT COALESCE(SUM(lbf.bestand), 0) FROM konfig_fertige_artikel kf_b JOIN lagerbestand lbf ON lbf.artikel_id = kf_b.artikel_id WHERE kf_b.layout_artikel_id = a.id) AS gesamtbestand
                 FROM artikel a
                 JOIN artikel_typen at ON a.artikeltyp_id = at.id
                 LEFT JOIN hersteller h ON a.hersteller_id = h.id
@@ -604,7 +614,8 @@ class ArtikelRepository
         $stmt = $this->db->prepare("
             SELECT
                 a.id,
-                a.vaterartikel_id,
+                COALESCE(a.vaterartikel_id, kf.layout_artikel_id) AS vaterartikel_id,
+                (kf.artikel_id IS NOT NULL) AS ist_fertiges_schild,
                 a.artikelnummer,
                 a.name,
                 a.aktiv,
@@ -638,7 +649,7 @@ class ArtikelRepository
                  FROM artikel_shops ash2
                  JOIN shops s2 ON s2.id = ash2.shop_id
                  LEFT JOIN artikel_shops ash2v ON ash2v.artikel_id = a.vaterartikel_id AND ash2v.shop_id = ash2.shop_id
-                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND COALESCE(ash2v.aktiv, 0) = 1) AS shop_kanaele,
+                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND (a.vaterartikel_id IS NULL OR COALESCE(ash2v.aktiv, 0) = 1)) AS shop_kanaele,
                 -- Kind ist selbst als aktiv gespeichert, aber im Shop unsichtbar,
                 -- weil der Vater dort nicht aktiv ist -- ohne diese Spalte sah
                 -- man in der Liste schlicht nichts (weder grün noch grau), obwohl
@@ -647,7 +658,7 @@ class ArtikelRepository
                  FROM artikel_shops ash2
                  JOIN shops s2 ON s2.id = ash2.shop_id
                  LEFT JOIN artikel_shops ash2v ON ash2v.artikel_id = a.vaterartikel_id AND ash2v.shop_id = ash2.shop_id
-                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND COALESCE(ash2v.aktiv, 0) = 0) AS shop_kanaele_blockiert
+                 WHERE ash2.artikel_id = a.id AND ash2.aktiv = 1 AND a.vaterartikel_id IS NOT NULL AND COALESCE(ash2v.aktiv, 0) = 0) AS shop_kanaele_blockiert
             FROM artikel a
             LEFT JOIN artikel_preise ap ON ap.id = (
                 SELECT id FROM artikel_preise
@@ -665,11 +676,12 @@ class ArtikelRepository
             LEFT JOIN steuerklassen s ON a.steuerklasse_id = s.id
             LEFT JOIN einheiten e ON a.einheit_id = e.id
             LEFT JOIN artikel_gruppen ag ON a.artikel_gruppe_id = ag.id
-            WHERE a.vaterartikel_id IN ($placeholders)
+            LEFT JOIN konfig_fertige_artikel kf ON kf.artikel_id = a.id
+            WHERE a.vaterartikel_id IN ($placeholders) OR kf.layout_artikel_id IN ($placeholders)
             GROUP BY a.id
             ORDER BY $sortSpalte $sortDir
         ");
-        $stmt->execute($vaterIds);
+        $stmt->execute(array_merge($vaterIds, $vaterIds));
         return $stmt->fetchAll();
     }
 
