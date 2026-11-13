@@ -59,6 +59,28 @@ foreach ($positionen as &$p) {
 }
 unset($p);
 
+// Bestätigter Widerruf aus dem Shop (WiderrufService): erwartete Positionen, Ergebnis und Grund
+// vorbelegen – alles überschreibbar. Die Notiz nennt „1× Bezeichnung, 2× …“ (Shop-Test 2026-11-13).
+$widerruf = null;
+if (($auftrag['widerruf_status'] ?? null) === 'widerrufen') {
+    $w = $db->prepare("SELECT notiz, erstellt_am FROM auftrag_statuslog
+                       WHERE auftrag_id = ? AND notiz LIKE '%iderruf bestätigt%' ORDER BY id DESC LIMIT 1");
+    $w->execute([$auftragId]);
+    if ($w = $w->fetch(PDO::FETCH_ASSOC)) {
+        $antrag = $auftrag['widerruf_am'] ?: $db->query("SELECT MAX(erstellt_am) FROM auftrag_statuslog WHERE auftrag_id = " . (int)$auftragId
+                                                         . " AND notiz LIKE '%Widerruf im Shop beantragt%'")->fetchColumn();
+        $widerruf = ['bestaetigt' => $w['erstellt_am'], 'antrag' => $antrag ?: $w['erstellt_am'],
+                     'teilweise' => str_contains($w['notiz'], 'Teilwiderruf'), 'mengen' => []];
+        foreach ($positionen as $p) {
+            if (preg_match('/(\d+)× ' . preg_quote((string)$p['bezeichnung'], '/') . '(?=,|\)|$)/u', $w['notiz'], $m)) {
+                $widerruf['mengen'][$p['id']] = min((int)$m[1], $p['offen_physisch']);
+            }
+        }
+        $widerruf['grund'] = ($widerruf['teilweise'] ? 'Teilwiderruf' : 'Widerruf') . ' vom ' . date('d.m.Y', strtotime($widerruf['antrag']))
+            . ' (über den Shop, bestätigt am ' . date('d.m.Y', strtotime($widerruf['bestaetigt'])) . ')';
+    }
+}
+
 // Rechnung vorhanden?
 $rechnung = $db->prepare("SELECT id, rechnung_nr FROM rechnungen WHERE auftrag_id = :id AND storniert = 0 ORDER BY id DESC LIMIT 1");
 $rechnung->execute([':id' => $auftragId]);
@@ -67,6 +89,7 @@ $rechnung = $rechnung->fetch(PDO::FETCH_ASSOC);
 $bonBelege  = (new DokumentService())->kassenbonBelege($auftragId);
 $belegText  = $rechnung ? 'Rg. ' . $rechnung['rechnung_nr'] : ($bonBelege ? implode(', ', array_column($bonBelege, 'nr')) : '');
 $korrekturMoeglich = (bool)($rechnung || $bonBelege);
+$vorErgebnis = $widerruf && $korrekturMoeglich ? 'gutschrift' : 'nur_einbuchen';
 
 $alleLager = $lagerService->getAlleLager();
 
@@ -175,7 +198,7 @@ require_once __DIR__ . '/../shell_top.php';
                                     </div>
                                 <?php endif; ?>
                                 <div class="teile" id="teile<?= $i ?>" data-idx="<?= $i ?>" data-max="<?= $p['offen_physisch'] ?>"
-                                     data-pflicht="<?= $p['charge_pflicht'] ? 1 : 0 ?>"
+                                     data-pflicht="<?= $p['charge_pflicht'] ? 1 : 0 ?>" data-erwartet="<?= (int)($widerruf['mengen'][$p['id']] ?? 0) ?>"
                                      data-chargen="<?= htmlspecialchars(json_encode(array_values(array_filter(array_column($p['verkauft'], 'charge'))))) ?>"></div>
                                 <button type="button" class="ret-mini" onclick="teilHinzufuegen(<?= $i ?>)">＋ Charge</button>
                                 <span style="font-size:11px;color:#666">max. <?= $p['offen_physisch'] ?></span>
@@ -204,7 +227,7 @@ require_once __DIR__ . '/../shell_top.php';
             <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
                 <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid #0f3460;border-radius:8px;cursor:pointer;color:#eee" id="lbl-gs">
                     <input type="radio" name="ergebnis" value="gutschrift" <?= $korrekturMoeglich ? '' : 'disabled' ?> onchange="ergebnisGewaehlt('gutschrift')"
-                           style="width:18px;height:18px;accent-color:#e94560" <?= !$rechnung ? '' : '' ?>>
+                           style="width:18px;height:18px;accent-color:#e94560" <?= $vorErgebnis === 'gutschrift' ? 'checked' : '' ?>>
                     <div>
                         <div style="font-weight:600">Rechnungskorrektur erstellen</div>
                         <div style="font-size:11px;color:#aaa"><?= $korrekturMoeglich ? htmlspecialchars($belegText) : 'Kein Beleg vorhanden' ?></div>
@@ -219,7 +242,7 @@ require_once __DIR__ . '/../shell_top.php';
                     </div>
                 </label>
                 <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid #0f3460;border-radius:8px;cursor:pointer;color:#eee">
-                    <input type="radio" name="ergebnis" value="nur_einbuchen" checked onchange="ergebnisGewaehlt('nur_einbuchen')"
+                    <input type="radio" name="ergebnis" value="nur_einbuchen" <?= $vorErgebnis === 'nur_einbuchen' ? 'checked' : '' ?> onchange="ergebnisGewaehlt('nur_einbuchen')"
                            style="width:18px;height:18px;accent-color:#e94560">
                     <div>
                         <div style="font-weight:600">Nur einbuchen</div>
@@ -228,9 +251,10 @@ require_once __DIR__ . '/../shell_top.php';
                 </label>
             </div>
 
-            <div id="gs-bereich" style="display:none;border-top:1px solid #0f3460;padding-top:12px;margin-top:4px">
+            <div id="gs-bereich" style="display:<?= $vorErgebnis === 'gutschrift' ? 'block' : 'none' ?>;border-top:1px solid #0f3460;padding-top:12px;margin-top:4px">
                 <label style="font-size:12px;color:#aaa;display:block;margin-bottom:4px">Grund (Rechnungskorrektur)</label>
-                <input type="text" name="gs_grund" class="ret-input" style="width:100%" placeholder="z.B. Reklamation, falsche Ware…">
+                <input type="text" name="gs_grund" class="ret-input" style="width:100%" placeholder="z.B. Reklamation, falsche Ware…"
+                       value="<?= htmlspecialchars($widerruf['grund'] ?? '') ?>">
                 <?php if (!Auth::kann('packplatz.gutschrift')): ?>
                 <label style="font-size:12px;color:#aaa;display:block;margin:10px 0 4px">🔒 Manager-PIN (Freigabe nötig)</label>
                 <input type="password" name="manager_pin" class="ret-input" inputmode="numeric" pattern="\d{4,6}" maxlength="6"
@@ -243,7 +267,7 @@ require_once __DIR__ . '/../shell_top.php';
         <div class="ret-card">
             <div style="font-size:14px;font-weight:700;margin-bottom:10px;color:#aaa">E-Mail an Kunden</div>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:#eee;font-size:14px">
-                <input type="checkbox" name="mail_senden" value="1" style="width:18px;height:18px;accent-color:#e94560">
+                <input type="checkbox" name="mail_senden" value="1" style="width:18px;height:18px;accent-color:#e94560" <?= $widerruf ? 'checked' : '' ?>>
                 Benachrichtigung senden
             </label>
             <div style="font-size:12px;color:#555;margin-top:6px"><?= htmlspecialchars($kdEmail) ?></div>
@@ -319,7 +343,14 @@ function teilGeaendert(idx) {
 document.querySelectorAll('.teile').forEach(function(box) {
     var chargen = JSON.parse(box.dataset.chargen || '[]');
     teilHinzufuegen(parseInt(box.dataset.idx, 10), chargen[0] || '');
-    document.getElementById('chk' + box.dataset.idx).checked = false; // erst beim bewussten Anhaken/Ändern
+    var erwartet = parseInt(box.dataset.erwartet || 0, 10);
+    if (erwartet > 0) {
+        // Bestätigter Widerruf: erwartete Menge vorbelegen und anhaken (überschreibbar)
+        box.querySelector('input[type=number]').value = erwartet;
+        document.getElementById('chk' + box.dataset.idx).checked = true;
+    } else {
+        document.getElementById('chk' + box.dataset.idx).checked = false; // erst beim bewussten Anhaken/Ändern
+    }
 });
 
 document.querySelector('form').addEventListener('submit', function () {
