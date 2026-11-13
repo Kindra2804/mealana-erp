@@ -22,6 +22,11 @@ function typToggle(prefix) {
     document.getElementById(prefix + 'kommission-zeile').style.display = typ === 'kommission' ? 'flex' : 'none';
     document.getElementById(prefix + 'ku-zeile').style.display         = ku ? '' : 'none';
     document.getElementById(prefix + 'typ-hinweis').textContent        = TYP_HINWEIS[typ] || '';
+    // Online-Verkauf im eigenen Namen nur bei Fremdrechnung (Migration 237)
+    var online = document.getElementById(prefix + 'online_verkauf');
+    document.getElementById(prefix + 'online-zeile').style.display  = typ === 'fremdrechnung' ? '' : 'none';
+    if (typ !== 'fremdrechnung') online.checked = false;
+    document.getElementById(prefix + 'kuerzel-zeile').style.display = online.checked ? '' : 'none';
 }
 
 function modalNeuOeffnen() {
@@ -52,6 +57,15 @@ function modalBearbeitenOeffnen(p) {
     set('edit-email',                 p.email);
     set('edit-telefon',               p.telefon);
     set('edit-iban',                  p.iban);
+    set('edit-bic',                   p.bic);
+    set('edit-bank_name',             p.bank_name);
+    set('edit-website',               p.website);
+    set('edit-steuernummer',          p.steuernummer);
+    set('edit-nr_kuerzel',            p.nr_kuerzel);
+    chk('edit-online_verkauf',        p.online_verkauf);
+    var kz = document.getElementById('edit-nr_kuerzel');
+    kz.disabled = !!parseInt(p.kuerzel_gesperrt);
+    document.getElementById('edit-kuerzel-gesperrt').style.display = kz.disabled ? '' : 'none';
     set('edit-uid_nummer',            p.uid_nummer);
     set('edit-zvr_nummer',            p.zvr_nummer);
     set('edit-provisions_satz',       p.provisions_satz);

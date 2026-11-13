@@ -84,6 +84,8 @@ class PartnerRepository
         'name', 'strasse', 'plz', 'ort', 'land', 'typ', 'email', 'telefon', 'iban',
         'uid_nummer', 'zvr_nummer', 'kleinunternehmer', 'ku_text',
         'kunde_id', 'lieferant_id', 'provisions_satz', 'notiz',
+        // Migration 237: Online-Verkauf im eigenen Namen
+        'online_verkauf', 'nr_kuerzel', 'bic', 'bank_name', 'website', 'steuernummer',
     ];
 
     public function insert(array $data): int
@@ -94,6 +96,7 @@ class PartnerRepository
         }
         $werte['land']             = $werte['land'] ?: 'AT';
         $werte['kleinunternehmer'] = $werte['kleinunternehmer'] ?? 0;
+        $werte['online_verkauf']   = $werte['online_verkauf'] ?? 0;
         $werte['provisions_satz']  = $werte['provisions_satz'] ?? 0.00;
         $werte['aktiv']            = $data['aktiv'] ?? 1;
 
@@ -103,6 +106,27 @@ class PartnerRepository
         );
         $stmt->execute($werte);
         return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Nummernkreis-Kürzel schon vergeben? Prüft andere Partner UND Shops (beide teilen sich
+     * dokument_nummern.kuerzel), Groß-/Kleinschreibung egal.
+     */
+    public function kuerzelVergeben(string $kuerzel, ?int $ohnePartnerId = null): bool
+    {
+        $st = $this->db->prepare("SELECT 1 FROM partner WHERE UPPER(nr_kuerzel) = UPPER(?) AND id <> ?
+                                  UNION SELECT 1 FROM shops WHERE UPPER(nr_kuerzel) = UPPER(?) LIMIT 1");
+        $st->execute([$kuerzel, (int) $ohnePartnerId, $kuerzel]);
+        return (bool) $st->fetchColumn();
+    }
+
+    /** Ab dem ersten Beleg mit diesem Kürzel ist es gesperrt (Nummernkreis muss lückenlos bleiben). */
+    public function kuerzelBenutzt(?string $kuerzel): bool
+    {
+        if (!$kuerzel) return false;
+        $st = $this->db->prepare("SELECT 1 FROM dokument_nummern WHERE kuerzel = ? AND letzt_nr > 0 LIMIT 1");
+        $st->execute([$kuerzel]);
+        return (bool) $st->fetchColumn();
     }
 
     /** Aktualisiert alle editierbaren Felder eines Partners. */

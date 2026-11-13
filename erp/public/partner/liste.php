@@ -11,6 +11,8 @@ if ($filterTyp   !== '') $filter['typ']   = $filterTyp;
 if ($filterAktiv !== '') $filter['aktiv'] = (int)$filterAktiv;
 
 $partner = $service->getAll($filter);
+foreach ($partner as &$pz) $pz['kuerzel_gesperrt'] = $service->kuerzelGesperrt($pz) ? 1 : 0;
+unset($pz);
 
 // Auswahllisten fürs Formular
 $db          = Database::getInstance();
@@ -82,6 +84,7 @@ function typ_chip(string $typ): string {
                 <td>
                     <?= typ_chip($p['typ']) ?>
                     <?php if ($p['kleinunternehmer']): ?><div style="font-size:11px;color:var(--color-text-muted)">Kleinunternehmer</div><?php endif; ?>
+                    <?php if (!empty($p['online_verkauf'])): ?><div style="font-size:11px;color:#2563eb">Online · <?= htmlspecialchars((string)$p['nr_kuerzel']) ?></div><?php endif; ?>
                 </td>
                 <td>
                     <?php $anzahl = (int)($p['aktuelle_faecher'] ?? 0); ?>
@@ -220,6 +223,18 @@ function partnerFormFelder(string $prefix, array $laender, array $lieferanten): 
             </select>
             <div id="{$p}typ-hinweis" style="font-size:11px;color:var(--color-text-muted);margin-top:4px"></div>
         </div>
+        <div id="{$p}online-zeile" style="border:1px solid var(--color-border, #e2e8f0);border-radius:6px;padding:8px 10px">
+            <div style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" name="online_verkauf" id="{$p}online_verkauf" value="1" onchange="typToggle('{$p}')">
+                <label for="{$p}online_verkauf" style="cursor:pointer;font-size:13px">Verkauft online im eigenen Namen (Shop-Bestellungen, Rechnungen auf den Partner)</label>
+            </div>
+            <div id="{$p}kuerzel-zeile" style="margin-top:6px">
+                <label class="erp-label">Nummernkreis-Kürzel (5–10 Zeichen, z.B. INDRA → R-INDRA-2026-00001)</label>
+                <input type="text" name="nr_kuerzel" id="{$p}nr_kuerzel" class="erp-input" maxlength="10" pattern="[A-Za-z0-9]{5,10}"
+                       style="width:160px;text-transform:uppercase;font-family:monospace">
+                <span id="{$p}kuerzel-gesperrt" style="display:none;font-size:11px;color:var(--color-text-muted);margin-left:6px">gesperrt – schon auf Belegen</span>
+            </div>
+        </div>
         <div style="display:flex;gap:10px">
             <div style="flex:1;min-width:0">
                 <label class="erp-label">E-Mail</label>
@@ -231,13 +246,31 @@ function partnerFormFelder(string $prefix, array $laender, array $lieferanten): 
             </div>
         </div>
         <div>
-            <label class="erp-label">IBAN</label>
-            <input type="text" name="iban" id="{$p}iban" class="erp-input" style="width:100%;box-sizing:border-box" placeholder="AT00 0000 0000 0000 0000">
+            <label class="erp-label">Website</label>
+            <input type="text" name="website" id="{$p}website" class="erp-input" style="width:100%;box-sizing:border-box" placeholder="www.…">
+        </div>
+        <div style="display:flex;gap:10px">
+            <div style="flex:2;min-width:0">
+                <label class="erp-label">IBAN</label>
+                <input type="text" name="iban" id="{$p}iban" class="erp-input" style="width:100%;box-sizing:border-box" placeholder="AT00 0000 0000 0000 0000">
+            </div>
+            <div style="flex:1;min-width:0">
+                <label class="erp-label">BIC</label>
+                <input type="text" name="bic" id="{$p}bic" class="erp-input" maxlength="11" style="width:100%;box-sizing:border-box">
+            </div>
+        </div>
+        <div>
+            <label class="erp-label">Bank</label>
+            <input type="text" name="bank_name" id="{$p}bank_name" class="erp-input" style="width:100%;box-sizing:border-box">
         </div>
         <div style="display:flex;gap:10px">
             <div style="flex:1;min-width:0">
                 <label class="erp-label">UID-Nummer</label>
                 <input type="text" name="uid_nummer" id="{$p}uid_nummer" class="erp-input" style="width:100%;box-sizing:border-box">
+            </div>
+            <div style="flex:1;min-width:0">
+                <label class="erp-label">Steuernummer</label>
+                <input type="text" name="steuernummer" id="{$p}steuernummer" class="erp-input" style="width:100%;box-sizing:border-box">
             </div>
             <div style="flex:1;min-width:0">
                 <label class="erp-label">ZVR-Nummer (Verein)</label>

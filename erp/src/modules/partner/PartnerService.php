@@ -48,6 +48,12 @@ class PartnerService
         return $this->repo->findAll($filter);
     }
 
+    /** Kürzel schon auf Belegen verwendet -> im Formular gesperrt. */
+    public function kuerzelGesperrt(array $partner): bool
+    {
+        return $this->repo->kuerzelBenutzt($partner['nr_kuerzel'] ?? null);
+    }
+
     /** Gibt einen Partner anhand ID zurück, oder false wenn nicht gefunden. */
     public function getById(int $id): array|false
     {
@@ -87,6 +93,18 @@ class PartnerService
         $alt = $this->repo->findById((int)$data['id']);
         if (!$alt) {
             return ['erfolg' => false, 'fehler' => ['Partner nicht gefunden.']];
+        }
+        // Kontrollkästchen: ein abgehaktes Feld schickt der Browser gar nicht -- ohne das hier würde
+        // array_merge den alten Wert behalten (Kleinunternehmer ließ sich so nie abschalten, Fund 2026-11-13)
+        foreach (['kleinunternehmer', 'online_verkauf'] as $cb) {
+            $data[$cb] = !empty($data[$cb]) ? 1 : 0;
+        }
+        // Gesperrtes Kürzel: das Formular schickt das (deaktivierte) Feld nicht mit -> alter Wert bleibt
+        if ($this->repo->kuerzelBenutzt($alt['nr_kuerzel'] ?? null)) {
+            if (isset($data['nr_kuerzel']) && strtoupper(trim((string)$data['nr_kuerzel'])) !== strtoupper((string)$alt['nr_kuerzel'])) {
+                return ['erfolg' => false, 'fehler' => ["Das Kürzel „{$alt['nr_kuerzel']}“ ist schon auf Belegen verwendet und kann nicht mehr geändert werden."]];
+            }
+            unset($data['nr_kuerzel']);
         }
         // Felder, die das Formular nicht schickt (z.B. kunde_id aus dem Mietlauf), bleiben erhalten
         $data = array_merge($alt, $data);
@@ -133,6 +151,24 @@ class PartnerService
             $fehler[] = 'E-Mail-Adresse ist ungültig.';
         }
 
+        // Online-Verkauf im eigenen Namen (Migration 237): nur Fremdrechnung, Kürzel Pflicht
+        $kuerzel = strtoupper(trim((string)($data['nr_kuerzel'] ?? '')));
+        if (!empty($data['online_verkauf'])) {
+            if (($data['typ'] ?? '') !== 'fremdrechnung') {
+                $fehler[] = 'Online-Verkauf im eigenen Namen gibt es nur bei Verkaufsart Fremdrechnung.';
+            }
+            if ($kuerzel === '') {
+                $fehler[] = 'Für den Online-Verkauf braucht der Partner ein Nummernkreis-Kürzel (z.B. INDRA).';
+            }
+        }
+        if ($kuerzel !== '') {
+            if (!preg_match('/^[A-Z0-9]{5,10}$/', $kuerzel)) {
+                $fehler[] = 'Kürzel: 5 bis 10 Zeichen, nur Buchstaben A–Z und Ziffern.';
+            } elseif ($this->repo->kuerzelVergeben($kuerzel, isset($data['id']) ? (int)$data['id'] : null)) {
+                $fehler[] = "Das Kürzel „{$kuerzel}“ ist schon vergeben (anderer Partner oder Shop).";
+            }
+        }
+
         if (isset($data['provisions_satz']) && $data['provisions_satz'] !== '') {
             $prov = str_replace(',', '.', (string)$data['provisions_satz']);
             if (!is_numeric($prov) || (float)$prov < 0 || (float)$prov > 100) {
@@ -153,7 +189,8 @@ class PartnerService
      */
     private function bereinige(array $data): array
     {
-        foreach (['strasse', 'plz', 'ort', 'email', 'telefon', 'iban', 'uid_nummer', 'zvr_nummer', 'ku_text', 'notiz'] as $feld) {
+        foreach (['strasse', 'plz', 'ort', 'email', 'telefon', 'iban', 'uid_nummer', 'zvr_nummer', 'ku_text', 'notiz',
+                  'nr_kuerzel', 'bic', 'bank_name', 'website', 'steuernummer'] as $feld) {
             if (array_key_exists($feld, $data)) {
                 $data[$feld] = trim((string)$data[$feld]) === '' ? null : trim((string)$data[$feld]);
             }
@@ -161,6 +198,9 @@ class PartnerService
 
         // Checkbox kommt aus Formular nur wenn angehakt → explizit 0 oder 1
         $data['kleinunternehmer'] = !empty($data['kleinunternehmer']) ? 1 : 0;
+        $data['online_verkauf']   = !empty($data['online_verkauf']) ? 1 : 0;
+        if ($data['nr_kuerzel'] ?? null) $data['nr_kuerzel'] = strtoupper($data['nr_kuerzel']);
+        if ($data['bic'] ?? null)        $data['bic'] = strtoupper(str_replace(' ', '', $data['bic']));
         if (!$data['kleinunternehmer']) {
             $data['ku_text'] = null;
         }
