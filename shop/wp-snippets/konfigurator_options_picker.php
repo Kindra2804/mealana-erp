@@ -135,15 +135,31 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 		}
 
 		function sichtbarkeitAktualisieren() {
+			// mehrere Durchlaeufe: eine Vorwahl kann weitere (bedingte) Achsen einblenden
+			for (var runde = 0; runde < 4; runde++) {
+				wrap.querySelectorAll('.mealana-konfig-achse').forEach(function (div) {
+					if (!div.dataset.bedingungAchse) return;
+					var sel = wrap.querySelector('.mealana-konfig-select[data-achse-id="' + div.dataset.bedingungAchse + '"]');
+					var erfuellt = sel && sel.value === div.dataset.bedingungWert;
+					div.style.display = erfuellt ? '' : 'none';
+					if (!erfuellt) {
+						var eigenerSelect = div.querySelector('.mealana-konfig-select');
+						if (eigenerSelect) eigenerSelect.value = '';
+					}
+				});
+				einzelwerteVorwaehlen();
+			}
+		}
+
+		// 2026-11-13: Achse mit nur EINEM waehlbaren Wert (z.B. Personalisierung "Metallfeld" bei
+		// personalisierbaren Designs) automatisch vorwaehlen -- es gibt ja nichts zu entscheiden.
+		function einzelwerteVorwaehlen() {
 			wrap.querySelectorAll('.mealana-konfig-achse').forEach(function (div) {
-				if (!div.dataset.bedingungAchse) return;
-				var sel = wrap.querySelector('.mealana-konfig-select[data-achse-id="' + div.dataset.bedingungAchse + '"]');
-				var erfuellt = sel && sel.value === div.dataset.bedingungWert;
-				div.style.display = erfuellt ? '' : 'none';
-				if (!erfuellt) {
-					var eigenerSelect = div.querySelector('.mealana-konfig-select');
-					if (eigenerSelect) eigenerSelect.value = '';
-				}
+				if (div.style.display === 'none') return;
+				var sel = div.querySelector('.mealana-konfig-select');
+				if (!sel || sel.value) return;
+				var waehlbar = [].filter.call(sel.options, function (o) { return o.value && !o.disabled; });
+				if (waehlbar.length === 1) sel.value = waehlbar[0].value;
 			});
 		}
 

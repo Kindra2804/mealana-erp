@@ -2029,8 +2029,10 @@ function zeigeKonfiguratorAuswahl(a) {
     document.getElementById('konfig-fehler').textContent = '';
     document.getElementById('konfig-preis').textContent = '€ 0,00';
     document.getElementById('btn-konfig-ok').disabled = true;
+    var vorgewaehlt = konfigEinzelwerte();
     konfigRenderAchsen();
     ov('ov-konfigurator');
+    if (vorgewaehlt) konfigPreisAktualisieren();
 }
 
 function konfigRenderAchsen() {
@@ -2092,6 +2094,25 @@ function konfigKnopfPruefen() {
     }
 }
 
+/**
+ * Sichtbare Achsen mit nur EINEM Wert automatisch wählen (z.B. Personalisierung „Metallfeld“
+ * bei personalisierbaren Designs). Mehrere Durchläufe, weil eine Vorwahl bedingte Achsen einblendet.
+ * Rückgabe: true, wenn etwas vorgewählt wurde.
+ */
+function konfigEinzelwerte() {
+    var geaendert = false;
+    for (var runde = 0; runde < 4; runde++) {
+        (konfigAktuellerArtikel.konfiguration || []).forEach(function(achse) {
+            if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) return;
+            if (konfigAuswahl[achse.achse_id] === undefined && (achse.werte || []).length === 1) {
+                konfigAuswahl[achse.achse_id] = achse.werte[0].wert_id;
+                geaendert = true;
+            }
+        });
+    }
+    return geaendert;
+}
+
 function konfigWertGewaehlt(achseId, wertId) {
     konfigAuswahl[achseId] = wertId;
     // Achsen, deren Bedingung durch diese Auswahl nicht mehr erfüllt ist, verlieren ihre eigene Auswahl
@@ -2100,6 +2121,7 @@ function konfigWertGewaehlt(achseId, wertId) {
             delete konfigAuswahl[achse.achse_id];
         }
     });
+    konfigEinzelwerte();
     konfigRenderAchsen();
     konfigPreisAktualisieren();
 }
