@@ -36,3 +36,9 @@ metadata:
 - Verkaufsaufstellung (Abrechnung-PDF) listet nur Kassenverkäufe, Online-Aufträge nur als Summe.
 
 Verwandt: [[project_partner_modul]], [[project_konfigurator_modul]], [[project_indra_design_shop]], [[project_kleinunternehmer]], [[project_steuerprofil]].
+
+**⏸ ZWISCHENSTAND 2026-11-13 (Abbruch wegen API-Fehler, Commit „wip“) — HIER WEITERMACHEN:**
+Jacky-Korrekturen: Versandkosten NICHT gegenverrechnen, sondern **Monatsrechnung KG → Partner wie Fachmiete** (Betrag = Versand brutto der Partner-Rechnungen des Vormonats minus Korrekturen, 20 %, normale KG-Rechnung R-…); Fachmiete wie gehabt (auch 0 €); Gutschein-Einlösung = Durchlauf (schon so); Bestandsübergang = Entnahme/wie Falscheingabe (Umbuchung reicht); gemischte Bestellung (MeaLana-Shop) → **2 Aufträge** mit getrennten Rechnungen (erst beim MeaLana-Umstieg bauen); reiner Indra-Auftrag hat keinen Abholort.
+- Erledigt: Migration 238 (Tabelle partner_versand_rechnungen UNIQUE partner+periode, Artikel VERSAND-PARTNER Gruppe Versandkosten 4090, auf Dev eingespielt); MietRechnungService::kundeSicherstellen/kundenSnapshot public.
+- Offen: 1) PartnerVersandService (offene Monate + verrechnen wie MietRechnungService::rechnungFuerPartner: Auftrag mit je Partner-Rechnung einer Position, erbracht/abgeschlossen, erstelleVollrechnung, Leistungsdatum Monatsende, Zeile in partner_versand_rechnungen); DokumentService ist_fachmiete auch für partner_versand_rechnungen. 2) Knopf im Partner-Konto + Aufruf in cron/fachmiete.php. 3) Gegenverrechnung ENTFERNEN: BuchhaltungExportService Block 3 Partner-Zweig nur `continue` (keine Versandbuchung), PartnerKontoService versand-Abzug + Anzeige (detail.php, abrechnung.html.twig) raus. 4) Test, Handbuch anpassen (08_partner + bedienungsanleitung sagen noch „Gegenverrechnung“), Paket 1.0.10.
+

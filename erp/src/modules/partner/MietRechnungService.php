@@ -182,7 +182,7 @@ class MietRechnungService
      * Debitor für die Mietrechnung: verknüpfter Kunde, sonst bestehender Kunde mit derselben
      * E-Mail, sonst neu aus den Partnerdaten (Firma, Adresse, UID). Wird am Partner gemerkt.
      */
-    private function kundeSicherstellen(array $partner, int $benutzerId): int
+    public function kundeSicherstellen(array $partner, int $benutzerId): int
     {
         if (!empty($partner['kunde_id'])) return (int)$partner['kunde_id'];
 
@@ -222,7 +222,7 @@ class MietRechnungService
      * Kunden- und Rechnungsadress-Snapshot für den Auftrag (wie HaendlerService) —
      * ohne Snapshot bliebe das Empfängerfeld der Rechnung leer.
      */
-    private function kundenSnapshot(int $kundeId): array
+    public function kundenSnapshot(int $kundeId): array
     {
         $ks    = new KundenService();
         $kunde = $ks->getById($kundeId) ?: [];
