@@ -19,6 +19,7 @@ metadata:
 6. **Absender je Kanal** im ERP (Name + Adresse) – sonst „Ihr MEALANA KG-Team“ und fremde Absenderadresse ([[project_mail_absender_je_shop]]).
 7. **Wartungsseite** als WPCode-Snippet (503 + Retry-After, Admins sehen den Shop), Go-Live = Snippet aus + Cache leeren.
 8. Mails: Germanized-Bestellbestätigung ersetzt Woo „in Wartestellung/in Bearbeitung“ → Zahlungsbestätigung kommt nur vom ERP (gewollt). Woo-Kundennotiz-Mails kamen beim Test nicht an.
+8b. **Datenschutzerklärung mit „Verantwortlich für die Datenverarbeitung“** (fehlte in allen übernommenen Texten; SOW/Bio 2026-11-13 mit MEALANA KG ergänzt, Skript `ds_verantwortlich.js`).
 9. Vor Go-Live **Testrunde über Dev** (Bestellung → Zahlung → Versand → Teilwiderruf → Retoure → Rückerstattung) nach [[project-shop-tests-ueber-dev]].
 
 Gemischte Bestellung MeaLana (KG-Ware + Indra) → 2 Aufträge, siehe [[project-indra-design-eu]].
