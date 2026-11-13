@@ -6,8 +6,8 @@
   <style>
     body { margin:0; padding:0; background:#f5f5f5; font-family:Arial,sans-serif; font-size:14px; color:#333; }
     .wrapper { max-width:600px; margin:20px auto; background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08); }
-    .header  { background:#2c3e50; padding:18px 28px; }
-    .header-name { color:#fff; font-size:18px; font-weight:700; }
+    .header  { background:#fff; padding:18px 28px 14px; border-bottom:3px solid #2c3e50; }
+    .header-name { color:#2c3e50; font-size:18px; font-weight:700; }
     .body    { padding:28px; }
     .footer  { background:#f0f0f0; padding:14px 28px; font-size:11px; color:#777; border-top:1px solid #ddd; line-height:1.6; }
     .btn     { display:inline-block; background:#2c3e50; color:#fff !important; padding:10px 22px; border-radius:4px; text-decoration:none; font-weight:700; margin-top:16px; }
@@ -24,8 +24,9 @@
 
   <div class="header">
     {% if logo_base64 is defined and logo_base64 %}
-    <img src="data:image/png;base64,{{ logo_base64 }}"
-         style="height:46px;max-width:210px;display:block" alt="{{ firmenname }}">
+    {# height-Attribut: Outlook ignoriert CSS-Höhen bei Bildern (Logo war riesig, Shop-Test 2026-11-13) #}
+    <img src="data:image/png;base64,{{ logo_base64 }}" height="56"
+         style="height:56px;width:auto;max-width:220px;display:block;border:0" alt="{{ firmenname }}">
     {% else %}
     <div class="header-name">{{ firmenname }}</div>
     {% endif %}

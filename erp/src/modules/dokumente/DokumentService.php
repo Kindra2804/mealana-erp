@@ -109,7 +109,7 @@ class DokumentService
         try {
             $kuerzel = $nummernkreis === 'rechnung' ? $this->belegKuerzel($daten['auftrag']) : '';
             $rechnungsNr = $this->repo->naechsteNummer($nummernkreis, (int)date('Y'), $kuerzel);
-            $dateiname   = 'R-' . $auftrag['auftrag_nr'] . '_' . $rechnungsNr . '.pdf';
+            $dateiname   = $rechnungsNr . '.pdf'; // Ordner je Auftrag; vorher 'R-<Auftrag>_<Nr>.pdf' (doppelt gemoppelt, Shop-Test 2026-11-13)
 
             // faellig_am ist die Basis fürs Mahnwesen (Erinnerung/Mahnstufen ab Fälligkeit)
             $this->db->prepare("
@@ -743,7 +743,7 @@ class DokumentService
         $daten['gutschein_zahlungen'] = [];
         $daten['gutschein_summe']     = 0.0;
 
-        $dateiname = 'GS-' . $daten['auftrag']['auftrag_nr'] . '_' . $gsNr . '.pdf';
+        $dateiname = $gsNr . '.pdf'; // Ordner je Auftrag; vorher 'GS-<Auftrag>_<Nr>.pdf'
         $dateipfad = $this->storagePfad . '/' . $auftragId . '/' . $dateiname;
 
         $daten = $this->mitBildern($daten, 'gutschrift');

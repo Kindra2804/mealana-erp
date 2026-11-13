@@ -24,7 +24,7 @@ class Mailer
                OR schluessel IN (
                    'firmenname','iban','bic','bank_name',
                    'strasse','plz','ort','tel','telefon',
-                   'firma_web','website'
+                   'firma_web','website','email'
                )
         ")->fetchAll(PDO::FETCH_KEY_PAIR);
     }
@@ -232,6 +232,11 @@ class Mailer
             'social_pinterest' => $this->config['social_pinterest'] ?? '',
         ];
         $vars = array_merge($defaults, $variablen);
+        // Kontaktadresse („Bei Fragen … unter …“): einige Aufrufer lasen einen nie vorhandenen
+        // Schlüssel firma_email → leer. Ersatz: Absender-Adresse, sonst Firmen-Mail (Shop-Test 2026-11-13)
+        if (trim((string)($vars['firma_email'] ?? '')) === '') {
+            $vars['firma_email'] = ($this->config['mail_from_address'] ?? '') ?: ($this->config['email'] ?? '');
+        }
 
         // „marke“ = Name für Gruß/Anrede („Ihr …-Team“, „Bestellung bei …“). firmenname bleibt die
         // rechtliche Firma (Kontoinhaber, Fußzeile).
