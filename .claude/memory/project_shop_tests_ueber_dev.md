@@ -22,3 +22,8 @@ metadata:
 **indra-design Wartungsseite:** WPCode **35329** „INDRA: Wartungsseite (kurz)“, angelegt INAKTIV; schalten mit `node .claude-browser-tools/indra_wartung_schalten.js an|aus` (leert WP Super Cache). Kopie `shop/wp-snippets/indra_wartungsseite.php`. Zeitfenster auch für Jackys Umstellung auf das EU nutzen ([[project-indra-design-eu]]).
 
 Verwandt: [[project-datentransfer]], [[project-sow-umstellung]], [[project-bio-wolle-aufbau]], [[project-shop-sync]].
+
+**✅ SOW-Testrunde 2026-11-13 abgeschlossen** (A-SOW-2026-00001–00003, Woo #3538/3539/3542 danach endgültig gelöscht, Woo-Bestand zurückgesetzt, Dev-Zugang SOW geleert). Getestet: Bestellung, Zahlung → processing, Packplatz → Rechnung + Versandmail → completed, Voll-Widerruf (unversendet → Storno), Teilwiderruf (versendet → Erwartete Retouren → vorbelegte Retoure → GS → Rückerstattung → Woo-Erstattung im Kundenkonto).
+Fixes daraus (alle committet, **gehören ins Paket 1.0.11**): a252d86 Slider/Menü-Cron bei Pause, b936f3f Kundennr./Lieferanschrift/pa_farbe/Post-Name, 5d6e655 Anrede + schlanker Belegkopf, 7ddd1c0 Erwartete Retouren + Storno erledigt, 435d4f3 Retoure vorbelegt, 9512e4f Mail-Kopf/Logo/Kontaktadresse + Dateiname = Belegnr., ae5256a Erstattung an Woo, 230be3a Packplatz Charge nachtragen bei Bestand ohne Charge + Warte-Layer, 0ab8c6f „Retoure erwartet“ in der Auftragsliste.
+Shops (direkt, kein Paket): Germanized-Texte SOW, Übersetzungen, Lager-Mails aus, Seiten/Endpunkte deutsch (+indra-Weiterleitung WPCode 35330), leerer Warenkorb deutsch – siehe [[project-woo-shop-checkliste]].
+Offen: Jacky widerruft Woo-Schlüssel „ERP Dev-Test“ bei SOW + setzt Live-SOW-Kanal fort; Bio/indra-Testrunde bei Bedarf gleich ablaufend.
