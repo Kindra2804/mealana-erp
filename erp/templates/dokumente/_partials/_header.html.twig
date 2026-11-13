@@ -5,30 +5,25 @@
 #}
 <table style="width:100%; border-collapse:collapse; margin-bottom:0;">
   <tr>
-    <td style="width:50%; vertical-align:top; padding:0;">
+    <td style="width:50%; vertical-align:middle; padding:0;">
       {% if logo_base64 is defined and logo_base64 %}
         <img src="data:image/png;base64,{{ logo_base64 }}"
-             style="max-width:200px; max-height:80px;" alt="Logo">
+             style="max-width:170px; max-height:60px;" alt="Logo">
       {% endif %}
     </td>
-    <td style="width:50%; vertical-align:top; text-align:right; padding:0;
-               font-size:9pt; line-height:1.5;">
+    {# Schlank (2026-11-13): Adresse steht in der Absenderzeile und in der Fußzeile – hier nur Name + Kontakt #}
+    <td style="width:50%; vertical-align:middle; text-align:right; padding:0;
+               font-size:8.5pt; line-height:1.45;">
       <strong style="font-size:11pt;">{{ shop.name ?? firma.firmenname ?? 'MEALANA KG' }}</strong><br>
       {% if shop.sub_marke ?? false %}
-        <span style="font-size:8pt; color:#555;">Ein Unternehmen der<br>
-        <strong>MEALANA KG</strong></span><br>
+        <span style="font-size:8pt; color:#555;">Ein Unternehmen der <strong>MEALANA KG</strong></span><br>
       {% endif %}
-      {{ firma.strasse ?? '' }}<br>
-      {{ firma.plz ?? '' }} {{ firma.ort ?? '' }}<br>
-      {{ firma.land ?? 'Österreich' }}<br>
-      <br>
-      Telefon: {{ firma.telefon ?? '' }}<br>
-      {% if firma.fax is defined and firma.fax %}
-        Telefax: {{ firma.fax }}<br>
-      {% endif %}
-      {{ firma.email ?? '' }}<br>
+      {% set kontakt = [] %}
+      {% if firma.telefon ?? false %}{% set kontakt = kontakt|merge(['Tel. ' ~ firma.telefon]) %}{% endif %}
+      {% if firma.email ?? false %}{% set kontakt = kontakt|merge([firma.email]) %}{% endif %}
+      {{ kontakt|join(' · ') }}{% if kontakt|length %}<br>{% endif %}
       {{ firma.website ?? '' }}
     </td>
   </tr>
 </table>
-<hr style="border:none; border-top:1px solid #333; margin:6pt 0;">
+<hr style="border:none; border-top:1px solid #333; margin:5pt 0;">

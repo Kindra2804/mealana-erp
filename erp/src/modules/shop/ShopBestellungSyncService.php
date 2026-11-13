@@ -914,6 +914,9 @@ class ShopBestellungSyncService
         $b = $order['billing'] ?? [];
         return [
             'name'    => trim(($b['first_name'] ?? '') . ' ' . ($b['last_name'] ?? '')),
+            // Belege/Mails lesen vorname/nachname (Anrede „Guten Tag Karl Indra“) -- fehlte bis 2026-11-13
+            'vorname'  => trim($b['first_name'] ?? ''),
+            'nachname' => trim($b['last_name'] ?? ''),
             'firma'   => $b['company'] ?? '',
             'strasse' => trim(($b['address_1'] ?? '') . ' ' . ($b['address_2'] ?? '')),
             'plz'     => $b['postcode'] ?? '',
@@ -947,7 +950,9 @@ class ShopBestellungSyncService
     private function baueAdresse(array $adresse): array
     {
         return [
-            'name'    => trim(($adresse['first_name'] ?? '') . ' ' . ($adresse['last_name'] ?? '')),
+            'name'     => trim(($adresse['first_name'] ?? '') . ' ' . ($adresse['last_name'] ?? '')),
+            'vorname'  => trim($adresse['first_name'] ?? ''),   // Belege/Mails lesen vorname/nachname
+            'nachname' => trim($adresse['last_name'] ?? ''),
             'firma'   => $adresse['company'] ?? '',
             'strasse' => trim(($adresse['address_1'] ?? '') . ' ' . ($adresse['address_2'] ?? '')),
             'plz'     => $adresse['postcode'] ?? '',
