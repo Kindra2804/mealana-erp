@@ -10,10 +10,12 @@ metadata:
 **Grenzen:** Live-Kanal-Einstellungen (Zahlungsarten-Zuordnung, Bank, Mail-Absender, Versandklassen) werden so nicht getestet → erste echte Live-Bestellung trotzdem kontrollieren. Bestellungen werden über die **SKU** zugeordnet → SOW/Bio-Artikel müssen erst per `scripts/datentransfer.php export --shop=SOW` (auf dem Live-Server, Jacky) → Import auf Dev. Achtung: Artikel mit gleicher Artikelnummer bleiben auf Dev unverändert (MeaLana-JTL-Artikel) → Probelauf prüfen.
 
 **Schutz (Dev schreibt sonst Artikel/Gutschein-Codes/Slider/Menü in den Live-Shop):**
-1. Windows-Aufgabe **„Shop-Sync-Cronjob“ auf Jackys Dev-PC** (alle 15 min, cron/shop_sync.php gegen Dev-DB!) während des Tests deaktivieren, danach wieder aktivieren.
+1. Windows-Aufgabe **„Shop-Sync-Cronjob“ auf Jackys Dev-PC** läuft alle 15 min gegen die Dev-DB. Seit Fix a252d86 (Slider/Menü-Cron respektiert `sync_pausiert`) überspringt sie pausierte Kanäle komplett → Abschalten nicht nötig (Disable bräuchte Admin-Rechte).
 2. Dev-Kanal: `sync_pausiert = 1` UND `bulk_import_aktiv = 1`.
 3. Nur `php erp/scripts/shop_test_bestellungen.php --shop=SOW [--seit=…]` → holt Bestellungen + meldet Status, sonst nichts (prüft 2.).
 4. Eigener Woo-Schlüssel „ERP Dev-Test“ + App-Passwort, danach widerrufen.
+
+**Stand 2026-11-13 13:40:** Dev gesichert (`D:\ERPackups\dev_vor_sow_bio_import_20261113.sql`), SOW-Paket importiert (18 fehlende Artikel; 1.482 gab es schon aus MeaLana-JTL → SKU-Suche ist global, reicht), Bio nicht nötig (alle 481 da). Dev-Kanäle 2/3/4 auf sync_pausiert=1 + bulk_import_aktiv=1. Fix a252d86 muss mit ins nächste Paket (1.0.11).
 
 **Ablauf je Shop:** Live-Kanal pausieren → Dev-Kanal Zugang eintragen → testen → aufräumen: Testbestellungen + Testkunden in Woo endgültig löschen, Schlüssel widerrufen, **im Live-ERP `bestellungen_letzter_sync` auf nach dem Test setzen** (sonst holt Live die Testbestellungen nach), Live-Kanal fortsetzen, Bestand neu übertragen (Testbestellungen haben Woo-Bestand gesenkt). Dev-Kanal-Zugang wieder leeren.
 
