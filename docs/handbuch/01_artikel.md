@@ -174,6 +174,7 @@ Wenn ein Artikel nicht mehr nachbestellt wird:
 **Artikel → Schild-Bausteine:** Jeder Wert der Schild-Layouts bekommt hier **einmal für alle Layouts**:
 - **Kürzel** – Baustein der Artikelnummer fertiger Schilder (Buchstaben/Ziffern, max. 12 Zeichen, je Achse eindeutig).
 - **Rohmaterial** – Artikelnummer des Lagerartikels (z.B. Filzplatte rot). Die Ampel zeigt den Bestand (grün / gelb ≤ Mindestbestand / rot leer).
+- **nur intern** – der Wert kommt nicht in den Shop, ist aber beim Anlegen fertiger Schilder und an der Kasse wählbar (z.B. „Sonderlackierung“ mit +5 € Aufpreis im Layout).
 
 Rohmaterial leer → im Shop ist der Wert ausgegraut („derzeit nicht verfügbar“) und wird auch serverseitig abgelehnt; an der Kasse nur Hinweis „Material leer“. Nach dem Einbuchen von Material gibt der nächste Sync den Wert frei.
 
@@ -182,6 +183,8 @@ Rohmaterial leer → im Shop ist der Wert ausgegraut („derzeit nicht verfügba
 2. Artikelnummer = Layout-Nummer + Kürzel, z.B. `ID-W01-20-2F-BL-WS-FI-TU` (max. 30 Zeichen).
 3. Gibt es die Kombination schon → **nur einbuchen** (und wieder aktivieren). Neu → eigener Lagerartikel mit Hersteller, Gruppe, Steuer, Shop-Kanälen vom Layout und dem Konfigurator-Preis.
 4. Foto des fertigen Schilds danach im Artikel hochladen.
+
+**Sonder-Eintrag:** Jede Auswahl hat zusätzlich „Sonder … (Freitext)“, z.B. für Sonderfarbe Moosgummi, Filz, Lack, Sondergröße oder Holzdicke. Dann Text, Kürzel (leer = `S`) und Aufpreis eintragen. Der Text steht im Artikelnamen, im Aufbau, auf Kuvert-Etikett und Preisschild. Ein Schild mit Sonder-Eintrag wird **immer als eigener Artikel** angelegt; ist die Nummer schon vergeben, hängt das ERP `-2`, `-3` … an.
 
 **Kuvert-Etikett drucken** (A4 mit 2 Etiketten je 210 × 148 mm, zum Aufkleben auf Kuvert/Tüte/Karton):
 - Links das Bild, rechts Name, Größe (Ø), Aufbau, Preis und die **Artikelnummer als Strichcode**. Die Kasse findet den Artikel über diesen Strichcode, ein EAN ist nicht nötig.

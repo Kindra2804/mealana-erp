@@ -13,7 +13,7 @@ $layoutId = (int) ($_GET['layout'] ?? $_POST['layout'] ?? 0);
 // --- Vorschau (AJAX) ---
 if (($_POST['aktion'] ?? '') === 'vorschau') {
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($service->vorschau($layoutId, $_POST['wert'] ?? []), JSON_UNESCAPED_UNICODE);
+    echo json_encode($service->vorschau($layoutId, $_POST['wert'] ?? [], $_POST['sonder'] ?? []), JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -21,7 +21,8 @@ if (($_POST['aktion'] ?? '') === 'vorschau') {
 if (($_POST['aktion'] ?? '') === 'anlegen') {
     try {
         $erg = $service->anlegen($layoutId, $_POST['wert'] ?? [], (float) str_replace(',', '.', $_POST['menge'] ?? '0'),
-            (int) ($_POST['lager_id'] ?? 0), (int) ($_POST['kategorie_id'] ?? 0), (int) ($_SESSION['benutzer']['id'] ?? 0));
+            (int) ($_POST['lager_id'] ?? 0), (int) ($_POST['kategorie_id'] ?? 0), (int) ($_SESSION['benutzer']['id'] ?? 0),
+            $_POST['sonder'] ?? []);
         $_SESSION['erfolg'] = ($erg['neu'] ? 'Fertiges Schild ' . $erg['artikelnummer'] . ' angelegt' : 'Vorhandenes Schild ' . $erg['artikelnummer'] . ' gefunden')
             . ($erg['menge'] > 0 ? ' und ' . rtrim(rtrim(number_format($erg['menge'], 3, ',', ''), '0'), ',') . ' Stk. eingebucht.' : '.');
         $_SESSION['fertig_letzte_auswahl'] = $_POST['wert'] ?? [];
@@ -29,6 +30,7 @@ if (($_POST['aktion'] ?? '') === 'anlegen') {
     } catch (Throwable $e) {
         $_SESSION['fehler'] = [$e->getMessage()];
         $_SESSION['fertig_letzte_auswahl'] = $_POST['wert'] ?? [];
+        $_SESSION['fertig_letzte_sonder'] = $_POST['sonder'] ?? [];
     }
     header('Location: fertiges_schild.php?layout=' . $layoutId);
     exit;
@@ -42,9 +44,10 @@ if (!$layout || empty($layout['ist_konfigurierbar'])) {
 
 $fehler  = $_SESSION['fehler'] ?? [];
 $erfolg  = $_SESSION['erfolg'] ?? null;
-$auswahl = array_map('intval', $_SESSION['fertig_letzte_auswahl'] ?? []);
+$auswahl = array_map('strval', $_SESSION['fertig_letzte_auswahl'] ?? []);   // wert_id oder 'sonder'
+$sonderEingabe = $_SESSION['fertig_letzte_sonder'] ?? [];
 $letzterArtikel = (int) ($_SESSION['fertig_letzter_artikel'] ?? 0);
-unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['fertig_letzte_auswahl'], $_SESSION['fertig_letzter_artikel']);
+unset($_SESSION['fehler'], $_SESSION['erfolg'], $_SESSION['fertig_letzte_auswahl'], $_SESSION['fertig_letzte_sonder'], $_SESSION['fertig_letzter_artikel']);
 
 $konfiguration = (new KonfiguratorService())->getKonfiguration($layoutId);
 $vorhandene    = $service->vorhandene($layoutId);
@@ -93,7 +96,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <h3 style="margin:0 0 4px"><?= htmlspecialchars($layout['artikelnummer'] . ' ' . $layout['name']) ?></h3>
     <p style="margin:0 0 12px;font-size:13px;color:var(--color-text-muted)">Werte des gebauten Schilds wählen. Gibt es die Kombination schon, wird nur eingebucht.</p>
 
-    <?php foreach ($konfiguration as $achse): ?>
+    <?php foreach ($konfiguration as $achse):
+        $aid = (int) $achse['achse_id'];
+        $istSonder = ($auswahl[$aid] ?? '') === 'sonder';
+        $se = $sonderEingabe[$aid] ?? []; ?>
         <div class="fs-achse" data-achse="<?= (int) $achse['achse_id'] ?>"
              <?php if ($achse['bedingung']): ?>data-bed-achse="<?= (int) $achse['bedingung']['achse_id'] ?>" data-bed-wert="<?= (int) $achse['bedingung']['wert_id'] ?>"<?php endif; ?>
              style="margin-bottom:10px">
@@ -101,10 +107,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <select name="wert[<?= (int) $achse['achse_id'] ?>]" class="erp-select fs-wert" style="width:100%">
                 <option value="">– wählen –</option>
                 <?php foreach ($achse['werte'] as $w): ?>
-                    <option value="<?= (int) $w['wert_id'] ?>" <?= ($auswahl[$achse['achse_id']] ?? 0) === (int) $w['wert_id'] ? 'selected' : '' ?>>
+                    <option value="<?= (int) $w['wert_id'] ?>" <?= ($auswahl[$aid] ?? '') === (string) $w['wert_id'] ? 'selected' : '' ?>>
                         <?= htmlspecialchars($w['wert'] . ($w['verfuegbar'] === false ? ' (Material leer)' : '')) ?></option>
                 <?php endforeach; ?>
+                <option value="sonder" <?= $istSonder ? 'selected' : '' ?>>Sonder … (Freitext)</option>
             </select>
+            <div class="fs-sonder" style="display:<?= $istSonder ? 'grid' : 'none' ?>;grid-template-columns:1fr 70px 90px;gap:6px;margin-top:4px">
+                <input type="text" name="sonder[<?= $aid ?>][text]" value="<?= htmlspecialchars($se['text'] ?? '') ?>" maxlength="60" class="erp-select" placeholder="z.B. MG pfirsich, Holz 6 mm">
+                <input type="text" name="sonder[<?= $aid ?>][kuerzel]" value="<?= htmlspecialchars($se['kuerzel'] ?? '') ?>" maxlength="12" class="erp-select" placeholder="Kürzel S" title="Kürzel für die Artikelnummer (leer = S)" style="font-family:monospace">
+                <input type="text" name="sonder[<?= $aid ?>][aufpreis]" value="<?= htmlspecialchars($se['aufpreis'] ?? '') ?>" class="erp-select" placeholder="+ € 0,00" title="Aufpreis brutto" inputmode="decimal">
+            </div>
         </div>
     <?php endforeach; ?>
 
@@ -141,6 +153,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 (function () {
     var form = document.getElementById('fs-form'), box = document.getElementById('fs-vorschau'), knopf = document.getElementById('fs-knopf');
     function sichtbarkeit() {
+        form.querySelectorAll('.fs-achse').forEach(function (d) {
+            var sonder = d.querySelector('.fs-sonder');
+            if (sonder) sonder.style.display = d.querySelector('select').value === 'sonder' ? 'grid' : 'none';
+        });
         form.querySelectorAll('.fs-achse[data-bed-achse]').forEach(function (d) {
             var sel = form.querySelector('.fs-achse[data-achse="' + d.dataset.bedAchse + '"] select');
             var an = sel && sel.value === d.dataset.bedWert && sel.closest('.fs-achse').style.display !== 'none';
@@ -161,6 +177,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     + '<div>' + esc(v.name) + '</div>'
                     + '<div>Preis: € ' + Number(v.brutto).toFixed(2).replace('.', ',') + '</div>'
                     + (v.vorhanden ? '<div style="color:#2563eb;margin-top:4px">Gibt es schon → wird nur eingebucht' + (v.vorhanden.aktiv ? '' : ' und wieder aktiviert') + '.</div>'
+                       : v.sonder ? '<div style="color:#16a34a;margin-top:4px">Sonderschild → wird immer als eigener Artikel angelegt.</div>'
                                    : '<div style="color:#16a34a;margin-top:4px">Neu → wird als Artikel angelegt.</div>')
                     + (v.ohne_material.length ? '<div style="color:#c2410c">Hinweis: Material leer (' + v.ohne_material.map(esc).join(', ') + ')</div>' : '');
                 knopf.disabled = false;
@@ -169,6 +186,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         }, 200);
     }
     form.addEventListener('change', vorschau);
+    form.addEventListener('input', function (e) { if (e.target.closest('.fs-sonder')) vorschau(); });
     vorschau();
 })();
 </script>

@@ -245,12 +245,15 @@ class KonfiguratorService
         $kgId       ??= $this->findStandardKgId();
         $basis        = $this->preisService->getEffektiverPreis($artikelId, $kgId);
 
+        $intern = (new KonfigBausteineService())->interneWertIds($artikelId);   // Migr. 236: nicht im Shop
+
         $achsen = [];
         foreach ($this->getKonfiguration($artikelId) as $achse) {
             $achseZuweisung = $shopSyncRepo->findAchseShopZuweisung($achse['achse_id'], $shopId);
 
             $werte = [];
             foreach ($achse['werte'] as $wert) {
+                if (isset($intern[$wert['wert_id']])) continue;
                 $wertZuweisung = $shopSyncRepo->findWertShopZuweisung($wert['wert_id'], $shopId);
                 $werte[] = [
                     'wert_id'         => $wert['wert_id'],
@@ -261,6 +264,8 @@ class KonfiguratorService
                     'verfuegbar'      => $wert['verfuegbar'],   // false = Rohmaterial leer -> im Shop ausgegraut
                 ];
             }
+
+            if (!$werte) continue;   // nur interne Werte -> Achse im Shop gar nicht anzeigen
 
             $achsen[] = [
                 'achse_id'        => $achse['achse_id'],

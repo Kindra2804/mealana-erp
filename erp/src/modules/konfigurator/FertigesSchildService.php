@@ -17,6 +17,10 @@ require_once __DIR__ . '/../shop/ShopSyncRepository.php';
  * - Gleiche Kombination = gleiche Nummer = derselbe Artikel: es wird nur eingebucht (und reaktiviert).
  * - Neuer Artikel: Stammdaten vom Layout (Hersteller, Gruppe, Steuer, Typ, Einheit, Maße), Preis =
  *   Konfigurator-Preis, Kategorie = Einstellung "konfig_fertig_kategorie_id", Shop-Kanäle wie das Layout.
+ * - Sonder-Eintrag (2026-11-13): statt eines Werts "Sonder …" mit Freitext, Kürzel (Vorgabe S) und Aufpreis,
+ *   z.B. Sonderfarbe MG, Holzdicke. Ein Schild mit Sonder-Eintrag ist IMMER ein eigener Artikel (Jacky):
+ *   ist die Nummer schon vergeben, wird -2, -3 … angehängt. Der Freitext steht im Namen und im Aufbau
+ *   (werte_json, wert_id = null) und damit auch auf Kuvert-Etikett und Preisschild.
  */
 class FertigesSchildService
 {
@@ -53,24 +57,44 @@ class FertigesSchildService
 
     /**
      * Rechnet Artikelnummer, Name, Preis aus, ohne etwas zu ändern.
-     * $wertIds = [achse_id => wert_id] (nur sichtbare Achsen). Rückgabe mit 'fehler' => [] wenn ok.
+     * $wertIds = [achse_id => wert_id | 'sonder'] (nur sichtbare Achsen),
+     * $sonder  = [achse_id => ['text' => .., 'kuerzel' => .., 'aufpreis' => ..]] für die Achsen mit 'sonder'.
+     * Rückgabe mit 'fehler' => [] wenn ok.
      */
-    public function vorschau(int $layoutId, array $wertIds): array
+    public function vorschau(int $layoutId, array $wertIds, array $sonder = []): array
     {
         $layout = $this->artikelRepo->findById($layoutId);
         if (!$layout || empty($layout['ist_konfigurierbar'])) return ['fehler' => ['Das ist kein konfigurierbarer Artikel.']];
 
         $konfiguration = $this->konfig->getKonfiguration($layoutId);
         $kuerzel = $this->bausteine->kuerzelJeWert($layoutId);
-        $gewaehlt = array_map('intval', array_filter($wertIds));
+        $sonderAchsen = array_filter($wertIds, fn($v) => $v === 'sonder');
+        $gewaehlt = array_map('intval', array_filter($wertIds, fn($v) => $v !== 'sonder' && (int) $v > 0));
         $fehler = [];
         $teile = [];
         $namen = [];
         $werteJson = [];
         $sichtbar = [];
+        $sonderSumme = 0.0;
         foreach ($konfiguration as $achse) {
             $aid = (int) $achse['achse_id'];
             if ($achse['bedingung'] && (int) ($gewaehlt[$achse['bedingung']['achse_id']] ?? 0) !== (int) $achse['bedingung']['wert_id']) continue;
+            if (isset($sonderAchsen[$aid])) {
+                $e = $sonder[$aid] ?? [];
+                $text = trim((string) ($e['text'] ?? ''));
+                $k = trim((string) ($e['kuerzel'] ?? '')) ?: 'S';
+                $aufpreisRoh = trim(str_replace(',', '.', (string) ($e['aufpreis'] ?? '')));
+                if ($text === '') { $fehler[] = "„{$achse['name']}: Sonder“ — bitte den Text eingeben (z.B. Farbe, Maß)."; continue; }
+                if (mb_strlen($text) > 60) { $fehler[] = "„{$achse['name']}: Sonder“ — Text höchstens 60 Zeichen."; continue; }
+                if (!preg_match('/^[A-Za-z0-9]{1,12}$/', $k)) { $fehler[] = "„{$achse['name']}: Sonder“ — Kürzel nur Buchstaben und Ziffern, höchstens 12."; continue; }
+                if ($aufpreisRoh !== '' && (!is_numeric($aufpreisRoh) || (float) $aufpreisRoh < 0)) { $fehler[] = "„{$achse['name']}: Sonder“ — Aufpreis bitte als Betrag ab 0 eingeben."; continue; }
+                $aufpreis = round((float) $aufpreisRoh, 2);
+                $sonderSumme += $aufpreis;
+                $werteJson[] = ['achse_id' => $aid, 'achse' => $achse['name'], 'wert_id' => null, 'wert' => $text, 'sonder' => true, 'aufpreis' => $aufpreis];
+                $teile[] = $k;
+                $namen[] = $text;
+                continue;
+            }
             $sichtbar[$aid] = true;
             $wid = (int) ($gewaehlt[$aid] ?? 0);
             if (!$wid) { $fehler[] = "Bitte „{$achse['name']}“ wählen."; continue; }
@@ -93,14 +117,29 @@ class FertigesSchildService
 
         $preis = $this->konfig->berechnePreis($layoutId, array_values(array_intersect_key($gewaehlt, $sichtbar)));
         if (!$preis['erfolg']) return ['fehler' => $preis['fehler']];
+        $istSonder = (bool) $sonderAchsen;
+        if ($istSonder) {
+            $preis['brutto'] = round($preis['brutto'] + $sonderSumme, 2);
+            $preis['netto']  = round($preis['brutto'] / (1 + (float) $preis['steuer_prozent'] / 100), 4);
+        }
 
         $nummer = $layout['artikelnummer'] . ($teile ? '-' . implode('-', $teile) : '');
         if (mb_strlen($nummer) > 30) {
             return ['fehler' => ["Die Artikelnummer „{$nummer}“ hat " . mb_strlen($nummer) . " Zeichen, erlaubt sind 30. Bitte kürzere Kürzel vergeben (Artikel → Schild-Bausteine)."]];
         }
-        $vorhanden = $this->artikelRepo->findByArtikelnummer($nummer);
-        if ($vorhanden && !$this->db->query("SELECT 1 FROM konfig_fertige_artikel WHERE artikel_id = " . (int) $vorhanden['id'])->fetchColumn()) {
-            return ['fehler' => ["Die Artikelnummer „{$nummer}“ gehört schon einem anderen Artikel ({$vorhanden['name']}), der kein fertiges Schild ist."]];
+        if ($istSonder) {
+            // Sonderschild = immer eigener Artikel: freie Nummer suchen (Basis, dann -2, -3 …)
+            $basis = $nummer;
+            for ($n = 2; $this->artikelRepo->findByArtikelnummer($nummer); $n++) $nummer = $basis . '-' . $n;
+            if (mb_strlen($nummer) > 30) {
+                return ['fehler' => ["Die Artikelnummer „{$nummer}“ hat " . mb_strlen($nummer) . " Zeichen, erlaubt sind 30. Bitte ein kürzeres Sonder-Kürzel verwenden."]];
+            }
+            $vorhanden = null;
+        } else {
+            $vorhanden = $this->artikelRepo->findByArtikelnummer($nummer);
+            if ($vorhanden && !$this->db->query("SELECT 1 FROM konfig_fertige_artikel WHERE artikel_id = " . (int) $vorhanden['id'])->fetchColumn()) {
+                return ['fehler' => ["Die Artikelnummer „{$nummer}“ gehört schon einem anderen Artikel ({$vorhanden['name']}), der kein fertiges Schild ist."]];
+            }
         }
         $name = $layout['name'] . ($namen ? ' – ' . implode(', ', $namen) : '');
 
@@ -118,6 +157,7 @@ class FertigesSchildService
             'netto'         => $preis['netto'],
             'vorhanden'     => $vorhanden ? ['id' => (int) $vorhanden['id'], 'aktiv' => (int) $this->db->query("SELECT aktiv FROM artikel WHERE id = " . (int) $vorhanden['id'])->fetchColumn()] : null,
             'werte'         => $werteJson,
+            'sonder'        => $istSonder,
             'ohne_material' => array_values(array_unique(array_filter($ohneMaterial))),
         ];
     }
@@ -126,9 +166,9 @@ class FertigesSchildService
      * Legt das fertige Schild an (oder nimmt den vorhandenen Artikel) und bucht $menge ein.
      * Rückgabe: ['artikel_id', 'artikelnummer', 'neu' => bool, 'menge'].
      */
-    public function anlegen(int $layoutId, array $wertIds, float $menge, int $lagerId, int $kategorieId, int $benutzerId): array
+    public function anlegen(int $layoutId, array $wertIds, float $menge, int $lagerId, int $kategorieId, int $benutzerId, array $sonder = []): array
     {
-        $v = $this->vorschau($layoutId, $wertIds);
+        $v = $this->vorschau($layoutId, $wertIds, $sonder);
         if ($v['fehler']) throw new RuntimeException(implode(' ', $v['fehler']));
         if ($menge < 0) throw new RuntimeException('Die Menge darf nicht negativ sein.');
         if ($menge > 0 && !$lagerId) throw new RuntimeException('Bitte ein Lager wählen.');

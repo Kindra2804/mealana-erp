@@ -827,6 +827,15 @@ class ShopSyncService
             if ($istVariable) {
                 $payload['type'] = 'variable';
             }
+            // Schild-Bausteine "nur intern" (Migr. 236): z.B. Sonderlackierung nicht im Shop zeigen
+            $attributDimensionen = $dimensionen;
+            if ($istKonfig) {
+                $intern = (new KonfigBausteineService())->interneWertIds((int)$artikel['artikel_id']);
+                foreach ($attributDimensionen as $i => $dim) {
+                    $attributDimensionen[$i]['werte'] = array_values(array_filter($dim['werte'], fn($w) => !isset($intern[(int)$w['id']])));
+                    if (!$attributDimensionen[$i]['werte']) unset($attributDimensionen[$i]);
+                }
+            }
             $attribute = array_map(function (array $dimension) use ($shopId, $istVariable) {
                 $zuweisung = $this->repo->findAchseShopZuweisung((int)$dimension['achse_id'], $shopId);
                 $optionen = array_map(
@@ -839,7 +848,7 @@ class ShopSyncService
                     'visible'   => true,
                     'options'   => $optionen,
                 ];
-            }, $dimensionen);
+            }, array_values($attributDimensionen));
         }
 
         // Hersteller-Filter (kein Variations-Attribut, `variation => false`) --

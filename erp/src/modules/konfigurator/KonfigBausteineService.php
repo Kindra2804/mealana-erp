@@ -28,7 +28,7 @@ class KonfigBausteineService
             SELECT w.achse_id, ac.name AS achse, w.wert,
                    COUNT(DISTINCT w.artikel_id) AS layouts,
                    MIN(aa.sort_order) AS achse_sort, MIN(w.sort_order) AS wert_sort,
-                   kb.kuerzel, kb.rohmaterial_artikel_id,
+                   kb.kuerzel, kb.rohmaterial_artikel_id, COALESCE(kb.nur_intern, 0) AS nur_intern,
                    ra.artikelnummer AS roh_nr, ra.name AS roh_name
             FROM varianten_achse_werte w
             JOIN artikel a        ON a.id = w.artikel_id AND a.ist_konfigurierbar = 1
@@ -36,7 +36,7 @@ class KonfigBausteineService
             LEFT JOIN artikel_achsen aa ON aa.artikel_id = w.artikel_id AND aa.achse_id = w.achse_id
             LEFT JOIN konfig_bausteine kb ON kb.achse_id = w.achse_id AND kb.wert = w.wert
             LEFT JOIN artikel ra  ON ra.id = kb.rohmaterial_artikel_id
-            GROUP BY w.achse_id, ac.name, w.wert, kb.kuerzel, kb.rohmaterial_artikel_id, ra.artikelnummer, ra.name
+            GROUP BY w.achse_id, ac.name, w.wert, kb.kuerzel, kb.rohmaterial_artikel_id, kb.nur_intern, ra.artikelnummer, ra.name
             ORDER BY achse_sort, ac.name, wert_sort, w.wert
         ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -89,13 +89,14 @@ class KonfigBausteineService
                 if ((int) $ra['ist_vater'] === 1) { $fehler[] = "„{$wert}“: „{$rohNr}“ ist ein Vater-Artikel — bitte die konkrete Variante angeben."; continue; }
                 $rohId = (int) $ra['id'];
             }
-            $daten[] = [$achseId, $wert, $kuerzel !== '' ? $kuerzel : null, $rohId];
+            $daten[] = [$achseId, $wert, $kuerzel !== '' ? $kuerzel : null, $rohId, !empty($e['intern']) ? 1 : 0];
         }
         if ($fehler) return $fehler;
 
         $up = $this->db->prepare("
-            INSERT INTO konfig_bausteine (achse_id, wert, kuerzel, rohmaterial_artikel_id) VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE kuerzel = VALUES(kuerzel), rohmaterial_artikel_id = VALUES(rohmaterial_artikel_id)");
+            INSERT INTO konfig_bausteine (achse_id, wert, kuerzel, rohmaterial_artikel_id, nur_intern) VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE kuerzel = VALUES(kuerzel), rohmaterial_artikel_id = VALUES(rohmaterial_artikel_id),
+                                    nur_intern = VALUES(nur_intern)");
         $this->db->beginTransaction();
         try {
             foreach ($daten as $d) $up->execute($d);
@@ -145,6 +146,20 @@ class KonfigBausteineService
             $out[(int) $z['id']] = ['verfuegbar' => $verf, 'rohmaterial' => $z['roh_name']];
         }
         return $out;
+    }
+
+    /**
+     * wert_ids eines Layouts, die "nur intern" sind (Migr. 236): nicht im Shop, aber beim Anlegen
+     * fertiger Schilder und an der Kasse wählbar. Rückgabe: [wert_id => true].
+     */
+    public function interneWertIds(int $artikelId): array
+    {
+        $st = $this->db->prepare("
+            SELECT w.id FROM varianten_achse_werte w
+            JOIN konfig_bausteine kb ON kb.achse_id = w.achse_id AND kb.wert = w.wert AND kb.nur_intern = 1
+            WHERE w.artikel_id = ?");
+        $st->execute([$artikelId]);
+        return array_fill_keys(array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN)), true);
     }
 
     /** Kürzel je wert_id eines Layouts: [wert_id => kuerzel|null]. */
