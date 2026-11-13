@@ -1,0 +1,22 @@
+---
+name: project-shop-tests-ueber-dev
+description: "Live-Shop-Tests (Bestellung/Rechnung/Gutschrift/Widerruf) über das Dev-ERP statt Live — Ablauf, Schutzmaßnahmen, Aufräumen (Jacky-Idee 2026-11-13)"
+metadata:
+  type: project
+---
+
+**Idee Jacky 2026-11-13:** Solange SOW/Bio hinter der Wartungsseite stehen (indra kurz mit eigener Wartungsseite), den Shop für Tests ans **Dev-ERP** hängen statt ans Live-ERP → keine Testbelege/Nummern im Live-ERP. Dev = 1.0.10 = der Code, der live kommt.
+
+**Grenzen:** Live-Kanal-Einstellungen (Zahlungsarten-Zuordnung, Bank, Mail-Absender, Versandklassen) werden so nicht getestet → erste echte Live-Bestellung trotzdem kontrollieren. Bestellungen werden über die **SKU** zugeordnet → SOW/Bio-Artikel müssen erst per `scripts/datentransfer.php export --shop=SOW` (auf dem Live-Server, Jacky) → Import auf Dev. Achtung: Artikel mit gleicher Artikelnummer bleiben auf Dev unverändert (MeaLana-JTL-Artikel) → Probelauf prüfen.
+
+**Schutz (Dev schreibt sonst Artikel/Gutschein-Codes/Slider/Menü in den Live-Shop):**
+1. Windows-Aufgabe **„Shop-Sync-Cronjob“ auf Jackys Dev-PC** (alle 15 min, cron/shop_sync.php gegen Dev-DB!) während des Tests deaktivieren, danach wieder aktivieren.
+2. Dev-Kanal: `sync_pausiert = 1` UND `bulk_import_aktiv = 1`.
+3. Nur `php erp/scripts/shop_test_bestellungen.php --shop=SOW [--seit=…]` → holt Bestellungen + meldet Status, sonst nichts (prüft 2.).
+4. Eigener Woo-Schlüssel „ERP Dev-Test“ + App-Passwort, danach widerrufen.
+
+**Ablauf je Shop:** Live-Kanal pausieren → Dev-Kanal Zugang eintragen → testen → aufräumen: Testbestellungen + Testkunden in Woo endgültig löschen, Schlüssel widerrufen, **im Live-ERP `bestellungen_letzter_sync` auf nach dem Test setzen** (sonst holt Live die Testbestellungen nach), Live-Kanal fortsetzen, Bestand neu übertragen (Testbestellungen haben Woo-Bestand gesenkt). Dev-Kanal-Zugang wieder leeren.
+
+**indra-design Wartungsseite:** WPCode **35329** „INDRA: Wartungsseite (kurz)“, angelegt INAKTIV; schalten mit `node .claude-browser-tools/indra_wartung_schalten.js an|aus` (leert WP Super Cache). Kopie `shop/wp-snippets/indra_wartungsseite.php`. Zeitfenster auch für Jackys Umstellung auf das EU nutzen ([[project-indra-design-eu]]).
+
+Verwandt: [[project-datentransfer]], [[project-sow-umstellung]], [[project-bio-wolle-aufbau]], [[project-shop-sync]].
