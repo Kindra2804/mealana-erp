@@ -937,6 +937,7 @@ class DokumentService
         $kunde      = $this->decodeSnapshot($auftrag['kunden_snapshot'] ?? '{}');
         $lieferadr  = $this->decodeSnapshot($auftrag['lieferadresse_snapshot'] ?? '{}');
         $rechnungadr = $this->decodeSnapshot($auftrag['rechnungsadresse_snapshot'] ?? '{}');
+        $lieferadr   = $this->lieferadresseFuerBeleg($lieferadr, $rechnungadr);
 
         // Händler-Rechnungen (kanal 'haendler') immer mit Netto-Preisen, auch ohne UID
         $istB2B      = !empty($kunde['uid_nummer']) || ($auftrag['kanal'] ?? '') === 'haendler';
@@ -996,12 +997,34 @@ class DokumentService
         ];
     }
 
+    /**
+     * Lieferanschrift für die Belegzeile „Lieferanschrift: …“: Shop-Bestellungen speichern den Namen
+     * als „name“ (nicht vorname/nachname) → sonst stand nur ein Komma da. Gleich wie die
+     * Rechnungsadresse → leer (die Zeile ist nur für abweichende Lieferadressen gedacht).
+     */
+    private function lieferadresseFuerBeleg(array $liefer, array $rechnung): array
+    {
+        if (!$liefer || trim(($liefer['strasse'] ?? '') . ($liefer['ort'] ?? '')) === '') return [];
+        if (empty($liefer['vorname']) && empty($liefer['nachname'])) {
+            $liefer['nachname'] = trim((!empty($liefer['firma']) ? $liefer['firma'] . ', ' : '') . ($liefer['name'] ?? ''));
+        }
+        $schluessel = fn(array $a) => mb_strtolower(implode('|', [
+            trim(($a['vorname'] ?? '') . ' ' . ($a['nachname'] ?? $a['name'] ?? '')), $a['strasse'] ?? '', $a['plz'] ?? '', $a['ort'] ?? '']));
+        if ($rechnung) {
+            $r = $rechnung;
+            if (empty($r['vorname']) && empty($r['nachname'])) $r['nachname'] = trim((!empty($r['firma']) ? $r['firma'] . ', ' : '') . ($r['name'] ?? ''));
+            if ($schluessel($r) === $schluessel($liefer)) return [];
+        }
+        return $liefer;
+    }
+
     private function ladeAuftrag(int $id): ?array
     {
         $stmt = $this->db->prepare("
-            SELECT a.*, b.formularname AS bearbeiter_name
+            SELECT a.*, b.formularname AS bearbeiter_name, k.kundennummer
             FROM auftraege a
             LEFT JOIN benutzer b ON b.id = a.erstellt_von
+            LEFT JOIN kunden k ON k.id = a.kunden_id
             WHERE a.id = :id
         ");
         $stmt->execute([':id' => $id]);

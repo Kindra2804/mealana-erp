@@ -5,6 +5,7 @@ require_once __DIR__ . '/WooCommerceClient.php';
 require_once __DIR__ . '/../../core/logger.php';
 require_once __DIR__ . '/../auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../auftraege/AuftragService.php';
+require_once __DIR__ . '/../auftraege/VersandMail.php';
 require_once __DIR__ . '/../kunden/KundenRepository.php';
 require_once __DIR__ . '/../kunden/KundenService.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
@@ -226,7 +227,7 @@ class ShopBestellungSyncService
         $datum = !empty($auftrag['versand_datum']) ? date('d.m.Y', strtotime($auftrag['versand_datum'])) : date('d.m.Y');
         if (!empty($auftrag['tracking_nr'])) {
             return 'Ihre Bestellung wurde am ' . $datum . ' versendet'
-                . (!empty($auftrag['versanddienstleister']) ? ' mit ' . $auftrag['versanddienstleister'] : '')
+                . (!empty($auftrag['versanddienstleister']) ? ' mit ' . (VersandMail::DIENSTLEISTER[$auftrag['versanddienstleister']] ?? $auftrag['versanddienstleister']) : '')
                 . ', Sendungsnummer ' . $auftrag['tracking_nr'] . '.';
         }
         if (($auftrag['lieferart'] ?? '') === 'abholung') {
@@ -900,6 +901,9 @@ class ShopBestellungSyncService
             if ($key === '' || $key[0] === '_' || !is_scalar($value) || trim((string)$value) === '') {
                 continue;
             }
+            // Variantenmerkmale normaler Varianten (z.B. pa_farbe: 401-vanille) stehen schon im
+            // Artikelnamen -- keine Konfiguration (Fund Shop-Test SOW 2026-11-13)
+            if (str_starts_with($key, 'pa_')) continue;
             $paare[] = $key . ': ' . $value;
         }
         return $paare;

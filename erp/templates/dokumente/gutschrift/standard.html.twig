@@ -97,7 +97,7 @@
           {% if auftrag.kunden_id %}
           <tr>
             <td>Kunden-Nr.:</td>
-            <td>{{ auftrag.kunden_id }}</td>
+            <td>{{ auftrag.kundennummer ?: auftrag.kunden_id }}</td>
           </tr>
           {% endif %}
         </table>

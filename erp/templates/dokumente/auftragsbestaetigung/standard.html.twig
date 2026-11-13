@@ -72,7 +72,7 @@
           {% if auftrag.kunden_id %}
           <tr>
             <td style="border-bottom:1px solid #ccc;">Kunden-Nr.:</td>
-            <td style="border-bottom:1px solid #ccc;">{{ auftrag.kunden_id }}</td>
+            <td style="border-bottom:1px solid #ccc;">{{ auftrag.kundennummer ?: auftrag.kunden_id }}</td>
           </tr>
           {% endif %}
           {% if auftrag.bearbeiter_name %}
