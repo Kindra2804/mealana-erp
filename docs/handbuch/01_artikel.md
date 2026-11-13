@@ -187,6 +187,8 @@ Rohmaterial leer → im Shop ist der Wert ausgegraut („derzeit nicht verfügba
 
 **Sonder-Eintrag:** Jede Auswahl hat zusätzlich „Sonder … (Freitext)“, z.B. für Sonderfarbe Moosgummi, Filz, Lack, Sondergröße oder Holzdicke. Dann Text, Kürzel (leer = `S`) und Aufpreis eintragen. Der Text steht im Artikelnamen, im Aufbau, auf Kuvert-Etikett und Preisschild. Ein Schild mit Sonder-Eintrag wird **immer als eigener Artikel** angelegt; ist die Nummer schon vergeben, hängt das ERP `-2`, `-3` … an.
 
+**Personalisierte fertige Schilder:** Hat das Layout einen Wert mit Texteingabe (z.B. „Metallschild“), erscheint darunter ein Textfeld (Pflicht). Gleiche Kombination mit gleichem Text = derselbe Artikel (nur einbuchen), anderer Text = neuer Artikel (Nummer mit `-2`, `-3` …). Achsen mit nur einem Wert sind vorgewählt.
+
 **Kuvert-Etikett drucken** (A4 mit 2 Etiketten je 210 × 148 mm, zum Aufkleben auf Kuvert/Tüte/Karton):
 - Links das Bild, rechts Name, Größe (Ø), Aufbau, Preis und die **Artikelnummer als Strichcode**. Die Kasse findet den Artikel über diesen Strichcode, ein EAN ist nicht nötig.
 - **Wo:** nach dem Anlegen/Einbuchen in der grünen Meldung · 🖨 je Zeile bei „Fertige Schilder aus diesem Layout“ · im fertigen Schild oben „🖨 Kuvert-Etikett“ · **mehrere auf einmal:** Artikelliste → Kategorie „Fertige Schilder“ → Häkchen setzen (oder alle) → Aktion „🖨 Kuvert-Etiketten drucken“ → Ausführen.
