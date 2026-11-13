@@ -1334,6 +1334,13 @@ Details in `.claude/memory/` (project_dropshipping, project_lizenzierung_preise,
 - **Entscheidungen:** Steuerprofil (KU/EA/Ist) → 1.1 vor dem ersten Fremdkunden; Live wird komplett neu aufgesetzt (Shops: indra-design → sockenwolle-online → bio-wolle → MeaLana zuletzt); Offline-Kasse light nach 1.0.
 - **Nächste Session:** Live-Server + indra-design-Shop zurücksetzen, frisch installieren, Onboarding mit Babsi, Backup-Strategie direkt am Live-Server.
 
+## Update 2026-11-13: Konfigurator-Plattenmaß (Migr. 239), Testplan Bio + Indra
+
+Details in `.claude/memory/` (project_konfigurator_modul, project_shop_tests_ueber_dev, project_indra_design_eu).
+- **Plattenmaß-Prüfung** (239): `konfig_bausteine.schild_breite_mm/schild_hoehe_mm` (Größe als Rechteck inkl. Aufhängung, immer +9 mm: 150x159 … 300x309, 380x389), `artikel.platte_breite_mm/platte_hoehe_mm` (sicheres Maß, z.B. 395x395). `KonfigBausteineService::passtAufPlatte()` (Jacky), `leseMass()`, Spalten auf Artikel → Schild-Bausteine. Shop-Snippet 34170 sperrt zu kleine Platten + prüft serverseitig; Kasse nur Hinweis „Platte zu klein“. `berechnePreis()` bewusst nicht blockiert (Shop-Import nutzt es). Keine Ausbeute-Rechnung (Jacky verschachtelt von Hand).
+- **Bio:** keine volle Testrunde, nur Kurztest (1 Bestellung bis completed + Widerrufsformular).
+- **Nächste Session (14.11.):** Indra-Umschaltung mit Test über Dev (Dev vorher wie Live einstellen: Babsi online + Kürzel INDRA, Artikel übergeben), dann Live-Update inkl. 239 + Snippet 34170, danach alle 3 Shops online.
+
 ## Commit Convention
 
 ```
