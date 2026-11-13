@@ -13,8 +13,15 @@ async function zahlungBuchen(auftragId) {
     if (notiz) body.append('notiz', notiz);
     const weg = document.getElementById('zahl-weg');
     if (weg) body.append('zahlungsweg', weg.value);
-    const r    = await fetch(window.BASE_PATH + '/auftraege/zahlung_buchen.php', { method: 'POST', body });
-    const data = await r.json();
+    if (window.zeigeLader) zeigeLader('Zahlung wird gebucht …');
+    let data;
+    try {
+        const r = await fetch(window.BASE_PATH + '/auftraege/zahlung_buchen.php', { method: 'POST', body });
+        data = await r.json();
+    } catch (e) {
+        data = { erfolg: false, fehler: 'Keine Antwort vom Server — bitte im Zahlungsverlauf prüfen, ob die Zahlung gebucht wurde.' };
+    }
+    if (!data.erfolg && window.versteckeLader) versteckeLader();
     if (data.erfolg) {
         // Shop-Bestellung: Rückmeldung an WooCommerce fehlgeschlagen -> Hinweis, Zahlung ist trotzdem gebucht
         if (data.shop_hinweis && data.shop_gemeldet === false) alert(data.shop_hinweis);
@@ -168,9 +175,15 @@ async function rueckerstattungBuchen(auftragId) {
     body.append('buchungsdatum', document.getElementById('re-datum').value);
     body.append('zahlungsweg', document.getElementById('re-weg').value);
     body.append('rueckerstattung', '1');
-    const r = await fetch(window.BASE_PATH + '/auftraege/zahlung_buchen.php', { method: 'POST', body });
-    const d = await r.json();
-    if (!d.erfolg) { alert(d.fehler || 'Fehler beim Buchen'); return; }
+    if (window.zeigeLader) zeigeLader('Rückerstattung wird gebucht …');
+    let d;
+    try {
+        const r = await fetch(window.BASE_PATH + '/auftraege/zahlung_buchen.php', { method: 'POST', body });
+        d = await r.json();
+    } catch (e) {
+        d = { erfolg: false, fehler: 'Keine Antwort vom Server — bitte im Zahlungsverlauf prüfen, ob die Rückerstattung gebucht wurde.' };
+    }
+    if (!d.erfolg) { if (window.versteckeLader) versteckeLader(); alert(d.fehler || 'Fehler beim Buchen'); return; }
     if (d.shop_hinweis) alert(d.shop_hinweis); // Erstattung konnte nicht an den Shop gemeldet werden
     location.reload();
 }

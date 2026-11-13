@@ -393,6 +393,13 @@ function chargeUpdateGesamt() {
 function chargeBestaetigen() {
     if (chargePopupIdx < 0) return;
 
+    // Chargennamen der nachzutragen-Zeilen frisch lesen (wurde nur bei Mengenänderung übernommen –
+    // erst „+“, dann Charge tippen führte sonst zur Fehlermeldung)
+    for (const [key, entry] of Object.entries(chargeEingaben)) {
+        if (!entry.nachtragen) continue;
+        const feld = document.getElementById('charge-name-' + key.replace('row_', ''));
+        if (feld) entry.charge = feld.value.trim();
+    }
     // Validierung: alle nachtragen-Einträge müssen Chargennamen haben
     for (const [, entry] of Object.entries(chargeEingaben)) {
         if (entry.nachtragen && !entry.charge) {

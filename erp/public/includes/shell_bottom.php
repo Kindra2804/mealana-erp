@@ -42,7 +42,7 @@ $erpStufeFarben = ['info' => 'var(--color-success)', 'warn' => 'var(--color-warn
         border:4px solid #e5e7eb;
         border-top-color:var(--color-nav,#2c3e50);
         animation:erp-spin .75s linear infinite"></div>
-    <div style="font-size:13px;color:#555;font-family:Arial,sans-serif">Wird geladen …</div>
+    <div id="page-loader-text" style="font-size:13px;color:#555;font-family:Arial,sans-serif">Wird geladen …</div>
 </div>
 
 <style>
@@ -53,8 +53,9 @@ $erpStufeFarben = ['info' => 'var(--color-success)', 'warn' => 'var(--color-warn
 (function () {
     var loader = document.getElementById('page-loader');
 
+    var text   = document.getElementById('page-loader-text');
     function show() { loader.style.display = 'flex'; }
-    function hide() { loader.style.display = 'none'; }
+    function hide() { loader.style.display = 'none'; text.textContent = 'Wird geladen …'; }
 
     // Verstecken sobald die neue Seite fertig ist (inkl. Zurück-Button / bfcache)
     window.addEventListener('pageshow', hide);
@@ -66,6 +67,11 @@ $erpStufeFarben = ['info' => 'var(--color-success)', 'warn' => 'var(--color-warn
         clearTimeout(safetyTimer);
         safetyTimer = setTimeout(hide, 15000);
     }
+
+    // Für AJAX-Aktionen, die dauern (z.B. Zahlung buchen → Meldung an den Shop): Layer mit eigenem Text,
+    // damit niemand mehrfach klickt (Jacky 2026-11-13). versteckeLader() bei Fehlern, sonst reicht reload().
+    window.zeigeLader = function (meldung) { if (meldung) text.textContent = meldung; showWithTimeout(); };
+    window.versteckeLader = hide;
 
     // Link-Klicks abfangen
     document.addEventListener('click', function (e) {
