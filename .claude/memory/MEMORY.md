@@ -27,7 +27,7 @@
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
 - [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + Live offen
-- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, veraltet-Liste, Merkmal-Massenaktion, Migr. 233–235); Paket 1.0.9 gebaut (D:/ERP/pakete), Live + Merkmal-Import offen; nächste Migr. 236
+- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, veraltet-Liste, Merkmal-Massenaktion, Migr. 233–235); Paket 1.0.9 gebaut (D:/ERP/pakete), Live + Merkmal-Import offen; nächste Migr. 237
 
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit
@@ -63,7 +63,7 @@
 - [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — gemeinsame Zähler retourniert/gutgeschrieben
 - [Gutschein-Modul](project_gutscheine.md) — fertig; wartet auf Babsis Motiv-Vorlagen
 - [Zahlung+Versand ERP → Shop](project_zahlung_erp_an_shop.md) — processing/completed per Cron
-- [Konfigurator-Modul](project_konfigurator_modul.md) — Konfig-Werte auf allen Belegen; 2026-11-11 Schild-Bausteine + fertige Schilder gebaut (Migr. 232), Picker-Snippet für indra beim 1.0.4-Rollout
+- [Konfigurator-Modul](project_konfigurator_modul.md) — 2026-11-13: „Konfiguration wählen“ in Shop-Übersicht, Bausteine nur intern, Sonder-Eintrag, Personalisierung (Migr. 236), Live + Snippet offen; 2026-11-11 Schild-Bausteine + fertige Schilder (Migr. 232)
 - [Händler-Konsignation](project_haendler_konsignation.md) — Außenlager, Verkaufsmeldung → Netto-Rechnung
 - [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–5 gebaut (inkl. Export 2026-10-28), Konten änderbar durch Babsi, TEST_Partner_Fix_Check bleibt für Dev-Tests
 - [Artikelbilder auf Belegen](project_belege_artikelbilder.md) — Einstellung je Belegtyp, gebaut 2026-10-28 (Migration 211), Mail-Test ok
