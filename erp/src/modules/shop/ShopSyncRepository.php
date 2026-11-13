@@ -142,8 +142,9 @@ class ShopSyncRepository
               -- auch wenn sie versehentlich einem Shop zugewiesen wurden (Jacky 2026-09-30)
               AND a.zustand = 'neu'
               -- Partnerware (Mietfach/Kommission, artikel.partner_id) gehört nicht ins eigene
-              -- Sortiment und geht NIE in den Onlineshop (Jacky 2026-10-01)
-              AND a.partner_id IS NULL
+              -- Sortiment und geht nicht in den Onlineshop (Jacky 2026-10-01) -- außer der Partner
+              -- verkauft online im eigenen Namen (Migration 237, z.B. Indra-Design)
+              AND (a.partner_id IS NULL OR a.partner_id IN (SELECT id FROM partner WHERE online_verkauf = 1))
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at
@@ -166,7 +167,7 @@ class ShopSyncRepository
                   -- einfließen (eigen, nicht Messe -- siehe findBestandInfo()).
                   OR EXISTS (
                       SELECT 1 FROM lagerbestand lb
-                      JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ != 'messe'
+                      JOIN lager l ON l.id = lb.lager_id AND ((l.lager_beziehung = 'eigen' AND l.typ != 'messe') OR (l.lager_beziehung = 'partner_bestand' AND l.partner_id = a.partner_id))
                       WHERE lb.artikel_id = a.id AND lb.geaendert_am > ash.synced_at
                   )
                   OR EXISTS (
@@ -221,7 +222,7 @@ class ShopSyncRepository
                   )
                   OR EXISTS (
                       SELECT 1 FROM lagerbestand lb
-                      JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ != 'messe'
+                      JOIN lager l ON l.id = lb.lager_id AND ((l.lager_beziehung = 'eigen' AND l.typ != 'messe') OR (l.lager_beziehung = 'partner_bestand' AND l.partner_id = a.partner_id))
                       WHERE lb.artikel_id = a.id AND lb.geaendert_am > ash.synced_at
                   )
                   OR EXISTS (
@@ -603,7 +604,8 @@ class ShopSyncRepository
     }
 
     /**
-     * Bestandsdaten für den Shop-Sync: `gesamtbestand` zählt NUR eigene,
+     * Bestandsdaten für den Shop-Sync (Migration 237: bei Artikeln eines Online-Partners zählt
+     * zusätzlich dessen Partner-Lager): `gesamtbestand` zählt NUR eigene,
      * nicht-Messe-Lager (`lager_beziehung='eigen' AND typ != 'messe'`,
      * Jackys Entscheidung 2026-07-21 -- Messe-Bestand ist laut
      * project_lager_konzept.md ohnehin für keinen Verkaufskanal außer der
@@ -627,7 +629,7 @@ class ShopSyncRepository
             FROM artikel a
             JOIN artikel_typen at ON at.id = a.artikeltyp_id
             LEFT JOIN lagerbestand lb ON lb.artikel_id = a.id
-            LEFT JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen' AND l.typ != 'messe'
+            LEFT JOIN lager l ON l.id = lb.lager_id AND ((l.lager_beziehung = 'eigen' AND l.typ != 'messe') OR (l.lager_beziehung = 'partner_bestand' AND l.partner_id = a.partner_id))
             WHERE a.id = :artikel_id
             GROUP BY a.id, at.hat_lagerstand, a.keine_lagerbestandsfuehrung, a.ueberverkauf_erlaubt
         ");
@@ -1192,9 +1194,10 @@ class ShopSyncRepository
 
     private function schreibeZuweisungsZeile(int $artikelId, int $shopId, bool $aktiv): void
     {
-        // Partnerware nie einem Shop zuordnen (siehe findFaelligeArtikel)
+        // Partnerware nie einem Shop zuordnen (siehe findFaelligeArtikel) -- außer Online-Partner (Migr. 237)
         if ($aktiv) {
-            $p = $this->db->prepare("SELECT partner_id FROM artikel WHERE id = ?");
+            $p = $this->db->prepare("SELECT a.partner_id FROM artikel a LEFT JOIN partner p ON p.id = a.partner_id
+                                     WHERE a.id = ? AND COALESCE(p.online_verkauf, 0) = 0");
             $p->execute([$artikelId]);
             if ($p->fetchColumn()) return;
         }
