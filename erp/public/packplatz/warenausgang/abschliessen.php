@@ -71,6 +71,17 @@ $stmtPos = $db->prepare("
 $stmtPos->execute([$auftragId]);
 $posMap = array_values($stmtPos->fetchAll(PDO::FETCH_ASSOC)); // 0-indexed = JS idx
 
+// Partnerware (Online-Partner, Migration 237) liegt im Partner-Lager, alles andere im Hauptlager 1
+$lagerFuerArtikel = function (int $artikelId) use ($db): int {
+    static $cache = [];
+    if (!array_key_exists($artikelId, $cache)) {
+        $st = $db->prepare("SELECT l.id FROM artikel a JOIN lager l ON l.partner_id = a.partner_id AND l.lager_beziehung = 'partner_bestand' WHERE a.id = ?");
+        $st->execute([$artikelId]);
+        $cache[$artikelId] = (int)$st->fetchColumn() ?: 1;
+    }
+    return $cache[$artikelId];
+};
+
 // ─── Lagerabbuchung + Status-Update in einer Transaktion ─────────────────────
 $db->beginTransaction();
 try {
@@ -105,7 +116,7 @@ try {
 
                 $lagerService->warenausgang([
                     'artikel_id'  => $pos['artikel_id'],
-                    'lager_id'    => 1,
+                    'lager_id'    => $lagerFuerArtikel((int)$pos['artikel_id']),
                     'menge'       => $cmenge,
                     'charge'      => $charge,
                     'referenz'    => $auftrag['auftrag_nr'],
@@ -126,7 +137,7 @@ try {
             // Kein Charge-Dialog genutzt: direkt buchen
             $lagerService->warenausgang([
                 'artikel_id'  => $pos['artikel_id'],
-                'lager_id'    => 1,
+                'lager_id'    => $lagerFuerArtikel((int)$pos['artikel_id']),
                 'menge'       => $gescannt,
                 'referenz'    => $auftrag['auftrag_nr'],
                 'notiz'       => $notiz,

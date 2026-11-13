@@ -125,11 +125,15 @@ $referenz = 'Retoure ' . $auftrag['auftrag_nr'];
 $retourSvc = new RetourService();
 $buchungsTexte = [];
 $retourniertStmt = $db->prepare("UPDATE auftrag_positionen SET menge_retourniert = menge_retourniert + ? WHERE id = ?");
+// Partnerware (Online-Partner, Migration 237) geht zurück ins Partner-Lager, nicht ins gewählte Lager
+$partnerLagerStmt = $db->prepare("SELECT l.id FROM artikel a JOIN lager l ON l.partner_id = a.partner_id AND l.lager_beziehung = 'partner_bestand' WHERE a.id = ?");
 foreach ($rueckPositionen as $rp) {
+    $partnerLagerStmt->execute([(int)$rp['artikel_id']]);
+    $zielLager = (int)$partnerLagerStmt->fetchColumn() ?: $lagerId;
     foreach ($rp['teile'] as $t) {
         $r = $retourSvc->einbuchen([
             'artikel_id'  => $rp['artikel_id'],
-            'lager_id'    => $lagerId,
+            'lager_id'    => $zielLager,
             'menge'       => $t['menge'],
             'zustand'     => $t['zustand'],
             'charge'      => $t['charge'],
