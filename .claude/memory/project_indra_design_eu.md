@@ -1,18 +1,38 @@
 ---
 name: project-indra-design-eu
-description: "Indra-Design wird Einzelunternehmen von Babsi (Gewerbe Kunsthandwerk, Kleinunternehmerregelung) — Fachmieter in der MEALANA KG, Verkauf im fremden Namen; Konfigurator muss fremde Produkte anlegen können"
+description: "Indra-Design = EU von Babsi (KU), verkauft online im eigenen Namen über das KG-ERP — 2026-11-13 gebaut (Migr. 237, Partner online_verkauf), Stichtag 15.11., Live-Einspielen offen"
 metadata:
   node_type: memory
   type: project
   originSessionId: 349ed156-6550-4575-9112-f33373ee65da
-  modified: 2026-11-13T08:40:11.864Z
+  modified: 2026-11-13T09:32:01.948Z
 ---
 
-**Entscheidung (Jacky, 2026-11-13), für später vorgemerkt — noch nichts gebaut:**
-Aus gewerberechtlichen Gründen (Gewerbeschein „Kunsthandwerk“) wird Indra-Design ein **Einzelunternehmen (EU) von Babsi** mit **Kleinunternehmerregelung**.
+**Ausgangslage (Jacky 2026-11-13):** Gewerbeschein „Kunsthandwerk“ liegt bei Babsi persönlich → Indra-Design wird **Einzelunternehmen (EU) von Babsi**, **Kleinunternehmerin**, Stichtag **15.11.2026**. Produkte bleiben im ERP der MEALANA KG, das EU ist dort Partner (Fremdrechnung, fremder Name/fremde Rechnung). Babsi ist auf **Live schon als Partner angelegt** (Fremdrechnung, KU).
 
-- Die Indra-Produkte bleiben im ERP der MEALANA KG. Das EU ist dort **Fachmieter** und verkauft **im fremden Namen auf fremde Rechnung** — gleiches Muster wie das Partner-Modul (Verkaufsart `fremdrechnung`, nie Umsatz der KG, keine RKSV, Fachmiete), siehe [[project_partner_modul]].
-- Großteil existiert schon (Partner-Stammdaten, Partner-Artikel XPnn, Kasse/Bon-Abschnitte, Partner-Konto, Export 3710). **Umbau nötig:** Konfigurator/Schilder so anpassen, dass Layouts und fertige Schilder als **„fremde“ Partner-Artikel** angelegt werden (FertigesSchildService legt bisher normale KG-Artikel an), und die Seite indra-design.at entsprechend adaptieren (Verkäufer/Impressum/Rechnung im Namen von Babsis EU, KU-Hinweis statt USt).
+**Jackys Entscheidungen:**
+1. ALLES Indra gehört dem EU (auch Metalldosen — veredelt, keine Handelsware).
+2. Geld vorerst auf das KG-Konto; Kontodaten stehen beim Partner (Felder iban/bic/bank_name) → Belege/Mails zeigen sie.
+3. **Versand/Porto bekommt die KG — Gegenverrechnung** mit dem EU (später evtl. eigenes Paketmarken-Konto des EU). Damit entfällt die geplante Monatsrechnung „Versand“.
+4. Shop schickt Rechnung im Layout des EU, eigener Nummernkreis; Kürzel in den Partner-Einstellungen (5–10 Zeichen, eindeutig, ab 1. Beleg gesperrt) → `R-INDRA-2026-00001`.
+5. **Gutscheine** (nur MeaLana-Seite) dürfen für Partnerware eingelöst werden; die KG zahlt den eingelösten Betrag an das EU aus.
+6. SOW verkauft kein Indra; MeaLana-Shop vielleicht (klärt Jacky). Indra-Design hat keine Gutscheine.
+7. Konfigurator soll generell wählen können: Artikel der Hauptfirma oder eines Partners (auch für „echte“ Partner später).
 
-**Why:** Gewerbeschein Kunsthandwerk liegt bei Babsi persönlich, nicht bei der KG.
-**How to apply:** Bevor am Konfigurator/indra-Shop weitergebaut wird, das mitdenken; Umsetzung erst besprechen (Steuerberatung wie beim Partner-Modul). Verwandt: [[project_konfigurator_modul]], [[project_indra_design_shop]], [[project_kleinunternehmer]], [[project_steuerprofil]].
+**Gebaut 2026-11-13 (Commits 404f3aa … 085654c), Migration 237:**
+- Partner: `online_verkauf`, `nr_kuerzel`, bic/bank_name/website/steuernummer; Fix: abgehakte Kontrollkästchen (KU) wurden beim Bearbeiten überschrieben.
+- `ArtikelEigentumService` + Massenaktion „Eigentümer setzen“ + Konfigurator-Karte „Gehört: … ändern“; Kinder + fertige Schilder wechseln mit, Bestand per `umbucheZwischenLager` ins Partner-Lager. FertigesSchildService erbt Eigentümer/Lager. Online-Partner-Artikel normal in der Artikelliste.
+- Shop-Sync: Online-Partnerware erlaubt, Bestand inkl. Partner-Lager.
+- Aufträge: `auftraege.partner_id`; nur EIN Eigentümer je Auftrag; KU → Positionen + Versand 0 % (Versandsteuer::aufteilen $ohneUst).
+- Belege: DokumentService::partnerDaten/belegKuerzel, Kopf ohne „Ein Unternehmen der MEALANA KG“, KU-Text des Partners, Fußzeile ohne leere Felder. Mails: `Mailer::fuerPartnerAuftrag()`.
+- Packplatz Ab-/Rückbuchung Partner-Lager (vorher fest Lager 1).
+- Export: Partner-Belege kein Erlös; Versand 3710 an Versanderlös + USt; Zahlungen/Gutschein-Einlösungen gegen 3710. Partner-Konto: + online bezahlt − Versand.
+- Tests: CLI mit Rollback (Kürzel, Eigentümer hin/zurück, Auftrag KU, Rechnungs-PDF R-TINDR-…, Export + Saldo). Handbücher 08_partner.md + bedienungsanleitung #partner-online.
+
+**Offen / Grenzen:**
+- Live: Paket mit Migration 237 einspielen; bei Babsi „verkauft online“ + Kürzel INDRA + Adresse/Bank; Indra-Artikel per Massenaktion übergeben (zum Stichtag); Woo indra-design auf Kleinunternehmer (Germanized, Steuer 0 %), Impressum/AGB/Widerruf/Datenschutz auf das EU (Texte von Jacky/Babsi).
+- **Steuerberatung bestätigen:** Gegenverrechnung Versand (widerspricht der früheren Antwort B9 „nie gegenverrechnen“ bei Fachmiete), Übergang des KG-Bestands an das EU (Verkauf/Entnahme?), Gutschein-Auszahlung.
+- An der Kasse bezahlte Partner-Aufträge laufen als RKSV-Zahlbeleg der KG — nicht angepasst. scan.php prüft Chargen nur in Lager 1 (Indra ohne Chargen).
+- Verkaufsaufstellung (Abrechnung-PDF) listet nur Kassenverkäufe, Online-Aufträge nur als Summe.
+
+Verwandt: [[project_partner_modul]], [[project_konfigurator_modul]], [[project_indra_design_shop]], [[project_kleinunternehmer]], [[project_steuerprofil]].

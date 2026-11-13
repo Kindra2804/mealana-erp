@@ -640,6 +640,12 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Buchhaltungs-Export:</strong> Fremdrechnung → Verrechnungskonto Partner (3710), Spende → Durchlaufende Spenden (3720, nur unbar), Kommission → Erlös (4080), Auszahlungen gegen Kassa/Bank — siehe <a href="#buchhaltung-export">DATEV/CSV-Export</a>.</p>
 
             <!-- BUCHHALTUNG -->
+            <h3 id="partner-online">Online-Verkauf im eigenen Namen (z.B. Indra-Design) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Partner mit Verkaufsart <strong>Fremdrechnung</strong> → bearbeiten → <strong>„Verkauft online im eigenen Namen“</strong> + <strong>Nummernkreis-Kürzel</strong> (5–10 Zeichen, z.B. INDRA → Rechnungen <code>R-INDRA-2026-00001</code>; gesperrt ab dem ersten Beleg).</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>Artikel übergeben:</strong> Artikelliste → anhaken → Aktion „Eigentümer setzen“ → Partner. Kinder und fertige Schilder wechseln mit, der Bestand wird ins Partner-Lager umgebucht. Schild-Layouts auch im Artikel → Konfigurator → „Gehört: … ändern“.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Verkauf:</strong> Shop-Bestellungen dieser Ware werden Partner-Aufträge. Belege und Mails laufen auf den Partner (Name, Adresse, Bank, Kleinunternehmer-Text). Ein Auftrag enthält nur Ware eines Eigentümers.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>Geld:</strong> Zahlungen und eingelöste MEALANA-Gutscheine gehören dem Partner (Partner-Konto). Die Versandkosten behält die KG (Gegenverrechnung). Im Export: kein Erlös der KG, Zahlungen gegen 3710.</div></div>
+
             <h2 id="buchhaltung">Buchhaltung <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>MeaLana führt keine eigene Fibu — nur Kontenzuordnung + Export für den Steuerberater.</p>
             <table class="ba-table">

@@ -148,6 +148,23 @@ auf der Export-Seite — Details im Buchhaltungs-Handbuch.
 
 ---
 
+## Online-Verkauf im eigenen Namen (z.B. Indra-Design)
+
+Ein Partner mit Verkaufsart **Fremdrechnung** kann zusätzlich **„Verkauft online im eigenen Namen“** bekommen (Partner → bearbeiten). Dann gilt:
+
+- **Nummernkreis-Kürzel** (Pflicht, 5–10 Zeichen, z.B. `INDRA`): Rechnungen heißen `R-INDRA-2026-00001`, Rechnungskorrekturen `GS-INDRA-…`. Das Kürzel ist eindeutig (gegen andere Partner und Shops) und wird gesperrt, sobald der erste Beleg damit erstellt ist.
+- **Eigentümer der Artikel:** Artikelliste → Artikel anhaken → Aktion „Eigentümer setzen“ → Partner wählen. Kind-Artikel und fertige Schilder wechseln mit, der Bestand wird ins Partner-Lager umgebucht (Bewegungslog „Eigentümerwechsel“). Zurück an die Hauptfirma geht genauso. Bei Schild-Layouts zusätzlich im Artikel → Reiter Varianten → Karte Konfigurator → „Gehört: … ändern“; neue fertige Schilder übernehmen den Eigentümer und kommen ins Partner-Lager.
+- Die Artikel bleiben in der normalen Artikelliste, behalten ihre Nummern und gehen in den Shop (Bestand aus dem Partner-Lager).
+- **Bestellungen** mit dieser Ware werden Partner-Aufträge. Ein Auftrag darf nur Ware *eines* Eigentümers enthalten (Hauptfirma ODER Partner). Kleinunternehmer-Partner: alles ohne USt, der Preis für den Kunden bleibt gleich.
+- **Belege** (Rechnung, Auftragsbestätigung, Lieferschein, Korrektur, Mahnung) und **Mails** tragen Name, Adresse, Kontakt, Bankverbindung und Kleinunternehmer-Text des Partners — kein „Ein Unternehmen der MEALANA KG“.
+- **Packplatz** bucht aus dem Partner-Lager ab, Retouren gehen dorthin zurück.
+- **Geld:** Zahlungen auf Partner-Aufträge und dafür eingelöste MEALANA-Gutscheine gehören dem Partner (Partner-Konto „online bezahlt“). Die **Versandkosten** behält die KG (Gegenverrechnung) — sie werden im Partner-Konto abgezogen und im Export als Versanderlös der KG gebucht (3710 an Versanderlös + USt).
+- **Export:** Partner-Rechnungen sind kein Erlös der KG; Zahlungen buchen gegen das Partner-Konto (3710) statt gegen den Kunden.
+
+Für Bankdaten, Website und Steuernummer in der Belegfußzeile die Felder im Partner-Formular ausfüllen (leere Angaben werden weggelassen).
+
+---
+
 ## Spenden-Log
 
 Für steuerliche Aufzeichnungen:

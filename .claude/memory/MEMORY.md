@@ -4,7 +4,7 @@
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
 - [✅ 1.0-Check](project_1_0_check.md) — 2026-11-11 1.0.4 LIVE (JTL-Abgleich, Schilder; Migr. 231+232), Erstabgleich offen; 2026-11-11: 1.0.2 LIVE (Mail je Kanal + Überlastung); Woo-Shops bekommen eigene Server; 2026-11-10 LIVE-TAG: Paket 1.0.1, Live neu, indra-design angebunden (119 Produkte), Cron + tägl. Sicherung; offen: Startbestand, 1.0.2-Liste; 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Kürzel indra-design = IND) → Live neu + Backup; ⚠️ Hosting-Limits: ein Konto für alle Shops, CPU dauerhaft am Limit, 508-Fehler (2026-11-05) → vor Live klären
-- [🏛️ Indra-Design wird EU von Babsi](project_indra_design_eu.md) — 2026-11-13 vorgemerkt: KU, Fachmieter in der KG, Fremdname/Fremdrechnung; Konfigurator muss Partner-Artikel anlegen, Shop adaptieren
+- [🏛️ Indra-Design = EU von Babsi](project_indra_design_eu.md) — 2026-11-13 gebaut (Migr. 237: Partner online, Eigentümer, Partner-Aufträge/Belege R-INDRA, Export 3710, Versand-Gegenverrechnung); Live + Woo-KU + Steuerberatung offen, Stichtag 15.11.
 - [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben, Snippets; 2026-11-04: Wurzelkategorie (Migr. 223, auf Live setzen!), Saisonales/Sonstiges, Menü 2-zeilig, 7 Kacheln, Woo-Recount im Sync, Super Cache leeren
 - [🔁 JTL-Parallelbetrieb](project_jtl_parallelbetrieb.md) — 2026-11-11: MeaLana+Laden bleiben auf JTL, SOW im ERP; Lager → JTL-Abgleich ✅ gebaut (Migr. 231), Live-Update offen
 - [🧦 SOW-Umstellung JTL → Woo](project_sow_umstellung.md) — 2026-11-12: Menü/Slides/Kacheln im Live-ERP (Tunnel 10.13.13.1, User claude), Startseite 3532, 301+robots Snippet 3533 ✅; /kategorie/-Basis; 1.0.5 (Artikel → Grundpreise + Import-Fix) gebaut, Live-Einspielen offen; offen für Go-Live: 1.0.5 + Grundpreise korrigieren, Startbestand, Bankkonto Vorkasse, PayPal, Testbestellung, dann Wartung aus
@@ -28,7 +28,7 @@
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
 - [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + Live offen
-- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, veraltet-Liste, Merkmal-Massenaktion, Migr. 233–235); Paket 1.0.9 gebaut (D:/ERP/pakete), Live + Merkmal-Import offen; nächste Migr. 237
+- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, veraltet-Liste, Merkmal-Massenaktion, Migr. 233–235); Paket 1.0.9 gebaut (D:/ERP/pakete), Live + Merkmal-Import offen; nächste Migr. 238
 
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit
