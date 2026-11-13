@@ -151,6 +151,19 @@ class WooCommerceClient
         return $this->request('PUT', '/orders/' . $orderId, [], $daten);
     }
 
+    /**
+     * Legt eine Rückerstattung an einer Bestellung an – nur als Eintrag (api_refund=false: Woo zahlt
+     * nichts über die Zahlungsart aus; api_restock=false: Bestand führt das ERP). Der Kunde sieht sie
+     * im Kundenkonto als „Erstattet“.
+     */
+    public function erstelleErstattung(int $orderId, float $betrag, string $grund): array
+    {
+        return $this->request('POST', '/orders/' . $orderId . '/refunds', [], [
+            'amount' => number_format($betrag, 2, '.', ''), 'reason' => $grund,
+            'api_refund' => false, 'api_restock' => false,
+        ]);
+    }
+
     /** Hängt eine Notiz an eine Bestellung (customer_note=false: nur im wp-admin sichtbar). */
     public function erstelleBestellNotiz(int $orderId, string $notiz, bool $fuerKunde = false): array
     {

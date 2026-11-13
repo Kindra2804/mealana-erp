@@ -31,7 +31,15 @@ if (!$buchungsdatum || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $buchungsdatum)) {
 $service  = new AuftragService();
 // Rückerstattung an den Kunden (Guthaben nach Rechnungskorrektur/Stornorechnung)
 if (!empty($_POST['rueckerstattung'])) {
-    echo json_encode($service->bucheRueckerstattung($auftragId, $betrag, $buchungsdatum, $notiz, $zahlungsweg));
+    $ergebnis = $service->bucheRueckerstattung($auftragId, $betrag, $buchungsdatum, $notiz, $zahlungsweg);
+    // Shop-Bestellung: Erstattung auch im Woo-Kundenkonto sichtbar machen
+    if ($ergebnis['erfolg']) {
+        require_once __DIR__ . '/../../src/modules/shop/ShopBestellungSyncService.php';
+        $meldung = (new ShopBestellungSyncService())->meldeErstattungAnShop($auftragId, $betrag, $notiz);
+        if ($meldung['hinweis'] !== '') $ergebnis['shop_hinweis'] = $meldung['hinweis'];
+        $ergebnis['shop_gemeldet'] = $meldung['gemeldet'];
+    }
+    echo json_encode($ergebnis);
     exit;
 }
 $ergebnis = $service->bucheZahlung($auftragId, $betrag, $buchungsdatum, $notiz, $zahlungsweg);

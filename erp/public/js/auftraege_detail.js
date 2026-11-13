@@ -170,5 +170,7 @@ async function rueckerstattungBuchen(auftragId) {
     body.append('rueckerstattung', '1');
     const r = await fetch(window.BASE_PATH + '/auftraege/zahlung_buchen.php', { method: 'POST', body });
     const d = await r.json();
-    if (d.erfolg) location.reload(); else alert(d.fehler || 'Fehler beim Buchen');
+    if (!d.erfolg) { alert(d.fehler || 'Fehler beim Buchen'); return; }
+    if (d.shop_hinweis) alert(d.shop_hinweis); // Erstattung konnte nicht an den Shop gemeldet werden
+    location.reload();
 }

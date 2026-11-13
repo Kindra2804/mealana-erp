@@ -134,6 +134,52 @@ class ShopBestellungSyncService
     }
 
     /**
+     * Rückerstattung aus dem ERP (Zahlung buchen → Rückerstattung) als Erstattung an der Shop-Bestellung
+     * anlegen, damit der Kunde sie im Kundenkonto sieht – passend zur Mail mit der Rechnungskorrektur
+     * (Jacky 2026-11-13). Grund = jüngste Rechnungskorrektur mit ihren Artikeln. Fehler im Shop
+     * blockieren die Buchung nicht, sie kommen nur als Hinweis zurück.
+     *
+     * @return array{gemeldet:bool, hinweis:string}
+     */
+    public function meldeErstattungAnShop(int $auftragId, float $betrag, ?string $notiz): array
+    {
+        $auftrag = $this->auftragRepo->findById($auftragId);
+        if (!$auftrag || ($auftrag['kanal'] ?? '') !== 'woocommerce' || empty($auftrag['kanal_auftrag_id'])) {
+            return ['gemeldet' => false, 'hinweis' => ''];
+        }
+        $shop = $this->findeShop((int)$auftrag['shop_id']);
+        if (!$shop) {
+            return ['gemeldet' => false, 'hinweis' => 'Shop ohne WooCommerce-Anbindung — Erstattung nur im ERP gebucht.'];
+        }
+
+        $db = Database::getInstance();
+        $gs = $db->prepare("SELECT id, gutschrift_nr FROM gutschriften WHERE auftrag_id = ? ORDER BY id DESC LIMIT 1");
+        $gs->execute([$auftragId]);
+        $gs = $gs->fetch(PDO::FETCH_ASSOC);
+        if ($gs) {
+            $pos = $db->prepare("SELECT ABS(menge) AS menge, bezeichnung FROM gutschrift_positionen WHERE gutschrift_id = ? ORDER BY id");
+            $pos->execute([$gs['id']]);
+            $artikel = array_map(fn($p) => (int)$p['menge'] . '× ' . $p['bezeichnung'], $pos->fetchAll(PDO::FETCH_ASSOC));
+            $grund = 'Rechnungskorrektur ' . $gs['gutschrift_nr'] . ($artikel ? ': ' . implode(', ', $artikel) : '');
+        } else {
+            $grund = 'Rückerstattung';
+        }
+        if ($notiz && $notiz !== 'Rückerstattung') $grund .= ' — ' . $notiz;
+
+        try {
+            $client = new WooCommerceClient($shop['wc_url'], $shop['wc_key'], $shop['wc_secret'], $shop['wp_username'], $shop['wp_app_password']);
+            $r = $client->erstelleErstattung((int)$auftrag['kanal_auftrag_id'], $betrag, mb_substr($grund, 0, 500));
+            $this->auftragRepo->logStatus($auftragId, [], 'Erstattung an den Shop gemeldet (Woo #' . ($r['id'] ?? '?') . '): '
+                . number_format($betrag, 2, ',', '.') . ' €', $this->jarvisId);
+            return ['gemeldet' => true, 'hinweis' => ''];
+        } catch (Throwable $e) {
+            Logger::log('shop.erstattung_fehler', 'auftraege', $auftragId, ['fehler' => $e->getMessage()], $this->jarvisId, 'warn');
+            return ['gemeldet' => false, 'hinweis' => 'Rückerstattung gebucht, aber der Shop konnte nicht aktualisiert werden ('
+                . $e->getMessage() . ') — bitte im Shop bei der Bestellung von Hand eine Erstattung eintragen.'];
+        }
+    }
+
+    /**
      * Soll-Status der Shop-Bestellung aus dem ERP-Stand. Bewusst NIE "Fertiggestellt"
      * für unbezahlte Aufträge: der Abgleich Shop → ERP liest processing/completed als
      * "bezahlt" -- eine versendete Rechnungs-/Nachnahme-Bestellung würde sonst im ERP
