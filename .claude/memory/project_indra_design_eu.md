@@ -1,6 +1,6 @@
 ---
 name: project-indra-design-eu
-description: "Indra-Design = EU von Babsi (KU), verkauft online im eigenen Namen über das KG-ERP — 2026-11-13 gebaut (Migr. 237, Partner online_verkauf), Stichtag 15.11., Live-Einspielen offen"
+description: "Indra-Design = EU von Babsi (KU), verkauft online im eigenen Namen über das KG-ERP — 2026-11-13 gebaut (Migr. 237+238, Versand als Monatsrechnung), Paket 1.0.10, Stichtag 15.11., Live-Einspielen offen"
 metadata:
   node_type: memory
   type: project
@@ -37,8 +37,10 @@ metadata:
 
 Verwandt: [[project_partner_modul]], [[project_konfigurator_modul]], [[project_indra_design_shop]], [[project_kleinunternehmer]], [[project_steuerprofil]].
 
-**⏸ ZWISCHENSTAND 2026-11-13 (Abbruch wegen API-Fehler, Commit „wip“) — HIER WEITERMACHEN:**
-Jacky-Korrekturen: Versandkosten NICHT gegenverrechnen, sondern **Monatsrechnung KG → Partner wie Fachmiete** (Betrag = Versand brutto der Partner-Rechnungen des Vormonats minus Korrekturen, 20 %, normale KG-Rechnung R-…); Fachmiete wie gehabt (auch 0 €); Gutschein-Einlösung = Durchlauf (schon so); Bestandsübergang = Entnahme/wie Falscheingabe (Umbuchung reicht); gemischte Bestellung (MeaLana-Shop) → **2 Aufträge** mit getrennten Rechnungen (erst beim MeaLana-Umstieg bauen); reiner Indra-Auftrag hat keinen Abholort.
-- Erledigt: Migration 238 (Tabelle partner_versand_rechnungen UNIQUE partner+periode, Artikel VERSAND-PARTNER Gruppe Versandkosten 4090, auf Dev eingespielt); MietRechnungService::kundeSicherstellen/kundenSnapshot public.
-- Offen: 1) PartnerVersandService (offene Monate + verrechnen wie MietRechnungService::rechnungFuerPartner: Auftrag mit je Partner-Rechnung einer Position, erbracht/abgeschlossen, erstelleVollrechnung, Leistungsdatum Monatsende, Zeile in partner_versand_rechnungen); DokumentService ist_fachmiete auch für partner_versand_rechnungen. 2) Knopf im Partner-Konto + Aufruf in cron/fachmiete.php. 3) Gegenverrechnung ENTFERNEN: BuchhaltungExportService Block 3 Partner-Zweig nur `continue` (keine Versandbuchung), PartnerKontoService versand-Abzug + Anzeige (detail.php, abrechnung.html.twig) raus. 4) Test, Handbuch anpassen (08_partner + bedienungsanleitung sagen noch „Gegenverrechnung“), Paket 1.0.10.
-
+**Korrekturen Jacky 2026-11-13 (Nachmittag) — umgesetzt, Commit 0f9ff57, Paket 1.0.10 (Migr. 236–238):**
+- Versand NICHT gegenverrechnen → **Monatsrechnung KG → Partner wie Fachmiete**: `PartnerVersandService` (je Partner + abgeschlossenem Monat eine normale R-Rechnung, 20 %, Artikel VERSAND-PARTNER, eine Zeile je Partner-Rechnung, Gutschrift-Versand als Minuszeile, Leistungsdatum Monatsende, `partner_versand_rechnungen` UNIQUE partner+periode; Summe ≤ 0 → keine Rechnung). Knopf Partner → Konto & Auszahlung, Lauf in `cron/fachmiete.php`. Rechnung ohne Versandart/Abholhinweis (DokumentService ist_fachmiete).
+- Gegenverrechnung entfernt (Export: Partner-Belege komplett übersprungen; Partner-Konto/Abrechnungs-PDF ohne Versand-Abzug). Handbücher angepasst.
+- Fachmiete wie gehabt (auch 0 €); Gutschein-Einlösung = Durchlauf; Bestandsübergang = Umbuchung reicht; reiner Indra-Auftrag ohne Abholort.
+- Getestet per CLI (Savepoint-PDO, Rollback): 2 Partner-Rechnungen Okt. → KG-Rechnung 11,40, Export 4090 + USt, kein Doppellauf. Gutschrift-Minuszeile nur per SQL-Logik, nicht echt getestet.
+- **Später (MeaLana-Umstieg):** gemischte Bestellung → 2 Aufträge mit getrennten Rechnungen.
+- **Offen:** 1.0.10 auf Live einspielen, dann Babsi-Partner einstellen (online + Kürzel INDRA + Adresse/Bank), Indra-Artikel per Massenaktion übergeben (Stichtag 15.11.), Woo KU/Rechtstexte, Steuerberatung (Bestandsübergang, Gutschein-Auszahlung).
