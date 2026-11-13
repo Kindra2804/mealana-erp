@@ -108,9 +108,9 @@ add_filter('robots_txt', function ($txt, $public) {
     if (!$public) return $txt;
     $zeilen = [
         'User-agent: *',
-        'Disallow: /cart/',
-        'Disallow: /checkout/',
-        'Disallow: /my-account/',
+        'Disallow: /warenkorb/',
+        'Disallow: /kasse/',
+        'Disallow: /mein-konto/',
         'Disallow: /*?*filter_',
         'Disallow: /*?*orderby=',
         'Disallow: /*?*add-to-cart=',

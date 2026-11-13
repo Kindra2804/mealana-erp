@@ -117,9 +117,9 @@ add_action('template_redirect', function () {
         '/Payment-options' => '/bezahlmoeglichkeiten/',
         '/Versandinformationen' => '/versandarten/',
         '/Shipment' => '/versandarten/',
-        '/Cart' => '/cart/',
-        '/Register' => '/my-account/',
-        '/Forgot-password' => '/my-account/lost-password/',
+        '/Cart' => '/warenkorb/',
+        '/Register' => '/mein-konto/',
+        '/Forgot-password' => '/mein-konto/passwort-vergessen/',
     ];
     $pfad = rtrim((string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
     if ($pfad === '') return;
@@ -135,9 +135,9 @@ add_filter('robots_txt', function ($txt, $public) {
     if (!$public) return $txt;
     $zeilen = [
         'User-agent: *',
-        'Disallow: /cart/',
-        'Disallow: /checkout/',
-        'Disallow: /my-account/',
+        'Disallow: /warenkorb/',
+        'Disallow: /kasse/',
+        'Disallow: /mein-konto/',
         'Disallow: /*?*filter_',
         'Disallow: /*?*orderby=',
         'Disallow: /*?*add-to-cart=',
