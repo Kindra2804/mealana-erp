@@ -85,8 +85,8 @@ class PartnerKontoService
         };
 
         // Online-Verkauf im eigenen Namen (Migration 237): Zahlungen auf Partner-Aufträge (auch an der Kasse
-        // bezahlte) + online eingelöste KG-Gutscheine sind Geld des Partners; die Versandkosten seiner
-        // Rechnungen behält die KG (Gegenverrechnung, Jacky 2026-11-13).
+        // bezahlte) + online eingelöste KG-Gutscheine sind Geld des Partners — inkl. Versand. Den Versand
+        // stellt die KG dem Partner monatlich eigens in Rechnung (PartnerVersandService), nie gegenverrechnet.
         $online = function (?string $von, ?string $bis) use ($partnerId): float {
             $z = "SELECT COALESCE(SUM(z.betrag), 0) FROM auftrag_zahlungen z JOIN auftraege a ON a.id = z.auftrag_id WHERE a.partner_id = ?";
             $g = "SELECT COALESCE(SUM(-t.betrag), 0) FROM gutschein_transaktionen t JOIN auftraege a ON a.id = t.auftrag_id
@@ -100,19 +100,6 @@ class PartnerKontoService
             $s2 = $this->db->prepare($g); $s2->execute($pg);
             return round((float)$s1->fetchColumn() + (float)$s2->fetchColumn(), 2);
         };
-        $versand = function (?string $von, ?string $bis) use ($partnerId): float {
-            $r = "SELECT COALESCE(SUM(r.versandkosten_brutto), 0) FROM rechnungen r JOIN auftraege a ON a.id = r.auftrag_id WHERE a.partner_id = ?";
-            $g = "SELECT COALESCE(SUM(g.versandkosten_brutto), 0) FROM gutschriften g JOIN auftraege a ON a.id = g.auftrag_id WHERE a.partner_id = ?";
-            $pr = [$partnerId]; $pg = [$partnerId];
-            if ($von) {
-                $r .= " AND DATE(r.erstellt_am) BETWEEN ? AND ?"; $pr[] = $von; $pr[] = $bis;
-                $g .= " AND DATE(g.erstellt_am) BETWEEN ? AND ?"; $pg[] = $von; $pg[] = $bis;
-            }
-            $s1 = $this->db->prepare($r); $s1->execute($pr);
-            $s2 = $this->db->prepare($g); $s2->execute($pg);
-            return round((float)$s1->fetchColumn() - (float)$s2->fetchColumn(), 2);
-        };
-
         $az = $this->db->prepare("
             SELECT COALESCE(SUM(betrag), 0) AS gesamt,
                    COALESCE(SUM(CASE WHEN art = 'spendenlade' THEN betrag ELSE 0 END), 0) AS spendenlade
@@ -124,16 +111,13 @@ class PartnerKontoService
         $verkaufGesamt = $verkauf(null, null);
         $barGesamt     = $spendeBar(null, null);
         $onlineGesamt  = $online(null, null);
-        $versandGesamt = $versand(null, null);
         return [
             'verkauf_gesamt'       => $verkaufGesamt,
             'online_gesamt'        => $onlineGesamt,
-            'versand_gesamt'       => $versandGesamt,
             'ausgezahlt_gesamt'    => round((float)$azRow['gesamt'], 2),
-            'saldo'                => round($verkaufGesamt + $onlineGesamt - $versandGesamt - (float)$azRow['gesamt'], 2),
+            'saldo'                => round($verkaufGesamt + $onlineGesamt - (float)$azRow['gesamt'], 2),
             'verkauf_zeitraum'     => $von ? $verkauf($von, $bis) : null,
             'online_zeitraum'      => $von ? $online($von, $bis) : null,
-            'versand_zeitraum'     => $von ? $versand($von, $bis) : null,
             'spende_bar_gesamt'    => $barGesamt,
             'spende_bar_zeitraum'  => $von ? $spendeBar($von, $bis) : null,
             'spendenlade_offen'    => round($barGesamt - (float)$azRow['spendenlade'], 2),

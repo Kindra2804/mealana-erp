@@ -53,6 +53,13 @@ if ($tab === 'konto') {
         $auszahlungen = $kontoSvc->getAuszahlungen($id);
         $kassen       = Database::getInstance()->query("SELECT id, kasse_nr, name FROM kassen WHERE aktiv = 1 ORDER BY kasse_nr")->fetchAll(PDO::FETCH_ASSOC);
     }
+    // Online-Verkauf im eigenen Namen: Versandkosten der Partner-Rechnungen monatlich an den Partner verrechnen
+    if (!empty($partner['online_verkauf'])) {
+        require_once __DIR__ . '/../../src/modules/partner/PartnerVersandService.php';
+        $versandSvc       = new PartnerVersandService();
+        $versandOffen     = $versandSvc->offene(null, $id);
+        $versandVerrechnet = $versandSvc->getVerrechnet($id);
+    }
 }
 
 $typLabel = PartnerService::VERKAUFSARTEN;
@@ -311,7 +318,7 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
     <div class="card" style="margin:0"><div style="font-size:12px;color:var(--color-text-muted)">OFFEN (wir schulden)</div>
         <div style="font-size:22px;font-weight:700;color:var(--color-nav)"><?= $eur($konto['saldo']) ?></div>
         <div style="font-size:11px;color:var(--color-text-muted)"><?= $istSpende ? 'Spenden' : 'Verkäufe' ?> gesamt <?= $eur($konto['verkauf_gesamt']) ?>
-            <?php if ($konto['online_gesamt'] != 0 || $konto['versand_gesamt'] != 0): ?> + online bezahlt <?= $eur($konto['online_gesamt']) ?> − Versand (Gegenverrechnung) <?= $eur($konto['versand_gesamt']) ?><?php endif; ?>
+            <?php if ($konto['online_gesamt'] != 0): ?> + online bezahlt <?= $eur($konto['online_gesamt']) ?><?php endif; ?>
             − ausgezahlt <?= $eur($konto['ausgezahlt_gesamt']) ?></div></div>
     <div class="card" style="margin:0"><div style="font-size:12px;color:var(--color-text-muted)"><?= $istSpende ? 'SPENDEN' : 'VERKÄUFE' ?> IM ZEITRAUM</div>
         <div style="font-size:22px;font-weight:700"><?= $eur($konto['verkauf_zeitraum']) ?></div></div>
@@ -321,6 +328,37 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
         <div style="font-size:11px;color:var(--color-text-muted)">Rest kam per Karte auf unser Konto</div></div>
     <?php endif; ?>
 </div>
+
+<?php if (isset($versandSvc)): ?>
+<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div>
+            <strong style="font-size:13px">Versandkosten an den Partner verrechnen</strong>
+            <div style="font-size:12px;color:var(--color-text-muted)">Den Versand zahlt der Kunde auf der Rechnung des Partners, er gehört aber uns. Je abgeschlossenem Monat eine eigene Rechnung an den Partner (20 %, auch täglich per Cron). Keine Gegenverrechnung mit dem Konto.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="versandVerrechnen(<?= $id ?>)" <?= $versandOffen ? '' : 'disabled' ?>>Jetzt verrechnen (<?= count($versandOffen) ?>)</button>
+    </div>
+    <?php if ($versandOffen || $versandVerrechnet): ?>
+    <table class="erp-table" style="margin-top:10px">
+        <thead><tr><th style="width:110px">MONAT</th><th>BELEGE</th><th style="width:170px">RECHNUNG</th><th style="width:120px;text-align:right">BRUTTO</th></tr></thead>
+        <tbody>
+        <?php foreach ($versandOffen as $o): ?>
+            <tr><td><?= date('m/Y', strtotime($o['periode'] . '-01')) ?></td>
+                <td style="font-size:12px"><?= htmlspecialchars(implode(', ', array_column($o['zeilen'], 'nr'))) ?></td>
+                <td style="color:var(--color-text-muted)">offen</td>
+                <td style="text-align:right"><?= $eur($o['betrag']) ?></td></tr>
+        <?php endforeach; ?>
+        <?php foreach ($versandVerrechnet as $v): ?>
+            <tr><td><?= date('m/Y', strtotime($v['periode'] . '-01')) ?></td><td></td>
+                <td><a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= (int)$v['auftrag_id'] ?>" style="font-family:monospace"><?= htmlspecialchars($v['rechnung_nr']) ?></a>
+                    <span style="font-size:11px;color:var(--color-text-muted)"><?= htmlspecialchars($v['zahlungsstatus'] ?? '') ?></span></td>
+                <td style="text-align:right"><?= $eur($v['betrag_brutto']) ?></td></tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <div class="card" style="margin-bottom:12px">
     <strong style="font-size:13px"><?= $istSpende ? 'Spenden übergeben' : 'Auszahlung an den Partner' ?></strong>

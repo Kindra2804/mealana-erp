@@ -23,6 +23,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/core/Database.php';
 require_once __DIR__ . '/../src/core/logger.php';
 require_once __DIR__ . '/../src/modules/partner/MietRechnungService.php';
+require_once __DIR__ . '/../src/modules/partner/PartnerVersandService.php';
 
 $db  = Database::getInstance();
 $log = fn(string $msg) => print('[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL);
@@ -41,3 +42,13 @@ foreach ($r['fehler'] as $f) {
     $log('FEHLER: ' . $f);
 }
 $log('=== Fertig: ' . count($r['rechnungen']) . ' Rechnung(en), ' . count($r['fehler']) . ' Fehler ===');
+
+// Versandkosten der Online-Partner (Migration 238): Vormonate als eigene Rechnung an den Partner
+$v = (new PartnerVersandService())->verrechnen($systemId);
+foreach ($v['rechnungen'] as $re) {
+    $log(sprintf('Versand-Rechnung %s: %s, %s, € %.2f', $re['rechnung_nr'], $re['partner'], $re['monat'], $re['brutto']));
+}
+foreach ($v['fehler'] as $f) {
+    $log('FEHLER Versand: ' . $f);
+}
+$log('=== Versand fertig: ' . count($v['rechnungen']) . ' Rechnung(en), ' . count($v['fehler']) . ' Fehler ===');

@@ -47,3 +47,16 @@ function azStorno(id, nummer) {
 document.addEventListener('DOMContentLoaded', function () {
     if (document.getElementById('az-art')) azArtWechsel();
 });
+
+// Versandkosten der Partner-Rechnungen (Vormonate) als eigene KG-Rechnung an den Partner (PartnerVersandService)
+async function versandVerrechnen(partnerId) {
+    if (!confirm('Versandkosten der abgeschlossenen Monate jetzt verrechnen?\nJe Monat entsteht eine Rechnung an den Partner.')) return;
+    var body = new FormData();
+    body.append('partner_id', partnerId);
+    var res  = await fetch(window.BASE_PATH + '/partner/versand_verrechnen.php', { method: 'POST', body: body });
+    var data = await res.json();
+    var teile = (data.rechnungen || []).map(function (r) { return r.rechnung_nr + ' (' + r.monat + ')'; });
+    if (data.fehler && data.fehler.length) alert('Fehler:\n' + data.fehler.join('\n') + (teile.length ? '\n\nErstellt:\n' + teile.join('\n') : ''));
+    else if (teile.length) alert(teile.length + ' Rechnung(en) erstellt:\n' + teile.join('\n'));
+    setTimeout(function () { location.reload(); }, 800);
+}

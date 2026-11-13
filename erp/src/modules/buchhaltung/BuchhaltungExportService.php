@@ -553,23 +553,10 @@ class BuchhaltungExportService
             $vz    = $b['art'] === 'gutschrift' ? -1 : 1;
             $label = $b['art'] === 'gutschrift' ? 'Gutschrift' : 'Rechnung';
 
-            // Partner-Auftrag (Migration 237): der Beleg ist der des Partners (z.B. R-INDRA-…), kein Erlös der KG.
-            // Nur die Versandkosten gehören der KG -- Gegenverrechnung mit dem Partner (Jacky 2026-11-13):
-            // Verrechnungskonto Partner an Versanderlös + USt (KG-Leistung, Standardsatz).
-            if (!empty($b['partner_id'])) {
-                if ((float)$b['versandkosten_brutto'] > 0) {
-                    $fremd = $this->partnerKonten()['fremd'];
-                    if (!$fremd) {
-                        $hinweise[] = "$label {$b['nr']} ({$b['partner_name']}): kein Partner-Konto Fremdrechnung eingestellt — Versand € "
-                            . number_format((float)$b['versandkosten_brutto'], 2, ',', '.') . " manuell buchen";
-                        continue;
-                    }
-                    $v = Versandsteuer::aufteilen((float)$b['versandkosten_brutto'], []);
-                    $this->belegZeile($buchungen, $hinweise, ['debitorennummer' => $fremd] + $b, $label, $this->versandKonto(),
-                        'Versandkosten (Gegenverrechnung ' . $b['partner_name'] . ')', (float)$v['satz'], $vz * $v['netto'], $vz * $v['steuer'], null);
-                }
-                continue;
-            }
+            // Partner-Auftrag (Migration 237): der Beleg ist der des Partners (z.B. R-INDRA-…), kein Erlös der KG —
+            // auch nicht der Versand darauf. Den verrechnet die KG dem Partner monatlich mit einer eigenen
+            // Rechnung (PartnerVersandService, Migration 238), die hier als normale Rechnung gebucht wird.
+            if (!empty($b['partner_id'])) continue;
 
             if (!$b['debitorennummer']) {
                 $hinweise[] = "$label {$b['nr']} ({$b['datum']}, Auftrag {$b['auftrag_nr']}): Kunde ohne Debitorennummer — manuell buchen";

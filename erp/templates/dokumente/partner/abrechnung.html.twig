@@ -106,9 +106,8 @@
     <div class="box-titel">Kontostand bei {{ firma.firmenname ?? 'MEALANA KG' }}</div>
     <table class="kz" style="width:60%">
       <tr><td>{{ modus == 'spende' ? 'Spenden' : 'Verkäufe' }} gesamt</td><td class="r">€ {{ konto.verkauf_gesamt|number_format(2, ',', '.') }}</td></tr>
-      {% if konto.online_gesamt or konto.versand_gesamt %}
+      {% if konto.online_gesamt %}
       <tr><td>Online-Bestellungen bezahlt (inkl. eingelöster Gutscheine)</td><td class="r">€ {{ konto.online_gesamt|number_format(2, ',', '.') }}</td></tr>
-      <tr><td>abzüglich Versandkosten (Gegenverrechnung)</td><td class="r">− € {{ konto.versand_gesamt|number_format(2, ',', '.') }}</td></tr>
       {% endif %}
       <tr><td>bereits ausgezahlt / übergeben</td><td class="r">€ {{ konto.ausgezahlt_gesamt|number_format(2, ',', '.') }}</td></tr>
       <tr><td><strong>offen (Stand {{ 'now'|date('d.m.Y') }})</strong></td><td class="r"><strong>€ {{ konto.saldo|number_format(2, ',', '.') }}</strong></td></tr>

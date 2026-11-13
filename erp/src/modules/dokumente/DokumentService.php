@@ -347,9 +347,11 @@ class DokumentService
         ];
         $daten['zahlungsinfo'] = $this->zahlungsInfo($rechnungId);
 
-        // Fachmiete-Rechnung (Partner, MietRechnungService): ohne Versandart/Abholhinweis/Bestell-Dank
-        $miete = $this->db->prepare("SELECT 1 FROM miet_rechnungen WHERE rechnung_id = ? LIMIT 1");
-        $miete->execute([$rechnungId]);
+        // Rechnung an einen Partner (Fachmiete: MietRechnungService, Versandkosten: PartnerVersandService):
+        // ohne Versandart/Abholhinweis/Bestell-Dank
+        $miete = $this->db->prepare("SELECT 1 FROM miet_rechnungen WHERE rechnung_id = ?
+                                     UNION ALL SELECT 1 FROM partner_versand_rechnungen WHERE rechnung_id = ? LIMIT 1");
+        $miete->execute([$rechnungId, $rechnungId]);
         $daten['ist_fachmiete'] = (bool)$miete->fetchColumn();
 
         $dateiname = $zielDateiname ?? ($rechnung['dateiname'] ?: 'R-' . $daten['auftrag']['auftrag_nr'] . '_' . $rechnung['rechnung_nr'] . '.pdf');
