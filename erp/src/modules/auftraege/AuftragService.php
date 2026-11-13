@@ -102,11 +102,13 @@ class AuftragService
         if (empty($berechnetePos)) {
             return ['erfolg' => false, 'fehler' => ['Mindestens eine gültige Position ist erforderlich']];
         }
-        if ($partnerFehler = $this->pruefePartnerware($berechnetePos)) {
-            return ['erfolg' => false, 'fehler' => $partnerFehler];
+        $partnerPruefung = $this->pruefePartnerware($berechnetePos);
+        if ($partnerPruefung['fehler']) {
+            return ['erfolg' => false, 'fehler' => $partnerPruefung['fehler']];
         }
+        $berechnetePos = $this->partnerSteuer($berechnetePos, $partnerPruefung['partner']);
 
-        $summen = $this->berechneSummen($berechnetePos, (float)($data['versandkosten'] ?? 0));
+        $summen = $this->berechneSummen($berechnetePos, (float)($data['versandkosten'] ?? 0), !empty($partnerPruefung['partner']['kleinunternehmer']));
 
         $kunden_snapshot = null;
         if (!empty($data['kunden_snapshot']) && is_array($data['kunden_snapshot'])) {
@@ -121,6 +123,8 @@ class AuftragService
             'kanal'                     => $data['kanal'] ?? 'manuell',
             'kanal_auftrag_id'          => !empty($data['kanal_auftrag_id']) ? (int)$data['kanal_auftrag_id'] : null,
             'shop_id'                   => !empty($data['shop_id']) ? (int)$data['shop_id'] : null,
+            // Partner-Auftrag (Migration 237): Belege im Namen des Partners, kein Erlös der KG
+            'partner_id'                => $partnerPruefung['partner'] ? (int)$partnerPruefung['partner']['id'] : null,
             'zahlungsstatus'            => 'ausstehend',
             'lieferstatus'              => 'neu',
             'zahlungsart'               => $data['zahlungsart'] ?? 'vorkasse',
@@ -301,23 +305,62 @@ class AuftragService
      * Überspringt Zeilen ohne artikel_id oder menge.
      */
     /**
-     * Partnerware (artikel.partner_id) ist nur Kassenverkauf (Jacky 2026-10-01): kein Auftrag,
-     * kein Telefon-/Rechnungsverkauf -- Lager, Abrechnung und Bon laufen über die Kasse.
+     * Partnerware (artikel.partner_id) ist nur Kassenverkauf (Jacky 2026-10-01) -- außer der Partner
+     * verkauft online im eigenen Namen (Migration 237, z.B. Indra-Design): dann ist der ganze Auftrag
+     * ein Partner-Auftrag. Gemischt (Hauptfirma + Partner oder zwei Partner) geht nicht, weil die
+     * Belege nur EINEN Aussteller haben.
      *
-     * @return string[] Fehlermeldungen (leer = ok)
+     * @return array{fehler: string[], partner: array|null}
      */
     private function pruefePartnerware(array $positionen): array
     {
         $ids = array_values(array_unique(array_filter(array_column($positionen, 'artikel_id'))));
-        if (!$ids) return [];
+        if (!$ids) return ['fehler' => [], 'partner' => null];
         $ph   = implode(',', array_fill(0, count($ids), '?'));
         $stmt = Database::getInstance()->prepare("
-            SELECT a.artikelnummer, a.name, p.name AS partner FROM artikel a
-            JOIN partner p ON p.id = a.partner_id WHERE a.id IN ($ph)
+            SELECT a.artikelnummer, a.name, a.partner_id, p.name AS partner, p.online_verkauf, p.kleinunternehmer
+            FROM artikel a LEFT JOIN partner p ON p.id = a.partner_id WHERE a.id IN ($ph)
         ");
         $stmt->execute($ids);
-        return array_map(fn($a) => $a['artikelnummer'] . ' ' . $a['name'] . ' ist Partnerware (' . $a['partner']
-            . ') und kann nur an der Kasse verkauft werden, nicht per Auftrag.', $stmt->fetchAll(PDO::FETCH_ASSOC));
+        $zeilen = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $fehler = [];
+        foreach ($zeilen as $a) {
+            if ($a['partner_id'] && !$a['online_verkauf']) {
+                $fehler[] = $a['artikelnummer'] . ' ' . $a['name'] . ' ist Partnerware (' . $a['partner']
+                          . ') und kann nur an der Kasse verkauft werden, nicht per Auftrag.';
+            }
+        }
+        if ($fehler) return ['fehler' => $fehler, 'partner' => null];
+
+        $partnerIds = array_unique(array_map(fn($a) => (int)$a['partner_id'], $zeilen));
+        if (count($partnerIds) > 1) {
+            return ['fehler' => ['Ein Auftrag darf nur Ware EINES Eigentümers enthalten (Hauptfirma oder ein Partner) — '
+                               . 'die Rechnung hat nur einen Aussteller. Bitte getrennte Aufträge anlegen.'], 'partner' => null];
+        }
+        $pid = reset($partnerIds);
+        if (!$pid) return ['fehler' => [], 'partner' => null];
+        $partner = Database::getInstance()->prepare("SELECT * FROM partner WHERE id = ?");
+        $partner->execute([$pid]);
+        return ['fehler' => [], 'partner' => $partner->fetch(PDO::FETCH_ASSOC) ?: null];
+    }
+
+    /**
+     * Kleinunternehmer-Partner (Migration 237): kein USt-Ausweis -- Positionen mit 0 % und der bisherige
+     * Bruttopreis wird zum Nettopreis (der Kunde zahlt denselben Betrag).
+     */
+    private function partnerSteuer(array $positionen, ?array $partner): array
+    {
+        if (!$partner || empty($partner['kleinunternehmer'])) return $positionen;
+        foreach ($positionen as &$p) {
+            $satz = (float)$p['steuer_prozent'];
+            if ($satz == 0.0) continue;
+            $p['einzelpreis_netto'] = round((float)$p['einzelpreis_netto'] * (1 + $satz / 100), 4);
+            $p['steuer_prozent']    = 0.0;
+            $p['gesamtpreis_netto'] = Positionsrechnung::zeile($p['einzelpreis_netto'], (int)$p['menge'], (float)$p['rabatt_prozent'], 0.0)['netto'];
+        }
+        unset($p);
+        return $positionen;
     }
 
     private function berechnePositionen(array $eingaben): array
@@ -360,7 +403,7 @@ class AuftragService
      * Leistung, siehe Versandsteuer). Bis 2026-09-30 fehlte der Versand hier komplett --
      * bruttobetrag (offener Betrag, Zahlung buchen, Mahnungen) war um die Versandkosten zu niedrig.
      */
-    private function berechneSummen(array $positionen, float $versandBrutto = 0.0): array
+    private function berechneSummen(array $positionen, float $versandBrutto = 0.0, bool $ohneUst = false): array
     {
         $netto  = 0.0;
         $steuer = 0.0;
@@ -370,7 +413,7 @@ class AuftragService
             $steuer += $z['steuer'];
         }
         if ($versandBrutto > 0) {
-            $v = Versandsteuer::aufteilen($versandBrutto, $positionen);
+            $v = Versandsteuer::aufteilen($versandBrutto, $positionen, $ohneUst);
             $netto  += $v['netto'];
             $steuer += $v['steuer'];
         }
@@ -408,9 +451,16 @@ class AuftragService
 
         // 2. Positionen berechnen (berechnePositionen() — schon vorhanden!)
         $positionenBerechnet = $this->berechnePositionen($positionen);
-        if ($partnerFehler = $this->pruefePartnerware($positionenBerechnet)) {
-            return ['erfolg' => false, 'fehler' => $partnerFehler];
+        $partnerPruefung = $this->pruefePartnerware($positionenBerechnet);
+        if ($partnerPruefung['fehler']) {
+            return ['erfolg' => false, 'fehler' => $partnerPruefung['fehler']];
         }
+        $neuPartner = $partnerPruefung['partner'] ? (int)$partnerPruefung['partner']['id'] : null;
+        $altPartner = !empty($auftragsdaten['partner_id']) ? (int)$auftragsdaten['partner_id'] : null;
+        if ($neuPartner !== $altPartner) {
+            return ['erfolg' => false, 'fehler' => ['Ein Auftrag kann nicht zwischen Hauptfirma und Partner wechseln — bitte stornieren und neu anlegen.']];
+        }
+        $positionenBerechnet = $this->partnerSteuer($positionenBerechnet, $partnerPruefung['partner']);
 
         // Verrechnete Menge (Teilrechnung/Bon) darf nicht wegfallen -- Korrektur dann nur per Gutschrift
         $neueMengen = [];
@@ -431,7 +481,7 @@ class AuftragService
             return ['erfolg' => false, 'fehler' => ['Mindestens eine gültige Position ist erforderlich']];
         }
         // 3. Summen berechnen (berechneSummen() — schon vorhanden!)
-        $positionenSummen = $this->berechneSummen($positionenBerechnet, (float)($data['versandkosten'] ?? 0));
+        $positionenSummen = $this->berechneSummen($positionenBerechnet, (float)($data['versandkosten'] ?? 0), !empty($partnerPruefung['partner']['kleinunternehmer']));
 
         // 4. Header updaten (neues Repo-Method: updateHeader)
         $headerData = [
@@ -636,7 +686,9 @@ class AuftragService
             }
 
             // Beträge neu (Positionen unverändert, nur Versand)
-            $summen = $this->berechneSummen($positionen, $versandkosten);
+            $kuSt = $db->prepare("SELECT p.kleinunternehmer FROM auftraege a JOIN partner p ON p.id = a.partner_id WHERE a.id = ?");
+            $kuSt->execute([$id]);
+            $summen = $this->berechneSummen($positionen, $versandkosten, (bool)$kuSt->fetchColumn());
             $felder = [
                 'lieferart'        => $lieferart,
                 'versandklasse_id' => $lieferart === 'versand' ? $versandklasseId : null,

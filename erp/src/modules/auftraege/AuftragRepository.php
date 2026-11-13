@@ -320,8 +320,9 @@ class AuftragRepository
                              OR EXISTS (SELECT 1 FROM artikel_codes ac WHERE ac.artikel_id = a.id AND ac.code LIKE :$k))";
             $params[$k] = '%' . $word . '%';
         }
-        // Partnerware (artikel.partner_id) wird nur an der Kasse verkauft, nie per Auftrag
-        $whereParts[] = 'a.partner_id IS NULL';
+        // Partnerware (artikel.partner_id) wird nur an der Kasse verkauft, nie per Auftrag --
+        // außer Partner mit "verkauft online" (Migration 237): Partner-Auftrag in dessen Namen
+        $whereParts[] = '(a.partner_id IS NULL OR a.partner_id IN (SELECT id FROM partner WHERE online_verkauf = 1))';
         $where = implode(' AND ', $whereParts);
 
         $stmt = $this->db->prepare("
@@ -373,7 +374,7 @@ class AuftragRepository
             INSERT INTO auftraege (
                 auftrag_nr, kunden_id, kunden_snapshot,
                 lieferadresse_snapshot, rechnungsadresse_snapshot,
-                kanal, kanal_auftrag_id, shop_id,
+                kanal, kanal_auftrag_id, shop_id, partner_id,
                 zahlungsstatus, lieferstatus,
                 zahlungsart, zahlungsbedingung_id, lieferart,
                 gutschein_id, gutschein_betrag,
@@ -383,7 +384,7 @@ class AuftragRepository
             ) VALUES (
                 :auftrag_nr, :kunden_id, :kunden_snapshot,
                 :lieferadresse_snapshot, :rechnungsadresse_snapshot,
-                :kanal, :kanal_auftrag_id, :shop_id,
+                :kanal, :kanal_auftrag_id, :shop_id, :partner_id,
                 :zahlungsstatus, :lieferstatus,
                 :zahlungsart, :zahlungsbedingung_id, :lieferart,
                 :gutschein_id, :gutschein_betrag,
@@ -392,7 +393,8 @@ class AuftragRepository
                 :notiz_intern, :notiz_versand, :kontakt_notiz, :erstellt_von
             )
         ");
-        $stmt->execute(array_merge($data, ['auftrag_nr' => $auftragNr]));
+        // partner_id (Migration 237) nur bei Partner-Aufträgen -- alle anderen Aufrufer kennen das Feld nicht
+        $stmt->execute(array_merge(['partner_id' => null], $data, ['auftrag_nr' => $auftragNr]));
         $id = (int)$this->db->lastInsertId();
 
         if ($eigeneTransaktion) $this->db->commit();

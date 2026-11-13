@@ -47,11 +47,14 @@ class Versandsteuer
         return $besterSatz;
     }
 
-    /** @return array{satz:float, netto:float, steuer:float, brutto:float} */
-    public static function aufteilen(float $versandBrutto, array $positionen): array
+    /**
+     * $ohneUst: Beleg einer Kleinunternehmerin (Partner-Auftrag, Migration 237) -- auch der Versand ohne USt.
+     * @return array{satz:float, netto:float, steuer:float, brutto:float}
+     */
+    public static function aufteilen(float $versandBrutto, array $positionen, bool $ohneUst = false): array
     {
         $brutto = round($versandBrutto, 2);
-        $satz   = self::satz($positionen);
+        $satz   = $ohneUst ? 0.0 : self::satz($positionen);
         $netto  = round($brutto / (1 + $satz / 100), 2);
         return ['satz' => $satz, 'netto' => $netto, 'steuer' => round($brutto - $netto, 2), 'brutto' => $brutto];
     }

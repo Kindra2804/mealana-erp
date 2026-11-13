@@ -101,7 +101,7 @@ class DokumentService
         }
 
         $versand = $this->versandNochOffen($auftrag) ? (float)$auftrag['versandkosten'] : 0.0;
-        $summen  = $this->berechneSummen($rePos, $versand);
+        $summen  = $this->berechneSummen($rePos, $versand, null, $this->ohneUst($auftragId));
         $faellig = $this->berechneFaelligkeit($auftrag);
 
         $eigeneTx = !$this->db->inTransaction();
@@ -329,7 +329,7 @@ class DokumentService
         $ausstaendig = json_decode((string)($rechnung['ausstaendig_json'] ?? ''), true) ?: [];
 
         $daten['positionen'] = $positionen;
-        $daten['summen']     = $this->berechneSummen($positionen, (float)$rechnung['versandkosten_brutto']);
+        $daten['summen']     = $this->berechneSummen($positionen, (float)$rechnung['versandkosten_brutto'], null, $this->ohneUst((int)$rechnung['auftrag_id']));
         // Gutschein-Zahlungen stehen in der Zahlungsinfo (unten), nicht im Steuerblock
         $daten['gutschein_zahlungen'] = [];
         $daten['gutschein_summe']     = 0.0;
@@ -689,7 +689,7 @@ class DokumentService
         if (!$gsPosi && $gsVersand <= 0.004) {
             return ['erfolg' => false, 'fehler' => 'Es gibt nichts mehr zu korrigieren.'];
         }
-        $gsSummen = $this->berechneSummen($gsPosi, $gsVersand, $this->versandSteuerBasis($auftragId));
+        $gsSummen = $this->berechneSummen($gsPosi, $gsVersand, $this->versandSteuerBasis($auftragId), $this->ohneUst($auftragId));
 
         // Bezug auf die Originalrechnung(en): Nummer + Ausstellungsdatum (Pflichtangabe
         // Korrekturbeleg). Bei Teilrechnungen können die Positionen auf mehreren stehen.
@@ -938,7 +938,7 @@ class DokumentService
 
         // Händler-Rechnungen (kanal 'haendler') immer mit Netto-Preisen, auch ohne UID
         $istB2B      = !empty($kunde['uid_nummer']) || ($auftrag['kanal'] ?? '') === 'haendler';
-        $summen      = $this->berechneSummen($positionen, (float)($auftrag['versandkosten'] ?? 0));
+        $summen      = $this->berechneSummen($positionen, (float)($auftrag['versandkosten'] ?? 0), null, $this->ohneUst($auftragId));
 
         // Mit Gutschein bezahlte Beträge (Zahlungsmittel, Mehrzweckgutschein) -- die
         // Positionen bleiben zum vollen Preis und voll versteuert, der Gutschein wird
@@ -1047,7 +1047,19 @@ class DokumentService
      * Rechnung wie AuftragService, damit Rechnung und Auftragsbetrag übereinstimmen).
      * Bis 2026-09-30 wurde der Versand nur angezeigt, aber nicht mitgerechnet.
      */
-    private function berechneSummen(array $positionen, float $versandBrutto = 0.0, ?array $versandBasis = null): array
+    /** Partner-Auftrag einer Kleinunternehmerin (Migration 237): Belege ohne USt, auch der Versand. */
+    private function ohneUst(int $auftragId): bool
+    {
+        static $cache = [];
+        if (!array_key_exists($auftragId, $cache)) {
+            $st = $this->db->prepare("SELECT p.kleinunternehmer FROM auftraege a JOIN partner p ON p.id = a.partner_id WHERE a.id = ?");
+            $st->execute([$auftragId]);
+            $cache[$auftragId] = (bool)$st->fetchColumn();
+        }
+        return $cache[$auftragId];
+    }
+
+    private function berechneSummen(array $positionen, float $versandBrutto = 0.0, ?array $versandBasis = null, bool $ohneUst = false): array
     {
         $blöcke       = [];  // ['20.00' => ['netto' => x, 'steuer' => y, 'brutto' => z]]
         $nettoGesamt  = 0.0;
@@ -1075,7 +1087,7 @@ class DokumentService
         $versand = null;
         if ($versandBrutto > 0) {
             // Satz der überwiegenden Leistung -- bei einer Korrektur die der Original-Rechnung
-            $versand = Versandsteuer::aufteilen($versandBrutto, $versandBasis ?? $positionen);
+            $versand = Versandsteuer::aufteilen($versandBrutto, $versandBasis ?? $positionen, $ohneUst);
             $key = number_format($versand['satz'], 2);
             if (!isset($blöcke[$key])) {
                 $blöcke[$key] = ['satz' => $versand['satz'], 'netto' => 0.0, 'steuer' => 0.0, 'brutto' => 0.0];
