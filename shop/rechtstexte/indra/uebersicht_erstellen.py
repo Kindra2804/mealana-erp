@@ -1,6 +1,6 @@
 # Übersicht zum Gegenlesen: Entwürfe gerendert, geänderte/neue Absätze gelb, entfallene durchgestrichen.
 import re, pathlib, html as H
-A = pathlib.Path('aktuell'); E = pathlib.Path('entwurf')
+A = pathlib.Path('kg_fassung'); E = pathlib.Path('entwurf')
 absaetze = lambda t: [b.strip() for b in re.findall(r'<!-- wp:[a-z/-]+[^>]*-->(.*?)<!-- /wp:', t, re.S) if b.strip()]
 TITEL = {'impressum.html': 'Impressum', 'agb.html': 'AGB', 'widerrufsbelehrung.html': 'Widerrufsbelehrung',
          'versandarten.html': 'Versandkostenübersicht', 'datenschutzerklaerung.html': 'Datenschutzerklärung'}

@@ -1,7 +1,7 @@
 # Erstellt die Entwürfe der indra-Rechtstexte für das Einzelunternehmen (Barbara Indra) aus den aktuellen Seiten.
 # Änderungen sind in den Entwurfsdateien unverändert (ohne Markierung); uebersicht.html markiert sie gelb.
 import re, html, pathlib
-A = pathlib.Path('aktuell'); E = pathlib.Path('entwurf')
+A = pathlib.Path('kg_fassung'); E = pathlib.Path('entwurf')
 P = lambda t: '<!-- wp:paragraph -->\n<p>' + t + '</p>\n<!-- /wp:paragraph -->'
 MAIL = '<a href="mailto:office@indra-design.at">office@indra-design.at</a>'
 KU = 'Gemäß § 6 Abs. 1 Z 27 UStG (Kleinunternehmerregelung) wird keine Umsatzsteuer berechnet und ausgewiesen.'
@@ -56,4 +56,5 @@ def umbauen(name, ersatz, voran=None):
 umbauen('agb.html', ersatz_agb)
 umbauen('widerrufsbelehrung.html', ersatz_widerruf)
 umbauen('versandarten.html', ersatz_versand)
-umbauen('datenschutzerklaerung.html', [], voran=verantwortlich)
+kg_verantwortlich = P('<strong>Verantwortlich für die Datenverarbeitung</strong><br>MEALANA KG<br>Fliegergasse 49, 2700 Wiener Neustadt, Österreich<br>E-Mail: <a href="mailto:office@mealana.at">office@mealana.at</a>')
+umbauen('datenschutzerklaerung.html', [(kg_verantwortlich, verantwortlich)])
