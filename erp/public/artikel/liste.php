@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelController.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/modules/partner/ArtikelEigentumService.php';
 require_once __DIR__ . '/../../src/modules/artikel/BilderRepository.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 
@@ -569,6 +570,7 @@ $actionBarContent = <<<HTML
         <option value="merkmal_setzen">Merkmal setzen (z.B. Pflege)</option>
         <option value="preisschilder">🏷 Preisschilder drucken</option>
         <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
+        <option value="eigentuemer">Eigentümer setzen (Hauptfirma / Partner)</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
     <div class="actionbar-sep"></div>
@@ -1121,6 +1123,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             return;
         }
 
+        if (aktion === 'eigentuemer') {
+            eigentuemerDialog(ids);   // js/eigentuemer_massen.js
+            return;
+        }
+
         if (aktion === 'kuvert_etikett') {
             kuvertEtikettDialog(ids);   // js/kuvert_etikett.js -- PDF im neuen Tab, nichts wird geändert
             return;
@@ -1220,6 +1227,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </script>
 
 <script src="<?= BASE_PATH ?>/js/kuvert_etikett.js"></script>
+<script>window.EIGENTUEMER_PARTNER = <?= json_encode((new ArtikelEigentumService())->moeglichePartner(), JSON_UNESCAPED_UNICODE) ?>;</script>
+<script src="<?= BASE_PATH ?>/js/eigentuemer_massen.js"></script>
 <script src="<?= BASE_PATH ?>/js/merkmal_massen.js"></script>
 <!-- Bulk-Kategorie Modal -->
 <!-- Massenaktion: Lagerplatz zuweisen (Väter geben den Platz an alle Varianten weiter) -->

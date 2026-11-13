@@ -50,6 +50,7 @@ final class Zugriffsregeln
             'variante_bearbeiten.php'       => 'artikel.bearbeiten',
             'variante_aktualisieren.php'    => 'artikel.bearbeiten',
             'massenupdate.php'              => 'artikel.bearbeiten',
+            'eigentuemer_setzen.php'        => 'artikel.bearbeiten',
             'grundpreise.php'               => 'artikel.bearbeiten',
             'grundpreise_speichern.php'     => 'artikel.bearbeiten',
             'gpsr_texte.php'                => 'artikel.bearbeiten',

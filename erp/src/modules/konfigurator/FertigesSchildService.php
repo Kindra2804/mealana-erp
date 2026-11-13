@@ -50,7 +50,8 @@ class FertigesSchildService
     {
         $st = $this->db->prepare("
             SELECT a.id, a.artikelnummer, a.name, a.aktiv,
-                   COALESCE((SELECT SUM(lb.bestand) FROM lagerbestand lb JOIN lager l ON l.id = lb.lager_id AND l.lager_beziehung = 'eigen'
+                   COALESCE((SELECT SUM(lb.bestand) FROM lagerbestand lb JOIN lager l ON l.id = lb.lager_id
+                               AND (l.lager_beziehung = 'eigen' OR (l.lager_beziehung = 'partner_bestand' AND l.partner_id = a.partner_id))
                              WHERE lb.artikel_id = a.id), 0) AS bestand
             FROM konfig_fertige_artikel f JOIN artikel a ON a.id = f.artikel_id
             WHERE f.layout_artikel_id = ? ORDER BY a.artikelnummer");
@@ -194,9 +195,19 @@ class FertigesSchildService
         $v = $this->vorschau($layoutId, $wertIds, $sonder, $texte);
         if ($v['fehler']) throw new RuntimeException(implode(' ', $v['fehler']));
         if ($menge < 0) throw new RuntimeException('Die Menge darf nicht negativ sein.');
-        if ($menge > 0 && !$lagerId) throw new RuntimeException('Bitte ein Lager wählen.');
-
         $layout = $this->artikelRepo->findById($layoutId);
+        // Eigentümer vom Layout (Migration 237): gehört das Layout einem Partner, gehört ihm auch das Schild,
+        // eingebucht wird in sein Partner-Lager (das gewählte Lager gilt nur für die Hauptfirma)
+        $eig = $this->db->prepare("SELECT a.partner_id, a.partner_modus, l.id AS lager_id FROM artikel a
+                                   LEFT JOIN lager l ON l.partner_id = a.partner_id AND l.lager_beziehung = 'partner_bestand'
+                                   WHERE a.id = ?");
+        $eig->execute([$layoutId]);
+        $eig = $eig->fetch(PDO::FETCH_ASSOC) ?: ['partner_id' => null];
+        if ($eig['partner_id']) {
+            if (!$eig['lager_id']) throw new RuntimeException('Der Partner dieses Layouts hat noch kein Lager (Partner → Detail → Lager anlegen).');
+            $lagerId = (int) $eig['lager_id'];
+        }
+        if ($menge > 0 && !$lagerId) throw new RuntimeException('Bitte ein Lager wählen.');
         $neu = false;
         $this->db->beginTransaction();
         try {
@@ -231,6 +242,10 @@ class FertigesSchildService
                 ]);
                 $kgId = (int) ($this->db->query("SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1")->fetchColumn() ?: 1);
                 $this->artikelRepo->insertPreis($artikelId, (float) $v['brutto'], (float) $v['netto'], $kgId);
+                if ($eig['partner_id']) {
+                    $this->db->prepare("UPDATE artikel SET partner_id = ?, partner_modus = ? WHERE id = ?")
+                             ->execute([(int) $eig['partner_id'], $eig['partner_modus'], $artikelId]);
+                }
                 $this->db->prepare("INSERT IGNORE INTO artikel_kategorien (artikel_id, kategorie_id) VALUES (?, ?)")->execute([$artikelId, $kategorieId]);
                 $this->db->prepare("INSERT INTO konfig_fertige_artikel (artikel_id, layout_artikel_id, werte_json) VALUES (?, ?, ?)")
                     ->execute([$artikelId, $layoutId, json_encode($v['werte'], JSON_UNESCAPED_UNICODE)]);

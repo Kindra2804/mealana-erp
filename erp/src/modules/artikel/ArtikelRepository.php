@@ -215,9 +215,11 @@ class ArtikelRepository
             $ids = $this->holeListenIdsOhneEk();
             $conditions[] = $ids ? ('a.id IN (' . implode(',', $ids) . ')') : '1=0';
         }
-        // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter
+        // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter.
+        // Ausnahme (Migration 237): Partner mit "verkauft online" (z.B. Indra-Design) -- deren Artikel
+        // werden wie eigene gepflegt (Shop, Konfigurator) und stehen normal in der Liste.
         if (empty($filter['mit_partnerware'])) {
-            $conditions[] = "a.partner_id IS NULL";
+            $conditions[] = "(a.partner_id IS NULL OR a.partner_id IN (SELECT id FROM partner WHERE online_verkauf = 1))";
         }
 
         // Artikel an einem Lagerplatz (Stamm- oder Nachfüllplatz, bei Vätern über ihre Varianten)
@@ -416,9 +418,11 @@ class ArtikelRepository
             $ids = $this->holeListenIdsOhneEk();
             $conditions[] = $ids ? ('a.id IN (' . implode(',', $ids) . ')') : '1=0';
         }
-        // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter
+        // Partnerware (artikel.partner_id) gehört nicht zum eigenen Sortiment -- nur mit Umschalter.
+        // Ausnahme (Migration 237): Partner mit "verkauft online" (z.B. Indra-Design) -- deren Artikel
+        // werden wie eigene gepflegt (Shop, Konfigurator) und stehen normal in der Liste.
         if (empty($filter['mit_partnerware'])) {
-            $conditions[] = "a.partner_id IS NULL";
+            $conditions[] = "(a.partner_id IS NULL OR a.partner_id IN (SELECT id FROM partner WHERE online_verkauf = 1))";
         }
 
         // Artikel an einem Lagerplatz (Stamm- oder Nachfüllplatz, bei Vätern über ihre Varianten)

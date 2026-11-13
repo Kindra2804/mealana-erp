@@ -56,6 +56,11 @@ $vorhandene    = $service->vorhandene($layoutId);
 $db            = Database::getInstance();
 $lager         = $db->query("SELECT id, name FROM lager WHERE lager_beziehung = 'eigen' AND COALESCE(aktiv, 1) = 1 ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 $kategorienBaum = (new ArtikelService())->getKategorienBaum();
+// Eigentümer des Layouts (Migration 237): Partner-Layouts buchen immer ins Partner-Lager
+$eigSt = $db->prepare("SELECT p.name, l.name AS lager FROM artikel a JOIN partner p ON p.id = a.partner_id
+                       LEFT JOIN lager l ON l.partner_id = p.id AND l.lager_beziehung = 'partner_bestand' WHERE a.id = ?");
+$eigSt->execute([$layoutId]);
+$eigentuemer = $eigSt->fetch(PDO::FETCH_ASSOC) ?: null;
 $zielKat       = $service->zielKategorieId();
 
 function fsKategorieOptionen(array $knoten, int $gewaehlt, int $tiefe = 0): string
@@ -97,6 +102,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <input type="hidden" name="aktion" value="anlegen">
     <h3 style="margin:0 0 4px"><?= htmlspecialchars($layout['artikelnummer'] . ' ' . $layout['name']) ?></h3>
     <p style="margin:0 0 12px;font-size:13px;color:var(--color-text-muted)">Werte des gebauten Schilds wählen. Gibt es die Kombination schon, wird nur eingebucht.</p>
+    <?php if ($eigentuemer): ?><p style="margin:-6px 0 12px;font-size:13px;color:#2563eb">Gehört <?= htmlspecialchars($eigentuemer['name']) ?> – das Schild wird deren Artikel und kommt in ihr Lager.</p><?php endif; ?>
 
     <?php foreach ($konfiguration as $achse):
         $aid = (int) $achse['achse_id'];
@@ -133,7 +139,12 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div style="display:grid;grid-template-columns:100px 1fr;gap:10px;margin-top:14px">
         <div><label class="erp-label">Menge</label><input type="number" name="menge" value="1" min="0" step="1" class="erp-select" style="width:100%"></div>
         <div><label class="erp-label">Lager</label>
-            <select name="lager_id" class="erp-select" style="width:100%"><?php foreach ($lager as $l): ?><option value="<?= (int) $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option><?php endforeach; ?></select></div>
+            <?php if ($eigentuemer): ?>
+                <div class="erp-select" style="width:100%;background:var(--color-bg-subtle,#f8fafc)" title="Layout gehört <?= htmlspecialchars($eigentuemer['name']) ?>"><?= htmlspecialchars($eigentuemer['lager'] ?: 'Partner-Lager fehlt!') ?></div>
+                <input type="hidden" name="lager_id" value="0">
+            <?php else: ?>
+            <select name="lager_id" class="erp-select" style="width:100%"><?php foreach ($lager as $l): ?><option value="<?= (int) $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option><?php endforeach; ?></select>
+            <?php endif; ?></div>
     </div>
     <div style="margin-top:10px"><label class="erp-label">Kategorie für neue fertige Schilder</label>
         <select name="kategorie_id" class="erp-select" style="width:100%"><option value="">– wählen –</option><?= fsKategorieOptionen($kategorienBaum, $zielKat) ?></select>

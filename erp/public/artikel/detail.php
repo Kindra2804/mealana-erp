@@ -1,6 +1,7 @@
 ﻿<?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/modules/partner/ArtikelEigentumService.php';
 require_once __DIR__ . '/../../src/modules/artikel/BilderRepository.php';
 require_once __DIR__ . '/../../src/modules/aktionen/AktionenService.php';
 require_once __DIR__ . '/../../src/modules/varianten/VariantenService.php';
@@ -337,6 +338,11 @@ $weRueckkehrInput = $istKind
     : '';
 
 $kanalPanelHtml = renderKanalPanelZeilen($kanaeleFuerArtikel);
+
+// Eigentümer (Migration 237): Hauptfirma oder Partner mit "verkauft online" -- Anzeige + Wechsel im Konfigurator
+$eigSt = Database::getInstance()->prepare("SELECT a.partner_id, p.name FROM artikel a LEFT JOIN partner p ON p.id = a.partner_id WHERE a.id = ?");
+$eigSt->execute([(int) $artikel['id']]);
+$eigentuemer = $eigSt->fetch(PDO::FETCH_ASSOC) ?: ['partner_id' => null, 'name' => null];
 
 // Kuvert-Etikett (js/kuvert_etikett.js) -- vorerst nur bei fertigen Schildern (Migr. 232)
 $kuvertKnopf = '';
@@ -862,6 +868,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <a href="<?= BASE_PATH ?>/konfigurator/bausteine.php" class="btn btn-secondary btn-sm">🧩 Schild-Bausteine</a>
                             <a href="<?= BASE_PATH ?>/konfigurator/optionen_uebertragen.php?quelle=<?= (int) $artikel['id'] ?>" class="btn btn-secondary btn-sm">📋 Optionen auf andere Layouts übertragen</a>
                         </div>
+                        <div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:13px">
+                            <span>Gehört:</span>
+                            <strong><?= $eigentuemer['partner_id'] ? htmlspecialchars($eigentuemer['name']) . ' <span style="font-weight:400;color:var(--color-text-muted)">(Partner, Verkauf in dessen Namen)</span>' : 'MEALANA KG (Hauptfirma)' ?></strong>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="eigentuemerDialog([<?= (int) $artikel['id'] ?>], '<?= (int) ($eigentuemer['partner_id'] ?? 0) ?: '' ?>')">ändern</button>
+                        </div>
+                        <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">Fertige Schilder dieses Layouts wechseln mit, neue fertige Schilder übernehmen den Eigentümer.</div>
+                        <script>window.EIGENTUEMER_PARTNER = <?= json_encode((new ArtikelEigentumService())->moeglichePartner(), JSON_UNESCAPED_UNICODE) ?>;</script>
+                        <script src="<?= BASE_PATH ?>/js/eigentuemer_massen.js"></script>
                     <?php endif; ?>
                 </div>
 
