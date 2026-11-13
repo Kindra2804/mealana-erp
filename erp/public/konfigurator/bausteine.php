@@ -58,6 +58,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <li><strong>Rohmaterial</strong> — Artikelnummer des Lagerartikels (z.B. Filzplatte rot). Bestand 0 → der Wert ist im Shop ausgegraut, an der Kasse erscheint ein Hinweis.</li>
         <li><strong>nur intern</strong> — der Wert erscheint nicht im Shop, ist aber beim Anlegen fertiger Schilder und an der Kasse wählbar (z.B. „Sonderlackierung“).</li>
         <li><strong>Text</strong> — wählt man diesen Wert, muss ein Text eingegeben werden (Personalisierung, z.B. „Metallfeld“). <strong>max.</strong> = höchstens so viele Zeichen (leer = 30).</li>
+        <li><strong>Schild (mm)</strong> — nur bei den Größen: das Schild als Rechteck <em>inkl. Aufhängung</em>, z.B. <code>200x209</code> für 20 cm.</li>
+        <li><strong>Platte (mm)</strong> — beim Rohmaterial: das <em>sichere</em> Plattenmaß, z.B. <code>395x395</code> statt 400×400. Ist die gewählte Größe größer als die Platte (auch gedreht), ist der Wert im Shop gesperrt, an der Kasse erscheint ein Hinweis. Gilt für den Rohmaterial-Artikel — überall, wo er verwendet wird.</li>
     </ul>
     <p style="margin:6px 0 0;color:var(--color-text-muted)"><?= count($zeilen) ?> Werte · <?= $ohneKuerzel ?> ohne Kürzel · <?= $leer ?> mit leerem Rohmaterial</p>
 </div>
@@ -70,7 +72,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div class="card" style="margin-bottom:12px">
         <h3 style="margin:0 0 8px"><?= htmlspecialchars($g['name']) ?></h3>
         <table class="erp-table" style="font-size:13px">
-            <thead><tr><th>Wert</th><th style="width:70px;text-align:right">Layouts</th><th style="width:110px">Kürzel</th><th style="width:200px">Rohmaterial (Artikelnummer)</th><th>Material</th><th style="width:80px;text-align:center" title="Nicht im Shop, nur beim Anlegen fertiger Schilder und an der Kasse">nur intern</th><th style="width:60px;text-align:center" title="Kunde gibt einen Text ein (Personalisierung)">Text</th><th style="width:70px" title="Höchstens so viele Zeichen (leer = 30)">max.</th></tr></thead>
+            <thead><tr><th>Wert</th><th style="width:70px;text-align:right">Layouts</th><th style="width:110px">Kürzel</th><th style="width:200px">Rohmaterial (Artikelnummer)</th><th>Material</th><th style="width:80px;text-align:center" title="Nicht im Shop, nur beim Anlegen fertiger Schilder und an der Kasse">nur intern</th><th style="width:60px;text-align:center" title="Kunde gibt einen Text ein (Personalisierung)">Text</th><th style="width:70px" title="Höchstens so viele Zeichen (leer = 30)">max.</th><th style="width:95px" title="Nur bei Größen: Rechteck inkl. Aufhängung, z.B. 200x209">Schild (mm)</th><th style="width:95px" title="Sicheres Plattenmaß des Rohmaterials, z.B. 395x395">Platte (mm)</th></tr></thead>
             <tbody>
             <?php foreach ($g['werte'] as $w):
                 $key = $achseId . '|' . $w['wert'];
@@ -78,7 +80,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 $r = $eingabe[$key]['rohmaterial'] ?? ($w['roh_nr'] ?? '');
                 $intern = $eingabe !== null ? !empty($eingabe[$key]['intern']) : (bool) $w['nur_intern'];
                 $text   = $eingabe !== null ? !empty($eingabe[$key]['text']) : (bool) $w['texteingabe'];
-                $max    = $eingabe[$key]['max_zeichen'] ?? ($w['max_zeichen'] ?? ''); ?>
+                $max    = $eingabe[$key]['max_zeichen'] ?? ($w['max_zeichen'] ?? '');
+                $schild = $eingabe[$key]['schild'] ?? ($w['schild_breite_mm'] !== null ? $w['schild_breite_mm'] . 'x' . $w['schild_hoehe_mm'] : '');
+                $platte = $eingabe[$key]['platte'] ?? ($w['platte_breite_mm'] !== null ? $w['platte_breite_mm'] . 'x' . $w['platte_hoehe_mm'] : ''); ?>
                 <tr>
                     <td><?= htmlspecialchars($w['wert']) ?></td>
                     <td style="text-align:right;color:var(--color-text-muted)"><?= (int) $w['layouts'] ?></td>
@@ -93,6 +97,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td style="text-align:center"><input type="checkbox" name="b[<?= htmlspecialchars($key) ?>][intern]" value="1" <?= $intern ? 'checked' : '' ?>></td>
                     <td style="text-align:center"><input type="checkbox" name="b[<?= htmlspecialchars($key) ?>][text]" value="1" <?= $text ? 'checked' : '' ?>></td>
                     <td><input type="number" name="b[<?= htmlspecialchars($key) ?>][max_zeichen]" value="<?= htmlspecialchars((string) $max) ?>" min="1" max="200" class="erp-select" style="width:100%" placeholder="30"></td>
+                    <td><input type="text" name="b[<?= htmlspecialchars($key) ?>][schild]" value="<?= htmlspecialchars((string) $schild) ?>" class="erp-select" style="width:100%" placeholder="–"></td>
+                    <td><input type="text" name="b[<?= htmlspecialchars($key) ?>][platte]" value="<?= htmlspecialchars((string) $platte) ?>" class="erp-select" style="width:100%" placeholder="–"></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

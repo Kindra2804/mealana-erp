@@ -111,6 +111,8 @@ class KonfiguratorService
                     'wert_aufpreis' => (float)($w['aufpreis'] ?? 0),
                     'verfuegbar'    => $verfuegbarkeit[(int)$w['id']]['verfuegbar'] ?? true,
                     'rohmaterial'   => $verfuegbarkeit[(int)$w['id']]['rohmaterial'] ?? null,
+                    'schild_mm'     => $verfuegbarkeit[(int)$w['id']]['schild_mm'] ?? null,   // Migr. 239: Größe als Rechteck inkl. Aufhängung
+                    'platte_mm'     => $verfuegbarkeit[(int)$w['id']]['platte_mm'] ?? null,   // Migr. 239: sicheres Plattenmaß des Rohmaterials
                     'texteingabe'   => isset($textWerte[(int)$w['id']]),
                     'max_zeichen'   => $textWerte[(int)$w['id']] ?? null,
                 ], $dim['werte']),
@@ -268,6 +270,8 @@ class KonfiguratorService
                     'verfuegbar'      => $wert['verfuegbar'],   // false = Rohmaterial leer -> im Shop ausgegraut
                     'texteingabe'     => $wert['texteingabe'],  // true = Kunde muss Text eingeben (Personalisierung)
                     'max_zeichen'     => $wert['max_zeichen'],
+                    'schild_mm'       => $wert['schild_mm'],    // [B, H] -> diese Größe; Platten-Werte prüfen dagegen
+                    'platte_mm'       => $wert['platte_mm'],    // [B, H] -> im Shop gesperrt, wenn die gewählte Größe nicht passt
                 ];
             }
 

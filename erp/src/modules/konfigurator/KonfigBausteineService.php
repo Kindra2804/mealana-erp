@@ -30,14 +30,17 @@ class KonfigBausteineService
                    MIN(aa.sort_order) AS achse_sort, MIN(w.sort_order) AS wert_sort,
                    kb.kuerzel, kb.rohmaterial_artikel_id, COALESCE(kb.nur_intern, 0) AS nur_intern,
                    COALESCE(kb.texteingabe, 0) AS texteingabe, kb.max_zeichen,
-                   ra.artikelnummer AS roh_nr, ra.name AS roh_name
+                   kb.schild_breite_mm, kb.schild_hoehe_mm,
+                   ra.artikelnummer AS roh_nr, ra.name AS roh_name,
+                   ra.platte_breite_mm, ra.platte_hoehe_mm
             FROM varianten_achse_werte w
             JOIN artikel a        ON a.id = w.artikel_id AND a.ist_konfigurierbar = 1
             JOIN varianten_achsen ac ON ac.id = w.achse_id
             LEFT JOIN artikel_achsen aa ON aa.artikel_id = w.artikel_id AND aa.achse_id = w.achse_id
             LEFT JOIN konfig_bausteine kb ON kb.achse_id = w.achse_id AND kb.wert = w.wert
             LEFT JOIN artikel ra  ON ra.id = kb.rohmaterial_artikel_id
-            GROUP BY w.achse_id, ac.name, w.wert, kb.kuerzel, kb.rohmaterial_artikel_id, kb.nur_intern, kb.texteingabe, kb.max_zeichen, ra.artikelnummer, ra.name
+            GROUP BY w.achse_id, ac.name, w.wert, kb.kuerzel, kb.rohmaterial_artikel_id, kb.nur_intern, kb.texteingabe, kb.max_zeichen,
+                     kb.schild_breite_mm, kb.schild_hoehe_mm, ra.artikelnummer, ra.name, ra.platte_breite_mm, ra.platte_hoehe_mm
             ORDER BY achse_sort, ac.name, wert_sort, w.wert
         ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -58,12 +61,15 @@ class KonfigBausteineService
      * Speichert Kürzel/Rohmaterial. $eingaben = [ "achseId|wert" => ['kuerzel' => .., 'rohmaterial' => Artikelnummer] ].
      * Gibt Fehlerliste zurück (leer = gespeichert). Prüft: Kürzel nur Buchstaben/Ziffern, max. 12, eindeutig je Achse;
      * Rohmaterial muss ein vorhandener, lagerführender Artikel (kein Vater) sein.
+     * Migr. 239: 'schild' = Schildmaß inkl. Aufhängung ("200x209", an den Größen-Werten),
+     * 'platte' = sicheres Plattenmaß ("395x395") -> wird am Rohmaterial-ARTIKEL gespeichert.
      */
     public function speichern(array $eingaben): array
     {
         $fehler = [];
         $proAchse = [];
         $daten = [];
+        $platten = [];   // rohId => [B, H, Wert-Text] (dasselbe Rohmaterial darf nur EIN Maß haben)
         $artikelNrStmt = $this->db->prepare("SELECT id, ist_vater FROM artikel WHERE artikelnummer = ?");
         foreach ($eingaben as $schluessel => $e) {
             [$achseId, $wert] = explode('|', $schluessel, 2) + [1 => ''];
@@ -101,6 +107,32 @@ class KonfigBausteineService
                 $fehler[] = "„{$wert}“: max. Zeichen bitte als Zahl von 1 bis 200.";
                 continue;
             }
+            $schild = self::leseMass($e['schild'] ?? '');
+            if ($schild === false) {
+                $fehler[] = "„{$wert}“: Schildmaß bitte als Breite x Höhe in mm, z.B. 200x209.";
+                continue;
+            }
+            $platte = self::leseMass($e['platte'] ?? '');
+            if ($platte === false) {
+                $fehler[] = "„{$wert}“: Plattenmaß bitte als Breite x Höhe in mm, z.B. 395x395.";
+                continue;
+            }
+            if ($platte !== null && $rohId === null) {
+                $fehler[] = "„{$wert}“: Ein Plattenmaß braucht ein Rohmaterial (es wird beim Rohmaterial-Artikel gespeichert).";
+                continue;
+            }
+            // Leeres Feld widerspricht nicht: reicht, das Maß in EINER Zeile dieses Rohmaterials einzutragen.
+            // Gelöscht wird es erst, wenn es in allen Zeilen leer ist.
+            if ($rohId !== null && array_key_exists('platte', $e)) {
+                $platten[$rohId] ??= [null, null, null];
+                if ($platte !== null) {
+                    if ($platten[$rohId][2] !== null && [$platten[$rohId][0], $platten[$rohId][1]] !== $platte) {
+                        $fehler[] = "„{$rohNr}“ hat bei „{$platten[$rohId][2]}“ und „{$wert}“ verschiedene Plattenmaße — es ist dieselbe Platte, bitte gleich eintragen.";
+                        continue;
+                    }
+                    $platten[$rohId] = [$platte[0], $platte[1], $wert];
+                }
+            }
             $daten[] = [
                 $achseId,
                 $wert,
@@ -108,19 +140,33 @@ class KonfigBausteineService
                 $rohId,
                 !empty($e['intern']) ? 1 : 0,
                 !empty($e['text']) ? 1 : 0,
-                $maxRoh !== '' ? (int) $maxRoh : null
+                $maxRoh !== '' ? (int) $maxRoh : null,
+                $schild[0] ?? null,
+                $schild[1] ?? null,
             ];
         }
         if ($fehler) return $fehler;
 
         $up = $this->db->prepare("
-            INSERT INTO konfig_bausteine (achse_id, wert, kuerzel, rohmaterial_artikel_id, nur_intern, texteingabe, max_zeichen)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO konfig_bausteine (achse_id, wert, kuerzel, rohmaterial_artikel_id, nur_intern, texteingabe, max_zeichen,
+                                          schild_breite_mm, schild_hoehe_mm)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE kuerzel = VALUES(kuerzel), rohmaterial_artikel_id = VALUES(rohmaterial_artikel_id),
-                                    nur_intern = VALUES(nur_intern), texteingabe = VALUES(texteingabe), max_zeichen = VALUES(max_zeichen)");
+                                    nur_intern = VALUES(nur_intern), texteingabe = VALUES(texteingabe), max_zeichen = VALUES(max_zeichen),
+                                    schild_breite_mm = VALUES(schild_breite_mm), schild_hoehe_mm = VALUES(schild_hoehe_mm)");
+        // Plattenmaß am Rohmaterial-Artikel. Nur bei echter Änderung: dann die Bausteine dieses Rohmaterials
+        // "anfassen", damit der Shop-Sync (syncFaelligSql schaut auf kb.geaendert_am) die Layouts neu überträgt.
+        $platteUp = $this->db->prepare("
+            UPDATE artikel SET platte_breite_mm = ?, platte_hoehe_mm = ?
+            WHERE id = ? AND NOT (platte_breite_mm <=> ? AND platte_hoehe_mm <=> ?)");
+        $kbAnfassen = $this->db->prepare("UPDATE konfig_bausteine SET geaendert_am = CURRENT_TIMESTAMP WHERE rohmaterial_artikel_id = ?");
         $this->db->beginTransaction();
         try {
             foreach ($daten as $d) $up->execute($d);
+            foreach ($platten as $rohId => [$b, $h]) {
+                $platteUp->execute([$b, $h, $rohId, $b, $h]);
+                if ($platteUp->rowCount() > 0) $kbAnfassen->execute([$rohId]);
+            }
             $this->db->commit();
         } catch (Throwable $e) {
             $this->db->rollBack();
@@ -149,13 +195,15 @@ class KonfigBausteineService
     }
 
     /**
-     * Verfügbarkeit je wert_id eines Layouts: [wert_id => ['verfuegbar' => bool, 'rohmaterial' => Name|null]].
-     * Werte ohne Rohmaterial sind immer verfügbar.
+     * Verfügbarkeit je wert_id eines Layouts: [wert_id => ['verfuegbar' => bool, 'rohmaterial' => Name|null,
+     * 'schild_mm' => [B, H]|null, 'platte_mm' => [B, H]|null]]. Werte ohne Rohmaterial sind immer verfügbar.
+     * schild_mm/platte_mm (Migr. 239) prüft man mit passtAufPlatte() gegen die gewählte Größe.
      */
     public function verfuegbarkeit(int $artikelId): array
     {
         $st = $this->db->prepare("
-            SELECT w.id, COALESCE(w.rohmaterial_artikel_id, kb.rohmaterial_artikel_id) AS roh_id, ra.name AS roh_name
+            SELECT w.id, COALESCE(w.rohmaterial_artikel_id, kb.rohmaterial_artikel_id) AS roh_id, ra.name AS roh_name,
+                   kb.schild_breite_mm, kb.schild_hoehe_mm, ra.platte_breite_mm, ra.platte_hoehe_mm
             FROM varianten_achse_werte w
             LEFT JOIN konfig_bausteine kb ON kb.achse_id = w.achse_id AND kb.wert = w.wert
             LEFT JOIN artikel ra ON ra.id = COALESCE(w.rohmaterial_artikel_id, kb.rohmaterial_artikel_id)
@@ -166,7 +214,12 @@ class KonfigBausteineService
         $out = [];
         foreach ($zeilen as $z) {
             $verf = !$z['roh_id'] || (($bestand[(int) $z['roh_id']]['bestand'] ?? 0) > 0);
-            $out[(int) $z['id']] = ['verfuegbar' => $verf, 'rohmaterial' => $z['roh_name']];
+            $out[(int) $z['id']] = [
+                'verfuegbar'  => $verf,
+                'rohmaterial' => $z['roh_name'],
+                'schild_mm'   => self::massPaar($z['schild_breite_mm'], $z['schild_hoehe_mm']),
+                'platte_mm'   => self::massPaar($z['platte_breite_mm'], $z['platte_hoehe_mm']),
+            ];
         }
         return $out;
     }
@@ -220,6 +273,26 @@ class KonfigBausteineService
         }
 
         return (($schildB <= $platteB && $schildH <= $platteH) || ($schildB <= $platteH && $schildH <= $platteB));
+    }
+
+    /**
+     * Liest ein Maß "200x209" (auch "200 x 209", "200×209", "200*209"). Leer -> null, unlesbar -> false.
+     * Rückgabe [Breite, Höhe] in mm.
+     */
+    public static function leseMass($text)
+    {
+        $text = trim((string) $text);
+        if ($text === '') return null;
+        if (!preg_match('/^(\d{1,4})\s*[x×*X]\s*(\d{1,4})$/u', $text, $m)) return false;
+        $b = (int) $m[1];
+        $h = (int) $m[2];
+        return ($b > 0 && $h > 0) ? [$b, $h] : false;
+    }
+
+    /** [B, H] aus zwei DB-Spalten; fehlt eine -> null (dann wird nicht geprüft). */
+    public static function massPaar($b, $h): ?array
+    {
+        return ($b !== null && $h !== null) ? [(int) $b, (int) $h] : null;
     }
 
     /**

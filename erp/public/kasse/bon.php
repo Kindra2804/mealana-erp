@@ -2035,8 +2035,27 @@ function zeigeKonfiguratorAuswahl(a) {
     if (vorgewaehlt) konfigPreisAktualisieren();
 }
 
+/** Gewählte Größe (Wert mit schild_mm, Migr. 239) als [B, H] oder null. */
+function konfigGewaehltesSchild() {
+    var schild = null;
+    (konfigAktuellerArtikel.konfiguration || []).forEach(function(achse) {
+        if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) return;
+        (achse.werte || []).forEach(function(w) {
+            if (w.schild_mm && konfigAuswahl[achse.achse_id] === w.wert_id) schild = w.schild_mm;
+        });
+    });
+    return schild;
+}
+
+/** Wie KonfigBausteineService::passtAufPlatte(): passt normal oder um 90° gedreht; fehlt ein Maß -> passt. */
+function konfigPasstAufPlatte(schild, platte) {
+    if (!schild || !platte) return true;
+    return (schild[0] <= platte[0] && schild[1] <= platte[1]) || (schild[0] <= platte[1] && schild[1] <= platte[0]);
+}
+
 function konfigRenderAchsen() {
     var html = '';
+    var schild = konfigGewaehltesSchild();
     (konfigAktuellerArtikel.konfiguration || []).forEach(function(achse) {
         // Bedingte Anzeige: Achse nur zeigen, wenn ihre Bedingungs-Achse den passenden Wert hat
         if (achse.bedingung && konfigAuswahl[achse.bedingung.achse_id] !== achse.bedingung.wert_id) return;
@@ -2045,12 +2064,17 @@ function konfigRenderAchsen() {
             var gewaehlt = konfigAuswahl[achse.achse_id] === w.wert_id;
             // Rohmaterial leer (Migration 232): an der Kasse nur Hinweis, Auswahl bleibt möglich
             var ohneMaterial = w.verfuegbar === false;
+            // Platte zu klein für die gewählte Größe (Migr. 239): ebenfalls nur Hinweis (Sonderfälle bleiben möglich)
+            var zuKlein = !konfigPasstAufPlatte(schild, w.platte_mm);
+            var titel = ohneMaterial ? 'Material leer: ' + (w.rohmaterial || '') : '';
+            if (zuKlein) titel += (titel ? ' · ' : '') + 'Platte ' + w.platte_mm[0] + '×' + w.platte_mm[1] + ' mm zu klein für ' + schild[0] + '×' + schild[1] + ' mm';
             html += '<div class="kind-chip konfig-wert-chip' + (gewaehlt ? ' gewaehlt' : '') + '" '
-                  + (ohneMaterial ? 'style="opacity:.6;border-style:dashed" title="Material leer: ' + esc(w.rohmaterial || '') + '" ' : '')
+                  + ((ohneMaterial || zuKlein) ? 'style="opacity:.6;border-style:dashed" title="' + esc(titel) + '" ' : '')
                   + 'onclick="konfigWertGewaehlt(' + achse.achse_id + ',' + w.wert_id + ')">'
                   + esc(w.wert)
                   + (w.wert_aufpreis > 0 ? '<span class="kind-chip-sub">+€ ' + fmt(w.wert_aufpreis) + '</span>' : '')
                   + (ohneMaterial ? '<span class="kind-chip-sub" style="color:#c2410c">Material leer</span>' : '')
+                  + (zuKlein ? '<span class="kind-chip-sub" style="color:#c2410c">Platte zu klein</span>' : '')
                   + '</div>';
         });
         html += '</div>';

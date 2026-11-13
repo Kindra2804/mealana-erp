@@ -3,7 +3,8 @@
  * WPCode-Snippet #34170 auf indra-design.at (WordPress/WooCommerce, NICHT Teil der PHP-Autoload-Kette des ERP).
  * Export-Datum: 2026-08-29; 2026-11-11 um Verfuegbarkeit (ERP 1.0.4, Migr. 232) ergaenzt;
  * 2026-11-13 Shop-Uebersicht "Konfiguration waehlen" + Ablehnen ohne Konfiguration;
- * 2026-11-13 Personalisierung: Werte mit texteingabe (ERP Migr. 236) verlangen einen Text. Quelle der Wahrheit bleibt WPCode (wp-admin) --
+ * 2026-11-13 Personalisierung: Werte mit texteingabe (ERP Migr. 236) verlangen einen Text.
+ * 2026-11-13 Plattenmass (ERP Migr. 239): Werte mit platte_mm sind gesperrt, wenn die gewaehlte Groesse (schild_mm) nicht draufpasst. Quelle der Wahrheit bleibt WPCode (wp-admin) --
  * diese Datei ist eine manuell aktualisierte Kopie fuers Repo, kein automatischer Sync.
  */
 
@@ -97,6 +98,36 @@ function mealana_konfig_texte_pruefen( array $matrix, array $wertIds, $texteRoh 
 	return array( 'texte' => $texte, 'fehler' => null );
 }
 
+/** Wie KonfigBausteineService::passtAufPlatte() im ERP: passt normal oder um 90 Grad gedreht; fehlt ein Mass -> passt. */
+function mealana_konfig_passt_auf_platte( $schild, $platte ) {
+	if ( empty( $schild ) || empty( $platte ) ) return true;
+	return ( $schild[0] <= $platte[0] && $schild[1] <= $platte[1] ) || ( $schild[0] <= $platte[1] && $schild[1] <= $platte[0] );
+}
+
+/**
+ * ERP Migr. 239: gewaehlte Werte gegen die gewaehlte Groesse pruefen. Rueckgabe: Fehlertext oder null.
+ * Nur sichtbare Achsen (Bedingung erfuellt) zaehlen.
+ */
+function mealana_konfig_platten_pruefen( array $matrix, array $wertIds ) {
+	$schild = null;
+	$gewaehlt = array();
+	foreach ( $matrix['achsen'] as $achse ) {
+		if ( ! empty( $achse['bedingung'] ) && ! in_array( (int) $achse['bedingung']['wert_id'], $wertIds, true ) ) continue;
+		foreach ( $achse['werte'] as $wert ) {
+			if ( ! in_array( (int) $wert['wert_id'], $wertIds, true ) ) continue;
+			if ( ! empty( $wert['schild_mm'] ) ) $schild = array( 'mm' => $wert['schild_mm'], 'label' => $wert['label'] );
+			$gewaehlt[] = array( 'achse' => $achse['name'], 'wert' => $wert );
+		}
+	}
+	if ( ! $schild ) return null;
+	foreach ( $gewaehlt as $g ) {
+		if ( ! empty( $g['wert']['platte_mm'] ) && ! mealana_konfig_passt_auf_platte( $schild['mm'], $g['wert']['platte_mm'] ) ) {
+			return sprintf( '„%s: %s“ gibt es leider nicht in der Größe %s. Bitte eine andere Auswahl treffen.', $g['achse'], $g['wert']['label'], $schild['label'] );
+		}
+	}
+	return null;
+}
+
 /** Options-Picker unterhalb der Preisanzeige, oberhalb des "In den Warenkorb"-Buttons. */
 add_action( 'woocommerce_before_add_to_cart_button', function () {
 	global $product;
@@ -119,7 +150,12 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 			// ERP 1.0.4 (Migr. 232): Rohmaterial leer -> sichtbar, aber nicht waehlbar
 			$nichtVerfuegbar = isset( $wert['verfuegbar'] ) && $wert['verfuegbar'] === false;
 			$textAttr = ! empty( $wert['texteingabe'] ) ? ' data-text="1" data-max="' . (int) ( $wert['max_zeichen'] ?: 30 ) . '"' : '';
-			echo '<option value="' . (int) $wert['wert_id'] . '" data-aufpreis="' . esc_attr( $wert['gesamt_aufpreis'] ) . '"' . $textAttr . ( $nichtVerfuegbar ? ' disabled' : '' ) . '>'
+			// ERP Migr. 239: Groesse (schild_mm) bzw. Plattenmass (platte_mm) fuers JS
+			$massAttr = '';
+			if ( ! empty( $wert['schild_mm'] ) ) $massAttr .= ' data-schild="' . (int) $wert['schild_mm'][0] . ',' . (int) $wert['schild_mm'][1] . '"';
+			if ( ! empty( $wert['platte_mm'] ) ) $massAttr .= ' data-platte="' . (int) $wert['platte_mm'][0] . ',' . (int) $wert['platte_mm'][1] . '"';
+			$massAttr .= ' data-label="' . esc_attr( $wert['label'] . $aufpreisText ) . '"' . ( $nichtVerfuegbar ? ' data-leer="1"' : '' );
+			echo '<option value="' . (int) $wert['wert_id'] . '" data-aufpreis="' . esc_attr( $wert['gesamt_aufpreis'] ) . '"' . $textAttr . $massAttr . ( $nichtVerfuegbar ? ' disabled' : '' ) . '>'
 				. esc_html( $wert['label'] . $aufpreisText . ( $nichtVerfuegbar ? ' – derzeit nicht verfügbar' : '' ) ) . '</option>';
 		}
 		echo '</select>';
@@ -186,6 +222,34 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 			});
 		}
 
+		// ERP Migr. 239: Werte, deren Platte fuer die gewaehlte Groesse zu klein ist, sperren.
+		// Die Groesse selbst bleibt immer waehlbar; passt ein schon gewaehlter Wert nicht mehr, wird er geleert.
+		function massLesen(text) {
+			if (!text) return null;
+			var t = text.split(',');
+			return [parseInt(t[0], 10), parseInt(t[1], 10)];
+		}
+		function passtAufPlatte(schild, platte) {
+			if (!schild || !platte) return true;
+			return (schild[0] <= platte[0] && schild[1] <= platte[1]) || (schild[0] <= platte[1] && schild[1] <= platte[0]);
+		}
+		function plattenAktualisieren() {
+			var schild = null;
+			wrap.querySelectorAll('.mealana-konfig-achse').forEach(function (div) {
+				if (div.style.display === 'none') return;
+				var sel = div.querySelector('.mealana-konfig-select');
+				var opt = sel && sel.value ? sel.selectedOptions[0] : null;
+				if (opt && opt.dataset.schild) schild = massLesen(opt.dataset.schild);
+			});
+			wrap.querySelectorAll('option[data-platte]').forEach(function (opt) {
+				var leer = opt.dataset.leer === '1';
+				var zuKlein = !passtAufPlatte(schild, massLesen(opt.dataset.platte));
+				opt.disabled = leer || zuKlein;
+				opt.textContent = opt.dataset.label + (leer ? ' – derzeit nicht verfügbar' : (zuKlein ? ' – in dieser Größe nicht möglich' : ''));
+				if (opt.disabled && opt.selected) opt.parentNode.value = '';
+			});
+		}
+
 		// Personalisierung: Textfeld je Achse zeigen, wenn der gewaehlte Wert data-text hat
 		function textfelderAktualisieren() {
 			wrap.querySelectorAll('.mealana-konfig-achse').forEach(function (div) {
@@ -244,10 +308,13 @@ add_action( 'woocommerce_before_add_to_cart_button', function () {
 		selects.forEach(function (s) {
 			s.addEventListener('change', function () {
 				sichtbarkeitAktualisieren();
+				plattenAktualisieren();
+				sichtbarkeitAktualisieren();   // ein geleerter Wert kann bedingte Achsen ausblenden
 				preisAktualisieren();
 			});
 		});
 		sichtbarkeitAktualisieren();
+		plattenAktualisieren();
 		preisAktualisieren();
 	});
 	</script>
@@ -300,6 +367,11 @@ add_filter( 'woocommerce_add_to_cart_validation', function ( $ok, $product_id ) 
 				return false;
 			}
 		}
+	}
+	$plattenFehler = mealana_konfig_platten_pruefen( $matrix, $wertIds );   // ERP Migr. 239
+	if ( $plattenFehler ) {
+		wc_add_notice( $plattenFehler, 'error' );
+		return false;
 	}
 	$texteRoh = empty( $_POST['mealana_konfig_texte'] ) ? array() : json_decode( wp_unslash( $_POST['mealana_konfig_texte'] ), true );
 	$pruefung = mealana_konfig_texte_pruefen( $matrix, $wertIds, $texteRoh );
