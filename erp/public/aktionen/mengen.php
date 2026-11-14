@@ -1,6 +1,6 @@
 <?php
 /**
- * Mengen-Aktionen „X Stück für Y €“ / „Kauf X, zahl Y“ (MengenAktionService, Migration 241)
+ * Mengen-Aktionen „X Stück für Y €“ / „Kauf X, zahl Y“ / „Paketpreise“ (MengenAktionService, Migration 241, 242)
  *   mengen.php          Liste
  *   mengen.php?neu=1    Anlegen
  *   mengen.php?id=X     Bearbeiten (Kategorien, Shops, einzeln zugeordnete Artikel)
@@ -80,7 +80,8 @@ $datum = fn($d) => $d ? date('d.m.Y', strtotime($d)) : '';
             <?php foreach ($alle as $a): [$st, $farbe, $bg] = $status[$a['status']]; ?>
                 <tr>
                     <td><a href="<?= $url ?>?id=<?= $a['id'] ?>" style="font-weight:600;color:var(--color-nav);text-decoration:none"><?= $h($a['name']) ?></a></td>
-                    <td><span style="background:#fff3cd;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600"><?= $h($a['badge_text']) ?></span></td>
+                    <td><span style="background:#fff3cd;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600"><?= $h($a['badge_text']) ?></span>
+                        <?php if ($a['pakete']): ?><div style="font-size:11px;color:var(--color-text-muted);margin-top:2px"><?= $h(implode(' · ', array_map(fn($p) => $p['menge'] . ' für ' . MengenAktionService::euro($p['preis']) . ' €', $a['pakete']))) ?></div><?php endif; ?></td>
                     <td style="font-size:12px"><?= (int) $a['anzahl_artikel'] ?> Artikel
                         <?php if ($a['kategorien']): ?><div style="color:var(--color-text-muted)"><?= $h(implode(', ', array_column($a['kategorien'], 'name'))) ?></div><?php endif; ?></td>
                     <td style="font-size:12px"><?= $a['an_kasse'] ? 'Kasse' : '' ?><?= $a['an_kasse'] && $a['shops'] ? ', ' : '' ?><?= $h(implode(', ', array_column($a['shops'], 'name'))) ?: ($a['an_kasse'] ? '' : '<span style="color:#ccc">—</span>') ?></td>
@@ -111,14 +112,38 @@ $datum = fn($d) => $d ? date('d.m.Y', strtotime($d)) : '';
                     <select name="art" id="ma-art" class="erp-select" style="width:100%">
                         <option value="x_fuer_y" <?= $f['art'] === 'x_fuer_y' ? 'selected' : '' ?>>X Stück für Y € (z.B. 4 für 12 €)</option>
                         <option value="kauf_x_zahl_y" <?= $f['art'] === 'kauf_x_zahl_y' ? 'selected' : '' ?>>Kauf X, zahl Y (z.B. 3 für 2)</option>
+                        <option value="paketpreise" <?= $f['art'] === 'paketpreise' ? 'selected' : '' ?>>Paketpreise, mehrere Größen (z.B. 2 für 4,50 · 4 für 8 …)</option>
                     </select></label>
             </div>
             <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-top:10px">
-                <label class="form-label"><span class="ma-x">Stück je Paket</span><input type="number" min="2" name="menge" id="ma-menge" class="erp-input" style="width:90px" value="<?= $h($f['menge']) ?>"></label>
+                <label class="form-label ma-nicht-paket"><span class="ma-x">Stück je Paket</span><input type="number" min="2" name="menge" id="ma-menge" class="erp-input" style="width:90px" value="<?= $h($f['menge']) ?>"></label>
                 <label class="form-label ma-nur-x"><span>Paketpreis € (brutto)</span><input type="text" name="paketpreis" id="ma-preis" class="erp-input" style="width:110px" inputmode="decimal" value="<?= $f['paketpreis'] !== '' && $f['paketpreis'] !== null ? $h(number_format((float) str_replace(',', '.', (string) $f['paketpreis']), 2, ',', '')) : '' ?>"></label>
                 <label class="form-label ma-nur-kauf"><span>davon bezahlt</span><input type="number" min="1" name="zahl_menge" id="ma-zahl" class="erp-input" style="width:90px" value="<?= $h($f['zahl_menge']) ?>"></label>
                 <label class="form-label">Badge / Hinweis<input type="text" name="badge_text" id="ma-badge" maxlength="40" class="erp-input" style="width:160px" value="<?= $h($f['badge_text']) ?>" placeholder="automatisch"></label>
                 <div style="font-size:12px;color:var(--color-text-muted);padding-bottom:8px" id="ma-erklaerung"></div>
+            </div>
+            <?php
+                // Paketpreise: vorhandene Zeilen + leere bis 6 Zeilen
+                $pz = [];
+                if (isset($formular)) foreach ((array) ($formular['paket_menge'] ?? []) as $i => $m) $pz[] = ['menge' => $m, 'preis' => $formular['paket_preis'][$i] ?? ''];
+                else foreach ($akt['pakete'] ?? [] as $pk) $pz[] = ['menge' => $pk['menge'], 'preis' => number_format($pk['preis'], 2, ',', '')];
+                $pz = array_values(array_filter($pz, fn($r) => $r['menge'] !== '' || $r['preis'] !== ''));
+                while (count($pz) < 6) $pz[] = ['menge' => '', 'preis' => ''];
+            ?>
+            <div class="ma-nur-paket" style="margin-top:10px">
+                <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:4px">
+                    Paketgrößen (1 Stück = normaler Preis des Artikels). Die Menge wird so aus Paketen zusammengesetzt, dass es am günstigsten ist, der Rest einzeln – z.B. 5 Stück = 4er-Paket + 1 Stück.
+                </div>
+                <table style="border-collapse:collapse;font-size:13px">
+                    <tr><th style="text-align:left;padding:2px 8px 2px 0">Stück</th><th style="text-align:left;padding:2px 8px 2px 0">Paketpreis € (brutto)</th><th></th></tr>
+                    <?php foreach ($pz as $r): ?>
+                        <tr>
+                            <td style="padding:2px 8px 2px 0"><input type="number" min="2" name="paket_menge[]" class="erp-input ma-pk-menge" style="width:80px" value="<?= $h($r['menge']) ?>"></td>
+                            <td style="padding:2px 8px 2px 0"><input type="text" name="paket_preis[]" class="erp-input ma-pk-preis" style="width:100px" inputmode="decimal" value="<?= $h($r['preis']) ?>"></td>
+                            <td class="ma-pk-stueck" style="font-size:12px;color:var(--color-text-muted)"></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
             </div>
             <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-top:10px">
                 <label class="form-label">gültig ab *<input type="date" name="gueltig_ab" class="erp-input" value="<?= $h($f['gueltig_ab']) ?>"></label>

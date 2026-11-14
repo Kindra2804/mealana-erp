@@ -18,9 +18,23 @@
     $('ma-badge').addEventListener('input', function () { badgeVonHand = this.value.trim() !== ''; });
 
     function aktualisieren() {
-        var kauf = art.value === 'kauf_x_zahl_y';
-        document.querySelectorAll('.ma-nur-x').forEach(function (e) { e.style.display = kauf ? 'none' : ''; });
+        var kauf = art.value === 'kauf_x_zahl_y', paket = art.value === 'paketpreise';
+        document.querySelectorAll('.ma-nur-x').forEach(function (e) { e.style.display = art.value === 'x_fuer_y' ? '' : 'none'; });
         document.querySelectorAll('.ma-nur-kauf').forEach(function (e) { e.style.display = kauf ? '' : 'none'; });
+        document.querySelectorAll('.ma-nur-paket').forEach(function (e) { e.style.display = paket ? '' : 'none'; });
+        document.querySelectorAll('.ma-nicht-paket').forEach(function (e) { e.style.display = paket ? 'none' : ''; });
+        if (paket) {
+            // Stückpreis je Paketzeile anzeigen, Badge-Vorschlag ab kleinster Größe
+            var kleinste = 0;
+            document.querySelectorAll('.ma-pk-menge').forEach(function (inp, i) {
+                var m = parseInt(inp.value, 10), pr = zahl(document.querySelectorAll('.ma-pk-preis')[i].value);
+                document.querySelectorAll('.ma-pk-stueck')[i].textContent = m >= 2 && pr > 0 ? 'je Stück ' + (pr / m).toFixed(2).replace('.', ',') + ' €' : '';
+                if (m >= 2 && pr > 0 && (!kleinste || m < kleinste)) kleinste = m;
+            });
+            $('ma-erklaerung').textContent = '';
+            if (!badgeVonHand) $('ma-badge').placeholder = kleinste ? 'Mengenpreis ab ' + kleinste + ' Stk' : 'automatisch';
+            return;
+        }
         var x = parseInt($('ma-menge').value, 10) || 0, y = parseInt($('ma-zahl').value, 10) || 0, p = zahl($('ma-preis').value);
         var badge = '', text = '';
         if (kauf && x >= 2 && y >= 1 && y < x) {
@@ -35,6 +49,7 @@
         if (!badgeVonHand) $('ma-badge').placeholder = badge || 'automatisch';
     }
     ['ma-art', 'ma-menge', 'ma-zahl', 'ma-preis'].forEach(function (id) { $(id).addEventListener('input', aktualisieren); });
+    document.querySelectorAll('.ma-pk-menge, .ma-pk-preis').forEach(function (e) { e.addEventListener('input', aktualisieren); });
     art.addEventListener('change', aktualisieren);
     aktualisieren();
 

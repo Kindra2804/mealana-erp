@@ -4,8 +4,8 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
 
 /**
- * MengenAktionService – Verwaltung der Mengen-Aktionen (Migration 241)
- *   "X Stück für Y €" (x_fuer_y) und "Kauf X, zahl Y" (kauf_x_zahl_y)
+ * MengenAktionService – Verwaltung der Mengen-Aktionen (Migration 241, 242)
+ *   "X Stück für Y €" (x_fuer_y), "Kauf X, zahl Y" (kauf_x_zahl_y) und "Paketpreise" (mehrere Paketgrößen)
  *
  * Artikel einer Aktion = Artikel ihrer Kategorien (inkl. Unterkategorien) + einzeln zugeordnete,
  * jeweils mit allen Kindern. Die Preisberechnung (Pakete bilden, Rabatt gleichmäßig verteilen)
@@ -62,15 +62,31 @@ class MengenAktionService
         $ab    = (string) ($d['gueltig_ab'] ?? '');
         $bis   = trim((string) ($d['gueltig_bis'] ?? '')) ?: null;
 
+        // Paketpreise: Zeilen Menge/Preis (leere ignorieren); menge = kleinste Paketgröße
+        $pakete = [];
+        if ($art === 'paketpreise') {
+            foreach ((array) ($d['paket_menge'] ?? []) as $i => $m) {
+                $m = (int) $m;
+                $p = round((float) str_replace(',', '.', (string) ($d['paket_preis'][$i] ?? '')), 2);
+                if ($m === 0 && $p == 0) continue;
+                if ($m < 2 || $p <= 0) throw new RuntimeException('Jede Paketzeile braucht mindestens 2 Stück und einen Preis');
+                if (isset($pakete[$m])) throw new RuntimeException("Paketgröße $m kommt doppelt vor");
+                $pakete[$m] = $p;
+            }
+            if (!$pakete) throw new RuntimeException('Bitte mindestens eine Paketgröße eingeben');
+            ksort($pakete);
+            $menge = array_key_first($pakete);
+        }
+
         if ($name === '') throw new RuntimeException('Bitte einen Namen eingeben');
-        if (!in_array($art, ['x_fuer_y', 'kauf_x_zahl_y'], true)) throw new RuntimeException('Bitte die Art wählen');
+        if (!in_array($art, ['x_fuer_y', 'kauf_x_zahl_y', 'paketpreise'], true)) throw new RuntimeException('Bitte die Art wählen');
         if ($menge < 2) throw new RuntimeException('Ein Paket braucht mindestens 2 Stück');
         if ($art === 'kauf_x_zahl_y' && ($zahl < 1 || $zahl >= $menge)) throw new RuntimeException('„zahl Y“ muss kleiner als „Kauf X“ sein (z.B. 3 für 2)');
         if ($art === 'x_fuer_y' && $preis <= 0) throw new RuntimeException('Bitte den Paketpreis eingeben');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $ab)) throw new RuntimeException('Bitte „gültig ab“ eingeben');
         if ($bis !== null && $bis < $ab) throw new RuntimeException('„gültig bis“ liegt vor „gültig ab“');
 
-        $badge = trim((string) ($d['badge_text'] ?? '')) ?: self::badgeVorschlag($art, $menge, $zahl, $preis);
+        $badge = trim((string) ($d['badge_text'] ?? '')) ?: self::badgeVorschlag($art, $menge, $zahl, $preis, $pakete);
         $werte = [$name, $art, $menge, $zahl, $preis, mb_substr($badge, 0, 40), $ab, $bis,
                   empty($d['aktiv']) ? 0 : 1, empty($d['an_kasse']) ? 0 : 1];
 
@@ -88,6 +104,9 @@ class MengenAktionService
             }
             $this->zuordnungSetzen('mengen_aktion_kategorien', 'kategorie_id', $id, (array) ($d['kategorie_ids'] ?? []));
             $this->zuordnungSetzen('mengen_aktion_shops', 'shop_id', $id, (array) ($d['shop_ids'] ?? []));
+            $this->db->prepare("DELETE FROM mengen_aktion_pakete WHERE aktion_id = ?")->execute([$id]);
+            $st = $this->db->prepare("INSERT INTO mengen_aktion_pakete (aktion_id, menge, preis) VALUES (?, ?, ?)");
+            foreach ($pakete as $m => $p) $st->execute([$id, $m, $p]);
             $this->db->commit();
         } catch (Throwable $e) {
             $this->db->rollBack();
@@ -171,6 +190,9 @@ class MengenAktionService
             $a['zahl_menge'] = $a['zahl_menge'] === null ? null : (int) $a['zahl_menge'];
             $a['paketpreis'] = $a['paketpreis'] === null ? null : (float) $a['paketpreis'];
             $a['artikel_ids'] = $this->artikelIds($a['id']);
+            $pk = $this->db->prepare("SELECT menge, preis FROM mengen_aktion_pakete WHERE aktion_id = ? ORDER BY menge");
+            $pk->execute([$a['id']]);
+            $a['pakete'] = array_map(fn($p) => ['menge' => (int) $p['menge'], 'preis' => (float) $p['preis']], $pk->fetchAll(PDO::FETCH_ASSOC));
             $regeln[] = $a;
         }
         return $regeln;
@@ -199,11 +221,17 @@ class MengenAktionService
     }
 
     /** Vorschlag für den Badge-Text: "4 für 12 €" bzw. "3 für 2" */
-    public static function badgeVorschlag(string $art, int $menge, ?int $zahl, ?float $preis): string
+    public static function badgeVorschlag(string $art, int $menge, ?int $zahl, ?float $preis, array $pakete = []): string
     {
         if ($art === 'kauf_x_zahl_y') return $menge . ' für ' . $zahl;
-        $p = fmod((float) $preis, 1.0) == 0.0 ? number_format((float) $preis, 0, ',', '.') : number_format((float) $preis, 2, ',', '.');
-        return $menge . ' für ' . $p . ' €';
+        if ($art === 'paketpreise') return 'Mengenpreis ab ' . $menge . ' Stk';
+        return $menge . ' für ' . self::euro((float) $preis) . ' €';
+    }
+
+    /** 12 → "12", 4.5 → "4,50" */
+    public static function euro(float $v): string
+    {
+        return fmod($v, 1.0) == 0.0 ? number_format($v, 0, ',', '.') : number_format($v, 2, ',', '.');
     }
 
     // ── intern ───────────────────────────────────────────────────────
@@ -222,6 +250,10 @@ class MengenAktionService
         $st = $this->db->prepare("SELECT s.id, s.name, s.nr_kuerzel FROM mengen_aktion_shops ms JOIN shops s ON s.id = ms.shop_id WHERE ms.aktion_id = ? ORDER BY s.id");
         $st->execute([$a['id']]);
         $a['shops'] = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        $st = $this->db->prepare("SELECT menge, preis FROM mengen_aktion_pakete WHERE aktion_id = ? ORDER BY menge");
+        $st->execute([$a['id']]);
+        $a['pakete'] = array_map(fn($p) => ['menge' => (int) $p['menge'], 'preis' => (float) $p['preis']], $st->fetchAll(PDO::FETCH_ASSOC));
 
         $a['anzahl_artikel'] = count($this->artikelIds((int) $a['id']));
         return $a;
