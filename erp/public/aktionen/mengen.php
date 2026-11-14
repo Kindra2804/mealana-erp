@@ -80,7 +80,7 @@ $datum = fn($d) => $d ? date('d.m.Y', strtotime($d)) : '';
             <?php foreach ($alle as $a): [$st, $farbe, $bg] = $status[$a['status']]; ?>
                 <tr>
                     <td><a href="<?= $url ?>?id=<?= $a['id'] ?>" style="font-weight:600;color:var(--color-nav);text-decoration:none"><?= $h($a['name']) ?></a></td>
-                    <td><span style="background:#fff3cd;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600"><?= $h($a['badge_text']) ?></span>
+                    <td><span style="background:#fff3cd;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap"><?= $h($a['badge_text']) ?></span>
                         <?php if ($a['pakete']): ?><div style="font-size:11px;color:var(--color-text-muted);margin-top:2px"><?= $h(implode(' · ', array_map(fn($p) => $p['menge'] . ' für ' . MengenAktionService::euro($p['preis']) . ' €', $a['pakete']))) ?></div><?php endif; ?></td>
                     <td style="font-size:12px"><?= (int) $a['anzahl_artikel'] ?> Artikel
                         <?php if ($a['kategorien']): ?><div style="color:var(--color-text-muted)"><?= $h(implode(', ', array_column($a['kategorien'], 'name'))) ?></div><?php endif; ?></td>
