@@ -12,7 +12,7 @@
   <tr>
     <th>Beleg-Nr.</th>
     <th>Bezieht sich auf</th>
-    <th>Betrag (inkl. MwSt.)</th>
+    <th>Betrag{% if not kleinunternehmer %} (inkl. MwSt.){% endif %}</th>
   </tr>
   <tr>
     <td><strong>{{ gs_nr }}</strong></td>

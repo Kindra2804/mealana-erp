@@ -125,7 +125,10 @@ try {
         ];
     }
 
-    $mwstGesamt   = round($bruttoGesamt - $nettoGesamt, 2);
+    // MwSt. laut Auftrag (inkl. Versand-Steuer). Früher Brutto − Netto der Positionen → der ganze
+    // Versand stand als „inkl. MwSt.“ in der Mail (Indra-Test 2026-11-14).
+    $mwstGesamt   = round((float)($auftrag['steuerbetrag'] ?? 0), 2);
+    $versandGesamt = round((float)($auftrag['versandkosten'] ?? 0), 2);
     $summeBezahlt = (float)$ergebnis['summe'];
     $offenBetrag  = max(0, round($bruttoGesamt - $summeBezahlt, 2));
     $neuerStatus  = $ergebnis['neuer_status'];
@@ -152,6 +155,7 @@ try {
             'positionen'       => $positionen,
             'brutto_gesamt'    => $bruttoGesamt,
             'mwst_gesamt'      => $mwstGesamt,
+            'versandkosten'    => $versandGesamt,
             'summe_bezahlt'    => $summeBezahlt,
             'offen_betrag'     => $offenBetrag,
             'firma_email'      => $db->query("SELECT wert FROM system_einstellungen WHERE schluessel='mail_from_address'")->fetchColumn() ?: '',

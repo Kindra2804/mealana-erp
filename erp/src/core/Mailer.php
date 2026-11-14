@@ -224,6 +224,8 @@ class Mailer
             'logo_base64'      => '',
             'firma_web'        => $this->config['firma_web']  ?? $this->config['website']  ?? '',
             'firma_tel'        => $this->config['tel']       ?? $this->config['telefon']  ?? '',
+            // Kleinunternehmer (global oder Partner): Mails zeigen dann keine MwSt.
+            'kleinunternehmer' => ($this->config['kleinunternehmer'] ?? '0') === '1',
             'firma_iban'       => $this->config['iban']             ?? '',
             'firma_bic'        => $this->config['bic']              ?? '',
             'firma_bank'       => $this->config['bank_name']        ?? '',
@@ -261,6 +263,7 @@ class Mailer
         if ($this->partner) {
             $p = $this->partner;
             $vars['firmenname'] = $p['name'];
+            $vars['kleinunternehmer'] = !empty($p['kleinunternehmer']);
             // Gruß „Ihr …-Team“: Kanalname (z.B. INDRA DESIGN) hat Vorrang, sonst Partner – nie die Hauptfirma
             if (trim((string)($this->shop['mail_from_name'] ?? '')) === '') $vars['marke'] = $p['name'];
             if (!empty($p['telefon'])) $vars['firma_tel'] = $p['telefon'];

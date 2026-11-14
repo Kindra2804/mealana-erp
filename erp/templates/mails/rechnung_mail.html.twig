@@ -12,7 +12,7 @@
   <tr>
     <th>Rechnungsnummer</th>
     <th>Auftrag</th>
-    <th>Betrag (inkl. MwSt.)</th>
+    <th>Betrag{% if not kleinunternehmer %} (inkl. MwSt.){% endif %}</th>
     <th>Fällig bis</th>
   </tr>
   <tr>
