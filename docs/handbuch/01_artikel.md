@@ -221,6 +221,26 @@ Jeder Artikel, auch jede Farbe, hat einen **eigenen Preis**. Ändert man den Pre
 
 > Unten auf der Seite stehen die **letzten Preisänderungen** (wann, wer, was). Jede einzelne Änderung mit Artikelnummer, Name, alt → neu steht im Aktivitäten-Protokoll unter `preis.massen`.
 
+## Mengen-Aktionen (4 für 12 €, 3 für 2, Paketpreise)
+
+Mengenrabatt über **gemischte** Artikel, an der Kasse und im Shop gleich gerechnet. Artikel → Preise / Aktionen → **🛒 Mengen-Aktionen** → **+ Neue Mengen-Aktion**.
+
+| Art | Beispiel | So wird gerechnet |
+|-----|----------|-------------------|
+| X Stück für Y € | 4 für 12 € | Die teuersten Stücke kommen zuerst ins Paket |
+| Kauf X, zahl Y | 3 für 2 | Je Paket ist das günstigste Stück gratis |
+| Paketpreise | Raunzmarker: 2 für 4,50 · 4 für 8 · 8 für 15 · 12 für 20 € | Die Menge wird aus Paketen zusammengesetzt, sodass der Preis am günstigsten ist, der Rest einzeln (5 Stk = 4er + 1 = 10,50 €) |
+
+- **Gilt für:** Kategorien (Unterkategorien zählen mit) und einzelne Artikel. Dazu in der Artikelliste anhaken → Aktion **„🛒 Zu Mengen-Aktion hinzufügen“**. Väter nehmen ihre Varianten mit, gemischt wird beliebig.
+- **Wo:** Kasse und/oder einzelne Shops anhaken, Zeitraum von/bis (leer = ohne Ende). „aktiv“ aus = pausiert.
+- Die Aktion **wiederholt sich** (9 Stk bei 4 für 12 € = 2 Pakete + 1 Stück normal).
+- Der Rabatt wird **gleichmäßig auf alle Stücke im Paket verteilt**. Schickt ein Kunde eines zurück, bekommt er den anteiligen Preis, auch bei „3 für 2“.
+- **Kein doppelter Rabatt:** Artikel mit Sale-/Aktionspreis und Zeilen mit Kassen-Rabatt nehmen nicht teil. Gilt nur für Endkunden.
+- **Kasse:** Im Warenkorb stehen der alte Preis durchgestrichen, „Aktion …“ und unten die Ersparnis sowie „noch x Stk → …“. Auf dem Bon stehen der alte Preis durchgestrichen und „Ersparnis durch Aktion“.
+- **Shop** (NAHTLOS Connector ab 1.7.0): Badge neben dem Preis, Hinweis auf der Produktseite. Im Warenkorb wird der alte Preis durchgestrichen und darunter steht „noch x Stück …“. Das ERP überträgt die Aktionen beim Speichern und laufend, wenn sich etwas ändert. Den Stand je Shop siehst du unten auf der Seite.
+
+> Sale- und Aktionspreise gelten jetzt auch an der Kasse (vorher nur der Standardpreis). Die Bon-Zeile zeigt „Sale · statt € …“.
+
 ## Preisschilder drucken
 
 **Messe-Schild** (8 pro A4, je 95 × 60 mm, wie die alte Vorlage): Name, Hersteller, Zusammensetzung, Gewicht/Lauflänge, Nadelstärke, Preis und Grundpreis. Eines je **Garnqualität**: Wählt man Farben, werden sie zu ihrem Vater zusammengefasst. Die Texte kommen aus den **Merkmalen** (siehe oben), fehlt etwas, steht in der Auswahl „keine Merkmale“.
