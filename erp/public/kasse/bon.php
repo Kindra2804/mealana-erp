@@ -25,6 +25,8 @@ $rksvId    = $kasseInfo['rksv_kassen_id']      ?? null;
 $modus     = $kasseInfo['modus']               ?? 'online';
 // Paperless: „Beleg per QR“ nur mit Lizenz + eingerichteter Belegseite (offline/Messe immer Druck)
 require_once __DIR__ . '/../../src/modules/kasse/PaperlessService.php';
+require_once __DIR__ . '/../../src/modules/aktionen/MengenAktionService.php';
+$mengenRegeln = (new MengenAktionService())->aktiveRegeln('kasse');   // Mengen-Aktionen (4 für 12 / 3 für 2 / Paketpreise)
 $paperless = $modus !== 'offline' && PaperlessService::verfuegbar();
 
 // Gutschein-Ausgabe bei Retoure (statt Bar-Auszahlung) braucht einen echten
@@ -886,6 +888,7 @@ require __DIR__ . '/_hinweise.php'; ?>
       <div class="pos-footer-info">
         <div class="pos-footer-cnt" id="footer-cnt">0 Artikel</div>
         <div class="pos-footer-tax" id="footer-tax">inkl. MwSt.</div>
+        <div class="pos-footer-tax" id="footer-aktion" style="color:#b45309;font-weight:600"></div>
       </div>
       <button class="pos-bonrab-btn" onclick="bonRabattDialog()">% Bon-Rabatt</button>
     </div>
@@ -1647,8 +1650,12 @@ require __DIR__ . '/_hinweise.php'; ?>
 <!-- ══════════════════════════════════════════════════════════════════════════
      JAVASCRIPT
      ══════════════════════════════════════════════════════════════════════════ -->
+<script src="<?= BASE_PATH ?>/js/mengen_aktion_rechner.js"></script>
 <script>
 var KASSE_ID       = <?= $kasseId ?>;
+// Mengen-Aktionen, die heute an der Kasse gelten (Server rechnet beim Speichern nach, bon_speichern.php)
+var MENGEN_REGELN  = <?= json_encode($mengenRegeln) ?>;
+var mengenHinweise = [];
 var LAGER_ID       = <?= $lagerId ?>;
 var AUSGABE_FORMAT = <?= json_encode($kasseInfo['ausgabe_format'] ?? 'fragen') ?>;
 var KASSE_MODUS    = <?= json_encode($modus) ?>;
@@ -2215,6 +2222,7 @@ function konfigBestaetigen() {
 
 // ── Bon rendern ───────────────────────────────────────────────────────────────
 function renderBon(skipKdSync) {
+    mengenAktionenAnwenden();
     var liste = document.getElementById('bon-liste');
     var leer  = document.getElementById('bon-leer');
 
@@ -2248,8 +2256,7 @@ function renderBon(skipKdSync) {
 
     function zeileRendern(i) {
         var p = warenkorb[i];
-            var rabFaktor = 1 - (posRabatt(p) / 100);
-            var summe = p.menge * p.einzelpreis_brutto * rabFaktor;
+            var summe = posSumme(p);
             var istAktiv = (i === aktiveZeile);
 
             var istRetour = (p.block === 'retour' && !p.vonAuftrag);
@@ -2263,6 +2270,9 @@ function renderBon(skipKdSync) {
                 ? '<span class="bon-row-rabatt">-' + posRabatt(p) + '%</span>'
                 : '';
             var auftragBadge = p.vonAuftrag ? '<span class="bon-row-auftrag-badge">📦</span>' : '';
+            // Mengen-Aktion: Hinweis unter dem Namen, alter Stückpreis durchgestrichen
+            var aktionHtml = p._mengen ? '<span class="bon-row-teil" style="color:#b45309">Aktion ' + esc(p._mengen.badge_text)
+                + (p._mengen.stueck_im_paket < p.menge ? ' (' + p._mengen.stueck_im_paket + ' von ' + p.menge + ' Stk)' : '') + '</span>' : '';
             var retourBadge  = istRetour ? '<span class="bon-row-retour-badge">↩</span>' : '';
             // Teilabholung sichtbar machen: weniger mitgenommen als bestellt/gepackt
             var orig = p.original_menge !== undefined ? p.original_menge : p.menge;
@@ -2276,9 +2286,11 @@ function renderBon(skipKdSync) {
 
             div.innerHTML =
                 '<div class="bon-row-nr">' + (++lfdNr) + '</div>' +
-                '<div class="bon-row-name">' + auftragBadge + retourBadge + esc(p.bezeichnung) + rabHtml + teilHtml + '</div>' +
+                '<div class="bon-row-name">' + auftragBadge + retourBadge + esc(p.bezeichnung) + rabHtml + teilHtml + aktionHtml + '</div>' +
                 '<div class="bon-row-menge">' + p.menge + '</div>' +
-                '<div class="bon-row-ep">€ ' + fmt(p.einzelpreis_brutto) + '</div>' +
+                '<div class="bon-row-ep">' + (p._mengen
+                    ? '<s style="color:#999;font-weight:400">€ ' + fmt(p.einzelpreis_brutto) + '</s><br>€ ' + fmt(p._mengen.gesamt_neu / p.menge)
+                    : '€ ' + fmt(p.einzelpreis_brutto)) + '</div>' +
                 '<div class="bon-row-summe">€ ' + fmt(summe) + '</div>' +
                 (istAktiv ?
                     '<div class="bon-row-ctrl">' +
@@ -2331,11 +2343,10 @@ function kdSyncWarenkorb() {
     if (warenkorb.length === 0 && !retoureAktiv()) { kdSync('idle', {}); return; }
     var aktiv = (aktiveZeile >= 0 ? warenkorb[aktiveZeile] : warenkorb[warenkorb.length - 1]) || null;
     var positionen = warenkorb.map(function(p) {
-        var rab = 1 - posRabatt(p) / 100;
         return {
-            bezeichnung: p.bezeichnung,
+            bezeichnung: p.bezeichnung + (p._mengen ? ' (Aktion ' + p._mengen.badge_text + ')' : ''),
             menge:       p.menge,
-            summe:       p.menge * p.einzelpreis_brutto * rab,
+            summe:       posSumme(p),
             vonAuftrag:  !!p.vonAuftrag,
             bezahlt:     !!(p.vonAuftrag && auftragBezahlt(zeileAuftragId(p)))
         };
@@ -2513,8 +2524,7 @@ function zeileEntfernen(i) {
 function aktualisiereFooter() {
     var gesamt = 0, st20 = 0, st10 = 0, anzahl = 0;
     warenkorb.forEach(function(p) {
-        var rab = 1 - posRabatt(p) / 100;
-        var pos = p.menge * p.einzelpreis_brutto * rab;
+        var pos = posSumme(p);
         gesamt += pos;
         anzahl += p.menge;
         var netto = pos / (1 + p.steuer_prozent / 100);
@@ -2527,6 +2537,13 @@ function aktualisiereFooter() {
     if (st20 > 0) stInfo.push('USt 20%: € ' + fmt(st20));
     if (st10 > 0) stInfo.push('USt 10%: € ' + fmt(st10));
     document.getElementById('footer-tax').textContent = stInfo.length ? stInfo.join('  ') : 'inkl. MwSt.';
+    // Mengen-Aktionen: Ersparnis + "noch x Stück" als Verkaufshilfe
+    var aktTxt = [];
+    mengenHinweise.forEach(function(h) {
+        if (h.ersparnis > 0) aktTxt.push('Aktion ' + h.badge_text + ': − € ' + fmt(h.ersparnis));
+        if (h.fehlen > 0 && h.stueck > 0) aktTxt.push('noch ' + h.fehlen + ' Stk → ' + h.badge_text);
+    });
+    document.getElementById('footer-aktion').textContent = aktTxt.join(' · ');
 
     document.getElementById('rf-cnt').textContent  = anzahl + ' Artikel' + (globalRabatt > 0 ? ' · ' + globalRabatt + '% Rabatt' : '') + ' · inkl. MwSt.';
     document.getElementById('rf-ges').textContent  = '€ ' + fmt(gesamt);
@@ -2545,12 +2562,31 @@ function posRabatt(p) {
     return Math.max(p.rabatt_prozent, globalRabatt);
 }
 
+// Zeilensumme brutto: mit Mengen-Aktion der reduzierte Betrag, sonst Menge × Preis − Rabatt
+function posSumme(p) {
+    if (p._mengen) return p._mengen.gesamt_neu;
+    return p.menge * p.einzelpreis_brutto * (1 - posRabatt(p) / 100);
+}
+
+// Mengen-Aktionen auf den Warenkorb anwenden (js/mengen_aktion_rechner.js). Es zählen normale Artikelzeilen
+// ohne Rabatt; der Server rechnet beim Speichern genauso nach. Setzt p._mengen und mengenHinweise.
+function mengenAktionenAnwenden() {
+    mengenHinweise = [];
+    warenkorb.forEach(function(p) { p._mengen = null; });
+    if (!MENGEN_REGELN.length) return;
+    var pos = [];
+    warenkorb.forEach(function(p, i) {
+        if (p.vonAuftrag || p.istDivers || !p.artikel_id || p.block || !(p.menge > 0) || p.menge % 1 !== 0) return;
+        pos.push({ key: i, artikel_id: p.artikel_id, menge: p.menge, preis: p.einzelpreis_brutto, ist_reduziert: posRabatt(p) > 0 });
+    });
+    var erg = mengenAktionBerechne(MENGEN_REGELN, pos);
+    Object.keys(erg.positionen).forEach(function(i) { warenkorb[i]._mengen = erg.positionen[i]; });
+    mengenHinweise = erg.hinweise;
+}
+
 function getGesamt() {
     var g = 0;
-    warenkorb.forEach(function(p) {
-        var rab = 1 - posRabatt(p) / 100;
-        g += p.menge * p.einzelpreis_brutto * rab;
-    });
+    warenkorb.forEach(function(p) { g += posSumme(p); });
     return Math.round(g * 100) / 100;
 }
 
@@ -3520,7 +3556,7 @@ function berechneAbrechnungsModus() {
             if (diff > 0.001 && p.restModus === 'verzicht') retourBrutto += diff * p.einzelpreis_brutto * rab;
         } else {
             // Extras + Zeilen noch unbezahlter Aufträge (Sammelabholung) werden kassiert
-            extraBrutto += p.menge * p.einzelpreis_brutto * rab;
+            extraBrutto += posSumme(p);
         }
     });
     retourePositionen.forEach(function(p) {
@@ -3924,6 +3960,7 @@ function bonSpeichern(zahlDaten) {
     ['ov-bar','ov-karte','ov-gutschein','ov-kombi'].forEach(ovSchliessen);
     document.getElementById('spinner').classList.add('offen');
 
+    mengenAktionenAnwenden();
     var g = _zahlBetrag();
     var positionen = warenkorb.map(function(p) {
         return Object.assign({}, p, { rabatt_prozent: posRabatt(p) });

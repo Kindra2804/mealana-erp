@@ -350,11 +350,13 @@ class KassenService
                     INSERT INTO kassen_bon_positionen
                         (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
                          bezeichnung, ean, menge,
-                         einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge, sort_order)
+                         einzelpreis_brutto, preis_vorher_brutto, mengen_aktion_id, aktion_hinweis,
+                         rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
                         (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
                          :bezeichnung, :ean, :menge,
-                         :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge, :sort)
+                         :einzelpreis_brutto, :preis_vorher_brutto, :mengen_aktion_id, :aktion_hinweis,
+                         :rabatt_prozent, :steuer_prozent, :charge, :sort)
                 ");
                 $stmt2->execute([
                     ':bon_id'             => $bonId,
@@ -368,6 +370,9 @@ class KassenService
                     ':ean'                => $pos['ean']                ?? null,
                     ':menge'              => $pos['menge']              ?? 1,
                     ':einzelpreis_brutto' => $pos['einzelpreis_brutto'] ?? 0,
+                    ':preis_vorher_brutto' => $pos['preis_vorher_brutto'] ?? null,   // Mengen-Aktion (bon_speichern.php)
+                    ':mengen_aktion_id'   => $pos['mengen_aktion_id']   ?? null,
+                    ':aktion_hinweis'     => $pos['aktion_hinweis']     ?? null,
                     ':rabatt_prozent'     => $pos['rabatt_prozent']     ?? 0,
                     ':steuer_prozent'     => $pos['steuer_prozent']     ?? 20,
                     ':charge'             => $pos['charge']             ?? null,
@@ -665,11 +670,13 @@ class KassenService
                     INSERT INTO kassen_bon_positionen
                         (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
                          bezeichnung, ean, menge,
-                         einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge)
+                         einzelpreis_brutto, preis_vorher_brutto, mengen_aktion_id, aktion_hinweis,
+                         rabatt_prozent, steuer_prozent, charge)
                     VALUES
                         (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
                          :bezeichnung, :ean, :menge,
-                         :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge)
+                         :einzelpreis_brutto, :preis_vorher_brutto, :mengen_aktion_id, :aktion_hinweis,
+                         :rabatt_prozent, :steuer_prozent, :charge)
                 ");
                 $istZahlung = ($pos['block'] ?? null) === 'zahlung';
                 $stmt2->execute([
@@ -684,6 +691,9 @@ class KassenService
                     ':ean'                => $pos['ean'],
                     ':menge'              => -abs((float)$pos['menge']),
                     ':einzelpreis_brutto' => $pos['einzelpreis_brutto'],
+                    ':preis_vorher_brutto' => $pos['preis_vorher_brutto'] ?? null,   // Storno übernimmt die Mengen-Aktion
+                    ':mengen_aktion_id'   => $pos['mengen_aktion_id']   ?? null,
+                    ':aktion_hinweis'     => $pos['aktion_hinweis']     ?? null,
                     ':rabatt_prozent'     => $pos['rabatt_prozent'],
                     ':steuer_prozent'     => $pos['steuer_prozent'],
                     ':charge'             => $pos['charge'],

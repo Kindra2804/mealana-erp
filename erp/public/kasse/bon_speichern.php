@@ -224,6 +224,29 @@ foreach ($sauberePositionen as &$p) {
 }
 unset($p);
 
+// ── Mengen-Aktionen (4 für 12 / 3 für 2 / Paketpreise) ──────────────────────────
+// Serverseitig nachgerechnet (gleicher Rechenkern wie die Anzeige in der Kasse, js/mengen_aktion_rechner.js).
+// Es zählen normale Artikelzeilen ohne Rabatt (manueller Zeilen-/Bon-Rabatt = schon reduziert, kein doppelter
+// Rabatt). Die Zeile bekommt den reduzierten Einzelpreis; Preis vorher + Aktionstext bleiben für Bon/Journal.
+require_once __DIR__ . '/../../src/modules/aktionen/MengenAktionService.php';
+require_once __DIR__ . '/../../src/modules/aktionen/MengenAktionRechner.php';
+$mengenRegeln = (new MengenAktionService())->aktiveRegeln('kasse');
+if ($mengenRegeln) {
+    $mengenPos = [];
+    foreach ($sauberePositionen as $i => $p) {
+        if ($p['block'] !== null || empty($p['artikel_id']) || $p['menge'] <= 0 || floor($p['menge']) != $p['menge']) continue;
+        $mengenPos[] = ['key' => $i, 'artikel_id' => $p['artikel_id'], 'menge' => (int)$p['menge'],
+                        'preis' => $p['einzelpreis_brutto'], 'ist_reduziert' => $p['rabatt_prozent'] > 0];
+    }
+    $mengenErg = MengenAktionRechner::berechne($mengenRegeln, $mengenPos);
+    foreach ($mengenErg['positionen'] as $i => $r) {
+        $sauberePositionen[$i]['preis_vorher_brutto'] = $sauberePositionen[$i]['einzelpreis_brutto'];
+        $sauberePositionen[$i]['einzelpreis_brutto']  = $r['einzelpreis_neu'];
+        $sauberePositionen[$i]['mengen_aktion_id']    = $r['aktion_id'];
+        $sauberePositionen[$i]['aktion_hinweis']      = 'Aktion ' . $r['badge_text'];
+    }
+}
+
 // Bruttobetrag serverseitig aus Positionen neu berechnen (kein Vertrauen auf Client-Wert)
 $serverBrutto = 0;
 foreach ($sauberePositionen as $p) {

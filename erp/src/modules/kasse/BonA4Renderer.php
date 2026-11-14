@@ -375,10 +375,10 @@ $renderBlock = function(array $positionen, string $blockLabel = '') use (&$zeile
       <td>
         <?php if (!empty($pos['bild_base64'])): ?><img src="data:image/jpeg;base64,<?= $pos['bild_base64'] ?>" style="float:left;width:28pt;height:28pt;margin-right:5pt"><?php endif; ?>
         <?= htmlspecialchars($pos['bezeichnung']) ?>
-        <div class="pos-sub"><?= $satzText ?><?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?></div>
+        <div class="pos-sub"><?= $satzText ?><?= $pos['charge'] ? ' · Partie: ' . htmlspecialchars($pos['charge']) : '' ?><?= !empty($pos['aktion_hinweis']) ? ' · ' . htmlspecialchars($pos['aktion_hinweis']) : '' ?></div>
       </td>
       <td class="r"><?= ($istRetourZeile ? '-' : '') . abs($menge) ?></td>
-      <td class="r">€ <?= number_format(abs($preis), 2, ',', '.') ?></td>
+      <td class="r"><?php if (!empty($pos['preis_vorher_brutto'])): /* Mengen-Aktion: Preis vorher durchgestrichen */ ?><s style="color:#888">€ <?= number_format((float)$pos['preis_vorher_brutto'], 2, ',', '.') ?></s><br><?php endif; ?>€ <?= number_format(abs($preis), 2, ',', '.') ?></td>
       <td class="r"><?= $rabatt > 0 ? number_format($rabatt, 0) . ' %' : '—' ?></td>
       <td class="r"><strong><?= $vorzeichen ?>€ <?= number_format($gesamt, 2, ',', '.') ?></strong></td>
     </tr>

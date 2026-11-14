@@ -177,6 +177,19 @@ foreach ($posBlocks['auftrag'] ?? [] as $pos) {
 }
 $vorherBezahlt = array_column(array_filter($bon['web_auftraege'] ?? [], fn($a) => $a['vorher_bezahlt']), 'auftrag_nr');
 $hatRest    = isset($posBlocks['normal']) || isset($posBlocks['addon']);
+
+// Mengen-Aktion (Migr. 243): Preis vorher durchgestrichen + Aktionstext unter der Position, Ersparnis unten
+$aktionZeile = function (array $pos): string {
+    if (empty($pos['preis_vorher_brutto'])) return '';
+    return '<div class="pos-sub">' . abs((float)$pos['menge']) . '× <s>€ ' . number_format((float)$pos['preis_vorher_brutto'], 2, ',', '.') . '</s> € '
+         . number_format((float)$pos['einzelpreis_brutto'], 2, ',', '.') . ' · ' . htmlspecialchars((string)$pos['aktion_hinweis']) . '</div>';
+};
+$aktionErsparnis = 0.0;
+foreach ($bon['positionen'] ?? [] as $pos) {
+    if (!empty($pos['preis_vorher_brutto'])) {
+        $aktionErsparnis += abs((float)$pos['menge']) * ((float)$pos['preis_vorher_brutto'] - (float)$pos['einzelpreis_brutto']);
+    }
+}
 ?>
 
 <?php foreach ($auftragGruppen as $gruppenAuftragId => $gruppenPositionen): ?>
@@ -262,7 +275,8 @@ if (!empty($restPositionen)):
   <span><?= htmlspecialchars(mb_substr($pos['bezeichnung'], 0, 28)) ?></span>
   <span class="fett"><?= $stSign ?>€ <?= number_format(abs($gesamt), 2, ',', '.') ?></span>
 </div>
-<?php if (abs($menge) != 1 || $rabatt > 0): ?>
+<?= $aktionZeile($pos) ?>
+<?php if ((abs($menge) != 1 || $rabatt > 0) && empty($pos['preis_vorher_brutto'])): ?>
 <div class="pos-sub">
   <?= abs($menge) ?>× <?= number_format(abs($preis), 2, ',', '.') ?>€
   <?= $rabatt > 0 ? ' -' . number_format($rabatt, 0) . '%' : '' ?>
@@ -310,8 +324,9 @@ if (!empty($restPositionen)):
   <span><?= htmlspecialchars(mb_substr($pos['bezeichnung'], 0, 28)) ?></span>
   <span class="fett"><?= $vz ?>€ <?= number_format(abs($gesamt), 2, ',', '.') ?></span>
 </div>
+<?= $aktionZeile($pos) ?>
 <div class="pos-sub">
-  <?= abs($menge) != 1 ? abs($menge) . '× €' . number_format(abs($preis), 2, ',', '.') . ' · ' : '' ?>
+  <?= abs($menge) != 1 && empty($pos['preis_vorher_brutto']) ? abs($menge) . '× €' . number_format(abs($preis), 2, ',', '.') . ' · ' : '' ?>
   <?= $ab['modus'] === 'spende' || $ab['ku_text'] ? 'ohne USt' : 'inkl. ' . number_format((float)$pos['steuer_prozent'], 0) . '% USt' ?>
 </div>
 <?php endforeach; ?>
@@ -355,6 +370,12 @@ if (!empty($restPositionen)):
   <span><?= $bon['typ'] === 'storno' ? 'STORNO' : ($istRetour ? 'RÜCKGABE' : 'GESAMT') ?></span>
   <span><?= $bon['typ'] === 'storno' ? '-' : '' ?>€ <?= number_format($bruttoBetrag, 2, ',', '.') ?></span>
 </div>
+<?php if ($aktionErsparnis > 0.004 && $bon['typ'] !== 'storno'): ?>
+<div class="pos-zeile" style="font-size:10px">
+  <span>Ersparnis durch Aktion</span>
+  <span>€ <?= number_format($aktionErsparnis, 2, ',', '.') ?></span>
+</div>
+<?php endif; ?>
 <?php if ($partnerAbschnitte && $eigenePositionen):
     $eigenAnteil = (float)$bon['bruttobetrag'] - (float)$bon['fremd_betrag'] - (float)$bon['spende_betrag']; ?>
 <div class="pos-zeile" style="font-size:10px">
