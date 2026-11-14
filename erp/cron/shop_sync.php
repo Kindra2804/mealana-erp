@@ -50,6 +50,12 @@ if ($lizenzShops === 0) {
 ";
     exit(0);
 }
+// Preise mit Zeitraum (Sale-Override, Aktionsmodul): Beginn/Ende seit der letzten Änderung → Artikel neu übertragen
+require_once __DIR__ . '/../src/modules/preise/PreisService.php';
+$preiswechsel = PreisService::preiswechselMarkieren();
+if ($preiswechsel) echo "Preiswechsel (Sale/Aktion begonnen oder beendet): $preiswechsel Artikel zum Abgleich markiert
+";
+
 $shopNr = 0;
 foreach ($repo->findAktiveShops() as $shop) {
     if (++$shopNr > $lizenzShops) {

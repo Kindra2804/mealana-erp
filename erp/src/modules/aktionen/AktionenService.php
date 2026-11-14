@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/AktionenRepository.php';
 require_once __DIR__ . '/../../core/Logger.php';
+require_once __DIR__ . '/../preise/PreisService.php';
 
 /**
  * AktionenService – Geschäftslogik für Aktionen und Aktionspreise
@@ -80,6 +81,7 @@ class AktionenService
         if (!$aktion) return ['erfolg' => false, 'fehler' => 'Aktion nicht gefunden'];
         if (empty($aktion['kategorien'])) return ['erfolg' => false, 'fehler' => 'Keine Kategorien zugewiesen'];
         $this->repo->setGestartet($id, true);
+        PreisService::aktionFuerShopMarkieren($id);
         Logger::log('aktion.starten', 'aktionen', $id);
         return ['erfolg' => true];
     }
@@ -88,6 +90,7 @@ class AktionenService
     public function stoppen(int $id): array
     {
         $this->repo->setGestartet($id, false);
+        PreisService::aktionFuerShopMarkieren($id);
         Logger::log('aktion.stoppen', 'aktionen', $id);
         return ['erfolg' => true];
     }
@@ -95,6 +98,7 @@ class AktionenService
     /** Löscht eine Aktion dauerhaft (inkl. Kategorien und Aktionspreise via Kaskade). */
     public function delete(int $id): array
     {
+        PreisService::aktionFuerShopMarkieren($id);   // vor dem Löschen, danach sind die Preise weg
         $this->repo->delete($id);
         Logger::log('aktion.loeschen', 'aktionen', $id);
         return ['erfolg' => true];
@@ -115,6 +119,7 @@ class AktionenService
         }
 
         $akId = $this->repo->addKategorie($aktionId, $kategorieId, $ab, $bis);
+        PreisService::aktionFuerShopMarkieren($aktionId);
         Logger::log('aktion.kategorie.hinzufuegen', 'aktionen', $aktionId, ['kategorie_id' => $kategorieId]);
         return ['erfolg' => true, 'ak_id' => $akId];
     }
@@ -125,6 +130,8 @@ class AktionenService
      */
     public function removeKategorie(int $akId): array
     {
+        $aid = (int)Database::getInstance()->query("SELECT aktion_id FROM aktionen_kategorien WHERE id = " . (int)$akId)->fetchColumn();
+        if ($aid) PreisService::aktionFuerShopMarkieren($aid);   // vorher: danach sind die Aktionspreise bereinigt
         $this->repo->removeKategorie($akId);
         return ['erfolg' => true];
     }
@@ -225,6 +232,7 @@ class AktionenService
         }
 
         Logger::log('aktion.preise.speichern', 'aktionen', $aktionId, ['gespeichert' => $gespeichert, 'geloescht' => $geloescht, 'kg_id' => $kgId]);
+        PreisService::aktionFuerShopMarkieren($aktionId);
         return ['erfolg' => true, 'gespeichert' => $gespeichert, 'geloescht' => $geloescht];
     }
 }

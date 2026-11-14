@@ -49,10 +49,60 @@ class PreisService
         return $this->repo->findAktionenFuerArtikel($artikelId);
     }
 
+    /**
+     * Artikel (und seinen Vater) für den Shop-Sync als geändert markieren. Preise stehen in eigenen
+     * Tabellen – ohne diesen Zeitstempel sah der Sync eine Preisänderung nie (Fix 2026-11-14).
+     */
+    public static function fuerShopMarkieren(int $artikelId): void
+    {
+        Database::getInstance()->prepare("
+            UPDATE artikel SET aktualisiert_am = NOW()
+            WHERE id = :id1 OR id = (SELECT v FROM (SELECT vaterartikel_id AS v FROM artikel WHERE id = :id2) x)")
+            ->execute(['id1' => $artikelId, 'id2' => $artikelId]);
+    }
+
+    /**
+     * Cron (shop_sync.php): Artikel markieren, deren Sale-Preis oder Aktion seit ihrer letzten
+     * Änderung begonnen oder geendet hat – sonst bliebe der alte Preis im Shop stehen.
+     * Idempotent: markiert nur, wenn aktualisiert_am noch VOR dem Wechselzeitpunkt liegt.
+     * @return int markierte Artikel
+     */
+    public static function preiswechselMarkieren(): int
+    {
+        $db = Database::getInstance();
+        // Sale-Overrides: Beginn (gueltig_ab) und Ende (gueltig_bis), Artikel + Vater
+        $wechsel = "(p.gueltig_ab IS NOT NULL AND p.gueltig_ab <= NOW() AND %1\$s.aktualisiert_am < p.gueltig_ab)
+                 OR (p.gueltig_bis IS NOT NULL AND p.gueltig_bis < NOW() AND %1\$s.aktualisiert_am < p.gueltig_bis)";
+        $n = $db->exec("UPDATE artikel a JOIN preis_aktionen_positionen p ON p.artikel_id = a.id
+                        SET a.aktualisiert_am = NOW() WHERE " . sprintf($wechsel, 'a'));
+        // Vater des Artikels (Variationen werden über das Vaterprodukt übertragen)
+        $n += $db->exec("UPDATE artikel v JOIN artikel k ON k.vaterartikel_id = v.id JOIN preis_aktionen_positionen p ON p.artikel_id = k.id
+                         SET v.aktualisiert_am = NOW() WHERE " . sprintf($wechsel, 'v'));
+        // Aktionsmodul: gilt ab gueltig_ab 0:00 bis Ende gueltig_bis (Preise an Vätern, Kinder erben)
+        $n += $db->exec("
+            UPDATE artikel a
+            JOIN aktionen_artikel_preise ap ON ap.artikel_id = a.id OR ap.artikel_id = a.vaterartikel_id
+            JOIN aktionen x ON x.id = ap.aktion_id AND x.gestartet = 1
+            JOIN aktionen_kategorien ak ON ak.aktion_id = ap.aktion_id
+            SET a.aktualisiert_am = NOW()
+            WHERE (ak.gueltig_ab <= CURDATE() AND a.aktualisiert_am < ak.gueltig_ab)
+               OR (ak.gueltig_bis < CURDATE() AND a.aktualisiert_am < ak.gueltig_bis + INTERVAL 1 DAY)");
+        return (int)$n;
+    }
+
+    /** Alle Artikel einer Aktion (Väter mit Aktionspreis + Kinder) für den Shop markieren (Start/Stopp/Preise). */
+    public static function aktionFuerShopMarkieren(int $aktionId): void
+    {
+        Database::getInstance()->prepare("
+            UPDATE artikel a JOIN aktionen_artikel_preise ap ON ap.artikel_id = a.id OR ap.artikel_id = a.vaterartikel_id
+            SET a.aktualisiert_am = NOW() WHERE ap.aktion_id = ?")->execute([$aktionId]);
+    }
+
     /** Löscht den Preis einer KG für einen Artikel und loggt es. */
     public function loescheKundengruppenPreis(int $artikelId, int $kgId): array
     {
         $this->repo->deleteKundengruppenPreis($artikelId, $kgId);
+        self::fuerShopMarkieren($artikelId);
         Logger::log('preis.kundengruppe.loeschen', 'artikel_preise', $artikelId, ['kg_id' => $kgId]);
         return ['erfolg' => true];
     }
@@ -112,6 +162,7 @@ class PreisService
         if (!empty($fehler)) return ['erfolg' => false, 'fehler' => implode(', ', $fehler)];
 
         $this->repo->upsertKundengruppenPreis($data);
+        self::fuerShopMarkieren((int)$data['artikel_id']);
         Logger::log('preis.kundengruppe.speichern', 'artikel_preise', $data['artikel_id'], ['kg_id' => $data['kundengruppen_id']]);
         return ['erfolg' => true];
     }
@@ -176,6 +227,7 @@ class PreisService
         if (!empty($fehler)) return ['erfolg' => false, 'fehler' => implode(', ', $fehler)];
 
         $saleId = $this->repo->upsertSaleOverride($data);
+        self::fuerShopMarkieren((int)$data['artikel_id']);
         Logger::log(
             !empty($data['id']) ? 'preis.sale.bearbeiten' : 'preis.sale.anlegen',
             'preis_aktionen_positionen',
@@ -189,6 +241,7 @@ class PreisService
     public function loescheSaleOverride(int $id, int $artikelId): array
     {
         $this->repo->deleteSaleOverride($id, $artikelId);
+        self::fuerShopMarkieren($artikelId);
         Logger::log('preis.sale.loeschen', 'preis_aktionen_positionen', $artikelId, ['sale_id' => $id]);
         return ['erfolg' => true];
     }

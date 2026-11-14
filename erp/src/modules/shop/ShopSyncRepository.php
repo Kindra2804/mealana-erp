@@ -651,6 +651,22 @@ class ShopSyncRepository
     }
 
     /**
+     * Normalpreis (Kundengruppen-/Standardpreis OHNE Sale/Aktion) – Basis für regular_price.
+     * Gleiche Gültigkeitsregel wie PreisRepository::findStandardPreis().
+     */
+    public function findNormalPreis(int $artikelId, int $kgId): ?float
+    {
+        $stmt = $this->db->prepare("
+            SELECT brutto_vk FROM artikel_preise
+            WHERE artikel_id = :id AND kundengruppen_id = :kg
+              AND (gueltig_ab IS NULL OR gueltig_ab <= NOW()) AND (gueltig_bis IS NULL OR gueltig_bis >= NOW())
+            ORDER BY gueltig_ab DESC LIMIT 1");
+        $stmt->execute(['id' => $artikelId, 'kg' => $kgId]);
+        $wert = $stmt->fetchColumn();
+        return ($wert !== false && $wert !== null && (float)$wert > 0) ? (float)$wert : null;
+    }
+
+    /**
      * Rohdaten für die Grundpreis-Berechnung (siehe ShopSyncService::baueGrundpreisFelder()) --
      * nicht Teil von findFaelligeArtikel(), weil dort nur die für JEDEN Artikel nötigen
      * Kernfelder stehen (gleiches Muster wie findUvp()/findBestandInfo()).

@@ -1026,7 +1026,7 @@ class ShopSyncService
      * über PreisService::getEffektiverPreis() (bisher las der Sync direkt aus artikel_preise
      * und ignorierte beide Mechanismen komplett -- ein aktiver SALE-Override kam nie im Shop an).
      *
-     * regular_price = UVP (Fallback: Effektivpreis, falls kein UVP gesetzt ist). sale_price nur
+     * regular_price = Normalpreis (Standardpreis ohne Sale/Aktion; bis 2026-11-14: UVP). sale_price nur
      * wenn der Effektivpreis wegen eines aktiven SALE-Override/einer Aktion tatsächlich niedriger
      * als regular_price ist, sonst explizit '' -- WooCommerce lässt bei PUT-Updates einen früher
      * gesetzten sale_price sonst stehen, auch wenn die Aktion längst vorbei ist (gleiches
@@ -1039,8 +1039,14 @@ class ShopSyncService
     {
         $preisInfo = $this->preisService->getEffektiverPreis($artikelId, $this->standardKgId);
         $preis     = $preisInfo['brutto_vk'];
-        $uvp       = $this->repo->findUvp($artikelId);
-        $regularPreis = $uvp ?? $preis;
+        // regular_price = NORMALPREIS (Standardpreis ohne Sale/Aktion), nicht mehr die UVP (Fix 2026-11-14):
+        // Mit regular = UVP verkaufte der Shop zum UVP statt zum ERP-Preis, sobald beide auseinanderliefen
+        // (Fund: Weihnachtsanhänger VK 4,50, UVP noch 3,50 → Shop 3,50; nach Preiserhöhungen per
+        // Massenaktion wäre es überall so). Streichpreis gibt es nur noch bei echtem Sale/Aktion.
+        $normal    = in_array($preisInfo['quelle'], ['sale', 'aktion'], true)
+            ? $this->repo->findNormalPreis($artikelId, $this->standardKgId)
+            : $preis;
+        $regularPreis = $normal ?? $preis;
 
         if ($regularPreis === null) {
             return ['felder' => [], 'preis' => $preis, 'regularPreis' => null, 'salePreis' => null];
