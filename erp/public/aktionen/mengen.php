@@ -20,12 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!Auth::kann($aktion === 'loeschen' ? 'artikel.loeschen' : 'artikel.bearbeiten')) throw new RuntimeException('Dafür fehlt die Berechtigung');
         if ($aktion === 'speichern') {
             $id = $svc->speichern($_POST);
+            $svc->uebertrageAlle((int) $_SESSION['benutzer']['id']);   // gleich an die Shops (nur bei Änderung)
             header("Location: $url?id=$id&ok=gespeichert");
         } elseif ($aktion === 'loeschen') {
             $svc->loeschen($id);
+            $svc->uebertrageAlle((int) $_SESSION['benutzer']['id']);
             header("Location: $url?ok=geloescht");
         } elseif ($aktion === 'artikel_entfernen') {
             $svc->artikelEntfernen($id, (int) ($_POST['artikel_id'] ?? 0));
+            $svc->uebertrageAlle((int) $_SESSION['benutzer']['id']);
             header("Location: $url?id=$id#artikel");
         }
         exit;
@@ -92,6 +95,18 @@ $datum = fn($d) => $d ? date('d.m.Y', strtotime($d)) : '';
             </tbody>
         </table>
     <?php endif; ?>
+    </div>
+
+    <?php $shopStand = Database::getInstance()->query("SELECT name, sync_pausiert, mengen_uebertragen_am, mengen_fehler FROM shops WHERE ist_aktiv = 1 ORDER BY id")->fetchAll(PDO::FETCH_ASSOC); ?>
+    <div style="font-size:12px;color:var(--color-text-muted);margin-top:10px">
+        Übertragung an die Shops (automatisch beim Speichern und alle paar Minuten, wenn sich etwas geändert hat):
+        <?php foreach ($shopStand as $ss): ?>
+            <div>· <?= $h($ss['name']) ?>:
+                <?php if ($ss['mengen_fehler']): ?><span style="color:var(--color-danger)">Fehler – <?= $h($ss['mengen_fehler']) ?></span>
+                <?php elseif ($ss['sync_pausiert']): ?>Sync pausiert
+                <?php elseif ($ss['mengen_uebertragen_am']): ?>zuletzt <?= date('d.m.Y H:i', strtotime($ss['mengen_uebertragen_am'])) ?>
+                <?php else: ?>noch nie<?php endif; ?></div>
+        <?php endforeach; ?>
     </div>
 
 <?php else: /* ── Anlegen / Bearbeiten ── */

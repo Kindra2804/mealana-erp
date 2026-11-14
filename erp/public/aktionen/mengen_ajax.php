@@ -19,6 +19,7 @@ try {
     }
     $in = json_decode(file_get_contents('php://input'), true) ?? [];
     $neu = $svc->artikelHinzufuegen((int) ($in['aktion_id'] ?? 0), (array) ($in['ids'] ?? []));
+    $svc->uebertrageAlle((int) $_SESSION['benutzer']['id']);   // gleich an die Shops (nur bei Änderung)
     echo json_encode(['erfolg' => true, 'neu' => $neu]);
 } catch (Throwable $e) {
     echo json_encode(['erfolg' => false, 'fehler' => $e->getMessage()]);

@@ -198,6 +198,100 @@ class MengenAktionService
         return $regeln;
     }
 
+    // ── Übertragung an die Shops (NAHTLOS Connector ≥ 1.7.0, POST nahtlos/v1/mengen-aktionen) ──
+
+    /**
+     * Alle nicht abgelaufenen, aktiven Aktionen eines Shops mit den Woo-IDs ihrer Produkte/Variationen.
+     * Den Zeitraum prüft der Shop selbst (von/bis).
+     */
+    public function shopPayload(int $shopId): array
+    {
+        $st = $this->db->prepare("
+            SELECT m.* FROM mengen_aktionen m
+            JOIN mengen_aktion_shops ms ON ms.aktion_id = m.id AND ms.shop_id = ?
+            WHERE m.aktiv = 1 AND (m.gueltig_bis IS NULL OR m.gueltig_bis >= CURDATE())
+            ORDER BY m.id");
+        $st->execute([$shopId]);
+        $aktionen = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $a) {
+            $ids = $this->artikelIds((int) $a['id']);
+            $woo = [];
+            if ($ids) {
+                $w = $this->db->prepare("SELECT DISTINCT CAST(external_id AS UNSIGNED) FROM artikel_shops
+                                         WHERE shop_id = ? AND aktiv = 1 AND external_id IS NOT NULL AND external_id <> ''
+                                           AND artikel_id IN (" . implode(',', $ids) . ")");
+                $w->execute([$shopId]);
+                $woo = array_map('intval', $w->fetchAll(PDO::FETCH_COLUMN));
+                sort($woo);
+            }
+            $pk = $this->db->prepare("SELECT menge, preis FROM mengen_aktion_pakete WHERE aktion_id = ? ORDER BY menge");
+            $pk->execute([$a['id']]);
+            $aktionen[] = [
+                'id'         => (int) $a['id'],
+                'art'        => $a['art'],
+                'menge'      => (int) $a['menge'],
+                'zahl_menge' => $a['zahl_menge'] === null ? null : (int) $a['zahl_menge'],
+                'paketpreis' => $a['paketpreis'] === null ? null : (float) $a['paketpreis'],
+                'pakete'     => array_map(fn($p) => ['menge' => (int) $p['menge'], 'preis' => (float) $p['preis']], $pk->fetchAll(PDO::FETCH_ASSOC)),
+                'badge_text' => $a['badge_text'],
+                'von'        => $a['gueltig_ab'],
+                'bis'        => $a['gueltig_bis'],
+                'woo_ids'    => $woo,
+            ];
+        }
+        return ['version' => 1, 'aktionen' => $aktionen];
+    }
+
+    /**
+     * An einen Shop übertragen – nur wenn sich die Liste seit der letzten Übertragung geändert hat
+     * (oder $erzwingen). @return array ['status' => 'uebertragen'|'unveraendert'|'fehler', 'fehler'?, 'aktionen'?]
+     */
+    public function uebertrageShop(array $shop, ?int $benutzerId = null, bool $erzwingen = false): array
+    {
+        $payload = $this->shopPayload((int) $shop['id']);
+        $hash = md5(json_encode($payload));
+        if (!$erzwingen && $hash === ($shop['mengen_hash'] ?? null)) return ['status' => 'unveraendert'];
+        try {
+            if (!$shop['wc_url'] || !$shop['wp_username'] || !$shop['wp_app_password']) {
+                throw new RuntimeException('Für diesen Shop fehlt die WordPress-Anmeldung (Einstellungen → Kanäle).');
+            }
+            require_once __DIR__ . '/../shop/WooCommerceClient.php';
+            $client = new WooCommerceClient($shop['wc_url'], (string) $shop['wc_key'], (string) $shop['wc_secret'], $shop['wp_username'], $shop['wp_app_password']);
+            $client->connector('POST', 'mengen-aktionen', $payload);
+        } catch (Throwable $e) {
+            $fehler = mb_substr($e->getMessage(), 0, 500);
+            // nur beim ersten Auftreten protokollieren, nicht bei jedem Cron-Lauf
+            if ($fehler !== ($shop['mengen_fehler'] ?? null)) {
+                Logger::log('mengen_aktion.uebertragen', 'shops', (int) $shop['id'], ['fehler' => $fehler], $benutzerId, 'error');
+            }
+            $this->db->prepare("UPDATE shops SET mengen_fehler = ? WHERE id = ?")->execute([$fehler, $shop['id']]);
+            return ['status' => 'fehler', 'fehler' => $fehler];
+        }
+        $this->db->prepare("UPDATE shops SET mengen_hash = ?, mengen_uebertragen_am = NOW(), mengen_fehler = NULL WHERE id = ?")
+                 ->execute([$hash, $shop['id']]);
+        Logger::log('mengen_aktion.uebertragen', 'shops', (int) $shop['id'], ['aktionen' => count($payload['aktionen'])], $benutzerId);
+        return ['status' => 'uebertragen', 'aktionen' => count($payload['aktionen'])];
+    }
+
+    /**
+     * Alle aktiven, nicht pausierten Shops mit WordPress-Anmeldung (nach dem Speichern + im Cron).
+     * @return array shop-name => Ergebnis
+     */
+    public function uebertrageAlle(?int $benutzerId = null, ?callable $log = null): array
+    {
+        $erg = [];
+        $shops = $this->db->query("SELECT * FROM shops WHERE ist_aktiv = 1 AND sync_pausiert = 0
+                                   AND wc_url IS NOT NULL AND wc_url <> '' AND wp_app_password IS NOT NULL AND wp_app_password <> ''")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($shops as $shop) {
+            $r = $this->uebertrageShop($shop, $benutzerId);
+            $erg[$shop['name']] = $r;
+            if ($log && $r['status'] !== 'unveraendert') {
+                $log("Mengen-Aktionen {$shop['name']}: " . ($r['status'] === 'uebertragen' ? "{$r['aktionen']} übertragen" : 'FEHLER ' . $r['fehler']));
+            }
+        }
+        return $erg;
+    }
+
     /** Kategorien flach mit Einrückungstiefe, in Baum-Reihenfolge (für die Auswahl) */
     public function kategorienFlach(): array
     {

@@ -38,5 +38,13 @@ foreach ($daten['faelle'] as $f) {
     foreach ($probleme as $p) echo "       $p\n";
     $fehler += $probleme ? 1 : 0;
 }
+// Kopie im WP-Plugin muss identisch sein (shop/wp-plugin/nahtlos-connector/includes/MengenAktionRechner.php)
+$kopie = __DIR__ . '/../../shop/wp-plugin/nahtlos-connector/includes/MengenAktionRechner.php';
+if (!is_file($kopie) || md5_file($kopie) !== md5_file(__DIR__ . '/../src/modules/aktionen/MengenAktionRechner.php')) {
+    echo "FEHL Plugin-Kopie des Rechenkerns weicht ab → Datei nach shop/wp-plugin/nahtlos-connector/includes/ kopieren\n";
+    $fehler++;
+} else {
+    echo "OK   Plugin-Kopie des Rechenkerns identisch\n";
+}
 echo $fehler ? "\n$fehler Fall/Fälle FALSCH\n" : "\nAlle " . count($daten['faelle']) . " Fälle richtig\n";
 exit($fehler ? 1 : 0);
