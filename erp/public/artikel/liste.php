@@ -569,6 +569,7 @@ $actionBarContent = <<<HTML
         <option value="lagerplatz_zuweisen">Lagerplatz zuweisen</option>
         <option value="merkmal_setzen">Merkmal setzen (z.B. Pflege)</option>
         <option value="preise_aendern">💶 Preise ändern</option>
+        <option value="mengen_aktion">🛒 Zu Mengen-Aktion hinzufügen</option>
         <option value="preisschilder">🏷 Preisschilder drucken</option>
         <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
         <option value="eigentuemer">Eigentümer setzen (Hauptfirma / Partner)</option>
@@ -1115,6 +1116,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
             return;
         }
 
+        if (aktion === 'mengen_aktion') {
+            mengenAktionDialog(ids);   // js/mengen_aktionen.js
+            return;
+        }
+
         if (aktion === 'preise_aendern') {
             // eigene Seite im neuen Tab: Einstellungen → Vorschau alt/neu → Übernehmen (artikel/preise_massen.php)
             const f = document.createElement('form');
@@ -1240,6 +1246,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <script>window.EIGENTUEMER_PARTNER = <?= json_encode((new ArtikelEigentumService())->moeglichePartner(), JSON_UNESCAPED_UNICODE) ?>;</script>
 <script src="<?= BASE_PATH ?>/js/eigentuemer_massen.js"></script>
 <script src="<?= BASE_PATH ?>/js/merkmal_massen.js"></script>
+<script src="<?= BASE_PATH ?>/js/mengen_aktionen.js"></script>
 <!-- Bulk-Kategorie Modal -->
 <!-- Massenaktion: Lagerplatz zuweisen (Väter geben den Platz an alle Varianten weiter) -->
 <div id="bulk-lp-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center">

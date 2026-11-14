@@ -10,7 +10,8 @@ $aktionen = $service->findAll();
 $pageTitle       = 'Preise / Aktionen';
 $activeModule    = 'artikel';
 $kategorienBaum = $artikelService->getKategorienBaum();
-$actionBarContent = '<a href="' . BASE_PATH . '/aktionen/bearbeiten.php" class="btn btn-primary btn-sm">+ Neue Aktion</a>';
+$actionBarContent = '<a href="' . BASE_PATH . '/aktionen/bearbeiten.php" class="btn btn-primary btn-sm">+ Neue Aktion</a>'
+                  . ' <a href="' . BASE_PATH . '/aktionen/mengen.php" class="btn btn-secondary btn-sm">🛒 Mengen-Aktionen (4 für 12 / 3 für 2)</a>';
 
 require_once __DIR__ . '/../includes/shell_top.php';
 

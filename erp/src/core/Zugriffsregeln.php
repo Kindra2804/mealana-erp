@@ -122,6 +122,9 @@ final class Zugriffsregeln
             'aktion_kategorie_ajax.php'     => 'artikel.anzeigen',
             'aktion_starten_ajax.php'       => 'artikel.bearbeiten',
             'aktion_loeschen.php'           => 'artikel.loeschen',
+            // Mengen-Aktionen (4 für 12 / 3 für 2): Ansehen frei, Speichern prüft mengen.php selbst (Auth::kann)
+            'mengen.php'                    => 'artikel.anzeigen',
+            'mengen_ajax.php'               => 'artikel.bearbeiten',
         ],
 
         // === Hersteller — Satellit von Artikel-Stammdaten ===
@@ -547,7 +550,7 @@ final class Zugriffsregeln
         'slider'      => ['slide_speichern.php', 'slide_aktion.php', 'artikel_suche.php', 'menue_aktion.php'],
         'aktionen'    => [
             'aktion_speichern.php', 'aktion_preise_speichern.php', 'aktion_artikel_laden.php',
-            'aktion_loeschen.php', 'aktion_starten_ajax.php', 'aktion_kategorie_ajax.php',
+            'aktion_loeschen.php', 'aktion_starten_ajax.php', 'aktion_kategorie_ajax.php', 'mengen_ajax.php',
         ],
         'achsen'      => ['achse_sort_tree_ajax.php', 'achse_loeschen_ajax.php', 'achse_aktualisieren_ajax.php', 'achse_speichern_ajax.php', 'sort_ajax.php'],
         'hersteller'  => ['schnell_speichern.php', 'aktualisieren.php', 'speichern.php'],
