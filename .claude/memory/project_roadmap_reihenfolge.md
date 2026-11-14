@@ -1,6 +1,6 @@
 ---
 name: project-roadmap-reihenfolge
-description: "Große Reihenfolge der noch offenen ERP-Themen, von Jacky festgelegt 2026-07-10 — bei jedem Session-Start hier nachsehen was als Nächstes dran ist"
+description: "Reihenfolge der offenen ERP-Themen, von Jacky festgelegt (aktuell: Stand 2026-11-14, Massenaktion Preis → X-für-Y → Offline-Kasse → Update-Weg → Google → Newsletter → Steuerprofil) — bei jedem Session-Start hier nachsehen"
 metadata:
   node_type: memory
   type: project
@@ -127,3 +127,15 @@ Jacky: Partner-Stammdaten, Kasse/Bon mit Partnerware (inkl. K3 mit echter Signat
 4. **Alles nochmal durchgehen → bereit für 1.0?**, siehe [[project-version-1-0-release]]
 5. Wenn ja: **Woo-Shop Sockenwolle bauen + Soft-Go-Live**
 Daneben weiter offen: Live-Deploy 201–213, Offline-Kasse light (wenn Sunmi zu Hause), Klicktest Offline-Divers.
+
+## ⏭️ Reihenfolge nach dem Online-Gang aller 3 Shops (Jacky 2026-11-14 festgelegt)
+1. **Massenaktion „Standardpreis setzen“**, siehe [[project-idee-massenaktion-preis]]
+2. **Preise: Mengen-Aktionen „X für Y“ + „Kauf 2, zahl 1“** (Kasse + Shop), siehe [[project-preise]]
+3. **Offline-Kasse light** (Tablet quer + Sunmi hoch), siehe [[project_kasse_naechste_punkte]]
+4. **Update-Weg:** veraltete Dateien entfernen + „Was ist neu“ über Zwischenversionen, siehe [[project_update_mechanismus]]
+5. **Google Shopping + Search Console**, siehe [[project_google_shopping_search_console]]
+6. **Newsletter**, siehe [[project_newsletter_slider_ideen]]
+7. **Steuerprofil** (1.1), siehe [[project_steuerprofil]]
+8. **Lang-Yarns-Artikelimport aus CSV** (Jacky 2026-11-14 nachgereicht), siehe [[project-dropshipping]]
+Danach: gemeinsam eine **neue Reihung** der restlichen offenen Punkte machen.
+Zurückgestellt: SPF/DKIM/DMARC je Shop-Domain → erst nach dem Umzug der Woo-Shops auf die neuen Server.

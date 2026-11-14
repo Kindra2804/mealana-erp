@@ -195,3 +195,6 @@ Jacky erinnert sich, das (zusammen mit BOGOF) schon mal besprochen zu haben; sch
 
 ## Offene Frage (noch nicht entschieden)
 - `grundpreis_bezugseinheit` fehlt noch auf `artikel` — brauchen wir ein explizites Feld dafür oder reicht `inhalt_einheit` als Bezugseinheit? (Bei Garn fast immer 'g', aber bei Meter-Ware wäre es 'm')
+
+## Offen: UVP im Shop (Jacky 2026-11-14 „merken“)
+Seit 1.0.15 (Migr. 245) schickt der Shop-Sync den Normalpreis als regular_price, nicht mehr die UVP. Die UVP ist im Shop dadurch unsichtbar. Durchgestrichen wird nur noch bei Sale/Aktion. Falls die UVP wieder sichtbar sein soll: als eigener Text „UVP € x“ (Preisauszeichnung, kein Streichpreis; Streichpreise nur gegen den eigenen früheren Preis), z.B. als Woo-Meta + Ausgabe im Connector. Vor dem Bau rechtlich klären.

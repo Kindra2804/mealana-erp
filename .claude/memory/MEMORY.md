@@ -3,7 +3,7 @@
 ## Aktuell / Steuerung
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — Offline-Divers gebaut 2026-10-26 (Klicktest offen); nächster Schritt Offline-Kasse light mit 2 Oberflächen (Tablet quer + Sunmi hoch)
-- [✅ 1.0-Check](project_1_0_check.md) — 2026-11-11 1.0.4 LIVE (JTL-Abgleich, Schilder; Migr. 231+232), Erstabgleich offen; 2026-11-11: 1.0.2 LIVE (Mail je Kanal + Überlastung); Woo-Shops bekommen eigene Server; 2026-11-10 LIVE-TAG: Paket 1.0.1, Live neu, indra-design angebunden (119 Produkte), Cron + tägl. Sicherung; offen: Startbestand, 1.0.2-Liste; 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Kürzel indra-design = IND) → Live neu + Backup; ⚠️ Hosting-Limits: ein Konto für alle Shops, CPU dauerhaft am Limit, 508-Fehler (2026-11-05) → vor Live klären
+- [✅ 1.0-Check](project_1_0_check.md) — 2026-11-14 1.0.14 LIVE; 1.0.15 (Migr. 245 Shop-Preis = VK statt UVP) + 1.0.16 (Migr. 246 Bestand korrigieren, Inventur-Lagerwahl) LIVE; nächste Migr. 247; 2026-11-11 1.0.4 LIVE (JTL-Abgleich, Schilder; Migr. 231+232), Erstabgleich offen; 2026-11-11: 1.0.2 LIVE (Mail je Kanal + Überlastung); Woo-Shops bekommen eigene Server; 2026-11-10 LIVE-TAG: Paket 1.0.1, Live neu, indra-design angebunden (119 Produkte), Cron + tägl. Sicherung; offen: Startbestand, 1.0.2-Liste; 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Kürzel indra-design = IND) → Live neu + Backup; ⚠️ Hosting-Limits: ein Konto für alle Shops, CPU dauerhaft am Limit, 508-Fehler (2026-11-05) → vor Live klären
 - [✅ Woo-Shop-Checkliste](project_woo_shop_checkliste.md) — für MeaLana & jeden neuen Shop: Übersetzungen, Germanized-Texte, Seiten/Endpunkte deutsch (+Weiterleitung), Lager-Mails aus, Absender je Kanal, Testrunde über Dev
 - [🧪 Shop-Tests über Dev](project_shop_tests_ueber_dev.md) — ✅ SOW-Runde 2026-11-13 durch, Fixes fürs Paket 1.0.11 gelistet; Live-Shops für Tests ans Dev-ERP hängen; Dev-Kanäle pausiert+gesperrt (reicht seit Fix a252d86), SOW-Artikel auf Dev, scripts/shop_test_bestellungen.php; indra-Wartung WPCode 35329 (inaktiv)
 - [🏛️ Indra-Design = EU von Babsi](project_indra_design_eu.md) — ✅ 2026-11-14 ONLINE als EU (1.0.12 live, Rechtstexte, KU, Texte bereinigt); offen: 1. echte Bestellung prüfen, Steuerberatung (Woo-Datum ✅); nächste Migr. 241
@@ -21,7 +21,7 @@
 - [🏷️ Indra-Sortiment + Preise](project_indra_sortiment.md) — Motivcodes W/A/K/N/P/S/C/E, Preisliste, Untersetzer = Motiv-Vater × Material; 2026-11-04 Weihnachtsanhänger XM (3,50 / 4 für 12) + Dosen DO (7,90), Katalog Nov 2026
 - [💡 Newsletter + Slider aus dem ERP](project_newsletter_slider_ideen.md) — Slider ✅ gebaut 2026-11-05 (Migr. 224 + WP-Plugin NAHTLOS Connector), Plugin 1.3.1 live auf indra-design (3 Slides + 7 Kacheln, Migr. 225); Newsletter offen; Live-Neuaufsatz ab KW 46
 - [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
-- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-10-31: Kürzel ✅ → Dropshipping ✅ gebaut (Klicktest) → Lizenzserver ✅ (Schritte 1–4 + Klicktest 2026-11-01) → Paperless ✅ (Klicktest 2026-11-01, beleg.mealana.at) → 1.0-Check → Woo-SOW + Soft-Go-Live; Live wird neu auf 1.0 aufgesetzt (kein Deploy 201–220)
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-11-14: Massenaktion Standardpreis → X-für-Y/BOGOF → Offline-Kasse light → Update-Weg → Google Shopping/SC → Newsletter → Steuerprofil → Lang-CSV-Import, dann neu reihen; SPF/DKIM erst nach Server-Umzug
 - [Klicktest-Fixes 2026-10-29](project_klicktest_fixes_20261029.md) — Mietfach/MR-Nummernkreis/Z-Bon eigener Kreis K1-Z-00001 (Migr. 212)+Reihenfolge+Auto-Cron/A4-Ränder gebaut, Kassensturz Partner/Stornos, Storno nur am selben Tag vor Z
 - [📋 Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler ✅ bestanden 2026-10-30
 - [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; Grundmodul 790 inkl. Verkauf+Packplatz; 2026-11-01 Lizenz-Bau-Entscheidungen 1–8 (nur Grundmodul ohne Lizenz, Schloss, Zertifikat-Warnung)
@@ -31,6 +31,8 @@
 
 - [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + Live offen
 - [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, veraltet-Liste, Merkmal-Massenaktion, Migr. 233–235); Paket 1.0.9 gebaut (D:/ERP/pakete), Live + Merkmal-Import offen; nächste Migr. 238
+
+- [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem Paket
 
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit
@@ -53,6 +55,7 @@
 - [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — gegen autoritative Quelle prüfen
 
 ## Referenzen
+- [Dev-ERP Browser-Login](reference_dev_erp_login.md) — Benutzer claude, PW in import/zugang Woo Claude.txt; Kasse nicht (Arbeitsplatz gebunden)
 - [WordPress-Zugang für Claude](reference_wp_claude_zugang.md) — wp-admin "claude" auf indra-design.at
 - [WP-Snippets im Repo](reference_wp_snippets_repo.md) — Kopien in mealana\shop\wp-snippets\
 - [Browser-Testing-Tools (Playwright)](reference_browser_testing_tools.md) — unter .claude-browser-tools/
@@ -77,6 +80,7 @@
 - [Paperless — Beleg per QR](project_paperless_rechnung_modul.md) — fertig + Klicktest 2026-11-01, läuft auf beleg.mealana.at; „Ohne Druck“ entfernt; Live-ERP: URL+Schlüssel eintragen
 
 ## Kasse / RKSV
+- [🧾 RKSV-Exporte + Badge Fremdumsatz](project_rksv_exporte_fremdumsatz.md) — offen: §7 DEP über BFR control/export, §131-Export, Jahresbeleg prüfen; Badge „Fremd“ für Partner-Bons/A-IND in Auftragsliste
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign, Doppel-Gutschrift-Sperre, A4-Bon
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — BFR-Hardwaretest erfolgreich
 - [RKSV/BFR Implementierung](project_rksv_bfr.md) — Hardwaretest 2026-07-19 ok
@@ -95,6 +99,8 @@
 - [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale + Bilder fertig
 - [Merkmale-Modul Design](project_merkmale.md) — 2 Ebenen, Modal
 - [Preise-Modul Design](project_preise.md) — Effektivpreis, Aktionen, Grundpreis; TODO X-für-Y gemischt + BOGOF (Kasse+Shop)
+- [💶 Massenaktion Preise ändern](project_idee_massenaktion_preis.md) — ✅ gebaut 2026-11-14 (2205453), ✅ fertig + Klicktest 2026-11-14 (67e2be5), Live mit nächstem Paket
+- [🛒 Mengen-Aktionen X für Y / 3 für 2](project_mengen_aktionen.md) — Entscheidungen 1–9 Jacky 2026-11-14 (Rabatt gleichmäßig verteilt), Schritt 1 Verwaltung ✅ (Migr. 241) + 2 Rechenkern PHP/JS ✅ (tests/mengen_aktion_*) + Art Paketpreise (Raunzmarker, Migr. 242) ✅ + 3 Kasse ✅ (Migr. 243, Klicktest offen) + 4 Plugin 1.7.0 + Übertragung ✅ (Migr. 244) + 5 Live-Test indra ✅ (Plugin 1.7.0 auf indra, SOW/Bio offen; Snippet 34685 bleibt bis Live-Paket); nächste Migr. 245
 - [Aktions-Modul](project_aktionen_modul.md) — fertig
 - [Bilder-Modul](project_bilder_modul.md) — fertig, Logo-Bugkette gelöst
 - [Spalten-Picker](project_spalten_picker.md) — Kind-Zeilen-Parität

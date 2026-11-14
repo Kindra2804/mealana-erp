@@ -1348,7 +1348,19 @@ Details in `.claude/memory/` (project_indra_design_eu, project_bio_wolle_aufbau,
 - **Fixes 1.0.12**: Mail bei Partner-Auftrag → Absender/Gruß = Partner (75c7076); Mails ohne MwSt. bei Kleinunternehmer, Zahlungsmail mit Versandzeile + echter MwSt. aus `auftraege.steuerbetrag` (betraf auch KG), Belegfuß 15 mm statt 0 (9a5814c). Dazu Plattenmaß (239), Kuvert, Artikelliste.
 - **Fix 1.0.13**: Shop-Sync überträgt `tax_class` (vorher alles 20 %, Bücher falsch) – Zuordnung über AT-Satz der Woo-Klassen (`ShopSyncService::steuerFelder()`, Client `listeSteuerklassen/listeSteuersaetze` mit Blättern); Migr. **240** markiert Artikel ≠ 20 % zum Neu-Senden (a28cadd).
 - **Shops**: Mail-Snippet indra #34191 auf aktuelle Fassung (keine „Hinweis“-Mails), Datumsformat indra `j. F Y`/`H:i`. Bio-Kurztest über Dev ✅ (Widerruf-Bestätigen braucht WP-Anmeldung im Kanal). Wartung aus: indra 35329, Bio 1109, SOW 25 (`.claude-browser-tools/wartung_schalten.js`).
-- **Offen**: erste echte Bestellung je Shop genau prüfen; Steuerberatung (Bestandsübergang EU, Gutschein-Auszahlung). Nächste Migration **241**.
+- **Offen**: erste echte Bestellung je Shop genau prüfen; Steuerberatung (Bestandsübergang EU, Gutschein-Auszahlung).
+
+## Update 2026-11-14 (Nachmittag/Abend): Preis-Massenaktion, Mengen-Aktionen, Kasse-Sale, Shop-Preis-Fix, Bestandskorrektur – 1.0.14 bis 1.0.16 LIVE
+
+Details in `.claude/memory/` (project_idee_massenaktion_preis, project_mengen_aktionen, project_1_0_check, project_rksv_exporte_fremdumsatz, project_roadmap_reihenfolge).
+- **Preise ändern (Massenaktion)**: Artikelliste → „💶 Preise ändern“ (`artikel/preise_massen.php`, `PreisMassenService`). Ziel/Basis (Standard, Kundengruppen, UVP), ±%/±€/fest, Rundung aufwärts (`rundePreis()` von Jacky), Vorschau mit Überschreiben, Protokoll `preis.massen` mit Artikelnummer/Name. Fund: Kinder haben eigene Preiszeilen, kein echtes Vererben.
+- **Mengen-Aktionen** (Migr. 241–244): „4 für 12 €“, „3 für 2“, Paketpreise (Raunzmarker). Rechenkern PHP + JS gleich (`MengenAktionRechner`, `js/mengen_aktion_rechner.js`, 17 Prüffälle `erp/tests/mengen_aktion_*`, Test prüft Plugin-Kopie). Rabatt gleichmäßig verteilt, kein doppelter Rabatt. Kasse live + Server rechnet nach (Bon-Zeile `preis_vorher_brutto`/`aktion_hinweis`). Shop: **NAHTLOS Connector 1.7.1** auf allen 3 Shops (Block-Warenkorb, Badge neben Preis, Hinweis „noch x Stück“, Badge nur wenn es spart). Live: „Weihnachtsanhänger 3 für 12 €“ aktiv, **Snippet 34685 aus**.
+- **Kasse**: Sale-/Aktionspreise kommen jetzt an (`KassenService::mitEffektivPreis`), vorher immer Standardpreis.
+- **Fix Shop-Preis 1.0.15** (Migr. 245): regular_price war die **UVP** statt des VK (Anhänger 3,50 statt 4,50; ~1.500 Artikel abweichend). Jetzt Normalpreis; Preis-/Sale-/Aktionsänderungen markieren den Artikel (`PreisService::fuerShopMarkieren`, Cron `preiswechselMarkieren` für Beginn/Ende).
+- **1.0.16** (Migr. 246): „± Bestand korrigieren“ im Artikel → Lager (Bewegung „Korrektur“ mit Grund, Recht inventur.anlegen); Einzelartikel-Inventur mit Lagerwahl, Bug „Bitte ein Ziel für den Scope wählen“ (Browser-Autovervollständigung) behoben.
+- **Artikelliste**: Kategorie „Fertige Schilder“ zeigt ihre Schilder wieder (12d8371).
+- **Neue Reihenfolge** (Jacky): ~~Massenaktion~~ ✅ → ~~X-für-Y~~ ✅ → Offline-Kasse light → Update-Weg → Google Shopping/Search Console → Newsletter → Steuerprofil → Lang-CSV-Import, dann neu reihen. Auf der Liste: RKSV §7 (DEP über BFR `/control/export`) + §131-Export, Badge „Fremd“ in Auftragsliste, UVP-Anzeige im Shop, Staffelpreise wirkungslos, Mengen-Aktionen an Messe-Kasse, SPF/DKIM nach Server-Umzug.
+- Plugin-ZIP mit Python (Pfade mit „/“) bauen, nicht PowerShell Compress-Archive. Nächste Migration **247**.
 
 ## Commit Convention
 
