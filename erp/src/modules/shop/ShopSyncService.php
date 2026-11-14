@@ -49,6 +49,9 @@ class ShopSyncService
     /** @var array<int,array<string,int>> shopId => [einheit_slug => wc_unit_id], siehe findeEinheitId() */
     private array $einheitenCache = [];
 
+    /** @var array<int,array<string,string>> shopId => [Satz z.B. "10.00" => Woo-tax_class-Slug], siehe steuerFelder() */
+    private array $steuerklassenCache = [];
+
     /** @var array<int,array> vaterId => Dimensionen (siehe holeDimensionenFuerVater()), Cache pro Sync-Lauf */
     private array $dimensionenCache = [];
 
@@ -786,6 +789,48 @@ class ShopSyncService
         $this->repo->markiereKategorieBildSynced((int)$kategorie['id'], $shopId, $bildPfad, (string)$wcMedia['id']);
     }
 
+    /**
+     * Steuerklasse des Artikels als WooCommerce-Felder (tax_status + tax_class).
+     * Bis 2026-11-14 wurde KEINE Steuerklasse übertragen → jedes Produkt lief in Woo mit dem
+     * Standardsatz 20 %, auch Bücher (10 %); die Shop-Bestellung kam dann mit 20 % ins ERP
+     * (Fund Bio-Testbestellung, Everyday Basics). Zuordnung über den österreichischen Satz der
+     * Woo-Klassen statt über Namen/Slugs (die je Shop anders heißen können).
+     * Kein passender Satz im Shop → Exception (Artikel bekommt Sync-Fehler) statt still 20 %.
+     */
+    private function steuerFelder(WooCommerceClient $client, int $shopId, int $artikelId): array
+    {
+        $st = Database::getInstance()->prepare("
+            SELECT COALESCE(sk.satz, skv.satz) FROM artikel a
+            LEFT JOIN steuerklassen sk  ON sk.id = a.steuerklasse_id
+            LEFT JOIN artikel v         ON v.id = a.vaterartikel_id
+            LEFT JOIN steuerklassen skv ON skv.id = v.steuerklasse_id
+            WHERE a.id = ?");
+        $st->execute([$artikelId]);
+        $satz = $st->fetchColumn();
+        if ($satz === false || $satz === null) return [];   // ohne Steuerklasse: Woo-Einstellung bleibt
+        $satz = number_format((float)$satz, 2, '.', '');
+        if ((float)$satz == 0.0) return ['tax_status' => 'none', 'tax_class' => ''];
+
+        if (!isset($this->steuerklassenCache[$shopId])) {
+            $map = [];
+            foreach ($client->listeSteuerklassen() as $klasse) {
+                $slug = (string)($klasse['slug'] ?? '');
+                if ($slug === '') continue;
+                foreach ($client->listeSteuersaetze($slug) as $rate) {
+                    if (strtoupper((string)($rate['country'] ?? '')) !== 'AT') continue;
+                    $schluessel = number_format((float)$rate['rate'], 2, '.', '');
+                    // Standard gewinnt bei gleichem Satz; Woo erwartet für "standard" einen Leerstring
+                    if (!isset($map[$schluessel]) || $slug === 'standard') $map[$schluessel] = $slug === 'standard' ? '' : $slug;
+                }
+            }
+            $this->steuerklassenCache[$shopId] = $map;
+        }
+        if (!array_key_exists($satz, $this->steuerklassenCache[$shopId])) {
+            throw new \RuntimeException("Im Shop gibt es keine Steuerklasse mit {$satz} % für Österreich (WooCommerce → Einstellungen → Steuer).");
+        }
+        return ['tax_status' => 'taxable', 'tax_class' => $this->steuerklassenCache[$shopId][$satz]];
+    }
+
     private function baueProduktPayload(WooCommerceClient $client, array $artikel, int $shopId): array
     {
         $preisErgebnis = $this->baueRegularUndSalePreis((int)$artikel['artikel_id']);
@@ -801,6 +846,7 @@ class ShopSyncService
         ];
 
         $payload += $preisErgebnis['felder'];
+        $payload += $this->steuerFelder($client, $shopId, (int)$artikel['artikel_id']);
 
         if (!empty($wcKategorieIds)) {
             $payload['categories'] = array_map(fn($id) => ['id' => (int)$id], $wcKategorieIds);
@@ -1042,6 +1088,7 @@ class ShopSyncService
         // -- Fund 06.08.2026, direkt bevor er in Produktion aufgefallen wäre).
         $payload = ['sku' => $kind['artikelnummer'], 'status' => 'publish'];
         $payload += $preisErgebnis['felder'];
+        $payload += $this->steuerFelder($client, $shopId, (int)$kind['artikel_id']);
 
         // Bei Variationen heißt das Feld 'option' (Singular, ein fester Wert) --
         // beim Eltern-Payload oben ist es 'options' (Plural, alle möglichen Werte).

@@ -348,6 +348,24 @@ class WooCommerceClient
         return $this->request('GET', '/products/units', ['per_page' => 100]);
     }
 
+    /** Steuerklassen des Shops ([{slug, name}, …], „standard“ inklusive). */
+    public function listeSteuerklassen(): array
+    {
+        return $this->request('GET', '/taxes/classes');
+    }
+
+    /** Steuersätze einer Klasse ([{country, rate, …}, …]), alle Seiten (OSS-Shops haben > 100 Sätze je Klasse). */
+    public function listeSteuersaetze(string $klasse): array
+    {
+        $alle = [];
+        for ($seite = 1; $seite <= 20; $seite++) {
+            $teil = $this->request('GET', '/taxes', ['class' => $klasse, 'per_page' => 100, 'page' => $seite]);
+            $alle = array_merge($alle, $teil);
+            if (count($teil) < 100) break;
+        }
+        return $alle;
+    }
+
     public function erstelleVariation(string $parentId, array $daten): array
     {
         return $this->request('POST', "/products/$parentId/variations", [], $daten);
