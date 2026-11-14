@@ -90,6 +90,21 @@ function nahtlos_mengen_aktion_fuer_produkt(int $produktId): ?array
     return null;
 }
 
+/**
+ * Lohnt sich die Aktion beim aktuellen Stückpreis überhaupt? (z.B. „3 für 12 €“ bei 3,50 € je Stück: nein)
+ * Sonst kein Badge und kein „noch x Stück“-Hinweis – das wäre irreführend.
+ */
+function nahtlos_mengen_lohnt(array $a, float $preis): bool
+{
+    if ($preis <= 0) return false;
+    if ($a['art'] === 'x_fuer_y') return $a['menge'] * $preis > (float)$a['paketpreis'] + 0.004;
+    if ($a['art'] === 'paketpreise') {
+        foreach ($a['pakete'] as $p) if ($p['menge'] * $preis > $p['preis'] + 0.004) return true;
+        return false;
+    }
+    return true;   // kauf_x_zahl_y spart immer
+}
+
 // ── Warenkorb ──────────────────────────────────────────────────────────────
 
 /** Ergebnis der letzten Berechnung: ['positionen' => [cart_item_key => …], 'hinweise' => […]] */
@@ -129,7 +144,10 @@ add_action('woocommerce_before_calculate_totals', function ($cart) {
     $erg['aktion_je_zeile'] = [];
     foreach ($positionen as $p) {
         foreach ($regeln as $a) {
-            if (in_array($p['artikel_id'], $a['woo_ids'], true) && !$p['ist_reduziert']) { $erg['aktion_je_zeile'][$p['key']] = $a['id']; break; }
+            if (in_array($p['artikel_id'], $a['woo_ids'], true) && !$p['ist_reduziert']) {
+                if (isset($erg['positionen'][$p['key']]) || nahtlos_mengen_lohnt($a, $p['preis'])) $erg['aktion_je_zeile'][$p['key']] = $a['id'];
+                break;
+            }
         }
     }
     nahtlos_mengen_ergebnis($erg);
@@ -167,6 +185,8 @@ function nahtlos_mengen_badge_html(int $produktId, string $klasse): string
 {
     $a = nahtlos_mengen_aktion_fuer_produkt($produktId);
     if (!$a || $a['badge_text'] === '') return '';
+    $produkt = wc_get_product($produktId);
+    if (!$produkt || $produkt->is_on_sale() || !nahtlos_mengen_lohnt($a, (float)$produkt->get_price())) return '';
     $titel = $a['art'] === 'paketpreise'
         ? implode(' · ', array_map(fn($p) => $p['menge'] . ' für ' . wc_price($p['preis']), $a['pakete']))
         : '';
@@ -189,7 +209,7 @@ add_action('woocommerce_single_product_summary', function () {
     global $product;
     if (!$product) return;
     $a = nahtlos_mengen_aktion_fuer_produkt($product->get_id());
-    if (!$a) return;
+    if (!$a || $product->is_on_sale() || !nahtlos_mengen_lohnt($a, (float)$product->get_price())) return;
     $text = match ($a['art']) {
         'x_fuer_y'      => 'Aktion: ' . $a['menge'] . ' Stück für ' . wp_strip_all_tags(wc_price($a['paketpreis'])) . ' – auch gemischt aus der Aktion',
         'kauf_x_zahl_y' => 'Aktion: ' . $a['menge'] . ' kaufen, ' . $a['zahl_menge'] . ' bezahlen – auch gemischt aus der Aktion',
