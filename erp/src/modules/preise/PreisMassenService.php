@@ -49,12 +49,26 @@ class PreisMassenService
     }
 
     /**
-     * Rundet einen errechneten Preis nach der gewählten Regel.
-     * TODO Jacky: hier ist deine Aufgabe – siehe Erklärung im Chat.
+     * Rundet einen errechneten Preis nach der gewählten Regel (siehe RUNDUNGEN), immer AUFwärts,
+     * damit eine Preiserhöhung nicht durch die Rundung zur Senkung wird (8,95 + 5 % = 9,40 → 9,90, nicht 8,90).
+     * Ein Preis, der schon passt, bleibt (9,90 bei ,90). Gerechnet wird in ganzen Cent (keine Kommazahl-Ungenauigkeit).
+     * Geschrieben von Jacky.
      */
     public static function rundePreis(float $preis, string $rundung): float
     {
-        return round($preis, 2);
+        $cent = (int) round($preis * 100);
+        $endung = (int) round((float) $rundung * 100);
+        $ergebnisInCent = match ($rundung) {
+            'keine'                => $cent,
+            '0.10'                 => (int) ceil($cent / 10) * 10,
+            '0.50'                 => (int) ceil($cent / 50) * 50,
+            '1.00'                 => (int) ceil($cent / 100) * 100,
+            '0.90', '0.95', '0.99' => (int) (ceil(($cent - $endung) / 100) * 100 + $endung),
+            default                => $cent,
+        };
+
+        $ergebnisInEuro = ($ergebnisInCent / 100);
+        return round($ergebnisInEuro, 2);
     }
 
     /** Rechnet den neuen Preis aus der Basis. null = nicht berechenbar (Basis fehlt). */
