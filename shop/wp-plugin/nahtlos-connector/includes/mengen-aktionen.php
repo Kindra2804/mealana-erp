@@ -174,17 +174,15 @@ function nahtlos_mengen_badge_html(int $produktId, string $klasse): string
         . esc_html($a['badge_text']) . '</span>';
 }
 
-// Produktliste (klassische Archive/Kategorien)
-add_action('woocommerce_after_shop_loop_item_title', function () {
-    global $product;
-    if ($product) echo nahtlos_mengen_badge_html($product->get_id(), 'ist-liste');
-}, 15);
-
-// Produkt-Blöcke (z.B. Startseite)
-add_filter('woocommerce_blocks_product_grid_item_html', function ($html, $daten, $product) {
+// Produktliste + Produkt-Blöcke: Badge direkt neben dem Preis (Jacky 2026-11-14: oberhalb wirkte es verloren).
+// Auf der eigenen Produktseite nicht – dort steht der Hinweis-Kasten unter dem Preis.
+add_filter('woocommerce_get_price_html', function ($html, $product) {
+    if (is_admin() && !wp_doing_ajax()) return $html;
+    // Produktseite selbst (auch Variationspreis): kein Badge; Listen darauf (ähnliche Produkte) schon
+    if (function_exists('is_product') && is_product() && !wc_get_loop_prop('name')) return $html;
     $badge = nahtlos_mengen_badge_html($product->get_id(), 'ist-liste');
-    return $badge ? str_replace('</li>', $badge . '</li>', $html) : $html;
-}, 10, 3);
+    return $badge ? $html . ' ' . $badge : $html;
+}, 20, 2);
 
 // Produktseite: unter dem Preis, bei Paketpreisen mit allen Größen
 add_action('woocommerce_single_product_summary', function () {
@@ -202,7 +200,7 @@ add_action('woocommerce_single_product_summary', function () {
 
 add_action('wp_enqueue_scripts', function () {
     wp_add_inline_style('nahtlos-menue', '
-        .nahtlos-mengen-badge{display:inline-block;margin:4px 0;padding:2px 10px;border-radius:999px;font-size:.8em;font-weight:700;
+        .nahtlos-mengen-badge{display:inline-block;margin:0 0 0 6px;vertical-align:middle;padding:1px 9px;border-radius:999px;font-size:.8em;font-weight:700;
             background:var(--theme-palette-color-1,#b45309);color:#fff;line-height:1.6}
         .nahtlos-mengen-hinweis{margin:.5em 0 1em;padding:.5em .8em;border-radius:6px;font-weight:600;
             background:rgba(180,83,9,.08);border-left:3px solid var(--theme-palette-color-1,#b45309)}');
