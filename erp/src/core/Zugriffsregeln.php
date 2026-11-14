@@ -68,6 +68,7 @@ final class Zugriffsregeln
             'artikel_lieferant_speichern.php' => 'artikel.bearbeiten',
             // Preise sind ein Tab im Artikel-Modul, keine eigene Berechtigung vorhanden
             'preis_speichern.php'           => 'artikel.bearbeiten',
+            'preise_massen.php'             => 'artikel.bearbeiten',   // Massenaktion "Preise ändern"
             'uvp_speichern.php'             => 'artikel.bearbeiten',
             'staffelpreis_speichern.php'    => 'artikel.bearbeiten',
             'sale_override_speichern.php'   => 'artikel.bearbeiten',

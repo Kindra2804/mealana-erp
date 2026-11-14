@@ -568,6 +568,7 @@ $actionBarContent = <<<HTML
         <option value="kanal_neu_synchronisieren">Erneut synchronisieren (Shop)</option>
         <option value="lagerplatz_zuweisen">Lagerplatz zuweisen</option>
         <option value="merkmal_setzen">Merkmal setzen (z.B. Pflege)</option>
+        <option value="preise_aendern">💶 Preise ändern</option>
         <option value="preisschilder">🏷 Preisschilder drucken</option>
         <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
         <option value="eigentuemer">Eigentümer setzen (Hauptfirma / Partner)</option>
@@ -1111,6 +1112,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         if (aktion === 'merkmal_setzen') {
             merkmalMassenDialog(ids);   // js/merkmal_massen.js
+            return;
+        }
+
+        if (aktion === 'preise_aendern') {
+            // eigene Seite im neuen Tab: Einstellungen → Vorschau alt/neu → Übernehmen (artikel/preise_massen.php)
+            const f = document.createElement('form');
+            f.method = 'post'; f.action = window.BASE_PATH + '/artikel/preise_massen.php'; f.target = '_blank';
+            ids.forEach(function (id) { const i = document.createElement('input'); i.type = 'hidden'; i.name = 'ids[]'; i.value = id; f.appendChild(i); });
+            document.body.appendChild(f); f.submit(); f.remove();
             return;
         }
 
