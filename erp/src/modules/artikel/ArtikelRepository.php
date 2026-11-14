@@ -24,6 +24,9 @@ require_once __DIR__ . '/../../core/Database.php';
  */
 class ArtikelRepository
 {
+    /** Fertige Schilder (konfig_fertige_artikel) hängen eingeklappt unter ihrem Layout, nicht als eigene Zeile */
+    private const SCHILD_EINKLAPPEN = 'NOT EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_top WHERE kf_top.artikel_id = a.id)';
+
     private PDO $db;
 
     public function __construct()
@@ -105,7 +108,7 @@ class ArtikelRepository
     {
         // Fertige Schilder (konfig_fertige_artikel) hängen eingeklappt unter ihrem Layout (Jacky 2026-11-13)
         $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL',
-                       'NOT EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_top WHERE kf_top.artikel_id = a.id)'];
+                       'schild' => self::SCHILD_EINKLAPPEN];
         $having = '';
 
         $sortMap = [
@@ -184,6 +187,11 @@ class ArtikelRepository
             $katIds = array_map('intval', $filter['kategorie_ids']);
             $katPl  = implode(',', $katIds);
             $conditions[] = "a.id IN (SELECT artikel_id FROM artikel_kategorien WHERE kategorie_id IN ($katPl))";
+            // Fertige Schilder nur einklappen, wenn ihr Layout auch in dieser Kategorie steht – sonst
+            // (z.B. Kategorie "Fertige Schilder", Layouts liegen unter "Schilder") als eigene Zeile zeigen
+            $conditions['schild'] =
+                "NOT EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_top WHERE kf_top.artikel_id = a.id
+                             AND kf_top.layout_artikel_id IN (SELECT artikel_id FROM artikel_kategorien WHERE kategorie_id IN ($katPl)))";
         }
 
         if (!empty($filter['nurKategorielos'])) {
@@ -331,7 +339,7 @@ class ArtikelRepository
     {
         // Fertige Schilder (konfig_fertige_artikel) hängen eingeklappt unter ihrem Layout (Jacky 2026-11-13)
         $conditions = ['a.vaterartikel_id IS NULL', 'a.zustand_vater_id IS NULL',
-                       'NOT EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_top WHERE kf_top.artikel_id = a.id)'];
+                       'schild' => self::SCHILD_EINKLAPPEN];
         $having = '';
 
         $params = [];
@@ -398,6 +406,11 @@ class ArtikelRepository
             $katIds = array_map('intval', $filter['kategorie_ids']);
             $katPl  = implode(',', $katIds);
             $conditions[] = "a.id IN (SELECT artikel_id FROM artikel_kategorien WHERE kategorie_id IN ($katPl))";
+            // Fertige Schilder nur einklappen, wenn ihr Layout auch in dieser Kategorie steht – sonst
+            // (z.B. Kategorie "Fertige Schilder", Layouts liegen unter "Schilder") als eigene Zeile zeigen
+            $conditions['schild'] =
+                "NOT EXISTS (SELECT 1 FROM konfig_fertige_artikel kf_top WHERE kf_top.artikel_id = a.id
+                             AND kf_top.layout_artikel_id IN (SELECT artikel_id FROM artikel_kategorien WHERE kategorie_id IN ($katPl)))";
         }
 
         if (!empty($filter['nurKategorielos'])) {
