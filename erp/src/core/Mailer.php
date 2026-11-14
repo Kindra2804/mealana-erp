@@ -90,7 +90,9 @@ class Mailer
     public function absender(): array
     {
         return [
-            'name'    => $this->wert('mail_from_name', $this->config['firmenname'] ?? 'MeaLana ERP'),
+            // Partner-Auftrag ohne Kanal-Absendernamen: Partner statt Hauptfirma (Verkauf im fremden Namen)
+            'name'    => trim((string)($this->shop['mail_from_name'] ?? '')) ?: ($this->partner['name'] ?? '')
+                         ?: $this->wert('mail_from_name', $this->config['firmenname'] ?? 'MeaLana ERP'),
             'adresse' => $this->wert('mail_from_address'),
             'smtp'    => (string)(($this->eigenesSmtp() ? $this->shop : $this->config)['mail_smtp_host'] ?? ''),
         ];
@@ -259,6 +261,8 @@ class Mailer
         if ($this->partner) {
             $p = $this->partner;
             $vars['firmenname'] = $p['name'];
+            // Gruß „Ihr …-Team“: Kanalname (z.B. INDRA DESIGN) hat Vorrang, sonst Partner – nie die Hauptfirma
+            if (trim((string)($this->shop['mail_from_name'] ?? '')) === '') $vars['marke'] = $p['name'];
             if (!empty($p['telefon'])) $vars['firma_tel'] = $p['telefon'];
             if (!empty($p['website'])) $vars['firma_web'] = (str_starts_with($p['website'], 'http') ? '' : 'https://') . $p['website'];
             if (!empty($p['iban'])) {
