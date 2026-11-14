@@ -38,6 +38,10 @@ Regal/Fach-Struktur unterhalb eines Lagers, Grundlage für die Inventur (mehrere
 3. Optional Notiz.
 4. "Inventur starten" → Lauf erscheint in der Liste mit Status "Läuft".
 
+**Einzelner Artikel:** Nummer oder Name eintippen und den **Treffer anklicken** (oder Enter = erster Treffer). Darunter das **Lager** wählen, z.B. Babsis Lager. Dann zeigt die Zählliste nur dieses Lager, und beim Erfassen ist es vorgewählt. „Alle Lager“ = wie bisher. Bei einem Fehler bleibt die Auswahl stehen, die Meldung steht rot oben.
+
+> Für einen einzelnen falschen Bestand (z.B. versehentlich eingebucht) ist **„± Bestand korrigieren“** im Artikel schneller als eine Inventur, siehe Lager-Handbuch.
+
 ## Status-Verlauf
 
 - **Läuft** → kann pausiert oder abgebrochen werden.

@@ -371,6 +371,78 @@ class LagerService
         return ['erfolg' => true];
     }
 
+    public const KORREKTUR_GRUENDE = [
+        'fehlbuchung'    => 'Fehlbuchung',
+        'schwund'        => 'Schwund / nicht auffindbar',
+        'bruch'          => 'Bruch / beschädigt',
+        'eigenverbrauch' => 'Eigenverbrauch / Muster',
+        'gefunden'       => 'Gefunden / Mehrbestand',
+        'sonstiges'      => 'Sonstiges',
+    ];
+
+    /**
+     * Bestand korrigieren (Artikel → Lager): Bestand einer Zeile Artikel × Lager × Charge auf einen
+     * neuen Wert setzen, mit Grund. Bewegungslog-Typ 'korrektur' (Grund + Notiz in der Notiz),
+     * vorher/nachher sichtbar. Shop-Bestand zieht über lagerbestand.geaendert_am nach.
+     * Recht: wie Inventur anlegen (Jacky 2026-11-14: „jeder der Inventur darf, darf korrigieren“).
+     */
+    public function bestandKorrigieren(int $artikelId, int $lagerId, ?string $charge, float $neu, string $grund, ?string $notiz, ?int $benutzerId): array
+    {
+        $charge = ($charge !== null && trim($charge) !== '') ? trim($charge) : null;
+        if (!$artikelId || !$lagerId)               return ['erfolg' => false, 'fehler' => 'Artikel und Lager fehlen'];
+        if ($neu < 0 || !is_finite($neu))           return ['erfolg' => false, 'fehler' => 'Der neue Bestand darf nicht negativ sein'];
+        if (!isset(self::KORREKTUR_GRUENDE[$grund])) return ['erfolg' => false, 'fehler' => 'Bitte einen Grund wählen'];
+        if ($grund === 'sonstiges' && trim((string)$notiz) === '') return ['erfolg' => false, 'fehler' => 'Bei „Sonstiges“ bitte eine Notiz eintragen'];
+
+        $vorher = $this->repo->getBestand($artikelId, $lagerId, $charge);
+        $diff   = round($neu - $vorher, 3);
+        if (abs($diff) < 0.0005) return ['erfolg' => false, 'fehler' => 'Der Bestand ist schon ' . rtrim(rtrim(number_format($vorher, 3, ',', ''), '0'), ',')];
+
+        $this->repo->setzeBestandWert($artikelId, $lagerId, $charge, $neu);
+        $text = self::KORREKTUR_GRUENDE[$grund] . (trim((string)$notiz) !== '' ? ': ' . trim($notiz) : '');
+        $bewegungId = $this->repo->insertBewegung([
+            'artikel_id'      => $artikelId,
+            'lager_id'        => $lagerId,
+            'lieferant_id'    => null,
+            'ek_preis'        => null,
+            'charge'          => $charge,
+            'bewegungstyp'    => 'korrektur',
+            'menge'           => abs($diff),
+            'bestand_vorher'  => $vorher,
+            'bestand_nachher' => $neu,
+            'referenz'        => 'Bestandskorrektur ' . ($diff > 0 ? '+' : '−') . rtrim(rtrim(number_format(abs($diff), 3, ',', ''), '0'), ','),
+            'notiz'           => mb_substr($text, 0, 255),
+            'benutzer_id'     => $benutzerId,
+        ]);
+        $this->pruefAuslaufartikelStatus($artikelId, $this->repo->getTotalBestand($artikelId, $lagerId));
+        Logger::log('lager.bestand_korrigiert', 'lagerbestand', $bewegungId, [
+            'artikel_id' => $artikelId, 'lager_id' => $lagerId, 'charge' => $charge,
+            'vorher' => $vorher, 'nachher' => $neu, 'grund' => $grund, 'notiz' => $notiz,
+        ], $benutzerId);
+        return ['erfolg' => true, 'vorher' => $vorher, 'nachher' => $neu, 'differenz' => $diff];
+    }
+
+    /** Für den Korrektur-Dialog: alle aktiven Lager mit dem Bestand des Artikels je Charge */
+    public function bestandFuerKorrektur(int $artikelId): array
+    {
+        $db = Database::getInstance();
+        $lager = $db->query("SELECT id, name FROM lager WHERE aktiv = 1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+        $st = $db->prepare("SELECT lager_id, charge, bestand FROM lagerbestand WHERE artikel_id = ? ORDER BY charge IS NOT NULL, charge");
+        $st->execute([$artikelId]);
+        $jeLager = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $jeLager[(int)$r['lager_id']][] = ['charge' => $r['charge'], 'bestand' => (float)$r['bestand']];
+        }
+        foreach ($lager as &$l) {
+            $l['id'] = (int)$l['id'];
+            $l['zeilen'] = $jeLager[$l['id']] ?? [];
+            $l['gesamt'] = array_sum(array_column($l['zeilen'], 'bestand'));
+        }
+        unset($l);
+        usort($lager, fn($a, $b) => ($b['gesamt'] > 0) <=> ($a['gesamt'] > 0));   // Lager mit Bestand zuerst
+        return $lager;
+    }
+
     /**
      * Wie warenausgang(), aber erlaubt negativen Bestand.
      * Für Kasse-Verkauf wenn ueberverkauf_erlaubt=1 und Bestand=0.

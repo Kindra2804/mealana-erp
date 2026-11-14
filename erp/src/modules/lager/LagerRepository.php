@@ -344,6 +344,24 @@ class LagerRepository
         }
     }
 
+    /**
+     * Bestandskorrektur (Artikel → Lager → „Bestand korrigieren“): setzt den Bestand einer Zeile
+     * (Artikel × Lager × Charge, NULL = ohne Charge) auf einen festen Wert. Legt die Zeile an,
+     * falls sie fehlt; charge_status/mindestbestand bleiben unangetastet.
+     */
+    public function setzeBestandWert(int $artikelId, int $lagerId, ?string $charge, float $bestand): void
+    {
+        $id = $this->findLagerbestandIdByKey($artikelId, $lagerId, $charge);
+        if ($id) {
+            $this->db->prepare("UPDATE lagerbestand SET bestand = :b, geaendert_am = NOW() WHERE id = :id")
+                     ->execute(['b' => $bestand, 'id' => $id]);
+        } else {
+            $this->db->prepare("INSERT INTO lagerbestand (artikel_id, lager_id, charge, charge_status, bestand)
+                                VALUES (:a, :l, :c, :s, :b)")
+                     ->execute(['a' => $artikelId, 'l' => $lagerId, 'c' => $charge, 's' => $charge !== null ? 'erfasst' : 'unbekannt', 'b' => $bestand]);
+        }
+    }
+
     /** Löscht einen Lagerbestand-Eintrag dauerhaft (z.B. nach Charge-Nachtragung mit vollständiger Umbuchung). */
     public function deleteBestand(int $id): bool
     {

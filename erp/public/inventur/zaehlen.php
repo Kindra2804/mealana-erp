@@ -121,7 +121,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <label class="erp-label">Lager * (Scope legt hier kein Lager fest)</label>
         <select id="neu_lager_id" class="erp-select" style="width:100%">
             <?php foreach ($service->getAlleLagerFuerAuswahl() as $l): ?>
-            <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
+            <option value="<?= $l['id'] ?>" <?= (int)($lauf['lager_id'] ?? 0) === (int)$l['id'] ? 'selected' : '' ?>><?= htmlspecialchars($l['name']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>

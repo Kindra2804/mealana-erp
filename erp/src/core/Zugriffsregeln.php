@@ -69,6 +69,7 @@ final class Zugriffsregeln
             // Preise sind ein Tab im Artikel-Modul, keine eigene Berechtigung vorhanden
             'preis_speichern.php'           => 'artikel.bearbeiten',
             'preise_massen.php'             => 'artikel.bearbeiten',   // Massenaktion "Preise ändern"
+            'bestand_korrigieren.php'       => 'inventur.anlegen',     // Bestand korrigieren: wer Inventur darf, darf korrigieren
             'uvp_speichern.php'             => 'artikel.bearbeiten',
             'staffelpreis_speichern.php'    => 'artikel.bearbeiten',
             'sale_override_speichern.php'   => 'artikel.bearbeiten',
@@ -545,7 +546,7 @@ final class Zugriffsregeln
             'merkmal_ajax.php', 'achsen_zuweisen_ajax.php', 'kategorie_sort_ajax.php', 'ean_check.php',
             'kategorie_neu.php', 'kategorie_loeschen_ajax.php', 'artikel_vater_suche.php',
             'preis_loeschen.php', 'staffelpreis_loeschen.php', 'staffelpreis_speichern.php',
-            'uvp_speichern.php', 'preis_speichern.php', 'grundpreise_speichern.php',
+            'uvp_speichern.php', 'preis_speichern.php', 'grundpreise_speichern.php', 'bestand_korrigieren.php',
         ],
         'slider'      => ['slide_speichern.php', 'slide_aktion.php', 'artikel_suche.php', 'menue_aktion.php'],
         'aktionen'    => [

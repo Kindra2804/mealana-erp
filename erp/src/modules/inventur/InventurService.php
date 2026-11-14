@@ -53,12 +53,20 @@ class InventurService
         if ($bezeichnung === null) {
             return ['erfolg' => false, 'fehler' => ['Gewähltes Scope-Ziel wurde nicht gefunden']];
         }
+        // Einzelartikel: optional nur ein Lager (Jacky 2026-11-14), steht dann auch in der Bezeichnung
+        $lagerId = $scopeTabelle === 'artikel' && !empty($data['lager_id']) ? (int)$data['lager_id'] : null;
+        if ($lagerId) {
+            $lagerName = $this->repo->findScopeBezeichnung('lager', $lagerId);
+            if ($lagerName === null) return ['erfolg' => false, 'fehler' => ['Gewähltes Lager wurde nicht gefunden']];
+            $bezeichnung .= ' · ' . $lagerName;
+        }
 
         $vorgaengerId = !empty($data['vorgaenger_lauf_id']) ? (int)$data['vorgaenger_lauf_id'] : null;
 
         $id = $this->repo->insert([
             'scope_tabelle'      => $scopeTabelle,
             'scope_id'           => $scopeId,
+            'lager_id'           => $lagerId,
             'scope_bezeichnung'  => $bezeichnung,
             'blind_modus'        => !empty($data['blind_modus']) ? 1 : 0,
             'vorgaenger_lauf_id' => $vorgaengerId,
@@ -116,6 +124,7 @@ class InventurService
         return $this->starten([
             'scope_tabelle'      => $vorgaenger['scope_tabelle'],
             'scope_id'           => $vorgaenger['scope_id'],
+            'lager_id'           => $vorgaenger['lager_id'] ?? null,
             'blind_modus'        => $vorgaenger['blind_modus'],
             'vorgaenger_lauf_id' => $vorgaengerId,
             'notiz'              => 'Fortsetzung von Lauf #' . $vorgaengerId,
@@ -166,7 +175,7 @@ class InventurService
             'lager'        => $this->repo->findSollListeLager((int)$lauf['scope_id']),
             'lagerplaetze' => $this->repo->findSollListeLagerplatz((int)$lauf['scope_id']),
             'kategorien'   => $this->repo->findSollListeKategorie((int)$lauf['scope_id']),
-            'artikel'      => $this->repo->findSollListeArtikel((int)$lauf['scope_id']),
+            'artikel'      => $this->repo->findSollListeArtikel((int)$lauf['scope_id'], !empty($lauf['lager_id']) ? (int)$lauf['lager_id'] : null),
             default        => [],
         };
     }

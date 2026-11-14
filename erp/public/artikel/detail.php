@@ -1455,6 +1455,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div style="font-weight:600">Lagerbestand</div>
                 <div style="display:flex;gap:8px">
                     <button class="btn btn-secondary btn-sm" disabled title="In Entwicklung">Umlagerung →</button>
+                    <?php if (count($kinder) === 0 && Auth::kann('inventur.anlegen')): /* Bestand je Lager/Charge setzen, mit Grund (js/bestand_korrektur.js) */ ?>
+                    <button class="btn btn-secondary btn-sm" onclick="bestandKorrekturOeffnen(<?= (int)$artikel['id'] ?>)">± Bestand korrigieren</button>
+                    <?php endif; ?>
                     <button class="btn btn-secondary btn-sm" onclick="weModalOeffnen()">+ Wareneingang buchen</button>
                 </div>
             </div>
@@ -2383,6 +2386,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     </script>
     <script src="<?= BASE_PATH ?>/js/tinymce/tinymce.min.js"></script>
     <script src="<?= BASE_PATH ?>/js/artikel_detail.js"></script>
+    <script src="<?= BASE_PATH ?>/js/bestand_korrektur.js"></script>
 
     <?php if (!$istKind): ?>
         <!-- ── Achsen-Modal ────────────────────────────────────────────────── -->

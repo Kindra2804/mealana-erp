@@ -71,14 +71,14 @@ class InventurRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO inventur_laeufe (
-                scope_tabelle, scope_id, scope_bezeichnung, blind_modus,
+                scope_tabelle, scope_id, lager_id, scope_bezeichnung, blind_modus,
                 vorgaenger_lauf_id, notiz, benutzer_id
             ) VALUES (
-                :scope_tabelle, :scope_id, :scope_bezeichnung, :blind_modus,
+                :scope_tabelle, :scope_id, :lager_id, :scope_bezeichnung, :blind_modus,
                 :vorgaenger_lauf_id, :notiz, :benutzer_id
             )
         ");
-        $stmt->execute($data);
+        $stmt->execute($data + ['lager_id' => null]);
         return (int) $this->db->lastInsertId();
     }
 
@@ -216,7 +216,7 @@ class InventurRepository
     }
 
     /** Soll-Liste für "Ein einzelner Artikel": über alle Lager (gleiche Begründung wie Kategorie). */
-    public function findSollListeArtikel(int $artikelId): array
+    public function findSollListeArtikel(int $artikelId, ?int $lagerId = null): array
     {
         $stmt = $this->db->prepare("
             SELECT
@@ -229,9 +229,10 @@ class InventurRepository
             JOIN lager l ON l.id = lb.lager_id
             LEFT JOIN artikel vater ON vater.id = a.vaterartikel_id
             WHERE lb.artikel_id = :artikel_id
+              AND (:lager_id IS NULL OR lb.lager_id = :lager_id2)
             ORDER BY lager_name
         ");
-        $stmt->execute(['artikel_id' => $artikelId]);
+        $stmt->execute(['artikel_id' => $artikelId, 'lager_id' => $lagerId, 'lager_id2' => $lagerId]);
         return $stmt->fetchAll();
     }
 

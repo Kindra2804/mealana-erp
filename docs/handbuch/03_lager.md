@@ -50,6 +50,17 @@ Die Liste zeigt alle Artikel mit:
 
 ---
 
+## Bestand korrigieren
+
+Für einzelne Fehler (versehentlich eingebucht, nicht auffindbar, kaputt) ohne Inventurlauf: Artikel → Reiter **Lager** → **„± Bestand korrigieren“**.
+
+1. **Lager** wählen (Lager mit Bestand stehen oben), bei Chargen die **Charge**.
+2. **Neuer Bestand** eintragen, daneben steht die Differenz (z.B. −1).
+3. **Grund** wählen: Fehlbuchung, Schwund / nicht auffindbar, Bruch / beschädigt, Eigenverbrauch / Muster, Gefunden / Mehrbestand oder Sonstiges (dann Notiz Pflicht).
+4. **Korrektur buchen**.
+
+Die Korrektur steht im Bewegungsprotokoll als **„Korrektur“**, mit vorher → nachher, Grund, Notiz und Benutzer. Der Shop-Bestand zieht automatisch nach. Recht: wer eine Inventur anlegen darf. Bei Vater-Artikeln korrigiert man in der jeweiligen Variante.
+
 ## Lagerbewegungen / Protokoll
 
 Jede Buchung wird gespeichert. So lässt sich nachvollziehen warum der Bestand so ist wie er ist.

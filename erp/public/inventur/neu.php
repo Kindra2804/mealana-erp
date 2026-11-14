@@ -4,7 +4,9 @@ require_once __DIR__ . '/../../src/modules/inventur/InventurService.php';
 
 $service = new InventurService();
 $fehler  = $_SESSION['fehler'] ?? [];
-unset($_SESSION['fehler']);
+$f       = $_SESSION['inventur_formular'] ?? [];   // Eingaben nach einem Fehler wieder anzeigen
+unset($_SESSION['fehler'], $_SESSION['inventur_formular']);
+$sel = fn(string $feld, $wert) => (string)($f[$feld] ?? '') === (string)$wert ? 'selected' : '';
 
 $alleLager        = $service->getAlleLagerFuerAuswahl();
 $alleLagerplaetze = $service->getAlleLagerplaetzeFuerAuswahl();
@@ -19,8 +21,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 
 <?php if (!empty($fehler)): ?>
-<div class="card" style="border-left:3px solid var(--color-danger);margin-bottom:12px;padding:10px 16px;color:var(--color-danger)">
-    <?= htmlspecialchars(implode(', ', $fehler)) ?>
+<div class="card" style="border-left:3px solid var(--color-danger);background:#fef2f2;margin-bottom:12px;padding:10px 16px;color:var(--color-danger);font-weight:600;max-width:560px">
+    <?= htmlspecialchars(implode(', ', (array)$fehler)) ?>
 </div>
 <?php endif; ?>
 
@@ -29,11 +31,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <div style="margin-bottom:14px">
             <label class="erp-label">Was soll gezählt werden? *</label>
             <select name="scope_tabelle" id="scope_tabelle" class="erp-select" style="width:100%" onchange="scopeWechsel()">
-                <option value="lager">Ganzes Lager</option>
-                <option value="lagerplaetze">Ein Lagerplatz</option>
-                <option value="kategorien">Eine Kategorie</option>
-                <option value="artikel">Ein einzelner Artikel</option>
-                <option value="mietfaecher">Ein Mietfach</option>
+                <option value="lager" <?= $sel('scope_tabelle', 'lager') ?>>Ganzes Lager</option>
+                <option value="lagerplaetze" <?= $sel('scope_tabelle', 'lagerplaetze') ?>>Ein Lagerplatz</option>
+                <option value="kategorien" <?= $sel('scope_tabelle', 'kategorien') ?>>Eine Kategorie</option>
+                <option value="artikel" <?= $sel('scope_tabelle', 'artikel') ?>>Ein einzelner Artikel</option>
+                <option value="mietfaecher" <?= $sel('scope_tabelle', 'mietfaecher') ?>>Ein Mietfach</option>
             </select>
         </div>
 
@@ -41,7 +43,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <label class="erp-label">Lager *</label>
             <select name="scope_id_lager" class="erp-select" style="width:100%">
                 <?php foreach ($alleLager as $l): ?>
-                <option value="<?= $l['id'] ?>"><?= htmlspecialchars($l['name']) ?></option>
+                <option value="<?= $l['id'] ?>" <?= $sel('scope_id_lager', $l['id']) ?>><?= htmlspecialchars($l['name']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -66,10 +68,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
         <div id="scope-artikel" class="scope-feld" style="display:none">
             <label class="erp-label">Artikel *</label>
-            <input type="text" id="artikel_suche" class="erp-input" style="width:100%" placeholder="Name oder Artikelnummer eingeben...">
-            <input type="hidden" name="scope_id_artikel" id="scope_id_artikel">
+            <!-- autocomplete=off: ein Browser-Vorschlag löste das input-Ereignis aus und löschte die Auswahl -->
+            <input type="text" id="artikel_suche" name="artikel_suche" class="erp-input" style="width:100%" autocomplete="off"
+                   placeholder="Name oder Artikelnummer eingeben, dann Treffer anklicken" value="<?= htmlspecialchars($f['artikel_suche'] ?? '') ?>">
+            <input type="hidden" name="scope_id_artikel" id="scope_id_artikel" value="<?= (int)($f['scope_id_artikel'] ?? 0) ?: '' ?>">
             <div id="artikel_treffer" style="border:1px solid var(--color-border);border-radius:4px;margin-top:4px;max-height:180px;overflow-y:auto;display:none"></div>
             <div id="artikel_gewaehlt" style="margin-top:6px;font-size:13px;color:var(--color-success)"></div>
+            <label class="erp-label" style="margin-top:10px">Lager</label>
+            <select name="lager_id_artikel" class="erp-select" style="width:100%">
+                <option value="">Alle Lager, in denen der Artikel liegt</option>
+                <?php foreach ($alleLager as $l): ?>
+                <option value="<?= $l['id'] ?>" <?= $sel('lager_id_artikel', $l['id']) ?>><?= htmlspecialchars($l['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <div id="scope-mietfaecher" class="scope-feld" style="display:none">
@@ -101,6 +112,16 @@ function scopeWechsel() {
     document.querySelectorAll('.scope-feld').forEach(function (el) { el.style.display = 'none'; });
     document.getElementById('scope-' + gewaehlt).style.display = 'block';
 }
+scopeWechsel();   // nach einem Fehler steht die vorige Auswahl wieder da
+
+// Enter im Suchfeld schickt das Formular nicht ab (sonst startet es ohne gewählten Artikel)
+document.getElementById('artikel_suche').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        var erster = document.querySelector('#artikel_treffer div');
+        if (erster && document.getElementById('artikel_treffer').style.display !== 'none') erster.click();
+    }
+});
 
 (function () {
     var suchfeld = document.getElementById('artikel_suche');
