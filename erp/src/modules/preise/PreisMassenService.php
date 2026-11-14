@@ -158,7 +158,7 @@ class PreisMassenService
         $ids = array_keys($neuJeId);
         $in  = implode(',', $ids);
         $info = $this->db->query("
-            SELECT a.id, a.vaterartikel_id, s.satz
+            SELECT a.id, a.vaterartikel_id, a.artikelnummer, a.name, s.satz
             FROM artikel a JOIN steuerklassen s ON s.id = a.steuerklasse_id
             WHERE a.id IN ($in)")->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
         $alt = $this->preise($ids, $ziel);
@@ -182,7 +182,9 @@ class PreisMassenService
                     if (array_key_exists($id, $alt)) $upd->execute([$neu, $netto, $id, $kgId]);
                     else                             $ins->execute([$id, $kgId, $neu, $netto]);
                 }
-                $aenderungen[] = ['id' => $id, 'alt' => $alt[$id] ?? null, 'neu' => $neu];
+                // Artikelnummer + Name, damit das Protokoll ohne interne ID lesbar ist
+                $aenderungen[] = ['artikelnummer' => $info[$id]['artikelnummer'], 'name' => $info[$id]['name'],
+                                  'alt' => $alt[$id] ?? null, 'neu' => $neu, 'id' => $id];
             }
 
             // Shop-Sync erkennt Änderungen nur über aktualisiert_am – Artikel und ihre Väter markieren
@@ -199,7 +201,7 @@ class PreisMassenService
         unset($_SESSION['schilder_veraltet']);   // Dashboard-Zähler "Schilder veraltet" neu rechnen
         Logger::log('preis.massen', $ziel === 'uvp' ? 'artikel' : 'artikel_preise', null, [
             'ziel'        => $arten[$ziel],
-            'basis'       => $arten[$einstellung['basis'] ?? ''] ?? null,
+            'basis'       => ($einstellung['art'] ?? '') === 'fest' ? null : ($arten[$einstellung['basis'] ?? ''] ?? null),   // fester Preis braucht keine Basis
             'art'         => $einstellung['art'] ?? null,
             'wert'        => $einstellung['wert'] ?? null,
             'rundung'     => $einstellung['rundung'] ?? null,

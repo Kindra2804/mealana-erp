@@ -202,6 +202,25 @@ Ein Wert ohne Kürzel fällt aus der Nummer (z.B. Glitzer „nein, Danke“), ab
 
 ---
 
+## Preise vieler Artikel ändern (z.B. Preiserhöhung eines Herstellers)
+
+Jeder Artikel, auch jede Farbe, hat einen **eigenen Preis**. Ändert man den Preis beim Vater, ändern sich die Kinder **nicht** mit. Für viele Artikel auf einmal:
+
+1. Artikelliste → Artikel oder Väter anhaken (z.B. nach Hersteller filtern) → Aktion **„💶 Preise ändern“** → Ausführen. Es öffnet sich ein neuer Tab. Gewählte Väter nehmen ihre Kinder mit.
+2. Einstellen:
+   - **Welcher Preis wird geändert?** Standardpreis (vorgewählt), eine andere Kundengruppe (z.B. Händler) oder UVP.
+   - **Gerechnet von (Basis):** geht mit dem Ziel mit, kann aber umgestellt werden. Beispiel Händlerpreis = Standardpreis − 30 %.
+   - **Änderung:** + / − Prozent, + / − Euro oder fester neuer Preis. Minus = billiger.
+   - **Rundung:** immer **aufwärts** auf 10 Cent, ,00/,50, ,90, ,95, ,99 oder volle Euro. So wird eine Erhöhung nie durch Rundung zur Senkung (8,95 + 5 % = 9,40 → 9,90).
+3. **Vorschau:** Tabelle Basis, alt, neu, Änderung. Noch ist nichts gespeichert.
+   - Kinder sind eingeklappt (Knopf **▸ Anzahl**).
+   - Kinder mit **eigenem Preis** (anders als der Vater, z.B. größere Größe) haben ein blaues **!**, bleiben sichtbar und sind **nicht** angehakt. Mit „auch alle mit ! ändern“ oder einzeln anhaken.
+   - Jeden neuen Preis kann man **von Hand überschreiben** (Feld wird gelb). Beim Vater ziehen die Kinder mit gleichem Preis mit.
+   - Artikel ohne Ausgangspreis (fehlt oder 0,00 €) werden ausgelassen.
+4. **Übernehmen.** Netto wird aus der Steuerklasse neu gerechnet. Der **Shop-Abgleich** überträgt die neuen Preise. Gedruckte Schilder erscheinen unter **Schilder veraltet**.
+
+> Unten auf der Seite stehen die **letzten Preisänderungen** (wann, wer, was). Jede einzelne Änderung mit Artikelnummer, Name, alt → neu steht im Aktivitäten-Protokoll unter `preis.massen`.
+
 ## Preisschilder drucken
 
 **Messe-Schild** (8 pro A4, je 95 × 60 mm, wie die alte Vorlage): Name, Hersteller, Zusammensetzung, Gewicht/Lauflänge, Nadelstärke, Preis und Grundpreis. Eines je **Garnqualität**: Wählt man Farben, werden sie zu ihrem Vater zusammengefasst. Die Texte kommen aus den **Merkmalen** (siehe oben), fehlt etwas, steht in der Auswahl „keine Merkmale“.
@@ -258,7 +277,7 @@ Tischaufsteller und IVAR-Streifen haben dieselben Badges, Pflegesymbole und Haus
 |---------|--------|
 | "Artikelnummer bereits vergeben" | Eine andere Artikelnummer wählen — z.B. Suffix `-V2` |
 | Bild lädt nicht hoch | Dateiformat prüfen (JPG/PNG/GIF/WebP) · Dateigröße max. 10 MB |
-| Kind-Artikel hat falschen Preis | Vater-Preis ändern → wird automatisch an Kinder propagiert |
+| Kind-Artikel hat falschen Preis | Jedes Kind hat einen eigenen Preis: im Kind ändern, oder für viele auf einmal Artikelliste → Aktion „💶 Preise ändern“ |
 | EAN wird als "schon vorhanden" abgelehnt | EAN ist einem anderen Artikel zugeordnet — suchen und bereinigen |
 
 ## GPSR-Texte bereinigen (Artikel → GPSR-Texte)
