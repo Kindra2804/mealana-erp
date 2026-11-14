@@ -1341,6 +1341,15 @@ Details in `.claude/memory/` (project_konfigurator_modul, project_shop_tests_ueb
 - **Bio:** keine volle Testrunde, nur Kurztest (1 Bestellung bis completed + Widerrufsformular).
 - **Nächste Session (14.11.):** Indra-Umschaltung mit Test über Dev (Dev vorher wie Live einstellen: Babsi online + Kürzel INDRA, Artikel übergeben), dann Live-Update inkl. 239 + Snippet 34170, danach alle 3 Shops online.
 
+## Update 2026-11-14: Alle 3 Shops online (indra als EU, SOW, Bio), Pakete 1.0.12 + 1.0.13
+
+Details in `.claude/memory/` (project_indra_design_eu, project_bio_wolle_aufbau, project_sow_umstellung, project_woo_shop_checkliste).
+- **indra-design = Einzelunternehmen Barbara Indra (KU)**: Rechtstexte EU (alter Stand `shop/rechtstexte/indra/live_vor_umstellung_20261114/`), Germanized Kleinunternehmer (§ 6 Abs. 1 Z 27 UStG), Woo-Steuer aus, Fuß/Copyright ohne KG, Artikeltexte ohne „Label der MEALANA KG“ (`live_artikeltexte_ohne_kg.sql`, auch `&ndash;`-Variante). Dev-Test: R-INDRA-2026-00001 ok.
+- **Fixes 1.0.12**: Mail bei Partner-Auftrag → Absender/Gruß = Partner (75c7076); Mails ohne MwSt. bei Kleinunternehmer, Zahlungsmail mit Versandzeile + echter MwSt. aus `auftraege.steuerbetrag` (betraf auch KG), Belegfuß 15 mm statt 0 (9a5814c). Dazu Plattenmaß (239), Kuvert, Artikelliste.
+- **Fix 1.0.13**: Shop-Sync überträgt `tax_class` (vorher alles 20 %, Bücher falsch) – Zuordnung über AT-Satz der Woo-Klassen (`ShopSyncService::steuerFelder()`, Client `listeSteuerklassen/listeSteuersaetze` mit Blättern); Migr. **240** markiert Artikel ≠ 20 % zum Neu-Senden (a28cadd).
+- **Shops**: Mail-Snippet indra #34191 auf aktuelle Fassung (keine „Hinweis“-Mails), Datumsformat indra `j. F Y`/`H:i`. Bio-Kurztest über Dev ✅ (Widerruf-Bestätigen braucht WP-Anmeldung im Kanal). Wartung aus: indra 35329, Bio 1109, SOW 25 (`.claude-browser-tools/wartung_schalten.js`).
+- **Offen**: erste echte Bestellung je Shop genau prüfen; Steuerberatung (Bestandsübergang EU, Gutschein-Auszahlung). Nächste Migration **241**.
+
 ## Commit Convention
 
 ```

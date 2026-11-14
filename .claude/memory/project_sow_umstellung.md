@@ -53,3 +53,5 @@ metadata:
 
 **Stand 2026-11-12 abends:** 1.0.5–1.0.8 gebaut (1.0.6 live, 1.0.7/1.0.8 bei Jacky). Grundpreise: 15 Väter kg→g, 12× „Stk.“ geleert, 86 Problemfälle für Jacky+Babsi. Weihnachtsanhänger-Texte (22 ID-XM) ohne alten Preissatz. Füllmenge in Gramm (Snippet 3535). Bank + PayPal eingetragen. Offen für Go-Live: Testbestellung (wartet auf Babsi), dann Snippet 25 aus + Cache. Bio parallel fertig, siehe [[project-bio-wolle-aufbau]].
 
+
+**✅ 2026-11-14 ~13:00 ONLINE** – Wartungs-Snippet ausgeschaltet (Bio 1109 / SOW 25, Skript `node wartung_schalten.js <lib> <id> an|aus|zeigen`), 1.0.13 live (Bücher 10 %: SOW 31, Bio 2 Produkte reduced-rate), Besucher 200, kein noindex. Offen: erste echte Bestellungen genau ansehen.

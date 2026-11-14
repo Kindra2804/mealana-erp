@@ -26,3 +26,8 @@ Start 2026-11-12: frisches WP auf bio-wolle.at (Plesk, eigener Server; Jacky hat
 **Offen:** Testbestellung; Go-Live: Wartungs-Snippet 1109 „BIO: Wartungsseite (Umbau)“ deaktivieren (503 wie SOW-Snippet 25; Woo „Demnächst verfügbar“ seit 2026-11-12 AUS).
 
 Siehe [[project-bio-wolle-shop-design]], [[project-sow-umstellung]].
+
+**2026-11-14 Kurztest über Dev ✅** (A-BIO-2026-00001 / Woo #1117): Bestellung Vorkasse+Versand, Zahlung, Packplatz, R-BIO-2026-00001, Status completed, keine Woo-„Hinweis“-Mails, Widerruf per Formular → ERP „beantragt“ → bestätigt (braucht WP-Anmeldung im Kanal!) → Mail + Erwartete Retouren. Aufgeräumt (Woo #1117 gelöscht, Dev-Test-Schlüssel + App-Passwort widerrufen, Dev-Kanal 2 leer).
+**Fund: Steuerklasse wurde nie an Woo übertragen** → Bücher mit 20 % verkauft. Fix a28cadd + Migr. 240 → **Paket 1.0.13** (D:/ERP/pakete). Live hatte noch keine Verkäufe (SOW/Bio hinter Wartung). **Vor Go-Live Bio/SOW:** 1.0.13 auf Live, Sync die Bücher neu übertragen lassen (Woo tax_class reduced-rate prüfen, z.B. KR-EDB), Live-Bio-Kanal fortsetzen, Bestand neu (Testartikel BC-011010118-08 + KR-EDB), dann Wartungs-Snippet 1109 aus.
+
+**✅ 2026-11-14 ~13:00 ONLINE** – Wartungs-Snippet ausgeschaltet (Bio 1109 / SOW 25, Skript `node wartung_schalten.js <lib> <id> an|aus|zeigen`), 1.0.13 live (Bücher 10 %: SOW 31, Bio 2 Produkte reduced-rate), Besucher 200, kein noindex. Offen: erste echte Bestellungen genau ansehen.
