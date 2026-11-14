@@ -1935,6 +1935,10 @@ function _artikelEinfuegen(a, menge) {
             istDivers:                   !!a.istDivers,
             artikel_gruppe_id:           a.artikel_gruppe_id || null, // nur Divers: Erlöskonto-Gruppe
             partner_modus:               a.partner_modus || null,     // nur Anzeige — der Server bestimmt das selbst
+            // Sale-/Aktionspreis (KassenService::mitEffektivPreis): Anzeige "statt", keine Mengen-Aktion
+            preis_reduziert:             !!a.preis_reduziert,
+            preis_normal:                a.preis_reduziert ? parseFloat(a.preis_normal) || null : null,
+            preis_info:                  a.preis_reduziert ? (a.preis_info || 'Sale') : null,
             partner_name:                a.partner_name || null,
             hat_chargen:                 !!a.hat_chargen,
             charge_pflicht:              !!a.charge_pflicht,
@@ -1958,7 +1962,8 @@ function zeigeArtikelInfo(a) {
     document.getElementById('ai-name').textContent = a.bezeichnung;
     document.getElementById('ai-meta').textContent =
         'Art-Nr: ' + (a.artikelnummer || '—') + (a.ean ? '  ·  EAN: ' + a.ean : '');
-    document.getElementById('ai-preis').textContent = '€ ' + fmt(parseFloat(a.brutto_vk) || 0) + ' / Stk';
+    document.getElementById('ai-preis').textContent = '€ ' + fmt(parseFloat(a.brutto_vk) || 0) + ' / Stk'
+        + (a.preis_reduziert && a.preis_normal ? '  (' + (a.preis_info || 'Sale') + ', statt € ' + fmt(parseFloat(a.preis_normal)) + ')' : '');
     document.getElementById('ai-akt').style.display = 'none';
 
     var physisch   = parseFloat(a.bestand_physisch)   || 0;
@@ -2271,6 +2276,8 @@ function renderBon(skipKdSync) {
                 : '';
             var auftragBadge = p.vonAuftrag ? '<span class="bon-row-auftrag-badge">📦</span>' : '';
             // Mengen-Aktion: Hinweis unter dem Namen, alter Stückpreis durchgestrichen
+            var saleHtml = p.preis_reduziert && p.preis_normal
+                ? '<span class="bon-row-teil" style="color:#b91c1c">' + esc(p.preis_info) + ' · statt € ' + fmt(p.preis_normal) + '</span>' : '';
             var aktionHtml = p._mengen ? '<span class="bon-row-teil" style="color:#b45309">Aktion ' + esc(p._mengen.badge_text)
                 + (p._mengen.stueck_im_paket < p.menge ? ' (' + p._mengen.stueck_im_paket + ' von ' + p.menge + ' Stk)' : '') + '</span>' : '';
             var retourBadge  = istRetour ? '<span class="bon-row-retour-badge">↩</span>' : '';
@@ -2286,7 +2293,7 @@ function renderBon(skipKdSync) {
 
             div.innerHTML =
                 '<div class="bon-row-nr">' + (++lfdNr) + '</div>' +
-                '<div class="bon-row-name">' + auftragBadge + retourBadge + esc(p.bezeichnung) + rabHtml + teilHtml + aktionHtml + '</div>' +
+                '<div class="bon-row-name">' + auftragBadge + retourBadge + esc(p.bezeichnung) + rabHtml + teilHtml + saleHtml + aktionHtml + '</div>' +
                 '<div class="bon-row-menge">' + p.menge + '</div>' +
                 '<div class="bon-row-ep">' + (p._mengen
                     ? '<s style="color:#999;font-weight:400">€ ' + fmt(p.einzelpreis_brutto) + '</s><br>€ ' + fmt(p._mengen.gesamt_neu / p.menge)
@@ -2577,7 +2584,7 @@ function mengenAktionenAnwenden() {
     var pos = [];
     warenkorb.forEach(function(p, i) {
         if (p.vonAuftrag || p.istDivers || !p.artikel_id || p.block || !(p.menge > 0) || p.menge % 1 !== 0) return;
-        pos.push({ key: i, artikel_id: p.artikel_id, menge: p.menge, preis: p.einzelpreis_brutto, ist_reduziert: posRabatt(p) > 0 });
+        pos.push({ key: i, artikel_id: p.artikel_id, menge: p.menge, preis: p.einzelpreis_brutto, ist_reduziert: posRabatt(p) > 0 || !!p.preis_reduziert });
     });
     var erg = mengenAktionBerechne(MENGEN_REGELN, pos);
     Object.keys(erg.positionen).forEach(function(i) { warenkorb[i]._mengen = erg.positionen[i]; });

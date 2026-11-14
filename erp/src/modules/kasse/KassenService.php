@@ -7,6 +7,7 @@ require_once __DIR__ . '/BfrService.php';
 require_once __DIR__ . '/PartnerBon.php';
 require_once __DIR__ . '/../inventur/InventurService.php';
 require_once __DIR__ . '/../konfigurator/KonfiguratorService.php';
+require_once __DIR__ . '/../preise/PreisService.php';
 require_once __DIR__ . '/../auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../auftraege/AuftragAbschluss.php';
 
@@ -132,6 +133,7 @@ class KassenService
         }
 
         $artikel['bestand_verkaufbar'] = max(0, (float)$artikel['bestand_physisch'] - (float)$artikel['bestand_reserviert']);
+        $artikel = $this->mitEffektivPreis($artikel);
 
         // Bei Vater-Artikel: Kinder zurückgeben statt Artikel selbst
         if ($artikel['ist_vater']) {
@@ -188,7 +190,7 @@ class KassenService
             ORDER BY a.name
         ");
         $stmt->execute([':vater_id' => $vaterId, ':lid' => $lagerId]);
-        return $stmt->fetchAll();
+        return array_map(fn($k) => $this->mitEffektivPreis($k), $stmt->fetchAll());
     }
 
     /** FIFO: Älteste Charge mit Bestand > 0 im Lager */
@@ -1719,6 +1721,46 @@ class KassenService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // ── Preis an der Kasse: Sale/Aktion wie im Shop ───────────────────────────
+    // Bis 2026-11-14 kam an der Kasse nur der Standardpreis an (Inline-Subquery). Jetzt gilt derselbe
+    // Effektivpreis wie überall (PreisService: Sale → Aktion → Standard) für die Standard-Kundengruppe.
+    // preis_reduziert = Sale/Aktion läuft → nimmt nicht an Mengen-Aktionen teil (kein doppelter Rabatt).
+
+    private ?int $standardKgId = null;
+
+    private function mitEffektivPreis(array $a, ?int $artikelId = null): array
+    {
+        $id = $artikelId ?? (int)($a['id'] ?? 0);
+        if (!$id || !empty($a['ist_konfigurierbar'])) return $a;   // Konfigurator rechnet selbst (KonfiguratorService)
+        if ($this->standardKgId === null) {
+            $this->standardKgId = (int)$this->db->query("SELECT id FROM kundengruppen WHERE ist_standard = 1 LIMIT 1")->fetchColumn();
+        }
+        static $preisSvc = null;
+        $preisSvc ??= new PreisService();
+        $e = $preisSvc->getEffektiverPreis($id, $this->standardKgId);
+        $a['preis_normal']    = (float)($a['brutto_vk'] ?? 0);
+        $a['preis_reduziert'] = in_array($e['quelle'], ['sale', 'aktion'], true) && $e['brutto_vk'] !== null
+                                && (float)$e['brutto_vk'] < $a['preis_normal'] - 0.004;
+        if ($a['preis_reduziert']) {
+            $a['brutto_vk']  = (float)$e['brutto_vk'];
+            $a['preis_info'] = $e['quelle'] === 'sale' ? 'Sale' : ('Aktion ' . ($e['info'] ?? ''));
+        }
+        return $a;
+    }
+
+    /** Für bon_speichern.php: welche Artikel haben heute einen Sale-/Aktionspreis? @return array id => true */
+    public function reduzierteArtikel(array $artikelIds): array
+    {
+        $erg = [];
+        foreach (array_unique(array_filter(array_map('intval', $artikelIds))) as $id) {
+            $a = $this->mitEffektivPreis(['id' => $id, 'brutto_vk' => (float)$this->db->query(
+                "SELECT COALESCE((SELECT ap.brutto_vk FROM artikel_preise ap JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
+                  WHERE ap.artikel_id = $id ORDER BY ap.gueltig_ab DESC LIMIT 1), 0)")->fetchColumn()]);
+            if ($a['preis_reduziert']) $erg[$id] = true;
+        }
+        return $erg;
+    }
+
     // ── Schnellwahl ───────────────────────────────────────────────────────────
     // Ein Slot ist entweder Artikel-Taste (artikel_id) oder Gruppen-Taste
     // (artikel_gruppe_id → öffnet den Divers-Dialog mit vorgewählter Gruppe).
@@ -1758,6 +1800,7 @@ class KassenService
             $rows = $stmt->fetchAll();
             $result = [];
             foreach ($rows as $r) {
+                if (!empty($r['artikel_id'])) $r = $this->mitEffektivPreis($r, (int)$r['artikel_id']);
                 $result[(int)$r['slot']] = $r;
             }
             return $result;
@@ -1846,6 +1889,6 @@ class KassenService
         $stmt->bindValue(':lager_id', $lagerId, \PDO::PARAM_INT);
         $stmt->bindValue(':lmt',      $limit,   \PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll();
+        return array_map(fn($a) => $this->mitEffektivPreis($a), $stmt->fetchAll());
     }
 }

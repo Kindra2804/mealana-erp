@@ -232,11 +232,13 @@ require_once __DIR__ . '/../../src/modules/aktionen/MengenAktionService.php';
 require_once __DIR__ . '/../../src/modules/aktionen/MengenAktionRechner.php';
 $mengenRegeln = (new MengenAktionService())->aktiveRegeln('kasse');
 if ($mengenRegeln) {
+    // Sale-/Aktionspreis läuft → kein zusätzlicher Mengenrabatt (serverseitig bestimmt, nicht vom Client)
+    $reduziert = (new KassenService())->reduzierteArtikel(array_column(array_filter($sauberePositionen, fn($p) => $p['block'] === null), 'artikel_id'));
     $mengenPos = [];
     foreach ($sauberePositionen as $i => $p) {
         if ($p['block'] !== null || empty($p['artikel_id']) || $p['menge'] <= 0 || floor($p['menge']) != $p['menge']) continue;
         $mengenPos[] = ['key' => $i, 'artikel_id' => $p['artikel_id'], 'menge' => (int)$p['menge'],
-                        'preis' => $p['einzelpreis_brutto'], 'ist_reduziert' => $p['rabatt_prozent'] > 0];
+                        'preis' => $p['einzelpreis_brutto'], 'ist_reduziert' => $p['rabatt_prozent'] > 0 || isset($reduziert[$p['artikel_id']])];
     }
     $mengenErg = MengenAktionRechner::berechne($mengenRegeln, $mengenPos);
     foreach ($mengenErg['positionen'] as $i => $r) {
