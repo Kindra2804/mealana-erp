@@ -146,6 +146,36 @@ class MengenAktionService
         return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
     }
 
+    /**
+     * Heute gültige Aktionen für einen Kanal, im Format für MengenAktionRechner::berechne()
+     * @param string   $kanal  'kasse' oder 'shop'
+     * @param int|null $shopId bei 'shop' Pflicht
+     */
+    public function aktiveRegeln(string $kanal, ?int $shopId = null): array
+    {
+        $sql = "SELECT id, art, menge, zahl_menge, paketpreis, badge_text FROM mengen_aktionen m
+                WHERE aktiv = 1 AND gueltig_ab <= CURDATE() AND (gueltig_bis IS NULL OR gueltig_bis >= CURDATE())";
+        $params = [];
+        if ($kanal === 'kasse') {
+            $sql .= " AND an_kasse = 1";
+        } else {
+            $sql .= " AND EXISTS (SELECT 1 FROM mengen_aktion_shops ms WHERE ms.aktion_id = m.id AND ms.shop_id = ?)";
+            $params[] = (int) $shopId;
+        }
+        $st = $this->db->prepare($sql . " ORDER BY id");
+        $st->execute($params);
+        $regeln = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $a) {
+            $a['id'] = (int) $a['id'];
+            $a['menge'] = (int) $a['menge'];
+            $a['zahl_menge'] = $a['zahl_menge'] === null ? null : (int) $a['zahl_menge'];
+            $a['paketpreis'] = $a['paketpreis'] === null ? null : (float) $a['paketpreis'];
+            $a['artikel_ids'] = $this->artikelIds($a['id']);
+            $regeln[] = $a;
+        }
+        return $regeln;
+    }
+
     /** Kategorien flach mit Einrückungstiefe, in Baum-Reihenfolge (für die Auswahl) */
     public function kategorienFlach(): array
     {
