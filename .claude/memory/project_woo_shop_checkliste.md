@@ -26,3 +26,4 @@ Gemischte Bestellung MeaLana (KG-Ware + Indra) → 2 Aufträge, siehe [[project-
 
 - **Mail-Snippet „ERP: Zahlung/Versand ohne doppelte Shop-Mail“** in der AKTUELLEN Fassung (`shop/wp-snippets/erp_zahlung_ohne_shop_mail.php`, inkl. Filter `woocommerce_email_enabled_customer_note`) – sonst bekommt der Kunde zu jeder ERP-Statusmeldung zusätzlich „Deiner Bestellung wurde ein Hinweis hinzugefügt“. indra (#34191) hatte bis 2026-11-14 die alte Fassung → aktualisiert; SOW + Bio aktuell. Einspielen: `node snippet_setzen.js <lib> <id> <datei>`.
 - **Datums-/Zeitformat** (Einstellungen → Allgemein): `j. F Y` + `H:i` – sonst steht in Woo-Mails „November 14, 2026“ / „10:42 am“. indra bis 2026-11-14 falsch → korrigiert; SOW + Bio passten. Skript: `node datum_format.js <lib> [setzen]`.
+- **Newsletter (ab 2026-11-15):** Connector ≥ 1.8.0, Seite /newsletter/ + Fußzeilen-Link per `.claude-browser-tools/nl_formular_einbauen.js` (LIB/SHOP/NAME), Kanal Website + Hausfarbe im ERP.
