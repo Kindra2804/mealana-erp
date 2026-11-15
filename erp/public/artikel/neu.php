@@ -177,7 +177,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <select name="einheit_id" class="erp-select">
                     <?php foreach ($alleEinheiten as $e): ?>
                         <option value="<?= $e['id'] ?>"
-                            <?= selected('einheit_id', (string)$e['id'], $formdata) ?>>
+                            <?php if (isset($formdata['einheit_id'])): ?>
+                                <?= selected('einheit_id', (string)$e['id'], $formdata) ?>
+                            <?php elseif ($e['kuerzel'] === 'Stk'): ?>
+                                selected<?php /* Vorgabe Stück -- passt zu den meisten Artikeln, ID je Installation verschieden */ ?>
+                            <?php endif; ?>>
                             <?= htmlspecialchars($e['name']) ?>
                             <?= $e['kuerzel'] ? ' (' . htmlspecialchars($e['kuerzel']) . ')' : '' ?>
                         </option>
@@ -288,7 +292,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div class="form-row">
                     <label class="form-label" id="bezugsmenge_label">Bezugsmenge (g)</label>
                     <input type="number" name="grundpreis_bezugsmenge" class="erp-input"
-                        value="<?= old('grundpreis_bezugsmenge', $formdata, '100') ?>">
+                        value="<?= old('grundpreis_bezugsmenge', $formdata) ?>">
                 </div>
                 <div class="form-row">
                     <label class="form-label">Grundpreis (berechnet)</label>
@@ -300,8 +304,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <div class="form-row">
                     <label class="form-label">Grundpreis im Shop</label>
                     <select name="grundpreis_anzeigen" class="erp-select">
-                        <option value="1" <?= selected('grundpreis_anzeigen', '1', $formdata) ?>>Ja</option>
                         <option value="0" <?= selected('grundpreis_anzeigen', '0', $formdata) ?>>Nein</option>
+                        <option value="1" <?= selected('grundpreis_anzeigen', '1', $formdata) ?>>Ja</option>
                     </select>
                 </div>
             </div>

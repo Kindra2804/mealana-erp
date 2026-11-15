@@ -187,6 +187,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#einleitung">Einleitung</a>
             <a href="#navigation">Navigation</a>
             <a href="#artikel">Artikel</a>
+            <a href="#artikel-kopieren" class="sub">↳ Artikel kopieren</a>
             <a href="#artikel-varianten" class="sub">↳ Varianten & Achsen</a>
             <a href="#artikel-bilder" class="sub">↳ Bilder</a>
             <a href="#artikel-merkmale" class="sub">↳ Merkmale</a>
@@ -269,6 +270,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">5</div><div><strong>EAN/GTIN</strong> eingeben — wichtig für den Packplatz-Scanner!</div></div>
             <div class="ba-step"><div class="ba-step-nr">6</div><div>Brutto-VK eingeben, Kategorien zuweisen → Speichern</div></div>
             <div class="ba-hint">💡 Ohne EAN kann der Barcode-Scanner am Packplatz den Artikel nicht erkennen. EAN immer eintragen!</div>
+            <p>Einheit ist mit <strong>Stück</strong> vorbelegt. Der Grundpreis ist beim neuen Artikel aus — bei Garn schaltet er sich automatisch ein (Bezugsmenge 100), sobald Inhalt/Menge und Einheit eingetragen sind; bei Meterware selbst einschalten.</p>
+
+            <h3 id="artikel-kopieren">Artikel kopieren <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Artikel öffnen → <strong>Kopieren</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Neuen Namen und neue Artikelnummer eintragen (vorbelegt mit „-KOPIE“)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Auswählen, was mitkommen soll (Preise, Kategorien, Merkmale, Lieferanten, Überverkauf) → <strong>Artikel kopieren</strong>. Die Kopie ist sofort aktiv.</div></div>
+            <p>Übernommen werden alle Stammdaten inkl. Hersteller, Steuerklasse, Artikelgruppe, Einheit, Inhalt, Gewicht, Maße, Grundpreis und Mindestabnahme.</p>
+            <div class="ba-hint">💡 <strong>Nicht mitkopiert</strong> (bei Bedarf in der Kopie selbst eintragen): UVP, „Konfigurierbar“, „Keine Lagerbestandsführung“, „Hervorgehoben“, Plattenmaß (Schilder), Bilder, EAN, Lagerbestand und Shop-Kanäle.</div>
 
             <h3 id="artikel-varianten">Varianten & Achsen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Varianten-Artikel bestehen aus einem <strong>Vater-Artikel</strong> (z.B. "DROPS Lima") und mehreren <strong>Kind-Artikeln</strong> (je eine Farbe/Größe).</p>

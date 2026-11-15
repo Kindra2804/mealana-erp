@@ -47,7 +47,23 @@ Die Liste zeigt alle aktiven Artikel. Oben gibt es Filter:
 | Artikelnummer | Eindeutige Kennung im System |
 | Name | Anzeige im Shop und auf Dokumenten |
 | Steuerklasse | Für korrekte Steuern |
-| Einheit | z.B. "Stück", "Knäuel" |
+| Einheit | z.B. "Stück", "Knäuel" (Vorgabe: Stück) |
+
+> **Grundpreis:** Ist beim neuen Artikel erst einmal aus. Bei Garn wird er automatisch eingeschaltet (Bezugsmenge 100), sobald Inhalt/Menge und Einheit eingetragen sind. Bei Meterware selbst einschalten.
+
+---
+
+## Artikel kopieren
+
+**Navigation:** Artikel öffnen → **Kopieren**
+
+1. Neuen **Namen** und neue **Artikelnummer** eintragen (vorbelegt mit „-KOPIE“)
+2. Auswählen, was mitkommen soll: Preise, Kategorien, Merkmale, Lieferanten, Überverkauf
+3. → **Artikel kopieren** — die Kopie ist sofort **aktiv**
+
+Übernommen werden alle Stammdaten inkl. Hersteller, Steuerklasse, **Artikelgruppe**, Einheit, Inhalt, Gewicht, Maße, Grundpreis und Mindestabnahme.
+
+> **Nicht mitkopiert** (bei Bedarf in der Kopie selbst eintragen): UVP, „Konfigurierbar“, „Keine Lagerbestandsführung“, „Hervorgehoben“, Plattenmaß (Schilder), Bilder, EAN, Lagerbestand und Shop-Kanäle.
 
 ---
 

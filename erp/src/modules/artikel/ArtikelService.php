@@ -717,7 +717,7 @@ class ArtikelService
         $neuerArtikel = $quellArtikel;  // alle Felder vom Original
         $neuerArtikel['artikelnummer'] = $kopierData['artikelnummer'];  // neue Nummer
         $neuerArtikel['name'] = $kopierData['name'];  // neuer Name
-        $neuerArtikel['aktiv']         = 0;
+        $neuerArtikel['aktiv']         = 1;  // wie bei "Artikel neu" -- Kopie ist sofort aktiv
         $neuerArtikel['url_slug']      = null;
         unset($neuerArtikel['id']);
 
@@ -731,6 +731,7 @@ class ArtikelService
             'artikelnummer',
             'hersteller_id',
             'steuerklasse_id',
+            'artikel_gruppe_id',
             'artikeltyp_id',
             'name',
             'kurzbeschreibung',
@@ -745,6 +746,9 @@ class ArtikelService
             'inhalt_einheit',
             'gewicht_artikel',
             'gewicht_versand',
+            'laenge',
+            'breite',
+            'hoehe',
             'herkunftsland',
             'taric_code',
             'grundpreis_bezugsmenge',
