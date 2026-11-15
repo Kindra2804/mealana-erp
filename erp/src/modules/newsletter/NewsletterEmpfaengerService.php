@@ -71,7 +71,7 @@ class NewsletterEmpfaengerService
     /** Von Hand abmelden (z.B. Kunde ruft an). Bleibt als „abgemeldet“ stehen. */
     public function abmelden(int $id, int $benutzerId, string $grund = ''): array
     {
-        $st = $this->db->prepare("UPDATE newsletter_empfaenger SET status = 'abgemeldet', abgemeldet_am = NOW() WHERE id = ? AND status <> 'abgemeldet'");
+        $st = $this->db->prepare("UPDATE newsletter_empfaenger SET status = 'abgemeldet', abgemeldet_am = NOW(), portal_stand = NULL WHERE id = ? AND status <> 'abgemeldet'");
         $st->execute([$id]);
         if (!$st->rowCount()) return ['erfolg' => false, 'fehler' => 'Empfänger nicht gefunden oder schon abgemeldet.'];
         $this->ereignis($id, 'abgemeldet', 'erp', null, $benutzerId, ['grund' => $grund ?: 'von Hand im ERP']);
@@ -144,7 +144,7 @@ class NewsletterEmpfaengerService
                     if ($gesperrt && $alt['status'] !== 'abgemeldet') {
                         $erg['gesperrt_gesetzt']++;
                         if (!$probelauf) {
-                            $this->db->prepare("UPDATE newsletter_empfaenger SET status = 'abgemeldet', abgemeldet_am = NOW() WHERE id = ?")->execute([$alt['id']]);
+                            $this->db->prepare("UPDATE newsletter_empfaenger SET status = 'abgemeldet', abgemeldet_am = NOW(), portal_stand = NULL WHERE id = ?")->execute([$alt['id']]);
                             $this->ereignis((int)$alt['id'], 'abgemeldet', 'jtl_import', null, $benutzerId, ['grund' => 'JTL-Blacklist']);
                         }
                     } else {

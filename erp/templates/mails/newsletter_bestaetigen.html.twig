@@ -1,0 +1,21 @@
+{% extends "mails/basis_layout.html.twig" %}
+
+{% block inhalt %}
+<p>{% if vorname %}Hallo {{ vorname }},{% else %}Hallo,{% endif %}</p>
+
+<p>danke für deine Anmeldung zum Newsletter von <strong>{{ shop_name }}</strong>!</p>
+
+<p>Bitte bestätige noch kurz, dass du ihn wirklich bekommen möchtest — erst dann bist du eingetragen:</p>
+
+<p><a class="btn" href="{{ link }}" style="background:{{ farbe }}">Ja, Anmeldung bestätigen</a></p>
+
+<p style="font-size:13px;color:#666">
+  Falls der Knopf nicht funktioniert, diesen Link in den Browser kopieren:<br>
+  <a href="{{ link }}" style="color:#666;word-break:break-all">{{ link }}</a>
+</p>
+
+<div class="hinweis">
+  Du hast dich nicht angemeldet? Dann ignoriere diese E-Mail einfach — ohne Bestätigung wirst du nicht eingetragen
+  und bekommst keine weiteren Nachrichten von uns.
+</div>
+{% endblock %}

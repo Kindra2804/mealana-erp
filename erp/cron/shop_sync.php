@@ -178,3 +178,19 @@ try {
     Logger::log('slider.cron_fehler', null, null, ['fehler' => $e->getMessage()], $jarvisId, 'error');
     echo "Slider-Übertragung abgebrochen: {$e->getMessage()}\n";
 }
+
+// Newsletter: Anmeldungen/Bestätigungen/Abmeldungen von der Belegseite holen, Link-Schlüssel abgleichen,
+// Bestätigungs-Mails (Double-Opt-in) schicken. Ohne eingerichtete Belegseite passiert nichts.
+try {
+    require_once __DIR__ . '/../src/modules/newsletter/NewsletterPortalService.php';
+    $nlKonf = PaperlessService::konfig();   // gleiche Belegseite wie Paperless, aber ohne dessen Lizenz-Modul
+    if ($nlKonf['url'] !== '' && $nlKonf['schluessel'] !== '') {
+        $nl = (new NewsletterPortalService())->abgleichen($jarvisId, function (string $zeile) { echo $zeile . "\n"; });
+        echo $nl['erfolg']
+            ? "Newsletter: {$nl['angemeldet']} Anmeldungen, {$nl['bestaetigt']} bestätigt, {$nl['abgemeldet']} abgemeldet, {$nl['doi_mails']} Bestätigungs-Mails, {$nl['schluessel']} Link-Schlüssel\n"
+            : "Newsletter-Abgleich: {$nl['fehler']}\n";
+    }
+} catch (Throwable $e) {
+    Logger::log('newsletter.cron_fehler', null, null, ['fehler' => $e->getMessage()], $jarvisId, 'error');
+    echo "Newsletter-Abgleich abgebrochen: {$e->getMessage()}\n";
+}
