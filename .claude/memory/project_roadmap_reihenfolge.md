@@ -139,3 +139,10 @@ Daneben weiter offen: Live-Deploy 201–213, Offline-Kasse light (wenn Sunmi zu 
 8. **Lang-Yarns-Artikelimport aus CSV** (Jacky 2026-11-14 nachgereicht), siehe [[project-dropshipping]]
 Danach: gemeinsam eine **neue Reihung** der restlichen offenen Punkte machen.
 Zurückgestellt: SPF/DKIM/DMARC je Shop-Domain → erst nach dem Umzug der Woo-Shops auf die neuen Server.
+
+## Jacky 2026-11-15: bis zum nächsten Paket
+1. Update-Weg verbessern (veraltete Dateien entfernen + „Was ist neu“ über Zwischenversionen)
+2. Messe-/Offline-Kasse: Sale-/Aktionspreise + Mengen-Aktionen
+3. UVP: bleibt als Feld (für externe Kunden), bei uns überall leeren, Hinweis „nur setzen, wenn echte UVP“, Wort „Streichpreis“ aus den Texten. Anzeige im Shop vorerst nicht.
+Danach: Offline-Kasse light (Sunmi ist jetzt daheim). Staffelpreise (artikel_staffelpreise wirken nirgends) bauen wir später, eher für externe Kunden interessant.
+Erledigt: Klicktest Mengen-Aktion Kasse (Weihnachtsanhänger) ✅, K1 „RKSV aktiv“ weg ✅.

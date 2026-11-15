@@ -187,6 +187,10 @@ Updates kommen als Paket `nahtlos-x.y.z.zip` von NAHTLOS (Download-Link). Einspi
 | „Wartung abgelaufen“ | Pakete, die nach dem Wartungsende erschienen sind, werden abgelehnt — Wartung verlängern |
 | Testversion (ohne Lizenz) | keine Updates |
 
+**Was ist neu:** Springt das Update über mehrere Versionen (z.B. 1.0.16 → 1.0.20), zeigt die Seite alle Zwischenversionen, die neueste oben.
+
+**Veraltete Dateien:** Programmdateien, die NAHTLOS früher ausgeliefert hat und die in der neuen Version weggefallen sind, entfernt das Update selbst (vorher gesichert, „Zurückspielen“ holt sie wieder). Vor dem Einspielen steht unter „Was ist neu“, wie viele es sind. Eigene Dateien der Installation werden nie angefasst. Findet die Seite außerhalb eines Updates noch veraltete Dateien (einmalig nach dem Update auf 1.0.17), erscheint die Karte **🧹 Veraltete Dateien entfernen**.
+
 Nie überschrieben werden Datenbank-Zugang, Schlüssel, Belege/Storage, Uploads und Logos. Sicherungen liegen unter `erp/storage/updates/` (alte bei Bedarf löschen).
 
 ---

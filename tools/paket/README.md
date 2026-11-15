@@ -34,6 +34,9 @@ Dev-Dumps, und nie, was der Installation gehört (`UpdateService::GESCHUETZT`: `
   automatisch nach dem Kopieren ausgeführt. Keine Firmen-/Geschäftsdaten in Migrationen (siehe 210/219).
 - **Sicherungsformat nie ändern** (`erp/storage/updates/<ordner>/dateien/`, `neue_dateien.json`, `datenbank.sql`):
   zurückgespielt wird mit dem Code der *neuen* Version.
-- Dateien, die in einer neuen Version wegfallen, bleiben beim Kunden liegen (harmlos) — bei Bedarf in einer Migration
-  bzw. im Code berücksichtigen.
+- Dateien, die in einer neuen Version wegfallen, entfernt das Update selbst (ab 1.0.17): gelöscht wird nur, was in einem
+  früheren Paket-Manifest stand, im neuen nicht mehr und nicht geschützt ist — vorher gesichert, „Zurückspielen“ holt es zurück.
+  Für Updates, die noch der alte Code einspielt: ··· → Updates → „Veraltete Dateien entfernen“.
+- „Was ist neu“: das Manifest enthält alle `docs/versionen/*.md` bis zur Paketversion (`neu_versionen`); die Update-Seite
+  zeigt bei Sprüngen alle Zwischenversionen.
 - Später geplant: Online-Hinweis „Update verfügbar“ + Download direkt aus dem ERP (Jacky 2026-11-01).

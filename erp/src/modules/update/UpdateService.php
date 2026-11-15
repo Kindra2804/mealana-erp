@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Lizenz.php';
 require_once __DIR__ . '/../../core/Migrator.php';
+require_once __DIR__ . '/../../core/Logger.php';
 
 /**
  * Updates einspielen (Paket aus tools/paket/bauen.php, signiert von NAHTLOS).
@@ -147,12 +148,15 @@ class UpdateService
             return ['erfolg' => false, 'verlauf_id' => $id, 'meldung' => 'Datenbank-Sicherung fehlgeschlagen — Update abgebrochen, nichts verändert. ' . $dump, 'migrationen' => []];
         }
 
-        // 2. Bisherige Dateien sichern (nur die, die das Paket überschreibt) + Liste der neuen Dateien
+        // 2. Bisherige Dateien sichern (nur die, die das Paket überschreibt) + Liste der neuen Dateien.
+        //    Veraltete Dateien (früher ausgeliefert, im neuen Paket nicht mehr) kommen ebenfalls in dateien/,
+        //    damit „Zurückspielen“ sie wiederherstellt — das Sicherungsformat bleibt dadurch unverändert.
         $wurzel = self::wurzel();
         $neu = [];
+        $veraltet = self::veralteteDateien($m);
         try {
             // Als Ordner, nicht als ZIP: Kopieren dauert Sekunden, PharData-Packen über eine Minute
-            foreach (array_keys($m['dateien']) as $rel) {
+            foreach (array_merge(array_keys($m['dateien']), $veraltet) as $rel) {
                 if (!is_file("$wurzel/$rel")) { $neu[] = $rel; continue; }
                 $ziel = "$ordner/dateien/$rel";
                 if (!is_dir(dirname($ziel))) mkdir(dirname($ziel), 0755, true);
@@ -174,6 +178,7 @@ class UpdateService
                     throw new RuntimeException("Datei konnte nicht geschrieben werden: $rel");
                 }
             }
+            $entfernt = self::entferneDateien($veraltet, $ordner);
             if (function_exists('opcache_reset')) opcache_reset();
             $mig = (new Migrator($wurzel . '/erp/database/migrations'))->ausfuehren();
             if (!$mig['erfolg']) {
@@ -185,8 +190,146 @@ class UpdateService
             return ['erfolg' => false, 'verlauf_id' => $id, 'meldung' => $e->getMessage() . ' — bitte „Sicherung zurückspielen“.', 'migrationen' => $mig['angewendet'] ?? []];
         }
         self::wartung(false);
-        $ende('erfolgreich', count($mig['angewendet']) . ' Migration(en)');
+        $ende('erfolgreich', count($mig['angewendet']) . ' Migration(en)' . ($entfernt ? ", $entfernt veraltete Datei(en) entfernt" : ''));
         return ['erfolg' => true, 'verlauf_id' => $id, 'meldung' => "Version {$m['version']} eingespielt.", 'migrationen' => $mig['angewendet']];
+    }
+
+    // ── Veraltete Dateien ─────────────────────────────────────────────────────
+
+    /**
+     * Dateien, die NAHTLOS früher ausgeliefert hat (in irgendeinem bisherigen Paket-Manifest), die im
+     * Ziel-Manifest nicht mehr stehen und noch auf der Platte liegen. Nur solche werden je gelöscht —
+     * eigene Dateien der Installation stehen in keinem Manifest und bleiben unberührt, Geschütztes sowieso.
+     * Ohne Ziel: das Manifest der installierten Version (für „Aufräumen“ außerhalb eines Updates);
+     * ist das nicht auffindbar (z.B. Entwicklungsstand), wird nichts gemeldet.
+     *
+     * @return string[] relative Pfade, sortiert
+     */
+    public static function veralteteDateien(?array $ziel = null): array
+    {
+        $manifeste = self::bekannteManifeste();
+        if ($ziel === null) {
+            $ist = self::installierteVersion();
+            foreach ($manifeste as $man) {
+                if (($man['version'] ?? '') === $ist) { $ziel = $man; break; }
+            }
+            if ($ziel === null) return [];
+        }
+        $wurzel = self::wurzel();
+        $erg = [];
+        foreach ($manifeste as $man) {
+            foreach (array_keys($man['dateien'] ?? []) as $rel) {
+                if (isset($ziel['dateien'][$rel]) || isset($erg[$rel])) continue;
+                if (str_contains($rel, '..') || str_starts_with($rel, '/') || self::geschuetzt($rel)) continue;
+                if (is_file("$wurzel/$rel")) $erg[$rel] = true;
+            }
+        }
+        $erg = array_keys($erg);
+        sort($erg);
+        return $erg;
+    }
+
+    /**
+     * „Aufräumen“ außerhalb eines Updates (Knopf auf der Update-Seite): wichtig für das erste Update nach
+     * Einführung dieser Funktion, das noch der alte Code einspielt. Gesichert wird in den Ordner des letzten
+     * Updates auf die installierte Version (dann stellt dessen „Zurückspielen“ die Dateien mit her),
+     * sonst in einen eigenen Ordner.
+     */
+    public static function aufraeumen(int $benutzerId): array
+    {
+        $liste = self::veralteteDateien();
+        if (!$liste) return ['erfolg' => true, 'anzahl' => 0, 'meldung' => 'Keine veralteten Dateien gefunden.'];
+
+        $ordner = null;
+        foreach (self::verlauf(1) as $v) {
+            if ($v['status'] === 'erfolgreich' && $v['version_nach'] === self::installierteVersion()
+                && is_dir(self::ordner() . '/' . basename($v['sicherung_ordner']))) {
+                $ordner = self::ordner() . '/' . basename($v['sicherung_ordner']);
+            }
+        }
+        $ordner ??= self::ordner() . '/' . date('Ymd_His') . '_aufraeumen_' . self::installierteVersion();
+        $wurzel = self::wurzel();
+        try {
+            foreach ($liste as $rel) {
+                $ziel = "$ordner/dateien/$rel";
+                if (is_file($ziel)) continue;   // schon gesichert (vom Update selbst)
+                if (!is_dir(dirname($ziel))) mkdir(dirname($ziel), 0755, true);
+                if (!copy("$wurzel/$rel", $ziel)) throw new RuntimeException("Konnte $rel nicht sichern.");
+            }
+            $anzahl = self::entferneDateien($liste, $ordner);
+        } catch (Throwable $e) {
+            return ['erfolg' => false, 'anzahl' => 0, 'meldung' => 'Aufräumen abgebrochen: ' . $e->getMessage()];
+        }
+        if (function_exists('opcache_reset')) opcache_reset();
+        Logger::log('update.aufraeumen', null, null, ['anzahl' => $anzahl, 'sicherung' => basename($ordner), 'dateien' => $liste], $benutzerId);
+        return ['erfolg' => true, 'anzahl' => $anzahl, 'meldung' => "$anzahl veraltete Datei(en) entfernt (gesichert in storage/updates/" . basename($ordner) . ').'];
+    }
+
+    /** Löscht die (vorher gesicherten) Dateien, danach leer gewordene Ordner; Protokoll entfernte_dateien.json. */
+    private static function entferneDateien(array $liste, string $ordner): int
+    {
+        if (!$liste) return 0;
+        $wurzel = self::wurzel();
+        $anzahl = 0;
+        foreach ($liste as $rel) {
+            if (self::geschuetzt($rel) || str_contains($rel, '..')) continue;
+            if (!is_file("$ordner/dateien/$rel")) throw new RuntimeException("$rel ist nicht gesichert — nicht gelöscht.");
+            if (@unlink("$wurzel/$rel")) $anzahl++;
+            // Leere Ordner bis hinauf zum Installationsordner wegräumen
+            for ($d = dirname($rel); $d !== '.' && $d !== '' && !self::geschuetzt($d . '/'); $d = dirname($d)) {
+                if (!@rmdir("$wurzel/$d")) break;
+            }
+        }
+        $bisher = json_decode((string)@file_get_contents("$ordner/entfernte_dateien.json"), true) ?: [];
+        file_put_contents("$ordner/entfernte_dateien.json",
+            json_encode(array_values(array_unique(array_merge($bisher, $liste))), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+        return $anzahl;
+    }
+
+    /**
+     * Alle Manifeste, die je auf dieser Installation angekommen sind: Installationspaket (nahtlos-manifest.json
+     * im Installationsordner) + die Pakete aller Updates (storage/updates/<ordner>/paket.zip). Nur gültig
+     * signierte zählen.
+     */
+    private static function bekannteManifeste(): array
+    {
+        $roh = [];
+        $wurzelManifest = self::wurzel() . '/' . self::MANIFEST;
+        if (is_file($wurzelManifest)) $roh[] = (string)file_get_contents($wurzelManifest);
+        foreach (glob(self::ordner() . '/*/paket.zip') ?: [] as $zip) {
+            $inhalt = @file_get_contents('phar://' . str_replace('\\', '/', $zip) . '/' . self::MANIFEST);
+            if ($inhalt !== false) $roh[] = $inhalt;
+        }
+        $erg = [];
+        foreach ($roh as $inhalt) {
+            $sig = Lizenz::pruefeSignatur($inhalt);
+            if (!$sig['fehler'] && ($sig['daten']['typ'] ?? '') === 'update_paket') $erg[] = $sig['daten'];
+        }
+        return $erg;
+    }
+
+    /**
+     * „Was ist neu“ aller Versionen zwischen $von (exklusiv) und $bis (inklusiv), neueste zuerst.
+     * Quelle: das Manifest (neu_versionen, ab Paket 1.0.17) oder die mitgelieferten docs/versionen/*.md.
+     *
+     * @return array<string,string> Version => Markdown
+     */
+    public static function neuSeit(string $von, string $bis, ?array $manifest = null): array
+    {
+        $texte = $manifest['neu_versionen'] ?? null;
+        if ($texte === null) {
+            $texte = [];
+            foreach (glob(self::wurzel() . '/docs/versionen/*.md') ?: [] as $f) {
+                $texte[basename($f, '.md')] = (string)file_get_contents($f);
+            }
+            if ($manifest && isset($manifest['version'], $manifest['neu'])) $texte[$manifest['version']] = $manifest['neu'];
+        }
+        $erg = [];
+        foreach ($texte as $v => $t) {
+            if (version_compare($v, $von, '>') && version_compare($v, $bis, '<=')) $erg[$v] = trim($t);
+        }
+        uksort($erg, fn($a, $b) => version_compare($b, $a));
+        return $erg;
     }
 
     // ── Zurückspielen ─────────────────────────────────────────────────────────

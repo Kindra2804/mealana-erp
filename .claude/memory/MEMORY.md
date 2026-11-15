@@ -137,7 +137,7 @@
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — MySQL-Absturz 2026-08-29 behoben
 - [Backup-Strategie](project_backup_strategie.md) — tägl. DB-Dump am Live seit 2026-11-10 (E:\ERP-Sicherung\taeglich), Außer-Haus offen
 - [Installationsanleitung](project_installationsanleitung.md) — Baseline-Neuschnitt
-- [🔄 Update-Weg](project_update_mechanismus.md) — gebaut 2026-11-01: tools/paket/bauen.php + ··· → Updates (DB-Sicherung Pflicht, Zurückspielen); später Online-„Update verfügbar“; TODO: veraltete Dateien beim Update entfernen + „Was ist neu“ inkl. Zwischenversionen
+- [🔄 Update-Weg](project_update_mechanismus.md) — gebaut 2026-11-01: tools/paket/bauen.php + ··· → Updates (DB-Sicherung Pflicht, Zurückspielen); ✅ 2026-11-15 veraltete Dateien entfernen + „Was ist neu“ über Zwischenversionen (ab 1.0.17); später Online-„Update verfügbar“
 - [Whitelabel/Branding](project_whitelabel_branding.md) — NAHTLOS-Logo
 - [UI Redesign Plan](project_ui_redesign.md) — JTL-Layout, Barbara Mitsprache
 - [Rechte & Rollen](project_rechte_rollen.md) — fertig, Lizenzserver offen

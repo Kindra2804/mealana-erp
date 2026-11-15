@@ -30,6 +30,16 @@ $statusText = [
 ];
 $letzter = $verlauf[0] ?? null;
 $uploadMax = ini_get('upload_max_filesize');
+$veraltet  = UpdateService::wartungAktiv() ? [] : UpdateService::veralteteDateien();
+// Mehrere Versionen „Was ist neu“, neueste zuerst, jede mit Überschrift
+$neuListe = function (array $texte) use ($neuHtml): string {
+    $html = '';
+    foreach ($texte as $v => $md) {
+        $html .= (count($texte) > 1 ? '<div style="margin-top:10px;font-weight:600;font-size:12px;color:var(--color-text-muted)">Version ' . htmlspecialchars($v) . '</div>' : '')
+               . $neuHtml($md);
+    }
+    return $html;
+};
 
 $pageTitle        = 'Updates';
 $activeModule     = 'einstellungen';
@@ -58,10 +68,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <?php if ($ergebnis['erfolg']): ?>
         <div class="card" style="border-left:3px solid var(--color-success);margin-bottom:16px;padding:14px 18px">
             <div style="font-size:16px;font-weight:700;color:var(--color-success)">✓ <?= htmlspecialchars($ergebnis['meldung']) ?></div>
-            <?php $neuDatei = UpdateService::wurzel() . '/docs/versionen/' . $version . '.md'; ?>
-            <?php if (is_file($neuDatei)): ?>
-                <div style="margin-top:10px;font-weight:600">Was ist neu in <?= htmlspecialchars($version) ?></div>
-                <?= $neuHtml(file_get_contents($neuDatei)) ?>
+            <?php // alle Versionen seit der vorher installierten (Sprung über mehrere Versionen)
+                  $vorher = ($letzter && $letzter['status'] === 'erfolgreich') ? $letzter['version_von'] : $version;
+                  $texte  = UpdateService::neuSeit($vorher === $version ? '0' : $vorher, $version);
+                  if ($vorher === $version) $texte = array_slice($texte, 0, 1, true); ?>
+            <?php if ($texte): ?>
+                <div style="margin-top:10px;font-weight:600">Was ist neu<?= count($texte) === 1 ? ' in ' . htmlspecialchars(array_key_first($texte)) : ' seit ' . htmlspecialchars($vorher) ?></div>
+                <?= $neuListe($texte) ?>
             <?php endif; ?>
         </div>
     <?php else: ?>
@@ -95,8 +108,16 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <div style="padding:14px 16px;font-size:13px">
         <?php if ($m): ?>
             <div><strong><?= htmlspecialchars($version) ?> → <?= htmlspecialchars($m['version']) ?></strong> · <?= count($m['dateien']) ?> Dateien · Signatur von NAHTLOS ✓</div>
-            <div style="margin-top:10px;font-weight:600">Was ist neu</div>
-            <?= $neuHtml($m['neu'] ?? '') ?>
+            <?php $texte = UpdateService::neuSeit($version, $m['version'], $m); ?>
+            <div style="margin-top:10px;font-weight:600">Was ist neu<?= count($texte) > 1 ? ' (' . count($texte) . ' Versionen seit ' . htmlspecialchars($version) . ')' : '' ?></div>
+            <?= $texte ? $neuListe($texte) : $neuHtml($m['neu'] ?? '') ?>
+            <?php $wegListe = $pruefung['ok'] ? UpdateService::veralteteDateien($m) : []; ?>
+            <?php if ($wegListe): ?>
+                <details style="margin-top:10px;font-size:12px;color:var(--color-text-muted)">
+                    <summary><?= count($wegListe) ?> veraltete Datei(en) werden entfernt (vorher gesichert)</summary>
+                    <div style="font-family:monospace;margin-top:4px"><?= implode('<br>', array_map('htmlspecialchars', $wegListe)) ?></div>
+                </details>
+            <?php endif; ?>
         <?php endif; ?>
         <?php foreach ($pruefung['fehler'] as $f): ?><div style="color:var(--color-danger);margin-top:8px">✗ <?= htmlspecialchars($f) ?></div><?php endforeach; ?>
         <?php foreach ($pruefung['hinweise'] as $h): ?><div style="color:#d97706;margin-top:8px">! <?= htmlspecialchars($h) ?></div><?php endforeach; ?>
@@ -128,6 +149,23 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <input type="file" name="paket" accept=".zip" class="erp-input" required>
         <div><button class="btn btn-primary btn-sm">Hochladen und prüfen</button></div>
     </form>
+</div>
+<?php endif; ?>
+
+<?php if ($veraltet): ?>
+<div class="card" style="margin-bottom:16px;border-left:3px solid #2563eb">
+    <div class="card-header">Veraltete Dateien</div>
+    <div style="padding:14px 16px;font-size:13px">
+        <?= count($veraltet) ?> Datei(en) stammen aus einer früheren Version und werden nicht mehr gebraucht.
+        Entfernen räumt sie weg; vorher werden sie gesichert (Zurückspielen holt sie wieder).
+        <details style="margin-top:8px;font-size:12px;color:var(--color-text-muted)">
+            <summary>Liste anzeigen</summary>
+            <div style="font-family:monospace;margin-top:4px"><?= implode('<br>', array_map('htmlspecialchars', $veraltet)) ?></div>
+        </details>
+        <form method="post" action="aktion.php" style="margin-top:10px" onsubmit="return confirm('<?= count($veraltet) ?> veraltete Datei(en) jetzt entfernen?')">
+            <input type="hidden" name="aktion" value="aufraeumen"><button class="btn btn-sm">🧹 Veraltete Dateien entfernen</button>
+        </form>
+    </div>
 </div>
 <?php endif; ?>
 

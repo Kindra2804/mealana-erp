@@ -51,6 +51,11 @@ switch ($_POST['aktion'] ?? '') {
         unset($_SESSION['update_ergebnis']);
         break;
 
+    case 'aufraeumen':
+        $erg = UpdateService::aufraeumen((int)$_SESSION['benutzer']['id']);
+        $_SESSION[$erg['erfolg'] ? 'erfolg' : 'fehler'] = $erg['erfolg'] ? $erg['meldung'] : [$erg['meldung']];
+        break;
+
     case 'wartung_aus':
         UpdateService::wartung(false);
         Logger::log('update.wartung_aufgehoben', null, null, [], null, 'warn');

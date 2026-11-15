@@ -101,6 +101,17 @@ $manifest = [
     'datum'   => date('Y-m-d'),
     'commit'  => $commit,
     'neu'     => trim(file_get_contents($neuDatei)),
+    // „Was ist neu“ aller Versionen bis zu dieser — die Update-Seite zeigt bei einem Sprung über
+    // mehrere Versionen alle Zwischenversionen (neuer als die installierte)
+    'neu_versionen' => (function () use ($repo, $version) {
+        $t = [];
+        foreach (glob("$repo/docs/versionen/*.md") as $f) {
+            $v = basename($f, '.md');
+            if (preg_match('/^\d+\.\d+\.\d+$/', $v) && version_compare($v, $version, '<=')) $t[$v] = trim(file_get_contents($f));
+        }
+        uksort($t, fn($a, $b) => version_compare($b, $a));
+        return $t;
+    })(),
     'dateien' => $dateien,
 ];
 file_put_contents("$bau/nahtlos-manifest.json", LizenzSigner::signierePaket($manifest));
