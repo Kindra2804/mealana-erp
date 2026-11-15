@@ -1006,6 +1006,24 @@ class MesseSyncService
         return $erg + ['beleg_nr' => $m['beleg_nr']];
     }
 
+    /** Zurückgebuchte Mobil-Messen (zuletzt zuerst) — Einstieg in deren Belege. */
+    public function getVergangeneMobilMessen(int $limit = 15): array
+    {
+        return $this->db->query("
+            SELECT s.*, l.name AS lager_name,
+                   (SELECT COUNT(*) FROM kassen_messe_mobilbelege m WHERE m.sync_id = s.id) AS beleg_count,
+                   (SELECT COUNT(*) FROM kassen_messe_mobilbelege m WHERE m.sync_id = s.id AND m.bon_id IS NULL) AS beleg_offen,
+                   (SELECT COALESCE(SUM(m.bruttobetrag), 0) FROM kassen_messe_mobilbelege m WHERE m.sync_id = s.id) AS beleg_summe,
+                   (SELECT MIN(m.beleg_zeit) FROM kassen_messe_mobilbelege m WHERE m.sync_id = s.id) AS erster_beleg,
+                   (SELECT MAX(m.beleg_zeit) FROM kassen_messe_mobilbelege m WHERE m.sync_id = s.id) AS letzter_beleg
+            FROM kassen_messe_sync s
+            LEFT JOIN lager l ON l.id = s.lager_id
+            WHERE s.variante = 'mobil' AND s.rueckkehr_am IS NOT NULL
+            ORDER BY s.rueckkehr_am DESC
+            LIMIT " . max(1, $limit)
+        )->fetchAll();
+    }
+
     /** Mobil-Messen (Sunmi), die vorbereitet, aber noch nicht zurückgebucht sind. */
     public function getOffeneMobilMessen(): array
     {

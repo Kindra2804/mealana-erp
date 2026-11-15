@@ -108,6 +108,9 @@ $pageTitle = 'Offline-Kasse';
     .ob-quittung .l { border-top: 1px dashed #999; margin: 6px 0; }
     .ob-quittung .r { display: flex; justify-content: space-between; gap: 6px; }
     .ob-quittung .k { font-size: 11px; }
+    .ob-jz { display: flex; justify-content: space-between; gap: 8px; padding: 10px 6px; border-bottom: 1px solid #f1f5f9; cursor: pointer; font-size: 14px; }
+    .ob-jz:active { background: #eff6ff; }
+    .ob-jz small { color: #64748b; }
     .ob-quittung .g { font-size: 15px; }
 
     /* Mengenvorwahl + Artikel-Kacheln (beide Anordnungen) */
@@ -191,6 +194,7 @@ $pageTitle = 'Offline-Kasse';
   </div>
   <div class="ob-status">
     <button class="ob-btn ob-btn-secondary" onclick="obLayoutWechseln()" title="Anordnung Hochformat / Querformat" style="padding:6px 10px">⇅</button>
+    <button class="ob-btn ob-btn-secondary" id="ob-journal-btn" onclick="obJournalOeffnen()" style="display:none;padding:6px 10px" title="Journal + Tagesübersicht">📋</button>
     <span id="ob-bons-zaehler">0 Bons offen</span>
     <button class="ob-btn ob-btn-secondary" id="ob-upload-btn" onclick="obBonsHochladen()" disabled>⤴ Bons hochladen</button>
     <span><span class="ob-dot fehlt" id="ob-bereit-dot"></span><span id="ob-bereit-text">Prüfe…</span></span>
@@ -278,6 +282,23 @@ $pageTitle = 'Offline-Kasse';
 <div class="ob-bottombar" id="ob-bottombar">
   <button id="ob-bb-links" onclick="obKorbUmschalten(false)">◀ Artikel</button>
   <button id="ob-bb-rechts" onclick="obLeisteRechts()">🛒 leer</button>
+</div>
+
+<!-- Journal (Mobil-Messe): Belege dieser Messe je Tag, Nachdruck, Tagesübersicht -->
+<div class="ob-overlay" id="ob-journal-overlay">
+  <div class="ob-overlay-box" style="max-width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-weight:800;font-size:16px">📋 Journal</div>
+      <select id="ob-journal-tag" onchange="obJournalRendern()" style="padding:6px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px"></select>
+    </div>
+    <div id="ob-journal-summe" style="font-size:13px;color:#475569;margin-bottom:8px"></div>
+    <div id="ob-journal-liste" style="max-height:52vh;overflow-y:auto"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="ob-btn ob-btn-primary" style="flex:1;padding:12px" onclick="obTagesuebersichtDrucken()">🧾 Tagesübersicht drucken</button>
+      <button class="ob-btn ob-btn-secondary" style="flex:0 0 30%;padding:12px" onclick="document.getElementById('ob-journal-overlay').classList.remove('aktiv')">Schließen</button>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:8px">Beleg antippen = nachdrucken. ✓ = schon hochgeladen.</div>
+  </div>
 </div>
 
 <!-- Quittungs-Overlay -->

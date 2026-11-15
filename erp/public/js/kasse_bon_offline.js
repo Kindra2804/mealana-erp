@@ -119,12 +119,21 @@ async function obVorbereitungLaden() {
             return;
         }
 
+        // Mobil: Gerät-Nr. + Belegzähler (nie zurückzählen: lokaler Stand vs. schon hochgeladene Belege)
+        const alt = await obIdbGet('konfig', 'aktuell');
+        if (alt && alt.syncId !== data.sync_id) {
+            const alteBons = await obIdbGetAll('bons');
+            if (alteBons.some(b => !b.hochgeladen)) {
+                fb.innerHTML = '<div class="ob-feedback fehler">Auf diesem Gerät liegen noch nicht hochgeladene Belege der Messe Nr. '
+                    + alt.syncId + ' — bitte zuerst dort „⤴ Belege hochladen“ (Seite mit ?sync_id=' + alt.syncId + ' öffnen).</div>';
+                return;
+            }
+            await obIdbClear('bons');   // Journal der alten Messe (alles hochgeladen) wegräumen
+        }
         await obIdbClear('artikel');
         for (const a of data.artikel) {
             await obIdbPut('artikel', a);
         }
-        // Mobil: Gerät-Nr. + Belegzähler (nie zurückzählen: lokaler Stand vs. schon hochgeladene Belege)
-        const alt = await obIdbGet('konfig', 'aktuell');
         const geraet = (document.getElementById('ob-geraet')?.value || '1').replace(/[^0-9A-Za-z]/g, '').slice(0, 3) || '1';
         let zaehler = data.bon_nr_zaehler;
         if (data.variante === 'mobil') {
@@ -167,6 +176,7 @@ function obBereitSchalten() {
         ? 'Messe Nr. ' + obKonfig.syncId + ' · Gerät ' + obKonfig.geraet + ' · ' + obArtikel.length + ' Artikel · Belege ohne Signatur'
         : (obKonfig.kasse?.name || 'Kasse') + ' · ' + obArtikel.length + ' Artikel geladen';
     if (obIstMobil()) {
+        document.getElementById('ob-journal-btn').style.display = '';
         document.querySelector('.ob-header-title').textContent = '📱 MOBIL-BELEGE';
         document.getElementById('ob-upload-btn').textContent = '⤴ Belege hochladen';
         document.getElementById('ob-autodruck-wrap').style.display = 'flex';
@@ -1005,6 +1015,105 @@ function obMobilBelegHtml(bon) {
     return h;
 }
 
+// ── Journal + Tagesübersicht (Mobil-Messe) ──────────────────────────────────
+// Keine Kassenabschluss-Funktion (die Belege sind Paragons; abgeschlossen wird in der Registrierkasse
+// bei der Nacherfassung) — die Übersicht dient zum Abzählen der Kassa am Stand.
+let obJournalBons = [];
+async function obJournalOeffnen() {
+    const prefix = 'M' + obKonfig.syncId + '-';
+    obJournalBons = (await obIdbGetAll('bons')).filter(b => (b.bon_nr || '').startsWith(prefix))
+        .sort((a, b) => a.erstellt_am.localeCompare(b.erstellt_am));
+    const tage = [...new Set(obJournalBons.map(b => b.erstellt_am.slice(0, 10)))].reverse();
+    const sel = document.getElementById('ob-journal-tag');
+    sel.innerHTML = tage.length
+        ? tage.map(t => '<option value="' + t + '">' + t.slice(8, 10) + '.' + t.slice(5, 7) + '.' + t.slice(0, 4) + '</option>').join('')
+        : '<option value="">keine Belege</option>';
+    obJournalRendern();
+    document.getElementById('ob-journal-overlay').classList.add('aktiv');
+}
+function obJournalTagBons() {
+    const tag = document.getElementById('ob-journal-tag').value;
+    return obJournalBons.filter(b => b.erstellt_am.slice(0, 10) === tag);
+}
+function obJournalRendern() {
+    const bons = obJournalTagBons();
+    const s = obTagesSummen(bons);
+    document.getElementById('ob-journal-summe').innerHTML = bons.length
+        ? bons.length + ' Beleg(e) · Bar € ' + s.bar.toFixed(2) + ' · Karte € ' + s.karte.toFixed(2) + ' · <strong>Gesamt € ' + s.gesamt.toFixed(2) + '</strong>'
+        : 'Noch keine Belege.';
+    document.getElementById('ob-journal-liste').innerHTML = bons.slice().reverse().map(b =>
+        '<div class="ob-jz" onclick="obJournalNachdruck(' + b.lokale_id + ')"><span><strong>' + obEsc(b.bon_nr) + '</strong> <small>'
+        + b.erstellt_am.slice(11, 16) + (b.hochgeladen ? ' ✓' : '') + '</small></span><span>' + (b.zahlungsart === 'bar' ? 'Bar' : 'Karte')
+        + ' <strong>€ ' + b.bruttobetrag.toFixed(2) + '</strong></span></div>').join('');
+}
+function obJournalNachdruck(lokaleId) {
+    const bon = obJournalBons.find(b => b.lokale_id === lokaleId);
+    if (!bon) return;
+    document.getElementById('ob-journal-overlay').classList.remove('aktiv');
+    document.getElementById('ob-quittung-inhalt').innerHTML = obMobilBelegHtml(bon)
+        + '<div class="z b" style="margin-top:6px">*** NACHDRUCK ***</div>';
+    document.getElementById('ob-quittung-overlay').classList.add('aktiv');
+    setTimeout(() => window.print(), 300);
+}
+function obTagesSummen(bons) {
+    const s = { bar: 0, karte: 0, gesamt: 0, ust: {}, partner: {} };
+    const fremd = p => p.partner_modus === 'fremdrechnung' || p.partner_modus === 'spende';
+    bons.forEach(b => {
+        if (b.zahlungsart === 'bar') s.bar += b.bruttobetrag; else s.karte += b.bruttobetrag;
+        s.gesamt += b.bruttobetrag;
+        b.positionen.forEach(p => {
+            const gs = p.zeile_brutto ?? (p.menge * p.einzelpreis_brutto);
+            if (fremd(p)) {
+                const n = ((obKonfig.partner || {})[p.partner_id] || {}).name || ('Partner ' + p.partner_id);
+                s.partner[n] = (s.partner[n] || 0) + gs;
+            } else {
+                const satz = parseFloat(p.steuer_prozent) || 0;
+                s.ust[satz] = (s.ust[satz] || 0) + gs;
+            }
+        });
+    });
+    return s;
+}
+function obTagesuebersichtDrucken() {
+    const bons = obJournalTagBons();
+    if (!bons.length) return;
+    const s = obTagesSummen(bons), tag = bons[0].erstellt_am.slice(0, 10);
+    const f = obKonfig.firma || {};
+    let h = '<div class="z b">' + obEsc(f.firmenname || '') + '</div>';
+    h += '<div class="z b g">TAGESÜBERSICHT</div><div class="z">Mobil-Belege · Messe Nr. ' + obKonfig.syncId + ' · Gerät ' + obEsc(obKonfig.geraet) + '</div>';
+    h += '<div class="l"></div>';
+    h += '<div class="r"><span>Datum</span><span>' + tag.slice(8, 10) + '.' + tag.slice(5, 7) + '.' + tag.slice(0, 4) + '</span></div>';
+    h += '<div class="r"><span>Belege</span><span>' + bons.length + '</span></div>';
+    h += '<div class="r k"><span>von</span><span>' + obEsc(bons[0].bon_nr) + '</span></div>';
+    h += '<div class="r k"><span>bis</span><span>' + obEsc(bons[bons.length - 1].bon_nr) + '</span></div>';
+    h += '<div class="l"></div>';
+    h += '<div class="r"><span>Bar</span><span>' + s.bar.toFixed(2) + '</span></div>';
+    h += '<div class="r"><span>Karte</span><span>' + s.karte.toFixed(2) + '</span></div>';
+    h += '<div class="r b g"><span>GESAMT EUR</span><span>' + s.gesamt.toFixed(2) + '</span></div>';
+    const saetze = Object.keys(s.ust).sort((a, b) => b - a);
+    if (saetze.length) {
+        h += '<div class="l"></div><div class="b">Eigene Ware</div>';
+        saetze.forEach(satz => {
+            const b = s.ust[satz], st = b - b / (1 + satz / 100);
+            h += '<div class="r k"><span>' + satz + ' % brutto</span><span>' + b.toFixed(2) + '</span></div>';
+            h += '<div class="r k"><span>&nbsp;davon USt</span><span>' + st.toFixed(2) + '</span></div>';
+        });
+    }
+    const partner = Object.keys(s.partner);
+    if (partner.length) {
+        h += '<div class="l"></div><div class="b">Partnerware (kein eigener Umsatz)</div>';
+        partner.forEach(n => { h += '<div class="r k"><span>' + obEsc(n) + '</span><span>' + s.partner[n].toFixed(2) + '</span></div>'; });
+    }
+    h += '<div class="l"></div>';
+    const jetzt = obDatumFormat(new Date(), ' ');
+    h += '<div class="r k"><span>Gedruckt</span><span>' + jetzt.slice(8, 10) + '.' + jetzt.slice(5, 7) + '.' + jetzt.slice(0, 4) + ' ' + jetzt.slice(11, 16) + '</span></div>';
+    h += '<div class="z k" style="margin-top:4px">Kein Kassenabschluss — die Belege<br>werden in der Registrierkasse nacherfasst.</div>';
+    document.getElementById('ob-journal-overlay').classList.remove('aktiv');
+    document.getElementById('ob-quittung-inhalt').innerHTML = h;
+    document.getElementById('ob-quittung-overlay').classList.add('aktiv');
+    setTimeout(() => window.print(), 300);
+}
+
 function obQuittungAnzeigen(bon) {
     if (bon.mobil) {
         document.getElementById('ob-quittung-inhalt').innerHTML = obMobilBelegHtml(bon);
@@ -1053,13 +1162,13 @@ function obQuittungSchliessen() {
 // ── Bons hochladen (Post-Sync) ───────────────────────────────────────────────
 
 async function obBonsZaehlerAktualisieren() {
-    const bons = obDb ? await obIdbGetAll('bons') : [];
-    document.getElementById('ob-bons-zaehler').textContent = bons.length + ' Bon(s) offen';
+    const bons = obDb ? (await obIdbGetAll('bons')).filter(b => !b.hochgeladen) : [];
+    document.getElementById('ob-bons-zaehler').textContent = bons.length + (obIstMobil() ? ' Beleg(e) offen' : ' Bon(s) offen');
     document.getElementById('ob-upload-btn').disabled = bons.length === 0;
 }
 
 async function obBonsHochladen() {
-    const bons = await obIdbGetAll('bons');
+    const bons = (await obIdbGetAll('bons')).filter(b => !b.hochgeladen);
     if (bons.length === 0) return;
     if (!obKonfig) return;
 
@@ -1077,7 +1186,12 @@ async function obBonsHochladen() {
         const data = await resp.json();
 
         if (data.erfolg) {
-            await obIdbClear('bons');
+            if (obIstMobil()) {
+                // Mobil: Belege bleiben fürs Journal/Nachdruck am Gerät, nur als hochgeladen markiert
+                for (const b of bons) { b.hochgeladen = true; await obIdbPut('bons', b); }
+            } else {
+                await obIdbClear('bons');
+            }
             alert(obIstMobil()
                 ? data.bon_count + ' Beleg(e) hochgeladen — jetzt an der Laden-Kasse nacherfassen.'
                 : data.bon_count + ' Bon(s) hochgeladen — Umsatz € ' + Number(data.umsatz).toFixed(2));

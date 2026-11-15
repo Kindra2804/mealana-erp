@@ -28,6 +28,7 @@ foreach ($kassen as $k) {
 
 $offenePapier = $syncSvc->getOffenePapierMessen();
 $offeneMobil  = $syncSvc->getOffeneMobilMessen();
+$vergangeneMobil = $syncSvc->getVergangeneMobilMessen();
 
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
@@ -207,6 +208,26 @@ require_once __DIR__ . '/shell_top.php';
     <p style="font-size:12px;color:#64748b;margin:10px 0 0">
       Am Sunmi im Browser anmelden und „Am Gerät laden“ öffnen. Weitere Artikel können nachgebucht werden — dann am Gerät neu laden.
     </p>
+  </div>
+  <?php endif; ?>
+
+  <?php if (!empty($vergangeneMobil)): ?>
+  <div class="ks-card">
+    <div class="ks-card-title">📱 Vergangene Mobil-Messen</div>
+    <table class="ks-table">
+      <thead><tr><th>Messe</th><th>Belege vom – bis</th><th style="text-align:right">Belege</th><th style="text-align:right">Summe</th><th></th></tr></thead>
+      <tbody>
+        <?php foreach ($vergangeneMobil as $s): ?>
+        <tr>
+          <td>Nr. <?= (int)$s['id'] ?> · <?= htmlspecialchars($s['lager_name'] ?? '') ?></td>
+          <td style="color:#888"><?= $s['erster_beleg'] ? date('d.m.Y', strtotime($s['erster_beleg'])) . ($s['letzter_beleg'] && substr($s['letzter_beleg'], 0, 10) !== substr($s['erster_beleg'], 0, 10) ? ' – ' . date('d.m.Y', strtotime($s['letzter_beleg'])) : '') : '–' ?></td>
+          <td style="text-align:right"><?= (int)$s['beleg_count'] ?><?= (int)$s['beleg_offen'] ? ' <span style="color:#d97706">(' . (int)$s['beleg_offen'] . ' offen)</span>' : '' ?></td>
+          <td style="text-align:right">€ <?= number_format((float)$s['beleg_summe'], 2, ',', '.') ?></td>
+          <td style="text-align:right"><a href="messe_mobil_belege.php?sync_id=<?= (int)$s['id'] ?>" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">🧾 Belege</a></td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
   </div>
   <?php endif; ?>
 

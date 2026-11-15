@@ -392,8 +392,16 @@ Rechnung von …“ bzw. „Spende für …“ (mit Kleinunternehmer-Hinweis bzw
 nur für die eigene Ware. Der Druck ist bewusst fett und groß — dünne Schrift kommt am Thermodrucker kaum aufs Papier.
 Am Tablet (Querformat) gibt es dieselbe Kasse mit Warenkorb und Summe nebeneinander; ⇅ im Kopf schaltet um.
 
+**Journal + Tagesübersicht am Gerät** — 📋 im Kopf: alle Belege dieser Messe je Tag (✓ = schon hochgeladen),
+Beleg antippen = **Nachdruck** („*** NACHDRUCK ***“), **🧾 Tagesübersicht drucken**: Datum, Belege von–bis, Bar/Karte,
+Gesamt, eigene Ware je USt-Satz, Partnerware je Partner getrennt — zum Abzählen der Kassa am Stand. Das ist **kein
+Kassenabschluss**: die Belege sind Paragons, abgeschlossen wird in der Registrierkasse bei der Nacherfassung (Z-Bon
+„Davon Nacherfassungen“). Belegnummern laufen **je Messe und Gerät** ab 0001 (M‹Messe›-‹Gerät›-‹laufend›).
+
 **4. Hochladen** — sobald das Gerät wieder im Laden-WLAN ist: **⤴ Belege hochladen**. Doppelt hochladen schadet
-nicht (gleiche Belegnummer wird übersprungen).
+nicht (gleiche Belegnummer wird übersprungen). Die Belege bleiben fürs Journal am Gerät. Wird eine **andere Messe**
+geladen, müssen vorher alle Belege hochgeladen sein (sonst Hinweis); danach räumt das Gerät das alte Journal weg.
+Abgeschlossene Messen stehen im ERP unter 🎪 Messe → **📱 Vergangene Mobil-Messen** (→ 🧾 Belege).
 
 **5. Nacherfassen** — an der **Signatur-Kasse**: 🎪 Messe → Offene Mobil-Messen → **🧾 Belege nacherfassen** →
 **✓ Alle offenen Belege nacherfassen**. Jeder Beleg wird ein eigener, signierter Bon mit den Artikeln, Chargen
