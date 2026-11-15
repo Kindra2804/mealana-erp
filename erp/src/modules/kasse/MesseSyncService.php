@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
 require_once __DIR__ . '/KassenService.php';
+require_once __DIR__ . '/PartnerBon.php';
 require_once __DIR__ . '/../aktionen/MengenAktionService.php';
 
 class MesseSyncService
@@ -178,7 +179,7 @@ class MesseSyncService
         $stmt = $this->db->prepare("
             SELECT
                 a.id, a.artikelnummer, a.name AS bezeichnung,
-                a.steuerklasse_id, sk.satz AS steuer_prozent,
+                a.steuerklasse_id, sk.satz AS steuer_prozent, a.partner_id,
                 a.ueberverkauf_erlaubt, a.charge_pflicht,
                 COALESCE(
                     (SELECT ap.brutto_vk
@@ -227,6 +228,20 @@ class MesseSyncService
             $a = $kassenSvc->mitEffektivPreis($a);
         }
         unset($a);
+
+        // Partnerware: Modus + USt wie PartnerBon::anreichern (Spende/KU-Fremdrechnung 0 %), Kopfdaten für den Beleg
+        foreach ($artikel as &$a) { $a['artikel_id'] = (int)$a['id']; }   // anreichern() erwartet artikel_id
+        unset($a);
+        $artikel = PartnerBon::anreichern($artikel);
+        $partner = [];
+        foreach (PartnerBon::abschnitte(array_filter($artikel, fn($x) => !empty($x['partner_id']))) as $ab) {
+            $pa = $ab['partner'];
+            $partner[(int)$pa['id']] = [
+                'name' => $pa['name'], 'adresse' => $ab['adresse'], 'uid' => $pa['uid_nummer'] ?? null,
+                'zvr' => $pa['zvr_nummer'] ?? null, 'modus' => $ab['modus'], 'ku_text' => $ab['ku_text'],
+                'titel' => PartnerBon::abschnittTitel($ab),
+            ];
+        }
 
         // Gültige Gutscheine — Gutschein-Modul (Tabelle `gutscheine`) existiert noch nicht,
         // daher hier bewusst leer statt Fehler. Sobald das Modul gebaut ist, hier die
@@ -277,6 +292,7 @@ class MesseSyncService
             'sync_token'     => $sync['sync_token'],
             'variante'       => $sync['variante'],
             'firma'          => $firma,
+            'partner'        => $partner,
             'mobil_zaehler'  => $mobilZaehler,
             'exportiert_am'  => date('Y-m-d H:i:s'),
             'kasse'          => $kasseConfig,
@@ -465,10 +481,8 @@ class MesseSyncService
             $strichIdx[$schluessel((int)$s['artikel_id'], $s['charge'] ?? null)] = (float)$s['menge'];
         }
         if ($istMobil) {
-            $offen = (int)$this->db->query("SELECT COUNT(*) FROM kassen_messe_mobilbelege WHERE sync_id = " . (int)$syncId . " AND bon_id IS NULL")->fetchColumn();
-            if ($offen) {
-                return ['erfolg' => false, 'fehler' => "Erst alle Belege nacherfassen ($offen offen)."];
-            }
+            // verkauft = alle hochgeladenen Belege — unabhängig davon, ob schon nacherfasst (Betriebe ohne
+            // RKSV-Kasse erfassen evtl. nie signiert nach; die Reihenfolge ist egal)
             $strichIdx = $this->mobilVerkauft($syncId);
         }
 

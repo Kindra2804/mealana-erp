@@ -106,7 +106,9 @@ $pageTitle = 'Offline-Kasse';
     .ob-quittung .z { text-align: center; }
     .ob-quittung .b { font-weight: bold; }
     .ob-quittung .l { border-top: 1px dashed #999; margin: 6px 0; }
-    .ob-quittung .r { display: flex; justify-content: space-between; }
+    .ob-quittung .r { display: flex; justify-content: space-between; gap: 6px; }
+    .ob-quittung .k { font-size: 11px; }
+    .ob-quittung .g { font-size: 15px; }
 
     /* Mengenvorwahl + Artikel-Kacheln (beide Anordnungen) */
     .ob-mengen { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 0 4px; font-size: 12px; color: #64748b; }
@@ -165,7 +167,13 @@ $pageTitle = 'Offline-Kasse';
       #ob-quittung-overlay .ob-overlay-box { width: auto; max-width: none; max-height: none; overflow: visible;
                                              padding: 1mm 2mm; border-radius: 0; box-shadow: none; }
       .ob-noprint { display: none !important; }
-      .ob-quittung { width: 48mm; font-size: 9pt; color: #000; }
+      /* Thermodruck: dünne Schrift kommt kaum aufs Papier → serifenlos, fett, reines Schwarz, kräftige Linien */
+      .ob-quittung, .ob-quittung * { font-family: Arial, Helvetica, sans-serif !important; color: #000 !important;
+                                     font-weight: 700 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ob-quittung { width: 48mm; font-size: 11pt; line-height: 1.25; }
+      .ob-quittung .k { font-size: 10pt; }
+      .ob-quittung .g { font-size: 14pt; }
+      .ob-quittung .l { border-top: 2px dashed #000 !important; margin: 5px 0; }
     }
 
     .ob-feedback { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }

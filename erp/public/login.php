@@ -11,10 +11,17 @@ if (!empty($_SESSION['benutzer']['id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $passwort = $_POST['passwort'] ?? '';
+    $nachLogin = $_SESSION['nach_login'] ?? null;
     if (Auth::login($username, $passwort)) {
+        unset($_SESSION['nach_login']);
         // Superadmin: Einrichtungs-Assistent nach jeder Anmeldung, solange (je nach Lizenz) noch etwas offen ist
         require_once __DIR__ . '/../src/modules/einrichtung/OnboardingService.php';
         $ziel = ($_SESSION['benutzer']['rolle_rang'] ?? 0) >= 100 && OnboardingService::anzahlOffen() > 0 ? '/einrichtung/index.php' : '/start.php';
+        // Vorher aufgerufene Seite (Auth::check), wenn nicht der Einrichtungs-Assistent Vorrang hat
+        if ($ziel === '/start.php' && $nachLogin && str_starts_with($nachLogin, BASE_PATH . '/')) {
+            header('Location: ' . $nachLogin);
+            exit;
+        }
         header('Location: ' . BASE_PATH . $ziel);
         exit;
     } else {
@@ -31,6 +38,7 @@ unset($_SESSION['fehler']);
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anmelden – MeaLana ERP</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -104,6 +112,11 @@ unset($_SESSION['fehler']);
             transition: background .15s;
         }
         button[type=submit]:hover { background: #3a6aa0; }
+            /* Handy/Sunmi: Karte über die volle Breite, große Felder */
+        @media (max-width: 480px) {
+            .login-card { width: calc(100% - 24px) !important; padding: 24px 18px !important; }
+            input, button { font-size: 17px !important; }
+        }
     </style>
 </head>
 <body>

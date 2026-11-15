@@ -47,11 +47,13 @@ require_once __DIR__ . '/shell_top.php';
     <p style="font-size:13px;color:#475569;margin:0 0 10px">
       Jeder Beleg vom Gerät wird hier ein eigener <strong>signierter Bon</strong> an der Kasse
       <strong><?= htmlspecialchars(($kasseInfo['name'] ?? '') . ' (' . ($kasseInfo['kasse_nr'] ?? '') . ')') ?></strong>,
-      mit Vermerk „Nacherfassung Messe-Beleg Nr. … vom …“. Die Ware geht dabei aus dem Messe-Lager ab.
+      mit Vermerk „Nacherfassung Messe-Beleg Nr. … vom …“. Partnerware (Fremdrechnung/Spende) wird wie an der Laden-Kasse nicht signiert.
+      Das Lager bucht „↩ Ware zurückbuchen“.
       Fehlen Belege, am Gerät „⤴ Belege hochladen“ drücken (doppelt hochladen schadet nicht).
     </p>
     <?php if (!$signiert): ?>
-      <div class="ks-feedback fehler" style="margin-bottom:10px">Diese Kasse signiert nicht (keine RKSV-Registrierung). Nacherfassen bitte an der Signatur-Kasse.</div>
+      <div class="ks-feedback info" style="margin-bottom:10px">Diese Kasse signiert nicht (keine RKSV-Registrierung) — die Bons werden ohne Signatur angelegt.
+        Richtig nur, wenn der Betrieb keine Registrierkassenpflicht hat; sonst an der Signatur-Kasse nacherfassen.</div>
     <?php endif; ?>
     <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:14px;margin-bottom:12px">
       <div>Belege: <strong><?= count($belege) ?></strong> · offen: <strong id="mb-offen"><?= count($offen) ?></strong></div>
@@ -60,7 +62,7 @@ require_once __DIR__ . '/shell_top.php';
       <div>Gesamt: <strong>€ <?= $fmt($summe['bar'] + $summe['karte_extern']) ?></strong></div>
     </div>
     <?php if ($offen): ?>
-      <button class="ks-btn ks-btn-primary" id="mb-alle" onclick="mbAlleNacherfassen()" <?= $signiert ? '' : 'disabled' ?>>
+      <button class="ks-btn ks-btn-primary" id="mb-alle" onclick="mbAlleNacherfassen()">
         ✓ Alle <?= count($offen) ?> offenen Belege nacherfassen
       </button>
       <div id="mb-status" style="font-size:13px;margin-top:8px"></div>

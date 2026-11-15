@@ -141,6 +141,7 @@ async function obVorbereitungLaden() {
             bonNrZaehler: zaehler,
             variante: data.variante || 'elektronisch',
             firma: data.firma || {},
+            partner: data.partner || {},
             geraet: geraet,
             diversArtikelId: data.divers_artikel_id || null,
             gruppen: data.gruppen || [], // Kacheln im Freier-Artikel-Dialog
@@ -544,6 +545,9 @@ function obZumWarenkorbHinzufuegen(artikel, charge, mengeNeu) {
         rabatt_prozent: 0,
         charge: charge,
         block: 'normal',
+        // Partnerware: Fremdrechnung/Spende stehen am Beleg im Abschnitt des Partners
+        partner_id: artikel.partner_id || null,
+        partner_modus: artikel.partner_modus || null,
         // Sale-/Aktionspreis (kommt so schon aus dem Export) — zählt nicht für Mengen-Aktionen
         preis_reduziert: !!artikel.preis_reduziert,
         preis_normal: parseFloat(artikel.preis_normal) || 0,
@@ -887,6 +891,8 @@ async function obVerkaufAbschliessen() {
             rabatt_prozent: z.rabatt_prozent,
             steuer_prozent: z.steuer_prozent,
             charge: z.charge || null,
+            partner_id: z.partner_id || null,
+            partner_modus: z.partner_modus || null,
         })),
         rksv_signatur: null,
         rksv_qr: null,
@@ -950,21 +956,43 @@ function obMobilBelegHtml(bon) {
     h += '<div class="r"><span>Datum</span><span>' + obEsc(bon.erstellt_am.slice(8, 10) + '.' + bon.erstellt_am.slice(5, 7) + '.'
         + bon.erstellt_am.slice(0, 4) + ' ' + bon.erstellt_am.slice(11, 16)) + '</span></div>';
     h += '<div class="l"></div>';
-    const ust = {};
-    bon.positionen.forEach(p => {
+    const fremd = p => p.partner_modus === 'fremdrechnung' || p.partner_modus === 'spende';
+    const zeile = p => {
         const gs = p.zeile_brutto ?? (p.menge * p.einzelpreis_brutto);
-        h += '<div>' + p.menge + ' × ' + obEsc(p.bezeichnung) + '</div>';
-        h += '<div class="r" style="font-size:11px;color:#444"><span>&nbsp;à € ' + (p.preis_vorher_brutto ?? p.einzelpreis_brutto).toFixed(2)
-            + (p.aktion_hinweis ? ' · Aktion ' + obEsc(p.aktion_hinweis) : '') + '</span><span class="b">€ ' + gs.toFixed(2) + '</span></div>';
-        const s = parseFloat(p.steuer_prozent) || 0;
-        ust[s] = (ust[s] || 0) + gs;
+        return '<div>' + p.menge + ' × ' + obEsc(p.bezeichnung) + '</div>'
+            + '<div class="r k"><span>&nbsp;à ' + (p.preis_vorher_brutto ?? p.einzelpreis_brutto).toFixed(2)
+            + (p.aktion_hinweis ? ' Aktion ' + obEsc(p.aktion_hinweis) : '') + '</span><span class="b">' + gs.toFixed(2) + '</span></div>';
+    };
+    const ustListe = (pos) => {
+        const ust = {};
+        pos.forEach(p => { const s = parseFloat(p.steuer_prozent) || 0; ust[s] = (ust[s] || 0) + (p.zeile_brutto ?? p.menge * p.einzelpreis_brutto); });
+        let x = '';
+        Object.keys(ust).sort((a, b) => b - a).forEach(s => {
+            const b = ust[s], st = b - b / (1 + s / 100);
+            x += '<div class="r k"><span>inkl. ' + s + ' % USt</span><span>' + st.toFixed(2) + '</span></div>';
+        });
+        return x;
+    };
+    // Eigene Ware (unser Umsatz, USt nur darüber)
+    const eigene = bon.positionen.filter(p => !fremd(p));
+    eigene.forEach(p => { h += zeile(p); });
+    if (eigene.length) h += ustListe(eigene);
+    // Partnerware: je Partner ein Abschnitt „im Namen und auf Rechnung von“ bzw. „Spende für“ (wie Laden-Bon)
+    const gruppen = {};
+    bon.positionen.filter(fremd).forEach(p => { (gruppen[p.partner_id] = gruppen[p.partner_id] || []).push(p); });
+    Object.keys(gruppen).forEach(pid => {
+        const pa = (obKonfig.partner || {})[pid] || { name: 'Partner ' + pid, titel: 'Verkauft im Namen und auf Rechnung von' };
+        h += '<div class="l"></div><div class="k">' + obEsc(pa.titel) + ':</div><div class="b">' + obEsc(pa.name) + '</div>';
+        if (pa.adresse) h += '<div class="k">' + obEsc(pa.adresse) + '</div>';
+        if (pa.uid) h += '<div class="k">UID ' + obEsc(pa.uid) + '</div>';
+        if (pa.zvr) h += '<div class="k">ZVR ' + obEsc(pa.zvr) + '</div>';
+        gruppen[pid].forEach(p => { h += zeile(p); });
+        if (pa.ku_text) h += '<div class="k">' + obEsc(pa.ku_text) + '</div>';
+        else if (pa.modus === 'fremdrechnung') h += ustListe(gruppen[pid]);
+        else h += '<div class="k">ohne USt</div>';
     });
     h += '<div class="l"></div>';
-    h += '<div class="r b" style="font-size:14px"><span>SUMME EUR</span><span>' + bon.bruttobetrag.toFixed(2) + '</span></div>';
-    Object.keys(ust).sort((a, b) => b - a).forEach(s => {
-        const b = ust[s], st = b - b / (1 + s / 100);
-        h += '<div class="r" style="font-size:11px"><span>inkl. ' + s + ' % USt</span><span>' + st.toFixed(2) + '</span></div>';
-    });
+    h += '<div class="r b g"><span>SUMME EUR</span><span>' + bon.bruttobetrag.toFixed(2) + '</span></div>';
     if (bon.zahlungsart === 'bar') {
         h += '<div class="r"><span>Bar gegeben</span><span>' + bon.gegeben.toFixed(2) + '</span></div>';
         h += '<div class="r"><span>Rückgeld</span><span>' + bon.rueckgeld.toFixed(2) + '</span></div>';

@@ -799,11 +799,11 @@ require_once __DIR__ . '/includes/shell_top.php';
             <h3 id="kasse-mobil-messe">Mobil-Messe (Sunmi, Belege ohne Signatur) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Handgerät (Sunmi V2, 58-mm-Drucker) erteilt nur den <strong>Beleg</strong> (Belegerteilungspflicht), ohne Signatur — wie ein Paragon. Danach werden die Belege an der Signatur-Kasse nacherfasst, ohne Abtippen.</p>
             <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>🎪 Messe</strong> → Variante <strong>📱 Mobil-Messe (Sunmi)</strong> → Artikel scannen → Umbuchung</div></div>
-            <div class="ba-step"><div class="ba-step-nr">2</div><div>Am Sunmi (Laden-WLAN) im ERP anmelden → 🎪 Messe → <strong>📱 Am Gerät laden</strong> → Gerät-Nr. → <strong>📥 Sync-Daten laden</strong>. Danach offline.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Am Sunmi (Laden-WLAN) <strong>…/mealana/kasse/mobil.php</strong> öffnen (Lesezeichen), anmelden → Messe antippen → Gerät-Nr. → <strong>📥 Sync-Daten laden</strong>. Danach offline.</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Messe: Kacheln antippen, Menge vorwählen, grüner Knopf → Warenkorb → <strong>✓ Beleg</strong> (wird gleich gedruckt). Belegnummer M‹Messe›-‹Gerät›-‹laufend›.</div></div>
             <div class="ba-step"><div class="ba-step-nr">4</div><div>Zurück im Laden-WLAN: <strong>⤴ Belege hochladen</strong> (doppelt schadet nicht)</div></div>
-            <div class="ba-step"><div class="ba-step-nr">5</div><div>An der Signatur-Kasse: 🎪 Messe → <strong>🧾 Belege nacherfassen</strong> → <strong>Alle nacherfassen</strong> (je Beleg ein signierter Bon mit Vermerk)</div></div>
-            <div class="ba-step"><div class="ba-step-nr">6</div><div><strong>↩ Von Messe zurück</strong>: verkauft kommt aus den Belegen, nur „zurück“ zählen, Schwund automatisch. Erst hier wird das Messe-Lager gebucht.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div>An der Signatur-Kasse: 🎪 Messe → <strong>🧾 Belege nacherfassen</strong> → <strong>Alle nacherfassen</strong> (je Beleg ein signierter Bon mit Vermerk; Partnerware wie an der Laden-Kasse nicht signiert; ohne Registrierkassenpflicht geht es auch an einer Kasse ohne Signatur)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">6</div><div><strong>↩ Von Messe zurück</strong>: verkauft kommt aus den Belegen, nur „zurück“ zählen, Schwund automatisch. Unabhängig von der Nacherfassung. Erst hier wird das Messe-Lager gebucht.</div></div>
             <div class="ba-hint">💡 Am Tablet dieselbe Kasse im Querformat (⇅ im Kopf schaltet um, das Gerät merkt sich die Wahl). Drucken geht über den normalen Android-Druckdialog — am Tablet z.B. mit einem Bluetooth-Bondrucker.</div>
 
             <h3 id="kasse-abholbereit">Abholbereit+bezahlt — Aufträge übergeben <span class="ba-badge ba-badge-fertig">Fertig</span></h3>

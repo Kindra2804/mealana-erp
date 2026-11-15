@@ -113,13 +113,13 @@ require_once __DIR__ . '/shell_top.php';
     <div class="ks-card">
       <div class="ks-card-title">📱 Mobil-Messe Nr. <?= (int)$aktiverSync['id'] ?> — Ware zurückbuchen</div>
       <?php if ($mobilOffen): ?>
-        <div class="ks-feedback fehler">Es sind noch <?= $mobilOffen ?> Beleg(e) nicht nacherfasst —
-          <a href="messe_mobil_belege.php?sync_id=<?= (int)$aktiverSync['id'] ?>">zuerst nacherfassen</a>.</div>
+        <div class="ks-feedback info"><?= $mobilOffen ?> Beleg(e) sind noch nicht nacherfasst —
+          <a href="messe_mobil_belege.php?sync_id=<?= (int)$aktiverSync['id'] ?>">Belege nacherfassen</a> (geht auch nach dem Zurückbuchen).</div>
       <?php endif; ?>
       <p style="font-size:13px;color:#64748b;margin-bottom:14px">
         <strong>Verkauft</strong> kommt aus den hochgeladenen Belegen. Die gezählte Menge <strong>zurück</strong> eintragen —
-        der <strong>Schwund</strong> ergibt sich automatisch (rot = Zählfehler). Fehlen noch Belege eines Geräts:
-        vorher am Gerät „⤴ Belege hochladen“.
+        der <strong>Schwund</strong> ergibt sich automatisch (rot = Zählfehler). <strong>Vorher alle Geräte
+        „⤴ Belege hochladen“</strong> lassen, sonst fehlen deren Verkäufe hier.
       </p>
       <table class="ks-table">
         <thead>
@@ -149,7 +149,7 @@ require_once __DIR__ . '/shell_top.php';
 
     <div class="ks-card">
       <div style="display:flex;gap:10px;align-items:center">
-        <button type="button" class="ks-btn ks-btn-primary ks-btn-lg" id="mr-papier-btn" <?= $mobilOffen ? 'disabled' : '' ?>
+        <button type="button" class="ks-btn ks-btn-primary ks-btn-lg" id="mr-papier-btn"
                 onclick="mrPapierAbschliessen(<?= (int)$aktiverSync['id'] ?>, <?= (int)$aktiverSync['lager_id'] ?>, <?= (int)($hauptlager['id'] ?? 1) ?>)">
           ✓ Lager zurückbuchen
         </button>

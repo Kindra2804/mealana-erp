@@ -187,6 +187,13 @@ class Auth
     public static function check(): void
     {
         if (empty($_SESSION['benutzer']['id'])) {
+            // Ziel merken (nur normale Seitenaufrufe), damit die Anmeldung dorthin zurückführt —
+            // z.B. Sunmi: …/kasse/mobil.php direkt eintippen
+            $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && str_starts_with($uri, BASE_PATH . '/')
+                && !str_contains($uri, 'ajax') && !str_contains($uri, '//')) {
+                $_SESSION['nach_login'] = $uri;
+            }
             header('Location: ' . BASE_PATH . '/login.php');
             exit;
         }
