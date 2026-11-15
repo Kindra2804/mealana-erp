@@ -80,7 +80,7 @@
 - [Paperless — Beleg per QR](project_paperless_rechnung_modul.md) — fertig + Klicktest 2026-11-01, läuft auf beleg.mealana.at; „Ohne Druck“ entfernt; Live-ERP: URL+Schlüssel eintragen
 
 ## Kasse / RKSV
-- [🧾 RKSV-Exporte + Badge Fremdumsatz](project_rksv_exporte_fremdumsatz.md) — 2026-11-15 ✅ Badge „Fremd“ + Fremdumsatz aus Dashboard/Statistik (4a78804) → ✅ DEP-Knopf → §131 (CSV/TAB wie BONit, ohne Artikel); Fund: „RKSV aktiv“-Anzeige nur an rksv_kassen_id (Dev-K1 Altlast)
+- [🧾 RKSV-Exporte + Badge Fremdumsatz](project_rksv_exporte_fremdumsatz.md) — 2026-11-15 ✅ Badge „Fremd“ + Fremdumsatz aus Dashboard/Statistik (4a78804) → ✅ DEP-Knopf → ✅ §131-ZIP (offen: echter BFR-Test); Fund: „RKSV aktiv“-Anzeige nur an rksv_kassen_id (Dev-K1 Altlast)
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign, Doppel-Gutschrift-Sperre, A4-Bon
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — BFR-Hardwaretest erfolgreich
 - [RKSV/BFR Implementierung](project_rksv_bfr.md) — Hardwaretest 2026-07-19 ok

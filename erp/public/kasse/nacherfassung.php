@@ -23,6 +23,7 @@ $rksvKassen = Database::getInstance()->query("
     ORDER BY kasse_nr
 ")->fetchAll(PDO::FETCH_ASSOC);
 $darfExport  = Auth::kann('kasse.stoppen');
+$alleKassen  = Database::getInstance()->query("SELECT id, name, kasse_nr, aktiv FROM kassen ORDER BY kasse_nr")->fetchAll(PDO::FETCH_ASSOC);
 $fehler      = $_SESSION['fehler'] ?? null;        unset($_SESSION['fehler']);
 $depLokalUrl = $_SESSION['dep_lokal_url'] ?? null; unset($_SESSION['dep_lokal_url']);
 
@@ -82,6 +83,35 @@ require_once __DIR__ . '/shell_top.php';
       </table>
     <?php endif; ?>
   </div>
+
+  <?php if ($darfExport): ?>
+  <div class="ks-card">
+    <div class="ks-card-title">Datenexport für die Betriebsprüfung (§ 131 BAO)</div>
+    <p style="color:#94a3b8;font-size:12px;margin:0 0 10px">
+      ZIP mit allen Kassendaten im Zeitraum, eine Datei je Tabelle (CSV, TAB-getrennt, öffnet in Excel):
+      Belege, Positionen, Kassenbuch, Tagesabschlüsse, Nullbelege, Ausfälle, Messen + kleine Stammdaten.
+      Ohne Artikelstammdaten. LIESMICH.txt beschreibt Inhalt und Format.
+    </p>
+    <form method="post" action="<?= BASE_PATH ?>/kasse/pruef_export.php" data-no-loader
+          style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"
+          onsubmit="var b=this.querySelector('button');b.textContent='⏳ wird erstellt …';setTimeout(function(){b.textContent='⬇ ZIP erstellen';},8000)">
+      <label style="font-size:12px;color:#94a3b8">Von<br>
+        <input type="date" name="von" required value="<?= date('Y') ?>-01-01" style="padding:6px;border-radius:6px;border:1px solid #475569"></label>
+      <label style="font-size:12px;color:#94a3b8">Bis<br>
+        <input type="date" name="bis" required value="<?= date('Y-m-d') ?>" style="padding:6px;border-radius:6px;border:1px solid #475569"></label>
+      <label style="font-size:12px;color:#94a3b8">Kasse<br>
+        <select name="kasse_id" style="padding:6px;border-radius:6px;border:1px solid #475569">
+          <option value="">Alle Kassen</option>
+          <?php foreach ($alleKassen as $k): ?>
+            <option value="<?= (int)$k['id'] ?>"><?= htmlspecialchars($k['kasse_nr'] . ' · ' . $k['name']) ?><?= $k['aktiv'] ? '' : ' (inaktiv)' ?></option>
+          <?php endforeach; ?>
+        </select></label>
+      <label style="font-size:12px;color:#94a3b8;padding-bottom:7px">
+        <input type="checkbox" name="mit_dep" value="1"<?= $rksvKassen ? ' checked' : ' disabled' ?>> DEP vom BFR dazulegen</label>
+      <button type="submit" style="padding:7px 14px;border-radius:6px;border:0;background:#2563eb;color:#fff;cursor:pointer">⬇ ZIP erstellen</button>
+    </form>
+  </div>
+  <?php endif; ?>
 
   <div class="ks-card">
     <div class="ks-card-title">Offene Störungen (<?= count($offen) ?>)</div>

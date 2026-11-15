@@ -854,6 +854,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-hint">💡 Druckerkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen. Im Browser: Rand "Keine", Kopfzeile "Aus".</div>
             <p>RKSV-Signatur läuft über den BFR BONit Fiscal Recorder — jeder Bon wird automatisch signiert. Ist BFR kurz nicht erreichbar, verkauft die Kasse trotzdem weiter (Bon zeigt "Sicherheitseinrichtung ausgefallen"), Details unter Kasse → 🔏 RKSV.</p>
             <p><strong>DEP-Export für die Finanzprüfung (RKSV § 7):</strong> Kasse → 🔏 RKSV → je Kasse „⬇ DEP herunterladen“. Holt das komplette Datenerfassungsprotokoll direkt vom BFR als JSON (immer seit der Inbetriebnahme, kürzerer Zeitraum nur im BFR-Programm). Ist der BFR vom Server nicht erreichbar, am BFR-PC im Browser <code>http://127.0.0.1:8787/control/export</code> öffnen.</p>
+            <p><strong>Datenexport für die Betriebsprüfung (§ 131 BAO):</strong> Kasse → 🔏 RKSV → Zeitraum + Kasse wählen → „⬇ ZIP erstellen“. ZIP mit einer CSV-Datei je Kassentabelle (TAB-getrennt, öffnet in Excel): Belege, Positionen, Kassenbuch, Tagesabschlüsse, Nullbelege, Ausfälle, Messen + kleine Stammdaten, ohne Artikelstammdaten. Optional mit DEP vom BFR. LIESMICH.txt beschreibt Inhalt und Format, mit Prüfsumme je Datei.</p>
             <div class="ba-hint">💡 Bon parken: ⏸ Parken-Button — mehrere Bons können gleichzeitig geparkt und später wieder abgerufen werden.</div>
 
             <!-- GUTSCHEINE -->
