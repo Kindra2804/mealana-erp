@@ -91,7 +91,11 @@ Varianten-Artikel bestehen aus:
 3. Das System verkleinert das Bild automatisch auf max. 1920px
 4. **Hauptbild:** Stern ☆ neben dem Bild anklicken
 5. **Reihenfolge:** Pfeile ↑ / ↓ verwenden
-6. **Alt-Text** (Bildbeschreibung) eingeben — wichtig für Barrierefreiheit und Google
+6. **Alt-Text** (Bildbeschreibung) eingeben — wichtig für Barrierefreiheit und Google. **Leer lassen ist okay:**
+   der Shop-Abgleich schickt dann automatisch den Artikelnamen (bei Varianten mit Farbe/Größe). Das gilt auch für
+   Bilder aus dem JTL-Bilder-Import — bei neuen Artikeln/Bildern ist nichts extra zu tun. Einen eigenen Alt-Text nur,
+   wenn das Bild mehr zeigt als den Artikel (z.B. „Mütze aus Karisma, gestrickt, Farbe natur“).
+   Nur einmalig für Bilder, die vor Version 1.0.19 schon im Shop waren: `php scripts/alt_texte_nachziehen.php <shop-slug>`.
 
 > **Erlaubte Formate:** JPG, PNG, GIF, WebP  
 > **Größe:** Das System verkleinert automatisch — Originaldatei darf groß sein.

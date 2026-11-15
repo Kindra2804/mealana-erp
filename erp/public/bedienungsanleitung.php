@@ -313,7 +313,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <ul>
                 <li><strong>Hauptbild:</strong> Stern ☆ klicken</li>
                 <li><strong>Reihenfolge:</strong> Pfeile ↑ / ↓</li>
-                <li><strong>Alt-Text:</strong> Bildbeschreibung für Barrierefreiheit und Google</li>
+                <li><strong>Alt-Text:</strong> Bildbeschreibung für Barrierefreiheit und Google. Leer lassen ist okay — der Shop-Abgleich schickt dann automatisch den Artikelnamen (auch bei Bildern aus dem JTL-Import). Eigener Text nur, wenn das Bild mehr zeigt als den Artikel.</li>
             </ul>
             <div class="ba-hint">💡 Erlaubte Formate: JPG, PNG, GIF, WebP. Das Original wird vor der Verkleinerung gespeichert.</div>
 
