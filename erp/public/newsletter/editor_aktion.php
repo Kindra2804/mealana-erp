@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterService.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterRenderer.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
+require_once __DIR__ . '/../../src/modules/newsletter/NewsletterVersandService.php';
 
 $svc = new NewsletterService();
 $uid = (int)$_SESSION['benutzer']['id'];
@@ -25,7 +26,26 @@ switch ($aktion) {
         header('Location: liste.php');
         exit;
 
+    case 'pausieren':
+    case 'fortsetzen':
+        $id = (int)($_POST['id'] ?? 0);
+        (new NewsletterVersandService())->pausieren($id, $aktion === 'pausieren', $uid);
+        $_SESSION['erfolg'] = $aktion === 'pausieren' ? 'Versand angehalten.' : 'Versand läuft weiter.';
+        header('Location: editor.php?id=' . $id);
+        exit;
+    case 'abbrechen':
+        $id = (int)($_POST['id'] ?? 0);
+        $_SESSION[(new NewsletterVersandService())->abbrechen($id, $uid) ? 'erfolg' : 'fehler'] = 'Versand beendet — der Rest bekommt diesen Newsletter nicht.';
+        header('Location: editor.php?id=' . $id);
+        exit;
+
     // ── Ajax ──
+    case 'versand_info':
+        $json((new NewsletterVersandService())->vorschau((int)($_GET['id'] ?? 0)) + ['max' => NewsletterVersandService::maxProStunde()]);
+    case 'versand_starten':
+        $erg = (new NewsletterVersandService())->starten((int)($_POST['id'] ?? 0), $uid);
+        if ($erg['erfolg']) $_SESSION['erfolg'] = 'Versand gestartet: ' . $erg['anzahl'] . ' Empfänger. Die Mails gehen in den nächsten Stunden nach und nach raus.';
+        $json($erg);
     case 'speichern':
         $daten = json_decode((string)file_get_contents('php://input'), true) ?: [];
         $json($svc->speichern((int)($daten['id'] ?? 0), $daten));

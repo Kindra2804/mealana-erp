@@ -5,6 +5,8 @@
 //   nl_tokens      — zufällige Link-Schlüssel + Status (ohne E-Mail), vom ERP gesetzt
 //   nl_ereignisse  — Warteschlange (Anmeldung mit E-Mail, Bestätigung, Abmeldung); das ERP holt sie alle
 //                    15 Minuten ab und lässt sie danach hier löschen (api.php nl_quittieren)
+//   nl_links       — Zähl-Links der Newsletter (Schlüssel → Ziel-Adresse + Klick-Summe, ohne Empfänger)
+//   Bilder der Newsletter liegen im Ordner <ordner>/nl_bilder (Name = SHA-1 des Inhalts), ausgeliefert über ?i=
 require_once __DIR__ . '/lib.php';
 
 function nl_tab(string $name): string
@@ -30,6 +32,9 @@ function nl_db(): PDO
         id $autoId, typ VARCHAR(20) NOT NULL, shop VARCHAR(50) NULL, token VARCHAR(64) NULL,
         email VARCHAR(255) NULL, vorname VARCHAR(100) NULL, ip VARCHAR(45) NULL, zeit VARCHAR(20) NOT NULL,
         info TEXT NULL)");
+    $db->exec("CREATE TABLE IF NOT EXISTS " . nl_tab('nl_links') . " (
+        schluessel VARCHAR(16) NOT NULL PRIMARY KEY, url VARCHAR(1000) NOT NULL,
+        klicks INT NOT NULL DEFAULT 0, aktualisiert VARCHAR(20) NOT NULL)");
     $fertig = true;
     return $db;
 }
@@ -59,6 +64,17 @@ function nl_token_status(string $token, string $status): void
 {
     nl_db()->prepare("UPDATE " . nl_tab('nl_tokens') . " SET status = ?, aktualisiert = ? WHERE token = ?")
         ->execute([$status, date('Y-m-d H:i:s'), $token]);
+}
+
+function nl_bild_ordner(): string
+{
+    return rtrim(bp_config()['ordner'], '/\\') . '/nl_bilder';
+}
+
+/** Bildname = SHA-1 des Inhalts + Endung (nichts anderes wird ausgeliefert) */
+function nl_bild_name_ok(string $name): bool
+{
+    return (bool)preg_match('/^[a-f0-9]{40}\.(jpg|png|gif)$/', $name);
 }
 
 function nl_ip(): string

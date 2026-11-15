@@ -4,7 +4,39 @@
 //        → Anmeldung in die Warteschlange; das ERP schickt die Bestätigungs-Mail (Double-Opt-in)
 //   GET  ?b=TOKEN  → Anmeldung bestätigen
 //   GET  ?a=TOKEN  → Abmelden-Seite mit Knopf; POST a=TOKEN (auch „List-Unsubscribe=One-Click“) → abgemeldet
+//   GET  ?i=NAME   → Bild eines Newsletters
+//   GET  ?k=SCHLÜSSEL → Zähl-Link: Klick +1 (nur Summe, ohne Empfänger), Weiterleitung zur hinterlegten Adresse
 require __DIR__ . '/newsletter_lib.php';
+
+if (isset($_GET['i'])) {
+    $name = (string)$_GET['i'];
+    $datei = nl_bild_name_ok($name) ? nl_bild_ordner() . '/' . $name : '';
+    if (!$datei || !is_file($datei)) { http_response_code(404); exit; }
+    header('Content-Type: ' . ['jpg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif'][pathinfo($name, PATHINFO_EXTENSION)]);
+    header('Cache-Control: public, max-age=31536000, immutable');
+    header('Content-Length: ' . filesize($datei));
+    readfile($datei);
+    exit;
+}
+if (isset($_GET['k'])) {
+    $ziel = null;
+    try {
+        $k = (string)$_GET['k'];
+        if (preg_match('/^[a-f0-9]{16}$/', $k)) {
+            $st = nl_db()->prepare("SELECT url FROM " . nl_tab('nl_links') . " WHERE schluessel = ?");
+            $st->execute([$k]);
+            $ziel = $st->fetchColumn() ?: null;
+            if ($ziel) nl_db()->prepare("UPDATE " . nl_tab('nl_links') . " SET klicks = klicks + 1 WHERE schluessel = ?")->execute([$k]);
+        }
+    } catch (Throwable $e) {
+        error_log('[Belegseite Newsletter] ' . $e->getMessage());
+    }
+    header('Cache-Control: no-store');
+    header('Referrer-Policy: no-referrer');
+    if ($ziel) { header('Location: ' . $ziel, true, 302); exit; }
+    http_response_code(404);
+    exit('Link nicht gefunden.');
+}
 
 header('X-Robots-Tag: noindex, nofollow');
 header('Cache-Control: no-store');

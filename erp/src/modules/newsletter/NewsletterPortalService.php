@@ -153,7 +153,7 @@ class NewsletterPortalService
     }
 
     /** Shops + alle seit dem letzten Mal geänderten Link-Schlüssel ans Portal (in Paketen). */
-    private function schluesselUebertragen(array $konf): int
+    public function schluesselUebertragen(array $konf): int
     {
         $shops = [];
         foreach ($this->db->query("SELECT slug, name, website_url, wc_url, design_farbe FROM shops WHERE ist_aktiv = 1")->fetchAll(PDO::FETCH_ASSOC) as $s) {
@@ -246,7 +246,7 @@ class NewsletterPortalService
     }
 
     /** JSON an die Belegseite (gleicher Schlüssel-Header wie Paperless). */
-    private function anfrage(string $aktion, ?array $json, array $konf): array
+    public function anfrage(string $aktion, ?array $json, array $konf): array
     {
         $ch = curl_init($konf['url'] . '/api.php?aktion=' . $aktion);
         curl_setopt_array($ch, [

@@ -2,11 +2,17 @@
 // Newsletter-Editor: Bausteine links, Vorschau rechts (iframe), Testmail. JS: js/newsletter_editor.js
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterService.php';
+require_once __DIR__ . '/../../src/modules/newsletter/NewsletterVersandService.php';
 
 $svc = new NewsletterService();
 $n   = $svc->laden((int)($_GET['id'] ?? 0));
 if (!$n) { $_SESSION['fehler'] = 'Newsletter nicht gefunden.'; header('Location: liste.php'); exit; }
 $gesperrt = $n['status'] !== 'entwurf';
+$vsvc = new NewsletterVersandService();
+$fort = $gesperrt ? $vsvc->fortschritt((int)$n['id']) : null;
+$links = $gesperrt ? $vsvc->links((int)$n['id']) : [];
+$erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
+$fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
 $meineMail = (string)(Database::getInstance()->query("SELECT email FROM benutzer WHERE id = " . (int)$_SESSION['benutzer']['id'])->fetchColumn() ?: '');
 
 $pageTitle        = 'Newsletter: ' . $n['titel'];
@@ -28,10 +34,44 @@ require_once __DIR__ . '/../includes/shell_top.php';
   @media (max-width: 1150px) { .nle-grid { grid-template-columns: 1fr; } }
 </style>
 
+<?php if ($erfolg): ?><div class="card" style="border-left:3px solid var(--color-success);padding:10px 16px;margin-bottom:12px;color:var(--color-success)"><?= htmlspecialchars($erfolg) ?></div><?php endif; ?>
+<?php if ($fehler): ?><div class="card" style="border-left:3px solid var(--color-danger);padding:10px 16px;margin-bottom:12px;color:var(--color-danger)"><?= htmlspecialchars($fehler) ?></div><?php endif; ?>
+
+<?php if ($gesperrt): $p = $fort; $proz = $p['gesamt'] ? round(($p['gesendet'] + $p['fehler'] + $p['uebersprungen']) / $p['gesamt'] * 100) : 100; ?>
+<div class="card" style="padding:12px 16px;margin-bottom:12px">
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <strong style="font-size:15px"><?= $n['status'] === 'versendet' ? '✅ Verschickt' : ($n['versand_pausiert'] ? '⏸ Angehalten' : '📤 Wird verschickt') ?></strong>
+    <span><?= $p['gesendet'] ?> von <?= $p['gesamt'] ?> verschickt</span>
+    <?php if ($p['offen']): ?><span style="color:var(--color-text-muted)"><?= $p['offen'] ?> offen · ca. <?= max(1, (int)ceil($p['offen'] / NewsletterVersandService::maxProStunde())) ?> Std.</span><?php endif; ?>
+    <?php if ($p['fehler']): ?><span style="color:var(--color-danger)"><?= $p['fehler'] ?> Fehler</span><?php endif; ?>
+    <?php if ($p['uebersprungen']): ?><span style="color:var(--color-text-muted)"><?= $p['uebersprungen'] ?> übersprungen</span><?php endif; ?>
+    <span>🖱 <?= (int)$n['klicks'] ?> Klicks<?= $n['klicks_am'] ? ' <span style="color:var(--color-text-muted);font-size:12px">(Stand ' . date('d.m. H:i', strtotime($n['klicks_am'])) . ')</span>' : '' ?></span>
+    <span style="flex:1"></span>
+    <?php if ($n['status'] === 'versand_laeuft'): ?>
+      <form method="post" action="editor_aktion.php" style="display:inline"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>"><input type="hidden" name="aktion" value="<?= $n['versand_pausiert'] ? 'fortsetzen' : 'pausieren' ?>"><button class="btn btn-sm"><?= $n['versand_pausiert'] ? '▶ Fortsetzen' : '⏸ Anhalten' ?></button></form>
+      <form method="post" action="editor_aktion.php" style="display:inline" onsubmit="return confirm('Versand beenden? Wer den Newsletter noch nicht bekommen hat, bekommt ihn nicht mehr.')"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>"><input type="hidden" name="aktion" value="abbrechen"><button class="btn btn-sm">Versand beenden</button></form>
+    <?php endif; ?>
+  </div>
+  <div style="height:8px;background:#e5e7eb;border-radius:4px;margin-top:10px;overflow:hidden"><div style="height:100%;width:<?= $proz ?>%;background:var(--color-success)"></div></div>
+  <div style="font-size:12px;color:var(--color-text-muted);margin-top:6px">
+    Gestartet <?= date('d.m.Y H:i', strtotime($n['versand_start_am'])) ?><?= $n['versand_ende_am'] ? ' · fertig ' . date('d.m.Y H:i', strtotime($n['versand_ende_am'])) : '' ?>
+    · höchstens <?= NewsletterVersandService::maxProStunde() ?> Mails pro Stunde je Postfach (Cron alle 5 Minuten)
+  </div>
+  <?php if ($links): ?>
+  <details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px">Klicks je Link</summary>
+    <table class="erp-table" style="width:100%;margin-top:6px;font-size:12px">
+      <?php foreach ($links as $l): ?><tr><td style="word-break:break-all"><?= htmlspecialchars($l['url']) ?></td><td style="text-align:right;width:70px"><?= (int)$l['klicks'] ?></td></tr><?php endforeach; ?>
+    </table>
+    <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">Gezählt wird nur die Summe je Link — nicht, wer geklickt hat. Manche Mailprogramme prüfen Links automatisch, das kann ein paar Klicks dazuzählen.</div>
+  </details>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <div class="nle-grid">
   <div>
     <div class="card" style="padding:12px 16px;margin-bottom:12px">
-      <?php if ($gesperrt): ?><div style="color:var(--color-danger);font-size:13px;margin-bottom:8px">Dieser Newsletter ist verschickt und kann nicht mehr geändert werden — „Kopieren“ in der Liste.</div><?php endif; ?>
+      <?php if ($gesperrt): ?><div style="color:var(--color-text-muted);font-size:13px;margin-bottom:8px">Ein gestarteter Newsletter kann nicht mehr geändert werden — für einen neuen „Kopieren“ in der Liste.</div><?php endif; ?>
       <div style="font-size:13px;color:var(--color-text-muted);margin-bottom:6px">Shop: <strong><?= htmlspecialchars($n['shop_name']) ?></strong></div>
       <label class="form-label">Interner Name</label><input type="text" id="nle-titel" class="erp-input" value="<?= htmlspecialchars($n['titel']) ?>" style="width:100%">
       <label class="form-label" style="margin-top:8px">Betreff</label><input type="text" id="nle-betreff" class="erp-input" maxlength="200" value="<?= htmlspecialchars($n['betreff'] ?? '') ?>" style="width:100%" placeholder="z.B. Neue Wolle für kalte Tage">
@@ -63,6 +103,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
       <span style="flex:1"></span>
       <input type="email" id="nle-test-an" class="erp-input" value="<?= htmlspecialchars($meineMail) ?>" placeholder="Testmail an …" style="width:200px">
       <button class="btn btn-sm" onclick="nleTestmail()">✉ Testmail</button>
+      <?php if (!$gesperrt): ?><button class="btn btn-primary btn-sm" onclick="nleVersand()" title="Erst nach einer Testmail möglich">🚀 Versand starten</button><?php endif; ?>
     </div>
     <iframe id="nle-vorschau-frame" src="vorschau.php?id=<?= (int)$n['id'] ?>" style="width:640px;max-width:100%;height:78vh;border:1px solid var(--color-border);border-radius:8px;background:#f3f4f6"></iframe>
   </div>

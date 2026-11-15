@@ -111,3 +111,20 @@ gespeichert wie bei den Kunden. Status: **bestätigt** (darf Newsletter bekommen
 - **Liste:** Kopieren (z.B. Vorlage für den nächsten Monat), Löschen nur bei Entwürfen. Verschickte Newsletter
   lassen sich nicht mehr ändern, nur kopieren.
 
+### Newsletter verschicken
+
+- **🚀 Versand starten** (im Editor) geht erst nach einer Testmail. Die Rückfrage nennt die Zahl der bestätigten
+  Empfänger und die ungefähre Dauer. Ab dann ist der Newsletter gesperrt; Preise und Bilder werden mit dem Stand
+  beim Start verschickt.
+- Die Mails gehen **nach und nach** raus: höchstens **100 pro Stunde je Postfach** (Shops mit eigenem Postfach
+  zählen getrennt), gleichmäßig verteilt — Cron „Newsletter-Versand“ alle 5 Minuten. Mailversand muss
+  eingeschaltet sein (Einstellungen → Mail). Die Grenze steht in der Einstellung `newsletter_max_pro_stunde`.
+- Wer sich während des Versands abmeldet, wird übersprungen. Jede Mail hat einen persönlichen Abmeldelink und die
+  **Ein-Klick-Abmeldung** im Mailprogramm (Gmail/Outlook zeigen dafür „Abbestellen“ neben dem Absender).
+- Bilder liegen auf der Belegseite (die Mail bleibt klein), Links laufen über die Belegseite und werden **gezählt —
+  nur die Summe je Link, nicht wer geklickt hat** (keine Einwilligung nötig). Manche Mailprogramme prüfen Links
+  automatisch; das kann ein paar Klicks dazuzählen.
+- Im Editor oben: Fortschritt („2 von 3 verschickt“), Fehler, übersprungen, Klicks und „Klicks je Link“.
+  **⏸ Anhalten / ▶ Fortsetzen**, **Versand beenden** (der Rest bekommt ihn dann nicht). Eine Mail, die nicht
+  rausgeht, wird bis zu 3-mal versucht.
+

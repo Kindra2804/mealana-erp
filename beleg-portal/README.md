@@ -26,4 +26,6 @@ Das Aufräumen läuft bei jedem Aufruf mit, ein Cron am Webspace ist nicht nöti
 - `newsletter.php` + `newsletter_lib.php`: Newsletter-Anmeldung (Formular aus dem Shop), Bestätigung (`?b=`) und
   Abmeldung (`?a=`, auch Ein-Klick aus dem Mailprogramm). Die Empfängerliste bleibt im ERP; hier liegen nur Link-Schlüssel
   ohne E-Mail und eine Warteschlange, die das ERP alle 15 Minuten abholt und löschen lässt (`api.php` nl_setzen/nl_holen/nl_quittieren).
+  Beim Versand: Bilder der Newsletter (`daten/nl_bilder/`, ausgeliefert über `?i=`, `api.php` nl_bild) und Zähl-Links
+  (`?k=` → Weiterleitung, nur Klick-Summe je Link ohne Empfänger; `api.php` nl_links_setzen/nl_klicks).
 - `lib.php`, `config.php`: per `.htaccess` gesperrt; `daten/`: PDFs + SQLite-Datei, gesperrt

@@ -8,6 +8,9 @@
 //   POST api.php?aktion=nl_setzen     {shops:[{slug,name,url,farbe}], tokens:[{token,shop,status}]} → Seiten/Link-Schlüssel
 //   GET  api.php?aktion=nl_holen      → {ereignisse:[…]} (Anmeldung/Bestätigung/Abmeldung, älteste zuerst, max. 500)
 //   POST api.php?aktion=nl_quittieren {ids:[…]} → verarbeitete Ereignisse hier löschen (Datensparsamkeit)
+//   POST api.php?aktion=nl_bild       {name: sha1.jpg|png|gif, daten: base64} → Bild für Newsletter (?i=name)
+//   POST api.php?aktion=nl_links_setzen {links:[{schluessel, url}]} → Zähl-Links (?k=schluessel leitet weiter)
+//   POST api.php?aktion=nl_klicks     {schluessel:[…]} → {klicks:{schluessel: anzahl}}
 require __DIR__ . '/lib.php';
 require __DIR__ . '/newsletter_lib.php';
 
@@ -108,6 +111,46 @@ try {
                 $n = nl_db()->exec("DELETE FROM " . nl_tab('nl_ereignisse') . " WHERE id IN (" . implode(',', $ids) . ")");
             }
             bp_json(['erfolg' => true, 'geloescht' => (int)$n]);
+
+        case 'nl_bild':
+            $in = json_decode((string)file_get_contents('php://input'), true) ?: [];
+            $name = (string)($in['name'] ?? '');
+            $daten = base64_decode((string)($in['daten'] ?? ''), true);
+            if (!nl_bild_name_ok($name) || $daten === false || strlen($daten) > 3 * 1024 * 1024
+                || sha1($daten) !== substr($name, 0, 40) || @getimagesizefromstring($daten) === false) {
+                bp_json(['erfolg' => false, 'fehler' => 'Ungültiges Bild.'], 400);
+            }
+            $ordner = nl_bild_ordner();
+            if (!is_dir($ordner)) mkdir($ordner, 0750, true);
+            if (!is_file($ordner . '/' . $name)) file_put_contents($ordner . '/' . $name, $daten);
+            bp_json(['erfolg' => true]);
+
+        case 'nl_links_setzen':
+            $in = json_decode((string)file_get_contents('php://input'), true) ?: [];
+            $mysql = bp_config()['db']['typ'] === 'mysql';
+            $db = nl_db();
+            $st = $db->prepare($mysql
+                ? "INSERT INTO " . nl_tab('nl_links') . " (schluessel, url, aktualisiert) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE url = VALUES(url)"
+                : "INSERT INTO " . nl_tab('nl_links') . " (schluessel, url, aktualisiert) VALUES (?, ?, ?) ON CONFLICT(schluessel) DO UPDATE SET url = excluded.url");
+            $n = 0;
+            foreach (($in['links'] ?? []) as $l) {
+                $url = (string)($l['url'] ?? '');
+                if (!preg_match('/^[a-f0-9]{16}$/', (string)($l['schluessel'] ?? '')) || !preg_match('#^https?://#i', $url) || strlen($url) > 1000) continue;
+                $st->execute([$l['schluessel'], $url, date('Y-m-d H:i:s')]);
+                $n++;
+            }
+            bp_json(['erfolg' => true, 'links' => $n]);
+
+        case 'nl_klicks':
+            $in = json_decode((string)file_get_contents('php://input'), true) ?: [];
+            $keys = array_values(array_filter((array)($in['schluessel'] ?? []), fn($k) => preg_match('/^[a-f0-9]{16}$/', (string)$k)));
+            $klicks = [];
+            foreach (array_chunk($keys, 500) as $teil) {
+                $st = nl_db()->prepare("SELECT schluessel, klicks FROM " . nl_tab('nl_links') . " WHERE schluessel IN (" . implode(',', array_fill(0, count($teil), '?')) . ")");
+                $st->execute($teil);
+                foreach ($st->fetchAll() as $z) $klicks[$z['schluessel']] = (int)$z['klicks'];
+            }
+            bp_json(['erfolg' => true, 'klicks' => $klicks]);
 
         default:
             bp_json(['erfolg' => false, 'fehler' => 'Unbekannte Aktion.'], 400);

@@ -128,7 +128,8 @@ class Mailer
         string $htmlBody,
         string $textBody = '',
         bool   $erzwinge = false,
-        array  $anhaenge = []
+        array  $anhaenge = [],
+        array  $kopfzeilen = []      // zusätzliche Mail-Kopfzeilen ['Name' => 'Wert'], z.B. List-Unsubscribe
     ): void {
         $mailAktiv    = ($this->config['mail_aktiv']       ?? '0') === '1';
         $testAdresse  =  trim($this->config['mail_test_adresse'] ?? '');
@@ -173,6 +174,10 @@ class Mailer
         $htmlBody      = self::bilderEinbetten($mail, $htmlBody);
         $mail->Body    = $htmlBody;
         $mail->AltBody = $textBody ?: strip_tags($htmlBody);
+
+        foreach ($kopfzeilen as $name => $wert) {
+            $mail->addCustomHeader($name, $wert);
+        }
 
         foreach ($anhaenge as $anhang) {
             if (!empty($anhang['pfad']) && file_exists($anhang['pfad'])) {

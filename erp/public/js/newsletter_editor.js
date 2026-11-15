@@ -154,6 +154,22 @@ async function nleTestmail() {
     nleStatus(d.erfolg ? 'Testmail an ' + an + ' verschickt ✓' : d.fehler, d.erfolg ? '#16a34a' : '#dc2626');
 }
 
+async function nleVersand() {
+    if (nleGeaendert && !(await nleSpeichern())) return;
+    const info = await (await fetch(nleBasis() + '?aktion=versand_info&id=' + NLE.id)).json();
+    if (!info.erfolg) { alert(info.fehler); return; }
+    if (!info.anzahl) { alert('Für diesen Shop gibt es noch keine bestätigten Empfänger.'); return; }
+    const dauer = info.stunden < 1 ? 'unter einer Stunde' : 'etwa ' + String(Math.ceil(info.stunden)) + ' Stunden';
+    if (!confirm('Newsletter jetzt an ' + info.anzahl + ' Empfänger verschicken?\n\n'
+        + 'Die Mails gehen nach und nach raus (höchstens ' + info.max + ' pro Stunde) — Dauer ' + dauer + '.\n'
+        + 'Ab jetzt lässt sich der Newsletter nicht mehr ändern. Preise und Bilder werden mit dem heutigen Stand verschickt.')) return;
+    nleStatus('Versand wird vorbereitet (Bilder + Links auf die Belegseite) …');
+    const fd = new FormData(); fd.append('aktion', 'versand_starten'); fd.append('id', NLE.id);
+    const d = await (await fetch(nleBasis(), { method: 'POST', body: fd })).json();
+    if (!d.erfolg) { nleStatus(d.fehler, '#dc2626'); alert(d.fehler); return; }
+    location.reload();
+}
+
 ['nle-titel', 'nle-betreff', 'nle-vorschau'].forEach(id => document.getElementById(id).addEventListener('input', nleMarkieren));
 window.addEventListener('beforeunload', e => { if (nleGeaendert) { e.preventDefault(); e.returnValue = ''; } });
 nleRendern();

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterService.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterEmpfaengerService.php';
+require_once __DIR__ . '/../../src/modules/newsletter/NewsletterVersandService.php';
 
 $db     = Database::getInstance();
 $svc    = new NewsletterService();
@@ -10,6 +11,7 @@ $shops  = $db->query("SELECT id, name FROM shops WHERE ist_aktiv = 1 ORDER BY id
 $shopId = (int)($_GET['shop_id'] ?? 0);
 $liste  = $svc->liste($shopId ?: null);
 $empf   = new NewsletterEmpfaengerService();
+$vsvc   = new NewsletterVersandService();
 
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
@@ -35,15 +37,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <div class="card">
     <table class="erp-table" style="width:100%">
-        <thead><tr><th>Name</th><th>Shop</th><th>Betreff</th><th>Status</th><th>Geändert</th><th>Testmail</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Shop</th><th>Betreff</th><th>Status</th><th>Verschickt</th><th>Klicks</th><th>Geändert</th><th>Testmail</th><th></th></tr></thead>
         <tbody>
-        <?php if (!$liste): ?><tr><td colspan="7" style="color:var(--color-text-muted)">Noch kein Newsletter.</td></tr><?php endif; ?>
+        <?php if (!$liste): ?><tr><td colspan="9" style="color:var(--color-text-muted)">Noch kein Newsletter.</td></tr><?php endif; ?>
         <?php foreach ($liste as $n): [$st, $cls] = $statusText[$n['status']]; ?>
             <tr>
                 <td><a href="editor.php?id=<?= (int)$n['id'] ?>" style="font-weight:600"><?= htmlspecialchars($n['titel']) ?></a></td>
                 <td><?= htmlspecialchars($n['shop_name']) ?></td>
                 <td><?= htmlspecialchars($n['betreff'] ?? '–') ?></td>
-                <td><span class="chip <?= $cls ?>"><?= $st ?></span></td>
+                <td><span class="chip <?= $cls ?>"><?= $n['status'] === 'versand_laeuft' && $n['versand_pausiert'] ? 'angehalten' : $st ?></span></td>
+                <?php $f = $n['status'] !== 'entwurf' ? $vsvc->fortschritt((int)$n['id']) : null; ?>
+                <td><?= $f ? $f['gesendet'] . ' / ' . $f['gesamt'] : '–' ?></td>
+                <td><?= $f ? (int)$n['klicks'] : '–' ?></td>
                 <td style="color:var(--color-text-muted)"><?= date('d.m.Y H:i', strtotime($n['geaendert_am'] ?? $n['erstellt_am'])) ?></td>
                 <td style="color:var(--color-text-muted)"><?= $n['testmail_am'] ? date('d.m. H:i', strtotime($n['testmail_am'])) : '–' ?></td>
                 <td style="text-align:right;white-space:nowrap">
