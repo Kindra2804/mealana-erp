@@ -1,5 +1,5 @@
 Options -Indexes
-<FilesMatch "^(config|config\.example|lib)\.php$">
+<FilesMatch "^(config|config\.example|lib|newsletter_lib)\.php$">
     Require all denied
 </FilesMatch>
 <IfModule mod_headers.c>

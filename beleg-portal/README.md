@@ -23,4 +23,7 @@ Das Aufräumen läuft bei jedem Aufruf mit, ein Cron am Webspace ist nicht nöti
 ## Dateien
 - `index.php`: Abrufseite (`?t=…`) und PDF-Download
 - `api.php`: Schnittstelle fürs ERP (Header `X-Nahtlos-Schluessel`): test, upload, status, verwerfen
+- `newsletter.php` + `newsletter_lib.php`: Newsletter-Anmeldung (Formular aus dem Shop), Bestätigung (`?b=`) und
+  Abmeldung (`?a=`, auch Ein-Klick aus dem Mailprogramm). Die Empfängerliste bleibt im ERP; hier liegen nur Link-Schlüssel
+  ohne E-Mail und eine Warteschlange, die das ERP alle 15 Minuten abholt und löschen lässt (`api.php` nl_setzen/nl_holen/nl_quittieren).
 - `lib.php`, `config.php`: per `.htaccess` gesperrt; `daten/`: PDFs + SQLite-Datei, gesperrt
