@@ -82,3 +82,16 @@ gespeichert wie bei den Kunden. Status: **bestätigt** (darf Newsletter bekommen
   aus JTL“). Die CSV danach löschen (personenbezogene Daten).
 - Recht: `newsletter.verwalten` (Admin, Assistent, Manager).
 
+### Anmelden, bestätigen, abmelden (über die Belegseite)
+
+- **Anmeldeformular:** Kunden → 📧 Newsletter → **🧩 Anmeldeformular** zeigt für den gewählten Shop den fertigen Code:
+  für WooCommerce-Shops den Shortcode `[nahtlos_newsletter …]` (NAHTLOS Connector ab 1.8.0, als Shortcode-Block
+  einfügen), für andere Shops (z.B. JTL, mealana.at) ein HTML-Stück zum Einfügen. Das Formular schickt an die
+  Belegseite (Einstellungen → System → Paperless: Adresse + Schlüssel müssen eingetragen sein).
+- **Ablauf:** Anmeldung → binnen etwa 15 Minuten kommt die **Bestätigungs-Mail** vom Postfach des Shops →
+  Klick auf „Ja, Anmeldung bestätigen“ → Status „bestätigt“ (mit Zeitpunkt + IP im Nachweis). Wer nicht klickt,
+  bekommt nie einen Newsletter. Abmelden über den Link in jedem Newsletter oder direkt im Mailprogramm.
+- **Von Hand eintragen** (z.B. Kundin im Laden): ➕ Empfänger eintragen → E-Mail, Vorname, wie zugestimmt wurde →
+  die Bestätigungs-Mail geht sofort raus.
+- **Website + Hausfarbe** je Shop: Einstellungen → Kanäle (für Formular, Bestätigungs-Mail und die Seiten der Belegseite).
+

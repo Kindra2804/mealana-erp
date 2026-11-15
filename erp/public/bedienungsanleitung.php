@@ -621,6 +621,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <!-- PARTNER -->
             <h3 id="kunden-newsletter">Newsletter-Empfänger <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Kunden → <strong>📧 Newsletter</strong>: Empfänger je Shop, Status bestätigt / wartet auf Bestätigung / abgemeldet, <strong>Nachweis</strong> (Zeitpunkt + IP jeder An-/Abmeldung), Abmelden von Hand. <strong>⤓ Import aus JTL-Shop</strong>: fertige Abfrage für phpMyAdmin, CSV mit Kopfzeile exportieren, Probelauf, importieren — bestätigte Abonnenten mit Opt-in-Nachweis, Blacklist wird „abgemeldet“. CSV danach löschen.</p>
+            <p><strong>🧩 Anmeldeformular:</strong> fertiger Shortcode für WooCommerce (Connector ab 1.8.0) bzw. HTML für JTL. Anmeldung → Bestätigungs-Mail vom Shop-Postfach (binnen ~15 Min.) → Klick = bestätigt. <strong>➕ Empfänger eintragen</strong> (z.B. im Laden) schickt die Bestätigungs-Mail sofort. Website + Hausfarbe je Shop unter Einstellungen → Kanäle. Voraussetzung: Belegseite eingerichtet (Einstellungen → System → Paperless).</p>
 
             <h2 id="partner">Partner & Mietfächer <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <table class="ba-table">

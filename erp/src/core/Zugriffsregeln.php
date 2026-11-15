@@ -261,6 +261,7 @@ final class Zugriffsregeln
             'empfaenger.php' => 'newsletter.verwalten',
             'import.php'     => 'newsletter.verwalten',
             'aktion.php'     => 'newsletter.verwalten',
+            'formular.php'   => 'newsletter.verwalten',
         ],
 
         // === Kunden ===

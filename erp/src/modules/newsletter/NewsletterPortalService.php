@@ -181,6 +181,43 @@ class NewsletterPortalService
         return $anzahl;
     }
 
+    /**
+     * Empfänger von Hand im ERP eintragen (z.B. Kundin im Laden): wartet auf Bestätigung, Schlüssel sofort ans Portal,
+     * Bestätigungs-Mail sofort. Ohne Bestätigung bekommt niemand einen Newsletter (Double-Opt-in).
+     */
+    public function vonHandEintragen(int $shopId, string $email, string $vorname, string $notiz, int $benutzerId): array
+    {
+        $konf = PaperlessService::konfig();
+        if ($konf['url'] === '' || $konf['schluessel'] === '') {
+            return ['erfolg' => false, 'fehler' => 'Die Belegseite ist nicht eingerichtet (Einstellungen → System → Paperless) — ohne sie gibt es keinen Bestätigungslink.'];
+        }
+        $email = mb_strtolower(trim($email));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return ['erfolg' => false, 'fehler' => 'Die E-Mail-Adresse ist ungültig.'];
+        $st = $this->db->prepare("SELECT slug FROM shops WHERE id = ?");
+        $st->execute([$shopId]);
+        $slug = $st->fetchColumn();
+        if (!$slug) return ['erfolg' => false, 'fehler' => 'Shop nicht gefunden.'];
+
+        $hash = Encryption::hash($email);
+        $st = $this->db->prepare("SELECT id, status FROM newsletter_empfaenger WHERE shop_id = ? AND email_hash = ?");
+        $st->execute([$shopId, $hash]);
+        $alt = $st->fetch(PDO::FETCH_ASSOC);
+        if ($alt && $alt['status'] === 'aktiv') return ['erfolg' => false, 'fehler' => 'Diese Adresse ist bereits angemeldet und bestätigt.'];
+
+        // gleiche Verarbeitung wie eine Formular-Anmeldung, nur Quelle ERP
+        $id = $this->anmeldung(['shop' => $slug, 'email' => $email, 'vorname' => trim($vorname) ?: null, 'ip' => null,
+                                'zeit' => date('Y-m-d H:i:s'), 'info' => json_encode(['zustimmung' => $notiz ?: 'im ERP eingetragen'])], $benutzerId)
+              ?? ($alt ? (int)$alt['id'] : null);
+        if (!$id) return ['erfolg' => false, 'fehler' => 'Eintragen nicht möglich.'];
+        $this->db->prepare("UPDATE newsletter_empfaenger SET quelle = IF(quelle = 'shop_formular' AND erstellt_am > NOW() - INTERVAL 1 MINUTE, 'erp', quelle) WHERE id = ?")->execute([$id]);
+        $this->db->prepare("UPDATE newsletter_ereignisse SET quelle = 'erp', benutzer_id = ? WHERE empfaenger_id = ? AND ereignis = 'angemeldet' ORDER BY id DESC LIMIT 1")
+            ->execute([$benutzerId, $id]);
+        $this->schluesselUebertragen($konf);
+        $gesendet = $this->bestaetigungsMail($id, $konf['url']);
+        Logger::log('newsletter.eingetragen', 'newsletter_empfaenger', $id, ['shop' => $slug, 'doi_mail' => $gesendet], $benutzerId);
+        return ['erfolg' => true, 'mail' => $gesendet];
+    }
+
     /** Double-Opt-in-Mail über das Postfach des Shops. */
     public function bestaetigungsMail(int $id, ?string $portalUrl = null): bool
     {

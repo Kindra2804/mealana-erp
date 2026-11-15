@@ -166,6 +166,16 @@ if ($tab === 'kanaele_update') {
            ->execute([$name, $wcUrl ?: null, $wcKey ?: null, $wcSecret ?: null, $wpUsername ?: null, $wpAppPasswd ?: null, $subMarke, $istAktiv, $shopId]);
     }
 
+    // Website + Hausfarbe (Newsletter, Belegseite) — Migration 250
+    if (array_key_exists('website_url', $_POST)) {
+        $website = trim((string)$_POST['website_url']);
+        $farbe   = trim((string)($_POST['design_farbe'] ?? ''));
+        if ($website !== '' && !preg_match('#^https?://#i', $website)) $website = 'https://' . $website;
+        $db->prepare("UPDATE shops SET website_url = ?, design_farbe = ? WHERE id = ?")
+           ->execute([$website !== '' && filter_var($website, FILTER_VALIDATE_URL) ? $website : null,
+                      preg_match('/^#[0-9a-f]{6}$/i', $farbe) ? strtolower($farbe) : null, $shopId]);
+    }
+
     // Wurzelkategorie: bei Änderung alle Kategorien dieses Shops neu übertragen,
     // damit WooCommerce die neue Oberkategorie (parent) bekommt
     $wurzelNeu = (int)($_POST['wurzel_kategorie_id'] ?? 0) ?: null;

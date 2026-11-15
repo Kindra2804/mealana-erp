@@ -23,7 +23,8 @@ $quelleText   = ['jtl_import' => 'Import JTL-Shop', 'shop_formular' => 'Anmeldef
 
 $pageTitle        = 'Newsletter-Empfänger';
 $activeModule     = 'kunden';
-$actionBarContent = '<a href="import.php?shop_id=' . $shopId . '" class="btn btn-secondary btn-sm">⤓ Import aus JTL-Shop</a>';
+$actionBarContent = '<a href="import.php?shop_id=' . $shopId . '" class="btn btn-secondary btn-sm">⤓ Import aus JTL-Shop</a>'
+                  . '<a href="formular.php?shop_id=' . $shopId . '" class="btn btn-secondary btn-sm">🧩 Anmeldeformular</a>';
 require_once __DIR__ . '/../includes/shell_top.php';
 ?>
 <?php if ($erfolg): ?><div class="card" style="border-left:3px solid var(--color-success);padding:10px 16px;margin-bottom:12px;color:var(--color-success)"><?= htmlspecialchars($erfolg) ?></div><?php endif; ?>
@@ -49,6 +50,18 @@ require_once __DIR__ . '/../includes/shell_top.php';
         </span>
     </form>
 </div>
+
+<details class="card" style="margin-bottom:12px;padding:10px 16px">
+    <summary style="cursor:pointer;font-weight:600">➕ Empfänger eintragen (z.B. Kundin im Laden)</summary>
+    <form method="post" action="aktion.php" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:10px;font-size:13px">
+        <input type="hidden" name="aktion" value="eintragen"><input type="hidden" name="shop_id" value="<?= $shopId ?>">
+        <label>E-Mail *<br><input type="email" name="email" class="erp-input" required style="width:240px"></label>
+        <label>Vorname<br><input type="text" name="vorname" class="erp-input" style="width:160px"></label>
+        <label>Wie zugestimmt?<br><input type="text" name="notiz" class="erp-input" style="width:260px" placeholder="z.B. mündlich im Laden, 15.11."></label>
+        <button class="btn btn-primary btn-sm">Eintragen + Bestätigungs-Mail schicken</button>
+        <div style="flex-basis:100%;font-size:12px;color:var(--color-text-muted)">Die Person bekommt sofort eine E-Mail mit Bestätigungslink — erst nach dem Klick ist sie angemeldet (Double-Opt-in).</div>
+    </form>
+</details>
 
 <?php if ($nachweis): ?>
 <div class="card" style="margin-bottom:12px">

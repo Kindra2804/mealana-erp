@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       NAHTLOS Connector
  * Description:       Verbindung zwischen NAHTLOS ERP und WooCommerce: Hero-Slider, Kategorie-Kacheln, Kategorie-Banner und Hauptmenü, gepflegt im ERP; Widerrufe (Germanized) aus dem ERP bestätigen/ablehnen; Mengen-Aktionen (4 für 12 €, 3 für 2, Paketpreise) im Warenkorb.
- * Version:           1.7.1
+ * Version:           1.8.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            MEALANA KG
@@ -29,11 +29,12 @@
 
 defined('ABSPATH') || exit;
 
-const NAHTLOS_VERSION = '1.7.1';
+const NAHTLOS_VERSION = '1.8.0';
 const NAHTLOS_OPTION_SLIDER = 'nahtlos_slider';
 
 // Mengen-Aktionen (4 für 12 / 3 für 2 / Paketpreise) – eigene Datei, Rechenkern = Kopie aus dem ERP
 require_once __DIR__ . '/includes/mengen-aktionen.php';
+require_once __DIR__ . '/includes/newsletter.php';   // [nahtlos_newsletter] Anmeldeformular (1.8.0)
 
 // ── REST-Schnittstelle für das ERP ─────────────────────────────────────────
 

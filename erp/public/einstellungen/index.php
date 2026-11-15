@@ -344,6 +344,27 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         Für Sub-Marken-Shops: Die gewählte Kategorie selbst erscheint im Shop nicht, ihre Unterkategorien werden dort zu Hauptkategorien (eine Ebene weniger in Menü und Brotkrümeln). Wirkt beim nächsten Sync-Lauf.
                     </div>
                 </div>
+                <div style="display:grid;grid-template-columns:120px 1fr 1fr 120px auto;gap:12px;align-items:end;margin-top:10px">
+                    <div></div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">Website (für Newsletter + Belegseite)</label>
+                        <input type="text" name="website_url" class="erp-input" maxlength="255" placeholder="<?= htmlspecialchars($shop['wc_url'] ?: 'https://…') ?>"
+                               value="<?= htmlspecialchars($shop['website_url'] ?? '') ?>">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">Hausfarbe</label>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <input type="color" value="<?= htmlspecialchars($shop['design_farbe'] ?: '#2c3e50') ?>" style="width:42px;height:34px;padding:2px"
+                                   oninput="this.nextElementSibling.value = this.value">
+                            <input type="text" name="design_farbe" class="erp-input" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#2c3e50"
+                                   value="<?= htmlspecialchars($shop['design_farbe'] ?? '') ?>" style="width:100px"
+                                   oninput="if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) this.previousElementSibling.value = this.value">
+                        </div>
+                    </div>
+                    <div style="grid-column:span 2;font-size:11px;color:var(--color-text-muted)">
+                        Website leer = Shop-Adresse oben. Die Hausfarbe nutzen Newsletter, Anmelde-/Abmeldeseiten und Bestätigungs-Mails.
+                    </div>
+                </div>
             </form>
         <?php endforeach; ?>
     </div>
