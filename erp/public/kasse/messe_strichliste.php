@@ -11,6 +11,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/core/Database.php';
 require_once __DIR__ . '/../../src/modules/kasse/MesseSyncService.php';
+require_once __DIR__ . '/../../src/modules/aktionen/MengenAktionService.php';
 
 $syncId = (int)($_GET['sync_id'] ?? 0);
 $sync   = (new MesseSyncService())->getSyncById($syncId);
@@ -28,7 +29,7 @@ $firma = $db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'f
 
 // Preis = aktueller Standard-VK (gleiche Logik wie Kasse/Schnellwahl)
 $stmt = $db->prepare("
-    SELECT u.id, u.bezeichnung, u.charge, u.menge_raus, a.artikelnummer,
+    SELECT u.id, u.artikel_id, u.bezeichnung, u.charge, u.menge_raus, a.artikelnummer,
            COALESCE(ag.name, 'Ohne Artikelgruppe') AS gruppe_name,
            COALESCE(ag.sortierung, 9999) AS gruppe_sort,
            COALESCE(
@@ -46,8 +47,23 @@ $stmt = $db->prepare("
     ORDER BY gruppe_sort, gruppe_name, u.bezeichnung, u.charge
 ");
 $stmt->execute([$syncId]);
+$zeilen = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Sale-/Aktionspreis wie an der Kasse + Mengen-Aktion (Badge) je Artikel
+$kassenSvc = new KassenService();
+$aktionJeArtikel = [];
+foreach ((new MengenAktionService())->regelnFuerMesse(array_column($zeilen, 'artikel_id')) as $r) {
+    $zeitraum = ($r['gueltig_ab'] > date('Y-m-d') ? ' ab ' . date('d.m.', strtotime($r['gueltig_ab'])) : '')
+              . ($r['gueltig_bis'] ? ' bis ' . date('d.m.', strtotime($r['gueltig_bis'])) : '');
+    foreach ($r['artikel_ids'] as $aid) $aktionJeArtikel[$aid] ??= $r['badge_text'] . $zeitraum;
+}
 $gruppen = [];
-foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $z) {
+foreach ($zeilen as $z) {
+    $e = $kassenSvc->mitEffektivPreis(['id' => (int)$z['artikel_id'], 'brutto_vk' => (float)$z['preis']]);
+    $z['preis_normal'] = $z['preis'];
+    $z['preis']        = $e['brutto_vk'];
+    $z['preis_info']   = !empty($e['preis_reduziert']) ? $e['preis_info'] : null;
+    $z['aktion']       = $z['preis_info'] ? null : ($aktionJeArtikel[(int)$z['artikel_id']] ?? null);   // Sale zählt nie für Mengen-Aktionen
     $gruppen[$z['gruppe_name']][] = $z;
 }
 
@@ -114,9 +130,10 @@ $fmtEuro  = fn($b) => number_format((float)$b, 2, ',', '.');
     <tr class="gruppe"><td colspan="7"><?= htmlspecialchars($name) ?></td></tr>
     <?php foreach ($zeilen as $z): ?>
     <tr>
-      <td><?= htmlspecialchars($z['bezeichnung']) ?> <span class="klein"><?= htmlspecialchars($z['artikelnummer'] ?? '') ?></span></td>
+      <td><?= htmlspecialchars($z['bezeichnung']) ?> <span class="klein"><?= htmlspecialchars($z['artikelnummer'] ?? '') ?></span>
+        <?php if ($z['aktion']): ?><br><span class="klein"><strong>Aktion <?= htmlspecialchars($z['aktion']) ?></strong></span><?php endif; ?></td>
       <td class="klein"><?= htmlspecialchars($z['charge'] ?? '') ?></td>
-      <td class="r"><?= $fmtEuro($z['preis']) ?></td>
+      <td class="r"><?php if ($z['preis_info']): ?><span class="klein"><s><?= $fmtEuro($z['preis_normal']) ?></s> <?= htmlspecialchars($z['preis_info']) ?></span><br><?php endif; ?><?= $fmtEuro($z['preis']) ?></td>
       <td class="r"><strong><?= $fmtMenge($z['menge_raus']) ?></strong></td>
       <td class="strich"></td>
       <td class="feld"></td>

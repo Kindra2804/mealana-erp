@@ -198,6 +198,35 @@ class MengenAktionService
         return $regeln;
     }
 
+    /**
+     * Regeln für die Offline-/Messe-Kasse (an_kasse): nicht abgelaufen, mit Zeitraum (das Gerät prüft
+     * das Datum selbst, eine Messe dauert oft mehrere Tage), Artikel auf die mitgenommenen beschränkt.
+     */
+    public function regelnFuerMesse(array $artikelIds): array
+    {
+        $mit = array_flip(array_map('intval', $artikelIds));
+        $st = $this->db->query("SELECT id, art, menge, zahl_menge, paketpreis, badge_text, gueltig_ab, gueltig_bis
+                                FROM mengen_aktionen
+                                WHERE aktiv = 1 AND an_kasse = 1 AND (gueltig_bis IS NULL OR gueltig_bis >= CURDATE())
+                                ORDER BY id");
+        $regeln = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $a) {
+            $ids = array_values(array_filter($this->artikelIds((int) $a['id']), fn($id) => isset($mit[(int) $id])));
+            if (!$ids) continue;
+            $pk = $this->db->prepare("SELECT menge, preis FROM mengen_aktion_pakete WHERE aktion_id = ? ORDER BY menge");
+            $pk->execute([$a['id']]);
+            $regeln[] = [
+                'id' => (int) $a['id'], 'art' => $a['art'], 'menge' => (int) $a['menge'],
+                'zahl_menge' => $a['zahl_menge'] === null ? null : (int) $a['zahl_menge'],
+                'paketpreis' => $a['paketpreis'] === null ? null : (float) $a['paketpreis'],
+                'badge_text' => $a['badge_text'], 'gueltig_ab' => $a['gueltig_ab'], 'gueltig_bis' => $a['gueltig_bis'],
+                'artikel_ids' => array_map('intval', $ids),
+                'pakete' => array_map(fn($p) => ['menge' => (int) $p['menge'], 'preis' => (float) $p['preis']], $pk->fetchAll(PDO::FETCH_ASSOC)),
+            ];
+        }
+        return $regeln;
+    }
+
     // ── Übertragung an die Shops (NAHTLOS Connector ≥ 1.7.0, POST nahtlos/v1/mengen-aktionen) ──
 
     /**

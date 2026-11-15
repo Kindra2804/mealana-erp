@@ -1728,7 +1728,7 @@ class KassenService
 
     private ?int $standardKgId = null;
 
-    private function mitEffektivPreis(array $a, ?int $artikelId = null): array
+    public function mitEffektivPreis(array $a, ?int $artikelId = null): array
     {
         $id = $artikelId ?? (int)($a['id'] ?? 0);
         if (!$id || !empty($a['ist_konfigurierbar'])) return $a;   // Konfigurator rechnet selbst (KonfiguratorService)

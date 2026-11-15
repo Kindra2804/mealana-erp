@@ -20,7 +20,7 @@ Stand: 2026-07-04 (überarbeitet nach Praxis-Feedback). Betrifft den Messe-Workf
 1. `Kasse → 🎪 Messe → Zur Messe vorbereiten` — Ziel-Kasse + Ziel-Lager wählen, Artikel scannen. Bei chargenpflichtigen Artikeln öffnet sich eine Chargen-Auswahl — es kann nur aus tatsächlich vorhandenen Chargen im Hauptlager gewählt werden.
 2. "Umbuchung durchführen" — bucht die gewählten Artikel/Chargen ins Messe-Lager um
 3. Unten erscheint das neue Sync-Paket → "Offline-Kasse laden →" klicken
-4. Auf der Offline-Kasse-Seite: **"📥 Sync-Daten laden"** klicken — lädt Artikel/Chargen/Preise/Kassenkonfiguration in die lokale Browser-Datenbank (IndexedDB) und registriert den Service Worker (cached die Seite selbst für den Offline-Fall)
+4. Auf der Offline-Kasse-Seite: **"📥 Sync-Daten laden"** klicken — lädt Artikel/Chargen/Preise (inkl. Sale-/Aktionspreise und Mengen-Aktionen wie „3 für 12 €“)/Kassenkonfiguration in die lokale Browser-Datenbank (IndexedDB) und registriert den Service Worker (cached die Seite selbst für den Offline-Fall)
 5. Status-Punkt oben rechts sollte auf **grün / "Bereit (offline-fähig)"** wechseln
 6. Ab jetzt: Laptop darf vom Netz getrennt und heruntergefahren werden.
 

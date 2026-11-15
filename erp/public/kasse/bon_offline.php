@@ -297,6 +297,7 @@ $pageTitle = 'Offline-Kasse';
 </script>
 <!-- Relativer Pfad (nicht BASE_PATH) — diese Seite ist bewusst root-Pfad-unabhängig,
      damit sie unverändert cachebar bleibt egal unter welchem Installationspfad. -->
+<script src="../js/mengen_aktion_rechner.js"></script>
 <script src="../js/kasse_bon_offline.js"></script>
 
 </body>

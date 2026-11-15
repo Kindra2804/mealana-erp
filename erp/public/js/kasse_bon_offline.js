@@ -126,6 +126,7 @@ async function obVorbereitungLaden() {
             bonNrZaehler: data.bon_nr_zaehler,
             diversArtikelId: data.divers_artikel_id || null,
             gruppen: data.gruppen || [], // Kacheln im Freier-Artikel-Dialog
+            mengenRegeln: data.mengen_regeln || [], // Mengen-Aktionen (Zeitraum prüft obMengenAnwenden)
         });
 
         obKonfig  = await obIdbGet('konfig', 'aktuell');
@@ -204,7 +205,8 @@ function obSucheAktualisieren(text) {
             + 'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" '
             + 'onclick="obSucheAuswaehlen(' + idx + ')" data-such-idx="' + idx + '">';
         html += '  <div style="font-size:13px;font-weight:600">' + obEsc(a.bezeichnung) + '</div>';
-        html += '  <div style="font-size:11px;color:#94a3b8">€ ' + (parseFloat(a.brutto_vk) || 0).toFixed(2) + (a.artikelnummer ? ' · ' + obEsc(a.artikelnummer) : '') + '</div>';
+        html += '  <div style="font-size:11px;color:#94a3b8">' + (a.preis_reduziert ? '<s>€ ' + (parseFloat(a.preis_normal) || 0).toFixed(2) + '</s> ' + obEsc(a.preis_info || '') + ' ' : '')
+            + '€ ' + (parseFloat(a.brutto_vk) || 0).toFixed(2) + (a.artikelnummer ? ' · ' + obEsc(a.artikelnummer) : '') + '</div>';
         html += '</div>';
     });
     box.innerHTML = html;
@@ -428,12 +430,49 @@ function obZumWarenkorbHinzufuegen(artikel, charge, mengeNeu) {
         rabatt_prozent: 0,
         charge: charge,
         block: 'normal',
+        // Sale-/Aktionspreis (kommt so schon aus dem Export) — zählt nicht für Mengen-Aktionen
+        preis_reduziert: !!artikel.preis_reduziert,
+        preis_normal: parseFloat(artikel.preis_normal) || 0,
+        preis_info: artikel.preis_info || '',
     });
     obWarenkorbRendern();
 }
 
+// ── Mengen-Aktionen (gleicher Rechenkern wie die Laden-Kasse: js/mengen_aktion_rechner.js) ──
+// Es zählen normale Artikelzeilen ohne Rabatt und ohne Sale-/Aktionspreis; der Zeitraum wird am
+// Gerät geprüft (Messe über mehrere Tage). Setzt z._mengen und obMengenHinweise.
+let obMengenHinweise = [];
+function obHeute() {
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function obMengenAnwenden() {
+    obMengenHinweise = [];
+    obWarenkorb.forEach(z => { z._mengen = null; });
+    const heute = obHeute();
+    const regeln = ((obKonfig && obKonfig.mengenRegeln) || [])
+        .filter(r => (!r.gueltig_ab || r.gueltig_ab <= heute) && (!r.gueltig_bis || r.gueltig_bis >= heute));
+    if (!regeln.length || typeof mengenAktionBerechne !== 'function') return;
+    const divers = obKonfig.diversArtikelId;
+    const pos = [];
+    obWarenkorb.forEach((z, i) => {
+        if (z.block !== 'normal' || !z.artikel_id || z.artikel_id === divers || !(z.menge > 0) || z.menge % 1 !== 0) return;
+        pos.push({ key: i, artikel_id: z.artikel_id, menge: z.menge, preis: z.einzelpreis_brutto,
+                   ist_reduziert: z.rabatt_prozent > 0 || !!z.preis_reduziert });
+    });
+    const erg = mengenAktionBerechne(regeln, pos);
+    Object.keys(erg.positionen).forEach(i => { obWarenkorb[i]._mengen = erg.positionen[i]; });
+    obMengenHinweise = erg.hinweise;
+}
+// Zeilensumme brutto: mit Mengen-Aktion der reduzierte Betrag
+function obZeileBrutto(z) {
+    if (z._mengen) return z._mengen.gesamt_neu;
+    return z.menge * z.einzelpreis_brutto * (1 - z.rabatt_prozent / 100);
+}
+
 function obWarenkorbRendern() {
     const liste = document.getElementById('ob-warenkorb-liste');
+    obMengenAnwenden();
 
     if (obWarenkorb.length === 0) {
         liste.innerHTML = '<li style="text-align:center;color:#94a3b8;padding:20px 0">Warenkorb ist leer.</li>';
@@ -443,11 +482,17 @@ function obWarenkorbRendern() {
 
     let html = '';
     obWarenkorb.forEach((z, idx) => {
-        const gesamt = z.menge * z.einzelpreis_brutto * (1 - z.rabatt_prozent / 100);
+        const gesamt = obZeileBrutto(z);
         html += '<li class="ob-zeile">';
         html += '  <div style="flex:1;min-width:0">';
         html += '    <div class="ob-zeile-name">' + obEsc(z.bezeichnung) + '</div>';
-        html += '    <div class="ob-zeile-sub">€ ' + z.einzelpreis_brutto.toFixed(2) + ' · ' + z.steuer_prozent + '% MwSt' + (z.ean ? ' · ' + obEsc(z.ean) : '') + '</div>';
+        html += '    <div class="ob-zeile-sub">' + (z.preis_reduziert ? '<s>€ ' + z.preis_normal.toFixed(2) + '</s> ' + obEsc(z.preis_info) + ' ' : '')
+            + '€ ' + z.einzelpreis_brutto.toFixed(2) + ' · ' + z.steuer_prozent + '% MwSt' + (z.ean ? ' · ' + obEsc(z.ean) : '') + '</div>';
+        if (z._mengen) {
+            html += '    <div style="font-size:11px;color:#b45309;font-weight:600">Aktion ' + obEsc(z._mengen.badge_text)
+                + (z._mengen.stueck_im_paket < z.menge ? ' (' + z._mengen.stueck_im_paket + ' von ' + z.menge + ' Stk)' : '')
+                + ' · statt € ' + z._mengen.gesamt_alt.toFixed(2) + '</div>';
+        }
         if (z.charge) {
             html += '    <div style="font-size:11px;color:#2563eb">Charge: ' + obEsc(z.charge) + '</div>';
         }
@@ -460,6 +505,15 @@ function obWarenkorbRendern() {
         html += '  <div class="ob-zeile-preis">€ ' + gesamt.toFixed(2) + '</div>';
         html += '  <button class="ob-zeile-x" onclick="obEntfernen(' + idx + ')">✕</button>';
         html += '</li>';
+    });
+    // Hinweise „noch x Stück → Aktion“ und Ersparnis
+    obMengenHinweise.forEach(h => {
+        if (h.fehlen > 0 && h.stueck > 0) {
+            html += '<li style="font-size:12px;color:#b45309;padding:6px 4px">Noch ' + h.fehlen + ' Stk für „' + obEsc(h.badge_text) + '“</li>';
+        }
+        if (h.ersparnis > 0) {
+            html += '<li style="font-size:12px;color:#16a34a;padding:2px 4px">Ersparnis durch Aktion „' + obEsc(h.badge_text) + '“: € ' + h.ersparnis.toFixed(2) + '</li>';
+        }
     });
     liste.innerHTML = html;
     obSummenBerechnen();
@@ -499,7 +553,7 @@ function obSummenBerechnen() {
     let gesamt = 0;
 
     obWarenkorb.forEach(z => {
-        const brutto = z.menge * z.einzelpreis_brutto * (1 - z.rabatt_prozent / 100);
+        const brutto = obZeileBrutto(z);
         steuer[obSteuerGruppe(z.steuer_prozent)] += brutto;
         gesamt += brutto;
     });
@@ -542,7 +596,7 @@ function obAktuelleSumme() {
     const steuer = { A: 0, B: 0, C: 0, D: 0, E: 0 };
     let gesamt = 0;
     obWarenkorb.forEach(z => {
-        const brutto = z.menge * z.einzelpreis_brutto * (1 - z.rabatt_prozent / 100);
+        const brutto = obZeileBrutto(z);
         steuer[obSteuerGruppe(z.steuer_prozent)] += brutto;
         gesamt += brutto;
     });
@@ -702,7 +756,12 @@ async function obVerkaufAbschliessen() {
             bezeichnung: z.bezeichnung,
             ean: z.ean,
             menge: z.menge,
-            einzelpreis_brutto: z.einzelpreis_brutto,
+            // Mit Mengen-Aktion: reduzierter Einzelpreis (4 Nachkommastellen) + Preis vorher, wie online
+            einzelpreis_brutto: z._mengen ? z._mengen.einzelpreis_neu : z.einzelpreis_brutto,
+            preis_vorher_brutto: z._mengen ? z.einzelpreis_brutto : null,
+            mengen_aktion_id: z._mengen ? z._mengen.aktion_id : null,
+            aktion_hinweis: z._mengen ? z._mengen.badge_text : null,
+            zeile_brutto: Math.round(obZeileBrutto(z) * 100) / 100,   // nur für die Quittung
             rabatt_prozent: z.rabatt_prozent,
             steuer_prozent: z.steuer_prozent,
             charge: z.charge || null,
@@ -759,9 +818,10 @@ function obQuittungAnzeigen(bon) {
     h += '<div class="r"><span>Datum:</span><span>' + bon.erstellt_am + '</span></div>';
     h += '<div class="l"></div>';
     bon.positionen.forEach(p => {
-        const gs = p.menge * p.einzelpreis_brutto;
+        const gs = p.zeile_brutto ?? (p.menge * p.einzelpreis_brutto);
         h += '<div class="r"><span>' + obEsc(p.bezeichnung) + '</span><span class="b">€ ' + gs.toFixed(2) + '</span></div>';
-        h += '<div style="font-size:11px;color:#666;padding-left:6px">' + p.menge + '× €' + p.einzelpreis_brutto.toFixed(2) + ' · ' + p.steuer_prozent + '% MwSt' + (p.charge ? ' · Partie: ' + obEsc(p.charge) : '') + '</div>';
+        h += '<div style="font-size:11px;color:#666;padding-left:6px">' + p.menge + '× €' + (p.preis_vorher_brutto ?? p.einzelpreis_brutto).toFixed(2) + ' · ' + p.steuer_prozent + '% MwSt' + (p.charge ? ' · Partie: ' + obEsc(p.charge) : '') + '</div>';
+        if (p.aktion_hinweis) h += '<div style="font-size:11px;color:#666;padding-left:6px">Aktion ' + obEsc(p.aktion_hinweis) + '</div>';
     });
     h += '<div class="l"></div>';
     h += '<div class="r b" style="font-size:15px"><span>GESAMT</span><span>€ ' + bon.bruttobetrag.toFixed(2) + '</span></div>';

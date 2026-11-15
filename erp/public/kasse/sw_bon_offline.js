@@ -10,10 +10,11 @@
 // die direkte BFR-Signierung) werden bewusst NICHT abgefangen — die müssen
 // entweder wirklich funktionieren oder ehrlich fehlschlagen, kein Fake-Cache.
 
-const CACHE_NAME = 'mealana-messe-kasse-v2'; // v2: Freier-Artikel-Dialog mit Gruppen
+const CACHE_NAME = 'mealana-messe-kasse-v3'; // v3: Mengen-Aktionen (Rechenkern mitcachen)
 const APP_SHELL = [
     './bon_offline.php',
     '../js/kasse_bon_offline.js',
+    '../js/mengen_aktion_rechner.js',
 ];
 
 self.addEventListener('install', (event) => {
@@ -41,7 +42,8 @@ self.addEventListener('fetch', (event) => {
     if (req.method !== 'GET') return;
 
     const url = new URL(req.url);
-    const istAppShell = url.pathname.endsWith('/bon_offline.php') || url.pathname.endsWith('/kasse_bon_offline.js');
+    const istAppShell = url.pathname.endsWith('/bon_offline.php') || url.pathname.endsWith('/kasse_bon_offline.js')
+        || url.pathname.endsWith('/mengen_aktion_rechner.js');
     if (!istAppShell) return;
 
     event.respondWith(

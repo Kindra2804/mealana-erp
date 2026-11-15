@@ -100,7 +100,7 @@
 - [Merkmale-Modul Design](project_merkmale.md) — 2 Ebenen, Modal
 - [Preise-Modul Design](project_preise.md) — Effektivpreis, Aktionen, Grundpreis; TODO X-für-Y gemischt + BOGOF (Kasse+Shop)
 - [💶 Massenaktion Preise ändern](project_idee_massenaktion_preis.md) — ✅ gebaut 2026-11-14 (2205453), ✅ fertig + Klicktest 2026-11-14 (67e2be5), Live mit nächstem Paket
-- [🛒 Mengen-Aktionen X für Y / 3 für 2](project_mengen_aktionen.md) — Entscheidungen 1–9 Jacky 2026-11-14 (Rabatt gleichmäßig verteilt), Schritt 1 Verwaltung ✅ (Migr. 241) + 2 Rechenkern PHP/JS ✅ (tests/mengen_aktion_*) + Art Paketpreise (Raunzmarker, Migr. 242) ✅ + 3 Kasse ✅ (Migr. 243, Klicktest offen) + 4 Plugin 1.7.0 + Übertragung ✅ (Migr. 244) + 5 Live-Test indra ✅ (Plugin 1.7.0 auf indra, SOW/Bio offen; Snippet 34685 bleibt bis Live-Paket); nächste Migr. 245
+- [🛒 Mengen-Aktionen X für Y / 3 für 2](project_mengen_aktionen.md) — Entscheidungen 1–9 Jacky 2026-11-14 (Rabatt gleichmäßig verteilt), Schritt 1 Verwaltung ✅ (Migr. 241) + 2 Rechenkern PHP/JS ✅ (tests/mengen_aktion_*) + Art Paketpreise (Raunzmarker, Migr. 242) ✅ + 3 Kasse ✅ + Messe-/Offline-Kasse ✅ 2026-11-15 (Migr. 243, Klicktest offen) + 4 Plugin 1.7.0 + Übertragung ✅ (Migr. 244) + 5 Live-Test indra ✅ (Plugin 1.7.0 auf indra, SOW/Bio offen; Snippet 34685 bleibt bis Live-Paket); nächste Migr. 245
 - [Aktions-Modul](project_aktionen_modul.md) — fertig
 - [Bilder-Modul](project_bilder_modul.md) — fertig, Logo-Bugkette gelöst
 - [Spalten-Picker](project_spalten_picker.md) — Kind-Zeilen-Parität

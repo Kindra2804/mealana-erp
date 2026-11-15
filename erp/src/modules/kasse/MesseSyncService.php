@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
 require_once __DIR__ . '/KassenService.php';
+require_once __DIR__ . '/../aktionen/MengenAktionService.php';
 
 class MesseSyncService
 {
@@ -218,8 +219,11 @@ class MesseSyncService
                 'menge'  => (float)$c['menge_raus'],
             ];
         }
+        // Sale-/Aktionspreise wie an der Laden-Kasse (Stand: heute, beim Laden der Messe-Kasse)
+        $kassenSvc = new KassenService();
         foreach ($artikel as &$a) {
             $a['chargen'] = $chargenProArtikel[(int)$a['id']] ?? [];
+            $a = $kassenSvc->mitEffektivPreis($a);
         }
         unset($a);
 
@@ -267,6 +271,8 @@ class MesseSyncService
             'divers_artikel_id' => $diversArtikelId,
             // Gruppen-Kacheln im Divers-Dialog (gleiche Auswahl wie online)
             'gruppen'        => (new KassenService())->getKassenGruppen(),
+            // Mengen-Aktionen (4 für 12 / 3 für 2 / Paketpreise), das Gerät prüft den Zeitraum selbst
+            'mengen_regeln'  => (new MengenAktionService())->regelnFuerMesse(array_column($artikel, 'id')),
         ];
     }
 
@@ -306,13 +312,13 @@ class MesseSyncService
                         (bon_nr, typ, kasse_id, kunden_id, zahlungsart, bruttobetrag,
                          gegeben, rueckgeld, bar_betrag, karten_betrag,
                          gutschein_code, gutschein_betrag,
-                         rksv_signatur, rksv_qr,
+                         rksv_signatur, rksv_qr, steuer_a, steuer_b, steuer_c, steuer_d, steuer_e,
                          benutzer_id, erstellt_am, notiz)
                     VALUES
                         (:bon_nr, 'verkauf', :kasse_id, :kunden_id, :zahlungsart, :bruttobetrag,
                          :gegeben, :rueckgeld, :bar_betrag, :karten_betrag,
                          :gutschein_code, :gutschein_betrag,
-                         :rksv_signatur, :rksv_qr,
+                         :rksv_signatur, :rksv_qr, :steuer_a, :steuer_b, :steuer_c, :steuer_d, :steuer_e,
                          :benutzer_id, :erstellt_am, :notiz)
                 ");
                 $stmt->execute([
@@ -329,6 +335,12 @@ class MesseSyncService
                     ':gutschein_betrag' => $bonDaten['gutschein_betrag'] ?? null,
                     ':rksv_signatur'    => $bonDaten['rksv_signatur']    ?? null,
                     ':rksv_qr'          => $bonDaten['rksv_qr']          ?? null,
+                    // Steuergruppen A–E, wie das Gerät sie signiert hat (fehlten bis 2026-11-15 beim Import)
+                    ':steuer_a'         => round((float)($bonDaten['steuer']['A'] ?? 0), 2),
+                    ':steuer_b'         => round((float)($bonDaten['steuer']['B'] ?? 0), 2),
+                    ':steuer_c'         => round((float)($bonDaten['steuer']['C'] ?? 0), 2),
+                    ':steuer_d'         => round((float)($bonDaten['steuer']['D'] ?? 0), 2),
+                    ':steuer_e'         => round((float)($bonDaten['steuer']['E'] ?? 0), 2),
                     ':benutzer_id'      => $benutzerId,
                     ':erstellt_am'      => $bonDaten['erstellt_am']      ?? date('Y-m-d H:i:s'),
                     ':notiz'            => 'Messe-Import Sync #' . $sync['id'],
@@ -339,10 +351,12 @@ class MesseSyncService
                 $stmtPos = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
                         (bon_id, block, artikel_id, artikel_gruppe_id, bezeichnung, ean, menge,
-                         einzelpreis_brutto, rabatt_prozent, steuer_prozent, charge, sort_order)
+                         einzelpreis_brutto, preis_vorher_brutto, mengen_aktion_id, aktion_hinweis,
+                         rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
                         (:bon_id, :block, :artikel_id, :artikel_gruppe_id, :bezeichnung, :ean, :menge,
-                         :einzelpreis_brutto, :rabatt_prozent, :steuer_prozent, :charge, :sort)
+                         :einzelpreis_brutto, :preis_vorher, :mengen_aktion_id, :aktion_hinweis,
+                         :rabatt_prozent, :steuer_prozent, :charge, :sort)
                 ");
                 foreach (($bonDaten['positionen'] ?? []) as $i => $pos) {
                     $posArtikelId = (int)($pos['artikel_id'] ?? 0);
@@ -356,6 +370,10 @@ class MesseSyncService
                         ':ean'                => $pos['ean']                ?? null,
                         ':menge'              => $pos['menge']              ?? 1,
                         ':einzelpreis_brutto' => $pos['einzelpreis_brutto'] ?? 0,
+                        // Mengen-Aktion vom Gerät (reduzierter Einzelpreis + Preis vorher, wie online)
+                        ':preis_vorher'       => isset($pos['preis_vorher_brutto']) ? (float)$pos['preis_vorher_brutto'] : null,
+                        ':mengen_aktion_id'   => !empty($pos['mengen_aktion_id']) ? (int)$pos['mengen_aktion_id'] : null,
+                        ':aktion_hinweis'     => isset($pos['aktion_hinweis']) ? mb_substr((string)$pos['aktion_hinweis'], 0, 60) : null,
                         ':rabatt_prozent'     => $pos['rabatt_prozent']     ?? 0,
                         ':steuer_prozent'     => $pos['steuer_prozent']     ?? 20,
                         ':charge'             => $pos['charge']             ?? null,
@@ -683,21 +701,30 @@ class MesseSyncService
         return ['erfolg' => true];
     }
 
-    /** Wert laut Strichliste (verkauft × aktueller Standard-VK) + Freitext — für den Abgleich mit den Belegen. */
+    /**
+     * Wert laut Strichliste (verkauft × aktueller Preis, Sale/Aktion wie an der Kasse) + Freitext — für den
+     * Abgleich mit den Belegen. Mengen-Aktionen (4 für 12 …) lassen sich aus Strichen nicht nachrechnen,
+     * weil die Aufteilung auf die Belege fehlt; eine Differenz deshalb unter „Begründung“ festhalten.
+     */
     public function getStrichlistenWert(int $syncId): array
     {
         $stmt = $this->db->prepare("
-            SELECT COALESCE(SUM(u.menge_strich * COALESCE(
+            SELECT u.artikel_id AS id, u.menge_strich, COALESCE(
                        (SELECT ap.brutto_vk FROM artikel_preise ap
                         INNER JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
                         WHERE ap.artikel_id = u.artikel_id
                           AND (ap.gueltig_ab IS NULL OR ap.gueltig_ab <= CURDATE())
                           AND (ap.gueltig_bis IS NULL OR ap.gueltig_bis >= CURDATE())
-                        ORDER BY ap.gueltig_ab DESC LIMIT 1), 0)), 0)
-            FROM kassen_messe_umbuchungen u WHERE u.sync_id = ?
+                        ORDER BY ap.gueltig_ab DESC LIMIT 1), 0) AS brutto_vk
+            FROM kassen_messe_umbuchungen u WHERE u.sync_id = ? AND u.menge_strich > 0
         ");
         $stmt->execute([$syncId]);
-        $lager = round((float)$stmt->fetchColumn(), 2);
+        $kassenSvc = new KassenService();
+        $lager = 0.0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $z) {
+            $lager += (float)$z['menge_strich'] * (float)$kassenSvc->mitEffektivPreis($z)['brutto_vk'];
+        }
+        $lager = round($lager, 2);
 
         $stmt = $this->db->prepare("SELECT COALESCE(SUM(menge * einzelpreis), 0) FROM kassen_messe_freitext WHERE sync_id = ? AND zugabe = 0");
         $stmt->execute([$syncId]);

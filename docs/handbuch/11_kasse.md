@@ -95,6 +95,15 @@ Der Preis bleibt danach im Warenkorb änderbar (Zeile antippen → Preis tippen 
 **Elektronische Messe-Kasse (offline):** "➕ Freier Artikel" hat denselben Dialog
 (Gruppen-Kacheln, Steuer-Tasten, Numpad). Die Gruppen werden beim Laden der Offline-Kasse
 mitgenommen — nach Änderungen an den Artikelgruppen die Offline-Kasse **neu laden**.
+
+**Sale-/Aktionspreise und Mengen-Aktionen auf der Messe:** Die elektronische Messe-Kasse nimmt beim Laden die
+Sale- und Aktionspreise mit (Stand: Tag des Ladens) und rechnet Mengen-Aktionen („3 für 12 €“, „3 für 2“, Paketpreise)
+genau wie die Laden-Kasse: Hinweis „Noch x Stk“, Ersparnis, Aktion auf der Quittung und im Bon. Den Zeitraum einer
+Mengen-Aktion prüft das Gerät selbst, bei mehrtägigen Messen gilt also das jeweilige Datum. Sale-Artikel zählen nie
+zur Mengen-Aktion. Ändert sich ein Preis oder eine Aktion nach dem Laden: Offline-Kasse **neu laden**.
+Die **Strichliste der Papier-Messe** zeigt Sale-Preise (alter Preis durchgestrichen) und die Mengen-Aktion je Artikel;
+der Strichlisten-Wert im Messe-Abschluss rechnet mit Sale-Preisen. Mengen-Aktionen lassen sich aus Strichen nicht
+nachrechnen — eine Differenz deshalb unter „Begründung Differenz“ festhalten.
 Mengenvorwahl und Schnellwahl gibt es offline noch nicht (Menge im Warenkorb mit +/−).
 
 ### Gruppen-Tasten in der Schnellwahl
