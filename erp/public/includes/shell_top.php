@@ -84,6 +84,7 @@ $sidebarItems = match ($activeModule ?? '') {
     'kunden' => [
         ['icon' => '📋', 'label' => 'Liste',        'href' => BASE_PATH . '/kunden/liste.php'],
         ['icon' => '➕', 'label' => 'Neuer Kunde',  'href' => BASE_PATH . '/kunden/neu.php'],
+        ['icon' => '📧', 'label' => 'Newsletter',   'href' => BASE_PATH . '/newsletter/empfaenger.php'],
     ],
     'hersteller' => [
         ['icon' => '📋', 'label' => 'Liste',            'href' => BASE_PATH . '/hersteller/liste.php'],

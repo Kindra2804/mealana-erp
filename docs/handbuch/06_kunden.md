@@ -64,3 +64,20 @@ Auf Kundenwunsch können alle persönlichen Daten gelöscht werden ("Recht auf V
 |---------|--------|
 | Doppelter Kunde | Suche nach E-Mail — Duplikate zusammenführen (Merge-Funktion) |
 | Kunde aus WooCommerce nicht vorhanden | Wurde der Auftrag-Import durchgeführt? Shop-Sync prüfen |
+
+## Newsletter-Empfänger (Kunden → 📧 Newsletter)
+
+Empfänger werden **je Shop** geführt (eine Adresse kann in mehreren Shops stehen). E-Mail und Name sind verschlüsselt
+gespeichert wie bei den Kunden. Status: **bestätigt** (darf Newsletter bekommen), **wartet auf Bestätigung**
+(Double-Opt-in noch offen), **abgemeldet** (bleibt stehen, damit die Adresse nie wieder aktiv wird).
+
+- **Nachweis:** je Empfänger alle Ereignisse mit Zeitpunkt und IP (angemeldet, bestätigt, abgemeldet, importiert) —
+  der Einwilligungsnachweis nach DSGVO/TKG.
+- **Abmelden von Hand** (z.B. Kunde ruft an): Knopf „Abmelden“.
+- **Import aus dem JTL-Shop:** ⤓ Import aus JTL-Shop → dort steht die fertige Abfrage für phpMyAdmin (Shop-Datenbank,
+  Reiter SQL). Ergebnis als CSV exportieren (Haken „Spaltennamen in die erste Zeile“), Shop wählen, **Probelauf**,
+  dann **Jetzt importieren**. Übernommen werden bestätigte Abonnenten mit Opt-in-Datum und -IP aus JTL; Adressen der
+  JTL-Blacklist kommen als „abgemeldet“ und setzen auch schon vorhandene auf abgemeldet. Doppelt importieren schadet
+  nicht. Die CSV danach löschen (personenbezogene Daten).
+- Recht: `newsletter.verwalten` (Admin, Assistent, Manager).
+

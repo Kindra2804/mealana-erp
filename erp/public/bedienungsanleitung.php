@@ -619,6 +619,9 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>DSGVO-Löschung:</strong> Kunden-Detail → "Kunden löschen (DSGVO)" — persönliche Daten werden kryptografisch gelöscht, Bestellhistorie bleibt anonymisiert erhalten.</p>
 
             <!-- PARTNER -->
+            <h3 id="kunden-newsletter">Newsletter-Empfänger <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Kunden → <strong>📧 Newsletter</strong>: Empfänger je Shop, Status bestätigt / wartet auf Bestätigung / abgemeldet, <strong>Nachweis</strong> (Zeitpunkt + IP jeder An-/Abmeldung), Abmelden von Hand. <strong>⤓ Import aus JTL-Shop</strong>: fertige Abfrage für phpMyAdmin, CSV mit Kopfzeile exportieren, Probelauf, importieren — bestätigte Abonnenten mit Opt-in-Nachweis, Blacklist wird „abgemeldet“. CSV danach löschen.</p>
+
             <h2 id="partner">Partner & Mietfächer <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <table class="ba-table">
                 <tr><th>Verkaufsart</th><th>Was ist das?</th></tr>

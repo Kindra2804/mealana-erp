@@ -37,3 +37,13 @@ Jacky 2026-11-04: Newsletter und Slider sollen ins ERP. Ziel: **ERP als Single P
 - **Offen:** Klicktest Jacky/Babsi, Migration 224 + Slides beim Live-Neuaufsatz (die Slides hängen an Dev-WP-Media-IDs, auf Live neu übertragen).
 
 **How to apply:** Vor dem Bauen [[feedback-modul-vorgehen]] (Referenz-Check) + [[feedback-scope-ohne-bedarf]]. Theme-Kontext: [[project-shop-theme]], Sync-Mechanik: [[project-shop-sync]].
+
+## Newsletter-Entscheidungen Jacky 2026-11-15 (jetzt angehen)
+1. Öffentlicher Endpunkt für Anmeldung/DOI/Abmeldung/Klicks = **beleg.mealana.at** (Belegportal, API-Schlüssel), unabhängig vom Shopsystem; ERP holt per Polling.
+2. Bestand MeaLana ~1.600 aus **JTL-Shop** (Admin zeigt Abonnent, Kundengruppe, E-Mail, eingetragen am, letzter Newsletter, Opt-in-IP, Opt-in-Datum; kein CSV-Export im Admin) → per phpMyAdmin aus der Shop-DB (tnewsletterempfaenger, ggf. Historie/toptin), Spalten erst per SHOW COLUMNS prüfen; Einwilligungsnachweis (IP + Datum) mit importieren.
+3. Versand selbst, gedrosselt **max. 100/h** (wie JTL), über Shop-Postfach; SPF/DKIM vorher.
+4. **Bausteine**, im Design des gewählten Shops (Farben/Logo/Schrift je Shop).
+5. **Keine Auswertung, die eine Einwilligung braucht** (kein Öffnungs-Pixel); notfalls ganz ohne.
+6. Zielgruppen: zuerst „alle Abonnenten des Shops“; Segmente (Kaufhistorie) gleich mitbauen, aber erst anbieten, wenn genug ERP-Daten da sind.
+7. **Gleich angehen**, auch für MeaLana (JTL-Newsletter wird wegen Aufwand kaum genutzt): vor/während/nach der Umstellung Kunden auf den neuen Shop hinweisen und SOW/Bio/indra vorstellen.
+**✅ Schritt 1 gebaut 2026-11-15 (Migr. 249):** `newsletter_empfaenger` (je Shop, email/name verschlüsselt + email_hash, status ausstehend/aktiv/abgemeldet, quelle, eingetragen/anmelde_ip/optin_am/optin_ip/abgemeldet_am/letzter_newsletter_am, token für Links) + `newsletter_ereignisse` (Nachweis) + Recht newsletter.verwalten. `src/modules/newsletter/NewsletterEmpfaengerService.php` (zaehler/liste/ereignisse/abmelden/importJtlCsv mit Probelauf), Seiten `public/newsletter/{empfaenger,import,aktion}.php`, Menü Kunden → 📧 Newsletter. **JTL-Export-Abfrage** steht auf der Import-Seite: tnewsletterempfaenger (nAktiv=1, ohne Blacklist) + Opt-in aus tnewsletterempfaengerhistory (cRegIp/cOptIp/dOptCode, letzter Eintrag mit dOptCode) UNION Blacklist (gesperrt=1). toptin = alle Opt-ins inkl. OptinAvailAgain, nicht nötig. Getestet mit erfundener CSV (aufgeräumt). **Nächste Schritte:** 2 beleg.mealana.at (Anmeldung/DOI/Abmeldung/Klicks), 3 Editor-Bausteine je Shop-Design, 4 Versand 100/h, 5 Segmente. Jacky: echten Export ziehen + importieren.

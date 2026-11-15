@@ -256,6 +256,13 @@ final class Zugriffsregeln
             'zugang_delete.php'           => 'lieferanten.loeschen',
         ],
 
+        // === Newsletter (Migration 249) ===
+        'newsletter' => [
+            'empfaenger.php' => 'newsletter.verwalten',
+            'import.php'     => 'newsletter.verwalten',
+            'aktion.php'     => 'newsletter.verwalten',
+        ],
+
         // === Kunden ===
         'kunden' => [
             'liste.php'               => 'kunden.anzeigen',
