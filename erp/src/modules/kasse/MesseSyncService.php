@@ -454,6 +454,8 @@ class MesseSyncService
         // (mit − verkauft − zurück) und wird HIER berechnet — der vom Client
         // mitgeschickte Schwund wird ignoriert.
         $istPapier = $sync['variante'] === 'papier';
+        // Mobil-Messe: verkauft kommt aus den Belegen des Geräts (alle müssen nacherfasst sein), sonst wie Papier
+        $istMobil  = $sync['variante'] === 'mobil';
 
         $lagerSvc  = new LagerService();
         $schluessel = fn($artId, $charge) => $artId . '|' . ($charge ?? '');
@@ -461,6 +463,13 @@ class MesseSyncService
         $strichIdx = [];
         foreach ($strich as $s) {
             $strichIdx[$schluessel((int)$s['artikel_id'], $s['charge'] ?? null)] = (float)$s['menge'];
+        }
+        if ($istMobil) {
+            $offen = (int)$this->db->query("SELECT COUNT(*) FROM kassen_messe_mobilbelege WHERE sync_id = " . (int)$syncId . " AND bon_id IS NULL")->fetchColumn();
+            if ($offen) {
+                return ['erfolg' => false, 'fehler' => "Erst alle Belege nacherfassen ($offen offen)."];
+            }
+            $strichIdx = $this->mobilVerkauft($syncId);
         }
 
         $rueckIdx  = [];
@@ -482,7 +491,7 @@ class MesseSyncService
                 $mengeRueck   = $rueckIdx[$key]   ?? 0.0;
                 $mengeSchwund = $schwundIdx[$key] ?? 0.0;
                 $mengeStrich  = null;
-                if ($istPapier) {
+                if ($istPapier || $istMobil) {
                     $mengeStrich  = $strichIdx[$key] ?? 0.0;
                     $mengeSchwund = round((float)$umb['menge_raus'] - $mengeStrich - $mengeRueck, 3);
                     if ($mengeSchwund < 0) {
@@ -571,8 +580,8 @@ class MesseSyncService
             $this->db->prepare("
                 UPDATE kassen_messe_sync
                 SET rueckkehr_am = NOW(),
-                    status = IF(variante = 'papier', 'abgeschlossen', status),
-                    abgeschlossen_am = COALESCE(abgeschlossen_am, IF(variante = 'papier', NOW(), NULL))
+                    status = IF(variante IN ('papier', 'mobil'), 'abgeschlossen', status),
+                    abgeschlossen_am = COALESCE(abgeschlossen_am, IF(variante IN ('papier', 'mobil'), NOW(), NULL))
                 WHERE id = :id
             ")->execute([':id' => $syncId]);
 
@@ -819,6 +828,170 @@ class MesseSyncService
         ")->fetchAll();
     }
 
+    // ── Mobil-Messe (Sunmi): Belege hochladen + an der Signatur-Kasse nacherfassen ──
+
+    /**
+     * Nimmt die Belege eines Mobil-Geräts an (noch ohne Signatur, ohne Lagerbuchung). Doppelt hochgeladene
+     * Belege (gleiche Nummer) werden übersprungen — das Gerät darf also gefahrlos erneut hochladen.
+     */
+    public function mobilBelegeHochladen(array $payload, int $benutzerId): array
+    {
+        $sync = $this->getSyncByToken((string)($payload['sync_token'] ?? ''));
+        if (!$sync || $sync['variante'] !== 'mobil') {
+            return ['erfolg' => false, 'fehler' => 'Mobil-Messe nicht gefunden (Gerät neu laden?).'];
+        }
+        $syncId = (int)$sync['id'];
+        $neu = 0; $doppelt = 0; $fehler = [];
+        $ins = $this->db->prepare("
+            INSERT IGNORE INTO kassen_messe_mobilbelege
+                (sync_id, beleg_nr, geraet, beleg_zeit, zahlungsart, bruttobetrag, daten, hochgeladen_von)
+            VALUES (:sid, :nr, :geraet, :zeit, :zahlart, :brutto, :daten, :uid)");
+        foreach (($payload['bons'] ?? []) as $b) {
+            $nr = (string)($b['bon_nr'] ?? '');
+            if (!preg_match('/^M' . $syncId . '-([0-9A-Za-z]{1,3})-\d{4,}$/', $nr, $m)) { $fehler[] = "Belegnummer „{$nr}“ passt nicht zu Messe {$syncId}."; continue; }
+            $zeit = DateTime::createFromFormat('Y-m-d H:i:s', (string)($b['erstellt_am'] ?? ''));
+            $za   = (string)($b['zahlungsart'] ?? '');
+            $pos  = $b['positionen'] ?? [];
+            if (!$zeit || !in_array($za, ['bar', 'karte_extern'], true) || !$pos || (float)($b['bruttobetrag'] ?? 0) <= 0) {
+                $fehler[] = "Beleg $nr ist unvollständig."; continue;
+            }
+            $ins->execute([
+                ':sid' => $syncId, ':nr' => $nr, ':geraet' => $m[1], ':zeit' => $zeit->format('Y-m-d H:i:s'),
+                ':zahlart' => $za, ':brutto' => round((float)$b['bruttobetrag'], 2),
+                ':daten' => json_encode(['positionen' => $pos, 'gegeben' => $b['gegeben'] ?? null, 'rueckgeld' => $b['rueckgeld'] ?? null],
+                                        JSON_UNESCAPED_UNICODE),
+                ':uid' => $benutzerId,
+            ]);
+            $ins->rowCount() ? $neu++ : $doppelt++;
+        }
+        if ($fehler && !$neu && !$doppelt) {
+            return ['erfolg' => false, 'fehler' => implode(' ', $fehler)];
+        }
+        Logger::log('messe.mobil_hochgeladen', 'kassen_messe_sync', $syncId, ['neu' => $neu, 'doppelt' => $doppelt, 'fehler' => $fehler], $benutzerId);
+        return ['erfolg' => true, 'bon_count' => $neu, 'doppelt' => $doppelt, 'fehler' => $fehler];
+    }
+
+    /**
+     * Verkaufte Mengen laut Mobil-Belegen je Artikel|Charge (Belege mit stornierten Bons zählen nicht).
+     * Freie Artikel (ohne Lagerartikel) zählen nicht — die haben keinen Messe-Bestand.
+     */
+    public function mobilVerkauft(int $syncId): array
+    {
+        $st = $this->db->prepare("SELECT m.daten FROM kassen_messe_mobilbelege m
+                                  LEFT JOIN kassen_bons b ON b.id = m.bon_id
+                                  WHERE m.sync_id = ? AND (b.id IS NULL OR b.storniert = 0)");
+        $st->execute([$syncId]);
+        $erg = [];
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $json) {
+            foreach ((json_decode((string)$json, true)['positionen'] ?? []) as $p) {
+                $aid = (int)($p['artikel_id'] ?? 0);
+                if (!$aid) continue;
+                $key = $aid . '|' . (($p['charge'] ?? null) ?: '');
+                $erg[$key] = round(($erg[$key] ?? 0) + (float)($p['menge'] ?? 0), 3);
+            }
+        }
+        return $erg;
+    }
+
+    /** Hochgeladene Belege einer Mobil-Messe, mit Bon nach der Nacherfassung. */
+    public function getMobilBelege(int $syncId): array
+    {
+        $st = $this->db->prepare("
+            SELECT m.*, b.bon_nr, b.storniert
+            FROM kassen_messe_mobilbelege m
+            LEFT JOIN kassen_bons b ON b.id = m.bon_id
+            WHERE m.sync_id = ?
+            ORDER BY m.beleg_zeit, m.id");
+        $st->execute([$syncId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Einen Mobil-Beleg nacherfassen: signierter Bon an DIESER Kasse (Arbeitsplatz) mit den echten Artikeln,
+     * Chargen und Aktionspreisen vom Gerät. Ohne Lagerbuchung — die macht die Rückkehr (verkauft = Belege).
+     * Vermerk wie bei der Papier-Messe.
+     */
+    public function mobilBelegNacherfassen(int $belegId, int $kasseId, int $benutzerId): array
+    {
+        $st = $this->db->prepare("SELECT m.*, s.lager_id, s.variante FROM kassen_messe_mobilbelege m
+                                  JOIN kassen_messe_sync s ON s.id = m.sync_id WHERE m.id = ?");
+        $st->execute([$belegId]);
+        $m = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$m || $m['variante'] !== 'mobil') {
+            return ['erfolg' => false, 'fehler' => 'Beleg nicht gefunden.'];
+        }
+        // Sperre gegen Doppelklick / zwei Kassen gleichzeitig
+        $sperre = $this->db->prepare("UPDATE kassen_messe_mobilbelege SET nacherfasst_am = NOW()
+                                      WHERE id = ? AND bon_id IS NULL AND nacherfasst_am IS NULL");
+        $sperre->execute([$belegId]);
+        if (!$sperre->rowCount()) {
+            return ['erfolg' => false, 'fehler' => "Beleg {$m['beleg_nr']} ist bereits nacherfasst (oder wird gerade erfasst)."];
+        }
+        $freigeben = fn() => $this->db->prepare("UPDATE kassen_messe_mobilbelege SET nacherfasst_am = NULL WHERE id = ? AND bon_id IS NULL")->execute([$belegId]);
+
+        $daten = json_decode((string)$m['daten'], true) ?: [];
+        $diversId = (int)($this->db->query("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1")->fetchColumn() ?: 0);
+        $positionen = [];
+        foreach (($daten['positionen'] ?? []) as $p) {
+            $aid = (int)($p['artikel_id'] ?? 0);
+            $istDivers = !$aid || $aid === $diversId;
+            $positionen[] = [
+                'artikel_id'          => $aid ?: null,
+                'artikel_gruppe_id'   => $istDivers && !empty($p['artikel_gruppe_id']) ? (int)$p['artikel_gruppe_id'] : null,
+                'bezeichnung'         => (string)($p['bezeichnung'] ?? ''),
+                'ean'                 => $p['ean'] ?? null,
+                'menge'               => (float)($p['menge'] ?? 1),
+                'einzelpreis_brutto'  => (float)($p['einzelpreis_brutto'] ?? 0),
+                'preis_vorher_brutto' => isset($p['preis_vorher_brutto']) ? (float)$p['preis_vorher_brutto'] : null,
+                'mengen_aktion_id'    => !empty($p['mengen_aktion_id']) ? (int)$p['mengen_aktion_id'] : null,
+                'aktion_hinweis'      => isset($p['aktion_hinweis']) ? mb_substr((string)$p['aktion_hinweis'], 0, 60) : null,
+                'rabatt_prozent'      => (float)($p['rabatt_prozent'] ?? 0),
+                'steuer_prozent'      => (float)($p['steuer_prozent'] ?? 20),
+                'charge'              => ($p['charge'] ?? null) ?: null,
+                // Lager bucht erst die Rückkehr aus dem Messe-Lager (verkauft aus den Belegen) — wie bei
+                // Papier- und Laptop-Messe; sonst ginge Partnerware hier aus dem Partner-Lager ab
+                'kein_lagerabzug'     => true,
+            ];
+        }
+        if (!$positionen) {
+            $freigeben();
+            return ['erfolg' => false, 'fehler' => "Beleg {$m['beleg_nr']} hat keine Positionen."];
+        }
+        $zeit   = new DateTime($m['beleg_zeit']);
+        $brutto = (float)$m['bruttobetrag'];
+        $bar    = $m['zahlungsart'] === 'bar';
+        try {
+            $erg = (new KassenService())->erstelleBon([
+                'kasse_id'      => $kasseId,
+                'lager_id'      => (int)$m['lager_id'],   // Messe-Lager (Inventur-Sperre); Lager bucht die Rückkehr
+                'kunden_id'     => null,
+                'zahlungsart'   => $m['zahlungsart'],
+                'bruttobetrag'  => $brutto,
+                'gegeben'       => $bar ? (float)($daten['gegeben'] ?? $brutto) : null,
+                'rueckgeld'     => $bar ? (float)($daten['rueckgeld'] ?? 0) : null,
+                'bar_betrag'    => $bar ? $brutto : null,
+                'karten_betrag' => $bar ? null : $brutto,
+                'notiz'         => 'Nacherfassung Messe-Beleg Nr. ' . $m['beleg_nr'] . ' vom ' . $zeit->format('d.m.Y H:i')
+                                 . ' (Mobil-Messe Nr. ' . $m['sync_id'] . ')',
+            ], $positionen, $benutzerId);
+        } catch (Throwable $e) {
+            $freigeben();
+            return ['erfolg' => false, 'fehler' => $e->getMessage()];
+        }
+        if (!$erg['erfolg']) {
+            $freigeben();
+            return $erg;
+        }
+        $this->db->prepare("UPDATE kassen_bons SET messe_sync_id = :sid, handbeleg_nr = :nr, handbeleg_datum = :dat WHERE id = :id")
+            ->execute([':sid' => $m['sync_id'], ':nr' => $m['beleg_nr'], ':dat' => $zeit->format('Y-m-d'), ':id' => $erg['bon_id']]);
+        $this->db->prepare("UPDATE kassen_messe_mobilbelege SET bon_id = ?, nacherfasst_am = NOW() WHERE id = ?")
+            ->execute([$erg['bon_id'], $belegId]);
+        Logger::log('messe.beleg_nacherfasst', 'kassen_bons', (int)$erg['bon_id'], [
+            'messe_sync_id' => (int)$m['sync_id'], 'handbeleg_nr' => $m['beleg_nr'], 'betrag' => $brutto, 'mobil' => true,
+        ], $benutzerId);
+        return $erg + ['beleg_nr' => $m['beleg_nr']];
+    }
+
     /** Mobil-Messen (Sunmi), die vorbereitet, aber noch nicht zurückgebucht sind. */
     public function getOffeneMobilMessen(): array
     {
@@ -842,7 +1015,7 @@ class MesseSyncService
             LEFT JOIN lager l ON l.id = s.lager_id
             LEFT JOIN kassen k ON k.id = s.kasse_id
             WHERE s.rueckkehr_am IS NULL
-              AND (s.status = 'abgeschlossen' OR s.variante = 'papier')
+              AND (s.status = 'abgeschlossen' OR s.variante IN ('papier', 'mobil'))
             ORDER BY s.erstellt_am DESC
         ");
         return $stmt->fetchAll();

@@ -139,7 +139,7 @@ function mrPapierAbschliessen(syncId, vonLagerId, nachLagerId) {
                 return;
             }
             fb.innerHTML = '<div class="ks-feedback ok">Lager zurückgebucht — weiter zu den Belegen …</div>';
-            setTimeout(() => { window.location = 'messe_belege.php?sync_id=' + syncId; }, 1000);
+            setTimeout(() => { window.location = window.MR_NACH_URL || ('messe_belege.php?sync_id=' + syncId); }, 1000);
         })
         .catch(() => {
             fb.innerHTML = '<div class="ks-feedback fehler">Netzwerkfehler.</div>';

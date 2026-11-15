@@ -376,6 +376,7 @@ final class Zugriffsregeln
             'messe_rueckkehr.php'       => 'kasse.starten',
             'messe_strichliste.php'      => 'kasse.starten',
             'messe_belege.php'           => 'kasse.starten',
+            'messe_mobil_belege.php'     => 'kasse.starten',
             'messe_abschluss.php'        => 'kasse.starten',
             'nacherfassung.php'          => 'kasse.starten',
             'nacherfassung_retry.php'    => 'kasse.starten',

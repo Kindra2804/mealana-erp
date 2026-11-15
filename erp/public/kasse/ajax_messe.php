@@ -96,6 +96,25 @@ switch ($aktion) {
         ));
         break;
 
+    // ── Mobil-Messe (Sunmi): Belege vom Gerät annehmen (ohne Signatur/Lager) ───
+    // POST: aktion, payload (JSON mit sync_token + bons)
+    case 'mobil_upload':
+        $payload = json_decode($_POST['payload'] ?? '{}', true);
+        echo json_encode(empty($payload) ? ['erfolg' => false, 'fehler' => 'Leerer Payload.'] : $svc->mobilBelegeHochladen($payload, $uid));
+        break;
+
+    // ── Mobil-Messe: einen Beleg an DIESER Kasse nacherfassen (signiert) ─────
+    // POST: aktion, beleg_id
+    case 'mobil_nacherfassen':
+        require_once __DIR__ . '/../../src/modules/arbeitsplatz/ArbeitsplatzService.php';
+        $kasseId = (new ArbeitsplatzService())->aktuelleKasseId();
+        if ($kasseId === null) {
+            echo json_encode(['erfolg' => false, 'fehler' => 'Kein Kassen-Arbeitsplatz — bitte über die Kassen-Startseite öffnen.']);
+            exit;
+        }
+        echo json_encode($svc->mobilBelegNacherfassen((int)($_POST['beleg_id'] ?? 0), $kasseId, $uid));
+        break;
+
     // ── Papier-Messe: Begründung der Differenz (optional) ────────────────────
     // POST: aktion, sync_id, text
     case 'differenz_begruendung':

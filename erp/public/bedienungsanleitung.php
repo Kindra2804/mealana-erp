@@ -796,6 +796,16 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-hint">💡 Bar-Belege erhöhen den Kassenstand der Kasse, an der nacherfasst wird — Messe-Bargeld einlegen oder als Entnahme buchen. Im Buchhaltungs-Export zählt das Belegdatum. Ein Messe-Auftrag entsteht bewusst nicht (Umsatz kommt über die Belege).</div>
             <div class="ba-hint">💡 <strong>Sale-/Aktionspreise und Mengen-Aktionen auf der Messe:</strong> Die elektronische Messe-Kasse nimmt sie beim Laden mit (Sale-Preis = Stand am Tag des Ladens, Zeitraum der Mengen-Aktion prüft das Gerät je Messetag) und rechnet „3 für 12 €“ & Co. wie die Laden-Kasse. Sale-Artikel zählen nie zur Mengen-Aktion. Preis oder Aktion nach dem Laden geändert → Offline-Kasse neu laden. Die Strichliste der Papier-Messe zeigt Sale-Preis und Mengen-Aktion je Artikel; eine Differenz durch Mengen-Aktionen unter „Begründung Differenz“ festhalten.</div>
 
+            <h3 id="kasse-mobil-messe">Mobil-Messe (Sunmi, Belege ohne Signatur) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Handgerät (Sunmi V2, 58-mm-Drucker) erteilt nur den <strong>Beleg</strong> (Belegerteilungspflicht), ohne Signatur — wie ein Paragon. Danach werden die Belege an der Signatur-Kasse nacherfasst, ohne Abtippen.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>🎪 Messe</strong> → Variante <strong>📱 Mobil-Messe (Sunmi)</strong> → Artikel scannen → Umbuchung</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Am Sunmi (Laden-WLAN) im ERP anmelden → 🎪 Messe → <strong>📱 Am Gerät laden</strong> → Gerät-Nr. → <strong>📥 Sync-Daten laden</strong>. Danach offline.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Messe: Kacheln antippen, Menge vorwählen, grüner Knopf → Warenkorb → <strong>✓ Beleg</strong> (wird gleich gedruckt). Belegnummer M‹Messe›-‹Gerät›-‹laufend›.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>Zurück im Laden-WLAN: <strong>⤴ Belege hochladen</strong> (doppelt schadet nicht)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div>An der Signatur-Kasse: 🎪 Messe → <strong>🧾 Belege nacherfassen</strong> → <strong>Alle nacherfassen</strong> (je Beleg ein signierter Bon mit Vermerk)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">6</div><div><strong>↩ Von Messe zurück</strong>: verkauft kommt aus den Belegen, nur „zurück“ zählen, Schwund automatisch. Erst hier wird das Messe-Lager gebucht.</div></div>
+            <div class="ba-hint">💡 Am Tablet dieselbe Kasse im Querformat (⇅ im Kopf schaltet um, das Gerät merkt sich die Wahl). Drucken geht über den normalen Android-Druckdialog — am Tablet z.B. mit einem Bluetooth-Bondrucker.</div>
+
             <h3 id="kasse-abholbereit">Abholbereit+bezahlt — Aufträge übergeben <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Wenn ein ERP-Auftrag auf "Abholbereit" gesetzt und bezahlt ist, erscheint er in der Kasse unter <strong>Offene Auswahl</strong>.</p>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Kasse → <strong>Offene Auswahl</strong> → Auftrag wählen</div></div>

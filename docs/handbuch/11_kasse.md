@@ -366,3 +366,36 @@ Belege von–bis, bar/Bankomat, Lager je Zeile, Abgleich Belegsumme ↔ Strichli
 Die Differenz wird nicht gebucht (Umsatz = Belege) — sie ist nur Info. Woher sie kommt (z.B. "Messe-Rabatt 10 %"), kann im Feld **Begründung Differenz** festgehalten werden — freiwillig, wird nur gedruckt wenn ausgefüllt.
 
 Ein Messe-**Auftrag** entsteht bewusst nicht — der Umsatz kommt allein über die Belege.
+
+## Messe — Mobil-Messe (Sunmi, Belege ohne Signatur)
+
+Für Verkäufe außerhalb der Betriebsstätte mit einem Handgerät (Sunmi V2 mit eingebautem 58-mm-Drucker).
+Das Gerät erteilt nur den **Beleg** (Belegerteilungspflicht) — **ohne Signatur**, wie ein händischer Paragon
+mit Durchschrift. Nach der Rückkehr wird jeder Beleg an der Signatur-Kasse **nacherfasst** — wie bei der
+Papier-Messe, nur ohne Abtippen, weil das Gerät die Belege genau kennt.
+
+**1. Vorbereiten** — Kasse → 🎪 Messe → Variante **📱 Mobil-Messe (Sunmi)**, Messe-Lager + Quell-Lager,
+Artikel scannen → Umbuchung. Die Messe erscheint unter „Offene Mobil-Messen“.
+
+**2. Gerät laden** (im Laden-WLAN): Am Sunmi im Browser im ERP anmelden, Kasse → 🎪 Messe → **📱 Am Gerät laden**.
+Gerät-Nr. eintragen (bei mehreren Geräten 1, 2, 3 …) → **📥 Sync-Daten laden**. Danach läuft alles offline —
+auch nach Neustart oder leerem Akku. Preise, Sale-Preise und Mengen-Aktionen kommen mit (Stand: Tag des Ladens).
+
+**3. Auf der Messe** — Hochformat-Oberfläche: Artikel als Kacheln antippen (Eingabefeld oben filtert bzw. scannt),
+**Menge** vorher wählen (1, 2, 3 … oder „…“), der grüne Knopf unten führt zum Warenkorb und dort direkt zu
+**✓ Beleg**. Der Beleg wird gleich gedruckt (Häkchen „Beleg gleich drucken“) und enthält Firma, Belegnummer
+(**M‹Messe›-‹Gerät›-‹laufend›**, fortlaufend je Gerät), Datum, Menge + Bezeichnung, Betrag, USt und den Hinweis
+„wird in der Registrierkasse nacherfasst“. Chargen-Artikel fragen die mitgenommene Charge ab.
+Am Tablet (Querformat) gibt es dieselbe Kasse mit Warenkorb und Summe nebeneinander; ⇅ im Kopf schaltet um.
+
+**4. Hochladen** — sobald das Gerät wieder im Laden-WLAN ist: **⤴ Belege hochladen**. Doppelt hochladen schadet
+nicht (gleiche Belegnummer wird übersprungen).
+
+**5. Nacherfassen** — an der **Signatur-Kasse**: 🎪 Messe → Offene Mobil-Messen → **🧾 Belege nacherfassen** →
+**✓ Alle offenen Belege nacherfassen**. Jeder Beleg wird ein eigener, signierter Bon mit den Artikeln, Chargen
+und Aktionspreisen vom Gerät und dem Vermerk „Nacherfassung Messe-Beleg Nr. … vom …“. Es wird nacheinander
+erfasst; bei einem Fehler (z.B. BFR nicht erreichbar) hält es an, der Rest bleibt offen.
+
+**6. Ware zurückbuchen** — ↩ Von Messe zurück → Mobil-Messe wählen. **Verkauft** steht schon da (aus den Belegen),
+nur die gezählte Menge **zurück** eintragen; **Schwund** ergibt sich (rot = Zählfehler). Geht erst, wenn alle
+hochgeladenen Belege nacherfasst sind. Erst hier wird das Messe-Lager gebucht (verkauft, zurück, Schwund).

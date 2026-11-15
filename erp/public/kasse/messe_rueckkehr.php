@@ -54,7 +54,7 @@ require_once __DIR__ . '/shell_top.php';
           <tbody>
             <?php foreach ($syncs as $s): ?>
             <tr>
-              <td><?= $s['variante'] === 'papier' ? '📝 Papier-Messe' : htmlspecialchars($s['kasse_name'] ?? '') ?></td>
+              <td><?= $s['variante'] === 'papier' ? '📝 Papier-Messe' : ($s['variante'] === 'mobil' ? '📱 Mobil-Messe Nr. ' . (int)$s['id'] : htmlspecialchars($s['kasse_name'] ?? '')) ?></td>
               <td><?= htmlspecialchars($s['lager_name'] ?? '') ?></td>
               <td style="text-align:right"><?= (int)$s['bon_count'] ?></td>
               <td style="text-align:right">€ <?= number_format((float)$s['umsatz'], 2, ',', '.') ?></td>
@@ -99,8 +99,66 @@ require_once __DIR__ . '/shell_top.php';
       <p style="font-size:14px;color:#475569">Diese Messe wurde am <?= date('d.m.Y H:i', strtotime($aktiverSync['rueckkehr_am'])) ?> zurückgebucht.</p>
       <?php if ($aktiverSync['variante'] === 'papier'): ?>
         <a href="messe_belege.php?sync_id=<?= (int)$aktiverSync['id'] ?>" class="ks-btn ks-btn-primary">Belege nacherfassen →</a>
+      <?php elseif ($aktiverSync['variante'] === 'mobil'): ?>
+        <a href="messe_mobil_belege.php?sync_id=<?= (int)$aktiverSync['id'] ?>" class="ks-btn ks-btn-primary">Belege ansehen →</a>
       <?php endif; ?>
     </div>
+
+  <?php elseif ($aktiverSync['variante'] === 'mobil'):
+      $mobilVerkauft = $syncSvc->mobilVerkauft((int)$aktiverSync['id']);
+      $mobilOffen = count(array_filter($syncSvc->getMobilBelege((int)$aktiverSync['id']), fn($b) => $b['bon_id'] === null)); ?>
+
+    <!-- Mobil-Messe: verkauft kommt aus den Belegen des Geräts, nur „zurück“ zählen.
+         Schwund = mit − verkauft − zurück (rechnet der Server nach, MesseSyncService::rueckkehrVerarbeiten). -->
+    <div class="ks-card">
+      <div class="ks-card-title">📱 Mobil-Messe Nr. <?= (int)$aktiverSync['id'] ?> — Ware zurückbuchen</div>
+      <?php if ($mobilOffen): ?>
+        <div class="ks-feedback fehler">Es sind noch <?= $mobilOffen ?> Beleg(e) nicht nacherfasst —
+          <a href="messe_mobil_belege.php?sync_id=<?= (int)$aktiverSync['id'] ?>">zuerst nacherfassen</a>.</div>
+      <?php endif; ?>
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px">
+        <strong>Verkauft</strong> kommt aus den hochgeladenen Belegen. Die gezählte Menge <strong>zurück</strong> eintragen —
+        der <strong>Schwund</strong> ergibt sich automatisch (rot = Zählfehler). Fehlen noch Belege eines Geräts:
+        vorher am Gerät „⤴ Belege hochladen“.
+      </p>
+      <table class="ks-table">
+        <thead>
+          <tr><th>Artikel</th><th style="width:110px">Charge</th><th style="text-align:right;width:70px">Mit</th>
+              <th style="text-align:right;width:100px">Verkauft</th><th style="text-align:right;width:100px">Zurück</th><th style="text-align:right;width:80px">Schwund</th></tr>
+        </thead>
+        <tbody id="mr-tabelle">
+          <?php foreach ($umbuchungen as $u):
+              $vk = $mobilVerkauft[(int)$u['artikel_id'] . '|' . ($u['charge'] ?? '')] ?? 0; ?>
+          <tr data-artikel-id="<?= (int)$u['artikel_id'] ?>" data-charge="<?= htmlspecialchars($u['charge'] ?? '') ?>" data-menge-raus="<?= (float)$u['menge_raus'] ?>">
+            <td><?= htmlspecialchars($u['bezeichnung']) ?></td>
+            <td><?= $u['charge'] ? '<span style="color:#2563eb;font-weight:600">' . htmlspecialchars($u['charge']) . '</span>' : '<span style="color:#94a3b8">—</span>' ?></td>
+            <td style="text-align:right"><?= (float)$u['menge_raus'] ?></td>
+            <td style="text-align:right">
+              <input type="number" value="<?= (float)$vk ?>" class="ks-input mr-strich" readonly style="width:80px;text-align:right;padding:4px 6px;background:#f1f5f9">
+            </td>
+            <td style="text-align:right">
+              <input type="number" min="0" step="1" value="<?= max(0, (float)$u['menge_raus'] - (float)$vk) ?>" class="ks-input mr-rueck" style="width:80px;text-align:right;padding:4px 6px" oninput="mrPapierBerechnen(this)">
+            </td>
+            <td style="text-align:right;font-weight:600" class="mr-schwund-zelle">0</td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:#94a3b8;margin:6px 0 0">„Zurück“ ist mit mitgenommen − verkauft vorbelegt.</p>
+    </div>
+
+    <div class="ks-card">
+      <div style="display:flex;gap:10px;align-items:center">
+        <button type="button" class="ks-btn ks-btn-primary ks-btn-lg" id="mr-papier-btn" <?= $mobilOffen ? 'disabled' : '' ?>
+                onclick="mrPapierAbschliessen(<?= (int)$aktiverSync['id'] ?>, <?= (int)$aktiverSync['lager_id'] ?>, <?= (int)($hauptlager['id'] ?? 1) ?>)">
+          ✓ Lager zurückbuchen
+        </button>
+        <span style="font-size:13px;color:#64748b">Zurück ins Lager: <strong><?= htmlspecialchars($hauptlager['name'] ?? 'Hauptlager') ?></strong></span>
+      </div>
+      <div id="mr-feedback" style="margin-top:10px"></div>
+      <table style="display:none"><tbody id="mr-freitext"></tbody></table>
+    </div>
+    <script>var MR_NACH_URL = 'messe_mobil_belege.php?sync_id=<?= (int)$aktiverSync['id'] ?>';</script>
 
   <?php elseif ($aktiverSync['variante'] === 'papier'): ?>
 

@@ -195,6 +195,10 @@ require_once __DIR__ . '/shell_top.php';
                title="Am Sunmi öffnen (im Laden-WLAN), danach läuft es offline">
               📱 Am Gerät laden →
             </a>
+            <a href="messe_mobil_belege.php?sync_id=<?= (int)$s['id'] ?>" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px"
+               title="An der Laden-Kasse: hochgeladene Belege signiert nacherfassen">
+              🧾 Belege nacherfassen
+            </a>
           </td>
         </tr>
         <?php endforeach; ?>
