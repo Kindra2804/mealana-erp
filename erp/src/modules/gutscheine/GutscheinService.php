@@ -354,7 +354,7 @@ class GutscheinService
         $mailer = (new Mailer())->fuerShop((int)($gutschein['shop_id'] ?? 0));
         $mailer->sendeTemplate(
             $zielEmail,
-            'Dein Gutschein von MEALANA',
+            'Dein Gutschein von ' . $this->absenderName($gutschein),
             'mails/gutschein_versand.html.twig',
             [
                 'empfaenger_name' => $gutschein['empfaenger_name'],
@@ -534,5 +534,19 @@ class GutscheinService
         $stmt->execute(['s' => $schluessel]);
         $wert = $stmt->fetchColumn();
         return $wert !== false ? $wert : null;
+    }
+
+    /** Name im Betreff der Gutschein-Mail: Shop, in dem er gekauft wurde, sonst der Firmenname (Kasse). */
+    private function absenderName(array $gutschein): string
+    {
+        $db = Database::getInstance();
+        if (!empty($gutschein['shop_id'])) {
+            $st = $db->prepare("SELECT name FROM shops WHERE id = ?");
+            $st->execute([(int)$gutschein['shop_id']]);
+            $name = trim((string)$st->fetchColumn());
+            if ($name !== '') return $name;
+        }
+        $firma = trim((string)$db->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'firmenname'")->fetchColumn());
+        return $firma !== '' ? $firma : 'uns';
     }
 }

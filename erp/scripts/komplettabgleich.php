@@ -116,6 +116,20 @@ try {
     };
     $ueberlastungenInFolge = 0;
 
+    // „⏹ Abbrechen“ in Einstellungen → Kanäle legt diese Datei an (shop_sync_abbrechen.php);
+    // geprüft nach jedem Durchlauf und während der Wartepausen.
+    $abbruchDatei = __DIR__ . '/../storage/shop_sync_logs/abbrechen_' . (int)$shop['id'] . '.flag';
+    @unlink($abbruchDatei);   // alter Rest von früher
+    $abbrechen = fn(): bool => is_file($abbruchDatei);
+    $warte = function (int $sekunden) use ($abbrechen): bool {   // true = abgebrochen
+        for ($i = 0; $i < $sekunden; $i += 5) {
+            if ($abbrechen()) return true;
+            sleep(min(5, $sekunden - $i));
+        }
+        return $abbrechen();
+    };
+
+    $abgebrochen  = false;
     $gesamtErfolg = 0;
     $gesamtFehler = 0;
     $durchlauf    = 0;
@@ -149,6 +163,11 @@ try {
             . ($ergebnis['rate_limitiert'] ? " -- Rate-Limit erkannt\n" : "\n");
         druckeFaelligkeit($repo, (int)$shop['id'], $mitBildern);
 
+        if ($abbrechen()) {
+            echo "  ⏹ Abgebrochen auf Wunsch -- der automatische Sync macht beim nächsten Lauf weiter.\n";
+            $abgebrochen = true;
+            break;
+        }
         if (!$pausiertBeimStart && $pausiertJetzt()) {
             echo "  Automatischer Sync wurde pausiert -- Komplettabgleich wird beendet.\n";
             break;
@@ -167,7 +186,7 @@ try {
                 ?? min(UEBERLASTUNG_MAX_PAUSE_SEKUNDEN, UEBERLASTUNG_ERSTE_PAUSE_SEKUNDEN * 2 ** ($ueberlastungenInFolge - 1));
             echo "  Server überlastet ({$ueberlastungenInFolge}. Mal in Folge) -- Pause {$wartezeit}s, WC-Batch $alt → {$service->getBatchGroesse()}."
                 . " Unklare neue Artikel werden vor dem Neuanlegen per Artikelnummer gesucht.\n";
-            sleep($wartezeit);
+            if ($warte($wartezeit)) { echo "  ⏹ Abgebrochen auf Wunsch.\n"; $abgebrochen = true; break; }
             continue;
         }
         if ($ergebnis['erfolg'] > 0) {
@@ -177,7 +196,7 @@ try {
         if ($ergebnis['rate_limitiert']) {
             $wartezeit = $ergebnis['retry_after'] ?? FALLBACK_WARTEZEIT_SEKUNDEN;
             echo "  Pausiere {$wartezeit}s, danach automatisch weiter...\n";
-            sleep($wartezeit);
+            if ($warte($wartezeit)) { echo "  ⏹ Abgebrochen auf Wunsch.\n"; $abgebrochen = true; break; }
             continue; // weiter, unabhängig davon ob dieser Durchlauf noch was geschafft hat
         }
 
@@ -210,25 +229,30 @@ try {
         ? "Hinweis: $nochOffen Artikel stehen noch auf Fehler -- Details im Aktivitäten-Log ('shop.sync_fehler' u.ä.), ggf. „Fehler abgleichen“.\n"
         : "Keine Artikel mit Fehler offen.\n";
 
-    // Wie der 15-Minuten-Cron: nach den Artikeln auch Bestellungen abholen und
-    // Gutschein-Coupons abgleichen -- sonst wirkt "Komplettabgleich starten" für
-    // Bestellungen wie tot (Jacky 2026-09-30), obwohl der Name alles verspricht.
-    try {
-        $bestSync = new ShopBestellungSyncService();
-        $b = $bestSync->syncBestellungen($shop);
-        echo "Bestellungen: {$b['erfolg']} verarbeitet, {$b['fehler']} Fehler\n";
-        $st = $bestSync->meldeOffeneStatusAnShop($shop);
-        echo "Status an Shop gemeldet (bezahlt/versendet): {$st['gemeldet']}, Fehler: {$st['fehler']}\n";
-    } catch (Throwable $e) {
-        echo "Bestellungs-Abgleich abgebrochen: {$e->getMessage()}\n";
-    }
-    try {
-        $g = (new GutscheinService())->syncShopCoupons($shop);
-        echo "Gutscheine: {$g['angelegt']} angelegt, {$g['aktualisiert']} aktualisiert, {$g['geloescht']} gelöscht, {$g['fehler']} Fehler\n";
-    } catch (Throwable $e) {
-        echo "Gutschein-Abgleich abgebrochen: {$e->getMessage()}\n";
+    if ($abgebrochen) {
+        echo "Bestellungen/Gutscheine übersprungen (abgebrochen) -- holt der automatische Sync.\n";
+    } else {
+        // Wie der 15-Minuten-Cron: nach den Artikeln auch Bestellungen abholen und
+        // Gutschein-Coupons abgleichen -- sonst wirkt "Komplettabgleich starten" für
+        // Bestellungen wie tot (Jacky 2026-09-30), obwohl der Name alles verspricht.
+        try {
+            $bestSync = new ShopBestellungSyncService();
+            $b = $bestSync->syncBestellungen($shop);
+            echo "Bestellungen: {$b['erfolg']} verarbeitet, {$b['fehler']} Fehler\n";
+            $st = $bestSync->meldeOffeneStatusAnShop($shop);
+            echo "Status an Shop gemeldet (bezahlt/versendet): {$st['gemeldet']}, Fehler: {$st['fehler']}\n";
+        } catch (Throwable $e) {
+            echo "Bestellungs-Abgleich abgebrochen: {$e->getMessage()}\n";
+        }
+        try {
+            $g = (new GutscheinService())->syncShopCoupons($shop);
+            echo "Gutscheine: {$g['angelegt']} angelegt, {$g['aktualisiert']} aktualisiert, {$g['geloescht']} gelöscht, {$g['fehler']} Fehler\n";
+        } catch (Throwable $e) {
+            echo "Gutschein-Abgleich abgebrochen: {$e->getMessage()}\n";
+        }
     }
 } finally {
+    @unlink(__DIR__ . '/../storage/shop_sync_logs/abbrechen_' . (int)$shop['id'] . '.flag');
     $repo->setBulkImportAktiv((int)$shop['id'], false);
     $repo->setAktuellerSyncLog((int)$shop['id'], null);
 }

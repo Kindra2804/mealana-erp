@@ -137,7 +137,17 @@ $feld = fn(string $name, string $label, string $wert, string $extra = '') =>
                         <?= $feld('passwort', 'Neues Passwort * (mind. 8 Zeichen)', '', 'type="password" required minlength="8" autocomplete="new-password"') ?>
                         <?= $feld('passwort2', 'Passwort wiederholen *', '', 'type="password" required minlength="8" autocomplete="new-password"') ?>
                     </div>
-                    <button class="btn btn-primary btn-sm" style="margin-top:12px">Speichern und weiter</button>
+                    <label style="font-size:13px;display:inline-flex;gap:6px;align-items:center;margin-top:8px;cursor:pointer">
+                        <input type="checkbox" onchange="this.form.querySelectorAll('input[name=passwort],input[name=passwort2]').forEach(f => f.type = this.checked ? 'text' : 'password')">
+                        Passwort anzeigen
+                    </label>
+                    <div><button class="btn btn-primary btn-sm" style="margin-top:12px">Speichern und weiter</button></div>
+                </form>
+                <form method="post" action="speichern.php" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--color-border)"
+                      onsubmit="return confirm('Name, Benutzername und Passwort so lassen, wie sie sind?')">
+                    <input type="hidden" name="aktion" value="superadmin_passt">
+                    <span style="font-size:13px;color:var(--color-text-muted)">Zugang schon selbst angelegt (z.B. bei der Installation) und alles stimmt?</span>
+                    <button class="btn btn-sm" style="margin-left:6px">Zugangsdaten bereits korrekt</button>
                 </form>
 
             <?php elseif ($key === 'lizenz'): ?>
@@ -176,7 +186,7 @@ $feld = fn(string $name, string $label, string $wert, string $extra = '') =>
                         mit <strong>doppelter Buchführung (Bilanz)</strong> und <strong>Soll-Versteuerung</strong> (Umsatzsteuer nach Rechnungsdatum).<br>
                         <span style="color:var(--color-text-muted)">Kleinunternehmer und Einnahmen-Ausgaben-Rechnung folgen mit Version 1.1. Bei Fragen bitte vorher mit NAHTLOS bzw. der Steuerberatung klären.</span>
                     </div>
-                    <button class="btn btn-primary btn-sm">Passt so — bestätigen</button>
+                    <button class="btn btn-primary btn-sm">Standard speichern + weiter</button>
                 </form>
 
             <?php elseif ($key === 'lager'): ?>

@@ -88,6 +88,11 @@ Hier werden WooCommerce-Shops verwaltet:
 
 ---
 
+**Komplettabgleich abbrechen:** Während ein Vorgang läuft, steht neben „Komplettabgleich starten“ der Knopf
+**⏹ Abbrechen**. Der Vorgang endet nach dem aktuellen Paket (auch aus einer Wartepause heraus), Bestellungen und
+Gutscheine holt danach wieder der automatische Sync. Hängt die Anzeige „Vorgang läuft…“, obwohl nichts mehr läuft
+(z.B. nach einem Server-Neustart — Protokoll seit 10 Minuten unverändert), löst derselbe Knopf die Sperre sofort.
+
 ## Mail / SMTP (Tab: Mail/SMTP)
 
 Damit das System E-Mails senden kann (Auftragsbestätigungen, Mahnungen, Versandbenachrichtigungen):

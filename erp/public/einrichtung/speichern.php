@@ -65,6 +65,12 @@ switch ($aktion) {
         Logger::log('einrichtung.superadmin', 'benutzer', $id, ['username' => $username]);
         break;
 
+    case 'superadmin_passt':
+        // Zugang wurde schon bei der Installation (create_admin.php) mit eigenem Namen/Passwort angelegt
+        OnboardingService::bestaetigen('superadmin');
+        Logger::log('einrichtung.superadmin', 'benutzer', (int)$_SESSION['benutzer']['id'], ['unveraendert' => true]);
+        break;
+
     case 'lizenz':
         $inhalt = trim($_POST['inhalt'] ?? '');
         if (!empty($_FILES['datei']['tmp_name']) && is_uploaded_file($_FILES['datei']['tmp_name'])) {

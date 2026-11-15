@@ -253,3 +253,5 @@ Wenn Auftrag `abholbereit + bezahlt` und Kunde nimmt **weniger** als bestellt:
 → Muss mit der Abholbereit+bezahlt-Implementierung koordiniert werden.
 
 **How to apply beim Wiedereinstieg:** Planung ist vollständig, alle offenen Fragen sind geklärt (Betragsmodell, Empfänger-Feld, Versand-Deckung, Rechtsfrage, Steuerfrage). Nächster Schritt: Migrationen ausformulieren + Wireframe in echtes HTML/Twig überführen (3-Stufen-Workflow, siehe [[feedback_design_workflow]]). Nicht nochmal von vorne planen.
+
+**2026-11-15 (Jacky):** Gutscheine bleiben je EIN Online-Shop einlösbar (Doppel-Einlösung wegen 15-Min-Sync) + immer an der Kasse; bei uns verkauft/einlöst nur MeaLana (Gutschein-Artikel nur dem MeaLana-Kanal zuordnen). Betreff der Gutschein-Mail jetzt „Dein Gutschein von <Shopname bzw. Firmenname>“ (GutscheinService::absenderName, 1.0.19).

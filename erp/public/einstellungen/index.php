@@ -404,6 +404,8 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                 </label>
                 <button type="button" class="btn btn-primary btn-sm" data-btn-start
                     <?= $sh['bulk_import_aktiv'] ? 'disabled' : '' ?>>Komplettabgleich starten</button>
+                <button type="button" class="btn btn-danger btn-sm" data-btn-abbrechen
+                    style="<?= $sh['bulk_import_aktiv'] ? '' : 'display:none' ?>" title="Laufenden Vorgang beenden (nach dem aktuellen Paket)">⏹ Abbrechen</button>
                 <button type="button" class="btn btn-secondary btn-sm" data-btn-pause data-pausiert="<?= $sh['sync_pausiert'] ?>">
                     <?= $sh['sync_pausiert'] ? 'Automatischen Sync fortsetzen' : 'Automatischen Sync pausieren' ?>
                 </button>
@@ -474,6 +476,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         badge.style.background = '#fff3e0';
                         badge.style.color = '#e67e22';
                         btnStart.disabled = true;
+                        card.querySelector('[data-btn-abbrechen]').style.display = '';
                         btnBilder.disabled = true;
                         btnReconcile.disabled = true;
                         btnBilderExport.disabled = true;
@@ -486,6 +489,7 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         badge.style.background = 'var(--color-success-bg,#e8f5e9)';
                         badge.style.color = 'var(--color-success)';
                         btnStart.disabled = false;
+                        card.querySelector('[data-btn-abbrechen]').style.display = 'none';
                         btnBilder.disabled = false;
                         btnReconcile.disabled = false;
                         btnBilderExport.disabled = false;
@@ -544,6 +548,15 @@ $s = fn(string $key, string $fallback = '') => htmlspecialchars($rows[$key] ?? $
                         if (!d.erfolg) { alert(d.meldung); return; }
                         poll(card, shopId, d.log);
                     });
+            });
+
+            card.querySelector('[data-btn-abbrechen]').addEventListener('click', () => {
+                if (!confirm('Laufenden Vorgang abbrechen? Er endet nach dem aktuellen Paket; der automatische Sync macht später weiter.')) return;
+                const body = new FormData();
+                body.append('shop_id', shopId);
+                fetch('shop_sync_abbrechen.php', { method: 'POST', body })
+                    .then(r => r.json())
+                    .then(d => { alert(d.meldung || (d.erfolg ? 'OK' : 'Fehler')); poll(card, shopId, ''); });
             });
 
             card.querySelector('[data-btn-pause]').addEventListener('click', () => {
