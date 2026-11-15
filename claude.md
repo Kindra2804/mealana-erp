@@ -1362,6 +1362,22 @@ Details in `.claude/memory/` (project_idee_massenaktion_preis, project_mengen_ak
 - **Neue Reihenfolge** (Jacky): ~~Massenaktion~~ ✅ → ~~X-für-Y~~ ✅ → Offline-Kasse light → Update-Weg → Google Shopping/Search Console → Newsletter → Steuerprofil → Lang-CSV-Import, dann neu reihen. Auf der Liste: RKSV §7 (DEP über BFR `/control/export`) + §131-Export, Badge „Fremd“ in Auftragsliste, UVP-Anzeige im Shop, Staffelpreise wirkungslos, Mengen-Aktionen an Messe-Kasse, SPF/DKIM nach Server-Umzug.
 - Plugin-ZIP mit Python (Pfade mit „/“) bauen, nicht PowerShell Compress-Archive. Nächste Migration **247**.
 
+## Update 2026-11-15: RKSV-Exporte, Mobil-Messe, Google-Felder, Newsletter komplett – 1.0.17 bis 1.0.20 LIVE
+
+Details in `.claude/memory/` (project_rksv_exporte_fremdumsatz, project_kasse_naechste_punkte, project_google_shopping_search_console, project_newsletter_slider_ideen, project_1_0_check).
+- **1.0.17** (Migr. 247): Badge „Fremd“ + Fremdumsatz aus Dashboard/Statistik, DEP-Export (§7, über BFR `/control/export`), §131-ZIP, Update-Weg entfernt veraltete Dateien + „Was ist neu“ über Zwischenversionen, Mengen-Aktionen an Messe-Kasse, UVP nur noch echter UVP.
+- **1.0.18** (Migr. 248): Mobil-Messe am Sunmi = Offline-Kasse light ohne Signatur (Belegerteilungspflicht), Nacherfassung, Rückkehr bucht Lager, Nummern je Messe.
+- **1.0.19**: GTIN/Yoast-Meta/Alt-Texte ans Woo, Komplettabgleich abbrechen, Gutschein-Betreff je Shop, Assistent. Nach Live offen: Komplettabgleich je Shop + `scripts/alt_texte_nachziehen.php`.
+- **1.0.20 Newsletter** (Migr. 249–253), Modul `src/modules/newsletter/`, Seiten `public/newsletter/`:
+  - Empfänger je Shop (verschlüsselt, Nachweis), JTL-Import (CSV/SQL), Recht `newsletter.verwalten`.
+  - An-/Abmeldung + Double-Opt-in über die Belegseite (`beleg-portal/newsletter.php`, `api.php` nl_*); Abgleich im Cron `shop_sync` (`NewsletterPortalService`).
+  - Editor mit Bausteinen im Shop-Design (`NewsletterService`, `NewsletterRenderer`, `js/newsletter_editor.js`), Testmail.
+  - Versand (`NewsletterVersandService`, **neuer Cron `cron/newsletter_versand.php` alle 5 Min**): max. 100/h je Postfach, Bilder + anonyme Zähl-Links über die Belegseite, List-Unsubscribe; `Mailer::sende()` hat 7. Parameter `$kopfzeilen`.
+  - Segmente (`NewsletterSegmentService`) gebaut, Schalter `newsletter_segmente_aktiv` = aus.
+  - Shops: Connector **1.8.0** auf indra/SOW/bio, Seite `/newsletter/` + Fußzeilen-Link (`.claude-browser-tools/nl_formular_einbauen.js`). Offen: echte Test-Anmeldung, JTL-Formular MeaLana, erster Newsletter.
+- **Achtung Dev**: `paperless_url` zeigt auf die ECHTE beleg.mealana.at, globales SMTP ist echt → Mailtests nur über `smtp_sink.php` (Scratchpad) und lokale Portal-Kopie; Tests stellen Einstellungen auch bei Absturz zurück.
+- Nächste Migration **254**. Nächste Session: Fehler beim Artikel anlegen/kopieren (Jacky).
+
 ## Commit Convention
 
 ```
