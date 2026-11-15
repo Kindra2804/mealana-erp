@@ -95,3 +95,19 @@ gespeichert wie bei den Kunden. Status: **bestätigt** (darf Newsletter bekommen
   die Bestätigungs-Mail geht sofort raus.
 - **Website + Hausfarbe** je Shop: Einstellungen → Kanäle (für Formular, Bestätigungs-Mail und die Seiten der Belegseite).
 
+### Newsletter verfassen (Kunden → ✉️ Newsletter verfassen)
+
+- **Neu:** Shop wählen (dahinter steht die Zahl der bestätigten Empfänger), internen Namen eingeben → ➕ Neuer Newsletter.
+  Der Newsletter hat Logo, Hausfarbe, Website und Firmenadresse des Shops; ein Text-, ein Artikel- und ein Knopf-Baustein sind schon da.
+- **Betreff + Vorschautext:** der Vorschautext steht im Postfach neben dem Betreff.
+- **Bausteine:** 🖼 Kopfbild · 📝 Text (Überschrift + Text) · 🏞 Bild (mit Link + Bildunterschrift) · 🧶 Artikel ·
+  🔘 Knopf · 🎁 Aktion/Gutschein (Kasten mit Code) · ➖ Trenner. Mit ↑ ↓ verschieben, ✕ entfernen.
+- **Artikel:** Name oder Artikelnummer suchen und anklicken — Bild, aktueller Preis (Aktionspreis mit
+  durchgestrichenem Normalpreis) und Link zum Shop kommen automatisch aus dem ERP, 1–3 Spalten.
+- **Im Text:** `{vorname}` wird zum Vornamen (fehlt er, fällt es weg, z.B. „Hallo!“), `**fett**`, Leerzeile = neuer Absatz.
+- **Bilder** werden beim Hochladen auf höchstens 1200 px verkleinert.
+- **💾 Speichern + Vorschau** zeigt rechts genau die Mail. **✉ Testmail** schickt sie mit „[TEST]“ im Betreff an
+  die eingetragene Adresse (vorbelegt: deine eigene) — über das Postfach des Shops.
+- **Liste:** Kopieren (z.B. Vorlage für den nächsten Monat), Löschen nur bei Entwürfen. Verschickte Newsletter
+  lassen sich nicht mehr ändern, nur kopieren.
+
