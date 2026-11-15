@@ -42,8 +42,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="card" style="margin-bottom:12px">
     <div class="card-header">1. Export im JTL-Shop (phpMyAdmin → Shop-Datenbank → Reiter SQL)</div>
     <div style="padding:12px 16px;font-size:13px">
-        Diese Abfrage ausführen (nur lesend), dann unter dem Ergebnis <strong>Exportieren → CSV</strong>, Haken bei
-        <strong>„Spaltennamen in die erste Zeile“</strong>. Bestätigte Abonnenten mit Opt-in-Nachweis + alle Adressen der Blacklist (gesperrt = 1):
+        Diese Abfrage ausführen (nur lesend), dann unter dem Ergebnis <strong>Exportieren</strong> — als <strong>CSV</strong> (Haken bei
+        <strong>„Spaltennamen in die erste Zeile“</strong>) oder einfach als <strong>SQL</strong>, beides geht. Bestätigte Abonnenten mit Opt-in-Nachweis + alle Adressen der Blacklist (gesperrt = 1):
         <pre style="background:var(--color-bg-secondary,#f6f8fa);padding:10px;border-radius:6px;overflow:auto;font-size:12px;margin-top:8px">SELECT e.cEmail AS email, e.cAnrede AS anrede, e.cVorname AS vorname, e.cNachname AS nachname,
        e.dEingetragen AS eingetragen, h.cRegIp AS anmelde_ip, h.cOptIp AS optin_ip,
        h.dOptCode AS optin_datum, e.dLetzterNewsletter AS letzter_newsletter, 0 AS gesperrt
@@ -69,7 +69,7 @@ FROM tnewsletterempfaengerblacklist b;</pre>
             </select>
         </label>
         <?php if (!$dateiBereit): ?>
-            <input type="file" name="datei" accept=".csv,text/csv" class="erp-input" required>
+            <input type="file" name="datei" accept=".csv,.sql,text/csv" class="erp-input" required>
             <div><button class="btn btn-primary btn-sm" name="aktion" value="probelauf">Probelauf (ändert nichts)</button></div>
         <?php else: ?>
             <div style="display:flex;gap:8px">

@@ -163,7 +163,7 @@ class NewsletterEmpfaengerService
                 $kunde->execute([$hash]);
                 $ins->execute([
                     'shop' => $shopId, 'email' => Encryption::encrypt($email), 'hash' => $hash,
-                    'anrede' => $this->kurz($z['anrede'] ?? null, 30),
+                    'anrede' => $this->anrede($z['anrede'] ?? null),
                     'vorname' => Encryption::encrypt($this->kurz($z['vorname'] ?? null, 255)),
                     'nachname' => Encryption::encrypt($this->kurz($z['nachname'] ?? null, 255)),
                     'kunde' => $kunde->fetchColumn() ?: null,
@@ -183,7 +183,10 @@ class NewsletterEmpfaengerService
                 ]);
                 if (!$gesperrt) {
                     // Opt-in zum ursprünglichen Zeitpunkt nachweisen (aus JTL übernommen)
-                    $this->ereignis($id, 'bestaetigt', 'jtl_import', $optinIp, null, ['laut' => 'JTL-Shop'], $optinAm ?? $eingetragen);
+                    // JTL führt die Opt-in-Historie erst seit einigen Jahren — ohne Datum ehrlich vermerken
+                    $this->ereignis($id, 'bestaetigt', 'jtl_import', $optinIp, null,
+                        $optinAm ? ['laut' => 'JTL-Shop'] : ['laut' => 'JTL-Shop (als bestätigt geführt)', 'hinweis' => 'ohne Opt-in-Datum aus JTL, Zeitpunkt = Eintragedatum'],
+                        $optinAm ?? $eingetragen);
                 }
             }
             if (!$probelauf) $this->db->commit();
@@ -204,6 +207,8 @@ class NewsletterEmpfaengerService
         if ($roh === false || trim($roh) === '') return ['fehler' => 'Die Datei ist leer oder nicht lesbar.'];
         $roh = preg_replace('/^\xEF\xBB\xBF/', '', $roh);
         if (!mb_check_encoding($roh, 'UTF-8')) $roh = mb_convert_encoding($roh, 'UTF-8', 'Windows-1252');
+        // phpMyAdmin-Export als SQL (INSERT INTO … VALUES(…)) statt CSV: Spalten in der Reihenfolge der Abfrage
+        if (preg_match('/^\s*INSERT INTO /mi', $roh)) return $this->leseSqlInserts($roh);
         $ersteZeile = strtok($roh, "\n");
         $trenner = substr_count($ersteZeile, ';') >= substr_count($ersteZeile, ',') ? ';' : ',';
         if (substr_count($ersteZeile, "\t") > substr_count($ersteZeile, $trenner)) $trenner = "\t";
@@ -230,6 +235,56 @@ class NewsletterEmpfaengerService
         return $zeilen;
     }
 
+    /**
+     * phpMyAdmin-SQL-Export lesen: je Zeile „INSERT INTO x VALUES(…), (…);“ — Werte in der Reihenfolge
+     * von JTL_SPALTEN. Strings in '…' mit \' bzw. '' als Anführungszeichen, NULL, Zahlen.
+     */
+    private function leseSqlInserts(string $roh): array
+    {
+        $zeilen = [];
+        if (!preg_match_all('/INSERT INTO [^(]*?VALUES\s*(.+?);\s*$/mis', $roh, $treffer)) {
+            return ['fehler' => 'In der SQL-Datei wurden keine INSERT-Zeilen gefunden.'];
+        }
+        foreach ($treffer[1] as $werteTeil) {
+            $len = strlen($werteTeil);
+            $i = 0;
+            while ($i < $len) {
+                // nächstes Tupel „(…)“
+                while ($i < $len && $werteTeil[$i] !== '(') $i++;
+                if ($i >= $len) break;
+                $i++;
+                $werte = [];
+                $aktuell = '';
+                $inString = false;
+                $istString = false;
+                for (; $i < $len; $i++) {
+                    $c = $werteTeil[$i];
+                    if ($inString) {
+                        if ($c === '\\' && $i + 1 < $len) { $aktuell .= $werteTeil[++$i]; continue; }
+                        if ($c === "'" && ($werteTeil[$i + 1] ?? '') === "'") { $aktuell .= "'"; $i++; continue; }
+                        if ($c === "'") { $inString = false; continue; }
+                        $aktuell .= $c;
+                        continue;
+                    }
+                    if ($c === "'") { $inString = true; $istString = true; $aktuell = ''; continue; }   // Leerzeichen vor dem ' verwerfen
+                    if ($c === ',' || $c === ')') {
+                        $t = trim($aktuell);
+                        $werte[] = (!$istString && strtoupper($t) === 'NULL') ? null : ($istString ? $aktuell : $t);
+                        $aktuell = ''; $istString = false;
+                        if ($c === ')') { $i++; break; }
+                        continue;
+                    }
+                    $aktuell .= $c;
+                }
+                if (count($werte) < 1) continue;
+                $z = [];
+                foreach (self::JTL_SPALTEN as $k => $name) $z[$name] = $werte[$k] ?? null;
+                $zeilen[] = $z;
+            }
+        }
+        return $zeilen ?: ['fehler' => 'Die SQL-Datei enthält keine Datensätze.'];
+    }
+
     private function datum(?string $v): ?string
     {
         $v = trim((string)$v);
@@ -242,6 +297,13 @@ class NewsletterEmpfaengerService
     {
         $v = trim((string)$v);
         return filter_var($v, FILTER_VALIDATE_IP) ? $v : null;
+    }
+
+    /** JTL speichert die Anrede als w/m */
+    private function anrede(?string $v): ?string
+    {
+        $v = trim((string)$v);
+        return match (mb_strtolower($v)) { 'w' => 'Frau', 'm' => 'Herr', '' => null, default => mb_substr($v, 0, 30) };
     }
 
     private function kurz(?string $v, int $max): ?string

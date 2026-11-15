@@ -75,9 +75,10 @@ gespeichert wie bei den Kunden. Status: **bestätigt** (darf Newsletter bekommen
   der Einwilligungsnachweis nach DSGVO/TKG.
 - **Abmelden von Hand** (z.B. Kunde ruft an): Knopf „Abmelden“.
 - **Import aus dem JTL-Shop:** ⤓ Import aus JTL-Shop → dort steht die fertige Abfrage für phpMyAdmin (Shop-Datenbank,
-  Reiter SQL). Ergebnis als CSV exportieren (Haken „Spaltennamen in die erste Zeile“), Shop wählen, **Probelauf**,
+  Reiter SQL). Ergebnis exportieren — als CSV (Haken „Spaltennamen in die erste Zeile“) oder als SQL, Shop wählen, **Probelauf**,
   dann **Jetzt importieren**. Übernommen werden bestätigte Abonnenten mit Opt-in-Datum und -IP aus JTL; Adressen der
   JTL-Blacklist kommen als „abgemeldet“ und setzen auch schon vorhandene auf abgemeldet. Doppelt importieren schadet
-  nicht. Die CSV danach löschen (personenbezogene Daten).
+  nicht. Ältere JTL-Abonnenten ohne Opt-in-Datum werden als bestätigt übernommen (Nachweis: „ohne Opt-in-Datum
+  aus JTL“). Die CSV danach löschen (personenbezogene Daten).
 - Recht: `newsletter.verwalten` (Admin, Assistent, Manager).
 
