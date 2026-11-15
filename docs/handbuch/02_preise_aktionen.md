@@ -51,7 +51,9 @@ Ab einer bestimmten Menge wird es günstiger:
 
 ## UVP (Unverbindliche Preisempfehlung)
 
-Wird als Streichpreis neben dem VK angezeigt.
+**Nur setzen, wenn es eine echte UVP des Herstellers gibt** — sonst leer lassen. Die UVP ist kein Streichpreis:
+Durchgestrichen wird im Shop nur bei einem echten Sale oder einer Aktion (gegen den eigenen Normalpreis).
+Neue Artikel bekommen keine UVP mehr automatisch. Im Shop wird die UVP derzeit nicht angezeigt.
 
 1. Artikel → Tab Preise → **UVP** Feld
 2. Betrag eingeben

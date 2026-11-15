@@ -198,3 +198,5 @@ Jacky erinnert sich, das (zusammen mit BOGOF) schon mal besprochen zu haben; sch
 
 ## Offen: UVP im Shop (Jacky 2026-11-14 „merken“)
 Seit 1.0.15 (Migr. 245) schickt der Shop-Sync den Normalpreis als regular_price, nicht mehr die UVP. Die UVP ist im Shop dadurch unsichtbar. Durchgestrichen wird nur noch bei Sale/Aktion. Falls die UVP wieder sichtbar sein soll: als eigener Text „UVP € x“ (Preisauszeichnung, kein Streichpreis; Streichpreise nur gegen den eigenen früheren Preis), z.B. als Woo-Meta + Ausgabe im Connector. Vor dem Bau rechtlich klären.
+
+**UVP (Jacky 2026-11-15):** Feld bleibt (für externe Kunden), heißt nur „UVP“ (kein „Streichpreis“), Hinweis „nur setzen, wenn es eine echte UVP des Herstellers gibt“. Neue Artikel bekommen KEINE UVP mehr automatisch (vorher UVP = VK in ArtikelService::save). Migr. 247 leert alle UVPs (Dev: 21.059). Shop-Anzeige der UVP vorerst nicht. Offen: JTL-Vater/Kind-Import füllt weiter UVP aus der JTL-Spalte „UVP“ — vor dem MeaLana-Import entscheiden. Staffelpreise (artikel_staffelpreise wirken nirgends) später bauen, eher für Externe.

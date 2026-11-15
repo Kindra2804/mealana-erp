@@ -638,7 +638,7 @@ class ShopSyncRepository
     }
 
     /**
-     * UVP/Streichpreis eines Artikels -- Basis für regular_price in WooCommerce.
+     * UVP eines Artikels (seit 2026-11-14 nicht mehr Basis für regular_price, der Sync nutzt den Normalpreis).
      * 0 zählt wie NULL als "nicht gesetzt" (gleiche Konvention wie im UVP-Backfill-Skript
      * und im Preise-Tab -- 0,00 € ist nie ein echter UVP, nur der unbefüllte Anzeige-Default).
      */

@@ -1100,13 +1100,14 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
                 <!-- UVP -->
                 <div style="flex:1;padding:0 var(--space-lg);border-right:1px solid var(--color-border);text-align:center">
-                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:4px">UVP / Streichpreis</div>
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:4px">UVP</div>
                     <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-sm)">
                         <span id="uvp-anzeige" style="font-size:18px;font-weight:600">
                             <?= $artikel['uvp'] ? number_format((float)$artikel['uvp'], 2, ',', '.') . ' €' : '–' ?>
                         </span>
                         <button class="btn btn-sm" onclick="uvpBearbeiten()" title="UVP bearbeiten">✏️</button>
                     </div>
+                    <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">nur setzen, wenn es eine echte UVP des Herstellers gibt</div>
                     <div id="uvp-edit" style="display:none;margin-top:var(--space-xs)">
                         <input class="erp-input" type="number" step="0.01" min="0" id="uvp-input"
                             value="<?= htmlspecialchars($artikel['uvp'] ?? '') ?>" style="width:120px">

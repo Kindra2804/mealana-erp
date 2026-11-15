@@ -65,11 +65,10 @@ class ArtikelService
             $this->repo->insertCode($id, 'GTIN13', $eanGtin13);
         }
 
-        // Ohne eigene UVP-Eingabe zählt der VK selbst als Referenzpreis --
-        // sonst bliebe uvp bei jedem neuen Artikel NULL, bis jemand es manuell nachträgt.
-        $uvpWert = $uvp !== null ? (float) $uvp : ($bruttoVk ? (float) $bruttoVk : null);
-        if ($uvpWert !== null) {
-            $this->repo->updateUvp($id, $uvpWert);
+        // UVP nur, wenn eine echte UVP eingetragen wurde (Jacky 2026-11-15). Früher wurde ohne Eingabe
+        // der VK als UVP gesetzt — das ist keine Preisempfehlung des Herstellers und darf nie als solche erscheinen.
+        if ($uvp !== null && (float) $uvp > 0) {
+            $this->repo->updateUvp($id, (float) $uvp);
         }
 
         Logger::log('artikel.anlegen', 'artikel', $id, ['name' => $data['name']]);

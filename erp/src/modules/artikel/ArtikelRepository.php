@@ -894,7 +894,7 @@ class ArtikelRepository
         return (int) $this->db->lastInsertId();
     }
 
-    /** Setzt den UVP/Streichpreis eines Artikels (eigener Aufruf, gleiches Muster wie uvp_speichern.php). */
+    /** Setzt die UVP (unverbindliche Preisempfehlung des Herstellers) eines Artikels (eigener Aufruf, gleiches Muster wie uvp_speichern.php). */
     public function updateUvp(int $id, float $uvp): void
     {
         $stmt = $this->db->prepare("UPDATE artikel SET uvp = :uvp WHERE id = :id");

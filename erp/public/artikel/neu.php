@@ -262,10 +262,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     value="<?= old('netto_vk', $formdata) ?>">
             </div>
             <div class="form-row">
-                <label class="form-label">UVP / Streichpreis</label>
+                <label class="form-label">UVP <span style="font-size:11px;color:var(--color-text-muted)">(unverbindliche Preisempfehlung des Herstellers)</span></label>
                 <input type="number" step="0.01" name="uvp" id="uvp" class="erp-input"
-                    placeholder="Standardmäßig = Brutto-VK"
+                    placeholder="leer lassen"
                     value="<?= old('uvp', $formdata) ?>">
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">nur setzen, wenn es eine echte UVP des Herstellers gibt</div>
             </div>
 
             <!-- Inhalt-Felder — werden per JS bei physischen Einheiten eingeblendet -->
