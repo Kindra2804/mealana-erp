@@ -291,6 +291,25 @@ Tischaufsteller und IVAR-Streifen haben dieselben Badges, Pflegesymbole und Haus
 
 - In der Auswahl zeigt die Spalte **Badges**, was gedruckt wird; „keine Pflege“ heißt: Pflegesymbole fehlen noch.---
 
+## Google & Suchmaschinen (SEO)
+
+Was der Shop-Abgleich für Google mitschickt:
+
+- **EAN als GTIN** — die EAN (GTIN-13) des Artikels kommt in WooCommerce ins Feld „GTIN, UPC, EAN oder ISBN“
+  (wichtig für Google Shopping). Nur wenn die EAN im ERP genau **einem** Artikel gehört — doppelte EANs
+  (Qualitätsliste „Doppelte EAN“) werden nicht gesendet, sonst würde WooCommerce den ganzen Artikel ablehnen.
+- **Meta-Titel und Meta-Beschreibung** (Artikel → Reiter SEO) → Yoast. Leer = Yoast nimmt Name bzw. Textanfang.
+  Max. 160 Zeichen; lohnt sich vor allem für die wichtigsten Artikel.
+- **Alt-Texte der Bilder** — ist beim Bild kein eigener Alt-Text eingetragen, schickt der Abgleich den Artikelnamen
+  (bei Varianten mit Farbe/Größe). Für Bilder, die schon im Shop sind:
+  `php scripts/alt_texte_nachziehen.php <shop-slug> --probelauf`, danach ohne `--probelauf` (max. 500 je Lauf, abends).
+- **Marke** = Attribut „Hersteller“ (mit eigenen Hersteller-Seiten). Für Google Shopping im Plugin
+  „Google for WooCommerce“ die Marke aus dem Attribut „Hersteller“ zuordnen — keine zusätzlichen WooCommerce-„Marken“,
+  das wären doppelte Seiten.
+
+Die Felder kommen bei jedem Abgleich eines Artikels mit. Damit alle bestehenden Artikel sie bekommen:
+Einstellungen → Kanäle → **Komplettabgleich** (am besten abends).
+
 ## Häufige Probleme
 
 | Problem | Lösung |

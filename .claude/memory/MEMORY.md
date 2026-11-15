@@ -52,6 +52,7 @@
 - [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — rendern unter Windows nicht
 - [Feedback: Test-Isolation](feedback_test_isolation.md) — Testskripte nie ohne Cleanup gegen echte Daten
 - [Feedback: Scope ohne validierten Bedarf](feedback_scope_ohne_bedarf.md) — erst Bedarf prüfen
+- [📱 Tablet per WireGuard ans Live-ERP](project_tablet_wireguard.md) — Idee Jacky 2026-11-15, zwischendurch probieren (Android-App, Anhang C)
 - [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — gegen autoritative Quelle prüfen
 
 ## Referenzen
@@ -126,7 +127,7 @@
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync, Kanal-Chips (+ DB-Design allgemein)
 - [Shop-Theme/UX](project_shop_theme.md) — Swatch-Scroll-Fix wartet auf Babsi, Theme-Kauf pausiert
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — Attribut fertig, GPSR offen
-- [Google Shopping + Search Console](project_google_shopping_search_console.md) — 0% Konzept
+- [Google Shopping + Search Console](project_google_shopping_search_console.md) — Plan 2026-11-15; ERP→Woo GTIN/Yoast/Alt gebaut (1.0.19), Search Console + Merchant Center (SOW zuerst) offen, Google-Konto der Firma klären
 - [Kundendatenbank Design](project_kundendatenbank.md) — AES-256-GCM, DSGVO
 - [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — 6.775 Kunden + 39.191 Archiv-Aufträge
 - [JTL Vater+Kind-Import](project_jtl_vater_kind_import.md) — Achsenerkennung, abgenommen

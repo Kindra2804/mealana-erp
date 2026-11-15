@@ -642,6 +642,51 @@ class ShopSyncRepository
      * 0 zählt wie NULL als "nicht gesetzt" (gleiche Konvention wie im UVP-Backfill-Skript
      * und im Preise-Tab -- 0,00 € ist nie ein echter UVP, nur der unbefüllte Anzeige-Default).
      */
+    /**
+     * SEO-/Google-Daten eines Artikels (2026-11-15, Google Shopping + Search Console):
+     *  - gtin: EAN (GTIN13) nur, wenn sie im ERP genau EINEM Artikel gehört und nur Ziffern hat —
+     *    WooCommerce lehnt doppelte GTINs ab, das würde den ganzen Artikel-Abgleich blockieren
+     *  - meta_titel / meta_description: aus dem Reiter SEO, für Yoast
+     *  - alt: Ersatz-Alt-Text für Bilder ohne eigenen (Artikelname, bei Kindern mit Farbe/Größe)
+     */
+    public function findSeoDaten(int $artikelId): array
+    {
+        $st = $this->db->prepare("
+            SELECT a.name, a.meta_titel, a.meta_description,
+                   (SELECT c.code FROM artikel_codes c
+                     WHERE c.artikel_id = a.id AND c.typ = 'GTIN13' AND c.code REGEXP '^[0-9]{8,14}$'
+                       AND NOT EXISTS (SELECT 1 FROM artikel_codes c2
+                                        WHERE c2.typ = 'GTIN13' AND c2.code = c.code AND c2.artikel_id <> c.artikel_id)
+                     ORDER BY c.id LIMIT 1) AS gtin
+            FROM artikel a WHERE a.id = ?");
+        $st->execute([$artikelId]);
+        $r = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+        return [
+            'gtin'             => $r['gtin'] ?? null,
+            'meta_titel'       => trim((string)($r['meta_titel'] ?? '')),
+            'meta_description' => trim((string)($r['meta_description'] ?? '')),
+            'alt'              => trim((string)($r['name'] ?? '')),
+        ];
+    }
+
+    /**
+     * Bilder, die schon im Shop sind (WP-Medien-ID bekannt), aber im ERP keinen Alt-Text haben —
+     * für scripts/alt_texte_nachziehen.php. Ab-ID-Cursor, damit große Mengen in Häppchen gehen.
+     */
+    public function findSyncedBilderOhneAlt(int $shopId, int $abBildShopId, int $limit): array
+    {
+        $st = $this->db->prepare("
+            SELECT bs.id AS bild_shop_id, bs.external_id, b.artikel_id, a.name
+            FROM artikel_bilder_shops bs
+            JOIN artikel_bilder b ON b.id = bs.bild_id
+            JOIN artikel a ON a.id = b.artikel_id
+            WHERE bs.shop_id = :shop AND bs.sync_status = 'synced' AND bs.external_id IS NOT NULL
+              AND (b.alt_text IS NULL OR b.alt_text = '') AND bs.id > :ab
+            ORDER BY bs.id LIMIT " . max(1, $limit));
+        $st->execute(['shop' => $shopId, 'ab' => $abBildShopId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function findUvp(int $artikelId): ?float
     {
         $stmt = $this->db->prepare("SELECT uvp FROM artikel WHERE id = :id");

@@ -1018,6 +1018,9 @@ class ShopSyncService
             }
         }
 
+        // Google: EAN als GTIN (Woo-Feld seit 9.2) + SEO-Titel/-Beschreibung für Yoast
+        $payload = $this->mergeMetaData($payload, $this->seoFelder((int)$artikel['artikel_id'], true));
+
         return $payload;
     }
 
@@ -1147,6 +1150,8 @@ class ShopSyncService
         $payload += $this->baueBestandsFelder((int)$kind['artikel_id']);
         $payload += $this->baueGrundpreisFelder($client, $shopId, (int)$kind['artikel_id'], $preisErgebnis['regularPreis'], $preisErgebnis['salePreis']);
         $payload = $this->mergeMetaData($payload, $this->baueMindestabnahmeFelder((int)$kind['artikel_id']));
+        // Variation: nur GTIN (Yoast-Felder gibt es nur am Produkt)
+        $payload += $this->seoFelder((int)$kind['artikel_id'], false);
 
         return $payload;
     }
@@ -1317,6 +1322,30 @@ class ShopSyncService
      * meta_data stillschweigend verschlucken. Alle Stellen mit mehr als einem meta_data-
      * Produzenten müssen darum über diesen Helfer laufen statt über `+=`.
      */
+    /**
+     * Google-/SEO-Felder (2026-11-15): global_unique_id = EAN (leer = keine/doppelte EAN, ERP ist führend);
+     * Yoast-Titel/-Beschreibung nur, wenn im ERP (Reiter SEO) gefüllt — sonst bleibt, was Yoast selbst hat.
+     */
+    private function seoFelder(int $artikelId, bool $mitYoast): array
+    {
+        $seo = $this->repo->findSeoDaten($artikelId);
+        $felder = ['global_unique_id' => $seo['gtin'] ?? ''];
+        if ($mitYoast) {
+            $meta = [];
+            if ($seo['meta_titel'] !== '')       $meta[] = ['key' => '_yoast_wpseo_title',    'value' => $seo['meta_titel']];
+            if ($seo['meta_description'] !== '') $meta[] = ['key' => '_yoast_wpseo_metadesc', 'value' => $seo['meta_description']];
+            if ($meta) $felder['meta_data'] = $meta;
+        }
+        return $felder;
+    }
+
+    /** Alt-Text eines Bildes: eigener aus dem ERP, sonst der Artikelname (Bildersuche, Barrierefreiheit) */
+    private function altText(array $bild, int $artikelId): string
+    {
+        $alt = trim((string)($bild['alt_text'] ?? ''));
+        return $alt !== '' ? $alt : $this->repo->findSeoDaten($artikelId)['alt'];
+    }
+
     private function mergeMetaData(array $payload, array $neu): array
     {
         $payload['meta_data'] = array_merge($payload['meta_data'] ?? [], $neu['meta_data'] ?? []);
@@ -1943,7 +1972,7 @@ class ShopSyncService
 
             try {
                 $pfad = __DIR__ . '/../../../public/uploads/artikel/' . $artikelId . '/' . $bild['dateiname'];
-                $wcMedia = $client->ladeBildHoch($pfad, $bild['dateiname'], $bild['alt_text'] ?? '');
+                $wcMedia = $client->ladeBildHoch($pfad, $bild['dateiname'], $this->altText($bild, $artikelId));
                 $this->repo->markiereBildSynced($bildId, $shopId, (string)$wcMedia['id']);
             } catch (RateLimitException $e) {
                 // NICHT wie unten abfangen-und-weitermachen -- eine Rate-Limit-Sperre
@@ -2068,7 +2097,7 @@ class ShopSyncService
                     $bildUrls = array_map(function (array $bild) use ($row, $bilderBasisUrl) {
                         return [
                             'src' => rtrim($bilderBasisUrl, '/') . '/artikel/' . $row['artikel_id'] . '/' . $bild['dateiname'],
-                            'alt' => $bild['alt_text'] ?? '',
+                            'alt' => $this->altText($bild, (int)$row['artikel_id']),
                         ];
                     }, $zuVerarbeiten);
 
@@ -2232,5 +2261,39 @@ class ShopSyncService
             'bytes'   => $kopierteBytes,
             'ziel'    => $zielOrdner,
         ];
+    }
+
+    /**
+     * Alt-Texte von Bildern nachziehen, die schon im Shop sind (WP-Mediathek), aber im ERP keinen
+     * eigenen Alt-Text haben → Artikelname. Für scripts/alt_texte_nachziehen.php; der normale
+     * Abgleich setzt den Ersatz nur bei neu hochgeladenen Bildern.
+     *
+     * @return array{geprueft:int, gesetzt:int, fehler:int}
+     */
+    public function nachziehenAltTexte(array $shop, bool $probelauf, int $max, ?callable $fortschritt = null): array
+    {
+        $client = new WooCommerceClient($shop['wc_url'], $shop['wc_key'], $shop['wc_secret'], $shop['wp_username'], $shop['wp_app_password']);
+        $erg = ['geprueft' => 0, 'gesetzt' => 0, 'fehler' => 0];
+        $ab = 0;
+        while ($erg['geprueft'] < $max) {
+            $zeilen = $this->repo->findSyncedBilderOhneAlt((int)$shop['id'], $ab, min(100, $max - $erg['geprueft']));
+            if (!$zeilen) break;
+            foreach ($zeilen as $z) {
+                $ab = (int)$z['bild_shop_id'];
+                $erg['geprueft']++;
+                $alt = trim((string)$z['name']);
+                if ($alt === '') continue;
+                if ($probelauf) { $erg['gesetzt']++; continue; }
+                try {
+                    $client->setzeMedienAltText((string)$z['external_id'], $alt);
+                    $erg['gesetzt']++;
+                } catch (Throwable $e) {
+                    $erg['fehler']++;
+                    if ($fortschritt) $fortschritt('Fehler Medium ' . $z['external_id'] . ': ' . $e->getMessage());
+                }
+            }
+            if ($fortschritt) $fortschritt($erg['geprueft'] . ' geprüft, ' . $erg['gesetzt'] . ' gesetzt');
+        }
+        return $erg;
     }
 }

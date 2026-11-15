@@ -388,6 +388,46 @@ class WooCommerceClient
      * @throws RuntimeException wenn kein Application-Password hinterlegt ist,
      *         die Datei nicht lesbar ist, oder der Upload fehlschlägt
      */
+    /**
+     * Alt-Text eines schon hochgeladenen Mediums setzen (WP-Kern-REST, Application-Password).
+     * Gleiche Pause wie beim Upload, damit das Hosting nicht überlastet.
+     */
+    public function setzeMedienAltText(string $mediaId, string $altText): void
+    {
+        if (!$this->wpUsername || !$this->wpAppPassword) {
+            throw new RuntimeException('Kein WordPress-Application-Password für diesen Shop hinterlegt');
+        }
+        if ($this->letzterMedienUpload !== null) {
+            $wartezeit = self::MEDIEN_UPLOAD_PAUSE_SEKUNDEN - (microtime(true) - $this->letzterMedienUpload);
+            if ($wartezeit > 0) usleep((int)round($wartezeit * 1_000_000));
+        }
+        $this->letzterMedienUpload = microtime(true);
+        $ch = curl_init($this->siteUrl . '/wp-json/wp/v2/media/' . rawurlencode($mediaId));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_USERAGENT      => self::USER_AGENT,
+            CURLOPT_CUSTOMREQUEST  => 'POST',
+            CURLOPT_POSTFIELDS     => json_encode(['alt_text' => $altText]),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_USERPWD        => $this->wpUsername . ':' . $this->wpAppPassword,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_HEADER         => true,
+        ]);
+        $roh = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerGroesse = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $fehler = curl_error($ch);
+        curl_close($ch);
+        if ($roh === false) throw new RuntimeException("WordPress-Medien-API: $fehler");
+        $header = substr($roh, 0, $headerGroesse);
+        $antwort = substr($roh, $headerGroesse);
+        $this->pruefeUeberlastung($httpCode, $header, $antwort);
+        if ($httpCode >= 400) {
+            $msg = json_decode($antwort, true)['message'] ?? $antwort;
+            throw new RuntimeException("WordPress-Medien-API-Fehler ($httpCode): $msg");
+        }
+    }
+
     public function ladeBildHoch(string $dateiPfad, string $dateiname, string $altText = ''): array
     {
         if (!$this->wpUsername || !$this->wpAppPassword) {
