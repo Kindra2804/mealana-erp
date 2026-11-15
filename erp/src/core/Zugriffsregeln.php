@@ -380,6 +380,7 @@ final class Zugriffsregeln
             'nacherfassung.php'          => 'kasse.starten',
             'nacherfassung_retry.php'    => 'kasse.starten',
             'ajax_nullbon.php'           => 'kasse.stoppen',
+            'dep_export.php'             => 'kasse.stoppen',
             'kassenbuch.php'             => 'kasse.stoppen',
             'kassenbuch_speichern.php'   => 'kasse.stoppen',
             'kassensturz.php'            => 'kasse.stoppen',

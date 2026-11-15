@@ -853,6 +853,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-hint">💡 Bon stornieren: Kasse → Bon-Journal → Bon suchen → Stornieren. Lagerabgang wird automatisch rückgebucht. Nur am selben Tag und solange der Bon auf keinem Z-Bon steht — sonst als Retoure buchen. Der Storno-Bon (K1-S-…) wird wie ein Verkaufsbon RKSV-signiert.</div>
             <div class="ba-hint">💡 Druckerkonfiguration: 80mm Thermodrucker als Windows-Standarddrucker setzen. Im Browser: Rand "Keine", Kopfzeile "Aus".</div>
             <p>RKSV-Signatur läuft über den BFR BONit Fiscal Recorder — jeder Bon wird automatisch signiert. Ist BFR kurz nicht erreichbar, verkauft die Kasse trotzdem weiter (Bon zeigt "Sicherheitseinrichtung ausgefallen"), Details unter Kasse → 🔏 RKSV.</p>
+            <p><strong>DEP-Export für die Finanzprüfung (RKSV § 7):</strong> Kasse → 🔏 RKSV → je Kasse „⬇ DEP herunterladen“. Holt das komplette Datenerfassungsprotokoll direkt vom BFR als JSON (immer seit der Inbetriebnahme, kürzerer Zeitraum nur im BFR-Programm). Ist der BFR vom Server nicht erreichbar, am BFR-PC im Browser <code>http://127.0.0.1:8787/control/export</code> öffnen.</p>
             <div class="ba-hint">💡 Bon parken: ⏸ Parken-Button — mehrere Bons können gleichzeitig geparkt und später wieder abgerufen werden.</div>
 
             <!-- GUTSCHEINE -->

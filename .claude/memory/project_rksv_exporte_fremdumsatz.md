@@ -21,3 +21,6 @@ metadata:
 - Wunsch: Diese Bons (Auftrag mit Kanal Kasse + partner_id) und die A-IND-Aufträge in der Liste mit Badge **„Fremd“** unter der Nummer zeigen, wie „Widerrufen“. Kommen beide zusammen, nebeneinander und kurz („Fremd“ · „Widerr.“), damit die Zeile nicht zu hoch wird. Nicht in KG-Umsatz/Statistik zählen.
 
 **How to apply:** Gehört nach der Reihung in [[project-roadmap-reihenfolge]] auf die Liste. Siehe auch [[project-rksv-bfr]] und [[project-partner-modul]].
+
+**Stand 2026-11-15:** Schritt 1 fertig (4a78804): Badge „Fremd“ bei auftraege.partner_id (A-IND-00001/2 vom 05.11. noch KG, zu Recht ohne), Dashboard + Statistik ohne Partner-Aufträge (Shop-Zeile „+ x € Fremd“), RKSV-Anzeige an bfr_url + bfr_aktiv_seit. Live mit nächstem Paket. Nächster Schritt: DEP-Knopf.
+**Schritt 2 fertig 2026-11-15:** DEP-Knopf in Kasse → 🔏 RKSV (`kasse/dep_export.php`, `BfrService::holeDepExport`, Recht kasse.stoppen): /state mit RN-Abgleich, dann GET /control/export (180 s), Download `DEP_<KassenID>_<Datum>.json`, Protokoll nur Größe (endpunkt export). Nicht erreichbar → Hinweis auf http://127.0.0.1:<port>/control/export am BFR-PC. Mit Schein-BFR getestet; echter Test an K3/Laden offen. Nächster Schritt: §131-Export (DEP wiederverwenden).

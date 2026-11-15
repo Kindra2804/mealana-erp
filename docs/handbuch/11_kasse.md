@@ -293,6 +293,7 @@ Der Bon öffnet dann automatisch den Druck-Dialog.
 Ist die Signatureinrichtung (BFR) kurz nicht erreichbar, verkauft die Kasse trotzdem weiter — der Bon zeigt dann "Sicherheitseinrichtung ausgefallen" statt der echten Signatur. Das ist gesetzlich erlaubt und kein Grund zur Sorge.
 
 - **Kasse → 🔏 RKSV** zeigt offene und vergangene Störungen (Ausfall-Historie)
+- **DEP-Export für die Finanzprüfung (RKSV § 7):** dort je Kasse „⬇ DEP herunterladen“ — holt das komplette Datenerfassungsprotokoll direkt vom BFR als JSON-Datei (immer seit der Inbetriebnahme; kürzerer Zeitraum nur im BFR-Programm). Nur mit Recht für den Kassenabschluss. Ist der BFR vom Server aus nicht erreichbar, zeigt die Seite die Adresse, unter der es am BFR-PC direkt im Browser geht (`http://127.0.0.1:8787/control/export`).
 - Für Admins/Technik: dort verlinkt "Rohdaten-Protokoll" — zeigt exakt, was an BFR geschickt wurde und was zurückkam (für Fehlermeldungen an den BFR-Hersteller)
 
 ## Hinweisleiste oben in der Kasse

@@ -727,6 +727,68 @@ class BfrService
         return $labels[$grund] ?? $grund;
     }
 
+    /**
+     * DEP-Export (Datenerfassungsprotokoll, RKSV §7) direkt vom BFR holen: GET /control/export.
+     * Der BFR liefert immer das komplette DEP seit der Erstinbetriebnahme als JSON; eingrenzen
+     * geht nur im BFR-Tool selbst. Vorher /state mit RN-Abgleich, damit bei einer falschen IP
+     * nie das DEP einer anderen Kasse heruntergeladen wird. Ins Kommunikations-Protokoll kommt
+     * nur die Größe (das DEP kann viele MB haben).
+     *
+     * @return array ['erfolg' => true, 'daten' => string, 'dateiname' => string]
+     *             | ['erfolg' => false, 'fehler' => string, 'lokal_url' => ?string]
+     */
+    public function holeDepExport(int $kasseId, ?int $benutzerId = null): array
+    {
+        $kasse = $this->ladeKasse($kasseId);
+        if (!$kasse || empty($kasse['bfr_url']) || empty($kasse['rksv_kassen_id'])) {
+            return ['erfolg' => false, 'fehler' => 'Diese Kasse hat keine aktive RKSV-Registrierung.', 'lokal_url' => null];
+        }
+        $basis = rtrim($kasse['bfr_url'], '/');
+        // Für den Fall, dass der Server den BFR nicht erreicht: am Kassen-PC selbst öffnen
+        $port     = parse_url($basis, PHP_URL_PORT) ?: 8787;
+        $lokalUrl = 'http://127.0.0.1:' . $port . '/control/export';
+
+        $verbindung = $this->pruefeVerbindung($basis, $kasse['rksv_kassen_id'], $kasseId);
+        if (!$verbindung['erreichbar']) {
+            $fehler = ($verbindung['grund'] ?? '') === 'rn_stimmt_nicht'
+                ? 'Unter ' . $basis . ' antwortet ein BFR mit Kassen-ID „' . ($verbindung['rn'] ?? '?') . '“, erwartet „' . $kasse['rksv_kassen_id'] . '“. Export abgebrochen.'
+                : 'Der BFR unter ' . $basis . ' ist vom Server aus nicht erreichbar.';
+            return ['erfolg' => false, 'fehler' => $fehler, 'lokal_url' => $lokalUrl];
+        }
+
+        $start = microtime(true);
+        $ch = curl_init($basis . '/control/export');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER    => true,
+            CURLOPT_TIMEOUT           => 180,   // komplettes DEP, kann groß sein
+            CURLOPT_CONNECTTIMEOUT_MS => 3000,
+        ]);
+        $daten      = curl_exec($ch);
+        $fehlerNr   = curl_errno($ch);
+        $fehlerText = $fehlerNr ? curl_error($ch) : null;
+        $httpCode   = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+
+        $ok = !$fehlerNr && is_string($daten) && $httpCode === 200
+            && json_decode($daten) !== null;
+        $this->protokolliereKommunikation($kasseId, $basis . '/control/export', null,
+            is_string($daten) ? '[DEP-Export, ' . strlen($daten) . ' Bytes, HTTP ' . $httpCode . ']' : null,
+            $fehlerText ?? ($ok ? null : 'Antwort kein gültiges JSON / HTTP ' . $httpCode), $start);
+
+        if (!$ok) {
+            return ['erfolg' => false, 'lokal_url' => $lokalUrl,
+                    'fehler' => 'Der BFR hat keinen gültigen DEP-Export geliefert' . ($fehlerText ? ' (' . $fehlerText . ')' : '') . '.'];
+        }
+
+        Logger::log('kasse.rksv.dep_export', 'kassen', $kasseId, [
+            'rksv_kassen_id' => $kasse['rksv_kassen_id'],
+            'bytes'          => strlen($daten),
+        ], $benutzerId);
+
+        $dateiname = 'DEP_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $kasse['rksv_kassen_id']) . '_' . date('Y-m-d_His') . '.json';
+        return ['erfolg' => true, 'daten' => $daten, 'dateiname' => $dateiname];
+    }
+
     private function httpGet(string $url, ?int $kasseId = null): ?string
     {
         $start = microtime(true);
@@ -776,7 +838,12 @@ class BfrService
      */
     private function protokolliereKommunikation(?int $kasseId, string $url, ?string $requestBody, ?string $responseBody, ?string $curlFehler, float $start): void
     {
-        $endpunkt = str_ends_with($url, '/register') ? 'register' : (str_ends_with($url, '/state') ? 'state' : 'unbekannt');
+        $endpunkt = match (true) {
+            str_ends_with($url, '/register')       => 'register',
+            str_ends_with($url, '/state')          => 'state',
+            str_ends_with($url, '/control/export') => 'export',
+            default                                => 'unbekannt',
+        };
         try {
             $this->db->prepare("
                 INSERT INTO bfr_kommunikation_log (kasse_id, endpunkt, request_body, response_body, curl_fehler, dauer_ms)

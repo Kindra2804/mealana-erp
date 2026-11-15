@@ -15,6 +15,17 @@ $typBadge = [
     'sicherheitseinrichtung_ausgefallen' => '<span style="background:#92400e;color:#fbbf24;font-size:10px;padding:2px 6px;border-radius:3px">AUSGEFALLEN</span>',
 ];
 
+// Kassen mit aktiver RKSV-Registrierung (für den DEP-Export)
+$rksvKassen = Database::getInstance()->query("
+    SELECT id, name, kasse_nr, rksv_kassen_id, bfr_url, bfr_aktiv_seit
+    FROM kassen
+    WHERE aktiv = 1 AND bfr_url IS NOT NULL AND bfr_url <> '' AND bfr_aktiv_seit IS NOT NULL
+    ORDER BY kasse_nr
+")->fetchAll(PDO::FETCH_ASSOC);
+$darfExport  = Auth::kann('kasse.stoppen');
+$fehler      = $_SESSION['fehler'] ?? null;        unset($_SESSION['fehler']);
+$depLokalUrl = $_SESSION['dep_lokal_url'] ?? null; unset($_SESSION['dep_lokal_url']);
+
 $pageTitle      = 'RKSV Ausfall-Historie';
 $activeKasseNav = 'nacherfassung';
 require_once __DIR__ . '/shell_top.php';
@@ -24,6 +35,52 @@ require_once __DIR__ . '/shell_top.php';
 
   <div style="text-align:right;margin-bottom:10px">
     <a href="<?= BASE_PATH ?>/kasse/bfr_log.php" style="font-size:12px;color:#60a5fa">🔧 Rohdaten-Protokoll ansehen (für Hersteller-Fehlermeldung) →</a>
+  </div>
+
+  <?php if ($fehler): ?>
+  <div class="ks-card" style="border-left:3px solid #f87171">
+    <div style="color:#fca5a5"><?= htmlspecialchars($fehler) ?></div>
+    <?php if ($depLokalUrl): ?>
+      <div style="color:#94a3b8;font-size:12px;margin-top:6px">
+        Am PC, auf dem der BFR läuft, geht es direkt im Browser:
+        <a href="<?= htmlspecialchars($depLokalUrl) ?>" style="color:#60a5fa"><?= htmlspecialchars($depLokalUrl) ?></a>
+        (speichert die Datei DEP.json).
+      </div>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
+
+  <div class="ks-card">
+    <div class="ks-card-title">DEP-Export für die Finanzprüfung (RKSV § 7)</div>
+    <p style="color:#94a3b8;font-size:12px;margin:0 0 10px">
+      Holt das komplette Datenerfassungsprotokoll direkt vom BFR (seit der Inbetriebnahme, als JSON).
+      Ein kürzerer Zeitraum geht nur im BFR-Programm selbst. Kann bei vielen Belegen etwas dauern.
+    </p>
+    <?php if (empty($rksvKassen)): ?>
+      <p style="color:#888;margin:0">Keine Kasse mit aktiver RKSV-Registrierung.</p>
+    <?php else: ?>
+      <table class="ks-table">
+        <thead><tr><th>Kasse</th><th>Kassen-ID</th><th>BFR</th><th>Aktiv seit</th><th></th></tr></thead>
+        <tbody>
+        <?php foreach ($rksvKassen as $k): ?>
+          <tr>
+            <td><?= htmlspecialchars($k['name']) ?> (<?= htmlspecialchars($k['kasse_nr']) ?>)</td>
+            <td><?= htmlspecialchars($k['rksv_kassen_id']) ?></td>
+            <td style="color:#888"><?= htmlspecialchars($k['bfr_url']) ?></td>
+            <td style="color:#888"><?= date('d.m.Y', strtotime($k['bfr_aktiv_seit'])) ?></td>
+            <td style="text-align:right">
+              <?php if ($darfExport): ?>
+                <a href="<?= BASE_PATH ?>/kasse/dep_export.php?kasse_id=<?= (int)$k['id'] ?>" data-no-loader
+                   style="color:#60a5fa;font-size:12px" onclick="this.textContent='⏳ wird geholt …'">⬇ DEP herunterladen</a>
+              <?php else: ?>
+                <span style="color:#666;font-size:12px" title="Recht kasse.stoppen nötig">—</span>
+              <?php endif; ?>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    <?php endif; ?>
   </div>
 
   <div class="ks-card">
