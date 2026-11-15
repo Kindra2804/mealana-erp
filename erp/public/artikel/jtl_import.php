@@ -148,6 +148,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_stammdaten']['t
                 $fehler[] = 'Keine Artikel erkannt. Bitte Dateien prüfen (Stammdaten-CSV + Variationskombinationen-CSV vertauscht?).';
             }
         } else {
+            // UVP nur mit Häkchen übernehmen (Jacky 2026-11-15): JTL-„UVP“ ist oft keine echte Herstellerempfehlung
+            if (!isset($_POST['uvp_uebernehmen'])) {
+                foreach ($vorschauDaten['vaeter'] as &$vv) {
+                    $vv['uvp'] = null;
+                    foreach ($vv['kinder'] as &$kk) { $kk['uvp'] = null; }
+                    unset($kk);
+                }
+                unset($vv);
+                foreach ($vorschauDaten['normale'] as &$nn) { $nn['uvp'] = null; }
+                unset($nn);
+            }
             $_SESSION['jtl_import_vorschau']            = $vorschauDaten['vaeter'];
             $_SESSION['jtl_import_vorschau_normale']    = $vorschauDaten['normale'];
             $_SESSION['jtl_import_einheiten_unbekannt'] = $vorschauDaten['einheiten_unbekannt'];
@@ -265,6 +276,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <input type="checkbox" name="kategorien_zuordnen" value="1" checked style="margin-top:3px">
                     <span><strong>Kategorien aus JTL zuordnen</strong> — die Kontrollliste zeigt alle JTL-Kategorien dieses Exports,
                     du wählst je Zeile die passende ERP-Kategorie. Die Wahl wird gemerkt und beim nächsten Import vorausgefüllt.</span>
+                </label>
+                <label style="font-size:13px;cursor:pointer;display:flex;gap:8px;align-items:flex-start;margin-top:8px">
+                    <input type="checkbox" name="uvp_uebernehmen" value="1" style="margin-top:3px">
+                    <span><strong>UVP aus JTL übernehmen</strong> — nur anhaken, wenn die JTL-Spalte „UVP“ echte Preisempfehlungen
+                    der Hersteller enthält. Ohne Häkchen bleibt die UVP leer.</span>
                 </label>
             </div>
             <div>
