@@ -47,6 +47,7 @@ class NewsletterService
         $n = $st->fetch(PDO::FETCH_ASSOC);
         if (!$n) return null;
         $n['bausteine'] = json_decode((string)$n['bausteine'], true) ?: [];
+        $n['segment']   = json_decode((string)($n['segment'] ?? ''), true) ?: null;
         return $n;
     }
 
@@ -93,6 +94,12 @@ class NewsletterService
             }
             $bausteine[] = $sauber;
         }
+        // Segment nur, wenn Segmente freigeschaltet sind (sonst bleibt das gespeicherte unverändert)
+        require_once __DIR__ . '/NewsletterSegmentService.php';
+        if (NewsletterSegmentService::aktiv() && array_key_exists('segment', $daten)) {
+            $seg = (new NewsletterSegmentService())->normalisieren($daten['segment']);
+            $this->db->prepare("UPDATE newsletter SET segment = ? WHERE id = ?")->execute([$seg ? json_encode($seg, JSON_UNESCAPED_UNICODE) : null, $id]);
+        }
         $this->db->prepare("UPDATE newsletter SET titel = ?, betreff = ?, vorschautext = ?, bausteine = ? WHERE id = ?")
             ->execute([mb_substr(trim((string)($daten['titel'] ?? $n['titel'])) ?: $n['titel'], 0, 200),
                        mb_substr(trim((string)($daten['betreff'] ?? '')), 0, 200) ?: null,
@@ -105,9 +112,9 @@ class NewsletterService
     {
         $n = $this->laden($id);
         if (!$n) return null;
-        $this->db->prepare("INSERT INTO newsletter (shop_id, titel, betreff, vorschautext, bausteine, erstellt_von) VALUES (?, ?, ?, ?, ?, ?)")
+        $this->db->prepare("INSERT INTO newsletter (shop_id, titel, betreff, vorschautext, bausteine, segment, erstellt_von) VALUES (?, ?, ?, ?, ?, ?, ?)")
             ->execute([$n['shop_id'], mb_substr('Kopie von ' . $n['titel'], 0, 200), $n['betreff'], $n['vorschautext'],
-                       json_encode($n['bausteine'], JSON_UNESCAPED_UNICODE), $benutzerId]);
+                       json_encode($n['bausteine'], JSON_UNESCAPED_UNICODE), $n['segment'] ? json_encode($n['segment'], JSON_UNESCAPED_UNICODE) : null, $benutzerId]);
         $neu = (int)$this->db->lastInsertId();
         // Bilder mitkopieren (eigener Ordner je Newsletter)
         $alt = __DIR__ . '/../../../public/uploads/newsletter/' . $id;

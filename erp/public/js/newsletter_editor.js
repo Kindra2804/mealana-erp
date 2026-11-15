@@ -135,6 +135,7 @@ async function nleBildHoch(i, input) {
 async function nleSpeichern() {
     const daten = { id: NLE.id, titel: document.getElementById('nle-titel').value, betreff: document.getElementById('nle-betreff').value,
                     vorschautext: document.getElementById('nle-vorschau').value, bausteine: NLE.bausteine };
+    if (NLE.segmente) daten.segment = nleSegment();
     nleStatus('speichere …');
     const d = await (await fetch(nleBasis() + '?aktion=speichern', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) })).json();
     if (!d.erfolg) { nleStatus(d.fehler, '#dc2626'); return false; }
@@ -154,13 +155,30 @@ async function nleTestmail() {
     nleStatus(d.erfolg ? 'Testmail an ' + an + ' verschickt ✓' : d.fehler, d.erfolg ? '#16a34a' : '#dc2626');
 }
 
+function nleSegment() {
+    const s = {};
+    document.querySelectorAll('[data-seg]').forEach(el => {
+        s[el.dataset.seg] = el.multiple ? Array.from(el.selectedOptions).map(o => parseInt(o.value)) : el.value;
+    });
+    return s;
+}
+async function nleSegZaehlen() {
+    const z = document.getElementById('nle-seg-zahl');
+    z.textContent = 'zähle …';
+    const d = await (await fetch(nleBasis() + '?aktion=segment_zaehlen', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ shop_id: NLE.shopId, segment: nleSegment() }) })).json();
+    z.textContent = d.erfolg ? d.treffer + ' von ' + d.gesamt + ' bestätigten Empfängern' : d.fehler;
+    document.getElementById('nle-seg-text').textContent = d.beschreibung || '';
+}
+
 async function nleVersand() {
     if (nleGeaendert && !(await nleSpeichern())) return;
     const info = await (await fetch(nleBasis() + '?aktion=versand_info&id=' + NLE.id)).json();
     if (!info.erfolg) { alert(info.fehler); return; }
-    if (!info.anzahl) { alert('Für diesen Shop gibt es noch keine bestätigten Empfänger.'); return; }
+    if (!info.anzahl) { alert(info.segment ? 'Kein bestätigter Empfänger passt zur Zielgruppe.' : 'Für diesen Shop gibt es noch keine bestätigten Empfänger.'); return; }
     const dauer = info.stunden < 1 ? 'unter einer Stunde' : 'etwa ' + String(Math.ceil(info.stunden)) + ' Stunden';
-    if (!confirm('Newsletter jetzt an ' + info.anzahl + ' Empfänger verschicken?\n\n'
+    if (!confirm('Newsletter jetzt an ' + info.anzahl + ' Empfänger verschicken?\n'
+        + (info.segment ? 'Zielgruppe: ' + info.segment + '\n' : '') + '\n'
         + 'Die Mails gehen nach und nach raus (höchstens ' + info.max + ' pro Stunde) — Dauer ' + dauer + '.\n'
         + 'Ab jetzt lässt sich der Newsletter nicht mehr ändern. Preise und Bilder werden mit dem heutigen Stand verschickt.')) return;
     nleStatus('Versand wird vorbereitet (Bilder + Links auf die Belegseite) …');
@@ -171,5 +189,6 @@ async function nleVersand() {
 }
 
 ['nle-titel', 'nle-betreff', 'nle-vorschau'].forEach(id => document.getElementById(id).addEventListener('input', nleMarkieren));
+document.querySelectorAll('[data-seg]').forEach(el => el.addEventListener('change', nleMarkieren));
 window.addEventListener('beforeunload', e => { if (nleGeaendert) { e.preventDefault(); e.returnValue = ''; } });
 nleRendern();

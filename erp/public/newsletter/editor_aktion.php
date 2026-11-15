@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../src/modules/newsletter/NewsletterService.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterRenderer.php';
 require_once __DIR__ . '/../../src/core/Mailer.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterVersandService.php';
+require_once __DIR__ . '/../../src/modules/newsletter/NewsletterSegmentService.php';
 
 $svc = new NewsletterService();
 $uid = (int)$_SESSION['benutzer']['id'];
@@ -39,7 +40,19 @@ switch ($aktion) {
         header('Location: editor.php?id=' . $id);
         exit;
 
+    case 'segmente_schalten':
+        Database::getInstance()->prepare("UPDATE system_einstellungen SET wert = ? WHERE schluessel = 'newsletter_segmente_aktiv'")
+            ->execute([!empty($_POST['an']) ? '1' : '0']);
+        Logger::log('newsletter.segmente_' . (!empty($_POST['an']) ? 'an' : 'aus'), null, null, [], $uid);
+        header('Location: liste.php');
+        exit;
+
     // ── Ajax ──
+    case 'segment_zaehlen':
+        $d = json_decode((string)file_get_contents('php://input'), true) ?: [];
+        $seg = new NewsletterSegmentService();
+        $s = $seg->normalisieren($d['segment'] ?? null);
+        $json(['erfolg' => true, 'beschreibung' => $seg->beschreibung($s)] + $seg->zaehlen((int)($d['shop_id'] ?? 0), $s));
     case 'versand_info':
         $json((new NewsletterVersandService())->vorschau((int)($_GET['id'] ?? 0)) + ['max' => NewsletterVersandService::maxProStunde()]);
     case 'versand_starten':

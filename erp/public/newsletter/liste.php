@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterService.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterEmpfaengerService.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterVersandService.php';
+require_once __DIR__ . '/../../src/modules/newsletter/NewsletterSegmentService.php';
 
 $db     = Database::getInstance();
 $svc    = new NewsletterService();
@@ -33,6 +34,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <label style="font-size:13px">Interner Name<br><input type="text" name="titel" class="erp-input" placeholder="z.B. Advent 2026" style="width:260px" required></label>
         <button class="btn btn-primary btn-sm">➕ Neuer Newsletter</button>
     </form>
+    <form method="post" action="editor_aktion.php" style="padding:0 16px 10px;font-size:12px;color:var(--color-text-muted)">
+        <input type="hidden" name="aktion" value="segmente_schalten">
+        <label style="cursor:pointer"><input type="checkbox" name="an" value="1" <?= NewsletterSegmentService::aktiv() ? 'checked' : '' ?> onchange="this.form.submit()">
+            🎯 Zielgruppen (Segmente) anbieten — Newsletter nur an einen Teil der Empfänger, z.B. Käufer einer Kategorie</label>
+    </form>
 </div>
 
 <div class="card">
@@ -43,7 +49,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php foreach ($liste as $n): [$st, $cls] = $statusText[$n['status']]; ?>
             <tr>
                 <td><a href="editor.php?id=<?= (int)$n['id'] ?>" style="font-weight:600"><?= htmlspecialchars($n['titel']) ?></a></td>
-                <td><?= htmlspecialchars($n['shop_name']) ?></td>
+                <td><?= htmlspecialchars($n['shop_name']) ?><?php if (!empty($n['segment'])): ?><br><span style="font-size:11px;color:var(--color-text-muted)" title="<?= htmlspecialchars((new NewsletterSegmentService())->beschreibung(json_decode($n['segment'], true))) ?>">🎯 Zielgruppe</span><?php endif; ?></td>
                 <td><?= htmlspecialchars($n['betreff'] ?? '–') ?></td>
                 <td><span class="chip <?= $cls ?>"><?= $n['status'] === 'versand_laeuft' && $n['versand_pausiert'] ? 'angehalten' : $st ?></span></td>
                 <?php $f = $n['status'] !== 'entwurf' ? $vsvc->fortschritt((int)$n['id']) : null; ?>

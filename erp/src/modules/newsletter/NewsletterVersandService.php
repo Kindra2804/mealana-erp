@@ -8,6 +8,7 @@ require_once __DIR__ . '/../kasse/PaperlessService.php';
 require_once __DIR__ . '/NewsletterService.php';
 require_once __DIR__ . '/NewsletterRenderer.php';
 require_once __DIR__ . '/NewsletterPortalService.php';
+require_once __DIR__ . '/NewsletterSegmentService.php';
 
 /**
  * Newsletter-Versand (Schritt 4).
@@ -48,10 +49,10 @@ class NewsletterVersandService
     {
         $n = (new NewsletterService())->laden($id);
         if (!$n) return ['erfolg' => false, 'fehler' => 'Newsletter nicht gefunden.'];
-        $st = $this->db->prepare("SELECT COUNT(*) FROM newsletter_empfaenger WHERE shop_id = ? AND status = 'aktiv'");
-        $st->execute([$n['shop_id']]);
-        $anzahl = (int)$st->fetchColumn();
-        return ['erfolg' => true, 'anzahl' => $anzahl, 'stunden' => round($anzahl / self::maxProStunde(), 1)];
+        $seg = new NewsletterSegmentService();
+        $anzahl = $seg->zaehlen((int)$n['shop_id'], $n['segment'])['treffer'];
+        return ['erfolg' => true, 'anzahl' => $anzahl, 'stunden' => round($anzahl / self::maxProStunde(), 1),
+                'segment' => $n['segment'] ? $seg->beschreibung($n['segment']) : null];
     }
 
     public function starten(int $id, int $benutzerId): array
@@ -124,16 +125,21 @@ class NewsletterVersandService
             $this->db->prepare("DELETE FROM newsletter_links WHERE newsletter_id = ?")->execute([$id]);
             $ins = $this->db->prepare("INSERT INTO newsletter_links (newsletter_id, schluessel, url) VALUES (?, ?, ?)");
             foreach ($links as $url => $k) $ins->execute([$id, $k, mb_substr($url, 0, 1000)]);
+            // Empfänger: bestätigt + (falls gesetzt) im Segment — Kundenzuordnung vorher nachziehen
+            $segSvc = new NewsletterSegmentService();
+            $segSvc->kundenVerknuepfen((int)$n['shop_id']);
+            [$segSql, $segP] = $segSvc->bedingung($n['segment']);
             $q = $this->db->prepare("INSERT IGNORE INTO newsletter_versand (newsletter_id, empfaenger_id)
-                                     SELECT ?, id FROM newsletter_empfaenger WHERE shop_id = ? AND status = 'aktiv'");
-            $q->execute([$id, $n['shop_id']]);
+                                     SELECT ?, e.id FROM newsletter_empfaenger e WHERE e.shop_id = ? AND e.status = 'aktiv' AND $segSql");
+            $q->execute(array_merge([$id, $n['shop_id']], $segP));
             $anzahl = $q->rowCount();
+            if ($anzahl === 0) { $this->db->rollBack(); return ['erfolg' => false, 'fehler' => 'Kein bestätigter Empfänger passt — nichts gestartet.']; }
             $this->db->commit();
         } catch (Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
-        Logger::log('newsletter.versand_gestartet', 'newsletter', $id, ['empfaenger' => $anzahl, 'bilder' => count($bilder), 'links' => count($links)], $benutzerId);
+        Logger::log('newsletter.versand_gestartet', 'newsletter', $id, ['empfaenger' => $anzahl, 'bilder' => count($bilder), 'links' => count($links), 'segment' => $n['segment']], $benutzerId);
         return ['erfolg' => true, 'anzahl' => $anzahl];
     }
 

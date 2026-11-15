@@ -128,3 +128,16 @@ gespeichert wie bei den Kunden. Status: **bestätigt** (darf Newsletter bekommen
   **⏸ Anhalten / ▶ Fortsetzen**, **Versand beenden** (der Rest bekommt ihn dann nicht). Eine Mail, die nicht
   rausgeht, wird bis zu 3-mal versucht.
 
+### Zielgruppen (Segmente) — vorbereitet, noch ausgeblendet
+
+- Einschalten: Kunden → ✉️ Newsletter verfassen → Häkchen **🎯 Zielgruppen (Segmente) anbieten**. Dann hat jeder
+  Entwurf oben die Karte **🎯 Empfänger**; ohne Auswahl bekommen ihn wie bisher alle bestätigten Empfänger.
+- Bedingungen (alle gesetzten müssen zutreffen, leer = egal; Mehrfachauswahl mit Strg): **Kundenkonto**
+  (nur Kunden / nur Nicht-Kunden), **Land**, **Kundengruppe**, **angemeldet seit**, **gekauft aus Kategorie**
+  (inkl. Unterkategorien) bzw. **von Hersteller** in den letzten N Monaten, **letzter Kauf** innerhalb bzw.
+  länger her als N Monate („Schläfer“).
+- **Empfänger zählen** zeigt „X von Y bestätigten Empfängern“. Die Versand-Rückfrage nennt die Zielgruppe,
+  die Liste markiert solche Newsletter mit 🎯.
+- Kunde = gleiche E-Mail-Adresse wie im Kundenstamm (wird vor dem Zählen/Versand neu abgeglichen). Käufe aus allen
+  Kanälen inkl. JTL-Archiv, ohne Stornos.
+

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterService.php';
 require_once __DIR__ . '/../../src/modules/newsletter/NewsletterVersandService.php';
+require_once __DIR__ . '/../../src/modules/newsletter/NewsletterSegmentService.php';
 
 $svc = new NewsletterService();
 $n   = $svc->laden((int)($_GET['id'] ?? 0));
@@ -11,6 +12,9 @@ $gesperrt = $n['status'] !== 'entwurf';
 $vsvc = new NewsletterVersandService();
 $fort = $gesperrt ? $vsvc->fortschritt((int)$n['id']) : null;
 $links = $gesperrt ? $vsvc->links((int)$n['id']) : [];
+$segAn  = NewsletterSegmentService::aktiv() || $n['segment'];   // gespeichertes Segment immer zeigen
+$segSvc = new NewsletterSegmentService();
+$segAusw = $segAn ? $segSvc->auswahl() : null;
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
 $meineMail = (string)(Database::getInstance()->query("SELECT email FROM benutzer WHERE id = " . (int)$_SESSION['benutzer']['id'])->fetchColumn() ?: '');
@@ -79,6 +83,32 @@ require_once __DIR__ . '/../includes/shell_top.php';
       <input type="text" id="nle-vorschau" class="erp-input" maxlength="200" value="<?= htmlspecialchars($n['vorschautext'] ?? '') ?>" style="width:100%">
     </div>
 
+    <?php if ($segAn): $sg = $n['segment'] ?? []; $dis = ($gesperrt || !NewsletterSegmentService::aktiv()) ? 'disabled' : ''; ?>
+    <details class="card" style="padding:10px 16px;margin-bottom:12px" <?= $n['segment'] ? 'open' : '' ?> id="nle-segment">
+      <summary style="cursor:pointer;font-weight:600;font-size:13px">🎯 Empfänger: <span id="nle-seg-text"><?= htmlspecialchars($segSvc->beschreibung($n['segment'])) ?></span></summary>
+      <div style="font-size:12px;color:var(--color-text-muted);margin:6px 0">Alle gesetzten Bedingungen müssen zutreffen. Leer = egal. Mehrfachauswahl mit Strg-Taste.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:12px">
+        <label>Kundenkonto<br><select class="erp-select" data-seg="kunde" <?= $dis ?>>
+          <option value="">egal</option><option value="kunden" <?= ($sg['kunde'] ?? '') === 'kunden' ? 'selected' : '' ?>>nur Kunden (haben schon bestellt/Konto)</option>
+          <option value="nicht_kunden" <?= ($sg['kunde'] ?? '') === 'nicht_kunden' ? 'selected' : '' ?>>nur Nicht-Kunden</option></select></label>
+        <label>Land (Kürzel, mit Komma)<br><input type="text" class="erp-input" data-seg="laender" placeholder="z.B. AT, DE" value="<?= htmlspecialchars(implode(', ', $sg['laender'] ?? [])) ?>" <?= $dis ?>></label>
+        <label>Kundengruppe<br><select class="erp-select" data-seg="kundengruppen" multiple size="3" style="width:100%" <?= $dis ?>>
+          <?php foreach ($segAusw['kundengruppen'] as $k): ?><option value="<?= (int)$k['id'] ?>" <?= in_array((int)$k['id'], $sg['kundengruppen'] ?? [], true) ? 'selected' : '' ?>><?= htmlspecialchars($k['name']) ?></option><?php endforeach; ?></select></label>
+        <label>Angemeldet seit<br><input type="date" class="erp-input" data-seg="angemeldet_seit" value="<?= htmlspecialchars($sg['angemeldet_seit'] ?? '') ?>" <?= $dis ?>></label>
+        <label>Gekauft aus Kategorie (inkl. Unterkategorien)<br><select class="erp-select" data-seg="kategorien" multiple size="6" style="width:100%" <?= $dis ?>>
+          <?php foreach ($segAusw['kategorien'] as $k): ?><option value="<?= (int)$k['id'] ?>" <?= in_array((int)$k['id'], $sg['kategorien'] ?? [], true) ? 'selected' : '' ?>><?= htmlspecialchars($k['name']) ?></option><?php endforeach; ?></select></label>
+        <label>Gekauft von Hersteller<br><select class="erp-select" data-seg="hersteller" multiple size="6" style="width:100%" <?= $dis ?>>
+          <?php foreach ($segAusw['hersteller'] as $k): ?><option value="<?= (int)$k['id'] ?>" <?= in_array((int)$k['id'], $sg['hersteller'] ?? [], true) ? 'selected' : '' ?>><?= htmlspecialchars($k['name']) ?></option><?php endforeach; ?></select></label>
+        <label>… in den letzten Monaten<br><input type="number" min="1" max="240" class="erp-input" data-seg="kauf_monate" value="<?= (int)($sg['kauf_monate'] ?? 24) ?>" style="width:90px" <?= $dis ?>></label>
+        <label>Letzter Kauf<br><select class="erp-select" data-seg="letzter_kauf" <?= $dis ?>>
+          <option value="">egal</option><option value="innerhalb" <?= ($sg['letzter_kauf'] ?? '') === 'innerhalb' ? 'selected' : '' ?>>innerhalb der letzten</option>
+          <option value="nicht_innerhalb" <?= ($sg['letzter_kauf'] ?? '') === 'nicht_innerhalb' ? 'selected' : '' ?>>länger her als (Schläfer)</option></select>
+          <input type="number" min="1" max="240" class="erp-input" data-seg="letzter_monate" value="<?= (int)($sg['letzter_monate'] ?? 12) ?>" style="width:70px" <?= $dis ?>> Monate</label>
+      </div>
+      <?php if (!$dis): ?><div style="margin-top:8px"><button class="btn btn-sm" type="button" onclick="nleSegZaehlen()">Empfänger zählen</button> <span id="nle-seg-zahl" style="font-size:13px"></span></div><?php endif; ?>
+    </details>
+    <?php endif; ?>
+
     <div id="nle-bausteine"></div>
 
     <?php if (!$gesperrt): ?>
@@ -110,7 +140,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 </div>
 
 <script>
-  window.NLE = { id: <?= (int)$n['id'] ?>, gesperrt: <?= $gesperrt ? 'true' : 'false' ?>, bausteine: <?= json_encode($n['bausteine'], JSON_UNESCAPED_UNICODE) ?> };
+  window.NLE = { id: <?= (int)$n['id'] ?>, shopId: <?= (int)$n['shop_id'] ?>, segmente: <?= $segAn && NewsletterSegmentService::aktiv() && !$gesperrt ? 'true' : 'false' ?>, gesperrt: <?= $gesperrt ? 'true' : 'false' ?>, bausteine: <?= json_encode($n['bausteine'], JSON_UNESCAPED_UNICODE) ?> };
 </script>
 <script src="<?= BASE_PATH ?>/js/newsletter_editor.js?v=<?= filemtime(__DIR__ . '/../js/newsletter_editor.js') ?>"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
