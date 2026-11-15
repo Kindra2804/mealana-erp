@@ -108,6 +108,66 @@ $pageTitle = 'Offline-Kasse';
     .ob-quittung .l { border-top: 1px dashed #999; margin: 6px 0; }
     .ob-quittung .r { display: flex; justify-content: space-between; }
 
+    /* Mengenvorwahl + Artikel-Kacheln (beide Anordnungen) */
+    .ob-mengen { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 0 4px; font-size: 12px; color: #64748b; }
+    .ob-mengen button { min-width: 40px; height: 36px; border: 1.5px solid #cbd5e1; background: #f8fafc; border-radius: 8px;
+                        font-weight: 700; font-size: 15px; font-family: inherit; cursor: pointer; color: #334155; }
+    .ob-mengen button.aktiv { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
+    .ob-kacheln { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-top: 10px;
+                  max-height: 300px; overflow-y: auto; }
+    .ob-kachel { border: 1.5px solid #cbd5e1; border-radius: 10px; background: #fff; padding: 8px; min-height: 66px; text-align: left;
+                 font: inherit; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; color: #1e293b; }
+    .ob-kachel:active { background: #eff6ff; }
+    .ob-kachel .n { font-size: 13px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box;
+                    -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .ob-kachel .p { font-size: 13px; font-weight: 800; color: #1e3a5f; margin-top: 4px; }
+    .ob-kachel .p s { font-weight: 400; color: #94a3b8; }
+    .ob-kachel .a { font-size: 10px; font-weight: 700; color: #b45309; }
+    .ob-kachel.aktion { border-color: #f59e0b; }
+    .ob-bottombar { display: none; }
+    #ob-autodruck-wrap { display: none; font-size: 13px; color: #475569; margin-top: 10px; gap: 6px; align-items: center; }
+
+    /* ── Hochformat (Sunmi V2, ~360 px breit): Artikel-Seite ⇄ Warenkorb-Seite, Leiste unten ── */
+    body.lay-hoch .ob-header { height: auto; min-height: 48px; padding: 6px 10px; flex-wrap: wrap; gap: 4px; }
+    body.lay-hoch .ob-header-title { font-size: 15px; }
+    body.lay-hoch .ob-status { gap: 8px; font-size: 12px; }
+    body.lay-hoch .ob-main { padding: 8px 8px 80px; }
+    body.lay-hoch .ob-grid { grid-template-columns: 1fr; gap: 0; }
+    body.lay-hoch .ob-grid > * { min-width: 0; }
+    body.lay-hoch .ob-zeile { flex-wrap: wrap; gap: 6px; }
+    body.lay-hoch .ob-zeile > div:first-child { flex: 1 1 100%; }
+    body.lay-hoch .ob-zeile-menge { margin-right: auto; }
+    body.lay-hoch .ob-zeile-menge button { width: 38px; height: 38px; font-size: 18px; }
+    body.lay-hoch .ob-header-sub { font-size: 11px; }
+    body.lay-hoch #ob-bereit-text { display: none; }
+    body.lay-hoch .ob-status .ob-btn { padding: 6px 10px; font-size: 12px; }
+    body.lay-hoch .ob-card { padding: 10px; margin-bottom: 8px; border-radius: 8px; }
+    body.lay-hoch .ob-scan { font-size: 16px; padding: 10px; }
+    body.lay-hoch .ob-kacheln { grid-template-columns: 1fr 1fr; max-height: none; }
+    body.lay-hoch .ob-korb-card, body.lay-hoch .ob-rechts { display: none; }
+    body.lay-hoch.korb-offen .ob-korb-card, body.lay-hoch.korb-offen .ob-rechts { display: block; }
+    body.lay-hoch.korb-offen .ob-artikel-card { display: none; }
+    body.lay-hoch .ob-bottombar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; gap: 8px; padding: 8px;
+                                  background: #1e3a5f; z-index: 60; }
+    .ob-bottombar button { flex: 1; height: 54px; border: none; border-radius: 10px; font-size: 16px; font-weight: 800;
+                           font-family: inherit; cursor: pointer; }
+    #ob-bb-links { background: #334155; color: #fff; flex: 0 0 36%; }
+    #ob-bb-rechts { background: #16a34a; color: #fff; }
+    body.lay-hoch:not(.korb-offen) #ob-bb-links { display: none; }
+    body.lay-hoch .ob-overlay-box { padding: 18px; width: 94%; }
+
+    /* ── Druck: nur der Beleg, 58-mm-Bon (Sunmi-Drucker, druckbar ~48 mm) ── */
+    @media print {
+      @page { size: 58mm auto; margin: 0; }
+      body { background: #fff; min-height: 0; }
+      body > *:not(#ob-quittung-overlay) { display: none !important; }
+      #ob-quittung-overlay { display: block !important; position: static; background: none; }
+      #ob-quittung-overlay .ob-overlay-box { width: auto; max-width: none; max-height: none; overflow: visible;
+                                             padding: 1mm 2mm; border-radius: 0; box-shadow: none; }
+      .ob-noprint { display: none !important; }
+      .ob-quittung { width: 48mm; font-size: 9pt; color: #000; }
+    }
+
     .ob-feedback { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
     .ob-feedback.ok { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
     .ob-feedback.fehler { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
@@ -122,6 +182,7 @@ $pageTitle = 'Offline-Kasse';
     <div class="ob-header-sub" id="ob-kasse-label">Wird geladen…</div>
   </div>
   <div class="ob-status">
+    <button class="ob-btn ob-btn-secondary" onclick="obLayoutWechseln()" title="Anordnung Hochformat / Querformat" style="padding:6px 10px">⇅</button>
     <span id="ob-bons-zaehler">0 Bons offen</span>
     <button class="ob-btn ob-btn-secondary" id="ob-upload-btn" onclick="obBonsHochladen()" disabled>⤴ Bons hochladen</button>
     <span><span class="ob-dot fehlt" id="ob-bereit-dot"></span><span id="ob-bereit-text">Prüfe…</span></span>
@@ -136,6 +197,10 @@ $pageTitle = 'Offline-Kasse';
       Für diese Kasse liegen noch keine Offline-Daten vor. Solange noch Internet-/Serververbindung
       besteht, jetzt einmalig laden — danach funktioniert diese Seite komplett ohne Server.
     </p>
+    <div style="margin-bottom:12px;font-size:13px;color:#475569">
+      <label>Gerät-Nr. <input type="text" id="ob-geraet" value="1" maxlength="3" style="width:60px;padding:6px;border:1px solid #cbd5e1;border-radius:6px;font-size:15px"></label>
+      <span style="font-size:12px;color:#94a3b8">— nur Mobil-Messe: bei mehreren Geräten 1, 2, 3 … (steht in der Belegnummer)</span>
+    </div>
     <button class="ob-btn ob-btn-primary" onclick="obVorbereitungLaden()">📥 Sync-Daten laden</button>
     <div id="ob-vorbereitung-feedback" style="margin-top:10px"></div>
   </div>
@@ -143,9 +208,9 @@ $pageTitle = 'Offline-Kasse';
   <div id="ob-kasse-bereich" style="display:none">
     <div class="ob-grid">
 
-      <!-- LINKS: Scan + Warenkorb -->
+      <!-- LINKS: Scan + Kacheln, darunter Warenkorb -->
       <div>
-        <div class="ob-card">
+        <div class="ob-card ob-artikel-card">
           <div style="position:relative">
             <input type="text" id="ob-scan" class="ob-scan" placeholder="EAN / Artikelnummer scannen — oder Artikelname eingeben zum Suchen" autofocus autocomplete="off">
             <div id="ob-such-ergebnisse" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #cbd5e1;border-top:none;border-radius:0 0 8px 8px;max-height:260px;overflow-y:auto;z-index:20;box-shadow:0 6px 14px rgba(0,0,0,.08)"></div>
@@ -154,6 +219,14 @@ $pageTitle = 'Offline-Kasse';
 
           <button type="button" class="ob-btn ob-btn-secondary" style="margin-top:4px" onclick="obFreierArtikelOeffnen()">➕ Freier Artikel</button>
 
+          <!-- Mengenvorwahl: gilt für den nächsten Artikel (Kachel/Scan), danach wieder 1 -->
+          <div class="ob-mengen" id="ob-mengen-leiste"></div>
+          <!-- Kacheln = alle zur Messe mitgenommenen Artikel; Eingabe oben filtert -->
+          <div class="ob-kacheln" id="ob-kacheln"></div>
+        </div>
+
+        <div class="ob-card ob-korb-card">
+          <div class="ob-card-title">Warenkorb</div>
           <ul class="ob-warenkorb" id="ob-warenkorb-liste">
             <li style="text-align:center;color:#94a3b8;padding:20px 0">Warenkorb ist leer.</li>
           </ul>
@@ -161,7 +234,7 @@ $pageTitle = 'Offline-Kasse';
       </div>
 
       <!-- RECHTS: Summe + Zahlung -->
-      <div>
+      <div class="ob-rechts">
         <div class="ob-card">
           <div class="ob-card-title">Summe</div>
           <div id="ob-steuer-zeilen"></div>
@@ -184,6 +257,7 @@ $pageTitle = 'Offline-Kasse';
           <button class="ob-abschluss-btn" id="ob-abschluss-btn" onclick="obVerkaufAbschliessen()" disabled style="margin-top:10px">
             ✓ Verkauf abschließen
           </button>
+          <label id="ob-autodruck-wrap"><input type="checkbox" id="ob-autodruck" onchange="obAutodruckMerken()"> Beleg gleich drucken</label>
         </div>
       </div>
 
@@ -192,11 +266,17 @@ $pageTitle = 'Offline-Kasse';
 
 </div>
 
+<!-- Hochformat: Leiste unten (Artikel ⇄ Warenkorb/Bezahlen) -->
+<div class="ob-bottombar" id="ob-bottombar">
+  <button id="ob-bb-links" onclick="obKorbUmschalten(false)">◀ Artikel</button>
+  <button id="ob-bb-rechts" onclick="obLeisteRechts()">🛒 leer</button>
+</div>
+
 <!-- Quittungs-Overlay -->
 <div class="ob-overlay" id="ob-quittung-overlay">
   <div class="ob-overlay-box">
     <div id="ob-quittung-inhalt" class="ob-quittung"></div>
-    <div style="display:flex;gap:8px;margin-top:16px">
+    <div class="ob-noprint" style="display:flex;gap:8px;margin-top:16px">
       <button class="ob-btn ob-btn-primary" style="flex:1" onclick="window.print()">🖨 Drucken</button>
       <button class="ob-btn ob-btn-secondary" style="flex:1" onclick="obQuittungSchliessen()">Weiter</button>
     </div>

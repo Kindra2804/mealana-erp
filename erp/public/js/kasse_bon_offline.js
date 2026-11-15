@@ -9,6 +9,11 @@ let obArtikel     = [];   // In-Memory-Kopie aus IndexedDB (schnellere Suche)
 let obKonfig      = null; // { id:'aktuell', syncId, syncToken, kasse:{...}, lagerId, bonNrJahr, bonNrZaehler }
 let obWarenkorb   = [];   // [{artikel_id, bezeichnung, ean, menge, einzelpreis_brutto, steuer_prozent, rabatt_prozent, charge, charge_pflicht, block}]
 let obZahlart     = 'bar';
+let obVorwahl     = 1;    // Mengenvorwahl für den nächsten Artikel
+
+// Mobil-Messe (Sunmi): Belege OHNE Signatur (Belegerteilungspflicht), Nacherfassung später an der Laden-Kasse
+function obIstMobil() { return !!(obKonfig && obKonfig.variante === 'mobil'); }
+function obLs(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 
 // ── IndexedDB Helper (Promise-Wrapper) ──────────────────────────────────────
 
@@ -65,6 +70,7 @@ function obIdbClear(store) {
 // ── Initialisierung ──────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+    obLayoutInit();
     await obIdbOpen();
     obKonfig = await obIdbGet('konfig', 'aktuell');
 
@@ -85,8 +91,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         obScannen(scanFeld.value);
         scanFeld.value = '';
         obSucheAusblenden();
+        obKachelnRendern('');
     });
-    scanFeld.addEventListener('input', () => obSucheAktualisieren(scanFeld.value));
+    scanFeld.addEventListener('input', () => { obSucheAktualisieren(scanFeld.value); obKachelnRendern(scanFeld.value); });
     document.addEventListener('click', (e) => {
         if (!e.target.closest('#ob-such-ergebnisse') && e.target !== scanFeld) obSucheAusblenden();
     });
@@ -116,6 +123,14 @@ async function obVorbereitungLaden() {
         for (const a of data.artikel) {
             await obIdbPut('artikel', a);
         }
+        // Mobil: Gerät-Nr. + Belegzähler (nie zurückzählen: lokaler Stand vs. schon hochgeladene Belege)
+        const alt = await obIdbGet('konfig', 'aktuell');
+        const geraet = (document.getElementById('ob-geraet')?.value || '1').replace(/[^0-9A-Za-z]/g, '').slice(0, 3) || '1';
+        let zaehler = data.bon_nr_zaehler;
+        if (data.variante === 'mobil') {
+            const lokal = (alt && alt.syncId === data.sync_id && alt.geraet === geraet) ? (alt.bonNrZaehler || 0) : 0;
+            zaehler = Math.max(lokal, (data.mobil_zaehler || {})[geraet] || 0);
+        }
         await obIdbPut('konfig', {
             id: 'aktuell',
             syncId: data.sync_id,
@@ -123,7 +138,10 @@ async function obVorbereitungLaden() {
             kasse: data.kasse,
             lagerId: data.lager_id,
             bonNrJahr: data.bon_nr_jahr,
-            bonNrZaehler: data.bon_nr_zaehler,
+            bonNrZaehler: zaehler,
+            variante: data.variante || 'elektronisch',
+            firma: data.firma || {},
+            geraet: geraet,
             diversArtikelId: data.divers_artikel_id || null,
             gruppen: data.gruppen || [], // Kacheln im Freier-Artikel-Dialog
             mengenRegeln: data.mengen_regeln || [], // Mengen-Aktionen (Zeitraum prüft obMengenAnwenden)
@@ -144,8 +162,103 @@ function obBereitSchalten() {
     document.getElementById('ob-kasse-bereich').style.display = 'block';
     document.getElementById('ob-bereit-dot').className = 'ob-dot bereit';
     document.getElementById('ob-bereit-text').textContent = 'Bereit (offline-fähig)';
-    document.getElementById('ob-kasse-label').textContent =
-        (obKonfig.kasse?.name || 'Kasse') + ' · ' + obArtikel.length + ' Artikel geladen';
+    document.getElementById('ob-kasse-label').textContent = obIstMobil()
+        ? 'Messe Nr. ' + obKonfig.syncId + ' · Gerät ' + obKonfig.geraet + ' · ' + obArtikel.length + ' Artikel · Belege ohne Signatur'
+        : (obKonfig.kasse?.name || 'Kasse') + ' · ' + obArtikel.length + ' Artikel geladen';
+    if (obIstMobil()) {
+        document.querySelector('.ob-header-title').textContent = '📱 MOBIL-BELEGE';
+        document.getElementById('ob-upload-btn').textContent = '⤴ Belege hochladen';
+        document.getElementById('ob-autodruck-wrap').style.display = 'flex';
+        document.getElementById('ob-autodruck').checked = obLs('ob_autodruck') !== '0';
+        document.getElementById('ob-abschluss-btn').textContent = '✓ Beleg erstellen';
+    }
+    obMengenLeisteRendern();
+    obKachelnRendern('');
+}
+
+// ── Anordnung Hoch-/Querformat (Sunmi hoch, Tablet quer) — Wahl merkt sich das Gerät ──
+function obLayoutInit() {
+    const gemerkt = obLs('ob_layout');
+    const hoch = gemerkt ? gemerkt === 'hoch' : window.innerWidth < 760;
+    document.body.classList.toggle('lay-hoch', hoch);
+    obPlatzhalter();
+}
+function obPlatzhalter() {
+    const f = document.getElementById('ob-scan');
+    if (f) f.placeholder = document.body.classList.contains('lay-hoch')
+        ? 'Scannen oder Name suchen'
+        : 'EAN / Artikelnummer scannen — oder Artikelname eingeben zum Suchen';
+}
+function obLayoutWechseln() {
+    const hoch = !document.body.classList.contains('lay-hoch');
+    document.body.classList.toggle('lay-hoch', hoch);
+    document.body.classList.remove('korb-offen');
+    obLs('ob_layout', hoch ? 'hoch' : 'quer');
+    obPlatzhalter();
+}
+function obKorbUmschalten(offen) {
+    if (offen && !document.body.classList.contains('korb-offen') && obWarenkorb.length === 0) return;
+    document.body.classList.toggle('korb-offen', offen);
+    window.scrollTo(0, 0);
+    obSummenBerechnen();   // Text der Leiste unten
+}
+// Grüner Knopf unten: auf der Artikel-Seite → Warenkorb, auf der Warenkorb-Seite → abschließen
+function obLeisteRechts() {
+    if (document.body.classList.contains('korb-offen')) {
+        if (!document.getElementById('ob-abschluss-btn').disabled) obVerkaufAbschliessen();
+    } else {
+        obKorbUmschalten(true);
+    }
+}
+function obAutodruckMerken() { obLs('ob_autodruck', document.getElementById('ob-autodruck').checked ? '1' : '0'); }
+
+// ── Mengenvorwahl ────────────────────────────────────────────────────────────
+function obMengenLeisteRendern() {
+    const el = document.getElementById('ob-mengen-leiste');
+    if (!el) return;
+    let html = '<span>Menge:</span>';
+    [1, 2, 3, 4, 5, 6, 10].forEach(n => {
+        html += '<button type="button" class="' + (obVorwahl === n ? 'aktiv' : '') + '" onclick="obVorwahlSetzen(' + n + ')">' + n + '</button>';
+    });
+    if (![1, 2, 3, 4, 5, 6, 10].includes(obVorwahl)) html += '<button type="button" class="aktiv">' + obVorwahl + '</button>';
+    html += '<button type="button" onclick="obVorwahlFrei()" title="andere Menge">…</button>';
+    el.innerHTML = html;
+}
+function obVorwahlSetzen(n) { obVorwahl = n; obMengenLeisteRendern(); }
+function obVorwahlFrei() {
+    const n = parseInt(prompt('Menge für den nächsten Artikel:', '12') || '', 10);
+    if (n > 0 && n < 1000) obVorwahlSetzen(n);
+}
+function obVorwahlNehmen() { const n = obVorwahl; if (n !== 1) { obVorwahl = 1; obMengenLeisteRendern(); } return n; }
+
+// ── Artikel-Kacheln (alle mitgenommenen Artikel; Eingabefeld filtert) ─────────
+function obKachelnRendern(filter) {
+    const el = document.getElementById('ob-kacheln');
+    if (!el) return;
+    filter = (filter || '').trim().toLowerCase();
+    const heute = obHeute();
+    const inAktion = {};
+    ((obKonfig && obKonfig.mengenRegeln) || [])
+        .filter(r => (!r.gueltig_ab || r.gueltig_ab <= heute) && (!r.gueltig_bis || r.gueltig_bis >= heute))
+        .forEach(r => (r.artikel_ids || []).forEach(id => { inAktion[id] = inAktion[id] || r.badge_text; }));
+    const liste = obArtikel
+        .filter(a => !filter || /^[0-9]+$/.test(filter) || (a.bezeichnung || '').toLowerCase().includes(filter)
+                     || (a.artikelnummer || '').toLowerCase().includes(filter))
+        .slice().sort((a, b) => (a.bezeichnung || '').localeCompare(b.bezeichnung || '', 'de'));
+    let html = '';
+    liste.forEach(a => {
+        const aktion = !a.preis_reduziert && inAktion[a.id];
+        html += '<button type="button" class="ob-kachel' + (aktion ? ' aktion' : '') + '" onclick="obKachelTipp(' + a.id + ')">'
+            + '<span class="n">' + obEsc(a.bezeichnung) + '</span>'
+            + (aktion ? '<span class="a">' + obEsc(aktion) + '</span>' : '')
+            + '<span class="p">' + (a.preis_reduziert ? '<s>' + (parseFloat(a.preis_normal) || 0).toFixed(2) + '</s> ' : '')
+            + '€ ' + (parseFloat(a.brutto_vk) || 0).toFixed(2) + '</span></button>';
+    });
+    el.innerHTML = html || '<div style="font-size:13px;color:#94a3b8">Keine Artikel.</div>';
+}
+function obKachelTipp(id) {
+    const a = obArtikel.find(x => x.id === id);
+    if (a) obArtikelWaehlen(a);
 }
 
 // ── Scan / Textsuche / Warenkorb ─────────────────────────────────────────────
@@ -178,9 +291,10 @@ function obArtikelWaehlen(artikel) {
         obChargeAuswahlOeffnen(artikel);
         return;
     }
-    obZumWarenkorbHinzufuegen(artikel, null, 1);
+    const menge = obVorwahlNehmen();
+    obZumWarenkorbHinzufuegen(artikel, null, menge);
     const fb = document.getElementById('ob-scan-feedback');
-    fb.textContent = artikel.bezeichnung + ' hinzugefügt.';
+    fb.textContent = (menge > 1 ? menge + ' × ' : '') + artikel.bezeichnung + ' hinzugefügt.';
     fb.style.color = '#16a34a';
 }
 
@@ -566,6 +680,11 @@ function obSummenBerechnen() {
     });
     document.getElementById('ob-steuer-zeilen').innerHTML = html;
     document.getElementById('ob-gesamt-anzeige').textContent = '€ ' + gesamt.toFixed(2);
+    const stk = obWarenkorb.reduce((s, z) => s + z.menge, 0);
+    const bb = document.getElementById('ob-bb-rechts');
+    if (bb) bb.textContent = document.body.classList.contains('korb-offen')
+        ? '✓ ' + (obIstMobil() ? 'Beleg' : 'Abschließen') + ' € ' + gesamt.toFixed(2)
+        : (stk ? '🛒 ' + stk + ' · € ' + gesamt.toFixed(2) + ' ▶' : '🛒 leer');
 
     document.getElementById('ob-abschluss-btn').disabled = obWarenkorb.length === 0;
     obRueckgeldBerechnen();
@@ -724,7 +843,7 @@ async function obVerkaufAbschliessen() {
 
     document.getElementById('ob-abschluss-btn').disabled = true;
 
-    const bfrUrl = obBfrUrlLokal();
+    const bfrUrl = obIstMobil() ? null : obBfrUrlLokal();   // Mobil: keine Signatur (Nacherfassung im Laden)
     if (bfrUrl && !(await obPruefeBfrMitKurzRetry(bfrUrl))) {
         document.getElementById('ob-abschluss-btn').disabled = false;
         obZeigeBfrPopup();
@@ -733,7 +852,10 @@ async function obVerkaufAbschliessen() {
     obBfrFehlschlagAnzahl = 0;
 
     obKonfig.bonNrZaehler++;
-    const bonNr = obKonfig.kasse.kasse_nr + '-' + obKonfig.bonNrJahr + '-' + String(obKonfig.bonNrZaehler).padStart(6, '0');
+    // Mobil: M<Messe-Nr>-<Gerät>-<laufend>, fortlaufend je Gerät (steht so am Beleg und bei der Nacherfassung)
+    const bonNr = obIstMobil()
+        ? 'M' + obKonfig.syncId + '-' + obKonfig.geraet + '-' + String(obKonfig.bonNrZaehler).padStart(4, '0')
+        : obKonfig.kasse.kasse_nr + '-' + obKonfig.bonNrJahr + '-' + String(obKonfig.bonNrZaehler).padStart(6, '0');
     const jetzt = new Date();
 
     const bon = {
@@ -768,6 +890,8 @@ async function obVerkaufAbschliessen() {
         })),
         rksv_signatur: null,
         rksv_qr: null,
+        mobil: obIstMobil(),
+        geraet: obIstMobil() ? obKonfig.geraet : null,
     };
 
     // ── Direkte RKSV-Signierung gegen den lokalen BFR ──────────────────────
@@ -799,9 +923,13 @@ async function obVerkaufAbschliessen() {
     await obIdbPut('konfig', obKonfig);
 
     obQuittungAnzeigen(bon);
+    if (obIstMobil() && document.getElementById('ob-autodruck').checked) {
+        setTimeout(() => window.print(), 300);
+    }
 
     obWarenkorb = [];
     document.getElementById('ob-gegeben').value = '';
+    document.body.classList.remove('korb-offen');
     obWarenkorbRendern();
     await obBonsZaehlerAktualisieren();
     document.getElementById('ob-abschluss-btn').disabled = false;
@@ -809,7 +937,52 @@ async function obVerkaufAbschliessen() {
 
 // ── Quittung ─────────────────────────────────────────────────────────────────
 
+// Beleg der Mobil-Messe (Belegerteilungspflicht, § 132a BAO): Unternehmen, fortlaufende Nummer, Datum,
+// Menge + handelsübliche Bezeichnung, Betrag — keine Signatur, wird im Laden nacherfasst.
+function obMobilBelegHtml(bon) {
+    const f = obKonfig.firma || {};
+    let h = '<div class="z b" style="font-size:14px">' + obEsc(f.firmenname || '') + '</div>';
+    const adr = [f.strasse, [f.plz, f.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    if (adr) h += '<div class="z" style="font-size:11px">' + obEsc(adr) + '</div>';
+    if (f.uid_nummer) h += '<div class="z" style="font-size:11px">UID ' + obEsc(f.uid_nummer) + '</div>';
+    h += '<div class="l"></div>';
+    h += '<div class="r"><span>Beleg Nr.</span><span class="b">' + obEsc(bon.bon_nr) + '</span></div>';
+    h += '<div class="r"><span>Datum</span><span>' + obEsc(bon.erstellt_am.slice(8, 10) + '.' + bon.erstellt_am.slice(5, 7) + '.'
+        + bon.erstellt_am.slice(0, 4) + ' ' + bon.erstellt_am.slice(11, 16)) + '</span></div>';
+    h += '<div class="l"></div>';
+    const ust = {};
+    bon.positionen.forEach(p => {
+        const gs = p.zeile_brutto ?? (p.menge * p.einzelpreis_brutto);
+        h += '<div>' + p.menge + ' × ' + obEsc(p.bezeichnung) + '</div>';
+        h += '<div class="r" style="font-size:11px;color:#444"><span>&nbsp;à € ' + (p.preis_vorher_brutto ?? p.einzelpreis_brutto).toFixed(2)
+            + (p.aktion_hinweis ? ' · Aktion ' + obEsc(p.aktion_hinweis) : '') + '</span><span class="b">€ ' + gs.toFixed(2) + '</span></div>';
+        const s = parseFloat(p.steuer_prozent) || 0;
+        ust[s] = (ust[s] || 0) + gs;
+    });
+    h += '<div class="l"></div>';
+    h += '<div class="r b" style="font-size:14px"><span>SUMME EUR</span><span>' + bon.bruttobetrag.toFixed(2) + '</span></div>';
+    Object.keys(ust).sort((a, b) => b - a).forEach(s => {
+        const b = ust[s], st = b - b / (1 + s / 100);
+        h += '<div class="r" style="font-size:11px"><span>inkl. ' + s + ' % USt</span><span>' + st.toFixed(2) + '</span></div>';
+    });
+    if (bon.zahlungsart === 'bar') {
+        h += '<div class="r"><span>Bar gegeben</span><span>' + bon.gegeben.toFixed(2) + '</span></div>';
+        h += '<div class="r"><span>Rückgeld</span><span>' + bon.rueckgeld.toFixed(2) + '</span></div>';
+    } else {
+        h += '<div class="r"><span>Bezahlt mit</span><span>Karte</span></div>';
+    }
+    h += '<div class="l"></div>';
+    h += '<div class="z" style="font-size:10px">Beleg außerhalb der Betriebsstätte —<br>wird in der Registrierkasse nacherfasst.</div>';
+    h += '<div class="z" style="margin-top:6px">Danke für Ihren Einkauf!</div>';
+    return h;
+}
+
 function obQuittungAnzeigen(bon) {
+    if (bon.mobil) {
+        document.getElementById('ob-quittung-inhalt').innerHTML = obMobilBelegHtml(bon);
+        document.getElementById('ob-quittung-overlay').classList.add('aktiv');
+        return;
+    }
     const firma = obKonfig.kasse.name || 'MeaLana';
     let h = '<div class="z b" style="font-size:16px">' + obEsc(firma) + '</div>';
     h += '<div class="z" style="font-size:11px;color:#666">Messe-Verkauf (offline)</div>';
@@ -869,7 +1042,7 @@ async function obBonsHochladen() {
     try {
         const payload = { sync_token: obKonfig.syncToken, bons: bons };
         const fd = new FormData();
-        fd.append('aktion', 'post_sync');
+        fd.append('aktion', obIstMobil() ? 'mobil_upload' : 'post_sync');
         fd.append('payload', JSON.stringify(payload));
 
         const resp = await fetch(window.BASE_PATH + '/kasse/ajax_messe.php', { method: 'POST', body: fd });
@@ -877,7 +1050,9 @@ async function obBonsHochladen() {
 
         if (data.erfolg) {
             await obIdbClear('bons');
-            alert(data.bon_count + ' Bon(s) hochgeladen — Umsatz € ' + Number(data.umsatz).toFixed(2));
+            alert(obIstMobil()
+                ? data.bon_count + ' Beleg(e) hochgeladen — jetzt an der Laden-Kasse nacherfassen.'
+                : data.bon_count + ' Bon(s) hochgeladen — Umsatz € ' + Number(data.umsatz).toFixed(2));
         } else {
             alert('Fehler beim Hochladen: ' + (data.fehler || 'unbekannt'));
         }
@@ -885,6 +1060,6 @@ async function obBonsHochladen() {
         alert('Kein Netzwerk — bitte später erneut versuchen, sobald wieder online.');
     }
 
-    btn.textContent = '⤴ Bons hochladen';
+    btn.textContent = obIstMobil() ? '⤴ Belege hochladen' : '⤴ Bons hochladen';
     await obBonsZaehlerAktualisieren();
 }

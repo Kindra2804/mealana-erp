@@ -27,6 +27,7 @@ foreach ($kassen as $k) {
 }
 
 $offenePapier = $syncSvc->getOffenePapierMessen();
+$offeneMobil  = $syncSvc->getOffeneMobilMessen();
 
 $erfolg = $_SESSION['erfolg'] ?? null; unset($_SESSION['erfolg']);
 $fehler = $_SESSION['fehler'] ?? null; unset($_SESSION['fehler']);
@@ -73,6 +74,12 @@ require_once __DIR__ . '/shell_top.php';
           <small><?= empty($kassen)
               ? 'Keine Offline-Kasse eingerichtet (Einstellungen → Kassen, Modus „offline“).'
               : 'Offline-Kasse mit Signatur am Laptop, Bons werden danach synchronisiert.' ?></small></span>
+      </label>
+      <label class="msv-variante">
+        <input type="radio" name="msv-variante" value="mobil" onchange="msvVarianteGeaendert()">
+        <span><strong>📱 Mobil-Messe (Sunmi)</strong><br>
+          <small>Handgerät druckt Belege ohne Signatur (wie ein Paragon). Danach werden die Belege
+          an der Laden-Kasse nacherfasst — mit Artikeln, ohne Abtippen.</small></span>
       </label>
     </div>
 
@@ -162,6 +169,39 @@ require_once __DIR__ . '/shell_top.php';
     </table>
     <p style="font-size:12px;color:#64748b;margin:10px 0 0">
       Weitere Artikel können jederzeit nachgebucht werden — sie landen in derselben Papier-Messe, die Strichliste einfach neu drucken.
+    </p>
+  </div>
+  <?php endif; ?>
+
+  <?php if (!empty($offeneMobil)): ?>
+  <div class="ks-card">
+    <div class="ks-card-title">📱 Offene Mobil-Messen (Sunmi)</div>
+    <table class="ks-table">
+      <thead>
+        <tr><th>Messe</th><th style="text-align:right">Artikel</th><th style="text-align:right">Belege</th><th>Vorbereitet</th><th></th></tr>
+      </thead>
+      <tbody>
+        <?php foreach ($offeneMobil as $s): ?>
+        <tr>
+          <td>Nr. <?= (int)$s['id'] ?> · <?= htmlspecialchars($s['lager_name'] ?? '') ?></td>
+          <td style="text-align:right"><?= (int)$s['artikel_count'] ?></td>
+          <td style="text-align:right"><?= (int)$s['beleg_count'] ?><?= (int)$s['beleg_offen'] ? ' <span style="color:#d97706">(' . (int)$s['beleg_offen'] . ' offen)</span>' : '' ?></td>
+          <td style="color:#888"><?= date('d.m.Y H:i', strtotime($s['erstellt_am'])) ?></td>
+          <td style="text-align:right;white-space:nowrap">
+            <a href="<?= BASE_PATH ?>/schilder/auswahl.php?sync_id=<?= (int)$s['id'] ?>" target="_blank" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px">
+              🏷 Preisschilder
+            </a>
+            <a href="bon_offline.php?sync_id=<?= (int)$s['id'] ?>" class="ks-btn ks-btn-secondary" style="padding:5px 12px;font-size:12px"
+               title="Am Sunmi öffnen (im Laden-WLAN), danach läuft es offline">
+              📱 Am Gerät laden →
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:#64748b;margin:10px 0 0">
+      Am Sunmi im Browser anmelden und „Am Gerät laden“ öffnen. Weitere Artikel können nachgebucht werden — dann am Gerät neu laden.
     </p>
   </div>
   <?php endif; ?>

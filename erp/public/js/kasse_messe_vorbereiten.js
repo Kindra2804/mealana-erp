@@ -224,7 +224,7 @@ function escHtmlMsv(s) {
     return d.innerHTML;
 }
 
-// ── Messe-Variante (Papier / elektronisch) ───────────────────────────────────
+// ── Messe-Variante (Papier / elektronisch / mobil) ───────────────────────────
 // Papier-Messe braucht keine Offline-Kasse → Kassen-Auswahl nur bei "elektronisch".
 function msvVariante() {
     const r = document.querySelector('input[name="msv-variante"]:checked');

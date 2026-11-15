@@ -10,7 +10,7 @@
 // die direkte BFR-Signierung) werden bewusst NICHT abgefangen — die müssen
 // entweder wirklich funktionieren oder ehrlich fehlschlagen, kein Fake-Cache.
 
-const CACHE_NAME = 'mealana-messe-kasse-v3'; // v3: Mengen-Aktionen (Rechenkern mitcachen)
+const CACHE_NAME = 'mealana-messe-kasse-v4'; // v4: Mobil-Messe (Sunmi), Hochformat, Kacheln
 const APP_SHELL = [
     './bon_offline.php',
     '../js/kasse_bon_offline.js',

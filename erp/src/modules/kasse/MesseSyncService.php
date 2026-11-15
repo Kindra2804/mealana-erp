@@ -32,11 +32,12 @@ class MesseSyncService
         if (empty($positionen)) {
             return ['erfolg' => false, 'fehler' => 'Keine Positionen übergeben.'];
         }
-        // Papier-Messe (Strichliste + händische Belege) hat kein Gerät → keine Kasse
-        if (!in_array($variante, ['elektronisch', 'papier'], true)) {
+        // Papier-Messe (Strichliste + händische Belege) und Mobil-Messe (Sunmi, Belege ohne Signatur)
+        // haben keine Signatur-Kasse → keine Kasse
+        if (!in_array($variante, ['elektronisch', 'papier', 'mobil'], true)) {
             return ['erfolg' => false, 'fehler' => 'Unbekannte Messe-Variante.'];
         }
-        if ($variante === 'papier') {
+        if ($variante === 'papier' || $variante === 'mobil') {
             $kasseId = null;
         } elseif (!$kasseId) {
             return ['erfolg' => false, 'fehler' => 'Für die elektronische Messe bitte eine Offline-Kasse wählen.'];
@@ -232,10 +233,13 @@ class MesseSyncService
         // echte Abfrage ergänzen.
         $gutscheine = [];
 
-        // Kassen-Konfiguration
+        // Kassen-Konfiguration (Mobil-Messe: keine Kasse, das Gerät erteilt nur Belege)
         $stmtKasse = $this->db->prepare("SELECT * FROM kassen WHERE id = :id");
         $stmtKasse->execute([':id' => $sync['kasse_id']]);
-        $kasseConfig = $stmtKasse->fetch();
+        $kasseConfig = $stmtKasse->fetch() ?: null;
+        if ($sync['variante'] === 'mobil') {
+            $kasseConfig = ['id' => null, 'name' => 'Mobil-Messe Nr. ' . $syncId, 'kasse_nr' => 'M' . $syncId, 'bfr_url' => null];
+        }
 
         // Schnellwahl-Slots
         $stmtSw = $this->db->prepare("
@@ -251,7 +255,18 @@ class MesseSyncService
         // Startzähler für die Offline-Belegnummerierung: höchste vergebene Belegnummer dieser
         // Kasse im laufenden Jahr (gleiche Logik wie KassenService::naechsteBonNr(), X-/Z-Bons
         // zählen nicht mit), damit der Offline-Client lückenlos weiterzählen kann.
-        $bonNrStart = (new KassenService())->letzteBelegLaufnummer((int)$sync['kasse_id'], (int)date('Y'));
+        $bonNrStart = $sync['kasse_id'] ? (new KassenService())->letzteBelegLaufnummer((int)$sync['kasse_id'], (int)date('Y')) : 0;
+        // Mobil: höchste schon hochgeladene Belegnummer je Gerät, damit ein neu geladenes Gerät weiterzählt
+        $mobilZaehler = [];
+        if ($sync['variante'] === 'mobil') {
+            $st = $this->db->prepare("SELECT geraet, MAX(CAST(SUBSTRING_INDEX(beleg_nr, '-', -1) AS UNSIGNED)) FROM kassen_messe_mobilbelege WHERE sync_id = ? GROUP BY geraet");
+            $st->execute([$syncId]);
+            $mobilZaehler = array_map('intval', $st->fetchAll(PDO::FETCH_KEY_PAIR));
+        }
+        // Firmendaten für den Beleg (Belegerteilungspflicht: Name des Unternehmens)
+        $firma = $this->db->query("SELECT schluessel, wert FROM system_einstellungen
+                                   WHERE schluessel IN ('firmenname','strasse','plz','ort','uid_nummer','telefon')")
+                          ->fetchAll(PDO::FETCH_KEY_PAIR);
 
         // Divers-Platzhalter (99-9999) für "Freier Artikel" — gleicher Mechanismus wie online
         $diversArtikelId = (int)($this->db->query("SELECT id FROM artikel WHERE artikelnummer = '99-9999' LIMIT 1")->fetchColumn() ?: 0);
@@ -260,6 +275,9 @@ class MesseSyncService
             'erfolg'         => true,
             'sync_id'        => $syncId,
             'sync_token'     => $sync['sync_token'],
+            'variante'       => $sync['variante'],
+            'firma'          => $firma,
+            'mobil_zaehler'  => $mobilZaehler,
             'exportiert_am'  => date('Y-m-d H:i:s'),
             'kasse'          => $kasseConfig,
             'lager_id'       => $lagerId,
@@ -797,6 +815,20 @@ class MesseSyncService
             FROM kassen_messe_sync s
             LEFT JOIN lager l ON l.id = s.lager_id
             WHERE s.variante = 'papier' AND s.rueckkehr_am IS NULL
+            ORDER BY s.erstellt_am DESC
+        ")->fetchAll();
+    }
+
+    /** Mobil-Messen (Sunmi), die vorbereitet, aber noch nicht zurückgebucht sind. */
+    public function getOffeneMobilMessen(): array
+    {
+        return $this->db->query("
+            SELECT s.*, l.name AS lager_name,
+                   (SELECT COUNT(*) FROM kassen_messe_mobilbelege m WHERE m.sync_id = s.id) AS beleg_count,
+                   (SELECT COUNT(*) FROM kassen_messe_mobilbelege m WHERE m.sync_id = s.id AND m.bon_id IS NULL) AS beleg_offen
+            FROM kassen_messe_sync s
+            LEFT JOIN lager l ON l.id = s.lager_id
+            WHERE s.variante = 'mobil' AND s.rueckkehr_am IS NULL
             ORDER BY s.erstellt_am DESC
         ")->fetchAll();
     }
