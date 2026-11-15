@@ -127,9 +127,13 @@ $kasseUmsatzGestern = (float)$db->query("
 // siehe Migration 067) -- storniert zählt nicht als Umsatz, analog zu Kasse.
 $onlineUmsatzHeuteRows = $db->query("
     SELECT s.id AS shop_id, s.name,
-           COALESCE(SUM(CASE WHEN a.zahlungsstatus != 'storniert'
+           COALESCE(SUM(CASE WHEN a.zahlungsstatus != 'storniert' AND a.partner_id IS NULL
                              AND DATE(a.erstellt_am) = CURDATE()
-                        THEN a.bruttobetrag ELSE 0 END), 0) AS umsatz_heute
+                        THEN a.bruttobetrag ELSE 0 END), 0) AS umsatz_heute,
+           -- Partner-Aufträge (Online-Partner, z.B. A-INDRA): nie KG-Umsatz, nur als Info
+           COALESCE(SUM(CASE WHEN a.zahlungsstatus != 'storniert' AND a.partner_id IS NOT NULL
+                             AND DATE(a.erstellt_am) = CURDATE()
+                        THEN a.bruttobetrag ELSE 0 END), 0) AS fremd_heute
     FROM shops s
     LEFT JOIN auftraege a ON a.shop_id = s.id AND a.kanal = 'woocommerce'
     WHERE s.ist_aktiv = 1
@@ -141,7 +145,7 @@ $onlineUmsatzHeuteGesamt = array_sum(array_column($onlineUmsatzHeuteRows, 'umsat
 
 $onlineUmsatzGestern = (float)$db->query("
     SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
-    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert'
+    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert' AND partner_id IS NULL
       AND DATE(erstellt_am) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
 ")->fetchColumn();
 
@@ -152,12 +156,12 @@ $onlineUmsatzGestern = (float)$db->query("
 // (anders als Online), darum eine einzelne Summe statt einer Zeile pro Shop.
 $manuellUmsatzHeute = (float)$db->query("
     SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
-    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert' AND DATE(erstellt_am) = CURDATE()
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert' AND partner_id IS NULL AND DATE(erstellt_am) = CURDATE()
 ")->fetchColumn();
 
 $manuellUmsatzGestern = (float)$db->query("
     SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
-    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert'
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert' AND partner_id IS NULL
       AND DATE(erstellt_am) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
 ")->fetchColumn();
 
@@ -184,13 +188,13 @@ $kasseUmsatzVormonat = (float)$db->query("
 // ── Umsatz Online-Shops MONAT ────────────────────────────────────────────────
 $onlineUmsatzMonat = (float)$db->query("
     SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
-    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert'
+    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert' AND partner_id IS NULL
       AND YEAR(erstellt_am)=YEAR(CURDATE()) AND MONTH(erstellt_am)=MONTH(CURDATE())
 ")->fetchColumn();
 
 $onlineUmsatzVormonat = (float)$db->query("
     SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
-    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert'
+    WHERE kanal = 'woocommerce' AND zahlungsstatus != 'storniert' AND partner_id IS NULL
       AND YEAR(erstellt_am)=YEAR(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
       AND MONTH(erstellt_am)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
 ")->fetchColumn();
@@ -198,13 +202,13 @@ $onlineUmsatzVormonat = (float)$db->query("
 // ── Umsatz Manuell MONAT ──────────────────────────────────────────────────────
 $manuellUmsatzMonat = (float)$db->query("
     SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
-    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert'
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert' AND partner_id IS NULL
       AND YEAR(erstellt_am)=YEAR(CURDATE()) AND MONTH(erstellt_am)=MONTH(CURDATE())
 ")->fetchColumn();
 
 $manuellUmsatzVormonat = (float)$db->query("
     SELECT COALESCE(SUM(bruttobetrag), 0) FROM auftraege
-    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert'
+    WHERE kanal = 'manuell' AND zahlungsstatus != 'storniert' AND partner_id IS NULL
       AND YEAR(erstellt_am)=YEAR(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
       AND MONTH(erstellt_am)=MONTH(DATE_SUB(CURDATE(),INTERVAL 1 MONTH))
 ")->fetchColumn();
@@ -539,7 +543,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="db-bar-track">
                 <div class="db-bar-fill" style="width:<?= $pct ?>%;background:#16a34a"></div>
             </div>
-            <div class="db-bar-amt"><?= eur((float)$row['umsatz_heute']) ?></div>
+            <div class="db-bar-amt"><?= eur((float)$row['umsatz_heute']) ?><?php if ((float)$row['fremd_heute'] > 0): ?>
+                <div style="font-size:10px;color:#64748b;font-weight:400" title="Partner-Aufträge, kein eigener Umsatz">+ <?= eur((float)$row['fremd_heute']) ?> Fremd</div><?php endif; ?></div>
         </div>
         <?php endforeach; ?>
         <?php $pctManuell = $maxKasseUmsatz > 0 ? round($manuellUmsatzHeute / $maxKasseUmsatz * 100) : 0; ?>
@@ -672,7 +677,8 @@ if (Auth::kann('artikel.anzeigen')) {
             <div class="db-bar-track" style="height:16px">
                 <div class="db-bar-fill" style="width:<?= $pct ?>%;background:#16a34a"></div>
             </div>
-            <div class="db-bar-amt" style="font-size:13px"><?= eur((float)$row['umsatz_heute']) ?></div>
+            <div class="db-bar-amt" style="font-size:13px"><?= eur((float)$row['umsatz_heute']) ?><?php if ((float)$row['fremd_heute'] > 0): ?>
+                <div style="font-size:11px;color:#64748b;font-weight:400" title="Partner-Aufträge, kein eigener Umsatz">+ <?= eur((float)$row['fremd_heute']) ?> Fremd</div><?php endif; ?></div>
         </div>
         <?php endforeach; ?>
         <?php $pctManuellDetail = $maxKasseUmsatz > 0 ? round($manuellUmsatzHeute / $maxKasseUmsatz * 100) : 0; ?>

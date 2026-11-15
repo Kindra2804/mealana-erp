@@ -46,6 +46,7 @@ class StatistikRepository
             JOIN auftraege a ON a.id = p.auftrag_id
             JOIN artikel art ON art.id = p.artikel_id
             WHERE a.zahlungsstatus != 'storniert'
+              AND a.partner_id IS NULL  -- Partner-Aufträge (z.B. A-INDRA) sind nie KG-Umsatz
               AND a.erstellt_am BETWEEN :von AND :bis
               $kanalSql
             GROUP BY art.id, art.artikelnummer, art.name
@@ -82,6 +83,7 @@ class StatistikRepository
                 SUM(a.bruttobetrag) AS umsatz_gesamt
             FROM auftraege a
             WHERE a.zahlungsstatus != 'storniert'
+              AND a.partner_id IS NULL  -- Partner-Aufträge (z.B. A-INDRA) sind nie KG-Umsatz
               AND a.erstellt_am BETWEEN :von AND :bis
               $kanalSql
             GROUP BY periode
@@ -113,6 +115,7 @@ class StatistikRepository
             LEFT JOIN artikel_gruppen g ON g.id = art.artikel_gruppe_id
             LEFT JOIN artikel_lieferanten al ON al.artikel_id = art.id AND al.standard_lieferant = 1
             WHERE a.zahlungsstatus != 'storniert'
+              AND a.partner_id IS NULL  -- Partner-Aufträge (z.B. A-INDRA) sind nie KG-Umsatz
               AND a.erstellt_am BETWEEN :von AND :bis
               $kanalSql
             GROUP BY gruppe_id, gruppe
@@ -132,6 +135,7 @@ class StatistikRepository
                 SUM(a.bruttobetrag) AS umsatz
             FROM auftraege a
             WHERE a.zahlungsstatus != 'storniert'
+              AND a.partner_id IS NULL  -- Partner-Aufträge (z.B. A-INDRA) sind nie KG-Umsatz
               AND YEAR(a.erstellt_am) > YEAR(CURDATE()) - :jahre
             GROUP BY jahr
             ORDER BY jahr

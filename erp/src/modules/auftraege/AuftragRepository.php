@@ -124,18 +124,21 @@ class AuftragRepository
                 (" . OffeneWerte::BEDINGUNG_RETOURE_ERWARTET . ") AS retoure_erwartet,
                 a.shop_id,
                 s.name AS shop_name,
+                a.partner_id,
+                pa.name AS partner_name,
                 k.kundennummer,
                 COUNT(p.id) AS positionen_anzahl,
                 (SELECT COALESCE(SUM(az.betrag),0) FROM auftrag_zahlungen az WHERE az.auftrag_id = a.id) AS summe_zahlungen
             FROM auftraege a
             LEFT JOIN kunden k ON k.id = a.kunden_id
             LEFT JOIN shops s ON s.id = a.shop_id
+            LEFT JOIN partner pa ON pa.id = a.partner_id
             LEFT JOIN auftrag_positionen p ON p.auftrag_id = a.id
             WHERE " . implode(' AND ', $where) . "
             GROUP BY a.id, a.auftrag_nr, a.kanal, a.zahlungsstatus, a.lieferstatus, a.lieferart,
                      a.zahlungsart, a.bruttobetrag, a.versandkosten, a.tracking_nr,
                      a.mahnung_stufe, a.bezahlt_am, a.erstellt_am, a.kunden_id,
-                     a.kunden_snapshot, a.shop_id, a.widerruf_status, s.name, k.kundennummer
+                     a.kunden_snapshot, a.shop_id, a.widerruf_status, s.name, a.partner_id, pa.name, k.kundennummer
             ORDER BY a.erstellt_am DESC
         ");
         $stmt->execute($params);

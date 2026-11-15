@@ -308,9 +308,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             <a href="<?= BASE_PATH ?>/auftraege/detail.php?id=<?= $a['id'] ?>" style="font-weight:600">
                                 <?= htmlspecialchars($a['auftrag_nr']) ?>
                             </a>
+                            <?php if (!empty($a['partner_id'])): ?>
+                                <span class="chip" style="margin-left:4px;background:#e2e8f0;color:#475569;border-color:#cbd5e1"
+                                      title="Partner-Auftrag <?= htmlspecialchars($a['partner_name'] ?? '') ?> — kein eigener Umsatz">Fremd</span>
+                            <?php endif ?>
                             <?php if (!empty($a['widerruf_status'])): ?>
                                 <span class="chip chip-inaktiv" style="margin-left:4px;color:var(--color-danger);border-color:var(--color-danger)"
-                                      title="Widerruf über den Shop — Auftrag gesperrt"><?= $a['widerruf_status'] === 'widerrufen' ? 'Widerrufen' : 'Widerruf' ?></span>
+                                      title="Widerruf über den Shop — Auftrag gesperrt"><?= !empty($a['partner_id']) ? 'Widerr.' : ($a['widerruf_status'] === 'widerrufen' ? 'Widerrufen' : 'Widerruf') ?></span>
                             <?php endif ?>
                             <?php if ($a['mahnung_stufe'] > 0): ?>
                                 <span style="color:var(--color-warning);margin-left:4px;font-size:12px" title="Mahnstufe <?= $a['mahnung_stufe'] ?>">&#9888;</span>

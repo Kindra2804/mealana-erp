@@ -819,7 +819,9 @@ body {
                   : 'background:#052e16;color:#4ade80;' ?>">
     <?= $modus === 'offline' ? 'MESSEBETRIEB' : 'ONLINE' ?>
   </div>
-  <?php if ($rksvId): ?>
+  <?php // "RKSV aktiv" nur, wenn die Kasse wirklich signiert (abgeschlossene Registrierung setzt
+        // bfr_url + bfr_aktiv_seit) -- eine Kassen-ID allein reicht nicht (Dev-K1-Altlast 2026-11-15)
+  if ($rksvId && !empty($kasseInfo['bfr_url']) && !empty($kasseInfo['bfr_aktiv_seit'])): ?>
   <div class="ph-rksv" onclick="nullbonDialog()" title="Nullbon erstellen">
     <div class="ph-rksv-dot<?= $modus === 'offline' ? ' offline' : '' ?>"></div>
     RKSV <?= $modus === 'offline' ? 'offline' : 'aktiv' ?>
