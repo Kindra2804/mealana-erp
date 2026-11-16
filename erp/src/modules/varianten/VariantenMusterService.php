@@ -18,8 +18,9 @@ require_once __DIR__ . '/../shop/ShopSyncRepository.php';
  *  - Je Master-Kind: hat das Ziel diese Kombination schon → überspringen (inkl. Bestand),
  *    sonst neues Kind. Nummer/Name = Ziel + der Teil, den das Master-Kind hinten dran hat
  *    (ID-U-K20-KLS → ID-U-A49-KLS). Ist die Nummer schon von einem anderen Artikel belegt → Konflikt, übersprungen.
- *  - Das neue Kind erbt alles vom eigenen Vater (wie der Generator), dazu den Unterschied
- *    des Master-Kinds zum Master-Vater: Preis (Schiefer +3 €) und abweichende Maße/Gewichte.
+ *  - Das neue Kind erbt alles vom eigenen Vater (wie der Generator). Preis: hat die Achse beim Ziel
+ *    einen Aufpreis/Direktpreis → wie der Generator; sonst Unterschied Master-Kind ↔ Master-Vater
+ *    (Schiefer +3 €). Abweichende Maße/Gewichte des Master-Kinds kommen immer mit.
  *  - Neue Kinder sind aktiv (Babsi soll sie in der Standardansicht sehen) und in den Shops
  *    des Ziel-Vaters zugeordnet.
  *  - Ziel mit eigenem Bestand, das jetzt Varianten bekommt → Bestand an eine gewählte Variante.
@@ -95,12 +96,15 @@ class VariantenMusterService
                 $kombis[] = ['key' => implode(',', $ids), 'artikelnummer' => $z['nr'], 'name' => $z['name'], 'ean' => ''];
             }
             $neueIds = [];
+            $achsenPreis = [];
             if ($kombis) {
                 $erg = (new VariantenService())->erstelleKombinationen($zielVater, true, $kombis);
                 $neueIds = $erg['ids'];
-                // Kategorien, Merkmale, Lieferanten, Preise vom Ziel-Vater; Preis-Anpassungen aus
-                // den Achsen bewusst NICHT — der Preis kommt unten als Unterschied vom Master-Kind
-                (new ArtikelService())->kopiereVaterRelationenZuKindern($zielId, $neueIds, []);
+                // Preis aus der Achse (Aufpreis/Direktpreis an artikel_achsen des Ziels): wie der Generator.
+                // Nur Varianten OHNE Achsenpreis bekommen unten den Unterschied vom Master-Kind
+                // (Preis direkt an der Variante gepflegt, z.B. Schiefer 9 € statt 6 €). Jacky 2026-11-16: beide Fälle.
+                $achsenPreis = $erg['preisAnpassungen'] ?? [];
+                (new ArtikelService())->kopiereVaterRelationenZuKindern($zielId, $neueIds, $achsenPreis);
             }
 
             $masterVaterPreise = $this->repo->findBasisPreise($master['artikel']['id']);
@@ -115,8 +119,8 @@ class VariantenMusterService
                 if (!$kindId) continue;
                 $neuJeMasterKind[$z['master_kind_id']] = $kindId;
 
-                // Preis: Ziel-Vater + (Master-Kind − Master-Vater), je Kundengruppe
-                foreach ($this->repo->findBasisPreise($z['master_kind_id']) as $kg => $mk) {
+                // Preis: Ziel-Vater + (Master-Kind − Master-Vater), je Kundengruppe — außer der Preis kommt aus der Achse
+                foreach (isset($achsenPreis[$kindId]) ? [] : $this->repo->findBasisPreise($z['master_kind_id']) as $kg => $mk) {
                     $basis = $zielVaterPreise[$kg] ?? null;
                     $mv    = $masterVaterPreise[$kg] ?? null;
                     if ($basis === null) {
