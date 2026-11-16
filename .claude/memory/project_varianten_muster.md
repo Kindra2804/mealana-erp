@@ -16,6 +16,8 @@ metadata:
 - Kopieren: Häkchen „Varianten mitkopieren“ (gleiche Logik).
 - Nebenfund: `setzeBasisPreis` darf nicht auf rowCount() bauen (MariaDB 0 bei gleichem Wert → doppelte Preiszeile).
 
+**Nachtrag 2026-11-16 (3d8cf14, e04e481):** Preis aus der Achse (artikel_achsen.preis_modus/wert beim Ziel) → wie Generator, sonst Unterschied Master-Kind. Eigentümer-Badge (lila, Partner-Kürzel) in der Artikelliste; Artikel neu: Feld „Gehört“ (nur bei Partnern mit online_verkauf). **Fix:** neue Varianten + Kopien übernehmen partner_id/partner_modus (`uebernimmEigentuemer`) — vorher Hauptfirma. Live prüfen: Varianten von ID-U-A71 vermutlich Hauptfirma → Massenaktion „Eigentümer setzen“ INDRA.
+
 **Offen:** Klicktest Jacky (echtes Übernehmen auf Dev), dann Paket 1.0.22 (keine Migration; nächste Migr. weiter 254). Browser-Test `.claude-browser-tools/varianten_muster_ui_test.js` (nur lesend).
 
 Siehe [[project-1-0-check]], [[project-indra-sortiment]].
