@@ -431,47 +431,28 @@ class VariantenRepository
 
     public function insertKindArtikel(array $kind): int
     {
-        $stmt = $this->db->prepare("
-            INSERT INTO artikel (
-                artikelnummer,
-                name,
-                hersteller_id,
-                artikel_gruppe_id,
-                steuerklasse_id,
-                artikeltyp_id,
-                vaterartikel_id,
-                hat_eigenen_lagerstand,
-                einheit_id,
-                charge_pflicht
-            )
-            VALUES (
-                :artikelnummer,
-                :name,
-                :hersteller_id,
-                :artikel_gruppe_id,
-                :steuerklasse_id,
-                :artikeltyp_id,
-                :vaterartikel_id,
-                :hat_eigenen_lagerstand,
-                :einheit_id,
-                :charge_pflicht
-            )
-        ");
+        // Alle Felder, die erstelleKombinationen() vom Vater vorbereitet. Bis 2026-11-16 wurden nur 10 davon
+        // gespeichert -- Inhalt, Gewicht, Grundpreis, Texte, Maße, TARIC usw. blieben beim neuen Kind leer,
+        // bis jemand den Vater speicherte (Fund Jacky beim Lang-Import, LY-1168-0002).
+        $erlaubt = [
+            'artikelnummer', 'name', 'vaterartikel_id', 'hat_eigenen_lagerstand',
+            'hersteller_id', 'artikel_gruppe_id', 'steuerklasse_id', 'artikeltyp_id', 'einheit_id',
+            'kurzbeschreibung', 'beschreibung', 'technische_details', 'beschreibung_intern',
+            'meta_titel', 'meta_description', 'url_slug',
+            'inhalt_menge', 'inhalt_einheit', 'gewicht_artikel', 'gewicht_versand', 'laenge', 'breite', 'hoehe',
+            'herkunftsland', 'taric_code', 'grundpreis_bezugsmenge', 'grundpreis_anzeigen',
+            'mindestabnahme_modus', 'mindestabnahme', 'abnahmeintervall',
+            'charge_pflicht', 'ist_auslaufartikel', 'ueberverkauf_erlaubt', 'aktiv', 'zustand', 'zustand_vater_id',
+        ];
+        $daten = array_intersect_key($kind, array_flip($erlaubt));
+        $daten['hat_eigenen_lagerstand'] = $daten['hat_eigenen_lagerstand'] ?? 0;
+        $daten['charge_pflicht']         = $daten['charge_pflicht'] ?? 0;
 
-        // Hersteller + Artikelgruppe vom Vater übernehmen (Gruppe = Erlöskonto an Kasse/Export;
-        // bis 2026-11-04 blieben beide bei generierten Kindern leer)
-        $stmt->execute([
-            'artikelnummer' => $kind['artikelnummer'],
-            'name' => $kind['name'],
-            'hersteller_id' => $kind['hersteller_id'] ?? null,
-            'artikel_gruppe_id' => $kind['artikel_gruppe_id'] ?? null,
-            'steuerklasse_id' => $kind['steuerklasse_id'],
-            'artikeltyp_id' => $kind['artikeltyp_id'],
-            'vaterartikel_id' => $kind['vaterartikel_id'],
-            'hat_eigenen_lagerstand' => $kind['hat_eigenen_lagerstand'] ?? 0,
-            'einheit_id' => $kind['einheit_id'],
-            'charge_pflicht' => $kind['charge_pflicht'] ?? 0,
-        ]);
+        $spalten = array_keys($daten);
+        $stmt = $this->db->prepare(
+            'INSERT INTO artikel (' . implode(', ', $spalten) . ') VALUES (:' . implode(', :', $spalten) . ')'
+        );
+        $stmt->execute($daten);
 
         return (int) $this->db->lastInsertId();
     }
