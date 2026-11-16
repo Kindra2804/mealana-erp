@@ -1,7 +1,7 @@
 # Memory Index
 
 ## Aktuell / Steuerung
-- [🧶 Lang-Yarns-Import](project_lang_import.md) — ✅ 2026-11-16 gebaut (bdd367a, 0dd1a24, Migr. 254 → nächste 255): CSV → Garne + dt. Bücher, Abwahl, Preisänderungen, Strecke, ohne UVP; Paket 1.0.23 gebaut (b0b629e), Live offen
+- [🧶 Lang-Yarns-Import](project_lang_import.md) — ✅ 2026-11-16 gebaut (bdd367a, 0dd1a24, Migr. 254+255 → nächste 256; Fix Varianten erben alle Vater-Felder): CSV → Garne + dt. Bücher, Abwahl, Preisänderungen, Strecke, ohne UVP; Paket 1.0.23 neu gebaut (a133f42), Live offen
 - [🧬 Varianten-Muster + Vater-Bestand](project_varianten_muster.md) — ✅ 2026-11-16 gebaut (86d79e9, c4f4afc): Bestand an Variante übergeben, Massenaktion Muster übernehmen, Varianten mitkopieren; + Achsenpreis + Eigentümer-Badge/Feld „Gehört“ + Fix Eigentümer bei Varianten/Kopie (e04e481); Paket 1.0.22 gebaut, Live-Einspielen offen; ID-U-A71 auf Live korrigiert
 - [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
 - [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — ✅ 2026-11-15 Offline-Kasse light = Mobil-Messe Sunmi (ohne Signatur, Nacherfassung, Migr. 248), Test am echten Sunmi offen; nächste Migr. 249
