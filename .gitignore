@@ -59,3 +59,4 @@ beleg-portal/config.php
 beleg-portal/daten/*
 !beleg-portal/daten/.htaccess
 erp/storage/*.lock
+erp/storage/lang_import/

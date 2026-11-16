@@ -358,6 +358,17 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Viele Artikel auf einmal</strong> (z.B. Pflegesymbole): Artikelliste → Väter anhaken → Aktion „Merkmal setzen (z.B. Pflege)“ → Ausführen → Merkmal wählen, Werte anhaken → <strong>hinzufügen</strong> (vorhandene bleiben), <strong>ersetzen</strong> (nur noch diese) oder <strong>entfernen</strong> (nichts angehakt = ganz weg). Väter nehmen ihre Farben mit, andere Merkmale bleiben unberührt.</p>            <p><strong>Werte aufräumen</strong> (Artikel → Merkmale): Neben jedem Wert steht, wie viele Artikel ihn nutzen. Doppelte Schreibweise (z.B. „Acryl“ / „Polyacryl“)? Beim falschen auf <strong>⇢</strong>, richtigen Wert suchen, <strong>Zusammenführen</strong> — alle Artikel werden umgestellt, der falsche Wert gelöscht.</p>
             <p><strong>Aus JTL übernehmen:</strong> JTL-Ameise-Export „Artikelmerkmale“, am Server <code>php scripts/jtl_merkmale_import.php &lt;datei.csv&gt; --dry-run</code> (Probelauf), danach ohne <code>--dry-run</code>. Der Bericht liegt neben der CSV; der Import ist wiederholbar.</p>
 
+            <h3 id="artikel-lang-import">Lang-Yarns-Import <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Artikelliste → <strong>⬇ Lang-Import</strong>: Artikelstamm-CSV aus dem Lang-Händlerportal hochladen → <strong>Probelauf</strong> (ändert nichts) → <strong>Import starten</strong> (läuft in Abschnitten, Abbruch = einfach nochmal starten, nichts doppelt). Vorher Datenbank-Sicherung!</p>
+            <ul>
+                <li>Nur <strong>Garne</strong> (Hauptgruppe 10) und <strong>Bücher</strong> (30, nur deutsche Fassungen, als Einzelartikel mit 10 %).</li>
+                <li>Status 99 = Vater; <code>749.0003</code> → <code>LY-749-0003</code>, Originalnummer = Lief-Art.-Nr., Achse „Farbe“.</li>
+                <li>Status 35/40/55/61: nicht anlegen, vorhandene → <strong>Auslaufartikel</strong> (ohne Bestand gleich inaktiv).</li>
+                <li><strong>EK</strong> (EP/kg × Knäuelgewicht), <strong>UVP</strong>, EAN, Zolltarifnummer aus der Datei; bestehende Verkaufspreise bleiben, neue Artikel bekommen die UVP.</li>
+                <li>Neue Artikel: aktiv, <strong>in keinem Shop</strong>, noch ohne Kategorie; Vater mit Beschreibung, Pflege und Merkmalen.</li>
+                <li>Listen zum Prüfen: <strong>über die EAN gefunden</strong> (andere Nummer im ERP) und <strong>nicht mehr in der Datei</strong> (werden nicht verändert, ⬇ CSV).</li>
+            </ul>
+
             <h3 id="artikel-preise">Preise & Aktionen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Preis-Priorität (höchste gewinnt):</p>
             <table class="ba-table">

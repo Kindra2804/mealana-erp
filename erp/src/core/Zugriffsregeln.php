@@ -38,6 +38,7 @@ final class Zugriffsregeln
             'speichern.php'                 => 'artikel.anlegen',
             'kopieren_speichern.php'        => 'artikel.anlegen',
             'import.php'                    => 'artikel.anlegen',
+            'lang_import.php'               => 'artikel.anlegen',
             'kategorie_neu.php'             => 'artikel.anlegen',
             'kategorie_erstellen.php'       => 'artikel.anlegen',
             'variante_neu.php'              => 'artikel.anlegen',

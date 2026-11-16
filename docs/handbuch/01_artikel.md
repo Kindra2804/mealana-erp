@@ -188,6 +188,29 @@ Gewählte Väter nehmen alle ihre Farben mit, die übrigen Merkmale bleiben unbe
 
 ---
 
+## Lang-Yarns-Import (Artikelliste → ⬇ Lang-Import) {#lang-import}
+
+Übernimmt den Artikelstamm aus dem Lang-Händlerportal (`LangYarns_Artikelstamm.csv`). **Vorher eine Datenbank-Sicherung machen.**
+
+1. Datei wählen, Lieferant „Lang Garn & Wolle GmbH“ steht schon da → **Hochladen + Probelauf**. Der Probelauf ändert noch nichts.
+2. Kacheln und aufklappbare Listen prüfen: neue Väter/Farben/Bücher, Aktualisieren, Auslauf, über die EAN gefunden, nicht mehr in der Datei.
+3. **Import starten**. Er läuft in Abschnitten mit Fortschrittsbalken; bei einem Abbruch einfach noch einmal starten – nichts wird doppelt angelegt.
+
+**Regeln:**
+- Nur **Garne** (Lang-Hauptgruppe 10) und **Bücher/Anleitungen** (30). Nadeln, RAW und Deco nicht.
+- Status **99** = Vater. Kinder heißen in der Datei `749.0003` → bei uns `LY-749-0003`, Name „Vatername 0003 Farbe“, Achse „Farbe“. Die Originalnummer wird **Lief-Art.-Nr.**
+- Status **35, 40, 55, 61** werden nicht angelegt; vorhandene Artikel werden **Auslaufartikel** (ohne Bestand gleich inaktiv). Sind alle Farben im Auslauf, auch der Vater.
+- **EK** = EP/kg × Knäuelgewicht (ohne Gewicht = Stückpreis), **UVP** = VP je Knäuel, dazu EAN (falls noch keine) und Zolltarifnummer (8-stellig, falls leer). Bestehende **Verkaufspreise bleiben**; neue Artikel bekommen die UVP als Verkaufspreis.
+- Neue Artikel sind **aktiv, aber in keinem Shop** – Shop per Massenaktion zuteilen. Kategorien vergeben (neue Lang-Artikel haben noch keine).
+- Neue Väter bekommen Beschreibung + Pflegetext, Merkmale Zusammensetzung, Gewicht/Länge, Nadelstärke, Maschenprobe (Bereiche werden abgeleitet); die Farben erben sie.
+- **Bücher**: Die Sprachfassungen sind in der Datei Kinder – bei uns **Einzelartikel**, nur deutsche Fassungen (DE, DE/FR/NL …), 10 % USt, Gruppe „Hefte Bücher Anleitungen“. Gratis-Flyer ohne EK/EAN werden ausgelassen.
+- Artikelnummern mit Leerzeichen oder kleinem „ly“ werden bereinigt.
+- **Über die EAN gefunden:** Lang-Artikel, der im ERP unter einer anderen Nummer steht → wird aktualisiert, Nummer bleibt. Bitte prüfen.
+- **Nicht mehr in der Datei:** LY-Artikel, die Lang nicht mehr führt (oder falsch angelegt sind) – werden nicht verändert, nur angezeigt (⬇ als CSV), die mit Bestand oben.
+- Ein vorhandener Vater mit **eigenem Bestand** bekommt keine neuen Farben (Liste „Übersprungen“) – erst im Tab Varianten „Bestand übergeben“.
+
+---
+
 ## Kategorien
 
 Kategorien organisieren die Artikel im Shop und im ERP.
