@@ -1011,6 +1011,7 @@
 .sc-sale        { background: #DC2626; color: #FFFFFF; font-weight: 700; }
 .sc-aktion      { background: #FEF3C7; color: #B45309; }
 .sc-aktion-grau { background: #F5F5F5; color: #9E9E9E; border: 1px solid #E0E0E0; }
+.sc-partner     { background: #EDE9FE; color: #5B21B6; border: 1px solid #C4B5FD; }   /* Artikel gehört einem Partner */
 
 /* Kanal-Chips */
 .kc {

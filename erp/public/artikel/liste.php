@@ -739,6 +739,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     $hatKinder = count($kinder) > 0;
                     // Status-Chips für Vater
                     $statusChips = '';
+                    if (!empty($a['partner_id']))
+                        $statusChips .= '<span class="sc sc-partner" title="Gehört: ' . htmlspecialchars($a['partner_name'] ?? '') . '">' . htmlspecialchars($a['partner_kurz'] ?? 'Partner') . '</span>';
                     if (!$a['aktiv'])
                         $statusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
                     if ($a['aktiv'] && $a['ist_auslaufartikel'])
@@ -858,6 +860,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php foreach ($kinder as $k):
                         $kindAbw = kindAbweichungen($k, $a);
                         $kindStatusChips = '';
+                        // Eigentümer beim Kind nur zeigen, wenn er vom Vater abweicht
+                        if (!empty($k['partner_id']) && (int)$k['partner_id'] !== (int)($a['partner_id'] ?? 0))
+                            $kindStatusChips .= '<span class="sc sc-partner" title="Gehört: ' . htmlspecialchars($k['partner_name'] ?? '') . '">' . htmlspecialchars($k['partner_kurz'] ?? 'Partner') . '</span>';
                         if (!$k['aktiv'])
                             $kindStatusChips .= '<span class="sc sc-deaktiviert">Deaktiviert</span>';
                         if ($k['aktiv'] && $k['ist_auslaufartikel'])

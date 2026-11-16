@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/core/Database.php';
+require_once __DIR__ . '/../../src/modules/partner/ArtikelEigentumService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: neu.php');
@@ -138,7 +139,17 @@ if ($result['erfolg']) {
         ]);
     }
 
-    $_SESSION['erfolg'] = 'Artikel wurde gespeichert!';
+    // Eigentümer (nur wenn im Formular gewählt — Dropdown gibt es nur bei Partnern mit Online-Verkauf)
+    $partnerId = (int)($data['partner_id'] ?? 0);
+    $partnerHinweis = '';
+    if ($partnerId > 0) {
+        $eig = (new ArtikelEigentumService())->setze([$neueArtikelId], $partnerId, (int)($_SESSION['benutzer']['id'] ?? 0));
+        if (empty($eig['erfolg'])) {
+            $partnerHinweis = ' — Eigentümer konnte nicht gesetzt werden: ' . implode(' ', (array)($eig['fehler'] ?? []));
+        }
+    }
+
+    $_SESSION['erfolg'] = 'Artikel wurde gespeichert!' . $partnerHinweis;
 
     if ($weRueckkehr && str_starts_with($weRueckkehr, BASE_PATH . '/')) {
         header('Location: ' . $weRueckkehr);
@@ -148,7 +159,7 @@ if ($result['erfolg']) {
     exit;
 } else {
     $_SESSION['fehler'] = $result['fehler'];
-    $_SESSION['formdata'] = $artikelData;
+    $_SESSION['formdata'] = $artikelData + ['partner_id' => $data['partner_id'] ?? ''];
     if ($weRueckkehr) {
         $_SESSION['we_rueckkehr'] = $weRueckkehr;
         $_SESSION['we_ean']       = $weEan;

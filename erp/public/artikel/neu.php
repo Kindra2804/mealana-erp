@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../../src/modules/lieferanten/LieferantenService.php';
+require_once __DIR__ . '/../../src/modules/partner/ArtikelEigentumService.php';
 
 $fehler   = $_SESSION['fehler']   ?? [];
 $formdata = $_SESSION['formdata'] ?? [];
@@ -21,6 +22,8 @@ $alleEinheiten   = $service->getAllEinheiten();
 $alleKategorien  = $service->getAlleKategorien();
 $kategorienBaum  = $service->getKategorienBaum();
 $alleLieferanten = $lieferantService->findAll();
+// Eigentümer-Auswahl nur, wenn es Partner gibt, die online verkaufen (z.B. Indra-Design)
+$eigentumsPartner = (new ArtikelEigentumService())->moeglichePartner();
 
 $db = \Database::getInstance();
 $artikelGruppen = $db->query("
@@ -172,6 +175,19 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php if (!empty($eigentumsPartner)): ?>
+            <div class="form-row">
+                <label class="form-label">Gehört</label>
+                <select name="partner_id" class="erp-select" title="Wem gehört der Artikel? Partner-Artikel werden in seinem Namen verkauft.">
+                    <option value="">Hauptfirma</option>
+                    <?php foreach ($eigentumsPartner as $p): ?>
+                        <option value="<?= (int)$p['id'] ?>" <?= selected('partner_id', (string)$p['id'], $formdata) ?>>
+                            <?= htmlspecialchars($p['name'] . ($p['nr_kuerzel'] ? ' (' . $p['nr_kuerzel'] . ')' : '')) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
             <div class="form-row">
                 <label class="form-label">Einheit</label>
                 <select name="einheit_id" class="erp-select">

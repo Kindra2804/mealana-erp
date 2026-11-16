@@ -273,6 +273,10 @@ class ArtikelRepository
                 -- idx_kfa_layout statt Join-Erweiterung (Join-Kreuzung hatte schon einmal einen 120-s-Timeout)
                 COALESCE(SUM(lb.bestand), 0) + (SELECT COALESCE(SUM(lbf.bestand), 0) FROM konfig_fertige_artikel kf_b JOIN lagerbestand lbf ON lbf.artikel_id = kf_b.artikel_id WHERE kf_b.layout_artikel_id = a.id) AS gesamtbestand,
                 (SELECT COUNT(*) FROM artikel k WHERE k.vaterartikel_id = a.id) AS kind_anzahl,
+                -- Eigentümer (Partner, z.B. Indra-Design) für das Badge in der Liste
+                a.partner_id,
+                (SELECT COALESCE(NULLIF(p_e.nr_kuerzel, ''), p_e.name) FROM partner p_e WHERE p_e.id = a.partner_id) AS partner_kurz,
+                (SELECT p_e2.name FROM partner p_e2 WHERE p_e2.id = a.partner_id) AS partner_name,
                 (SELECT lp_s.bezeichnung FROM lagerplaetze lp_s WHERE lp_s.id = a.stammplatz_id) AS stammplatz,
                 (SELECT lp_n.bezeichnung FROM lagerplaetze lp_n WHERE lp_n.id = a.nachfuellplatz_id) AS nachfuellplatz,
                 (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert,
@@ -629,6 +633,10 @@ class ArtikelRepository
                 a.id,
                 COALESCE(a.vaterartikel_id, kf.layout_artikel_id) AS vaterartikel_id,
                 (kf.artikel_id IS NOT NULL) AS ist_fertiges_schild,
+                -- Eigentümer (Partner, z.B. Indra-Design) für das Badge in der Liste
+                a.partner_id,
+                (SELECT COALESCE(NULLIF(p_e.nr_kuerzel, ''), p_e.name) FROM partner p_e WHERE p_e.id = a.partner_id) AS partner_kurz,
+                (SELECT p_e2.name FROM partner p_e2 WHERE p_e2.id = a.partner_id) AS partner_name,
                 a.artikelnummer,
                 a.name,
                 a.aktiv,
@@ -1601,6 +1609,21 @@ class ArtikelRepository
         ");
         $stmt->execute(['q' => '%' . $q . '%']);
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Übernimmt den Eigentümer (partner_id + partner_modus) vom Quell-Artikel — für neue Varianten
+     * (Quelle = Vater) und Kopien. Fund 2026-11-16: beide blieben sonst bei der Hauptfirma, obwohl
+     * der Vater/das Original einem Partner (Indra-Design) gehört. Neue Artikel haben noch keinen
+     * Bestand, deshalb keine Lager-Umbuchung nötig.
+     */
+    public function uebernimmEigentuemer(int $quellId, int $zielId): void
+    {
+        $this->db->prepare("
+            UPDATE artikel z JOIN artikel q ON q.id = :q
+            SET z.partner_id = q.partner_id, z.partner_modus = q.partner_modus
+            WHERE z.id = :z
+        ")->execute(['q' => $quellId, 'z' => $zielId]);
     }
 
     public function findByIdSimple(int $id): array|false

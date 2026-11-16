@@ -764,6 +764,7 @@ class ArtikelService
 
         $neueId = $this->repo->insert($neuerArtikelGefiltert);
         $this->repo->syncGutscheinFlag($neueId);
+        $this->repo->uebernimmEigentuemer($quell_id, $neueId);   // Kopie eines Partner-Artikels gehört demselben Partner
 
         if ($kopierData['preise']) {
             $this->repo->copyPreise($quell_id, $neueId);

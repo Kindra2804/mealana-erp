@@ -53,6 +53,12 @@ Die Liste zeigt alle aktiven Artikel. Oben gibt es Filter:
 
 ---
 
+## Wem gehört ein Artikel? (Partner-Artikel)
+
+Artikel eines Partners, der online verkauft (z.B. Indra-Design), tragen in der Artikelliste ein lila Badge mit seinem Kürzel (**INDRA**). Beim **Neuen Artikel** gibt es dafür das Feld **„Gehört“** (nur sichtbar, wenn es solche Partner gibt): Hauptfirma oder Partner. Kopien und neue Varianten gehören automatisch demselben wie das Original bzw. der Vater. Nachträglich ändern: Artikelliste → Aktion „Eigentümer setzen“.
+
+---
+
 ## Artikel kopieren
 
 **Navigation:** Artikel öffnen → **Kopieren**

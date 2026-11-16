@@ -476,6 +476,21 @@ class VariantenRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /**
+     * Übernimmt den Eigentümer (partner_id + partner_modus) vom Quell-Artikel — für neue Varianten
+     * (Quelle = Vater) und Kopien. Fund 2026-11-16: beide blieben sonst bei der Hauptfirma, obwohl
+     * der Vater/das Original einem Partner (Indra-Design) gehört. Neue Artikel haben noch keinen
+     * Bestand, deshalb keine Lager-Umbuchung nötig.
+     */
+    public function uebernimmEigentuemer(int $quellId, int $zielId): void
+    {
+        $this->db->prepare("
+            UPDATE artikel z JOIN artikel q ON q.id = :q
+            SET z.partner_id = q.partner_id, z.partner_modus = q.partner_modus
+            WHERE z.id = :z
+        ")->execute(['q' => $quellId, 'z' => $zielId]);
+    }
+
     /** Markiert einen Artikel als Vater (ist_vater=1) — muss bei jeder Kind-Erstellung gesetzt werden. */
     public function setIstVater(int $artikelId): void
     {

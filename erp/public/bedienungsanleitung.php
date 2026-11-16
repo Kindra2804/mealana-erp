@@ -272,6 +272,9 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-hint">💡 Ohne EAN kann der Barcode-Scanner am Packplatz den Artikel nicht erkennen. EAN immer eintragen!</div>
             <p>Einheit ist mit <strong>Stück</strong> vorbelegt. Der Grundpreis ist beim neuen Artikel aus — bei Garn schaltet er sich automatisch ein (Bezugsmenge 100), sobald Inhalt/Menge und Einheit eingetragen sind; bei Meterware selbst einschalten.</p>
 
+            <h3 id="artikel-eigentuemer">Wem gehört ein Artikel? (Partner-Artikel)</h3>
+            <p>Artikel eines Partners, der online verkauft (z.B. Indra-Design), tragen in der Artikelliste ein lila Badge mit seinem Kürzel (<strong>INDRA</strong>). Beim neuen Artikel gibt es dafür das Feld <strong>„Gehört“</strong> (nur sichtbar, wenn es solche Partner gibt). Kopien und neue Varianten gehören automatisch demselben wie das Original bzw. der Vater. Nachträglich ändern: Artikelliste → Aktion „Eigentümer setzen“.</p>
+
             <h3 id="artikel-kopieren">Artikel kopieren <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Artikel öffnen → <strong>Kopieren</strong></div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Neuen Namen und neue Artikelnummer eintragen (vorbelegt mit „-KOPIE“)</div></div>

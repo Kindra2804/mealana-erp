@@ -245,6 +245,9 @@ class VariantenService
             // Existiert die Artikelnummer bereits? (z.B. Abbruch eines früheren Durchlaufs)
             $existingId = $this->repo->findIdByArtikelnummer($kind['artikelnummer']);
             $kindId     = $existingId ?? $this->repo->insertKindArtikel($kind);
+            if ($existingId === null) {
+                $this->repo->uebernimmEigentuemer((int) $vater['id'], $kindId);   // Partner-Artikel: Kind gehört demselben Partner
+            }
             $neuErstellteIds[] = $kindId;
 
             $ean = trim($kombi['ean'] ?? '');
