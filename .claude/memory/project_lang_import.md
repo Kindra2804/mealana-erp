@@ -18,6 +18,6 @@ metadata:
 
 **Dev-Probelauf:** 48 Väter + 1.063 Farben + 24 Bücher neu, 1.479 aktualisieren, 401 Auslauf, 1.620 nicht in Datei (57 mit Bestand), 9 EAN-Treffer; kompletter Lauf 19 s in Rollback-Transaktion, 2. Lauf legt nichts doppelt an. Merkmale (Wollqualität, Pflegesymbole) nicht gesetzt; neue Artikel ohne Kategorie.
 
-**Offen:** Paket bauen + Live (vorher DB-Sicherung, upload_max_filesize ≥ 10 MB), Kategorien für neue Lang-Artikel, Nicht-in-Datei-Liste durchgehen. Browser-Test `.claude-browser-tools/lang_import_ui_test.js` (nur lesend).
+**Paket 1.0.23 gebaut** 2026-11-16 (D:/ERP/pakete/nahtlos-1.0.23.zip, Commit b0b629e, Migr. 254). **Offen:** Live einspielen (vorher DB-Sicherung, upload_max_filesize ≥ 10 MB), Kategorien für neue Lang-Artikel, Nicht-in-Datei-Liste durchgehen. Browser-Test `.claude-browser-tools/lang_import_ui_test.js` (nur lesend).
 
 Siehe [[project-dropshipping]] (Lieferant 36 Lang Garn & Wolle GmbH), [[project-roadmap-reihenfolge]].
