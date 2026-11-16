@@ -362,6 +362,34 @@ class LagerRepository
         }
     }
 
+    /**
+     * Alle Bestandszeilen eines Artikels mit Bestand ≠ 0 (je Lager × Charge), inkl. Lagername.
+     * Für die Übergabe Vater → Variante (Vater-Bestand, der beim Varianten-Erstellen liegen geblieben ist).
+     */
+    public function findBestandszeilenUngleichNull(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT lb.id, lb.lager_id, l.name AS lager_name, lb.charge, lb.charge_status, lb.bestand
+            FROM lagerbestand lb
+            JOIN lager l ON l.id = lb.lager_id
+            WHERE lb.artikel_id = :aid AND lb.bestand <> 0
+            ORDER BY l.name, lb.charge
+        ");
+        $stmt->execute(['aid' => $artikelId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Hängt eine ganze Bestandszeile auf einen anderen Artikel um (Lagerplätze, charge_status,
+     * Mindestbestand bleiben dran). Nur aufrufen, wenn der Ziel-Artikel für Lager × Charge noch
+     * keine eigene Zeile hat (UNIQUE artikel_id, lager_id, charge).
+     */
+    public function bestandszeileUmhaengen(int $lagerbestandId, int $neuerArtikelId): void
+    {
+        $this->db->prepare("UPDATE lagerbestand SET artikel_id = :neu, geaendert_am = NOW() WHERE id = :id")
+                 ->execute(['neu' => $neuerArtikelId, 'id' => $lagerbestandId]);
+    }
+
     /** Löscht einen Lagerbestand-Eintrag dauerhaft (z.B. nach Charge-Nachtragung mit vollständiger Umbuchung). */
     public function deleteBestand(int $id): bool
     {

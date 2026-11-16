@@ -422,6 +422,83 @@ class LagerService
         return ['erfolg' => true, 'vorher' => $vorher, 'nachher' => $neu, 'differenz' => $diff];
     }
 
+    /**
+     * Eigener Bestand eines Vaters (Zeilen ≠ 0). Entsteht, wenn ein Artikel mit Bestand nachträglich
+     * Varianten bekommt — der Bestand wäre sonst unsichtbar (Liste zählt nur Kinder), steckt aber
+     * weiter im Lagerwert/Inventur/JTL-Abgleich (Fund 2026-11-16, ID-U-A71).
+     */
+    public function eigenerBestandZeilen(int $artikelId): array
+    {
+        return $this->repo->findBestandszeilenUngleichNull($artikelId);
+    }
+
+    /**
+     * Übergibt den kompletten eigenen Bestand eines Vaters an eine seiner Varianten,
+     * je Lager × Charge. Hat das Kind für Lager × Charge noch keine Zeile, wird die Zeile
+     * umgehängt (Lagerplätze/charge_status bleiben dran), sonst addiert und die Vater-Zeile
+     * gelöscht. Bewegungslog: Ausgang beim Vater + Eingang beim Kind, Referenz „Übergabe an Variante“.
+     */
+    public function bestandAufVarianteUebertragen(int $vaterId, int $kindId, ?int $benutzerId = null): array
+    {
+        $kind = $this->artikelRepo->findById($kindId);
+        if (!$kind || (int)($kind['vaterartikel_id'] ?? 0) !== $vaterId) {
+            return ['erfolg' => false, 'fehler' => 'Die gewählte Variante gehört nicht zu diesem Artikel'];
+        }
+        $vater = $this->artikelRepo->findById($vaterId);
+        $zeilen = $this->repo->findBestandszeilenUngleichNull($vaterId);
+        if (empty($zeilen)) {
+            return ['erfolg' => true, 'menge' => 0];
+        }
+
+        $db = Database::getInstance();
+        $eigeneTransaktion = !$db->inTransaction();
+        if ($eigeneTransaktion) $db->beginTransaction();
+        try {
+            $summe = 0.0;
+            foreach ($zeilen as $z) {
+                $lagerId = (int)$z['lager_id'];
+                $charge  = $z['charge'];
+                $menge   = (float)$z['bestand'];
+                $kindVorher = $this->repo->getBestand($kindId, $lagerId, $charge);
+                $kindZeile  = $this->repo->findLagerbestandIdByKey($kindId, $lagerId, $charge);
+
+                if ($kindZeile) {
+                    $this->repo->setzeBestandWert($kindId, $lagerId, $charge, $kindVorher + $menge);
+                    $this->repo->deleteBestand((int)$z['id']);
+                } else {
+                    $this->repo->bestandszeileUmhaengen((int)$z['id'], $kindId);
+                }
+
+                $basis = [
+                    'lager_id' => $lagerId, 'lieferant_id' => null, 'ek_preis' => null,
+                    'charge' => $charge, 'menge' => abs($menge),
+                    'referenz' => 'Übergabe an Variante', 'benutzer_id' => $benutzerId,
+                ];
+                $this->repo->insertBewegung($basis + [
+                    'artikel_id' => $vaterId, 'bewegungstyp' => $menge > 0 ? 'ausgang' : 'eingang',
+                    'bestand_vorher' => $menge, 'bestand_nachher' => 0,
+                    'notiz' => 'Vater-Bestand übergeben an ' . $kind['artikelnummer'],
+                ]);
+                $this->repo->insertBewegung($basis + [
+                    'artikel_id' => $kindId, 'bewegungstyp' => $menge > 0 ? 'eingang' : 'ausgang',
+                    'bestand_vorher' => $kindVorher, 'bestand_nachher' => $kindVorher + $menge,
+                    'notiz' => 'Vom Vater ' . ($vater['artikelnummer'] ?? $vaterId) . ' übernommen',
+                ]);
+                $summe += $menge;
+            }
+            if ($eigeneTransaktion) $db->commit();
+        } catch (Throwable $e) {
+            if ($eigeneTransaktion && $db->inTransaction()) $db->rollBack();
+            return ['erfolg' => false, 'fehler' => 'Übergabe fehlgeschlagen: ' . $e->getMessage()];
+        }
+
+        Logger::log('lager.vater_bestand_uebergeben', 'artikel', $vaterId, [
+            'kind_id' => $kindId, 'kind_nr' => $kind['artikelnummer'], 'menge' => $summe, 'zeilen' => count($zeilen),
+        ], $benutzerId ?? ($_SESSION['benutzer']['id'] ?? $this->getJarvisId()));
+
+        return ['erfolg' => true, 'menge' => $summe, 'kind_nr' => $kind['artikelnummer']];
+    }
+
     /** Für den Korrektur-Dialog: alle aktiven Lager mit dem Bestand des Artikels je Charge */
     public function bestandFuerKorrektur(int $artikelId): array
     {

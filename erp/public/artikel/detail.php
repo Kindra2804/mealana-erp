@@ -300,6 +300,15 @@ foreach ($achsen as $a) {
 $neueKombis       = [];
 $vorhandeneKombis = [];
 
+// Eigener Bestand eines (künftigen) Vaters: muss beim Varianten-Erstellen an ein Kind übergeben werden
+$eigenBestandZeilen = !$istKind ? $lagerService->eigenerBestandZeilen($id) : [];
+$eigenBestandSumme  = array_sum(array_map(fn($z) => (float)$z['bestand'], $eigenBestandZeilen));
+$eigenBestandText   = implode(', ', array_map(
+    fn($z) => $z['lager_name'] . ' ' . rtrim(rtrim(number_format((float)$z['bestand'], 3, ',', ''), '0'), ',')
+              . ($z['charge'] !== null ? ' (Charge ' . $z['charge'] . ')' : ''),
+    $eigenBestandZeilen
+));
+
 if (!$istKonfigurierbar) {
     $alleAchsenNamenMap = array_column($alleGlobalenAchsen, 'name', 'id');
     $dimensionen        = $variantenService->baueAchsenDimensionen($achsen, $werte, $alleAchsenNamenMap);
@@ -853,6 +862,27 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
             <!-- Panel: Achsen & Generator -->
             <div id="var-panel-gen">
+                <?php if (!empty($eigenBestandZeilen) && !empty($kinder)): ?>
+                    <!-- Vater hat noch eigenen Bestand, obwohl es Varianten gibt → unsichtbar, an Kind übergeben -->
+                    <div class="card" style="margin-bottom:var(--space-md); border-left:4px solid #3182CE; background:#EBF8FF">
+                        <div style="font-size:13px; margin-bottom:var(--space-sm)">
+                            <strong style="color:#2B6CB0">!</strong>
+                            Dieser Artikel hat noch <strong>eigenen Lagerbestand</strong> (<?= htmlspecialchars($eigenBestandText) ?>).
+                            Weil er Varianten hat, wird dieser Bestand nirgends angezeigt oder verkauft — bitte an die richtige Variante übergeben.
+                        </div>
+                        <form action="bestand_an_variante.php" method="POST" style="display:flex; gap:var(--space-sm); align-items:center; flex-wrap:wrap"
+                              onsubmit="return confirm('Gesamten eigenen Bestand an die gewählte Variante übergeben?')">
+                            <input type="hidden" name="artikel_id" value="<?= $id ?>">
+                            <select name="kind_id" class="erp-select" required>
+                                <option value="">— Variante wählen —</option>
+                                <?php foreach ($kinder as $k): ?>
+                                    <option value="<?= (int)$k['id'] ?>"><?= htmlspecialchars($k['artikelnummer'] . ' – ' . $k['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-primary btn-sm">Bestand übergeben</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
                 <!-- Konfigurator Card -->
                 <div class="card" style="margin-bottom:var(--space-md)">
                     <div class="form-section-header">Konfigurator</div>
@@ -986,6 +1016,22 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 <input type="checkbox" name="hat_eigenen_lagerstand" value="1" checked>
                                 Eigener Lagerstand pro Variante
                             </label>
+
+                            <?php if (!empty($eigenBestandZeilen) && !empty($neueKombis)): ?>
+                                <div style="font-size:13px; padding:var(--space-sm); margin-bottom:var(--space-md); border-left:4px solid #3182CE; background:#EBF8FF">
+                                    <strong style="color:#2B6CB0">!</strong>
+                                    Der Artikel hat Lagerbestand (<?= htmlspecialchars($eigenBestandText) ?>). Welche Variante übernimmt ihn?
+                                    <select name="bestand_ziel" class="erp-select" required style="margin-left:var(--space-sm)">
+                                        <option value="">— bitte wählen —</option>
+                                        <?php foreach ($neueKombis as $n => $k): ?>
+                                            <option value="neu:<?= $n ?>"><?= htmlspecialchars('neu: ' . implode(' / ', array_column($k['kombi'], 'wert'))) ?></option>
+                                        <?php endforeach; ?>
+                                        <?php foreach ($vorhandeneKombis as $v): ?>
+                                            <option value="kind:<?= (int)$v['artikel']['id'] ?>"><?= htmlspecialchars($v['artikel']['artikelnummer']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            <?php endif; ?>
 
                             <table class="erp-table">
                                 <thead>

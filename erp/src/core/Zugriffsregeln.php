@@ -43,6 +43,7 @@ final class Zugriffsregeln
             'variante_neu.php'              => 'artikel.anlegen',
             'variante_speichern.php'        => 'artikel.anlegen',
             'varkombi_erstellen.php'        => 'artikel.anlegen',
+            'bestand_an_variante.php'       => 'inventur.anlegen',
 
             'bearbeiten.php'                => 'artikel.bearbeiten',
             'aktualisieren.php'             => 'artikel.bearbeiten',
