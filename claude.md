@@ -1378,6 +1378,15 @@ Details in `.claude/memory/` (project_rksv_exporte_fremdumsatz, project_kasse_na
 - **Achtung Dev**: `paperless_url` zeigt auf die ECHTE beleg.mealana.at, globales SMTP ist echt → Mailtests nur über `smtp_sink.php` (Scratchpad) und lokale Portal-Kopie; Tests stellen Einstellungen auch bei Absturz zurück.
 - Nächste Migration **254**. Nächste Session: Fehler beim Artikel anlegen/kopieren (Jacky).
 
+## Update 2026-11-16: Varianten-Muster, Vater-Bestand, Eigentümer-Badge, WP Super Cache, Lang-Import – 1.0.22 + 1.0.23 LIVE
+
+Details in `.claude/memory/` (project_varianten_muster, project_lang_import, project_woo_shop_checkliste).
+- **1.0.22** (keine Migration): Bestand des Vaters beim Erzeugen von Varianten an eine Variante übergeben (Pflichtauswahl, `LagerService::bestandAufVarianteUebertragen`, Hinweis „Bestand übergeben“ im Tab Varianten); Massenaktion „🧬 Varianten-Muster übernehmen“ (`VariantenMusterService`, nur ergänzen, Kinder aktiv, Achsenpreis oder Unterschied Master-Kind); „Varianten mitkopieren“ beim Kopieren; lila Eigentümer-Badge + Feld „Gehört“ bei Artikel neu; Fix: Varianten/Kopien übernehmen partner_id. Live: ID-U-A71 Vater-Bestand per SQL entfernt.
+- **WP Super Cache** auf SOW + Bio (508/Zeitüberschreitung beim Bestellabruf), Startseite 1,8 s → 0,08 s; gehört in jeden neuen Shop.
+- **1.0.23 Lang-Yarns-Import** (Migr. 254 `import_ausschluss`): Artikelliste → „⬇ Lang-Import“ (`LangImportService`), Probelauf + Import je 20 Väter. Garne (HGrp 10, Vater + `LY-749-0003`) + deutsche Bücher (HGrp 30, Einzelartikel 10 %); Lief-Art.-Nr., EK (EP/kg × Knäuelgewicht), EAN, TARIC (8-stellig); Status 35/40/55/61 nicht importieren, vorhandene → Auslauf; VK nur bei neuen (= Lang-VP), keine UVP; neue aktiv ohne Shop; Väter abwählbar (bleibt gespeichert); Preisänderungen + EAN-Treffer markiert, CSV; Strecke nur noch für Garne aus der Liste (Import stellt Lieferant auf „nur markierte Artikel“).
+- **Fix Varianten (1.0.23, Migr. 255):** `VariantenRepository::insertKindArtikel` speicherte nur 10 der ~25 Vater-Felder → Inhalt/Gewicht/Grundpreis/Texte/Maße/TARIC fehlten bei allen Generator-Kindern. Jetzt alle Felder; Migration füllt nur leere Kinderfelder vom Vater auf (Dev: 1.129).
+- Nächste Migration **256**. **Nächste Schritte:** Lang-Import auf Live (DB-Sicherung, upload_max_filesize ≥ 10M), danach Kategorien + Shop für neue Lang-Artikel, Liste „nicht mehr in der Datei“ und EAN-Treffer ausbessern, Preisänderungen (548 Farben teurer auf Dev) prüfen.
+
 ## Commit Convention
 
 ```
