@@ -193,14 +193,19 @@ Gewählte Väter nehmen alle ihre Farben mit, die übrigen Merkmale bleiben unbe
 Übernimmt den Artikelstamm aus dem Lang-Händlerportal (`LangYarns_Artikelstamm.csv`). **Vorher eine Datenbank-Sicherung machen.**
 
 1. Datei wählen, Lieferant „Lang Garn & Wolle GmbH“ steht schon da → **Hochladen + Probelauf**. Der Probelauf ändert noch nichts.
-2. Kacheln und aufklappbare Listen prüfen: neue Väter/Farben/Bücher, Aktualisieren, Auslauf, über die EAN gefunden, nicht mehr in der Datei.
+2. Kacheln und Listen prüfen:
+   - **Neue Garne und Bücher – auswählen:** je Garn Zusammensetzung, Lauflänge, Nadel, VK. **Häkchen weg = nicht importieren** (z.B. Zusammensetzung passt nicht). Die Abwahl bleibt gespeichert, auch für den nächsten Lang-Import; Häkchen wieder setzen hebt sie auf. Vorhandene Artikel werden trotzdem aktualisiert.
+   - **⚑ Preisänderungen:** EK alt → neu (▲ rot = teurer, ▼ grün = billiger) je Garn, dazu unser VK und der Lang-VP, wenn er abweicht (gelb). Der EK wird übernommen, **unser VK bleibt** – bei Bedarf danach „💶 Preise ändern“. ⬇ als CSV.
+   - **⚑ Über die EAN gefunden:** Artikel stehen im ERP unter einer anderen Nummer → auf die Lang-Nummer ausbessern, damit alle Garne gleich aussehen. ⬇ als CSV.
+   - Auslauf, Übersprungen, nicht mehr in der Datei.
 3. **Import starten**. Er läuft in Abschnitten mit Fortschrittsbalken; bei einem Abbruch einfach noch einmal starten – nichts wird doppelt angelegt.
 
 **Regeln:**
 - Nur **Garne** (Lang-Hauptgruppe 10) und **Bücher/Anleitungen** (30). Nadeln, RAW und Deco nicht.
 - Status **99** = Vater. Kinder heißen in der Datei `749.0003` → bei uns `LY-749-0003`, Name „Vatername 0003 Farbe“, Achse „Farbe“. Die Originalnummer wird **Lief-Art.-Nr.**
-- Status **35, 40, 55, 61** werden nicht angelegt; vorhandene Artikel werden **Auslaufartikel** (ohne Bestand gleich inaktiv). Sind alle Farben im Auslauf, auch der Vater.
-- **EK** = EP/kg × Knäuelgewicht (ohne Gewicht = Stückpreis), **UVP** = VP je Knäuel, dazu EAN (falls noch keine) und Zolltarifnummer (8-stellig, falls leer). Bestehende **Verkaufspreise bleiben**; neue Artikel bekommen die UVP als Verkaufspreis.
+- Status **35, 40, 55, 61** werden gar nicht importiert; nur wenn schon vorhanden, werden sie **Auslaufartikel** (ohne Bestand gleich inaktiv, keine Strecke mehr). Sind alle Farben im Auslauf, auch der Vater.
+- **EK** = EP/kg × Knäuelgewicht (ohne Gewicht = Stückpreis), dazu EAN (falls noch keine) und Zolltarifnummer (8-stellig, falls leer). Bestehende **Verkaufspreise bleiben**; neue Artikel bekommen den Lang-VP als Verkaufspreis. Die **UVP wird nicht übernommen**.
+- Alle Garne aus der Liste werden **„Strecke möglich“** (Dropshipping beim Lieferanten Lang).
 - Neue Artikel sind **aktiv, aber in keinem Shop** – Shop per Massenaktion zuteilen. Kategorien vergeben (neue Lang-Artikel haben noch keine).
 - Neue Väter bekommen Beschreibung + Pflegetext, Merkmale Zusammensetzung, Gewicht/Länge, Nadelstärke, Maschenprobe (Bereiche werden abgeleitet); die Farben erben sie.
 - **Bücher**: Die Sprachfassungen sind in der Datei Kinder – bei uns **Einzelartikel**, nur deutsche Fassungen (DE, DE/FR/NL …), 10 % USt, Gruppe „Hefte Bücher Anleitungen“. Gratis-Flyer ohne EK/EAN werden ausgelassen.

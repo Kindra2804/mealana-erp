@@ -12,6 +12,32 @@
     const ergebnisBox = document.getElementById('li-ergebnis');
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+    // ── Väter ab-/anwählen (bleibt gespeichert, Kacheln rechnen mit) ──
+    const zahl = id => parseInt((document.getElementById(id)?.textContent || '0').replace(/\./g, ''), 10) || 0;
+    const setze = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n.toLocaleString('de-DE'); };
+    document.querySelectorAll('.li-wahl-cb').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            const tr = cb.closest('tr');
+            const ab = !cb.checked;
+            cb.disabled = true;
+            fetch(window.BASE_PATH + '/artikel/lang_import.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ aktion: 'abwahl', vnr: tr.dataset.vnr, name: tr.dataset.name, abwaehlen: ab })
+            }).then(r => r.json()).then(function (d) {
+                cb.disabled = false;
+                if (!d.erfolg) { cb.checked = ab; alert(d.fehler || 'Fehler'); return; }
+                tr.style.opacity = ab ? '.45' : '';
+                const n = parseInt(tr.dataset.anzahl, 10) * (ab ? -1 : 1);
+                if (tr.dataset.typ === 'buch') setze('li-k-buecher', zahl('li-k-buecher') + n);
+                else setze('li-k-farben', zahl('li-k-farben') + n);
+                if (tr.dataset.vaterNeu === '1') setze('li-k-vaeter', zahl('li-k-vaeter') + (ab ? -1 : 1));
+                const weg = [...document.querySelectorAll('.li-wahl')].filter(r => !r.querySelector('.li-wahl-cb').checked)
+                    .reduce((s, r) => s + parseInt(r.dataset.anzahl, 10), 0);
+                document.getElementById('li-abgewaehlt-info').textContent = weg ? weg + ' Artikel abgewählt.' : '';
+            }).catch(() => { cb.disabled = false; cb.checked = ab; alert('Netzwerkfehler'); });
+        });
+    });
+
     function abschnitt(von) {
         return fetch(window.BASE_PATH + '/artikel/lang_import.php', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },

@@ -222,6 +222,52 @@ class LangImportRepository
         }
     }
 
+    // ── Abgewählte Väter (Migration 254) ────────────────────────────
+
+    /** nummer => true */
+    public function ladeAusschluss(string $quelle): array
+    {
+        $st = $this->db->prepare("SELECT nummer FROM import_ausschluss WHERE quelle = ?");
+        $st->execute([$quelle]);
+        return array_fill_keys($st->fetchAll(PDO::FETCH_COLUMN), true);
+    }
+
+    public function setzeAusschluss(string $quelle, string $nummer, string $name, ?int $benutzerId, bool $ausschliessen): void
+    {
+        if ($ausschliessen) {
+            $this->db->prepare("INSERT IGNORE INTO import_ausschluss (quelle, nummer, name, benutzer_id) VALUES (?, ?, ?, ?)")
+                     ->execute([$quelle, $nummer, $name, $benutzerId]);
+        } else {
+            $this->db->prepare("DELETE FROM import_ausschluss WHERE quelle = ? AND nummer = ?")->execute([$quelle, $nummer]);
+        }
+    }
+
+    // ── Preisvergleich ───────────────────────────────────────────────
+
+    /** artikel_id => bisheriger EK beim Lieferanten */
+    public function ladeEkMap(int $lieferantId): array
+    {
+        $st = $this->db->prepare("SELECT artikel_id, MAX(netto_ek) ek FROM artikel_lieferanten WHERE lieferant_id = ? GROUP BY artikel_id");
+        $st->execute([$lieferantId]);
+        return array_map('floatval', array_column($st->fetchAll(), 'ek', 'artikel_id'));
+    }
+
+    /** artikel_id => Verkaufspreis brutto (Standard-Kundengruppe, ohne Zeitraum) */
+    public function ladeVkMap(): array
+    {
+        $st = $this->db->prepare("SELECT artikel_id, MAX(brutto_vk) vk FROM artikel_preise
+                                  WHERE kundengruppen_id = ? AND gueltig_ab IS NULL AND gueltig_bis IS NULL GROUP BY artikel_id");
+        $st->execute([$this->standardKundengruppeId()]);
+        return array_map('floatval', array_column($st->fetchAll(), 'vk', 'artikel_id'));
+    }
+
+    /** Strecke (Dropshipping) je Artikel: 1 = möglich, 0 = ausgenommen. Nur vorhandene Lieferanten-Zeile. */
+    public function setzeDropshipping(int $artikelId, int $lieferantId, int $wert): void
+    {
+        $this->db->prepare("UPDATE artikel_lieferanten SET dropshipping = ? WHERE artikel_id = ? AND lieferant_id = ?")
+                 ->execute([$wert, $artikelId, $lieferantId]);
+    }
+
     public function findLagerbestandZeilenUngleichNull(int $artikelId): int
     {
         $st = $this->db->prepare("SELECT COUNT(*) FROM lagerbestand WHERE artikel_id = ? AND bestand <> 0");

@@ -363,10 +363,13 @@ require_once __DIR__ . '/includes/shell_top.php';
             <ul>
                 <li>Nur <strong>Garne</strong> (Hauptgruppe 10) und <strong>Bücher</strong> (30, nur deutsche Fassungen, als Einzelartikel mit 10 %).</li>
                 <li>Status 99 = Vater; <code>749.0003</code> → <code>LY-749-0003</code>, Originalnummer = Lief-Art.-Nr., Achse „Farbe“.</li>
-                <li>Status 35/40/55/61: nicht anlegen, vorhandene → <strong>Auslaufartikel</strong> (ohne Bestand gleich inaktiv).</li>
-                <li><strong>EK</strong> (EP/kg × Knäuelgewicht), <strong>UVP</strong>, EAN, Zolltarifnummer aus der Datei; bestehende Verkaufspreise bleiben, neue Artikel bekommen die UVP.</li>
+                <li>Status 35/40/55/61: gar nicht importieren; nur schon vorhandene → <strong>Auslaufartikel</strong> (ohne Bestand gleich inaktiv, keine Strecke).</li>
+                <li><strong>EK</strong> (EP/kg × Knäuelgewicht), EAN, Zolltarifnummer aus der Datei; bestehende Verkaufspreise bleiben, neue Artikel bekommen den Lang-VP. Keine UVP.</li>
+                <li>Garne aus der Liste werden <strong>„Strecke möglich“</strong>.</li>
+                <li><strong>Neue Garne auswählen:</strong> Häkchen weg = nicht importieren (z.B. Zusammensetzung passt nicht) – bleibt gespeichert, auch für den nächsten Import.</li>
+                <li><strong>⚑ Preisänderungen</strong> (EK ▲/▼ je Garn, unser VK, abweichender Lang-VP) und <strong>⚑ über die EAN gefunden</strong> (Nummer ausbessern) sind markiert, beide als CSV.</li>
                 <li>Neue Artikel: aktiv, <strong>in keinem Shop</strong>, noch ohne Kategorie; Vater mit Beschreibung, Pflege und Merkmalen.</li>
-                <li>Listen zum Prüfen: <strong>über die EAN gefunden</strong> (andere Nummer im ERP) und <strong>nicht mehr in der Datei</strong> (werden nicht verändert, ⬇ CSV).</li>
+                <li><strong>Nicht mehr in der Datei</strong>: werden nicht verändert, nur zum Prüfen (⬇ CSV).</li>
             </ul>
 
             <h3 id="artikel-preise">Preise & Aktionen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>

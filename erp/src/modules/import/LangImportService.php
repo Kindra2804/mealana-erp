@@ -50,6 +50,7 @@ class LangImportService
 
     private array $lyMap  = [];
     private array $eanMap = [];
+    private array $ausschluss = [];   // abgewählte Lang-Väter (Migration 254)
     private ?int $farbAchseId = null;
 
     public function __construct()
@@ -120,32 +121,43 @@ class LangImportService
     //  Probelauf
     // ══════════════════════════════════════════════════════════════════
 
-    public function plan(string $pfad): array
+    public function plan(string $pfad, int $lieferantId): array
     {
         $datei = $this->lies($pfad);
         $this->ladeMaps();
+        $ekMap = $this->repo->ladeEkMap($lieferantId);
+        $vkMap = $this->repo->ladeVkMap();
 
         $summe = ['vaeter_neu' => 0, 'kinder_neu' => 0, 'einzel_neu' => 0, 'aktualisieren' => 0, 'ean_treffer' => 0,
-                  'auslauf' => 0, 'schon_auslauf' => 0, 'uebersprungen' => 0, 'nummer_bereinigt' => 0, 'ohne_preis' => 0];
-        $listen = ['neu' => [], 'auslauf' => [], 'ean_treffer' => [], 'uebersprungen' => []];
+                  'auslauf' => 0, 'schon_auslauf' => 0, 'uebersprungen' => 0, 'nummer_bereinigt' => 0, 'ohne_preis' => 0,
+                  'abgewaehlt' => 0, 'ek_hoeher' => 0, 'ek_niedriger' => 0, 'vk_abweichend' => 0];
+        $listen = ['auslauf' => [], 'ean_treffer' => [], 'uebersprungen' => []];
+        $auswahl = [];    // Väter mit neuen Artikeln -> im Probelauf abwählbar
+        $preise  = [];    // gruppiert je Vater + gleiche Preise
         $gefunden = [];   // artikel_id => true (in der Datei gefunden)
 
         foreach ($this->vaterListe($datei) as $vnr) {
             $p = $this->planeVater($vnr, $datei);
             if ($p['vater']['aktion'] === 'neu') $summe['vaeter_neu']++;
             if ($p['vater']['id']) $gefunden[$p['vater']['id']] = true;
+            $neu = []; $abgewaehlt = 0;
             foreach ($p['kinder'] as $k) {
                 if ($k['id']) $gefunden[$k['id']] = true;
                 switch ($k['aktion']) {
                     case 'neu':
                         $summe[$p['typ'] === 'buch' ? 'einzel_neu' : 'kinder_neu']++;
                         if ($k['vk'] <= 0) $summe['ohne_preis']++;
-                        if (count($listen['neu']) < 400) $listen['neu'][] = [$k['nr'], $k['name'], $k['vk']];
+                        $neu[] = $k;
+                        break;
+                    case 'abgewaehlt':
+                        $summe['abgewaehlt']++;
+                        $neu[] = $k; $abgewaehlt++;
                         break;
                     case 'aktualisieren':
                         $summe['aktualisieren']++;
                         if ($k['neue_nummer']) $summe['nummer_bereinigt']++;
                         if ($k['ean_treffer']) { $summe['ean_treffer']++; $listen['ean_treffer'][] = [$k['nr'], $k['erp_nr'], $k['erp_name']]; }
+                        $this->preisVergleich($p, $k, $ekMap[$k['id']] ?? 0.0, $vkMap[$k['id']] ?? 0.0, $preise, $summe);
                         break;
                     case 'auslauf':
                         $summe['auslauf']++;
@@ -160,6 +172,7 @@ class LangImportService
                         break;
                 }
             }
+            if ($neu) $auswahl[] = $this->auswahlZeile($p, $neu, $abgewaehlt > 0);
         }
 
         // LY-Artikel im ERP, die in der Datei gar nicht vorkommen (auch nicht über die EAN)
@@ -169,11 +182,63 @@ class LangImportService
             $nichtInDatei[] = [$a['artikelnummer'], $a['name'], (float) $a['bestand'], (int) $a['aktiv'], (int) $a['ist_auslaufartikel']];
         }
         usort($nichtInDatei, fn($a, $b) => [$b[2] > 0, $a[0]] <=> [$a[2] > 0, $b[0]]);   // mit Bestand zuerst
+        $preise = array_values($preise);
+        usort($preise, fn($a, $b) => (abs($b['ek_prozent'] ?? 0) <=> abs($a['ek_prozent'] ?? 0)) ?: strnatcmp($a['nr'], $b['nr']));
 
         return [
             'zeilen' => $datei['zeilen'], 'rest' => $datei['rest'], 'vaeter' => count($this->vaterListe($datei)),
-            'summe' => $summe, 'listen' => $listen, 'nicht_in_datei' => $nichtInDatei,
+            'summe' => $summe, 'listen' => $listen, 'auswahl' => $auswahl, 'preise' => $preise,
+            'nicht_in_datei' => $nichtInDatei,
         ];
+    }
+
+    /** Eine Zeile der Väter-Auswahl (Babsi kann schlechte Garne abwählen) */
+    private function auswahlZeile(array $p, array $neu, bool $abgewaehlt): array
+    {
+        $v  = $p['zeile'];
+        $g  = self::zahl($v['KnGWEDI']) * 1000;
+        return [
+            'vnr' => $p['vnr'], 'nr' => $p['vater']['nr'],
+            'name' => $p['typ'] === 'buch' ? preg_replace('/^FAM\s+/u', 'Fatto a Mano ', $v['Bez_1']) : $p['vater']['name'],
+            'typ' => $p['typ'], 'vorhanden' => (bool) $p['vater']['id'], 'neu' => count($neu), 'abgewaehlt' => $abgewaehlt,
+            'zusammensetzung' => $v['Zusammensetzung_D'],
+            'lauflaenge' => ($g > 0 && $g < 5000 && (int) $v['LfLg'] > 0) ? self::de($g) . ' g = ' . (int) $v['LfLg'] . ' m' : '',
+            'nadel' => str_replace('.', ',', $v['Nadelstaerke']), 'vk' => self::haeufigsterPreis($neu),
+        ];
+    }
+
+    /** EK geändert (Preiserhöhung/-senkung bei Lang) oder unser VK ≠ Lang-Verkaufspreis -> Preisliste, gruppiert je Vater */
+    private function preisVergleich(array $p, array $k, float $ekAlt, float $vkAlt, array &$preise, array &$summe): void
+    {
+        $ekNeu = $this->ek($k['zeile'], $p['zeile']);
+        $vp    = $k['vk'];
+        $ekGeaendert = $ekAlt > 0 && $ekNeu !== null && abs($ekNeu - $ekAlt) >= 0.005;
+        $vkAnders    = $vp > 0 && $vkAlt > 0 && abs($vp - $vkAlt) >= 0.005;
+        if (!$ekGeaendert && !$vkAnders) return;
+
+        if ($ekGeaendert) $summe[$ekNeu > $ekAlt ? 'ek_hoeher' : 'ek_niedriger']++;
+        if ($vkAnders) $summe['vk_abweichend']++;
+
+        $schluessel = $p['vnr'] . '|' . $ekAlt . '|' . ($ekGeaendert ? $ekNeu : '') . '|' . $vkAlt . '|' . ($vkAnders ? $vp : '');
+        if (!isset($preise[$schluessel])) {
+            $preise[$schluessel] = [
+                'nr'   => $p['typ'] === 'buch' ? $k['erp_nr'] : $p['vater']['nr'],
+                'name' => $p['typ'] === 'buch' ? $k['erp_name'] : $p['vater']['name'],
+                'anzahl' => 0, 'ek_alt' => $ekAlt, 'ek_neu' => $ekGeaendert ? $ekNeu : null,
+                'ek_prozent' => $ekGeaendert ? round(($ekNeu - $ekAlt) / $ekAlt * 100, 1) : null,
+                'vk' => $vkAlt, 'vp' => $vkAnders ? $vp : null,
+            ];
+        }
+        $preise[$schluessel]['anzahl']++;
+    }
+
+    /** Für die Seite: Vater ab-/anwählen (bleibt gespeichert) */
+    public function setzeAbwahl(string $vnr, string $name, bool $abwaehlen, ?int $benutzerId): void
+    {
+        if (!preg_match('/^\d+$/', $vnr)) throw new RuntimeException('Ungültige Nummer');
+        $this->repo->setzeAusschluss('lang', $vnr, $name, $benutzerId, $abwaehlen);
+        Logger::log($abwaehlen ? 'import.lang_abgewaehlt' : 'import.lang_angewaehlt', 'import_ausschluss', null,
+            ['nummer' => $vnr, 'name' => $name], $benutzerId ?? $this->jarvisId());
     }
 
     /**
@@ -236,6 +301,8 @@ class LangImportService
                 $kind['aktion'] = 'nichts';      // EN/DK/IT/… Fassungen gar nicht anlegen
             } elseif ($typ === 'buch' && (!$ean || self::zahl($k['EP/KG']) <= 0)) {
                 $kind['aktion'] = 'nichts';      // Gratis-Flyer, Staffel-Einträge ohne EAN
+            } elseif (isset($this->ausschluss[$vnr])) {
+                $kind['aktion'] = 'abgewaehlt';  // Babsi hat das Garn abgewählt
             } elseif ($sperre) {
                 $kind['aktion'] = 'ueberspringen';
                 $kind['grund']  = $sperre;
@@ -309,6 +376,7 @@ class LangImportService
                 if (!$vaterId) {
                     $vaterId = $this->artikelRepo->insert($this->stammDaten('garn', $plan['vater']['nr'], $v['Bez_1'], $v, $neue[0]['zeile'], null));
                     $this->repo->setzeLieferantZeile($vaterId, $lieferantId, $plan['vnr'], $this->ek($neue[0]['zeile'], $v), null);
+                    $this->repo->setzeDropshipping($vaterId, $lieferantId, 1);
                     $vk = self::haeufigsterPreis($neue);
                     if ($vk > 0) $this->repo->setzeBasisPreis($vaterId, $vk, round($vk / 1.2, 2));
                     $this->setzeMerkmale($vaterId, $v);
@@ -324,6 +392,7 @@ class LangImportService
             if ($vaterId && $plan['vater']['aktion'] === 'vorhanden') {
                 $kind1 = $plan['kinder'][0]['zeile'];
                 $this->repo->setzeLieferantZeile($vaterId, $lieferantId, $plan['vnr'], $this->ek($kind1, $v), null);
+                if ($plan['typ'] === 'garn') $this->repo->setzeDropshipping($vaterId, $lieferantId, 1);
             }
         }
 
@@ -334,6 +403,7 @@ class LangImportService
                 $erg['aktualisiert']++;
             } elseif ($k['aktion'] === 'auslauf') {
                 $this->repo->setzeAuslauf($k['id']);
+                $this->repo->setzeDropshipping($k['id'], $lieferantId, 0);   // Lang liefert nicht mehr per Strecke
                 $this->lager->pruefAuslaufartikelStatus($k['id'], (float) $k['bestand']);   // ohne Bestand -> inaktiv
                 Logger::log('artikel.auslauf.setzen', 'artikel', $k['id'], ['quelle' => 'lang_import', 'status' => $k['status']], $benutzerId);
                 $erg['auslauf']++;
@@ -386,6 +456,7 @@ class LangImportService
         $z   = $k['zeile'];
         $vpe = self::ean($z['EAN_Verp']);
         $this->repo->setzeLieferantZeile($artikelId, $lieferantId, $k['orig'], $this->ek($z, null), $vpe);
+        if ($typ === 'garn') $this->repo->setzeDropshipping($artikelId, $lieferantId, 1);   // Strecke möglich (Jacky)
 
         $vk = $k['vk'];
         if ($istNeu && $vk > 0) {
@@ -393,7 +464,7 @@ class LangImportService
             $this->repo->setzeBasisPreis($artikelId, $vk, round($vk / (1 + $satz / 100), 2));
         }
 
-        $geaendert = $this->repo->aktualisiereStamm($artikelId, $vk > 0 ? $vk : null, self::taric($z['Zollnummer_DE']), $istNeu ? null : $k['neue_nummer']);
+        $geaendert = $this->repo->aktualisiereStamm($artikelId, null, self::taric($z['Zollnummer_DE']), $istNeu ? null : $k['neue_nummer']);
 
         $ean = self::ean($z['EAN_Artikel']);
         if ($ean && !$this->repo->hatGtin($artikelId) && !$this->repo->eanVergeben($ean)) {
@@ -462,8 +533,9 @@ class LangImportService
 
     private function ladeMaps(): void
     {
-        $this->lyMap  = $this->repo->ladeLyArtikel();
-        $this->eanMap = $this->repo->ladeEanMap();
+        $this->lyMap      = $this->repo->ladeLyArtikel();
+        $this->eanMap     = $this->repo->ladeEanMap();
+        $this->ausschluss = $this->repo->ladeAusschluss('lang');
     }
 
     private function farbAchse(): int

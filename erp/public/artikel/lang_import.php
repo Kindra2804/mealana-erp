@@ -21,6 +21,12 @@ if (str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/json')) {
     header('Content-Type: application/json');
     try {
         $in   = json_decode(file_get_contents('php://input'), true) ?? [];
+        if (($in['aktion'] ?? '') === 'abwahl') {     // Vater ab-/anwählen, bleibt gespeichert
+            (new LangImportService())->setzeAbwahl((string) ($in['vnr'] ?? ''), (string) ($in['name'] ?? ''),
+                !empty($in['abwaehlen']), $_SESSION['benutzer']['id'] ?? null);
+            echo json_encode(['erfolg' => true]);
+            exit;
+        }
         $pfad = $pfadZu((string) ($in['datei'] ?? ''));
         if (!$pfad) throw new RuntimeException('Die hochgeladene Datei ist nicht mehr da – bitte neu hochladen.');
         if (($in['aktion'] ?? '') !== 'ausfuehren') throw new RuntimeException('Unbekannte Aktion');
@@ -69,32 +75,43 @@ if ($token !== '') {
         $fehler = 'Die hochgeladene Datei ist nicht mehr da – bitte neu hochladen.';
     } else {
         try {
-            $plan = $svc->plan($pfad);
+            $plan = $svc->plan($pfad, $lieferantId);
         } catch (Throwable $e) {
             $fehler = $e->getMessage();
         }
     }
 }
 
-// CSV-Download „nicht mehr in der Datei“
+// CSV-Downloads zum Durcharbeiten (nicht in Datei / über EAN gefunden / Preise)
 if ($plan && isset($_GET['csv'])) {
+    $art = (string) $_GET['csv'];
+    [$datei, $kopf, $zeilen] = match ($art) {
+        'ean'    => ['lang_ueber_ean_gefunden.csv', ['Lang-Nummer', 'Nummer im ERP', 'Name'], $plan['listen']['ean_treffer']],
+        'preise' => ['lang_preisaenderungen.csv', ['Artikel', 'Name', 'Farben', 'EK alt', 'EK neu', 'EK %', 'unser VK', 'Lang-VP'],
+                     array_map(fn($p) => [$p['nr'], $p['name'], $p['anzahl'], $p['ek_alt'], $p['ek_neu'], $p['ek_prozent'], $p['vk'], $p['vp']], $plan['preise'])],
+        default  => ['lang_nicht_in_datei.csv', ['Artikelnummer', 'Name', 'Bestand', 'Aktiv', 'Auslauf'],
+                     array_map(fn($r) => [$r[0], $r[1], $r[2], $r[3] ? 'ja' : 'nein', $r[4] ? 'ja' : 'nein'], $plan['nicht_in_datei'])],
+    };
     header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="lang_nicht_in_datei.csv"');
+    header('Content-Disposition: attachment; filename="' . $datei . '"');
     $out = fopen('php://output', 'w');
     fputs($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Artikelnummer', 'Name', 'Bestand', 'Aktiv', 'Auslauf'], ';');
-    foreach ($plan['nicht_in_datei'] as $r) fputcsv($out, [$r[0], $r[1], $r[2], $r[3] ? 'ja' : 'nein', $r[4] ? 'ja' : 'nein'], ';');
+    fputcsv($out, $kopf, ';');
+    foreach ($zeilen as $z) fputcsv($out, array_map(fn($w) => is_float($w) ? str_replace('.', ',', (string) $w) : $w, $z), ';');
     fclose($out);
     exit;
 }
 
-$h  = fn($s) => htmlspecialchars((string) $s);
-$eu = fn($z) => number_format((float) $z, 2, ',', '.') . ' €';
+$h   = fn($s) => htmlspecialchars((string) $s);
+$eu  = fn($z) => $z === null ? '' : number_format((float) $z, 2, ',', '.') . ' €';
+$csv = fn($art) => '<a href="lang_import.php?datei=' . $h($token) . '&lieferant=' . $lieferantId . '&csv=' . $art . '">⬇ als CSV</a>';
 
-/** Aufklappbare Liste */
-$liste = function (string $titel, array $kopf, array $zeilen, ?string $hinweis = null) use ($h) {
+/** Aufklappbare Liste; $markiert = orange Rahmen + offen (muss geprüft werden) */
+$liste = function (string $titel, array $kopf, array $zeilen, ?string $hinweis = null, bool $markiert = false) use ($h) {
     if (!$zeilen) return;
-    echo '<details class="card" style="padding:var(--space-md);margin-top:var(--space-sm)"><summary style="cursor:pointer;font-weight:600">'
+    $rahmen = $markiert ? 'border-left:4px solid #DD6B20;' : '';
+    echo '<details class="card" style="padding:var(--space-md);margin-top:var(--space-sm);' . $rahmen . '"' . ($markiert ? ' open' : '') . '>'
+       . '<summary style="cursor:pointer;font-weight:600">' . ($markiert ? '<span style="color:#C05621">⚑</span> ' : '')
        . $h($titel) . ' (' . count($zeilen) . ')</summary>';
     if ($hinweis) echo '<div style="font-size:13px;color:var(--color-text-muted);margin:6px 0">' . $hinweis . '</div>';
     echo '<div style="max-height:420px;overflow:auto;margin-top:6px"><table class="erp-table"><thead><tr>';
@@ -114,9 +131,9 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div style="font-size:13px;color:var(--color-text-muted);margin-bottom:var(--space-md)">
     Artikelstamm-CSV aus dem Lang-Händlerportal. Übernommen werden Garne (Hauptgruppe 10) und Bücher/Anleitungen (30, nur deutsche Fassungen).
     Nummern: <code>749.0003</code> → <code>LY-749-0003</code>, die Originalnummer wird Lief-Art.-Nr.
-    Status 35/40/55/61 wird nicht angelegt, vorhandene Artikel werden Auslaufartikel.
-    EK, UVP, EAN und Zolltarifnummer kommen aus der Datei, Verkaufspreise nur bei neuen Artikeln.
-    Neue Artikel sind aktiv, aber in keinem Shop. Es wird nichts gelöscht.
+    Status 35/40/55/61 wird nicht angelegt; schon vorhandene Artikel werden Auslaufartikel (ohne Strecke).
+    EK, EAN und Zolltarifnummer kommen aus der Datei; Verkaufspreis = Lang-VP nur bei neuen Artikeln.
+    Garne werden „Strecke möglich“. Neue Artikel sind aktiv, aber in keinem Shop. Es wird nichts gelöscht.
 </div>
 
 <?php if ($fehler): ?><div class="error-banner" style="margin-bottom:var(--space-md)">✗ <?= $h($fehler) ?></div><?php endif; ?>
@@ -142,41 +159,99 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?= number_format($plan['zeilen'], 0, ',', '.') ?> Artikelzeilen gelesen<?= $plan['rest'] ? ', ' . $plan['rest'] . ' Zeilen am Dateiende ignoriert (Webseiten-Code)' : '' ?>,
         <?= $plan['vaeter'] ?> Väter mit Kindern in Garne/Bücher.
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
         <?php foreach ([
-            ['Neue Väter', $s['vaeter_neu'], '#2B6CB0'],
-            ['Neue Farben', $s['kinder_neu'], '#2B6CB0'],
-            ['Neue Bücher', $s['einzel_neu'], '#2B6CB0'],
-            ['Aktualisieren', $s['aktualisieren'], '#2F855A'],
-            ['→ Auslauf', $s['auslauf'], '#C05621'],
-            ['Übersprungen', $s['uebersprungen'], '#9B2C2C'],
-        ] as [$t, $z, $c]): ?>
+            ['li-k-vaeter', 'Neue Garne (Väter)', $s['vaeter_neu'], '#2B6CB0'],
+            ['li-k-farben', 'Neue Farben', $s['kinder_neu'], '#2B6CB0'],
+            ['li-k-buecher', 'Neue Bücher', $s['einzel_neu'], '#2B6CB0'],
+            ['', 'Aktualisieren', $s['aktualisieren'], '#2F855A'],
+            ['', 'EK gestiegen', $s['ek_hoeher'], '#C53030'],
+            ['', '→ Auslauf', $s['auslauf'], '#C05621'],
+        ] as [$id, $t, $z, $c]): ?>
             <div style="border:1px solid var(--color-border);border-radius:6px;padding:8px 10px">
                 <div style="font-size:12px;color:var(--color-text-muted)"><?= $t ?></div>
-                <div style="font-size:22px;font-weight:600;color:<?= $c ?>"><?= number_format($z, 0, ',', '.') ?></div>
+                <div <?= $id ? 'id="' . $id . '"' : '' ?> style="font-size:22px;font-weight:600;color:<?= $c ?>"><?= number_format($z, 0, ',', '.') ?></div>
             </div>
         <?php endforeach; ?>
     </div>
     <div style="font-size:12px;color:var(--color-text-muted);margin-top:8px">
+        <?php if ($s['ek_niedriger']): ?><?= $s['ek_niedriger'] ?> Farben mit niedrigerem EK. <?php endif; ?>
+        <?php if ($s['vk_abweichend']): ?><?= $s['vk_abweichend'] ?> Farben, bei denen unser VK vom Lang-VP abweicht. <?php endif; ?>
         <?php if ($s['schon_auslauf']): ?><?= $s['schon_auslauf'] ?> sind schon Auslaufartikel. <?php endif; ?>
         <?php if ($s['nummer_bereinigt']): ?><?= $s['nummer_bereinigt'] ?> Artikelnummern werden bereinigt (Leerzeichen, Kleinschreibung). <?php endif; ?>
+        <?php if ($s['uebersprungen']): ?><span style="color:#9B2C2C"><?= $s['uebersprungen'] ?> übersprungen (Liste unten).</span> <?php endif; ?>
         <?php if ($s['ohne_preis']): ?><span style="color:#C05621"><?= $s['ohne_preis'] ?> neue Artikel ohne Preis in der Datei (VP = 0) – Preis danach von Hand.</span><?php endif; ?>
     </div>
 </div>
 
+<?php if ($plan['auswahl']): ?>
+<details class="card" style="padding:var(--space-md);margin-top:var(--space-sm)" open>
+    <summary style="cursor:pointer;font-weight:600">Neue Garne und Bücher – auswählen (<?= count($plan['auswahl']) ?>)</summary>
+    <div style="font-size:13px;color:var(--color-text-muted);margin:6px 0">
+        Häkchen weg = wird <strong>nicht importiert</strong>. Das bleibt gespeichert, auch für den nächsten Lang-Import.
+        Betrifft nur neue Artikel – Vorhandenes wird trotzdem aktualisiert.
+        <span id="li-abgewaehlt-info"><?= $s['abgewaehlt'] ? $s['abgewaehlt'] . ' Artikel abgewählt.' : '' ?></span>
+    </div>
+    <div style="max-height:520px;overflow:auto"><table class="erp-table"><thead><tr>
+        <th style="width:30px"></th><th>Nummer</th><th>Name</th><th>Neu</th><th>Zusammensetzung</th><th>Lauflänge</th><th>Nadel</th><th>VK</th>
+    </tr></thead><tbody>
+    <?php foreach ($plan['auswahl'] as $a): ?>
+        <tr class="li-wahl" data-vnr="<?= $h($a['vnr']) ?>" data-name="<?= $h($a['name']) ?>" data-anzahl="<?= (int) $a['neu'] ?>"
+            data-typ="<?= $h($a['typ']) ?>" data-vater-neu="<?= $a['typ'] === 'garn' && !$a['vorhanden'] ? 1 : 0 ?>"
+            style="<?= $a['abgewaehlt'] ? 'opacity:.45' : '' ?>">
+            <td><input type="checkbox" class="li-wahl-cb" <?= $a['abgewaehlt'] ? '' : 'checked' ?>></td>
+            <td style="font-size:12px;white-space:nowrap"><?= $h($a['nr']) ?></td>
+            <td style="font-size:12px"><strong><?= $h($a['name']) ?></strong>
+                <?php if ($a['vorhanden']): ?><span class="chip" style="font-size:10px">vorhanden</span><?php endif; ?></td>
+            <td style="font-size:12px;white-space:nowrap"><?= (int) $a['neu'] ?> <?= $a['typ'] === 'buch' ? 'Buch' : ($a['neu'] === 1 ? 'Farbe' : 'Farben') ?></td>
+            <td style="font-size:12px"><?= $h($a['zusammensetzung']) ?></td>
+            <td style="font-size:12px;white-space:nowrap"><?= $h($a['lauflaenge']) ?></td>
+            <td style="font-size:12px;white-space:nowrap"><?= $h($a['nadel']) ?></td>
+            <td style="font-size:12px;white-space:nowrap"><?= $a['vk'] > 0 ? $eu($a['vk']) : '—' ?></td>
+        </tr>
+    <?php endforeach; ?>
+    </tbody></table></div>
+</details>
+<?php endif; ?>
+
+<?php if ($plan['preise']): ?>
+<details class="card" style="padding:var(--space-md);margin-top:var(--space-sm);border-left:4px solid #C53030" open>
+    <summary style="cursor:pointer;font-weight:600"><span style="color:#C53030">⚑</span> Preisänderungen (<?= count($plan['preise']) ?> Garne/Artikel)</summary>
+    <div style="font-size:13px;color:var(--color-text-muted);margin:6px 0">
+        <strong>EK</strong> wird übernommen; <strong>unser Verkaufspreis bleibt</strong> – bei Bedarf danach per Massenaktion „💶 Preise ändern“ anpassen.
+        „Lang-VP“ = Lang-Verkaufspreis, nur angezeigt, wenn er von unserem VK abweicht. <?= $csv('preise') ?>
+    </div>
+    <div style="max-height:420px;overflow:auto"><table class="erp-table"><thead><tr>
+        <th>Artikel</th><th>Name</th><th>Farben</th><th>EK alt</th><th>EK neu</th><th>EK %</th><th>unser VK</th><th>Lang-VP</th>
+    </tr></thead><tbody>
+    <?php foreach ($plan['preise'] as $p):
+        $farbe = $p['ek_prozent'] === null ? '' : ($p['ek_prozent'] > 0 ? '#C53030' : '#2F855A'); ?>
+        <tr>
+            <td style="font-size:12px;white-space:nowrap"><?= $h($p['nr']) ?></td>
+            <td style="font-size:12px"><?= $h($p['name']) ?></td>
+            <td style="font-size:12px"><?= (int) $p['anzahl'] ?></td>
+            <td style="font-size:12px;white-space:nowrap"><?= $eu($p['ek_alt']) ?></td>
+            <td style="font-size:12px;white-space:nowrap;color:<?= $farbe ?>"><?= $eu($p['ek_neu']) ?></td>
+            <td style="font-size:12px;white-space:nowrap;color:<?= $farbe ?>;font-weight:600">
+                <?= $p['ek_prozent'] === null ? '' : ($p['ek_prozent'] > 0 ? '▲ +' : '▼ ') . number_format($p['ek_prozent'], 1, ',', '') . ' %' ?></td>
+            <td style="font-size:12px;white-space:nowrap"><?= $eu($p['vk']) ?></td>
+            <td style="font-size:12px;white-space:nowrap;<?= $p['vp'] !== null ? 'background:#FEFCBF;font-weight:600' : '' ?>"><?= $eu($p['vp']) ?></td>
+        </tr>
+    <?php endforeach; ?>
+    </tbody></table></div>
+</details>
+<?php endif; ?>
+
 <?php
-$liste('Neue Artikel', ['Artikelnummer', 'Name', 'Verkaufspreis'],
-    array_map(fn($r) => [$r[0], $r[1], $r[2] > 0 ? $eu($r[2]) : '—'], $plan['listen']['neu']),
-    count($plan['listen']['neu']) >= 400 ? 'Die ersten 400.' : null);
+$liste('Über die EAN gefunden – Artikelnummer im ERP prüfen/ausbessern', ['Lang-Nummer', 'Nummer im ERP', 'Name'], $plan['listen']['ean_treffer'],
+    'Diese Lang-Artikel stehen im ERP unter einer anderen Nummer. Sie werden aktualisiert, die Nummer bleibt – bitte auf die Lang-Nummer ausbessern, '
+    . 'damit alle Garne gleich aussehen. ' . $csv('ean'), true);
 $liste('Werden Auslaufartikel', ['Artikelnummer', 'Name', 'Lang-Status', 'Bestand'], $plan['listen']['auslauf'],
-    'Ohne Bestand werden sie gleich inaktiv, mit Bestand erst, wenn er abverkauft ist.');
-$liste('Über die EAN gefunden (andere Artikelnummer im ERP)', ['Lang-Nummer', 'Nummer im ERP', 'Name'], $plan['listen']['ean_treffer'],
-    'Werden aktualisiert, die Artikelnummer bleibt. Bitte prüfen – vermutlich falsch angelegt.');
-$liste('Übersprungen', ['Artikelnummer', 'Name', 'Grund'], $plan['listen']['uebersprungen']);
+    'Ohne Bestand werden sie gleich inaktiv, mit Bestand erst, wenn er abverkauft ist. Strecke ist für sie aus.');
+$liste('Übersprungen', ['Artikelnummer', 'Name', 'Grund'], $plan['listen']['uebersprungen'], null, true);
 $liste('Im ERP, aber nicht mehr in der Datei', ['Artikelnummer', 'Name', 'Bestand', 'Aktiv', 'Auslauf'],
     array_map(fn($r) => [$r[0], $r[1], rtrim(rtrim(number_format($r[2], 2, ',', ''), '0'), ','), $r[3] ? 'ja' : 'nein', $r[4] ? 'ja' : 'nein'], $plan['nicht_in_datei']),
-    'Werden nicht verändert – zum Prüfen (falsche Nummer? ausgelaufen?). Mit Bestand stehen oben. '
-    . '<a href="lang_import.php?datei=' . $h($token) . '&csv=1">⬇ als CSV</a>');
+    'Werden nicht verändert – zum Prüfen (falsche Nummer? ausgelaufen?). Mit Bestand stehen oben. ' . $csv('nicht'));
 ?>
 
 <div id="li-aktionen" class="card" style="padding:var(--space-md);margin-top:var(--space-md);display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap">
