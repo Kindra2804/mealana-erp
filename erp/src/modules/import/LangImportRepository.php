@@ -268,6 +268,39 @@ class LangImportRepository
                  ->execute([$wert, $artikelId, $lieferantId]);
     }
 
+    /** Gilt beim Lieferanten „Strecke für alle Artikel“? */
+    public function lieferantStreckeAllgemein(int $lieferantId): bool
+    {
+        $st = $this->db->prepare("SELECT dropshipping_aktiv FROM lieferanten WHERE id = ?");
+        $st->execute([$lieferantId]);
+        return (int) $st->fetchColumn() === 1;
+    }
+
+    /** Lieferant: Strecke nur noch für einzeln markierte Artikel (Jacky 2026-11-16). Pauschale bleibt. */
+    public function lieferantStreckeNurMarkierte(int $lieferantId): void
+    {
+        $this->db->prepare("UPDATE lieferanten SET dropshipping_aktiv = 0 WHERE id = ?")->execute([$lieferantId]);
+    }
+
+    /** Von den angegebenen Artikeln die, die beim Lieferanten ausdrücklich „Strecke ja“ haben */
+    public function mitStreckeJa(int $lieferantId, array $artikelIds): array
+    {
+        if (!$artikelIds) return [];
+        $ph = implode(',', array_fill(0, count($artikelIds), '?'));
+        $st = $this->db->prepare("SELECT DISTINCT artikel_id FROM artikel_lieferanten WHERE lieferant_id = ? AND dropshipping = 1 AND artikel_id IN ($ph)");
+        $st->execute(array_merge([$lieferantId], array_values($artikelIds)));
+        return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    /** „Strecke ja“ zurück auf „wie Lieferant“ (= aus, wenn der Lieferant nur markierte Artikel streckt) */
+    public function streckeZuruecksetzen(int $lieferantId, array $artikelIds): void
+    {
+        if (!$artikelIds) return;
+        $ph = implode(',', array_fill(0, count($artikelIds), '?'));
+        $this->db->prepare("UPDATE artikel_lieferanten SET dropshipping = NULL WHERE lieferant_id = ? AND dropshipping = 1 AND artikel_id IN ($ph)")
+                 ->execute(array_merge([$lieferantId], array_values($artikelIds)));
+    }
+
     public function findLagerbestandZeilenUngleichNull(int $artikelId): int
     {
         $st = $this->db->prepare("SELECT COUNT(*) FROM lagerbestand WHERE artikel_id = ? AND bestand <> 0");

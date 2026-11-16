@@ -205,7 +205,7 @@ Gewählte Väter nehmen alle ihre Farben mit, die übrigen Merkmale bleiben unbe
 - Status **99** = Vater. Kinder heißen in der Datei `749.0003` → bei uns `LY-749-0003`, Name „Vatername 0003 Farbe“, Achse „Farbe“. Die Originalnummer wird **Lief-Art.-Nr.**
 - Status **35, 40, 55, 61** werden gar nicht importiert; nur wenn schon vorhanden, werden sie **Auslaufartikel** (ohne Bestand gleich inaktiv, keine Strecke mehr). Sind alle Farben im Auslauf, auch der Vater.
 - **EK** = EP/kg × Knäuelgewicht (ohne Gewicht = Stückpreis), dazu EAN (falls noch keine) und Zolltarifnummer (8-stellig, falls leer). Bestehende **Verkaufspreise bleiben**; neue Artikel bekommen den Lang-VP als Verkaufspreis. Die **UVP wird nicht übernommen**.
-- Alle Garne aus der Liste werden **„Strecke möglich“** (Dropshipping beim Lieferanten Lang).
+- **Strecke nur noch für Garne aus der Liste:** der Import schaltet beim Lieferanten „Strecke für alle Artikel“ aus, markiert die Garne einzeln als „Strecke möglich“ und nimmt Lang-Artikeln, die nicht mehr in der Liste stehen, ihr „Strecke ja“. Alles andere gibt es nur aus unserem Lager.
 - Neue Artikel sind **aktiv, aber in keinem Shop** – Shop per Massenaktion zuteilen. Kategorien vergeben (neue Lang-Artikel haben noch keine).
 - Neue Väter bekommen Beschreibung + Pflegetext, Merkmale Zusammensetzung, Gewicht/Länge, Nadelstärke, Maschenprobe (Bereiche werden abgeleitet); die Farben erben sie.
 - **Bücher**: Die Sprachfassungen sind in der Datei Kinder – bei uns **Einzelartikel**, nur deutsche Fassungen (DE, DE/FR/NL …), 10 % USt, Gruppe „Hefte Bücher Anleitungen“. Gratis-Flyer ohne EK/EAN werden ausgelassen.

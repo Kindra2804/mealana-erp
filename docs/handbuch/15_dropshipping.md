@@ -17,7 +17,8 @@ Außerdem nicht möglich bei: Abholung, Nachnahme, Kassen-Aufträgen, Gutscheine
 ## Einrichten (einmalig)
 
 1. **Lieferanten** → Lang öffnen → Bearbeiten → Karte **Dropshipping**
-   - Haken **Dropshipping möglich**, damit gilt es für alle Artikel dieses Lieferanten
+   - Haken **Dropshipping möglich**, damit gilt es für alle Artikel dieses Lieferanten. **Ohne Haken** gilt es nur für Artikel, die einzeln auf *ja* stehen.
+   - **Lang:** ohne Haken – der **Lang-Import** markiert genau die Garne aus der Lang-Liste als Strecke (Auslauf = nein, nicht mehr gelistete verlieren ihr *ja*). Alles andere gibt es nur aus unserem Lager.
    - **Pauschale pro Lieferung** (€ netto, derzeit 11,00), das ist Langs Bearbeitungs- und Versandanteil pro Paket
 2. Einzelne Artikel ausnehmen: Artikel öffnen → Reiter Lieferanten → ✏️ → **Dropshipping (Strecke)**
    - *wie beim Lieferanten* (Standard) · *ja* · *nein – ausgenommen*

@@ -176,9 +176,10 @@ class LangImportService
         }
 
         // LY-Artikel im ERP, die in der Datei gar nicht vorkommen (auch nicht über die EAN)
-        $nichtInDatei = [];
+        $nichtInDatei = []; $nichtIds = [];
         foreach ($this->lyMap as $nr => $a) {
             if (isset($datei['alle_nummern'][$nr]) || isset($gefunden[(int) $a['id']])) continue;
+            $nichtIds[] = (int) $a['id'];
             $nichtInDatei[] = [$a['artikelnummer'], $a['name'], (float) $a['bestand'], (int) $a['aktiv'], (int) $a['ist_auslaufartikel']];
         }
         usort($nichtInDatei, fn($a, $b) => [$b[2] > 0, $a[0]] <=> [$a[2] > 0, $b[0]]);   // mit Bestand zuerst
@@ -189,6 +190,11 @@ class LangImportService
             'zeilen' => $datei['zeilen'], 'rest' => $datei['rest'], 'vaeter' => count($this->vaterListe($datei)),
             'summe' => $summe, 'listen' => $listen, 'auswahl' => $auswahl, 'preise' => $preise,
             'nicht_in_datei' => $nichtInDatei,
+            // Strecke nur noch für Artikel aus der Liste (Jacky 2026-11-16)
+            'strecke' => [
+                'allgemein'      => $this->repo->lieferantStreckeAllgemein($lieferantId),
+                'zuruecksetzen'  => $this->repo->mitStreckeJa($lieferantId, $nichtIds),
+            ],
         ];
     }
 
@@ -351,6 +357,18 @@ class LangImportService
                 $aussen ? $this->db->exec('ROLLBACK TO SAVEPOINT lang_vater') : $this->db->rollBack();
                 $fehler[] = self::lyNummer($vnr) . ': ' . $e->getMessage();
             }
+        }
+
+        // Einmal (erster Abschnitt): Strecke nur noch für markierte Artikel -- Lieferant umstellen,
+        // händisches „Strecke ja“ bei Lang-Artikeln, die nicht mehr in der Liste stehen, zurücknehmen
+        if ($von === 0) {
+            $st = $this->plan($pfad, $lieferantId)['strecke'];
+            if ($st['allgemein']) {
+                $this->repo->lieferantStreckeNurMarkierte($lieferantId);
+                Logger::log('lieferant.strecke_nur_markierte', 'lieferanten', $lieferantId, ['quelle' => 'lang_import'], $benutzerId);
+            }
+            $this->repo->streckeZuruecksetzen($lieferantId, $st['zuruecksetzen']);
+            $erg['strecke_zurueckgesetzt'] = count($st['zuruecksetzen']);
         }
 
         Logger::log('import.lang', 'lieferanten', $lieferantId, ['abschnitt' => "$von-" . ($von + $anzahl - 1)] + $erg + ['fehler' => count($fehler)], $benutzerId);

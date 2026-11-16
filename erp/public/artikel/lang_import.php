@@ -182,6 +182,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
         <?php if ($s['uebersprungen']): ?><span style="color:#9B2C2C"><?= $s['uebersprungen'] ?> übersprungen (Liste unten).</span> <?php endif; ?>
         <?php if ($s['ohne_preis']): ?><span style="color:#C05621"><?= $s['ohne_preis'] ?> neue Artikel ohne Preis in der Datei (VP = 0) – Preis danach von Hand.</span><?php endif; ?>
     </div>
+    <?php $st = $plan['strecke']; if ($st['allgemein'] || $st['zuruecksetzen']): ?>
+    <div style="font-size:13px;padding:8px;margin-top:10px;border-left:4px solid #3182CE;background:#EBF8FF">
+        <strong style="color:#2B6CB0">!</strong> <strong>Strecke:</strong> nur noch Garne aus dieser Liste.
+        <?php if ($st['allgemein']): ?>Beim Lieferanten wird „Strecke für alle Artikel“ ausgeschaltet – andere Lang-Artikel gibt es dann nur aus unserem Lager.<?php endif; ?>
+        <?php if ($st['zuruecksetzen']): ?><?= count($st['zuruecksetzen']) ?> Lang-Artikel, die nicht mehr in der Liste stehen, verlieren ihr „Strecke ja“.<?php endif; ?>
+    </div>
+    <?php endif; ?>
 </div>
 
 <?php if ($plan['auswahl']): ?>

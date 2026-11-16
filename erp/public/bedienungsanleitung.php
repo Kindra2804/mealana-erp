@@ -365,7 +365,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <li>Status 99 = Vater; <code>749.0003</code> → <code>LY-749-0003</code>, Originalnummer = Lief-Art.-Nr., Achse „Farbe“.</li>
                 <li>Status 35/40/55/61: gar nicht importieren; nur schon vorhandene → <strong>Auslaufartikel</strong> (ohne Bestand gleich inaktiv, keine Strecke).</li>
                 <li><strong>EK</strong> (EP/kg × Knäuelgewicht), EAN, Zolltarifnummer aus der Datei; bestehende Verkaufspreise bleiben, neue Artikel bekommen den Lang-VP. Keine UVP.</li>
-                <li>Garne aus der Liste werden <strong>„Strecke möglich“</strong>.</li>
+                <li><strong>Strecke nur noch für Garne aus der Liste:</strong> der Import stellt beim Lieferanten „für alle Artikel“ aus, markiert die Garne, nimmt nicht mehr gelisteten das „ja“.</li>
                 <li><strong>Neue Garne auswählen:</strong> Häkchen weg = nicht importieren (z.B. Zusammensetzung passt nicht) – bleibt gespeichert, auch für den nächsten Import.</li>
                 <li><strong>⚑ Preisänderungen</strong> (EK ▲/▼ je Garn, unser VK, abweichender Lang-VP) und <strong>⚑ über die EAN gefunden</strong> (Nummer ausbessern) sind markiert, beide als CSV.</li>
                 <li>Neue Artikel: aktiv, <strong>in keinem Shop</strong>, noch ohne Kategorie; Vater mit Beschreibung, Pflege und Merkmalen.</li>
@@ -640,7 +640,7 @@ require_once __DIR__ . '/includes/shell_top.php';
 
             <h3 id="dropshipping">Dropshipping (Strecke) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Der Lieferant (derzeit nur <strong>Lang Yarns</strong>) schickt direkt an den Kunden, ohne Packplatz und ohne Lagerbuchung. <strong>Nur wenn der ganze Auftrag per Strecke geht</strong>, sonst normal bestellen und gemeinsam verschicken. Nicht bei Abholung, Nachnahme oder Kassen-Aufträgen.</p>
-            <p>Einrichten: Lieferant bearbeiten → Karte <strong>Dropshipping</strong> (Haken + Pauschale pro Lieferung, derzeit 11 € netto). Einzelne Artikel ausnehmen: Artikel → Lieferanten → ✏️ → „Dropshipping (Strecke)“.</p>
+            <p>Einrichten: Lieferant bearbeiten → Karte <strong>Dropshipping</strong> (Haken = alle Artikel, ohne Haken = nur einzeln markierte; Pauschale pro Lieferung, derzeit 11 € netto). Einzelne Artikel: Artikel → Lieferanten → ✏️ → „Dropshipping (Strecke)“. <strong>Lang:</strong> ohne Haken – der Lang-Import markiert die Garne aus der Lang-Liste, alles andere nur aus unserem Lager.</p>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Auftragsliste → Lieferung <strong>Dropshipping: Strecke bereit</strong> (bezahlt oder Zahlungsart Rechnung) → Auftrag öffnen → <strong>Per Dropshipping bestellen</strong></div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Im <strong>Lang-Händlerportal</strong> bestellen: Adresse + Artikel aus der Karte kopieren (⧉). Als E-Mail <strong>unsere</strong> Adresse angeben, dann kommt die Versandmail zu uns.</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Versandmail von Lang da → Filter <strong>Dropshipping: bestellt, Tracking offen</strong> → Auftrag → Tracking eintragen → <strong>Versendet + Tracking</strong>. Rechnung + Versandmail gehen an den Kunden.</div></div>

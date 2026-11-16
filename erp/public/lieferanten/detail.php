@@ -169,6 +169,8 @@ foreach ($tabs as $key => $label):
             <div>
                 <?php if ($lieferant['website']): ?>
                     <a href="<?= htmlspecialchars($lieferant['website']) ?>" target="_blank" style="color:var(--color-primary)"><?= htmlspecialchars($lieferant['website']) ?></a>
+                <?php elseif ($lieferant['dropship_pauschale'] !== null): ?>
+                    Nur markierte Artikel · Pauschale € <?= number_format((float)$lieferant['dropship_pauschale'], 2, ',', '.') ?> netto/Lieferung
                 <?php else: ?>–<?php endif; ?>
             </div>
         </div>

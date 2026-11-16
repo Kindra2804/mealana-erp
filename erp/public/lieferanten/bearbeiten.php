@@ -199,7 +199,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 
 <div class="card" style="margin-bottom:12px">
     <h3 style="margin:0 0 6px">Dropshipping</h3>
-    <p style="margin:0 0 12px;font-size:12px;color:#666">Lieferant schickt direkt an den Kunden (Strecke). Gilt für alle Artikel dieses Lieferanten — einzelne Artikel können in der Artikel-Lieferanten-Zuordnung ausgenommen werden.</p>
+    <p style="margin:0 0 12px;font-size:12px;color:#666">Lieferant schickt direkt an den Kunden (Strecke). Angehakt: gilt für alle Artikel dieses Lieferanten — einzelne können in der Artikel-Lieferanten-Zuordnung ausgenommen werden. Nicht angehakt: nur Artikel, die dort einzeln auf „Strecke ja“ stehen (z.B. Lang: der Lang-Import markiert die Garne aus der Lang-Liste). Die Pauschale gilt in beiden Fällen.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px 16px;align-items:end">
         <div>
             <input type="hidden" name="dropshipping_aktiv" value="0">
