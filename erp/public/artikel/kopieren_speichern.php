@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/artikel/ArtikelService.php';
+require_once __DIR__ . '/../../src/modules/varianten/VariantenMusterService.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: liste.php');
@@ -37,7 +38,8 @@ $kopierData = array_intersect_key($data, array_flip([
     'kategorien',
     'merkmale',
     'lieferanten',
-    'ueberverkauf'
+    'ueberverkauf',
+    'varianten'
 ]));
 
 $service = new ArtikelService();
@@ -45,6 +47,16 @@ $result = $service->kopiere($quell_id, $kopierData);
 
 if ($result['erfolg']) {
     $_SESSION['erfolg'] = 'Artikel wurde kopiert!';
+
+    // Varianten mitkopieren: gleiches Muster wie die Massenaktion, Quelle = Master
+    if (($data['varianten'] ?? '') === '1') {
+        $vm = (new VariantenMusterService())->uebernehmen($quell_id, (int)$result['id'], null, $_SESSION['benutzer']['id'] ?? null);
+        if ($vm['erfolg']) {
+            $_SESSION['erfolg'] = 'Artikel wurde kopiert, ' . ($vm['neu'] ?? 0) . ' Varianten angelegt!';
+        } else {
+            $_SESSION['fehler'] = 'Artikel wurde kopiert, aber die Varianten nicht: ' . $vm['fehler'];
+        }
+    }
     header('Location: detail.php?id=' . $result['id']);
 
     exit;

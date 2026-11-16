@@ -65,6 +65,8 @@ Die Liste zeigt alle aktiven Artikel. Oben gibt es Filter:
 
 > **Nicht mitkopiert** (bei Bedarf in der Kopie selbst eintragen): UVP, „Konfigurierbar“, „Keine Lagerbestandsführung“, „Hervorgehoben“, Plattenmaß (Schilder), Bilder, EAN, Lagerbestand und Shop-Kanäle.
 
+**Varianten mitkopieren:** Hat der Artikel Varianten, gibt es das Häkchen **„Varianten mitkopieren“**. Die Kopie bekommt dieselben (aktiven) Varianten — Nummer und Name = neue Nummer/neuer Name + das Kürzel der Variante (z.B. `ID-U-K20-KLS` → `ID-U-A80-KLS`), ohne Bestand und EAN. Preisaufschläge einzelner Varianten (z.B. Schiefer +3 €) kommen mit.
+
 ---
 
 ## Artikel bearbeiten
@@ -97,6 +99,28 @@ Varianten-Artikel bestehen aus:
 7. **Erstellen**
 
 > Das System legt automatisch alle Kombinationen an und übernimmt Stammdaten, Kategorien und Preise vom Vater.
+
+### Artikel hat schon Lagerbestand
+
+Bekommt ein Artikel mit Bestand nachträglich Varianten, fragt der Generator **„Welche Variante übernimmt ihn?“** — der Bestand wird beim Erstellen an diese Variante übergeben (im Bewegungslog als „Übergabe an Variante“). Ohne Auswahl werden keine Varianten erstellt.
+
+Hat ein Vater-Artikel trotzdem noch eigenen Bestand (z.B. von früher), zeigt der Tab **Varianten** oben einen blauen Hinweis: Variante wählen → **Bestand übergeben**. Solcher Bestand wäre sonst unsichtbar (die Liste zählt nur die Varianten).
+
+### Varianten-Muster auf andere Artikel übertragen
+
+Für viele gleich aufgebaute Artikel (z.B. Untersetzer in Kork / Kunstleder / Schiefer, Anhänger): einmal einen **Master** mit allen möglichen Varianten anlegen, dann das Muster übertragen.
+
+1. Artikelliste → die Artikel anhaken, die das Muster bekommen sollen (den Master gern mit anhaken — er wird dann vorgeschlagen)
+2. Aktion **🧬 Varianten-Muster übernehmen** → Ausführen (öffnet neuen Tab)
+3. Master wählen → **Vorschau**: je Artikel „neu“ / „schon da“ / „Nummer belegt“
+4. **Übernehmen**
+
+- Es wird **nur ergänzt**, nie gelöscht. Vorhandene Varianten (auch mit Bestand) bleiben, wie sie sind.
+- Nummer/Name: eigene Nummer bzw. eigener Name + Kürzel der Master-Variante.
+- Preis: eigener Preis + Aufschlag der Master-Variante gegenüber dem Master (Schiefer beim Master 9 € statt 6 € → überall +3 €). Abweichende Maße/Gewichte der Master-Variante kommen mit.
+- Neue Varianten sind **aktiv**, ohne Bestand, ohne EAN und in denselben Shops wie ihr Vater.
+- Hat ein Artikel noch eigenen Bestand (war bisher ohne Varianten), muss in der Vorschau gewählt werden, welche Variante ihn übernimmt.
+- Inaktive Varianten des Masters gehören nicht zum Muster.
 
 ---
 

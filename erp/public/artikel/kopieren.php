@@ -24,6 +24,9 @@ if ($artikel === false) {
     echo 'Artikel nicht gefunden!';
     exit;
 }
+
+// Vater mit Varianten? Dann kann das Variantenmuster mitkopiert werden (VariantenMusterService)
+$anzahlVarianten = empty($artikel['vaterartikel_id']) ? count($service->getKinderFuerArtikel($id)) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -82,6 +85,12 @@ if ($artikel === false) {
 
             <label>Überverkauf</label>
             <input type="checkbox" name="ueberverkauf" value="1" <?= checkedDefault('ueberverkauf', $formdata) ?>>
+
+            <?php if ($anzahlVarianten > 0): ?>
+                <label>Varianten mitkopieren (<?= $anzahlVarianten ?>)</label>
+                <input type="checkbox" name="varianten" value="1" <?= checkedDefault('varianten', $formdata) ?>
+                       title="Legt dieselben Varianten an: neue Nummer + Kürzel der Varianten, ohne Bestand und EAN">
+            <?php endif; ?>
 
             <button type="submit">Artikel kopieren</button>
         </div>

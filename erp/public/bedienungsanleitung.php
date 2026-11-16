@@ -278,6 +278,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Auswählen, was mitkommen soll (Preise, Kategorien, Merkmale, Lieferanten, Überverkauf) → <strong>Artikel kopieren</strong>. Die Kopie ist sofort aktiv.</div></div>
             <p>Übernommen werden alle Stammdaten inkl. Hersteller, Steuerklasse, Artikelgruppe, Einheit, Inhalt, Gewicht, Maße, Grundpreis und Mindestabnahme.</p>
             <div class="ba-hint">💡 <strong>Nicht mitkopiert</strong> (bei Bedarf in der Kopie selbst eintragen): UVP, „Konfigurierbar“, „Keine Lagerbestandsführung“, „Hervorgehoben“, Plattenmaß (Schilder), Bilder, EAN, Lagerbestand und Shop-Kanäle.</div>
+            <p><strong>Varianten mitkopieren:</strong> Hat der Artikel Varianten, gibt es das Häkchen „Varianten mitkopieren“. Die Kopie bekommt dieselben aktiven Varianten — neue Nummer/neuer Name + Kürzel der Variante (z.B. ID-U-K20-KLS → ID-U-A80-KLS), ohne Bestand und EAN, Preisaufschläge einzelner Varianten kommen mit.</p>
 
             <h3 id="artikel-varianten">Varianten & Achsen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Varianten-Artikel bestehen aus einem <strong>Vater-Artikel</strong> (z.B. "DROPS Lima") und mehreren <strong>Kind-Artikeln</strong> (je eine Farbe/Größe).</p>
@@ -285,6 +286,14 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div><strong>Achsen zuweisen</strong> (z.B. "Farbe") und Werte eingeben (z.B. "Rot", "Blau")</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Tab Varianten → <strong>Kombinationen erstellen</strong> → Artikelnummern vergeben → Erstellen</div></div>
             <p>Stammdaten werden automatisch vom Vater an alle Kinder weitergegeben — beim Erstellen der Kinder, und bei jeder Änderung am Vater-Artikel.</p>
+            <div class="ba-hint">💡 <strong>Artikel hat schon Lagerbestand?</strong> Dann fragt der Generator, welche Variante den Bestand übernimmt (Bewegungslog „Übergabe an Variante“). Hat ein Vater noch eigenen Bestand von früher, zeigt der Tab Varianten einen blauen Hinweis mit <strong>Bestand übergeben</strong> — sonst wäre der Bestand unsichtbar.</div>
+
+            <h4 id="artikel-varianten-muster">Varianten-Muster auf andere Artikel übertragen</h4>
+            <p>Für viele gleich aufgebaute Artikel (Untersetzer in Kork / Kunstleder / Schiefer, Anhänger): einmal einen <strong>Master</strong> mit allen möglichen Varianten anlegen, dann das Muster übertragen.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Artikelliste → Artikel anhaken, die das Muster bekommen sollen (Master gern mit anhaken, er wird vorgeschlagen)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Aktion <strong>🧬 Varianten-Muster übernehmen</strong> → Ausführen (neuer Tab)</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Master wählen → <strong>Vorschau</strong> (je Artikel „neu“ / „schon da“ / „Nummer belegt“) → <strong>Übernehmen</strong></div></div>
+            <p>Es wird <strong>nur ergänzt</strong>, nie gelöscht — vorhandene Varianten bleiben samt Bestand. Nummer/Name = eigene Nummer bzw. eigener Name + Kürzel der Master-Variante. Preis = eigener Preis + Aufschlag der Master-Variante (Schiefer beim Master +3 € → überall +3 €). Neue Varianten sind aktiv, ohne Bestand und EAN, in denselben Shops wie ihr Vater. Hat ein Artikel noch eigenen Bestand, wird in der Vorschau gefragt, welche Variante ihn übernimmt. Inaktive Varianten des Masters gehören nicht zum Muster.</p>
 
             <h4>Was wird vom Vater an die Kinder weitergegeben?</h4>
             <table class="ba-table">

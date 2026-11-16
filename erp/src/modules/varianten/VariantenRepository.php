@@ -502,4 +502,108 @@ class VariantenRepository
 
         return $stmt->rowCount() > 0;
     }
+    // ── Varianten-Muster übernehmen (VariantenMusterService) ─────────────────────
+
+    /**
+     * Alle Kinder eines Vaters mit ihren Kombinationswerten, eine Zeile je Kind × Wert.
+     * Für den Vergleich über Achse + Wert-Text (Wert-IDs sind je Artikel eigene Zeilen).
+     */
+    public function findKinderMitWerten(int $vaterId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT a.id AS kind_id, a.artikelnummer, a.name, a.aktiv,
+                   w.id AS wert_id, w.achse_id, w.wert
+            FROM artikel a
+            JOIN varianten_kombination_werte vkw ON vkw.kombination_id = a.id
+            JOIN varianten_achse_werte w ON w.id = vkw.wert_id
+            WHERE a.vaterartikel_id = :vid
+            ORDER BY a.artikelnummer, w.achse_id
+        ");
+        $stmt->execute(['vid' => $vaterId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Werte eines Artikels inkl. Rohmaterial (für die Übernahme in einen anderen Artikel). */
+    public function findWerteRoh(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, achse_id, wert, wert_zusatz, bedingungs_wert_id, aufpreis, sort_order, rohmaterial_artikel_id
+            FROM varianten_achse_werte WHERE artikel_id = :aid ORDER BY achse_id, sort_order, id
+        ");
+        $stmt->execute(['aid' => $artikelId]);
+        return $stmt->fetchAll();
+    }
+
+    public function setzeWertRohmaterial(int $wertId, ?int $rohmaterialId): void
+    {
+        $this->db->prepare("UPDATE varianten_achse_werte SET rohmaterial_artikel_id = :r WHERE id = :id")
+                 ->execute(['r' => $rohmaterialId, 'id' => $wertId]);
+    }
+
+    public function setzeWertBedingung(int $wertId, ?int $bedingungsWertId): void
+    {
+        $this->db->prepare("UPDATE varianten_achse_werte SET bedingungs_wert_id = :b WHERE id = :id")
+                 ->execute(['b' => $bedingungsWertId, 'id' => $wertId]);
+    }
+
+    /** Standardpreise (ohne Zeitraum) je Kundengruppe: [kundengruppen_id => ['brutto' => , 'netto' => ]] */
+    public function findBasisPreise(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT kundengruppen_id, brutto_vk, netto_vk FROM artikel_preise
+            WHERE artikel_id = :aid AND gueltig_ab IS NULL AND gueltig_bis IS NULL
+            ORDER BY id
+        ");
+        $stmt->execute(['aid' => $artikelId]);
+        $map = [];
+        foreach ($stmt->fetchAll() as $r) {
+            $map[(int)$r['kundengruppen_id']] = ['brutto' => (float)$r['brutto_vk'], 'netto' => (float)$r['netto_vk']];
+        }
+        return $map;
+    }
+
+    /** Setzt den Standardpreis (ohne Zeitraum) einer Kundengruppe — ändert die Zeile oder legt sie an. */
+    public function setzeBasisPreis(int $artikelId, int $kundengruppeId, float $brutto, float $netto): void
+    {
+        // Vorher nachsehen statt rowCount(): MariaDB meldet bei gleichem Wert 0 geänderte Zeilen
+        // → sonst entstünde eine zweite Preiszeile (Fund im Test 2026-11-16)
+        $da = $this->db->prepare("
+            SELECT id FROM artikel_preise
+            WHERE artikel_id = :aid AND kundengruppen_id = :kg AND gueltig_ab IS NULL AND gueltig_bis IS NULL
+        ");
+        $da->execute(['aid' => $artikelId, 'kg' => $kundengruppeId]);
+        $ids = $da->fetchAll(PDO::FETCH_COLUMN);
+        if ($ids) {
+            $this->db->prepare("UPDATE artikel_preise SET brutto_vk = :b, netto_vk = :n WHERE id = :id")
+                     ->execute(['b' => $brutto, 'n' => $netto, 'id' => (int)$ids[0]]);
+        } else {
+            $this->db->prepare("INSERT INTO artikel_preise (artikel_id, kundengruppen_id, brutto_vk, netto_vk) VALUES (:aid, :kg, :b, :n)")
+                     ->execute(['aid' => $artikelId, 'kg' => $kundengruppeId, 'b' => $brutto, 'n' => $netto]);
+        }
+    }
+
+    /** Maße/Gewichte eines Artikels (für die Unterschiede Master-Kind ↔ Master-Vater). */
+    public function findMasse(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("SELECT gewicht_artikel, gewicht_versand, laenge, breite, hoehe FROM artikel WHERE id = :id");
+        $stmt->execute(['id' => $artikelId]);
+        return $stmt->fetch() ?: [];
+    }
+
+    /** Setzt Maße/Gewichte — nur die erlaubten Felder. */
+    public function setzeMasse(int $artikelId, array $felder): void
+    {
+        $felder = array_intersect_key($felder, array_flip(['gewicht_artikel', 'gewicht_versand', 'laenge', 'breite', 'hoehe']));
+        if (!$felder) return;
+        $set = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($felder)));
+        $this->db->prepare("UPDATE artikel SET $set WHERE id = :id")->execute($felder + ['id' => $artikelId]);
+    }
+
+    /** Shops, in denen der Artikel aktiv zugeordnet ist. */
+    public function findAktiveShopIds(int $artikelId): array
+    {
+        $stmt = $this->db->prepare("SELECT shop_id FROM artikel_shops WHERE artikel_id = :aid AND aktiv = 1");
+        $stmt->execute(['aid' => $artikelId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
 }

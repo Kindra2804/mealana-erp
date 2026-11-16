@@ -44,6 +44,7 @@ final class Zugriffsregeln
             'variante_speichern.php'        => 'artikel.anlegen',
             'varkombi_erstellen.php'        => 'artikel.anlegen',
             'bestand_an_variante.php'       => 'inventur.anlegen',
+            'varianten_muster.php'          => 'artikel.anlegen',
 
             'bearbeiten.php'                => 'artikel.bearbeiten',
             'aktualisieren.php'             => 'artikel.bearbeiten',
