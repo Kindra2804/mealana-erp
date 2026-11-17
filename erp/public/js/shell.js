@@ -120,3 +120,20 @@ window.katNeuSpeichern = function () {
         else { fehler.textContent = d.fehler || 'Fehler beim Speichern'; }
     });
 };
+
+// Artikel-Bild-Vorschau beim Darüberfahren: neben das Bild setzen und unten/rechts im Fenster halten
+// (die Vorschau ist position:fixed, sonst schneidet der Tabellen-Behälter sie ab).
+document.addEventListener('mouseover', function (e) {
+    var thumb = e.target.closest && e.target.closest('.thumb-hat-bild');
+    if (!thumb) return;
+    var vorschau = thumb.querySelector('.thumb-preview');
+    if (!vorschau) return;
+    var r = thumb.getBoundingClientRect();
+    var hoehe = vorschau.offsetHeight || 200;
+    var breite = vorschau.offsetWidth || 150;
+    var links = r.right + 8;
+    if (links + breite > window.innerWidth - 8) links = Math.max(8, r.left - breite - 8);
+    var oben = Math.min(r.top, window.innerHeight - hoehe - 8);
+    vorschau.style.left = links + 'px';
+    vorschau.style.top = Math.max(8, oben) + 'px';
+});

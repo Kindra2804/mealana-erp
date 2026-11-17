@@ -902,14 +902,12 @@
     display: block;
 }
 
-/* Hover-Vorschau: größeres Bild + Name + Preis, reines CSS (siehe Mockup) */
+/* Hover-Vorschau: größeres Bild + Name + Preis. position:fixed, damit der Tabellen-Behälter
+   (overflow-x:auto) sie nicht abschneidet; Lage setzt shell.js (thumbVorschauPlatzieren). */
 .thumb-preview {
     display: none;
-    position: absolute;
-    top: 0;
-    left: 100%;
-    margin-left: 8px;
-    z-index: 50;
+    position: fixed;
+    z-index: 500;
     width: 150px;
     background: white;
     border: 1px solid var(--color-border);
