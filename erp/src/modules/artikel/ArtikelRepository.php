@@ -642,7 +642,19 @@ class ArtikelRepository
     public function findKinderFuerListe(array $vaterIds, string $sortSpalte = 'a.artikelnummer', string $sortDir = 'ASC'): array
     {
         if (empty($vaterIds)) return [];
+        // Erst die IDs (Kinder + fertige Schilder der Layouts) über die Indizes holen -- das frühere
+        // "vaterartikel_id IN (…) OR kf.layout_artikel_id IN (…)" über zwei Tabellen ließ MariaDB alle
+        // Artikel durchgehen (~0,9 s bei jedem Laden der Liste, 2026-11-17).
         $placeholders = implode(',', array_fill(0, count($vaterIds), '?'));
+        $idSt = $this->db->prepare("
+            SELECT id FROM artikel WHERE vaterartikel_id IN ($placeholders)
+            UNION
+            SELECT artikel_id FROM konfig_fertige_artikel WHERE layout_artikel_id IN ($placeholders)
+        ");
+        $idSt->execute(array_merge($vaterIds, $vaterIds));
+        $kindIds = array_map('intval', $idSt->fetchAll(PDO::FETCH_COLUMN));
+        if (!$kindIds) return [];
+        $placeholders = implode(',', array_fill(0, count($kindIds), '?'));
         $stmt = $this->db->prepare("
             SELECT
                 a.id,
@@ -713,11 +725,11 @@ class ArtikelRepository
             LEFT JOIN einheiten e ON a.einheit_id = e.id
             LEFT JOIN artikel_gruppen ag ON a.artikel_gruppe_id = ag.id
             LEFT JOIN konfig_fertige_artikel kf ON kf.artikel_id = a.id
-            WHERE a.vaterartikel_id IN ($placeholders) OR kf.layout_artikel_id IN ($placeholders)
+            WHERE a.id IN ($placeholders)
             GROUP BY a.id
             ORDER BY $sortSpalte $sortDir
         ");
-        $stmt->execute(array_merge($vaterIds, $vaterIds));
+        $stmt->execute($kindIds);
         return $stmt->fetchAll();
     }
 

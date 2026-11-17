@@ -68,12 +68,6 @@ class KategorieRepository
         $stmt = $this->db->query("
             SELECT k.id, k.parent_id, k.name, k.beschreibung, k.bild_pfad, k.sortierung,
                 k.ist_aktions_kategorie,
-                (
-                    SELECT COUNT(DISTINCT a.id)
-                    FROM artikel_kategorien ak
-                    JOIN artikel a ON a.id = ak.artikel_id AND a.aktiv = 1 AND a.ist_vater = 0
-                    WHERE ak.kategorie_id = k.id
-                ) AS artikel_anzahl,
                 COALESCE((
                     SELECT MAX(CASE WHEN akt2.gestartet = 1 AND CURDATE() BETWEEN ak2.gueltig_ab AND ak2.gueltig_bis THEN 1 ELSE 0 END)
                     FROM aktionen_kategorien ak2
@@ -94,18 +88,36 @@ class KategorieRepository
                     FROM aktionen_kategorien ak2
                     JOIN aktionen akt2 ON akt2.id = ak2.aktion_id
                     WHERE ak2.kategorie_id = k.id
-                ) AS aktion_info,
-                (SELECT GROUP_CONCAT(DISTINCT CONCAT('S', s3.id) ORDER BY s3.id SEPARATOR ',')
-                 FROM artikel_kategorien ak3
-                 JOIN artikel a3 ON a3.id = ak3.artikel_id AND a3.aktiv = 1
-                 JOIN artikel_shops ash3 ON ash3.artikel_id = a3.id AND ash3.aktiv = 1
-                 JOIN shops s3 ON s3.id = ash3.shop_id
-                 WHERE ak3.kategorie_id = k.id) AS eigene_shop_codes
+                ) AS aktion_info
             FROM kategorien k
             WHERE k.aktiv = 1
             ORDER BY k.sortierung ASC, k.name ASC
         ");
-        return $stmt->fetchAll();
+        $kategorien = $stmt->fetchAll();
+
+        // Artikelanzahl + Kanal-Chips je Kategorie: je EINE gruppierte Abfrage statt korrelierter
+        // Unterabfrage pro Kategorie. Mit 48.000 Zuordnungen (Lang-/JTL-Importe) liefen die beiden
+        // korrelierten Varianten zusammen ~1,6 s bei jedem Laden der Artikelliste (2026-11-17).
+        $anzahl = $this->db->query("
+            SELECT ak.kategorie_id, COUNT(DISTINCT a.id) AS n
+            FROM artikel_kategorien ak
+            JOIN artikel a ON a.id = ak.artikel_id AND a.aktiv = 1 AND a.ist_vater = 0
+            GROUP BY ak.kategorie_id
+        ")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $shopCodes = $this->db->query("
+            SELECT ak3.kategorie_id, GROUP_CONCAT(DISTINCT CONCAT('S', s3.id) ORDER BY s3.id SEPARATOR ',') AS codes
+            FROM artikel_kategorien ak3
+            JOIN artikel a3 ON a3.id = ak3.artikel_id AND a3.aktiv = 1
+            JOIN artikel_shops ash3 ON ash3.artikel_id = a3.id AND ash3.aktiv = 1
+            JOIN shops s3 ON s3.id = ash3.shop_id
+            GROUP BY ak3.kategorie_id
+        ")->fetchAll(PDO::FETCH_KEY_PAIR);
+        foreach ($kategorien as &$k) {
+            $k['artikel_anzahl']    = (int) ($anzahl[$k['id']] ?? 0);
+            $k['eigene_shop_codes'] = $shopCodes[$k['id']] ?? null;
+        }
+        unset($k);
+        return $kategorien;
     }
 
     /**
