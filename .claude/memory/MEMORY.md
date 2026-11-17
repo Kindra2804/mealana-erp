@@ -142,7 +142,7 @@
 - [Installationsanleitung](project_installationsanleitung.md) — Baseline-Neuschnitt
 - [🔄 Update-Weg](project_update_mechanismus.md) — gebaut 2026-11-01: tools/paket/bauen.php + ··· → Updates (DB-Sicherung Pflicht, Zurückspielen); ✅ 2026-11-15 veraltete Dateien entfernen + „Was ist neu“ über Zwischenversionen (ab 1.0.17); später Online-„Update verfügbar“
 - [Whitelabel/Branding](project_whitelabel_branding.md) — NAHTLOS-Logo
-- [UI Redesign Plan](project_ui_redesign.md) — JTL-Layout, Barbara Mitsprache
+- [UI Redesign Plan](project_ui_redesign.md) — JTL-Layout, Barbara Mitsprache; 2026-11-17 Seitenleisten-Gruppen + Import-Klappmenü + Kanalfarben je Shop (Live mit nächstem Paket)
 - [Rechte & Rollen](project_rechte_rollen.md) — fertig, Lizenzserver offen
 - [Logger UI](project_logger_ui.md) — fertig
 
