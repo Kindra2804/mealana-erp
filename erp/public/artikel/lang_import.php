@@ -253,6 +253,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
 $liste('Über die EAN gefunden – Artikelnummer im ERP prüfen/ausbessern', ['Lang-Nummer', 'Nummer im ERP', 'Name'], $plan['listen']['ean_treffer'],
     'Diese Lang-Artikel stehen im ERP unter einer anderen Nummer. Sie werden aktualisiert, die Nummer bleibt – bitte auf die Lang-Nummer ausbessern, '
     . 'damit alle Garne gleich aussehen. ' . $csv('ean'), true);
+$liste('EAN zieht um – bei einem anderen Garn falsch eingetragen', ['Neu (Lang)', 'Hatte die EAN bisher', 'Name', 'Bestand'],
+    array_map(fn($r) => [$r[0], $r[1], $r[2], rtrim(rtrim(number_format($r[3], 2, ',', ''), '0'), ',')], $plan['listen']['ean_umzug']),
+    'Die EAN steht im ERP bei einem anderen Lang-Garn. Der Artikel wird so angelegt, wie er in der Lang-Liste steht, und bekommt die EAN; '
+    . 'beim alten Artikel wird sie entfernt (sonst bleibt er unverändert). Hat der alte Artikel Bestand: Ware mit dem Etikett prüfen.', true);
 $liste('Werden Auslaufartikel', ['Artikelnummer', 'Name', 'Lang-Status', 'Bestand'], $plan['listen']['auslauf'],
     'Ohne Bestand werden sie gleich inaktiv, mit Bestand erst, wenn er abverkauft ist. Strecke ist für sie aus.');
 $liste('Übersprungen', ['Artikelnummer', 'Name', 'Grund'], $plan['listen']['uebersprungen'], null, true);

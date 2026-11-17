@@ -110,6 +110,21 @@ class LangImportRepository
         return (bool) $st->fetchColumn();
     }
 
+    public function artikelnummer(int $id): ?string
+    {
+        $st = $this->db->prepare("SELECT artikelnummer FROM artikel WHERE id = ?");
+        $st->execute([$id]);
+        $nr = $st->fetchColumn();
+        return $nr === false ? null : (string) $nr;
+    }
+
+    /** EAN-Umzug: Code beim alten Artikel entfernen (bekommt danach der neu angelegte) */
+    public function entferneEan(int $artikelId, string $ean): void
+    {
+        $this->db->prepare("DELETE FROM artikel_codes WHERE artikel_id = ? AND code = ?")->execute([$artikelId, $ean]);
+        $this->db->prepare("UPDATE artikel SET aktualisiert_am = NOW() WHERE id = ?")->execute([$artikelId]);
+    }
+
     public function fuegeGtinHinzu(int $artikelId, string $ean): void
     {
         $this->db->prepare("INSERT INTO artikel_codes (artikel_id, typ, code) VALUES (?, 'GTIN13', ?)")->execute([$artikelId, $ean]);

@@ -130,8 +130,8 @@ class LangImportService
 
         $summe = ['vaeter_neu' => 0, 'kinder_neu' => 0, 'einzel_neu' => 0, 'aktualisieren' => 0, 'ean_treffer' => 0,
                   'auslauf' => 0, 'schon_auslauf' => 0, 'uebersprungen' => 0, 'nummer_bereinigt' => 0, 'ohne_preis' => 0,
-                  'abgewaehlt' => 0, 'ek_hoeher' => 0, 'ek_niedriger' => 0, 'vk_abweichend' => 0];
-        $listen = ['auslauf' => [], 'ean_treffer' => [], 'uebersprungen' => []];
+                  'abgewaehlt' => 0, 'ek_hoeher' => 0, 'ek_niedriger' => 0, 'vk_abweichend' => 0, 'ean_umzug' => 0];
+        $listen = ['auslauf' => [], 'ean_treffer' => [], 'ean_umzug' => [], 'uebersprungen' => []];
         $auswahl = [];    // Väter mit neuen Artikeln -> im Probelauf abwählbar
         $preise  = [];    // gruppiert je Vater + gleiche Preise
         $gefunden = [];   // artikel_id => true (in der Datei gefunden)
@@ -147,6 +147,10 @@ class LangImportService
                     case 'neu':
                         $summe[$p['typ'] === 'buch' ? 'einzel_neu' : 'kinder_neu']++;
                         if ($k['vk'] <= 0) $summe['ohne_preis']++;
+                        if ($k['ean_umzug']) {
+                            $summe['ean_umzug']++;
+                            $listen['ean_umzug'][] = [$k['nr'], $k['ean_umzug']['nr'], $k['ean_umzug']['name'], $k['ean_umzug']['bestand']];
+                        }
                         $neu[] = $k;
                         break;
                     case 'abgewaehlt':
@@ -281,9 +285,22 @@ class LangImportService
             $erp  = $this->lyMap[$ly] ?? null;
             $eanTreffer = false;
             $ean  = self::ean($k['EAN_Artikel']);
+            $eanUmzug = null;
             if (!$erp && $ean && isset($this->eanMap[$ean])) {
                 $erp = $this->repo->findArtikelKurz($this->eanMap[$ean]);
                 $eanTreffer = (bool) $erp;
+                // Hängt der EAN-Treffer im ERP an einem ANDEREN Lang-Garn (z. B. LY-945 LUSSO, Lang sagt 845 MILLE
+                // COLORI BABY)? Dann ist die EAN dort falsch eingetragen (Jacky 2026-11-17): Artikel so anlegen,
+                // wie er in der Lang-Liste steht, und die EAN vom alten zum neuen Artikel umziehen.
+                if ($erp && $typ === 'garn') {
+                    $garnNr = $erp['vaterartikel_id'] ? $this->repo->artikelnummer((int) $erp['vaterartikel_id']) : $erp['artikelnummer'];
+                    $gleichesGarn = $garnNr === $vLy || str_starts_with((string) $garnNr, $vLy . '-');
+                    if (!$gleichesGarn && str_starts_with((string) $garnNr, 'LY-')) {
+                        $eanUmzug = ['id' => (int) $erp['id'], 'nr' => $erp['artikelnummer'], 'name' => $erp['name'], 'bestand' => (float) $erp['bestand']];
+                        $erp = null;
+                        $eanTreffer = false;
+                    }
+                }
             }
             $aus  = in_array($k['Status'], self::AUSLAUF_STATUS, true);
             $vk   = self::zahl($k['VP/KN']);
@@ -292,6 +309,7 @@ class LangImportService
                 'id' => $erp ? (int) $erp['id'] : null, 'erp_nr' => $erp['artikelnummer'] ?? null, 'erp_name' => $erp['name'] ?? null,
                 'bestand' => $erp['bestand'] ?? 0, 'ean_treffer' => $eanTreffer, 'vk' => $vk,
                 'name' => $this->kindName($typ, $plan['vater']['name'], $knr, $k), 'neue_nummer' => null, 'grund' => null,
+                'ean_umzug' => $eanUmzug,
             ];
 
             if ($erp) {
@@ -312,7 +330,7 @@ class LangImportService
             } elseif ($sperre) {
                 $kind['aktion'] = 'ueberspringen';
                 $kind['grund']  = $sperre;
-            } elseif ($ean && $this->repo->eanVergeben($ean)) {
+            } elseif ($ean && !$eanUmzug && $this->repo->eanVergeben($ean)) {
                 $kind['aktion'] = 'ueberspringen';
                 $kind['grund']  = "EAN $ean gehört schon einem anderen Artikel";
             } else {
@@ -391,6 +409,15 @@ class LangImportService
         } else {
             // ── Garn: Vater anlegen bzw. vorbereiten, Kinder über den Varianten-Generator ──
             if ($neue) {
+                // EAN-Umzug: falsch eingetragene EAN beim alten Artikel (anderes Garn) entfernen,
+                // nachbearbeiten() setzt sie dann beim neu angelegten Kind
+                foreach ($neue as $k) {
+                    if (!$k['ean_umzug']) continue;
+                    $ean = self::ean($k['zeile']['EAN_Artikel']);
+                    $this->repo->entferneEan($k['ean_umzug']['id'], $ean);
+                    Logger::log('artikel.ean_umgezogen', 'artikel', $k['ean_umzug']['id'],
+                        ['ean' => $ean, 'von' => $k['ean_umzug']['nr'], 'nach' => $k['nr'], 'quelle' => 'lang_import'], $benutzerId);
+                }
                 if (!$vaterId) {
                     $vaterId = $this->artikelRepo->insert($this->stammDaten('garn', $plan['vater']['nr'], $v['Bez_1'], $v, $neue[0]['zeile'], null));
                     $this->repo->setzeLieferantZeile($vaterId, $lieferantId, $plan['vnr'], $this->ek($neue[0]['zeile'], $v), null);

@@ -369,6 +369,7 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <li><strong>Strecke nur noch für Garne aus der Liste:</strong> der Import stellt beim Lieferanten „für alle Artikel“ aus, markiert die Garne, nimmt nicht mehr gelisteten das „ja“.</li>
                 <li><strong>Neue Garne auswählen:</strong> Häkchen weg = nicht importieren (z.B. Zusammensetzung passt nicht) – bleibt gespeichert, auch für den nächsten Import.</li>
                 <li><strong>⚑ Preisänderungen</strong> (EK ▲/▼ je Garn, unser VK, abweichender Lang-VP) und <strong>⚑ über die EAN gefunden</strong> (Nummer ausbessern) sind markiert, beide als CSV.</li>
+                <li><strong>⚑ EAN zieht um:</strong> Steht die EAN im ERP bei einem <em>anderen</em> Lang-Garn (z.B. LUSSO statt MILLE COLORI BABY), ist sie dort falsch: Der Artikel wird wie in der Lang-Liste angelegt und bekommt die EAN, beim alten wird nur die EAN entfernt. Mit Bestand: Ware am Etikett prüfen.</li>
                 <li>Neue Artikel: aktiv, <strong>in keinem Shop</strong>, noch ohne Kategorie; Vater mit Beschreibung, Pflege und Merkmalen.</li>
                 <li><strong>Nicht mehr in der Datei</strong>: werden nicht verändert, nur zum Prüfen (⬇ CSV).</li>
             </ul>
