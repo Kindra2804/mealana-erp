@@ -62,6 +62,25 @@ class ArtikelRepository
         return $this->listenIdsOhneEk;
     }
 
+    /**
+     * Väter/Einzelartikel, bei denen weder der Artikel selbst noch eines seiner Kinder eine EAN hat.
+     * Einmal vorberechnet (nicht korreliert) -- als korrelierte NOT-EXISTS-Unterabfrage lief der
+     * Filter „Keine EAN“ nach der Vater/Kind/Lagerbestand-Join-Kreuzung über 3 Minuten (2026-11-17).
+     */
+    private function holeListenIdsOhneEan(): array
+    {
+        $stmt = $this->db->query("
+            SELECT a.id FROM artikel a
+            WHERE a.vaterartikel_id IS NULL
+              AND a.id NOT IN (
+                  SELECT DISTINCT COALESCE(a2.vaterartikel_id, a2.id)
+                  FROM artikel_codes ac JOIN artikel a2 ON a2.id = ac.artikel_id
+                  WHERE ac.typ = 'GTIN13'
+              )
+        ");
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     private function holeVaterIdsMitDoppelterEan(): array
     {
         $stmt = $this->db->query("
@@ -200,13 +219,10 @@ class ArtikelRepository
 
         $qf = $filter['qualitaet'] ?? '';
         if ($qf === 'keine_ean') {
-            // Kein EAN-Code weder beim Artikel selbst noch bei einem seiner Kinder
-            $conditions[] = "NOT EXISTS (
-                SELECT 1 FROM artikel_codes ac_q
-                WHERE ac_q.typ = 'GTIN13'
-                  AND (ac_q.artikel_id = a.id
-                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
-            )";
+            // Kein EAN-Code weder beim Artikel selbst noch bei einem seiner Kinder -- vorberechnete
+            // ID-Liste statt pro Zeile korrelierter Unterabfrage (lief > 3 min, Fund 2026-11-17)
+            $ids = $this->holeListenIdsOhneEan();
+            $conditions[] = $ids ? ('a.id IN (' . implode(',', $ids) . ')') : '1=0';
         } elseif ($qf === 'doppelte_ean') {
             // Mindestens ein EAN-Code (Artikel oder Kind) ist in der DB mehrfach vorhanden.
             // War früher eine pro Zeile korrelierte EXISTS+COUNT-Subquery -- lief nach der
@@ -423,12 +439,9 @@ class ArtikelRepository
 
         $qf = $filter['qualitaet'] ?? '';
         if ($qf === 'keine_ean') {
-            $conditions[] = "NOT EXISTS (
-                SELECT 1 FROM artikel_codes ac_q
-                WHERE ac_q.typ = 'GTIN13'
-                  AND (ac_q.artikel_id = a.id
-                       OR ac_q.artikel_id IN (SELECT id FROM artikel WHERE vaterartikel_id = a.id))
-            )";
+            // Siehe findAll() -- vorberechnete ID-Liste (Fund 2026-11-17)
+            $ids = $this->holeListenIdsOhneEan();
+            $conditions[] = $ids ? ('a.id IN (' . implode(',', $ids) . ')') : '1=0';
         } elseif ($qf === 'doppelte_ean') {
             // Siehe findAll() -- einmalig vorberechnete Vater-ID-Liste statt pro Zeile
             // korrelierter EXISTS+COUNT-Subquery (Fund 2026-08-26, echter 120s-Timeout).
@@ -469,7 +482,9 @@ class ArtikelRepository
             SELECT COUNT(*) FROM (
                 SELECT
                 a.id,
-                COALESCE(SUM(lb.bestand), 0) + (SELECT COALESCE(SUM(lbf.bestand), 0) FROM konfig_fertige_artikel kf_b JOIN lagerbestand lbf ON lbf.artikel_id = kf_b.artikel_id WHERE kf_b.layout_artikel_id = a.id) AS gesamtbestand
+                COALESCE(SUM(lb.bestand), 0) + (SELECT COALESCE(SUM(lbf.bestand), 0) FROM konfig_fertige_artikel kf_b JOIN lagerbestand lbf ON lbf.artikel_id = kf_b.artikel_id WHERE kf_b.layout_artikel_id = a.id) AS gesamtbestand,
+                -- für HAVING beim Filter „Fehlbestand“ (fehlte hier -> Fehler, 2026-11-17)
+                (SELECT COALESCE(SUM(r.menge), 0) FROM reservierungen r WHERE r.artikel_id = a.id AND r.status = 'offen') AS reserviert
                 FROM artikel a
                 JOIN artikel_typen at ON a.artikeltyp_id = at.id
                 LEFT JOIN hersteller h ON a.hersteller_id = h.id

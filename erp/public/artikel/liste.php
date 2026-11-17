@@ -954,7 +954,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <div class="card">
     <div class="pagination-bar">
         <div class="">
-            Zeige <?= $offset + 1 ?>–<?= min($offset + $proSeite, $gesamt) ?> von <?= $gesamt ?> Hauptartikeln
+            <?php if ($gesamt > 0): ?>Zeige <?= $offset + 1 ?>–<?= min($offset + $proSeite, $gesamt) ?> von <?= $gesamt ?> Hauptartikeln<?php else: ?>Keine Artikel gefunden<?php endif; ?>
         </div>
         <div class="pagination">
             <?php foreach (buildPaginierung($seite, $seitenAnzahl) as $eintrag):
