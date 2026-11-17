@@ -1430,3 +1430,13 @@ docs: Update db schema in CLAUDE.md
 - GitHub: https://github.com/Kindra2804/mealana-erp
 - Requirements: docs/anforderungen.md
 - Context: docs/kontext.md
+
+## Update 2026-11-17: Bot-Abwehr SOW/Bio, Seitenleisten-Gruppen, Lang EAN-Umzug, Listen-Tempo – Paket 1.0.24 gebaut
+
+- **Bot auf SOW:** ~20.000 alte JTL-Filteradressen (`__…__`, `?Sortierung=`) von 22.000 IPs → Prozess-Limit 40 → 508, auch für den ERP-Abgleich (ERP selbst: 26 Zugriffe/Tag). `shop/wp-snippets/jtl_filter_410.htaccess` ganz oben in die `.htaccess` (410 ohne PHP; einfache `X__Y` bleiben bei der 301 aus `sow_weiterleitungen_robots.php`). Auf SOW + Bio eingebaut; MeaLana beim Umzug.
+- **Seitenleiste mit Gruppen** (`shell_top.php`: `['type' => 'gruppe', 'label', 'items']`, `<details>`, Zustand per localStorage `erp_sidebar_gruppen`): Artikel = Stammdaten / Preise / Preisschilder / Shop. Import-Knöpfe → `.actionbar-menue` „⬇ Import ▾“. Achtung: shell_top läuft im Scope der Seite – Hilfsvariablen dort mit `$sb…` benennen (hatte `$kinder` der Artikelseite überschrieben → Badge immer 2).
+- **Kanalfarben** an Hausfarben: S1 #3F7CC0, S2 #3B6B52, S3 #C8574A, S4 #A47B52 (`.kc-sN`, neuer Shop braucht neue Klasse).
+- **Lang-Import EAN-Umzug:** EAN-Treffer bei anderem LY-Garn (Vaternummer ≠ Lang-Vater) → Artikel wie in der Liste neu anlegen, EAN beim alten entfernen (Liste „⚑ EAN zieht um“). Fall LUSSO (LY-945) / MILLE COLORI BABY (LY-845), 9 Farben.
+- **Artikelliste-Tempo:** „Keine EAN“ als vorberechnete ID-Liste (> 3 min → 0,8 s), Fehlbestand-Zähler fehlte `reserviert`, Kategoriebaum-Zähler gruppiert statt korreliert (1,6 → 0,6 s), `findKinderFuerListe` über ID-Liste statt OR über zwei Tabellen (0,9 → 0,05 s). Liste gesamt 3,6 → 2,1 s. Lehre: korrelierte Unterabfragen + OR über Tabellen kippen mit wachsender Datenmenge.
+- Lagerübersicht: Charge-Status nur bei Charge/„nachzutragen“, sonst „–“. Bild-Vorschau Artikelliste `position:fixed` + shell.js.
+- **Paket 1.0.24** gebaut (`D:\ERP\pakete\nahtlos-1.0.24.zip`, ohne Migration), Live-Einspielen offen; danach Lang-Import auf Live.
