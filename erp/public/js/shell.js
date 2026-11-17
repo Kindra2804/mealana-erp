@@ -137,3 +137,30 @@ document.addEventListener('mouseover', function (e) {
     vorschau.style.left = links + 'px';
     vorschau.style.top = Math.max(8, oben) + 'px';
 });
+
+// Seitenleisten-Gruppen: offen/zu je Gruppe merken (nur Bequemlichkeit, darf fehlen).
+// Die Gruppe mit der aktuellen Seite (data-aktiv) bleibt immer offen.
+(function () {
+    var SCHLUESSEL = 'erp_sidebar_gruppen';
+    var stand = {};
+    try { stand = JSON.parse(localStorage.getItem(SCHLUESSEL) || '{}') || {}; } catch (e) { stand = {}; }
+    document.querySelectorAll('details.sidebar-gruppe').forEach(function (d) {
+        var name = d.dataset.gruppe;
+        if (!d.dataset.aktiv && stand[name] === true) d.open = true;
+        d.addEventListener('toggle', function () {
+            stand[name] = d.open;
+            try { localStorage.setItem(SCHLUESSEL, JSON.stringify(stand)); } catch (e) {}
+        });
+    });
+})();
+
+// Klappmenüs in der Aktionsleiste: Klick daneben oder Esc schließt sie
+document.addEventListener('click', function (e) {
+    document.querySelectorAll('details.actionbar-menue[open]').forEach(function (d) {
+        if (!d.contains(e.target)) d.open = false;
+    });
+});
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('details.actionbar-menue[open]').forEach(function (d) { d.open = false; });
+});

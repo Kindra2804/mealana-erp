@@ -549,10 +549,15 @@ $actionBarContent = <<<HTML
 <a href="neu.php" class="btn btn-primary btn-sm">+ Neu</a>
 <button class="btn btn-secondary btn-sm">Kopieren</button>
 <div class="actionbar-sep"></div>
-<a href="import.php" class="btn btn-secondary btn-sm">⬇ Import</a>
-<a href="jtl_import.php" class="btn btn-secondary btn-sm">⬇ JTL Vater+Kind-Import</a>
-<a href="jtl_bilder_import.php" class="btn btn-secondary btn-sm">⬇ JTL Bilder-Import</a>
-<a href="lang_import.php" class="btn btn-secondary btn-sm">⬇ Lang-Import</a>
+<details class="actionbar-menue">
+    <summary class="btn btn-secondary btn-sm">⬇ Import ▾</summary>
+    <div class="actionbar-menue-liste">
+        <a href="import.php">CSV-Import</a>
+        <a href="jtl_import.php">JTL Vater+Kind-Import</a>
+        <a href="jtl_bilder_import.php">JTL Bilder-Import</a>
+        <a href="lang_import.php">Lang-Yarns-Import</a>
+    </div>
+</details>
 <a href="liste_export.php?{$queryOhneSeite}" class="btn btn-secondary btn-sm" title="Kontrollliste als CSV (Typ/Gruppe/Einheit/Hersteller)">⬆ Export</a>
 <div class="actionbar-right">
     <span style="color:var(--color-text-muted);font-size:13px">Ausgewählt:</span>

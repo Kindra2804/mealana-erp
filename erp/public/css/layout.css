@@ -309,6 +309,56 @@ html, body {
   font-weight: 600;
 }
 
+/* Aufklappbare Gruppe in der Seitenleiste (<details>), offen-Zustand merkt sich shell.js */
+.sidebar-gruppe-kopf {
+  list-style: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-nav);
+  user-select: none;
+}
+.sidebar-gruppe-kopf::-webkit-details-marker { display: none; }
+.sidebar-gruppe-kopf::before {
+  content: '▸';
+  display: inline-block;
+  width: 14px;
+  font-size: 11px;
+  transition: transform .15s;
+}
+.sidebar-gruppe[open] > .sidebar-gruppe-kopf::before { transform: rotate(90deg); }
+.sidebar-gruppe-punkt {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: calc(var(--space-md) + 14px);
+  font-size: 12.5px;
+}
+
+/* Klappmenü in der Aktionsleiste (z. B. "Import ▾") */
+.actionbar-menue { position: relative; }
+.actionbar-menue > summary { list-style: none; }
+.actionbar-menue > summary::-webkit-details-marker { display: none; }
+.actionbar-menue-liste {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 600;
+  min-width: 220px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.15);
+  padding: 4px 0;
+}
+.actionbar-menue-liste a {
+  display: block;
+  padding: 7px 14px;
+  font-size: 13px;
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.actionbar-menue-liste a:hover { background: var(--color-bg); color: var(--color-nav); }
+
 .sidebar-module-header {
     padding: 6px var(--space-md);
     font-size: 10px;

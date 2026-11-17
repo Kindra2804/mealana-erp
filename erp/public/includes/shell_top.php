@@ -22,17 +22,27 @@ $sidebarItems = match ($activeModule ?? '') {
     'artikel' => [
         ['icon' => '📋', 'label' => 'Liste',            'href' => BASE_PATH . '/artikel/liste.php'],
         ['icon' => '➕', 'label' => 'Neu erstellen',     'href' => BASE_PATH . '/artikel/neu.php'],
-        ['icon' => '🗂', 'label' => 'Kategorien',       'href' => BASE_PATH . '/artikel/kategorien_verwalten.php'],
-        ['icon' => '🏷', 'label' => 'Merkmale',         'href' => BASE_PATH . '/artikel/merkmale_verwalten.php'],
-        ['icon' => '💲', 'label' => 'Preise / Aktionen', 'href' => BASE_PATH . '/aktionen/liste.php'],
-        ['icon' => '⚖️', 'label' => 'Grundpreise',      'href' => BASE_PATH . '/artikel/grundpreise.php', 'recht' => 'artikel.bearbeiten'],
-        ['icon' => '🧹', 'label' => 'GPSR-Texte',       'href' => BASE_PATH . '/artikel/gpsr_texte.php', 'recht' => 'artikel.bearbeiten'],
-        ['icon' => '🏭', 'label' => 'Hersteller',       'href' => BASE_PATH . '/hersteller/liste.php'],
-        ['icon' => '🧩', 'label' => 'Schild-Bausteine', 'href' => BASE_PATH . '/konfigurator/bausteine.php'],
-        ['icon' => '🖨', 'label' => 'Preisschilder',    'href' => BASE_PATH . '/schilder/auswahl.php'],
-        ['icon' => '🔁', 'label' => 'Schilder veraltet', 'href' => BASE_PATH . '/schilder/veraltet.php'],
-        ['icon' => '🖼', 'label' => 'Shop-Slider',      'href' => BASE_PATH . '/slider/liste.php', 'recht' => 'slider.verwalten'],
-        ['icon' => '🧭', 'label' => 'Shop-Menü',        'href' => BASE_PATH . '/slider/menue.php', 'recht' => 'slider.verwalten'],
+        // Gruppen klappen auf/zu (Entwurf docs/design/artikel_sidebar_gruppen_mockup.svg), damit der
+        // Kategoriebaum darunter Platz hat. Die Gruppe mit der aktuellen Seite ist immer offen.
+        ['type' => 'gruppe', 'label' => 'Stammdaten', 'items' => [
+            ['icon' => '🗂', 'label' => 'Kategorien',   'href' => BASE_PATH . '/artikel/kategorien_verwalten.php'],
+            ['icon' => '🏷', 'label' => 'Merkmale',     'href' => BASE_PATH . '/artikel/merkmale_verwalten.php'],
+            ['icon' => '🏭', 'label' => 'Hersteller',   'href' => BASE_PATH . '/hersteller/liste.php'],
+            ['icon' => '⚖️', 'label' => 'Grundpreise',  'href' => BASE_PATH . '/artikel/grundpreise.php', 'recht' => 'artikel.bearbeiten'],
+            ['icon' => '🧹', 'label' => 'GPSR-Texte',   'href' => BASE_PATH . '/artikel/gpsr_texte.php', 'recht' => 'artikel.bearbeiten'],
+        ]],
+        ['type' => 'gruppe', 'label' => 'Preise', 'items' => [
+            ['icon' => '💲', 'label' => 'Preise / Aktionen', 'href' => BASE_PATH . '/aktionen/liste.php'],
+        ]],
+        ['type' => 'gruppe', 'label' => 'Preisschilder', 'items' => [
+            ['icon' => '🖨', 'label' => 'Schilder drucken',    'href' => BASE_PATH . '/schilder/auswahl.php'],
+            ['icon' => '🔁', 'label' => 'Veraltete Schilder',  'href' => BASE_PATH . '/schilder/veraltet.php'],
+            ['icon' => '🧩', 'label' => 'Schild-Bausteine',    'href' => BASE_PATH . '/konfigurator/bausteine.php'],
+        ]],
+        ['type' => 'gruppe', 'label' => 'Shop', 'items' => [
+            ['icon' => '🖼', 'label' => 'Shop-Slider', 'href' => BASE_PATH . '/slider/liste.php', 'recht' => 'slider.verwalten'],
+            ['icon' => '🧭', 'label' => 'Shop-Menü',   'href' => BASE_PATH . '/slider/menue.php', 'recht' => 'slider.verwalten'],
+        ]],
     ],
     'lager' => [
         ['icon' => '📦', 'label' => 'Übersicht',          'href' => BASE_PATH . '/lager/uebersicht.php'],
@@ -204,10 +214,36 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
                 <div class="sidebar-module-header"><?= htmlspecialchars($moduleLabel) ?></div>
             <?php endif; ?>
             <nav class="erp-sidebar-nav">
+                <?php
+                // Ein normaler Menüpunkt (auch innerhalb einer Gruppe)
+                $navLink = function (array $item, string $extraKlasse = '') use ($currentPath, $lzSperre, $lzSchloss): void {
+                    $isActive = !empty($item['active'])
+                        || ($item['href'] !== '#' && $currentPath === $item['href']);
+                    ?>
+                    <a href="<?= $item['href'] ?>" class="erp-sidebar-item <?= $extraKlasse ?> <?= $isActive ? 'active' : '' ?>"<?= $lzSperre($item['href']) ?>>
+                        <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?><?= $lzSchloss($item['href']) ?>
+                        <?php if (!empty($item['badge'])): ?>
+                            <span class="badge" style="margin-left:auto"><?= (int)$item['badge'] ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <?php
+                };
+                ?>
                 <?php foreach ($sidebarItems as $item): ?>
                     <?php if (!empty($item['recht']) && !Auth::kann($item['recht'])) continue; ?>
                     <?php $typ = $item['type'] ?? 'nav'; ?>
-                    <?php if ($typ === 'separator'): ?>
+                    <?php if ($typ === 'gruppe'): ?>
+                        <?php
+                        $kinder = array_values(array_filter($item['items'], fn($k) => empty($k['recht']) || Auth::kann($k['recht'])));
+                        if (!$kinder) continue;
+                        $gruppeAktiv = (bool)array_filter($kinder, fn($k) => $currentPath === $k['href']);
+                        ?>
+                        <details class="sidebar-gruppe" data-gruppe="<?= htmlspecialchars(($activeModule ?? '') . ':' . $item['label']) ?>"
+                                 <?= $gruppeAktiv ? 'open data-aktiv="1"' : '' ?>>
+                            <summary class="erp-sidebar-item sidebar-gruppe-kopf"><?= htmlspecialchars($item['label']) ?></summary>
+                            <?php foreach ($kinder as $kind) $navLink($kind, 'sidebar-gruppe-punkt'); ?>
+                        </details>
+                    <?php elseif ($typ === 'separator'): ?>
                         <div class="sidebar-sep"></div>
                     <?php elseif ($typ === 'back'): ?>
                         <a href="<?= $item['href'] ?>" class="erp-sidebar-item" style="font-size:13px; color:var(--color-text-muted)">
@@ -223,17 +259,7 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
                             <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>
                         </a>
                     <?php else: ?>
-                        <?php
-                        $isActive = isset($item['active']) && $item['active']
-                            ? 'active'
-                            : (($item['href'] !== '#' && $currentPath === $item['href']) ? 'active' : '');
-                        ?>
-                        <a href="<?= $item['href'] ?>" class="erp-sidebar-item <?= $isActive ?>"<?= $lzSperre($item['href']) ?>>
-                            <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?><?= $lzSchloss($item['href']) ?>
-                            <?php if (!empty($item['badge'])): ?>
-                                <span class="badge" style="margin-left:auto"><?= (int)$item['badge'] ?></span>
-                            <?php endif; ?>
-                        </a>
+                        <?php $navLink($item); ?>
                     <?php endif; ?>
                 <?php endforeach; ?>
 

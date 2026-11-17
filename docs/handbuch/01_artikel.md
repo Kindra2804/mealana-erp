@@ -6,6 +6,21 @@ Hier werden alle Produkte verwaltet: Stammdaten, Preise, Bilder, Varianten (Farb
 
 ---
 
+## Menü links (Gruppen)
+
+Unter **Liste** und **Neu erstellen** liegen vier Gruppen zum Aufklappen:
+
+| Gruppe | Enthält |
+|---|---|
+| Stammdaten | Kategorien, Merkmale, Hersteller, Grundpreise, GPSR-Texte |
+| Preise | Preise / Aktionen |
+| Preisschilder | Schilder drucken, Veraltete Schilder, Schild-Bausteine |
+| Shop | Shop-Slider, Shop-Menü |
+
+Die Gruppe der gerade offenen Seite ist automatisch offen. Sonst merkt sich das ERP je Gerät, was auf- oder zugeklappt war. So bleibt links Platz für den Kategoriebaum. Alle Importe (CSV, JTL Vater+Kind, JTL Bilder, Lang-Yarns) stecken oben im Knopf **⬇ Import ▾**.
+
+---
+
 ## Artikel-Liste
 
 **Navigation:** Artikel → Artikelliste
@@ -188,7 +203,7 @@ Gewählte Väter nehmen alle ihre Farben mit, die übrigen Merkmale bleiben unbe
 
 ---
 
-## Lang-Yarns-Import (Artikelliste → ⬇ Lang-Import) {#lang-import}
+## Lang-Yarns-Import (Artikelliste → ⬇ Import ▾ → Lang-Yarns-Import) {#lang-import}
 
 Übernimmt den Artikelstamm aus dem Lang-Händlerportal (`LangYarns_Artikelstamm.csv`). **Vorher eine Datenbank-Sicherung machen.**
 
@@ -249,7 +264,7 @@ Wenn ein Artikel nicht mehr nachbestellt wird:
 
 ## Konfigurator: Schild-Bausteine und fertige Schilder
 
-**Artikel → Schild-Bausteine:** Jeder Wert der Schild-Layouts bekommt hier **einmal für alle Layouts**:
+**Artikel → Preisschilder → Schild-Bausteine:** Jeder Wert der Schild-Layouts bekommt hier **einmal für alle Layouts**:
 - **Kürzel** – Baustein der Artikelnummer fertiger Schilder (Buchstaben/Ziffern, max. 12 Zeichen, je Achse eindeutig).
 - **Rohmaterial** – Artikelnummer des Lagerartikels (z.B. Filzplatte rot). Die Ampel zeigt den Bestand (grün / gelb ≤ Mindestbestand / rot leer).
 - **nur intern** – der Wert kommt nicht in den Shop, ist aber beim Anlegen fertiger Schilder und an der Kasse wählbar (z.B. „Sonderlackierung“ mit +5 € Aufpreis im Layout).
@@ -339,7 +354,7 @@ Mengenrabatt über **gemischte** Artikel, an der Kasse und im Shop gleich gerech
 >
 > Jeder Druck wird gemerkt (Datum, Preis, Texte, Badges).
 
-**Schilder veraltet** (Artikel → 🔁 Schilder veraltet, auch als Hinweis am Dashboard): alle gedruckten Laden-Schilder, bei denen sich seither **Preis, Aktion, Grundpreis, Texte oder Badges** geändert haben oder deren Artikel inaktiv ist. In der Spalte „Was hat sich geändert“ steht der Grund (z.B. „Preis 3,20 → 3,75 · weg: NEU“).
+**Schilder veraltet** (Artikel → Preisschilder → 🔁 Veraltete Schilder, auch als Hinweis am Dashboard): alle gedruckten Laden-Schilder, bei denen sich seither **Preis, Aktion, Grundpreis, Texte oder Badges** geändert haben oder deren Artikel inaktiv ist. In der Spalte „Was hat sich geändert“ steht der Grund (z.B. „Preis 3,20 → 3,75 · weg: NEU“).
 - Haken setzen → **🖨 Ausgewählte nachdrucken** öffnet die Druckseite mit genau diesen Schildern. Nach dem Druck verschwinden sie aus der Liste.
 - **✓ ist erledigt**: ohne Druck abhaken (Schild abgenommen oder von Hand korrigiert).
 - Messe-Schilder werden je Messe neu gedruckt und sind deshalb ausgeblendet. „auch Messe-Schilder zeigen“ blendet sie ein.
