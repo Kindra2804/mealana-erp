@@ -1039,9 +1039,12 @@
 
 .kc-k1 { background: #1B3A6B; color: #fff; }
 .kc-k2 { background: #2D5FA6; color: #fff; }
-.kc-s1 { background: #5590C0; color: #fff; }
-.kc-s2 { background: #7EC8E3; color: #1B3A6B; }
-.kc-s3 { background: #A8D4F0; color: #1B3A6B; }
+/* Shop-Kanäle in Anlehnung an die Hausfarbe des Shops (2026-11-17):
+   S1 MeaLana blau · S2 bio-wolle moos · S3 sockenwolle rot · S4 indra-design kork */
+.kc-s1 { background: #3F7CC0; color: #fff; }
+.kc-s2 { background: #3B6B52; color: #fff; }
+.kc-s3 { background: #C8574A; color: #fff; }
+.kc-s4 { background: #A47B52; color: #fff; }
 
 /* Kind ist für den Kanal aktiv, aber wegen deaktiviertem Vater unsichtbar --
    bewusst blass statt farbig, damit "hat noch einen Wunsch gespeichert" nicht

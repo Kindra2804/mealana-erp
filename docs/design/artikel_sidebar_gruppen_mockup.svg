@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 800" width="960" height="800">
+<defs><filter id="s"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000020"/></filter><style>text{font-family:'Segoe UI',Arial,sans-serif}</style></defs>
+<rect width="960" height="800" fill="#EEF2F7"/>
+<text x="30" y="34" font-size="18" font-weight="700" fill="#1B3A6B">Artikel – Seitenleiste mit Gruppen (Entwurf A)</text>
+<text x="30" y="54" font-size="12" fill="#4A5568">Weniger Menüzeilen → mehr Platz für den Kategoriebaum. Gruppen klappen auf/zu, die aktive Gruppe ist automatisch offen.</text>
+<text x="30" y="72" font-size="13" font-weight="700" fill="#1B3A6B">Heute</text>
+<text x="310" y="72" font-size="11" fill="#718096" text-anchor="end">13 Menüzeilen</text>
+<rect x="30" y="80" width="280" height="690" rx="6" fill="#fff" filter="url(#s)"/>
+<text x="44" y="102" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">ARTIKEL</text>
+<rect x="34" y="112" width="272" height="26" rx="4" fill="#E8F0FA"/>
+<rect x="34" y="112" width="3" height="26" fill="#2D5FA6"/>
+<text x="46" y="129.5" font-size="13" fill="#2D3748">📋 Liste</text>
+<text x="46" y="155.5" font-size="13" fill="#2D3748">➕ Neu erstellen</text>
+<text x="46" y="181.5" font-size="13" fill="#2D3748">🗂 Kategorien</text>
+<text x="46" y="207.5" font-size="13" fill="#2D3748">🏷 Merkmale</text>
+<text x="46" y="233.5" font-size="13" fill="#2D3748">💲 Preise / Aktionen</text>
+<text x="46" y="259.5" font-size="13" fill="#2D3748">⚖️ Grundpreise</text>
+<text x="46" y="285.5" font-size="13" fill="#2D3748">🧹 GPSR-Texte</text>
+<text x="46" y="311.5" font-size="13" fill="#2D3748">🏭 Hersteller</text>
+<text x="46" y="337.5" font-size="13" fill="#2D3748">🧩 Schild-Bausteine</text>
+<text x="46" y="363.5" font-size="13" fill="#2D3748">🖨 Preisschilder</text>
+<text x="46" y="389.5" font-size="13" fill="#2D3748">🔁 Schilder veraltet</text>
+<text x="46" y="415.5" font-size="13" fill="#2D3748">🖼 Shop-Slider</text>
+<text x="46" y="441.5" font-size="13" fill="#2D3748">🧭 Shop-Menü</text>
+<line x1="40" y1="458" x2="300" y2="458" stroke="#E2E8F0"/>
+<text x="44" y="478" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">KATEGORIEN</text>
+<rect x="46" y="491" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="52.5" y="501" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="61" y="491" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="67.5" y="501" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="80" y="502" font-size="12.5" fill="#2D3748">▾ Partnerware</text>
+<rect x="60" y="513" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="66.5" y="523" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="79" y="524" font-size="12.5" fill="#2D3748">Mollramer Seifenfabrik</text>
+<rect x="46" y="535" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="52.5" y="545" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="61" y="535" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="67.5" y="545" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="80" y="546" font-size="12.5" fill="#2D3748">Gutschein</text>
+<rect x="46" y="557" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="52.5" y="567" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="61" y="557" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="67.5" y="567" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="80" y="568" font-size="12.5" fill="#2D3748">⏰ SUPERSALE WOOL …</text>
+<text x="296" y="568" font-size="11" fill="#A0AEC0" text-anchor="end">69</text>
+<rect x="46" y="579" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="52.5" y="589" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="65" y="590" font-size="12.5" fill="#2D3748">⏰ SOCKTOBER</text>
+<text x="296" y="590" font-size="11" fill="#A0AEC0" text-anchor="end">50</text>
+<rect x="46" y="601" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="52.5" y="611" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="61" y="601" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="67.5" y="611" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="80" y="612" font-size="12.5" fill="#2D3748">⏰ DROPS Super Sale</text>
+<rect x="46" y="623" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="52.5" y="633" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="61" y="623" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="67.5" y="633" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="80" y="634" font-size="12.5" fill="#2D3748">⏰ SOCKALICIOS</text>
+<text x="296" y="634" font-size="11" fill="#A0AEC0" text-anchor="end">109</text>
+<text x="170" y="656" font-size="11" font-weight="700" fill="#C53030" text-anchor="middle">7 Kategorien sichtbar</text>
+<rect x="30" y="664" width="280" height="106" fill="#F8FAFC"/>
+<text x="44" y="682" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">KANAL-LEGENDE</text>
+<rect x="44" y="692" width="22" height="15" rx="3" fill="#3F7CC0"/>
+<text x="55" y="703.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S1</text>
+<text x="74" y="704" font-size="12" fill="#2D3748">MEALANA KG</text>
+<rect x="44" y="712" width="22" height="15" rx="3" fill="#3B6B52"/>
+<text x="55" y="723.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S2</text>
+<text x="74" y="724" font-size="12" fill="#2D3748">bio-wolle.at</text>
+<rect x="44" y="732" width="22" height="15" rx="3" fill="#C8574A"/>
+<text x="55" y="743.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S3</text>
+<text x="74" y="744" font-size="12" fill="#2D3748">sockenwolle-online.at</text>
+<rect x="44" y="752" width="22" height="15" rx="3" fill="#A47B52"/>
+<text x="55" y="763.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S4</text>
+<text x="74" y="764" font-size="12" fill="#2D3748">indra-design.at</text>
+<text x="340" y="72" font-size="13" font-weight="700" fill="#1B3A6B">Neu – zugeklappt (Artikelliste)</text>
+<text x="620" y="72" font-size="11" fill="#718096" text-anchor="end">6 Menüzeilen</text>
+<rect x="340" y="80" width="280" height="690" rx="6" fill="#fff" filter="url(#s)"/>
+<text x="354" y="102" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">ARTIKEL</text>
+<rect x="344" y="112" width="272" height="26" rx="4" fill="#E8F0FA"/>
+<rect x="344" y="112" width="3" height="26" fill="#2D5FA6"/>
+<text x="356" y="129.5" font-size="13" fill="#2D3748">📋 Liste</text>
+<text x="356" y="155.5" font-size="13" fill="#2D3748">➕ Neu erstellen</text>
+<text x="356" y="181.5" font-size="13" font-weight="600" fill="#1B3A6B">▸  Stammdaten</text>
+<text x="356" y="207.5" font-size="13" font-weight="600" fill="#1B3A6B">▸  Preise</text>
+<text x="356" y="233.5" font-size="13" font-weight="600" fill="#1B3A6B">▸  Preisschilder</text>
+<text x="356" y="259.5" font-size="13" font-weight="600" fill="#1B3A6B">▸  Shop</text>
+<line x1="350" y1="276" x2="610" y2="276" stroke="#E2E8F0"/>
+<text x="354" y="296" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">KATEGORIEN</text>
+<rect x="356" y="309" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="319" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="309" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="377.5" y="319" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="390" y="320" font-size="12.5" fill="#2D3748">▾ Partnerware</text>
+<rect x="370" y="331" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="376.5" y="341" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="389" y="342" font-size="12.5" fill="#2D3748">Mollramer Seifenfabrik</text>
+<rect x="356" y="353" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="363" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="353" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="377.5" y="363" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="390" y="364" font-size="12.5" fill="#2D3748">Gutschein</text>
+<rect x="356" y="375" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="385" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="375" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="377.5" y="385" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="390" y="386" font-size="12.5" fill="#2D3748">⏰ SUPERSALE WOOL …</text>
+<text x="606" y="386" font-size="11" fill="#A0AEC0" text-anchor="end">69</text>
+<rect x="356" y="397" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="362.5" y="407" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="375" y="408" font-size="12.5" fill="#2D3748">⏰ SOCKTOBER</text>
+<text x="606" y="408" font-size="11" fill="#A0AEC0" text-anchor="end">50</text>
+<rect x="356" y="419" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="429" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="419" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="377.5" y="429" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="390" y="430" font-size="12.5" fill="#2D3748">⏰ DROPS Super Sale</text>
+<rect x="356" y="441" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="451" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="441" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="377.5" y="451" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="390" y="452" font-size="12.5" fill="#2D3748">⏰ SOCKALICIOS</text>
+<text x="606" y="452" font-size="11" fill="#A0AEC0" text-anchor="end">109</text>
+<rect x="356" y="463" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="362.5" y="473" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="375" y="474" font-size="12.5" fill="#2D3748">⏰ Black Friday</text>
+<text x="606" y="474" font-size="11" fill="#A0AEC0" text-anchor="end">116</text>
+<rect x="356" y="485" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="495" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="485" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="377.5" y="495" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="390" y="496" font-size="12.5" fill="#2D3748">Sonstiges</text>
+<rect x="356" y="507" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="517" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="507" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="377.5" y="517" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="390" y="518" font-size="12.5" fill="#2D3748">Ostern</text>
+<text x="606" y="518" font-size="11" fill="#A0AEC0" text-anchor="end">1</text>
+<rect x="356" y="529" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="362.5" y="539" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="375" y="540" font-size="12.5" fill="#2D3748">Sockenkalender</text>
+<rect x="356" y="551" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="561" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="551" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="377.5" y="561" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="390" y="562" font-size="12.5" fill="#2D3748">Farbfeuerwerk</text>
+<rect x="356" y="573" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="583" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="573" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="377.5" y="583" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="390" y="584" font-size="12.5" fill="#2D3748">SALE</text>
+<text x="606" y="584" font-size="11" fill="#A0AEC0" text-anchor="end">45</text>
+<rect x="356" y="595" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="362.5" y="605" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="375" y="606" font-size="12.5" fill="#2D3748">▸ Sockenwolle</text>
+<text x="606" y="606" font-size="11" fill="#A0AEC0" text-anchor="end">812</text>
+<rect x="356" y="617" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="362.5" y="627" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="371" y="617" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="377.5" y="627" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="390" y="628" font-size="12.5" fill="#2D3748">▸ Nadeln</text>
+<text x="606" y="628" font-size="11" fill="#A0AEC0" text-anchor="end">230</text>
+<text x="480" y="656" font-size="11" font-weight="700" fill="#2F855A" text-anchor="middle">15 Kategorien sichtbar</text>
+<rect x="340" y="664" width="280" height="106" fill="#F8FAFC"/>
+<text x="354" y="682" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">KANAL-LEGENDE</text>
+<rect x="354" y="692" width="22" height="15" rx="3" fill="#3F7CC0"/>
+<text x="365" y="703.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S1</text>
+<text x="384" y="704" font-size="12" fill="#2D3748">MEALANA KG</text>
+<rect x="354" y="712" width="22" height="15" rx="3" fill="#3B6B52"/>
+<text x="365" y="723.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S2</text>
+<text x="384" y="724" font-size="12" fill="#2D3748">bio-wolle.at</text>
+<rect x="354" y="732" width="22" height="15" rx="3" fill="#C8574A"/>
+<text x="365" y="743.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S3</text>
+<text x="384" y="744" font-size="12" fill="#2D3748">sockenwolle-online.at</text>
+<rect x="354" y="752" width="22" height="15" rx="3" fill="#A47B52"/>
+<text x="365" y="763.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S4</text>
+<text x="384" y="764" font-size="12" fill="#2D3748">indra-design.at</text>
+<text x="650" y="72" font-size="13" font-weight="700" fill="#1B3A6B">Neu – Gruppe offen</text>
+<text x="930" y="72" font-size="11" fill="#718096" text-anchor="end">z. B. auf „Schilder drucken“</text>
+<rect x="650" y="80" width="280" height="690" rx="6" fill="#fff" filter="url(#s)"/>
+<text x="664" y="102" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">ARTIKEL</text>
+<text x="666" y="129.5" font-size="13" fill="#2D3748">📋 Liste</text>
+<text x="666" y="155.5" font-size="13" fill="#2D3748">➕ Neu erstellen</text>
+<text x="666" y="181.5" font-size="13" font-weight="600" fill="#1B3A6B">▸  Stammdaten</text>
+<text x="666" y="207.5" font-size="13" font-weight="600" fill="#1B3A6B">▸  Preise</text>
+<text x="666" y="233.5" font-size="13" font-weight="600" fill="#1B3A6B">▾  Preisschilder</text>
+<rect x="654" y="242" width="272" height="22" rx="4" fill="#E8F0FA"/>
+<rect x="654" y="242" width="3" height="22" fill="#2D5FA6"/>
+<text x="688" y="257.5" font-size="12" fill="#2D3748">🖨 Schilder drucken</text>
+<text x="688" y="279.5" font-size="12" fill="#2D3748">🔁 Veraltete Schilder</text>
+<text x="688" y="301.5" font-size="12" fill="#2D3748">🧩 Schild-Bausteine</text>
+<text x="666" y="325.5" font-size="13" font-weight="600" fill="#1B3A6B">▸  Shop</text>
+<line x1="660" y1="342" x2="920" y2="342" stroke="#E2E8F0"/>
+<text x="664" y="362" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">KATEGORIEN</text>
+<rect x="666" y="375" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="385" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="375" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="687.5" y="385" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="700" y="386" font-size="12.5" fill="#2D3748">▾ Partnerware</text>
+<rect x="680" y="397" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="686.5" y="407" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="699" y="408" font-size="12.5" fill="#2D3748">Mollramer Seifenfabrik</text>
+<rect x="666" y="419" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="429" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="419" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="687.5" y="429" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="700" y="430" font-size="12.5" fill="#2D3748">Gutschein</text>
+<rect x="666" y="441" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="451" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="441" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="687.5" y="451" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="700" y="452" font-size="12.5" fill="#2D3748">⏰ SUPERSALE WOOL …</text>
+<text x="916" y="452" font-size="11" fill="#A0AEC0" text-anchor="end">69</text>
+<rect x="666" y="463" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="672.5" y="473" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="685" y="474" font-size="12.5" fill="#2D3748">⏰ SOCKTOBER</text>
+<text x="916" y="474" font-size="11" fill="#A0AEC0" text-anchor="end">50</text>
+<rect x="666" y="485" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="495" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="485" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="687.5" y="495" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="700" y="496" font-size="12.5" fill="#2D3748">⏰ DROPS Super Sale</text>
+<rect x="666" y="507" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="517" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="507" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="687.5" y="517" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="700" y="518" font-size="12.5" fill="#2D3748">⏰ SOCKALICIOS</text>
+<text x="916" y="518" font-size="11" fill="#A0AEC0" text-anchor="end">109</text>
+<rect x="666" y="529" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="672.5" y="539" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="685" y="540" font-size="12.5" fill="#2D3748">⏰ Black Friday</text>
+<text x="916" y="540" font-size="11" fill="#A0AEC0" text-anchor="end">116</text>
+<rect x="666" y="551" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="561" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="551" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="687.5" y="561" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="700" y="562" font-size="12.5" fill="#2D3748">Sonstiges</text>
+<rect x="666" y="573" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="583" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="573" width="13" height="13" rx="3" fill="#C8574A"/>
+<text x="687.5" y="583" font-size="9" fill="#fff" text-anchor="middle">3</text>
+<text x="700" y="584" font-size="12.5" fill="#2D3748">Ostern</text>
+<text x="916" y="584" font-size="11" fill="#A0AEC0" text-anchor="end">1</text>
+<rect x="666" y="595" width="13" height="13" rx="3" fill="#3B6B52"/>
+<text x="672.5" y="605" font-size="9" fill="#fff" text-anchor="middle">2</text>
+<text x="685" y="606" font-size="12.5" fill="#2D3748">Sockenkalender</text>
+<rect x="666" y="617" width="13" height="13" rx="3" fill="#3F7CC0"/>
+<text x="672.5" y="627" font-size="9" fill="#fff" text-anchor="middle">1</text>
+<rect x="681" y="617" width="13" height="13" rx="3" fill="#A47B52"/>
+<text x="687.5" y="627" font-size="9" fill="#fff" text-anchor="middle">4</text>
+<text x="700" y="628" font-size="12.5" fill="#2D3748">Farbfeuerwerk</text>
+<text x="790" y="656" font-size="11" font-weight="700" fill="#2F855A" text-anchor="middle">12 Kategorien sichtbar</text>
+<rect x="650" y="664" width="280" height="106" fill="#F8FAFC"/>
+<text x="664" y="682" font-size="10.5" font-weight="700" fill="#718096" letter-spacing="1">KANAL-LEGENDE</text>
+<rect x="664" y="692" width="22" height="15" rx="3" fill="#3F7CC0"/>
+<text x="675" y="703.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S1</text>
+<text x="694" y="704" font-size="12" fill="#2D3748">MEALANA KG</text>
+<rect x="664" y="712" width="22" height="15" rx="3" fill="#3B6B52"/>
+<text x="675" y="723.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S2</text>
+<text x="694" y="724" font-size="12" fill="#2D3748">bio-wolle.at</text>
+<rect x="664" y="732" width="22" height="15" rx="3" fill="#C8574A"/>
+<text x="675" y="743.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S3</text>
+<text x="694" y="744" font-size="12" fill="#2D3748">sockenwolle-online.at</text>
+<rect x="664" y="752" width="22" height="15" rx="3" fill="#A47B52"/>
+<text x="675" y="763.5" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">S4</text>
+<text x="694" y="764" font-size="12" fill="#2D3748">indra-design.at</text>
+<text x="30" y="792" font-size="11" fill="#4A5568">Gruppen: <tspan font-weight="700">Stammdaten</tspan> = Kategorien, Merkmale, Hersteller, Grundpreise, GPSR-Texte · <tspan font-weight="700">Preise</tspan> = Preise/Aktionen · <tspan font-weight="700">Preisschilder</tspan> = drucken, veraltete, Bausteine · <tspan font-weight="700">Shop</tspan> = Slider, Menü</text>
+</svg>
