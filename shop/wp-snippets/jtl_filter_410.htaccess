@@ -1,0 +1,35 @@
+# ------------------------------------------------------------------------------------------
+# Alte JTL-Filteradressen sofort mit 410 abweisen – OHNE WordPress zu starten (Claude 2026-11-17)
+# Kopie: shop/wp-snippets/jtl_filter_410.htaccess
+#
+# Hintergrund: Am 17.11.2026 hat ein Botnetz (22.000 IPs, getarnt als Chrome) auf
+# sockenwolle-online.at ~20.000 alte JTL-Filterkombinationen abgefragt, z. B.
+#   /Pro-Lana__2-25_1__25__3__35__A-von-26-bis-23-Maschen__Schurwollmischung?Sortierung=100&mf=369
+# Jede davon hat WordPress+WooCommerce komplett gestartet (404 wird nicht gecacht)
+# → Prozess-Limit (40) voll → 508 für alle, auch für den ERP-Abgleich.
+#
+# Einbau: in die .htaccess im Webroot des Shops, GANZ OBEN (vor "# BEGIN WordPress").
+#   Nicht in den WordPress-Block schreiben – den überschreibt WordPress beim Speichern der Permalinks.
+#
+# Was abgewiesen wird (410 = "gibt es nicht mehr", Google hört dann auf zu fragen):
+#   - JTL-Filterparameter im Query: Sortierung=, mf= (Merkmal), kf= (Kategorie), hf= (Hersteller)
+#   - "::" im Pfad (JTL-Merkmal-Syntax)
+#   - zwei oder mehr "__" im Pfad (Filter-Kombinationen)
+# Was NICHT abgewiesen wird:
+#   - einfache alte Adressen mit genau einem "__" (z. B. /Farbverlauf__Rellana) – die leitet das
+#     Snippet sow_weiterleitungen_robots.php weiterhin per 301 auf die passende Kategorie.
+#   - alles ohne "__"/"::"/JTL-Parameter (normale Woo-Adressen enthalten so etwas nicht).
+#
+# Prüfen nach dem Einbau (Browser oder curl -I):
+#   https://<shop>/Pro-Lana__25__Sockenwolle          → 410
+#   https://<shop>/Pro-Lana?Sortierung=100             → 410
+#   https://<shop>/Farbverlauf__Rellana                → 301 auf /kategorie/farbe/farbverlauf/
+#   https://<shop>/                                     → 200
+# ------------------------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{QUERY_STRING} (^|&)(Sortierung|mf|kf|hf)= [NC,OR]
+RewriteCond %{REQUEST_URI} :: [OR]
+RewriteCond %{REQUEST_URI} __.*__
+RewriteRule ^ - [G,L]
+</IfModule>

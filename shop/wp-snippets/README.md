@@ -106,5 +106,11 @@ WPCode-IDs auf sockenwolle-online.at (eigene Nummerierung, nicht mit indra-desig
 | 52 | SOCKENWOLLE – Grundstil (CSS über wp_head) | `sow_grundstil.css` |
 | 39 | TEMP Claude Theme-Aufbau (deaktiviert, kann gelöscht werden) | – |
 
+**`jtl_filter_410.htaccess`** (kein WPCode-Snippet, sondern `.htaccess` im Webroot, ganz oben) — weist alte
+JTL-Filterkombinationen (`Sortierung=`, `mf=`, `::`, zwei oder mehr `__`) sofort mit 410 ab, ohne WordPress zu starten.
+Anlass: Botnetz am 17.11.2026 auf SOW (~20.000 solcher Abfragen → Prozess-Limit → 508, auch beim ERP-Abgleich).
+Einfache Adressen mit genau einem `__` bleiben bei der 301-Weiterleitung aus `sow_weiterleitungen_robots.php`.
+**Für jeden Shop einbauen, der von JTL umzieht (SOW ✅ geplant, MeaLana später).**
+
 Blocksy schreibt sein CSS auf SOW in die Datei `uploads/blocksy/css/global.css` → nach Theme-Mod-Änderungen per Code
 `do_action('blocksy:dynamic-css:refresh-caches')` auslösen, sonst bleibt die alte Datei.
