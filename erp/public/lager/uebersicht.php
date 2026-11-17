@@ -15,6 +15,11 @@ foreach ($lagerinhalt as $row) {
     }
 }
 
+// Charge-Status nur zeigen, wenn es eine Charge gibt oder eine nachzutragen ist –
+// normale Artikel ohne Chargen bekommen "–" statt "unbekannt".
+$chargeStatusText = fn(array $z): string => (!empty($z['charge']) || ($z['charge_status'] ?? '') === 'nachzutragen')
+    ? (string)($z['charge_status'] ?? '–') : '–';
+
 $pageTitle        = 'Lagerübersicht';
 $activeModule     = 'lager';
 $basePath = BASE_PATH;
@@ -51,7 +56,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <td><?= $kopf['zeilentyp'] === 'standalone' ? htmlspecialchars($kopf['lager_name']) : '' ?></td>
                 <td style="text-align:right"><strong><?= $kopf['bestand'] ?></strong></td>
                 <td><?= $kopf['zeilentyp'] === 'standalone' ? htmlspecialchars($kopf['charge'] ?? '–') : '' ?></td>
-                <td><?= $kopf['zeilentyp'] === 'standalone' && $kopf['charge'] ? htmlspecialchars($kopf['charge_status'] ?? '') : '' ?></td>
+                <td><?= $kopf['zeilentyp'] === 'standalone' ? htmlspecialchars($chargeStatusText($kopf)) : '' ?></td>
             </tr>
 
             <?php foreach ($kinder as $kind): ?>
@@ -61,7 +66,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                     <td><?= htmlspecialchars($kind['lager_name']) ?></td>
                     <td style="text-align:right"><?= $kind['bestand'] ?></td>
                     <td><?= htmlspecialchars($kind['charge'] ?? '–') ?></td>
-                    <td><?= htmlspecialchars($kind['charge_status'] ?? '–') ?></td>
+                    <td><?= htmlspecialchars($chargeStatusText($kind)) ?></td>
                 </tr>
             <?php endforeach; ?>
 

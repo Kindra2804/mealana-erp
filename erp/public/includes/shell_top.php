@@ -216,7 +216,7 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
             <nav class="erp-sidebar-nav">
                 <?php
                 // Ein normaler Menüpunkt (auch innerhalb einer Gruppe)
-                $navLink = function (array $item, string $extraKlasse = '') use ($currentPath, $lzSperre, $lzSchloss): void {
+                $sbNavLink = function (array $item, string $extraKlasse = '') use ($currentPath, $lzSperre, $lzSchloss): void {
                     $isActive = !empty($item['active'])
                         || ($item['href'] !== '#' && $currentPath === $item['href']);
                     ?>
@@ -234,14 +234,14 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
                     <?php $typ = $item['type'] ?? 'nav'; ?>
                     <?php if ($typ === 'gruppe'): ?>
                         <?php
-                        $kinder = array_values(array_filter($item['items'], fn($k) => empty($k['recht']) || Auth::kann($k['recht'])));
-                        if (!$kinder) continue;
-                        $gruppeAktiv = (bool)array_filter($kinder, fn($k) => $currentPath === $k['href']);
+                        $sbGruppePunkte = array_values(array_filter($item['items'], fn($k) => empty($k['recht']) || Auth::kann($k['recht'])));
+                        if (!$sbGruppePunkte) continue;
+                        $sbGruppeAktiv = (bool)array_filter($sbGruppePunkte, fn($k) => $currentPath === $k['href']);
                         ?>
                         <details class="sidebar-gruppe" data-gruppe="<?= htmlspecialchars(($activeModule ?? '') . ':' . $item['label']) ?>"
-                                 <?= $gruppeAktiv ? 'open data-aktiv="1"' : '' ?>>
+                                 <?= $sbGruppeAktiv ? 'open data-aktiv="1"' : '' ?>>
                             <summary class="erp-sidebar-item sidebar-gruppe-kopf"><?= htmlspecialchars($item['label']) ?></summary>
-                            <?php foreach ($kinder as $kind) $navLink($kind, 'sidebar-gruppe-punkt'); ?>
+                            <?php foreach ($sbGruppePunkte as $sbPunkt) $sbNavLink($sbPunkt, 'sidebar-gruppe-punkt'); ?>
                         </details>
                     <?php elseif ($typ === 'separator'): ?>
                         <div class="sidebar-sep"></div>
@@ -259,7 +259,7 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
                             <?= $item['icon'] ?> <?= htmlspecialchars($item['label']) ?>
                         </a>
                     <?php else: ?>
-                        <?php $navLink($item); ?>
+                        <?php $sbNavLink($item); ?>
                     <?php endif; ?>
                 <?php endforeach; ?>
 
