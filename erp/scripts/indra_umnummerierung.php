@@ -34,7 +34,9 @@
 require_once __DIR__ . '/../src/core/Database.php';
 
 $phase = 0;
-$datei = 'E:/Laser/Katalog-Werkstatt/daten/daten.json';
+// Standard: die mitgelieferte Zuordnung (aus der Werkstatt erzeugt, Stand vor der Umnummerierung) –
+// so braucht Live die Werkstatt nicht. Mit --werkstatt=<daten.json> geht auch die Werkstatt direkt.
+$datei = __DIR__ . '/indra_umnummerierung_zuordnung.json';
 foreach ($argv as $a) {
     if (preg_match('/^--phase=([12])$/', $a, $x)) $phase = (int) $x[1];
     if (str_starts_with($a, '--werkstatt=')) $datei = substr($a, 12);

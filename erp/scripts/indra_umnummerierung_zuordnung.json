@@ -1,0 +1,535 @@
+{
+    "quelle": "Katalog-Werkstatt, Stand 2026-11-18 16:58",
+    "motive": [
+        {
+            "code": "A05",
+            "erp": "ID-U-A05",
+            "titel": "Vorsicht! Hier herrscht Woll-Chaos"
+        },
+        {
+            "code": "A07",
+            "erp": "ID-U-A07",
+            "titel": "Ich brauche keine Therapie, ich brauche Wolle"
+        },
+        {
+            "code": "A08",
+            "erp": "ID-U-A08",
+            "titel": "Ich bin nicht langsam, ich bin detailverliebt"
+        },
+        {
+            "code": "A14",
+            "erp": "ID-SA-A14, ID-U-A14",
+            "titel": "Ich brauche mehr Platz für meine Wolle"
+        },
+        {
+            "code": "A20",
+            "erp": "ID-SA-A20",
+            "titel": "Woll-Süchtig"
+        },
+        {
+            "code": "A21",
+            "erp": "ID-SA-A21",
+            "titel": "Maschen-Zauber"
+        },
+        {
+            "code": "A22",
+            "erp": "ID-SA-A22",
+            "titel": "Knäuel-Königin"
+        },
+        {
+            "code": "A23",
+            "erp": "ID-SA-A23",
+            "titel": "Nur eine Reihe"
+        },
+        {
+            "code": "A25",
+            "erp": "ID-U-A49",
+            "titel": "Lieber überzogen als aufgeribbelt!"
+        },
+        {
+            "code": "A26",
+            "erp": "ID-U-A50",
+            "titel": "Wenn du denkst, ich bin ruhig … plant mein innerer Wollgeist gerade ein Projekt mit 7 Farben und 0 Anleitung"
+        },
+        {
+            "code": "A27",
+            "erp": "ID-U-A51",
+            "titel": "„Ich habe genug Wolle.“ … sagte keine Strickerin. Jemals."
+        },
+        {
+            "code": "A28",
+            "erp": "ID-U-A52",
+            "titel": "Vorsicht, Wollhamster! Ich horte nicht – ich sammle."
+        },
+        {
+            "code": "A29",
+            "erp": "ID-U-A53",
+            "titel": "Wolle ist günstiger als Therapie"
+        },
+        {
+            "code": "A30",
+            "erp": "ID-U-A54",
+            "titel": "Projekt-Guru"
+        },
+        {
+            "code": "A31",
+            "erp": "ID-U-A55",
+            "titel": "Ich ribble nicht – ich optimiere."
+        },
+        {
+            "code": "A32",
+            "erp": "ID-U-A56",
+            "titel": "Mein Wollvorrat übersteigt meine Lebenserwartung"
+        },
+        {
+            "code": "A33",
+            "erp": "ID-U-A57",
+            "titel": "Keine Panik! Ich hab’ Wolle dabei."
+        },
+        {
+            "code": "A34",
+            "erp": "ID-SA-A58, ID-U-A58",
+            "titel": "UFO-Queen"
+        },
+        {
+            "code": "A35",
+            "erp": "ID-SA-A59",
+            "titel": "Geh mir nicht auf die Maschen!"
+        },
+        {
+            "code": "A36",
+            "erp": "ID-SA-A60",
+            "titel": "Maschen-Sucht"
+        },
+        {
+            "code": "A37",
+            "erp": "ID-SA-A61",
+            "titel": "Nur ’ne Reihe"
+        },
+        {
+            "code": "A38",
+            "erp": "ID-SA-A62",
+            "titel": "Ein Knäuel am Tag ist ok"
+        },
+        {
+            "code": "A39",
+            "erp": "ID-U-K03",
+            "titel": "Ich brauche nur drei Dinge"
+        },
+        {
+            "code": "A47",
+            "erp": "ID-SA-K11",
+            "titel": "Mir reicht’s! Ich geh stricken"
+        },
+        {
+            "code": "A49",
+            "erp": "ID-U-K13",
+            "titel": "Stricken ist Yoga für die Seele"
+        },
+        {
+            "code": "A50",
+            "erp": "ID-U-K14",
+            "titel": "Vorsicht! Stricken kann süchtig machen"
+        },
+        {
+            "code": "A53",
+            "erp": "ID-U-K17",
+            "titel": "Strick-Pause"
+        },
+        {
+            "code": "A54",
+            "erp": "ID-U-K19",
+            "titel": "Strickmodus: an – Welt: aus"
+        },
+        {
+            "code": "A55",
+            "erp": "ID-U-K20",
+            "titel": "Ich stricke, also bin ich."
+        },
+        {
+            "code": "A56",
+            "erp": "ID-SA-K21, ID-U-K21",
+            "titel": "Ich bin eine Strickoholikerin"
+        },
+        {
+            "code": "A57",
+            "erp": "ID-U-K22",
+            "titel": "Anleitung für einen guten Tag"
+        },
+        {
+            "code": "A58",
+            "erp": "ID-U-K23",
+            "titel": "Masche für Masche zum Glück (Schriftzug)"
+        },
+        {
+            "code": "A59",
+            "erp": "ID-SA-K24",
+            "titel": "Nadelheldin"
+        },
+        {
+            "code": "A60",
+            "erp": "ID-SA-K25",
+            "titel": "Strick-Fee"
+        },
+        {
+            "code": "A61",
+            "erp": "ID-SA-K26",
+            "titel": "Strickerin"
+        },
+        {
+            "code": "A62",
+            "erp": "ID-SA-N08",
+            "titel": "Ich brauch Stoff & ’ne gute Naht"
+        },
+        {
+            "code": "A63",
+            "erp": "ID-SA-N09",
+            "titel": "Nähen ist das neue Yoga"
+        },
+        {
+            "code": "A64",
+            "erp": "ID-SA-N10",
+            "titel": "Wenn ich am Nähen bin, bin ich in meinem Element"
+        },
+        {
+            "code": "A66",
+            "erp": "ID-SA-C05",
+            "titel": "Häkeln ist Yoga für die Seele"
+        },
+        {
+            "code": "A68",
+            "erp": "ID-SA-C08",
+            "titel": "Häkel-Queen"
+        },
+        {
+            "code": "E01",
+            "erp": "ID-KP-E01",
+            "titel": "Sockenwolle"
+        },
+        {
+            "code": "E02",
+            "erp": "ID-KP-E02",
+            "titel": "Merino"
+        },
+        {
+            "code": "E03",
+            "erp": "ID-KP-E03",
+            "titel": "Alpaka"
+        },
+        {
+            "code": "E04",
+            "erp": "ID-KP-E04",
+            "titel": "Baumwolle"
+        },
+        {
+            "code": "E05",
+            "erp": "ID-KP-E05",
+            "titel": "Mohair"
+        },
+        {
+            "code": "E06",
+            "erp": "ID-KP-E06",
+            "titel": "Reste"
+        },
+        {
+            "code": "E07",
+            "erp": "ID-KP-E07",
+            "titel": "Nadeln"
+        },
+        {
+            "code": "E08",
+            "erp": "ID-KP-E08",
+            "titel": "Knöpfe"
+        },
+        {
+            "code": "E09",
+            "erp": "ID-KP-E09",
+            "titel": "UFOs"
+        },
+        {
+            "code": "E10",
+            "erp": "ID-KP-E10",
+            "titel": "Anleitungen"
+        },
+        {
+            "code": "E11",
+            "erp": "ID-KP-E11",
+            "titel": "Häkelzeug"
+        },
+        {
+            "code": "E12",
+            "erp": "ID-KP-E12",
+            "titel": "Geheimvorrat"
+        },
+        {
+            "code": "E13",
+            "erp": "ID-KP-E13",
+            "titel": "Blanko"
+        },
+        {
+            "code": "H16",
+            "erp": "ID-KP-A63",
+            "titel": "Wollapotheke"
+        },
+        {
+            "code": "H17",
+            "erp": "ID-KP-A64",
+            "titel": "Hier wohnt die Wolle. Und manchmal ich."
+        },
+        {
+            "code": "H18",
+            "erp": "ID-KP-A65",
+            "titel": "Wollparadies – Betreten auf eigene Gefahr"
+        },
+        {
+            "code": "H19",
+            "erp": "ID-KP-A66",
+            "titel": "Strickzimmer – Betreten nur mit Kaffee"
+        },
+        {
+            "code": "H20",
+            "erp": "ID-KP-A67",
+            "titel": "Wollschrank – Öffnen auf eigene Gefahr"
+        },
+        {
+            "code": "H21",
+            "erp": "ID-KP-A68",
+            "titel": "Geheimvorrat – Partner bitte wegschauen"
+        },
+        {
+            "code": "H22",
+            "erp": "ID-KP-A69",
+            "titel": "Notvorrat – Nur im Ernstfall öffnen"
+        },
+        {
+            "code": "H23",
+            "erp": "ID-KP-A70",
+            "titel": "Lagerbestand – reicht für drei Leben"
+        },
+        {
+            "code": "Q01",
+            "erp": "ID-U-K01",
+            "titel": "Ich brauche nur drei Dinge – Kaffee"
+        },
+        {
+            "code": "Q02",
+            "erp": "ID-U-K02",
+            "titel": "Ich brauche nur drei Dinge – Tee"
+        },
+        {
+            "code": "W01",
+            "erp": "ID-W01",
+            "titel": "Wollzimmer"
+        },
+        {
+            "code": "W02",
+            "erp": "ID-W02",
+            "titel": "Atelier"
+        },
+        {
+            "code": "W03",
+            "erp": "ID-W03",
+            "titel": "Lieblingsplatz"
+        },
+        {
+            "code": "W04",
+            "erp": "ID-W04",
+            "titel": "Zuhause ist da, wo die Nadeln liegen"
+        },
+        {
+            "code": "W05",
+            "erp": "ID-W05",
+            "titel": "Zuhause ist da, wo die Wolle wartet"
+        },
+        {
+            "code": "W06",
+            "erp": "ID-W06",
+            "titel": "Nähstube"
+        },
+        {
+            "code": "W07",
+            "erp": "ID-W07",
+            "titel": "Häkel-Leidenschaft"
+        },
+        {
+            "code": "W08",
+            "erp": "ID-W08",
+            "titel": "Häkelzeit"
+        },
+        {
+            "code": "W09",
+            "erp": "ID-W09",
+            "titel": "Nadelzauber"
+        },
+        {
+            "code": "W10",
+            "erp": "ID-W10",
+            "titel": "Patchwork – kleine Stücke, große Leidenschaft"
+        },
+        {
+            "code": "W11",
+            "erp": "ID-W11",
+            "titel": "Patchworkliebe"
+        },
+        {
+            "code": "W12",
+            "erp": "ID-W12",
+            "titel": "Nähzimmer mit Namen"
+        },
+        {
+            "code": "W13",
+            "erp": "ID-W13",
+            "titel": "Wollzimmer mit Namensschild"
+        },
+        {
+            "code": "W14",
+            "erp": "ID-W14",
+            "titel": "Wollzimmer mit Namen"
+        },
+        {
+            "code": "W15",
+            "erp": "ID-W15",
+            "titel": "Stofflager"
+        },
+        {
+            "code": "W16",
+            "erp": "ID-W16",
+            "titel": "Strickecke"
+        },
+        {
+            "code": "W17",
+            "erp": "ID-W17",
+            "titel": "Stricken ist meine Auszeit"
+        },
+        {
+            "code": "W18",
+            "erp": "ID-W18",
+            "titel": "Strickzimmer"
+        },
+        {
+            "code": "W19",
+            "erp": "ID-W19",
+            "titel": "Zuhause ist da, wo die Wolle wartet – mit Namen"
+        },
+        {
+            "code": "W20",
+            "erp": "ID-W20",
+            "titel": "Zuhause ist da, wo die Nadeln liegen – mit Namen"
+        },
+        {
+            "code": "W21",
+            "erp": "ID-W21",
+            "titel": "Kreativzeit"
+        },
+        {
+            "code": "XE01",
+            "erp": "ID-XM-E01",
+            "titel": "Engel-Medaillon strickend"
+        },
+        {
+            "code": "XE02",
+            "erp": "ID-XM-E02",
+            "titel": "Engel mit Stickrahmen"
+        },
+        {
+            "code": "XE03",
+            "erp": "ID-XM-E03",
+            "titel": "Engel mit Wolltopf"
+        },
+        {
+            "code": "XE04",
+            "erp": "ID-XM-E04",
+            "titel": "Engel mit Strickstück"
+        },
+        {
+            "code": "XE05",
+            "erp": "ID-XM-E05",
+            "titel": "Engel mit Wollknäuel"
+        },
+        {
+            "code": "XE06",
+            "erp": "ID-XM-E06",
+            "titel": "Engel mit Heiligenschein"
+        },
+        {
+            "code": "XE07",
+            "erp": "ID-XM-E07",
+            "titel": "Engel strickt"
+        },
+        {
+            "code": "XE08",
+            "erp": "ID-XM-E08",
+            "titel": "Engel mit großem Strickstück"
+        },
+        {
+            "code": "XE09",
+            "erp": "ID-XM-E09",
+            "titel": "Engel mit Faden"
+        },
+        {
+            "code": "XE10",
+            "erp": "ID-XM-E10",
+            "titel": "Engel mit Strickzeug"
+        },
+        {
+            "code": "XK01",
+            "erp": "ID-XM-K01",
+            "titel": "Kugel Granny Square"
+        },
+        {
+            "code": "XK02",
+            "erp": "ID-XM-K02",
+            "titel": "Kugel Strickherz"
+        },
+        {
+            "code": "XK03",
+            "erp": "ID-XM-K03",
+            "titel": "Kugel Strickherz „Frohe Wollnachten“"
+        },
+        {
+            "code": "XK04",
+            "erp": "ID-XM-K04",
+            "titel": "Kugel Strickherz „Frohe Stricknachten“"
+        },
+        {
+            "code": "XK05",
+            "erp": "ID-XM-K05",
+            "titel": "Kugel Stricknadeln mit Herz"
+        },
+        {
+            "code": "XK06",
+            "erp": "ID-XM-K06",
+            "titel": "Kugel „Frohe Wollnachten“ mit Sternen"
+        },
+        {
+            "code": "XK07",
+            "erp": "ID-XM-K07",
+            "titel": "Kugel „Frohe Wollnachten“ mit Schaf"
+        },
+        {
+            "code": "XK08",
+            "erp": "ID-XM-K08",
+            "titel": "Kugel „Frohe Wollnachten“ Sternenhimmel"
+        },
+        {
+            "code": "XK09",
+            "erp": "ID-XM-K09",
+            "titel": "Kugel „Frohe Wollnachten“ Wollknäuel"
+        },
+        {
+            "code": "XS01",
+            "erp": "ID-XM-S01",
+            "titel": "Schaf strickt"
+        },
+        {
+            "code": "XS02",
+            "erp": "ID-XM-S02",
+            "titel": "Schaf mit Wollknäuel"
+        },
+        {
+            "code": "XS03",
+            "erp": "ID-XM-S03",
+            "titel": "Schaf mit Stricknadeln"
+        }
+    ]
+}
