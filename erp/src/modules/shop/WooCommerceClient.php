@@ -258,6 +258,18 @@ class WooCommerceClient
         return $this->request('PUT', '/system_status/tools/recount_terms', [], [], 120);
     }
 
+    /** Produkt endgültig löschen (force=true, kein Papierkorb) -- beim echten Löschen einer Fehleingabe im ERP. */
+    public function loescheProdukt(string $externeId): array
+    {
+        return $this->request('DELETE', '/products/' . $externeId, ['force' => 'true']);
+    }
+
+    /** Variation eines variablen Produkts endgültig löschen. */
+    public function loescheVariation(string $parentId, string $variationId): array
+    {
+        return $this->request('DELETE', "/products/$parentId/variations/$variationId", ['force' => 'true']);
+    }
+
     /** Kategorie endgültig löschen (WordPress hängt evtl. Unterkategorien eine Ebene höher). */
     public function loescheKategorie(string $externeId): array
     {

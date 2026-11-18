@@ -1088,6 +1088,96 @@ class ArtikelRepository
         $stmt->execute(['vater' => $vaterId]);
     }
 
+    /**
+     * Wo wurde der Artikel schon benutzt? Liefert lesbare Gründe (leer = nie benutzt,
+     * darf endgültig gelöscht werden). Belege/Bewegungen müssen bleiben, deshalb dann nur Deaktivieren.
+     */
+    public function findLoeschSperren(int $id): array
+    {
+        $pruefungen = [
+            'Lagerbewegungen'          => "SELECT COUNT(*) FROM lager_bewegungen WHERE artikel_id = :id",
+            'Lagerbestand'             => "SELECT COUNT(*) FROM lagerbestand WHERE artikel_id = :id AND bestand <> 0",
+            'Aufträge'                 => "SELECT COUNT(*) FROM auftrag_positionen WHERE artikel_id = :id",
+            'Rechnungen'               => "SELECT COUNT(*) FROM rechnung_positionen WHERE artikel_id = :id",
+            'Gutschriften'             => "SELECT COUNT(*) FROM gutschrift_positionen WHERE artikel_id = :id",
+            'Kassenbons'               => "SELECT COUNT(*) FROM kassen_bon_positionen WHERE artikel_id = :id",
+            'Lieferanten-Bestellungen' => "SELECT COUNT(*) FROM bestellung_positionen WHERE artikel_id = :id",
+            'Inventuren'               => "SELECT COUNT(*) FROM inventur_positionen WHERE artikel_id = :id",
+            'Messe-Umbuchungen'        => "SELECT COUNT(*) FROM kassen_messe_umbuchungen WHERE artikel_id = :id",
+            'Rücklagerungen'           => "SELECT COUNT(*) FROM packplatz_ruecklagerungen WHERE artikel_id = :id OR erledigt_artikel_id = :id2",
+            'Partner-Belege'           => "SELECT COUNT(*) FROM partner_beleg_positionen WHERE artikel_id = :id",
+            'Händler-Belege'           => "SELECT COUNT(*) FROM haendler_beleg_positionen WHERE artikel_id = :id",
+            'Reservierungen'           => "SELECT COUNT(*) FROM reservierungen WHERE artikel_id = :id",
+            'Spenden'                  => "SELECT COUNT(*) FROM spenden_log WHERE artikel_id = :id",
+            'Lagerwert-Stichtage'      => "SELECT COUNT(*) FROM lagerwert_snapshot_positionen WHERE artikel_id = :id",
+            'Varianten (erst die Kinder löschen)' => "SELECT COUNT(*) FROM artikel WHERE vaterartikel_id = :id",
+            'Fertige Schilder zu diesem Layout'   => "SELECT COUNT(*) FROM konfig_fertige_artikel WHERE layout_artikel_id = :id",
+        ];
+        $gruende = [];
+        foreach ($pruefungen as $label => $sql) {
+            $st = $this->db->prepare($sql);
+            $params = ['id' => $id];
+            if (str_contains($sql, ':id2')) $params['id2'] = $id;
+            $st->execute($params);
+            $anzahl = (int) $st->fetchColumn();
+            if ($anzahl > 0) $gruende[] = "$label ($anzahl)";
+        }
+        return $gruende;
+    }
+
+    /** Shop-Zuordnungen mit Woo-ID, inkl. Woo-ID des Vaters im selben Shop (für Variationen). */
+    public function findShopReferenzenZumLoeschen(int $id): array
+    {
+        $st = $this->db->prepare("
+            SELECT ash.shop_id, ash.external_id, vs.external_id AS vater_external_id,
+                   s.name AS shop_name, s.wc_url, s.wc_key, s.wc_secret, s.wp_username, s.wp_app_password
+            FROM artikel_shops ash
+            JOIN artikel a ON a.id = ash.artikel_id
+            JOIN shops s ON s.id = ash.shop_id
+            LEFT JOIN artikel_shops vs ON vs.artikel_id = a.vaterartikel_id AND vs.shop_id = ash.shop_id
+            WHERE ash.artikel_id = :id AND ash.external_id IS NOT NULL AND ash.external_id <> ''
+        ");
+        $st->execute(['id' => $id]);
+        return $st->fetchAll();
+    }
+
+    /**
+     * Entfernt einen nie benutzten Artikel komplett (Fehleingabe). Vorher findLoeschSperren() prüfen!
+     * Tabellen mit ON DELETE CASCADE (Bilder, Shops, Preisschild-Drucke …) räumt MariaDB selbst ab.
+     */
+    public function loescheEndgueltig(int $id): void
+    {
+        $abhaengige = [
+            'DELETE FROM varianten_kombination_werte WHERE kombination_id = :id',
+            'DELETE FROM aktionen_artikel_preise WHERE artikel_id = :id',
+            'DELETE FROM preis_aktionen_positionen WHERE artikel_id = :id',
+            'DELETE FROM artikel_staffelpreise WHERE artikel_id = :id',
+            'DELETE FROM artikel_preise WHERE artikel_id = :id',
+            'DELETE FROM artikel_codes WHERE artikel_id = :id',
+            'DELETE FROM artikel_externe_referenzen WHERE artikel_id = :id',
+            'DELETE FROM artikel_kategorien WHERE artikel_id = :id',
+            'DELETE FROM artikel_lieferanten WHERE artikel_id = :id',
+            'DELETE FROM artikel_merkmale WHERE artikel_id = :id',
+            'DELETE FROM jtl_abgleich_bestand WHERE artikel_id = :id',
+            'DELETE FROM lagerbestand WHERE artikel_id = :id',
+            // Achsen/Werte des Artikels selbst (nur bei Vätern ohne Kinder; Bedingungen zeigen auf eigene Werte)
+            'DELETE FROM artikel_achsen WHERE artikel_id = :id',
+            'UPDATE varianten_achse_werte SET bedingungs_wert_id = NULL WHERE artikel_id = :id',
+            'DELETE FROM varianten_achse_werte WHERE artikel_id = :id',
+            'DELETE FROM artikel WHERE id = :id',
+        ];
+        $this->db->beginTransaction();
+        try {
+            foreach ($abhaengige as $sql) {
+                $this->db->prepare($sql)->execute(['id' => $id]);
+            }
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function activate(int $id): bool
     {
         $stmt = $this->db->prepare("UPDATE artikel SET aktiv = 1 WHERE id = :id");

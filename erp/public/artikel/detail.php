@@ -363,13 +363,36 @@ if ($kuvertSt->fetchColumn()) {
         . '<script src="' . BASE_PATH . '/js/kuvert_etikett.js"></script>';
 }
 
+// Knöpfe Deaktivieren/Aktivieren + Löschen (status_setzen.php). Löschen ist endgültig und nur möglich,
+// wenn mit dem Artikel noch nie etwas passiert ist -- sonst Hinweis "nur deaktivieren".
+$loeschSperren = $service->loeschSperren($id);
+$istAktiv      = (int) $artikel['aktiv'] === 1;
+$statusKnopf   = $istAktiv
+    ? '<button type="submit" form="status-form" name="aktion" value="deaktivieren" class="btn btn-secondary btn-sm" style="color:var(--color-warning)"'
+        . ' onclick="return confirm(' . ($istKind ? "'Diese Variante deaktivieren?'" : "'Artikel deaktivieren? Aktive Varianten werden mit deaktiviert.'") . ')">Deaktivieren</button>'
+    : '<button type="submit" form="status-form" name="aktion" value="aktivieren" class="btn btn-secondary btn-sm" style="color:var(--color-success)">Aktivieren</button>';
+if ($loeschSperren) {
+    $sperrText   = htmlspecialchars(json_encode("Löschen nicht möglich – der Artikel wurde schon benutzt:\n• "
+        . implode("\n• ", $loeschSperren) . "\n\nBitte stattdessen deaktivieren."), ENT_QUOTES);
+    $loeschKnopf = '<button type="button" class="btn btn-danger btn-sm" style="opacity:.55" title="Schon benutzt – nur Deaktivieren möglich"'
+        . ' onclick="alert(' . $sperrText . ')">Löschen</button>';
+} else {
+    $loeschFrage = htmlspecialchars(json_encode($artikel['artikelnummer'] . " endgültig löschen?\n\n"
+        . "Der Artikel wurde noch nie benutzt und wird komplett entfernt (auch im Shop). Das kann nicht rückgängig gemacht werden."), ENT_QUOTES);
+    $loeschKnopf = '<button type="submit" form="status-form" name="aktion" value="loeschen" class="btn btn-danger btn-sm"'
+        . ' title="Noch nie benutzt – wird endgültig entfernt (auch im Shop)"'
+        . ' onclick="return confirm(' . $loeschFrage . ')">Löschen</button>';
+}
+$statusForm = '<form id="status-form" method="post" action="status_setzen.php" style="display:none"><input type="hidden" name="id" value="' . (int) $id . '"></form>';
+
 $actionBarContent = <<<HTML
+{$statusForm}
 <div class="actionbar-left">
     <button form="stammdaten-form" type="submit" class="btn btn-primary btn-sm">💾 Speichern</button>
     <a href="{$abbrechenUrl}" class="btn btn-secondary btn-sm">{$abbrechenText}</a>
     {$weRueckkehrInput}
     <div class="actionbar-sep"></div>
-    <button class="btn btn-secondary btn-sm" style="color:var(--color-warning)">Deaktivieren</button>
+    {$statusKnopf}
     <div class="spalten-picker-wrap" style="display:inline-block">
         <button type="button" id="kanal-btn" class="btn btn-secondary btn-sm" style="color:#0a6ebd">Im Shop ▼</button>
         <div class="spalten-panel" id="kanal-panel" style="min-width:220px">
@@ -381,7 +404,7 @@ $actionBarContent = <<<HTML
 </div>
 <span id="unsaved-banner" class="unsaved-indicator">ungespeicherte Änderungen</span>
 <div class="actionbar-right">
-    <button class="btn btn-danger btn-sm">Löschen</button>
+    {$loeschKnopf}
 </div>
 HTML;
 
@@ -1103,6 +1126,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
                 <?php if (empty($kinder)): ?>
                     <p style="color:var(--color-text-muted); font-size:13px">Noch keine Varianten vorhanden.</p>
                 <?php else: ?>
+                    <?php $inaktiveKinder = count(array_filter($kinder, fn($k) => !$k['aktiv'])); ?>
+                    <?php if ($inaktiveKinder > 0): ?>
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;margin-bottom:var(--space-sm);cursor:pointer">
+                            <input type="checkbox" onchange="document.querySelectorAll('#var-panel-kinder tr.kind-inaktiv').forEach(z => z.classList.toggle('versteckt', !this.checked))">
+                            Auch inaktive (<?= $inaktiveKinder ?>)
+                        </label>
+                    <?php endif; ?>
                     <div class="card">
                         <table class="erp-table">
                             <thead>
@@ -1117,7 +1147,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
                             </thead>
                             <tbody>
                                 <?php foreach ($kinder as $k): ?>
-                                    <tr <?= !$k['aktiv'] ? 'class="row-inaktiv"' : '' ?>>
+                                    <tr <?= !$k['aktiv'] ? 'class="row-inaktiv kind-inaktiv versteckt"' : '' ?>>
                                         <td><a href="detail.php?id=<?= $k['id'] ?>&von_vater=<?= $id ?>"><?= htmlspecialchars($k['artikelnummer']) ?></a></td>
                                         <td><?= htmlspecialchars($k['name']) ?></td>
                                         <td><?= htmlspecialchars($k['gtin'] ?? '–') ?></td>

@@ -80,6 +80,8 @@ final class Zugriffsregeln
             'lager_schnell_we.php'          => 'bestand.bearbeiten',
 
             'delete.php'                    => 'artikel.loeschen',
+            // Knöpfe Deaktivieren/Aktivieren/Löschen in detail.php (Löschen prüft artikel.loeschen selbst)
+            'status_setzen.php'             => 'artikel.bearbeiten',
             'bild_loeschen.php'             => 'artikel.loeschen',
             'kategorie_loeschen_ajax.php'   => 'artikel.loeschen',
             'kategorie_bild_loeschen.php'   => 'artikel.loeschen',

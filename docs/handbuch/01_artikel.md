@@ -244,10 +244,12 @@ Kategorien organisieren die Artikel im Shop und im ERP.
 
 ---
 
-## Artikel deaktivieren / reaktivieren
+## Artikel deaktivieren / aktivieren / löschen
 
-- **Deaktivieren:** Artikel-Detail → Button "Deaktivieren" (Artikel bleibt im System, wird nur ausgeblendet)
-- **Reaktivieren:** In der Liste auf "Inaktiv" filtern → Artikel öffnen → Button "Reaktivieren"
+- **Deaktivieren:** Artikel-Detail → Button "Deaktivieren" (Artikel bleibt im System, wird nur ausgeblendet; beim Vater werden die aktiven Varianten mit deaktiviert)
+- **Aktivieren:** In der Liste "Auch inaktive" anhaken oder auf "Inaktiv" filtern → Artikel öffnen → Button "Aktivieren"
+- **Inaktive Varianten** erscheinen wie inaktive Hauptartikel nur mit "Auch inaktive" (Artikelliste bzw. Tab Varianten)
+- **Löschen:** entfernt eine Fehleingabe endgültig (auch im Shop) – nur wenn mit dem Artikel noch nie etwas passiert ist (keine Lagerbewegung, kein Bestand, Auftrag, Bon, Rechnung, Bestellung …). Ein Vater erst, wenn seine Varianten gelöscht sind. Sonst ist der Knopf blass und nennt den Grund → nur Deaktivieren möglich.
 
 > Deaktivierte Artikel werden im Shop nicht angezeigt und können nicht bestellt werden.
 

@@ -364,6 +364,10 @@ $preisStatus = $service->getPreisStatusFuerListe(array_column($artikel, 'id'));
 $vaterIds = array_column($artikel, 'id');
 
 $alleKinder = $service->getKinderFuerListe($vaterIds, $sortSpalteSQL, $sortDirSQL);
+// Inaktive Kinder wie inaktive Hauptartikel nur mit "Auch inaktive" (oder Status "Inaktiv") zeigen
+if (!$filter['mitInaktiven']) {
+    $alleKinder = array_values(array_filter($alleKinder, fn($k) => (int) $k['aktiv'] === 1));
+}
 $kinderNachVater = [];
 foreach ($alleKinder as $k) {
     $kinderNachVater[$k['vaterartikel_id']][] = $k;

@@ -276,6 +276,10 @@ require_once __DIR__ . '/includes/shell_top.php';
             <h3 id="artikel-eigentuemer">Wem gehört ein Artikel? (Partner-Artikel)</h3>
             <p>Artikel eines Partners, der online verkauft (z.B. Indra-Design), tragen in der Artikelliste ein lila Badge mit seinem Kürzel (<strong>INDRA</strong>). Beim neuen Artikel gibt es dafür das Feld <strong>„Gehört“</strong> (nur sichtbar, wenn es solche Partner gibt). Kopien und neue Varianten gehören automatisch demselben wie das Original bzw. der Vater. Nachträglich ändern: Artikelliste → Aktion „Eigentümer setzen“.</p>
 
+            <h3 id="artikel-loeschen">Deaktivieren &amp; Löschen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p><strong>Deaktivieren</strong> (Artikel-Detail, oben): Artikel bzw. Variante bleibt im System, ist aber nicht mehr verkaufbar. Beim Vater werden die aktiven Varianten mit deaktiviert. Inaktive Artikel <em>und</em> inaktive Varianten sieht man in der Artikelliste nur mit Häkchen <strong>„Auch inaktive“</strong>, im Tab Varianten ebenso über „Auch inaktive (Anzahl)“. Zurück mit <strong>Aktivieren</strong>.</p>
+            <p><strong>Löschen</strong> entfernt eine Fehleingabe endgültig, auch im Shop. Das geht nur, wenn mit dem Artikel noch nie etwas passiert ist: keine Lagerbewegung, kein Bestand, kein Auftrag, Bon, keine Rechnung oder Bestellung usw. Ein Vater lässt sich erst löschen, wenn seine Varianten weg sind. Wurde der Artikel schon benutzt, ist der Knopf blass und zeigt den Grund an. Dann bleibt nur Deaktivieren, weil Belege und Bewegungen erhalten bleiben müssen.</p>
+
             <h3 id="artikel-kopieren">Artikel kopieren <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Artikel öffnen → <strong>Kopieren</strong></div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Neuen Namen und neue Artikelnummer eintragen (vorbelegt mit „-KOPIE“)</div></div>

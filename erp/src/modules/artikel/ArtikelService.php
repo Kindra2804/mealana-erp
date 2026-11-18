@@ -256,6 +256,72 @@ class ArtikelService
         return ['erfolg' => true];
     }
 
+    /** Gründe, warum der Artikel nicht endgültig gelöscht werden darf (leer = darf). */
+    public function loeschSperren(int $id): array
+    {
+        return $this->repo->findLoeschSperren($id);
+    }
+
+    /**
+     * Fehleingabe endgültig entfernen -- nur wenn mit dem Artikel noch nie etwas passiert ist
+     * (keine Bewegung, kein Beleg, kein Auftrag …). Sonst nur Deaktivieren.
+     * Ist er schon im Woo-Shop, wird er dort zuerst gelöscht; klappt das nicht, bleibt alles wie es war.
+     */
+    public function loescheEndgueltig(int $id): array
+    {
+        $artikel = $this->repo->findById($id);
+        if ($artikel === false) {
+            return ['erfolg' => false, 'fehler' => 'Artikel nicht gefunden'];
+        }
+        $sperren = $this->repo->findLoeschSperren($id);
+        if ($sperren) {
+            return ['erfolg' => false, 'fehler' => 'Der Artikel wurde schon benutzt und kann nur deaktiviert werden: ' . implode(', ', $sperren) . '.'];
+        }
+
+        // Zuerst aus den Shops entfernen (sonst bliebe dort ein Produkt ohne ERP-Gegenstück)
+        foreach ($this->repo->findShopReferenzenZumLoeschen($id) as $ref) {
+            try {
+                require_once __DIR__ . '/../shop/WooCommerceClient.php';
+                $client = new WooCommerceClient($ref['wc_url'], (string) $ref['wc_key'], (string) $ref['wc_secret'], $ref['wp_username'], $ref['wp_app_password']);
+                if ($artikel['vaterartikel_id']) {
+                    if ($ref['vater_external_id']) {
+                        $client->loescheVariation((string) $ref['vater_external_id'], (string) $ref['external_id']);
+                    }
+                } else {
+                    $client->loescheProdukt((string) $ref['external_id']);
+                }
+            } catch (WooCommerceNotFoundException $e) {
+                // im Shop schon weg -- passt
+            } catch (Throwable $e) {
+                return ['erfolg' => false, 'fehler' => "Löschen im Shop {$ref['shop_name']} hat nicht geklappt, der Artikel bleibt deshalb im ERP: " . $e->getMessage()];
+            }
+        }
+
+        $this->repo->loescheEndgueltig($id);
+
+        // Bilder-Ordner aufräumen (DB-Zeilen sind per CASCADE weg)
+        $ordner = __DIR__ . '/../../../public/uploads/artikel/' . $id;
+        if (is_dir($ordner)) {
+            foreach (glob($ordner . '/*') ?: [] as $datei) {
+                if (is_file($datei)) @unlink($datei);
+            }
+            @rmdir($ordner);
+        }
+
+        // Vater im Shop neu senden (Attributwerte der gelöschten Variante)
+        if ($artikel['vaterartikel_id']) {
+            require_once __DIR__ . '/../preise/PreisService.php';
+            PreisService::fuerShopMarkieren((int) $artikel['vaterartikel_id']);
+        }
+
+        Logger::log('artikel.endgueltig_geloescht', 'artikel', $id, [
+            'artikelnummer'   => $artikel['artikelnummer'],
+            'name'            => $artikel['name'],
+            'vaterartikel_id' => $artikel['vaterartikel_id'],
+        ]);
+        return ['erfolg' => true, 'vaterartikel_id' => $artikel['vaterartikel_id'] ? (int) $artikel['vaterartikel_id'] : null];
+    }
+
     public function aktivieren(int $id): array
     {
         if ($this->repo->findById($id) === false) {
