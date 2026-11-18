@@ -1979,8 +1979,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                 ?></td>
                                 <td class="aktionen">
                                     <button class="btn btn-secondary btn-sm" onclick="liefModalOeffnen(<?= $l['id'] ?>)">✏️</button>
-                                    <a href="delete.php?id=<?= $l['id'] ?>"
-                                        onclick="return confirm('Lieferant wirklich deaktivieren?')">🗑️</a>
+                                    <button type="button" class="btn btn-secondary btn-sm" title="Lieferanten-Zuordnung entfernen"
+                                        onclick="liefZuordnungEntfernen(<?= (int) $l['id'] ?>, <?= htmlspecialchars(json_encode($l['lieferant_name'] ?? $l['name'] ?? 'Lieferant'), ENT_QUOTES) ?>)">🗑️</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

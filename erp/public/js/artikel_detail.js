@@ -292,6 +292,16 @@ async function liefSpeichern() {
     location.reload();
 }
 
+// 🗑️ im Tab Lieferanten: nur die Zuordnung entfernen (Artikel und Lieferant bleiben)
+async function liefZuordnungEntfernen(alId, lieferantName) {
+    if (!confirm('Zuordnung zu „' + lieferantName + '“ bei diesem Artikel entfernen?\n\nDer Lieferant selbst und der Artikel bleiben bestehen.')) return;
+    const body = new URLSearchParams({ al_id: alId, artikel_id: window.MEALANA_ARTIKEL_ID || new URLSearchParams(location.search).get('id') });
+    const response = await fetch('artikel_lieferant_loeschen.php', { method: 'POST', body });
+    const data = await response.json();
+    if (!data.erfolg) { showFlash(data.fehler || 'Fehler', 'fehler'); return; }
+    location.reload();
+}
+
 // Varianten-Generator Checkbox-Count
 (function () {
     var genForm = document.getElementById('generator-form');

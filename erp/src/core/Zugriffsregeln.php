@@ -69,6 +69,7 @@ final class Zugriffsregeln
             'kategorie_bild_upload.php'     => 'artikel.bearbeiten',
             'bulk_kategorie_speichern.php'  => 'artikel.bearbeiten',
             'artikel_lieferant_speichern.php' => 'artikel.bearbeiten',
+            'artikel_lieferant_loeschen.php'  => 'artikel.bearbeiten',
             // Preise sind ein Tab im Artikel-Modul, keine eigene Berechtigung vorhanden
             'preis_speichern.php'           => 'artikel.bearbeiten',
             'preise_massen.php'             => 'artikel.bearbeiten',   // Massenaktion "Preise ändern"
@@ -564,7 +565,7 @@ final class Zugriffsregeln
             'bild_upload.php', 'bulk_kategorie_speichern.php', 'bild_ajax.php', 'bild_loeschen.php',
             'kategorie_bild_upload.php', 'kategorie_bild_loeschen.php',
             'sale_override_loeschen.php', 'sale_override_speichern.php', 'kategorie_erstellen.php',
-            'kategorie_bearbeiten_ajax.php', 'artikel_lieferant_speichern.php', 'merkmale_speichern.php',
+            'kategorie_bearbeiten_ajax.php', 'artikel_lieferant_speichern.php', 'artikel_lieferant_loeschen.php', 'merkmale_speichern.php',
             'merkmal_ajax.php', 'achsen_zuweisen_ajax.php', 'kategorie_sort_ajax.php', 'ean_check.php',
             'kategorie_neu.php', 'kategorie_loeschen_ajax.php', 'artikel_vater_suche.php',
             'preis_loeschen.php', 'staffelpreis_loeschen.php', 'staffelpreis_speichern.php',
