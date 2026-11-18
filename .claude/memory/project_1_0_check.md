@@ -142,3 +142,5 @@ Knöpfe in artikel/detail.php waren tot. Jetzt status_setzen.php: Deaktivieren/A
 
 ## 2026-11-18 Paket 1.0.26 (8cdd87a, ohne Migration)
 Nur Fix: 🗑️ im Artikel-Tab Lieferanten rief artikel/delete.php mit der artikel_lieferanten-ID auf und deaktivierte einen fremden Artikel samt Kindern. Jetzt artikel_lieferant_loeschen.php. Lösch/Deaktivieren-Fix (a621b4b) steckt schon in 1.0.25. Live-Einspielen offen.
+
+**1.0.26 LIVE 2026-11-18.** Live hat noch keine Lieferanten → alter 🗑️-Fehler kann dort nichts angerichtet haben. Nächster Schritt (Jacky, 19.11.): durchsehen, was von Dev nach Live übertragen werden soll (Lieferanten u.a.).

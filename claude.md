@@ -1440,3 +1440,11 @@ docs: Update db schema in CLAUDE.md
 - **Artikelliste-Tempo:** „Keine EAN“ als vorberechnete ID-Liste (> 3 min → 0,8 s), Fehlbestand-Zähler fehlte `reserviert`, Kategoriebaum-Zähler gruppiert statt korreliert (1,6 → 0,6 s), `findKinderFuerListe` über ID-Liste statt OR über zwei Tabellen (0,9 → 0,05 s). Liste gesamt 3,6 → 2,1 s. Lehre: korrelierte Unterabfragen + OR über Tabellen kippen mit wachsender Datenmenge.
 - Lagerübersicht: Charge-Status nur bei Charge/„nachzutragen“, sonst „–“. Bild-Vorschau Artikelliste `position:fixed` + shell.js.
 - **Paket 1.0.24** gebaut (`D:\ERP\pakete\nahtlos-1.0.24.zip`, ohne Migration), Live-Einspielen offen; danach Lang-Import auf Live.
+
+## Update 2026-11-18: Artikel löschen/deaktivieren, Fix 🗑️ Lieferanten-Zuordnung – 1.0.25 + 1.0.26 LIVE
+
+- **Knöpfe in `artikel/detail.php`** (vorher ohne Funktion) → `artikel/status_setzen.php`: Deaktivieren/Aktivieren; **Löschen endgültig** (inkl. Woo-Produkt/-Variation, `WooCommerceClient::loescheProdukt/loescheVariation`), aber nur wenn nie benutzt (`ArtikelRepository::findLoeschSperren`: Bewegungen, Bestand ≠ 0, Aufträge, Rechnungen, Bons, Bestellungen, Inventur, Messe, Partner/Händler, Reservierungen, Kinder, fertige Schilder …), sonst blasser Knopf mit Grund. Bilder-Ordner wird mit gelöscht, Vater für den Shop markiert.
+- **Inaktive Kinder** in der Artikelliste nur mit „Auch inaktive“, im Tab Varianten per Schalter „Auch inaktive (n)“.
+- **Fix 🗑️ Tab Lieferanten:** rief `delete.php` mit der `artikel_lieferanten`-ID auf → deaktivierte fremden Artikel. Jetzt `artikel_lieferant_loeschen.php` (nur die Zuordnung). Live hatte noch keine Lieferanten → kein Schaden.
+- Lehre: Python-Ersetzungen mit `\n` in JS/PHP-Strings erzeugen echte Zeilenumbrüche → JS kaputt; nach JS-Änderungen `node --check`.
+- **Nächste Schritte (19.11.):** Jacky prüft, was von Dev nach Live übertragen werden soll (Lieferanten u.a.).
