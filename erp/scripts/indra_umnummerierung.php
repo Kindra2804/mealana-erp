@@ -26,6 +26,8 @@
  *   php scripts/indra_umnummerierung.php --phase=1       Zwischennummern setzen
  *   php scripts/indra_umnummerierung.php --phase=2       endgültige Nummern setzen
  *   Option --werkstatt=<Pfad zu daten.json>
+ *   Phase 1 speichert die Liste in storage/indra_umnummerierung_plan.json, Phase 2 nimmt
+ *   nur diese; danach heißt sie …_erledigt.json und das Skript verweigert jeden weiteren Lauf.
  *   Option --ohne-shop  (nur Dev: Phase 2 ohne Prüfung, ob der Shop Phase 1 übernommen hat)
  */
 
@@ -38,9 +40,17 @@ foreach ($argv as $a) {
     if (str_starts_with($a, '--werkstatt=')) $datei = substr($a, 12);
 }
 const ZW = 'UMN-';
+// Phase 1 merkt sich die Liste, Phase 2 arbeitet nur mit dieser Liste (die Werkstatt
+// zeigt danach im Feld „erp“ ja noch die alten Nummern – ein neuer Abgleich würde
+// bereits umbenannte Artikel ein zweites Mal verschieben). Nach Phase 2 → „erledigt“.
+$planDatei = __DIR__ . '/../storage/indra_umnummerierung_plan.json';
+$erledigt  = __DIR__ . '/../storage/indra_umnummerierung_erledigt.json';
+if (is_file($erledigt) && !in_array('--nochmal', $argv, true))
+    exit("Die Umnummerierung ist auf diesem System schon erledigt (" . realpath($erledigt) . ").\n"
+       . "Ein neuer Lauf würde die Werkstatt-Zuordnung ein zweites Mal anwenden – Abbruch.\n");
 
 $w = json_decode((string) @file_get_contents($datei), true);
-if (!$w || empty($w['motive'])) exit("Werkstatt-Daten nicht lesbar: $datei\n");
+if ($phase !== 2 && (!$w || empty($w['motive']))) exit("Werkstatt-Daten nicht lesbar: $datei\n");
 
 $db = Database::getInstance();
 $artikel = [];   // artikelnummer (ohne Zwischen-Präfix) => row
@@ -57,8 +67,13 @@ foreach ($artikel as $r) if ($r['vaterartikel_id']) $kinderVon[(int) $r['vaterar
 $fehler = []; $hinweise = [];
 $plan = [];      // alt => [neu, id, art('Vater'|'Kind'), name]
 
+if ($phase === 2) {
+    $plan = json_decode((string) @file_get_contents($planDatei), true);
+    if (!$plan) exit("Gespeicherte Liste aus Phase 1 fehlt: $planDatei\n");
+}
+
 // ---------- 1. Väter aus der Werkstatt ----------
-foreach ($w['motive'] as $m) {
+foreach ($phase === 2 ? [] : $w['motive'] as $m) {
     foreach (array_filter(array_map('trim', explode(',', $m['erp'] ?? ''))) as $alt) {
         if (!preg_match('/^(ID-(?:U|SA|KP)-)([A-Z]{1,2}\d+)$/', $alt, $x)) {
             // ID-W / ID-XM: nur prüfen, ob die Nummer schon zum Code passt
@@ -155,6 +170,8 @@ try {
         $n++;
     }
     $db->commit();
+    if ($phase === 1) file_put_contents($planDatei, json_encode($plan, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    else rename($planDatei, $erledigt);
     echo "\nPhase $phase: $n Artikel umbenannt.\n";
     echo $phase === 1
         ? "Jetzt den Shop-Sync laufen lassen (alle Zwischennummern müssen im Shop ankommen), dann --phase=2.\n"
