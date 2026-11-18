@@ -20,3 +20,7 @@ Gebaut 2026-11-05 (Commit 2e654ad). Jacky: gilt für alle Shops (SOW, MeaLana, b
 **Nicht live getestet:** Hersteller-Spalten und „nur wenn Artikel drin“ (indra hat keine Hersteller). Die Filterlogik ist mit WP-Stub getestet (Scratchpad test/menue_filter_test.php). Erst mit SOW/MeaLana echt prüfen, vor allem das Blocksy-Dropdown-CSS der Spalten.
 
 **How to apply:** Für SOW: Menü (Hersteller=Alle Hersteller, Stärke/Zusammensetzung/Farbe/Sparpakete/Nadeln/Bücher mit Unterkategorien automatisch, Sale nur mit Artikeln) im ERP vorbereiten, sobald die Woo-Installation steht. Siehe [[project-sow-shop-design]], [[project-newsletter-slider-ideen]].
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🧭 Shop-Menü aus dem ERP](project_shop_menue.md) — 2026-11-05 gebaut (Migr. 226, Plugin 1.4.0), live auf indra-design; Hersteller-Spalten erst mit SOW echt testen

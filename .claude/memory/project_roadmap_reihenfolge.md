@@ -146,3 +146,7 @@ Zurückgestellt: SPF/DKIM/DMARC je Shop-Domain → erst nach dem Umzug der Woo-S
 3. UVP: bleibt als Feld (für externe Kunden), bei uns überall leeren, Hinweis „nur setzen, wenn echte UVP“, Wort „Streichpreis“ aus den Texten. Anzeige im Shop vorerst nicht.
 Danach: Offline-Kasse light (Sunmi ist jetzt daheim). Staffelpreise (artikel_staffelpreise wirken nirgends) bauen wir später, eher für externe Kunden interessant.
 Erledigt: Klicktest Mengen-Aktion Kasse (Weihnachtsanhänger) ✅, K1 „RKSV aktiv“ weg ✅.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-11-14: Massenaktion Standardpreis → X-für-Y/BOGOF → Offline-Kasse light → Update-Weg → Google Shopping/SC → Newsletter → Steuerprofil → Lang-CSV-Import, dann neu reihen; SPF/DKIM erst nach Server-Umzug

@@ -14,3 +14,7 @@ Jacky am 2026-11-05: SOW und bio-wolle haben ihre Oberfläche (Kleinigkeiten und
 Achtung: Am 2026-11-05 hat mealana.at (JTL) auf automatische Abrufe mit **HTTP 508** geantwortet; Jacky sollte das im Browser prüfen.
 
 **How to apply:** Babsis Rückmeldung abwarten, dann wie bei SOW nachbessern. Umsetzung erst nach SOW/bio-wolle; Slider, Kacheln und Menü kommen aus dem ERP ([[project-shop-menue]], [[project-newsletter-slider-ideen]]). Für das Mega-Menü in Spalten bietet das ERP-Menü „Alle Hersteller“ schon Spalten; ein Mega-Menü mit Gruppen-Überschriften und Promo-Box müsste das Plugin noch können.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [💙 MeaLana neues Outfit](project_mealana_shop_design.md) — 2026-11-05 Entwurf 1 (Mega-Menü, Bestseller/Sale/Neu, Akzent-Boxen, Blau großzügig) wartet auf Babsi; Logo-Farben #1d4076/#98cce9/#c7e6f5

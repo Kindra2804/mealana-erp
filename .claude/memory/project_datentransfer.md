@@ -17,3 +17,7 @@ Gebaut 2026-11-09 (Claude, Jacky wollte es fertig statt Trainer-Modus; Erklärun
 - Funde: Dev hat Kategorie „Sparpakete“ doppelt auf oberster Ebene (156, 386) → im Ziel zusammengeführt. Artikelgruppe 4040 „Sonstiges Zubehör“ fehlt in der Baseline → wird angelegt. Ausgeblendete Kategorien anderer Kanäle (MeaLana/BIO/SOW) erst nach Anlegen dieser Kanäle per erneutem Import.
 - Live-Reihenfolge: Kanal indra-design (Slug `indra-design`, IND) anlegen → Import → Woo-Shop muss vorher leer sein (Produkte, Kategorien, Attribute), sonst SKU-Konflikte. Siehe [[project-1-0-check]].
 - Ideen später: Oberfläche im ERP (··· → Datentransfer), Modus „aktualisieren“ für vorhandene Artikel.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [📦 Datentransfer ERP → ERP](project_datentransfer.md) — 2026-11-09 gebaut + getestet (scripts/datentransfer.php), für Indra Dev → Live; Woo-Shop vorher leeren

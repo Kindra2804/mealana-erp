@@ -55,3 +55,7 @@ metadata:
 
 
 **✅ 2026-11-14 ~13:00 ONLINE** – Wartungs-Snippet ausgeschaltet (Bio 1109 / SOW 25, Skript `node wartung_schalten.js <lib> <id> an|aus|zeigen`), 1.0.13 live (Bücher 10 %: SOW 31, Bio 2 Produkte reduced-rate), Besucher 200, kein noindex. Offen: erste echte Bestellungen genau ansehen.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🧦 SOW-Umstellung JTL → Woo](project_sow_umstellung.md) — ✅ 2026-11-14 ONLINE (Wartung 25 aus, 1.0.13 live); offen: erste echte Bestellung prüfen, Startbestand kontrollieren

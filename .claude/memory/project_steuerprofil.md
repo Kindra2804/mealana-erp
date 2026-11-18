@@ -21,3 +21,7 @@ Jacky 2026-11-01: ERP soll für Regelbesteuerte UND Kleinunternehmer, Bilanziere
 **Entscheidung Jacky 2026-11-01:** Steuerprofil kommt in den 1.0-Check (nicht vorher). Fragenblatt an die Steuerberatung (15 Fragen: Kombinationen, KU inkl. RKSV/Umsatzgrenze/Brutto-Bewertung/OSS, EA-Export, Umstellung mit Stichtag): https://claude.ai/artifact/XJw2XuyspfaZ3qTm1LDqM6 — Antworten abwarten, bevor das Steuerprofil gebaut wird.
 
 **How to apply:** Beim 1.0-Check ([[project-version-1-0-release]]) aufgreifen; bei jedem neuen Steuer-relevanten Code nicht noch mehr KG/Bilanz/Soll-Annahmen hart einbauen. Ältere Notizen: [[project-kleinunternehmer]].
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [⚖️ Steuerprofil-Audit](project_steuerprofil.md) — 2026-11-01: KU halb, Bilanz/EA + Soll/Ist fehlen, Export fest KG/Soll → Punkt für 1.0-Check

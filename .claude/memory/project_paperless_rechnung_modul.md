@@ -42,3 +42,7 @@ Bestätigt: die Druckoption `Keiner` verstößt bereits jetzt gegen die Belegert
 - ✅ **Klicktest bestanden 2026-11-01** (Jacky: „passt alles“): beleg.mealana.at eingerichtet (MySQL eigene leere DB, Präfix nahtlos_, config.php nur lokal in beleg-portal/ + am Webspace, gitignored), Sperren geprüft (config/lib/.htaccess/daten 403, http→https), ERP-Dev zeigt auf https://beleg.mealana.at (Schlüssel endet …a585). Beim Live-Deploy: gleiche URL + Schlüssel in Live-ERP eintragen (aus beleg-portal/config.php kopieren), Kundenanzeige-Haken setzen. Ein Test-Beleg (Dev-Bon 222) liegt bis ~2026-12-01 am Server, egal.
 - (erledigt) Klicktest-Plan war: Jacky legt Subdomain beleg.mealana.at (HTTPS) an → beleg-portal/ per FTP hoch, config.php (Schlüssel aus ERP 🎲) → ERP Einstellungen → System → Paperless + Verbindung testen + Kundenanzeige-Haken → echter Verkauf an der Kasse mit Handy-Scan; .htaccess-Sperren (config.php, lib.php, daten/) am echten Webspace prüfen. Bleibt so für Live, nicht leeren.
 
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Paperless — Beleg per QR](project_paperless_rechnung_modul.md) — fertig + Klicktest 2026-11-01, läuft auf beleg.mealana.at; „Ohne Druck“ entfernt; Live-ERP: URL+Schlüssel eintragen

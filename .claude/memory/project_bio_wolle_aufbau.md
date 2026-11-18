@@ -31,3 +31,7 @@ Siehe [[project-bio-wolle-shop-design]], [[project-sow-umstellung]].
 **Fund: Steuerklasse wurde nie an Woo übertragen** → Bücher mit 20 % verkauft. Fix a28cadd + Migr. 240 → **Paket 1.0.13** (D:/ERP/pakete). Live hatte noch keine Verkäufe (SOW/Bio hinter Wartung). **Vor Go-Live Bio/SOW:** 1.0.13 auf Live, Sync die Bücher neu übertragen lassen (Woo tax_class reduced-rate prüfen, z.B. KR-EDB), Live-Bio-Kanal fortsetzen, Bestand neu (Testartikel BC-011010118-08 + KR-EDB), dann Wartungs-Snippet 1109 aus.
 
 **✅ 2026-11-14 ~13:00 ONLINE** – Wartungs-Snippet ausgeschaltet (Bio 1109 / SOW 25, Skript `node wartung_schalten.js <lib> <id> an|aus|zeigen`), 1.0.13 live (Bücher 10 %: SOW 31, Bio 2 Produkte reduced-rate), Besucher 200, kein noindex. Offen: erste echte Bestellungen genau ansehen.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🌿 bio-wolle WP-Aufbau](project_bio_wolle_aufbau.md) — ✅ 2026-11-14 ONLINE (Kurztest, 1.0.13 Steuerklassen live); offen: erste echte Bestellung prüfen; nächste Migr. 241

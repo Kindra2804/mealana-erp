@@ -54,3 +54,7 @@ Stand 2026-11-04 (zurückgesetzt, siehe [[project-1-0-check]]):
 
 **Kundenkonto im Kopf (2026-11-05):** Es gab keinen Link zum Anmelden, Registrieren oder Abmelden. Das Konto-Element kommt aus dem Gratis-Plugin **Blocksy Companion** (nicht Teil des Themes). Jacky hat es installiert und das Element „Konto“ gesetzt (Desktop zwischen Suche und Warenkorb, Handy vor dem Warenkorb, abgemeldet = Modal). Die Seite heißt noch `/my-account/` (ID 9). WooCommerce-Datenschutztexte (Registrierung/Kasse) auf Deutsch („du“) gesetzt, Login-Hinweis an der Kasse AN. Germanized blendet den Woo-Text aber aus; die Germanized-Checkbox „Neues Kundenkonto“ (Datenschutz bei Registrierung) war AUS → ✅ Jacky hat sie eingeschaltet (2026-11-05); das Häkchen „…akzeptiere die Datenschutzerklärung“ erscheint auf /my-account/ und im Blocksy-Anmeldefenster. Kleinigkeit: Das Blocksy-Fenster sagt „Ihre E-Mail-Adresse“, Woo/Germanized sagen „du“. Für SOW/bio-wolle/MeaLana auf die Shop-Checkliste: Blocksy Companion + Konto-Element.
 
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben, Snippets; 2026-11-04: Wurzelkategorie (Migr. 223, auf Live setzen!), Saisonales/Sonstiges, Menü 2-zeilig, 7 Kacheln, Woo-Recount im Sync, Super Cache leeren

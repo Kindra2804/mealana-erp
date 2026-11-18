@@ -24,3 +24,7 @@ metadata:
 Siehe [[project-dropshipping]] (Lieferant 36 Lang Garn & Wolle GmbH), [[project-roadmap-reihenfolge]].
 
 **EAN-Umzug (2026-11-17, 7b9208c, Jacky-Idee):** 9 Farben unter LY-945 LUSSO trugen die EANs von 845 MILLE COLORI BABY (LUSSO hatte eigene Mehrfarben-Reihe, Lang führt LUSSO nicht mehr, alle 42 LUSSO-Kinder ohne Bestand/Verkäufe, Preis 0,00). Regel jetzt: EAN-Treffer bei **anderem LY-Garn** (Vaternummer ≠ Lang-Vater) → Artikel wie in der Lang-Liste neu anlegen, EAN vom alten entfernen (Liste „⚑ EAN zieht um“, Log artikel.ean_umgezogen); gleiches Garn → wie bisher „über die EAN gefunden“. Test mit Rollback: LY-845 bekommt 14 Kinder. Umhänge-Skript wieder entfernt. Dev: Lang-Import nochmal laufen lassen (Probelauf zeigt 9 Umzüge). Live: normal importieren.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🧶 Lang-Yarns-Import](project_lang_import.md) — ✅ 2026-11-16 gebaut (bdd367a, 0dd1a24, Migr. 254+255 → nächste 256; Fix Varianten erben alle Vater-Felder): CSV → Garne + dt. Bücher, Abwahl, Preisänderungen, Strecke, ohne UVP; 1.0.23 LIVE 2026-11-16, Lang-Import auf Live nach Paket 1.0.24 (EAN-Umzug, 2026-11-17)

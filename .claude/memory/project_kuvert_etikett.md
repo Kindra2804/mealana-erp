@@ -17,3 +17,7 @@ metadata:
 - Kein Migrations-Bedarf. Offen: echter Scan-Test mit Jackys Scanner, Live-Einspielen (nächstes Paket).
 
 **How to apply:** Wird zur ersten Vorlage des Preisschilder-Moduls [[project_preisschilder]]; Fertige Schilder siehe [[project-konfigurator-modul]].
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + Live offen

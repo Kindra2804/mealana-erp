@@ -21,3 +21,7 @@ metadata:
 **Live-Korrektur ✅ 2026-11-16:** ID-U-A71 Vater-Bestand per SQL entfernt (Bewegung „Bestandskorrektur Vater“, Ware war schon bei den Kindern); Eigentümer der Kinder hatte Jacky schon umgestellt. **Paket 1.0.22 gebaut** (D:/ERP/pakete/nahtlos-1.0.22.zip, Commit 8ec4e69, keine Migration; nächste Migr. weiter 254). **Offen:** 1.0.22 auf Live einspielen. Browser-Test `.claude-browser-tools/varianten_muster_ui_test.js` (nur lesend).
 
 Siehe [[project-1-0-check]], [[project-indra-sortiment]].
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🧬 Varianten-Muster + Vater-Bestand](project_varianten_muster.md) — ✅ 2026-11-16 gebaut (86d79e9, c4f4afc): Bestand an Variante übergeben, Massenaktion Muster übernehmen, Varianten mitkopieren; + Achsenpreis + Eigentümer-Badge/Feld „Gehört“ + Fix Eigentümer bei Varianten/Kopie (e04e481); Paket 1.0.22 gebaut, Live-Einspielen offen; ID-U-A71 auf Live korrigiert

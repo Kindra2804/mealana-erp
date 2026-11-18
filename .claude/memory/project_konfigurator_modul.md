@@ -221,3 +221,7 @@ Plan: konfig_bausteine.schild_breite_mm/schild_hoehe_mm (an Größen-Werten), ar
 Bekannte Lücke: 38 cm mit Rückwand braucht 2 Platten, Ampel prüft nur Bestand > 0 → erst mit Stückliste.
 **Gebaut 2026-11-13** (Commits e0ef045, cb54da0, 1a3cd8b): Migr. 239, passtAufPlatte() (von Jacky geschrieben), leseMass()/massPaar(), Bausteine-Seite Spalten „Schild (mm)“ + „Platte (mm)“ (Platte wird am Rohmaterial-Artikel gespeichert; leeres Feld widerspricht nicht, Änderung fasst kb.geaendert_am an → Shop-Sync), Kasse nur Hinweis „Platte zu klein“, Shop-Snippet sperrt + prüft serverseitig (mealana_konfig_platten_pruefen). berechnePreis bewusst NICHT blockiert (Shop-Import nutzt es). ✅ Klicktest bestanden 2026-11-14. Offen: Maße auf Live eintragen (Durchmesser 30cm-Maß fehlt), Snippet 34170 in WPCode aktualisieren, Live-Paket.
 Ergänzung 2026-11-13: 30 cm = 300x309 (Jacky hatte es vergessen, existiert also). Live-Update geplant 2026-11-14 zusammen mit den Indra-Umbauten (Migr. 237+238) + Snippet 34170; Klicktest macht Jacky selbst.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Konfigurator-Modul](project_konfigurator_modul.md) — 2026-11-13: „Konfiguration wählen“ in Shop-Übersicht, Bausteine nur intern, Sonder-Eintrag, Personalisierung (Migr. 236), Live + Snippet offen; 2026-11-11 Schild-Bausteine + fertige Schilder (Migr. 232)

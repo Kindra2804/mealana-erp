@@ -20,3 +20,7 @@ Jacky 2026-10-28: Einstellung je Belegtyp "Artikelbilder anzeigen" (Idee Claude,
 - Tests: Vorschau < 20 KB, 150×150; AB/LS/RG/AZ/Pickliste/Bon A4 als PDF visuell geprüft; Mail-Einbettung (keine data: mehr, CID-Anhänge). Bon A4 mit Bildern wurde 2-seitig (vorher evtl. 1) — beobachten.
 - Jacky 2026-10-28: Auftragsbestätigung mit Bildern angeschaut → passt, Länge unverändert. Echte Mail kommt mit Bildern an → abgenommen.
 - Siehe [[project_dokumente_system]].
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Artikelbilder auf Belegen](project_belege_artikelbilder.md) — Einstellung je Belegtyp, gebaut 2026-10-28 (Migration 211), Mail-Test ok

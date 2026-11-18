@@ -32,3 +32,7 @@ metadata:
 - ✅ `rundePreis()` von Jacky geschrieben (match + ceil in Cent, aufwärts), 12 Prüffälle ok.
 - ✅ Klicktest Jacky 2026-11-14 bestanden; danach Protokoll mit Artikelnummer + Name statt nur ID, Handbücher ergänzt (67e2be5). Kommt mit dem nächsten Paket auf Live.
 - Fund: 761 Artikel haben Standardpreis 0,00 € (z.B. Lang-Kinder LY-784-0023) → erscheinen als „!“ bzw. „keine Basis“.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [💶 Massenaktion Preise ändern](project_idee_massenaktion_preis.md) — ✅ gebaut 2026-11-14 (2205453), ✅ fertig + Klicktest 2026-11-14 (67e2be5), Live mit nächstem Paket

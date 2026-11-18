@@ -86,3 +86,7 @@ JTL-Import: sehr speziell, später entscheiden (evtl. zeitlich begrenzte Freisch
 ## ✅ Klicktest Lizenz (Jacky 2026-11-01): passt
 Lizenzdatei aus Testauftrag erstellt (L-100002-16 "Sabine Indra", nur Steuernummer, Kasse 2). Manipulationstest mit genau dieser Datei: Kassen/Name/Steuernummer/Wartung/Modul/Hauslizenz geändert → alle abgelehnt. Offen nur noch: Live-Deploy (Migr. 201–219 + Hauslizenz L-100001-19_A1.lic sofort einspielen, Generator auf Live NICHT einschalten) und privaten Schlüssel sichern.
 
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; Grundmodul 790 inkl. Verkauf+Packplatz; 2026-11-01 Lizenz-Bau-Entscheidungen 1–8 (nur Grundmodul ohne Lizenz, Schloss, Zertifikat-Warnung)

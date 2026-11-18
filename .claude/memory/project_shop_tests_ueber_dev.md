@@ -29,3 +29,7 @@ Shops (direkt, kein Paket): Germanized-Texte SOW, Übersetzungen, Lager-Mails au
 Offen: Jacky widerruft Woo-Schlüssel „ERP Dev-Test“ bei SOW + setzt Live-SOW-Kanal fort; Bio/indra-Testrunde bei Bedarf gleich ablaufend.
 
 **Plan 2026-11-13 abends (Vorschlag an Jacky):** Bio keine volle Testrunde (ERP-Abläufe sind shop-unabhängig, mit SOW durchgetestet), nur Kurztest des Shop-Eigenen: 1 Bestellung bis completed (Mail-Absender, Zahlungsart, Rechnungsmail, Nummernkreis) + 1× Widerrufsformular. Indra am 14.11. über Dev testen (Wartungsseite ist ohnehin an): Dev vorher wie Live einstellen (Babsi „verkauft online“ + Kürzel INDRA, Indra-Artikel Eigentümer Babsi) → sonst testet man den alten KG-Weg; Vorteil: R-INDRA-2026-00001 auf Live bleibt die erste echte Rechnung. Danach erste echte Live-Bestellung genau ansehen (Live-Partner-Einstellungen sind so nicht getestet).
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🧪 Shop-Tests über Dev](project_shop_tests_ueber_dev.md) — ✅ SOW-Runde 2026-11-13 durch, Fixes fürs Paket 1.0.11 gelistet; Live-Shops für Tests ans Dev-ERP hängen; Dev-Kanäle pausiert+gesperrt (reicht seit Fix a252d86), SOW-Artikel auf Dev, scripts/shop_test_bestellungen.php; indra-Wartung WPCode 35329 (inaktiv)

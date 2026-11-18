@@ -23,3 +23,7 @@ Entscheidung Jacky 2026-11-09: Jeder Shop behält seine eigene Mailadresse passe
 - UI: Einstellungen → Mail/SMTP → Karte „Absender je Kanal“ (aufklappbar, Test je Kanal über das Empfänger-Feld oben). Browsertest auf Dev ok.
 - Nebenbei behoben: kanaele_update las ist_aktiv nicht → Lizenzprüfung bei jedem Speichern.
 - Offen: auf Live einspielen (Paket 1.0.2 mit Migr. 229), je Shop Postfach + SMTP eintragen und testen, SPF/DKIM/DMARC je Domain. Betreff „Dein Gutschein von MEALANA“ ist noch fest.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [✉️ Mail-Absender je Shop](project_mail_absender_je_shop.md) — ✅ gebaut 2026-11-11 (Migr. 229, Mailer::fuerShop, Einstellungen → Mail → Absender je Kanal); Live-Einspielen + Postfächer je Shop offen; nächste Migr. 230

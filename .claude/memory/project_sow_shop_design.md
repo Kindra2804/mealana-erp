@@ -31,3 +31,7 @@ Start 2026-11-05: Während Live noch nicht steht, gestalten wir Logo und Layout 
 **Babsis eigene Canva-Version (2026-11-05, 13:18):** `shop/branding/sockenwolle/Logo für Sockenwolle online.svg` (noch nicht committed). Gleicher Aufbau, aber Schrift **dunkelbraun #3d261d** (dünner, kein Weinrot), Socken **leuchtend rot** mit Norweger-Muster, Faden beige, Creme-Hintergrund. Technisch: Canva-KI (C2PA-Metadaten), 1,2 MB, quadratisch 2000 px mit viel Leerraum, **Socken und Teile als eingebettete PNG-Bilder** → kein sauberer Vektor. Babsi ging es um die **Socke**. **✅ Entscheidung 2026-11-05:** Schrift und Farbe von A Weinrot bleiben, die Socken sind nach Babsis Canva-Socke als Vektor nachgezeichnet (Rot #f23d39, Muster/Ferse/Spitze #f4e5d4, Lachs-Rand #ef8a72). Alle Dateien in `shop/branding/sockenwolle/` neu erzeugt. Die Variante mit ihrem eingebetteten Socken-Bild wurde verworfen, weil sie nur 177 px hat und unscharf ist. Die Canva-Datei selbst ist nicht im Repo.
 
 **How to apply:** Reihenfolge Logo → Startseiten-Layout (ASCII → SVG → HTML, [[feedback-design-workflow]]) → Slider-Modul im ERP ([[project-newsletter-slider-ideen]]). Das fertige Logo als Vektor ausliefern (Schrift in Pfade umwandeln).
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🧦 Sockenwolle Logo + Layout](project_sow_shop_design.md) — Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün; Logo fertig: Schrift A Weinrot + Babsis rote Norweger-Socke (Vektor, 2026-11-05)

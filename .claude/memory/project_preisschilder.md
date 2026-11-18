@@ -32,3 +32,7 @@ metadata:
 
 **Why:** Preisauszeichnungspflicht inkl. Grundpreis [[project_grundpreis_rechtslage_wolle]]; Messen + Laden auszeichnen ohne Handarbeit.
 **How to apply:** Nach Babsis Feedback Vorlagen bauen (Twig + Dompdf wie Kuvert-Etikett, [[project_dokumente_system]]). Merkmal-Import vor Live-Nutzung klären.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, veraltet-Liste, Merkmal-Massenaktion, Migr. 233–235); Paket 1.0.9 gebaut (D:/ERP/pakete), Live + Merkmal-Import offen; nächste Migr. 238

@@ -25,3 +25,7 @@ Jacky fragte nach einem helleren Ton → `tanne_hell.png` (`node bio_logo.js <or
 **✅ Entscheidung 2026-11-05: Logo 1b in Tanne hell #3b6b52.** Vektor fertig in `shop/branding/bio-wolle/` (Josefin Sans Regular als Pfade, Kapsel 0,9 × Schriftgröße, Unterschneidung W-o −70; README mit Farben). PNG-Wandler `.claude-browser-tools/svg_png.js`. Startseiten-Entwurf `.claude-browser-tools/bio_startseite.js` → `startseite_tanne.png` + `_handy.png`: Leiste, Menü wie alt, Hero „Wolle, die der Natur gut tut.“, Siegel-Reihe (GOTS, Bio-Fasern, mulesingfrei, schonend gefärbt), Kacheln nach Faser, Neuheiten mit Siegel-Chips, Box „Was bedeutet GOTS?“, Herstellerleiste, Willkommen + Vorteile, Wollboutique nur im Footer. Die Aussagen in der Siegel-Reihe (mulesingfrei, schonend gefärbt) muss Babsi noch bestätigen. Nächster Schritt: Babsis Feedback einholen, dann Slider/Kacheln/Menü im ERP befüllen.
 
 **How to apply:** Nach Babsis Wahl: Logo als Vektor nach dem Muster `shop/branding/sockenwolle/logo_bauen.py` in `shop/branding/bio-wolle/` bauen, danach den Startseiten-Entwurf nach dem Muster `sow_startseite.js`.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🌿 bio-wolle Logo + Startseite](project_bio_wolle_shop_design.md) — ✅ 2026-11-05 Logo 1b Tanne hell #3b6b52 als Vektor (shop/branding/bio-wolle/), Startseiten-Entwurf Desktop+Handy; wartet auf Babsis Feedback

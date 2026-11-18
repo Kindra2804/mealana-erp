@@ -13,3 +13,7 @@ Jacky 2026-11-01 (Lizenz-Bau): "ja bitte nach jedem erledigten Schritt committen
 **Why:** Er will bei längeren Bauten (z.B. Lizenz-Schritte 1–5) Zwischenstände gesichert haben und nicht jedes Mal gefragt werden.
 
 **How to apply:** Sobald ein vereinbarter Schritt gebaut + getestet ist: Memory-Backup nach `.claude/memory/` kopieren ([[feedback-memory-backup-bei-commit]]), committen, pushen, kurz melden. Nur bei ungetesteten/halbfertigen Ständen vorher nachfragen.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Feedback: Commit je Schritt](feedback_commit_je_schritt.md) — bei mehrstufigen Bauten nach jedem fertigen Schritt committen+pushen, ohne zu fragen

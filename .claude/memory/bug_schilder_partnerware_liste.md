@@ -12,3 +12,7 @@ metadata:
 **How to apply:** Erst angehen, wenn die Massenaktion „Preise ändern“ fertig ist (siehe [[project-idee-massenaktion-preis]]). Dann den WHERE-Teil der Liste mit der Kategoriezählung vergleichen. Siehe auch [[project-konfigurator-modul]] und [[project-partner-modul]].
 
 **✅ Ursache + Fix 2026-11-14 (12d8371):** Es war kein Lagerfilter (Jackys Verdacht). `ArtikelRepository::findAll/countAll` klappt fertige Schilder immer unter ihr Layout (Regel vom 2026-11-13). Der Kategoriefilter prüft aber nur das Layout, und das liegt unter „Schilder“ → bei „Fertige Schilder“ kam 0 heraus. Jetzt gilt: nur einklappen, wenn das Layout auch in der gefilterten Kategorie steht (Bedingung `$conditions['schild']`). In einer Transaktion auf Dev nachgestellt und zurückgerollt. Auf Live kommt der Fix mit dem nächsten Paket.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem Paket

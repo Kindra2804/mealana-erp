@@ -15,3 +15,7 @@ Wenn Jacky "commit, push" (oder "memory, save, commit, push") sagt, IMMER zuerst
 3. Committen + pushen wie gewohnt
 
 Das gilt für JEDEN commit/push-Zyklus in diesem Projekt, nicht nur wenn explizit nach Memory gefragt wird — Jacky hat das ausdrücklich als Standard-Verhalten gewünscht (2026-07-17), nicht als Einzelaktion.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Feedback: Memory-Backup bei Commit](feedback_memory_backup_bei_commit.md) — Memory nach .claude/memory/ im Repo syncen bei commit/push

@@ -26,3 +26,7 @@ Problem (Jacky 2026-10-28): Abholzettel + Abholmail zeigen die Firmenadresse (Fl
 - UI: Einstellungen-Reiter Abholorte + Fenster (js/einstellungen_abholorte.js, abholort_speichern.php), nur eigene Lager; Auftrag detail.php Auswahlfeld nur bei Selbstabholung + nicht Kasse (abholort_setzen.php, js/auftraege_detail.js). Zugriffsregeln ergänzt.
 - Tests: Service 18/18 (Rollback), Abholzettel-PDF visuell ok, Playwright-Klicktest mit temporärer lokaler Session (danach gelöscht). Packplatz bucht derzeit fest aus Lager 1 → praktisch immer Wollboutique.
 - Nebenbefund: Auftragsdetail lädt 404 bild_1784477610_4543.jpg (alter Artikelbild-Pfad, nicht von hier).
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Abholorte](project_abholorte.md) — eigene Abholadressen + Lager-Zuordnung, Wollboutique Bahngasse 13; gebaut 2026-10-28 (Migration 210), Klicktest offen

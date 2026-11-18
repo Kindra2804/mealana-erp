@@ -179,3 +179,7 @@ JTL-WAWI als grobe Orientierung. Odoo für Log-Stil.
 **How to apply:** Basislayout vor neuen Modulen umsetzen. Alle neuen Seiten folgen dieser Struktur.
 
 **Seitenleisten-Gruppen (2026-11-17, e6b7ce7):** Jacky und Barbara wollten mehr Platz für den Kategoriebaum. Artikel-Menü ist jetzt `type => 'gruppe'` mit `items` in shell_top.php (`<details>`, aktive Gruppe offen, Zustand per localStorage `erp_sidebar_gruppen`): Stammdaten / Preise / **Preisschilder** (nicht „Schilder“, sonst Verwechslung mit Indra-Schildern) / Shop. Import-Knöpfe → ein Klappmenü „⬇ Import ▾“ (`.actionbar-menue`). Entwurf: docs/design/artikel_sidebar_gruppen_mockup.svg. Andere Module noch flach (kein Baum dort), bei Bedarf gleiche Gruppen. Kanalfarben an Hausfarben angelehnt: S1 blau #3F7CC0, S2 moos #3B6B52, S3 rot #C8574A, S4 kork #A47B52 (`.kc-sN` in components.css, neuer Shop braucht neue Klasse). Bildvorschau Artikelliste jetzt position:fixed + shell.js. Live mit nächstem Paket.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [UI Redesign Plan](project_ui_redesign.md) — JTL-Layout, Barbara Mitsprache; 2026-11-17 Seitenleisten-Gruppen + Import-Klappmenü + Kanalfarben je Shop (Live mit nächstem Paket)

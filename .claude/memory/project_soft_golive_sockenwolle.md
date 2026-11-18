@@ -47,3 +47,7 @@ Pflege des Kürzels: Vorschlag Einstellungen → Kanäle, Feld „Nummernkreis-K
 - Sicherheits-Check 2026-10-31: kein Code zerlegt Auftrags-/Rechnungsnummern per Muster (nur LIKE-Suchen, DATEV substr 36). Spalten varchar(20) reichen (längste mögliche Nummer `GS-XXXXX-2026-00001` = 19). Kanalfilter läuft über shop_id, Retouren/Packplatz/Buchhaltung über IDs. Restrisiko: PLC/EasyPak ShipmentRefNo `L`+auftrag_nr (17 Zeichen bei SOW), Längenlimit unbekannt → beim ersten SOW-Versand prüfen.
 - ✅ Nachbesserung nach Jackys Screenshot: Kürzel-Feld lief aus der Karte (`.erp-input` hat feste 220px) → max 110px, Platzhalter nicht mehr in Großbuchstaben (`.erp-input-kuerzel` in components.css), Hinweis zeigt eigenes Kürzel. Tab „Nummernkreise“ zeigt jetzt die Spalte Shop-Kürzel und die richtige Vorschau (sonst doppelte „Rechnung 2026“-Zeilen).
 - ⏭️ Offen: Live-Deploy 214 (mit 201–213).
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🚀 Soft-Go-Live Sockenwolle](project_soft_golive_sockenwolle.md) — 2026-11-04: Start jetzt mit indra-design.at (Demoshop zurücksetzen), SOW danach; vorher: 1.0 live nur mit SOW (JTL→Woo), MeaLana zuletzt; Kürzel je Shop gebaut 2026-10-31 (Migr. 214), Live-Deploy offen

@@ -43,3 +43,11 @@ Punkt 2 der Reihenfolge ([[project-roadmap-reihenfolge]]), TODO aus [[project-pr
 - Plugin-ZIP NICHT mit PowerShell Compress-Archive bauen (Backslash-Pfade → WP behält alte Version), sondern mit Python zipfile und „/“-Pfaden.
 
 **✅ 2026-11-15 Messe-/Offline-Kasse:** preSyncExportieren liefert Effektivpreis (KassenService::mitEffektivPreis jetzt public) + `mengen_regeln` (MengenAktionService::regelnFuerMesse: an_kasse, nicht abgelaufen, mit gueltig_ab/bis, nur mitgenommene Artikel). kasse_bon_offline.js: obMengenAnwenden/obZeileBrutto, Zeitraum prüft das Gerät, Positionen mit einzelpreis_neu + preis_vorher_brutto + mengen_aktion_id + aktion_hinweis; SW-Cache v3 cacht mengen_aktion_rechner.js. postSyncVerarbeiten speichert die Felder + **Steuergruppen A–E (fehlten vorher beim Import!)**. Strichliste Papier-Messe: Sale-Preis + Aktion (nicht bei Sale), getStrichlistenWert mit Effektivpreis. Getestet mit Test-Messe (aufgeräumt). Grenze: Sale-Preis = Stand beim Laden.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🛒 Mengen-Aktionen X für Y / 3 für 2](project_mengen_aktionen.md) — Entscheidungen 1–9 Jacky 2026-11-14 (Rabatt gleichmäßig verteilt), Schritt 1 Verwaltung ✅ (Migr. 241) + 2 Rechenkern PHP/JS ✅ (tests/mengen_aktion_*) + Art Paketpreise (Raunzmarker, Migr. 242) ✅ + 3 Kasse ✅ + Messe-/Offline-Kasse ✅ 2026-11-15 (Migr. 243, Klicktest offen) + 4 Plugin 1.7.0 + Übertragung ✅ (Migr. 244) + 5 Live-Test indra ✅ (Plugin 1.7.0 auf indra, SOW/Bio offen; Snippet 34685 bleibt bis Live-Paket); nächste Migr. 245
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🛒 Mengen-Aktionen X für Y / 3 für 2](project_mengen_aktionen.md) — Schritte 1–5 ✅ (Migr. 241–244, Plugin 1.7.0 auf indra; SOW/Bio offen; Snippet 34685 bleibt bis Live-Paket)

@@ -30,3 +30,7 @@ Jacky am 2026-11-05: Der Widerrufsbutton muss in alle Woo-Shops. Die Gewährleis
 - **Gebaut 2026-11-05 (Migration 228, Plugin 1.6.0 — live auf indra-design seit 2026-11-05 (Jacky-OK)):** Plugin `GET nahtlos/v1/widerrufe/offen` (alle requested + Flag ungeklaert, Name/E-Mail/Angaben) und `POST widerrufe/{antrag}/zuordnen {bestellung}` (set_parent_id + verified + Bestellung → pending-wdraw) bzw. `/ablehnen {grund}`. ERP: `shops.widerrufe_ungeklaert` (Cron zählt), Seite **Verkauf → Widerrufe** (`auftraege/widerrufe.php`: ungeklärte mit Vorschlägen nach E-Mail/Name/Nummer aus den letzten 120 Tagen, Zuordnen/Ablehnen; darunter „Entscheidung offen“), Menü-Badge + Dashboard-Chip.
 
 **How to apply:** Bei jedem neuen Woo-Shop (SOW, bio-wolle, MeaLana) auf die Checkliste setzen: Germanized ≥ 4.0, Widerrufsbutton + Gewährleistungs-Info aktivieren, gleiche Einstellungen wie auf indra-design. Prüfskript nur lesend: `.claude-browser-tools/wp_widerruf_check4.js`. Siehe [[project-soft-golive-sockenwolle]], [[project-bio-wolle-shop-design]].
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [⚖️ Widerrufsbutton Woo-Shops](project_widerrufsbutton.md) — Germanized ≥4.0 kann es gratis; indra-design ✅ eingestellt + SMTP-Plugin; Widerruf im ERP bestätigen/ablehnen (Migr. 227, Plugin 1.5.0), Bestätigen getestet ✅; ohne Zuordnung → Verkauf → Widerrufe (Migr. 228, Plugin 1.6.0 live), alle Fälle getestet ✅; in jedem neuen Shop aktivieren

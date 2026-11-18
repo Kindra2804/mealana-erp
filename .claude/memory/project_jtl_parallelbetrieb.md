@@ -32,3 +32,7 @@ Jackys SQL-Exporte in JTL: „Komplettexport_JackyERP“ und „CargenArtikelLag
 - Schlanke JTL-SQL „Lagerabgleich_ERP“ (nur Bestand > 0, Artikelnummer/WarenlagerID/Warenlager/Lagerplatz/Charge/BestandAktuell) vorgeschlagen.
 
 **✅ Gebaut 2026-11-11 (Commit ce0b654, Migration 231):** Lager → JTL-Abgleich (`public/lager/jtl_abgleich.php`, `src/modules/lager/JtlAbgleichService.php`), Tabellen jtl_abgleich_laeufe/_bestand/_umfang. JTL-SQL `docs/jtl/Lagerabgleich_ERP.sql` (alle Nicht-Väter, auch Bestand 0). Getestet an einer Dev-Kopie mit der August-Datei: Erstabgleich (19.857 Artikel, 157 Korrekturen, 2. Lauf 0), Sperren, Lücke zwischen Export und Import, JTL-Verkauf, Plausibilitätsstopp. Ohne Charge: zuerst chargenloser JTL-Bestand, dann älteste Charge. JTL-Charge „0“ (67 Zeilen im August) wird wörtlich übernommen; das alte Skript machte daraus NULL → beim Erstabgleich auf Live harmlos, auf Dev entstehen Umbuchungen '' ↔ '0'. Migration 231 ist auf Dev eingespielt, auf Live fehlt sie noch (nächstes Update 1.0.4). Nächste Migration: 232.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🔁 JTL-Parallelbetrieb](project_jtl_parallelbetrieb.md) — 2026-11-11: MeaLana+Laden bleiben auf JTL, SOW im ERP; Lager → JTL-Abgleich ✅ gebaut (Migr. 231), Live-Update offen

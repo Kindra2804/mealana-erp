@@ -1,48 +1,49 @@
 # Memory Index
 
 ## Aktuell / Steuerung
-- [🧶 Lang-Yarns-Import](project_lang_import.md) — ✅ 2026-11-16 gebaut (bdd367a, 0dd1a24, Migr. 254+255 → nächste 256; Fix Varianten erben alle Vater-Felder): CSV → Garne + dt. Bücher, Abwahl, Preisänderungen, Strecke, ohne UVP; 1.0.23 LIVE 2026-11-16, Lang-Import auf Live nach Paket 1.0.24 (EAN-Umzug, 2026-11-17)
-- [🧬 Varianten-Muster + Vater-Bestand](project_varianten_muster.md) — ✅ 2026-11-16 gebaut (86d79e9, c4f4afc): Bestand an Variante übergeben, Massenaktion Muster übernehmen, Varianten mitkopieren; + Achsenpreis + Eigentümer-Badge/Feld „Gehört“ + Fix Eigentümer bei Varianten/Kopie (e04e481); Paket 1.0.22 gebaut, Live-Einspielen offen; ID-U-A71 auf Live korrigiert
-- [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, Rechnungskorrektur, Belege-Spalte, Versandart ändern)
-- [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — ✅ 2026-11-15 Offline-Kasse light = Mobil-Messe Sunmi (ohne Signatur, Nacherfassung, Migr. 248), Test am echten Sunmi offen; nächste Migr. 249
-- [✅ 1.0-Check](project_1_0_check.md) — 2026-11-17 Paket 1.0.24 gebaut (ohne Migr.: Seitenleisten-Gruppen, Kanalfarben, Listen-Tempo, Filter-Fixes, Lang EAN-Umzug), Live offen; 2026-11-14 1.0.14 LIVE; 1.0.15 (Migr. 245 Shop-Preis = VK statt UVP) + 1.0.16 (Migr. 246 Bestand korrigieren, Inventur-Lagerwahl) LIVE; 2026-11-15 1.0.17 LIVE (Fremd-Badge, DEP, §131, Update-Weg, Messe-Aktionen, Migr. 247); 1.0.18 gebaut (Mobil-Messe, Migr. 248); Paket 1.0.19 gebaut (Commit 6957e19: GTIN/Yoast/Alt, Komplettabgleich abbrechen, Gutschein-Betreff, Assistent), nach Live: Komplettabgleich je Shop + alt_texte_nachziehen.php; 2026-11-15 Paket 1.0.20 gebaut (Newsletter komplett, Migr. 249–253, Commit 0e0baa2; Live: Belegseite-Dateien FTP, Aufgabe newsletter_versand alle 5 Min, Connector 1.8.0, Kanäle Website/Farbe, JTL-Import); 2026-11-15 Paket 1.0.21 gebaut (Commit 2882208, ohne Migration: Artikel neu Grundpreis aus + Einheit Stk, Kopie aktiv + Artikelgruppe/Maße); nächste Migr. 254; 2026-11-11 1.0.4 LIVE (JTL-Abgleich, Schilder; Migr. 231+232), Erstabgleich offen; 2026-11-11: 1.0.2 LIVE (Mail je Kanal + Überlastung); Woo-Shops bekommen eigene Server; 2026-11-10 LIVE-TAG: Paket 1.0.1, Live neu, indra-design angebunden (119 Produkte), Cron + tägl. Sicherung; offen: Startbestand, 1.0.2-Liste; 2026-11-01: Steuerprofil → 1.1, Live komplett neu auf 1.0, Shops indra-design → SOW → Bio → MeaLana; Onboarding ✅ → Update-Weg ✅ → Baseline 1.0 ✅ 2026-11-04 (Kürzel indra-design = IND) → Live neu + Backup; ⚠️ Hosting-Limits: ein Konto für alle Shops, CPU dauerhaft am Limit, 508-Fehler (2026-11-05) → vor Live klären
-- [✅ Woo-Shop-Checkliste](project_woo_shop_checkliste.md) — für MeaLana & jeden neuen Shop: Übersetzungen, Germanized-Texte, Seiten/Endpunkte deutsch (+Weiterleitung), Lager-Mails aus, Absender je Kanal, Testrunde über Dev, WP Super Cache (SOW+Bio ✅ 2026-11-16 wegen 508); JTL-Filter-410 per .htaccess gegen Bot (SOW+Bio ✅ 2026-11-17, Wirkung 18.11. mittags prüfen, MeaLana beim Umzug)
-- [🧪 Shop-Tests über Dev](project_shop_tests_ueber_dev.md) — ✅ SOW-Runde 2026-11-13 durch, Fixes fürs Paket 1.0.11 gelistet; Live-Shops für Tests ans Dev-ERP hängen; Dev-Kanäle pausiert+gesperrt (reicht seit Fix a252d86), SOW-Artikel auf Dev, scripts/shop_test_bestellungen.php; indra-Wartung WPCode 35329 (inaktiv)
-- [🏛️ Indra-Design = EU von Babsi](project_indra_design_eu.md) — ✅ 2026-11-14 ONLINE als EU (1.0.12 live, Rechtstexte, KU, Texte bereinigt); offen: 1. echte Bestellung prüfen, Steuerberatung (Woo-Datum ✅); nächste Migr. 241
-- [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben, Snippets; 2026-11-04: Wurzelkategorie (Migr. 223, auf Live setzen!), Saisonales/Sonstiges, Menü 2-zeilig, 7 Kacheln, Woo-Recount im Sync, Super Cache leeren
-- [🔁 JTL-Parallelbetrieb](project_jtl_parallelbetrieb.md) — 2026-11-11: MeaLana+Laden bleiben auf JTL, SOW im ERP; Lager → JTL-Abgleich ✅ gebaut (Migr. 231), Live-Update offen
-- [🧦 SOW-Umstellung JTL → Woo](project_sow_umstellung.md) — ✅ 2026-11-14 ONLINE (Wartung 25 aus, 1.0.13 live); offen: erste echte Bestellung prüfen, Startbestand kontrollieren
-- [🧦 Sockenwolle Logo + Layout](project_sow_shop_design.md) — Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün; Logo fertig: Schrift A Weinrot + Babsis rote Norweger-Socke (Vektor, 2026-11-05)
-- [🌿 bio-wolle WP-Aufbau](project_bio_wolle_aufbau.md) — ✅ 2026-11-14 ONLINE (Kurztest, 1.0.13 Steuerklassen live); offen: erste echte Bestellung prüfen; nächste Migr. 241
-- [🌿 bio-wolle Logo + Startseite](project_bio_wolle_shop_design.md) — ✅ 2026-11-05 Logo 1b Tanne hell #3b6b52 als Vektor (shop/branding/bio-wolle/), Startseiten-Entwurf Desktop+Handy; wartet auf Babsis Feedback
-- [⚖️ Widerrufsbutton Woo-Shops](project_widerrufsbutton.md) — Germanized ≥4.0 kann es gratis; indra-design ✅ eingestellt + SMTP-Plugin; Widerruf im ERP bestätigen/ablehnen (Migr. 227, Plugin 1.5.0), Bestätigen getestet ✅; ohne Zuordnung → Verkauf → Widerrufe (Migr. 228, Plugin 1.6.0 live), alle Fälle getestet ✅; in jedem neuen Shop aktivieren
-- [💙 MeaLana neues Outfit](project_mealana_shop_design.md) — 2026-11-05 Entwurf 1 (Mega-Menü, Bestseller/Sale/Neu, Akzent-Boxen, Blau großzügig) wartet auf Babsi; Logo-Farben #1d4076/#98cce9/#c7e6f5
-- [📦 Datentransfer ERP → ERP](project_datentransfer.md) — 2026-11-09 gebaut + getestet (scripts/datentransfer.php), für Indra Dev → Live; Woo-Shop vorher leeren
-- [✉️ Mail-Absender je Shop](project_mail_absender_je_shop.md) — ✅ gebaut 2026-11-11 (Migr. 229, Mailer::fuerShop, Einstellungen → Mail → Absender je Kanal); Live-Einspielen + Postfächer je Shop offen; nächste Migr. 230
-- [🧭 Shop-Menü aus dem ERP](project_shop_menue.md) — 2026-11-05 gebaut (Migr. 226, Plugin 1.4.0), live auf indra-design; Hersteller-Spalten erst mit SOW echt testen
-- [🏷️ Indra-Sortiment + Preise](project_indra_sortiment.md) — Motivcodes W/A/K/N/P/S/C/E, Preisliste, Untersetzer = Motiv-Vater × Material; 2026-11-04 Weihnachtsanhänger XM (3,50 / 4 für 12) + Dosen DO (7,90), Katalog Nov 2026
-- [💡 Newsletter + Slider aus dem ERP](project_newsletter_slider_ideen.md) — Slider ✅ gebaut 2026-11-05 (Migr. 224 + WP-Plugin NAHTLOS Connector), Plugin 1.3.1 live auf indra-design (3 Slides + 7 Kacheln, Migr. 225); Newsletter: Entscheidungen 1–7 Jacky 2026-11-15 (beleg.mealana.at, JTL-Export per phpMyAdmin, 100/h, Bausteine je Shop-Design, ohne Tracking, Segmente später); ✅ Schritt 1–5 komplett (Empfänger/Import, Portal-DOI, Editor, Versand 100/h + Klicks, Segmente ausgeblendet; Migr. 249–253, neuer Cron newsletter_versand alle 5 Min) → Paket 1.0.20; nächste Migr. 254
-- [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
-- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-11-14: Massenaktion Standardpreis → X-für-Y/BOGOF → Offline-Kasse light → Update-Weg → Google Shopping/SC → Newsletter → Steuerprofil → Lang-CSV-Import, dann neu reihen; SPF/DKIM erst nach Server-Umzug
-- [Klicktest-Fixes 2026-10-29](project_klicktest_fixes_20261029.md) — Mietfach/MR-Nummernkreis/Z-Bon eigener Kreis K1-Z-00001 (Migr. 212)+Reihenfolge+Auto-Cron/A4-Ränder gebaut, Kassensturz Partner/Stornos, Storno nur am selben Tag vor Z
+- [📒 Katalog-Werkstatt](project_katalog_werkstatt.md) — ✅ E:\Laser\Katalog-Werkstatt (start.bat), Formgruppen W/A/Q/H/V/E; ✅ 2026-11-18 Indra-Artikelnummern LIVE umnummeriert (1.0.25, 171 Artikel), Werkstatt-Codes = ERP
+- [🧶 Lang-Yarns-Import](project_lang_import.md) — ✅ 2026-11-16 gebaut (bdd367a, 0dd1a24, Migr. 254+255 → nächste 256; Fix Varianten …
+- [🧬 Varianten-Muster + Vater-Bestand](project_varianten_muster.md) — ✅ 2026-11-16 gebaut (86d79e9, c4f4afc): Bestand an Variante übergeben, Massenaktion …
+- [Belege + Abschluss-Umbau](project_belege_abschluss.md) — ✅ 2026-10-07 komplett gebaut, Klicktest B1–B7 durch, committed+gepusht (Teilrechnungen, Zahlbeleg, …
+- [Kasse-Punkte 1–3 + Papier-Messe](project_kasse_naechste_punkte.md) — ✅ 2026-11-15 Offline-Kasse light = Mobil-Messe Sunmi (ohne Signatur, Nacherfassung, Migr. 248), Test am …
+- [✅ 1.0-Check](project_1_0_check.md) — Paket-Verlauf 1.0.1–1.0.24 + offene Live-Schritte (Details in der Datei); 1.0.24 gebaut, …
+- [✅ Woo-Shop-Checkliste](project_woo_shop_checkliste.md) — für MeaLana & jeden neuen Shop: Übersetzungen, Germanized-Texte, Seiten/Endpunkte …
+- [🧪 Shop-Tests über Dev](project_shop_tests_ueber_dev.md) — ✅ SOW-Runde 2026-11-13 durch, Fixes fürs Paket 1.0.11 gelistet; Live-Shops für Tests …
+- [🏛️ Indra-Design = EU von Babsi](project_indra_design_eu.md) — ✅ 2026-11-14 ONLINE als EU (1.0.12 live, Rechtstexte, KU, Texte bereinigt); offen: 1. echte Bestellung …
+- [🎨 indra-design Shop](project_indra_design_shop.md) — Logo, Farben, Snippets; 2026-11-04: Wurzelkategorie (Migr. 223, auf Live setzen!), Saisonales/Sonstiges, Menü …
+- [🔁 JTL-Parallelbetrieb](project_jtl_parallelbetrieb.md) — 2026-11-11: MeaLana+Laden bleiben auf JTL, SOW im ERP; Lager → JTL-Abgleich ✅ gebaut (Migr. 231), Live-Update …
+- [🧦 SOW-Umstellung JTL → Woo](project_sow_umstellung.md) — ✅ 2026-11-14 ONLINE (Wartung 25 aus, 1.0.13 live); offen: erste echte Bestellung prüfen, Startbestand …
+- [🧦 Sockenwolle Logo + Layout](project_sow_shop_design.md) — Hausfarben: MeaLana blau, SOW weiches Rot, bio-wolle grün; Logo fertig: Schrift A Weinrot + Babsis rote …
+- [🌿 bio-wolle WP-Aufbau](project_bio_wolle_aufbau.md) — ✅ 2026-11-14 ONLINE (Kurztest, 1.0.13 Steuerklassen live); offen: erste echte Bestellung prüfen; nächste …
+- [🌿 bio-wolle Logo + Startseite](project_bio_wolle_shop_design.md) — ✅ 2026-11-05 Logo 1b Tanne hell #3b6b52 als Vektor (shop/branding/bio-wolle/), Startseiten-Entwurf …
+- [⚖️ Widerrufsbutton Woo-Shops](project_widerrufsbutton.md) — Germanized ≥4.0 kann es gratis; indra-design ✅ eingestellt + SMTP-Plugin; Widerruf …
+- [💙 MeaLana neues Outfit](project_mealana_shop_design.md) — 2026-11-05 Entwurf 1 (Mega-Menü, Bestseller/Sale/Neu, Akzent-Boxen, Blau großzügig) wartet auf Babsi; …
+- [📦 Datentransfer ERP → ERP](project_datentransfer.md) — 2026-11-09 gebaut + getestet (scripts/datentransfer.php), für Indra Dev → Live; Woo-Shop …
+- [✉️ Mail-Absender je Shop](project_mail_absender_je_shop.md) — ✅ gebaut 2026-11-11 (Migr. 229, Mailer::fuerShop, Einstellungen → Mail → Absender je Kanal); Live-Einspielen …
+- [🧭 Shop-Menü aus dem ERP](project_shop_menue.md) — 2026-11-05 gebaut (Migr. 226, Plugin 1.4.0), live auf indra-design; Hersteller-Spalten …
+- [🏷️ Indra-Sortiment + Preise](project_indra_sortiment.md) — Motivcodes W/A/K/N/P/S/C/E, Preisliste, Untersetzer = Motiv-Vater × Material; 2026-11-04 Weihnachtsanhänger …
+- [💡 Newsletter + Slider aus dem ERP](project_newsletter_slider_ideen.md) — Slider ✅ (Migr. 224/225, Plugin 1.3.1); Newsletter Schritt 1–5 ✅ (Migr. 249–253, Cron newsletter_versand alle …
+- [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen …
+- [🗺️ Roadmap-Reihenfolge](project_roadmap_reihenfolge.md) — 2026-11-14: Massenaktion Standardpreis → X-für-Y/BOGOF → Offline-Kasse light → …
+- [Klicktest-Fixes 2026-10-29](project_klicktest_fixes_20261029.md) — Mietfach/MR-Nummernkreis/Z-Bon eigener Kreis K1-Z-00001 (Migr. …
 - [📋 Klicktests 21–35](project_offene_klicktests.md) — Lagerplätze + Händler ✅ bestanden 2026-10-30
-- [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; Grundmodul 790 inkl. Verkauf+Packplatz; 2026-11-01 Lizenz-Bau-Entscheidungen 1–8 (nur Grundmodul ohne Lizenz, Schloss, Zertifikat-Warnung)
-- [🚀 Soft-Go-Live Sockenwolle](project_soft_golive_sockenwolle.md) — 2026-11-04: Start jetzt mit indra-design.at (Demoshop zurücksetzen), SOW danach; vorher: 1.0 live nur mit SOW (JTL→Woo), MeaLana zuletzt; Kürzel je Shop gebaut 2026-10-31 (Migr. 214), Live-Deploy offen
+- [💶 Lizenzierung + Preise](project_lizenzierung_preise.md) — Kauf+Wartung; Grundmodul 790 inkl. Verkauf+Packplatz; 2026-11-01 Lizenz-Bau-Entscheidungen 1–8 (nur …
+- [🚀 Soft-Go-Live Sockenwolle](project_soft_golive_sockenwolle.md) — 2026-11-04: Start jetzt mit indra-design.at (Demoshop zurücksetzen), SOW danach; …
 - [Dropshipping-Modul](project_dropshipping.md) — gebaut 2026-11-01 (Migr. 215), Klicktest Jacky offen, noch nicht committed
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
-- [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + Live offen
-- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, veraltet-Liste, Merkmal-Massenaktion, Migr. 233–235); Paket 1.0.9 gebaut (D:/ERP/pakete), Live + Merkmal-Import offen; nächste Migr. 238
+- [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + …
+- [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, …
 
-- [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem Paket
+- [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem …
 
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — erklären, selbst schreiben lassen
 - [Feedback: Immer Deutsch](feedback_sprache_deutsch.md) — auch kurze Zwischenmeldungen zwischen Arbeitsschritten auf Deutsch
-- [Feedback: End-of-Day Updates](feedback_eod.md) — claude.md am Tagesende aktualisieren; im Repo heißt sie **claude.md (klein)** → `git add claude.md`
-- [Feedback: Memory-Backup bei Commit](feedback_memory_backup_bei_commit.md) — Memory nach .claude/memory/ im Repo syncen bei commit/push
-- [Feedback: Commit je Schritt](feedback_commit_je_schritt.md) — bei mehrstufigen Bauten nach jedem fertigen Schritt committen+pushen, ohne zu fragen
+- [Feedback: End-of-Day Updates](feedback_eod.md) — claude.md am Tagesende aktualisieren; im Repo heißt sie **claude.md (klein)** → `git add …
+- [Feedback: Memory-Backup bei Commit](feedback_memory_backup_bei_commit.md) — Memory nach .claude/memory/ im Repo syncen bei …
+- [Feedback: Commit je Schritt](feedback_commit_je_schritt.md) — bei mehrstufigen Bauten nach jedem fertigen Schritt committen+pushen, ohne zu …
 - [Feedback: Modul-Vorgehen](feedback_modul_vorgehen.md) — Referenz-Check große WAWIs + MeaLana-Extras
 - [Feedback: CSS-Strategie](feedback_css_strategie.md) — inline style jetzt, extern beim Refactor
 - [Feedback: Design-Workflow](feedback_design_workflow.md) — ASCII → SVG → HTML, SVG für Barbara
@@ -54,11 +55,11 @@
 - [Feedback: Flaggen-Emoji](feedback_flag_emoji.md) — rendern unter Windows nicht
 - [Feedback: Test-Isolation](feedback_test_isolation.md) — Testskripte nie ohne Cleanup gegen echte Daten
 - [Feedback: Scope ohne validierten Bedarf](feedback_scope_ohne_bedarf.md) — erst Bedarf prüfen
-- [📱 Tablet per WireGuard ans Live-ERP](project_tablet_wireguard.md) — Idee Jacky 2026-11-15, zwischendurch probieren (Android-App, Anhang C)
+- [📱 Tablet per WireGuard ans Live-ERP](project_tablet_wireguard.md) — Idee Jacky 2026-11-15, zwischendurch probieren (Android-App, Anhang …
 - [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — gegen autoritative Quelle prüfen
 
 ## Referenzen
-- [Dev-ERP Browser-Login](reference_dev_erp_login.md) — Benutzer claude, PW in import/zugang Woo Claude.txt; Kasse nicht (Arbeitsplatz gebunden)
+- [Dev-ERP Browser-Login](reference_dev_erp_login.md) — Benutzer claude, PW in import/zugang Woo Claude.txt; Kasse nicht (Arbeitsplatz …
 - [WordPress-Zugang für Claude](reference_wp_claude_zugang.md) — wp-admin "claude" auf indra-design.at
 - [WP-Snippets im Repo](reference_wp_snippets_repo.md) — Kopien in mealana\shop\wp-snippets\
 - [Browser-Testing-Tools (Playwright)](reference_browser_testing_tools.md) — unter .claude-browser-tools/
@@ -72,18 +73,18 @@
 - [Retouren-Zusammenführung](project_retouren_zusammenfuehrung.md) — gemeinsame Zähler retourniert/gutgeschrieben
 - [Gutschein-Modul](project_gutscheine.md) — fertig; wartet auf Babsis Motiv-Vorlagen
 - [Zahlung+Versand ERP → Shop](project_zahlung_erp_an_shop.md) — processing/completed per Cron
-- [Konfigurator-Modul](project_konfigurator_modul.md) — 2026-11-13: „Konfiguration wählen“ in Shop-Übersicht, Bausteine nur intern, Sonder-Eintrag, Personalisierung (Migr. 236), Live + Snippet offen; 2026-11-11 Schild-Bausteine + fertige Schilder (Migr. 232)
+- [Konfigurator-Modul](project_konfigurator_modul.md) — 2026-11-13: „Konfiguration wählen“ in Shop-Übersicht, Bausteine nur intern, …
 - [Händler-Konsignation](project_haendler_konsignation.md) — Außenlager, Verkaufsmeldung → Netto-Rechnung
-- [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–5 gebaut (inkl. Export 2026-10-28), Konten änderbar durch Babsi, TEST_Partner_Fix_Check bleibt für Dev-Tests
-- [Artikelbilder auf Belegen](project_belege_artikelbilder.md) — Einstellung je Belegtyp, gebaut 2026-10-28 (Migration 211), Mail-Test ok
-- [Abholorte](project_abholorte.md) — eigene Abholadressen + Lager-Zuordnung, Wollboutique Bahngasse 13; gebaut 2026-10-28 (Migration 210), Klicktest offen
+- [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–5 gebaut (inkl. Export 2026-10-28), Konten änderbar durch …
+- [Artikelbilder auf Belegen](project_belege_artikelbilder.md) — Einstellung je Belegtyp, gebaut 2026-10-28 (Migration 211), Mail-Test …
+- [Abholorte](project_abholorte.md) — eigene Abholadressen + Lager-Zuordnung, Wollboutique Bahngasse 13; gebaut 2026-10-28 …
 - [Sammelabholung](project_sammelabholung_auftraege.md) — mehrere Aufträge an Kasse, Klicktest offen
 - [Packplatz-Modul](project_packplatz.md) — fertig inkl. Teillieferung-Positions-Split
 - [PLC / EasyPak Versand](project_plc_versand.md) — Nachnahme bei Teillieferung gefixt
-- [Paperless — Beleg per QR](project_paperless_rechnung_modul.md) — fertig + Klicktest 2026-11-01, läuft auf beleg.mealana.at; „Ohne Druck“ entfernt; Live-ERP: URL+Schlüssel eintragen
+- [Paperless — Beleg per QR](project_paperless_rechnung_modul.md) — fertig + Klicktest 2026-11-01, läuft auf beleg.mealana.at; „Ohne Druck“ entfernt; Live-ERP: URL+Schlüssel …
 
 ## Kasse / RKSV
-- [🧾 RKSV-Exporte + Badge Fremdumsatz](project_rksv_exporte_fremdumsatz.md) — 2026-11-15 ✅ Badge „Fremd“ + Fremdumsatz aus Dashboard/Statistik (4a78804) → ✅ DEP-Knopf → ✅ §131-ZIP (offen: echter BFR-Test); Fund: „RKSV aktiv“-Anzeige nur an rksv_kassen_id (Dev-K1 Altlast)
+- [🧾 RKSV-Exporte + Badge Fremdumsatz](project_rksv_exporte_fremdumsatz.md) — 2026-11-15 ✅ Badge „Fremd“ + Fremdumsatz aus Dashboard/Statistik (4a78804) → ✅ …
 - [Kassen-Bon Design](project_kasse_bon_design.md) — Retoure-Redesign, Doppel-Gutschrift-Sperre, A4-Bon
 - [Kassen-Verwaltung](project_kassen_verwaltung.md) — BFR-Hardwaretest erfolgreich
 - [RKSV/BFR Implementierung](project_rksv_bfr.md) — Hardwaretest 2026-07-19 ok
@@ -95,15 +96,15 @@
 - [Buchhaltungsmodul](project_buchhaltung.md) — Export (3230/4090/Kombi-Bons), Zahlungs-Kontrolle, Kontenplan
 - [Statistik Konzept](project_statistik.md) — Lagerwert gebaut (Migration 192), Cron eintragen
 - [Kleinunternehmer-Modus](project_kleinunternehmer.md) — globaler Schalter (wirkt nur auf PDF-Belege, siehe Steuerprofil)
-- [⚖️ Steuerprofil-Audit](project_steuerprofil.md) — 2026-11-01: KU halb, Bilanz/EA + Soll/Ist fehlen, Export fest KG/Soll → Punkt für 1.0-Check
+- [⚖️ Steuerprofil-Audit](project_steuerprofil.md) — 2026-11-01: KU halb, Bilanz/EA + Soll/Ist fehlen, Export fest KG/Soll → Punkt …
 - [🟢 BUG: Versand nicht im Betrag](bug_versand_nicht_im_betrag.md) — behoben 2026-09-30
 
 ## Artikel / Lager
 - [Artikel-Features Roadmap](project_artikel_features.md) — Merkmale + Bilder fertig
 - [Merkmale-Modul Design](project_merkmale.md) — 2 Ebenen, Modal
 - [Preise-Modul Design](project_preise.md) — Effektivpreis, Aktionen, Grundpreis; TODO X-für-Y gemischt + BOGOF (Kasse+Shop)
-- [💶 Massenaktion Preise ändern](project_idee_massenaktion_preis.md) — ✅ gebaut 2026-11-14 (2205453), ✅ fertig + Klicktest 2026-11-14 (67e2be5), Live mit nächstem Paket
-- [🛒 Mengen-Aktionen X für Y / 3 für 2](project_mengen_aktionen.md) — Entscheidungen 1–9 Jacky 2026-11-14 (Rabatt gleichmäßig verteilt), Schritt 1 Verwaltung ✅ (Migr. 241) + 2 Rechenkern PHP/JS ✅ (tests/mengen_aktion_*) + Art Paketpreise (Raunzmarker, Migr. 242) ✅ + 3 Kasse ✅ + Messe-/Offline-Kasse ✅ 2026-11-15 (Migr. 243, Klicktest offen) + 4 Plugin 1.7.0 + Übertragung ✅ (Migr. 244) + 5 Live-Test indra ✅ (Plugin 1.7.0 auf indra, SOW/Bio offen; Snippet 34685 bleibt bis Live-Paket); nächste Migr. 245
+- [💶 Massenaktion Preise ändern](project_idee_massenaktion_preis.md) — ✅ gebaut 2026-11-14 (2205453), ✅ fertig + Klicktest 2026-11-14 (67e2be5), Live mit …
+- [🛒 Mengen-Aktionen X für Y / 3 für 2](project_mengen_aktionen.md) — Schritte 1–5 ✅ (Migr. 241–244, Plugin 1.7.0 auf indra; SOW/Bio offen; Snippet 34685 bleibt bis …
 - [Aktions-Modul](project_aktionen_modul.md) — fertig
 - [Bilder-Modul](project_bilder_modul.md) — fertig, Logo-Bugkette gelöst
 - [Spalten-Picker](project_spalten_picker.md) — Kind-Zeilen-Parität
@@ -129,7 +130,7 @@
 - [WooCommerce Sync Design](db_design_entscheidungen.md) — Kategorie-Sync, Kanal-Chips (+ DB-Design allgemein)
 - [Shop-Theme/UX](project_shop_theme.md) — Swatch-Scroll-Fix wartet auf Babsi, Theme-Kauf pausiert
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — Attribut fertig, GPSR offen
-- [Google Shopping + Search Console](project_google_shopping_search_console.md) — Plan 2026-11-15; ERP→Woo GTIN/Yoast/Alt gebaut (1.0.19), Search Console + Merchant Center (SOW zuerst) offen, Google-Konto der Firma klären
+- [Google Shopping + Search Console](project_google_shopping_search_console.md) — Plan 2026-11-15; ERP→Woo GTIN/Yoast/Alt gebaut (1.0.19), Search Console + Merchant Center (SOW zuerst) offen, …
 - [Kundendatenbank Design](project_kundendatenbank.md) — AES-256-GCM, DSGVO
 - [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — 6.775 Kunden + 39.191 Archiv-Aufträge
 - [JTL Vater+Kind-Import](project_jtl_vater_kind_import.md) — Achsenerkennung, abgenommen
@@ -138,11 +139,11 @@
 
 ## Infrastruktur / UI
 - [Infrastruktur / Server-Setup](project_infrastruktur.md) — MySQL-Absturz 2026-08-29 behoben
-- [Backup-Strategie](project_backup_strategie.md) — tägl. DB-Dump am Live seit 2026-11-10 (E:\ERP-Sicherung\taeglich), Außer-Haus offen
+- [Backup-Strategie](project_backup_strategie.md) — tägl. DB-Dump am Live seit 2026-11-10 (E:\ERP-Sicherung\taeglich), Außer-Haus …
 - [Installationsanleitung](project_installationsanleitung.md) — Baseline-Neuschnitt
-- [🔄 Update-Weg](project_update_mechanismus.md) — gebaut 2026-11-01: tools/paket/bauen.php + ··· → Updates (DB-Sicherung Pflicht, Zurückspielen); ✅ 2026-11-15 veraltete Dateien entfernen + „Was ist neu“ über Zwischenversionen (ab 1.0.17); später Online-„Update verfügbar“
+- [🔄 Update-Weg](project_update_mechanismus.md) — gebaut 2026-11-01: tools/paket/bauen.php + ··· → Updates (DB-Sicherung Pflicht, …
 - [Whitelabel/Branding](project_whitelabel_branding.md) — NAHTLOS-Logo
-- [UI Redesign Plan](project_ui_redesign.md) — JTL-Layout, Barbara Mitsprache; 2026-11-17 Seitenleisten-Gruppen + Import-Klappmenü + Kanalfarben je Shop (Live mit nächstem Paket)
+- [UI Redesign Plan](project_ui_redesign.md) — JTL-Layout, Barbara Mitsprache; 2026-11-17 Seitenleisten-Gruppen + Import-Klappmenü + Kanalfarben je Shop …
 - [Rechte & Rollen](project_rechte_rollen.md) — fertig, Lizenzserver offen
 - [Logger UI](project_logger_ui.md) — fertig
 

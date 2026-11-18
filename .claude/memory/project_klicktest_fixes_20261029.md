@@ -17,3 +17,7 @@ Jackys erste Klicktest-Ergebnisse 2026-10-29, alles gebaut, von Jacky abgenommen
 - Runde 3: Kassensturz-Übersicht zeigt Kassiert gesamt → je Partner Fremdrechnung/Spende → Eigener Umsatz + Zeile stornierte Bons (`getPartnerUmsaetze()` public, auch vom Z-Bon genutzt). **Bug gefunden+gefixt:** getTagesKennzahlen/getPeriodeKennzahlen zählten stornierte Bons in Umsatz + Zahlungsarten mit (alle anderen Stellen storniert=0) — K1 07.10. 66,65 statt 62,65. Gespeicherte alte Z-Bons (JSON) bleiben falsch.
 - Entschieden (Jacky): Bon-Storno nur am selben Tag und vor dem Z-Bon (`KassenService::stornoSperrgrund`, Bon-Journal-Knopf grau), sonst normale Retoure — RKSV. Storno-Bon K1-S-… wird BFR-signiert (negativ, senkt Umsatzzähler), außer reine Partnerware-Bons.
 - Runde 4: Z-Bon = Zeitraum statt Tag. `kassen_abschluesse.bis_zeitpunkt` (Migr. 213), `KassenService::zBereich()` = [Ende letzter Z (frühestens Tagesbeginn), jetzt+1s bzw. Tagesende). Zweiter Z-Bon am selben Tag erlaubt, wenn seither gebucht (`hatOffeneBuchungen`); `offeneZTage` ab letzterZBis (Cron holt Nach-Z-Buchungen nach). Storno-Sperre jetzt per Bon-Zeitpunkt < letzterZBis. Kassensturz zeigt nach Z nur offenen Teil. Getestet mit Test-Bon (gelöscht).
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Klicktest-Fixes 2026-10-29](project_klicktest_fixes_20261029.md) — Mietfach/MR-Nummernkreis/Z-Bon eigener Kreis K1-Z-00001 (Migr. 212)+Reihenfolge+Auto-Cron/A4-Ränder gebaut, Kassensturz Partner/Stornos, Storno nur am selben Tag vor Z

@@ -193,3 +193,7 @@ Jacky-Entscheidungen dazu: Belege für Übernahme+Rückgabe + Nachverfolgung + V
 ## ✅ 2026-11-01: Steuer-Info je Partner am Bon (Babsi)
 Fremdrechnung-Partner, der KEIN Kleinunternehmer ist → am Bon (80mm + A4) eigene USt-Aufstellung "Steuer-Info in Vertretung für …" (Satz/Netto/USt/Brutto), getrennt von "Steuer-Info eigene Umsätze". Kleinunternehmer → an derselben Stelle der KU-Hinweis statt Tabelle. Rechnung in `PartnerBon::steuerAufstellung()`, Abschnitt-Feld `steuer`. Getestet mit Bon 215 (Mollramer) + KU-Simulation per Rollback. Aufträge/Rechnungen haben keine Partnerware → nur Bon betroffen.
 
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Partner-Modul](project_partner_modul.md) — Steuerberatungs-Antworten 2026-10-26; Schritte 1–5 gebaut (inkl. Export 2026-10-28), Konten änderbar durch Babsi, TEST_Partner_Fix_Check bleibt für Dev-Tests

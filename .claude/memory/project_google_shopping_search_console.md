@@ -21,3 +21,7 @@ Barbara wünscht sich für den Online-Shop:
 ## 2026-11-15: Plan mit Jacky + Punkt 2 gebaut
 **Plan:** (1) Search Console je Shop gemeinsam (Yoast-Verifizierung + Sitemap) — offen: Google-Konto der Firma (nicht privat), indra-design (EU Babsi) eigenes Merchant-Center-Konto. (2) ✅ ERP→Woo: `global_unique_id` = eindeutige GTIN13 (doppelte EAN nicht senden, Woo lehnt ab), Yoast `_yoast_wpseo_title`/`_yoast_wpseo_metadesc` aus Reiter SEO (nur wenn gefüllt), Alt-Text-Ersatz = Artikelname bei neuen Bildern + `scripts/alt_texte_nachziehen.php <slug> [--probelauf] [--max]` (WP-Medien-API) für Bestand. **Marke bewusst NICHT als Woo-Brands** (doppelte Archivseiten zu /hersteller/) → im Plugin „Google for WooCommerce“ Marke aus Attribut pa_hersteller mappen. (3) Merchant Center + Plugin zuerst SOW. (4) später Kategorie-Texte, Meta-Beschreibungen Top-Artikel.
 **Nach Live-Update 1.0.19:** Komplettabgleich je Shop abends, Alt-Skript erst --probelauf. Erster echter Abgleich zeigt, ob global_unique_id ankommt (nicht gegen Shop getestet; Dev hat keinen aktiven Kanal). Dev: 0 Meta-Beschreibungen, ~7.900/15.200 Shop-Artikel mit EAN, 26.400/26.700 Bilder ohne Alt.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Google Shopping + Search Console](project_google_shopping_search_console.md) — Plan 2026-11-15; ERP→Woo GTIN/Yoast/Alt gebaut (1.0.19), Search Console + Merchant Center (SOW zuerst) offen, Google-Konto der Firma klären

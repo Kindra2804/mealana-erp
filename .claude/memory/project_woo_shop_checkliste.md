@@ -32,3 +32,7 @@ Gemischte Bestellung MeaLana (KG-Ware + Indra) → 2 Aufträge, siehe [[project-
 
 
 **Alte JTL-Filteradressen abweisen (2026-11-17):** Botnetz (22.000 IPs, Chrome-Tarnung) fragte auf SOW ~20.000 alte JTL-Filterkombinationen ab (`__…__`, `?Sortierung=`, `mf=`) → jede startet WP komplett (404 nicht gecacht) → Prozess-Limit 40 voll → 508, auch für den ERP-Abgleich. Das ERP selbst war nur 26 Zugriffe/Tag. Lösung: `shop/wp-snippets/jtl_filter_410.htaccess` ganz oben in die `.htaccess` (410 ohne PHP; einfache `X__Y`-Adressen bleiben bei der 301 aus `sow_weiterleitungen_robots.php`). Zusätzlich: WP-Cron durch Plesk-Cron ersetzen; falls nötig Cloudflare Free. **Bei jedem Shop, der von JTL umzieht (MeaLana!), einbauen.** ✅ Auf SOW + Bio eingebaut 2026-11-17 (410 bestätigt); morgen Plesk-Eingabeprozesse + ERP-Abgleich prüfen.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [✅ Woo-Shop-Checkliste](project_woo_shop_checkliste.md) — für MeaLana & jeden neuen Shop: Übersetzungen, Germanized-Texte, Seiten/Endpunkte deutsch (+Weiterleitung), Lager-Mails aus, Absender je Kanal, Testrunde über Dev, WP Super Cache (SOW+Bio ✅ 2026-11-16 wegen 508); JTL-Filter-410 per .htaccess gegen Bot (SOW+Bio ✅ 2026-11-17, Wirkung 18.11. mittags prüfen, MeaLana beim Umzug)

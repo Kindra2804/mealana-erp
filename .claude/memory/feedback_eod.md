@@ -22,3 +22,7 @@ Am Ende jedes Arbeitstages CLAUDE.md mit aktuellem Stand aktualisieren und Karl 
 - Vollautomatisch ohne Trigger nicht möglich
 - **Dateiname im Repo: `claude.md` (klein!)** unter `D:\ERP\mealana\claude.md`. Windows öffnet sie auch als `CLAUDE.md`, aber Git unterscheidet: `git add CLAUDE.md` erfasst sie NICHT → immer `git add claude.md` verwenden. (Jacky 2026-11-04: „schreibst du fast jeden Tag“.)
 - Memory-Sync ins Repo: `.claude/memory/` (siehe [[feedback_memory_backup_bei_commit]]).
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [Feedback: End-of-Day Updates](feedback_eod.md) — claude.md am Tagesende aktualisieren; im Repo heißt sie **claude.md (klein)** → `git add claude.md`

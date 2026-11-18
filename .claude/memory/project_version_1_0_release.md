@@ -12,3 +12,7 @@ Jacky am 2026-10-01: Sobald alle größeren Baustellen fertig sind (ausdrücklic
 
 **Why:** Saubere Startlinie für den echten Betrieb statt einer über Monate gewachsenen Migrationskette auf den Live-Systemen.
 **How to apply:** Noch ein weiter Weg — nicht von selbst starten. Bei "was fehlt noch bis 1.0?"-Fragen oder wenn große Baustellen abgeschlossen werden, daran erinnern. Bis dahin Migrationen weiter normal fortlaufend nummerieren. Auch [[project_backup_strategie]] wird erst mit dem 1.0-Live-Gang dringend.
+
+
+## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
+- [🎯 Version 1.0 = Live-Start](project_version_1_0_release.md) — Live erst auf konsolidierter 1.0, bis dahin Dev-DB gegen Testshop
