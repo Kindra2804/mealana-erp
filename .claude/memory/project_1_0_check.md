@@ -139,3 +139,6 @@ Knöpfe in artikel/detail.php waren tot. Jetzt status_setzen.php: Deaktivieren/A
 - [✅ 1.0-Check](project_1_0_check.md) — Paket-Verlauf 1.0.1–1.0.24 + offene Live-Schritte (Details in der Datei); 1.0.24 gebaut, Live offen; Fix Löschen/Deaktivieren (a621b4b) fürs nächste Paket
 
 **2026-11-18 Paket 1.0.25 gebaut** (D:\ERP\pakete\nahtlos-1.0.25.zip, Commit cae0592, keine Migration, nächste Migr. bleibt 256): Fix Löschen/Deaktivieren + Indra-Umnummerierung (scripts/indra_umnummerierung.php + mitgelieferte indra_umnummerierung_zuordnung.json, Werkstatt auf Live nicht nötig). Enthält auch alles aus 1.0.24. Nach dem Einspielen: Umnummerierung Probelauf → Phase 1 → Sync → Phase 2 → Sync (siehe [[project-katalog-werkstatt]]).
+
+## 2026-11-18 Paket 1.0.26 (8cdd87a, ohne Migration)
+Nur Fix: 🗑️ im Artikel-Tab Lieferanten rief artikel/delete.php mit der artikel_lieferanten-ID auf und deaktivierte einen fremden Artikel samt Kindern. Jetzt artikel_lieferant_loeschen.php. Lösch/Deaktivieren-Fix (a621b4b) steckt schon in 1.0.25. Live-Einspielen offen.
