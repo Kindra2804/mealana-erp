@@ -26,6 +26,7 @@
  *   php scripts/indra_umnummerierung.php --phase=1       Zwischennummern setzen
  *   php scripts/indra_umnummerierung.php --phase=2       endgültige Nummern setzen
  *   Option --werkstatt=<Pfad zu daten.json>
+ *   Option --ohne-shop  (nur Dev: Phase 2 ohne Prüfung, ob der Shop Phase 1 übernommen hat)
  */
 
 require_once __DIR__ . '/../src/core/Database.php';
@@ -126,6 +127,21 @@ echo "\nListe: " . realpath($csv) . "\n";
 
 if ($phase === 0) exit("\nProbelauf – nichts geändert. Weiter mit --phase=1.\n");
 if ($fehler) exit("\nAbbruch wegen Fehlern.\n");
+
+// Phase 2 erst, wenn der Shop alle Zwischennummern übernommen hat – sonst lehnt Woo
+// beim Ringtausch die neue SKU ab, weil ein anderes Produkt sie dort noch trägt.
+// Am Dev (kein Shop angebunden) mit --ohne-shop überspringen.
+if ($phase === 2 && !in_array('--ohne-shop', $argv, true)) {
+    $offen = $db->query("SELECT a.artikelnummer, s.shop_id, s.sync_status
+                         FROM artikel_shops s JOIN artikel a ON a.id = s.artikel_id
+                         WHERE s.aktiv = 1 AND s.artikel_id IN (" . implode(',', $ids) . ")
+                           AND (s.sync_status = 'fehler' OR s.synced_at IS NULL OR s.synced_at < a.aktualisiert_am)")->fetchAll(PDO::FETCH_ASSOC);
+    if ($offen) {
+        echo "\nDer Shop hat noch nicht alle Zwischennummern übernommen (" . count($offen) . " offen):\n";
+        foreach (array_slice($offen, 0, 15) as $o) echo "  - {$o['artikelnummer']} Shop {$o['shop_id']} ({$o['sync_status']})\n";
+        exit("Erst den Shop-Sync laufen lassen, dann Phase 2 nochmal starten.\n");
+    }
+}
 
 // ---------- Schreiben ----------
 $upd = $db->prepare("UPDATE artikel SET artikelnummer = :neu WHERE id = :id AND artikelnummer = :alt");
