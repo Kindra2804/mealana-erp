@@ -17,3 +17,5 @@ metadata:
 **Offen:** echter Scan-Test (Liste + Mini mit Jackys Scanner), Babsis Urteil zum Mini-Layout, Live mit nächstem Paket (Migr. 256). Nächste Migration **257**.
 
 **How to apply:** Beim Ausbau [[project_preisschilder]] und [[project_kuvert_etikett]] mitdenken (Kasse sucht Artikelnummer scan-tolerant).
+
+**2026-11-19 Nachtrag (bd78480, Notiz `docs/versionen/1.0.28.md`):** PDF hatte keine Seitenränder – Dompdf wendet `* { margin:0 }` auch auf `@page` an → Reset nur auf `body, div, table, tr, td, img`. Kategoriezeilen in der Auswahl mit Häkchen je Kategorie (alle/halb/keiner, „x von y“), Klicktest `.claude-browser-tools/kl_gruppen_test.js`. Live mit dem nächsten Paket.
