@@ -36,3 +36,14 @@ Jackys SQL-Exporte in JTL: „Komplettexport_JackyERP“ und „CargenArtikelLag
 
 ## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
 - [🔁 JTL-Parallelbetrieb](project_jtl_parallelbetrieb.md) — 2026-11-11: MeaLana+Laden bleiben auf JTL, SOW im ERP; Lager → JTL-Abgleich ✅ gebaut (Migr. 231), Live-Update offen
+
+## Kasse aufs ERP, MeaLana-Online bleibt auf JTL (Gespräch 2026-11-19)
+Jackys Frage: Live-ERP + Kasse in den Laden, LS-POS weg, mealana.at bleibt auf JTL. Ergebnis: **machbar**. Der Lagerabgleich arbeitet mit Deltas und ist deshalb richtungsunabhängig. Online-Aufträge kommen per JTL-Import als Archiv (ohne Lagerbuchung, nicht im Buchhaltungs-Export).
+- Abgleich öfter, je nach Shop-Aktivität (Jacky ok).
+- **Zu bauen:** „Bareingang zu Rgn. xxx“ für eine **JTL-Rechnung** (freie Rechnungsnummer + Betrag, 0 %, RKSV-Beleg). Der heutige Zahlbeleg braucht einen ERP-Auftrag, Archiv-Aufträge sind an der Kasse gesperrt. Export: Kassa an ein Verrechnungskonto/Debitor, mit der Steuerberatung klären.
+- Retouren von Online-Käufen: Freitext-Retour (selten).
+- Buchhaltung: Laden ab dem Stichtag nur noch aus dem ERP-Export, im Umstellungsmonat nach Datum trennen; der JTL-Export darf keine Laden-Umsätze mehr enthalten.
+- Gutscheine: Jacky macht eine Liste (im Umlauf, Herkunft, Online-Einlösungen im Laden). Notfalls Newsletter: alte Gutscheine gelten nur noch online, bei der Komplettumstellung neuer Code.
+- **Ameise-Chargen: bereits getestet ✅**: negative Werte gehen; mit Charge wird diese Charge geändert, neu angelegt oder davon abgezogen.
+- Reihenfolge: Artikel (nach Babsis Ausschlussliste) → Erstabgleich → **Inventur im ERP** → per Export zurück nach JTL. Während der Inventur keinen JTL-Versand aus dem Ladenlager (sonst doppelt abgezogen).
+- Jacky will eine **Checkliste + einen Ablaufplan** für die ersten Tage (Abgleich, Abholung/Bareingang, Retouren, Artikel/Preise doppelt pflegen, Gutscheine).
