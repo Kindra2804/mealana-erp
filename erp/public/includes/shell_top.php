@@ -95,6 +95,7 @@ $sidebarItems = match ($activeModule ?? '') {
     'kunden' => [
         ['icon' => '📋', 'label' => 'Liste',        'href' => BASE_PATH . '/kunden/liste.php'],
         ['icon' => '➕', 'label' => 'Neuer Kunde',  'href' => BASE_PATH . '/kunden/neu.php'],
+        ['icon' => '⬇', 'label' => 'JTL-Import',   'href' => BASE_PATH . '/kunden/jtl_import.php', 'recht' => 'kunden.anlegen'],
         ['icon' => '📧', 'label' => 'Newsletter-Empfänger', 'href' => BASE_PATH . '/newsletter/empfaenger.php'],
         ['icon' => '✉️', 'label' => 'Newsletter verfassen', 'href' => BASE_PATH . '/newsletter/liste.php'],
     ],

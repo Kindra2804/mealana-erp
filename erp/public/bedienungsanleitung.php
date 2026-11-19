@@ -666,6 +666,10 @@ require_once __DIR__ . '/includes/shell_top.php';
             <p><strong>Neuen Kunden anlegen:</strong> Kunden → Neuer Kunde → Typ wählen (Privat / B2B) → Felder ausfüllen → Speichern.</p>
             <div class="ba-hint">💡 Wichtig: E-Mail-Adresse eintragen — sie wird für Auftragsbestätigungen und Mahnungen benötigt.</div>
             <p>Shop-Kunden aus WooCommerce werden automatisch importiert und per E-Mail-Adresse mit bestehenden Kunden verknüpft.</p>
+            <h3 id="kunden-jtl-import">JTL-Import Kunden + Aufträge</h3>
+            <p>Kunden → <strong>⬇ JTL-Import</strong> (vorher Datenbank-Sicherung): erst den <strong>Kundendaten-Export</strong>, dann den <strong>Auftrags-Export</strong> aus JTL hochladen, jeweils <strong>🔍 Probelauf</strong> → <strong>⬇ Import starten</strong>. Beliebig oft wiederholbar – schon Importiertes wird übersprungen, Kunden mit gleicher E-Mail werden nur verknüpft. Aufträge kommen als <em>Archiv</em> mit den Preisen von damals, fehlende Artikel als inaktiver Platzhalter <code>JTL-…</code>.</p>
+            <p><strong>Zahlung:</strong> Aufträge ohne Zahlungseingang in JTL, die <strong>älter als 1 Jahr</strong> sind, gelten als bezahlt. <strong>Jüngere</strong> stehen in der <strong>Prüfliste</strong>: alle als erledigt angehakt – nur die wirklich offenen abhaken und speichern.</p>
+            <div class="ba-hint">💡 Auch der 90-MB-Voll-Export geht: die Datei wird in Stücken hochgeladen und abschnittsweise verarbeitet. Bei einem Abbruch Seite neu laden und „fortsetzen“. Nach dem Import wird die Datei gelöscht.</div>
             <p><strong>DSGVO-Löschung:</strong> Kunden-Detail → "Kunden löschen (DSGVO)" — persönliche Daten werden kryptografisch gelöscht, Bestellhistorie bleibt anonymisiert erhalten.</p>
 
             <!-- PARTNER -->

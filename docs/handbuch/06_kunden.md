@@ -50,6 +50,22 @@ Kunden die über den Webshop bestellen werden automatisch importiert oder mit be
 
 ---
 
+## JTL-Import Kunden + Aufträge (Kunden → ⬇ JTL-Import)
+
+Holt Kunden und alte Aufträge aus JTL-Wawi ins ERP – beliebig oft wiederholbar, solange MeaLana-Shop und Laden noch auf JTL laufen. **Vorher eine Datenbank-Sicherung machen.**
+
+1. **Kundendaten-Export** aus JTL hochladen → **🔍 Probelauf** (zeigt, was passieren würde) → **⬇ Import starten**. Schon importierte Kunden (JTL-Kundennummer) werden übersprungen, Kunden mit gleicher E-Mail (z.B. aus den Woo-Shops) nur verknüpft.
+2. **Auftrags-Export** hochladen → Probelauf → Import. Die Aufträge kommen als **Archiv** (Kanal „Archiv“, Lieferstatus abgeschlossen) mit den Preisen von damals. Schon importierte werden übersprungen, Angebote ausgelassen. Fehlt ein Artikel im ERP, wird ein inaktiver Platzhalter `JTL-<Artikelnummer>` angelegt.
+3. **Zahlung:** Aufträge ohne Zahlungseingang in JTL, die **älter als 1 Jahr** sind, gelten als bezahlt (meist an der Kasse bezahlt, in JTL nie nachgetragen). **Jüngere** stehen danach in der **Prüfliste** unten auf der Seite: alle sind als erledigt angehakt – nur die **wirklich noch offenen** abhaken und **✓ Speichern**. Angehakte werden bezahlt, die anderen bleiben „ausstehend“.
+
+Hinweise:
+- Die Datei wird in Stücken hochgeladen und abschnittsweise verarbeitet – auch der 90-MB-Voll-Export läuft ohne Einstellungen am Server. Bricht etwas ab: Seite neu laden → **fortsetzen**, nichts wird doppelt angelegt.
+- Wird eine Datei im falschen Feld hochgeladen, meldet das die Seite sofort.
+- Nach dem Import wird die hochgeladene Datei gelöscht (Kundendaten). Ein hochgeladener, noch nicht importierter Lauf lässt sich mit 🗑 verwerfen.
+- Für Admins geht es weiterhin auch über die Kommandozeile: `php scripts/jtl_archiv_import_kunden.php <datei> [--dry-run]`, dann `jtl_archiv_import_auftraege.php`.
+
+---
+
 ## Datenschutz / DSGVO
 
 Auf Kundenwunsch können alle persönlichen Daten gelöscht werden ("Recht auf Vergessenwerden"). Das System löscht die Daten kryptografisch — Bestellhistorie bleibt erhalten, Kundendaten werden anonymisiert.

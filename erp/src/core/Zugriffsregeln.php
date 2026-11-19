@@ -290,6 +290,7 @@ final class Zugriffsregeln
             'status_setzen.php'        => 'kunden.bearbeiten',
             'adresse_loeschen.php'     => 'kunden.loeschen',
             'debitorennummer_ajax.php' => 'kunden.bearbeiten',
+            'jtl_import.php'           => 'kunden.anlegen',
         ],
 
         // === Partner (Mietfach/Kommission) ===

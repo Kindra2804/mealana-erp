@@ -33,7 +33,7 @@
 - [Projekt: MeaLana ERP Status](project_status.md) — Implementierungsstand
 
 - [✉️ Kuvert-Etikett Schilder](project_kuvert_etikett.md) — ✅ gebaut 2026-11-12 (A4 2×A5, Code 128 Artikelnummer, Kasse ß-tolerant); Scanner-Test + …
-- [🧾 Kassen-Liste + Mini-Anhänger](project_kassenliste.md) — ✅ 2026-11-19 gebaut (Migr. 256 Kurznamen, nächste 257), Notiz 1.0.27; Scan-Test + Babsi + Live offen
+- [🧾 Kassen-Liste + Mini-Anhänger](project_kassenliste.md) — ✅ 2026-11-19 gebaut (Migr. 256 Kurznamen; nächste Migr. 258), Notiz 1.0.27; Scan-Test + Babsi + Live offen
 - [🏷️ Preisschilder-Werkstatt](project_preisschilder.md) — ✅ komplett 2026-11-12 (Messe/Laden/Aufsteller/IVAR/Anhänger+Strickstücke, …
 
 - [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem …
@@ -133,7 +133,7 @@
 - [Hersteller-Shop-Filter + GPSR](project_hersteller_shop_filter.md) — Attribut fertig, GPSR offen
 - [Google Shopping + Search Console](project_google_shopping_search_console.md) — Plan 2026-11-15; ERP→Woo GTIN/Yoast/Alt gebaut (1.0.19), Search Console + Merchant Center (SOW zuerst) offen, …
 - [Kundendatenbank Design](project_kundendatenbank.md) — AES-256-GCM, DSGVO
-- [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — 6.775 Kunden + 39.191 Archiv-Aufträge
+- [JTL Kunden+Aufträge-Import](project_jtl_kunden_auftraege_import.md) — ✅ 2026-11-19 im Browser (Kunden → ⬇ JTL-Import, Migr. 257, 365-Tage-Regel + Prüfliste); Dev: 6.775 Kunden + 39.191 Archiv-Aufträge
 - [JTL Vater+Kind-Import](project_jtl_vater_kind_import.md) — Achsenerkennung, abgenommen
 - [JTL Bilder-Import](project_jtl_bilder_import.md) — fertig
 - [JTL-Import Wissen](project_jtl_import.md) — CSV-Struktur, Mapping

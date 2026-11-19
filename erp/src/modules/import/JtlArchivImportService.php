@@ -23,6 +23,10 @@ require_once __DIR__ . '/../artikel/ArtikelRepository.php';
  * nutzt einen INNER JOIN auf artikel, eine Position ohne echten Artikel-Datensatz
  * würde in der Detailansicht kommentarlos verschwinden.
  *
+ * Zahlung (Jacky 2026-11-19): unbezahlt laut JTL und älter als OFFEN_FIX_TAGE -> gilt fix als bezahlt
+ * (JTL/LS-POS-Lücke: an der Kasse bezahlt, im JTL-Auftrag nie nachgetragen). Jüngere unbezahlte
+ * kommen als 'ausstehend' und in die Prüfliste (jtl_import_offen, Kunden → JTL-Import).
+ *
  * Preise/Steuersätze werden 1:1 aus der CSV eingefroren, nicht aus artikel_preise
  * neu berechnet — analog ShopBestellungSyncService::verarbeiteBestellung().
  * Aus demselben Grund läuft der Auftrags-Insert über AuftragRepository::insertArchiv()
@@ -35,6 +39,8 @@ class JtlArchivImportService
     private const PLATZHALTER_ARTIKELTYP_ID   = 6; // artikel_typen: STANDARD
     private const PLATZHALTER_EINHEIT_ID       = 4; // einheiten: Stück
     private const PLATZHALTER_STEUERKLASSE_ID  = 1; // steuerklassen: Normaler Steuersatz 20%
+    /** Unbezahlte Archiv-Aufträge älter als so viele Tage gelten beim Import als bezahlt */
+    public const OFFEN_FIX_TAGE = 365;
 
     /**
      * JTL-Klartext-Zahlungsart (kleingeschrieben) -> eigenes zahlungsart-ENUM.
@@ -116,7 +122,15 @@ class JtlArchivImportService
      */
     public function importiereKunden(string $csvPfad, bool $dryRun): array
     {
-        $zeilen = JtlCsvReader::lese($csvPfad);
+        return $this->kundenZeilen(JtlCsvReader::lese($csvPfad), $dryRun);
+    }
+
+    /**
+     * Verarbeitet eingelesene Zeilen eines Kundendaten-Exports (auch abschnittsweise, JtlArchivLaufService).
+     * @return array{neu:int,uebersprungen:int,verknuepft:int,fehler:string[]}
+     */
+    public function kundenZeilen(array $zeilen, bool $dryRun): array
+    {
         $neu = 0;
         $uebersprungen = 0;
         $verknuepft = 0;
@@ -235,25 +249,37 @@ class JtlArchivImportService
      */
     public function importiereAuftraege(string $csvPfad, bool $dryRun): array
     {
-        $zeilen = JtlCsvReader::lese($csvPfad);
-
         $gruppen = [];
-        foreach ($zeilen as $row) {
+        foreach (JtlCsvReader::lese($csvPfad) as $row) {
             $nr = trim($row['Auftragsnummer'] ?? '');
             if ($nr === '') {
                 continue;
             }
             $gruppen[$nr][] = $row;
         }
+        return $this->auftragGruppen($gruppen, $dryRun);
+    }
 
+    /**
+     * Verarbeitet Aufträge (Auftragsnummer => Positionszeilen), auch abschnittsweise.
+     * @return array{neu:int,uebersprungen:int,angebote:int,alt_bezahlt:int,offen:int,offen_ids:int[],fehler:string[]}
+     */
+    public function auftragGruppen(array $gruppen, bool $dryRun): array
+    {
         $neu = 0;
         $uebersprungen = 0;
+        $angebote = 0;
+        $altBezahlt = 0;
+        $offenIds = [];
+        $offen = 0;
         $fehler = [];
+        $grenze = date('Y-m-d H:i:s', strtotime('-' . self::OFFEN_FIX_TAGE . ' days'));
 
         foreach ($gruppen as $auftragNr => $positionsZeilen) {
             $kopf = $positionsZeilen[0];
 
             if (($kopf['Ist Angebot'] ?? '') === 'Ja') {
+                $angebote++;
                 continue; // reines Angebot, keine echte Bestellung
             }
 
@@ -299,11 +325,6 @@ class JtlArchivImportService
                 continue;
             }
 
-            if ($dryRun) {
-                $neu++;
-                continue;
-            }
-
             $netto = 0.0;
             $steuer = 0.0;
             foreach ($positionen as $p) {
@@ -324,6 +345,24 @@ class JtlArchivImportService
             if ($istKleinstbetrag && $bezahltAm === null) {
                 $bezahltAm = $erstelltAm;
             }
+            // Unbezahlt und älter als ein Jahr: gilt als bezahlt (JTL/LS-POS-Lücke), jünger -> Prüfliste
+            $notiz = 'JTL-Archiv-Import (ehem. JTL-Auftragsnr. ' . $auftragNr . ')';
+            $istOffen = false;
+            if ($bezahltAm === null) {
+                if ($erstelltAm < $grenze) {
+                    $bezahltAm = $erstelltAm;
+                    $notiz .= ' · in JTL ohne Zahlungseingang, älter als ' . self::OFFEN_FIX_TAGE . ' Tage → als bezahlt übernommen';
+                    $altBezahlt++;
+                } else {
+                    $istOffen = true;
+                    $offen++;
+                }
+            }
+
+            if ($dryRun) {
+                $neu++;
+                continue;
+            }
 
             $auftragData = [
                 'auftrag_nr'                => $auftragNr,
@@ -339,7 +378,7 @@ class JtlArchivImportService
                 'steuerbetrag'              => $steuer,
                 'bruttobetrag'              => $brutto,
                 'bezahlt_am'                => $bezahltAm,
-                'notiz_intern'              => 'JTL-Archiv-Import (ehem. JTL-Auftragsnr. ' . $auftragNr . ')',
+                'notiz_intern'              => $notiz,
                 'erstellt_am'               => $erstelltAm,
                 'erstellt_von'              => $this->jarvisId,
             ];
@@ -351,10 +390,12 @@ class JtlArchivImportService
                     'charge'          => null,
                     'ean'             => null,
                     'menge_geliefert' => $pos['menge'], // Archiv = historisch abgeschlossen
+                    'konfig_freitext' => null,          // seit dem Konfigurator Pflicht-Platzhalter in insertPosition()
                     'sort_order'      => $i,
                 ]));
             }
 
+            if ($istOffen) $offenIds[] = (int) $auftragId;
             Logger::log('jtl_import.auftrag_anlegen', 'auftraege', $auftragId, [
                 'auftrag_nr' => $auftragNr,
                 'positionen' => count($positionen),
@@ -363,7 +404,8 @@ class JtlArchivImportService
             $neu++;
         }
 
-        return ['neu' => $neu, 'uebersprungen' => $uebersprungen, 'fehler' => $fehler];
+        return ['neu' => $neu, 'uebersprungen' => $uebersprungen, 'angebote' => $angebote, 'alt_bezahlt' => $altBezahlt,
+                'offen' => $offen, 'offen_ids' => $offenIds, 'fehler' => $fehler];
     }
 
     /**

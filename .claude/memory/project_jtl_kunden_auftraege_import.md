@@ -1,6 +1,6 @@
 ---
 name: project-jtl-kunden-auftraege-import
-description: "JTL-Kunden+Aufträge-Archiv-Import KOMPLETT FERTIG 2026-08-11 auf Dev-DB: 6.775 Kunden + 39.191 Archiv-Aufträge (01.09.2013–11.08.2026), Dedup/Idempotenz über zwei Export-Größen verifiziert, 4 echte Bugs gefunden+gefixt; nur Browser-Test von Jacky + Live-Deploy noch offen"
+description: "2026-11-19 Browser-Import Kunden → ⬇ JTL-Import (Migr. 257, Stapel, 365-Tage-Regel + Prüfliste) + Fix konfig_freitext; davor: JTL-Kunden+Aufträge-Archiv-Import KOMPLETT FERTIG 2026-08-11 auf Dev-DB: 6.775 Kunden + 39.191 Archiv-Aufträge (01.09.2013–11.08.2026), Dedup/Idempotenz über zwei Export-Größen verifiziert, 4 echte Bugs gefunden+gefixt; nur Browser-Test von Jacky + Live-Deploy noch offen"
 metadata: 
   node_type: memory
   type: project
@@ -151,3 +151,15 @@ Anderes Thema als der Kunden/Aufträge-Import, aber gleicher Tag/gleiche Quelle 
 **Geplante Wiederholung vor Go-Live (Jacky, 2026-08-11):** Jacky zieht denselben "Eigenen Export" nochmal kurz vor dem Live-Gang — als Basis für die **Startinventur** (siehe [[project_inventur_konzept]]). Das Skript ist idempotent, kann also direkt nochmal drüberlaufen. Wichtig: bis dahin ändert sich der Lagerbestand im Ladengeschäft natürlich weiter (Verkäufe/Wareneingänge) — der zweite Export ersetzt/aktualisiert dann die hier importierten Werte, keine Neuentscheidung zum Vorgehen nötig, nur der neue CSV-Pfad.
 
 **How to apply:** Falls nochmal ein JTL-Export importiert werden soll (z.B. laufende Aktualisierung), diese Datei zuerst lesen. Alle vier gefundenen Probleme sind behoben (n:1-Kundennummer-Mapping, ungültige E-Mails, Download-Aufträge fälschlich ausstehend, Zahlungsart-Abdeckung). Bei Auffälligkeiten in der Zahlungsstatus-Verteilung zuerst nach Bruttobetrag/Artikeltyp gruppieren — war beide Male der schnellste Weg zur echten Ursache.
+
+
+## ✅ 2026-11-19: Import im Browser (Kunden → ⬇ JTL-Import), Migr. 257
+
+Grund: MeaLana-Shop + Laden bleiben auf JTL → Import wird wiederholt (für Live und laufend).
+- `JtlCsvStream` (abschnittsweise ab Byte-Stelle, Kodierung an den ersten 256 KB erkannt, 
+ in Feldern → 
+; identisch zu JtlCsvReader an beiden Exporten geprüft), `JtlArchivLaufService` (Läufe, 4-MB-Upload-Stücke als Rohdaten → upload_max_filesize egal, Kopfzeilen-Prüfung erkennt falsches Feld, Probelauf/Import je 400 Kunden bzw. 250 Aufträge pro Abschnitt in Transaktion, fortsetzbar, Datei nach Import gelöscht), Seite `public/kunden/jtl_import.php` + `js/jtl_archiv_import.js`, Tabellen `jtl_import_laeufe` + `jtl_import_offen`.
+- `JtlArchivImportService` umgebaut: `kundenZeilen()` / `auftragGruppen()` (CLI-Skripte nutzen sie weiter). **Regel Jacky:** unbezahlt + älter als 365 Tage (`OFFEN_FIX_TAGE`) → bezahlt (Notiz im Auftrag); jünger → `ausstehend` + Prüfliste (alle vorab „erledigt“ angehakt, nur echte offene abhaken; Entscheidung gemerkt, erscheinen nicht wieder).
+- **Fund:** `AuftragRepository::insertPosition()` verlangt seit dem Konfigurator `konfig_freitext` → Archiv-Import (auch CLI) scheiterte mit HY093. Behoben.
+- Tests: Dev-Kunden-Export 6.775 übersprungen (1,6 s), 6 TEST-CL-Aufträge (5 neu/2 alt bezahlt/2 Prüfliste/1 Angebot) + Prüfliste im Browser, aufgeräumt; 92-MB-Voll-Export Probelauf 20,6 s (39.190 vorhanden, 12 Angebote). Klicktests `.claude-browser-tools/jtl_import_test.js` (`gross` = Voll-Export) + `jtl_pruefliste_test.js` — legen TEST-CL-Aufträge an, danach aufräumen!
+- Live: mit Paket 1.0.27 (Migr. 256 + 257). Ablauf am Live: frische JTL-Exporte (Kundendaten + Aufträge seit 01.09.2013), erst Kunden, dann Aufträge, dann Prüfliste mit Babsi. Nächste Migration **258**.
