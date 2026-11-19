@@ -583,6 +583,7 @@ $actionBarContent = <<<HTML
         <option value="mengen_aktion">🛒 Zu Mengen-Aktion hinzufügen</option>
         <option value="preisschilder">🏷 Preisschilder drucken</option>
         <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
+        <option value="kassenliste">🧾 Kassen-Liste drucken</option>
         <option value="eigentuemer">Eigentümer setzen (Hauptfirma / Partner)</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
@@ -1155,10 +1156,10 @@ require_once __DIR__ . '/../includes/shell_top.php';
             return;
         }
 
-        if (aktion === 'preisschilder') {
-            // Auswahlseite im neuen Tab (Farben werden dort zu ihrer Garnqualität zusammengefasst)
+        if (aktion === 'preisschilder' || aktion === 'kassenliste') {
+            // Auswahlseite im neuen Tab (Preisschilder: Farben -> Garnqualität; Kassen-Liste: jede Variante einzeln)
             const f = document.createElement('form');
-            f.method = 'post'; f.action = window.BASE_PATH + '/schilder/auswahl.php'; f.target = '_blank';
+            f.method = 'post'; f.action = window.BASE_PATH + (aktion === 'kassenliste' ? '/schilder/kassenliste.php' : '/schilder/auswahl.php'); f.target = '_blank';
             ids.forEach(function (id) { const i = document.createElement('input'); i.type = 'hidden'; i.name = 'ids[]'; i.value = id; f.appendChild(i); });
             document.body.appendChild(f); f.submit(); f.remove();
             return;

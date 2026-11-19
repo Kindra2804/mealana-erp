@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# Kassen-Liste / Preisliste (KassenlisteService): A4 hoch, jede Variante eine Zeile.
+   Kassen-Liste: Bild, Bezeichnung + Artikelnummer, Standardpreis, Code 128 (EAN, sonst Artikelnummer) -- ca. 12 Zeilen/Seite.
+   Preisliste (preisliste.html.twig bindet diese Vorlage mit kompakt = true ein): ohne Barcode, ca. 40 Zeilen/Seite. #}
+<style>
+  @page { margin: 12mm 12mm 14mm 12mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #111; font-size: 9pt; }
+  .kopf { border-bottom: 0.6mm solid #1d4076; padding-bottom: 2mm; margin-bottom: 2mm; }
+  .titel { font-size: 14pt; font-weight: bold; }
+  .info { font-size: 7.5pt; color: #555; margin-top: 1mm; }
+  .info .rechts { float: right; }
+  table { width: 100%; border-collapse: collapse; }
+  thead td { font-size: 7pt; color: #777; padding: 1mm 1.5mm; border-bottom: 0.2mm solid #bbb; }
+  tr { page-break-inside: avoid; }
+  td { vertical-align: middle; padding: 1.2mm 1.5mm; border-bottom: 0.2mm solid #ddd; }
+  td.gruppe { background: #e8eef6; color: #1d4076; font-weight: bold; font-size: 9.5pt; padding: 1.5mm 2mm; border-bottom: none; }
+  .bild { width: 15mm; height: 15mm; text-align: center; }
+  .bild img { max-width: 15mm; max-height: 15mm; }
+  .name { font-size: 9.5pt; line-height: 1.25; }
+  .nr { font-family: DejaVu Sans Mono, monospace; font-size: 7.5pt; color: #555; margin-top: 0.8mm; }
+  .preis { text-align: right; font-weight: bold; font-size: 12pt; white-space: nowrap; }
+  .code { width: 56mm; text-align: center; }
+  .code img { width: 52mm; height: 10mm; }
+  .code .nr { color: #111; margin-top: 0.5mm; }
+  /* Preisliste: kompakt */
+  .kompakt td { padding: 0.8mm 1.5mm; }
+  .kompakt .name { font-size: 8.5pt; }
+  .kompakt .preis { font-size: 9.5pt; }
+  .kompakt .bild { width: 8mm; height: 8mm; }
+  .kompakt .bild img { max-width: 8mm; max-height: 8mm; }
+  .kompakt .nr { margin-top: 0; font-size: 7.5pt; color: #333; }
+  .fuss { position: fixed; bottom: -9mm; left: 0; right: 0; font-size: 7pt; color: #999; text-align: right; }
+</style>
+</head>
+<body>
+<div class="kopf">
+  <div class="titel">{{ ueberschrift }}{% if titel %} · {{ titel }}{% endif %}</div>
+  <div class="info"><span class="rechts">{{ datum }}</span>{% if untertitel %}{{ untertitel }} · {% endif %}{{ anzahl }} Artikel · Standardpreise inkl. USt.</div>
+</div>
+<table class="{% if kompakt %}kompakt{% endif %}">
+  <thead><tr>
+    {% if mit_bild %}<td>Bild</td>{% endif %}
+    {% if kompakt %}<td>Artikelnr.</td>{% endif %}
+    <td>Bezeichnung{% if not kompakt %} / Artikelnummer{% endif %}</td>
+    <td style="text-align:right">Preis</td>
+    {% if mit_barcode %}<td class="code">Barcode</td>{% endif %}
+  </tr></thead>
+  <tbody>
+  {% set spalten = 2 + (mit_bild ? 1 : 0) + (kompakt ? 1 : 0) + (mit_barcode ? 1 : 0) %}
+  {% for gruppe, zeilen in gruppen %}
+    {% if gruppe %}<tr><td class="gruppe" colspan="{{ spalten }}">{{ gruppe }}</td></tr>{% endif %}
+    {% for z in zeilen %}
+      <tr>
+        {% if mit_bild %}<td class="bild">{% if z.bild %}<img src="{{ z.bild }}">{% endif %}</td>{% endif %}
+        {% if kompakt %}<td class="nr" style="white-space:nowrap">{{ z.artikelnummer }}</td>{% endif %}
+        <td><div class="name">{{ z.name }}</div>{% if not kompakt %}<div class="nr">{{ z.artikelnummer }}</div>{% endif %}</td>
+        <td class="preis">{% if z.preis is not null %}{{ z.preis|euroformat }} €{% else %}–{% endif %}</td>
+        {% if mit_barcode %}<td class="code"><img src="data:image/png;base64,{{ z.barcode }}"><div class="nr">{{ z.code }}</div></td>{% endif %}
+      </tr>
+    {% endfor %}
+  {% endfor %}
+  </tbody>
+</table>
+</body>
+</html>

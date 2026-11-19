@@ -36,6 +36,7 @@ $sidebarItems = match ($activeModule ?? '') {
         ]],
         ['type' => 'gruppe', 'label' => 'Preisschilder', 'items' => [
             ['icon' => '🖨', 'label' => 'Schilder drucken',    'href' => BASE_PATH . '/schilder/auswahl.php'],
+            ['icon' => '🧾', 'label' => 'Kassen-Liste',        'href' => BASE_PATH . '/schilder/kassenliste.php'],
             ['icon' => '🔁', 'label' => 'Veraltete Schilder',  'href' => BASE_PATH . '/schilder/veraltet.php'],
             ['icon' => '🧩', 'label' => 'Schild-Bausteine',    'href' => BASE_PATH . '/konfigurator/bausteine.php'],
         ]],

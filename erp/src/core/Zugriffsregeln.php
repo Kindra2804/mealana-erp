@@ -156,6 +156,8 @@ final class Zugriffsregeln
             'drucken.php'                    => 'artikel.anzeigen',
             'veraltet.php'                   => 'artikel.anzeigen',
             'strickstuecke.php'              => 'artikel.anzeigen',
+            'kassenliste.php'                => 'artikel.anzeigen',
+            'kassenliste_drucken.php'        => 'artikel.anzeigen',
         ],
 
         'lager' => [
