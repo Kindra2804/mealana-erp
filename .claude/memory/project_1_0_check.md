@@ -144,3 +144,7 @@ Knöpfe in artikel/detail.php waren tot. Jetzt status_setzen.php: Deaktivieren/A
 Nur Fix: 🗑️ im Artikel-Tab Lieferanten rief artikel/delete.php mit der artikel_lieferanten-ID auf und deaktivierte einen fremden Artikel samt Kindern. Jetzt artikel_lieferant_loeschen.php. Lösch/Deaktivieren-Fix (a621b4b) steckt schon in 1.0.25. Live-Einspielen offen.
 
 **1.0.26 LIVE 2026-11-18.** Live hat noch keine Lieferanten → alter 🗑️-Fehler kann dort nichts angerichtet haben. Nächster Schritt (Jacky, 19.11.): durchsehen, was von Dev nach Live übertragen werden soll (Lieferanten u.a.).
+
+## 2026-11-19 Paket 1.0.27 gebaut (cbe4ada, Migr. 256 + 257, nächste 258)
+D:\ERP\pakete
+ahtlos-1.0.27.zip: Kassen-Liste/Preisliste/Mini-Anhänger (Kurznamen), JTL-Import Kunden+Aufträge im Browser (365-Tage-Regel + Prüfliste), Fix Archiv-Import (konfig_freitext), Datentransfer-Teile lieferanten + kontenplan. Reihenfolge Live: Paket einspielen → Datentransfer lieferanten,kontenplan (Probelauf zuerst) → JTL-Exporte frisch → Kunden → Aufträge → Prüfliste. Buchhaltungs-Check Jacky 19.11.: Partner-Belege (R-INDRA) nicht im Export, Zahlungen darauf Bank an 3710 (Geld liegt auf KG-Konto, BACS-Inhaber KG), Fremd/Spende Kasse 3710/3720 ohne USt, Kommission 4080, Archiv + Kasse-Aufträge ausgeschlossen. Offen: wessen PayPal hat indra-design? (Falls Babsis eigenes: PayPal-Zahlungen dürften gar nicht gebucht werden.)
