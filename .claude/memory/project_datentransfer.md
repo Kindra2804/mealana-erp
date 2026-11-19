@@ -16,6 +16,7 @@ Gebaut 2026-11-09 (Claude, Jacky wollte es fertig statt Trainer-Modus; Erklärun
 - Test gegen frische 1.0-DB: 185 Indra-Artikel identisch (Fingerabdruck über Preise/Bilder/Codes/Kategorien/Achsen/Werte/Bedingungen/Kombis), Konfigurator-Preismatrix identisch, 481 Dateien.
 - Funde: Dev hat Kategorie „Sparpakete“ doppelt auf oberster Ebene (156, 386) → im Ziel zusammengeführt. Artikelgruppe 4040 „Sonstiges Zubehör“ fehlt in der Baseline → wird angelegt. Ausgeblendete Kategorien anderer Kanäle (MeaLana/BIO/SOW) erst nach Anlegen dieser Kanäle per erneutem Import.
 - Live-Reihenfolge: Kanal indra-design (Slug `indra-design`, IND) anlegen → Import → Woo-Shop muss vorher leer sein (Produkte, Kategorien, Attribute), sonst SKU-Konflikte. Siehe [[project-1-0-check]].
+- **2026-11-19 neue Teile `lieferanten` + `kontenplan`** (für Dev → Live): Lieferanten über Namen (vorhanden = unverändert, neue samt Ansprechpartnern, Land fehlt → leer), ALLE Artikel-Zuordnungen mit Artikelnummer → verknüpft mit im Ziel vorhandenen Artikeln, keine doppelten (artikel+lieferant); Kontenplan ergänzt nur fehlende Kontonummern (Dev hat 12 mehr: 4000–4090, 4600, 4700). Kreditorennummern sind auf Dev alle leer. Getestet gegen frische Baseline+Migrationen. Aufruf: `php scripts/datentransfer.php export --teile=lieferanten,kontenplan`, am Live `import --datei=… --probelauf`, dann ohne. EK-Preise auf Dev = Stand JTL-Export 11.08.
 - Ideen später: Oberfläche im ERP (··· → Datentransfer), Modus „aktualisieren“ für vorhandene Artikel.
 
 

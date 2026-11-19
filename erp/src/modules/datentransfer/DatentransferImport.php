@@ -15,6 +15,10 @@
  *   Hersteller    → Name (fehlt → anlegen)   Achse → Code, sonst Name (fehlt → anlegen)
  *   Artikel       → Artikelnummer: gibt es sie schon, bleibt der Artikel UNVERÄNDERT
  *                   (nur seine ID wird für Verknüpfungen benutzt)
+ *   Teil lieferanten: Lieferant über den Namen (vorhanden = unverändert, neue samt Ansprechpartnern),
+ *                   Artikel-Zuordnungen über die Artikelnummer — nur wenn der Artikel im Ziel existiert
+ *                   und dort noch keine Zuordnung zu diesem Lieferanten hat
+ *   Teil kontenplan: fehlende Kontonummern werden ergänzt, vorhandene Konten bleiben, wie sie sind
  *
  * Alles läuft in EINER Transaktion; die Bilder werden erst nach erfolgreichem Datenteil
  * kopiert. Im Probelauf wird am Ende zurückgerollt und keine Datei kopiert.
@@ -62,6 +66,8 @@ class DatentransferImport
 
         $this->db->beginTransaction();
         try {
+            if (isset($d['kontenplan'])) $this->kontenplan($d['kontenplan']);
+            if (isset($d['lieferanten'])) $this->lieferanten($d);   // vor stammdaten(): der Artikel-Teil findet sie dann über den Namen
             $this->stammdaten($d['ref'] ?? []);
             $this->kategorien($d, $tmp);
             $this->hersteller($d['hersteller'] ?? [], $tmp);
@@ -70,6 +76,7 @@ class DatentransferImport
             if (isset($d['slides'])) $this->slides($d, $tmp);
             if (isset($d['menue'])) $this->menue($d);
             $this->shopEinstellungen($d, $tmp);
+            if (isset($d['lieferanten_artikel'])) $this->lieferantenArtikel($d['lieferanten_artikel']);   // nach artikel(): neue Artikel sind dann da
 
             if ($probelauf) {
                 $this->db->rollBack();
@@ -162,6 +169,59 @@ class DatentransferImport
     {
         if (isset($this->fehlendeShops[$quellId])) {
             $this->hinweise[] = "Kanal {$this->fehlendeShops[$quellId]} gibt es im Ziel nicht — $was ausgelassen (Kanal anlegen und Import wiederholen, Vorhandenes bleibt unberührt).";
+        }
+    }
+
+    // ── Kontenplan, Lieferanten ─────────────────────────────────────────
+
+    private function kontenplan(array $konten): void
+    {
+        foreach ($konten as $k) {
+            if ($this->wert('SELECT id FROM kontenplan WHERE kontonummer = ?', [$k['kontonummer']])) $this->zaehle('konten_vorhanden');
+            else $this->neu('kontenplan', $k, 'konten');
+        }
+    }
+
+    private function lieferanten(array $d): void
+    {
+        $neu = [];
+        foreach ($d['lieferanten'] as $l) {
+            $id = $this->wert('SELECT id FROM lieferanten WHERE name = ? LIMIT 1', [$l['name']]);
+            if ($id) {
+                $this->zaehle('lieferanten_vorhanden');
+            } else {
+                if ($l['land'] && !$this->wert('SELECT 1 FROM laender WHERE iso_code = ?', [$l['land']])) {
+                    $this->hinweise[] = "Land „{$l['land']}“ von Lieferant „{$l['name']}“ fehlt im Ziel — Land leer gelassen.";
+                    $l['land'] = null;
+                }
+                $id = $this->neu('lieferanten', $l, 'lieferanten');
+                $neu[$l['id']] = true;
+            }
+            $this->map['lieferanten'][$l['id']] = (int)$id;
+        }
+        // Ansprechpartner nur bei neu angelegten Lieferanten (sonst doppelt)
+        foreach ($d['lieferanten_vertreter'] ?? [] as $v) {
+            if (!isset($neu[$v['lieferant_id']])) continue;
+            $v['lieferant_id'] = $this->map['lieferanten'][$v['lieferant_id']];
+            $this->neu('lieferanten_vertreter', $v, 'ansprechpartner');
+        }
+    }
+
+    /** Artikel-Zuordnungen über die Artikelnummer; fehlt der Artikel im Ziel, wird nur gezählt. */
+    private function lieferantenArtikel(array $zeilen): void
+    {
+        $artikel = $this->db->query('SELECT artikelnummer, id FROM artikel')->fetchAll(PDO::FETCH_KEY_PAIR);
+        $schonDa = [];
+        foreach ($this->db->query('SELECT artikel_id, lieferant_id FROM artikel_lieferanten')->fetchAll(PDO::FETCH_NUM) as [$a, $l]) $schonDa["$a-$l"] = true;
+        foreach ($zeilen as $z) {
+            $a = $artikel[$z['artikelnummer']] ?? null;
+            $l = $this->map['lieferanten'][$z['lieferant_id']] ?? null;
+            if (!$a || !$l) { $this->zaehle('zuordnungen_artikel_fehlt'); continue; }
+            if (isset($schonDa["$a-$l"])) { $this->zaehle('zuordnungen_vorhanden'); continue; }
+            $z['artikel_id'] = (int)$a;
+            $z['lieferant_id'] = $l;
+            $this->neu('artikel_lieferanten', $z, 'zuordnungen');
+            $schonDa["$a-$l"] = true;
         }
     }
 

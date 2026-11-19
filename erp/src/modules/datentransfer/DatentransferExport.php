@@ -20,6 +20,9 @@
  *               Lieferanten-Zuordnung, Shop-Zuweisung (ohne Bestand, ohne Shop-IDs)
  *   slider      Slides + Kacheln eines Shops
  *   menue       Hauptmenü eines Shops
+ *   lieferanten alle Lieferanten + Ansprechpartner + ALLE Artikel-Zuordnungen (Lief.-Art.-Nr., EK),
+ *               die Zuordnungen mit Artikelnummer — der Import verknüpft sie mit Artikeln, die es im Ziel gibt
+ *   kontenplan  alle Konten (der Import ergänzt nur fehlende Kontonummern)
  *
  * Bewusst NICHT im Paket: Lagerbestand, Bewegungen, Aufträge, Kunden, Shop-Zugangsdaten,
  * WooCommerce-IDs (das Ziel-ERP legt alles im Shop neu an).
@@ -27,7 +30,7 @@
 class DatentransferExport
 {
     public const FORMAT = 1;
-    public const TEILE  = ['kategorien', 'hersteller', 'artikel', 'slider', 'menue'];
+    public const TEILE  = ['kategorien', 'hersteller', 'artikel', 'slider', 'menue', 'lieferanten', 'kontenplan'];
 
     private PDO $db;
     private string $public;
@@ -94,6 +97,18 @@ class DatentransferExport
         }
         if (in_array('menue', $teile, true)) {
             $d['menue'] = $this->alle('SELECT * FROM shop_menue_punkte WHERE shop_id = ? ORDER BY parent_id IS NOT NULL, id', [$shop['id']]);
+        }
+
+        // ── Lieferanten (mit allen Artikel-Zuordnungen) / Kontenplan ──────
+        if (in_array('lieferanten', $teile, true)) {
+            $d['lieferanten']           = $this->alle('SELECT * FROM lieferanten ORDER BY id');
+            $d['lieferanten_vertreter'] = $this->alle('SELECT * FROM lieferanten_vertreter ORDER BY id');
+            // Artikelnummer statt ID: im Ziel haben dieselben Artikel andere IDs
+            $d['lieferanten_artikel']   = $this->alle('SELECT al.*, a.artikelnummer FROM artikel_lieferanten al
+                                                        JOIN artikel a ON a.id = al.artikel_id ORDER BY al.id');
+        }
+        if (in_array('kontenplan', $teile, true)) {
+            $d['kontenplan'] = $this->alle('SELECT * FROM kontenplan ORDER BY kontonummer');
         }
 
         // ── Hersteller ───────────────────────────────────────────────────
@@ -264,7 +279,8 @@ class DatentransferExport
         $fehlend = count($fehlend);
 
         $zahlen = [];
-        foreach (['kategorien', 'hersteller', 'achsen', 'artikel', 'artikel_bilder', 'artikel_preise', 'achse_werte', 'slides', 'menue'] as $k) {
+        foreach (['kategorien', 'hersteller', 'achsen', 'artikel', 'artikel_bilder', 'artikel_preise', 'achse_werte', 'slides', 'menue',
+                  'lieferanten', 'lieferanten_vertreter', 'lieferanten_artikel', 'kontenplan'] as $k) {
             if (isset($d[$k])) $zahlen[$k] = count($d[$k]);
         }
         $zahlen['dateien'] = count($this->dateien) - $fehlend;

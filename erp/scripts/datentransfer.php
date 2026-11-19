@@ -6,8 +6,9 @@
  *   php scripts/datentransfer.php export --teile=kategorien,artikel,slider,menue --shop=IND
  *   php scripts/datentransfer.php export --teile=artikel --artikel-kategorie=420 --datei=D:/transfer/indra.tar
  *   php scripts/datentransfer.php export --teile=kategorien,hersteller
+ *   php scripts/datentransfer.php export --teile=lieferanten,kontenplan
  *
- *   --teile=             kategorien | hersteller | artikel | slider | menue (Komma-Liste)
+ *   --teile=             kategorien | hersteller | artikel | slider | menue | lieferanten | kontenplan (Komma-Liste)
  *   --shop=              Kanal (Slug, Kürzel oder ID): Artikel dieses Kanals, dessen Slider/Menü
  *   --artikel-kategorie= nur Artikel aus diesem Kategorie-Ast (mit --shop: beides muss passen)
  *   --alle-artikel       wirklich alle Artikel
