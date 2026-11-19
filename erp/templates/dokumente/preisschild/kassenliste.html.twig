@@ -6,8 +6,9 @@
    Kassen-Liste: Bild, Bezeichnung + Artikelnummer, Standardpreis, Code 128 (EAN, sonst Artikelnummer) -- ca. 12 Zeilen/Seite.
    Preisliste (preisliste.html.twig bindet diese Vorlage mit kompakt = true ein): ohne Barcode, ca. 40 Zeilen/Seite. #}
 <style>
+  /* Seitenränder: "* { margin: 0 }" würde in Dompdf auch @page treffen -> nur die echten Elemente zurücksetzen */
   @page { margin: 12mm 12mm 14mm 12mm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body, div, table, tr, td, img { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: DejaVu Sans, sans-serif; color: #111; font-size: 9pt; }
   .kopf { border-bottom: 0.6mm solid #1d4076; padding-bottom: 2mm; margin-bottom: 2mm; }
   .titel { font-size: 14pt; font-weight: bold; }

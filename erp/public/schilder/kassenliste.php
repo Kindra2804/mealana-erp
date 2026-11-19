@@ -103,12 +103,13 @@ $opt = function (array $liste, int $wert) {
             <thead><tr><th style="width:28px"></th><th>Artikelnr.</th><th>Name</th><th style="text-align:right">Preis</th><th>Barcode</th><th style="text-align:right">Bestand</th>
                 <th class="kl-nur-mini" style="display:none">Kurzname (max. <?= KassenlisteService::KURZ_MAX ?>)</th><th class="kl-nur-mini" style="display:none">Anzahl</th></tr></thead>
             <tbody>
-            <?php $gruppe = null; foreach ($zeilen as $z): ?>
-                <?php if ($z['gruppe'] !== $gruppe): $gruppe = $z['gruppe']; ?>
-                    <tr><td colspan="8" style="background:#e8eef6;color:var(--color-nav);font-weight:700;font-size:12px">▸ <?= htmlspecialchars($gruppe) ?></td></tr>
+            <?php $gruppe = null; $gNr = 0; foreach ($zeilen as $z): ?>
+                <?php if ($z['gruppe'] !== $gruppe): $gruppe = $z['gruppe']; $gNr++; ?>
+                    <tr><td style="background:#e8eef6"><input type="checkbox" class="kl-gruppe" data-g="<?= $gNr ?>" checked title="Alle Artikel dieser Kategorie wählen/abwählen"></td>
+                        <td colspan="7" style="background:#e8eef6;color:var(--color-nav);font-weight:700;font-size:12px"><label style="cursor:pointer" onclick="this.closest('tr').querySelector('.kl-gruppe').click()">▸ <?= htmlspecialchars($gruppe) ?></label> <span class="kl-gruppe-zahl" data-g="<?= $gNr ?>" style="font-weight:400;color:var(--color-text-muted)"></span></td></tr>
                 <?php endif; ?>
                 <tr>
-                    <td><input type="checkbox" name="ids[]" value="<?= $z['id'] ?>" class="kl-cb" checked></td>
+                    <td><input type="checkbox" name="ids[]" value="<?= $z['id'] ?>" class="kl-cb" data-g="<?= $gNr ?>" checked></td>
                     <td style="font-family:monospace;font-size:12px"><?= htmlspecialchars($z['artikelnummer']) ?></td>
                     <td><?= htmlspecialchars($z['name']) ?></td>
                     <td style="text-align:right;white-space:nowrap"><?= $z['preis'] !== null ? number_format($z['preis'], 2, ',', '.') . ' €' : '<span style="color:#d97706">kein Preis</span>' ?></td>

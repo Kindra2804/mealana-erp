@@ -381,6 +381,7 @@ Für Kleinkram ohne eigene EAN (Fachmieter, Indra-Anhänger): Artikel → Preiss
 - **Welche Artikel?** Partner (Fachmieter), Hersteller und/oder Kategorie (mit Unterkategorien). **nur lagernde** ist vorab angehakt (Bestand in allen Lagern außer Messe und Händler-Außenlager).
 - **Preis** = Standardpreis. Läuft eine Aktion, nimmt die Kasse beim Scannen ohnehin den Aktionspreis.
 - **Barcode** = EAN, sonst die Artikelnummer (Code 128) – die Kasse findet beides.
+- **Auswahl:** **Alle**/**Keine** für die ganze Liste, dazu ein Häkchen **je Kategorie** in der blauen Kategoriezeile (wählt alle Artikel der Kategorie an oder ab; halb gefüllt = nur einige, daneben „x von y“).
 
 | Vorlage | Format | Wofür |
 |---|---|---|
