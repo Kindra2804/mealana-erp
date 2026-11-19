@@ -57,3 +57,5 @@ Dev-Test (Partner 47 „Barbara Indra INDRA-DESIGN“ auf Dev): Abholung bar (Ka
 
 ## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
 - [🏛️ Indra-Design = EU von Babsi](project_indra_design_eu.md) — ✅ 2026-11-14 ONLINE als EU (1.0.12 live, Rechtstexte, KU, Texte bereinigt); offen: 1. echte Bestellung prüfen, Steuerberatung (Woo-Datum ✅); nächste Migr. 241
+
+**Geklärt Jacky 2026-11-19:** PayPal auf indra-design.at läuft (wie Überweisung) über die MEALANA KG → Export „Zahlung an 3710“ passt; ändert sich das, meldet Jacky sich (dann Zahlungen von Partner-Aufträgen über Babsis Konten gar nicht buchen). **Kein Bestandsübergang:** Indra-Artikel waren im Live-ERP von Anfang an bei Babsi (Partner) und nie in JTL → Frage „Übergang KG-Bestand an das EU“ an die Steuerberatung entfällt. Offen bleibt nur Gutschein-Auszahlung.
