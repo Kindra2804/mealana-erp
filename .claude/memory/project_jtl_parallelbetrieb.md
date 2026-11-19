@@ -45,5 +45,6 @@ Jackys Frage: Live-ERP + Kasse in den Laden, LS-POS weg, mealana.at bleibt auf J
 - Buchhaltung: Laden ab dem Stichtag nur noch aus dem ERP-Export, im Umstellungsmonat nach Datum trennen; der JTL-Export darf keine Laden-Umsätze mehr enthalten.
 - Gutscheine: Jacky macht eine Liste (im Umlauf, Herkunft, Online-Einlösungen im Laden). Notfalls Newsletter: alte Gutscheine gelten nur noch online, bei der Komplettumstellung neuer Code.
 - **Ameise-Chargen: bereits getestet ✅**: negative Werte gehen; mit Charge wird diese Charge geändert, neu angelegt oder davon abgezogen.
-- Reihenfolge: Artikel (nach Babsis Ausschlussliste) → Erstabgleich → **Inventur im ERP** → per Export zurück nach JTL. Während der Inventur keinen JTL-Versand aus dem Ladenlager (sonst doppelt abgezogen).
+- Reihenfolge: Artikel (nach Babsis Ausschlussliste) → Erstabgleich → **Inventur im ERP** → per Export zurück nach JTL. Während einer Inventur sind in JTL ohnehin alle Lager und Abgleiche gesperrt (Jacky), dabei kann also nichts doppelt abgezogen werden.
 - Jacky will eine **Checkliste + einen Ablaufplan** für die ersten Tage (Abgleich, Abholung/Bareingang, Retouren, Artikel/Preise doppelt pflegen, Gutscheine).
+- **Zeitplan (Jacky 2026-11-19):** Alles zusammen angehen, **sobald Babsis Ausschlussliste da ist**: Ausschluss-Filter für die JTL-Importe, „Bareingang zu JTL-Rechnung“ an der Kasse sowie Checkliste und Ablaufplan für die Umstellung (Punkte oben). Nicht vorher anfangen.
