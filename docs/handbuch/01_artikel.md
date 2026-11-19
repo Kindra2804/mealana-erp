@@ -372,7 +372,25 @@ Mengenrabatt über **gemischte** Artikel, an der Kasse und im Shop gleich gerech
 
 Tischaufsteller und IVAR-Streifen haben dieselben Badges, Pflegesymbole und Hausfarben wie das Laden-Schild; der QR führt zur Artikelseite im gewählten Shop.
 
-**Anhänger ohne Artikel** (z.B. Babsis Strickstücke): Druckseite → **✂ Anhänger ohne Artikel** → **+ Neuer Anhänger**: Kopfzeile (Vorgabe „handgestrickt von Babsi“), Name, Material, Größe, Zusatz, Preis, Badge (Vorgabe „UNIKAT“) und Pflegesymbole anhaken → Speichern. Die Anhänger bleiben gespeichert: anhaken, **Anzahl** wählen → **🖨 Angehakte drucken**. Verkaufte Stücke **ausblenden** (lassen sich wieder einblenden).**Laden-Schild** (8 pro A4, je 95 × 68 mm): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
+**Anhänger ohne Artikel** (z.B. Babsis Strickstücke): Druckseite → **✂ Anhänger ohne Artikel** → **+ Neuer Anhänger**: Kopfzeile (Vorgabe „handgestrickt von Babsi“), Name, Material, Größe, Zusatz, Preis, Badge (Vorgabe „UNIKAT“) und Pflegesymbole anhaken → Speichern. Die Anhänger bleiben gespeichert: anhaken, **Anzahl** wählen → **🖨 Angehakte drucken**. Verkaufte Stücke **ausblenden** (lassen sich wieder einblenden).
+
+### Kassen-Liste, Preisliste, Mini-Anhänger
+
+Für Kleinkram ohne eigene EAN (Fachmieter, Indra-Anhänger): Artikel → Preisschilder → **🧾 Kassen-Liste**, oder in der Artikelliste anhaken → Aktion **🧾 Kassen-Liste drucken** (Väter bringen alle Varianten mit). Anders als bei den Preisschildern steht hier **jede Variante einzeln** mit eigener Nummer.
+
+- **Welche Artikel?** Partner (Fachmieter), Hersteller und/oder Kategorie (mit Unterkategorien). **nur lagernde** ist vorab angehakt (Bestand in allen Lagern außer Messe und Händler-Außenlager).
+- **Preis** = Standardpreis. Läuft eine Aktion, nimmt die Kasse beim Scannen ohnehin den Aktionspreis.
+- **Barcode** = EAN, sonst die Artikelnummer (Code 128) – die Kasse findet beides.
+
+| Vorlage | Format | Wofür |
+|---|---|---|
+| 🧾 Kassen-Liste | A4, ca. 12 Zeilen | Neben die Kasse legen: Bild, Name, Artikelnummer, Preis, Barcode zum Scannen |
+| 📄 Preisliste | A4, ca. 25 Zeilen (ohne Bild ca. 40) | Normale Preisliste ohne Barcode |
+| 🔖 Mini-Anhänger | 60 × 30 mm, 27 pro A4 | Loch links, Kategorie klein, Kurzname, Preis, Barcode mit Nummer |
+
+Bei der Liste wählbar: Bild, Barcode, nach Kategorie gruppieren. Bei den **Mini-Anhängern** erscheinen in der Liste die Spalten **Kurzname** und **Anzahl** (vorbelegt mit dem Bestand, 0 = keiner) sowie **Start bei Feld** und Schnittlinien. Der Kurzname (max. 40 Zeichen, z.B. „Wollsüchtig - dunkelbr.“) wird beim Drucken **je Artikel gespeichert** und ist beim nächsten Mal schon eingetragen. Leer = automatisch: Text in „…“ plus Zusatz nach dem Strich (grau als Vorschlag im Feld).
+
+**Laden-Schild** (8 pro A4, je 95 × 68 mm): oben auf der Auswahlseite auf **🏪 Laden-Schild** umschalten, die Auswahl bleibt erhalten.
 - Farbiger Streifen in der **Hausfarbe** (MeaLana-Blau, Sockenwolle-Weinrot, bio-wolle-Grün oder grau), Name in derselben Farbe.
 - Zusammensetzung, Lauflänge, Nadelstärke in mm, Maschenprobe, **Pflegesymbole** (Merkmal „Pflege“), optional **mit Bild** (erstes Artikelbild, sonst eines der Farben).
 - **Badges** oben rechts, automatisch:

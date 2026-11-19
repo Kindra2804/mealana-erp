@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+{# Mini-Anhänger (KassenlisteService::miniPdf): 27 je A4 (3 x 9), je 60 x 30 mm, 15 mm Rand links, 13,5 mm oben.
+   Loch links, Kopfzeile = Kategorie (klein), Kurzname fett (max. 2 Zeilen), Standardpreis, Code 128 mit Nummer. #}
+<style>
+  @page { margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: DejaVu Sans, sans-serif; color: #111; }
+  .seite { position: relative; width: 210mm; height: 296mm; page-break-after: always; overflow: hidden; }
+  .seite.letzte { page-break-after: auto; }
+  .karte { position: absolute; width: 60mm; height: 30mm; overflow: hidden; }
+  .karte.rahmen { border: 0.2mm dashed #bbb; }
+  .loch { position: absolute; left: 2.5mm; top: 13mm; width: 4mm; height: 4mm; border: 0.3mm solid #999; border-radius: 2mm; }
+  .kopf { position: absolute; left: 9mm; top: 1.6mm; width: 49mm; font-size: 5.5pt; color: #666; white-space: nowrap; overflow: hidden; }
+  .titel { position: absolute; left: 9mm; top: 4.2mm; width: 49mm; height: 7.6mm; overflow: hidden; font-size: 8pt; font-weight: bold; line-height: 1.15; }
+  .titel.mittel { font-size: 7pt; }
+  .titel.klein  { font-size: 6.2pt; }
+  .titel.winzig { font-size: 5.4pt; }
+  .preis { position: absolute; right: 2mm; top: 11.4mm; font-size: 11pt; font-weight: bold; }
+  .barcode { position: absolute; left: 9mm; top: 17mm; width: 48mm; height: 7.8mm; }
+  .nummer { position: absolute; left: 9mm; top: 25.2mm; width: 48mm; text-align: center; font-family: DejaVu Sans Mono, monospace; font-size: 5.8pt; }
+</style>
+</head>
+<body>
+{% for seite in seiten %}
+<div class="seite{% if loop.last %} letzte{% endif %}">
+  {% for s in seite %}
+    {% set spalte = (loop.index0 % 3) %}
+    {% set zeile = (loop.index0 // 3) %}
+    <div class="karte{% if schnitt %} rahmen{% endif %}" style="left: {{ 15 + spalte * 60 }}mm; top: {{ 13.5 + zeile * 30 }}mm;">
+    {% if s %}
+      <div class="loch"></div>
+      {% if s.kopf %}<div class="kopf">{{ s.kopf }}</div>{% endif %}
+      <div class="titel {{ s.klasse }}">{{ s.titel }}</div>
+      {% if s.preis is not null %}<div class="preis">{{ s.preis|euroformat }} €</div>{% endif %}
+      <img class="barcode" src="data:image/png;base64,{{ s.barcode }}">
+      <div class="nummer">{{ s.code }}</div>
+    {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endfor %}
+</body>
+</html>

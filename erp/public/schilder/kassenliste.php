@@ -35,7 +35,7 @@ $opt = function (array $liste, int $wert) {
     return $h;
 };
 ?>
-<div style="padding:var(--space-md);max-width:1100px">
+<div style="padding:var(--space-md);max-width:1300px">
 
 <form method="post" class="card" style="margin-bottom:var(--space-sm)">
     <input type="hidden" name="gesendet" value="1">
@@ -72,12 +72,23 @@ $opt = function (array $liste, int $wert) {
                 <label style="display:flex;gap:6px;align-items:center"><input type="radio" name="vorlage" value="<?= $key ?>" <?= $key === 'kassenliste' ? 'checked' : '' ?>> <?= $v['symbol'] ?> <strong><?= htmlspecialchars($v['name']) ?></strong></label>
             <?php endforeach; ?>
             <span style="border-left:1px solid var(--color-border,#ddd);height:20px"></span>
-            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="mit_bild" value="1" checked> Bild</label>
-            <label style="display:flex;gap:6px;align-items:center" id="kl-barcode"><input type="checkbox" name="mit_barcode" value="1" checked> Barcode</label>
-            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="gruppieren" value="1" checked> nach Kategorie gruppieren</label>
+            <span class="kl-nur-liste" style="display:flex;gap:24px">
+                <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="mit_bild" value="1" checked> Bild</label>
+                <label style="display:flex;gap:6px;align-items:center" id="kl-barcode"><input type="checkbox" name="mit_barcode" value="1" checked> Barcode</label>
+                <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="gruppieren" value="1" checked> nach Kategorie gruppieren</label>
+            </span>
+            <span class="kl-nur-mini" style="display:none;gap:24px;align-items:center">
+                <label>Start bei Feld
+                    <select name="start" class="erp-select" style="width:auto">
+                        <?php for ($i = 1; $i <= KassenlisteService::MINI_JE_SEITE; $i++): ?><option value="<?= $i ?>"><?= $i ?><?= $i === 1 ? ' (neues Blatt)' : '' ?></option><?php endfor; ?>
+                    </select>
+                </label>
+                <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="schnitt" value="1" checked> Schnittlinien</label>
+            </span>
         </div>
         <div style="font-size:11px;color:var(--color-text-muted);margin-top:8px">
-            Kassen-Liste: ca. 12 Zeilen je A4 mit Barcode zum Scannen neben der Kasse. Preisliste: kompakt ohne Barcode, ca. 25 Zeilen (ohne Bild ca. 40).
+            <span class="kl-nur-liste">Kassen-Liste: ca. 12 Zeilen je A4 mit Barcode zum Scannen neben der Kasse. Preisliste: kompakt ohne Barcode, ca. 25 Zeilen (ohne Bild ca. 40).</span>
+            <span class="kl-nur-mini" style="display:none">Mini-Anhänger: 27 je A4 (3 × 9), Feld 1 oben links. Kurzname unten in der Liste vergeben – er wird je Artikel gemerkt. Leer = automatisch (Text in „…“ + Zusatz). Anzahl ist mit dem Bestand vorbelegt, 0 = keiner.</span>
         </div>
     </div>
 
@@ -89,11 +100,12 @@ $opt = function (array $liste, int $wert) {
             <button type="submit" class="btn btn-primary btn-sm" style="margin-left:auto" id="kl-drucken">🖨 PDF erzeugen</button>
         </div>
         <table class="erp-table">
-            <thead><tr><th style="width:28px"></th><th>Artikelnr.</th><th>Name</th><th style="text-align:right">Preis</th><th>Barcode</th><th style="text-align:right">Bestand</th></tr></thead>
+            <thead><tr><th style="width:28px"></th><th>Artikelnr.</th><th>Name</th><th style="text-align:right">Preis</th><th>Barcode</th><th style="text-align:right">Bestand</th>
+                <th class="kl-nur-mini" style="display:none">Kurzname (max. <?= KassenlisteService::KURZ_MAX ?>)</th><th class="kl-nur-mini" style="display:none">Anzahl</th></tr></thead>
             <tbody>
             <?php $gruppe = null; foreach ($zeilen as $z): ?>
                 <?php if ($z['gruppe'] !== $gruppe): $gruppe = $z['gruppe']; ?>
-                    <tr><td colspan="6" style="background:#e8eef6;color:var(--color-nav);font-weight:700;font-size:12px">▸ <?= htmlspecialchars($gruppe) ?></td></tr>
+                    <tr><td colspan="8" style="background:#e8eef6;color:var(--color-nav);font-weight:700;font-size:12px">▸ <?= htmlspecialchars($gruppe) ?></td></tr>
                 <?php endif; ?>
                 <tr>
                     <td><input type="checkbox" name="ids[]" value="<?= $z['id'] ?>" class="kl-cb" checked></td>
@@ -102,6 +114,8 @@ $opt = function (array $liste, int $wert) {
                     <td style="text-align:right;white-space:nowrap"><?= $z['preis'] !== null ? number_format($z['preis'], 2, ',', '.') . ' €' : '<span style="color:#d97706">kein Preis</span>' ?></td>
                     <td style="font-family:monospace;font-size:12px"><?= htmlspecialchars($z['code']) ?><?= $z['code'] === $z['artikelnummer'] ? ' <span style="color:var(--color-text-muted);font-family:inherit;font-size:11px">(Art.-Nr.)</span>' : '' ?></td>
                     <td style="text-align:right"><?= $z['bestand'] === null ? '–' : rtrim(rtrim(number_format($z['bestand'], 2, ',', ''), '0'), ',') ?></td>
+                    <td class="kl-nur-mini" style="display:none"><input type="text" name="kurz[<?= $z['id'] ?>]" value="<?= htmlspecialchars($z['kurzname']) ?>" placeholder="<?= htmlspecialchars($z['kurz_auto']) ?>" maxlength="<?= KassenlisteService::KURZ_MAX ?>" class="erp-input" style="width:240px;padding:3px 6px;font-size:12px"></td>
+                    <td class="kl-nur-mini" style="display:none"><input type="number" name="anzahl[<?= $z['id'] ?>]" value="<?= $z['bestand'] !== null && $z['bestand'] >= 1 ? (int) $z['bestand'] : 1 ?>" min="0" max="200" class="erp-input" style="width:60px;padding:3px 6px;font-size:12px"></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

@@ -20,7 +20,11 @@ class KassenlisteService
     public const VORLAGEN = [
         'kassenliste' => ['name' => 'Kassen-Liste', 'symbol' => '🧾'],
         'preisliste'  => ['name' => 'Preisliste',   'symbol' => '📄'],
+        'mini'        => ['name' => 'Mini-Anhänger 60 × 30', 'symbol' => '🔖'],
     ];
+    /** Mini-Anhänger: 3 x 9 je A4 */
+    public const MINI_JE_SEITE = 27;
+    public const KURZ_MAX = 40;
 
     private PDO $db;
     private PreisRepository $preisRepo;
@@ -64,6 +68,7 @@ class KassenlisteService
                    COALESCE((SELECT k.name FROM artikel_kategorien ak JOIN kategorien k ON k.id = ak.kategorie_id
                              WHERE ak.artikel_id IN (a.id, COALESCE(a.vaterartikel_id, a.id)) $katWo
                              ORDER BY ak.artikel_id = a.id DESC, k.sortierung, k.name LIMIT 1), 'Ohne Kategorie') AS gruppe,
+                   (SELECT kn.kurzname FROM artikel_kurznamen kn WHERE kn.artikel_id = a.id) AS kurzname,
                    (SELECT c.code FROM artikel_codes c WHERE c.artikel_id = a.id AND c.typ IN ('GTIN13', 'GTIN8')
                     ORDER BY c.typ = 'GTIN13' DESC, c.id LIMIT 1) AS ean,
                    (SELECT COALESCE(SUM(lb.bestand), 0) FROM lagerbestand lb
@@ -89,6 +94,8 @@ class KassenlisteService
                 'preis'         => $this->standardPreis((int) $a['id'], (int) $a['vaterartikel_id']),
                 'code'          => $a['ean'] ?: $a['artikelnummer'],
                 'bestand'       => $a['keine_lagerbestandsfuehrung'] ? null : $bestand,
+                'kurzname'      => (string) $a['kurzname'],
+                'kurz_auto'     => self::kurzAuto($a['name']),
             ];
         }
         return $erg;
@@ -100,7 +107,7 @@ class KassenlisteService
      */
     public function listePdf(string $vorlage, array $ids, array $opt): string
     {
-        if (!isset(self::VORLAGEN[$vorlage])) throw new InvalidArgumentException('Unbekannte Vorlage.');
+        if (!in_array($vorlage, ['kassenliste', 'preisliste'], true)) throw new InvalidArgumentException('Unbekannte Vorlage.');
         $zeilen = $ids ? $this->artikel(['ids' => $ids]) : [];
         // nur die angehakten, ohne die Varianten eines angehakten Vaters doppelt aufzunehmen
         $zeilen = array_values(array_filter($zeilen, fn($z) => in_array($z['id'], $ids, true)));
@@ -129,6 +136,75 @@ class KassenlisteService
             'mit_bild'   => $mitBild,
             'mit_barcode'=> $barcode,
         ]);
+    }
+
+    /**
+     * PDF der Mini-Anhänger 60 x 30 mm. Speichert vorher die Kurznamen (leer = Eintrag löschen, dann automatisch).
+     * @param array $anzahl  [artikel_id => Stück]
+     * @param array $kurz    [artikel_id => Kurzname]
+     * @param array $opt     start (1..27), schnitt (bool)
+     */
+    public function miniPdf(array $ids, array $anzahl, array $kurz, array $opt): string
+    {
+        $this->kurznamenSpeichern(array_intersect_key($kurz, array_flip($ids)));
+        $zeilen = $ids ? $this->artikel(['ids' => $ids]) : [];
+        $zeilen = array_values(array_filter($zeilen, fn($z) => in_array($z['id'], $ids, true)));
+        if (!$zeilen) throw new RuntimeException('Keine Artikel ausgewählt.');
+
+        $pdf = new PdfGenerator();
+        $felder = array_fill(0, max(1, min(self::MINI_JE_SEITE, (int) ($opt['start'] ?? 1))) - 1, null);
+        foreach ($zeilen as $z) {
+            $n = max(0, min(200, (int) ($anzahl[$z['id']] ?? 1)));
+            if (!$n) continue;
+            $text = $z['kurzname'] !== '' ? $z['kurzname'] : $z['kurz_auto'];
+            $feld = [
+                'kopf'    => $z['gruppe'] === 'Ohne Kategorie' ? '' : $z['gruppe'],
+                'titel'   => $text,
+                'klasse'  => mb_strlen($text) > 42 ? 'winzig' : (mb_strlen($text) > 30 ? 'klein' : (mb_strlen($text) > 20 ? 'mittel' : '')),
+                'preis'   => $z['preis'],
+                'barcode' => $pdf->barcodeAlsBase64($z['code']),
+                'code'    => $z['code'],
+            ];
+            for ($i = 0; $i < $n; $i++) $felder[] = $feld;
+        }
+        if (!array_filter($felder)) throw new RuntimeException('Bei allen Artikeln ist die Anzahl 0.');
+        while (count($felder) % self::MINI_JE_SEITE) $felder[] = null;
+
+        return $pdf->alsString('preisschild/mini.html.twig', [
+            'seiten'  => array_chunk($felder, self::MINI_JE_SEITE),
+            'schnitt' => !empty($opt['schnitt']),
+        ]);
+    }
+
+    /** Kurznamen merken: [artikel_id => text]; leer oder gleich dem automatischen = kein Eintrag */
+    public function kurznamenSpeichern(array $kurz): void
+    {
+        if (!$kurz) return;
+        $in = implode(',', array_map('intval', array_keys($kurz)));
+        $namen = $this->db->query("SELECT id, name FROM artikel WHERE id IN ($in)")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $set = $this->db->prepare("INSERT INTO artikel_kurznamen (artikel_id, kurzname) VALUES (?, ?) ON DUPLICATE KEY UPDATE kurzname = VALUES(kurzname)");
+        $del = $this->db->prepare("DELETE FROM artikel_kurznamen WHERE artikel_id = ?");
+        foreach ($kurz as $id => $text) {
+            $id = (int) $id;
+            if (!isset($namen[$id])) continue;
+            $text = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $text)), 0, self::KURZ_MAX);
+            if ($text === '' || $text === self::kurzAuto($namen[$id])) $del->execute([$id]);
+            else $set->execute([$id, $text]);
+        }
+    }
+
+    /**
+     * Automatischer Kurzname: Text in Anführungszeichen + Zusatz nach dem Gedankenstrich,
+     * z.B. 'Schlüsselanhänger „Nadelheldin“ – schwarz' -> 'Nadelheldin – schwarz'. Ohne Anführungszeichen: der Name.
+     */
+    public static function kurzAuto(string $name): string
+    {
+        $text = $name;
+        if (preg_match('/[„"“»]([^“”"«]+)[“”"«](.*)$/u', $name, $m)) {
+            $rest = trim(preg_replace('/^\s*[–-]\s*/u', '', $m[2]));
+            $text = trim($m[1]) . ($rest !== '' ? ' – ' . $rest : '');
+        }
+        return mb_substr($text, 0, self::KURZ_MAX);
     }
 
     /** Titel aus dem Filter, z.B. "Barbara Indra INDRA-DESIGN" bzw. "Kategorie Untersetzer · DROPS Design" */

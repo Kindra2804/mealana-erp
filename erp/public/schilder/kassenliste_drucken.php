@@ -1,13 +1,22 @@
 <?php
 /**
- * Kassen-Liste / Preisliste – liefert das PDF (POST von schilder/kassenliste.php). Nichts wird gespeichert.
+ * Kassen-Liste / Preisliste / Mini-Anhänger – liefert das PDF (POST von schilder/kassenliste.php).
+ * Gespeichert werden nur die Kurznamen der Mini-Anhänger (artikel_kurznamen).
  */
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../../src/modules/schilder/KassenlisteService.php';
 
 try {
     $vorlage = (string) ($_POST['vorlage'] ?? 'kassenliste');
-    $pdf = (new KassenlisteService())->listePdf($vorlage, array_map('intval', (array) ($_POST['ids'] ?? [])), [
+    $svc = new KassenlisteService();
+    $ids = array_map('intval', (array) ($_POST['ids'] ?? []));
+    // Mini-Anhänger: Kurznamen werden dabei je Artikel gespeichert
+    if ($vorlage === 'mini') {
+        $pdf = $svc->miniPdf($ids, (array) ($_POST['anzahl'] ?? []), (array) ($_POST['kurz'] ?? []), [
+            'start'   => (int) ($_POST['start'] ?? 1),
+            'schnitt' => !empty($_POST['schnitt']),
+        ]);
+    } else $pdf = $svc->listePdf($vorlage, $ids, [
         'titel'       => (string) ($_POST['titel'] ?? ''),
         'untertitel'  => (string) ($_POST['untertitel'] ?? ''),
         'mit_bild'    => !empty($_POST['mit_bild']),

@@ -261,7 +261,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <!-- ARTIKEL -->
             <h2 id="artikel">Artikel <span class="ba-badge ba-badge-fertig">Fertig</span></h2>
             <p>Unter <em>Artikel → Liste</em> sieht man alle Artikel. Filter: aktiv/inaktiv, Typ, Kategorie, fehlende EAN, fehlende Bilder. Spalten können über den Spalten-Picker (Zahnrad rechts oben) angepasst werden.</p>
-            <p><strong>Menü links:</strong> Unter Liste und Neu erstellen liegen vier Gruppen zum Aufklappen: <strong>Stammdaten</strong> (Kategorien, Merkmale, Hersteller, Grundpreise, GPSR-Texte), <strong>Preise</strong> (Preise/Aktionen), <strong>Preisschilder</strong> (Schilder drucken, Veraltete Schilder, Schild-Bausteine) und <strong>Shop</strong> (Slider, Menü). Die Gruppe der gerade offenen Seite ist automatisch offen, sonst merkt sich das ERP je Gerät, was auf- oder zugeklappt war. So bleibt Platz für den Kategoriebaum. Alle Importe stecken oben im Knopf <strong>⬇ Import ▾</strong>.</p>
+            <p><strong>Menü links:</strong> Unter Liste und Neu erstellen liegen vier Gruppen zum Aufklappen: <strong>Stammdaten</strong> (Kategorien, Merkmale, Hersteller, Grundpreise, GPSR-Texte), <strong>Preise</strong> (Preise/Aktionen), <strong>Preisschilder</strong> (Schilder drucken, Kassen-Liste, Veraltete Schilder, Schild-Bausteine) und <strong>Shop</strong> (Slider, Menü). Die Gruppe der gerade offenen Seite ist automatisch offen, sonst merkt sich das ERP je Gerät, was auf- oder zugeklappt war. So bleibt Platz für den Kategoriebaum. Alle Importe stecken oben im Knopf <strong>⬇ Import ▾</strong>.</p>
 
             <h3>Neuen Artikel anlegen</h3>
             <div class="ba-step"><div class="ba-step-nr">1</div><div><strong>Artikelnummer</strong> eingeben — muss eindeutig sein (z.B. DROPS-LIMA-50)</div></div>
@@ -459,6 +459,15 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <tr><td>🔖 Anhänger</td><td>50 × 90 mm, 12 pro A4</td><td>Loch zum Anbinden, Strichcode der Artikelnummer; fertige Schilder mit Größe und Aufbau</td></tr>
             </table>
             <p><strong>Anhänger ohne Artikel</strong> (Babsis Strickstücke): Druckseite → „✂ Anhänger ohne Artikel“ → „+ Neuer Anhänger“ (Kopfzeile, Name, Material, Größe, Zusatz, Preis, Badge, Pflegesymbole) → Speichern. Zum Drucken anhaken, Anzahl wählen → „Angehakte drucken“. Verkaufte Stücke ausblenden.</p>
+            <h4>Kassen-Liste, Preisliste, Mini-Anhänger</h4>
+            <p>Für Kleinkram ohne eigene EAN (Fachmieter, Indra-Anhänger): Artikel → Preisschilder → <strong>🧾 Kassen-Liste</strong>, oder in der Artikelliste anhaken → Aktion <strong>🧾 Kassen-Liste drucken</strong> (Väter bringen alle Varianten mit). Anders als bei den Preisschildern steht hier <strong>jede Variante einzeln</strong> mit eigener Nummer. Filter: Partner (Fachmieter), Hersteller, Kategorie (mit Unterkategorien); <strong>nur lagernde</strong> ist vorab angehakt. Preis = Standardpreis (die Kasse nimmt beim Scannen ohnehin einen Aktionspreis), Barcode = EAN, sonst die Artikelnummer (Code 128).</p>
+            <table class="ba-table">
+                <tr><th>Vorlage</th><th>Format</th><th>Wofür</th></tr>
+                <tr><td>🧾 Kassen-Liste</td><td>A4, ca. 12 Zeilen</td><td>Neben die Kasse legen: Bild, Name, Artikelnummer, Preis, Barcode zum Scannen</td></tr>
+                <tr><td>📄 Preisliste</td><td>A4, ca. 25 Zeilen (ohne Bild ca. 40)</td><td>Normale Preisliste ohne Barcode</td></tr>
+                <tr><td>🔖 Mini-Anhänger</td><td>60 × 30 mm, 27 pro A4</td><td>Loch links, Kategorie klein, Kurzname, Preis, Barcode mit Nummer</td></tr>
+            </table>
+            <p>Bei den <strong>Mini-Anhängern</strong> erscheinen in der Liste die Spalten <strong>Kurzname</strong> und <strong>Anzahl</strong> (vorbelegt mit dem Bestand, 0 = keiner) sowie „Start bei Feld“ und Schnittlinien. Der Kurzname (max. 40 Zeichen, z.B. „Wollsüchtig - dunkelbr.“) wird beim Drucken je Artikel gespeichert. Leer = automatisch: Text in „…“ plus Zusatz nach dem Strich (grau als Vorschlag im Feld).</p>
             <table class="ba-table">
                 <tr><th>Badge</th><th>Wann</th></tr>
                 <tr><td>AKTION −x %</td><td>Aktion oder SALE läuft (mit „statt“ und „Aktion bis …“)</td></tr>
