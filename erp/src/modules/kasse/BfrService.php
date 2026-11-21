@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Logger.php';
+require_once __DIR__ . '/../../core/Demo.php';
 
 /**
  * BfrService – RKSV-Signatur über den BFR BONit Fiscal Recorder
@@ -791,6 +792,7 @@ class BfrService
 
     private function httpGet(string $url, ?int $kasseId = null): ?string
     {
+        if (Demo::aktiv()) return null;   // Demo: kein BFR, verhält sich wie „nicht erreichbar“
         $start = microtime(true);
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -809,6 +811,7 @@ class BfrService
 
     private function httpPost(string $url, string $xmlBody, ?int $kasseId = null): ?string
     {
+        if (Demo::aktiv()) return null;   // Demo: kein BFR, verhält sich wie „nicht erreichbar“
         $start = microtime(true);
         $ch = curl_init($url);
         curl_setopt_array($ch, [

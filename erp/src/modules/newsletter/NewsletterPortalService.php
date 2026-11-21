@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../core/Database.php';
+require_once __DIR__ . '/../../core/Demo.php';
 require_once __DIR__ . '/../../core/Encryption.php';
 require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../../core/Mailer.php';
@@ -248,6 +249,7 @@ class NewsletterPortalService
     /** JSON an die Belegseite (gleicher Schlüssel-Header wie Paperless). */
     public function anfrage(string $aktion, ?array $json, array $konf): array
     {
+        if (Demo::aktiv()) return ['erfolg' => false, 'fehler' => 'Demo-Version: Belegseite nicht verbunden.'];
         $ch = curl_init($konf['url'] . '/api.php?aktion=' . $aktion);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,

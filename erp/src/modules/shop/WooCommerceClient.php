@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../core/Demo.php';
+
 /**
  * Erkennt eine Hosting-/Server-seitige Sperre (HTTP 429, z.B. nginx-Rate-Limit
  * VOR WordPress) getrennt von normalen WooCommerce/WordPress-API-Fehlern.
@@ -414,6 +416,7 @@ class WooCommerceClient
             if ($wartezeit > 0) usleep((int)round($wartezeit * 1_000_000));
         }
         $this->letzterMedienUpload = microtime(true);
+        Demo::keineVerbindung('dem Online-Shop');   // Demo-Installation: nie echte Shops ansprechen
         $ch = curl_init($this->siteUrl . '/wp-json/wp/v2/media/' . rawurlencode($mediaId));
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -460,6 +463,7 @@ class WooCommerceClient
         $mime = mime_content_type($dateiPfad) ?: 'application/octet-stream';
 
         $url = $this->siteUrl . '/wp-json/wp/v2/media';
+        Demo::keineVerbindung('dem Online-Shop');   // Demo-Installation: nie echte Shops ansprechen
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -538,6 +542,7 @@ class WooCommerceClient
         if (!$this->wpUsername || !$this->wpAppPassword) {
             throw new RuntimeException('Kein WordPress-Application-Password für diesen Shop hinterlegt');
         }
+        Demo::keineVerbindung('dem Online-Shop');   // Demo-Installation: nie echte Shops ansprechen
         $ch = curl_init($this->siteUrl . '/wp-json/nahtlos/v1/' . ltrim($pfad, '/'));
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -574,6 +579,7 @@ class WooCommerceClient
         $query['consumer_secret'] = $this->secret;
         $url = $this->baseUrl . $pfad . '?' . http_build_query($query);
 
+        Demo::keineVerbindung('dem Online-Shop');   // Demo-Installation: nie echte Shops ansprechen
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,

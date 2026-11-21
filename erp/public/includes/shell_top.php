@@ -427,7 +427,12 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
         </aside>
         <script src="<?= BASE_PATH ?>/js/shell.js"></script>
         <main class="erp-main">
-            <?php if ($einrichtungOffen && basename(dirname($_SERVER['SCRIPT_FILENAME'])) !== 'einrichtung'): ?>
+            <?php if (Demo::aktiv()): ?>
+                <div style="margin-bottom:10px;padding:6px 12px;font-size:12px;border-left:3px solid #d97706;background:#fffbeb;color:#92400e">
+                    🎭 <?= htmlspecialchars(Demo::HINWEIS) ?>
+                </div>
+            <?php endif; ?>
+            <?php if ($einrichtungOffen && !Demo::aktiv() && basename(dirname($_SERVER['SCRIPT_FILENAME'])) !== 'einrichtung'): ?>
                 <div style="margin-bottom:10px;padding:6px 12px;font-size:12px;border-left:3px solid #2563eb;background:var(--color-surface,#fff)">
                     Einrichtung: noch <?= $einrichtungOffen ?> Schritt<?= $einrichtungOffen > 1 ? 'e' : '' ?> offen.
                     <a href="<?= BASE_PATH ?>/einrichtung/index.php">← zum Assistenten</a>

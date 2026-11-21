@@ -2,7 +2,7 @@
 
 ## Aktuell / Steuerung
 - [💶 Zahlungseingänge](project_zahlungseingaenge.md) — ✅ 2026-11-21 gebaut (Verkauf, nutzt zahlung_buchen.php, Rückgängig = 8 s Verzögerung), mit 1.0.28; Babsi-Klicktest + Live offen
-- [🎭 Demo-DB + Teaser-Webseite](project_demo_datenbank.md) — geplant nach Zahlungseingängen: Generator relativ zu heute, Reset 0:00, Demo-Schalter; Webseite mit Screenshots daraus
+- [🎭 Demo-DB + Teaser-Webseite](project_demo_datenbank.md) — Garnstube Muster GmbH; ✅ Schritt 1 Demo-Schalter + lokal localhost/nahtlos-demo (2026-11-21); nächst: Artikel/Kunden, dann Bewegungen, Reset-Cron, Webseite
 - [📒 Katalog-Werkstatt](project_katalog_werkstatt.md) — ✅ E:\Laser\Katalog-Werkstatt (start.bat), Formgruppen W/A/Q/H/V/E; ✅ 2026-11-18 Indra-Artikelnummern LIVE umnummeriert (1.0.25, 171 Artikel), Werkstatt-Codes = ERP
 - [🧶 Lang-Yarns-Import](project_lang_import.md) — ✅ 2026-11-16 gebaut (bdd367a, 0dd1a24, Migr. 254+255 → nächste 256; Fix Varianten …
 - [🧬 Varianten-Muster + Vater-Bestand](project_varianten_muster.md) — ✅ 2026-11-16 gebaut (86d79e9, c4f4afc): Bestand an Variante übergeben, Massenaktion …
@@ -59,6 +59,7 @@
 - [Feedback: Test-Isolation](feedback_test_isolation.md) — Testskripte nie ohne Cleanup gegen echte Daten
 - [Feedback: Scope ohne validierten Bedarf](feedback_scope_ohne_bedarf.md) — erst Bedarf prüfen
 - [📱 Tablet per WireGuard ans Live-ERP](project_tablet_wireguard.md) — Idee Jacky 2026-11-15, zwischendurch probieren (Android-App, Anhang …
+- [Feedback: Demo + Webseite nachziehen](feedback_demo_nachziehen.md) — bei neuen Seiten/Funktionen Demo-Generator + Teaser-Webseite anpassen, bei Kleinigkeiten nicht
 - [Feedback: Dedup Intra-Gruppe prüfen](feedback_dedup_intra_gruppe_pruefen.md) — gegen autoritative Quelle prüfen
 
 ## Referenzen

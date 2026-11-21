@@ -3,6 +3,7 @@ require_once __DIR__ . '/Firmenlogo.php';
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/Demo.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -133,6 +134,13 @@ class Mailer
     ): void {
         $mailAktiv    = ($this->config['mail_aktiv']       ?? '0') === '1';
         $testAdresse  =  trim($this->config['mail_test_adresse'] ?? '');
+
+        // Demo-Installation: nie eine Mail verschicken, aber so tun, als wäre sie raus
+        // (die Oberfläche zeigt „Mail gesendet“, damit man den Ablauf vorführen kann)
+        if (Demo::aktiv()) {
+            error_log("[Mailer] Demo – Mail nicht gesendet: An={$empfaenger} Betreff={$betreff}");
+            return;
+        }
 
         if (!$erzwinge && !$mailAktiv) {
             if ($testAdresse) {

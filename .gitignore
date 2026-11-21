@@ -1,6 +1,7 @@
 # Konfigurationen (enthalten Passwörter / Keys!)
 erp/config/database.php
 erp/config/encryption.php
+erp/config/demo.php
 
 # PHP Dependencies (kommt später)
 vendor/

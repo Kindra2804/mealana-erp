@@ -3,6 +3,7 @@ require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Zugriffsregeln.php';
 require_once __DIR__ . '/Lizenz.php';
 require_once __DIR__ . '/logger.php';
+require_once __DIR__ . '/Demo.php';
 
 /**
  * Auth – Session-basierte Authentifizierung und Berechtigungsprüfung
@@ -260,6 +261,23 @@ class Auth
                    . '<div style="background:#fff;border-radius:12px;padding:32px 36px;max-width:420px;text-align:center">'
                    . '<div style="font-size:32px">🔄</div><h2>Update läuft</h2><p style="color:#64748b">Das ERP wird gerade aktualisiert. '
                    . 'Die Seite lädt sich alle 30 Sekunden neu und geht weiter, sobald das Update fertig ist.</p></div></body></html>';
+            }
+            exit;
+        }
+
+        // Demo-Installation: Bereiche, die die Demo kaputt machen oder nach außen wirken, sind gesperrt
+        if (Demo::seiteGesperrt($verzeichnis, $datei)) {
+            http_response_code(403);
+            if (Zugriffsregeln::istJsonEndpunkt($verzeichnis, $datei) || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+                header('Content-Type: application/json');
+                echo json_encode(['erfolg' => false, 'fehler' => 'In der Demo-Version nicht möglich.']);
+            } else {
+                echo '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Demo-Version</title></head>'
+                   . '<body style="font-family:sans-serif;background:#1e2a38;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">'
+                   . '<div style="background:#fff;border-radius:12px;padding:32px 36px;max-width:440px;text-align:center">'
+                   . '<div style="font-size:32px">🎭</div><h2>In der Demo gesperrt</h2><p style="color:#64748b">Dieser Bereich ist in der '
+                   . 'Demo-Version abgeschaltet (Benutzer, Updates, Lizenz, Importe und Einstellungen speichern).</p>'
+                   . '<p><a href="javascript:history.back()">← zurück</a></p></div></body></html>';
             }
             exit;
         }

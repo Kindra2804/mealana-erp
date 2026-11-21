@@ -1,0 +1,4 @@
+{
+    "daten": "{\"format\":1,\"typ\":\"lizenz\",\"ausgestellt_am\":\"2026-11-21\",\"lizenz_nr\":\"L-DEMO-0001\",\"firma\":\"Garnstube Muster GmbH\",\"uid\":\"ATU12345678\",\"steuernummer\":\"\",\"module\":{\"grundmodul\":1,\"kasse\":2,\"shop\":3,\"gutscheine\":1,\"plc\":1,\"lagerplaetze\":1,\"partner\":1,\"haendler\":1,\"dropshipping\":1,\"buchhaltung\":1,\"konfigurator\":1,\"kundenanzeige\":1,\"paperless\":1},\"wartung_bis\":\"2035-12-31\",\"hauslizenz\":false}",
+    "signatur": "MEQCIDsdkI2vWE6WJ9H8hkep/DbVGMfvOI8I4w5inWf3wqJ3AiBM/fx54eQi/OIGL4KrY3DsmdyTBGk5U/JrB03Ebo8Iqg=="
+}

@@ -16,7 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['nach_login']);
         // Superadmin: Einrichtungs-Assistent nach jeder Anmeldung, solange (je nach Lizenz) noch etwas offen ist
         require_once __DIR__ . '/../src/modules/einrichtung/OnboardingService.php';
-        $ziel = ($_SESSION['benutzer']['rolle_rang'] ?? 0) >= 100 && OnboardingService::anzahlOffen() > 0 ? '/einrichtung/index.php' : '/start.php';
+        $ziel = ($_SESSION['benutzer']['rolle_rang'] ?? 0) >= 100 && OnboardingService::anzahlOffen() > 0 && !Demo::aktiv()
+            ? '/einrichtung/index.php' : '/start.php';
         // Vorher aufgerufene Seite (Auth::check), wenn nicht der Einrichtungs-Assistent Vorrang hat
         if ($ziel === '/start.php' && $nachLogin && str_starts_with($nachLogin, BASE_PATH . '/')) {
             header('Location: ' . $nachLogin);
@@ -129,17 +130,27 @@ unset($_SESSION['fehler']);
             <div class="fehler"><?= htmlspecialchars($fehler) ?></div>
         <?php endif; ?>
 
+        <?php $demo = Demo::aktiv() ? Demo::konfig() : null; ?>
+        <?php if ($demo): ?>
+            <div style="background:#fffbeb;border-left:3px solid #d97706;padding:10px 12px;border-radius:4px;font-size:13px;color:#92400e;margin-bottom:18px;line-height:1.45">
+                🎭 <strong>Demo-Version</strong> – einfach auf „Anmelden“ klicken.<br>
+                Alle Daten sind erfunden und werden jede Nacht zurückgesetzt.
+            </div>
+        <?php endif; ?>
+
         <form method="POST" action="<?= BASE_PATH ?>/login.php">
             <label for="username">Benutzername</label>
-            <input type="text" id="username" name="username" autofocus autocomplete="username">
+            <input type="text" id="username" name="username" autofocus autocomplete="username" value="<?= htmlspecialchars($demo['login'] ?? '') ?>">
 
             <label for="passwort">Passwort</label>
-            <input type="password" id="passwort" name="passwort" autocomplete="current-password">
+            <input type="password" id="passwort" name="passwort" autocomplete="current-password" value="<?= htmlspecialchars($demo['passwort'] ?? '') ?>">
 
             <button type="submit">Anmelden</button>
         </form>
+        <?php if (!$demo): ?>
         <a href="<?= BASE_PATH ?>/passwort_vergessen.php" style="display:block;text-align:center;margin-top:16px;font-size:13px;color:#4a7cb5;text-decoration:none">Passwort vergessen?</a>
         <a href="<?= BASE_PATH ?>/superadmin_uebergabe.php" style="display:block;text-align:center;margin-top:6px;font-size:11px;color:#9aa5b1;text-decoration:none">Superadmin-Übergabe (mit Schlüssel von NAHTLOS)</a>
+        <?php endif; ?>
     </div>
 </body>
 </html>

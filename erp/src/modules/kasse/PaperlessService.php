@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../core/Firmenlogo.php';
 
 require_once __DIR__ . '/../../core/Database.php';
+require_once __DIR__ . '/../../core/Demo.php';
 require_once __DIR__ . '/../../core/Lizenz.php';
 require_once __DIR__ . '/BonA4Renderer.php';
 
@@ -135,6 +136,7 @@ class PaperlessService
 
     private static function anfrage(string $aktion, array $query, ?array $post, string $url, string $schluessel): array
     {
+        if (Demo::aktiv()) return ['erfolg' => false, 'fehler' => 'Demo-Version: Belegseite nicht verbunden.'];
         if ($url === '' || $schluessel === '') return ['erfolg' => false, 'fehler' => 'Adresse oder API-Schlüssel fehlt.'];
         $ch = curl_init($url . '/api.php?' . http_build_query(['aktion' => $aktion] + $query));
         curl_setopt_array($ch, [
