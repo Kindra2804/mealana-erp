@@ -565,6 +565,12 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-21 (Abend): Babsis Artikel-Ausschlussliste + neues Benennungsschema (Planung, noch kein Code)
+- Babsis Liste ausgewertet → `import/Babsi_Auswertung_2026-11-21/` (11.591 von 20.718 MeaLana-Artikeln, 117 Umbenennungen, Prüfliste beantwortet). Babsis Excel-Datei hat 6.936 GTINs zerstört (wissenschaftliche Schreibweise), darum nur Schlüssel + neue Nummern daraus verwenden, Daten aus dem JTL-Original.
+- Neues Schema (Babsi/Jacky): Artikelnummer `Herstellerkürzel-Vater-Kind` (Kind 4-stellig, z. B. LN-113-0001), Name `Vater Farbe [Art] (Nummer)`. Art (Uni/Mix) kommt über Unter-Gruppen der Farb-Achse.
+- Betrifft Kind-Generator (`public/artikel/varkombi_generator.php`) und JTL-Importer. Vorschlag: JTL-Nummer/kArtikel im ERP speichern statt in JTL umbenennen (Lagerabgleich, Archiv-Import, Kassen-Scan).
+- Offene Fragen + Reihenfolge: Memory `project_artikel_benennung.md`. **Hier am 2026-11-22 weitermachen.**
+
 ## Update 2026-11-12 (Abend): Kuvert-Etikett, Merkmale neu, Preisschilder-Werkstatt, Paket 1.0.9
 
 Details in `.claude/memory/project_kuvert_etikett.md`, `project_preisschilder.md`. Migrationen **233–235**, nächste **236**.
