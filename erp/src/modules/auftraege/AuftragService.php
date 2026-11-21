@@ -816,6 +816,47 @@ class AuftragService
         'bar' => 'bar', 'karte' => 'karte', 'nachnahme' => 'nachnahme', 'gutschein' => 'gutschein',
     ];
 
+    /** Vorkasse: Erinnerung nach 14 Tagen, Storno nach 30 (cron/mahnwesen.php). */
+    private const VORKASSE_FRIST_TAGE = 14;
+    private const VORKASSE_STORNO_TAGE = 30;
+
+    /**
+     * Liste für Verkauf → Zahlungseingänge: offene Aufträge mit Fälligkeit, Tagen bis/seit
+     * Fälligkeit und vorgeschlagenem Zahlungsweg. Fällig = älteste offene Rechnung, ohne
+     * Rechnung Bestelldatum + 14 Tage. Sortiert nach Fälligkeit (älteste zuerst).
+     */
+    public function getOffeneZahlungseingaenge(): array
+    {
+        $heute = new DateTimeImmutable('today');
+        $liste = [];
+        foreach ($this->repo->findOffeneZahlungseingaenge() as $a) {
+            $bestellt = new DateTimeImmutable(substr($a['erstellt_am'], 0, 10));
+            $faellig  = $a['rechnung_faellig']
+                ? new DateTimeImmutable($a['rechnung_faellig'])
+                : ($a['rechnung_datum']
+                    ? (new DateTimeImmutable($a['rechnung_datum']))->modify('+14 days')
+                    : $bestellt->modify('+' . self::VORKASSE_FRIST_TAGE . ' days'));
+            $a['faellig_am']    = $faellig->format('Y-m-d');
+            $a['faellig_tage']  = (int)$heute->diff($faellig)->format('%r%a'); // < 0 = überfällig
+            $a['bestellt_tage'] = (int)$bestellt->diff($heute)->format('%a');
+            $a['storno_in']     = $a['zahlungsart'] === 'vorkasse' && !$a['rechnung_nr']
+                ? self::VORKASSE_STORNO_TAGE - $a['bestellt_tage'] : null;
+            $a['weg_vorschlag'] = match ($a['zahlungsart']) {
+                'paypal'    => 'paypal',
+                'nachnahme' => 'nachnahme',
+                default     => 'ueberweisung',
+            };
+            $liste[] = $a;
+        }
+        usort($liste, fn($x, $y) => [$x['faellig_am'], $x['id']] <=> [$y['faellig_am'], $y['id']]);
+        return $liste;
+    }
+
+    public function getZahlungenHeuteVon(int $benutzerId): array
+    {
+        return $this->repo->findZahlungenHeuteVon($benutzerId);
+    }
+
     public function bucheZahlung(int $auftragId, float $betrag, string $buchungsdatum, ?string $notiz, ?string $zahlungsweg = null, ?int $kassenBonId = null): array
     {
         if ($betrag <= 0) {

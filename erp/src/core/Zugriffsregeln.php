@@ -343,6 +343,7 @@ final class Zugriffsregeln
             'bearbeiten.php'            => 'auftraege.bearbeiten',
             'aktualisieren.php'         => 'auftraege.bearbeiten',
             'zahlung_buchen.php'        => 'auftraege.bearbeiten',
+            'zahlungseingaenge.php'     => 'auftraege.bearbeiten',
             'versandart_aendern.php'    => 'auftraege.bearbeiten',
             'abholort_setzen.php'       => 'auftraege.bearbeiten',
             'zahlungsart_aendern.php'   => 'auftraege.bearbeiten',

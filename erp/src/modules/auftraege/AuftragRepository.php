@@ -665,6 +665,60 @@ class AuftragRepository
         return (int)$this->db->lastInsertId();
     }
 
+    /**
+     * Zahlungseingänge (Kontencheck, 2026-11-21): alle Aufträge, bei denen noch Geld per Bank,
+     * PayPal oder Nachnahme erwartet wird. Offen wie in AuftragService::setzeZahlungsstatus():
+     * Auftragsbetrag + offene Mahngebühren − Zahlungen. Kasse/Archiv/Bar/Karte/Gutschein nicht.
+     */
+    public function findOffeneZahlungseingaenge(): array
+    {
+        $rows = $this->db->query("
+            SELECT a.id, a.auftrag_nr, a.kanal, a.shop_id, s.name AS shop_name, s.nr_kuerzel,
+                   a.zahlungsart, a.zahlungsstatus, a.lieferstatus, a.lieferart, a.bruttobetrag,
+                   a.erstellt_am, a.kunden_snapshot, k.kundennummer,
+                   (SELECT COALESCE(SUM(z.betrag), 0) FROM auftrag_zahlungen z WHERE z.auftrag_id = a.id) AS bezahlt,
+                   (SELECT COALESCE(SUM(m.gebuehr), 0) FROM mahnungen m
+                     WHERE m.auftrag_id = a.id AND m.status = 'versendet' AND m.gebuehr_erlassen_am IS NULL) AS gebuehren,
+                   (SELECT MIN(r.faellig_am) FROM rechnungen r WHERE r.auftrag_id = a.id AND r.storniert = 0) AS rechnung_faellig,
+                   (SELECT MIN(DATE(r.erstellt_am)) FROM rechnungen r WHERE r.auftrag_id = a.id AND r.storniert = 0) AS rechnung_datum,
+                   (SELECT GROUP_CONCAT(r.rechnung_nr ORDER BY r.id SEPARATOR ', ') FROM rechnungen r
+                     WHERE r.auftrag_id = a.id AND r.storniert = 0) AS rechnung_nr,
+                   (SELECT m.typ FROM mahnungen m WHERE m.auftrag_id = a.id AND m.status = 'versendet'
+                     ORDER BY m.id DESC LIMIT 1) AS letzte_mahnung
+            FROM auftraege a
+            LEFT JOIN shops s  ON s.id = a.shop_id
+            LEFT JOIN kunden k ON k.id = a.kunden_id
+            WHERE a.zahlungsstatus IN ('ausstehend', 'teilbezahlt')
+              AND a.lieferstatus <> 'storniert'
+              AND a.kanal NOT IN ('kasse', 'jtl_archiv')
+              AND a.zahlungsart IN ('vorkasse', 'rechnung', 'paypal', 'nachnahme', 'gemischt')
+            ORDER BY a.erstellt_am
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $erg = [];
+        foreach ($rows as $row) {
+            $row['offen'] = round((float)$row['bruttobetrag'] + (float)$row['gebuehren'] - (float)$row['bezahlt'], 2);
+            if ($row['offen'] <= 0.004) continue;
+            $row['kunden_name'] = $this->kundenNameAusSnapshot($row);
+            unset($row['kunden_snapshot']);
+            $erg[] = $row;
+        }
+        return $erg;
+    }
+
+    /** Positive Zahlungen, die ein Benutzer heute erfasst hat (ohne Kasse) – für „Heute gebucht“. */
+    public function findZahlungenHeuteVon(int $benutzerId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT z.id, z.betrag, z.buchungsdatum, z.zahlungsweg, z.erfasst_am, a.id AS auftrag_id, a.auftrag_nr
+            FROM auftrag_zahlungen z JOIN auftraege a ON a.id = z.auftrag_id
+            WHERE z.erfasst_von = ? AND z.erfasst_am >= CURDATE() AND z.betrag > 0 AND z.kassen_bon_id IS NULL
+            ORDER BY z.id
+        ");
+        $stmt->execute([$benutzerId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getSummeZahlungen(int $auftragId): float
     {
         $stmt = $this->db->prepare("SELECT COALESCE(SUM(betrag), 0) FROM auftrag_zahlungen WHERE auftrag_id = :id");

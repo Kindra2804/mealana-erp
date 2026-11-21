@@ -206,6 +206,29 @@ Solche Anträge sammelt **Verkauf → Widerrufe** (Zähler im Menü und Hinweis 
 
 ---
 
+## Zahlungseingänge (Kontencheck)
+
+**Verkauf → 💶 Zahlungseingänge** (die Zahl im Menü = Aufträge mit offenem Betrag): alle Aufträge, bei denen noch Geld per Bank, PayPal oder Nachnahme erwartet wird. Zum Einbuchen direkt neben dem Kontoauszug, ohne jeden Auftrag einzeln zu öffnen. Das Zahlungsfeld im Auftrag bleibt wie gehabt.
+
+1. Kontoauszug (Sparkasse / PayPal) daneben öffnen.
+2. Ins Suchfeld Auftrags- oder Rechnungsnummer, Namen **oder den Betrag** tippen (z. B. `47,90`) – **Enter** springt in die erste Zeile.
+3. Betrag (= offener Betrag), Datum (= heute) und „Eingang auf“ sind vorausgefüllt → **Enter** bucht und springt zur nächsten Zeile.
+4. 8 Sekunden lang ist **↩ Rückgängig** möglich. Erst danach wird wirklich gebucht – mit Zahlungsmail und Shop-Status wie im Auftrag.
+5. Am Ende „Heute von dir gebucht“ mit der Summe am Kontoauszug vergleichen.
+
+- Kleinerer Betrag = **Teilzahlung**, der Rest bleibt in der Liste. Größerer Betrag → Rückfrage „Überzahlung“.
+- Auszug von gestern? Oben **Buchungsdatum vorbelegen** ändern (gilt für alle Zeilen, deren Datum man nicht selbst geändert hat).
+- **Fällig** = älteste offene Rechnung; ohne Rechnung Bestelldatum + 14 Tage (wie die Vorkasse-Erinnerung). Unter dem Datum: letzte Mahnung, bei Vorkasse „Auto-Storno in x T.“.
+- Sortierung: Fälligkeit, Bestellung, Zahlart oder höchster Betrag. Chips filtern nach Zahlart oder „überfällig“.
+- Tasten: ⏎ buchen, ↑ ↓ Zeile wechseln, Esc zurück zur Suche.
+- Nicht in der Liste: Kassen-Aufträge, Bar/Karte bei Abholung, PayPal-Bestellungen aus dem Shop (kommen bezahlt an), JTL-Archiv, stornierte Aufträge.
+
+> Während der 8 Sekunden die Seite nicht schließen – sonst wird diese Zahlung nicht gebucht (der Browser warnt).
+
+> Recht: `auftraege.bearbeiten` (wie „Zahlung buchen“ im Auftrag).
+
+---
+
 ## Mahnwesen
 
 Der Cronjob `cron/mahnwesen.php` läuft täglich.

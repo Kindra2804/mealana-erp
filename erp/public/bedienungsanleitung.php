@@ -206,6 +206,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#packplatz-rueck" class="sub">↳ Rücklagerungen</a>
             <a href="#einkauf">Einkauf & Bestellungen</a>
             <a href="#verkauf">Aufträge & Verkauf</a>
+            <a href="#zahlungseingaenge" class="sub">↳ Zahlungseingänge (Kontencheck)</a>
             <a href="#mahnwesen" class="sub">↳ Mahnwesen</a>
             <a href="#haendler" class="sub">↳ Händler-Außenlager</a>
             <a href="#dropshipping" class="sub">↳ Dropshipping (Strecke)</a>
@@ -628,6 +629,16 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Die Mail an den Kunden schickt der Shop; das ERP schickt dabei keine eigene Storno-Mail</div></div>
             <p><strong>Ohne Zuordnung:</strong> Widerruft jemand ohne Kundenkonto mit falscher/fehlender Bestellnummer oder anderer E-Mail, findet der Shop keine Bestellung. Solche Anträge stehen unter <strong>Verkauf → Widerrufe</strong> (Zähler im Menü, Hinweis im Dashboard) mit Vorschlägen passender Aufträge (E-Mail, Name, Nummer). <strong>Zuordnen</strong> → Auftrag wird gesperrt, dort bestätigen/ablehnen · <strong>Ablehnen</strong> mit Grund, wenn es keine Shop-Bestellung ist. Darunter: alle Aufträge mit offener Entscheidung.</p>
             <div class="ba-hint">💡 Retouren bereits versendeter Ware gehen an der Kasse weiterhin. Germanized-Einstellungen: WooCommerce → Einstellungen → Germanized → Allgemein → Widerrufsbutton. Benötigt das Plugin NAHTLOS Connector im Shop (Entscheiden ab 1.5.0, ohne Zuordnung ab 1.6.0).</div>
+
+            <h3 id="zahlungseingaenge">Zahlungseingänge (Kontencheck) <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Alle Aufträge, bei denen noch Geld per Bank, PayPal oder Nachnahme erwartet wird, in einer Liste — zum Einbuchen direkt neben dem Kontoauszug, ohne jeden Auftrag einzeln zu öffnen. Das Zahlungsfeld im Auftrag bleibt wie gehabt.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Verkauf → <strong>💶 Zahlungseingänge</strong> (Zahl im Menü = offene Aufträge), Kontoauszug daneben öffnen</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Ins Suchfeld Auftrags- oder Rechnungsnummer, Namen <strong>oder den Betrag</strong> tippen (z.B. <code>47,90</code>) → <strong>Enter</strong> springt in die erste Zeile</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div>Betrag (= offener Betrag), Datum (= heute) und „Eingang auf“ sind vorausgefüllt → <strong>Enter</strong> bucht und springt zur nächsten Zeile</div></div>
+            <div class="ba-step"><div class="ba-step-nr">4</div><div>8 Sekunden lang ist <strong>↩ Rückgängig</strong> möglich. Erst danach wird wirklich gebucht — mit Zahlungsmail und Shop-Status wie im Auftrag</div></div>
+            <div class="ba-step"><div class="ba-step-nr">5</div><div>Am Ende „Heute von dir gebucht“ mit der Summe am Kontoauszug vergleichen</div></div>
+            <div class="ba-hint">💡 Kleinerer Betrag = Teilzahlung, der Rest bleibt in der Liste. Größerer Betrag → Rückfrage „Überzahlung“. Auszug von gestern? Oben „Buchungsdatum vorbelegen“ ändern. Fällig = älteste Rechnung, ohne Rechnung Bestelldatum + 14 Tage. Sortierung nach Fälligkeit, Bestellung, Zahlart oder Betrag; Chips filtern nach Zahlart oder „überfällig“. Tasten: ↑ ↓ Zeile wechseln, Esc zurück zur Suche.</div>
+            <div class="ba-warn">⚠ Nicht in der Liste: Kassen-Aufträge, Bar/Karte bei Abholung, PayPal-Bestellungen aus dem Shop (kommen bezahlt an), JTL-Archiv. Während der 8 Sekunden die Seite nicht schließen — sonst wird diese Zahlung nicht gebucht (der Browser warnt).</div>
 
             <h3 id="mahnwesen">Mahnwesen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Der Cronjob läuft täglich.</p>

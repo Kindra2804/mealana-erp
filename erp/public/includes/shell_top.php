@@ -62,6 +62,13 @@ $sidebarItems = match ($activeModule ?? '') {
         ['icon' => '➕', 'label' => 'Neuer Auftrag',      'href' => BASE_PATH . '/auftraege/neu.php'],
         ['icon' => '📁', 'label' => 'Dokumentenarchiv',   'href' => BASE_PATH . '/dokumente/index.php'],
         ['icon' => '📊', 'label' => 'Statistik',          'href' => BASE_PATH . '/auftraege/statistik.php'],
+        // Badge = Aufträge mit offenem Zahlungseingang (Bedingung wie AuftragRepository::findOffeneZahlungseingaenge)
+        ['icon' => '💶', 'label' => 'Zahlungseingänge',   'href' => BASE_PATH . '/auftraege/zahlungseingaenge.php', 'recht' => 'auftraege.bearbeiten',
+         'badge' => ($activeModule ?? '') === 'verkauf'
+             ? (int)Database::getInstance()->query("SELECT COUNT(*) FROM auftraege
+                    WHERE zahlungsstatus IN ('ausstehend','teilbezahlt') AND lieferstatus <> 'storniert'
+                      AND kanal NOT IN ('kasse','jtl_archiv') AND zahlungsart IN ('vorkasse','rechnung','paypal','nachnahme','gemischt')")->fetchColumn()
+             : 0],
         // Badge = Mahnungen zur Freigabe (Abfrage nur, wenn das Verkauf-Menü sichtbar ist)
         ['icon' => '📨', 'label' => 'Mahnwesen',          'href' => BASE_PATH . '/auftraege/mahnwesen.php',
          'badge' => ($activeModule ?? '') === 'verkauf'
