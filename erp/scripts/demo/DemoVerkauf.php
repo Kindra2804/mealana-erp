@@ -71,12 +71,12 @@ class DemoVerkauf
      * Logbuch (Laufband unten + Admin → Aktivitäten) für die letzten 3 Tage so füllen,
      * wie es im echten Betrieb entsteht. Z-Bon-Einträge auf die Ladenschluss-Zeit setzen.
      */
-    private function logbuch(): void
+    private function logbuch(?string $seit = null): void
     {
         $db = $this->b->db;
         $db->exec("UPDATE aktivitaeten a JOIN kassen_abschluesse ka ON ka.id = a.referenz_id
                    SET a.erstellt_am = CONCAT(ka.datum, ' 18:35:00') WHERE a.aktion = 'kasse.z_bon'");
-        $seit = date('Y-m-d', strtotime('-3 days'));
+        $seit ??= date('Y-m-d', strtotime('-3 days'));
         $eintrag = fn(int $benutzer, string $aktion, string $tabelle, int $id, array $details, string $zeit) => $this->b->ins('aktivitaeten', [
             'benutzer_id' => $benutzer, 'aktion' => $aktion, 'referenz_tabelle' => $tabelle, 'referenz_id' => $id,
             'details' => json_encode($details, JSON_UNESCAPED_UNICODE), 'stufe' => 'info', 'erstellt_am' => $zeit]);
@@ -96,6 +96,60 @@ class DemoVerkauf
         $st->execute([$seit]);
         foreach ($st as $r) $eintrag($this->buero, 'auftraege.zahlung_buchen', 'auftraege', (int)$r['auftrag_id'],
             ['betrag' => (float)$r['betrag'], 'status' => 'bezahlt'], $r['erfasst_am']);
+    }
+
+    /**
+     * Laufender Tag (Demo::frischHalten): Bestellungen und Kassenbons zwischen $von und $bis
+     * nachholen, wie sie in dieser Zeit entstanden wären. Gleiche Regeln wie der Jahresverlauf,
+     * nur ohne Nachbestellung/Wareneingang (die laufen beim nächtlichen Neuaufbau).
+     * @return int Anzahl neuer Belege
+     */
+    public function nachholen(string $von, string $bis): int
+    {
+        $db = $this->b->db;
+        foreach ($db->query("SELECT artikel_id, lager_id, charge, bestand FROM lagerbestand ORDER BY id") as $r) {
+            $this->bestand[(int)$r['artikel_id']][(int)$r['lager_id']][] = [$r['charge'], (float)$r['bestand']];
+        }
+        $jahr = (int)date('Y');
+        $this->ids['bon'][$jahr] = (int)$db->query("SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(bon_nr, '-', -1) AS UNSIGNED)), 0)
+            FROM kassen_bons WHERE typ IN ('verkauf', 'storno') AND YEAR(erstellt_am) = $jahr")->fetchColumn();
+        $this->shopNr = (int)$db->query("SELECT COALESCE(MAX(kanal_auftrag_id), 1000) FROM auftraege")->fetchColumn();
+        $this->widerrufBeantragt = 2;   // keine weiteren offenen Widerrufe untertags
+
+        $t0 = strtotime($von); $t1 = strtotime($bis);
+        if ($t1 <= $t0) return 0;
+        $monat = (int)date('n', $t1);
+        $wt = (int)date('N', $t1);
+        $f = self::BESTELLT[$monat] * 1.2;   // Saison × Wachstum (Ende des Jahresverlaufs)
+        $zeit = fn(int $a, int $b) => date('Y-m-d H:i:s', mt_rand($a, $b));
+
+        $ereignisse = [];
+        for ($i = $this->poisson(5.5 * $f * ($t1 - $t0) / 86400); $i > 0; $i--) $ereignisse[] = ['online', $zeit($t0, $t1)];
+        if ($wt <= 6) {   // Laden offen: Mo–Fr 9–18, Sa 9–13
+            $auf = strtotime(date('Y-m-d 09:00:00', $t1)); $zu = strtotime(date('Y-m-d', $t1) . ($wt === 6 ? ' 13:00:00' : ' 18:00:00'));
+            $a = max($t0, $auf); $e = min($t1, $zu);
+            if ($e > $a) for ($i = $this->poisson(($wt === 6 ? 17 : 11) * $f * ($e - $a) / ($zu - $auf)); $i > 0; $i--) $ereignisse[] = ['kasse', $zeit($a, $e)];
+        }
+        if ($wt <= 5 && $this->b->chance(30 * ($t1 - $t0) / 86400 * 2)) $ereignisse[] = ['manuell', $zeit($t0, $t1)];
+        usort($ereignisse, fn($x, $y) => strcmp($x[1], $y[1]));
+
+        $db->beginTransaction();
+        try {
+            foreach ($ereignisse as $e) {
+                match ($e[0]) {
+                    'online'  => $this->onlineAuftrag($e[1], $monat),
+                    'kasse'   => $this->kassenbon($e[1], $monat),
+                    'manuell' => $this->rechnungsAuftrag($e[1], $monat, $this->b->eins($this->kundenLaden ?: $this->kundenOnline), false),
+                };
+            }
+            $this->bestandSchreiben();
+            $this->logbuch($von);
+            $db->commit();
+        } catch (Throwable $ex) {
+            $db->rollBack();
+            throw $ex;
+        }
+        return count($ereignisse);
     }
 
     // ── Ein Tag ───────────────────────────────────────────────────────────

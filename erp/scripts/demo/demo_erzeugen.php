@@ -6,7 +6,7 @@
  *
  * Löscht ALLE Tabellen der konfigurierten Datenbank, spielt Grundschema + Migrationen ein und
  * füllt sie mit erfundenen Daten der „Garnstube Muster GmbH“ (Datum immer relativ zu heute).
- * Läuft jede Nacht um 0:00 per Cron/Aufgabenplanung.
+ * Startet von selbst beim ersten Aufruf eines neuen Tages (Demo::frischHalten), kein Cronjob nötig.
  *
  * Neue Seite oder Funktion im ERP? Dann hier passende Demo-Daten ergänzen
  * (Regel siehe Memory „feedback-demo-nachziehen“).
@@ -27,6 +27,7 @@ require_once __DIR__ . '/DemoStammdaten.php';
 require_once __DIR__ . '/DemoArtikel.php';
 require_once __DIR__ . '/DemoKunden.php';
 require_once __DIR__ . '/DemoVerkauf.php';
+require_once __DIR__ . '/DemoStand.php';
 
 $start = microtime(true);
 // Fester Startwert: jeden Tag dieselbe „Geschichte“, nur zeitlich mitgewandert
@@ -37,4 +38,5 @@ $b->neuAufsetzen();
 (new DemoArtikel($b))->erzeugen();
 (new DemoKunden($b))->erzeugen();
 (new DemoVerkauf($b))->erzeugen();
+DemoStand::schreiben($b);   // ab jetzt holt Demo::frischHalten() den Tag beim Aufruf nach
 $b->log(sprintf('Fertig in %.1f s', microtime(true) - $start));

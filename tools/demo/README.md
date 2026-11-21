@@ -37,6 +37,20 @@ Löscht alle Tabellen, spielt `baseline_schema.sql` + Migrationen ein, leert Upl
 füllt alles neu (Dauer ca. 1 Minute). Bricht ab, wenn `config/demo.php` fehlt. Datum immer relativ zu heute, fester
 Zufalls-Startwert (jeden Tag dieselbe Geschichte).
 
+**Kein Cronjob nötig** (`Demo::frischHalten`, aus `config/bootstrap.php`): Der erste Seitenaufruf eines
+neuen Tages startet den Neuaufbau im Hintergrund (`php_cli` aus `config/demo.php`) und zeigt ca. 40 s
+„Demo wird vorbereitet“; danach holt jeder Aufruf höchstens alle 10 Minuten die Bestellungen und
+Kassenbons seit dem letzten Stand nach (`storage/demo_stand.json`, `demo_cache.json`). Scheitert ein
+Neuaufbau, frühestens nach 15 Minuten erneut (bis dahin alte Daten). Manuell: `demo/demo_cron.php?k=…`.
+
+## Webspace nahtlos.indranet.at (World4You)
+
+    python tools/demo/webspace_aktualisieren.py              Code hochladen
+    python tools/demo/webspace_aktualisieren.py --erzeugen   … und Daten sofort neu erzeugen
+
+PHP darf dort nur in `web/` lesen (open_basedir) → alles liegt in `web/nahtlos/`, `erp/` per .htaccess
+gesperrt, `demo` → `erp/public`. CLI-PHP: `/opt/alt/php85/usr/bin/php` (Standard-CLI ist 7.2).
+
 **Neue Seite oder Funktion im ERP → hier passende Demo-Daten ergänzen** (und Teaser-Webseite).
 
 ## Demo-Lizenz neu ausstellen (z.B. neues Modul)

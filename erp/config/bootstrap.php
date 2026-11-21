@@ -14,3 +14,5 @@ require_once __DIR__ . '/../src/core/Demo.php';
 if (Demo::aktiv() && session_status() === PHP_SESSION_NONE) {
     session_name('NAHTLOSDEMO');
 }
+// Demo ohne Cronjob: neuer Tag → Neuaufbau, sonst Belege seit dem letzten Aufruf nachholen
+Demo::frischHalten();
