@@ -2,7 +2,7 @@
 
 ## Aktuell / Steuerung
 - [💶 Zahlungseingänge](project_zahlungseingaenge.md) — ✅ 2026-11-21 gebaut (Verkauf, nutzt zahlung_buchen.php, Rückgängig = 8 s Verzögerung), mit 1.0.28; Babsi-Klicktest + Live offen
-- [🎭 Demo-DB + Teaser-Webseite](project_demo_datenbank.md) — Garnstube Muster GmbH; ✅ Schritte 1–3 (Schalter, Sortiment/Kunden, 12 Monate Verlauf) lokal + LIVE https://nahtlos.indranet.at/demo/ (2026-11-21); offen: Cron im W4Y-Panel (Jacky), stündliche Bestellung, Teaser-Webseite
+- [🎭 Demo-DB + Teaser-Webseite](project_demo_datenbank.md) — Garnstube Muster GmbH; ✅ Schritte 1–3 (Schalter, Sortiment/Kunden, 12 Monate Verlauf) lokal + LIVE https://nahtlos.indranet.at/demo/ (2026-11-21); frisch ohne Cron (Neuaufbau beim 1. Aufruf je Tag, Nachholen alle 10 min); offen: Teaser-Webseite
 - [📒 Katalog-Werkstatt](project_katalog_werkstatt.md) — ✅ E:\Laser\Katalog-Werkstatt (start.bat), Formgruppen W/A/Q/H/V/E; ✅ 2026-11-18 Indra-Artikelnummern LIVE umnummeriert (1.0.25, 171 Artikel), Werkstatt-Codes = ERP
 - [🧶 Lang-Yarns-Import](project_lang_import.md) — ✅ 2026-11-16 gebaut (bdd367a, 0dd1a24, Migr. 254+255 → nächste 256; Fix Varianten …
 - [🧬 Varianten-Muster + Vater-Bestand](project_varianten_muster.md) — ✅ 2026-11-16 gebaut (86d79e9, c4f4afc): Bestand an Variante übergeben, Massenaktion …
