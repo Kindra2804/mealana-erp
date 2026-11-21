@@ -19,8 +19,9 @@ Reihenfolge (Jacky ok): [[project-zahlungseingaenge]] ✅ → Demo-DB (läuft) �
 - Lokal: `D:\ERP\nahtlos-demo\erp`, DB `nahtlos_demo`, Junction `htdocs\nahtlos-demo`, Abgleich `tools/demo/lokal_aktualisieren.ps1` (robocopy /MIR; /XF nur mit vollem Pfad — „demo.php“ traf sonst src/core/Demo.php). Anleitung `tools/demo/README.md`.
 - Klicktest `C:\Users\indy1\.claude-browser-tools\demo_schalter_test.js`.
 
+**Schritt 2 ✅ (2026-11-21):** `DemoKatalog` (Sortiment, erfundene Hersteller „… Muster/Beispiel“), `DemoArtikel` (Warengruppen 4010–4040, Kategorien + kategorie_shops, Hersteller=Lieferanten, Achsen Farbe/Stärke, Väter+Kinder direkt per SQL — NICHT über VariantenService, der loggt mit Session; Preise, EAN-13 Präfix 200, Merkmale, artikel_shops synced, Startbestand Zentrallager 75 % / Laden 25 % mit Charge, gemerkt in `$b->ids['verkauf']`), `DemoBilder` (GD, nur Formen; KEIN imageantialias, sonst ignoriert GD die Strichstärke), `DemoKunden` (653 über KundenRepository verschlüsselt, @example.com, 3 Händler). Meterware: 1 Stk = 1 cm, VK je m in vollen Euro (Preis je cm hat nur 2 Nachkommastellen). Lauf ~33 s. Ansicht-Skript `.claude-browser-tools/demo_ansicht.js` (in Git Bash mit MSYS_NO_PATHCONV=1 aufrufen!).
+
 **Offen (nächste Schritte):**
-2. Artikel: Kategorien, Hersteller, Lieferanten, Garne mit Farb-Varianten + Chargen, Stoffe als Meterware, Kurzwaren, erzeugte Produktbilder (GD), Preise, EAN, Bestand, Kanal-Zuordnung. Kunden (verschlüsselt über Encryption).
 3. Bewegungen 12 Monate (Saisonkurve): Aufträge aller Kanäle, Rechnungen, Zahlungen, Kassenbons + Z-Bons, Mahnungen, Retouren/Widerrufe, Lieferantenbestellungen/Wareneingang, Gutscheine, Newsletter, Partner/Händler.
 4. Nächtlicher Reset + stündlich „neue Shop-Bestellung“; Webspace (PHP 8 + MySQL + Cron) klären.
 
