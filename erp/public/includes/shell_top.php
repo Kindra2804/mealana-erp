@@ -165,7 +165,7 @@ $lzSchloss = fn(string $href): string => Lizenz::linkGesperrt($href) ? ' <span s
     <link rel="stylesheet" href="<?= BASE_PATH ?>/css/variables.css">
     <link rel="stylesheet" href="<?= BASE_PATH ?>/css/layout.css">
     <link rel="stylesheet" href="<?= BASE_PATH ?>/css/components.css">
-    <title><?= htmlspecialchars($pageTitle ?? 'MeaLana ERP') ?></title>
+    <title><?= htmlspecialchars($pageTitle ?? 'NAHTLOS') ?></title>
 </head>
 
 <body>

@@ -3,6 +3,7 @@ require_once __DIR__ . '/ArbeitsplatzRepository.php';
 require_once __DIR__ . '/../kasse/KassenService.php';
 require_once __DIR__ . '/../../core/Auth.php';
 require_once __DIR__ . '/../../core/Logger.php';
+require_once __DIR__ . '/../../core/Demo.php';
 
 /**
  * ArbeitsplatzService – Geräte-/Arbeitsplatz-Erkennung fürs Kasse-Modul.
@@ -40,6 +41,12 @@ class ArbeitsplatzService
      */
     public function pruefeZustand(?string $token, string $sessionId): array
     {
+        // Demo: jeder Besucher ist automatisch die Ladenkasse — keine Abfrage, keine Gerätebindung
+        // (sonst bekäme der zweite Besucher „Kasse ist bereits einem anderen Gerät zugeordnet“)
+        if (Demo::aktiv() && ($kasseId = $this->demoKasseId())) {
+            $kasse = $this->kassenService->getKasse($kasseId);
+            return ['status' => 'gebunden', 'arbeitsplatz' => ['id' => 0, 'name' => $kasse['name'] ?? 'Kasse', 'typ' => 'kasse', 'kasse_id' => $kasseId]];
+        }
         $token        = $token !== null ? trim($token) : '';
         $arbeitsplatz = $token !== '' ? $this->repo->findByToken($token) : null;
 
@@ -225,6 +232,7 @@ class ArbeitsplatzService
      */
     public function aktuelleKasseId(): ?int
     {
+        if (Demo::aktiv()) return $this->demoKasseId();
         $kasseId = $this->repo->findKasseIdFuerSession(session_id());
         // Geräte-Sperre (siehe geraetePruefung): falsches Gerät = keine Kasse →
         // Aufrufer leitet auf kasse/index.php um, dort wird der Grund angezeigt.
@@ -232,6 +240,13 @@ class ArbeitsplatzService
             return null;
         }
         return $kasseId;
+    }
+
+    /** Demo: die erste aktive Online-Kasse (Ladenkasse K1) für alle Besucher */
+    private function demoKasseId(): ?int
+    {
+        $id = Database::getInstance()->query("SELECT id FROM kassen WHERE aktiv = 1 AND modus = 'online' ORDER BY id LIMIT 1")->fetchColumn();
+        return $id ? (int)$id : null;
     }
 
     // ── Geräte-Sperre für Signatur-Kassen (RKSV) ─────────────────────────────

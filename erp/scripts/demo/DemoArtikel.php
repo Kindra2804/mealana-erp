@@ -31,6 +31,7 @@ class DemoArtikel
         foreach (DemoKatalog::kurzwaren() as $k) $this->kurzware($k);
         foreach (DemoKatalog::buecher() as $bu)  $this->buch($bu);
 
+        $this->schnellwahl();
         $n = (int)$this->b->db->query("SELECT COUNT(*) FROM artikel WHERE artikelnummer NOT IN ('99-9999')")->fetchColumn();
         $this->b->log("Artikel: $n (inkl. Varianten), " . count($this->b->ids['verkauf']) . ' verkaufbar');
     }
@@ -114,6 +115,22 @@ class DemoArtikel
             $this->wertIds[$key] = $this->b->ins('merkmal_werte', ['merkmal_id' => $this->merkmalIds[$slug], 'wert' => $text, 'sort_order' => 0]);
         }
         return $this->wertIds[$key];
+    }
+
+    /** Schnellwahl-Tasten der Ladenkasse: Renner ohne Barcode-Griff + „Divers“ je Warengruppe */
+    private function schnellwahl(): void
+    {
+        $id = fn(string $nr) => (int)$this->b->db->query("SELECT id FROM artikel WHERE artikelnummer = " . $this->b->db->quote($nr))->fetchColumn();
+        $tasten = [
+            ['artikel_id' => $id('KW-3301')], ['artikel_id' => $id('KW-3302')], ['artikel_id' => $id('KW-3303')],
+            ['artikel_id' => $id('KW-3001-04')], ['artikel_id' => $id('BU-4001')], ['artikel_id' => $id('KW-3304')],
+            ['artikel_gruppe_id' => $this->b->ids['gruppe']['Garne'], 'label' => 'Div. Garne'],
+            ['artikel_gruppe_id' => $this->b->ids['gruppe']['Stoffe'], 'label' => 'Div. Stoffe'],
+            ['artikel_gruppe_id' => $this->b->ids['gruppe']['Kurzwaren & Zubehör'], 'label' => 'Div. Kurzwaren'],
+        ];
+        foreach ($tasten as $i => $t) {
+            $this->b->ins('kassen_schnellwahl', $t + ['kasse_id' => $this->b->ids['kasse'], 'slot' => $i + 1]);
+        }
     }
 
     // ── Sortiment ─────────────────────────────────────────────────────────

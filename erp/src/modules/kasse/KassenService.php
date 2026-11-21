@@ -24,7 +24,9 @@ class KassenService
 
     public function getKasse(int $kasseId = 1): ?array
     {
-        $stmt = $this->db->prepare("SELECT * FROM kassen WHERE id = :id AND aktiv = 1");
+        // lager_name für den Kassenkopf (bon.php zeigte sonst immer den Ersatztext „Hauptlager“)
+        $stmt = $this->db->prepare("SELECT k.*, l.name AS lager_name FROM kassen k LEFT JOIN lager l ON l.id = k.lager_id
+                                    WHERE k.id = :id AND k.aktiv = 1");
         $stmt->execute([':id' => $kasseId]);
         return $stmt->fetch() ?: null;
     }

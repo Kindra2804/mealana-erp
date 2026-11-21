@@ -811,7 +811,7 @@ body {
 
 <!-- ── HEADER ────────────────────────────────────────────────────────────── -->
 <div class="ph">
-  <div class="ph-title">MeaLana · Kasse</div>
+  <div class="ph-title"><?= htmlspecialchars(Database::getInstance()->query("SELECT wert FROM system_einstellungen WHERE schluessel = 'firmenname'")->fetchColumn() ?: 'NAHTLOS') ?> · Kasse</div>
   <div class="ph-sub"><?= htmlspecialchars($kasseInfo['name'] ?? '') ?> (<?= htmlspecialchars($kasseInfo['kasse_nr'] ?? '') ?>) · Lager: <?= htmlspecialchars($lagerName) ?></div>
   <div style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;letter-spacing:.4px;white-space:nowrap;
               <?= $modus === 'offline'
