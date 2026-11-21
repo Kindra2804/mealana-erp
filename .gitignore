@@ -62,3 +62,6 @@ beleg-portal/daten/*
 erp/storage/*.lock
 erp/storage/lang_import/
 erp/storage/jtl_import/
+
+# Python-Zwischendateien
+__pycache__/

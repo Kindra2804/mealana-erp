@@ -1448,3 +1448,16 @@ docs: Update db schema in CLAUDE.md
 - **Fix 🗑️ Tab Lieferanten:** rief `delete.php` mit der `artikel_lieferanten`-ID auf → deaktivierte fremden Artikel. Jetzt `artikel_lieferant_loeschen.php` (nur die Zuordnung). Live hatte noch keine Lieferanten → kein Schaden.
 - Lehre: Python-Ersetzungen mit `\n` in JS/PHP-Strings erzeugen echte Zeilenumbrüche → JS kaputt; nach JS-Änderungen `node --check`.
 - **Nächste Schritte (19.11.):** Jacky prüft, was von Dev nach Live übertragen werden soll (Lieferanten u.a.).
+
+## Update 2026-11-21: Zahlungseingänge, Demo-Datenbank online, Teaser-Webseite (Entwurf), neuer Logo-Untertitel
+
+- **Verkauf → Zahlungseingänge** (`auftraege/zahlungseingaenge.php`, `js/zahlungseingaenge.js`): offene Zahlungen Zeile für Zeile aus dem Kontoauszug buchen (Bank/PayPal, Datum, Betrag), Suche nach Betrag, Enter bucht; nutzt `zahlung_buchen.php`, 8 s „Rückgängig“. Menü-Badge, beide Handbücher, Notiz 1.0.28. Schritt 2 (Sparkasse-CSV) später. Offen: Klicktest Babsi, Live mit 1.0.28.
+- **Demo-Modus** (`src/core/Demo.php`, Schalter `config/demo.php`, gitignored): gesperrte Seiten, keine Mails/Shop/BFR/Paperless/Newsletter-Verbindungen, Demo-Banner, Login demo/demo, eigenes Session-Cookie, Demo-Kasse fest auf K1 ohne Arbeitsplatz-Abfrage.
+- **Demo-Generator** `erp/scripts/demo/` (Garnstube Muster GmbH, Wolle + Stoffe, 12 Monate Verlauf, fester Zufallssamen, Datumswerte relativ zu heute). **Ohne Cron:** `Demo::frischHalten()` baut beim ersten Aufruf des Tages im Hintergrund neu (Warteseite 503) und holt danach höchstens alle 10 min Verkäufe nach.
+- **Online:** https://nahtlos.indranet.at/demo/ (World4You, `web/nahtlos/erp` per .htaccess gesperrt, `demo` → Symlink auf `erp/public`). Werkzeuge: `tools/demo/lokal_aktualisieren.ps1`, `tools/demo/webspace_aktualisieren.py [--erzeugen]` (nur Code, keine echten Daten), README dort.
+- **Linux-Fix:** `src/core/Database.php` + `Logger.php` Groß/Kleinschreibung vereinheitlicht. Kassenkopf zeigt Firmenname statt „MeaLana · Kasse“.
+- **Teaser-Webseite** `website/` (index, impressum, datenschutz) als Entwurf unter https://nahtlos.indranet.at/entwurf/ (noindex). MeaLana wird nicht genannt. Offen nächste Woche: Rest Impressum (Gegenstand, UID, Behörde, Kammer), Entscheidung Kleinunternehmer → Preistext, dann vom Entwurf ins Wurzelverzeichnis.
+- **RKSV-Hinweis:** Online-Kasse signiert serverseitig über `kassen.bfr_url` im Geschäftsnetz → NAHTLOS muss im selben Netz laufen (Windows oder Linux) oder per VPN verbunden sein; reiner Webspace nur ohne Kasse. Steht auf der Webseite und in `docs/installation.md` Abschnitt 13.
+- **Logo:** Untertitel jetzt „ERP für Wolle, Stoff & Handarbeit“ (`img/nahtlos.png`, groß + Druck); klein ohne Untertitel `img/nahtlos_ohne_untertitel.png` (Kasse, Packplatz). Für großen Druck fehlt eine Vektorfassung (Babsis Quelldatei).
+- **Offener Befund:** Statistik „Topseller nach Menge“ zählt Meterware in cm.
+- **Regel:** Neue Seiten/Funktionen → Demo-Generator + Webseite nachziehen (Kleinigkeiten nicht).

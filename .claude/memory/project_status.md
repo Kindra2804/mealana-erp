@@ -240,3 +240,7 @@ git -C "D:/ERP/mealana" add .claude/memory/ && git -C "D:/ERP/mealana" commit -m
 - ~~Preis-Query Datums-Filter~~ ✅ behoben 2026-06-26
 - ~~artikel_achsen.sort_order~~ ✅ behoben 2026-06-26
 - ~~Hersteller: aktualisiert_am~~ ✅ war bereits vorhanden
+
+
+## Stand 2026-11-21
+Zahlungseingänge gebaut (1.0.28), Demo-DB live auf nahtlos.indranet.at/demo (ohne Cron), Teaser-Webseite als Entwurf unter /entwurf/, Logo-Untertitel „ERP für Wolle, Stoff & Handarbeit“ (klein ohne Untertitel). Details: [[project_demo_datenbank]], [[project_zahlungseingaenge]].

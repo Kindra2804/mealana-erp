@@ -40,6 +40,8 @@
 
 - [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem …
 
+- [🔤 Artikel-Benennungsschema](project_artikel_benennung.md) — 2026-11-21: Nr Hersteller-Vater-Kind(4-stellig), Name „Vater Farbe [Art] (Nr)“; Generator + Importer umbauen, Fragen offen
+
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit
 - [Feedback: Trainer-Ansatz](feedback_trainer.md) — erklären, selbst schreiben lassen
