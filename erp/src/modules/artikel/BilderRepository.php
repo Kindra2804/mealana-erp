@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../../core/database.php';
+require_once __DIR__ . '/../../core/Database.php';
 
 /**
  * BilderRepository – CRUD und Reihenfolge-Verwaltung für Artikel-Bilder

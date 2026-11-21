@@ -35,7 +35,7 @@
  */
 
 require_once __DIR__ . '/../src/core/Database.php';
-require_once __DIR__ . '/../src/core/logger.php';
+require_once __DIR__ . '/../src/core/Logger.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncRepository.php';
 require_once __DIR__ . '/../src/modules/shop/ShopSyncService.php';
 

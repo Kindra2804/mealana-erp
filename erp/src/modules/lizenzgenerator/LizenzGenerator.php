@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Lizenz.php';
-require_once __DIR__ . '/../../core/logger.php';
+require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../kunden/KundenRepository.php';
 require_once __DIR__ . '/LizenzSigner.php';
 

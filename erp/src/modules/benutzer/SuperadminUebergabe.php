@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Lizenz.php';
-require_once __DIR__ . '/../../core/logger.php';
+require_once __DIR__ . '/../../core/Logger.php';
 
 /**
  * Superadmin-Übergabe per Schlüssel von NAHTLOS (Lizenz-Bau Schritt 3, Konzept Jacky 2026-10-30)

@@ -7,7 +7,7 @@ require_once __DIR__ . '/../varianten/VariantenService.php';
 require_once __DIR__ . '/../achsen/AchsenRepository.php';
 require_once __DIR__ . '/../preise/PreisService.php';
 require_once __DIR__ . '/../shop/ShopSyncRepository.php';
-require_once __DIR__ . '/../../core/database.php';
+require_once __DIR__ . '/../../core/Database.php';
 
 /**
  * KonfiguratorService – Laufzeit-Logik für konfigurierbare Artikel (Schilder & Co.)

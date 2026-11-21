@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/ShopSyncRepository.php';
 require_once __DIR__ . '/WooCommerceClient.php';
-require_once __DIR__ . '/../../core/logger.php';
+require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../auftraege/AuftragRepository.php';
 require_once __DIR__ . '/../auftraege/AuftragService.php';
 require_once __DIR__ . '/../auftraege/VersandMail.php';

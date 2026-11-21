@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../../core/database.php';
+require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/KonfiguratorService.php';
 require_once __DIR__ . '/KonfigBausteineService.php';
 require_once __DIR__ . '/../artikel/ArtikelRepository.php';

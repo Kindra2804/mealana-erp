@@ -4,7 +4,7 @@ require_once __DIR__ . '/GutscheinRepository.php';
 require_once __DIR__ . '/../shop/WooCommerceClient.php';
 require_once __DIR__ . '/../kunden/KundenRepository.php';
 require_once __DIR__ . '/../dokumente/DokumentService.php';
-require_once __DIR__ . '/../../core/logger.php';
+require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../../core/Mailer.php';
 

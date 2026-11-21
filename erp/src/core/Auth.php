@@ -2,7 +2,7 @@
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Zugriffsregeln.php';
 require_once __DIR__ . '/Lizenz.php';
-require_once __DIR__ . '/logger.php';
+require_once __DIR__ . '/Logger.php';
 require_once __DIR__ . '/Demo.php';
 
 /**

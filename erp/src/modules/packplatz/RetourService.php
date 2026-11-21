@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../core/Database.php';
-require_once __DIR__ . '/../../core/logger.php';
+require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../lager/LagerService.php';
 
 /**
