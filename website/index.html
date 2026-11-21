@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NAHTLOS – Warenwirtschaft für Laden, Onlineshop und Messe</title>
+<meta name="description" content="NAHTLOS verbindet Artikel, Lager, RKSV-Kasse, WooCommerce-Shops, Versand und Buchhaltungs-Export in einem System. Entwickelt in Österreich, im Echtbetrieb.">
+<!-- Entwurf 2026-11-21. Bewusst ohne externe Schriften/Skripte (kein Google Fonts → keine Datenübertragung an Dritte). -->
+<style>
+  :root {
+    --navy: #17325a; --blau: #2563eb; --tuerkis: #19b8d2; --text: #1f2d3d; --grau: #5b6b7f;
+    --hell: #f4f7fb; --linie: #dfe6ee; --gruen: #16a34a; --rund: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--text); background: #fff; line-height: 1.6; }
+  img { max-width: 100%; display: block; }
+  a { color: var(--blau); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+  h1, h2, h3 { color: var(--navy); line-height: 1.2; margin: 0 0 .5em; }
+  h1 { font-size: clamp(30px, 4.6vw, 50px); letter-spacing: -.5px; }
+  h2 { font-size: clamp(25px, 3.2vw, 36px); }
+  h3 { font-size: 19px; }
+  section { padding: 76px 0; }
+  .leise { color: var(--grau); }
+  .zentriert { text-align: center; }
+  .unterzeile { max-width: 720px; margin: 0 auto 40px; color: var(--grau); font-size: 18px; }
+
+  /* Hinweisband + Kopf */
+  .band { background: var(--navy); color: #fff; font-size: 14px; text-align: center; padding: 8px 16px; }
+  .band a { color: #9be7f3; font-weight: 600; }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.95); backdrop-filter: blur(6px); border-bottom: 1px solid var(--linie); }
+  .kopf { display: flex; align-items: center; justify-content: space-between; height: 66px; gap: 16px; }
+  .marke { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--navy); font-weight: 800; font-size: 21px; letter-spacing: .5px; }
+  .marke img { height: 40px; width: auto; }
+  nav a { color: var(--text); text-decoration: none; margin-left: 22px; font-weight: 500; font-size: 15px; }
+  nav a:hover { color: var(--blau); }
+  nav .knopf { margin-left: 22px; }
+  .knopf { display: inline-block; background: var(--blau); color: #fff !important; text-decoration: none; font-weight: 600; padding: 12px 22px; border-radius: 8px; }
+  .knopf.hell { background: #fff; color: var(--navy) !important; border: 1px solid var(--linie); }
+  .knopf.klein { padding: 8px 16px; font-size: 14px; }
+
+  /* Hero */
+  .hero { background: linear-gradient(180deg, #f2f7fd 0%, #fff 100%); padding: 64px 0 40px; }
+  .hero-gitter { display: grid; grid-template-columns: 1.05fr 1.25fr; gap: 48px; align-items: center; }
+  .hero p.lead { font-size: 19px; color: var(--grau); margin: 0 0 26px; }
+  .knoepfe { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+  .haken { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; font-size: 15px; }
+  .haken li::before { content: "✓"; color: var(--gruen); font-weight: 800; margin-right: 8px; }
+  .status { display: inline-flex; align-items: center; gap: 8px; background: #e7f6ea; color: #14652f; border-radius: 999px; padding: 5px 14px; font-size: 13px; font-weight: 600; margin-bottom: 18px; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gruen); }
+
+  /* Browserrahmen für Screenshots */
+  .rahmen { border-radius: 12px; overflow: hidden; box-shadow: 0 24px 60px rgba(23,50,90,.18), 0 2px 8px rgba(23,50,90,.08); border: 1px solid var(--linie); background: #fff; }
+  .rahmen .leiste { height: 26px; background: #eef2f7; display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+  .rahmen .leiste span { width: 10px; height: 10px; border-radius: 50%; background: #cdd6e1; }
+
+  /* Erster Blick */
+  .blick { background: var(--hell); }
+  .reiter { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+  .reiter button { border: 1px solid var(--linie); background: #fff; color: var(--text); padding: 9px 16px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; }
+  .reiter button.aktiv { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .bildtext { text-align: center; color: var(--grau); margin-top: 18px; font-size: 15px; min-height: 48px; }
+  .blick .rahmen { max-width: 1040px; margin: 0 auto; }
+
+  /* Funktionen */
+  .karten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .karte { border: 1px solid var(--linie); border-radius: var(--rund); padding: 24px; background: #fff; }
+  .karte .symbol { font-size: 26px; margin-bottom: 8px; }
+  .karte ul { margin: 0; padding-left: 18px; color: var(--grau); font-size: 15px; }
+  .karte li { margin: 3px 0; }
+  .modul { font-size: 11px; font-weight: 700; color: var(--blau); background: #e8f0fe; border-radius: 4px; padding: 1px 6px; margin-left: 4px; white-space: nowrap; }
+
+  /* Für wen */
+  .fuerwen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .fuerwen div { background: var(--hell); border-radius: var(--rund); padding: 20px; text-align: center; font-weight: 600; color: var(--navy); }
+  .fuerwen span { display: block; font-size: 30px; margin-bottom: 6px; }
+  .fuerwen small { display: block; font-weight: 400; color: var(--grau); margin-top: 4px; }
+
+  /* Preise */
+  .preise { background: var(--hell); }
+  .preis-gitter { display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px; align-items: start; }
+  .grund { background: var(--navy); color: #fff; border-radius: var(--rund); padding: 30px; }
+  .grund h3 { color: #fff; }
+  .grund .betrag { font-size: 44px; font-weight: 800; margin: 6px 0 2px; }
+  .grund .betrag small { font-size: 15px; font-weight: 400; opacity: .8; }
+  .grund ul { padding-left: 18px; margin: 16px 0 0; opacity: .95; }
+  .tabelle { background: #fff; border: 1px solid var(--linie); border-radius: var(--rund); overflow: hidden; }
+  .tabelle div { display: flex; justify-content: space-between; gap: 16px; padding: 11px 20px; border-bottom: 1px solid var(--linie); font-size: 15px; }
+  .tabelle div:last-child { border-bottom: none; }
+  .tabelle b { white-space: nowrap; color: var(--navy); }
+  .tabelle .klein { color: var(--grau); font-size: 13px; }
+  .fussnoten { margin-top: 18px; font-size: 14px; color: var(--grau); }
+  .vorteil { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+  .vorteil span { background: #fff; border: 1px solid var(--linie); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+
+  /* Technik + Geschichte */
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .liste-haken { list-style: none; padding: 0; margin: 0; }
+  .liste-haken li { padding: 8px 0 8px 30px; position: relative; border-bottom: 1px dashed var(--linie); }
+  .liste-haken li::before { content: "✓"; position: absolute; left: 4px; color: var(--gruen); font-weight: 800; }
+  .zitat { background: var(--hell); border-left: 4px solid var(--tuerkis); border-radius: 0 var(--rund) var(--rund) 0; padding: 24px 28px; }
+
+  /* Kontakt */
+  .kontakt { background: linear-gradient(135deg, var(--navy), #1f4f8f); color: #fff; text-align: center; }
+  .kontakt h2 { color: #fff; }
+  .kontakt p { opacity: .9; max-width: 640px; margin: 0 auto 26px; font-size: 18px; }
+  .kontakt .knopf { background: #fff; color: var(--navy) !important; }
+  .kontakt .knopf.rand { background: transparent; color: #fff !important; border: 1px solid rgba(255,255,255,.6); }
+
+  footer { padding: 28px 0; font-size: 14px; color: var(--grau); }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  footer a { color: var(--grau); margin-left: 16px; }
+
+  @media (max-width: 920px) {
+    .hero-gitter, .preis-gitter, .zwei { grid-template-columns: 1fr; }
+    .karten { grid-template-columns: 1fr 1fr; }
+    .fuerwen { grid-template-columns: 1fr 1fr; }
+    nav a:not(.knopf) { display: none; }
+  }
+  @media (max-width: 600px) {
+    section { padding: 54px 0; }
+    .karten, .haken { grid-template-columns: 1fr; }
+    .marke span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="band">🚧 NAHTLOS ist in Entwicklung – Version 1.0 läuft seit November 2026 im Echtbetrieb. <a href="/demo/">Live-Demo ansehen →</a></div>
+
+<header>
+  <div class="wrap kopf">
+    <a class="marke" href="#"><img src="img/nahtlos_icon.png" alt=""><span>NAHTLOS</span></a>
+    <nav>
+      <a href="#einblick">Einblick</a>
+      <a href="#funktionen">Funktionen</a>
+      <a href="#preise">Module &amp; Preise</a>
+      <a href="#technik">Technik</a>
+      <a class="knopf klein" href="#kontakt">Interesse melden</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="wrap hero-gitter">
+    <div>
+      <div class="status">Im Echtbetrieb seit November 2026</div>
+      <h1>Laden, Onlineshop und Messe – aus einem Faden.</h1>
+      <p class="lead">NAHTLOS ist die Warenwirtschaft für Händlerinnen und Händler, die an mehreren Orten verkaufen:
+        Artikel, Lager, Kasse, Webshops, Versand und Buchhaltung greifen ineinander – ohne doppelte Eingaben.</p>
+      <div class="knoepfe">
+        <a class="knopf" href="/demo/">Live-Demo ansehen</a>
+        <a class="knopf hell" href="#kontakt">Interesse melden</a>
+      </div>
+      <ul class="haken">
+        <li>RKSV-Kasse (Österreich)</li>
+        <li>Mehrere WooCommerce-Shops</li>
+        <li>Chargen &amp; Meterware</li>
+        <li>Läuft im Browser – PC, Tablet, Kasse</li>
+        <li>Kauf statt Abo</li>
+        <li>Daten auf Ihrem eigenen Server</li>
+      </ul>
+    </div>
+    <div class="rahmen"><div class="leiste"><span></span><span></span><span></span></div>
+      <img src="img/dashboard.png" alt="NAHTLOS Startseite mit Umsatz heute, Umsatz je Kanal und offenen Rechnungen" width="1440" height="900">
+    </div>
+  </div>
+</section>
+
+<!-- ── Erster Blick ─────────────────────────────────────────────────── -->
+<section class="blick" id="einblick">
+  <div class="wrap">
+    <h2 class="zentriert">Ein erster Blick in NAHTLOS</h2>
+    <p class="unterzeile zentriert">Alle Bilder stammen aus der Live-Demo – einem erfundenen Wolle- und Stoffgeschäft mit Laden, drei Onlineshops und einem Jahr Geschäftsverlauf.</p>
+    <div class="reiter" id="reiter">
+      <button class="aktiv" data-bild="kasse" data-text="Die Ladenkasse: scannen, Charge wählen, bar oder mit Karte bezahlen – RKSV-konform über BFR, mit Kundenanzeige und Beleg per QR-Code.">Kasse</button>
+      <button data-bild="artikel" data-text="Artikel mit Varianten, Bestand und Kanal-Zuordnung: auf einen Blick sehen, welcher Artikel in welchem Shop aktiv ist.">Artikel</button>
+      <button data-bild="artikel_detail" data-text="Varianten wie Farben oder Nadelstärken: einmal anlegen, alle Kinder erben Preise, Texte, Merkmale und Shop-Zuordnung.">Varianten</button>
+      <button data-bild="auftraege" data-text="Alle Aufträge aus Laden, Shops und Telefon in einer Liste – mit Zahlungs- und Lieferstatus und allen Belegen.">Aufträge</button>
+      <button data-bild="zahlungseingaenge" data-text="Kontencheck in Minuten: offene Zahlungen nach Betrag suchen, mit Enter einbuchen, Zahlungsmail und Shop-Status gehen automatisch.">Zahlungseingänge</button>
+      <button data-bild="statistik" data-text="Topseller und Deckungsbeitrag je Warengruppe – für Zeitraum und Kanal frei wählbar.">Statistik</button>
+      <button data-bild="bestellungen" data-text="Bestellungen bei Lieferanten, Wareneingang per Scanner – mit Chargen, damit die Farbe stimmt.">Einkauf</button>
+    </div>
+    <div class="rahmen"><div class="leiste"><span></span><span></span><span></span></div>
+      <img id="blick-bild" src="img/kasse.png" alt="NAHTLOS Kasse" width="1440" height="900">
+    </div>
+    <p class="bildtext" id="blick-text">Die Ladenkasse: scannen, Charge wählen, bar oder mit Karte bezahlen – RKSV-konform über BFR, mit Kundenanzeige und Beleg per QR-Code.</p>
+  </div>
+</section>
+
+<!-- ── Für wen ──────────────────────────────────────────────────────── -->
+<section>
+  <div class="wrap">
+    <h2 class="zentriert">Gemacht für den Fachhandel</h2>
+    <p class="unterzeile zentriert">Entstanden im Alltag einer Wollboutique – und überall dort zuhause, wo Ware Farben, Chargen, Meter und mehrere Verkaufswege hat.</p>
+    <div class="fuerwen">
+      <div><span>🧶</span>Wolle &amp; Garn<small>Farben, Chargen, Grundpreis je 100 g</small></div>
+      <div><span>🧵</span>Stoffe &amp; Nähbedarf<small>Meterware mit Mindestabnahme</small></div>
+      <div><span>✂️</span>Handarbeit &amp; Kreativ<small>Nadeln, Zubehör, Bücher, Kurse</small></div>
+      <div><span>🎁</span>Geschenke &amp; Manufaktur<small>Konfigurierbare Artikel, Partnerware</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Funktionen ───────────────────────────────────────────────────── -->
+<section id="funktionen" style="padding-top:0">
+  <div class="wrap">
+    <h2 class="zentriert">Was NAHTLOS kann</h2>
+    <p class="unterzeile zentriert">Das Grundmodul deckt den Alltag ab – weitere Module schalten Sie dazu, wenn Sie sie brauchen.</p>
+    <div class="karten">
+      <div class="karte"><div class="symbol">🧾</div><h3>Verkauf &amp; Belege</h3><ul>
+        <li>Aufträge aus allen Kanälen in einer Liste</li><li>Auftragsbestätigung, Lieferschein, (Teil-)Rechnung, Rechnungskorrektur</li>
+        <li>Zahlungseingänge &amp; Mahnwesen</li><li>Widerrufe aus dem Shop bearbeiten</li><li>Gutscheine <span class="modul">Modul</span></li></ul></div>
+      <div class="karte"><div class="symbol">🛒</div><h3>Kasse</h3><ul>
+        <li>RKSV-konform über BFR <span class="modul">Modul</span></li><li>Shop-Bestellungen an der Kasse abholen &amp; bezahlen</li>
+        <li>Offline- und Messekasse, auch am Handy</li><li>Kundenanzeige <span class="modul">Modul</span></li><li>Beleg per QR-Code statt Papier <span class="modul">Modul</span></li></ul></div>
+      <div class="karte"><div class="symbol">🌐</div><h3>Onlineshops</h3><ul>
+        <li>WooCommerce: Artikel, Bilder, Bestand, Preise <span class="modul">Modul</span></li><li>Bestellungen kommen automatisch herein</li>
+        <li>Mehrere Shops mit eigenen Nummernkreisen</li><li>Slider, Kacheln und Menü aus dem ERP</li><li>Newsletter mit Double-Opt-in</li></ul></div>
+      <div class="karte"><div class="symbol">📦</div><h3>Artikel &amp; Lager</h3><ul>
+        <li>Varianten, Merkmale, Bilder, Grundpreis</li><li>Chargen für farbgleiche Nachlieferung</li>
+        <li>Meterware mit Mindestabnahme</li><li>Lagerplätze &amp; Profi-Inventur <span class="modul">Modul</span></li><li>Preisschilder &amp; Etiketten drucken</li></ul></div>
+      <div class="karte"><div class="symbol">🚚</div><h3>Einkauf &amp; Versand</h3><ul>
+        <li>Lieferantenbestellungen &amp; Wareneingang per Scanner</li><li>Picklisten &amp; Packplatz mit Teillieferung</li>
+        <li>Österreichische Post (PLC) <span class="modul">Modul</span></li><li>Dropshipping (Streckengeschäft) <span class="modul">Modul</span></li></ul></div>
+      <div class="karte"><div class="symbol">📊</div><h3>Auswertung &amp; Buchhaltung</h3><ul>
+        <li>Startseite mit Umsatz heute und je Kanal</li><li>Statistik, Topseller, Deckungsbeitrag, Lagerwert</li>
+        <li>Export für die Steuerberatung (DATEV/CSV) <span class="modul">Modul</span></li><li>Partner, Mietfächer &amp; Kommission <span class="modul">Modul</span></li>
+        <li>Händler-Konsignation <span class="modul">Modul</span></li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Module & Preise ──────────────────────────────────────────────── -->
+<section class="preise" id="preise">
+  <div class="wrap">
+    <h2 class="zentriert">Module &amp; voraussichtliche Preise</h2>
+    <p class="unterzeile zentriert">Einmal kaufen, dauerhaft nutzen – Module jederzeit nachrüsten. Die Preise sind vorläufig und gelten netto.</p>
+    <div class="preis-gitter">
+      <div class="grund">
+        <h3>Grundmodul</h3>
+        <div class="betrag">790 € <small>netto, einmalig</small></div>
+        <div style="opacity:.85">Alles für den Alltag:</div>
+        <ul>
+          <li>Artikel, Varianten, Chargen, Meterware</li>
+          <li>Lager, Wareneingang, einfache Inventur</li>
+          <li>Aufträge, Belege, Zahlungseingänge, Mahnwesen</li>
+          <li>Picklisten &amp; Packplatz</li>
+          <li>Kunden &amp; Lieferanten, Statistik</li>
+          <li>Benutzer mit Rollen und Rechten</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tabelle">
+          <div><span>Kasse (RKSV) inkl. 1 Kasse <span class="klein">· jede weitere Kasse 190 €</span></span><b>590 €</b></div>
+          <div><span>Shop-Anbindung inkl. 1 Shop <span class="klein">· jeder weitere Shop 190 €</span></span><b>490 €</b></div>
+          <div><span>Lagerplätze &amp; Profi-Inventur</span><b>390 €</b></div>
+          <div><span>Partner &amp; Mietfächer</span><b>390 €</b></div>
+          <div><span>Händler-Konsignation</span><b>290 €</b></div>
+          <div><span>Gutscheine</span><b>190 €</b></div>
+          <div><span>Dropshipping</span><b>190 €</b></div>
+          <div><span>Buchhaltungs-Export</span><b>190 €</b></div>
+          <div><span>Konfigurator</span><b>190 €</b></div>
+          <div><span>Kundenanzeige</span><b>99 €</b></div>
+          <div><span>Beleg per QR-Code (Paperless)</span><b>99 €</b></div>
+          <div><span>Versand mit der Österreichischen Post (PLC)</span><b>50 €</b></div>
+        </div>
+        <div class="vorteil"><span>✓ Kauf statt Abo</span><span>✓ Updates über Wartung</span><span>✓ Läuft auch ohne Wartung weiter</span></div>
+        <p class="fussnoten">Alle Preise netto zzgl. USt., vorläufig – Änderungen vorbehalten. Wartung (Updates und Support) voraussichtlich jährlich,
+          das erste Jahr ist inklusive. Für die RKSV-Kasse ist zusätzlich der Signaturdienst BFR nötig (Drittanbieter, derzeit 189 € einmalig je Kasse
+          inkl. Zertifikat für 5 Jahre plus 7,99 € im Monat). Einrichtung und Datenübernahme nach Aufwand.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Technik ──────────────────────────────────────────────────────── -->
+<section id="technik">
+  <div class="wrap zwei">
+    <div>
+      <h2>Technik, die bei Ihnen bleibt</h2>
+      <ul class="liste-haken">
+        <li>Läuft im Browser – am PC, am Tablet und an der Ladenkasse</li>
+        <li>Auf Ihrem eigenen Rechner im Geschäft oder einem Webspace (PHP + MySQL)</li>
+        <li>Kundendaten verschlüsselt gespeichert (AES-256)</li>
+        <li>Benutzer mit Rollen, Rechten und Manager-PIN</li>
+        <li>Tägliche Datensicherung, Updates als signiertes Paket</li>
+        <li>Lückenloses Protokoll aller Buchungen</li>
+        <li>Entwickelt in Österreich – RKSV, Grundpreis und österreichische Post inklusive</li>
+      </ul>
+    </div>
+    <div class="zitat">
+      <h3>Aus der Praxis entstanden</h3>
+      <p class="leise" style="margin:0">NAHTLOS wurde gemeinsam mit einer Wollboutique entwickelt, die im Laden, auf Messen und in drei Onlineshops verkauft.
+        Jede Funktion musste sich dort im Alltag bewähren – von der Kasse mit Chargen über den Packplatz bis zum Kontencheck am Morgen.
+        Seit November 2026 läuft Version 1.0 dort im Echtbetrieb. Für weitere Betriebe bereiten wir NAHTLOS gerade vor.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Kontakt ──────────────────────────────────────────────────────── -->
+<section class="kontakt" id="kontakt">
+  <div class="wrap">
+    <h2>Neugierig geworden?</h2>
+    <p>Schauen Sie sich die Live-Demo an – oder schreiben Sie uns, wie Sie heute arbeiten. Wir melden uns, sobald NAHTLOS für weitere Betriebe verfügbar ist.</p>
+    <div class="knoepfe" style="justify-content:center">
+      <a class="knopf" id="mail-knopf" href="#">Interesse melden</a>
+      <a class="knopf rand" href="/demo/">Live-Demo ansehen</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 NAHTLOS · ein Produkt von Indranet</span>
+    <span><a href="https://www.indranet.at/impressum">Impressum</a><a href="https://www.indranet.at/datenschutz">Datenschutz</a></span>
+  </div>
+</footer>
+
+<script>
+  // Reiter „Erster Blick“
+  document.getElementById('reiter').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('aktiv', x === b); });
+    var bild = document.getElementById('blick-bild');
+    bild.src = 'img/' + b.dataset.bild + '.png'; bild.alt = 'NAHTLOS ' + b.textContent;
+    document.getElementById('blick-text').textContent = b.dataset.text;
+  });
+  // „Interesse melden“: Mail mit vorausgefüllten Fragen (Adresse hier eintragen)
+  var MAIL = 'KONTAKT-ADRESSE@indranet.at';
+  var text = 'Hallo,\n\nich interessiere mich für NAHTLOS.\n\nFirma:\nAnsprechperson:\nTelefon:\n'
+           + 'Was ich verkaufe:\nKassen (Anzahl):\nOnlineshops (Anzahl, System):\nBisheriges Programm:\n\nViele Grüße';
+  document.getElementById('mail-knopf').href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent('Interesse an NAHTLOS')
+    + '&body=' + encodeURIComponent(text);
+</script>
+</body>
+</html>
