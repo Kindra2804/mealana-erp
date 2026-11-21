@@ -204,6 +204,15 @@ Einrichtung z.B. per `schtasks` oder GUI (Aufgabenplanung), Programm: `C:\xampp\
 
 ## 13. Kasse / RKSV (nur falls die Kassen-Funktion genutzt wird)
 
+> **Wo NAHTLOS laufen muss, wenn eine RKSV-Kasse dazukommt:** Beim Kassieren ruft der **Server** den BFR auf
+> (`kassen.bfr_url`, z.B. `http://192.168.1.40:8787`). Der Server muss den BFR-Rechner also im Netzwerk erreichen.
+> Das geht, wenn NAHTLOS **im Geschäftsnetz** läuft (eigener PC/Server, Windows oder Linux) oder per **VPN** mit dem
+> Geschäftsnetz verbunden ist (z.B. eigener vServer mit WireGuard zum Router im Geschäft). Auf einem normalen
+> **Webspace geht das nicht**: Er kommt nicht ins Geschäftsnetz und kann kein VPN aufbauen. Den BFR per
+> Portweiterleitung ins Internet zu stellen ist keine Lösung – er hat keine Anmeldung, jeder könnte damit signieren.
+> Auch die Geräte-Sperre (Signatur-Kasse nur vom BFR-Gerät aus) vergleicht IP-Adressen und braucht das Geschäftsnetz.
+> Ohne RKSV-Kasse (nur Shop, Aufträge, Lager) läuft NAHTLOS auch auf einem Webspace (siehe Demo).
+
 Pro Kasse in **Einstellungen → Kassen** die BFR-Gerät-URL (`bfr_url`) und die Kassen-ID hinterlegen. Ohne gesetzte `bfr_url` läuft die Kasse ganz normal, nur ohne Signierung — das ist also optional und bricht nichts, wenn (noch) keine RKSV-Hardware angeschlossen ist.
 
 Die eigentliche FinanzOnline-Anmeldung und der Startbeleg laufen **nicht** über diese Software, sondern über das BFR-eigene Admin-Tool (siehe `import\BFR_Installationsanleitung.pdf`).
