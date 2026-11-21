@@ -123,7 +123,7 @@ unset($_SESSION['fehler']);
 <body>
     <div class="login-card">
         <div class="login-logo">
-            <img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS – ERP für Handarbeitsgeschäfte">
+            <img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS – ERP für Wolle, Stoff &amp; Handarbeit">
         </div>
 
         <?php if ($fehler): ?>

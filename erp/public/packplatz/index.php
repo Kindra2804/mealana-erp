@@ -10,7 +10,7 @@ require_once __DIR__ . '/shell_top.php';
 
 <div style="text-align:center;margin-top:24px;margin-bottom:22px">
     <div style="display:inline-block;background:#fff;border-radius:12px;padding:10px 18px 6px;margin-bottom:10px;box-shadow:0 4px 20px rgba(0,0,0,.25)">
-        <img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS" style="width:110px;height:auto;display:block">
+        <img src="<?= BASE_PATH ?>/img/nahtlos_ohne_untertitel.png" alt="NahtlOS" style="width:110px;height:auto;display:block">
     </div>
     <div style="font-size:28px;font-weight:700;color:#e94560">Was möchtest du tun?</div>
 </div>

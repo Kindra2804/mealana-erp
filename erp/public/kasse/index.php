@@ -18,7 +18,7 @@ $istMesse = ($kasseInfo['modus'] ?? 'online') === 'offline';
 
 <div style="text-align:center;margin:24px 0 28px">
   <div style="display:inline-block;background:#fff;border-radius:12px;padding:10px 18px 6px;margin-bottom:10px;box-shadow:0 4px 20px rgba(0,0,0,.08)">
-    <img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS" style="width:110px;height:auto;display:block">
+    <img src="<?= BASE_PATH ?>/img/nahtlos_ohne_untertitel.png" alt="NahtlOS" style="width:110px;height:auto;display:block">
   </div>
   <div style="font-size:16px;color:#888;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:12px">
     <span><?= htmlspecialchars($kasseInfo['name'] ?? 'Keine Kasse zugeordnet') ?> · <?= date('d.m.Y') ?></span>

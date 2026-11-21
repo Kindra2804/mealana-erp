@@ -129,7 +129,7 @@ $kacheln = [
 </head>
 <body>
     <div class="start-header">
-        <div class="start-logo"><img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS – ERP für Handarbeitsgeschäfte"></div>
+        <div class="start-logo"><img src="<?= BASE_PATH ?>/img/nahtlos.png" alt="NahtlOS – ERP für Wolle, Stoff &amp; Handarbeit"></div>
         <div class="start-gruss"><?= $gruss ?>, <strong><?= htmlspecialchars($benutzer['formularname']) ?></strong></div>
         <div class="start-frage">Womit möchtest du beginnen?</div>
     </div>
