@@ -33,7 +33,7 @@ Code abgleichen + Daten neu erzeugen:
 
     php scripts/demo/demo_erzeugen.php
 
-Löscht alle Tabellen, spielt `baseline_schema.sql` + Migrationen ein, leert Upload-/Belegordner und
+Löscht alle Tabellen, spielt `baseline_schema.sql` + Migrationen ein, leert Upload-/Belegordner und (Dauer ca. 1 Minute)
 füllt alles neu. Bricht ab, wenn `config/demo.php` fehlt. Datum immer relativ zu heute, fester
 Zufalls-Startwert (jeden Tag dieselbe Geschichte).
 

@@ -86,10 +86,15 @@ class DemoBasis
     public function ins(string $tabelle, array $werte): int
     {
         $spalten = array_keys($werte);
-        $sql = 'INSERT INTO `' . $tabelle . '` (`' . implode('`, `', $spalten) . '`) VALUES (:' . implode(', :', $spalten) . ')';
-        $this->db->prepare($sql)->execute($werte);
+        $schluessel = $tabelle . '|' . implode(',', $spalten);
+        // vorbereitete Befehle wiederverwenden (Teil 3 schreibt zehntausende Zeilen)
+        $st = $this->befehle[$schluessel] ??= $this->db->prepare(
+            'INSERT INTO `' . $tabelle . '` (`' . implode('`, `', $spalten) . '`) VALUES (:' . implode(', :', $spalten) . ')');
+        $st->execute($werte);
         return (int)$this->db->lastInsertId();
     }
+
+    private array $befehle = [];
 
     public function einstellung(string $schluessel, string $wert): void
     {

@@ -26,6 +26,7 @@ require_once __DIR__ . '/DemoBasis.php';
 require_once __DIR__ . '/DemoStammdaten.php';
 require_once __DIR__ . '/DemoArtikel.php';
 require_once __DIR__ . '/DemoKunden.php';
+require_once __DIR__ . '/DemoVerkauf.php';
 
 $start = microtime(true);
 // Fester Startwert: jeden Tag dieselbe „Geschichte“, nur zeitlich mitgewandert
@@ -35,4 +36,5 @@ $b->neuAufsetzen();
 (new DemoStammdaten($b))->erzeugen();
 (new DemoArtikel($b))->erzeugen();
 (new DemoKunden($b))->erzeugen();
+(new DemoVerkauf($b))->erzeugen();
 $b->log(sprintf('Fertig in %.1f s', microtime(true) - $start));

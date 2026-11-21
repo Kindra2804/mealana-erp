@@ -21,8 +21,12 @@ Reihenfolge (Jacky ok): [[project-zahlungseingaenge]] ✅ → Demo-DB (läuft) �
 
 **Schritt 2 ✅ (2026-11-21):** `DemoKatalog` (Sortiment, erfundene Hersteller „… Muster/Beispiel“), `DemoArtikel` (Warengruppen 4010–4040, Kategorien + kategorie_shops, Hersteller=Lieferanten, Achsen Farbe/Stärke, Väter+Kinder direkt per SQL — NICHT über VariantenService, der loggt mit Session; Preise, EAN-13 Präfix 200, Merkmale, artikel_shops synced, Startbestand Zentrallager 75 % / Laden 25 % mit Charge, gemerkt in `$b->ids['verkauf']`), `DemoBilder` (GD, nur Formen; KEIN imageantialias, sonst ignoriert GD die Strichstärke), `DemoKunden` (653 über KundenRepository verschlüsselt, @example.com, 3 Händler). Meterware: 1 Stk = 1 cm, VK je m in vollen Euro (Preis je cm hat nur 2 Nachkommastellen). Lauf ~33 s. Ansicht-Skript `.claude-browser-tools/demo_ansicht.js` (in Git Bash mit MSYS_NO_PATHCONV=1 aufrufen!).
 
+**Schritt 3 ✅ (2026-11-21):** `DemoVerkauf`: 365 Tage bis heute, Saison (Wolle Winter, Baumwolle Sommer, Stoff Frühjahr) × Wachstum; ~2.000 Online-Bestellungen (3 Shops, PayPal/Vorkasse/Nachnahme, alle Zwischenstände, unbezahlte Vorkasse → Erinnerung 14 T/Storno 30 T, Widerrufe abgewickelt + 2 beantragt), ~100 Telefon-/Händleraufträge auf Rechnung (6 % zahlen nie → Mahnvorschlag), ~3.800 Kassenbons Mo–Sa mit Spiegel-Auftrag wie KassenService + Z-Bons über echten `KassenService::erstelleZBon` (Zeit danach auf 18:35 gesetzt), montags Nachbestellung, Wareneingang 4–9 T mit neuer Charge, Lieferantenrechnung bezahlt nach 8–28 T. Nummern über `DokumentRepository::naechsteNummer($typ, $jahr, $kuerzel)`; Rechnungen OHNE PDF-Datei (Download rendert immer aus der DB). Logbuch für letzte 3 Tage befüllt. Lauf ~57 s. Umsatz ~25–38 k€/Monat.
+
+**ERP-Fund (nicht geändert, Jacky gemeldet):** Statistik „Topseller nach Menge“ zählt Meterware in cm → Stoffe stehen mit 2000+ ganz oben (betrifft auch MeaLana).
+
 **Offen (nächste Schritte):**
-3. Bewegungen 12 Monate (Saisonkurve): Aufträge aller Kanäle, Rechnungen, Zahlungen, Kassenbons + Z-Bons, Mahnungen, Retouren/Widerrufe, Lieferantenbestellungen/Wareneingang, Gutscheine, Newsletter, Partner/Händler.
+3b. evtl. noch Gutscheine, Newsletter, Partner/Mietfächer, Händler-Konsignation, Inventur, Messe in die Demo.
 4. Nächtlicher Reset + stündlich „neue Shop-Bestellung“; Webspace (PHP 8 + MySQL + Cron) klären.
 
 **Teaser-Webseite** (danach): statisches HTML/CSS auf Indranet, Vorbild bonitnexus.at; Kopf NAHTLOS + „in Entwicklung, im Echtbetrieb“, Für wen, Modul-Kacheln, Screenshots aus der Demo (Playwright), vorläufige Preise (Grundmodul 790 €, [[project_lizenzierung_preise]]), Kontakt.

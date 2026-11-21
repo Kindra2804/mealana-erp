@@ -60,15 +60,18 @@ class DemoKunden
             'uid_nummer' => $haendler ? 'ATU' . mt_rand(10000000, 99999999) : null,
         ]);
         [$plz, $ort] = isset($d['plz']) ? [$d['plz'], $d['ort']] : $this->b->eins($d['land'] === 'DE' ? self::ORTE_DE : self::ORTE_AT);
+        $strasse = $this->b->eins(self::STRASSEN);
+        $hausnr  = (string)mt_rand(1, 120);
         $repo->insertAdresse([
             'kunde_id' => $id, 'adresstyp' => 'haupt', 'ist_standard' => 1, 'land' => $d['land'],
             'firma' => $d['firma'] ?? null, 'vorname' => $d['vorname'], 'nachname' => $d['nachname'],
-            'strasse' => $this->b->eins(self::STRASSEN), 'hausnummer' => (string)mt_rand(1, 120), 'plz' => $plz, 'ort' => $ort,
+            'strasse' => $strasse, 'hausnummer' => $hausnr, 'plz' => $plz, 'ort' => $ort,
         ]);
         $this->b->db->prepare("UPDATE kunden SET erstellt_am = ? WHERE id = ?")->execute([$this->b->vorTagen(mt_rand(30, 900)), $id]);
         $this->b->ids['kunden'][] = ['id' => $id, 'land' => $d['land'], 'haendler' => $haendler, 'herkunft' => $d['herkunft'],
             'name' => $d['firma'] ?? ($d['vorname'] . ' ' . $d['nachname']), 'vorname' => $d['vorname'], 'nachname' => $d['nachname'],
-            'firma' => $d['firma'] ?? null, 'email' => $d['email'], 'plz' => $plz, 'ort' => $ort];
+            'firma' => $d['firma'] ?? null, 'email' => $d['email'], 'plz' => $plz, 'ort' => $ort, 'strasse' => "$strasse $hausnr",
+            'kundennummer' => $nr];
     }
 
     private function mail(string $vn, string $nn, int $i): string
