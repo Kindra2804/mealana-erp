@@ -314,8 +314,8 @@
 
 <footer>
   <div class="wrap">
-    <span>© 2026 NAHTLOS · ein Produkt von Indranet</span>
-    <span><a href="https://www.indranet.at/impressum">Impressum</a><a href="https://www.indranet.at/datenschutz">Datenschutz</a></span>
+    <span>© 2026 NAHTLOS · ein Produkt von Indranet · Fliegergasse 49, 2700 Wiener Neustadt · <a href="mailto:kontakt@indranet.at" style="margin:0">kontakt@indranet.at</a></span>
+    <span><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a></span>
   </div>
 </footer>
 
@@ -329,7 +329,7 @@
     document.getElementById('blick-text').textContent = b.dataset.text;
   });
   // „Interesse melden“: Mail mit vorausgefüllten Fragen (Adresse hier eintragen)
-  var MAIL = 'KONTAKT-ADRESSE@indranet.at';
+  var MAIL = 'kontakt@indranet.at';
   var text = 'Hallo,\n\nich interessiere mich für NAHTLOS.\n\nFirma:\nAnsprechperson:\nTelefon:\n'
            + 'Was ich verkaufe:\nKassen (Anzahl):\nOnlineshops (Anzahl, System):\nBisheriges Programm:\n\nViele Grüße';
   document.getElementById('mail-knopf').href = 'mailto:' + MAIL + '?subject=' + encodeURIComponent('Interesse an NAHTLOS')
