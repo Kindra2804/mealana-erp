@@ -919,7 +919,7 @@ Kompletter Workflow: **Vorbereitung → Offline-Verkauf → Rückkehr**, nicht n
 
 ### NAHTLOS-Branding ✅ (2026-07-03)
 - Barbara hat ein eigenes Software-Logo designt (Nadel/Kleeblatt-Icon + Wortmarke "NahtlOS" + Tagline). Entscheidung: NAHTLOS ersetzt komplett das bisherige Kunden-/Shop-Logo im Header (wie JTL/Shopware ihre eigene Marke zeigen, nicht die des Kunden) — spart die "Logo pro Installation konfigurierbar machen"-Aufgabe aus der Weitergabe-Liste komplett ein.
-- `erp/public/img/nahtlos.png` (Vollversion) + `nahtlos_icon.png` (per PHP-GD rausgeschnittenes Icon ohne Schriftzug, für den knappen Nav-Header)
+- `erp/public/img/nahtlos.png` (Vollversion mit Untertitel „ERP für Wolle, Stoff & Handarbeit“) + `nahtlos_ohne_untertitel.png` (klein: Kasse, Packplatz) + `nahtlos_icon.png` (per PHP-GD rausgeschnittenes Icon ohne Schriftzug, für den knappen Nav-Header)
 - Header (`shell_top.php`): nur das Icon, gleiche Größe wie vorheriges Logo (36px)
 - Vollversion prominent auf Login, Start-Seite, Kasse-Auswahl (`kasse/index.php`), Packplatz-Auswahl (`packplatz/index.php`) — auf dunklen Hintergründen in einer weißen Karte (PNG hat keinen Alpha-Kanal)
 
