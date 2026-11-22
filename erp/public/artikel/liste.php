@@ -560,6 +560,7 @@ $actionBarContent = <<<HTML
         <a href="jtl_import.php">JTL Vater+Kind-Import</a>
         <a href="jtl_bilder_import.php">JTL Bilder-Import</a>
         <a href="lang_import.php">Lang-Yarns-Import</a>
+        <a href="jtl_benennung.php">JTL: neue Nummern (Vorschau)</a>
     </div>
 </details>
 <a href="liste_export.php?{$queryOhneSeite}" class="btn btn-secondary btn-sm" title="Kontrollliste als CSV (Typ/Gruppe/Einheit/Hersteller)">⬆ Export</a>

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 80e0cd93-5868-409a-a6e4-214f7c72e810
-  modified: 2026-11-22T10:24:56.458Z
+  modified: 2026-11-22T10:41:47.613Z
 ---
 
 **Entscheidung 2026-11-21:** Babsi sucht nach Farbnummer (sortiert nach Artikelnummer), nach Art wie Mix/Uni (sortiert nach Preis) oder nach Farbe (sortiert nach Name). Darum:
@@ -33,7 +33,13 @@ Auswertung der behaltenen 10.173 Kinder: etwa 7.900 mit Farb-Achse, etwa 2.100 N
 - `artikel_externe_referenzen` war laut Designnotiz genau dafür gedacht: datenquelle 'jtl' = kArtikel (Interner Schlüssel), zusätzlich 'jtl_nr' = JTL-Artikelnummer.
 - Aktionspreise hängen an artikel_id + sub_achse_id ([Uni]/[Mix], v. a. DROPS wegen Preisunterschied) → Unter-Achsen beim Umbau NUR lesen, nie ändern.
 - ⏳ Bei Babsi (2026-11-22): `import/Babsi_Auswertung_2026-11-22/Hersteller_Kuerzel_fuer_Babsi.csv` (55 JTL-Hersteller, Vorschlag + Hinweise, Spalte „Kürzel Babsi“) und `Artikel_ohne_Hersteller.csv` (112 Väter/Einzel ohne Hersteller in JTL). Offen: „Sonstige“ (340 Väter, gemischte Nummern) – alte Nummern behalten? „DB“ ist bei mehreren Herstellern Anfang (SCHEEPJES, OPRY …). Wenn zurück: Kürzel ins ERP übernehmen (Skript).
-- ▶ Schritt 2: Vorschauseite alt/neu (Nr + Name) für Babsi.
+- ✅ Schritt 2 (2026-11-22): **Vorschau „JTL: neue Nummern“** `public/artikel/jtl_benennung.php` (Artikelliste → ⬇ Import ▾). Regeln in `src/modules/import/ArtikelBenennung.php` (rein, ohne DB), Daten in `JtlBenennungVorschau.php`: JTL-Dateien in `erp/storage/jtl_benennung/` (stammdaten.csv + variationen.csv, Upload auf der Seite), basis.json-Cache; Ausschluss/Umbenennung/Kürzel bei jedem Aufruf frisch aus der DB. Filter, Hinweis-Chips, CSV. Achsen über `parseVariationskombinationen` (gleiche Zerlegung wie Import, erkennt [Uni]/[Mix] im JTL-Farbwert!). `kuerzeDropsName` jetzt public static.
+  - Migr. 260 `import_umbenennung` (quelle, nummer_alt, nummer_neu). Babsis Auswahl eingelesen (Skript `import/Babsi_Auswertung_2026-11-22/babsi_auswahl_einlesen.php`, nur Dev!): 9.170 Ausschlüsse + 113 Umbenennungen (inkl. Prüfliste: PL-278480, SO-P-2000, EL-26; HY-Sharp Fixed wieder dazu; 4 Väter samt Kindern + 15 Väter ohne Kinder weg, LN-118 bleibt). **Für Live: Skript dort laufen lassen oder per Datentransfer.** **Nächste Migr. 261.**
+  - Zusatzregel: Farbwert ohne Nummer → Nummer aus Kindnummer-Ende `-Ziffern` (Lang: LY-71-0324), Info-Hinweis grau.
+  - **Problem:** Stammdaten-Export vom 11.11. ist unvollständig (956 Väter) – Variationen 21.11. hat 1.346 Väter → **390 Väter (~4.500 Kinder) hat Babsi nie gesehen** (Hinweis „von Babsi nicht geprüft“, ohne Hersteller). Braucht frischen vollständigen Stammdaten-Export aus JTL.
+  - Offene Hinweise in der Vorschau: Leerzeichen in Nummer 707 (HY-Sharp Fixed …), Farbe ohne Nummer 333 (8S-…-rt, DMC e130, Hoooked sc02), Farbe + weitere Achse 216 (DROPS Lace Wickelservice), Nummer doppelt 50.
+  - Offene Frage: Einzelartikel bekommen derzeit auch Kürzel-Rest (SO-613606 → bleibt ohne Kürzel) – Regel mit Jacky bestätigen.
+- ▶ Danach Schritt 3: Importer auf ArtikelBenennung umbauen (+ JTL-Nr in artikel_externe_referenzen 'jtl_nr'/'jtl', Ausschluss + Umbenennung anwenden).
 
 ## Stand vom 2026-11-21 (Fragen inzwischen beantwortet, siehe oben)
 - **Art [Uni/Mix/…] kommt über die Achsen** (Jacky, Screenshot): Die Achse FARBE hat Unter-Gruppen „↳ [MIX]“, „↳ [UNI]“, darin die Farbwerte (z. B. „77 EICHE HELL“, „01 NATUR“). Also kein eigenes Merkmal, die Art kommt aus der Unter-Achse, in der der Farbwert liegt. Vorher prüfen, wie diese Unter-Achsen in der DB abgebildet sind (varianten_achsen / varianten_achse_werte).

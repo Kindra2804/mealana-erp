@@ -234,7 +234,7 @@ class JtlVaterKindImportService
      * Produktnamens und bleibt bewusst stehen. Groß-/Kleinschreibung im Rohtext ist
      * uneinheitlich ("DROPS loves You" vs. "DROPS Loves You"), daher case-insensitive.
      */
-    private function kuerzeDropsName(string $name): string
+    public static function kuerzeDropsName(string $name): string
     {
         if (preg_match('/^DROPS\s+loves\s+you/i', $name)) {
             return $name;
