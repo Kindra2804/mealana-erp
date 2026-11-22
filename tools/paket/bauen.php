@@ -95,6 +95,24 @@ foreach ($it as $f) {
 }
 ksort($dateien);
 
+// Nur in der Groß-/Kleinschreibung umbenannte Dateien (1.0.28: database.php -> Database.php): Ein Update, das
+// noch ein älterer Update-Code einspielt, hält die alte Schreibweise für „veraltet“ und löscht sie – unter
+// Windows ist das dieselbe Datei wie die neue (so passiert beim Einspielen von 1.0.28). Darum liegt die alte
+// Schreibweise zusätzlich mit gleichem Inhalt im Paket; das Update überschreibt dieselbe Datei nur nochmal.
+$aliase = [];   // alte Schreibweise => neue
+$neuKlein = [];
+foreach (array_keys($dateien) as $rel) $neuKlein[strtolower($rel)] = $rel;
+foreach (glob(rtrim($ziel, '/\\') . '/nahtlos-*.zip') ?: [] as $altZip) {
+    $huelle = json_decode((string)@file_get_contents('phar://' . str_replace('\\', '/', $altZip) . '/nahtlos-manifest.json'), true);
+    $alt    = is_string($huelle['daten'] ?? null) ? json_decode($huelle['daten'], true) : $huelle;
+    foreach (array_keys($alt['dateien'] ?? []) as $rel) {
+        $neu = $neuKlein[strtolower($rel)] ?? null;
+        if ($neu !== null && $neu !== $rel) $aliase[$rel] = $neu;
+    }
+}
+foreach ($aliase as $alt => $neu) $dateien[$alt] = $dateien[$neu];
+ksort($dateien);
+
 $manifest = [
     'produkt' => 'NAHTLOS ERP',
     'version' => $version,
@@ -121,8 +139,10 @@ $zip = rtrim($ziel, '/\\') . "/nahtlos-$version.zip";
 if (file_exists($zip)) unlink($zip);
 $z = new PharData($zip, 0, null, Phar::ZIP);
 $z->buildFromDirectory($bau);
+foreach ($aliase as $alt => $neu) $z->addFromString($alt, file_get_contents("$bau/$neu"));
 $z->compressFiles(Phar::GZ);
 unset($z);
 $loeschen($tmp);
 
 printf("Paket: %s\n  Version %s (Commit %s), %d Dateien, %.1f MB\n", $zip, $version, $commit, count($dateien), filesize($zip) / 1048576);
+foreach ($aliase as $alt => $neu) echo "  Alte Schreibweise mitgeliefert: $alt (= $neu)\n";

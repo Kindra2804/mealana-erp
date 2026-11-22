@@ -216,10 +216,13 @@ class UpdateService
             if ($ziel === null) return [];
         }
         $wurzel = self::wurzel();
+        // Nur in der Groß-/Kleinschreibung umbenannt (1.0.28: database.php -> Database.php): unter Windows ist das
+        // DIESELBE Datei – sie zu „entfernen“ löschte die gerade kopierte neue. Darum ohne Groß/Klein vergleichen.
+        $zielKlein = array_change_key_case(array_flip(array_keys($ziel['dateien'] ?? [])), CASE_LOWER);
         $erg = [];
         foreach ($manifeste as $man) {
             foreach (array_keys($man['dateien'] ?? []) as $rel) {
-                if (isset($ziel['dateien'][$rel]) || isset($erg[$rel])) continue;
+                if (isset($ziel['dateien'][$rel]) || isset($zielKlein[strtolower($rel)]) || isset($erg[$rel])) continue;
                 if (str_contains($rel, '..') || str_starts_with($rel, '/') || self::geschuetzt($rel)) continue;
                 if (is_file("$wurzel/$rel")) $erg[$rel] = true;
             }
