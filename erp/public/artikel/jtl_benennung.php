@@ -172,13 +172,20 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <?php if ($erg): $s = $erg['summe']; ?>
 <div class="card" style="padding:var(--space-md);margin-top:var(--space-md)">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
-        <?php foreach ([['Väter', $s['vaeter'], '#2B6CB0', null], ['Kinder', $s['kinder'], '#2B6CB0', null], ['Einzelartikel', $s['einzel'], '#2B6CB0', null],
-                        ['noch nicht geprüft', $s['ungeprueft'], $s['ungeprueft'] ? '#C05621' : '#2F855A', 'neu'],
-                        ['ausgeschlossen', $s['ausgeschlossen'], '#718096', 'weg']] as [$t, $z, $c, $ziel]): ?>
-            <<?= $ziel ? 'a href="' . $h($link(['auswahl' => $ziel, 'seite' => null])) . '"' : 'div' ?> style="border:1px solid var(--color-border);border-radius:6px;padding:8px 10px;text-decoration:none<?= $ziel && $ziel === $auswahl ? ';outline:2px solid ' . $c : '' ?>">
-                <div style="font-size:12px;color:var(--color-text-muted)"><?= $t ?><?= $ziel ? ' ›' : '' ?></div>
+        <?php
+        // Jede Kachel ist ein Link; Väter/Kinder/Einzel führen zurück zu "wird übernommen" (auswahl leer)
+        // [Titel, Zahl, Farbe, auswahl, typ]
+        foreach ([['Väter', $s['vaeter'], '#2B6CB0', '', 'vater'], ['Kinder', $s['kinder'], '#2B6CB0', '', ''],
+                  ['Einzelartikel', $s['einzel'], '#2B6CB0', '', 'einzel'],
+                  ['noch nicht geprüft', $s['ungeprueft'], $s['ungeprueft'] ? '#C05621' : '#2F855A', 'neu', ''],
+                  ['ausgeschlossen', $s['ausgeschlossen'], '#718096', 'weg', '']] as [$t, $z, $c, $zAuswahl, $zTyp]):
+            $aktiv = $zAuswahl === $auswahl && $zTyp === $f['typ'];
+        ?>
+            <a href="<?= $h($link(['auswahl' => $zAuswahl, 'typ' => $zTyp, 'seite' => null])) ?>"
+               style="border:1px solid var(--color-border);border-radius:6px;padding:8px 10px;text-decoration:none<?= $aktiv ? ';outline:2px solid ' . $c : '' ?>">
+                <div style="font-size:12px;color:var(--color-text-muted)"><?= $t ?> ›</div>
                 <div style="font-size:22px;font-weight:600;color:<?= $c ?>"><?= number_format($z, 0, ',', '.') ?></div>
-            </<?= $ziel ? 'a' : 'div' ?>>
+            </a>
         <?php endforeach; ?>
     </div>
     <?php if ($s['hinweise']): ?>
