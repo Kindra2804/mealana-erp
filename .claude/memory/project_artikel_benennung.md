@@ -45,6 +45,7 @@ Auswertung der behaltenen 10.173 Kinder: etwa 7.900 mit Farb-Achse, etwa 2.100 N
   - Migr. 261 `import_geprueft` (quelle, nummer): Babsis 11.11.-Liste = 3.299 Väter/Einzel als geprüft eingetragen (Skript `geprueft_einlesen.php`, benutzer_id NULL). Vorschau: Häkchen „übernehmen“ je Vater/Einzel (AJAX, js/jtl_benennung.js), Auswahl-Filter (übernommen / noch nicht geprüft / ausgeschlossen), Kachel „noch nicht geprüft“, Knopf „Seite als geprüft markieren“. **1.178 ungeprüft** (390 Väter, 788 Einzel) → Babsi entscheidet im ERP. **Nächste Migr. 262.**
   - Fix: numerische JTL-Nummern wurden durch PHP-Array-Schlüssel zu int → (string)-Cast in basis().
   - Offen: Marianne Hobby (5) + Witzgall (2) fehlen als Hersteller im ERP; CraSy, Vervaco, Stocker Verlag ohne Kürzel. Sonstige=SO ergibt z. B. SO-8S-B37642 / SO-2TTicket (Babsi zeigen). Einzelartikel-Regel bestätigt (Kürzel + Rest).
+- ✅ 2026-11-22 (Jacky): Kinder, deren Nummer nicht aus der Farbe kommt (Farbe ohne Nummer, Farbe + weitere Achse, Nadeln, ohne Achse), bekommen trotzdem das Kürzel: Anfang = alte Vaternummer → durch neue ersetzt (8S-800086-rt → SO-8S-800086-rt), sonst Vater-Regel (8S-B10132 → SO-8S-B10132; KP-20415 bleibt). rechne() bekommt dafür 'jtl_nr' des Vaters.
 - ▶ Danach Schritt 3: Importer auf ArtikelBenennung umbauen (+ JTL-Nr in artikel_externe_referenzen 'jtl_nr'/'jtl', Ausschluss + Umbenennung anwenden).
 
 ## Stand vom 2026-11-21 (Fragen inzwischen beantwortet, siehe oben)

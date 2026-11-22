@@ -156,7 +156,7 @@ class JtlBenennungVorschau
                 $vorab[] = 'alle Kinder ausgeschlossen';
             }
 
-            $r = ArtikelBenennung::rechne(['nr' => $vaterNr, 'name' => $vaterName, 'kuerzel' => $h['kuerzel'] ?? null], $kinder);
+            $r = ArtikelBenennung::rechne(['nr' => $vaterNr, 'jtl_nr' => $g['jtl_nr'], 'name' => $vaterName, 'kuerzel' => $h['kuerzel'] ?? null], $kinder);
             if (!$h || empty($h['kuerzel'])) {
                 $r['hinweise'] = array_values(array_diff($r['hinweise'], ['Hersteller ohne Kürzel – Nummern bleiben']));
                 if ($h) $vorab[] = 'Hersteller ohne Kürzel';
