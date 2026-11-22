@@ -7,8 +7,9 @@
  *   php scripts/datentransfer.php export --teile=artikel --artikel-kategorie=420 --datei=D:/transfer/indra.tar
  *   php scripts/datentransfer.php export --teile=kategorien,hersteller
  *   php scripts/datentransfer.php export --teile=lieferanten,kontenplan
+ *   php scripts/datentransfer.php export --teile=jtl_liste      (Babsis Liste JTL-Übernahme + Hersteller/Kürzel)
  *
- *   --teile=             kategorien | hersteller | artikel | slider | menue | lieferanten | kontenplan (Komma-Liste)
+ *   --teile=             kategorien | hersteller | artikel | slider | menue | lieferanten | kontenplan | jtl_liste (Komma-Liste)
  *   --shop=              Kanal (Slug, Kürzel oder ID): Artikel dieses Kanals, dessen Slider/Menü
  *   --artikel-kategorie= nur Artikel aus diesem Kategorie-Ast (mit --shop: beides muss passen)
  *   --alle-artikel       wirklich alle Artikel
@@ -24,6 +25,8 @@
  * Vorhandenes wird nie überschrieben: Kategorien/Hersteller/Achsen werden über den Namen
  * wiederverwendet, Artikel mit gleicher Artikelnummer bleiben unverändert. Ein zweiter Lauf
  * mit demselben Paket legt darum nichts doppelt an.
+ * Ausnahme jtl_liste: Die Liste (Ausschluss/geprüft/Umbenennung/Vorgabe) wird im Ziel GESPIEGELT, und
+ * vorhandene Hersteller bekommen Kürzel + weitere Namen aus der Quelle. Beliebig oft wiederholbar.
  */
 
 if (PHP_SAPI !== 'cli') exit("Nur über die Kommandozeile.\n");

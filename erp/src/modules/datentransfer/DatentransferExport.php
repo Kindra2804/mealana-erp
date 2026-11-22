@@ -16,6 +16,8 @@
  * Teile (frei kombinierbar):
  *   kategorien  ganzer Kategoriebaum (oder Ast mit kategorie_baum)
  *   hersteller  alle Hersteller (sonst nur die, auf die Artikel verweisen)
+ *   jtl_liste   Babsis Liste zur JTL-Übernahme (import_ausschluss/_geprueft/_umbenennung/_vorgabe, quelle 'jtl')
+ *               + ALLE Hersteller mit Kürzel und weiteren Namen (im Ziel: neue anlegen, Kürzel nachziehen)
  *   artikel     Artikel + Codes, Preise, Bilder, Kategorien, Achsen/Werte, Merkmale,
  *               Lieferanten-Zuordnung, Shop-Zuweisung (ohne Bestand, ohne Shop-IDs)
  *   slider      Slides + Kacheln eines Shops
@@ -30,7 +32,7 @@
 class DatentransferExport
 {
     public const FORMAT = 1;
-    public const TEILE  = ['kategorien', 'hersteller', 'artikel', 'slider', 'menue', 'lieferanten', 'kontenplan'];
+    public const TEILE  = ['kategorien', 'hersteller', 'artikel', 'slider', 'menue', 'lieferanten', 'kontenplan', 'jtl_liste'];
 
     private PDO $db;
     private string $public;
@@ -111,6 +113,16 @@ class DatentransferExport
             $d['kontenplan'] = $this->alle('SELECT * FROM kontenplan ORDER BY kontonummer');
         }
 
+        // ── Babsis Liste zur JTL-Übernahme (Dev wird gepflegt, Live gespiegelt) ──
+        if (in_array('jtl_liste', $teile, true)) {
+            $d['jtl_liste'] = [
+                'ausschluss'  => $this->alle("SELECT nummer, name FROM import_ausschluss WHERE quelle = 'jtl' ORDER BY id"),
+                'geprueft'    => $this->alle("SELECT nummer, geprueft_am FROM import_geprueft WHERE quelle = 'jtl' ORDER BY nummer"),
+                'umbenennung' => $this->alle("SELECT nummer_alt, nummer_neu, name FROM import_umbenennung WHERE quelle = 'jtl' ORDER BY id"),
+                'vorgabe'     => $this->alle("SELECT nummer, nummer_neu, hersteller_id FROM import_vorgabe WHERE quelle = 'jtl' ORDER BY nummer"),
+            ];
+        }
+
         // ── Hersteller ───────────────────────────────────────────────────
         $herstellerIds = array_filter(array_column($d['artikel'] ?? [], 'hersteller_id'));
         foreach (array_merge($d['slides'] ?? [], $d['menue'] ?? []) as $z) {
@@ -119,7 +131,8 @@ class DatentransferExport
             }
             if (($z['typ'] ?? null) === 'hersteller') $herstellerIds[] = $z['ziel_id'];
         }
-        $d['hersteller'] = in_array('hersteller', $teile, true)
+        // Liste: alle Hersteller (Kürzel bestimmen die neuen Nummern, Vorgaben verweisen auf Hersteller)
+        $d['hersteller'] = (in_array('hersteller', $teile, true) || in_array('jtl_liste', $teile, true))
             ? $this->alle('SELECT * FROM hersteller ORDER BY id')
             : $this->zeilenMitIds('hersteller', $herstellerIds);
         foreach ($d['hersteller'] as $h) {
@@ -283,6 +296,7 @@ class DatentransferExport
                   'lieferanten', 'lieferanten_vertreter', 'lieferanten_artikel', 'kontenplan'] as $k) {
             if (isset($d[$k])) $zahlen[$k] = count($d[$k]);
         }
+        foreach ($d['jtl_liste'] ?? [] as $k => $z) $zahlen["jtl_$k"] = count($z);
         $zahlen['dateien'] = count($this->dateien) - $fehlend;
         return ['erfolg' => true, 'datei' => realpath($datei) ?: $datei, 'zahlen' => $zahlen, 'hinweise' => $this->hinweise];
     }

@@ -19,6 +19,10 @@
  *                   Artikel-Zuordnungen über die Artikelnummer — nur wenn der Artikel im Ziel existiert
  *                   und dort noch keine Zuordnung zu diesem Lieferanten hat
  *   Teil kontenplan: fehlende Kontonummern werden ergänzt, vorhandene Konten bleiben, wie sie sind
+ *   Teil jtl_liste: Babsis Liste zur JTL-Übernahme wird GESPIEGELT (Ziel = Stand der Quelle, quelle 'jtl'):
+ *                   Ausschluss, geprüft, Umbenennungen, Vorgaben (Hersteller über den Namen zugeordnet).
+ *                   Dazu bei vorhandenen Herstellern: Kürzel aus der Quelle (wenn dort gesetzt),
+ *                   weitere Namen werden ergänzt. Neue Hersteller werden wie immer angelegt.
  *
  * Alles läuft in EINER Transaktion; die Bilder werden erst nach erfolgreichem Datenteil
  * kopiert. Im Probelauf wird am Ende zurückgerollt und keine Datei kopiert.
@@ -70,7 +74,10 @@ class DatentransferImport
             if (isset($d['lieferanten'])) $this->lieferanten($d);   // vor stammdaten(): der Artikel-Teil findet sie dann über den Namen
             $this->stammdaten($d['ref'] ?? []);
             $this->kategorien($d, $tmp);
-            $this->hersteller($d['hersteller'] ?? [], $tmp);
+            // Kürzel/weitere Namen vorhandener Hersteller nur nachziehen, wenn alle Hersteller im Paket sind
+            $alleHersteller = (bool) array_intersect(['hersteller', 'jtl_liste'], $d['teile'] ?? []);
+            $this->hersteller($d['hersteller'] ?? [], $tmp, $alleHersteller);
+            if (isset($d['jtl_liste'])) $this->jtlListe($d['jtl_liste']);   // nach hersteller(): Vorgaben brauchen die Hersteller-Zuordnung
             $this->achsen($d['achsen'] ?? []);
             if (isset($d['artikel'])) $this->artikel($d, $tmp);
             if (isset($d['slides'])) $this->slides($d, $tmp);
@@ -263,12 +270,18 @@ class DatentransferImport
 
     // ── Hersteller, Achsen ──────────────────────────────────────────────
 
-    private function hersteller(array $zeilen, string $tmp): void
+    private function hersteller(array $zeilen, string $tmp, bool $kuerzelNachziehen = false): void
     {
+        $spalten = $this->spaltenCache['hersteller'] ??= $this->db->query("SHOW COLUMNS FROM `hersteller`")->fetchAll(PDO::FETCH_COLUMN);
+        $kannKuerzel = in_array('kuerzel', $spalten, true) && in_array('weitere_namen', $spalten, true);
+        if ($kuerzelNachziehen && !$kannKuerzel) {
+            $this->hinweise[] = 'Hersteller-Kürzel nicht übernommen: Im Ziel fehlen die Spalten kuerzel/weitere_namen (Update mit Migration 258/259 einspielen).';
+        }
         foreach ($zeilen as $h) {
             $id = $this->wert('SELECT id FROM hersteller WHERE name = ? LIMIT 1', [$h['name']]);
             if ($id) {
                 $this->zaehle('hersteller_vorhanden');
+                if ($kuerzelNachziehen && $kannKuerzel) $this->herstellerKuerzelNachziehen((int) $id, $h);
             } else {
                 $logo = $h['logo_pfad'];
                 $h['logo_pfad'] = null;
@@ -283,6 +296,87 @@ class DatentransferImport
                 }
             }
             $this->map['hersteller'][$h['id']] = (int)$id;
+        }
+    }
+
+    /** Vorhandener Hersteller: Kürzel der Quelle übernehmen (wenn gesetzt), weitere Namen zusammenführen. */
+    private function herstellerKuerzelNachziehen(int $id, array $h): void
+    {
+        $ziel = $this->zeile('SELECT kuerzel, weitere_namen FROM hersteller WHERE id = ?', [$id]);
+        $kuerzel = trim((string) ($h['kuerzel'] ?? ''));
+        if ($kuerzel !== '' && $kuerzel !== (string) $ziel['kuerzel']) {
+            $this->ausfuehren('UPDATE hersteller SET kuerzel = ? WHERE id = ?', [$kuerzel, $id]);
+            $this->zaehle('hersteller_kuerzel_gesetzt');
+            if ((string) $ziel['kuerzel'] !== '') $this->hinweise[] = "Kürzel geändert: {$h['name']} {$ziel['kuerzel']} -> $kuerzel";
+        }
+        $namen = fn($t) => array_filter(array_map('trim', explode(';', (string) $t)), 'strlen');
+        $alle  = array_values(array_unique(array_merge($namen($ziel['weitere_namen']), $namen($h['weitere_namen'] ?? ''))));
+        $neu   = $alle ? implode('; ', $alle) : null;
+        if ($neu !== ($ziel['weitere_namen'] ?: null)) {
+            $this->ausfuehren('UPDATE hersteller SET weitere_namen = ? WHERE id = ?', [$neu, $id]);
+            $this->zaehle('hersteller_weitere_namen');
+        }
+    }
+
+    /**
+     * Babsis Liste spiegeln (quelle 'jtl'): was in der Quelle steht, steht danach genauso im Ziel –
+     * auch Entferntes (z.B. wieder angehakter Artikel) verschwindet im Ziel.
+     */
+    private function jtlListe(array $l): void
+    {
+        foreach (['import_ausschluss', 'import_geprueft', 'import_umbenennung', 'import_vorgabe'] as $t) {
+            if (!$this->wert('SHOW TABLES LIKE ?', [$t])) {
+                throw new RuntimeException("Tabelle $t fehlt im Ziel – zuerst das Update mit den Migrationen 254–262 einspielen.");
+            }
+        }
+        // Hersteller der Vorgaben: Quell-ID -> Ziel-ID (über hersteller() zugeordnet)
+        $vorgabe = [];
+        foreach ($l['vorgabe'] ?? [] as $v) {
+            $hId = null;
+            if ($v['hersteller_id'] !== null && $v['hersteller_id'] !== '') {
+                $hId = $this->ziel('hersteller', $v['hersteller_id']);
+                if ($hId === null) $this->hinweise[] = "Vorgabe {$v['nummer']}: Hersteller (Quell-ID {$v['hersteller_id']}) fehlt im Paket – ohne Hersteller übernommen.";
+            }
+            $vorgabe[] = ['nummer' => $v['nummer'], 'nummer_neu' => $v['nummer_neu'], 'hersteller_id' => $hId];
+        }
+
+        $this->spiegle('import_ausschluss', 'nummer', ['name'], $l['ausschluss'] ?? [], 'jtl_ausschluss');
+        $this->spiegle('import_geprueft', 'nummer', ['geprueft_am'], $l['geprueft'] ?? [], 'jtl_geprueft');
+        $this->spiegle('import_umbenennung', 'nummer_alt', ['nummer_neu', 'name'], $l['umbenennung'] ?? [], 'jtl_umbenennung');
+        $this->spiegle('import_vorgabe', 'nummer', ['nummer_neu', 'hersteller_id'], $vorgabe, 'jtl_vorgabe');
+    }
+
+    /** Zieltabelle (quelle 'jtl') auf genau diese Zeilen bringen: neu / geändert / entfernt zählen. */
+    private function spiegle(string $tabelle, string $schluessel, array $felder, array $zeilen, string $zaehler): void
+    {
+        $felderSql = implode(', ', array_map(fn($f) => "`$f`", $felder));
+        $vorher = [];
+        foreach ($this->db->query("SELECT `$schluessel` AS k, $felderSql FROM `$tabelle` WHERE quelle = 'jtl'")->fetchAll(PDO::FETCH_ASSOC) as $z) {
+            $vorher[(string) $z['k']] = $z;
+        }
+        $soll = [];
+        foreach ($zeilen as $z) $soll[(string) $z[$schluessel]] = $z;
+
+        $spalten = array_merge(['quelle', $schluessel], $felder);
+        $ins = $this->db->prepare("INSERT INTO `$tabelle` (`" . implode('`,`', $spalten) . "`) VALUES (" . implode(',', array_fill(0, count($spalten), '?')) . ")");
+        $upd = $this->db->prepare("UPDATE `$tabelle` SET " . implode(', ', array_map(fn($f) => "`$f` = ?", $felder)) . " WHERE quelle = 'jtl' AND `$schluessel` = ?");
+        $del = $this->db->prepare("DELETE FROM `$tabelle` WHERE quelle = 'jtl' AND `$schluessel` = ?");
+        $text = fn($w) => $w === null ? null : (string) $w;
+        $zeitpunktAllein = $felder === ['geprueft_am'];   // Prüfzeitpunkt allein ist keine Änderung
+
+        foreach ($soll as $k => $z) {
+            $werte = array_map(fn($f) => $z[$f] ?? null, $felder);
+            if (!isset($vorher[$k])) {
+                $ins->execute(array_merge(['jtl', (string) $k], $werte));
+                $this->zaehle("{$zaehler}_neu");
+            } elseif (!$zeitpunktAllein && array_map($text, array_map(fn($f) => $vorher[$k][$f], $felder)) !== array_map($text, $werte)) {
+                $upd->execute(array_merge($werte, [(string) $k]));
+                $this->zaehle("{$zaehler}_geaendert");
+            }
+        }
+        foreach (array_keys(array_diff_key($vorher, $soll)) as $k) {
+            $del->execute([(string) $k]);
+            $this->zaehle("{$zaehler}_entfernt");
         }
     }
 
