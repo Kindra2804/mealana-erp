@@ -423,6 +423,11 @@ class JtlArchivImportService
             $original = mb_strtoupper(trim($row['Positionsart'] ?? 'POSITION'));
         }
 
+        // Mit neuem Schema importierte Artikel heißen im ERP anders -> zuerst über die gemerkte JTL-Nummer
+        $jtlId = $this->artikelRepo->findIdByJtlNr($original);
+        if ($jtlId) {
+            return $jtlId;
+        }
         $treffer = $this->artikelRepo->findByArtikelnummer($original);
         if ($treffer) {
             return (int)$treffer['id'];

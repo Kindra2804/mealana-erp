@@ -758,6 +758,47 @@ class ArtikelRepository
         return $artikel;
     }
 
+    /**
+     * ERP-Artikel zu einer JTL-Artikelnummer (artikel_externe_referenzen 'jtl_nr', gesetzt vom JTL-Import).
+     * Seit dem neuen Nummernschema (2026-11-22) heißen MeaLana-Artikel im ERP anders als in JTL.
+     */
+    public function findIdByJtlNr(string $jtlNr): ?int
+    {
+        $st = $this->db->prepare("SELECT artikel_id FROM artikel_externe_referenzen WHERE datenquelle = 'jtl_nr' AND externe_id = ? AND artikel_id IS NOT NULL");
+        $st->execute([trim($jtlNr)]);
+        $id = $st->fetchColumn();
+        return $id ? (int) $id : null;
+    }
+
+    /**
+     * Index für JTL-Dateien (Lagerabgleich, Merkmale): Nummer => [id, artikelnummer, ist_vater, vaterartikel_id].
+     * Zuerst die gemerkten JTL-Nummern, danach die ERP-Artikelnummern (Artikel ohne JTL-Referenz, z.B. vor
+     * dem neuen Schema importiert) – eine JTL-Nummer zeigt so nie auf einen fremden Artikel mit gleicher ERP-Nummer.
+     */
+    public function indexFuerJtlNummern(): array
+    {
+        $index = [];
+        foreach ($this->db->query("
+            SELECT r.externe_id AS nr, a.id, a.artikelnummer, a.ist_vater, a.vaterartikel_id
+            FROM artikel_externe_referenzen r JOIN artikel a ON a.id = r.artikel_id
+            WHERE r.datenquelle = 'jtl_nr'") as $a) {
+            $index[(string) $a['nr']] = $a;
+        }
+        foreach ($this->db->query("SELECT artikelnummer AS nr, id, artikelnummer, ist_vater, vaterartikel_id FROM artikel") as $a) {
+            $index[(string) $a['nr']] ??= $a;
+        }
+        return $index;
+    }
+
+    /** JTL-Nummern zu ERP-Artikel-IDs (nur Artikel mit Referenz): id => JTL-Nummer. */
+    public function jtlNummernJeId(array $ids): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if (!$ids) return [];
+        return $this->db->query("SELECT artikel_id, externe_id FROM artikel_externe_referenzen
+                                 WHERE datenquelle = 'jtl_nr' AND artikel_id IN (" . implode(',', $ids) . ")")->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+
     /** Eindeutigkeits-Check für Artikelnummer — excludeId ausschließen bei Updates. */
     public function findByArtikelnummer(string $artikelnummer, ?int $excludeId = null): array|false
     {

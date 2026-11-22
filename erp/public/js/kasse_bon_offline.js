@@ -284,6 +284,7 @@ function obScannen(code) {
     const korr  = gross(code).replace(/[ßẞ?]/g, '-');
     const yz    = korr.replace(/[YZ]/g, c => (c === 'Y' ? 'Z' : 'Y'));
     const treffer = obArtikel.find(a => a.ean === code || a.artikelnummer === code || String(a.id) === code)
+        || obArtikel.find(a => a.jtl_nr && a.jtl_nr === code)   // altes JTL-Etikett
         || obArtikel.find(a => a.artikelnummer && (gross(a.artikelnummer) === korr || gross(a.artikelnummer) === yz));
     if (!treffer) {
         fb.textContent = 'Nicht gefunden: ' + code + ' — ggf. Artikelname eingeben zum Suchen, oder "➕ Freier Artikel" nutzen.';

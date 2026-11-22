@@ -118,17 +118,20 @@ class KassenService
               AND (
                   EXISTS (SELECT 1 FROM artikel_codes ac WHERE ac.artikel_id = a.id AND ac.code = :code AND ac.typ = 'GTIN13')
                   OR a.artikelnummer = :code2
+                  -- alte JTL-Etiketten im Laden: JTL-Nummer vom Import (neues Nummernschema)
+                  OR EXISTS (SELECT 1 FROM artikel_externe_referenzen r WHERE r.artikel_id = a.id AND r.datenquelle = 'jtl_nr' AND r.externe_id = :code3)
               )
+            ORDER BY (a.artikelnummer = :code4) DESC
             LIMIT 1
         ");
-        $stmt->execute([':code' => $code, ':code2' => $code, ':lager_id' => $lagerId, ':lager_id2' => $lagerId]);
+        $stmt->execute([':code' => $code, ':code2' => $code, ':code3' => $code, ':code4' => $code, ':lager_id' => $lagerId, ':lager_id2' => $lagerId]);
         $artikel = $stmt->fetch();
         if (!$artikel) return null;
 
         // Partnerware: Bestand + Chargen stehen im Partner-Lager, nicht im Kassenlager
         $partnerLager = $this->lagerFuerArtikel((int)$artikel['id'], $lagerId);
         if ($partnerLager !== $lagerId) {
-            $stmt->execute([':code' => $code, ':code2' => $code, ':lager_id' => $partnerLager, ':lager_id2' => $partnerLager]);
+            $stmt->execute([':code' => $code, ':code2' => $code, ':code3' => $code, ':code4' => $code, ':lager_id' => $partnerLager, ':lager_id2' => $partnerLager]);
             $artikel = $stmt->fetch();
             $lagerId = $partnerLager;
             $artikel['partner_lager_id'] = $partnerLager;

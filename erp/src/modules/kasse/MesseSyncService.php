@@ -196,7 +196,10 @@ class MesseSyncService
                      WHERE lb.artikel_id = a.id AND lb.lager_id = :lager_id), 0
                 ) AS bestand,
                 (SELECT ac.code FROM artikel_codes ac
-                 WHERE ac.artikel_id = a.id AND ac.typ = 'GTIN13' LIMIT 1) AS ean
+                 WHERE ac.artikel_id = a.id AND ac.typ = 'GTIN13' LIMIT 1) AS ean,
+                -- alte JTL-Etiketten scannbar (neues Nummernschema, Referenz vom JTL-Import)
+                (SELECT r.externe_id FROM artikel_externe_referenzen r
+                 WHERE r.artikel_id = a.id AND r.datenquelle = 'jtl_nr' LIMIT 1) AS jtl_nr
             FROM kassen_messe_umbuchungen u
             INNER JOIN artikel a ON a.id = u.artikel_id
             LEFT JOIN steuerklassen sk ON sk.id = a.steuerklasse_id

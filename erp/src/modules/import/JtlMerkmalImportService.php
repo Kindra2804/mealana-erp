@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/JtlCsvReader.php';
+require_once __DIR__ . '/../artikel/ArtikelRepository.php';
 require_once __DIR__ . '/../merkmale/MerkmalService.php';
 
 /**
@@ -80,10 +81,8 @@ class JtlMerkmalImportService
         $bericht['zahlen']['artikel_datei'] = count($daten);
 
         // 2) Artikelnummern auflösen
-        $artikel = [];
-        foreach ($this->db->query("SELECT id, artikelnummer, vaterartikel_id, ist_vater FROM artikel") as $a) {
-            $artikel[$a['artikelnummer']] = $a;
-        }
+        // JTL-Nummer (Referenz vom Import) vor ERP-Artikelnummer
+        $artikel = (new ArtikelRepository())->indexFuerJtlNummern();
 
         $werteVorher = (int) $this->db->query("SELECT COUNT(*) FROM merkmal_werte")->fetchColumn();
         $this->db->beginTransaction();

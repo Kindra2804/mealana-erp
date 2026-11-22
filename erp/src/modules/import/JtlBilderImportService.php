@@ -62,7 +62,9 @@ class JtlBilderImportService
         $ergebnis = [];
 
         foreach ($rows as $artikelnummer => $eintrag) {
-            $artikel = $this->artikelRepo->findByArtikelnummer($artikelnummer);
+            // JTL-Nummer (Referenz vom Import) vor ERP-Artikelnummer
+            $jtlId   = $this->artikelRepo->findIdByJtlNr((string) $artikelnummer);
+            $artikel = $jtlId ? ['id' => $jtlId] : $this->artikelRepo->findByArtikelnummer((string) $artikelnummer);
 
             $zeile = [
                 'artikelnummer' => $artikelnummer,

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/../import/JtlCsvReader.php';
+require_once __DIR__ . '/../artikel/ArtikelRepository.php';
 
 /**
  * JTL-Lagerabgleich für den Parallelbetrieb (Migration 231, Jacky/Babsi 2026-11-11).
@@ -196,6 +197,8 @@ class JtlAbgleichService
         if (!$delta) return [[], []];
         $artikelIds = array_unique(array_map(fn($k) => (int) explode('|', $k)[0], array_keys($delta)));
         $nr = $this->db->query("SELECT id, artikelnummer FROM artikel WHERE id IN (" . implode(',', $artikelIds) . ")")->fetchAll(PDO::FETCH_KEY_PAIR);
+        // JTL kennt nur seine eigene Nummer – mit neuem Schema importierte Artikel unter der JTL-Nummer exportieren
+        foreach ((new ArtikelRepository())->jtlNummernJeId($artikelIds) as $id => $jtlNr) $nr[$id] = $jtlNr;
         $lagerName = $this->db->query("SELECT id, name FROM lager")->fetchAll(PDO::FETCH_KEY_PAIR);
         // Chargen-Reihenfolge (älteste zuerst) je Artikel+Lager
         $reihenfolge = [];
@@ -306,8 +309,8 @@ class JtlAbgleichService
             if (!array_key_exists($sp, $zeilen[0])) throw new RuntimeException("Spalte „{$sp}“ fehlt in der JTL-Datei (gefunden: " . implode(', ', array_keys($zeilen[0])) . ').');
         }
 
-        $artikel = [];
-        foreach ($this->db->query("SELECT id, artikelnummer, ist_vater FROM artikel") as $a) $artikel[$a['artikelnummer']] = $a;
+        // JTL-Nummer (Referenz vom Import) vor ERP-Artikelnummer
+        $artikel = (new ArtikelRepository())->indexFuerJtlNummern();
         $lagerByName = [];
         foreach ($this->db->query("SELECT id, name FROM lager WHERE lager_beziehung = 'eigen' AND typ <> 'messe'") as $l) $lagerByName[mb_strtolower(trim($l['name']))] = (int) $l['id'];
 
