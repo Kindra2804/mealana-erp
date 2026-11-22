@@ -228,6 +228,8 @@ class JtlVaterKindImportService
         // Barbaras Rohdaten schreiben Farbnamen uneinheitlich groß/klein (z.B. "Weiß" vs
         // "weiß") -- einheitlich klein, damit die Achsenwerte-Liste nicht wild gemischt aussieht.
         $name = mb_strtolower($name);
+        // Einheitlich "weiß" (Jacky 2026-11-22), sonst stehen "weiss" und "weiß" als zwei Farben nebeneinander
+        $name = str_replace('weiss', 'weiß', $name);
 
         $wertNeu = $nr !== null ? trim($nr . ' ' . $name) : $name;
 
