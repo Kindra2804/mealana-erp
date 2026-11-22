@@ -221,10 +221,8 @@ class JtlVaterKindImportService
             $einheitMap[mb_strtolower(trim($e['kuerzel']))] = (int)$e['id'];
         }
 
-        $herstellerMap = [];
-        foreach ($this->herstellerRepo->findAll() as $h) {
-            $herstellerMap[mb_strtolower(trim($h['name']))] = (int)$h['id'];
-        }
+        // Name + weitere Namen (JTL "DROPS" => ERP "DROPS Design")
+        $herstellerMap = $this->herstellerRepo->namensIndex();
 
         return ['steuer' => $steuerMap, 'einheit' => $einheitMap, 'hersteller' => $herstellerMap];
     }

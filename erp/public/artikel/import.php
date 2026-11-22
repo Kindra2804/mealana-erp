@@ -43,10 +43,9 @@ if (isset($_GET['download_vorlage'])) {
 // ── Lookup-Tabellen einmal laden ───────────────────────────────────────────
 $db = Database::getInstance();
 
-$herstellerMap = [];
-foreach ($db->query("SELECT id, name FROM hersteller WHERE aktiv = 1")->fetchAll() as $h) {
-    $herstellerMap[mb_strtolower(trim($h['name']))] = (int)$h['id'];
-}
+// Name + weitere Namen des Herstellers (z.B. "DROPS" => DROPS Design)
+require_once __DIR__ . '/../../src/modules/hersteller/HerstellerRepository.php';
+$herstellerMap = (new HerstellerRepository())->namensIndex();
 
 $steuerMap = [];
 foreach ($db->query("SELECT id, satz FROM steuerklassen WHERE aktiv = 1")->fetchAll() as $s) {

@@ -32,7 +32,7 @@ class HerstellerRepository
     {
         $where = $mitInaktiven ? '' : 'WHERE aktiv = 1';
         return $this->db->query("
-            SELECT id, name, handelsname, kuerzel, webseite, land, email, logo_pfad,
+            SELECT id, name, handelsname, kuerzel, weitere_namen, webseite, land, email, logo_pfad,
                    strasse, plz, ort,
                    reo_name, reo_strasse, reo_plz, reo_ort, reo_land, reo_email,
                    notizen, aktiv
@@ -46,7 +46,7 @@ class HerstellerRepository
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT id, name, handelsname, kuerzel, webseite, land, email, logo_pfad,
+            SELECT id, name, handelsname, kuerzel, weitere_namen, webseite, land, email, logo_pfad,
                    strasse, plz, ort,
                    reo_name, reo_strasse, reo_plz, reo_ort, reo_land, reo_email,
                    notizen, aktiv
@@ -55,6 +55,30 @@ class HerstellerRepository
         ");
         $stmt->execute(['id' => $id]);
         return $stmt->fetch();
+    }
+
+    /**
+     * Namens-Index für Importe: kleingeschriebener Name UND jeder weitere Name (weitere_namen, ";"-getrennt)
+     * => Hersteller-ID. Beispiel: "drops design" und "drops" => DROPS Design (JTL liefert nur "DROPS").
+     * Der echte Name gewinnt, falls ein weiterer Name zufällig einem anderen Hersteller-Namen gleicht.
+     */
+    public function namensIndex(bool $nurAktive = true): array
+    {
+        $where = $nurAktive ? 'WHERE aktiv = 1' : '';
+        $rows  = $this->db->query("SELECT id, name, weitere_namen FROM hersteller $where")->fetchAll();
+        $index = [];
+        foreach ($rows as $h) {
+            $index[mb_strtolower(trim($h['name']))] = (int)$h['id'];
+        }
+        foreach ($rows as $h) {
+            foreach (explode(';', (string)$h['weitere_namen']) as $alias) {
+                $alias = mb_strtolower(trim($alias));
+                if ($alias !== '' && !isset($index[$alias])) {
+                    $index[$alias] = (int)$h['id'];
+                }
+            }
+        }
+        return $index;
     }
 
     /**
@@ -77,12 +101,12 @@ class HerstellerRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO hersteller
-                (name, handelsname, kuerzel, webseite, land, email, logo_pfad,
+                (name, handelsname, kuerzel, weitere_namen, webseite, land, email, logo_pfad,
                  strasse, plz, ort,
                  reo_name, reo_strasse, reo_plz, reo_ort, reo_land, reo_email,
                  notizen, aktiv)
             VALUES
-                (:name, :handelsname, :kuerzel, :webseite, :land, :email, :logo_pfad,
+                (:name, :handelsname, :kuerzel, :weitere_namen, :webseite, :land, :email, :logo_pfad,
                  :strasse, :plz, :ort,
                  :reo_name, :reo_strasse, :reo_plz, :reo_ort, :reo_land, :reo_email,
                  :notizen, :aktiv)
@@ -99,6 +123,7 @@ class HerstellerRepository
                 name        = :name,
                 handelsname = :handelsname,
                 kuerzel     = :kuerzel,
+                weitere_namen = :weitere_namen,
                 webseite    = :webseite,
                 land        = :land,
                 email       = :email,

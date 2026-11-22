@@ -163,6 +163,11 @@ class HerstellerService
         } elseif ($this->repo->findByName(trim($data['name']), isset($data['id']) ? (int)$data['id'] : null) !== false) {
             $fehler[] = 'Hersteller mit diesem Namen existiert bereits';
         }
+        // Kürzel = Anfang der Artikelnummern (PRY-211-0001): höchstens 3 Buchstaben/Ziffern
+        $kuerzel = strtoupper(str_replace([' ', '-'], '', (string)($data['kuerzel'] ?? '')));
+        if ($kuerzel !== '' && !preg_match('/^[A-Z0-9]{1,3}$/', $kuerzel)) {
+            $fehler[] = 'Kürzel: höchstens 3 Buchstaben oder Ziffern (z.B. PRY)';
+        }
         return $fehler;
     }
 
@@ -170,7 +175,7 @@ class HerstellerService
     private function bereinige(array $data): array
     {
         $textFelder = [
-            'name','handelsname','kuerzel','webseite','land','email',
+            'name','handelsname','kuerzel','weitere_namen','webseite','land','email',
             'strasse','plz','ort',
             'reo_name','reo_strasse','reo_plz','reo_ort','reo_land','reo_email',
             'notizen'
@@ -183,6 +188,11 @@ class HerstellerService
         if ($data['reo_land']) $data['reo_land'] = strtoupper($data['reo_land']);
         // Kürzel = Anfang der Artikelnummern (LN-113-0001): immer groß, ohne Leer-/Bindestriche
         if ($data['kuerzel']) $data['kuerzel'] = strtoupper(str_replace([' ', '-'], '', $data['kuerzel']));
+        // Weitere Namen (z.B. wie JTL den Hersteller nennt): einheitlich "A; B", leere Teile weg
+        if ($data['weitere_namen']) {
+            $teile = array_filter(array_map('trim', explode(';', $data['weitere_namen'])), 'strlen');
+            $data['weitere_namen'] = $teile ? implode('; ', array_unique($teile)) : null;
+        }
         $data['aktiv'] = isset($data['aktiv']) && $data['aktiv'] ? 1 : 0;
         return $data;
     }

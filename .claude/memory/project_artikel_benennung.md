@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 80e0cd93-5868-409a-a6e4-214f7c72e810
-  modified: 2026-11-22T10:06:17.354Z
+  modified: 2026-11-22T10:24:56.458Z
 ---
 
 **Entscheidung 2026-11-21:** Babsi sucht nach Farbnummer (sortiert nach Artikelnummer), nach Art wie Mix/Uni (sortiert nach Preis) oder nach Farbe (sortiert nach Name). Darum:
@@ -25,6 +25,15 @@ Auswertung der behaltenen 10.173 Kinder: etwa 7.900 mit Farb-Achse, etwa 2.100 N
 - **Herstellerkürzel**: neues Feld hersteller.kuerzel, aus Anfang der Vaternummern vorbefüllt, in der Hersteller-Maske änderbar.
 - **JTL NICHT umbenennen**: ERP speichert artikel.jtl_artikelnummer (+ jtl_kartikel); Abgleich/Archivimport/Kassen-Scan alter Etiketten über die JTL-Nr.
 - Spalte für die Vaterachse im artikel: `vaterartikel_id`.
+- JTL-Nr kommt in die vorhandene (leere) Tabelle `artikel_externe_referenzen` (datenquelle='jtl', externe_id=JTL-Nr; UNIQUE), statt neuer Spalte; wird beim Artikel-Löschen + import_zuruecknehmen schon aufgeräumt.
+
+## Baufortschritt
+- ✅ Schritt 1 (7970a3e, 2026-11-22): Migr. 258 hersteller.kuerzel, vorbefüllt, Feld in Hersteller-Maske + Liste. Auf Dev eingespielt. Falsche Vorschläge zum Korrigieren: PRYM→P (soll PRY?), MEALANA→WS, SCHEEPJES/OPRY→DB, Lord/Pracht→BEL, MyBoshi→LF. **Nächste Migr. 259.**
+- ✅ Schritt 1b (2026-11-22): Migr. 259 Kürzel **max. 3** (VARCHAR(3), Prüfung im Service) + `hersteller.weitere_namen` (";"-getrennt, DROPS Design = "DROPS", weil JTL „DROPS“ liefert → früher „Hersteller unbekannt“). `HerstellerRepository::namensIndex()` in JTL-Vater/Kind-, Standard-CSV- und Lang-Import. **Nächste Migr. 260.**
+- `artikel_externe_referenzen` war laut Designnotiz genau dafür gedacht: datenquelle 'jtl' = kArtikel (Interner Schlüssel), zusätzlich 'jtl_nr' = JTL-Artikelnummer.
+- Aktionspreise hängen an artikel_id + sub_achse_id ([Uni]/[Mix], v. a. DROPS wegen Preisunterschied) → Unter-Achsen beim Umbau NUR lesen, nie ändern.
+- ⏳ Bei Babsi (2026-11-22): `import/Babsi_Auswertung_2026-11-22/Hersteller_Kuerzel_fuer_Babsi.csv` (55 JTL-Hersteller, Vorschlag + Hinweise, Spalte „Kürzel Babsi“) und `Artikel_ohne_Hersteller.csv` (112 Väter/Einzel ohne Hersteller in JTL). Offen: „Sonstige“ (340 Väter, gemischte Nummern) – alte Nummern behalten? „DB“ ist bei mehreren Herstellern Anfang (SCHEEPJES, OPRY …). Wenn zurück: Kürzel ins ERP übernehmen (Skript).
+- ▶ Schritt 2: Vorschauseite alt/neu (Nr + Name) für Babsi.
 
 ## Stand vom 2026-11-21 (Fragen inzwischen beantwortet, siehe oben)
 - **Art [Uni/Mix/…] kommt über die Achsen** (Jacky, Screenshot): Die Achse FARBE hat Unter-Gruppen „↳ [MIX]“, „↳ [UNI]“, darin die Farbwerte (z. B. „77 EICHE HELL“, „01 NATUR“). Also kein eigenes Merkmal, die Art kommt aus der Unter-Achse, in der der Farbwert liegt. Vorher prüfen, wie diese Unter-Achsen in der DB abgebildet sind (varianten_achsen / varianten_achse_werte).

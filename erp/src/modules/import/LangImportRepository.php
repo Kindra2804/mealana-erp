@@ -58,10 +58,13 @@ class LangImportRepository
 
     public function findHerstellerIdByName(string $name): ?int
     {
-        $st = $this->db->prepare("SELECT id FROM hersteller WHERE LOWER(name) = LOWER(?) LIMIT 1");
-        $st->execute([trim($name)]);
-        $id = $st->fetchColumn();
-        return $id ? (int) $id : null;
+        // Name + weitere Namen (siehe Migration 259); einmal je Lauf laden
+        static $index = null;
+        if ($index === null) {
+            require_once __DIR__ . '/../hersteller/HerstellerRepository.php';
+            $index = (new HerstellerRepository())->namensIndex(false);
+        }
+        return $index[mb_strtolower(trim($name))] ?? null;
     }
 
     public function findLieferanten(): array

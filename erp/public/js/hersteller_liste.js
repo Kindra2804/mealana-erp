@@ -9,6 +9,7 @@ function modalNeuOeffnen() {
     document.getElementById('h-name').value        = '';
     document.getElementById('h-handelsname').value = '';
     document.getElementById('h-kuerzel').value     = '';
+    document.getElementById('h-weitere-namen').value = '';
     document.getElementById('h-land').value        = '';
     document.getElementById('h-email').value       = '';
     document.getElementById('h-webseite').value    = '';
@@ -40,6 +41,7 @@ function modalBearbeiten(id) {
     document.getElementById('h-name').value        = h.name        || '';
     document.getElementById('h-handelsname').value = h.handelsname || '';
     document.getElementById('h-kuerzel').value     = h.kuerzel     || '';
+    document.getElementById('h-weitere-namen').value = h.weitere_namen || '';
     document.getElementById('h-land').value        = h.land        || '';
     document.getElementById('h-email').value       = h.email       || '';
     document.getElementById('h-webseite').value    = h.webseite    || '';

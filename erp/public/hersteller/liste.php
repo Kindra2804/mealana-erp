@@ -166,12 +166,17 @@ $laender = [
                     <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px"
                            title="Anfang der Artikelnummern, z.B. LN → LN-113-0001">Kürzel</label>
                     <input type="text" name="kuerzel" id="h-kuerzel" class="erp-input" style="width:100%;text-transform:uppercase"
-                           maxlength="10" placeholder="z.B. LN">
+                           maxlength="3" placeholder="z.B. PRY">
                 </div>
                 <div>
                     <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Website</label>
                     <input type="text" name="webseite" id="h-webseite" class="erp-input" style="width:100%" placeholder="www.hersteller.com">
                 </div>
+            </div>
+            <div style="margin-bottom:16px">
+                <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px"
+                       title="Damit Importe den Hersteller erkennen, auch wenn er dort anders heißt">Weitere Namen (z.B. in JTL), mit ; trennen</label>
+                <input type="text" name="weitere_namen" id="h-weitere-namen" class="erp-input" style="width:100%" maxlength="255" placeholder="z.B. DROPS">
             </div>
 
             <!-- Adresse -->

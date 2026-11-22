@@ -15,6 +15,7 @@ $result = $service->save([
     'name'        => trim($_POST['name'] ?? ''),
     'handelsname' => null,
     'kuerzel'     => null,
+    'weitere_namen' => null,
     'webseite'    => null,
     'land'        => strtoupper(trim($_POST['land'] ?? '')),
     'email'       => null,
