@@ -8,6 +8,7 @@ function modalNeuOeffnen() {
     document.getElementById('h-id').value          = '';
     document.getElementById('h-name').value        = '';
     document.getElementById('h-handelsname').value = '';
+    document.getElementById('h-kuerzel').value     = '';
     document.getElementById('h-land').value        = '';
     document.getElementById('h-email').value       = '';
     document.getElementById('h-webseite').value    = '';
@@ -38,6 +39,7 @@ function modalBearbeiten(id) {
     document.getElementById('h-id').value          = h.id;
     document.getElementById('h-name').value        = h.name        || '';
     document.getElementById('h-handelsname').value = h.handelsname || '';
+    document.getElementById('h-kuerzel').value     = h.kuerzel     || '';
     document.getElementById('h-land').value        = h.land        || '';
     document.getElementById('h-email').value       = h.email       || '';
     document.getElementById('h-webseite').value    = h.webseite    || '';

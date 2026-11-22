@@ -170,7 +170,7 @@ class HerstellerService
     private function bereinige(array $data): array
     {
         $textFelder = [
-            'name','handelsname','webseite','land','email',
+            'name','handelsname','kuerzel','webseite','land','email',
             'strasse','plz','ort',
             'reo_name','reo_strasse','reo_plz','reo_ort','reo_land','reo_email',
             'notizen'
@@ -181,6 +181,8 @@ class HerstellerService
         // ISO-Codes immer uppercase speichern (AT, DE, NO, ...)
         if ($data['land']) $data['land'] = strtoupper($data['land']);
         if ($data['reo_land']) $data['reo_land'] = strtoupper($data['reo_land']);
+        // Kürzel = Anfang der Artikelnummern (LN-113-0001): immer groß, ohne Leer-/Bindestriche
+        if ($data['kuerzel']) $data['kuerzel'] = strtoupper(str_replace([' ', '-'], '', $data['kuerzel']));
         $data['aktiv'] = isset($data['aktiv']) && $data['aktiv'] ? 1 : 0;
         return $data;
     }

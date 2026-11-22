@@ -84,6 +84,10 @@ $laender = [
                 </td>
                 <td>
                     <strong><?= htmlspecialchars($h['name']) ?></strong>
+                    <?php if (!empty($h['kuerzel'])): ?>
+                        <span style="font-size:11px;font-family:monospace;padding:1px 5px;border-radius:3px;background:var(--color-bg-subtle,#f0f0f0);margin-left:4px"
+                              title="Kürzel für Artikelnummern"><?= htmlspecialchars($h['kuerzel']) ?></span>
+                    <?php endif; ?>
                     <?php if ($h['handelsname']): ?>
                         <br><span style="font-size:11px;color:var(--color-text-muted)"><?= htmlspecialchars($h['handelsname']) ?></span>
                     <?php endif; ?>
@@ -157,9 +161,17 @@ $laender = [
                     <input type="email" name="email" id="h-email" class="erp-input" style="width:100%" placeholder="kontakt@hersteller.com">
                 </div>
             </div>
-            <div style="margin-bottom:16px">
-                <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Website</label>
-                <input type="text" name="webseite" id="h-webseite" class="erp-input" style="width:100%" placeholder="www.hersteller.com">
+            <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;margin-bottom:16px">
+                <div>
+                    <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px"
+                           title="Anfang der Artikelnummern, z.B. LN → LN-113-0001">Kürzel</label>
+                    <input type="text" name="kuerzel" id="h-kuerzel" class="erp-input" style="width:100%;text-transform:uppercase"
+                           maxlength="10" placeholder="z.B. LN">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--color-text-muted);display:block;margin-bottom:3px">Website</label>
+                    <input type="text" name="webseite" id="h-webseite" class="erp-input" style="width:100%" placeholder="www.hersteller.com">
+                </div>
             </div>
 
             <!-- Adresse -->

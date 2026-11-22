@@ -14,6 +14,7 @@ $service = new HerstellerService();
 $result = $service->save([
     'name'        => trim($_POST['name'] ?? ''),
     'handelsname' => null,
+    'kuerzel'     => null,
     'webseite'    => null,
     'land'        => strtoupper(trim($_POST['land'] ?? '')),
     'email'       => null,

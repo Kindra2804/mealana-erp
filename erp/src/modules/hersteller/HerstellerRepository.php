@@ -32,7 +32,7 @@ class HerstellerRepository
     {
         $where = $mitInaktiven ? '' : 'WHERE aktiv = 1';
         return $this->db->query("
-            SELECT id, name, handelsname, webseite, land, email, logo_pfad,
+            SELECT id, name, handelsname, kuerzel, webseite, land, email, logo_pfad,
                    strasse, plz, ort,
                    reo_name, reo_strasse, reo_plz, reo_ort, reo_land, reo_email,
                    notizen, aktiv
@@ -46,7 +46,7 @@ class HerstellerRepository
     public function findById(int $id): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT id, name, handelsname, webseite, land, email, logo_pfad,
+            SELECT id, name, handelsname, kuerzel, webseite, land, email, logo_pfad,
                    strasse, plz, ort,
                    reo_name, reo_strasse, reo_plz, reo_ort, reo_land, reo_email,
                    notizen, aktiv
@@ -77,12 +77,12 @@ class HerstellerRepository
     {
         $stmt = $this->db->prepare("
             INSERT INTO hersteller
-                (name, handelsname, webseite, land, email, logo_pfad,
+                (name, handelsname, kuerzel, webseite, land, email, logo_pfad,
                  strasse, plz, ort,
                  reo_name, reo_strasse, reo_plz, reo_ort, reo_land, reo_email,
                  notizen, aktiv)
             VALUES
-                (:name, :handelsname, :webseite, :land, :email, :logo_pfad,
+                (:name, :handelsname, :kuerzel, :webseite, :land, :email, :logo_pfad,
                  :strasse, :plz, :ort,
                  :reo_name, :reo_strasse, :reo_plz, :reo_ort, :reo_land, :reo_email,
                  :notizen, :aktiv)
@@ -98,6 +98,7 @@ class HerstellerRepository
             UPDATE hersteller SET
                 name        = :name,
                 handelsname = :handelsname,
+                kuerzel     = :kuerzel,
                 webseite    = :webseite,
                 land        = :land,
                 email       = :email,

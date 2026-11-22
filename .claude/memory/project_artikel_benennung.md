@@ -2,7 +2,10 @@
 name: project_artikel_benennung
 description: "2026-11-21 Babsi/Jacky: neues Schema Artikelnummer Hersteller-Vater-Kind(4-stellig), Name 'Vater Farbe [Art] (Nummer)'; betrifft Kind-Generator, JTL-Importer, MeaLana-Artikelübernahme"
 metadata:
+  node_type: memory
   type: project
+  originSessionId: 80e0cd93-5868-409a-a6e4-214f7c72e810
+  modified: 2026-11-22T10:06:17.354Z
 ---
 
 **Entscheidung 2026-11-21:** Babsi sucht nach Farbnummer (sortiert nach Artikelnummer), nach Art wie Mix/Uni (sortiert nach Preis) oder nach Farbe (sortiert nach Name). Darum:
@@ -14,8 +17,16 @@ Kind-Generator (`public/artikel/varkombi_generator.php:122`, heute Vater-Nr + '-
 Ausgangslage MeaLana-Übernahme: Babsis Ausschlussliste ausgewertet (`import/Babsi_Auswertung_2026-11-21/`, 11.591 Artikel, 117 Umbenennungen, Prüfliste beantwortet). Babsis Excel-Datei hat GTINs zerstört, deshalb nur Schlüssel + neue Nummern daraus verwenden. Vollständige Variationen: `import/JTL-Export-Variationskombinationen-21112026_kompletterArtikelstamm.csv`.
 Auswertung der behaltenen 10.173 Kinder: etwa 7.900 mit Farb-Achse, etwa 2.100 Nadeln/Größen (Länge+Stärke usw.). Farbwerte: 4.071 „Farbe (Nr)“, 2.625 „Nr Farbe“, 1.495 nur Nummer, 1.621 sonstiges. Die Art [Uni/Mix] steht nirgends in den JTL-Daten.
 
-## ▶ HIER MORGEN (2026-11-22) WEITERMACHEN
-Noch nichts gebaut. Stand Ende 2026-11-21:
+## ✅ Entscheidungen 2026-11-22 (Jacky)
+- **Kindnummer Farben** = echte Farbnummer auf 4 Stellen aufgefüllt (01 → 0001, 113 → 0113; ab 4 Stellen unverändert). Farben haben laut Jacky immer eine Nummer, nie nur Buchstaben → Ausreißer (V1, ge …) in der Vorschau markieren.
+- **Name Farben** = `Vater Farbe [Art] (0001)`, Nummer in der Klammer IMMER 4-stellig; ohne Farbnamen `Hannah [Uni] (0001)`; [Art] nur, wenn bekannt.
+- **Art** = Name der Unter-Achse mit `varianten_achsen.abhaengig_von_achse_id = 7` (Farbe): [Uni] 8, [Mix] 9, [Print] 22, [Long Print] 23, [Recycled Denim] 24. Dev: nur etwa 50 Väter einsortiert, etwa 720 Väter haben die Werte direkt unter Farbe (7) → Name dort vorerst ohne [Art].
+- **Nadeln/Größen**: Artikelnummer bleibt (trägt schon die Herstellernummer, z. B. KP-20415); Name = `Vater Länge Stärke`.
+- **Herstellerkürzel**: neues Feld hersteller.kuerzel, aus Anfang der Vaternummern vorbefüllt, in der Hersteller-Maske änderbar.
+- **JTL NICHT umbenennen**: ERP speichert artikel.jtl_artikelnummer (+ jtl_kartikel); Abgleich/Archivimport/Kassen-Scan alter Etiketten über die JTL-Nr.
+- Spalte für die Vaterachse im artikel: `vaterartikel_id`.
+
+## Stand vom 2026-11-21 (Fragen inzwischen beantwortet, siehe oben)
 - **Art [Uni/Mix/…] kommt über die Achsen** (Jacky, Screenshot): Die Achse FARBE hat Unter-Gruppen „↳ [MIX]“, „↳ [UNI]“, darin die Farbwerte (z. B. „77 EICHE HELL“, „01 NATUR“). Also kein eigenes Merkmal, die Art kommt aus der Unter-Achse, in der der Farbwert liegt. Vorher prüfen, wie diese Unter-Achsen in der DB abgebildet sind (varianten_achsen / varianten_achse_werte).
 - **Offene Fragen, morgen mit Jacky klären:**
   1. Kindnummer 4-stellig = echte Farbnummer aufgefüllt (01 → 0001) oder fortlaufend? Was bei mehr als 4 Stellen oder Buchstaben (V1, ge, 011010173)?
