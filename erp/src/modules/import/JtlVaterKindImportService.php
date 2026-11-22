@@ -88,6 +88,16 @@ class JtlVaterKindImportService
         return $nr === false ? null : (string) $nr;
     }
 
+    /** Nummer, die das ERP nicht speichern kann (leer, länger als artikel.artikelnummer) -> Fehlertext, sonst null. */
+    private function nummerUngueltig(string $nr): ?string
+    {
+        if ($nr === '') return 'Artikelnummer fehlt';
+        if (mb_strlen($nr) > ArtikelBenennung::MAX_NR) {
+            return "Nummer „{$nr}“ ist länger als " . ArtikelBenennung::MAX_NR . ' Zeichen – in „JTL: neue Nummern“ mit ✎ kürzen';
+        }
+        return null;
+    }
+
     /** JTL-Nummer + internen JTL-Schlüssel (kArtikel) am Artikel merken – für Lagerabgleich, alte Aufträge, Kasse. */
     private function setzeJtlReferenzen(int $artikelId, ?string $jtlNr, ?string $schluessel): void
     {
@@ -698,6 +708,10 @@ class JtlVaterKindImportService
             $vaterName = trim($korr['name'] ?? $vater['name']);
 
             // Mit Babsis Liste: Artikel aus einem früheren Import mit alter JTL-Nummer bekommt die neue Nummer
+            if ($fehlerNr = $this->nummerUngueltig($vaterNr)) {
+                $ergebnisse[] = ['artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false, 'fehler' => [$fehlerNr]];
+                continue;
+            }
             if (isset($vater['liste_hinweise'])) {
                 $fehlerNr = $this->uebernimmAlteNummer($vater['jtl_nr'], $vaterNr, $vaterName);
                 if ($fehlerNr) {
@@ -831,10 +845,23 @@ class JtlVaterKindImportService
 
             $kombis         = [];
             $kindErgebnisse = [];
+            $kindNrGesehen  = [];
             foreach ($vater['kinder'] as $kind) {
                 $kindKorr = $korr['kinder'][$kind['artikelnummer']] ?? [];
                 $kindNr   = trim($kindKorr['artikelnummer'] ?? $kind['artikelnummer']);
                 $kindName = trim($kindKorr['name'] ?? $kind['name']);
+
+                // Sperre: zwei Kinder mit derselben Nummer würde der Kombinations-Generator still an EINEN
+                // Artikel hängen (z.B. falsche Farbnummer in JTL) -> nur das erste anlegen, Rest als Fehler
+                $fehlerNr = $this->nummerUngueltig($kindNr);
+                if (!$fehlerNr && isset($kindNrGesehen[mb_strtolower($kindNr)])) {
+                    $fehlerNr = "Nummer $kindNr doppelt in diesem Vater (schon bei {$kindNrGesehen[mb_strtolower($kindNr)]}) – in „JTL: neue Nummern“ mit ✎ korrigieren";
+                }
+                if ($fehlerNr) {
+                    $kindErgebnisse[] = ['artikelnummer' => $kindNr, 'name' => $kindName, 'erfolg' => false, 'fehler' => [$fehlerNr]];
+                    continue;
+                }
+                $kindNrGesehen[mb_strtolower($kindNr)] = $kind['jtl_nr'] ?? $kindNr;
 
                 if (isset($kind['liste_hinweise'])) {
                     $fehlerNr = $this->uebernimmAlteNummer($kind['jtl_nr'], $kindNr, $kindName);
@@ -996,6 +1023,10 @@ class JtlVaterKindImportService
             $nr   = trim($korr['artikelnummer'] ?? $artikel['artikelnummer']);
             $name = trim($korr['name'] ?? $artikel['name']);
 
+            if ($fehlerNr = $this->nummerUngueltig($nr)) {
+                $ergebnisse[] = ['artikelnummer' => $nr, 'name' => $name, 'erfolg' => false, 'fehler' => [$fehlerNr]];
+                continue;
+            }
             if (isset($artikel['liste_hinweise'])) {
                 $fehlerNr = $this->uebernimmAlteNummer($artikel['jtl_nr'], $nr, $name);
                 if ($fehlerNr) {
