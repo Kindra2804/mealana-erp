@@ -126,7 +126,7 @@ unset(
     $_SESSION['jtl_import_kategorie_id'], $_SESSION['jtl_import_artikeltyp_standard'],
     $_SESSION['jtl_import_artikel_gruppe_id_standard'],
     $_SESSION['jtl_import_kat_zuordnen'], $_SESSION['jtl_import_kat_je_nr'], $_SESSION['jtl_import_kat_liste'],
-    $_SESSION['jtl_import_kanal_shop_id']
+    $_SESSION['jtl_import_kanal_shop_id'], $_SESSION['jtl_import_liste']
 );
 
 $vaterErfolgAnzahl = count(array_filter($ergebnisse, fn($e) => $e['erfolg']));

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../hersteller/HerstellerRepository.php';
 require_once __DIR__ . '/../achsen/AchsenRepository.php';
 require_once __DIR__ . '/../varianten/VariantenService.php';
 require_once __DIR__ . '/JtlCsvReader.php';
+require_once __DIR__ . '/JtlImportListe.php';
 
 /**
  * JtlVaterKindImportService – CSV-Import für JTL-Vater+Kind-Artikel mit Achsenerkennung
@@ -37,6 +38,11 @@ class JtlVaterKindImportService
     private AchsenRepository $achsenRepo;
     private VariantenService $variantenService;
 
+    /** Babsis Liste + neues Nummernschema (MeaLana-Übernahme); null = Nummern/Namen wie bisher aus JTL */
+    private ?JtlImportListe $liste = null;
+    /** Zähler für die Kontrollliste: ['ausgeschlossen' => n, 'ungeprueft' => [JTL-Nummern]] */
+    private array $listeStat = ['ausgeschlossen' => 0, 'ungeprueft' => []];
+
     public function __construct()
     {
         $this->db               = Database::getInstance();
@@ -52,6 +58,88 @@ class JtlVaterKindImportService
         $wert = trim((string) $wert);
         if ($wert === '') return null;
         return (float) str_replace(',', '.', $wert);
+    }
+
+    /**
+     * Babsis Liste anwenden (artikel/jtl_benennung.php): Ausgeschlossenes und noch nicht Geprüftes wird
+     * übersprungen, Nummern/Namen nach ArtikelBenennung (Kürzel-Vater-Kind), Hersteller-Zuordnung, und die
+     * JTL-Nummer wird in artikel_externe_referenzen gemerkt ('jtl_nr', interner Schlüssel als 'jtl').
+     */
+    public function setzeListe(?JtlImportListe $liste): void
+    {
+        $this->liste = $liste;
+    }
+
+    /** ID des Artikels, der schon zu dieser externen Kennung gehört, sonst null. */
+    private function referenzId(string $quelle, string $externeId): ?int
+    {
+        $st = $this->db->prepare("SELECT artikel_id FROM artikel_externe_referenzen WHERE datenquelle = ? AND externe_id = ?");
+        $st->execute([$quelle, $externeId]);
+        $id = $st->fetchColumn();
+        return $id ? (int) $id : null;
+    }
+
+    /** JTL-Nummer, die an einem Artikel hängt, sonst null. */
+    private function jtlNrVonArtikel(int $artikelId): ?string
+    {
+        $st = $this->db->prepare("SELECT externe_id FROM artikel_externe_referenzen WHERE datenquelle = 'jtl_nr' AND artikel_id = ?");
+        $st->execute([$artikelId]);
+        $nr = $st->fetchColumn();
+        return $nr === false ? null : (string) $nr;
+    }
+
+    /** JTL-Nummer + internen JTL-Schlüssel (kArtikel) am Artikel merken – für Lagerabgleich, alte Aufträge, Kasse. */
+    private function setzeJtlReferenzen(int $artikelId, ?string $jtlNr, ?string $schluessel): void
+    {
+        $st = $this->db->prepare("INSERT INTO artikel_externe_referenzen (artikel_id, datenquelle, externe_id) VALUES (?, ?, ?)
+                                  ON DUPLICATE KEY UPDATE artikel_id = VALUES(artikel_id)");
+        if ($jtlNr !== null && $jtlNr !== '')         $st->execute([$artikelId, 'jtl_nr', $jtlNr]);
+        if ($schluessel !== null && $schluessel !== '') $st->execute([$artikelId, 'jtl', $schluessel]);
+    }
+
+    /**
+     * Wie steht es um diesen JTL-Artikel im ERP? 'vorhanden' = neue Nummer gibt es schon (nur Kategorie),
+     * 'umbenennen' = es gibt ihn noch unter der alten JTL-Nummer (früherer Import) -> wird umnummeriert, null = neu.
+     */
+    private function vorhandenStatus(string $jtlNr, string $neuNr): ?string
+    {
+        if ($this->artikelRepo->findByArtikelnummer($neuNr) !== false) return 'vorhanden';
+        if ($this->referenzId('jtl_nr', $jtlNr)) return 'umbenennen';
+        if ($jtlNr !== $neuNr && ($alt = $this->artikelRepo->findByArtikelnummer($jtlNr))) {
+            $ref = $this->jtlNrVonArtikel((int) $alt['id']);
+            if ($ref === null || $ref === $jtlNr) return 'umbenennen';
+        }
+        return null;
+    }
+
+    /**
+     * Vor dem Anlegen: Gibt es den Artikel schon unter der alten JTL-Nummer (oder per Referenz), bekommt er
+     * die neue Nummer + den neuen Namen, statt doppelt angelegt zu werden. Danach findet der übliche
+     * "bereits vorhanden"-Weg ihn über die neue Nummer. Liefert eine Fehlermeldung, wenn die neue Nummer
+     * schon einem ANDEREN JTL-Artikel gehört.
+     */
+    private function uebernimmAlteNummer(string $jtlNr, string $neuNr, string $neuName): ?string
+    {
+        $idRef = $this->referenzId('jtl_nr', $jtlNr);
+        $neu   = $this->artikelRepo->findByArtikelnummer($neuNr);
+        if ($neu) {
+            $refNeu = $this->jtlNrVonArtikel((int) $neu['id']);
+            if (($idRef && $idRef !== (int) $neu['id']) || ($refNeu !== null && $refNeu !== $jtlNr)) {
+                return "Nummer $neuNr gehört schon einem anderen Artikel" . ($refNeu ? " (JTL $refNeu)" : '');
+            }
+            return null;
+        }
+        $id = $idRef;
+        if (!$id && $jtlNr !== $neuNr && ($alt = $this->artikelRepo->findByArtikelnummer($jtlNr))) {
+            $ref = $this->jtlNrVonArtikel((int) $alt['id']);
+            if ($ref === null || $ref === $jtlNr) $id = (int) $alt['id'];
+        }
+        if ($id) {
+            $this->db->prepare("UPDATE artikel SET artikelnummer = :nr, name = :name WHERE id = :id")
+                ->execute(['nr' => $neuNr, 'name' => $neuName, 'id' => $id]);
+            Logger::log('jtl_import.umnummeriert', 'artikel', $id, ['jtl_nr' => $jtlNr, 'neu' => $neuNr]);
+        }
+        return null;
     }
 
     /** Stammdaten-CSV (Vater UND Kind-Zeilen) als Artikelnummer => Rohzeile für schnellen Join. */
@@ -259,6 +347,13 @@ class JtlVaterKindImportService
                 continue; // Vater-Stammdatenzeile fehlt oder Flag nicht gesetzt
             }
 
+            // Babsis Liste: Ausgeschlossenes und noch nicht Geprüftes nicht übernehmen
+            $jtlVaterNr = JtlImportListe::ohneRaute((string) $vaterNr);
+            if ($this->liste) {
+                if ($this->liste->istAusgeschlossen($jtlVaterNr)) { $this->listeStat['ausgeschlossen']++; continue; }
+                if (!$this->liste->istGeprueft($jtlVaterNr))      { $this->listeStat['ungeprueft'][] = $jtlVaterNr; continue; }
+            }
+
             $herstellerName    = mb_strtolower(trim($vaterRow['Hersteller'] ?? ''));
             $herstellerTreffer = $herstellerName !== '' && isset($lookups['hersteller'][$herstellerName]);
 
@@ -271,6 +366,10 @@ class JtlVaterKindImportService
             $achsenDistinkt = [];
 
             foreach ($kombis as $kombi) {
+                if ($this->liste && $this->liste->istAusgeschlossen($kombi['kind_artikelnummer'])) {
+                    $this->listeStat['ausgeschlossen']++;
+                    continue;
+                }
                 $kindRow = $mitKindern[$kombi['kind_artikelnummer']] ?? null;
 
                 foreach ($kombi['achsen'] as $a) {
@@ -300,6 +399,9 @@ class JtlVaterKindImportService
 
                 $kinder[] = [
                     'artikelnummer'       => $kombi['kind_artikelnummer'],
+                    'jtl_nr'              => $kombi['kind_artikelnummer'],
+                    'jtl_schluessel'      => $kindRow['Interner Schlüssel'] ?? null,
+                    'name_roh'            => $kombi['kind_name_roh'],
                     'name'                => $kindNameNeu,
                     'achsen'              => $kombi['achsen'],
                     'brutto_vk'           => $kombi['kind_brutto'],
@@ -317,8 +419,11 @@ class JtlVaterKindImportService
                 ];
             }
 
-            $vaeter[] = [
-                'artikelnummer'          => $vaterNr,
+            $eintrag = [
+                'artikelnummer'          => (string) $vaterNr,
+                'jtl_nr'                 => $jtlVaterNr,
+                'jtl_roh'                => (string) $vaterNr,
+                'jtl_schluessel'         => $vaterRow['Interner Schlüssel'] ?? null,
                 'name'                   => $this->kuerzeDropsName(trim($vaterRow['Artikelname'] ?? '')),
                 'kurzbeschreibung'       => $vaterRow['Kurzbeschreibung'] ?? '',
                 'beschreibung'           => $vaterRow['Beschreibung'] ?? '',
@@ -342,6 +447,7 @@ class JtlVaterKindImportService
                 'achsen'                 => array_values($achsenDistinkt),
                 'bereits_vorhanden'      => $this->artikelRepo->findByArtikelnummer($vaterNr) !== false,
             ];
+            $vaeter[] = $this->wendeListeAn($eintrag);
         }
 
         [$normale, $verwaisteKinderAnzahl] = $this->baueVorschauNormaleArtikel($mitKindern, $kombisProVater, $lookups, $einheitenUnbekannt);
@@ -359,6 +465,7 @@ class JtlVaterKindImportService
         }
 
         return [
+            'liste'                        => $this->liste ? $this->listeStat : null,
             'vaeter'                       => $vaeter,
             'normale'                      => $normale,
             'einheiten_unbekannt'          => array_keys($einheitenUnbekannt),
@@ -400,6 +507,12 @@ class JtlVaterKindImportService
                 continue;
             }
 
+            $jtlNr = JtlImportListe::ohneRaute((string) $nr);
+            if ($this->liste) {
+                if ($this->liste->istAusgeschlossen($jtlNr)) { $this->listeStat['ausgeschlossen']++; continue; }
+                if (!$this->liste->istGeprueft($jtlNr))      { $this->listeStat['ungeprueft'][] = $jtlNr; continue; }
+            }
+
             $herstellerName    = mb_strtolower(trim($row['Hersteller'] ?? ''));
             $herstellerTreffer = $herstellerName !== '' && isset($lookups['hersteller'][$herstellerName]);
 
@@ -408,8 +521,11 @@ class JtlVaterKindImportService
                 $einheitenUnbekannt[$verkaufseinheitRoh] = true;
             }
 
-            $normale[] = [
-                'artikelnummer'          => $nr,
+            $normale[] = $this->wendeListeAn([
+                'artikelnummer'          => (string) $nr,
+                'jtl_nr'                 => $jtlNr,
+                'jtl_roh'                => (string) $nr,
+                'jtl_schluessel'         => $row['Interner Schlüssel'] ?? null,
                 'name'                   => $this->kuerzeDropsName(trim($row['Artikelname'] ?? '')),
                 'kurzbeschreibung'       => $row['Kurzbeschreibung'] ?? '',
                 'beschreibung'           => $row['Beschreibung'] ?? '',
@@ -431,10 +547,43 @@ class JtlVaterKindImportService
                 'hersteller_treffer'     => $herstellerTreffer,
                 'ean'                    => $row['GTIN'] ?? '',
                 'bereits_vorhanden'      => $this->artikelRepo->findByArtikelnummer($nr) !== false,
-            ];
+            ]);
         }
 
         return [$normale, $verwaisteKinderAnzahl];
+    }
+
+    /**
+     * Neue Nummer/Namen + Hersteller aus Babsis Liste in einen Vorschau-Eintrag (Vater oder Einzelartikel)
+     * schreiben. Ohne Liste bleibt alles wie aus JTL. 'jtl_nr'/'jtl_roh' behalten die JTL-Nummer
+     * (Kategorie-Zuordnung, Referenz), 'vorhanden_status' zeigt, ob ein alter Artikel umnummeriert wird.
+     */
+    private function wendeListeAn(array $e): array
+    {
+        if (!$this->liste) return $e;
+        $kinder = $e['kinder'] ?? [];
+        $b = $this->liste->benenne($e['jtl_nr'], $e['name'], (string) $e['hersteller_name'], array_map(
+            fn($k) => ['jtl_nr' => $k['jtl_nr'], 'name' => $k['name_roh'] ?? $k['name'], 'achsen' => $k['achsen']],
+            $kinder
+        ));
+        $e['artikelnummer']      = $b['nr'];
+        $e['hersteller_id']      = $b['hersteller_id'];
+        $e['hersteller_treffer'] = $b['hersteller_id'] !== null;
+        $e['liste_hinweise']     = $b['hinweise'];
+        $e['vorhanden_status']   = $this->vorhandenStatus($e['jtl_nr'], $b['nr']);
+        $e['bereits_vorhanden']  = $e['vorhanden_status'] === 'vorhanden';
+        if (isset($e['kinder'])) {
+            foreach ($e['kinder'] as $i => &$k) {
+                $neu = $b['kinder'][$i];
+                $k['artikelnummer']     = $neu['nr'];
+                $k['name']              = $neu['name'];
+                $k['liste_hinweise']    = $neu['hinweise'];
+                $k['vorhanden_status']  = $this->vorhandenStatus($k['jtl_nr'], $neu['nr']);
+                $k['bereits_vorhanden'] = $k['vorhanden_status'] === 'vorhanden';
+            }
+            unset($k);
+        }
+        return $e;
     }
 
     private function loeseEinheitAuf(string $roh, array $einheitMap, array $userMapping): ?int
@@ -546,6 +695,15 @@ class JtlVaterKindImportService
             $vaterNr   = trim($korr['artikelnummer'] ?? $vater['artikelnummer']);
             $vaterName = trim($korr['name'] ?? $vater['name']);
 
+            // Mit Babsis Liste: Artikel aus einem früheren Import mit alter JTL-Nummer bekommt die neue Nummer
+            if (isset($vater['liste_hinweise'])) {
+                $fehlerNr = $this->uebernimmAlteNummer($vater['jtl_nr'], $vaterNr, $vaterName);
+                if ($fehlerNr) {
+                    $ergebnisse[] = ['artikelnummer' => $vaterNr, 'name' => $vaterName, 'erfolg' => false, 'fehler' => [$fehlerNr]];
+                    continue;
+                }
+            }
+
             // Resume-Fähigkeit: existiert die Artikelnummer schon (z.B. weil ein früherer
             // Lauf für andere Väter abgebrochen ist), wird NICHT neu angelegt, sondern der
             // bestehende Vater übernommen -- Kategorie/Achsen/Kinder darunter laufen trotzdem
@@ -596,7 +754,8 @@ class JtlVaterKindImportService
                 }
 
                 $herstellerName = mb_strtolower(trim($vater['hersteller_name']));
-                $herstellerId   = $lookups['hersteller'][$herstellerName] ?? null;
+                // zugeordneter Hersteller aus Babsis Liste geht vor
+                $herstellerId   = $vater['hersteller_id'] ?? ($lookups['hersteller'][$herstellerName] ?? null);
 
                 $vaterData = [
                     'artikelnummer'          => $vaterNr,
@@ -638,6 +797,7 @@ class JtlVaterKindImportService
             }
 
             $this->fuegeKategorieHinzu($vaterId, $kategorieId);
+            $this->setzeJtlReferenzen($vaterId, $vater['jtl_nr'] ?? null, $vater['jtl_schluessel'] ?? null);
 
             // Achsen: distinct (Name, Wert)-Paare aus allen Kind-Kombis sammeln, Achse per Code finden/anlegen
             $achsenIdByName     = [];
@@ -673,6 +833,14 @@ class JtlVaterKindImportService
                 $kindKorr = $korr['kinder'][$kind['artikelnummer']] ?? [];
                 $kindNr   = trim($kindKorr['artikelnummer'] ?? $kind['artikelnummer']);
                 $kindName = trim($kindKorr['name'] ?? $kind['name']);
+
+                if (isset($kind['liste_hinweise'])) {
+                    $fehlerNr = $this->uebernimmAlteNummer($kind['jtl_nr'], $kindNr, $kindName);
+                    if ($fehlerNr) {
+                        $kindErgebnisse[] = ['artikelnummer' => $kindNr, 'name' => $kindName, 'erfolg' => false, 'fehler' => [$fehlerNr]];
+                        continue;
+                    }
+                }
 
                 $wertIds = [];
                 foreach ($kind['achsen'] as $a) {
@@ -719,6 +887,11 @@ class JtlVaterKindImportService
                 );
 
                 $this->artikelService->kopiereVaterRelationenZuKindern($vaterId, $kombiResult['ids'], $preisAnpassungenNeu);
+                foreach ($kombis as $idx => $kombi) {
+                    if (!empty($kombiResult['ids'][$idx])) {
+                        $this->setzeJtlReferenzen((int) $kombiResult['ids'][$idx], $kombi['_orig']['jtl_nr'] ?? null, $kombi['_orig']['jtl_schluessel'] ?? null);
+                    }
+                }
                 $vaterVoll = $this->artikelRepo->findById($vaterId); // Vater nach save() inkl. Grundpreis-Default
 
                 // Pro Kind die echten JTL-Werte (Preis/Maße/UVP/Einheit) statt der Vater-Vererbung setzen --
@@ -821,10 +994,19 @@ class JtlVaterKindImportService
             $nr   = trim($korr['artikelnummer'] ?? $artikel['artikelnummer']);
             $name = trim($korr['name'] ?? $artikel['name']);
 
+            if (isset($artikel['liste_hinweise'])) {
+                $fehlerNr = $this->uebernimmAlteNummer($artikel['jtl_nr'], $nr, $name);
+                if ($fehlerNr) {
+                    $ergebnisse[] = ['artikelnummer' => $nr, 'name' => $name, 'erfolg' => false, 'fehler' => [$fehlerNr]];
+                    continue;
+                }
+            }
+
             $vorhandener = $this->artikelRepo->findByArtikelnummer($nr);
             if ($vorhandener) {
                 $artikelId = (int) $vorhandener['id'];
                 $this->fuegeKategorieHinzu($artikelId, $kategorieId);
+                $this->setzeJtlReferenzen($artikelId, $artikel['jtl_nr'] ?? null, $artikel['jtl_schluessel'] ?? null);
                 $ergebnisse[] = ['artikelnummer' => $nr, 'name' => $name, 'erfolg' => true, 'id' => $artikelId, 'nur_kategorie' => true];
                 continue;
             }
@@ -859,7 +1041,7 @@ class JtlVaterKindImportService
             }
 
             $herstellerName = mb_strtolower(trim($artikel['hersteller_name']));
-            $herstellerId   = $lookups['hersteller'][$herstellerName] ?? null;
+            $herstellerId   = $artikel['hersteller_id'] ?? ($lookups['hersteller'][$herstellerName] ?? null);
 
             $data = [
                 'artikelnummer'          => $nr,
@@ -900,6 +1082,7 @@ class JtlVaterKindImportService
             }
 
             $this->fuegeKategorieHinzu($artikelId, $kategorieId);
+            $this->setzeJtlReferenzen($artikelId, $artikel['jtl_nr'] ?? null, $artikel['jtl_schluessel'] ?? null);
 
             Logger::log('jtl_import.normal_anlegen', 'artikel', $artikelId, ['artikelnummer' => $nr]);
 

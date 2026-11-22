@@ -40,7 +40,7 @@
 
 - [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem …
 
-- [🔤 Artikel-Benennungsschema](project_artikel_benennung.md) — 2026-11-21: Nr Hersteller-Vater-Kind(4-stellig), Name „Vater Farbe [Art] (Nr)“; **▶ HIER 2026-11-22 WEITERMACHEN**: 4 Fragen offen, Art über Achsen-Untergruppen [MIX]/[UNI], Vorschlag JTL-Nr im ERP speichern; Prüfliste beantwortet
+- [🔤 Artikel-Benennungsschema](project_artikel_benennung.md) — 2026-11-21: Nr Hersteller-Vater-Kind(4-stellig), Name „Vater Farbe [Art] (Nr)“; ✅ Vorschau (Migr. 258–262) + JTL-Import mit Babsis Liste gebaut 2026-11-22; offen: Ablauf große Übernahme, Kind-Generator, Live-Übertragung
 
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit

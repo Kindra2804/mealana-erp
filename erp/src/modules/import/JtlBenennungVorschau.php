@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../core/Database.php';
 require_once __DIR__ . '/JtlCsvReader.php';
 require_once __DIR__ . '/JtlVaterKindImportService.php';
 require_once __DIR__ . '/ArtikelBenennung.php';
+require_once __DIR__ . '/JtlImportListe.php';
 require_once __DIR__ . '/../hersteller/HerstellerRepository.php';
 
 /**
@@ -115,79 +116,48 @@ class JtlBenennungVorschau
      */
     public function ergebnis(bool $mitAusgeschlossenen = false): array
     {
-        $db = Database::getInstance();
-        $aus = array_flip($db->query("SELECT nummer FROM import_ausschluss WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_COLUMN));
-        $geprueft = array_flip($db->query("SELECT nummer FROM import_geprueft WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_COLUMN));
-        $umb = $db->query("SELECT nummer_alt, nummer_neu FROM import_umbenennung WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_KEY_PAIR);
-        // Babsis Vorgaben je Vater/Einzelartikel: fertige Nummer und/oder Hersteller (Migr. 262)
-        $vorgabe = [];
-        foreach ($db->query("SELECT nummer, nummer_neu, hersteller_id FROM import_vorgabe WHERE quelle = '" . self::QUELLE . "'") as $v) {
-            $vorgabe[$v['nummer']] = $v;
-        }
-        $herstellerIndex = (new HerstellerRepository())->namensIndex(false);
-        $hersteller = [];
-        foreach ($db->query("SELECT id, name, kuerzel FROM hersteller") as $h) $hersteller[(int) $h['id']] = $h;
+        // Babsis Liste (Ausschluss, geprüft, Umbenennung, Vorgabe, Hersteller) – dieselbe Klasse wie der Import
+        $liste = new JtlImportListe();
 
         $gruppen = [];
         $summe   = ['vaeter' => 0, 'kinder' => 0, 'einzel' => 0, 'ausgeschlossen' => 0, 'ungeprueft' => 0, 'hinweise' => []];
 
         foreach ($this->basis() as $g) {
-            $istAus = isset($aus[$g['jtl_nr']]);
+            $istAus = $liste->istAusgeschlossen($g['jtl_nr']);
             if ($istAus) {
                 $summe['ausgeschlossen']++;
                 if (!$mitAusgeschlossenen) continue;
             }
-            // Ausgeschlossen zählt als entschieden; sonst muss die Nummer in import_geprueft stehen
-            $istGeprueft = $istAus || isset($geprueft[$g['jtl_nr']]);
+            $istGeprueft = $liste->istGeprueft($g['jtl_nr']);
 
-            $vg  = $vorgabe[$g['jtl_nr']] ?? null;
-            $hId = $g['hersteller'] !== '' ? ($herstellerIndex[mb_strtolower($g['hersteller'])] ?? null) : null;
-            $hZugeordnet = $vg && $vg['hersteller_id'] && isset($hersteller[(int) $vg['hersteller_id']]);
-            if ($hZugeordnet) $hId = (int) $vg['hersteller_id'];
-            $h   = $hId ? $hersteller[$hId] : null;
-            $nrFest = $vg && $vg['nummer_neu'] !== null && $vg['nummer_neu'] !== '';
-            $vorab = [];
-            if ($hZugeordnet)             $vorab[] = 'Hersteller zugeordnet';
-            elseif ($g['hersteller'] === '') $vorab[] = 'ohne Hersteller';
-            elseif (!$h)                  $vorab[] = 'Hersteller unbekannt';
-            if ($nrFest)                  $vorab[] = 'Nummer vorgegeben';
-            if (!empty($g['nicht_in_stamm'])) $vorab[] = 'fehlt in Stammdaten-Datei';
-            if (!$istGeprueft) $vorab[] = 'noch nicht geprüft';
-
-            $vaterNr   = $nrFest ? $vg['nummer_neu'] : ($umb[$g['jtl_nr']] ?? $g['jtl_nr']);
             $vaterName = JtlVaterKindImportService::kuerzeDropsName($g['name']);
             $kinder    = [];
             foreach ($g['kinder'] as $k) {
-                if (isset($aus[$k['jtl_nr']])) { if (!$istAus) $summe['ausgeschlossen']++; continue; }
-                $kinder[] = ['jtl_nr' => $k['jtl_nr'], 'nr' => $umb[$k['jtl_nr']] ?? $k['jtl_nr'],
-                             'name' => $k['name'], 'achsen' => $k['achsen']];
+                if ($liste->istAusgeschlossen($k['jtl_nr'])) { if (!$istAus) $summe['ausgeschlossen']++; continue; }
+                $kinder[] = $k;
             }
+            $b = $liste->benenne($g['jtl_nr'], $vaterName, $g['hersteller'], $kinder);
+
+            $vorab = [];
+            if (!empty($g['nicht_in_stamm'])) $vorab[] = 'fehlt in Stammdaten-Datei';
+            if (!$istGeprueft) $vorab[] = 'noch nicht geprüft';
             if ($g['typ'] === 'vater' && !$kinder && $g['kinder']) {
                 // alle Kinder ausgeschlossen, Vater bleibt (z.B. LN-118, neue Farben kommen)
                 $vorab[] = 'alle Kinder ausgeschlossen';
             }
 
-            $r = ArtikelBenennung::rechne(['nr' => $vaterNr, 'jtl_nr' => $g['jtl_nr'], 'name' => $vaterName,
-                                           'kuerzel' => $h['kuerzel'] ?? null, 'nr_fest' => $nrFest], $kinder);
-            if (!$h || empty($h['kuerzel'])) {
-                $r['hinweise'] = array_values(array_diff($r['hinweise'], ['Hersteller ohne Kürzel – Nummern bleiben']));
-                if ($h) $vorab[] = 'Hersteller ohne Kürzel';
-            }
-            foreach ($r['kinder'] as $i => &$k) $k['jtl_nr'] = $kinder[$i]['jtl_nr'];
-            unset($k);
-
             $gruppen[] = [
-                'typ' => $g['typ'], 'jtl_nr' => $g['jtl_nr'], 'nr' => $r['nr'],
+                'typ' => $g['typ'], 'jtl_nr' => $g['jtl_nr'], 'nr' => $b['nr'],
                 'name' => $g['typ'] === 'einzel' ? $g['name'] : $vaterName,
-                'hersteller' => $g['hersteller'], 'hersteller_erp' => $h['name'] ?? null, 'kuerzel' => $h['kuerzel'] ?? null,
-                'hersteller_id' => $hId, 'vorgabe_nr' => $nrFest ? $vg['nummer_neu'] : null,
-                'vorgabe_hersteller_id' => $hZugeordnet ? (int) $vg['hersteller_id'] : null,
+                'hersteller' => $g['hersteller'], 'hersteller_erp' => $b['hersteller_erp'], 'kuerzel' => $b['kuerzel'],
+                'hersteller_id' => $b['hersteller_id'], 'vorgabe_nr' => $b['vorgabe_nr'],
+                'vorgabe_hersteller_id' => $b['vorgabe_hersteller_id'],
                 'ausgeschlossen' => $istAus, 'geprueft' => $istGeprueft,
-                'hinweise' => array_merge($vorab, $r['hinweise']), 'kinder' => $r['kinder'],
+                'hinweise' => array_merge($vorab, $b['hinweise']), 'kinder' => $b['kinder'],
             ];
             if ($istAus) continue;
             $summe[$g['typ'] === 'einzel' ? 'einzel' : 'vaeter']++;
-            $summe['kinder'] += count($r['kinder']);
+            $summe['kinder'] += count($b['kinder']);
             if (!$istGeprueft) $summe['ungeprueft']++;
         }
 
