@@ -74,7 +74,8 @@ class JtlBenennungVorschau
         $gruppen = [];
         foreach ($artikel as $nr => $a) {
             if ($a['typ'] === 'kind') continue;
-            $gruppen[$nr] = ['typ' => $a['typ'], 'jtl_nr' => $nr, 'name' => $a['name'],
+            // (string): PHP macht aus Array-Schlüsseln wie "278701" eine Zahl – Nummern bleiben Text
+            $gruppen[$nr] = ['typ' => $a['typ'], 'jtl_nr' => (string) $nr, 'name' => $a['name'],
                              'hersteller' => $a['hersteller'], 'kinder' => []];
         }
         foreach ($kombis as $vaterNr => $kinder) {
@@ -93,7 +94,7 @@ class JtlBenennungVorschau
         // Kinder aus den Stammdaten ohne Variationskombination (keine Achse bekannt)
         foreach ($artikel as $nr => $a) {
             if ($a['typ'] === 'kind' && isset($gruppen[$a['vater']]) && !isset($gruppen[$a['vater']]['kinder'][$nr])) {
-                $gruppen[$a['vater']]['kinder'][$nr] = ['jtl_nr' => $nr, 'name' => $a['name'], 'achsen' => []];
+                $gruppen[$a['vater']]['kinder'][$nr] = ['jtl_nr' => (string) $nr, 'name' => $a['name'], 'achsen' => []];
             }
         }
         foreach ($gruppen as &$g) $g['kinder'] = array_values($g['kinder']);
@@ -108,35 +109,45 @@ class JtlBenennungVorschau
 
     /**
      * Stufe 2: neue Nummern + Namen. Liefert ['gruppen' => [...], 'summe' => [...]].
-     * Je Gruppe: typ, jtl_nr, nr, name, hersteller, hersteller_erp, kuerzel, hinweise, kinder[jtl_nr, nr, name, art, typ, hinweise]
+     * Je Gruppe: typ, jtl_nr, nr, name, hersteller, hersteller_erp, kuerzel, ausgeschlossen, geprueft, hinweise,
+     *            kinder[jtl_nr, nr, name, art, typ, hinweise]
+     * $mitAusgeschlossenen: ausgeschlossene Väter/Einzelartikel mitliefern (zum Wieder-Anhaken), sonst nur gezählt.
      */
-    public function ergebnis(): array
+    public function ergebnis(bool $mitAusgeschlossenen = false): array
     {
         $db = Database::getInstance();
         $aus = array_flip($db->query("SELECT nummer FROM import_ausschluss WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_COLUMN));
+        $geprueft = array_flip($db->query("SELECT nummer FROM import_geprueft WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_COLUMN));
         $umb = $db->query("SELECT nummer_alt, nummer_neu FROM import_umbenennung WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_KEY_PAIR);
         $herstellerIndex = (new HerstellerRepository())->namensIndex(false);
         $hersteller = [];
         foreach ($db->query("SELECT id, name, kuerzel FROM hersteller") as $h) $hersteller[(int) $h['id']] = $h;
 
         $gruppen = [];
-        $summe   = ['vaeter' => 0, 'kinder' => 0, 'einzel' => 0, 'ausgeschlossen' => 0, 'hinweise' => []];
+        $summe   = ['vaeter' => 0, 'kinder' => 0, 'einzel' => 0, 'ausgeschlossen' => 0, 'ungeprueft' => 0, 'hinweise' => []];
 
         foreach ($this->basis() as $g) {
-            if (isset($aus[$g['jtl_nr']])) { $summe['ausgeschlossen']++; continue; }
+            $istAus = isset($aus[$g['jtl_nr']]);
+            if ($istAus) {
+                $summe['ausgeschlossen']++;
+                if (!$mitAusgeschlossenen) continue;
+            }
+            // Ausgeschlossen zählt als entschieden; sonst muss die Nummer in import_geprueft stehen
+            $istGeprueft = $istAus || isset($geprueft[$g['jtl_nr']]);
 
             $hId = $g['hersteller'] !== '' ? ($herstellerIndex[mb_strtolower($g['hersteller'])] ?? null) : null;
             $h   = $hId ? $hersteller[$hId] : null;
             $vorab = [];
             if ($g['hersteller'] === '')  $vorab[] = 'ohne Hersteller';
             elseif (!$h)                  $vorab[] = 'Hersteller unbekannt';
-            if (!empty($g['nicht_in_stamm'])) $vorab[] = 'von Babsi nicht geprüft (fehlt in Stammdaten)';
+            if (!empty($g['nicht_in_stamm'])) $vorab[] = 'fehlt in Stammdaten-Datei';
+            if (!$istGeprueft) $vorab[] = 'noch nicht geprüft';
 
             $vaterNr   = $umb[$g['jtl_nr']] ?? $g['jtl_nr'];
             $vaterName = JtlVaterKindImportService::kuerzeDropsName($g['name']);
             $kinder    = [];
             foreach ($g['kinder'] as $k) {
-                if (isset($aus[$k['jtl_nr']])) { $summe['ausgeschlossen']++; continue; }
+                if (isset($aus[$k['jtl_nr']])) { if (!$istAus) $summe['ausgeschlossen']++; continue; }
                 $kinder[] = ['jtl_nr' => $k['jtl_nr'], 'nr' => $umb[$k['jtl_nr']] ?? $k['jtl_nr'],
                              'name' => $k['name'], 'achsen' => $k['achsen']];
             }
@@ -157,20 +168,25 @@ class JtlBenennungVorschau
                 'typ' => $g['typ'], 'jtl_nr' => $g['jtl_nr'], 'nr' => $r['nr'],
                 'name' => $g['typ'] === 'einzel' ? $g['name'] : $vaterName,
                 'hersteller' => $g['hersteller'], 'hersteller_erp' => $h['name'] ?? null, 'kuerzel' => $h['kuerzel'] ?? null,
+                'ausgeschlossen' => $istAus, 'geprueft' => $istGeprueft,
                 'hinweise' => array_merge($vorab, $r['hinweise']), 'kinder' => $r['kinder'],
             ];
+            if ($istAus) continue;
             $summe[$g['typ'] === 'einzel' ? 'einzel' : 'vaeter']++;
             $summe['kinder'] += count($r['kinder']);
+            if (!$istGeprueft) $summe['ungeprueft']++;
         }
 
         // Nummer kommt bei verschiedenen Artikeln vor (über alle Väter hinweg)
         $alle = [];
         foreach ($gruppen as $g) {
+            if ($g['ausgeschlossen']) continue;
             $alle[] = $g['nr'];
             foreach ($g['kinder'] as $k) $alle[] = $k['nr'];
         }
         $zaehl = array_count_values($alle);
         foreach ($gruppen as &$g) {
+            if ($g['ausgeschlossen']) continue;
             if ($zaehl[$g['nr']] > 1) $g['hinweise'][] = 'Nummer bei anderem Artikel';
             foreach ($g['kinder'] as &$k) {
                 if ($zaehl[$k['nr']] > 1 && !in_array('Nummer doppelt', $k['hinweise'], true)) $k['hinweise'][] = 'Nummer bei anderem Artikel';
@@ -183,5 +199,36 @@ class JtlBenennungVorschau
         arsort($summe['hinweise']);
 
         return ['gruppen' => $gruppen, 'summe' => $summe];
+    }
+
+    /**
+     * Babsis Entscheidung je Vater/Einzelartikel: übernehmen (= aus import_ausschluss entfernen) oder nicht.
+     * Kinder folgen dem Vater. Gilt danach auch als geprüft.
+     */
+    public function setzeAuswahl(string $nummer, string $name, bool $uebernehmen, ?int $benutzerId): void
+    {
+        $db = Database::getInstance();
+        if ($uebernehmen) {
+            $db->prepare("DELETE FROM import_ausschluss WHERE quelle = ? AND nummer = ?")->execute([self::QUELLE, $nummer]);
+        } else {
+            $db->prepare("INSERT INTO import_ausschluss (quelle, nummer, name, benutzer_id) VALUES (?, ?, ?, ?)
+                          ON DUPLICATE KEY UPDATE name = VALUES(name), benutzer_id = VALUES(benutzer_id)")
+               ->execute([self::QUELLE, $nummer, mb_substr($name, 0, 255), $benutzerId]);
+        }
+        $this->markiereGeprueft([$nummer], $benutzerId);
+    }
+
+    /** Nummern als "angeschaut" merken (Knopf "Seite als geprüft markieren"). */
+    public function markiereGeprueft(array $nummern, ?int $benutzerId): int
+    {
+        $st = Database::getInstance()->prepare("INSERT IGNORE INTO import_geprueft (quelle, nummer, benutzer_id) VALUES (?, ?, ?)");
+        $n = 0;
+        foreach ($nummern as $nr) {
+            $nr = trim((string) $nr);
+            if ($nr === '') continue;
+            $st->execute([self::QUELLE, $nr, $benutzerId]);
+            $n += $st->rowCount();
+        }
+        return $n;
     }
 }

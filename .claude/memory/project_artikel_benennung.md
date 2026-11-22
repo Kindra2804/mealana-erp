@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 80e0cd93-5868-409a-a6e4-214f7c72e810
-  modified: 2026-11-22T10:41:47.613Z
+  modified: 2026-11-22T11:09:56.884Z
 ---
 
 **Entscheidung 2026-11-21:** Babsi sucht nach Farbnummer (sortiert nach Artikelnummer), nach Art wie Mix/Uni (sortiert nach Preis) oder nach Farbe (sortiert nach Name). Darum:
@@ -39,6 +39,12 @@ Auswertung der behaltenen 10.173 Kinder: etwa 7.900 mit Farb-Achse, etwa 2.100 N
   - **Problem:** Stammdaten-Export vom 11.11. ist unvollständig (956 Väter) – Variationen 21.11. hat 1.346 Väter → **390 Väter (~4.500 Kinder) hat Babsi nie gesehen** (Hinweis „von Babsi nicht geprüft“, ohne Hersteller). Braucht frischen vollständigen Stammdaten-Export aus JTL.
   - Offene Hinweise in der Vorschau: Leerzeichen in Nummer 707 (HY-Sharp Fixed …), Farbe ohne Nummer 333 (8S-…-rt, DMC e130, Hoooked sc02), Farbe + weitere Achse 216 (DROPS Lace Wickelservice), Nummer doppelt 50.
   - Offene Frage: Einzelartikel bekommen derzeit auch Kürzel-Rest (SO-613606 → bleibt ohne Kürzel) – Regel mit Jacky bestätigen.
+- ✅ Schritt 2b (2026-11-22 Nachmittag):
+  - Babsis Kürzel übernommen (15 Änderungen, Skript `import/Babsi_Auswertung_2026-11-22/kuerzel_uebernehmen.php`; Babsi schrieb in Spalte „Vorschlag“): PRYM=PRY, MEALANA=MEA, LYKKE=LYK, Schachenmayr SMC=SMC, Sonstige+Pracht=SO, Anchor=ANC, TOPP=TOP, Milward/DeBondt=DB … Gemeinsame Kürzel bewusst gelassen (DB, LY, SO). IndraDesign weitere_namen = „Indra Design“ (so in JTL).
+  - Jacky hat **vollständigen JTL-Stammdaten-Export** abgelegt: `import/JTL-Export-Artikelstammdaten-22112026_kompletter Artikelstamm.csv` (26.709 Artikel, 1.346 Väter, 22.232 Kinder = passt zu Variationen; **keine Spalte „aktiv“** im Export). Liegt als stammdaten.csv in der Vorschau.
+  - Migr. 261 `import_geprueft` (quelle, nummer): Babsis 11.11.-Liste = 3.299 Väter/Einzel als geprüft eingetragen (Skript `geprueft_einlesen.php`, benutzer_id NULL). Vorschau: Häkchen „übernehmen“ je Vater/Einzel (AJAX, js/jtl_benennung.js), Auswahl-Filter (übernommen / noch nicht geprüft / ausgeschlossen), Kachel „noch nicht geprüft“, Knopf „Seite als geprüft markieren“. **1.178 ungeprüft** (390 Väter, 788 Einzel) → Babsi entscheidet im ERP. **Nächste Migr. 262.**
+  - Fix: numerische JTL-Nummern wurden durch PHP-Array-Schlüssel zu int → (string)-Cast in basis().
+  - Offen: Marianne Hobby (5) + Witzgall (2) fehlen als Hersteller im ERP; CraSy, Vervaco, Stocker Verlag ohne Kürzel. Sonstige=SO ergibt z. B. SO-8S-B37642 / SO-2TTicket (Babsi zeigen). Einzelartikel-Regel bestätigt (Kürzel + Rest).
 - ▶ Danach Schritt 3: Importer auf ArtikelBenennung umbauen (+ JTL-Nr in artikel_externe_referenzen 'jtl_nr'/'jtl', Ausschluss + Umbenennung anwenden).
 
 ## Stand vom 2026-11-21 (Fragen inzwischen beantwortet, siehe oben)

@@ -12,6 +12,29 @@ require_once __DIR__ . '/../../src/modules/import/JtlBenennungVorschau.php';
 $h  = fn($s) => htmlspecialchars((string) $s);
 $fehler = null;
 
+// ── AJAX: übernehmen ja/nein bzw. Seite als geprüft markieren (js/jtl_benennung.js) ──
+if (str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/json')) {
+    header('Content-Type: application/json');
+    try {
+        $in  = json_decode(file_get_contents('php://input'), true) ?? [];
+        $svc = new JtlBenennungVorschau();
+        $bId = $_SESSION['benutzer']['id'] ?? null;
+        if (($in['aktion'] ?? '') === 'auswahl') {
+            $nr = trim((string) ($in['nr'] ?? ''));
+            if ($nr === '') throw new RuntimeException('Nummer fehlt');
+            $svc->setzeAuswahl($nr, (string) ($in['name'] ?? ''), !empty($in['uebernehmen']), $bId);
+            echo json_encode(['erfolg' => true]);
+        } elseif (($in['aktion'] ?? '') === 'geprueft') {
+            echo json_encode(['erfolg' => true, 'anzahl' => $svc->markiereGeprueft((array) ($in['nummern'] ?? []), $bId)]);
+        } else {
+            throw new RuntimeException('Unbekannte Aktion');
+        }
+    } catch (Throwable $e) {
+        echo json_encode(['erfolg' => false, 'fehler' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Hochladen (eine oder beide Dateien ersetzen) ────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
@@ -34,9 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ── Ergebnis + Filter ───────────────────────────────────────────────
+// auswahl: '' = was übernommen wird, 'neu' = noch nicht geprüft, 'weg' = ausgeschlossen (zum Wieder-Anhaken)
+$auswahl = in_array($_GET['auswahl'] ?? '', ['neu', 'weg'], true) ? $_GET['auswahl'] : '';
 $erg = null;
 try {
-    $erg = (new JtlBenennungVorschau())->ergebnis();
+    $erg = (new JtlBenennungVorschau())->ergebnis($auswahl === 'weg');
 } catch (Throwable $e) {
     $fehler = $fehler ?? $e->getMessage();
 }
@@ -50,6 +75,7 @@ $f = [
     'typ'        => (string) ($_GET['typ'] ?? ''),
     'hinweis'    => (string) ($_GET['hinweis'] ?? ''),
     'nur'        => !empty($_GET['nur']),
+    'auswahl'    => $auswahl,
 ];
 $treffer = [];
 $herstellerListe = [];
@@ -59,6 +85,8 @@ if ($erg) {
         $herstellerListe[$g['hersteller']] = true;
         if ($f['hersteller'] !== '' && $g['hersteller'] !== ($f['hersteller'] === '-' ? '' : $f['hersteller'])) continue;
         if ($f['typ'] !== '' && $g['typ'] !== $f['typ']) continue;
+        if ($auswahl === 'weg' && !$g['ausgeschlossen']) continue;
+        if ($auswahl === 'neu' && $g['geprueft']) continue;
         $kinder = $g['kinder'];
         if ($f['hinweis'] !== '' || $f['nur']) {
             // "nur mit Hinweis": reine Info-Hinweise (grau) zählen nicht
@@ -117,7 +145,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     Nummer: Kürzel-Vater-Kind, z.B. <code>LN-113-0001</code> (Kürzel beim <a href="../hersteller/liste.php">Hersteller</a>).
     Name: <code>Karisma natur [Uni] (0001)</code> – [Uni]/[Mix] nur, wenn der Garn diese Unterteilung hat.
     Nadeln und Größen behalten ihre Nummer, Name „Vater Länge Stärke“.
-    In JTL bleibt alles, wie es ist. Ausgeschlossene Artikel (Babsis Auswahl) werden nicht gezeigt.
+    In JTL bleibt alles, wie es ist. Mit dem Häkchen entscheidest du je Vater/Einzelartikel, ob er übernommen wird; ausgeschlossene findest du unter „ausgeschlossen“.
 </div>
 
 <?php if ($fehler): ?><div class="error-banner" style="margin-bottom:var(--space-md)">✗ <?= $h($fehler) ?></div><?php endif; ?>
@@ -144,12 +172,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <?php if ($erg): $s = $erg['summe']; ?>
 <div class="card" style="padding:var(--space-md);margin-top:var(--space-md)">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
-        <?php foreach ([['Väter', $s['vaeter'], '#2B6CB0'], ['Kinder', $s['kinder'], '#2B6CB0'], ['Einzelartikel', $s['einzel'], '#2B6CB0'],
-                        ['ausgeschlossen', $s['ausgeschlossen'], '#718096']] as [$t, $z, $c]): ?>
-            <div style="border:1px solid var(--color-border);border-radius:6px;padding:8px 10px">
-                <div style="font-size:12px;color:var(--color-text-muted)"><?= $t ?></div>
+        <?php foreach ([['Väter', $s['vaeter'], '#2B6CB0', null], ['Kinder', $s['kinder'], '#2B6CB0', null], ['Einzelartikel', $s['einzel'], '#2B6CB0', null],
+                        ['noch nicht geprüft', $s['ungeprueft'], $s['ungeprueft'] ? '#C05621' : '#2F855A', 'neu'],
+                        ['ausgeschlossen', $s['ausgeschlossen'], '#718096', 'weg']] as [$t, $z, $c, $ziel]): ?>
+            <<?= $ziel ? 'a href="' . $h($link(['auswahl' => $ziel, 'seite' => null])) . '"' : 'div' ?> style="border:1px solid var(--color-border);border-radius:6px;padding:8px 10px;text-decoration:none<?= $ziel && $ziel === $auswahl ? ';outline:2px solid ' . $c : '' ?>">
+                <div style="font-size:12px;color:var(--color-text-muted)"><?= $t ?><?= $ziel ? ' ›' : '' ?></div>
                 <div style="font-size:22px;font-weight:600;color:<?= $c ?>"><?= number_format($z, 0, ',', '.') ?></div>
-            </div>
+            </<?= $ziel ? 'a' : 'div' ?>>
         <?php endforeach; ?>
     </div>
     <?php if ($s['hinweise']): ?>
@@ -175,6 +204,13 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <?php endforeach; ?>
         </select>
     </label>
+    <label style="font-size:12px;min-width:170px">Auswahl
+        <select name="auswahl" class="erp-select" style="width:100%">
+            <option value="">wird übernommen</option>
+            <option value="neu" <?= $auswahl === 'neu' ? 'selected' : '' ?>>noch nicht geprüft</option>
+            <option value="weg" <?= $auswahl === 'weg' ? 'selected' : '' ?>>ausgeschlossen</option>
+        </select>
+    </label>
     <label style="font-size:12px;min-width:130px">Art
         <select name="typ" class="erp-select" style="width:100%">
             <option value="">alle</option>
@@ -198,15 +234,30 @@ require_once __DIR__ . '/../includes/shell_top.php';
     <a href="<?= $h($link(['csv' => 1, 'seite' => null])) ?>" class="btn btn-secondary btn-sm" title="Gefilterte Liste für Excel (ohne GTINs)">⬇ CSV</a>
 </form>
 
-<div style="font-size:12px;color:var(--color-text-muted);margin:10px 0 4px">
-    <?= number_format(count($treffer), 0, ',', '.') ?> Väter/Einzelartikel gefunden · Seite <?= $seite ?> von <?= $seiten ?>
+<?php
+$aufSeite   = array_slice($treffer, ($seite - 1) * $proSeite, $proSeite);
+$ungeprueft = array_values(array_map(fn($g) => $g['jtl_nr'], array_filter($aufSeite, fn($g) => !$g['geprueft'])));
+?>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--color-text-muted);margin:10px 0 4px">
+    <span><?= number_format(count($treffer), 0, ',', '.') ?> Väter/Einzelartikel gefunden · Seite <?= $seite ?> von <?= $seiten ?></span>
+    <span style="flex:1"></span>
+    <span>Häkchen = wird übernommen (Kinder folgen dem Vater), wird sofort gespeichert.</span>
+    <?php if ($ungeprueft): ?>
+        <button type="button" class="btn btn-secondary btn-sm" id="jb-seite-geprueft" data-nummern="<?= $h(json_encode($ungeprueft)) ?>"
+                title="Alle Väter/Einzelartikel dieser Seite, die noch nicht geprüft sind, so wie angehakt bestätigen">
+            ✓ Seite als geprüft markieren (<?= count($ungeprueft) ?>)</button>
+    <?php endif; ?>
 </div>
 
 <table class="erp-table">
-    <thead><tr><th style="width:190px">JTL-Nummer</th><th style="width:190px">Neue Nummer</th><th>Neuer Name</th><th style="width:260px">Hinweis</th></tr></thead>
+    <thead><tr><th style="width:44px" title="übernehmen">Übern.</th><th style="width:190px">JTL-Nummer</th><th style="width:190px">Neue Nummer</th><th>Neuer Name</th><th style="width:260px">Hinweis</th></tr></thead>
     <tbody>
-    <?php foreach (array_slice($treffer, ($seite - 1) * $proSeite, $proSeite) as $g): ?>
-        <tr style="background:var(--color-bg-subtle,#f7f7f7)">
+    <?php foreach ($aufSeite as $g): ?>
+        <tr class="jb-gruppe" data-nr="<?= $h($g['jtl_nr']) ?>" style="background:var(--color-bg-subtle,#f7f7f7)<?= $g['ausgeschlossen'] ? ';opacity:.55' : '' ?>">
+            <td style="text-align:center">
+                <input type="checkbox" class="jb-uebernehmen" data-nr="<?= $h($g['jtl_nr']) ?>" data-name="<?= $h($g['name']) ?>"
+                       <?= $g['ausgeschlossen'] ? '' : 'checked' ?> title="übernehmen" style="width:18px;height:18px;cursor:pointer">
+            </td>
             <td style="font-family:monospace;font-size:12px"><?= $h($g['jtl_nr']) ?></td>
             <td style="font-family:monospace;font-size:12px;font-weight:600"><?= $h($g['nr']) ?></td>
             <td>
@@ -219,7 +270,8 @@ require_once __DIR__ . '/../includes/shell_top.php';
             <td><?= $hinweisHtml($g['hinweise']) ?></td>
         </tr>
         <?php foreach ($g['kinder_gezeigt'] as $k): ?>
-        <tr>
+        <tr data-vater="<?= $h($g['jtl_nr']) ?>"<?= $g['ausgeschlossen'] ? ' style="opacity:.55"' : '' ?>>
+            <td></td>
             <td style="font-family:monospace;font-size:12px;padding-left:18px;color:var(--color-text-muted)"><?= $h($k['jtl_nr']) ?></td>
             <td style="font-family:monospace;font-size:12px<?= $k['nr'] === $k['jtl_nr'] ? ';color:var(--color-text-muted)' : '' ?>"><?= $h($k['nr']) ?></td>
             <td style="font-size:13px"><?= $h($k['name']) ?></td>
@@ -244,4 +296,5 @@ require_once __DIR__ . '/../includes/shell_top.php';
 <?php endif; ?>
 
 </div>
+<script src="<?= BASE_PATH ?>/js/jtl_benennung.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>
