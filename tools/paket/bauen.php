@@ -37,7 +37,7 @@ $commit = trim((string)shell_exec('git rev-parse --short HEAD'));
 
 // Nicht ins Kundenpaket
 $weglassen = [
-    'tools/', '.claude/', 'import/', 'exports/', 'shop/', 'CLAUDE.md', 'README.md', 'database.example.php',
+    'tools/', '.claude/', 'import/', 'exports/', 'shop/', 'website/', 'CLAUDE.md', 'README.md', 'database.example.php',
     '.gitignore', '.gitattributes',
     'erp/src/modules/lizenzgenerator/',
     'erp/public/shell-demo.php', 'erp/public/shell-test.php', 'erp/public/datenbankvorlagen.md',

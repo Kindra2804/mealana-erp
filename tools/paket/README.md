@@ -24,7 +24,7 @@ Dieser Ordner kommt nie ins Kundenpaket.
 Letzter Commit (`git archive`) + `erp/vendor` aus dem Arbeitsordner, `erp/VERSION` = neue Version,
 `nahtlos-manifest.json` (Version, Datum, Commit, Was ist neu, SHA-256 je Datei, signiert, typ `update_paket`).
 
-**Nicht drin:** `tools/`, `erp/src/modules/lizenzgenerator/`, `.claude/`, `import/`, `exports/`, `shop/`, `CLAUDE.md`,
+**Nicht drin:** `tools/`, `erp/src/modules/lizenzgenerator/`, `.claude/`, `import/`, `exports/`, `shop/`, `website/`, `CLAUDE.md`,
 Dev-Dumps, und nie, was der Installation gehört (`UpdateService::GESCHUETZT`: `config/database.php`, `config/encryption.php`,
 `storage/`, Uploads, Logos, Belegseiten-`config.php`/`daten/`). Von `docs/` nur Handbuch, Installationsanleitung, Versionen.
 
