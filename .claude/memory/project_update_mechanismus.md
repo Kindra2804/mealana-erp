@@ -32,3 +32,7 @@ metadata:
 
 ## Früherer Index-Eintrag (aus MEMORY.md verschoben 2026-11-18)
 - [🔄 Update-Weg](project_update_mechanismus.md) — gebaut 2026-11-01: tools/paket/bauen.php + ··· → Updates (DB-Sicherung Pflicht, Zurückspielen); ✅ 2026-11-15 veraltete Dateien entfernen + „Was ist neu“ über Zwischenversionen (ab 1.0.17); später Online-„Update verfügbar“
+
+## 🔴→🟢 2026-11-22 Live-Update 1.0.28: Database.php/Logger.php gelöscht
+Ursache: c9df167 hat `erp/src/core/database.php`→`Database.php` und `logger.php`→`Logger.php` nur in Groß/Klein umbenannt. Update kopiert erst, dann `entferneDateien(veraltet)`: alte Manifeste kennen database.php, neues nicht → „veraltet“ → unlink löscht unter Windows dieselbe, gerade kopierte Datei → ERP startet nicht (Fatal in Auth.php). Reparatur Live: die zwei Dateien aus dem Paket-ZIP nach `C:\ERP\mealana\erp\src\core\` kopieren; „Veraltete Dateien entfernen“ NICHT klicken (gleicher Fehler).
+Fix (eb9aa1d, Paket **1.0.29**): `veralteteDateien` vergleicht ohne Groß/Klein; `tools/paket/bauen.php` liefert die alte Schreibweise aus früheren Paket-Manifesten zusätzlich mit gleichem Inhalt mit (Aliase), damit auch ein Update mit altem Code nichts löscht. **Regel: nie Dateien nur in Groß/Klein umbenennen, ohne an Aliase zu denken** (bauen.php macht das jetzt automatisch).
