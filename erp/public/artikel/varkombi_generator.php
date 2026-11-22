@@ -9,6 +9,11 @@ if ($artikel_id <= 0) {
     exit;
 }
 
+// Alte Einzelseite: Der Generator steckt im Artikel (Tab Varianten) und rechnet Nummern/Namen nach dem
+// Schema (ArtikelBenennung). Hierher nur noch weiterleiten, damit keine Kinder nach der alten Regel entstehen.
+header('Location: detail.php?id=' . $artikel_id . '&tab=varianten');
+exit;
+
 $artikelService = new ArtikelService();
 $variantenService = new VariantenService();
 

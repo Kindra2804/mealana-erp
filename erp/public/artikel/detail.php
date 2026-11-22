@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../src/modules/preise/PreisService.php';
 require_once __DIR__ . '/../../src/modules/achsen/AchsenService.php';
 require_once __DIR__ . '/../../src/modules/artikel/MerkmaleRepository.php';
 require_once __DIR__ . '/../../src/modules/shop/ShopSyncRepository.php';
+require_once __DIR__ . '/../../src/modules/import/ArtikelBenennung.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 
@@ -1081,15 +1082,33 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                     <?php endforeach; ?>
 
                                     <!-- Neue (editierbar) -->
+                                    <?php
+                                    // Vorschläge nach dem Nummern-/Namensschema (ArtikelBenennung, wie JTL-Import + Vorschau):
+                                    // Farbe mit Nummer -> Vaternummer-0018 / "Vater braun [Uni] (0018)", sonst Vaternummer-Werte
+                                    // und Name "Vater Länge Stärke". Die Vaternummer bleibt, wie sie ist (nr_fest).
+                                    $benennung = ArtikelBenennung::rechne(
+                                        ['nr' => $artikel['artikelnummer'], 'name' => $artikel['name'], 'kuerzel' => null, 'nr_fest' => true],
+                                        array_map(fn($k) => [
+                                            'nr'     => $artikel['artikelnummer'] . '-' . implode('-', array_column($k['kombi'], 'wert')),
+                                            'name'   => $artikel['name'],
+                                            'achsen' => array_map(fn($w) => ['name' => $alleAchsenNamenMap[(int)$w['achse_id']] ?? '', 'wert' => $w['wert']], $k['kombi']),
+                                        ], $neueKombis)
+                                    )['kinder'];
+                                    // Nummern, die es im ERP schon gibt (sonst würde der Generator den fremden Artikel anhängen)
+                                    $vergeben = [];
+                                    if ($benennung) {
+                                        $nrListe = array_column($benennung, 'nr');
+                                        $st = Database::getInstance()->prepare('SELECT artikelnummer FROM artikel WHERE artikelnummer IN (' . implode(',', array_fill(0, count($nrListe), '?')) . ')');
+                                        $st->execute($nrListe);
+                                        $vergeben = array_flip($st->fetchAll(PDO::FETCH_COLUMN));
+                                    }
+                                    ?>
                                     <?php foreach ($neueKombis as $n => $k): ?>
                                         <?php
-                                        $wertNamen     = array_column($k['kombi'], 'wert');
-                                        $vorschlagNr   = $artikel['artikelnummer'] . '-' . implode('-', $wertNamen);
-                                        $vorschlagTeile = array_map(
-                                            fn($w) => trim(($achseNamenMap[(int)$w['achse_id']] ?? '') . ' ' . $w['wert']),
-                                            $k['kombi']
-                                        );
-                                        $vorschlagName = trim($artikel['name'] . ' ' . implode(' ', $vorschlagTeile));
+                                        $vorschlagNr   = $benennung[$n]['nr'];
+                                        $vorschlagName = $benennung[$n]['name'];
+                                        $hinweise      = array_diff($benennung[$n]['hinweise'], ['Farbnummer aus Kindnummer']);
+                                        if (isset($vergeben[$vorschlagNr])) $hinweise[] = 'Nummer schon vergeben';
                                         $aufpreis      = array_sum(array_column($k['kombi'], 'aufpreis'));
                                         ?>
                                         <tr style="background:#EBF8FF">
@@ -1101,7 +1120,11 @@ require_once __DIR__ . '/../includes/shell_top.php';
                                             <td><input type="text" name="kombis[<?= $n ?>][name]" class="erp-input" style="width:100%" value="<?= htmlspecialchars($vorschlagName) ?>"></td>
                                             <td><input type="text" name="kombis[<?= $n ?>][ean]" class="erp-input" style="width:130px" value="" placeholder="optional"></td>
                                             <td><input type="number" name="kombis[<?= $n ?>][aufpreis]" class="erp-input" style="width:80px" value="<?= number_format($aufpreis, 2, '.', '') ?>" step="0.01"></td>
-                                            <td><span class="chip" style="background:#BEE3F8; color:#2B6CB0">● neu</span></td>
+                                            <td><span class="chip" style="background:#BEE3F8; color:#2B6CB0">● neu</span>
+                                                <?php foreach ($hinweise as $hw): ?>
+                                                    <span style="display:inline-block;font-size:11px;padding:1px 6px;margin:2px 2px 0 0;border-radius:3px;border:1px solid #C05621;color:#C05621"><?= htmlspecialchars($hw) ?></span>
+                                                <?php endforeach; ?>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
