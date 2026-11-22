@@ -24,6 +24,12 @@ if (str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/json')) {
             if ($nr === '') throw new RuntimeException('Nummer fehlt');
             $svc->setzeAuswahl($nr, (string) ($in['name'] ?? ''), !empty($in['uebernehmen']), $bId);
             echo json_encode(['erfolg' => true]);
+        } elseif (($in['aktion'] ?? '') === 'vorgabe') {
+            $nr = trim((string) ($in['nr'] ?? ''));
+            if ($nr === '') throw new RuntimeException('Nummer fehlt');
+            $svc->setzeVorgabe($nr, isset($in['nummer_neu']) ? (string) $in['nummer_neu'] : null,
+                               !empty($in['hersteller_id']) ? (int) $in['hersteller_id'] : null, $bId);
+            echo json_encode(['erfolg' => true]);
         } elseif (($in['aktion'] ?? '') === 'geprueft') {
             echo json_encode(['erfolg' => true, 'anzahl' => $svc->markiereGeprueft((array) ($in['nummern'] ?? []), $bId)]);
         } else {
@@ -67,7 +73,7 @@ try {
 }
 
 // Nur zur Info (kein Fehler): grau statt orange, zählt nicht bei "nur mit Hinweis"
-$nurInfo = ['Farbnummer aus Kindnummer'];
+$nurInfo = ['Farbnummer aus Kindnummer', 'Nummer vorgegeben', 'Hersteller zugeordnet'];
 
 $f = [
     'q'          => trim((string) ($_GET['q'] ?? '')),
@@ -82,8 +88,10 @@ $herstellerListe = [];
 if ($erg) {
     $q = mb_strtolower($f['q']);
     foreach ($erg['gruppen'] as $g) {
-        $herstellerListe[$g['hersteller']] = true;
-        if ($f['hersteller'] !== '' && $g['hersteller'] !== ($f['hersteller'] === '-' ? '' : $f['hersteller'])) continue;
+        // Filter nach dem Hersteller, der gilt (ERP bzw. zugeordnet), sonst nach dem JTL-Namen
+        $hAnz = $g['hersteller_erp'] ?? $g['hersteller'];
+        $herstellerListe[$hAnz] = true;
+        if ($f['hersteller'] !== '' && $hAnz !== ($f['hersteller'] === '-' ? '' : $f['hersteller'])) continue;
         if ($f['typ'] !== '' && $g['typ'] !== $f['typ']) continue;
         if ($auswahl === 'weg' && !$g['ausgeschlossen']) continue;
         if ($auswahl === 'neu' && $g['geprueft']) continue;
@@ -133,6 +141,9 @@ $datum    = fn(?array $i) => $i ? date('d.m.Y H:i', $i['zeit']) . ' · ' . numbe
 $chip     = fn(string $t, string $farbe = '#C05621') => '<span style="display:inline-block;font-size:11px;padding:1px 6px;margin:1px 2px 1px 0;border-radius:3px;border:1px solid ' . $farbe . ';color:' . $farbe . '">' . htmlspecialchars($t) . '</span>';
 $hinweisHtml = fn(array $hw) => implode('', array_map(fn($t) => in_array($t, $nurInfo, true) ? $chip($t, '#718096') : $chip($t), $hw));
 
+// Hersteller-Auswahl für "✎ ändern" (js/jtl_benennung.js)
+$herstellerAlle = Database::getInstance()->query("SELECT id, name, kuerzel FROM hersteller ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+
 $pageTitle    = 'JTL: neue Nummern';
 $activeModule = 'artikel';
 require_once __DIR__ . '/../includes/shell_top.php';
@@ -146,6 +157,7 @@ require_once __DIR__ . '/../includes/shell_top.php';
     Name: <code>Karisma natur [Uni] (0001)</code> – [Uni]/[Mix] nur, wenn der Garn diese Unterteilung hat.
     Nadeln und Größen behalten ihre Nummer, Name „Vater Länge Stärke“.
     In JTL bleibt alles, wie es ist. Mit dem Häkchen entscheidest du je Vater/Einzelartikel, ob er übernommen wird; ausgeschlossene findest du unter „ausgeschlossen“.
+    Mit <strong>✎</strong> gibst du die neue Nummer selbst vor (z.B. <code>SO-KAZ-7004</code> – die Kinder richten sich danach) oder ordnest den Hersteller zu.
 </div>
 
 <?php if ($fehler): ?><div class="error-banner" style="margin-bottom:var(--space-md)">✗ <?= $h($fehler) ?></div><?php endif; ?>
@@ -266,7 +278,14 @@ $ungeprueft = array_values(array_map(fn($g) => $g['jtl_nr'], array_filter($aufSe
                        <?= $g['ausgeschlossen'] ? '' : 'checked' ?> title="übernehmen" style="width:18px;height:18px;cursor:pointer">
             </td>
             <td style="font-family:monospace;font-size:12px"><?= $h($g['jtl_nr']) ?></td>
-            <td style="font-family:monospace;font-size:12px;font-weight:600"><?= $h($g['nr']) ?></td>
+            <td style="font-family:monospace;font-size:12px;font-weight:600;white-space:nowrap">
+                <?= $h($g['nr']) ?>
+                <button type="button" class="jb-aendern" title="Nummer vorgeben / Hersteller zuordnen"
+                        data-nr="<?= $h($g['jtl_nr']) ?>" data-nr-neu="<?= $h($g['nr']) ?>"
+                        data-vorgabe-nr="<?= $h($g['vorgabe_nr'] ?? '') ?>"
+                        data-hersteller="<?= $h($g['hersteller_id'] ?? '') ?>" data-vorgabe-hersteller="<?= $h($g['vorgabe_hersteller_id'] ?? '') ?>"
+                        style="border:none;background:none;cursor:pointer;padding:0 2px;font-size:13px;color:var(--color-primary,#2B6CB0)">✎</button>
+            </td>
             <td>
                 <strong><?= $h($g['name']) ?></strong>
                 <span style="font-size:11px;color:var(--color-text-muted)">
@@ -303,5 +322,6 @@ $ungeprueft = array_values(array_map(fn($g) => $g['jtl_nr'], array_filter($aufSe
 <?php endif; ?>
 
 </div>
+<script>window.JB_HERSTELLER = <?= json_encode($herstellerAlle, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
 <script src="<?= BASE_PATH ?>/js/jtl_benennung.js"></script>
 <?php require_once __DIR__ . '/../includes/shell_bottom.php'; ?>

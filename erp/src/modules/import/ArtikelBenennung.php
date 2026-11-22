@@ -56,7 +56,9 @@ class ArtikelBenennung
      * Rechnet einen Vater samt Kindern um.
      *
      * @param array $vater  ['nr' => (schon umbenannte) Vaternummer, 'name' => Vatername, 'kuerzel' => ?string,
-     *                      'jtl_nr' => ursprüngliche Vaternummer (optional, falls umbenannt)]
+     *                      'jtl_nr' => ursprüngliche Vaternummer (optional, falls umbenannt),
+     *                      'nr_fest' => true: 'nr' ist schon die fertige neue Nummer (Babsis Vorgabe, import_vorgabe) –
+     *                                   kein Kürzel davor, die Kinder richten sich trotzdem danach]
      * @param array $kinder je ['nr' => Kindnummer, 'name' => Rohname, 'achsen' => [['name' => 'Farbe'|'[Uni]'|'Länge', 'wert' => '18 braun'], …]]
      *                      (achsen wie aus JtlVaterKindImportService::parseVariationskombinationen)
      * @return array ['nr', 'hinweise' => [], 'kinder' => [['nr', 'name', 'art', 'typ' => farbe|andere|ohne, 'hinweise' => []], …]]
@@ -64,16 +66,19 @@ class ArtikelBenennung
     public static function rechne(array $vater, array $kinder): array
     {
         $kuerzel  = $vater['kuerzel'] ?: null;
-        $vaterNeu = self::vaterNummer($vater['nr'], $kuerzel);
+        $fest     = !empty($vater['nr_fest']);
+        $vaterNeu = $fest ? trim($vater['nr']) : self::vaterNummer($vater['nr'], $kuerzel);
+        // Kinder umbauen, wenn es ein Kürzel gibt oder die Vaternummer fest vorgegeben ist
+        $umbauen  = $kuerzel || $fest;
         $vName    = trim($vater['name']);
         $vHinweis = self::nummerHinweise($vaterNeu);
-        if (!$kuerzel) $vHinweis[] = 'Hersteller ohne Kürzel – Nummern bleiben';
+        if (!$umbauen) $vHinweis[] = 'Hersteller ohne Kürzel – Nummern bleiben';
 
         // Kinder, deren Nummer nicht aus der Farbe kommt, bekommen trotzdem das Kürzel des Vaters:
         // beginnt die Kindnummer mit der (alten) Vaternummer, wird dieser Anfang ersetzt, sonst Kürzel davor.
         $vaterAlt = array_unique(array_filter([$vater['nr'], $vater['jtl_nr'] ?? null], 'strlen'));
-        $mitKuerzel = function (string $kindNr) use ($vaterAlt, $vaterNeu, $kuerzel): string {
-            if (!$kuerzel) return $kindNr;
+        $mitKuerzel = function (string $kindNr) use ($vaterAlt, $vaterNeu, $kuerzel, $umbauen): string {
+            if (!$umbauen) return $kindNr;
             foreach ($vaterAlt as $alt) {
                 if (str_starts_with($kindNr, $alt . '-')) return $vaterNeu . substr($kindNr, strlen($alt));
             }
@@ -114,7 +119,7 @@ class ArtikelBenennung
                 } elseif ($andere) {
                     $nr = $mitKuerzel($k['nr']);
                     $hinweise[] = 'Farbe + weitere Achse';
-                } elseif (!$kuerzel) {
+                } elseif (!$umbauen) {
                     $nr = $k['nr'];
                 } else {
                     $nr = $vaterNeu . '-' . $nr4;

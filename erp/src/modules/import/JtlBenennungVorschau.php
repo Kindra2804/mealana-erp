@@ -119,6 +119,11 @@ class JtlBenennungVorschau
         $aus = array_flip($db->query("SELECT nummer FROM import_ausschluss WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_COLUMN));
         $geprueft = array_flip($db->query("SELECT nummer FROM import_geprueft WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_COLUMN));
         $umb = $db->query("SELECT nummer_alt, nummer_neu FROM import_umbenennung WHERE quelle = '" . self::QUELLE . "'")->fetchAll(PDO::FETCH_KEY_PAIR);
+        // Babsis Vorgaben je Vater/Einzelartikel: fertige Nummer und/oder Hersteller (Migr. 262)
+        $vorgabe = [];
+        foreach ($db->query("SELECT nummer, nummer_neu, hersteller_id FROM import_vorgabe WHERE quelle = '" . self::QUELLE . "'") as $v) {
+            $vorgabe[$v['nummer']] = $v;
+        }
         $herstellerIndex = (new HerstellerRepository())->namensIndex(false);
         $hersteller = [];
         foreach ($db->query("SELECT id, name, kuerzel FROM hersteller") as $h) $hersteller[(int) $h['id']] = $h;
@@ -135,15 +140,21 @@ class JtlBenennungVorschau
             // Ausgeschlossen zählt als entschieden; sonst muss die Nummer in import_geprueft stehen
             $istGeprueft = $istAus || isset($geprueft[$g['jtl_nr']]);
 
+            $vg  = $vorgabe[$g['jtl_nr']] ?? null;
             $hId = $g['hersteller'] !== '' ? ($herstellerIndex[mb_strtolower($g['hersteller'])] ?? null) : null;
+            $hZugeordnet = $vg && $vg['hersteller_id'] && isset($hersteller[(int) $vg['hersteller_id']]);
+            if ($hZugeordnet) $hId = (int) $vg['hersteller_id'];
             $h   = $hId ? $hersteller[$hId] : null;
+            $nrFest = $vg && $vg['nummer_neu'] !== null && $vg['nummer_neu'] !== '';
             $vorab = [];
-            if ($g['hersteller'] === '')  $vorab[] = 'ohne Hersteller';
+            if ($hZugeordnet)             $vorab[] = 'Hersteller zugeordnet';
+            elseif ($g['hersteller'] === '') $vorab[] = 'ohne Hersteller';
             elseif (!$h)                  $vorab[] = 'Hersteller unbekannt';
+            if ($nrFest)                  $vorab[] = 'Nummer vorgegeben';
             if (!empty($g['nicht_in_stamm'])) $vorab[] = 'fehlt in Stammdaten-Datei';
             if (!$istGeprueft) $vorab[] = 'noch nicht geprüft';
 
-            $vaterNr   = $umb[$g['jtl_nr']] ?? $g['jtl_nr'];
+            $vaterNr   = $nrFest ? $vg['nummer_neu'] : ($umb[$g['jtl_nr']] ?? $g['jtl_nr']);
             $vaterName = JtlVaterKindImportService::kuerzeDropsName($g['name']);
             $kinder    = [];
             foreach ($g['kinder'] as $k) {
@@ -156,7 +167,8 @@ class JtlBenennungVorschau
                 $vorab[] = 'alle Kinder ausgeschlossen';
             }
 
-            $r = ArtikelBenennung::rechne(['nr' => $vaterNr, 'jtl_nr' => $g['jtl_nr'], 'name' => $vaterName, 'kuerzel' => $h['kuerzel'] ?? null], $kinder);
+            $r = ArtikelBenennung::rechne(['nr' => $vaterNr, 'jtl_nr' => $g['jtl_nr'], 'name' => $vaterName,
+                                           'kuerzel' => $h['kuerzel'] ?? null, 'nr_fest' => $nrFest], $kinder);
             if (!$h || empty($h['kuerzel'])) {
                 $r['hinweise'] = array_values(array_diff($r['hinweise'], ['Hersteller ohne Kürzel – Nummern bleiben']));
                 if ($h) $vorab[] = 'Hersteller ohne Kürzel';
@@ -168,6 +180,8 @@ class JtlBenennungVorschau
                 'typ' => $g['typ'], 'jtl_nr' => $g['jtl_nr'], 'nr' => $r['nr'],
                 'name' => $g['typ'] === 'einzel' ? $g['name'] : $vaterName,
                 'hersteller' => $g['hersteller'], 'hersteller_erp' => $h['name'] ?? null, 'kuerzel' => $h['kuerzel'] ?? null,
+                'hersteller_id' => $hId, 'vorgabe_nr' => $nrFest ? $vg['nummer_neu'] : null,
+                'vorgabe_hersteller_id' => $hZugeordnet ? (int) $vg['hersteller_id'] : null,
                 'ausgeschlossen' => $istAus, 'geprueft' => $istGeprueft,
                 'hinweise' => array_merge($vorab, $r['hinweise']), 'kinder' => $r['kinder'],
             ];
@@ -214,6 +228,34 @@ class JtlBenennungVorschau
             $db->prepare("INSERT INTO import_ausschluss (quelle, nummer, name, benutzer_id) VALUES (?, ?, ?, ?)
                           ON DUPLICATE KEY UPDATE name = VALUES(name), benutzer_id = VALUES(benutzer_id)")
                ->execute([self::QUELLE, $nummer, mb_substr($name, 0, 255), $benutzerId]);
+        }
+        $this->markiereGeprueft([$nummer], $benutzerId);
+    }
+
+    /**
+     * Babsis Vorgabe für einen Vater/Einzelartikel: fertige neue Nummer und/oder Hersteller.
+     * Leere Nummer bzw. null = nichts vorgeben; sind beide leer, wird die Vorgabe gelöscht (Schema gilt wieder).
+     * Gilt danach als geprüft.
+     */
+    public function setzeVorgabe(string $nummer, ?string $nummerNeu, ?int $herstellerId, ?int $benutzerId): void
+    {
+        $nummerNeu = $nummerNeu !== null ? trim($nummerNeu) : '';
+        if ($nummerNeu !== '') {
+            if (preg_match('/\s/u', $nummerNeu)) throw new RuntimeException('Die Nummer darf keine Leerzeichen enthalten.');
+            if (strlen($nummerNeu) > ArtikelBenennung::MAX_NR) throw new RuntimeException('Die Nummer ist länger als ' . ArtikelBenennung::MAX_NR . ' Zeichen.');
+        }
+        $db = Database::getInstance();
+        if ($herstellerId) {
+            $st = $db->prepare("SELECT COUNT(*) FROM hersteller WHERE id = ?");
+            $st->execute([$herstellerId]);
+            if (!$st->fetchColumn()) throw new RuntimeException('Hersteller nicht gefunden.');
+        }
+        if ($nummerNeu === '' && !$herstellerId) {
+            $db->prepare("DELETE FROM import_vorgabe WHERE quelle = ? AND nummer = ?")->execute([self::QUELLE, $nummer]);
+        } else {
+            $db->prepare("INSERT INTO import_vorgabe (quelle, nummer, nummer_neu, hersteller_id, benutzer_id) VALUES (?, ?, ?, ?, ?)
+                          ON DUPLICATE KEY UPDATE nummer_neu = VALUES(nummer_neu), hersteller_id = VALUES(hersteller_id), benutzer_id = VALUES(benutzer_id)")
+               ->execute([self::QUELLE, $nummer, $nummerNeu !== '' ? $nummerNeu : null, $herstellerId ?: null, $benutzerId]);
         }
         $this->markiereGeprueft([$nummer], $benutzerId);
     }
