@@ -72,6 +72,7 @@ class BuchhaltungExportService
 
         $this->kassenbonUmsaetze($von, $bis, $buchungen, $hinweise);
         $this->kassenZahlbelege($von, $bis, $buchungen, $hinweise);
+        $this->jtlBareingaenge($von, $bis, $buchungen, $hinweise);
         $this->rechnungenUndGutschriften($von, $bis, $buchungen, $hinweise);
         $this->zahlungseingaenge($von, $bis, $buchungen, $hinweise);
         $this->mahngebuehren($von, $bis, $buchungen, $hinweise);
@@ -474,6 +475,7 @@ class BuchhaltungExportService
             LEFT JOIN auftraege a ON a.id = bp.web_auftrag_id
             LEFT JOIN kunden k ON k.id = a.kunden_id
             WHERE bp.block = 'zahlung' AND b.typ = 'verkauf' AND b.storniert = 0
+              AND bp.fremd_beleg_nr IS NULL   -- JTL-Rechnungen: eigener Block jtlBareingaenge()
               AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
             GROUP BY b.id, bp.web_auftrag_id
         ")->fetchAll();
@@ -494,6 +496,46 @@ class BuchhaltungExportService
                 'datum' => $r['datum'], 'belegnr' => $r['bon_nr'], 'konto' => $r['debitorennummer'],
                 'gegenkonto' => $zk, 'betrag' => $betrag, 'soll_haben' => 'H', 'satz' => null,
                 'text' => ($betrag >= 0 ? 'Zahlung Kasse' : 'Rückzahlung Kasse') . " Auftrag {$r['auftrag_nr']}",
+            ];
+        }
+    }
+
+    /**
+     * Bareingang zu einer JTL-Rechnung an der Kasse (Migr. 263): Kassa/Bank an das Gegenkonto der
+     * Pseudo-Zahlungsart 'jtl_verrechnung' (Buchhaltung → Zahlungsart-Konten). Kein Erlös – der
+     * steht in der JTL-Buchhaltung. Ohne Gegenkonto: Hinweis „manuell buchen“.
+     */
+    private function jtlBareingaenge(string $von, string $bis, array &$buchungen, array &$hinweise): void
+    {
+        $rows = $this->db->query("
+            SELECT DATE(b.erstellt_am) AS datum, b.bon_nr, b.zahlungsart, bp.fremd_beleg_nr,
+                   SUM(bp.menge * bp.einzelpreis_brutto) AS betrag
+            FROM kassen_bon_positionen bp
+            JOIN kassen_bons b ON b.id = bp.bon_id
+            WHERE bp.block = 'zahlung' AND bp.fremd_beleg_nr IS NOT NULL AND b.typ = 'verkauf' AND b.storniert = 0
+              AND DATE(b.erstellt_am) BETWEEN " . $this->db->quote($von) . " AND " . $this->db->quote($bis) . "
+            GROUP BY b.id, bp.fremd_beleg_nr
+        ")->fetchAll();
+        if (!$rows) return;
+
+        $gegen = $this->zahlungsartKonto('jtl_verrechnung')['kontonummer'] ?? null;
+        foreach ($rows as $r) {
+            $betrag = round((float)$r['betrag'], 2);
+            $za     = in_array($r['zahlungsart'], ['bar', 'karte_extern', 'gutschein'], true) ? $r['zahlungsart'] : 'bar';
+            if ($za !== $r['zahlungsart']) {
+                $hinweise[] = "Bareingang {$r['bon_nr']}: Bon mit mehreren Zahlungsmitteln — JTL-Rechnung {$r['fremd_beleg_nr']} als Kassa gebucht, bitte prüfen";
+            }
+            $zk = $this->zahlungsartKonto($za)['kontonummer'] ?? null;
+            if (!$gegen || !$zk) {
+                $hinweise[] = "Bareingang {$r['bon_nr']} (JTL-Rechnung {$r['fremd_beleg_nr']}): "
+                    . (!$gegen ? 'Gegenkonto „jtl_verrechnung“ fehlt (Buchhaltung → Zahlungsart-Konten)' : 'Zahlungskonto fehlt')
+                    . " — € " . number_format($betrag, 2, ',', '.') . " manuell buchen";
+                continue;
+            }
+            $buchungen[] = [
+                'datum' => $r['datum'], 'belegnr' => $r['bon_nr'], 'konto' => $gegen,
+                'gegenkonto' => $zk, 'betrag' => $betrag, 'soll_haben' => 'H', 'satz' => null,
+                'text' => "Bareingang Kasse JTL-Rechnung {$r['fremd_beleg_nr']}",
             ];
         }
     }

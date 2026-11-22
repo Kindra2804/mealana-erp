@@ -85,6 +85,7 @@ foreach ($positionen as $p) {
         'web_auftrag_id'         => !empty($p['web_auftrag_id']) ? (int)$p['web_auftrag_id'] : null,
         'gutschein_empfaenger'   => trim((string)($p['gutschein_empfaenger'] ?? '')) ?: null,
         'zahlung_auftrag_id'     => !empty($p['zahlung_auftrag_id']) ? (int)$p['zahlung_auftrag_id'] : null,
+        'zahlung_jtl_rechnung'   => mb_substr(trim((string)($p['zahlung_jtl_rechnung'] ?? '')), 0, 40) ?: null,
         'guthaben'               => !empty($p['guthaben']),
     ];
 }
@@ -156,8 +157,25 @@ $gutscheinKaufPositionen = array_values(array_filter($sauberePositionen, fn($p) 
 // 0 % (USt steht schon auf der Rechnung), kein Lager, Betrag höchstens der offene
 // Rechnungsbetrag -- alles serverseitig festgelegt, nicht vom Client übernommen.
 $zahlungPositionen = [];
+$jtlBareingaenge   = 0;
 foreach ($sauberePositionen as $i => &$p) {
     if ($p['block'] !== 'zahlung') continue;
+    // Bareingang zu einer JTL-Rechnung (Migr. 263): kein ERP-Auftrag, nur Nummer + Betrag, 0 %
+    if (!empty($p['zahlung_jtl_rechnung'])) {
+        $betragJ = round($p['einzelpreis_brutto'] * $p['menge'], 2);
+        if ($betragJ <= 0) { echo json_encode(['erfolg' => false, 'fehler' => 'Bareingang JTL-Rechnung: Betrag fehlt.']); exit; }
+        $p['artikel_id']         = null;
+        $p['menge']              = 1;
+        $p['einzelpreis_brutto'] = $betragJ;
+        $p['steuer_prozent']     = 0;
+        $p['rabatt_prozent']     = 0;
+        $p['kein_lagerabzug']    = true;
+        $p['zahlung_auftrag_id'] = null;
+        $p['fremd_beleg_nr']     = $p['zahlung_jtl_rechnung'];
+        $p['bezeichnung']        = 'Bareingang zu JTL-Rechnung ' . $p['zahlung_jtl_rechnung'];
+        $jtlBareingaenge++;
+        continue;
+    }
     $aidZ = (int)($p['zahlung_auftrag_id'] ?? 0);
     $az = Database::getInstance()->prepare("SELECT id, auftrag_nr FROM auftraege WHERE id = ? AND lieferstatus <> 'storniert'");
     $az->execute([$aidZ]);
@@ -757,7 +775,7 @@ if ($bonDaten['zahlungsart'] === 'gutschein') {
     $gutscheinZahlung = ['code' => $gs['code'], 'id' => (int)$gs['id'], 'betrag' => $gsBetrag];
 }
 
-if ($zahlungPositionen && $webAuftraege) {
+if (($zahlungPositionen || $jtlBareingaenge) && $webAuftraege) {
     echo json_encode(['erfolg' => false, 'fehler' => 'Rechnung bezahlen bitte als eigenen Bon — nicht zusammen mit einer Abholung oder Retoure.']); exit;
 }
 

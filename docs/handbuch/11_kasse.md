@@ -225,6 +225,17 @@ Der Bon ist ein **Zahlbeleg**: RKSV-signiert, zählt in Kassenbuch und Tagesabsc
 - Weitere Artikel dürfen auf demselben Bon sein; eine **Abholung oder Retoure nicht** — dafür einen eigenen Bon.
 - Wird der Zahlbeleg storniert, wird die Zahlung beim Auftrag automatisch zurückgenommen.
 
+### JTL-Rechnung bezahlen (Bareingang)
+
+Nur bei der Umstellung von JTL (der Menüpunkt erscheint erst, wenn JTL-Daten im ERP sind): Ein Kunde zahlt im Geschäft eine Rechnung aus dem Online-Shop, die noch in **JTL** steht.
+
+1. Menü (☰) → **🧾 JTL-Rechnung bezahlen**
+2. **JTL-Rechnungsnummer** und **Betrag** laut Rechnung eintippen → **+ Hinzufügen**
+3. Zeile „Bareingang zu JTL-Rechnung …" mit **0 %** im Bon → normal bezahlen (bar/Karte)
+4. Danach die Rechnung **in JTL als bezahlt** markieren
+
+Wie beim Zahlbeleg: RKSV-signiert, zählt in Kassenbuch und Tagesabschluss, kein neuer Umsatz (der steht in JTL). Nicht zusammen mit Abholung oder Retoure auf einem Bon. Im Buchhaltungs-Export: Kassa/Bank an das Gegenkonto **„jtl_verrechnung“** (Buchhaltung → Zahlungsart-Konten; welches Konto, mit der Steuerberatung klären). Ist dort keines eingetragen, steht der Betrag als Hinweis „manuell buchen“ im Export.
+
 ---
 
 ## Bon stornieren

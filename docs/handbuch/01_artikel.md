@@ -232,6 +232,28 @@ Gewählte Väter nehmen alle ihre Farben mit, die übrigen Merkmale bleiben unbe
 
 ---
 
+## JTL-Übernahme: neue Nummern (Artikelliste → ⬇ Import ▾ → JTL: neue Nummern) {#jtl-neue-nummern}
+
+Beim Umstieg von JTL bekommen die Artikel ein einheitliches Schema. **In JTL bleibt alles, wie es ist** – das ERP merkt sich die JTL-Nummer.
+
+| | Beispiel |
+|---|---|
+| Nummer | Herstellerkürzel-Vater-Farbe, Farbe 4-stellig: `LN-113-0001` |
+| Name Farbe | „Vater Farbe [Art] (0001)“: `Karisma natur [Uni] (0001)` – [Uni]/[Mix] nur, wenn das Garn diese Unterteilung hat |
+| Nadeln, Größen | Nummer bleibt (Herstellernummer), Name „Vater Länge Stärke“ |
+
+- **Kürzel** (max. 3 Zeichen) steht beim Hersteller (Artikel → Hersteller). Dort auch **„Weitere Namen“** (mit ; trennen), z.B. „DROPS“ für DROPS Design – dann klappt die Zuordnung beim JTL-Import.
+- **Vorschau:** zuerst die zwei JTL-Exporte (Artikelstammdaten + Variationskombinationen, jeweils **alle** Artikel) hochladen. Die Liste zeigt alt → neu für jeden Vater, jedes Kind und jeden Einzelartikel. Hier wird nichts am Artikelstamm geändert.
+- **Häkchen** je Vater/Einzelartikel = wird übernommen (Kinder folgen dem Vater), speichert sofort. Kacheln oben filtern (Väter, Kinder, Einzelartikel, **noch nicht geprüft**, **ausgeschlossen**).
+- **✎** neben der neuen Nummer: Nummer genau vorgeben (z.B. `SO-KAZ-7004`, die Kinder richten sich danach) und/oder **Hersteller zuordnen**, wenn er in JTL fehlt.
+- **Hinweise** (orange) zeigen, was noch zu klären ist; anklicken = nur diese zeigen. Wichtig vor dem Import: „Nummer bei anderem Artikel“, „Nummer doppelt“, „länger als 30 Zeichen“ – solche Artikel legt der Import nicht an.
+- **Import:** Artikel → ⬇ Import ▾ → JTL Vater+Kind, Häkchen **„Babsis Liste + neues Nummernschema anwenden“**. Ausgeschlossenes und noch nicht Geprüftes wird übersprungen, die Kontrollliste zeigt schon die neuen Nummern (JTL-Nummer klein darunter). Gibt es einen Artikel noch mit alter JTL-Nummer, bekommt er die neue.
+- Die gemerkte JTL-Nummer nutzen Lagerabgleich (Export nach JTL schreibt die JTL-Nummer), Archiv-Aufträge, JTL-Bilder/-Merkmale und die Kasse (alte JTL-Etiketten sind scannbar).
+- **Neue Varianten** (Artikel → Varianten → VarKombi-Generator) schlagen Nummer und Namen nach demselben Schema vor.
+- **Dev → Live:** Die Liste wird im Dev gepflegt und mit `php scripts/datentransfer.php export --teile=jtl_liste` → am Live `import --datei=… --probelauf` (dann ohne) übertragen – samt Herstellern und Kürzeln, beliebig oft wiederholbar.
+
+---
+
 ## Kategorien
 
 Kategorien organisieren die Artikel im Shop und im ERP.

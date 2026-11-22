@@ -840,6 +840,10 @@ body {
     <button class="ph-dd-item" onclick="gutscheinVerkaufDialog()">🎁 Gutschein verkaufen</button>
     <button class="ph-dd-item" onclick="gutscheinAbfrageDialog()">🔍 Gutschein abfragen</button>
     <button class="ph-dd-item" onclick="rechnungZahlenDialog()">💶 Rechnung bezahlen</button>
+    <?php // Nur bei JTL-Übernahme (MeaLana): Kunden zahlen im Laden eine Rechnung, die noch aus JTL stammt (Migr. 263)
+    if (Database::getInstance()->query("SELECT 1 FROM import_ausschluss WHERE quelle = 'jtl' UNION SELECT 1 FROM artikel_externe_referenzen WHERE datenquelle = 'jtl_nr' LIMIT 1")->fetchColumn()): ?>
+    <button class="ph-dd-item" onclick="jtlZahlungDialog()">🧾 JTL-Rechnung bezahlen</button>
+    <?php endif; ?>
     <button class="ph-dd-item" onclick="freitextRetourDialog()">↩ Freitext-Retour</button>
     <div class="ph-dd-sep"></div>
     <button class="ph-dd-item" onclick="bonAbrufen()">⏸ Geparkten Bon abrufen</button>
@@ -1234,6 +1238,24 @@ require __DIR__ . '/_hinweise.php'; ?>
     <div class="ov-grid2">
       <button class="ov-btn ov-btn-ok" id="btn-rz-ok" onclick="rzHinzufuegen()" disabled>+ Hinzufügen</button>
       <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-re-zahlung')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bareingang zu einer JTL-Rechnung (0 %, kein ERP-Auftrag — die Rechnung liegt in JTL) -->
+<div class="ov" id="ov-jtl-zahlung">
+  <div class="ov-box">
+    <div class="ov-title">🧾 JTL-Rechnung bezahlen</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:10px">Für Rechnungen aus dem Online-Shop, die noch in JTL stehen. Danach in JTL als bezahlt markieren.</div>
+    <div class="ov-label">JTL-Rechnungsnummer</div>
+    <input class="ov-input-sm" type="text" id="jz-nr" maxlength="40" placeholder="z.B. RE-2026-12345" style="margin-bottom:10px" autocomplete="off"
+           onkeydown="if(event.key==='Enter'){document.getElementById('jz-betrag').focus();}">
+    <div class="ov-label">Betrag (€) laut Rechnung</div>
+    <input class="ov-input" type="number" id="jz-betrag" step="0.01" min="0.01" style="margin-bottom:12px;font-size:22px"
+           onkeydown="if(event.key==='Enter'){jtlZahlungHinzufuegen();}">
+    <div class="ov-grid2">
+      <button class="ov-btn ov-btn-ok" onclick="jtlZahlungHinzufuegen()">+ Hinzufügen</button>
+      <button class="ov-btn ov-btn-sec" onclick="ovSchliessen('ov-jtl-zahlung')">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -2989,6 +3011,43 @@ function rzHinzufuegen() {
     });
     aktiveZeile = warenkorb.length - 1;
     ovSchliessen('ov-re-zahlung');
+    renderBon();
+}
+
+// ── JTL-Rechnung bezahlen (Bareingang, Migr. 263) ─────────────────────────────
+// Eigene Bon-Zeile 0 % wie der Zahlbeleg, aber ohne ERP-Auftrag: nur JTL-Rechnungsnummer +
+// Betrag. bon_speichern.php legt Bezeichnung/Steuer fest und merkt die Nummer (fremd_beleg_nr).
+function jtlZahlungDialog() {
+    document.getElementById('ph-dropdown').classList.remove('offen');
+    if (warenkorb.some(p => p.vonAuftrag || p.block === 'retour')) {
+        feedback('JTL-Rechnung bitte als eigenen Bon — nicht zusammen mit einer Abholung oder Retoure.', 'fehler');
+        return;
+    }
+    document.getElementById('jz-nr').value = '';
+    document.getElementById('jz-betrag').value = '';
+    ov('ov-jtl-zahlung');
+    setTimeout(() => document.getElementById('jz-nr').focus(), 100);
+}
+function jtlZahlungHinzufuegen() {
+    var nr = document.getElementById('jz-nr').value.trim();
+    var betrag = Math.round((parseFloat(document.getElementById('jz-betrag').value) || 0) * 100) / 100;
+    if (nr.length < 3) { feedback('Bitte die JTL-Rechnungsnummer eingeben', 'fehler'); return; }
+    if (betrag <= 0) { feedback('Bitte den Betrag eingeben', 'fehler'); return; }
+    if (warenkorb.some(p => p.block === 'zahlung' && p.zahlung_jtl_rechnung === nr)) {
+        feedback('Diese JTL-Rechnung ist schon im Bon', 'fehler'); return;
+    }
+    warenkorb.push({
+        artikel_id: null,
+        bezeichnung: 'Bareingang zu JTL-Rechnung ' + nr,
+        ean: null, artnr: null, menge: 1,
+        einzelpreis_brutto: betrag, steuer_prozent: 0, rabatt_prozent: 0,
+        charge: null, konfig_wert_ids: null, istDivers: false,
+        hat_chargen: false, charge_pflicht: false,
+        bestand_physisch: 0, bestand_reserviert: 0, bestand_verkaufbar: 0,
+        block: 'zahlung', zahlung_jtl_rechnung: nr,
+    });
+    aktiveZeile = warenkorb.length - 1;
+    ovSchliessen('ov-jtl-zahlung');
     renderBon();
 }
 

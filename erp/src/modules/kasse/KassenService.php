@@ -355,12 +355,12 @@ class KassenService
             foreach ($positionen as $i => $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
+                        (bon_id, block, web_auftrag_id, fremd_beleg_nr, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
                          bezeichnung, ean, menge,
                          einzelpreis_brutto, preis_vorher_brutto, mengen_aktion_id, aktion_hinweis,
                          rabatt_prozent, steuer_prozent, charge, sort_order)
                     VALUES
-                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
+                        (:bon_id, :block, :web_auftrag_id, :fremd_beleg_nr, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
                          :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :preis_vorher_brutto, :mengen_aktion_id, :aktion_hinweis,
                          :rabatt_prozent, :steuer_prozent, :charge, :sort)
@@ -369,6 +369,7 @@ class KassenService
                     ':bon_id'             => $bonId,
                     ':block'              => $pos['block']              ?? null,
                     ':web_auftrag_id'     => $pos['web_auftrag_id'] ?? $pos['zahlung_auftrag_id'] ?? null,
+                    ':fremd_beleg_nr'     => $pos['fremd_beleg_nr'] ?? null,   // JTL-Rechnungsnummer (Bareingang, Migr. 263)
                     ':artikel_id'         => $pos['artikel_id']         ?? null,
                     ':artikel_gruppe_id'  => $pos['artikel_gruppe_id']  ?? null,
                     ':partner_id'         => $pos['partner_id']         ?? null,
@@ -675,12 +676,12 @@ class KassenService
             foreach ($bon['positionen'] as $pos) {
                 $stmt2 = $this->db->prepare("
                     INSERT INTO kassen_bon_positionen
-                        (bon_id, block, web_auftrag_id, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
+                        (bon_id, block, web_auftrag_id, fremd_beleg_nr, artikel_id, artikel_gruppe_id, partner_id, partner_modus,
                          bezeichnung, ean, menge,
                          einzelpreis_brutto, preis_vorher_brutto, mengen_aktion_id, aktion_hinweis,
                          rabatt_prozent, steuer_prozent, charge)
                     VALUES
-                        (:bon_id, :block, :web_auftrag_id, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
+                        (:bon_id, :block, :web_auftrag_id, :fremd_beleg_nr, :artikel_id, :artikel_gruppe_id, :partner_id, :partner_modus,
                          :bezeichnung, :ean, :menge,
                          :einzelpreis_brutto, :preis_vorher_brutto, :mengen_aktion_id, :aktion_hinweis,
                          :rabatt_prozent, :steuer_prozent, :charge)
@@ -690,6 +691,7 @@ class KassenService
                     ':bon_id'             => $stornoBonId,
                     ':block'              => $istZahlung ? 'zahlung' : null,
                     ':web_auftrag_id'     => $istZahlung ? $pos['web_auftrag_id'] : null,
+                    ':fremd_beleg_nr'     => $istZahlung ? ($pos['fremd_beleg_nr'] ?? null) : null,
                     ':artikel_id'         => $pos['artikel_id'],
                     ':artikel_gruppe_id'  => $pos['artikel_gruppe_id'] ?? null,
                     ':partner_id'         => $pos['partner_id'] ?? null,

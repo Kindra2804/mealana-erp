@@ -26,7 +26,8 @@ function enumWerte(PDO $db, string $tabelle, string $spalte): array
 
 $alleZahlungsarten = array_unique(array_merge(
     enumWerte($db, 'auftraege', 'zahlungsart'),
-    enumWerte($db, 'kassen_bons', 'zahlungsart')
+    enumWerte($db, 'kassen_bons', 'zahlungsart'),
+    ['jtl_verrechnung']   // keine echte Zahlungsart: Gegenkonto für „Bareingang zu JTL-Rechnung“ an der Kasse (Migr. 263)
 ));
 sort($alleZahlungsarten);
 

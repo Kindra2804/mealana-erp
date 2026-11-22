@@ -191,6 +191,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-varianten" class="sub">↳ Varianten & Achsen</a>
             <a href="#artikel-bilder" class="sub">↳ Bilder</a>
             <a href="#artikel-merkmale" class="sub">↳ Merkmale</a>
+            <a href="#artikel-jtl-nummern" class="sub">↳ JTL-Übernahme: neue Nummern</a>
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
             <a href="#artikel-slider" class="sub">↳ Shop-Slider & Kacheln</a>
             <a href="#artikel-menue" class="sub">↳ Shop-Menü</a>
@@ -377,6 +378,18 @@ require_once __DIR__ . '/includes/shell_top.php';
                 <li><strong>⚑ EAN zieht um:</strong> Steht die EAN im ERP bei einem <em>anderen</em> Lang-Garn (z.B. LUSSO statt MILLE COLORI BABY), ist sie dort falsch: Der Artikel wird wie in der Lang-Liste angelegt und bekommt die EAN, beim alten wird nur die EAN entfernt. Mit Bestand: Ware am Etikett prüfen.</li>
                 <li>Neue Artikel: aktiv, <strong>in keinem Shop</strong>, noch ohne Kategorie; Vater mit Beschreibung, Pflege und Merkmalen.</li>
                 <li><strong>Nicht mehr in der Datei</strong>: werden nicht verändert, nur zum Prüfen (⬇ CSV).</li>
+            </ul>
+
+            <h3 id="artikel-jtl-nummern">JTL-Übernahme: neue Nummern <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Artikelliste → <strong>⬇ Import ▾ → JTL: neue Nummern</strong>. Beim Umstieg von JTL bekommen die Artikel ein einheitliches Schema; <strong>in JTL bleibt alles, wie es ist</strong>, das ERP merkt sich die JTL-Nummer.</p>
+            <ul>
+                <li><strong>Nummer</strong> Herstellerkürzel-Vater-Farbe, Farbe 4-stellig (<code>LN-113-0001</code>); <strong>Name</strong> „Vater Farbe [Art] (0001)“, z.B. „Karisma natur [Uni] (0001)“. Nadeln/Größen: Nummer bleibt, Name „Vater Länge Stärke“.</li>
+                <li><strong>Kürzel</strong> (max. 3) und <strong>Weitere Namen</strong> (z.B. „DROPS“ für DROPS Design) beim Hersteller.</li>
+                <li><strong>Vorschau:</strong> zwei JTL-Exporte hochladen (Artikelstammdaten + Variationskombinationen, alle Artikel). Häkchen = wird übernommen (speichert sofort), Kacheln filtern, <strong>✎</strong> = Nummer vorgeben und/oder Hersteller zuordnen. Hier wird nichts am Artikelstamm geändert.</li>
+                <li><strong>Hinweise</strong> anklicken = nur diese zeigen. „Nummer bei anderem Artikel“, „Nummer doppelt“ und „länger als 30 Zeichen“ vor dem Import klären – solche Artikel legt der Import nicht an.</li>
+                <li><strong>Import:</strong> ⬇ Import ▾ → JTL Vater+Kind, Häkchen „Babsis Liste + neues Nummernschema anwenden“: Ausgeschlossenes und Ungeprüftes wird übersprungen, die Kontrollliste zeigt die neuen Nummern (JTL-Nummer darunter); Artikel mit alter JTL-Nummer werden umnummeriert.</li>
+                <li>Die JTL-Nummer nutzen Lagerabgleich (Export nach JTL mit JTL-Nummer), Archiv-Aufträge, JTL-Bilder/-Merkmale und die Kasse (alte JTL-Etiketten scannbar). Der VarKombi-Generator schlägt neue Varianten nach demselben Schema vor.</li>
+                <li><strong>Dev → Live:</strong> <code>php scripts/datentransfer.php export --teile=jtl_liste</code>, am Live <code>import --datei=… --probelauf</code>, dann ohne – samt Herstellern und Kürzeln, wiederholbar.</li>
             </ul>
 
             <h3 id="artikel-preise">Preise & Aktionen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
@@ -926,6 +939,10 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Rechnungs-/Auftragsnummer (auch Teil) oder Kundenname eintippen — Treffer anklicken (offener Betrag vorausgefüllt, Teilzahlung möglich). Abholung ohne Rechnung → wird normal als Auftrag geladen</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>+ Hinzufügen</strong> → Zeile „Zahlung zu Auftrag …“ mit 0 % → normal bezahlen</div></div>
             <div class="ba-hint">💡 RKSV-signiert, zählt in Kassenbuch und Tagesabschluss, aber kein neuer Umsatz. Die Zahlung steht beim Auftrag und erscheint im Rechnungs-Nachdruck. Storno des Bons nimmt die Zahlung automatisch zurück. Nicht zusammen mit Abholung/Retoure auf einem Bon.</div>
+            <p><strong>🧾 JTL-Rechnung bezahlen</strong> (nur bei der Umstellung von JTL, der Menüpunkt erscheint erst, wenn JTL-Daten im ERP sind): Kunde zahlt im Geschäft eine Online-Rechnung, die noch in JTL steht.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>⚙ Menü → <strong>🧾 JTL-Rechnung bezahlen</strong> → JTL-Rechnungsnummer + Betrag → <strong>+ Hinzufügen</strong></div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Zeile „Bareingang zu JTL-Rechnung …“ mit 0 % → normal bezahlen, danach die Rechnung <strong>in JTL als bezahlt</strong> markieren</div></div>
+            <div class="ba-hint">💡 Wie der Zahlbeleg RKSV-signiert, kein neuer Umsatz. Buchhaltungs-Export: Kassa/Bank an das Gegenkonto „jtl_verrechnung“ (Buchhaltung → Zahlungsart-Konten, mit der Steuerberatung klären) — ohne Konto steht der Betrag als Hinweis „manuell buchen“ im Export.</div>
 
             <h3 id="kasse-kassensturz">Kassensturz / Tagesabschluss <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p><strong>X-Bon</strong> (Zwischenbericht): Zeigt den aktuellen Stand ohne Abschluss — gut für Zwischenkontrollen.</p>
