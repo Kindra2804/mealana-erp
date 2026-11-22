@@ -40,7 +40,7 @@
 
 - [🟢 Schilder fehlten in Artikelliste](bug_schilder_partnerware_liste.md) — ✅ behoben 2026-11-14 (12d8371): Einklapp-Regel nur, wenn Layout in derselben Kategorie; Live mit nächstem …
 
-- [🔤 Artikel-Benennungsschema](project_artikel_benennung.md) — 2026-11-21: Nr Hersteller-Vater-Kind(4-stellig), Name „Vater Farbe [Art] (Nr)“; ✅ Vorschau (Migr. 258–262) + JTL-Import mit Babsis Liste gebaut 2026-11-22; offen: Ablauf große Übernahme, Kind-Generator, Live-Übertragung
+- [🔤 Artikel-Benennungsschema](project_artikel_benennung.md) — 2026-11-21: Nr Hersteller-Vater-Kind(4-stellig), Name „Vater Farbe [Art] (Nr)“; ✅ 2026-11-22 komplett gebaut (Vorschau, Import, JTL-Nr überall, Generator, Datentransfer jtl_liste, Paket 1.0.28); **▶ 23.11. abends: Babsis Liste fertig → Jacky spielt 1.0.28 im Live ein** (Checkliste docs/umstellung/)
 
 ## User + Feedback
 - [User Profile](user_karl.md) — Jacky (Indranet), Anfänger, Claude ist Trainer; Barbara schaut bei UI mit

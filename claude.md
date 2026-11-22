@@ -565,6 +565,20 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-22: JTL-Übernahme mit neuem Nummernschema gebaut, JTL-Bareingang an der Kasse, Paket 1.0.28
+
+Details in `.claude/memory/project_artikel_benennung.md`, `project_1_0_check.md`. Migrationen **258–263**, nächste **264**.
+- **Hersteller:** `kuerzel` (max. 3) + `weitere_namen` (Migr. 258/259), `HerstellerRepository::namensIndex()` in allen Importen (JTL „DROPS“ → DROPS Design).
+- **Schema-Logik** `src/modules/import/ArtikelBenennung.php` (rein, ohne DB): `LN-113-0001`, „Vater farbe [Art] (0001)“, Nadeln Nummer bleibt; Option `nr_fest` für vorgegebene Vaternummer.
+- **Babsis Liste** `JtlImportListe` (import_ausschluss 254, import_umbenennung 260, import_geprueft 261, import_vorgabe 262) – gemeinsam für Vorschau `artikel/jtl_benennung.php` (+ `js/jtl_benennung.js`, ✎ Nummer/Hersteller vorgeben) und JTL Vater+Kind-Import (Häkchen „Liste anwenden“, Sperre doppelte/zu lange Nummern, Umnummerierung alter JTL-Nummern).
+- **JTL-Nummer** in `artikel_externe_referenzen` ('jtl_nr', 'jtl' = kArtikel); `ArtikelRepository::findIdByJtlNr/indexFuerJtlNummern/jtlNummernJeId` → Lagerabgleich (Export schreibt JTL-Nr), Archiv-/Bilder-/Merkmale-Import, Kasse + Offline-Kasse (SW-Cache v7).
+- **VarKombi-Generator** (artikel/detail.php Tab Varianten) nach Schema; alte `varkombi_generator.php` leitet um.
+- **Kasse 🧾 JTL-Rechnung bezahlen** (Migr. 263 `kassen_bon_positionen.fremd_beleg_nr`, Pseudo-Zahlungsart `jtl_verrechnung` für das Gegenkonto im Export).
+- **Datentransfer** Teil `jtl_liste` (spiegelt die Liste, Hersteller + Kürzel nachziehen).
+- Dev: Farbwerte bereinigt (klein, „weiß“, Doppel aufgelöst) – Skripte in `import/Babsi_Auswertung_2026-11-22/`.
+- **Paket 1.0.28** gebaut (`website/` ab jetzt ausgeschlossen). Checkliste/Ablauf: `docs/umstellung/JTL_Laden_aufs_ERP.md`.
+- **Morgen Abend (23.11.):** Babsis Liste fertig → Jacky spielt 1.0.28 im Live ein, dann `datentransfer jtl_liste`, dann Artikelimport je JTL-Kategorie.
+
 ## Update 2026-11-21 (Abend): Babsis Artikel-Ausschlussliste + neues Benennungsschema (Planung, noch kein Code)
 - Babsis Liste ausgewertet → `import/Babsi_Auswertung_2026-11-21/` (11.591 von 20.718 MeaLana-Artikeln, 117 Umbenennungen, Prüfliste beantwortet). Babsis Excel-Datei hat 6.936 GTINs zerstört (wissenschaftliche Schreibweise), darum nur Schlüssel + neue Nummern daraus verwenden, Daten aus dem JTL-Original.
 - Neues Schema (Babsi/Jacky): Artikelnummer `Herstellerkürzel-Vater-Kind` (Kind 4-stellig, z. B. LN-113-0001), Name `Vater Farbe [Art] (Nummer)`. Art (Uni/Mix) kommt über Unter-Gruppen der Farb-Achse.
