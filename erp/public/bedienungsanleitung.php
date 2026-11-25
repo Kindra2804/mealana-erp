@@ -190,6 +190,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#artikel-kopieren" class="sub">↳ Artikel kopieren</a>
             <a href="#artikel-varianten" class="sub">↳ Varianten & Achsen</a>
             <a href="#artikel-bilder" class="sub">↳ Bilder</a>
+            <a href="#mietfach-export" class="sub">↳ Für Mietfach exportieren</a>
             <a href="#artikel-merkmale" class="sub">↳ Merkmale</a>
             <a href="#artikel-jtl-nummern" class="sub">↳ JTL-Übernahme: neue Nummern</a>
             <a href="#artikel-preise" class="sub">↳ Preise & Aktionen</a>
@@ -214,6 +215,7 @@ require_once __DIR__ . '/includes/shell_top.php';
             <a href="#kunden">Kunden</a>
             <a href="#partner">Partner & Mietfächer</a>
             <a href="#partner-lager" class="sub">↳ Partner-Lager & Partnerware</a>
+            <a href="#mietfach-import" class="sub">↳ Artikel aus NAHTLOS-Datei übernehmen</a>
             <a href="#partner-konto" class="sub">↳ Partner-Konto & Auszahlung</a>
             <a href="#buchhaltung">Buchhaltung</a>
             <a href="#buchhaltung-export" class="sub">↳ DATEV/CSV-Export + Zahlungs-Kontrolle</a>
@@ -277,6 +279,13 @@ require_once __DIR__ . '/includes/shell_top.php';
 
             <h3 id="artikel-eigentuemer">Wem gehört ein Artikel? (Partner-Artikel)</h3>
             <p>Artikel eines Partners, der online verkauft (z.B. Indra-Design), tragen in der Artikelliste ein lila Badge mit seinem Kürzel (<strong>INDRA</strong>). Beim neuen Artikel gibt es dafür das Feld <strong>„Gehört“</strong> (nur sichtbar, wenn es solche Partner gibt). Kopien und neue Varianten gehören automatisch demselben wie das Original bzw. der Vater. Nachträglich ändern: Artikelliste → Aktion „Eigentümer setzen“.</p>
+
+            <h3 id="mietfach-export">Artikel für ein Mietfach exportieren <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
+            <p>Für dein eigenes Mietfach bei einem anderen Geschäft, das auch NAHTLOS verwendet – dort muss dann niemand abtippen.</p>
+            <div class="ba-step"><div class="ba-step-nr">1</div><div>Artikelliste → Artikel anhaken (Vater nimmt alle aktiven Varianten mit) → Aktion <strong>„📦 Für Mietfach exportieren“</strong>.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">2</div><div>Vorschau im neuen Tab: jede Variante = eigener Artikel. Blaues <strong>!</strong> = ohne EAN bzw. ohne Preis.</div></div>
+            <div class="ba-step"><div class="ba-step-nr">3</div><div><strong>⬇ Datei herunterladen</strong> und dem Mietfach-Betreiber schicken. Er liest sie unter Partner → Artikel → <strong>📥 Aus NAHTLOS-Datei übernehmen</strong> ein (<a href="#mietfach-import">so geht's</a>).</div></div>
+            <div class="ba-hint">💡 Mit dabei: Nummer, Name, EAN, Preis, MwSt, Kurztext, ein Bild. Nicht dabei: Bestand und Einkaufspreise. Artikel ohne Verkaufspreis kann der Betreiber nicht übernehmen.</div>
 
             <h3 id="artikel-loeschen">Deaktivieren &amp; Löschen <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p><strong>Deaktivieren</strong> (Artikel-Detail, oben): Artikel bzw. Variante bleibt im System, ist aber nicht mehr verkaufbar. Beim Vater werden die aktiven Varianten mit deaktiviert. Inaktive Artikel <em>und</em> inaktive Varianten sieht man in der Artikelliste nur mit Häkchen <strong>„Auch inaktive“</strong>, im Tab Varianten ebenso über „Auch inaktive (Anzahl)“. Zurück mit <strong>Aktivieren</strong>.</p>
@@ -720,6 +729,8 @@ require_once __DIR__ . '/includes/shell_top.php';
             <div class="ba-step"><div class="ba-step-nr">1</div><div>Reiter <strong>Artikel</strong>: Partner-Artikel anlegen — Nummer immer <code>XP</code> + Partner-ID (z.B. <code>XP01-SEIFE-LAV</code>, leer = automatisch <code>XP01-0001</code>), Preis, MwSt, EAN, Fach. Nicht in der normalen Artikelliste, nie im Onlineshop. Partnerware nie über die normale Artikelanlage anlegen (Gruppe „Partnerware“ wird dort abgelehnt). Beim <strong>Ware übernehmen</strong> geht's auch direkt mit <strong>+ Neuer Artikel</strong>.</div></div>
             <div class="ba-step"><div class="ba-step-nr">2</div><div>Reiter <strong>Bestand</strong> → <strong>📥 Ware übernehmen</strong> (Mengen eintragen, oder EAN scannen / Nummer bzw. Name tippen — Liste filtert, Enter = +1) → Übernahmeschein (US-Nr.) zum Unterschreiben. <strong>📤 Rückgabe</strong> → Rückgabeschein (RS-Nr.).</div></div>
             <div class="ba-step"><div class="ba-step-nr">3</div><div>Die <strong>Kasse</strong> bucht Partner-Artikel automatisch aus dem Partner-Lager ab (Storno zurück dorthin).</div></div>
+            <p id="mietfach-import"><strong>Artikel aus dem NAHTLOS des Partners übernehmen</strong> (wenn der Partner selbst NAHTLOS verwendet): Der Partner exportiert in seiner Artikelliste mit <strong>„📦 Für Mietfach exportieren“</strong>. Hier Reiter <strong>Artikel</strong> → <strong>📥 Aus NAHTLOS-Datei übernehmen</strong> → Datei → <strong>Vorschau</strong> (neu / geändert / unverändert / ohne Preis) → Fach für neue Artikel → <strong>Übernehmen</strong>. Danach wie immer <strong>📥 Ware übernehmen</strong> – der Import bringt keinen Bestand. Varianten werden einzelne Partnerartikel.</p>
+            <div class="ba-hint">💡 Wiederholen ist sicher: bekannte Artikel werden wiedererkannt (Nummer des Partners, beim ersten Mal auch EAN), nichts doppelt. Es gilt der Preis des Partners – ein von Hand geänderter Preis ist euer <strong>eigener Fachpreis</strong> und bleibt; ein neuer Partnerpreis erscheint dann nur als Hinweis zum Anhaken. Fach, aktiv/inaktiv und EK bleiben unberührt. Protokoll: „partner.mietfach_import“.</div>
             <p><strong>Am Kassenbon</strong> (immer ein Bon, ein Zahlbetrag): <strong>Kommission</strong> = normale Zeile, normal signiert. <strong>Fremdrechnung</strong> = eigener Abschnitt „Verkauft im Namen und auf Rechnung von …“ (Name, Adresse, UID) mit eigener <strong>Steuer-Info</strong> des Partners (Satz, Netto, USt, Brutto — getrennt von der Steuer-Info unserer eigenen Umsätze; bei Kleinunternehmern steht dort der KU-Hinweis), nicht signiert, kein eigener Umsatz, Geld bleibt durchlaufend in der Lade. <strong>Spende</strong> = Abschnitt „Spende für …“ (ZVR), nicht signiert, Bar-Anteil kommt in die Spendenlade und zählt nicht zum Kassenstand. Im Warenkorb steht klein „im Namen von …“ / „Spende für …“.</p>
             <div class="ba-hint">💡 Z-Bon/X-Bon: „Umsatz“ = nur eigener Umsatz; „Kassiert gesamt (inkl. Partnerware)“ + Abschnitt <strong>Partnerumsätze</strong> je Partner. Ein Bon nur mit Partnerware hat keine RKSV-Signatur (steht am Bon).</div>
 

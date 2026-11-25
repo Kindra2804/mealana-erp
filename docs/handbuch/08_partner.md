@@ -88,6 +88,19 @@ Ware eines Partners liegt in einem **eigenen Lager des Partners**, nicht im Lade
 - Bezeichnung, Verkaufspreis, MwSt, EAN, Fach.
 - Partnerware steht **nicht** in der normalen Artikelliste (Umschalter „inkl. Partnerware“ zeigt sie zur Ansicht) und geht **nie** in den Onlineshop.
 
+**Artikel aus dem NAHTLOS des Partners übernehmen** {#mietfach-import} — wenn der Partner selbst NAHTLOS verwendet:
+1. Der Partner erstellt in seinem NAHTLOS die Datei: Artikelliste → Artikel anhaken → Aktion **„📦 Für Mietfach exportieren“** → Datei herunterladen.
+2. Hier: Reiter **Artikel** → **📥 Aus NAHTLOS-Datei übernehmen** → Datei wählen → **Vorschau anzeigen**. Noch wird nichts geändert.
+3. Vorschau: **neu** (grün), **geändert** (blau, mit was sich geändert hat), **unverändert**, **ohne Preis** (kann nicht übernommen werden – Partner soll den Preis in seinem ERP eintragen). Oben steht, von welcher Firma die Datei ist; heißt sie anders als der Partner, kommt ein blaues **!**.
+4. Häkchen prüfen, **Fach für neue Artikel** wählen → **Übernehmen**. Danach wie immer **📥 Ware übernehmen** für die Stückzahlen – der Import bringt **keinen Bestand**.
+
+Gut zu wissen:
+- Varianten des Partners werden einzelne Partnerartikel. Die Nummer des Partners wird nach Möglichkeit übernommen (`XP01-SEIFE-LAV`), sonst laufende Nummer.
+- **Wiederholen ist sicher:** Bekannte Artikel werden wiedererkannt (über die Nummer des Partners; beim ersten Mal auch über die EAN, falls ihr den Artikel schon von Hand angelegt hattet) – nichts wird doppelt angelegt. Name, EAN, MwSt und Preis werden aktualisiert; Fach, aktiv/inaktiv und EK bleiben, ein Bild kommt nur dazu, wenn noch keines da ist.
+- **Preis:** Es gilt der Preis des Partners. Ändert ihr ihn beim Artikel (✎) von Hand, ist das euer **eigener Fachpreis** – der bleibt beim nächsten Import; ein neuer Partnerpreis erscheint dann nur als Hinweis mit Häkchen „statt …“ zum bewussten Übernehmen.
+- Ist eine EAN bei euch schon bei einem anderen Artikel vergeben, wird der Artikel ohne EAN übernommen (Hinweis in der Vorschau).
+- Jede Übernahme steht im Protokoll unter „partner.mietfach_import“ (Datei, Absender, Anzahl neu/geändert), jeder einzelne Artikel unter „partner.artikel_anlegen“ / „partner.artikel_bearbeiten“.
+
 **Ware übernehmen / zurückgeben** (Reiter **Bestand**):
 - **📥 Ware übernehmen** — fehlt ein Artikel noch, **+ Neuer Artikel** legt ihn direkt dort an (Bezeichnung, Preis, MwSt, optional Nummer/EAN/Fach) und setzt ihn mit Menge 1 in die Liste. Sonst: Mengen eintragen oder ins Suchfeld EAN scannen / Artikelnummer (auch ohne „XP01-“) / Name tippen: die Liste filtert mit, Enter = +1 beim passenden Artikel → **Buchen** → **Übernahmeschein** (US-Nummer) als PDF zum Unterschreiben.
 - **📤 Rückgabe an Partner** — höchstens der aktuelle Bestand → **Rückgabeschein** (RS-Nummer).

@@ -72,6 +72,16 @@ Die Liste zeigt alle aktiven Artikel. Oben gibt es Filter:
 
 Artikel eines Partners, der online verkauft (z.B. Indra-Design), tragen in der Artikelliste ein lila Badge mit seinem Kürzel (**INDRA**). Beim **Neuen Artikel** gibt es dafür das Feld **„Gehört“** (nur sichtbar, wenn es solche Partner gibt): Hauptfirma oder Partner. Kopien und neue Varianten gehören automatisch demselben wie das Original bzw. der Vater. Nachträglich ändern: Artikelliste → Aktion „Eigentümer setzen“.
 
+## Artikel für ein Mietfach exportieren {#mietfach-export}
+
+Hast du selbst ein **Mietfach bei einem anderen Geschäft, das auch NAHTLOS verwendet**, musst du dort deine Artikel nicht abtippen lassen:
+
+1. Artikelliste → Artikel anhaken (Vater-Artikel nehmen alle aktiven Varianten mit) → Aktion **„📦 Für Mietfach exportieren“** → Ausführen.
+2. Im neuen Tab steht eine Vorschau: jede Variante wird ein eigener Artikel (z.B. „Seife Lavendel“, „Seife Rose“). Blaues **!** = ohne EAN bzw. ohne Preis.
+3. **⬇ Datei herunterladen** → die `.tar`-Datei dem Mietfach-Betreiber schicken (Mail, USB-Stick).
+
+Mit dabei: Nummer, Name, EAN, Verkaufspreis, MwSt, Kurztext und ein Bild (verkleinert). **Nicht** dabei: Bestand und Einkaufspreise. Ausgelassen werden inaktive Artikel, Gutscheine, Konfigurator-, Download- und Lizenz-Artikel. Artikel ohne Verkaufspreis kann der Betreiber nicht übernehmen – vorher Preis eintragen. Wie es beim Betreiber weitergeht: [Partner → Artikel aus NAHTLOS-Datei übernehmen](08_partner.md#mietfach-import).
+
 ---
 
 ## Artikel kopieren
