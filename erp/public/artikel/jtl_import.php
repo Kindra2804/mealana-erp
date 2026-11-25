@@ -147,6 +147,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['csv_stammdaten']['t
                     . 'aber keiner davon kommt in der Variationskombinationen-CSV vor. Die beiden Dateien passen '
                     . 'vermutlich nicht zusammen (falsche/veraltete Kombinationen-Datei hochgeladen, z.B. Export einer anderen Kategorie?). '
                     . 'Bitte die Variationskombinationen-CSV gezielt für diese Kategorie neu aus JTL exportieren.';
+            } elseif (($vorschauDaten['liste']['ausgeschlossen'] ?? 0) > 0 || !empty($vorschauDaten['liste']['ungeprueft'])) {
+                // Dateien waren richtig, aber Babsis Liste hat alles herausgefiltert
+                $ung = (array) $vorschauDaten['liste']['ungeprueft'];
+                $fehler[] = 'Alle Artikel wurden durch die Liste („Liste anwenden“) herausgefiltert: '
+                    . (int) ($vorschauDaten['liste']['ausgeschlossen'] ?? 0) . ' stehen auf „nicht übernehmen“, '
+                    . count($ung) . ' sind noch nicht geprüft'
+                    . ($ung ? ' (z. B. ' . implode(', ', array_slice($ung, 0, 5)) . ')' : '') . '. '
+                    . 'Ist die Liste in diesem ERP vollständig (Datentransfer „jtl_liste“)? Sonst in Artikel → JTL: neue Nummern prüfen.';
             } else {
                 $fehler[] = 'Keine Artikel erkannt. Bitte Dateien prüfen (Stammdaten-CSV + Variationskombinationen-CSV vertauscht?).';
             }
