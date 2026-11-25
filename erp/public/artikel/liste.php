@@ -586,6 +586,7 @@ $actionBarContent = <<<HTML
         <option value="kuvert_etikett">🖨 Kuvert-Etiketten drucken</option>
         <option value="kassenliste">🧾 Kassen-Liste drucken</option>
         <option value="eigentuemer">Eigentümer setzen (Hauptfirma / Partner)</option>
+        <option value="mietfach_export">📦 Für Mietfach exportieren</option>
     </select>
     <button id="massen-ausfuehren" class="btn btn-primary btn-sm">Ausführen</button>
     <div class="actionbar-sep"></div>
@@ -1143,6 +1144,15 @@ require_once __DIR__ . '/../includes/shell_top.php';
             // eigene Seite im neuen Tab: Einstellungen → Vorschau alt/neu → Übernehmen (artikel/preise_massen.php)
             const f = document.createElement('form');
             f.method = 'post'; f.action = window.BASE_PATH + '/artikel/preise_massen.php'; f.target = '_blank';
+            ids.forEach(function (id) { const i = document.createElement('input'); i.type = 'hidden'; i.name = 'ids[]'; i.value = id; f.appendChild(i); });
+            document.body.appendChild(f); f.submit(); f.remove();
+            return;
+        }
+
+        if (aktion === 'mietfach_export') {
+            // eigene Seite im neuen Tab: Vorschau → Datei herunterladen (artikel/mietfach_export.php)
+            const f = document.createElement('form');
+            f.method = 'post'; f.action = window.BASE_PATH + '/artikel/mietfach_export.php'; f.target = '_blank';
             ids.forEach(function (id) { const i = document.createElement('input'); i.type = 'hidden'; i.name = 'ids[]'; i.value = id; f.appendChild(i); });
             document.body.appendChild(f); f.submit(); f.remove();
             return;
