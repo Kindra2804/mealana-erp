@@ -221,6 +221,9 @@ class PartnerLagerService
             $repo->deleteCodesByArtikelIdAndType($id, 'GTIN13');
             if ($ean) $repo->insertCode($id, 'GTIN13', $ean);
             $this->ekSpeichern($id, $partner, $ek, (float)$steuersatz);
+            // aus dem NAHTLOS des Partners übernommen? → eigener Fachpreis ja/nein merken (Migr. 264)
+            require_once __DIR__ . '/MietfachImport.php';
+            MietfachImport::preisVonHand($this->db, $id, $brutto);
             Logger::log('partner.artikel_bearbeiten', 'artikel', $id, ['partner_id' => $partnerId, 'nummer' => $nummer]);
             return ['erfolg' => true, 'id' => $id, 'artikelnummer' => $nummer];
         }

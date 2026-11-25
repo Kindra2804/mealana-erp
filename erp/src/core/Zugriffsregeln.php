@@ -73,6 +73,7 @@ final class Zugriffsregeln
             // Preise sind ein Tab im Artikel-Modul, keine eigene Berechtigung vorhanden
             'preis_speichern.php'           => 'artikel.bearbeiten',
             'preise_massen.php'             => 'artikel.bearbeiten',   // Massenaktion "Preise ändern"
+            'mietfach_export.php'           => 'artikel.anzeigen',     // Massenaktion "Für Mietfach exportieren" (nur lesen)
             'bestand_korrigieren.php'       => 'inventur.anlegen',     // Bestand korrigieren: wer Inventur darf, darf korrigieren
             'uvp_speichern.php'             => 'artikel.bearbeiten',
             'staffelpreis_speichern.php'    => 'artikel.bearbeiten',
@@ -316,6 +317,7 @@ final class Zugriffsregeln
             'auszahlung_storno.php'  => 'partner.bearbeiten',
             'fachmiete_verrechnen.php' => 'partner.bearbeiten',
             'versand_verrechnen.php'   => 'partner.bearbeiten',
+            'mietfach_import.php'      => 'partner.bearbeiten',   // Artikel aus NAHTLOS-Datei des Partners
         ],
 
         // === Händler-Außenlager (Konsignation) ===

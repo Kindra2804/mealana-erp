@@ -131,7 +131,10 @@ function partnerTab(string $key, string $label, string $aktiv, int $id): string
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:12px;color:var(--color-text-muted)">Partnerware steht nicht in der normalen Artikelliste und nie im Onlineshop.</div>
-        <button class="btn btn-primary btn-sm" onclick="paModal(null)">+ Neuer Artikel</button>
+        <span style="display:flex;gap:8px">
+            <a class="btn btn-secondary btn-sm" href="<?= BASE_PATH ?>/partner/mietfach_import.php?id=<?= $id ?>" title="Artikel aus dem NAHTLOS des Partners (Datei aus „Für Mietfach exportieren“)">📥 Aus NAHTLOS-Datei übernehmen</a>
+            <button class="btn btn-primary btn-sm" onclick="paModal(null)">+ Neuer Artikel</button>
+        </span>
     </div>
     <table class="erp-table">
         <thead><tr><th style="width:170px">NR.</th><th>BEZEICHNUNG</th><th style="width:130px">EAN</th><th style="width:90px">FACH</th>
