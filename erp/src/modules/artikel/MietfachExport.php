@@ -58,7 +58,9 @@ class MietfachExport
                    COALESCE(a.steuerklasse_id, v.steuerklasse_id) AS stk_id,
                    COALESCE(NULLIF(a.kurzbeschreibung, ''), v.kurzbeschreibung) AS kurztext,
                    COALESCE(a.inhalt_menge, v.inhalt_menge) AS inhalt,
-                   COALESCE(NULLIF(a.inhalt_einheit, ''), v.inhalt_einheit) AS inhalt_eh
+                   COALESCE(NULLIF(a.inhalt_einheit, ''), v.inhalt_einheit) AS inhalt_eh,
+                   COALESCE(NULLIF(a.grundpreis_bezugsmenge, 0), v.grundpreis_bezugsmenge) AS gp_bezug,
+                   GREATEST(COALESCE(a.grundpreis_anzeigen, 0), COALESCE(v.grundpreis_anzeigen, 0)) AS gp_an
             FROM artikel a
             LEFT JOIN artikel v ON v.id = a.vaterartikel_id
             WHERE a.id IN ($ph2)
@@ -86,6 +88,8 @@ class MietfachExport
                 'kurztext'     => trim(html_entity_decode(strip_tags((string)$a['kurztext']), ENT_QUOTES, 'UTF-8')),
                 'inhalt_menge' => $a['inhalt'] !== null ? (float)$a['inhalt'] : null,
                 'inhalt_einheit' => $a['inhalt_eh'] ?: null,
+                'grundpreis_bezugsmenge' => $a['gp_bezug'] !== null && (float)$a['gp_bezug'] > 0 ? (float)$a['gp_bezug'] : null,
+                'grundpreis_anzeigen'    => (bool)$a['gp_an'],
                 'bild_datei'   => $this->bild((int)$a['id'], $a['vaterartikel_id'] ? (int)$a['vaterartikel_id'] : null),
             ];
         }

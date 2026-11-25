@@ -98,6 +98,7 @@ Gut zu wissen:
 - Varianten des Partners werden einzelne Partnerartikel. Die Nummer des Partners wird nach Möglichkeit übernommen (`XP01-SEIFE-LAV`), sonst laufende Nummer.
 - **Wiederholen ist sicher:** Bekannte Artikel werden wiedererkannt (über die Nummer des Partners; beim ersten Mal auch über die EAN, falls ihr den Artikel schon von Hand angelegt hattet) – nichts wird doppelt angelegt. Name, EAN, MwSt und Preis werden aktualisiert; Fach, aktiv/inaktiv und EK bleiben, ein Bild kommt nur dazu, wenn noch keines da ist.
 - **Preis:** Es gilt der Preis des Partners. Ändert ihr ihn beim Artikel (✎) von Hand, ist das euer **eigener Fachpreis** – der bleibt beim nächsten Import; ein neuer Partnerpreis erscheint dann nur als Hinweis mit Häkchen „statt …“ zum bewussten Übernehmen.
+- **Inhalt + Grundpreis** (z. B. „250 g · Grundpreis je 100 g“) kommen mit, wie beim Partner eingestellt – Spalte **Inhalt** in der Vorschau. Kennt der Shop die Einheit nicht (z. B. „Knäuel“), steht ein Hinweis da.
 - Ist eine EAN bei euch schon bei einem anderen Artikel vergeben, wird der Artikel ohne EAN übernommen (Hinweis in der Vorschau).
 - Jede Übernahme steht im Protokoll unter „partner.mietfach_import“ (Datei, Absender, Anzahl neu/geändert), jeder einzelne Artikel unter „partner.artikel_anlegen“ / „partner.artikel_bearbeiten“.
 

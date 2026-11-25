@@ -149,7 +149,7 @@ $euro = fn($v) => $v === null ? '–' : '€ ' . number_format((float)$v, 2, ','
 
         <table class="erp-table">
             <thead><tr><th style="width:30px"><input type="checkbox" id="mf-alle" checked title="alle"></th><th style="width:100px">STATUS</th>
-                <th style="width:140px">NR. PARTNER</th><th style="width:140px">BEI UNS</th><th>BEZEICHNUNG</th><th style="width:120px">EAN</th>
+                <th style="width:140px">NR. PARTNER</th><th style="width:140px">BEI UNS</th><th>BEZEICHNUNG</th><th style="width:120px">EAN</th><th style="width:130px">INHALT</th>
                 <th style="width:100px;text-align:right">PREIS</th><th style="width:55px">MWST</th></tr></thead>
             <tbody>
             <?php foreach ($zeilen as $z): $waehlbar = in_array($z['status'], ['neu', 'geaendert'], true); ?>
@@ -162,6 +162,7 @@ $euro = fn($v) => $v === null ? '–' : '€ ' . number_format((float)$v, 2, ','
                     <td><?= htmlspecialchars($z['name']) ?>
                         <?php foreach ($z['hinweise'] as $h): ?><div style="font-size:11px;color:var(--color-text-muted)"><span class="mf-ausruf">!</span> <?= htmlspecialchars($h) ?></div><?php endforeach; ?></td>
                     <td style="font-family:monospace;font-size:12px"><?= htmlspecialchars($z['ean'] ?? '') ?></td>
+                    <td style="font-size:12px"><?= htmlspecialchars(MietfachImport::inhaltText($z['inhalt'])) ?></td>
                     <td style="text-align:right"><?= $euro($z['preis']) ?>
                         <?php if ($z['eigener_preis'] && $z['preis'] !== null && $z['unser_preis'] !== $z['preis']): ?>
                             <label style="display:block;font-size:11px;white-space:nowrap"><input type="checkbox" name="preis[]" value="<?= htmlspecialchars($z['quell_nummer']) ?>"> statt <?= $euro($z['unser_preis']) ?></label>

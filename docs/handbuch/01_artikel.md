@@ -80,7 +80,7 @@ Hast du selbst ein **Mietfach bei einem anderen Geschäft, das auch NAHTLOS verw
 2. Im neuen Tab steht eine Vorschau: jede Variante wird ein eigener Artikel (z.B. „Seife Lavendel“, „Seife Rose“). Blaues **!** = ohne EAN bzw. ohne Preis.
 3. **⬇ Datei herunterladen** → die `.tar`-Datei dem Mietfach-Betreiber schicken (Mail, USB-Stick).
 
-Mit dabei: Nummer, Name, EAN, Verkaufspreis, MwSt, Kurztext und ein Bild (verkleinert). **Nicht** dabei: Bestand und Einkaufspreise. Ausgelassen werden inaktive Artikel, Gutscheine, Konfigurator-, Download- und Lizenz-Artikel. Artikel ohne Verkaufspreis kann der Betreiber nicht übernehmen – vorher Preis eintragen. Wie es beim Betreiber weitergeht: [Partner → Artikel aus NAHTLOS-Datei übernehmen](08_partner.md#mietfach-import).
+Mit dabei: Nummer, Name, EAN, Verkaufspreis, MwSt, Kurztext, Inhalt + Grundpreis und ein Bild (verkleinert). **Nicht** dabei: Bestand und Einkaufspreise. Ausgelassen werden inaktive Artikel, Gutscheine, Konfigurator-, Download- und Lizenz-Artikel. Artikel ohne Verkaufspreis kann der Betreiber nicht übernehmen – vorher Preis eintragen. Wie es beim Betreiber weitergeht: [Partner → Artikel aus NAHTLOS-Datei übernehmen](08_partner.md#mietfach-import).
 
 ---
 

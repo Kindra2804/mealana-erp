@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/Logger.php';
 require_once __DIR__ . '/../artikel/MietfachExport.php';
 require_once __DIR__ . '/../artikel/BilderRepository.php';
 require_once __DIR__ . '/../artikel/BildVerarbeitung.php';
+require_once __DIR__ . '/../artikel/GrundpreisPruefungService.php';
 require_once __DIR__ . '/PartnerLagerService.php';
 require_once __DIR__ . '/PartnerRepository.php';
 
@@ -83,6 +84,7 @@ class MietfachImport
                 'preis'         => $preis,
                 'steuersatz'    => (float)($a['steuersatz'] ?? 20),
                 'kurztext'      => trim((string)($a['kurztext'] ?? '')),
+                'inhalt'        => $this->inhalt($a),
                 'bild'          => $a['bild'] ?? null,
                 'status'        => 'neu',
                 'artikel_id'    => null,
@@ -103,6 +105,7 @@ class MietfachImport
                 if ($vorh['name'] !== $z['name']) $z['aenderungen'][] = 'Name';
                 if ($ean && $vorh['ean'] !== $ean) $z['aenderungen'][] = 'EAN';
                 if (abs((float)$vorh['steuersatz'] - $z['steuersatz']) > 0.001) $z['aenderungen'][] = 'MwSt';
+                if ($z['inhalt'] && !$this->inhaltGleich($z['inhalt'], $vorh)) $z['aenderungen'][] = 'Grundpreis';
                 if ($preis !== null && $z['unser_preis'] !== $preis) {
                     if ($z['eigener_preis']) {
                         $z['hinweise'][] = 'eigener Fachpreis € ' . number_format($z['unser_preis'], 2, ',', '.') . ' bleibt';
@@ -124,6 +127,9 @@ class MietfachImport
                 $z['aenderungen'] = array_values(array_diff($z['aenderungen'], ['EAN']));
             }
             if ($vorh) $z['status'] = ($z['aenderungen'] || !$vorh['verknuepft']) ? 'geaendert' : 'gleich';
+            if ($z['inhalt'] && $z['inhalt']['anzeigen'] && !in_array(mb_strtolower($z['inhalt']['einheit']), GrundpreisPruefungService::EINHEITEN, true)) {
+                $z['hinweise'][] = 'Einheit „' . $z['inhalt']['einheit'] . '“ kennt der Shop nicht – Grundpreis prüfen';
+            }
             if (!$this->steuerklasse($z['steuersatz'])) {
                 $z['hinweise'][] = 'Steuersatz ' . $z['steuersatz'] . ' % gibt es hier nicht – 20 % verwendet';
             }
@@ -190,6 +196,10 @@ class MietfachImport
                 if ($z['kurztext'] !== '') {
                     $this->db->prepare("UPDATE artikel SET kurzbeschreibung = ? WHERE id = ?")->execute([$z['kurztext'], $artikelId]);
                 }
+                if ($i = $z['inhalt']) { // Inhalt + Grundpreis wie beim Partner (ohne Angabe im Paket: unverändert)
+                    $this->db->prepare("UPDATE artikel SET inhalt_menge = ?, inhalt_einheit = ?, grundpreis_bezugsmenge = ?, grundpreis_anzeigen = ? WHERE id = ?")
+                        ->execute([$i['menge'], $i['einheit'], $i['bezug'], $i['anzeigen'] ? 1 : 0, $artikelId]);
+                }
                 $this->db->prepare("
                     INSERT INTO partner_artikel_quelle (partner_id, quell_nummer, artikel_id, partner_preis, eigener_preis, zuletzt_importiert)
                     VALUES (?, ?, ?, ?, ?, NOW())
@@ -236,6 +246,7 @@ class MietfachImport
     {
         $sel = "
             SELECT a.id, a.artikelnummer, a.name, s.satz AS steuersatz,
+                   a.inhalt_menge, a.inhalt_einheit, a.grundpreis_bezugsmenge, a.grundpreis_anzeigen,
                    (SELECT code FROM artikel_codes WHERE artikel_id = a.id AND typ = 'GTIN13' LIMIT 1) AS ean,
                    (SELECT ap.brutto_vk FROM artikel_preise ap JOIN kundengruppen kg ON kg.id = ap.kundengruppen_id AND kg.ist_standard = 1
                     WHERE ap.artikel_id = a.id LIMIT 1) AS brutto_vk,
@@ -252,6 +263,36 @@ class MietfachImport
                                      WHERE a.partner_id = ? AND q.id IS NULL LIMIT 1");
         $stmt->execute([$ean, $partnerId]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /** Inhalt + Grundpreis aus einer Paketzeile (null = keine brauchbare Angabe) */
+    private function inhalt(array $a): ?array
+    {
+        $menge   = isset($a['inhalt_menge']) ? (float)$a['inhalt_menge'] : 0.0;
+        $einheit = mb_substr(trim((string)($a['inhalt_einheit'] ?? '')), 0, 20);
+        if ($menge <= 0 || $menge >= 100000 || $einheit === '') return null;
+        $bezug = isset($a['grundpreis_bezugsmenge']) && (float)$a['grundpreis_bezugsmenge'] > 0 ? (float)$a['grundpreis_bezugsmenge'] : null;
+        $an    = !empty($a['grundpreis_anzeigen']);
+        if ($an && $bezug === null) $bezug = in_array(mb_strtolower($einheit), ['g', 'ml'], true) ? 100.0 : 1.0;
+        return ['menge' => round($menge, 3), 'einheit' => $einheit, 'bezug' => $bezug, 'anzeigen' => $an];
+    }
+
+    private function inhaltGleich(array $i, array $vorh): bool
+    {
+        return abs((float)$vorh['inhalt_menge'] - $i['menge']) < 0.0005
+            && (string)$vorh['inhalt_einheit'] === $i['einheit']
+            && abs((float)$vorh['grundpreis_bezugsmenge'] - (float)$i['bezug']) < 0.0005
+            && (int)$vorh['grundpreis_anzeigen'] === ($i['anzeigen'] ? 1 : 0);
+    }
+
+    /** Für die Vorschau: „250 g · Grundpreis je 100 g“ */
+    public static function inhaltText(?array $i): string
+    {
+        if (!$i) return '';
+        $zahl = fn(float $f) => rtrim(rtrim(number_format($f, 3, ',', ''), '0'), ',');
+        $t = $zahl($i['menge']) . ' ' . $i['einheit'];
+        if ($i['anzeigen']) $t .= ' · GP je ' . ($i['bezug'] == 1 ? '' : $zahl($i['bezug']) . ' ') . $i['einheit'];
+        return $t;
     }
 
     private function artikelZeile(int $id): array
