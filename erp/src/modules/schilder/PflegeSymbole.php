@@ -7,6 +7,9 @@
  * Grundformen der ISO 3758: Bottich (waschen), Dreieck (bleichen), Quadrat mit Kreis (Trockner),
  * Quadrat (trocknen), Bügeleisen, Kreis (chemische Reinigung); Balken darunter = schonend, Kreuz = nicht.
  * Einheitliche viewBox 0 0 30 26, schwarze Linien -- Dompdf rendert sie als <img src="data:image/svg+xml...">.
+ *
+ * KOPIE im Woo-Plugin (Pflege-Box im Shop): shop/wp-plugin/nahtlos-connector/includes/PflegeSymbole.php
+ * -- bei Änderungen dorthin kopieren; php tests/pflege_symbole_test.php prüft, dass beide gleich sind.
  */
 class PflegeSymbole
 {

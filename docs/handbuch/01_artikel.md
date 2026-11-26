@@ -210,6 +210,7 @@ Gewählte Väter nehmen alle ihre Farben mit, die übrigen Merkmale bleiben unbe
 `php scripts/jtl_merkmale_import.php <datei.csv> --dry-run` (Probelauf, zeigt nur an), danach ohne `--dry-run`. Der Bericht (nicht gefundene Artikel, Farben mit abweichenden Werten) liegt neben der CSV. Der Import ist wiederholbar; Pflege und Handgefärbt werden nicht überschrieben.
 
 **Im Online-Shop:** Der Shop-Abgleich überträgt die Merkmale eines Vater-/Einzelartikels als **Produktattribute** an WooCommerce. Kundinnen sehen sie im Reiter **„Zusätzliche Informationen“**. „Lauflänge je 100 g“ und „Maschenprobe/10 cm“ sind nur zum Filtern da und werden dort nicht angezeigt.
+- **Pflege** zeigt das NAHTLOS-Connector-Plugin (ab 1.9.0) auf der Produktseite als Kasten **„Pflegehinweise“ mit Symbolen** (dieselben wie am Schild). **Auszeichnungen** (GOTS, BIO, Handgefärbt …) erscheinen als farbige Badges unter dem Titel und in den Produktlisten unter dem Preis.
 - Geänderte Merkmale gehen beim nächsten Abgleich automatisch mit, auch nach Massenaktion oder Import.
 - **Filter einrichten (einmal je Shop):** WordPress → Design → Widgets (bzw. Website-Editor) → in der Seitenleiste der Shop-Seiten den Block **„Nach Attribut filtern“** einfügen und das Attribut wählen, z. B. Garngruppe, Nadelstärke, Wollqualität, Lauflänge je 100 g, Auszeichnung. Neue Werte aus dem ERP erscheinen danach von selbst im Filter.
 - „Nadelstärke“ teilen sich Garne (Merkmal) und Nadeln (Varianten-Achse) – ein Filter findet beides.

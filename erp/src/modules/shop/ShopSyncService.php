@@ -68,8 +68,11 @@ class ShopSyncService
     /** @var array<int,array<string,int>> shopId => [Attributname klein => Woo-Attribut-ID] (Merkmale) */
     private array $merkmalAttributCache = [];
 
-    /** Merkmale, die im Shop nur als Filter dienen (automatisch abgeleitete Bereiche), nicht sichtbar */
-    private const MERKMALE_NUR_FILTER = ['lauflaenge_bereich', 'maschenprobe_10cm'];
+    /**
+     * Merkmale, die NICHT im Reiter „Zusätzliche Informationen“ stehen: die automatisch abgeleiteten
+     * Bereiche (nur Filter) und Pflege (zeigt das Connector-Plugin ab 1.9.0 als Kasten mit Symbolen)
+     */
+    private const MERKMALE_NUR_FILTER = ['lauflaenge_bereich', 'maschenprobe_10cm', 'pflege'];
 
     // WooCommerce erlaubt laut Doku bis zu 100 Items pro Batch-Request
     // (/products/batch, /products/{id}/variations/batch). 75 ist kein
