@@ -28,6 +28,13 @@ require_once __DIR__ . '/../src/modules/artikel/ArtikelService.php';
 require_once __DIR__ . '/../src/modules/artikel/ArtikelRepository.php';
 require_once __DIR__ . '/../src/modules/shop/WooCommerceClient.php';
 
+// Unbekannte Schalter (z.B. „--ausführen“ mit ü) nicht still ignorieren – sonst läuft nur ein Probelauf
+foreach (array_slice($argv, 1) as $arg) {
+    if (!preg_match('/^--(datei=.+|ausfuehren)$/', $arg)) {
+        fwrite(STDERR, "Unbekannter Schalter: $arg (erlaubt: --datei=<csv> und --ausfuehren mit ue)\n");
+        exit(1);
+    }
+}
 $opt = getopt('', ['datei:', 'ausfuehren']);
 $ausfuehren = isset($opt['ausfuehren']);
 $pfad = $opt['datei'] ?? '';
