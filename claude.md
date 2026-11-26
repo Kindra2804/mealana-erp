@@ -565,6 +565,17 @@ $result = $service->wareneingang([
 // lager_bewegungen: Immutable log of movement (bestand_vorher, bestand_nachher always tracked)
 ```
 
+## Update 2026-11-26: Merkmale/Pflege/Sale im Shop (1.0.31 + Plugin 1.9.0 live), Babsis Liste am Live bereinigt
+
+Details in `.claude/memory/project_shop_anzeige_merkmale.md`, `project_artikel_benennung.md`. Migrationen **265–266**, nächste **267**.
+- **Fixes:** Kanal-Legende im Kategoriebaum bleibt (sessionStorage), Merkmal-Auswahlfenster zeigt gesetzte Werte.
+- **Pflegesymbole** +7 (Migr. 265, `PflegeSymbole.php`; Kopie im Plugin, Test `tests/pflege_symbole_test.php` prüft Gleichheit).
+- **Merkmale → Woo** als globale Attribute (Migr. 266 `artikel_shops.merkmale_hash` für Fälligkeit; Pflege/Lauflänge/Maschenprobe nur Filter).
+- **Connector 1.9.0** (alle 3 Shops): Pflege-Box, Badges GOTS/BIO/handgefärbt, „SALE xx%“ + „Alter Preis“ (Omnibus-30-Tage-Preis offen, Einstieg `nahtlos_vergleichspreis()`).
+- **Live-Abgleich Babsis Liste:** Soll 1.572 Väter/Einzel – fehlende 46 nachimportiert (27 bewusst weggelassen: Test-/Hilfsartikel, JTL-Gutscheine, alte Indra-Schilder).
+- **Neues Skript** `erp/scripts/artikel_liste_loeschen.php --datei=… [--ausfuehren]`: nie benutzte Artikel samt Kindern endgültig löschen (auch in Woo), benutzte nur deaktivieren. Live: 231 gelöscht, 17 deaktiviert (29 Farben mit SOW-Startbestand → Babsi entscheidet), Shops kontrolliert.
+- JTL-Archiv-Aufträge sind am Live **noch nicht** importiert (fehlende Artikel → inaktiver Platzhalter `JTL-<Nr>`).
+
 ## Update 2026-11-22: JTL-Übernahme mit neuem Nummernschema gebaut, JTL-Bareingang an der Kasse, Paket 1.0.28
 
 Details in `.claude/memory/project_artikel_benennung.md`, `project_1_0_check.md`. Migrationen **258–263**, nächste **264**.

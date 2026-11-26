@@ -22,6 +22,8 @@ Plan (von Jacky abgenommen, gestartet 2026-11-26):
 
 - ✅ Schritt 3 (2026-11-26): includes/sale-anzeige.php im Plugin 1.9.0 – woocommerce_sale_flash → „SALE 36%“/„SALE bis X%“, woocommerce_get_price_html prio 15 → Preis + „Alter Preis: ~~x~~“ (nur bei EINEM Preis, Spannen bleiben Woo). Vergleichspreis zentral in nahtlos_vergleichspreis() = regulärer Preis. **Omnibus offen:** ERP hat KEINE Preis-Historie (artikel_preise ohne Verlauf, preis_aktionen_positionen leer) → 30-Tage-Tiefstpreis bräuchte Verlaufstabelle (z.B. täglicher Schnappschuss effektiver Preis) + Meta an Woo; Jacky noch fragen. Ob Blocksy woocommerce_sale_flash nutzt: im echten Shop prüfen.
 
+- ✅ 2026-11-26: ERP 1.0.31 LIVE (Jacky). Plugin 1.9.0 auf SOW + Bio installiert (Skript .claude-browser-tools/connector_19.js, LIB=sow_lib|bio_lib), Seiten laden ohne Fehler; kein Sale-Artikel in beiden Shops, Badges/Pflege erst nach Merkmal-Import sichtbar. indra-design ebenfalls 1.9.0 (2026-11-26, LIB=wp_lib).
+
 Babsi verschiebt „Zum Filzen geeignet“ im Live von Pflege zu Auszeichnung.
 
 Zusammenhang [[project_merkmale]], [[project_shop_sync]], [[project_preisschilder]].
