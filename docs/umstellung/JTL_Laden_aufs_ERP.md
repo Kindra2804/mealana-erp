@@ -30,7 +30,14 @@ Stand 22.11.2026 · für Jacky und Babsi · zum Abhaken
   - Häkchen **„Babsis Liste + neues Nummernschema anwenden“** (Standard)
   - **Feste Kategorie** = Zielkategorie (Sicherheitsnetz), JTL-Kategorien zuordnen, nicht mehr existierende = „– nicht zuordnen –“
   - Kontrollliste prüfen (neue Nummern, „wird umnummeriert“, Hinweise) → Import starten → Fehlerliste notieren
-- [ ] **JTL-Bilder-Import** und **Merkmale** (`scripts/jtl_merkmale_import.php`) – finden die Artikel über die JTL-Nummer
+- [ ] **JTL-Bilder-Import** – findet die Artikel über die JTL-Nummer
+- [ ] **Merkmale importieren** (erst NACH dem Artikelimport – nur vorhandene Artikel bekommen Merkmale)
+  - in JTL **frischer** Ameise-Export Vorlage **„Artikelmerkmale“** (Spalten Artikelnummer / Merkmal / Merkmalwert) → Datei ins Live
+  - im `erp`-Ordner: `php scripts/jtl_merkmale_import.php D:/transfer/<datei>.csv --dry-run`
+  - `<datei>_bericht.txt` neben der CSV prüfen (nicht gefundene Artikel, Väter mit uneinheitlichen Werten) → passt? → ohne `--dry-run`
+  - übernimmt Wollqualität, Zusammensetzung, Gewicht/Länge (+ Lauflänge je 100 g), Maschenprobe (+ /10 cm), Garngruppe, Nadelstärke, GOTS/BIO; Pflegeanleitung wird ignoriert, Pflegesymbole/Handgefärbt bleiben
+  - findet Artikel über JTL-Nummer (sonst ERP-Nummer), wiederholbar → nach jedem weiteren Kategorie-Import einfach noch einmal laufen lassen
+  - SOW + Bio sind im Live schon angelegt → können sofort laufen
 - [ ] **Erstabgleich** *Lager → JTL-Abgleich*: JTL-Export „Lagerabgleich_ERP“ hochladen → setzt den Startbestand
 - [ ] **Inventur im ERP** (mehrere Zähler, ohne Papier) → danach Export nach JTL (Inventur-Differenzen gehen mit)
 - [ ] **Kasse einrichten:** Arbeitsplatz am Kassen-PC, BFR erreichbar, Bon-Drucker, Kundenanzeige, Kassenlade
