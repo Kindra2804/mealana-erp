@@ -14,6 +14,16 @@ require_once __DIR__ . '/../konfigurator/KonfigBausteineService.php';
 
 class ShopSyncRepository
 {
+    /**
+     * Fingerabdruck der Artikel-Merkmale (Migr. 266) -- gleiche Formel für die Fälligkeit und für das
+     * Merken nach erfolgreichem Abgleich. Keine Merkmale = NULL (MD5(NULL)), darum überall COALESCE.
+     */
+    private const MERKMALE_HASH_AUSDRUCK = "MD5(GROUP_CONCAT(am_h.merkmal_wert_id ORDER BY am_h.merkmal_wert_id)) FROM artikel_merkmale am_h WHERE am_h.artikel_id = a.id";
+    private const MERKMALE_HASH_SQL = "(SELECT " . self::MERKMALE_HASH_AUSDRUCK . ")";
+
+    /** Merkmale, die NIE in den Shop gehen: Farbe ist dort eine Varianten-Achse, ohne Slug = Altlast */
+    private const MERKMALE_NICHT_IM_SHOP = ['farbe', ''];
+
     private PDO $db;
 
     public function __construct()
@@ -116,7 +126,7 @@ class ShopSyncRepository
         // Komplettabgleich liefe endlos im Kreis (Fund 2026-11-11 beim Überlastungstest).
         $bilderBedingung = $mitBildern ? '' : 'AND 0';
         $stmt = $this->db->prepare("
-            SELECT ash.id AS artikel_shop_id, ash.external_id, ash.sync_status, a.id AS artikel_id,
+            SELECT ash.id AS artikel_shop_id, ash.external_id, ash.sync_status, ash.merkmale_hash, a.id AS artikel_id,
                    a.vaterartikel_id, a.artikelnummer, a.name, a.kurzbeschreibung,
                    a.beschreibung, a.aktiv, a.hersteller_id, a.ist_hervorgehoben,
                    a.ist_konfigurierbar, a.ist_gutschein, ash_vater.external_id AS vater_external_id
@@ -148,6 +158,8 @@ class ShopSyncRepository
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at
+                  -- Merkmale (Woo-Attribute, Migr. 266) seit dem letzten Abgleich geändert -- nur Vater/Einzel
+                  OR (a.vaterartikel_id IS NULL AND COALESCE(ash.merkmale_hash, '') != COALESCE(" . self::MERKMALE_HASH_SQL . ", ''))
                   -- Artikel selbst ist längst synced, aber eines seiner Bilder
                   -- noch nicht (z.B. nachträglich hochgeladen) -- artikel_bilder_shops
                   -- hat einen eigenen Status, unabhängig von artikel_shops.
@@ -212,6 +224,8 @@ class ShopSyncRepository
               AND (
                   ash.sync_status IN ('pending', 'error')
                   OR a.aktualisiert_am > ash.synced_at
+                  -- Merkmale (Woo-Attribute, Migr. 266) seit dem letzten Abgleich geändert -- nur Vater/Einzel
+                  OR (a.vaterartikel_id IS NULL AND COALESCE(ash.merkmale_hash, '') != COALESCE(" . self::MERKMALE_HASH_SQL . ", ''))
                   OR EXISTS (
                       SELECT 1 FROM artikel_bilder ab
                       LEFT JOIN artikel_bilder_shops abs
@@ -1172,11 +1186,34 @@ class ShopSyncRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Merkmale eines Vater-/Einzelartikels für die Woo-Attribute: nur aktive Merkmale, ohne
+     * MERKMALE_NICHT_IM_SHOP, sortiert nach Merkmal und Wert.
+     *
+     * @return array<int,array{merkmal_id:int,name:string,slug:string,merkmal_sort:int,wert_id:int,wert:string,symbol:?string,wert_sort:int}>
+     */
+    public function findMerkmaleFuerShop(int $artikelId): array
+    {
+        $platzhalter = implode(',', array_fill(0, count(self::MERKMALE_NICHT_IM_SHOP), '?'));
+        $stmt = $this->db->prepare("
+            SELECT m.id AS merkmal_id, m.name, m.slug, m.sort_order AS merkmal_sort,
+                   w.id AS wert_id, w.wert, w.symbol, w.sort_order AS wert_sort
+            FROM artikel_merkmale am
+            JOIN merkmale m ON m.id = am.merkmal_id AND m.aktiv = 1
+            JOIN merkmal_werte w ON w.id = am.merkmal_wert_id
+            WHERE am.artikel_id = ? AND m.slug NOT IN ($platzhalter)
+            ORDER BY m.sort_order, m.id, w.sort_order, w.wert
+        ");
+        $stmt->execute(array_merge([$artikelId], self::MERKMALE_NICHT_IM_SHOP));
+        return $stmt->fetchAll();
+    }
+
     public function markiereSynced(int $artikelShopId, string $externalId): void
     {
         $this->db->prepare("
             UPDATE artikel_shops
-            SET external_id = :external_id, sync_status = 'synced', synced_at = NOW(), fehler_meldung = NULL
+            SET external_id = :external_id, sync_status = 'synced', synced_at = NOW(), fehler_meldung = NULL,
+                merkmale_hash = (SELECT " . str_replace('a.id', 'artikel_shops.artikel_id', self::MERKMALE_HASH_AUSDRUCK) . ")
             WHERE id = :id
         ")->execute(['external_id' => $externalId, 'id' => $artikelShopId]);
     }

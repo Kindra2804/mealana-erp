@@ -356,6 +356,7 @@ require_once __DIR__ . '/includes/shell_top.php';
 
             <h3 id="artikel-merkmale">Merkmale <span class="ba-badge ba-badge-fertig">Fertig</span></h3>
             <p>Merkmale sind technische Eigenschaften (Nadelstärke, Material …). Sie erscheinen im Shop als Produktattribute, bei Garnen auch auf den Preisschildern.</p>
+            <p><strong>Im Online-Shop:</strong> Der Abgleich überträgt die Merkmale von Vater-/Einzelartikeln an WooCommerce (Reiter „Zusätzliche Informationen“; „Lauflänge je 100 g“ und „Maschenprobe/10 cm“ nur als Filter). Änderungen gehen beim nächsten Abgleich mit. <strong>Filter einmal je Shop einrichten:</strong> WordPress → Widgets/Website-Editor → Block „Nach Attribut filtern“ in die Seitenleiste der Shop-Seiten, Attribut wählen (z. B. Garngruppe, Nadelstärke, Wollqualität). Neue Werte erscheinen danach von selbst.</p>
             <table class="ba-table">
                 <tr><th>Merkmal</th><th>Wofür</th><th>Beispiel</th></tr>
                 <tr><td>Wollqualität</td><td>Shop-Filter (mehrere möglich)</td><td>Schurwollmischung, Sockenwolle</td></tr>

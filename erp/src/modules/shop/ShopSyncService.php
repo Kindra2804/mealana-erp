@@ -65,6 +65,12 @@ class ShopSyncService
      */
     private array $attributTermsCache = [];
 
+    /** @var array<int,array<string,int>> shopId => [Attributname klein => Woo-Attribut-ID] (Merkmale) */
+    private array $merkmalAttributCache = [];
+
+    /** Merkmale, die im Shop nur als Filter dienen (automatisch abgeleitete Bereiche), nicht sichtbar */
+    private const MERKMALE_NUR_FILTER = ['lauflaenge_bereich', 'maschenprobe_10cm'];
+
     // WooCommerce erlaubt laut Doku bis zu 100 Items pro Batch-Request
     // (/products/batch, /products/{id}/variations/batch). 75 ist kein
     // theoretischer Wert, sondern gegen den echten Shop (indra-design.at)
@@ -143,6 +149,8 @@ class ShopSyncService
      */
     public function syncShop(array $shop, int $limit = 20, ?callable $fortschritt = null, bool $mitBildern = true): array
     {
+        // Woo-IDs gelten nur je Shop -- bei syncAlleShops() darf Shop 2 nicht die Terms von Shop 1 sehen
+        $this->attributTermsCache = [];
         $client = new WooCommerceClient(
             $shop['wc_url'],
             $shop['wc_key'],
@@ -916,8 +924,15 @@ class ShopSyncService
             }
         }
 
+        // Merkmale als globale Woo-Attribute (Filter + „Zusätzliche Informationen“, Jacky 2026-11-26)
+        $attribute = array_merge($attribute, $this->baueMerkmalAttribute($client, (int)$artikel['artikel_id'], $shopId, $attribute));
+
         if (!empty($attribute)) {
             $payload['attributes'] = $attribute;
+        } elseif (!empty($artikel['merkmale_hash'])) {
+            // Hatte beim letzten Abgleich Merkmale, jetzt keine mehr -> im Shop leeren
+            // (ohne den Schlüssel ließe WooCommerce die alten Attribute stehen)
+            $payload['attributes'] = [];
         }
 
         // Bestand NUR bei Standalone-Artikeln setzen -- bei einem Variable
@@ -1607,11 +1622,115 @@ class ShopSyncService
         if (!isset($this->attributTermsCache[$attributId])) {
             $terms = [];
             foreach ($client->listeAttributTerms($attributId) as $wcTerm) {
-                $terms[mb_strtolower($wcTerm['name'])] = (int)$wcTerm['id'];
+                // WordPress liefert "&" als "&amp;" -- sonst würde so ein Wert nie wiedergefunden
+                $terms[mb_strtolower(html_entity_decode($wcTerm['name'], ENT_QUOTES, 'UTF-8'))] = (int)$wcTerm['id'];
             }
             $this->attributTermsCache[$attributId] = $terms;
         }
         return $this->attributTermsCache[$attributId];
+    }
+
+    /**
+     * Merkmale eines Vater-/Einzelartikels als globale WooCommerce-Attribute (variation=false).
+     * Ein Attribut je Merkmal (gleicher Name wie im ERP, z.B. „Garngruppe“), ein Term je Wert.
+     * - Heißt eine Varianten-Achse genauso (z.B. „Nadelstärke“ bei Nadeln), teilen sich beide das
+     *   Woo-Attribut (ein Filter für Garn + Nadeln); hat der Artikel es schon über die Achse, wird das
+     *   Merkmal übersprungen (Woo erlaubt jedes Attribut nur einmal je Produkt).
+     * - Automatisch abgeleitete Bereiche (MERKMALE_NUR_FILTER) sind nur Filter, nicht sichtbar.
+     * - Terms mit Symbol (Pflege, Auszeichnung) bekommen das Symbol als Slug -- das Connector-Plugin
+     *   erkennt daran, welches Pflegesymbol/Badge es zeichnet.
+     *
+     * @param array $vorhanden schon gebaute Attribute (Achsen, Hersteller) dieses Produkts
+     */
+    private function baueMerkmalAttribute(WooCommerceClient $client, int $artikelId, int $shopId, array $vorhanden): array
+    {
+        $zeilen = $this->repo->findMerkmaleFuerShop($artikelId);
+        if (!$zeilen) {
+            return [];
+        }
+        $belegt = array_flip(array_map(fn($a) => (int)$a['id'], $vorhanden));
+
+        $jeMerkmal = [];
+        foreach ($zeilen as $z) {
+            $jeMerkmal[(int)$z['merkmal_id']][] = $z;
+        }
+
+        $attribute = [];
+        foreach ($jeMerkmal as $werte) {
+            $erstes = $werte[0];
+            $attributId = $this->merkmalAttributId($client, $shopId, $erstes['name'], $erstes['slug']);
+            if (isset($belegt[$attributId])) {
+                continue;
+            }
+            $optionen = [];
+            foreach ($werte as $w) {
+                if ($this->stelleMerkmalTermSicher($client, $attributId, $w) !== null) {
+                    $optionen[] = $w['wert'];
+                }
+            }
+            if (!$optionen) {
+                continue;
+            }
+            $belegt[$attributId] = true;
+            $attribute[] = [
+                'id'        => $attributId,
+                'variation' => false,
+                'visible'   => !in_array($erstes['slug'], self::MERKMALE_NUR_FILTER, true),
+                'options'   => $optionen,
+            ];
+        }
+        return $attribute;
+    }
+
+    /** Woo-Attribut-ID für ein Merkmal (über den Namen, je Lauf und Shop nur einmal nachgesehen) */
+    private function merkmalAttributId(WooCommerceClient $client, int $shopId, string $name, string $slug): int
+    {
+        if (!isset($this->merkmalAttributCache[$shopId])) {
+            $this->merkmalAttributCache[$shopId] = [];
+            foreach ($client->listeAttribute() as $wcAttribut) {
+                $this->merkmalAttributCache[$shopId][mb_strtolower(html_entity_decode($wcAttribut['name'], ENT_QUOTES, 'UTF-8'))] = (int)$wcAttribut['id'];
+            }
+        }
+        $key = mb_strtolower($name);
+        if (!isset($this->merkmalAttributCache[$shopId][$key])) {
+            $neu = $client->erstelleAttribut(['name' => $name, 'slug' => substr($slug, 0, 28), 'order_by' => 'menu_order']);
+            $this->merkmalAttributCache[$shopId][$key] = (int)$neu['id'];
+        }
+        return $this->merkmalAttributCache[$shopId][$key];
+    }
+
+    /**
+     * Term für einen Merkmal-Wert anlegen, falls es ihn noch nicht gibt (Reihenfolge = ERP-Sortierung).
+     * Ein einzelner fehlerhafter Wert reißt den Artikel nicht mit (wie syncWerteFuerDimension()).
+     */
+    private function stelleMerkmalTermSicher(WooCommerceClient $client, int $attributId, array $wert): ?int
+    {
+        $key = mb_strtolower($wert['wert']);
+        $terms = $this->holeAttributTerms($client, $attributId);
+        if (isset($terms[$key])) {
+            return $terms[$key];
+        }
+        $daten = ['name' => $wert['wert'], 'menu_order' => (int)$wert['wert_sort']];
+        try {
+            try {
+                $termId = (int)$client->erstelleAttributTerm($attributId, $daten + (!empty($wert['symbol']) ? ['slug' => $wert['symbol']] : []))['id'];
+            } catch (RateLimitException $e) {
+                throw $e;
+            } catch (Throwable $e) {
+                if (empty($wert['symbol'])) throw $e;
+                $termId = (int)$client->erstelleAttributTerm($attributId, $daten)['id'];   // Slug schon vergeben
+            }
+        } catch (RateLimitException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            Logger::log('shop.merkmal_sync_fehler', 'merkmal_werte', (int)$wert['wert_id'], [
+                'wert'   => $wert['wert'],
+                'fehler' => $e->getMessage(),
+            ], $this->jarvisId, 'error');
+            return null;
+        }
+        $this->attributTermsCache[$attributId][$key] = $termId;
+        return $termId;
     }
 
     private function findeOderErstelleAttribut(WooCommerceClient $client, string $name, array $extraFelder = []): int
