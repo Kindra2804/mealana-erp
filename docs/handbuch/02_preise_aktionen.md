@@ -119,3 +119,11 @@ Garn mit Einheit **g** zeigt der Shop immer **je 1 kg** (Preisauszeichnungsgeset
 | Kundengruppen-Preis gilt nicht | Prüfen ob "Gültig bis" abgelaufen ist |
 | Aktion wurde nicht aktiviert | Cronjob läuft? Datum prüfen. Manuell über "Starten"-Button |
 | SALE-Preis lässt sich nicht entfernen | SALE-Override → leeren Preis speichern oder "Entfernen"-Button |
+
+## Sale im Online-Shop
+
+Mit dem NAHTLOS-Connector-Plugin ab 1.9.0 zeigen die Woo-Shops einen Sale wie der alte JTL-Shop:
+- Badge **„SALE 36%“** am Produktbild (Rabatt aus Normalpreis und Sale-Preis). Haben Varianten unterschiedliche Rabatte: **„SALE bis 50%“**.
+- Unter dem Preis die Zeile **„Alter Preis: ~~5,50 €~~“**. Bei Varianten mit unterschiedlichen Preisen bleibt die normale Preisspanne.
+
+> Rechtlich muss der „alte Preis“ der **niedrigste Preis der letzten 30 Tage** vor der Senkung sein. Derzeit wird der Normalpreis aus dem ERP verwendet – nach einer kürzlichen Preisänderung oder einem vorherigen Sale also vorsichtig sein.
