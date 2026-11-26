@@ -56,6 +56,8 @@ Auswertung der behaltenen 10.173 Kinder: etwa 7.900 mit Farb-Achse, etwa 2.100 N
 - ✅ 2026-11-22 Datentransfer-Teil **`jtl_liste`** (scripts/datentransfer.php): Export im Dev `export --teile=jtl_liste`, am Live `import --datei=… --probelauf`, dann ohne. Spiegelt import_ausschluss/_geprueft/_umbenennung/_vorgabe (quelle jtl; Live = Dev-Stand, auch Entferntes), Vorgabe-Hersteller über Namen; ALLE Hersteller: neue anlegen (mit Logo), vorhandene bekommen Kürzel der Quelle (wenn gesetzt, Hinweis bei Änderung), weitere Namen zusammengeführt. Wiederholbar (2. Lauf 0 Änderungen). Getestet gegen Wegwerf-DB. Am Live braucht es vorher das Update mit Migr. 258–262. Achtung: nach Go-live NICHT mehr spiegeln, falls Babsi dann im Live selbst prüft.
 - ▶ Offen: Wie läuft die große Übernahme praktisch (je JTL-Kategorie-Export wie bei SOW? Artikeltyp/-gruppe je Artikel in der Kontrollliste, max_input_vars)? Dann Lagerabgleich/Archiv-Aufträge/Kassen-Scan über 'jtl_nr', Live: Liste übertragen.
 
+- 📦 2026-11-26: Babsi fertig → Paket `D:/ERP/transfer/babsis_liste_2026-11-26.tar` exportiert (79 Hersteller, 10.180 Ausschlüsse, 4.477 geprüft, 113 Umbenennungen, 251 Vorgaben), Anleitung an Jacky; Einspielen am Live offen.
+
 ## Stand vom 2026-11-21 (Fragen inzwischen beantwortet, siehe oben)
 - **Art [Uni/Mix/…] kommt über die Achsen** (Jacky, Screenshot): Die Achse FARBE hat Unter-Gruppen „↳ [MIX]“, „↳ [UNI]“, darin die Farbwerte (z. B. „77 EICHE HELL“, „01 NATUR“). Also kein eigenes Merkmal, die Art kommt aus der Unter-Achse, in der der Farbwert liegt. Vorher prüfen, wie diese Unter-Achsen in der DB abgebildet sind (varianten_achsen / varianten_achse_werte).
 - **Offene Fragen, morgen mit Jacky klären:**
