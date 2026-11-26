@@ -503,13 +503,20 @@ function achsenSpeichern() {
 var _merkmalAktuell = null;
 
 function merkmalWaehlen(merkmalId, mehrfach, werte, gesetzteIds) {
+    // IDs kommen aus PHP mal als Text, mal als Zahl -> für den Vergleich vereinheitlichen
+    // Aktueller Stand steht in den versteckten Feldern (auch nach "Übernehmen" ohne Speichern)
+    const felder = document.querySelectorAll('input[name="merk[' + merkmalId + '][]"]');
+    if (felder.length || document.getElementById('merk-chips-' + merkmalId)) {
+        gesetzteIds = [...felder].map(function (i) { return i.value; });
+    }
+    gesetzteIds = (gesetzteIds || []).map(Number);
     _merkmalAktuell = { merkmalId, mehrfach, werte };
     document.getElementById('merk-modal-titel').textContent = 'Merkmal wählen';
     const liste = document.getElementById('merk-modal-liste');
     liste.innerHTML = '';
     // Einzelwert: "keine Angabe" zum Entfernen
     if (!mehrfach) liste.appendChild(merkmalOption({ id: 0, wert: '– keine Angabe –' }, false, !gesetzteIds.length));
-    werte.forEach(function (w) { liste.appendChild(merkmalOption(w, mehrfach, gesetzteIds.includes(w.id))); });
+    werte.forEach(function (w) { liste.appendChild(merkmalOption(w, mehrfach, gesetzteIds.includes(Number(w.id)))); });
 
     const suche = document.getElementById('merk-suche');
     suche.value = '';
