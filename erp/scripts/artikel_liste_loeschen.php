@@ -32,6 +32,7 @@ $opt = getopt('', ['datei:', 'ausfuehren']);
 $ausfuehren = isset($opt['ausfuehren']);
 $pfad = $opt['datei'] ?? '';
 if ($pfad === '' || !is_file($pfad)) {
+    if ($pfad !== '') fwrite(STDERR, "Datei nicht gefunden: $pfad (gesucht von " . getcwd() . " aus)\n");
     fwrite(STDERR, "Aufruf: php scripts/artikel_liste_loeschen.php --datei=<csv> [--ausfuehren]\n");
     exit(1);
 }
