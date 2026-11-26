@@ -57,11 +57,17 @@
     // Shop-Vorschau im Kategoriebaum (Babsi-Wunsch 2026-08-05): blendet Kategorien aus, die im
     // gewählten Kanal nicht erscheinen würden. Nutzt kat-knoten.data-shops (schon serverseitig
     // rekursiv berechnet, inkl. Vererbung + Ausschluss -- siehe ArtikelService::berechneShopChips()).
-    // Rein clientseitig/pro Seitenaufruf, kein Persistieren nötig.
+    // Rein clientseitig. Die Wahl bleibt im Browser-Tab gemerkt (sessionStorage), damit sie nach dem
+    // Klick auf eine Kategorie (= Seitenneuladen) nicht verloren geht (Jacky 2026-11-26).
+    var SHOP_FILTER_KEY = 'mealana_kat_shopfilter';
     var aktiverShopFilter = null;
 
     window.katShopFilterToggle = function (code) {
         aktiverShopFilter = (aktiverShopFilter === code) ? null : code;
+        try {
+            if (aktiverShopFilter) sessionStorage.setItem(SHOP_FILTER_KEY, aktiverShopFilter);
+            else sessionStorage.removeItem(SHOP_FILTER_KEY);
+        } catch (e) {}
         document.querySelectorAll('.kat-knoten').forEach(function (knoten) {
             if (!aktiverShopFilter) { knoten.style.display = ''; return; }
             var shops = (knoten.dataset.shops || '').split(',').filter(Boolean);
@@ -77,6 +83,13 @@
     window.katShopFilterReset = function () {
         if (aktiverShopFilter) window.katShopFilterToggle(aktiverShopFilter);
     };
+
+    // Gemerkten Filter nach dem Neuladen wieder anwenden (nur, wenn es den Kanal noch gibt)
+    var gemerkt = null;
+    try { gemerkt = sessionStorage.getItem(SHOP_FILTER_KEY); } catch (e) {}
+    if (gemerkt && document.getElementById('kat-shopfilter-zeile-' + gemerkt)) {
+        window.katShopFilterToggle(gemerkt);
+    }
 })();
 
 window.erpNavMoreToggle = function () {
